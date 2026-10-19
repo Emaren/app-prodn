@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "version": "2026-10-19-v1",
+  "kind": "aoe2war-authority-map",
+  "policy": "This registry declares ownership, dependencies and allowed public read-side projections. It does not assert that any sensor, agent, chain service or certification is currently healthy.",
+  "nodes": [
+    {
+      "id": "git",
+      "label": "SOURCE",
+      "owner": "GitHub repositories",
+      "class": "source",
+      "authority": "Canonical committed code and tagged revisions",
+      "publicPath": "/aoe2war-os",
+      "evidence": "Git SHA, protected PR/CI, registered docs"
+    },
+    {
+      "id": "release",
+      "label": "RELEASE",
+      "owner": "AoE2WAR release controller",
+      "class": "deployment",
+      "authority": "Certified active runtime, artifact and rollback receipts",
+      "publicPath": "/aoe2war-os",
+      "evidence": "Exact release source, build ID and certification receipt"
+    },
+    {
+      "id": "identity",
+      "label": "IDENTITY",
+      "owner": "AoE2WAR app/API and verified Steam identity",
+      "class": "game",
+      "authority": "Authenticated player joins and account ownership",
+      "publicPath": "/players",
+      "evidence": "Verified SteamID64 and account binding"
+    },
+    {
+      "id": "rating",
+      "label": "RATINGS",
+      "owner": "Steam rating authority",
+      "class": "game",
+      "authority": "Steam RM/DM ratings; app only projects them",
+      "publicPath": "/leaderboard",
+      "evidence": "Provenance-bound Steam rating observations"
+    },
+    {
+      "id": "replay",
+      "label": "REPLAY",
+      "owner": "Watcher plus canonical replay pipeline",
+      "class": "game",
+      "authority": "Recorded artifacts, game results and conflict vetoes",
+      "publicPath": "/hd-replay-engine",
+      "evidence": "Immutable replay hashes and adjudication receipts"
+    },
+    {
+      "id": "finance",
+      "label": "WOLO",
+      "owner": "WoloChain + guarded settlement accounting",
+      "class": "financial",
+      "authority": "On-chain balances and reconciled settlement state",
+      "publicPath": "/wolochain",
+      "evidence": "Chain confirmations, custody and settlement receipts"
+    },
+    {
+      "id": "satchel",
+      "label": "SATCHEL",
+      "owner": "Held Satchel financial integration",
+      "class": "financial",
+      "authority": "Owner-authorized wager holds and withdrawal journal, when independently certified",
+      "publicPath": "/bets",
+      "evidence": "Pending independent financial release; no public operational certification"
+    },
+    {
+      "id": "speed",
+      "label": "SPEED",
+      "owner": "Speed OS",
+      "class": "performance",
+      "authority": "Build inventories and release-bound benchmark receipts",
+      "publicPath": "/speed",
+      "evidence": "Cohort definitions, benchmark timestamps and exact build"
+    },
+    {
+      "id": "inspections",
+      "label": "TESTS",
+      "owner": "General Inspections",
+      "class": "assurance",
+      "authority": "Measured checks and weighted engineering readiness",
+      "publicPath": "/general-inspections",
+      "evidence": "Source- and time-bound inspection receipts"
+    },
+    {
+      "id": "agents",
+      "label": "AGENTS",
+      "owner": "Kingdom Intelligence + General Inspections",
+      "class": "assurance",
+      "authority": "Sanitized system signals and inspection watchposts",
+      "publicPath": "/kingdom-agents",
+      "evidence": "Observed signals; not synthetic always-on AI processes"
+    },
+    {
+      "id": "index",
+      "label": "INDEX",
+      "owner": "Kingdom Index",
+      "class": "assurance",
+      "authority": "Per-route score lineage and verified specialty obligations",
+      "publicPath": "/kingdom-index",
+      "evidence": "Current source/version alignment plus independent attestation"
+    },
+    {
+      "id": "workshop",
+      "label": "WORKSHOP",
+      "owner": "Published Workshop records",
+      "class": "history",
+      "authority": "Curated, explicitly published product and development chronology",
+      "publicPath": "/workshop",
+      "evidence": "Public Workshop entries, not inferred ChatGPT activity"
+    },
+    {
+      "id": "storage",
+      "label": "RECOVERY",
+      "owner": "VPSSentry / controlled release storage",
+      "class": "operations",
+      "authority": "Storage observations, backup and rollback evidence",
+      "publicPath": "/aoe2war-os",
+      "evidence": "Authenticated storage, activation and recovery receipts"
+    },
+    {
+      "id": "intelligence",
+      "label": "BRAIN",
+      "owner": "Kingdom Intelligence (existing deterministic engine)",
+      "class": "operations",
+      "authority": "Sanitized self-knowledge and operator recommendations",
+      "publicPath": "/kingdom-intelligence",
+      "evidence": "Dated bridge observations, not LLM guesses"
+    }
+  ],
+  "edges": [
+    {
+      "from": "git",
+      "to": "release",
+      "relation": "builds"
+    },
+    {
+      "from": "release",
+      "to": "intelligence",
+      "relation": "certifies"
+    },
+    {
+      "from": "release",
+      "to": "index",
+      "relation": "binds"
+    },
+    {
+      "from": "identity",
+      "to": "rating",
+      "relation": "joins"
+    },
+    {
+      "from": "identity",
+      "to": "replay",
+      "relation": "joins"
+    },
+    {
+      "from": "replay",
+      "to": "index",
+      "relation": "informs"
+    },
+    {
+      "from": "finance",
+      "to": "satchel",
+      "relation": "reconciles"
+    },
+    {
+      "from": "replay",
+      "to": "satchel",
+      "relation": "eligible-games"
+    },
+    {
+      "from": "speed",
+      "to": "inspections",
+      "relation": "measures"
+    },
+    {
+      "from": "inspections",
+      "to": "agents",
+      "relation": "watchposts"
+    },
+    {
+      "from": "inspections",
+      "to": "index",
+      "relation": "scores"
+    },
+    {
+      "from": "git",
+      "to": "index",
+      "relation": "versions"
+    },
+    {
+      "from": "storage",
+      "to": "intelligence",
+      "relation": "reports"
+    },
+    {
+      "from": "workshop",
+      "to": "intelligence",
+      "relation": "reports"
+    },
+    {
+      "from": "intelligence",
+      "to": "agents",
+      "relation": "signals"
+    },
+    {
+      "from": "intelligence",
+      "to": "index",
+      "relation": "observes"
+    }
+  ]
+}
