@@ -248,7 +248,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <span className="mt-2 block text-[10px] font-semibold text-slate-400">
             {satchelBalance ? "Available · owner ledger (not vault solvency)" : "Uncertified · no verified Satchel credit"}
           </span>
-          <button type="button" onClick={() => setSatchelOpen((value) => !value)
+          <button type="button" onClick={() => setSatchelOpen((value) => !value)}
             aria-expanded={satchelOpen}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200/30 bg-amber-300/10 px-3 py-1.5 text-xs font-black text-amber-100 transition hover:bg-amber-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
             <ArrowDownToLine className="h-3.5 w-3.5" aria-hidden /> LOAD SATCHEL
