@@ -5,9 +5,9 @@
  * No boolean or amount supplied to this function proves any of those facts.
  * A sufficient result NEVER grants signer, transfer or review authority.
  */
-const I64 = 9223372036854775807n;
+const I64 = BigInt("9223372036854775807");
 const MAX_OPERATIONS = 10000;
-const MAX_FEE = 1000000n;
+const MAX_FEE = BigInt("1000000");
 const ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 export type SatchelFeeReservation = Readonly<{
@@ -36,7 +36,7 @@ function invalid(reason: string): never {
   throw new Error("SATCHEL_FEE_HEADROOM_INVALID:" + reason);
 }
 function amount(value: unknown, name: string, max = I64): bigint {
-  if (typeof value !== "bigint" || value < 0n || value > max) invalid(name);
+  if (typeof value !== "bigint" || value < BigInt("0") || value > max) invalid(name);
   return value;
 }
 function add(a: bigint, b: bigint): bigint {
@@ -61,12 +61,12 @@ export function assessSatchelFeeHeadroom(input: SatchelFeeHeadroomSnapshot): Sat
   const bank = amount(input.bankBalanceUwolo, "bank_balance");
   const liabilities = amount(input.totalOwnerLiabilitiesUwolo, "owner_liabilities");
   const nextFee = amount(input.newOperationFeeUwolo, "next_fee", MAX_FEE);
-  if (nextFee === 0n) invalid("next_fee_zero");
+  if (nextFee === BigInt("0")) invalid("next_fee_zero");
   const cushion = amount(input.minimumUnencumberedGasUwolo, "gas_cushion");
   if (!Array.isArray(input.pendingOperations) || input.pendingOperations.length > MAX_OPERATIONS)
     invalid("pending_operations_not_bounded");
   const ids = new Set<string>();
-  let pendingFees = 0n;
+  let pendingFees = BigInt("0");
   for (const op of input.pendingOperations) {
     if (!op || typeof op !== "object" || typeof op.operationId !== "string" ||
         !ID.test(op.operationId) || ids.has(op.operationId) ||
@@ -74,7 +74,7 @@ export function assessSatchelFeeHeadroom(input: SatchelFeeHeadroomSnapshot): Sat
       invalid("noncanonical_or_duplicate_pending_operation");
     ids.add(op.operationId);
     const fee = amount(op.feeUwolo, "pending_fee", MAX_FEE);
-    if (fee === 0n) invalid("pending_fee_zero");
+    if (fee === BigInt("0")) invalid("pending_fee_zero");
     pendingFees = add(pendingFees, fee);
   }
   if (input.pendingOperationsComplete !== true)
