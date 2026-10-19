@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/20261019-continuous-sdk-gas-conservation` at `6484cb47ae11e1b72a4ac479d5889c83c17dd272`
+Implementation baseline: `fix/20261019-satchel-reservation-debit-admission` at `01ac50ae4f01edbc76184ac50874f1d31cf63e69`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
