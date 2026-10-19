@@ -6,10 +6,17 @@
  */
 export type PrebroadcastReleaseEvidence = Readonly<{
   reservation: Readonly<{
-    id: string; ticketRequestId: string; txHash: string | null;
-    ticketId: number | null;
+    id: string; executionId: number; ticketRequestId: string;
+    amountUwolo: bigint; txHash: string | null; ticketId: number | null;
   }>;
   ownerUserId: number;
+  reserveJournal: null | Readonly<{
+    sourceKey: string; ownerUserId: number; executionId: number | null;
+    eventKind: string; amountUwolo: bigint;
+    deltaAvailableUwolo: bigint; deltaReservedUwolo: bigint;
+    deltaCommittedUwolo: bigint; deltaWithdrawalPendingUwolo: bigint;
+    receiptId: bigint | null; claimReturnId: bigint | null;
+  }>;
   execution: null | Readonly<{
     reservationId: string | null; ticketId: number | null;
     status: string; attemptCount: number;
@@ -30,6 +37,21 @@ export function prebroadcastReleaseEvidenceIssue(e: PrebroadcastReleaseEvidence)
       x.attemptCount !== 1 || x.ticketId !== null ||
       r.txHash !== null || r.ticketId !== null) {
     return "no_broadcast_execution_evidence_inconsistent";
+  }
+  // Returning principal is only legitimate when the ORIGINAL immutable
+  // wager_reserve journal proves this owner first lost exactly that amount.
+  // A syntactically reserved row is not, by itself, a financial debit.
+  const j = e.reserveJournal;
+  if (!j || r.amountUwolo <= BigInt(0) ||
+      j.sourceKey !== r.id || j.ownerUserId !== e.ownerUserId ||
+      j.executionId !== r.executionId || j.eventKind !== "wager_reserve" ||
+      j.amountUwolo !== r.amountUwolo ||
+      j.deltaAvailableUwolo !== -r.amountUwolo ||
+      j.deltaReservedUwolo !== r.amountUwolo ||
+      j.deltaCommittedUwolo !== BigInt(0) ||
+      j.deltaWithdrawalPendingUwolo !== BigInt(0) ||
+      j.receiptId !== null || j.claimReturnId !== null) {
+    return "no_broadcast_original_debit_missing_or_inconsistent";
   }
   const a = e.authority;
   if (a && (a.reservationId !== r.id || a.ownerUserId !== e.ownerUserId ||
