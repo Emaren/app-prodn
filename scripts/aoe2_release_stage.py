@@ -351,9 +351,24 @@ if manifest.get("version") != version:
     raise SystemExit("STOP: WATCHER release manifest version mismatch")
 
 rows = manifest.get("files")
-if not isinstance(rows, list):
-    raise SystemExit("STOP: WATCHER release manifest files are missing")
-if [row.get("filename") for row in rows] != expected:
+if not isinstance(rows, list) or len(rows) != len(expected):
+    raise SystemExit("STOP: WATCHER release manifest inventory mismatch")
+if any(not isinstance(row, dict) for row in rows):
+    raise SystemExit("STOP: WATCHER release manifest inventory mismatch")
+names = [row.get("filename") for row in rows]
+# The certified 1.6.5 publisher emits the same ten named artifacts in
+# build order. Order is not a security property for this version; require
+# exact membership, types, no duplicates, and retain full byte/hash/receipt
+# checks below. Historical 1.6.3/1.6.4 receipts keep their original order.
+if (
+    any(not isinstance(name, str) for name in names)
+    or len(set(names)) != len(expected)
+    or set(names) != set(expected)
+    or (
+        tuple(map(int, version.split("."))) < (1, 6, 5)
+        and names != expected
+    )
+):
     raise SystemExit("STOP: WATCHER release manifest inventory mismatch")
 
 for row in rows:

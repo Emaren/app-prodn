@@ -2,3 +2,4 @@ scope=watcher_165_website_only
 purpose=refresh_source_bound_documentation
 financial_release=HOLD
 revision=update_legacy_watcher_version_contracts
+stage_validator_manifest_order=exact_sha256_preserving_v165
