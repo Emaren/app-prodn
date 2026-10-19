@@ -15,6 +15,41 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — first connected owner-liability PostgreSQL roundtrip
+
+The dedicated isolated PostgreSQL 16 CI job now runs
+`tests/war-satchel-owner-roundtrip-postgres.test.mts`, applying the
+**existing** funded, receipt, financial authorization, immutable custody
+and wager-authority SQL migrations in a new Unix-socket-only database.
+
+It composes two owner paths using the real schema and triggers, with
+100 WOLO starting credit in each, 12 WOLO reserve, and independently
+distinguishable outcomes:
+
+- Owner A: reserve 12 → unattempted/no-send full 12 refund with zero
+  unmatched fee → reserve and finalize 100 withdrawal.
+- Owner B: reserve 12 → review, durable attempt fence and committed escrow
+  wager → 12 principal escrow claim-return credit → finalize 100 withdrawal.
+- Crash rollback, duplicate refund/claim hash protection, immutable broadcast,
+  terminal reservation status and withdrawal transitions, exact journal
+  conservation and final zero aggregate vault liability are checked.
+  The owner's historical 12-WOLO committed wager is **not** vault debt.
+
+**Scope is critical:** this is a connected **SQL accounting fixture**.
+The test deliberately uses synthetic transaction hashes and sample reviewer
+JSON; it does not call the application Prisma financial writers, Keplr,
+the sidecar signer, actual Watcher admission or an authenticated Comet
+escrow payout. The existing genuine isolated 100/12 SDK transaction suite
+runs separately in the same CI job. Green checks for these two suites are
+**not** evidence of one cryptographically authenticated continuous session.
+
+Activation still requires that continuous session, signer/reviewer
+isolation, independent full vault solvency and payouts/refunds,
+withdrawal finality, and protected WoloChain release controls. The literal
+source hold `SATCHEL_FINANCIAL_BRIDGE_READY=false` remains unchanged;
+no production migration or mainnet funds movement is authorized.
+
+
 ## October 19 — no-send refund now binds original durable journal debit
 
 The held War Satchel refund path already required the *unattempted* execution,
