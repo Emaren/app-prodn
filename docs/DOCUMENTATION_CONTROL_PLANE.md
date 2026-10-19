@@ -19,9 +19,11 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-index-review-lineage` at `811670496587f02d80e1ed547825259cc5ea128d`
+Implementation baseline: `fix/20261019-central-review-truncated-audit-recovery` at `c29f1780140b803d43d855a0a9be3d68f4f852cd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
+
+The October 19 independent documentation maintenance parser recognizes only fully source-bound expired-review errors, including the three-line audit-summary form with the `ValueError` header omitted. It requires newly reviewed canonical source documents, a proven external Wolo source HOLD, and subsequent independent central federation checks. It never alters normal Finish admission, signer authority, database state, validator services, or the requirement to retain an unresolved WoloChain source-drift P1.
 
 This page is generated from the validated front matter in this repository. Cross-system architecture, governance, and the unified portal live in the sibling `AoE2WAR-docs` control-plane repository.
 
