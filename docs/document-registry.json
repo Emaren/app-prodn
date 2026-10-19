@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5b96b7cb7e89a5fa0863a77daf54fa33a0b73246b3c22cd7338a64b498044fe0",
+      "sha256": "c4e2ed375eaa4bc61d3005483caaa4916770cd8307e697350058835716dd2411",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-165-website-only-20261019",
-    "commit": "7cc49ffeb8e4345f90865aa9392851d9be7650a8"
+    "branch": "fix/watcher-165-stage-manifest-set-parity-20261019",
+    "commit": "434f536d600217292515218de1d402e6a2084226"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
