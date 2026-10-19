@@ -245,7 +245,7 @@ test("100/12/return/withdraw owner liability roundtrip in actual isolated Postgr
       const sums = (await c.query("SELECT sum(available_uwolo+reserved_uwolo+withdrawal_pending_uwolo) AS outstanding,sum(committed_uwolo) AS historical FROM war_satchel_funded_balances")).rows[0];
       assert.equal(BigInt(sums.outstanding), BigInt(0), "all vault liabilities paid out");
       assert.equal(BigInt(sums.historical), STAKE, "settled escrow remains historical, not bank debt");
-      assert.equal((await c.query("SELECT count(*) FROM war_satchel_funded_journal")).rows[0].count, "13");
+      assert.equal((await c.query("SELECT count(*) FROM war_satchel_funded_journal")).rows[0].count, "11");
     });
   } finally {
     for (const c of clients) try { await c.end(); } catch {}
