@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Kingdom Brain, Progress and Route Patrols
+# Kingdom Brain, Progress and Patrol Contract
 
 ## Authority, never duplication
 
