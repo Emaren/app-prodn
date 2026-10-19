@@ -1,4 +1,5 @@
 import {buildSatchelWagerAuthorization,wagerReviewContext,assertAuthenticatedSatchelWager,assertSatchelWagerTicketLegs,type SatchelWagerSnapshot} from "./warSatchelWagerAuthorization.ts";
+import { readBoundedSatchelBankJson } from "./warSatchelBankJsonTransport.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
@@ -91,23 +92,6 @@ function chainAmount(value: unknown, allowZero = false): bigint {
   if (n > MAX_I64 || (!allowZero && n === BigInt(0))) stop("bank_integer_out_of_range");
   return n;
 }
-async function readChainJson(url: string, reader: typeof fetch) {
-  if (url !== RPC + "/status" &&
-      !/^https:\/\/rest-mainnet\.aoe2war\.com\/cosmos\/bank\/v1beta1\/balances\/wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}\/by_denom\?denom=uwolo$/.test(url)) {
-    stop("untrusted_chain_endpoint");
-  }
-  const response = await reader(url, {
-    method: "GET", redirect: "error", cache: "no-store",
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(5000),
-  });
-  if (response.status !== 200 || !response.ok) stop("bank_network_unavailable");
-  const size = Number(response.headers.get("content-length") || "0");
-  if (!Number.isSafeInteger(size) || size > 65536) stop("bank_body_too_large");
-  const raw = await response.text();
-  if (Buffer.byteLength(raw) > 65536) stop("bank_body_too_large");
-  return chainObject(JSON.parse(raw) as unknown);
-}
 
 /**
  * Independently read a *physical* mainnet vault bank balance and canonical
@@ -121,8 +105,8 @@ export async function readIndependentSatchelBank(
   noFundsUntilCertified();
   const vault = fundedVaultAddress();
   const [status, bank] = await Promise.all([
-    readChainJson(RPC + "/status", reader),
-    readChainJson(REST + "/cosmos/bank/v1beta1/balances/" + vault + "/by_denom?denom=uwolo", reader),
+    readBoundedSatchelBankJson(RPC + "/status", reader),
+    readBoundedSatchelBankJson(REST + "/cosmos/bank/v1beta1/balances/" + vault + "/by_denom?denom=uwolo", reader),
   ]);
   const result = chainObject(status.result);
   const node = chainObject(result.node_info);
