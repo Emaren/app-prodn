@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "b9f61475db2db0e117c98b3780233959911c96ae1844d3f0b2cf4fc69be0f520",
+      "sha256": "4deb0595a3e4ae4d177a36def9d92752f1b45f288035cb09e5814dc54b05d3a2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c379157930f13785418b987f85330ec3bf824fdd729aff96b06bbe25e47fd5d9",
+      "sha256": "b8c0d16f5efb782fbe5de3f1188dbb3febb661b89a9f8bbdd73eeb9a45a8b6ca",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-satchel-mecha-held-runner-schedule",
-    "commit": "f652987d8ab89986d6972cd63fddc143ed49842c"
+    "branch": "fix/20261018-satchel-balance-hard-hold",
+    "commit": "f29efda5e2699af0d99cbbbd3c1e5f04c921fee7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
