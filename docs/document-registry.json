@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "136b242c51109a5ff2ff9a6ad31715e569b1b272c1593d526c670ac79ef8a9d1",
+      "sha256": "5b255a7a6a6350b6981dd4980a5384e22ebddfd866fca1cadff3933f7ec76e81",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261018-satchel-verified-watcher-single-selector",
-    "commit": "98e7350193b0ccc9d8f75439b246dbd2881b20d2"
+    "commit": "a0b50e3b56fae6376a0635ed7f22d59e333bf3e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
