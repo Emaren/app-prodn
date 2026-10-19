@@ -80,7 +80,9 @@ function exact(value: unknown, keys: readonly string[]): Record<string, unknown>
 function address(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 90 || value !== value.toLowerCase()) return false;
   try {
-    const decoded = fromBech32(value);
+    // Explicit finite BIP-173 bound: @scure/base rejects CosmJS's Infinity default.
+    // This also prevents unexpectedly long addresses from ever entering custody.
+    const decoded = fromBech32(value, 90);
     return decoded.prefix === "wolo" && decoded.data.length === 20;
   } catch { return false; }
 }
