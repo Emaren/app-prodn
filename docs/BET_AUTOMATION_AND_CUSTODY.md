@@ -1858,3 +1858,29 @@ review service, signed authority provisioning, replay-safe reviewer journal,
 fully authenticated producer/liability/fee census, protected migrations and
 complete Keplr→Watcher→wager→return→withdrawal rehearsal remain mandatory.
 No customer funds move from this source-only implementation.
+
+## October 19 — P0 reviewer queue reachability repair
+
+The original funded Watcher outbox mistakenly selected
+`funded_reserved` rows **only after** a `SatchelWagerApproval` already
+existed. The new app-side private 8095 review pickup therefore could not be
+invoked again for an unreviewed reserved game after the first tick: the
+approval prerequisite made the automatic review path circular.
+
+The updated eligibility query retains `funded_reserved`, exactly one
+prior admission/reservation attempt, the original immutable
+`SatchelWagerAuthorization` and reserved hold **whether or not its
+independent review has arrived yet**. Only within the existing four-minute
+verified, live Watcher market window and only when the original owner
+consent remains active. `funded_submitting`, `unknown_hold`, terminal,
+expired, unsigned-consent and previously committed tickets are never
+automatically reselected. The executor checks the durable attempt fence,
+original reservation and independently authenticated review before any
+signing. PENDING, a failed reviewer, or missing signer means wait, not
+second reservation, transaction retry or 2% fee/refund.
+
+This is a source-level reachability and scheduling correction under
+`SATCHEL_FINANCIAL_BRIDGE_READY=false`; no funded production worker, live
+custody, review issuer, wallet, chain transaction or fund balance is
+activated by it. It must be revalidated in the continuous 8095→8094
+isolated trial before any approved production canary.
