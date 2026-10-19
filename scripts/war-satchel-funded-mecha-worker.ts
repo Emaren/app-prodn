@@ -11,6 +11,7 @@ import { executeFundedMechaTicketBatch } from "../lib/warSatchelAutoBetExecutor.
 import { connectCertifiedSatchelSigner } from "../lib/warSatchelDedicatedSignerClient.ts";
 import { satchelFinancialBridgeReady } from "../lib/warSatchelFinancialBridgeHold.ts";
 import { readEligibleFundedMechaIds, FUNDED_MECHA_CANDIDATE_LIMIT } from "../lib/warSatchelEligibleOutbox.ts";
+import { inspectAgedSatchelReviews } from "../lib/warSatchelAgedReviewVisibility.ts";
 
 const MAX_BATCH = FUNDED_MECHA_CANDIDATE_LIMIT;
 
@@ -66,8 +67,10 @@ async function main() {
   // Watcher freshness, per-plan slots, nextAttemptAt and wallet identity.
   const ids = await readEligibleFundedMechaIds(prisma,{limit:MAX_BATCH});
   if (!execute) {
+    const aged=await inspectAgedSatchelReviews(prisma);
     console.log(JSON.stringify({
-      mode: "dry_run", queueEligibleForIndependentRecheck: ids.length,
+      mode: "dry_run", agedUnattemptedReservations: aged,
+      queueEligibleForIndependentRecheck: ids.length,
       exactExecutionIds: ids, liveWagersPlaced: 0,
       chainTransfersSent: 0, vaultConfigured: Boolean(
         process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS),
