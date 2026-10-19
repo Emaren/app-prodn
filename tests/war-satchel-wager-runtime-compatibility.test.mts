@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import test from "node:test";
-import {fromBech32} from "@cosmjs/encoding";
+import {fromBech32,toBech32} from "@cosmjs/encoding";
 import {wagerReservationSignBytes} from "../lib/warSatchelWagerReservation.ts";
 
 // Public Go test fixture. This test checks primitives used by the signed
@@ -12,11 +12,13 @@ test("Go reservation fixture remains canonical on Linux and Mac runtimes",()=>{
  const encodedAddress=(v:unknown)=>{
    if(typeof v!=="string")return false;
    try {const x=fromBech32(v);return x.prefix==="wolo"&&x.data.length===20;}
-   catch{return false;}
+   catch(error){throw Error("cross-runtime Bech32 decoder refusal: "+(error instanceof Error?error.message:String(error)));}
  };
  const amount=(v:unknown,limit:bigint)=>typeof v==="string"&&/^[1-9][0-9]{0,18}$/.test(v)
    && BigInt(v)<=9223372036854775807n&&BigInt(v)<=limit;
  const digest=(v:unknown)=>typeof v==="string"&&/^[a-f0-9]{64}$/.test(v)&&v!=="0".repeat(64);
+ assert.equal(toBech32("wolo",new Uint8Array(20).fill(0x6e)),r.vault,"Go fixture 0x6e vault does not match canonical CosmJS encoder");
+ assert.equal(toBech32("wolo",new Uint8Array(20).fill(0x6f)),r.recipient,"Go fixture 0x6f recipient does not match canonical CosmJS encoder");
  const checks={
    version:r.version===1,
    operation:/^satchel:ticket:[1-9][0-9]{0,11}$/.test(r.operation_id),
