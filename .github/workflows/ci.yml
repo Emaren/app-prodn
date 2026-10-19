@@ -154,7 +154,7 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts
 
       - name: Pin Go for actual Satchel verifier integration
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
