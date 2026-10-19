@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-pr684-ci-contract` at `361cbbad628b5f228f3c88d632271bdeec7a1a8b`
+Implementation baseline: `security/20261018-satchel-history-secret-scan` at `a278393a07208087f99a179ba49ee8be26f9f679`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
