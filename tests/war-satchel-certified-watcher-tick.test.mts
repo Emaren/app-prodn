@@ -3,21 +3,25 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 const read=(x:string)=>readFileSync(new URL("../"+x,import.meta.url),"utf8");
 
-test("an observed canonical Watcher game is the only source of funded Mecha candidates",()=>{
- const src=read("lib/warSatchelFundedWatcherTick.ts");
- assert.match(src,/status:"shadow_ready"/);
- assert.match(src,/ticketId:null/);
- assert.match(src,/status:"shadow_ready",reservationId:null,attemptCount:0/);
- assert.match(src,/status:"funded_reserved",reservationId:\{not:null\},attemptCount:1/);
- assert.match(src,/status:"reserved",wagerAuthorization:\{is:\{approval:\{isNot:null\}/);
- assert.doesNotMatch(src,/status:"(?:funded_submitting|funded_unknown_hold)"/);
- assert.match(src,/winnerMarket:\{status:"live",integrityStatus:"verified"/);
- assert.match(src,/satchelAutoSpendConsents:\{some:\{/);
- assert.match(src,/signedAt:\{not:null\},revokedAt:null,spendExpiresAt:\{gt:now\}/);
- assert.match(src,/availableUwolo:\{gt:BigInt\(0\)\}/);
- assert.match(src,/take:LIMIT/);
- assert.match(src,/executeFundedMechaTicketBatch\(prisma,signer,executions\.map\(x=>x\.id\)\)/);
+test("certified Watcher tick uses shared market, consent, and non-stale funded selector",()=>{
+ const tick=read("lib/warSatchelFundedWatcherTick.ts");
+ const selector=read("lib/warSatchelEligibleOutbox.ts");
+ assert.match(tick,/readEligibleFundedMechaIds\(prisma\)/);
+ assert.doesNotMatch(tick,/betAutoExecution\.findMany/);
+ assert.match(selector,/FUNDED_MECHA_CANDIDATE_MAX_AGE_MS = 4 \* 60 \* 1000/);
+ assert.match(selector,/status: "shadow_ready", reservationId: null, attemptCount: 0/);
+ assert.match(selector,/status: "funded_reserved", reservationId: \{ not: null \}, attemptCount: 1/);
+ assert.match(selector,/wagerAuthorization: \{ is: \{ approval: \{ isNot: null \} \}/);
+ assert.doesNotMatch(selector,/status: "funded_submitting"|status: "funded_unknown_hold"/);
+ assert.match(selector,/winnerMarket: \{ status: "live", integrityStatus: "verified"/);
+ assert.match(selector,/satchelAutoSpendConsents: \{ some:/);
+ assert.match(selector,/signedAt: \{ not: null \}, revokedAt: null, spendExpiresAt: \{ gt: now \}/);
+ assert.match(selector,/availableUwolo: \{ gt: BigInt\(0\) \}/);
+ assert.match(selector,/createdAt: \{ gte: earliest, lte: now \}/);
+ assert.match(selector,/take: max/);
+ assert.match(tick,/executeFundedMechaTicketBatch\(prisma,signer,ids\)/);
 });
+
 test("a live Watcher tick cannot open the isolated Satchel signer until every financial gate agrees",()=>{
  const src=read("lib/warSatchelFundedWatcherTick.ts");
  for(const flag of [
