@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "08f42783d876f54df7538898131e86c960872bfcf4673aa20a995225314810a7",
+      "sha256": "ce174e09c5df1815bc14e60ab3a64e529f2471d698a6af3c23739d636d6a38d6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a5e5758c4dc5b9508b29bb6c9bc11ceb56ecd401426ac2dd15fa9512048255a7",
+      "sha256": "42cf87b4724116bee1ea3bc11f564bf57845756b60cdd6d756955e87fb80b17c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "audit/20261019-satchel-pending-gas-headroom",
-    "commit": "36059006c594a56496fa706a4ee674c4d846ec6e"
+    "branch": "feature/20261019-satchel-autoreviewer-ingress",
+    "commit": "0e57b2e81b0cb9189212f28f999f3d55c782ff9b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
