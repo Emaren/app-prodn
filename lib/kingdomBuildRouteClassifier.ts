@@ -8,6 +8,20 @@ export type KingdomBuildRouteCounts = {
   totalPages: number;
 };
 
+const EXCLUDED_SENSITIVE = new Set(["/market/invoices/[publicId]"]);
+const UTILITY = new Set(["/profile","/wallet","/settings","/connect-wallet","/pending-bets","/offline","/contact-emaren","/past-earnings","/app","/upload","/uploads"]);
+const MAX_ROUTES = 15_000;
+
+function isKnownRoute(value: string): boolean {
+  return /^\/(?:[a-zA-Z0-9_@.\-\[\]()+]+\/)*[a-zA-Z0-9_@.\-\[\]()+]+\/(?:page|route)$/.test(value);
+}
+function normalizedPage(value: string): string {
+  const p = value.slice(0, -"/page".length);
+  // Route groups do not change the user-facing Next.js path.
+  const segments = p.split("/").filter(v => v && !/^\([^/]+\)$/.test(v) && !/^@[^/]+$/.test(v));
+  return "/" + segments.join("/");
+}
+
 
 /** Pure parser for the deployed *Next build* inventory; never count URL samples as pages. */
 export function classifyKingdomBuildRoutes(raw: unknown): KingdomBuildRouteCounts | null {
