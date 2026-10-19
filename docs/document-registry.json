@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5cb66e62afb4dde5dc40d7fc942380a9298883a7438a3008fc954fd878488637",
+      "sha256": "6115e762ae2b59e788212df0a09dce7e0d0afec6d260e38b071e97b087c7b8d7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "ead67e4cbf0ef503e19b2b9ee1f23faf05cc8b58dda3d1ea42dec0602b707b71",
+      "sha256": "e393a4982bec66b4aa59091086ae9e42208d655ca3215bd384709a05153be685",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-pr684-ci-contract",
-    "commit": "361cbbad628b5f228f3c88d632271bdeec7a1a8b"
+    "branch": "security/20261018-satchel-history-secret-scan",
+    "commit": "a278393a07208087f99a179ba49ee8be26f9f679"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
