@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `security/20261018-satchel-history-secret-scan` at `a278393a07208087f99a179ba49ee8be26f9f679`
+Implementation baseline: `fix/20261018-satchel-bank-stream-bounds` at `8c90f5c90e6123276fe5236b050f8656b8476f41`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
