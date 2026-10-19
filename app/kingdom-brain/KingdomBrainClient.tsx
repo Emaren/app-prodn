@@ -112,6 +112,21 @@ export default function KingdomBrainClient() {
           <div className={styles.meter}><Activity size={17}/><strong>{captureAt ? time(captureAt) : "—"}</strong><span>LAST SIGNAL RECEIVED</span></div>
         </section>
 
+        <section className={styles.routeRail} aria-label="Deployed route class inventory">
+          {([
+            ["STATIC", censusKnown ? censusKnown.counts?.publicStatic : null],
+            ["DYNAMIC", censusKnown ? censusKnown.counts?.publicDynamic : null],
+            ["UTILITY", censusKnown ? censusKnown.counts?.publicUtility : null],
+            ["OPERATOR", censusKnown ? censusKnown.counts?.admin : null],
+            ["SENSITIVE", censusKnown ? censusKnown.counts?.sensitiveDynamic : null],
+          ] as const).map(([label, count]) => (
+            <div key={label} className={styles.routeClass}>
+              <small>{label}</small><strong>{safeCount(count)}</strong>
+            </div>
+          ))}
+          <span className={styles.railSource}>DEPLOYED BUILD · {censusKnown?.buildVersion ?? "UNVERIFIED"}</span>
+        </section>
+
         <section className={styles.stage} aria-label="Interactive authority graph">
           <div className={styles.stageHeader}><span><BrainCircuit size={15}/> THE SOURCE CONSTELLATION</span><span>{atlas.nodes.length} DOMAINS · {atlas.edges.length} DECLARED FLOWS</span></div>
           <div className={styles.scroll}>
