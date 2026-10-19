@@ -124,7 +124,7 @@ export default function KingdomBrainClient() {
               <small>{label}</small><strong>{safeCount(count)}</strong>
             </div>
           ))}
-          <span className={styles.railSource}>DEPLOYED BUILD · {censusKnown?.buildVersion ?? "UNVERIFIED"}</span>
+          <span className={styles.railSource}>DEPLOYED BUILD · {censusKnown ? (censusKnown.buildVersion ?? "UNVERIFIED") : "UNVERIFIED"}</span>
         </section>
 
         <section className={styles.stage} aria-label="Interactive authority graph">
