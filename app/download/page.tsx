@@ -25,9 +25,6 @@ import {
   WATCHER_RELEASE,
 } from "@/lib/watcherRelease";
 
-const MAC_TERMINAL_FALLBACK = `xattr -dr com.apple.quarantine "/Applications/AoE2HDBets Watcher.app"
-open "/Applications/AoE2HDBets Watcher.app"`;
-
 const QUICK_STEPS = [
   {
     step: "01",
@@ -58,7 +55,7 @@ const PLATFORM_META = {
   macos: {
     title: "macOS",
     icon: Apple,
-    blurb: "DMG first. ZIP if Gatekeeper gets in the way.",
+    blurb: "Unsigned manual DMG or ZIP. Verify checksums; Gatekeeper may block opening.",
   },
   linux: {
     title: "Linux",
@@ -706,29 +703,20 @@ export default function DownloadPage() {
         <div className={platformShell}>
           <div
             className={`text-xs uppercase tracking-[0.34em] ${
-              basic
-                ? tone.eyebrow
-                : "text-amber-200/55"
+              basic ? tone.eyebrow : "text-amber-200/55"
             }`}
           >
-            Mac fallback
+            macOS manual installation
           </div>
 
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Most Mac users will not need this. If Gatekeeper blocks launch, clear quarantine once:
+            This Watcher release is intentionally unsigned and not Apple notarized.
+            Download it only from AoE2WAR, confirm the published SHA-256,
+            and review any macOS Gatekeeper warning carefully.
+            If macOS blocks the app, use its standard Privacy &amp; Security
+            review options when available. Do not disable Gatekeeper or remove
+            quarantine protections to force it open.
           </p>
-
-          <div
-            className={
-              basic
-                ? `mt-4 rounded-[1.4rem] border p-4 ${tone.insetPanel}`
-                : "mt-4 rounded-[1.5rem] border border-white/8 bg-black/25 p-4"
-            }
-          >
-            <pre className="overflow-x-auto text-sm leading-7 text-slate-100">
-              <code>{MAC_TERMINAL_FALLBACK}</code>
-            </pre>
-          </div>
         </div>
       </section>
     </div>

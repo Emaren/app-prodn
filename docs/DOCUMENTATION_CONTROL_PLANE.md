@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261019-preflight-and-finance-census-rebase` at `76f08a66619d1a48cfd991de8c351d446f5635f5`
+Implementation baseline: `release/watcher-165-website-only-20261019` at `7cc49ffeb8e4345f90865aa9392851d9be7650a8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

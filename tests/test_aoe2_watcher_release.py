@@ -132,6 +132,43 @@ class WatcherReleaseBundleTests(unittest.TestCase):
             ):
                 MODULE.prove_public_release(inventory, release)
 
+    def test_165_build_order_manifest_is_normalized_without_dropping_evidence(self):
+        version = "1.6.5"
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            fake_bundle(root, version)
+            file = root / f"watcher-release-manifest-{version}.json"
+            manifest = json.loads(file.read_text())
+            manifest["files"] = list(reversed(manifest["files"]))
+            file.write_text(json.dumps(manifest) + "\n")
+            result = MODULE.validate_bundle(root, version)
+            self.assertEqual([row["name"] for row in result[:10]], MODULE.canonical_files(version))
+            release = public_release_for(result, version)
+            self.assertEqual(MODULE.prove_public_release(result, release)["digest_matched_files"], 12)
+
+            manifest["files"].append(dict(manifest["files"][0]))
+            file.write_text(json.dumps(manifest) + "\n")
+            with self.assertRaisesRegex(MODULE.WatcherReleasePromotionError, "inventory mismatch"):
+                MODULE.validate_bundle(root, version)
+
+            manifest["files"] = list(reversed(manifest["files"][:-1]))
+            manifest["files"][0]["sha256"] = "0" * 64
+            file.write_text(json.dumps(manifest) + "\n")
+            with self.assertRaisesRegex(MODULE.WatcherReleasePromotionError, "SHA-256 mismatch"):
+                MODULE.validate_bundle(root, version)
+
+    def test_164_historical_manifest_order_remains_pinned(self):
+        version = "1.6.4"
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            fake_bundle(root, version)
+            file = root / f"watcher-release-manifest-{version}.json"
+            manifest = json.loads(file.read_text())
+            manifest["files"] = list(reversed(manifest["files"]))
+            file.write_text(json.dumps(manifest) + "\n")
+            with self.assertRaisesRegex(MODULE.WatcherReleasePromotionError, "inventory mismatch"):
+                MODULE.validate_bundle(root, version)
+
     def test_bundle_rejects_checksum_manifest_disagreement(self):
         with tempfile.TemporaryDirectory() as temp:
             root = pathlib.Path(temp)

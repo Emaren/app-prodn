@@ -1,0 +1,43 @@
+name: Refresh Watcher-only documentation baseline
+
+on:
+  push:
+    branches:
+      - release/watcher-165-website-only-20261019
+    paths:
+      - ".watcher-165-doc-refresh-trigger"
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact release branch with complete ancestry
+        uses: actions/checkout@v4
+        with:
+          ref: release/watcher-165-website-only-20261019
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Refresh source-bound documentation only
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch release/watcher-165-website-only-20261019 \
+            --head "$(git rev-parse HEAD)"
+          python3 scripts/docs_v2_check.py
+          git status --short
+
+      - name: Commit generated documents without mutating implementation
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "docs(registry): refresh implementation baseline for Watcher 1.6.5 website-only source"
+            git push origin HEAD:release/watcher-165-website-only-20261019
+          fi
