@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6114692430d0a3dcdfeb44232beee54cad351aa9e7d9d521add70a88e00ab45e",
+      "sha256": "c379157930f13785418b987f85330ec3bf824fdd729aff96b06bbe25e47fd5d9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/20261018-satchel-mecha-held-runner-schedule",
-    "commit": "44784910c7f5b5b8844fc3c800cbe800ffa3fb78"
+    "commit": "f652987d8ab89986d6972cd63fddc143ed49842c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
