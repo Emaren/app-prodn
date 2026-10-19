@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import {pollVerifiedWatcherFundedMecha} from "../lib/warSatchelFundedWatcherPoll.ts";
-import type {PrismaClient} from "../lib/generated/prisma/index.js";
 const src=readFileSync(new URL("../lib/warSatchelFundedWatcherPoll.ts",import.meta.url),"utf8");
 test("funded Mecha polls only exactly Watcher-vetted, unclaimed and enabled owner bets",()=>{
  assert.match(src,/status:"shadow_ready"/);
@@ -43,11 +42,11 @@ test("source-level financial HOLD prevents even Watcher funded-queue reads with 
  ];
  const originals=keys.map(k=>process.env[k]);
  let reads=0;
- const db={betAutoExecution:{findMany:async()=>{reads++;throw Error("should never access funded queue");}}} as unknown as PrismaClient;
+ const db={betAutoExecution:{findMany:async()=>{reads++;throw Error("should never access funded queue");}}};
  try{
   keys.forEach(k=>process.env[k]="true");
   await assert.rejects(
-   pollVerifiedWatcherFundedMecha(db,{} as never,{maxBatch:1}),
+   pollVerifiedWatcherFundedMecha(db as never,{} as never,{maxBatch:1}),
    /SATCHEL_FINANCIAL_BRIDGE_UNVERIFIED_HOLD/
   );
   assert.equal(reads,0);
