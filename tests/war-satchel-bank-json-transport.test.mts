@@ -24,7 +24,7 @@ test("private bank and status JSON use bounded transport with no finance authori
     assert.ok(init?.signal instanceof AbortSignal);
     return reply(body(bytes('{"result":{"node_info":{"network":"wolo-1"}}}')));
   }) as typeof fetch;
-  assert.equal((await readBoundedSatchelBankJson(rpc,fake)).result instanceof Object,true);
+  assert.deepEqual((await readBoundedSatchelBankJson(rpc,fake)).result,{node_info:{network:"wolo-1"}});
   assert.ok((await readBoundedSatchelBankJson(bank,fake)).result);
   assert.deepEqual(calls,[rpc,bank]);
   const ledger=readFileSync(new URL("../lib/warSatchelFundedLedger.ts",import.meta.url),"utf8");
@@ -37,7 +37,7 @@ test("refuses URL aliases and redirects without making a network request", async
   let called=0;
   const fake=(async()=>{called++;return reply(body(bytes("{}")));}) as typeof fetch;
   for(const url of [bank.replace("https:","http:"),bank+"#fragment",bank.replace("denom=uwolo","denom=wolo"),
-    bank.replace("rest-mainnet","rest-mainnet.evil"),rpc+"/",rpc+"?q=1",bank.replace("q".repeat(38),"q".repeat(90))]){
+    bank.replace("rest-mainnet","rest-mainnet.evil"),rpc+"/",rpc+"?q=1",bank.replace("q".repeat(38),"q".repeat(91))]){
     await assert.rejects(readBoundedSatchelBankJson(url,fake),/untrusted_chain_endpoint/);
   }
   assert.equal(called,0);
@@ -72,5 +72,5 @@ test("rejects non-object JSON, empty body and invalid UTF-8; accepts exact 64 Ki
   const valid = '{"a":"' + "z".repeat(65528) + '"}';
   assert.equal(bytes(valid).byteLength,65536);
   const exact=(async()=>reply(body(bytes(valid)))) as typeof fetch;
-  assert.equal((await readBoundedSatchelBankJson(rpc,exact)).a.length,65528);
+  assert.equal((await readBoundedSatchelBankJson(rpc,exact)).a, "z".repeat(65528));
 });
