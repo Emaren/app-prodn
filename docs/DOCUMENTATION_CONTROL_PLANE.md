@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261019-central-review-truncated-audit-recovery` at `c29f1780140b803d43d855a0a9be3d68f4f852cd`
+Implementation baseline: `fix/20261019-preflight-and-finance-census-rebase` at `76f08a66619d1a48cfd991de8c351d446f5635f5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
