@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/20261019-satchel-autoreviewer-ingress` at `0e57b2e81b0cb9189212f28f999f3d55c782ff9b`
+Implementation baseline: `fix/20261019-mecha-pending-review-outbox` at `3bec79adb360849a1eb97be982ce89087050ac2c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
