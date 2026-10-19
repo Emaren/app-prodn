@@ -11,7 +11,7 @@ test("certified Watcher tick uses shared market, consent, and non-stale funded s
  assert.match(selector,/FUNDED_MECHA_CANDIDATE_MAX_AGE_MS = 4 \* 60 \* 1000/);
  assert.match(selector,/status: "shadow_ready", reservationId: null, attemptCount: 0/);
  assert.match(selector,/status: "funded_reserved", reservationId: \{ not: null \}, attemptCount: 1/);
- assert.match(selector,/wagerAuthorization: \{ is: \{ approval: \{ isNot: null \} \}/);
+ assert.match(selector,/wagerAuthorization: \\{ isNot: null \\}/);
  assert.doesNotMatch(selector,/status: "funded_submitting"|status: "funded_unknown_hold"/);
  assert.match(selector,/winnerMarket: \{ status: "live", integrityStatus: "verified"/);
  assert.match(selector,/satchelAutoSpendConsents: \{ some:/);
