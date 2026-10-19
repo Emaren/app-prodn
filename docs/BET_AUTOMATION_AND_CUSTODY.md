@@ -15,6 +15,24 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — certified owner-account display (presentation only)
+
+The Mecha profile previously held the Satchel balance at an unconditional null.
+Its display now reads `GET /api/user/war-satchel/balance` with a same-origin,
+noncached request. That route uses the signed-in owner ID and refuses before
+accessing financial tables while the immutable source HOLD remains active.
+Malformed/unavailable/unapproved responses render **no amount**, not a fake
+zero or an inferred deposit. Valid `uwolo` totals (available, reserved and
+withdrawal pending) are formatted without unsafe floating-point conversions.
+
+This **does not** prove independent vault solvency or authorize custody.
+The main Satchel number identifies the *recorded available owner-ledger amount*
+rather than a verified physical vault balance. Under the existing financial
+source HOLD it continues to display an uncertified placeholder. Account
+presentation must never be interpreted as signer readiness, Auto Bet
+consent, chain finality, custody certification or deployment authorization.
+
+
 ## October 19 — fail closed on contradictory no-broadcast reservation evidence
 
 The funded ledger's existing `releaseUnbroadcastSatchelReservation` transaction
