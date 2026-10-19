@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "74cdf02b8b6169acb230059539f23d5f6ee5cac360e03eaa136fa1107986ab99",
+      "sha256": "08f42783d876f54df7538898131e86c960872bfcf4673aa20a995225314810a7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6400de01c99492044f44d729d8b07b4673bf0234aa79a44e19fb68116623de59",
+      "sha256": "1be0ad243fd1822b4066c0c63bd110d4186e052292b72aec8d99be71fdd4b019",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/20261019-continuous-sdk-gas-conservation",
-    "commit": "6484cb47ae11e1b72a4ac479d5889c83c17dd272"
+    "branch": "fix/20261019-satchel-reservation-debit-admission",
+    "commit": "01ac50ae4f01edbc76184ac50874f1d31cf63e69"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
