@@ -290,7 +290,16 @@ export async function validateWatcherReleaseBundle(root, version) {
   }
 
   const manifestNames = manifest.files.map((row) => row?.filename);
-  if (JSON.stringify(manifestNames) !== JSON.stringify(canonical)) {
+  // Accept the v1.6.5 build-order manifest only if it is exactly the
+  // canonical named file set. Checksums, sizes and updater provenance remain
+  // mandatory; no missing, duplicate or extra file is admitted.
+  const exactNames = manifestNames.length === canonical.length &&
+    manifestNames.every(name => typeof name === "string") &&
+    new Set(manifestNames).size === canonical.length &&
+    canonical.every(name => manifestNames.includes(name));
+  const historicalOrder = version.split(".").map(Number).reduce((n, part, i) => n + part * [1000000, 1000, 1][i], 0) < 1006005;
+  if (!exactNames || (historicalOrder &&
+      JSON.stringify(manifestNames) !== JSON.stringify(canonical))) {
     throw new Error("Watcher release manifest inventory mismatch");
   }
 
