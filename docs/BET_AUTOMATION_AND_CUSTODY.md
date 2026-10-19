@@ -15,6 +15,20 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — Watcher queue cannot run under source-level financial HOLD
+
+The dedicated HD Watcher-funded poll already checked the eight mutable
+financial-operation environment gates, and the downstream executor enforced
+the hard source gate. But the poll queried queued database executions
+before entering that downstream gate when all env switches were on.
+
+The poll now calls `requireSatchelFinancialBridge()` at the start of its
+guard, **before any funded queue inspection**, so no mutable environment
+switches can cause held financial work to be selected. A direct no-database
+regression test sets every mutable flag true and asserts source-HOLD
+refusal with zero queue reads. This does not add activation authority
+or change the Watcher, financial ledger, user interface or chain.
+
 ## October 18 — streamed, strictly capped vault bank HTTP observations
 
 The held funded ledger previously checked the response `Content-Length`
