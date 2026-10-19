@@ -2,6 +2,7 @@ import {buildSatchelWagerAuthorization,wagerReviewContext,assertAuthenticatedSat
 import { readBoundedSatchelBankJson } from "./warSatchelBankJsonTransport.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
+import { prebroadcastReleaseEvidenceIssue } from "./warSatchelPrebroadcastReleaseEvidence.ts";
 import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { authenticateSatchelClaimReturn, authenticatedWarSatchelClaimReturnFreshAt } from "./warSatchelAuthenticatedClaimReturn.ts";
@@ -608,30 +609,20 @@ export async function releaseUnbroadcastSatchelReservation(
       where: { id: reservation.executionId },
       select: { reservationId: true, ticketId: true, status: true, attemptCount: true },
     });
-    if (!execution || execution.reservationId !== reservation.id ||
-        execution.status !== "funded_reserved" ||
-        execution.attemptCount !== 1 || execution.ticketId !== null ||
-        reservation.txHash !== null || reservation.ticketId !== null) {
-      stop("no_broadcast_execution_evidence_inconsistent");
-    }
     const authority = await tx.satchelWagerAuthorization.findUnique({
       where: { operationId: reservation.ticketRequestId },
       include: { broadcast: true },
     });
-    if (authority && (authority.reservationId !== reservation.id ||
-        authority.ownerUserId !== input.ownerUserId || authority.broadcast !== null)) {
-      stop("no_broadcast_wager_authority_inconsistent");
-    }
     const ticket = await tx.betStakeTicket.findUnique({
       where: { userId_clientRequestId: {
         userId: input.ownerUserId, clientRequestId: reservation.ticketRequestId,
       } },
       select: { status: true, stakeTxHash: true, broadcastSubmittedAt: true },
     });
-    if (ticket && (ticket.status !== "awaiting_signature" ||
-        ticket.stakeTxHash !== null || ticket.broadcastSubmittedAt !== null)) {
-      stop("no_broadcast_canonical_ticket_inconsistent");
-    }
+    const issue = prebroadcastReleaseEvidenceIssue({
+      reservation, ownerUserId: input.ownerUserId, execution, authority, ticket,
+    });
+    if (issue) stop(issue);
     const account = await tx.satchelFundedBalance.findUnique({
       where: { ownerUserId: input.ownerUserId },
     });
