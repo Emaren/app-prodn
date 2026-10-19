@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "a1b6054ce3f92046526468266f7ad8456b1a2d06d09609d7e1045a77e908cd6b",
+      "sha256": "b9f61475db2db0e117c98b3780233959911c96ae1844d3f0b2cf4fc69be0f520",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "28060a898aa0ae84ad3861a24c7422da2ceb62c8d7c23286d67c049b3ab7a823",
+      "sha256": "c379157930f13785418b987f85330ec3bf824fdd729aff96b06bbe25e47fd5d9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-empty-outbox-signer-idle",
-    "commit": "4ddb945ccdf846fc4907dcdb63afe21b0d18b63c"
+    "branch": "feat/20261018-satchel-mecha-held-runner-schedule",
+    "commit": "f652987d8ab89986d6972cd63fddc143ed49842c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
