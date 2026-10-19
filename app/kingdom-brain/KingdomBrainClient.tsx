@@ -8,6 +8,7 @@ import styles from "./KingdomBrain.module.css";
 
 type Node = (typeof atlas.nodes)[number];
 type IndexSignal = { schema?: number; generatedAt?: string; pages?: unknown[]; observed?: number; certified?: number; drifted?: number };
+type CensusSignal = { schema?: number; status?: string; source?: string; capturedAt?: string | null; buildVersion?: string | null; counts?: { totalPages?: number; apiHandlers?: number; publicStatic?: number; publicDynamic?: number; publicUtility?: number; admin?: number; sensitiveDynamic?: number } | null };
 type PatrolSignal = { schema?: number; registered?: number; assigned?: number; entries?: unknown[]; agentsRunning?: null; policyVersion?: string };
 type AgentSignal = { schema?: number; observedAt?: string; releaseSha?: string | null; agents?: unknown[]; sources?: { intelligence?: boolean; inspections?: boolean; intelligenceStale?: boolean; releaseAlignment?: string } };
 type Signal<T> = { state: "unknown" | "current" | "unavailable"; data: T | null; receivedAt: number | null };
@@ -37,6 +38,7 @@ export default function KingdomBrainClient() {
   const [index, setIndex] = useState<Signal<IndexSignal>>(empty);
   const [agents, setAgents] = useState<Signal<AgentSignal>>(empty);
   const [patrol, setPatrol] = useState<Signal<PatrolSignal>>(empty);
+  const [census, setCensus] = useState<Signal<CensusSignal>>(empty);
   const [busy, setBusy] = useState(false);
   const [captureAt, setCaptureAt] = useState<string | null>(null);
   const refresh = useCallback(async () => {
@@ -45,16 +47,18 @@ export default function KingdomBrainClient() {
     const timeout = window.setTimeout(() => controller.abort(), 12000);
     setBusy(true);
     try {
-      const [a, b, c] = await Promise.allSettled([
+      const [a, b, c, d] = await Promise.allSettled([
         read<IndexSignal>("/api/kingdom-index", value => value?.schema === 1 && Array.isArray(value.pages), controller.signal),
         read<AgentSignal>("/api/kingdom-agents", value => value?.schema === 1 && Array.isArray(value.agents), controller.signal),
         read<PatrolSignal>("/api/kingdom-patrol", value => value?.schema === 1 && Array.isArray(value.entries), controller.signal),
+        read<CensusSignal>("/api/kingdom-route-census", value => value?.schema === 1 && value.status === "verified" && typeof value.counts?.totalPages === "number", controller.signal),
       ]);
       const now = Date.now();
       setIndex(a.status === "fulfilled" ? { state: "current", data: a.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
       setAgents(b.status === "fulfilled" ? { state: "current", data: b.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
       setPatrol(c.status === "fulfilled" ? { state: "current", data: c.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
-      setCaptureAt(new Date(now).toISOString());
+      setCensus(d.status === "fulfilled" ? { state: "current", data: d.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
+      setCaptureAt([a,b,c,d].some(result => result.status === "fulfilled") ? new Date(now).toISOString() : null);
     } finally {
       window.clearTimeout(timeout);
       setBusy(false);
@@ -76,6 +80,7 @@ export default function KingdomBrainClient() {
   const indexKnown = index.state === "current" && index.data;
   const agentsKnown = agents.state === "current" && agents.data;
   const patrolKnown = patrol.state === "current" && patrol.data;
+  const censusKnown = census.state === "current" && census.data;
   const agentCurrent = agentsKnown && agentsKnown.sources?.releaseAlignment === "aligned" && !agentsKnown.sources?.intelligenceStale;
   const sourceStatus = !agentsKnown ? "UNKNOWN" : agentCurrent ? "ALIGNED" : "UNVERIFIED";
 
@@ -98,6 +103,8 @@ export default function KingdomBrainClient() {
         </header>
 
         <section className={styles.meters} aria-label="Live status summary">
+          <div className={styles.meter}><GitBranch size={17}/><strong>{safeCount(censusKnown ? censusKnown.counts?.totalPages : null)}</strong><span>DEPLOYED PAGE TEMPLATES</span></div>
+          <div className={styles.meter}><Database size={17}/><strong>{safeCount(censusKnown ? censusKnown.counts?.apiHandlers : null)}</strong><span>DEPLOYED API HANDLERS</span></div>
           <div className={styles.meter}><GitBranch size={17}/><strong>{safeCount(indexKnown ? index.data?.pages?.length : null)}</strong><span>INDEX ROUTES</span></div>
           <div className={styles.meter}><ShieldCheck size={17}/><strong>{safeCount(indexKnown ? index.data?.certified : null)}</strong><span>CERTIFIED</span></div>
           <div className={styles.meter}><Network size={17}/><strong>{safeCount(patrolKnown ? patrolKnown.assigned : null)}/{safeCount(patrolKnown ? patrolKnown.registered : null)}</strong><span>POLICY ASSIGNMENTS</span></div>
