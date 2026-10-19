@@ -15,6 +15,31 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — single admission authority for the held funded Mecha runner
+
+The previously prepared operator `--execute` path and the bounded
+Watcher outbox tick could select different rows. The tick limited candidates
+to a fresh four-minute window and respected `nextAttemptAt`, owner wallet,
+remaining plan slots and independently approved pre-broadcast reservations.
+The CLI used a broader query and could hand stale or deferred Watcher rows
+to the executor despite those shared entrypoint expectations.
+
+Both now call `readEligibleFundedMechaIds` with one
+`fundedMechaEligibleQuery` builder. That builder applies the same exact
+25-row cap, stable age/id ordering, four-minute eligibility window,
+next-attempt deadline, finite plan slots, owner-wallet identity, and
+approved `funded_reserved` state. It excludes attempted/unknown holds.
+A direct selector call also checks the immutable source financial HOLD
+**before querying any financial table**, not merely at the outer caller.
+The downstream funding executor remains responsible for independent
+market, owner, mandate, signer and ledger revalidation.
+
+Contract and executable query regressions cover source/HOLD ordering and
+invalid batch/time bounds. **This is not a withdrawal, settlement or custody
+certification**. The source-level `SATCHEL_FINANCIAL_BRIDGE_READY=false`
+and protected WoloChain release HOLD remain unchanged. No real money,
+production service or Keplr wallet is touched by this change.
+
 ## October 18 — balance reads obey the immutable financial HOLD
 
 The owner-only `/api/user/war-satchel/balance` endpoint previously

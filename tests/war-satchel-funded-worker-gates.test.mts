@@ -5,6 +5,7 @@ const read=(name:string)=>readFileSync(new URL("../"+name,import.meta.url),"utf8
 
 test("funded Mecha worker has no public timer and always fails shut without certified operator approvals",()=>{
  const worker=read("scripts/war-satchel-funded-mecha-worker.ts");
+ const selector=read("lib/warSatchelEligibleOutbox.ts");
  assert.match(worker,/const execute = args\[0\] === "--execute"/);
  assert.match(worker,/!approved\(\)/);
  assert.match(worker,/return satchelFinancialBridgeReady\(\) &&/);
@@ -20,12 +21,16 @@ test("funded Mecha worker has no public timer and always fails shut without cert
  assert.match(worker,/WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED/);
  assert.match(worker,/await connectCertifiedSatchelSigner\(\)/);
  assert.match(worker,/executeFundedMechaTicketBatch\(prisma, signer, ids\)/);
- assert.match(worker,/take: MAX_BATCH/);
- assert.match(worker,/ticketId:\s*null/);
- assert.match(worker,/status:"shadow_ready",reservationId:null,attemptCount:0/);
- assert.match(worker,/status:"funded_reserved",reservationId:\{not:null\},attemptCount:1/);
- assert.match(worker,/satchelFundedReservation:\{is:\{status:"reserved",wagerAuthorization:\{is:\{approval:\{isNot:null\}\}\}\}\}/);
- assert.doesNotMatch(worker,/status:"unknown_hold"|status:"funded_submitting"/);
+ assert.match(selector,/take: max/);
+ assert.match(selector,/ticketId:\s*null/);
+ assert.match(selector,/status: "shadow_ready", reservationId: null, attemptCount: 0/);
+ assert.match(selector,/status: "funded_reserved", reservationId: \{ not: null \}, attemptCount: 1/);
+ assert.match(selector,/wagerAuthorization: \{ is: \{ approval: \{ isNot: null \} \}/);
+ assert.doesNotMatch(selector,/status: "unknown_hold"|status: "funded_submitting"/);
+ assert.match(worker,/readEligibleFundedMechaIds\(prisma,\{limit:MAX_BATCH\}\)/);
+ assert.doesNotMatch(worker,/betAutoExecution\.findMany/);
+ assert.match(selector,/nextAttemptAt/);
+ assert.match(selector,/gamesRemaining: \{ gt: 0 \}/);
  assert.match(worker,/process\.exitCode = 3/);
  assert.doesNotMatch(worker,/fromMnemonic\(|runuser|exec\(|systemctl|cron\(/);
 });

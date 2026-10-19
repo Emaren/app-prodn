@@ -11,9 +11,9 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { satchelFinancialBridgeReady } from "./warSatchelFinancialBridgeHold.ts";
 import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
+import { readEligibleFundedMechaIds, FUNDED_MECHA_CANDIDATE_LIMIT } from "./warSatchelEligibleOutbox.ts";
 
-const MAX=25;
-const MAX_AGE_MS=4*60*1000;
+const MAX=FUNDED_MECHA_CANDIDATE_LIMIT;
 export type FundedMechaIntakeReport=Readonly<{
   state:"disabled"|"empty"|"examined";
   source:"watcher-shadow-outbox";
@@ -48,34 +48,10 @@ export async function runFundedMechaOutboxTick(
      process.env.WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED!=="true"){
     return off();
   }
-  const max=options?.limit??MAX;
-  const now=options?.now??new Date();
-  if(!Number.isSafeInteger(max)||max<1||max>MAX||
-     !Number.isFinite(now.getTime()))throw Error("SATCHEL_OUTBOX_TICK_INVALID_BOUND");
-  const earliest=new Date(now.getTime()-MAX_AGE_MS);
-  // Candidate selection is read-only. Avoid probing the custody signer
-  // when an eligible Watcher outbox is empty; no transfer is needed.
-  const rows=await prisma.betAutoExecution.findMany({
-    where:{
-      ticketId:null,
-      AND:[{OR:[
-        {status:"shadow_ready",reservationId:null,attemptCount:0},
-        {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
-          satchelFundedReservation:{is:{status:"reserved",wagerAuthorization:{is:{approval:{isNot:null}}}}}},
-      ]}],
-      createdAt:{gte:earliest,lte:now},
-      OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}],
-      preset:{
-        enabled:true,selfOnly:true,
-        OR:[{untilOut:true},{gamesRemaining:{gt:0}}],
-        user:{walletAddress:{not:null}},
-      },
-    },
-    orderBy:[{createdAt:"asc"},{id:"asc"}],
-    take:max,
-    select:{id:true},
-  });
-  if(!rows.length)return Object.freeze({
+  // CLI and scheduler share one fail-closed eligibility query. Never submit
+  // an old, deferred or spent-out Watcher event from a different entrypoint.
+  const ids=await readEligibleFundedMechaIds(prisma,options);
+  if(!ids.length)return Object.freeze({
     state:"empty" as const,source:"watcher-shadow-outbox" as const,
     selected:0,accepted:0,heldUnknown:0,refusedBeforeBroadcast:0,skipped:0,
   });
@@ -84,7 +60,7 @@ export async function runFundedMechaOutboxTick(
   // any transfer; this change does not relax the source financial HOLD.
   const signer=await connectCertifiedSatchelSigner();
   const counts=await executeFundedMechaTicketBatch(
-    prisma,signer,rows.map(row=>row.id),
+    prisma,signer,ids,
   );
   return Object.freeze({
     state:"examined" as const,source:"watcher-shadow-outbox" as const,
