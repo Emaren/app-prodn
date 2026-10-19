@@ -13,7 +13,7 @@ const UTILITY = new Set(["/profile","/wallet","/settings","/connect-wallet","/pe
 const MAX_ROUTES = 15_000;
 
 function isKnownRoute(value: string): boolean {
-  return /^\/(?:[a-zA-Z0-9_@.\-\[\]()+]+\/)*[a-zA-Z0-9_@.\-\[\]()+]+\/(?:page|route)$/.test(value);
+  return /^\/(?:[a-zA-Z0-9_@.\-\[\]()+]+\/)*(?:page|route)$/.test(value);
 }
 function normalizedPage(value: string): string {
   const p = value.slice(0, -"/page".length);
