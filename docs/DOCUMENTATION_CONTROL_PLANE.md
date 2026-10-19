@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261019-mecha-pending-review-outbox` at `3bec79adb360849a1eb97be982ce89087050ac2c`
+Implementation baseline: `fix/20261019-mecha-pending-review-outbox` at `24c66086af55d7e92cd48be242ebfa925b77c81a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
