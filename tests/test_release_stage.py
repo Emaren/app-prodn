@@ -215,7 +215,7 @@ class StageTests(unittest.TestCase):
         import subprocess
         import tempfile
 
-        for version in ("1.6.3", "1.6.4"):
+        for version in ("1.6.3", "1.6.4", "1.6.5"):
             with self.subTest(version=version):
                 script = MODULE.remote_stage_script(
                     release_sha="b" * 40,
@@ -232,7 +232,7 @@ class StageTests(unittest.TestCase):
                 self.assertIn(marker, script)
                 preflight = script.split(marker, 1)[1].split("\nPY\n", 1)[0]
 
-                native_zip = version == "1.6.4"
+                native_zip = version in ("1.6.4", "1.6.5")
                 files = [
                     f"AoE2HDBets Watcher Setup {version}.exe",
                     f"AoE2HDBets Watcher {version}.exe",
@@ -294,6 +294,56 @@ class StageTests(unittest.TestCase):
                         check=False,
                     )
                     self.assertEqual(result.returncode, 0, result.stderr)
+
+                    # The real v1.6.5 GitHub publisher preserves exactly these
+                    # ten files with legitimate hashes but emits build order.
+                    # Prove acceptance without weakening the security gates.
+                    manifest_path = (
+                        root / f"watcher-release-manifest-{version}.json"
+                    )
+                    manifest = json.loads(manifest_path.read_text())
+                    manifest["files"] = list(reversed(manifest["files"]))
+                    manifest_path.write_text(json.dumps(manifest))
+                    reversed_result = subprocess.run(
+                        ["python3", "-c", preflight, str(root), version],
+                        capture_output=True, text=True, check=False,
+                    )
+                    if version == "1.6.5":
+                        self.assertEqual(
+                            reversed_result.returncode, 0,
+                            reversed_result.stderr,
+                        )
+                        # Reject duplicate, extra and missing artifacts before
+                        # attempting any file reads or candidate materialization.
+                        manifest["files"].append(manifest["files"][0])
+                        manifest_path.write_text(json.dumps(manifest))
+                        duplicate_result = subprocess.run(
+                            ["python3", "-c", preflight, str(root), version],
+                            capture_output=True, text=True, check=False,
+                        )
+                        self.assertNotEqual(duplicate_result.returncode, 0)
+                        self.assertIn(
+                            "manifest inventory mismatch",
+                            duplicate_result.stderr,
+                        )
+                        manifest["files"].pop()
+                        manifest["files"][0]["sha256"] = "0" * 64
+                        manifest_path.write_text(json.dumps(manifest))
+                        tampered_result = subprocess.run(
+                            ["python3", "-c", preflight, str(root), version],
+                            capture_output=True, text=True, check=False,
+                        )
+                        self.assertNotEqual(tampered_result.returncode, 0)
+                        self.assertIn(
+                            "manifest SHA-256 mismatch",
+                            tampered_result.stderr,
+                        )
+                    else:
+                        self.assertNotEqual(reversed_result.returncode, 0)
+                        self.assertIn(
+                            "manifest inventory mismatch",
+                            reversed_result.stderr,
+                        )
 
     def test_watcher_stage_result_requires_distribution_receipt_proof(self):
         data, manifest, result = sample()
