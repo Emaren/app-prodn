@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5b96b7cb7e89a5fa0863a77daf54fa33a0b73246b3c22cd7338a64b498044fe0",
+      "sha256": "9cafd3867cea5d51f5a482687b648ba0ef4acfbc67ad63a9ccad54a40fe1c877",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -903,6 +903,32 @@
       ],
       "title": "Jim Fast-Ending Team Session Diagnosis",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "cross-surface-integration-contract",
+      "id": "aoe2war.app-prodn.kingdom-brain-progress",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_BRAIN_PROGRESS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "8c446899a2dc2a5b880f1b4b1b35830744ce9e0b559f65c41ec324b159189a23",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain",
+        "vpssentry"
+      ],
+      "title": "Kingdom Brain, Progress and Patrol Contract",
+      "type": "reference"
     },
     {
       "audience": [
@@ -2116,8 +2142,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-165-website-only-20261019",
-    "commit": "7cc49ffeb8e4345f90865aa9392851d9be7650a8"
+    "branch": "feature/kingdom-brain-progress-foundation-20261019",
+    "commit": "2dff85576e9ec05baa8487b6fcc26b3b9d77c020"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

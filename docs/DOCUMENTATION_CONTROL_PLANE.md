@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/watcher-165-website-only-20261019` at `7cc49ffeb8e4345f90865aa9392851d9be7650a8`
+Implementation baseline: `feature/kingdom-brain-progress-foundation-20261019` at `2dff85576e9ec05baa8487b6fcc26b3b9d77c020`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **92**
+- Authoritative repository documents: **93**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 56
+- `reference`: 57
 - `runbook`: 17
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 76
+- `active`: 77
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -89,6 +89,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Host Maintenance](HOST_MAINTENANCE.md) | `runbook` | `active` | `host-maintenance-procedure` |
 | [AoE2HDBets Improvement Execution Plan](IMPROVEMENT_EXECUTION_PLAN.md) | `working` | `superseded` | `historical-working-record` |
 | [Jim Fast-Ending Team Session Diagnosis](JIM_FAST_GAME_DIAGNOSIS.md) | `historical` | `historical` | `incident-evidence` |
+| [Kingdom Brain, Progress and Patrol Contract](KINGDOM_BRAIN_PROGRESS.md) | `reference` | `active` | `cross-surface-integration-contract` |
 | [Kingdom Civic Surfaces](KINGDOM_CIVIC_SURFACES.md) | `reference` | `active` | `product-and-implementation-contract` |
 | [Kingdom Intelligence](KINGDOM_INTELLIGENCE.md) | `reference` | `active` | `self-knowledge-contract` |
 | [Kingdom Knowledge Router](KINGDOM_KNOWLEDGE_ROUTER.md) | `explanation` | `active` | `architecture-explanation` |
