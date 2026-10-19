@@ -76,7 +76,7 @@ export default function KingdomBrainClient() {
   const indexKnown = index.state === "current" && index.data;
   const agentsKnown = agents.state === "current" && agents.data;
   const patrolKnown = patrol.state === "current" && patrol.data;
-  const agentCurrent = agentsKnown && agentsKnown.sources?.releaseAlignment === "aligned" && !agentsKnown.sources.intelligenceStale;
+  const agentCurrent = agentsKnown && agentsKnown.sources?.releaseAlignment === "aligned" && !agentsKnown.sources?.intelligenceStale;
   const sourceStatus = !agentsKnown ? "UNKNOWN" : agentCurrent ? "ALIGNED" : "UNVERIFIED";
 
   return (
