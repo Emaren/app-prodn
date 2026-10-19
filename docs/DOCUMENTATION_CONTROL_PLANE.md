@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/20261019-satchel-owner-pg-roundtrip` at `174b40644f2b32f908805b5fa15b917585aec0b7`
+Implementation baseline: `test/20261019-continuous-sdk-gas-conservation` at `6484cb47ae11e1b72a4ac479d5889c83c17dd272`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
