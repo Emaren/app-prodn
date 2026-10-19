@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "5878ce4f55b3118e50a3ad7a195b342f829bbbcc27b88e7842a2f96fabf344f8",
+      "sha256": "0d64875f3ecd14a8078571e52002992d02f9394c56ac68fe478918bbceec19d7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0e5e51f430a20b849e47bfdd64b6686770f6110daad6714a1af88d6fc5ca35d9",
+      "sha256": "0cca349d76366a12dfdb31c7e7ea21ef59048d45d4a975cf7e999f65adb0794f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261019-satchel-no-broadcast-guard",
-    "commit": "47944b772be2eaa35abf0014856a32a1e9783b2a"
+    "branch": "feat/20261019-mecha-satchel-verified-balance",
+    "commit": "36efbcc582b5adc33fc5fe7a0d8959470d0b193f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
