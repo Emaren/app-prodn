@@ -15,6 +15,24 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — off-by-default funded Mecha preview timer
+
+The new `deploy/aoe2hdbets-war-satchel-mecha-preview.service` and
+`.timer` provide a bounded **read-only** operational preview after
+explicit operator review and manual installation. One-shot service uses
+`scripts/war-satchel-funded-mecha-worker.ts --dry-run` only.
+There are no credentials, EnvironmentFile, `--execute`, automatic
+`[Install]` activation, or Wolo systemd dependency. Timer is
+nonpersistent and initially inactive.
+
+The immutable source `SATCHEL_FINANCIAL_BRIDGE_READY=false` still
+returns `financial_bridge_unverified_hold` before reading any funded
+database work. This is NOT a certified live wager scheduler and
+does not authorize any mainnet custody, signing or player-facing
+deposit. Independent signer/custody, real settlement/refund/withdrawal
+rehearsal, licensing/eligibility and protected source/runtime parity
+remain mandatory for live real-WOLO V1.
+
 ## October 18 — avoid unnecessary signer I/O for empty funded Watcher batches
 
 The protected Watcher outbox tick now selects a bounded, read-only
