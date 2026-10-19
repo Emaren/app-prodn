@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b3ffa74189ac0f9477b91063e5fecde99d3856eb68a77856f6764865bf008f21",
+      "sha256": "a5e5758c4dc5b9508b29bb6c9bc11ceb56ecd401426ac2dd15fa9512048255a7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "audit/20261019-satchel-pending-gas-headroom",
-    "commit": "dfb717fea1a86e3b6c9a68364403c171ab71e127"
+    "commit": "36059006c594a56496fa706a4ee674c4d846ec6e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
