@@ -15,6 +15,30 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — verified Watcher tick shares strict Mecha admission truth
+
+The protected private Watcher tick previously used a third direct queue
+query with verified live-winner-market, active signed consent and positive
+funded-balance checks, but no four-minute stale-outbox cutoff. The operator
+CLI and bounded scheduler were already unified by PR #692 but did not
+include these additional early filters.
+
+All three production-capable entrypoints now consume the one shared
+`readEligibleFundedMechaIds` guarded selector, with four-minute upper/lower
+Watcher age, `nextAttemptAt` deferral, live verified winner market,
+unrevoked/unexpired signed auto-spend consent, verified owner wallet presence,
+available or reserved funded Satchel balance, plan slots and approved
+pre-broadcast reservation. No candidate is executed based solely on
+queue selection: the downstream serializable executor must still authenticate
+market, team, owner, exact signed mandate and ledger state.
+
+No stale game is rescued by widening its betting window, no uncertain send
+is retried from this path, and the source-level financial HOLD is checked
+before any query. This is V1 queue-correctness preparation—not proof
+of independent vault solvency or permission to turn on real money.
+The protected release controller and `SATCHEL_FINANCIAL_BRIDGE_READY=false`
+are unchanged. No live wallet, transaction or backend service was touched.
+
 ## October 18 — single admission authority for the held funded Mecha runner
 
 The previously prepared operator `--execute` path and the bounded
