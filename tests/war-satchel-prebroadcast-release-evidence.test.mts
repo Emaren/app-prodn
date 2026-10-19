@@ -5,10 +5,24 @@ import { prebroadcastReleaseEvidenceIssue } from "../lib/warSatchelPrebroadcastR
 
 const fresh = () => ({
   reservation: {
-    id: "satchel:reserve:29", ticketRequestId: "satchel:ticket:29",
+    id: "satchel:reserve:29", executionId: 29, ticketRequestId: "satchel:ticket:29",
+    amountUwolo: BigInt(12000000),
     txHash: null as string | null, ticketId: null as number | null,
   },
   ownerUserId: 42,
+  reserveJournal: {
+    sourceKey: "satchel:reserve:29", ownerUserId: 42, executionId: 29,
+    eventKind: "wager_reserve", amountUwolo: BigInt(12000000),
+    deltaAvailableUwolo: -BigInt(12000000), deltaReservedUwolo: BigInt(12000000),
+    deltaCommittedUwolo: BigInt(0), deltaWithdrawalPendingUwolo: BigInt(0),
+    receiptId: null as bigint | null, claimReturnId: null as bigint | null,
+  } as null | {
+    sourceKey: string; ownerUserId: number; executionId: number | null;
+    eventKind: string; amountUwolo: bigint; deltaAvailableUwolo: bigint;
+    deltaReservedUwolo: bigint; deltaCommittedUwolo: bigint;
+    deltaWithdrawalPendingUwolo: bigint;
+    receiptId: bigint | null; claimReturnId: bigint | null;
+  },
   execution: {
     reservationId: "satchel:reserve:29", ticketId: null as number | null,
     status: "funded_reserved", attemptCount: 1,
@@ -56,6 +70,37 @@ test("any inconsistent execution or reservation evidence blocks full principal r
   }
 });
 
+test("full-principal refund requires exact immutable original 12-WOLO reservation journal", () => {
+  const amount = BigInt(12000000);
+  const cases: ReadonlyArray<[string, (e: ReturnType<typeof fresh>) => void]> = [
+    ["missing debit", e => { e.reserveJournal = null; }],
+    ["wrong source", e => { e.reserveJournal!.sourceKey = "satchel:reserve:30"; }],
+    ["wrong owner", e => { e.reserveJournal!.ownerUserId = 43; }],
+    ["wrong execution", e => { e.reserveJournal!.executionId = 30; }],
+    ["wrong event", e => { e.reserveJournal!.eventKind = "wager_refund"; }],
+    ["wrong amount", e => { e.reserveJournal!.amountUwolo = amount - BigInt(1); }],
+    ["under-debited owner", e => { e.reserveJournal!.deltaAvailableUwolo = -(amount - BigInt(1)); }],
+    ["over-reserved", e => { e.reserveJournal!.deltaReservedUwolo = amount + BigInt(1); }],
+    ["committed principal", e => { e.reserveJournal!.deltaCommittedUwolo = amount; }],
+    ["withdrawal side effect", e => { e.reserveJournal!.deltaWithdrawalPendingUwolo = amount; }],
+    ["receipt improperly attached", e => { e.reserveJournal!.receiptId = BigInt(8); }],
+    ["claim improperly attached", e => { e.reserveJournal!.claimReturnId = BigInt(8); }],
+    ["zero reservation", e => { e.reservation.amountUwolo = BigInt(0); }],
+  ];
+  for (const [name, change] of cases) {
+    const e = fresh();
+    change(e);
+    assert.equal(prebroadcastReleaseEvidenceIssue(e),
+      "no_broadcast_original_debit_missing_or_inconsistent", name);
+  }
+  const consistent = fresh();
+  assert.equal(prebroadcastReleaseEvidenceIssue(consistent), null);
+  assert.equal(consistent.reserveJournal!.deltaAvailableUwolo, -amount);
+  assert.equal(consistent.reserveJournal!.deltaReservedUwolo, amount);
+  assert.equal(consistent.reserveJournal!.deltaCommittedUwolo, BigInt(0));
+  assert.equal(consistent.reserveJournal!.deltaWithdrawalPendingUwolo, BigInt(0));
+});
+
 test("signed review identity and any recorded broadcast marker fence refunds", () => {
   const e = fresh();
   e.authority = {...auth(), broadcast: {operationId: "satchel:ticket:29"}};
@@ -90,6 +135,10 @@ test("release checks persisted independent records BEFORE journal credit in excl
   assert.ok(from > 0 && to > from);
   const body = ledger.slice(from, to);
   const check = body.indexOf("prebroadcastReleaseEvidenceIssue({");
+  const debitRead = body.indexOf("satchelFundedJournal.findUnique({");
+  assert.ok(debitRead >= 0 && debitRead < check, "original reserve debit must be fetched before refund admission");
+  assert.match(body, /sourceKey: reservation\.id/);
+  assert.match(body, /ticket, reserveJournal,/);
   const journal = body.indexOf("satchelFundedJournal.create({");
   const account = body.indexOf("satchelFundedBalance.update({");
   assert.ok(check > 0 && journal > check && account > journal,

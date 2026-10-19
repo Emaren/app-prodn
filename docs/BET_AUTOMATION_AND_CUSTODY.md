@@ -15,6 +15,32 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — no-send refund now binds original durable journal debit
+
+The held War Satchel refund path already required the *unattempted* execution,
+unbroadcast reservation, canonical ticket and review/broadcast records to be
+consistent. It now additionally reloads the ORIGINAL `wager_reserve` journal
+under the **same serializable vault-wide transaction lock**, and refuses a
+principal refund unless that immutable journal binds the exact owner, execution,
+source reservation ID and amount. The original journal must debit available
+WOLO and credit reserved WOLO by exactly the claimed amount, without touching
+committed or pending-withdrawal balances and without being associated with
+a deposit receipt or escrow claim return. A missing or inconsistent debit
+quarantines the hold instead of issuing owner credit.
+
+The regression suite covers missing, foreign-owner/execution, misclassified,
+under/overstated and side-effectful original journal entries. The guard
+precedes new refund-journal and owner balance writes. No fee is imposed on
+a genuine unsent full-principal return.
+
+This is financial defense in depth: the caller's no-broadcast Boolean is
+NOT an independent chain, bank or signer attestation. No aged-hold auto-release,
+live-money activation, custody migration or production release authority is
+introduced. `SATCHEL_FINANCIAL_BRIDGE_READY=false` remains unchanged.
+The continuous certified 100→12→settlement/refund→withdrawal rehearsal remains
+incomplete.
+
+
 ## October 19 — exact-amount isolated SDK proof milestones
 
 The existing `scripts/check-satchel-authenticated-credit.py` compiles the

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/20261019-satchel-100-deposit-12-wager-sdk` at `4c064a827241a409d61bc1229ee808c4fe9d58d6`
+Implementation baseline: `fix/20261019-satchel-refund-journal-provenance` at `0b739d0777211734561af44695d654f12a7497d9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
