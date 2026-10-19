@@ -15,6 +15,25 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18, 2026 — strict finite Bech32 decoding on Linux
+
+The Wolo protocol-2 reservation verifier previously called CosmJS
+`fromBech32(value)` without a finite decode limit. On Linux CI, the
+installed `@scure/base` rejected that dependency's default Infinity
+limit before a valid test-vault address could be admitted. The verified
+fix calls `fromBech32(value, 90)`, a strict BIP-173 maximum, and retains
+exact lowercase `wolo` prefix, 20-byte payload, checksum, independent
+approval signature, exact immutable economics, owner and vault binding.
+Public Go fixture address round-trip regression tests are provided.
+
+Separately refreshed the `/bets` route-local Git-blob source fingerprint
+to reflect the Codex integration draft. No production or finance release
+permission follows from a green source census or a repaired Node test.
+Financial bridge remains held pending real independent reviewer, signer
+isolation, custody solvency, authenticated chain receipts, and WoloChain
+protected release authority. This branch is a narrow CI repair stacked
+on financial integration draft #684, not a mainnet cutover.
+
 ## October 18, 2026 — Satchel/Mecha launch blockers and independent release tracks
 
 This is the **app-owned launch boundary**, separate from Codex's WoloChain
