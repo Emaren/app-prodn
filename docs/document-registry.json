@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "74d4822544916c6f756d6739ab5fca8852c968fe00512b1db27b4f06592e9bf2",
+      "sha256": "a1b6054ce3f92046526468266f7ad8456b1a2d06d09609d7e1045a77e908cd6b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c6f106e1bf4e6b6f878229bdeb935fed33aac4c5ba6798f093810ed538aa7895",
+      "sha256": "28060a898aa0ae84ad3861a24c7422da2ceb62c8d7c23286d67c049b3ab7a823",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-watcher-source-fence",
-    "commit": "d81e89346735fc8001cb57632696e4e46399031d"
+    "branch": "fix/20261018-satchel-empty-outbox-signer-idle",
+    "commit": "4ddb945ccdf846fc4907dcdb63afe21b0d18b63c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
