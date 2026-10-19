@@ -57,3 +57,15 @@ test("retired sidecar entry points contain no callable financial transport",()=>
     assert.doesNotMatch(source,/https?:\/\/|8194|createHmac|X-Satchel-Hmac|submitOneShot|reader\(|fetch\(/);
   }
 });
+
+test("empty funded Watcher outbox does not probe the custody signer",()=>{
+ const source=load("lib/warSatchelFundedOutboxTick.ts");
+ const query=source.indexOf("const rows=await prisma.betAutoExecution.findMany(");
+ const empty=source.indexOf("if(!rows.length)return Object.freeze(");
+ const signer=source.indexOf("const signer=await connectCertifiedSatchelSigner();");
+ const execute=source.indexOf("const counts=await executeFundedMechaTicketBatch(");
+ assert.ok(query>=0 && empty>query && signer>empty && execute>signer,
+  "read-only queue selection and empty return must precede signer connection");
+ assert.match(source,/if\(!satchelFinancialBridgeReady\(\)/);
+ assert.match(source,/const MAX=25/);
+});

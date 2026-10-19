@@ -15,6 +15,23 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — avoid unnecessary signer I/O for empty funded Watcher batches
+
+The protected Watcher outbox tick now selects a bounded, read-only
+eligible batch before initiating a loopback connection to the exclusive
+custody signer. If no eligible rows exist, it returns the existing empty
+zero-count response without initiating a signer health request. For
+nonempty batches the same authenticated signer connection and durable
+signed-wager execution path remain mandatory. Source-level financial HOLD
+and all operator certification flags are evaluated before even querying
+the candidate table.
+
+This removes unnecessary private-sidecar traffic for idle Watcher ticks;
+it does **not** authorize unattended scheduling, settlement, custody
+activation, or real WOLO transactions. A source-order regression
+specifically rejects future changes that reconnect the signer before
+determining that there is eligible work.
+
 ## October 18 — Watcher queue cannot run under source-level financial HOLD
 
 The dedicated HD Watcher-funded poll already checked the eight mutable
