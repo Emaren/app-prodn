@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-index-review-lineage` at `811670496587f02d80e1ed547825259cc5ea128d`
+Implementation baseline: `fix/20261019-satchel-reservation-debit-admission` at `01ac50ae4f01edbc76184ac50874f1d31cf63e69`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

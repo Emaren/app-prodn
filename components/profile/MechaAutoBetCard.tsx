@@ -4,8 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
 import { useKeplr } from "@/hooks/use-keplr";
 import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
+import WarSatchelFundingAction from "@/components/profile/WarSatchelFundingAction";
+import WarSatchelSpendAuthorization from "@/components/profile/WarSatchelSpendAuthorization";
+import WarSatchelWithdrawAction from "@/components/profile/WarSatchelWithdrawAction";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
+import { parseCertifiedWarSatchelRead, type CertifiedWarSatchelRead } from "@/lib/warSatchelBalanceRead";
 
 type DS = "none" | "yes" | "no";
 type Preset = { enabled: boolean; winnerStakeWolo: number; desyncSide: DS; desyncStakeWolo: number; untilOut: boolean; gamesRemaining: number | null; version: number };
@@ -25,6 +29,7 @@ const number = (raw: string) => /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : 
 export default function MechaAutoBetCard({ displayName }: { displayName: string }) {
   const [server, setServer] = useState<Payload | null>(null);
   const [history, setHistory] = useState<Execution[]>([]);
+  const [satchelBalance, setSatchelBalance] = useState<CertifiedWarSatchelRead | null>(null);
   const [winner, setWinner] = useState("10");
   const [dsSide, setDsSide] = useState<DS>("none");
   const [dsStake, setDsStake] = useState("0");
@@ -82,6 +87,27 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     })();
     return () => { cancelled = true; };
   }, [hydrate]);
+
+  // The backend never exposes owner ledger data while the financial source
+  // HOLD is active. Never derive Satchel credit from the connected Keplr
+  // wallet, a proposed deposit, an unverified proof or saved profile state.
+  useEffect(() => {
+    let active = true;
+    setSatchelBalance(null);
+    if (!server?.preset.version) return () => { active = false; };
+    void fetch("/api/user/war-satchel/balance", {
+      cache: "no-store", credentials: "same-origin",
+    }).then(async response => {
+      if (!response.ok) return null;
+      const value: unknown = await response.json();
+      return parseCertifiedWarSatchelRead(value);
+    }).then(value => {
+      if (active) setSatchelBalance(value);
+    }).catch(() => {
+      if (active) setSatchelBalance(null);
+    });
+    return () => { active = false; };
+  }, [server?.preset.version, satchelOpen]);
 
   const stake = number(winner);
   const ds = dsSide === "none" ? 0 : number(dsStake);
@@ -150,7 +176,8 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
     !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
-  const satchelVerifiedBalanceWolo: string | null = null; // No account-specific reconciled custody ledger.
+  const satchelVerifiedBalanceWolo = satchelBalance ?
+    formatMinimalDenomAmount(satchelBalance.availableUwolo) : null;
   const depositAmountValue = number(depositAmount);
   const depositAmountValid = Number.isSafeInteger(depositAmountValue) && depositAmountValue > 0;
   const walletAction = async () => {
@@ -218,6 +245,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <div className="mt-3 text-2xl font-black tabular-nums text-white" aria-label="War Satchel verified balance">
             {satchelVerifiedBalanceWolo ?? "—"} <span className="text-xs font-bold text-slate-400">WOLO</span>
           </div>
+          <span className="mt-2 block text-[10px] font-semibold text-slate-400">
+            {satchelBalance ? "Available · owner ledger (not vault solvency)" : "Uncertified · no verified Satchel credit"}
+          </span>
           <button type="button" onClick={() => setSatchelOpen((value) => !value)}
             aria-expanded={satchelOpen}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200/30 bg-amber-300/10 px-3 py-1.5 text-xs font-black text-amber-100 transition hover:bg-amber-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
@@ -258,7 +288,20 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
+          {satchelBalance && (
+            <p className="mt-3 text-xs text-slate-300">
+              Reserved: {formatMinimalDenomAmount(satchelBalance.reservedUwolo)} WOLO ·
+              Withdrawal pending: {formatMinimalDenomAmount(satchelBalance.withdrawalPendingUwolo)} WOLO
+            </p>
+          )}
           <WarSatchelWalletProof walletAddress={walletStatus === "connected" ? walletAddress : ""} />
+          {server?.preset && server.preset.version > 0 && (
+            <WarSatchelSpendAuthorization
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              presetVersion={server.preset.version}
+              plannedStakeWolo={server.preset.winnerStakeWolo + server.preset.desyncStakeWolo}
+            />
+          )}
           <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">
               WOLO FROM YOUR WALLET
@@ -279,15 +322,17 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               ))}
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-amber-200">
-              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter a positive whole-number WOLO amount"}
-            </span>
-            <button type="button" disabled aria-disabled="true"
-              title="War Satchel funding requires an audited custody ledger and chain receipts"
-              className="rounded-xl border border-amber-200/20 bg-white/[.04] px-4 py-3 text-xs font-black uppercase tracking-[.1em] text-slate-400 opacity-70">
-              LOAD FROM WALLET · COMING SOON
-            </button>
+          <div className="mt-4">
+            {!depositAmountValid && (
+              <p className="mb-2 text-xs text-amber-200">Enter a positive whole-number WOLO amount</p>
+            )}
+            <WarSatchelFundingAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              depositAmount={depositAmount}
+            />
+            <WarSatchelWithdrawAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+            />
           </div>
         </div>
       )}

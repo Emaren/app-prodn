@@ -115,8 +115,14 @@ export async function POST(request: NextRequest) {
       });
       if (proofWindowIntents > 0) throw new Error("OWNER_PROOF_ALREADY_USED_FOR_PREPARATION");
       const outstanding = await tx.warSatchelDepositIntent.count({
-        where: { userId: actor.id, status: { in: ["prepared", "submitted"] },
-          expiresAt: { gt: now } },
+        where: {
+          userId: actor.id, status: { in: ["prepared", "submitted"] },
+          expiresAt: { gt: now },
+          OR: [
+            { proofCandidate: { is: null } },
+            { proofCandidate: { is: { fundedReceipt: { is: null } } } },
+          ],
+        },
       });
       if (outstanding > 0) throw new Error("ONE_ACTIVE_INTENT_PER_OWNER");
 
@@ -143,5 +149,66 @@ export async function POST(request: NextRequest) {
     }, { status: 201, headers: HEADERS });
   } catch {
     return response(409, "Preparation refused: signed owner proof, owner lock, rate, or exclusive intent unavailable.");
+  }
+}
+
+/**
+ * Recover unfinished owner-specific deposit IDs after a browser crash or
+ * refresh. A Keplr send might already be on chain, so NEVER advise a blind
+ * second transfer. This read reveals neither vault/memo nor signing secrets.
+ * Expiry limits NEW sends; an old successful send can still be verified.
+ */
+export async function GET(request: NextRequest) {
+  if (process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED !== "true" ||
+      process.env.WAR_SATCHEL_DEPOSIT_INSTRUCTIONS_ENABLED !== "true" ||
+      process.env.WAR_SATCHEL_FUNDED_CREDIT_ENABLED !== "true" ||
+      process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED !== "true" ||
+      process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED !== "true" ||
+      process.env.WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED !== "true") {
+    return NextResponse.json({ available: false, recentIntents: [] },
+      { status: 200, headers: HEADERS });
+  }
+  const uid = await getSessionUid(request);
+  if (!uid) return response(401, "Sign in to see your own deposit attempts.");
+  try {
+    const prisma = getPrisma();
+    const actor = await prisma.user.findUnique({
+      where: { uid },
+      select: { id: true, walletAddress: true },
+    });
+    if (!actor?.walletAddress || !ADDRESS.test(actor.walletAddress)) {
+      return response(409, "Verified Keplr wallet required.");
+    }
+    const recent = await prisma.warSatchelDepositIntent.findMany({
+      where: {
+        userId: actor.id, senderAddress: actor.walletAddress,
+        chainId: "wolo-1", status: { in: ["prepared", "submitted"] },
+        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60_000) },
+        // Already credited transfers are NOT unfinished deposits. Do not
+        // trap the player for seven days after a successful credit.
+        OR: [
+          { proofCandidate: { is: null } },
+          { proofCandidate: { is: { fundedReceipt: { is: null } } } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true, amountUwolo: true, createdAt: true, expiresAt: true,
+      },
+    });
+    return NextResponse.json({
+      available: true,
+      recentIntents: recent.map(intent => ({
+        id: intent.id, amountUwolo: intent.amountUwolo.toString(),
+        createdAtUtc: intent.createdAt.toISOString(),
+        expiresAtUtc: intent.expiresAt.toISOString(),
+        needsTransactionHash: true,
+      })),
+      warning: "If Keplr sent WOLO, recover its original transaction hash. Do not resend.",
+    }, { headers: HEADERS });
+  } catch {
+    return NextResponse.json({ detail: "Deposit history currently unavailable." },
+      { status: 503, headers: HEADERS });
   }
 }

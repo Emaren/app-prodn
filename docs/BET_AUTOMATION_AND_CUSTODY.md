@@ -15,6 +15,381 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — one original-debit rule for review, first send and refund
+
+The held funded Satchel code now uses one pure, source-owned
+`satchelReserveDebitIssue` predicate for all three money-sensitive
+boundaries: independent wager-review preparation, immediately before
+the first durable signing/submission attempt, and prebroadcast
+full-principal refund. The callers obtain the immutable
+`wager_reserve` journal inside their existing globally exclusive
+serializable vault transaction. It must match the reservation source
+key, owner, execution, exact positive amount, `-available/+reserved`
+account deltas, zero committed/pending deltas and absence of any
+deposit or claim-return foreign identity. First-send admission also
+compares the journal row ID against the independently reviewed
+authorization snapshot, blocking replacement between review and send.
+
+Missing, wrong-owner, wrong-amount, wrong-execution, nonconserving or
+substituted journal history now fails before a new wager broadcast
+attempt is allowed. Pure regression tests cover these cases plus
+source-order checks; the original no-send refund tests remain active.
+
+**Scope:** checking an immutable *local* accounting journal is not
+proof of custody bank solvency or independent signer authority. The
+source HOLD remains `SATCHEL_FINANCIAL_BRIDGE_READY=false`.
+No website production, WoloChain transfer, new signer, automatic
+stale-hold refund, financial migration or consensus restart is
+authorized by this hardening.
+
+
+## October 19 — one-chain signed SDK transaction and gas solvency rehearsal
+
+`tests/fixtures/satchel-v1-continuous-sdk_test.go` is injected **only**
+into a disposable copy of the pinned Wolo SDK after the trusted verifier
+binary was built and its reviewed checksum authenticated. The isolated
+Cosmos SDK application executes four **sequential genuine bank MsgSends**,
+signed by distinct disposable owner/vault/escrow keys on the *same chain*:
+
+1. Player → vault, **100,000,000 uwolo** deposit.
+2. Vault → escrow, **12,000,000 uwolo** signed wager (1 uwolo vault fee).
+3. Escrow → vault, **12,000,000 uwolo** full principal return (escrow's
+   1 uwolo fee comes from a separately prefunded escrow gas coin).
+4. Vault → owner, **100,000,000 uwolo** full customer withdrawal
+   (another 1 uwolo vault fee).
+
+One case prefunds 2 uwolo of independent vault gas so both vault sends
+leave **zero** customer liability and zero vault funds. The negative case
+prefunds only 1 uwolo and **requires the final 100-WOLO withdrawal to
+fail** rather than deducting a fee from the player's principal or
+misrepresenting the vault as solvent. These test funds have no mainnet
+value and use no real custody keys.
+
+This is a stronger, one-chain SDK **bank accounting** test. The separate
+actual SDK deposit/wager proofs remain in place. It is NOT yet a single
+continuous independently authenticated Comet light-client proof with
+Prisma owner-ledger writes, real Watcher events, Keplr consents,
+independent signer/reviewer attestations, validated settlement claim
+allocation, or final customer withdrawal proof. No live source HOLD
+changes or mainnet financial actions are authorized.
+
+
+## October 19 — first connected owner-liability PostgreSQL roundtrip
+
+The dedicated isolated PostgreSQL 16 CI job now runs
+`tests/war-satchel-owner-roundtrip-postgres.test.mts`, applying the
+**existing** funded, receipt, financial authorization, immutable custody
+and wager-authority SQL migrations in a new Unix-socket-only database.
+
+It composes two owner paths using the real schema and triggers, with
+100 WOLO starting credit in each, 12 WOLO reserve, and independently
+distinguishable outcomes:
+
+- Owner A: reserve 12 → unattempted/no-send full 12 refund with zero
+  unmatched fee → reserve and finalize 100 withdrawal.
+- Owner B: reserve 12 → review, durable attempt fence and committed escrow
+  wager → 12 principal escrow claim-return credit → finalize 100 withdrawal.
+- Crash rollback, duplicate refund/claim hash protection, immutable broadcast,
+  terminal reservation status and withdrawal transitions, exact journal
+  conservation and final zero aggregate vault liability are checked.
+  The owner's historical 12-WOLO committed wager is **not** vault debt.
+
+**Scope is critical:** this is a connected **SQL accounting fixture**.
+The test deliberately uses synthetic transaction hashes and sample reviewer
+JSON; it does not call the application Prisma financial writers, Keplr,
+the sidecar signer, actual Watcher admission or an authenticated Comet
+escrow payout. The existing genuine isolated 100/12 SDK transaction suite
+runs separately in the same CI job. Green checks for these two suites are
+**not** evidence of one cryptographically authenticated continuous session.
+
+Activation still requires that continuous session, signer/reviewer
+isolation, independent full vault solvency and payouts/refunds,
+withdrawal finality, and protected WoloChain release controls. The literal
+source hold `SATCHEL_FINANCIAL_BRIDGE_READY=false` remains unchanged;
+no production migration or mainnet funds movement is authorized.
+
+
+## October 19 — no-send refund now binds original durable journal debit
+
+The held War Satchel refund path already required the *unattempted* execution,
+unbroadcast reservation, canonical ticket and review/broadcast records to be
+consistent. It now additionally reloads the ORIGINAL `wager_reserve` journal
+under the **same serializable vault-wide transaction lock**, and refuses a
+principal refund unless that immutable journal binds the exact owner, execution,
+source reservation ID and amount. The original journal must debit available
+WOLO and credit reserved WOLO by exactly the claimed amount, without touching
+committed or pending-withdrawal balances and without being associated with
+a deposit receipt or escrow claim return. A missing or inconsistent debit
+quarantines the hold instead of issuing owner credit.
+
+The regression suite covers missing, foreign-owner/execution, misclassified,
+under/overstated and side-effectful original journal entries. The guard
+precedes new refund-journal and owner balance writes. No fee is imposed on
+a genuine unsent full-principal return.
+
+This is financial defense in depth: the caller's no-broadcast Boolean is
+NOT an independent chain, bank or signer attestation. No aged-hold auto-release,
+live-money activation, custody migration or production release authority is
+introduced. `SATCHEL_FINANCIAL_BRIDGE_READY=false` remains unchanged.
+The continuous certified 100→12→settlement/refund→withdrawal rehearsal remains
+incomplete.
+
+
+## October 19 — exact-amount isolated SDK proof milestones
+
+The existing `scripts/check-satchel-authenticated-credit.py` compiles the
+unchanged, pinned WoloChain `99f32de6` verifier and modifies **only a
+disposable Go test fixture** before signing the test transfers. The two
+separately initialized genuine Cosmos SDK executions now prove exactly:
+
+- **100 WOLO deposit** (`100000000uwolo`): authenticated Comet inclusion,
+  correct transfer, receipt uniqueness, atomic funded-ledger credit, replay
+  and crash rollback.
+- **12 WOLO escrow wager** (`12000000uwolo`): signed reservation and exact
+  ticket leg, real SDK fee identity, authenticated transaction and Comet
+  proofs, forged evidence rejection, wrong-13-WOLO re-signing rejection.
+
+Each standalone SDK test starts from its own isolated sender genesis balance,
+with an unchanged one-`uwolo` fixture ante fee. They are **not a continuous
+100 → 12 custody session**, not bank solvency, not an independently provisioned
+signer/reviewer, and not live production approval. The same immutable source
+`SATCHEL_FINANCIAL_BRIDGE_READY=false` remains binding. Full Watcher
+admission, settlement/void, authenticated Satchel claim return, Keplr
+withdrawal, fee/liability conservation and rollback across a *shared*
+isolated PostgreSQL+SDK journey remain mandatory V1 acceptance gates.
+
+
+## October 19 — certified owner-account display (presentation only)
+
+The Mecha profile previously held the Satchel balance at an unconditional null.
+Its display now reads `GET /api/user/war-satchel/balance` with a same-origin,
+noncached request. That route uses the signed-in owner ID and refuses before
+accessing financial tables while the immutable source HOLD remains active.
+Malformed/unavailable/unapproved responses render **no amount**, not a fake
+zero or an inferred deposit. Valid `uwolo` totals (available, reserved and
+withdrawal pending) are formatted without unsafe floating-point conversions.
+
+This **does not** prove independent vault solvency or authorize custody.
+The main Satchel number identifies the *recorded available owner-ledger amount*
+rather than a verified physical vault balance. Under the existing financial
+source HOLD it continues to display an uncertified placeholder. Account
+presentation must never be interpreted as signer readiness, Auto Bet
+consent, chain finality, custody certification or deployment authorization.
+
+
+## October 19 — fail closed on contradictory no-broadcast reservation evidence
+
+The funded ledger's existing `releaseUnbroadcastSatchelReservation` transaction
+still requires separately established no-broadcast authority. A caller-provided
+`independentlyNoBroadcast: true` is NOT a signer, consensus, reviewer or bank
+attestation, and must not be treated as sufficient in isolation.
+
+Before any refund journal credit, the existing exclusive serializable vault
+transaction now cross-checks the persisted execution (one first reservation,
+still `funded_reserved`, no accepted ticket), reservation (no hash or ticket),
+signed authorization (matching owner/reservation, no broadcast marker), and
+canonical stake ticket (if prepared, still unsigned and `awaiting_signature`).
+Contradictions refuse, retaining the hold for separately authenticated
+operator reconciliation. Isolated tests exercise every rejection class and
+assert the evidence checks precede money mutation.
+
+This is a **defense-in-depth change, not an aged-reservation release worker**.
+No signer is invoked; no timed automatic refunds, stale wagers, new spending
+authority, production migration, chain transaction or release permit is added.
+The existing source-level `SATCHEL_FINANCIAL_BRIDGE_READY=false` stays binding.
+A future aged-release workflow still requires independent no-send attestation,
+explicit permission and recovery/solvency review before any customer balance
+can change.
+
+
+## October 18 — bounded aged-Watcher approval backlog in operator preview
+
+The shared funded Mecha selector admits only fresh Watcher executions
+(created within four minutes). An already reserved owner balance awaiting
+separately signed independent financial approval may outlive that freshness
+window. Late review MUST NOT bypass eligibility and cause a stale wager,
+but the reserved funds also cannot simply disappear from operational sight.
+
+A new read-only inspection in `lib/warSatchelAgedReviewVisibility.ts`
+selects at most 26 (25 + one truncation witness) **unattempted**, still
+reserved, aged Watcher rows. It reports only aggregate sampled `uwolo`
+liability, no-approval count, approved-but-unattempted count, and
+contradictory recorded broadcast markers. The report explicitly marks
+its limited sample as NOT the vault's total financial liabilities.
+It reveals no owner, wallet, request ID or signer secret. The operator
+Mecha CLI includes it only in its dry-run output and only after the
+source-level financial bridge has been separately certified; under
+`SATCHEL_FINANCIAL_BRIDGE_READY=false` it refuses before database I/O.
+
+This is a **diagnostic**, not a release/retry/refund authority. It never
+sends a transaction or changes a balance. Resolving aged reservations
+requires separately authenticated no-broadcast evidence and a reviewed
+compensating workflow; any UNKNOWN/attempted operation remains fenced
+for proof-only reconciliation. Tests cover bounded truncation, privacy,
+invalid liability amounts and zero database reads under HOLD.
+The complete integrated custody→bet→refund/settlement→withdrawal
+rehearsal, independent reserve solvency and WoloChain #5 remain open.
+
+## October 18 — verified Watcher tick shares strict Mecha admission truth
+
+The protected private Watcher tick previously used a third direct queue
+query with verified live-winner-market, active signed consent and positive
+funded-balance checks, but no four-minute stale-outbox cutoff. The operator
+CLI and bounded scheduler were already unified by PR #692 but did not
+include these additional early filters.
+
+All three production-capable entrypoints now consume the one shared
+`readEligibleFundedMechaIds` guarded selector, with four-minute upper/lower
+Watcher age, `nextAttemptAt` deferral, live verified winner market,
+unrevoked/unexpired signed auto-spend consent, verified owner wallet presence,
+available or reserved funded Satchel balance, plan slots and approved
+pre-broadcast reservation. No candidate is executed based solely on
+queue selection: the downstream serializable executor must still authenticate
+market, team, owner, exact signed mandate and ledger state.
+
+No stale game is rescued by widening its betting window, no uncertain send
+is retried from this path, and the source-level financial HOLD is checked
+before any query. This is V1 queue-correctness preparation—not proof
+of independent vault solvency or permission to turn on real money.
+The protected release controller and `SATCHEL_FINANCIAL_BRIDGE_READY=false`
+are unchanged. No live wallet, transaction or backend service was touched.
+
+## October 18 — single admission authority for the held funded Mecha runner
+
+The previously prepared operator `--execute` path and the bounded
+Watcher outbox tick could select different rows. The tick limited candidates
+to a fresh four-minute window and respected `nextAttemptAt`, owner wallet,
+remaining plan slots and independently approved pre-broadcast reservations.
+The CLI used a broader query and could hand stale or deferred Watcher rows
+to the executor despite those shared entrypoint expectations.
+
+Both now call `readEligibleFundedMechaIds` with one
+`fundedMechaEligibleQuery` builder. That builder applies the same exact
+25-row cap, stable age/id ordering, four-minute eligibility window,
+next-attempt deadline, finite plan slots, owner-wallet identity, and
+approved `funded_reserved` state. It excludes attempted/unknown holds.
+A direct selector call also checks the immutable source financial HOLD
+**before querying any financial table**, not merely at the outer caller.
+The downstream funding executor remains responsible for independent
+market, owner, mandate, signer and ledger revalidation.
+
+Contract and executable query regressions cover source/HOLD ordering and
+invalid batch/time bounds. **This is not a withdrawal, settlement or custody
+certification**. The source-level `SATCHEL_FINANCIAL_BRIDGE_READY=false`
+and protected WoloChain release HOLD remain unchanged. No real money,
+production service or Keplr wallet is touched by this change.
+
+## October 18 — balance reads obey the immutable financial HOLD
+
+The owner-only `/api/user/war-satchel/balance` endpoint previously
+determined ledger availability from mutable environment flags without
+consulting the source-level custody hold. If an operator configured
+flags ahead of certification, the endpoint could have queried
+unapproved financial tables and reported `available: true` and a
+spendable balance while actual deposits and execution remained blocked.
+
+Now the same immutable `satchelFinancialBridgeReady()` predicate
+gates this read **before session, Prisma or any financial table I/O**.
+While held, it returns only the existing non-crediting, no-store,
+`available: false` representation. Source-order tests verify that
+setting all mutable switches to true cannot override the hold.
+
+This is a financial truthfulness fix, not an activated ledger.
+The Mecha card retains the existing blank Satchel balance rather than
+claiming that chain wallet funds are already custody credit.
+No player deposit, wager, payout, withdrawal or system service changed.
+
+## October 18 — off-by-default funded Mecha preview timer
+
+The new `deploy/aoe2hdbets-war-satchel-mecha-preview.service` and
+`.timer` provide a bounded **read-only** operational preview after
+explicit operator review and manual installation. One-shot service uses
+`scripts/war-satchel-funded-mecha-worker.ts --dry-run` only.
+There are no credentials, EnvironmentFile, `--execute`, automatic
+`[Install]` activation, or Wolo systemd dependency. Timer is
+nonpersistent and initially inactive.
+
+The immutable source `SATCHEL_FINANCIAL_BRIDGE_READY=false` still
+returns `financial_bridge_unverified_hold` before reading any funded
+database work. This is NOT a certified live wager scheduler and
+does not authorize any mainnet custody, signing or player-facing
+deposit. Independent signer/custody, real settlement/refund/withdrawal
+rehearsal, licensing/eligibility and protected source/runtime parity
+remain mandatory for live real-WOLO V1.
+
+## October 18 — avoid unnecessary signer I/O for empty funded Watcher batches
+
+The protected Watcher outbox tick now selects a bounded, read-only
+eligible batch before initiating a loopback connection to the exclusive
+custody signer. If no eligible rows exist, it returns the existing empty
+zero-count response without initiating a signer health request. For
+nonempty batches the same authenticated signer connection and durable
+signed-wager execution path remain mandatory. Source-level financial HOLD
+and all operator certification flags are evaluated before even querying
+the candidate table.
+
+This removes unnecessary private-sidecar traffic for idle Watcher ticks;
+it does **not** authorize unattended scheduling, settlement, custody
+activation, or real WOLO transactions. A source-order regression
+specifically rejects future changes that reconnect the signer before
+determining that there is eligible work.
+
+## October 18 — Watcher queue cannot run under source-level financial HOLD
+
+The dedicated HD Watcher-funded poll already checked the eight mutable
+financial-operation environment gates, and the downstream executor enforced
+the hard source gate. But the poll queried queued database executions
+before entering that downstream gate when all env switches were on.
+
+The poll now calls `requireSatchelFinancialBridge()` at the start of its
+guard, **before any funded queue inspection**, so no mutable environment
+switches can cause held financial work to be selected. A direct no-database
+regression test sets every mutable flag true and asserts source-HOLD
+refusal with zero queue reads. This does not add activation authority
+or change the Watcher, financial ledger, user interface or chain.
+
+## October 18 — streamed, strictly capped vault bank HTTP observations
+
+The held funded ledger previously checked the response `Content-Length`
+but called `Response.text()` before checking the actual byte count. A
+malformed or chunked mainnet status/bank response could therefore buffer
+arbitrary bytes in process memory before reaching the nominal 64 KiB cap.
+
+`lib/warSatchelBankJsonTransport.ts` now reuses the already-tested
+`readWarSatchelBoundedUtf8` streaming reader with a strict 65536-byte
+ceiling, finite chunk count, fatal UTF-8 decoding, and early cancellation.
+It still admits ONLY the canonical read-only RPC status or an exactly
+scoped REST `wolo-1` bank-by-denom request, with GET/no-store,
+no redirects, and a five-second timeout. Invalid length, oversized
+chunks, malformed/non-object JSON and transport failure are refused.
+Regression tests inject fake streams with no external mainnet request.
+
+This is **resource/transport hardening only**. Neither REST JSON nor a
+status endpoint is cryptographically authenticated financial proof; a
+network-visible balance is not independently reconciled vault solvency.
+The source-level `SATCHEL_FINANCIAL_BRIDGE_READY=false` hold remains
+mandatory. No custody credit, signed wager, withdrawal, service operation,
+production activation or changes to mainnet source were performed.
+
+## October 18, 2026 — strict finite Bech32 decoding on Linux
+
+The Wolo protocol-2 reservation verifier previously called CosmJS
+`fromBech32(value)` without a finite decode limit. On Linux CI, the
+installed `@scure/base` rejected that dependency's default Infinity
+limit before a valid test-vault address could be admitted. The verified
+fix calls `fromBech32(value, 90)`, a strict BIP-173 maximum, and retains
+exact lowercase `wolo` prefix, 20-byte payload, checksum, independent
+approval signature, exact immutable economics, owner and vault binding.
+Public Go fixture address round-trip regression tests are provided.
+
+Separately refreshed the `/bets` route-local Git-blob source fingerprint
+to reflect the Codex integration draft. No production or finance release
+permission follows from a green source census or a repaired Node test.
+Financial bridge remains held pending real independent reviewer, signer
+isolation, custody solvency, authenticated chain receipts, and WoloChain
+protected release authority. This branch is a narrow CI repair stacked
+on financial integration draft #684, not a mainnet cutover.
+
 ## October 18, 2026 — Satchel/Mecha launch blockers and independent release tracks
 
 This is the **app-owned launch boundary**, separate from Codex's WoloChain
@@ -1348,3 +1723,103 @@ Before changing the app from Preview:
    both the app and custody service.
 8. Decrement finite game counts only after durable financial acceptance.
 9. Enable live execution only in a separate reviewed release.
+
+## 2026-10-18: signed wager review and authenticated acceptance integration
+
+The held integration branch reuses PRs #638, #655 and #656 with current main.
+It does not activate custody. `SATCHEL_FINANCIAL_BRIDGE_READY` remains the
+literal `false`; preview settings and operator environment flags cannot lift
+that source hold. No production migration, financial operation or service
+replacement is authorized by this integration.
+
+The actual Wolo interface is bearer-authenticated loopback **8094**:
+`GET /satchel/v1/health`, `POST /satchel/v2/one-shot` for wagers, and
+`POST /satchel/v1/proofs/operation` for read-only proof export. The two unused
+unmerged HMAC/camel-case prototypes now refuse without I/O. They cannot be
+reactivated with environment flags. Existing 8092/8093 settlement authorities,
+the consensus executable and founder claim #889 are unchanged.
+
+The app's `SatchelWagerAuthorization` records the original owner, linked wallet,
+Watcher game/proposition, preset version, exact ticket legs, original Keplr
+mandate/signature, reserve-journal identity and ledger revision under the
+existing global financial lock. It adds no second balance ledger. Its three
+HD-domain digests are deterministic snapshot bindings, not reserve proofs.
+`SatchelWagerApproval` accepts only a separately signed Ed25519 reservation
+matching that request. The version-1 sign bytes are the existing Go
+`WagerReservationMessage` contract, covered by an actual Go golden fixture.
+`attachIndependentSatchelWagerReview` is trusted internal ingress; no browser
+approval endpoint or private-key approval generator ships with this change.
+The independent reviewer must verify the actual hold, original owner consent,
+current market, aggregate liabilities and operating-fee headroom before signing.
+
+A first pass may reserve funds and prepare the immutable review request, then
+return `waiting_for_review`. That leaves the original hold unattempted; it
+neither releases money nor claims a broadcast. Only an unattempted reservation
+with an original independent approval may resume through the bounded intake.
+The submission transaction rechecks current consent, wallet, market and the
+reviewed ticket legs before durably entering `unknown_hold`. A changed market
+promotion cannot silently inherit the old review. Concurrent workers cannot
+both acquire the first-attempt fence. An unknown/attempted operation is excluded
+from every signing intake, including after restart.
+
+An authenticated service ACK yields **broadcast_accepted**, never finality.
+Its candidate hash is durably unique and immutable. Ticket and funded-ledger
+commit require an opaque proof produced by the pinned offline verifier, binding
+the actual Cosmos bytes, committed execution, exact transfer, fee and original
+signed reservation. Satchel ticket acceptance does not fall back to ordinary
+REST. Its timestamp comes from the authenticated primary `/commit` signed
+header at the exact inclusion height/block identity; fractional seconds survive.
+Proof freshness is checked again inside the ticket and financial transactions.
+`reconcileFundedSatchelWager` is proof-only recovery of one exact attempted
+operation: it cannot sign, prepare a new ticket, release funds or rebroadcast.
+If an ACK was lost, its supplied hash is admitted only after the journaled
+operation's authenticated proof matches it. Existing unique ticket/transfer
+locks and immutable funded journals preserve exactly-once acceptance.
+
+Both deposit and financial-proof adapters pin the **new** reviewed Wolo PR #39
+custody artifact, source `99f32de617964565875ed4689bea0d688bb99147`, CI run
+`39129775493`, Linux AMD64 SHA-256
+`d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac`.
+This is not a relabeling of the historical PR #29 or `bdbce253` settlement
+artifact. The isolated test script first builds that clean source; Linux CI
+must reproduce the pinned bytes. Its native macOS test-loader substitution
+exists only in disposable tests. Synthetic validator/reviewer authority grants
+no mainnet authority.
+
+Source validation includes genuine SDK MsgSend execution, authenticated Comet
+proofs and real isolated PostgreSQL credit/uniqueness/crash tests. The wager
+proof test authenticates a real synthetic 7-WOLO transfer and its actual ante
+fee; independently re-signed wrong-fee, amount and memo expectations fail.
+This is component integration evidence. It does **not** certify the complete
+100-WOLO deposit → 12-WOLO Watcher ticket → settlement/refund → withdrawal user
+journey, which still needs a governed disposable database/service rehearsal.
+
+Activation remains **BLOCKED**. Independent vault control, signer exclusivity,
+public trust/approval authority outside app write control and a current trusted
+consensus checkpoint/witness must be provisioned and inspected. An automatic
+independent reservation-review consumer is not implemented by the signature
+import function. Aggregate pending gas fees need a separately accounted budget;
+the app's existing `readIndependentSatchelBank` reads configured RPC/REST JSON
+and is **not independently authenticated bank-state or solvency evidence**.
+Do not treat that function's name, a signed review digest or source CI as bank
+certification. These are substantive remaining implementation/provisioning
+requirements before lifting the source hold. Eligibility/jurisdiction controls
+and the complete owner journey need independent launch review too.
+
+The additive `20261019_010000_war_satchel_wager_authority` migration is test-only
+in this delivery. Its request, review and candidate tables reject mutation,
+wrong-reserve admission and hash reuse; installation rolls back atomically with
+its caller. No earlier six-migration or eight-migration approval covers this
+new cohort. Existing SQL simulation release authority remains main's contract;
+financial PostgreSQL tests run separately in the isolated CI job. No deleted
+release framework or deferred simulation migration is resurrected.
+
+Wolo issue #5 and its one canonical six-control checklist remain binding:
+producer/signer isolation, accepted/uncertain operation reconciliation, #889 and
+all liabilities, independently checked bank/fees, fresh quiesced snapshots and
+bounded financial-state-preserving rollback. PR #43 preserves the completed
+Control One evidence; its source CI does not establish live isolation. Do not
+fast-forward a VPS checkout, fence producers, install a service, apply this
+migration, broadcast a canary or enable money based on this document. A later
+owner-approved protected cutover must name the exact reviewed artifacts,
+complete the missing evidence and retain consensus/8092/8093 separation.
