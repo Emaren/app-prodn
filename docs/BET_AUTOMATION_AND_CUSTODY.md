@@ -15,6 +15,34 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — bounded aged-Watcher approval backlog in operator preview
+
+The shared funded Mecha selector admits only fresh Watcher executions
+(created within four minutes). An already reserved owner balance awaiting
+separately signed independent financial approval may outlive that freshness
+window. Late review MUST NOT bypass eligibility and cause a stale wager,
+but the reserved funds also cannot simply disappear from operational sight.
+
+A new read-only inspection in `lib/warSatchelAgedReviewVisibility.ts`
+selects at most 26 (25 + one truncation witness) **unattempted**, still
+reserved, aged Watcher rows. It reports only aggregate sampled `uwolo`
+liability, no-approval count, approved-but-unattempted count, and
+contradictory recorded broadcast markers. The report explicitly marks
+its limited sample as NOT the vault's total financial liabilities.
+It reveals no owner, wallet, request ID or signer secret. The operator
+Mecha CLI includes it only in its dry-run output and only after the
+source-level financial bridge has been separately certified; under
+`SATCHEL_FINANCIAL_BRIDGE_READY=false` it refuses before database I/O.
+
+This is a **diagnostic**, not a release/retry/refund authority. It never
+sends a transaction or changes a balance. Resolving aged reservations
+requires separately authenticated no-broadcast evidence and a reviewed
+compensating workflow; any UNKNOWN/attempted operation remains fenced
+for proof-only reconciliation. Tests cover bounded truncation, privacy,
+invalid liability amounts and zero database reads under HOLD.
+The complete integrated custody→bet→refund/settlement→withdrawal
+rehearsal, independent reserve solvency and WoloChain #5 remain open.
+
 ## October 18 — verified Watcher tick shares strict Mecha admission truth
 
 The protected private Watcher tick previously used a third direct queue
