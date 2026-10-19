@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-watcher-source-fence` at `d81e89346735fc8001cb57632696e4e46399031d`
+Implementation baseline: `fix/20261018-satchel-empty-outbox-signer-idle` at `4ddb945ccdf846fc4907dcdb63afe21b0d18b63c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
