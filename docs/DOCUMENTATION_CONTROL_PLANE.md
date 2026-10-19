@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-index-review-lineage` at `811670496587f02d80e1ed547825259cc5ea128d`
+Implementation baseline: `audit/20261019-financial-get-producer-census` at `6b2f293ebf5356dc79d445e1f5f2ac0e067e89db`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
