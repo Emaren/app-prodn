@@ -162,6 +162,12 @@
     "sourceTree": "src-f01f64fb56c3e2d1"
   },
   {
+    "href": "/kingdom-brain",
+    "label": "Kingdom Brain",
+    "district": "citadel",
+    "sourceTree": "src-c655db6bed35345d"
+  },
+  {
     "href": "/kingdom-forge",
     "label": "Kingdom Forge",
     "district": "citadel",
@@ -178,6 +184,12 @@
     "label": "Kingdom Intelligence",
     "district": "citadel",
     "sourceTree": "src-5537012d8de333d7"
+  },
+  {
+    "href": "/kingdom-progress",
+    "label": "Kingdom Progress",
+    "district": "forge",
+    "sourceTree": "src-44c3b83b198005e1"
   },
   {
     "href": "/kingdom-treasury",

@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "kind": "aoe2war-kingdom-instrumentation-candidate-evidence",
+  "recorded_at": "2026-10-19",
+  "pr": "https://github.com/Emaren/app-prodn/pull/714",
+  "documentation": "docs/KINGDOM_BRAIN_PROGRESS.md",
+  "authority_registry": "config/kingdom-brain-authorities.json",
+  "route_inventory_scope": "Kingdom Index registered public static pages only",
+  "candidate_route_count": 70,
+  "checks": [
+    {
+      "id": "source-census",
+      "result": "passed",
+      "evidence": "GitHub Actions 39330492249, draft source before governed doc refresh"
+    },
+    {
+      "id": "documentation-federation",
+      "result": "baseline_refreshed",
+      "evidence": "docs/document-registry.json on protected candidate branch"
+    },
+    {
+      "id": "production-build",
+      "result": "pending",
+      "evidence": "requires full exact-head CI"
+    },
+    {
+      "id": "production-runtime",
+      "result": "not_deployed",
+      "evidence": "draft PR; no deployment"
+    },
+    {
+      "id": "financial",
+      "result": "unchanged_hold",
+      "evidence": "no financial service or WoloChain edits"
+    },
+    {
+      "id": "deployed-route-census",
+      "result": "implementation_pending_exact_head_ci",
+      "evidence": "Pure parser, bounded Next manifest reader, no-store API and regression tests; fail-closed on missing manifest; exact production runtime unverified"
+    }
+  ],
+  "limitations": [
+    "Patrol assignments are POLICY_ONLY, not active scans or route certificates",
+    "Project milestone percentages intentionally unmeasured",
+    "Full admin/dynamic/API route census still pending",
+    "Existing pages not aesthetically changed"
+  ],
+  "notes": [
+    "Navigation added in existing Kingdom menus without replacing existing pages",
+    "Documentation implementation baseline regenerated on commit 7275c3c800049f228910dbc691d3d165300747ec",
+    "New exact-head CI required after automation-authored documentation update"
+  ]
+}

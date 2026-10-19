@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "version": "2026-10-19-v1",
+  "kind": "aoe2war-route-patrol-contract",
+  "policy": "Patrol disciplines are check categories and scheduling assignments, not claims of continuously running AI processes. Every status requires a dated source-bound receipt. Read-only checks must never mutate funds.",
+  "disciplines": [
+    {
+      "id": "source",
+      "label": "SOURCE SENTINEL",
+      "triggers": [
+        "pull_request",
+        "merge"
+      ],
+      "evidence": "Git diff, import closure, ownership and route census",
+      "scope": "all"
+    },
+    {
+      "id": "performance",
+      "label": "PERFORMANCE RANGER",
+      "triggers": [
+        "release",
+        "scheduled"
+      ],
+      "evidence": "Version-bound browser/server measurements",
+      "scope": "all"
+    },
+    {
+      "id": "security",
+      "label": "SECURITY WARDEN",
+      "triggers": [
+        "pull_request",
+        "release",
+        "scheduled"
+      ],
+      "evidence": "Authorization traces, dependency scans and negative tests",
+      "scope": "all"
+    },
+    {
+      "id": "truth",
+      "label": "TRUTHKEEPER",
+      "triggers": [
+        "release",
+        "scheduled"
+      ],
+      "evidence": "Producer/consumer freshness, lineage and invariants",
+      "scope": "all"
+    },
+    {
+      "id": "replay",
+      "label": "REPLAY MARSHAL",
+      "triggers": [
+        "release",
+        "event"
+      ],
+      "evidence": "Watcher/replay finality and adjudication receipts",
+      "scope": "replay"
+    },
+    {
+      "id": "treasury",
+      "label": "TREASURY GUARD",
+      "triggers": [
+        "release",
+        "event"
+      ],
+      "evidence": "Conservation, owner authority and live-settlement holds",
+      "scope": "financial"
+    },
+    {
+      "id": "browser",
+      "label": "BROWSER SCOUT",
+      "triggers": [
+        "release",
+        "scheduled"
+      ],
+      "evidence": "Semantic Ready, runtime errors and browser interaction",
+      "scope": "public"
+    },
+    {
+      "id": "release",
+      "label": "RELEASE GUARDIAN",
+      "triggers": [
+        "merge",
+        "release"
+      ],
+      "evidence": "Build lineage, CI, protected activation, rollback",
+      "scope": "all"
+    }
+  ],
+  "rule": {
+    "statusDefault": "unverified",
+    "evidenceRequired": [
+      "source_sha",
+      "collected_at",
+      "probe_id",
+      "outcome",
+      "receipt_ref"
+    ],
+    "maxAutomaticFinancialActions": 0,
+    "publicTelemetry": "sanitized"
+  }
+}

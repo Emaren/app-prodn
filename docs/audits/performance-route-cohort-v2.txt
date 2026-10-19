@@ -36,7 +36,9 @@
 /kingdom-index
 /kingdom-bettors
 /kingdom-agents
+/kingdom-brain
 /kingdom-intelligence
+/kingdom-progress
 /kingdom-treasury
 /kingdom-forge
 /leaderboard

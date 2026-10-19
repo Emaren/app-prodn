@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "version": "2026-10-19-v1",
+  "kind": "aoe2war-progress-scope",
+  "policy": "Projects are catalog entries, not claims of measured completion. No percent, AI hours, commits, deploys or ETA without attached authoritative receipts.",
+  "projects": [
+    {
+      "id": "watcher-166",
+      "label": "WATCHER 1.6.6",
+      "category": "client",
+      "source": "aoe2-watcher",
+      "href": "/download",
+      "milestones": [
+        "scope",
+        "implementation",
+        "cross-platform-ci",
+        "signed-windows",
+        "published-release",
+        "website-promotion"
+      ]
+    },
+    {
+      "id": "auto-satchel",
+      "label": "AUTO BETS / WAR SATCHEL",
+      "category": "financial",
+      "source": "app-prodn + wolochain",
+      "href": "/bets",
+      "milestones": [
+        "owner-mandate",
+        "reviewer-evidence",
+        "durable-signer",
+        "integrated-journey",
+        "safety-acceptance",
+        "mainnet-canary"
+      ]
+    },
+    {
+      "id": "tv-wolo",
+      "label": "TELEVISION WOLO",
+      "category": "media",
+      "source": "app-prodn",
+      "href": "/television-wolo",
+      "milestones": [
+        "source-contract",
+        "ingest",
+        "playback",
+        "reliability",
+        "release"
+      ]
+    },
+    {
+      "id": "parser-engine",
+      "label": "PARSER / DECODER",
+      "category": "replay",
+      "source": "api-prodn + app-prodn",
+      "href": "/hd-replay-engine",
+      "milestones": [
+        "corpus-census",
+        "parser-research",
+        "deterministic-decoding",
+        "fault-testing",
+        "production-verification"
+      ]
+    },
+    {
+      "id": "replay-truth",
+      "label": "REPLAY TRUTH CLOSURE",
+      "category": "replay",
+      "source": "app-prodn + api-prodn",
+      "href": "/game-stats",
+      "milestones": [
+        "known-topology",
+        "result-evidence",
+        "adjudication-reconciliation",
+        "unresolved-frontier",
+        "certified-census"
+      ]
+    }
+  ]
+}
