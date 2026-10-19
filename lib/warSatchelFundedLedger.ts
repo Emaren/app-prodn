@@ -3,6 +3,7 @@ import { readBoundedSatchelBankJson } from "./warSatchelBankJsonTransport.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { prebroadcastReleaseEvidenceIssue } from "./warSatchelPrebroadcastReleaseEvidence.ts";
+import { satchelReserveDebitIssue } from "./warSatchelReserveDebitEvidence.ts";
 import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { authenticateSatchelClaimReturn, authenticatedWarSatchelClaimReturnFreshAt } from "./warSatchelAuthenticatedClaimReturn.ts";
@@ -687,6 +688,14 @@ export async function markSatchelSubmissionAttempt(
     if(!authorization?.approval || authorization.reservationId!==reservation.id || authorization.ownerUserId!==input.ownerUserId)
       stop("independent_wager_review_missing_before_attempt");
     const a=decodeWagerAuthorization(authorization);
+    // Recheck source-of-funds inside this same exclusive transaction
+    // IMMEDIATELY before first broadcast authorization. The persisted review
+    // cannot substitute for the original debit; a missing/misowned/changed
+    // source journal must never reach signer.submitOneShot.
+    const reserveJournal=await tx.satchelFundedJournal.findUnique({where:{sourceKey:reservation.id}});
+    if(satchelReserveDebitIssue(reservation,reserveJournal) ||
+       !reserveJournal || reserveJournal.id.toString()!==a.snapshot.journalId)
+      stop("original_reservation_debit_changed_before_attempt");
     const grant=verifyIndependentWagerReservation(authorization.approval.approvalJson,wagerReviewContext(a,input.reservation),reviewKey,Date.now());
     const reviewedTicket=await tx.betStakeTicket.findUnique({where:{id:a.snapshot.ticketId},include:{legs:true}});
     if(!reviewedTicket || reviewedTicket.userId!==input.ownerUserId || reviewedTicket.clientRequestId!==input.ticketRequestId ||
@@ -1480,7 +1489,7 @@ export async function prepareSatchelWagerReview(prisma:PrismaClient,input:{execu
     e.status!=='funded_reserved'||t.userId!==input.ownerUserId||t.clientRequestId!==r.ticketRequestId||
     t.source!=='auto'||t.walletProvider!=='satchel-vault'||t.walletAddress!==fundedVaultAddress()||
     t.status!=='awaiting_signature'||t.stakeTxHash!==null||balance.reservedUwolo<r.amountUwolo||
-    journal.eventKind!=='wager_reserve'||journal.amountUwolo!==r.amountUwolo||journal.deltaReservedUwolo!==r.amountUwolo)
+    satchelReserveDebitIssue(r, journal))
     stop('wager_review_not_canonical_reserved_ticket');
   const winner=t.legs.find(l=>l.marketId===e.winnerMarketId),desync=t.legs.find(l=>l.marketId===e.desyncMarketId);
   if(!winner || winner.side!==e.selectedSide || winner.amountWolo!==e.winnerStakeWolo ||
