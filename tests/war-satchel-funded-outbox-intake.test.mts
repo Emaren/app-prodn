@@ -16,7 +16,8 @@ test("one bounded signed Watcher selector feeds both financial entrypoints",()=>
   assert.doesNotMatch(selector,/status: "unknown_hold"|status: "funded_submitting"/);
   assert.match(selector,/createdAt: \{ gte: earliest, lte: now \}/);
   assert.match(selector,/nextAttemptAt: \{ lte: now \}/);
-  assert.match(selector,/user: \{ walletAddress: \{ not: null \} \}/);
+  assert.match(selector,/walletAddress: \{ not: null \}/);
+  assert.match(selector,/satchelFundedBalance: \{ is: \{ OR:/);
   assert.match(selector,/gamesRemaining: \{ gt: 0 \}/);
   assert.match(selector,/orderBy: \[\{ createdAt: "asc" \}, \{ id: "asc" \}\]/);
   assert.match(selector,/take: max/);
