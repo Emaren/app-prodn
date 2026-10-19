@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-empty-outbox-signer-idle` at `4ddb945ccdf846fc4907dcdb63afe21b0d18b63c`
+Implementation baseline: `feat/20261018-satchel-mecha-held-runner-schedule` at `44784910c7f5b5b8844fc3c800cbe800ffa3fb78`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
