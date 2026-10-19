@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9cafd3867cea5d51f5a482687b648ba0ef4acfbc67ad63a9ccad54a40fe1c877",
+      "sha256": "9405f5a623cfd1a63f67d77caf7788c73d73452b0fabbd51065f38a18aabfd47",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -917,7 +917,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "8c446899a2dc2a5b880f1b4b1b35830744ce9e0b559f65c41ec324b159189a23",
+      "sha256": "38b92d5a0beaf10a51d18b504c092d7bc4bb4c20f0be881c608d061fd49323ba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2143,7 +2143,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/kingdom-brain-progress-foundation-20261019",
-    "commit": "2dff85576e9ec05baa8487b6fcc26b3b9d77c020"
+    "commit": "7275c3c800049f228910dbc691d3d165300747ec"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
