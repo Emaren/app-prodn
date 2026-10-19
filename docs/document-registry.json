@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "fab3f38bb146bb37096e9a415768d0505fca3b4b57ec3e85fd7c0e59008d1c36",
+      "sha256": "74d4822544916c6f756d6739ab5fca8852c968fe00512b1db27b4f06592e9bf2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eee926fd78b16141500caba779d65f47ec86e280328966e4fd59505927d55b97",
+      "sha256": "c6f106e1bf4e6b6f878229bdeb935fed33aac4c5ba6798f093810ed538aa7895",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-bank-stream-bounds",
-    "commit": "8c90f5c90e6123276fe5236b050f8656b8476f41"
+    "branch": "fix/20261018-satchel-watcher-source-fence",
+    "commit": "d81e89346735fc8001cb57632696e4e46399031d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
