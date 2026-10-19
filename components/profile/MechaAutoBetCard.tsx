@@ -94,7 +94,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
   useEffect(() => {
     let active = true;
     setSatchelBalance(null);
-    if (!server?.preset) return () => { active = false; };
+    if (!server?.preset.version) return () => { active = false; };
     void fetch("/api/user/war-satchel/balance", {
       cache: "no-store", credentials: "same-origin",
     }).then(async response => {
