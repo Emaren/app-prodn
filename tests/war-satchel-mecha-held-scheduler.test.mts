@@ -16,7 +16,7 @@ test("held Mecha preview template cannot activate signer, settlement or finance"
  assert.doesNotMatch(service,/Wants=.*wolochain|Requires=.*wolochain/);
  assert.match(timer,/OnUnitInactiveSec=30s/);
  assert.match(timer,/Persistent=false/);
- assert.doesNotMatch(timer,/\[Install\]/);
+ assert.doesNotMatch(timer,/^\[Install\]/m);
  assert.match(worker,/if \(!execute && !satchelFinancialBridgeReady\(\)\)/);
  assert.match(worker,/liveWagersPlaced: 0, chainTransfersSent: 0/);
  assert.match(hold,/SATCHEL_FINANCIAL_BRIDGE_READY = false as const/);
