@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "b77005d53bd0a3c766c8ee10591b81e2efc8b9e45d2aca6960cfdcce0b3f99e1",
+      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4851d8429fb947311542bc70098e5cecd8a7fd2682ada0a7886a2dc2cae42e2c",
+      "sha256": "5bbefc627ddf91ebcd4b836d1a72e46a66687f040e97ba7510060f96ed7f9bee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-index-review-lineage",
-    "commit": "811670496587f02d80e1ed547825259cc5ea128d"
+    "branch": "audit/20261019-financial-get-producer-census",
+    "commit": "6b2f293ebf5356dc79d445e1f5f2ac0e067e89db"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
