@@ -40,6 +40,50 @@ class FinishDocumentationDiagnosticsTests(unittest.TestCase):
         self.assertIn("registry source sha differs", lines[0])
         self.assertIn("WoloChain/vps-source-drift", lines[1])
 
+    def test_blocked_dry_run_exposes_pending_documentation_p0s_with_source_drift(self):
+        summary = {
+            "blocked": True,
+            "blocked_source_docs": [],
+            "auto_remediable_p0": [
+                {"severity": "P0", "area": "Documentation", "key": "docs-check",
+                 "detail": "api-prodn:engine-witness-pilot.md: review expired"},
+                {"severity": "P0", "area": "Documentation", "key": "strict-build",
+                 "detail": "api-prodn:exact-cohort-materializer.md: review expired"},
+            ],
+            "auto_remediable_p1": [
+                {"area": "Context Durability", "key": "retention-drift",
+                 "detail": "new camera snapshots pending"},
+            ],
+            "unknown_p0": [],
+            "unknown_p1": [
+                {"severity": "P1", "area": "WoloChain", "key": "vps-source-drift",
+                 "detail": "VPS differs from implementation baseline"},
+            ],
+        }
+        lines = MODULE.documentation_blocker_details(summary)
+        self.assertEqual(len(lines), 4)
+        self.assertIn("P0 [Documentation/docs-check]", lines[0])
+        self.assertIn("pending remediation; blocked", lines[0])
+        self.assertIn("engine-witness-pilot", lines[0])
+        self.assertIn("P0 [Documentation/strict-build]", lines[1])
+        self.assertIn("exact-cohort-materializer", lines[1])
+        self.assertIn("P1 [Context Durability/retention-drift]", lines[2])
+        self.assertIn("P1 [WoloChain/vps-source-drift]", lines[3])
+        self.assertEqual(MODULE.documentation_blocker_details(
+            {**summary, "blocked": False}), [])
+
+    def test_blocked_remediation_facts_do_not_erase_missing_p0_details(self):
+        lines = MODULE.documentation_blocker_details({
+            "blocked": True,
+            "auto_remediable_p0": [None, {"area": "Documentation",
+                                         "key": "docs-check", "detail": "x" * 600}],
+            "unknown_p1": [{"area": "WoloChain",
+                            "key": "vps-source-drift", "detail": "held"}],
+        })
+        self.assertEqual(len(lines), 2)
+        self.assertLess(len(lines[0]), 420)
+        self.assertIn("WoloChain/vps-source-drift", lines[1])
+
     def test_source_p0_and_control_map_are_rendered_without_bypassing_gate(self):
         summary = {
             "blocked": True,

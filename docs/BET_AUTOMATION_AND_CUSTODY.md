@@ -15,6 +15,42 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — source-linked public GET and prewarm financial producer census
+
+`scripts/aoe2_financial_producer_source_census.py --check` is a
+**read-only, bounded source audit**, keyed to the checked-in app source.
+It enumerates exact source path/line and SHA-256 evidence for:
+`/` SSR and `GET /api/lobby` through `loadLobbySnapshot` into
+detached `queueLobbyMaintenance`, tournament proof reconciliation and
+`ensureBetMarkets`; `GET /api/live-games` through its timer queue into
+`ensureBetMarkets`; and prewarm requests to all three routes. The
+`ensureBetMarkets` source includes market settlement, pending-claim
+reconciliation, and founder-bonus settlement. Process-local single-flight
+and `AOE2WAR_PROD_DB_PREVIEW` on the one timer queue do **not** form a
+durable cross-process financial maintenance fence. The independent
+`GET /api/bets` path deliberately passes `ensureMarkets: false`
+and must not be incorrectly classified as a direct maintenance trigger.
+
+The script emits structured JSON with a SHA-256 source fingerprint and
+source line per observed edge, and exits nonzero under `--check` if a
+previously known source edge is missing or moved. Unit tests ensure
+missing sources, changed routes and symlink substitutions are not
+misreported as witnessed edges. It is not a full semantic call graph
+and does **not** claim that a valid source fingerprint proves a current
+production deployment or that every financial writer has been found.
+
+The inventory deliberately reports
+`all_financial_producers_isolated=false`,
+`safe_to_deploy=false` and `cross_repo_runtime_attestation=UNKNOWN`
+even if every app-source edge is present. Independent HD/DE,
+root/user systemd units, timers, external wallets, manual signers,
+containers, in-flight transfers and the historical claims/bank ledger
+need named operators and independently authenticated live evidence.
+See app issue #669 and WoloChain issue #5. Do not stop any producer,
+alter a signing credential, restart consensus, waive source drift, or
+promote the Satchel financial HOLD based on this observational script.
+
+
 ## October 18, 2026 — Satchel/Mecha launch blockers and independent release tracks
 
 This is the **app-owned launch boundary**, separate from Codex's WoloChain
