@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "e6dd42a15ce6aa7d20e335c3e8f70eabb892198fd5000bece90248c6526b9723",
+      "sha256": "5878ce4f55b3118e50a3ad7a195b342f829bbbcc27b88e7842a2f96fabf344f8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7175f0d8d66d4db5766ac6cc5f79bd186f3f94728521ad329de1e44a498c5f9f",
+      "sha256": "0e5e51f430a20b849e47bfdd64b6686770f6110daad6714a1af88d6fc5ca35d9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-aged-review-visibility",
-    "commit": "89833256de3ecf6346b64270ab07af66d66bc822"
+    "branch": "fix/20261019-satchel-no-broadcast-guard",
+    "commit": "47944b772be2eaa35abf0014856a32a1e9783b2a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
