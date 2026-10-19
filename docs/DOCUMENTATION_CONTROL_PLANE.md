@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-bank-stream-bounds` at `8c90f5c90e6123276fe5236b050f8656b8476f41`
+Implementation baseline: `fix/20261018-satchel-watcher-source-fence` at `d81e89346735fc8001cb57632696e4e46399031d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
