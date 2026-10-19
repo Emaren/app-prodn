@@ -15,6 +15,26 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — balance reads obey the immutable financial HOLD
+
+The owner-only `/api/user/war-satchel/balance` endpoint previously
+determined ledger availability from mutable environment flags without
+consulting the source-level custody hold. If an operator configured
+flags ahead of certification, the endpoint could have queried
+unapproved financial tables and reported `available: true` and a
+spendable balance while actual deposits and execution remained blocked.
+
+Now the same immutable `satchelFinancialBridgeReady()` predicate
+gates this read **before session, Prisma or any financial table I/O**.
+While held, it returns only the existing non-crediting, no-store,
+`available: false` representation. Source-order tests verify that
+setting all mutable switches to true cannot override the hold.
+
+This is a financial truthfulness fix, not an activated ledger.
+The Mecha card retains the existing blank Satchel balance rather than
+claiming that chain wallet funds are already custody credit.
+No player deposit, wager, payout, withdrawal or system service changed.
+
 ## October 18 — off-by-default funded Mecha preview timer
 
 The new `deploy/aoe2hdbets-war-satchel-mecha-preview.service` and
