@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261019-mecha-satchel-verified-balance` at `36efbcc582b5adc33fc5fe7a0d8959470d0b193f`
+Implementation baseline: `feat/20261019-mecha-satchel-verified-balance` at `f919dcb8cedff8de1824187d837c3dc6ffc8ec25`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
