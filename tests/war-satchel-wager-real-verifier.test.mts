@@ -26,7 +26,7 @@ test("real SDK wager authenticates through the pinned offline financial verifier
   const intent = fixture.intent, observation = fixture.transfer_observation;
   const txHash: string = observation.TxHash;
   const memo = "AoE2HDBets bet ticket v1 · ticket 1";
-  assert.equal(intent.Memo, memo); assert.equal(intent.AmountUWolo, "7000000");
+  assert.equal(intent.Memo, memo); assert.equal(intent.AmountUWolo, "12000000");
   assert.equal(observation.TransferIndex, 1, "actual SDK ante fee precedes the one bank-send effect");
   const root = realpathSync(mkdtempSync("/tmp/hd-wager-real-proof-"));
   // Ephemeral TEST reviewer, unrelated to production signers or keyrings.
@@ -45,8 +45,8 @@ test("real SDK wager authenticates through the pinned offline financial verifier
     gameIdentityKey: "watcher:isolated-sdk-execution", propositionHash: "a".repeat(64), presetId: 1, presetVersion: 1,
     consentId: "isolated-fixture-consent", challengeText: "isolated context only; no mainnet owner mandate",
     ownerSignatureJson: {fixture_only: true}, ledgerVersion: "1", availableUwolo: "3000000",
-    reservedUwolo: "7000000", journalId: "1",
-    legs: [{id: 1, marketId: 1, side: "left", amountWolo: 7, propositionHash: "a".repeat(64)}]};
+    reservedUwolo: "12000000", journalId: "1",
+    legs: [{id: 1, marketId: 1, side: "left", amountWolo: 12, propositionHash: "a".repeat(64)}]};
   const authorized = buildSatchelWagerAuthorization(snapshot);
   const issued = Math.floor(Date.now() / 1000) - 1;
   function review(a = authorized, patch: Partial<SatchelWagerReservation> = {}): SatchelWagerReservation {
@@ -109,8 +109,8 @@ test("real SDK wager authenticates through the pinned offline financial verifier
     });
     await t.test("cryptographically valid different amount or memo cannot change the actual bank transfer", async () => {
       for (const a of [
-        buildSatchelWagerAuthorization({...snapshot, amountUwolo: "8000000", reservedUwolo: "8000000",
-          legs: [{...snapshot.legs[0], amountWolo: 8}]}),
+        buildSatchelWagerAuthorization({...snapshot, amountUwolo: "13000000", reservedUwolo: "13000000",
+          legs: [{...snapshot.legs[0], amountWolo: 13}]}),
         buildSatchelWagerAuthorization({...snapshot, ticketId: 2, memo: "AoE2HDBets bet ticket v1 · ticket 2"}),
       ]) {
         const bad = envelope(a, review(a));
