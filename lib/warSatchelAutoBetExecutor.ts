@@ -32,6 +32,7 @@ import {
 
 import {authenticateWarSatchelFinancialProof,type AuthenticatedWarSatchelFinancialProof} from "./warSatchelAuthenticatedFinancialProof.ts";
 import {wagerFinancialContext} from "./warSatchelWagerAuthorization.ts";
+import {requestCertifiedIndependentSatchelReview} from "./warSatchelIndependentReviewerPickup.ts";
 import type { SatchelWagerReservation } from "./warSatchelWagerReservation.ts";
 
 const HASH = /^[A-Fa-f0-9]{64}$/;
@@ -245,6 +246,23 @@ export async function executeFundedMechaTicketBatch(
         if(error instanceof Error && error.message.startsWith("SATCHEL_WAGER_RESERVATION_REFUSED:"))
           return {kind:"rejected_before_broadcast",reason:"independent_review_invalid_or_expired"};
         throw error;
+      }
+      if(!reviewed.review){
+        // Reviewer runs in a separate restricted OS process and independently
+        // authenticates the original HD hold. A failed lookup or timeout is
+        // pre-signature WAIT, not a reason to release or rebroadcast principal.
+        try{
+          const state=await requestCertifiedIndependentSatchelReview(prisma,{
+            operationId:claim.ticketRequestId,ownerUserId:viewer.id,
+          });
+          if(state==="reviewed"){
+            reviewed=await loadSatchelWagerReview(prisma,{
+              operationId:claim.ticketRequestId,ownerUserId:viewer.id,
+            });
+          }
+        }catch{
+          return {kind:"waiting_for_review",reason:"independent_reviewer_unavailable"};
+        }
       }
       if(!reviewed.review)return {kind:"waiting_for_review",reason:"independent_reservation_review_required"};
       // HARD DURABLE FENCE BEFORE signing/network call, including if the
