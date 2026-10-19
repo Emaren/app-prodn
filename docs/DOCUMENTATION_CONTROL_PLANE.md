@@ -23,8 +23,6 @@ Implementation baseline: `fix/20261019-central-review-truncated-audit-recovery` 
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
-The October 19 independent documentation maintenance parser recognizes only fully source-bound expired-review errors, including the three-line audit-summary form with the `ValueError` header omitted. It requires newly reviewed canonical source documents, a proven external Wolo source HOLD, and subsequent independent central federation checks. It never alters normal Finish admission, signer authority, database state, validator services, or the requirement to retain an unresolved WoloChain source-drift P1.
-
 This page is generated from the validated front matter in this repository. Cross-system architecture, governance, and the unified portal live in the sibling `AoE2WAR-docs` control-plane repository.
 
 ## Documentation health
