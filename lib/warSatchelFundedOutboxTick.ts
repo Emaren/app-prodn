@@ -53,9 +53,8 @@ export async function runFundedMechaOutboxTick(
   if(!Number.isSafeInteger(max)||max<1||max>MAX||
      !Number.isFinite(now.getTime()))throw Error("SATCHEL_OUTBOX_TICK_INVALID_BOUND");
   const earliest=new Date(now.getTime()-MAX_AGE_MS);
-  // Verify the isolated sidecar's authenticated identity BEFORE selecting
-  // work, and never downgrade to a shared Wolo escrow/payout signer.
-  const signer=await connectCertifiedSatchelSigner();
+  // Candidate selection is read-only. Avoid probing the custody signer
+  // when an eligible Watcher outbox is empty; no transfer is needed.
   const rows=await prisma.betAutoExecution.findMany({
     where:{
       ticketId:null,
@@ -80,6 +79,10 @@ export async function runFundedMechaOutboxTick(
     state:"empty" as const,source:"watcher-shadow-outbox" as const,
     selected:0,accepted:0,heldUnknown:0,refusedBeforeBroadcast:0,skipped:0,
   });
+  // Connect to the exclusive audited sidecar only when there is work.
+  // Every reserved ticket still undergoes independent signed review before
+  // any transfer; this change does not relax the source financial HOLD.
+  const signer=await connectCertifiedSatchelSigner();
   const counts=await executeFundedMechaTicketBatch(
     prisma,signer,rows.map(row=>row.id),
   );
