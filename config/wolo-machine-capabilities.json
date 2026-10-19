@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "version": "2026-10-19-v1",
+  "source": "WoloChain source architecture and AoE2WAR integration contracts",
+  "semantics": "DECLARED_CAPABILITIES_ONLY_NOT_LIVE_DEPLOYMENT_PROOF",
+  "mainnetId": "wolo-1",
+  "audience": "HD_INTERNAL",
+  "policy": "DE is a nonauthorizing external stub; never invoke DE services or present its health as HD financial readiness.",
+  "modules": [
+    {
+      "key": "consensus",
+      "label": "CONSENSUS",
+      "owner": "CometBFT",
+      "kind": "protocol",
+      "proof": "RPC latest block + height freshness",
+      "neighbors": [
+        "staking",
+        "governance"
+      ]
+    },
+    {
+      "key": "bank",
+      "label": "BANK",
+      "owner": "Cosmos SDK bank",
+      "kind": "protocol",
+      "proof": "Consensus-authenticated chain balance/tx receipts",
+      "neighbors": [
+        "staking",
+        "ibc",
+        "settlement"
+      ]
+    },
+    {
+      "key": "staking",
+      "label": "STAKING",
+      "owner": "Cosmos SDK staking",
+      "kind": "protocol",
+      "proof": "Authenticated validator/delegation records",
+      "neighbors": [
+        "consensus",
+        "bank"
+      ]
+    },
+    {
+      "key": "governance",
+      "label": "GOVERNANCE",
+      "owner": "Cosmos SDK governance",
+      "kind": "protocol",
+      "proof": "Proposal and vote records",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "ibc",
+      "label": "IBC",
+      "owner": "Cosmos interoperability",
+      "kind": "protocol",
+      "proof": "Channel/packet evidence",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "settlement",
+      "label": "HD SETTLEMENT",
+      "owner": "Protected WoloChain service",
+      "kind": "application",
+      "proof": "Exact running binary, transfer journal, balances, held release controls",
+      "neighbors": [
+        "bank",
+        "custody"
+      ]
+    },
+    {
+      "key": "custody",
+      "label": "WAR SATCHEL",
+      "owner": "Held independent financial services",
+      "kind": "application",
+      "proof": "Owner mandate + reviewer + signed custody journal",
+      "neighbors": [
+        "settlement"
+      ]
+    },
+    {
+      "key": "de",
+      "label": "DE STUB",
+      "owner": "Separate external consumer",
+      "kind": "external",
+      "proof": "No HD execution or source authority delegated to DE",
+      "neighbors": []
+    }
+  ]
+}
