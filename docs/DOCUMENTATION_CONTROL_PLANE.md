@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-satchel-mecha-held-runner-schedule` at `f652987d8ab89986d6972cd63fddc143ed49842c`
+Implementation baseline: `fix/20261018-satchel-balance-hard-hold` at `f29efda5e2699af0d99cbbbd3c1e5f04c921fee7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
