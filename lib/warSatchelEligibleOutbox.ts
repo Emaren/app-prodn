@@ -27,9 +27,13 @@ export function fundedMechaEligibleQuery(
       ticketId: null,
       AND: [{ OR: [
         { status: "shadow_ready", reservationId: null, attemptCount: 0 },
+        // A funded hold AWAITING independent 8095 review must stay in the
+        // bounded queue; otherwise no tick ever contacts the reviewer.
+        // Only a durable original authorization is eligible. The executor
+        // rechecks the market/mandate and existing attempt fence before send.
         { status: "funded_reserved", reservationId: { not: null }, attemptCount: 1,
           satchelFundedReservation: { is: { status: "reserved",
-            wagerAuthorization: { is: { approval: { isNot: null } } } } } },
+            wagerAuthorization: { isNot: null } } } },
       ] }],
       createdAt: { gte: earliest, lte: now },
       OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],

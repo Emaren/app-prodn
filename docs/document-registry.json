@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "ce174e09c5df1815bc14e60ab3a64e529f2471d698a6af3c23739d636d6a38d6",
+      "sha256": "7b248ba4aabce17aff627d6735e30a8c3a847a07be3d4bb064d6b4e980b17ce1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "42cf87b4724116bee1ea3bc11f564bf57845756b60cdd6d756955e87fb80b17c",
+      "sha256": "3d0a4aecaca877db71286fe0209ee580a05a961e4c658a95023f9966636b6125",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/20261019-satchel-autoreviewer-ingress",
-    "commit": "0e57b2e81b0cb9189212f28f999f3d55c782ff9b"
+    "branch": "fix/20261019-mecha-pending-review-outbox",
+    "commit": "24c66086af55d7e92cd48be242ebfa925b77c81a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -42,7 +42,7 @@ test("CLI and scheduled tick share a precise four-minute and deferred-candidate 
     {status:"shadow_ready",reservationId:null,attemptCount:0},
     {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
       satchelFundedReservation:{is:{status:"reserved",
-        wagerAuthorization:{is:{approval:{isNot:null}}}}},
+        wagerAuthorization:{isNot:null}}},
     },
   ]}]);
 });
