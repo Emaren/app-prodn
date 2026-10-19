@@ -5,6 +5,7 @@ on:
     branches:
       - release/watcher-165-website-only-20261019
       - fix/watcher-165-stage-manifest-set-parity-20261019
+      - fix/release-gate-trailing-newline-20261019
     paths:
       - ".watcher-165-doc-refresh-trigger"
 
