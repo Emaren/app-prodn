@@ -10,8 +10,9 @@ import { getPrisma } from "../lib/prisma.ts";
 import { executeFundedMechaTicketBatch } from "../lib/warSatchelAutoBetExecutor.ts";
 import { connectCertifiedSatchelSigner } from "../lib/warSatchelDedicatedSignerClient.ts";
 import { satchelFinancialBridgeReady } from "../lib/warSatchelFinancialBridgeHold.ts";
+import { readEligibleFundedMechaIds, FUNDED_MECHA_CANDIDATE_LIMIT } from "../lib/warSatchelEligibleOutbox.ts";
 
-const MAX_BATCH = 25;
+const MAX_BATCH = FUNDED_MECHA_CANDIDATE_LIMIT;
 
 function approved() {
   const keys = [
@@ -61,21 +62,9 @@ async function main() {
     }));
     return;
   }
-  const jobs = await prisma.betAutoExecution.findMany({
-    where: {
-      ticketId:null,
-      AND:[{OR:[
-        {status:"shadow_ready",reservationId:null,attemptCount:0},
-        {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
-          satchelFundedReservation:{is:{status:"reserved",wagerAuthorization:{is:{approval:{isNot:null}}}}}},
-      ]}],
-      preset: { enabled: true, selfOnly: true },
-    },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    take: MAX_BATCH,
-    select: { id: true },
-  });
-  const ids = jobs.map(job => job.id);
+  // Exactly the same bounded candidates as the scheduled tick: four-minute
+  // Watcher freshness, per-plan slots, nextAttemptAt and wallet identity.
+  const ids = await readEligibleFundedMechaIds(prisma,{limit:MAX_BATCH});
   if (!execute) {
     console.log(JSON.stringify({
       mode: "dry_run", queueEligibleForIndependentRecheck: ids.length,
