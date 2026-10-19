@@ -15,6 +15,34 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — one original-debit rule for review, first send and refund
+
+The held funded Satchel code now uses one pure, source-owned
+`satchelReserveDebitIssue` predicate for all three money-sensitive
+boundaries: independent wager-review preparation, immediately before
+the first durable signing/submission attempt, and prebroadcast
+full-principal refund. The callers obtain the immutable
+`wager_reserve` journal inside their existing globally exclusive
+serializable vault transaction. It must match the reservation source
+key, owner, execution, exact positive amount, `-available/+reserved`
+account deltas, zero committed/pending deltas and absence of any
+deposit or claim-return foreign identity. First-send admission also
+compares the journal row ID against the independently reviewed
+authorization snapshot, blocking replacement between review and send.
+
+Missing, wrong-owner, wrong-amount, wrong-execution, nonconserving or
+substituted journal history now fails before a new wager broadcast
+attempt is allowed. Pure regression tests cover these cases plus
+source-order checks; the original no-send refund tests remain active.
+
+**Scope:** checking an immutable *local* accounting journal is not
+proof of custody bank solvency or independent signer authority. The
+source HOLD remains `SATCHEL_FINANCIAL_BRIDGE_READY=false`.
+No website production, WoloChain transfer, new signer, automatic
+stale-hold refund, financial migration or consensus restart is
+authorized by this hardening.
+
+
 ## October 19 — one-chain signed SDK transaction and gas solvency rehearsal
 
 `tests/fixtures/satchel-v1-continuous-sdk_test.go` is injected **only**

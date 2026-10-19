@@ -1,3 +1,5 @@
+import { satchelReserveDebitIssue } from "./warSatchelReserveDebitEvidence.ts";
+
 /**
  * Deterministic, side-effect-free check of the on-disk no-send record.
  * This is NOT proof supplied by a bank, reviewer, signer or blockchain.
@@ -41,16 +43,10 @@ export function prebroadcastReleaseEvidenceIssue(e: PrebroadcastReleaseEvidence)
   // Returning principal is only legitimate when the ORIGINAL immutable
   // wager_reserve journal proves this owner first lost exactly that amount.
   // A syntactically reserved row is not, by itself, a financial debit.
-  const j = e.reserveJournal;
-  if (!j || r.amountUwolo <= BigInt(0) ||
-      j.sourceKey !== r.id || j.ownerUserId !== e.ownerUserId ||
-      j.executionId !== r.executionId || j.eventKind !== "wager_reserve" ||
-      j.amountUwolo !== r.amountUwolo ||
-      j.deltaAvailableUwolo !== -r.amountUwolo ||
-      j.deltaReservedUwolo !== r.amountUwolo ||
-      j.deltaCommittedUwolo !== BigInt(0) ||
-      j.deltaWithdrawalPendingUwolo !== BigInt(0) ||
-      j.receiptId !== null || j.claimReturnId !== null) {
+  if (satchelReserveDebitIssue({
+    id: r.id, ownerUserId: e.ownerUserId,
+    executionId: r.executionId, amountUwolo: r.amountUwolo,
+  }, e.reserveJournal)) {
     return "no_broadcast_original_debit_missing_or_inconsistent";
   }
   const a = e.authority;
