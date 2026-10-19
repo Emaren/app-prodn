@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261019-satchel-refund-journal-provenance` at `0b739d0777211734561af44695d654f12a7497d9`
+Implementation baseline: `test/20261019-satchel-owner-pg-roundtrip` at `174b40644f2b32f908805b5fa15b917585aec0b7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
