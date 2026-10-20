@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "89ad49111a01504b71f113617d9ac18ea63a8cd2be92fc31a7a42071f4cce316",
+      "sha256": "33ba5daf39c0efd389bde3133d5bebe05442ee051c8bb0ac40571b8392336fc8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261020-satchel-live-readiness-compat-held",
-    "commit": "74b1036bd5fc317624307fc0d54599fade9d1b0b"
+    "commit": "ceaa0c653a5593b08b6084d3765b1ae63049bc1d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
