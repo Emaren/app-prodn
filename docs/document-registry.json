@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fbde5ba3833b9ebc06c2e2036fe5fabbad537bc5c726ce180a12fd18c4eb0846",
+      "sha256": "587d72a1b3806f38ecd3dae71f05d96555ff68415131caf446dfc158338a1349",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/renaissance-instruments-source-closure-20261020",
-    "commit": "65e7d747c1e1648039b2391d904aefaed6861b70"
+    "commit": "3ae655b069e53dffdfa73244240a5c8da07e4d36"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
