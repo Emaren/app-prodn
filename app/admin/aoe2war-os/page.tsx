@@ -26,6 +26,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { abandonAdminDashboardRead, isCurrentAdminDashboardRead } from "./adminDashboardReadLease";
 
 type ActionDefinition = {
   action: string;
@@ -255,6 +256,7 @@ export default function AoE2WarOsAdminPage() {
     refreshAbortRef.current = controller;
     let timedOut = false;
     const timeout = window.setTimeout(() => {
+      if (!isCurrentAdminDashboardRead(refreshAbortRef, controller)) return;
       timedOut = true;
       controller.abort();
     }, 8_000);
@@ -267,6 +269,7 @@ export default function AoE2WarOsAdminPage() {
       const payload = (await response.json().catch(() => ({}))) as Dashboard & {
         detail?: string;
       };
+      if (!isCurrentAdminDashboardRead(refreshAbortRef, controller)) return;
       if (controller.signal.aborted) {
         if (timedOut) throw new Error("AoE2WAR OS state refresh timed out.");
         return;
@@ -277,7 +280,7 @@ export default function AoE2WarOsAdminPage() {
       setDashboard(payload);
       setError(null);
     } catch (loadError) {
-      if (!controller.signal.aborted || timedOut) {
+      if (isCurrentAdminDashboardRead(refreshAbortRef, controller) && (!controller.signal.aborted || timedOut)) {
         setDashboard(null); // Never leave an unverified operator state displayed as current.
         setError(
           timedOut
@@ -289,15 +292,17 @@ export default function AoE2WarOsAdminPage() {
       }
     } finally {
       window.clearTimeout(timeout);
-      if (refreshAbortRef.current === controller) refreshAbortRef.current = null;
-      if (!controller.signal.aborted || timedOut) setLoading(false);
+      if (isCurrentAdminDashboardRead(refreshAbortRef, controller)) {
+        refreshAbortRef.current = null;
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") {
-        refreshAbortRef.current?.abort();
+        abandonAdminDashboardRead(refreshAbortRef);
         setDashboard(null);
         setError(null);
         setLoading(true);
@@ -315,7 +320,7 @@ export default function AoE2WarOsAdminPage() {
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      refreshAbortRef.current?.abort();
+      abandonAdminDashboardRead(refreshAbortRef);
     };
   }, [refresh]);
 
