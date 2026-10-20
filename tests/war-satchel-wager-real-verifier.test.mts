@@ -32,13 +32,25 @@ test("real SDK wager authenticates through the pinned offline financial verifier
   // Ephemeral TEST reviewer, unrelated to production signers or keyrings.
   const {privateKey, publicKey} = generateKeyPairSync("ed25519");
   const publicKeyHex = publicKey.export({format: "der", type: "spki"}).subarray(-32).toString("hex");
-  const authority = path.join(root, "synthetic-public-authority.json");
+  // THREE physically distinct public authority files: the Go offline
+  // signed-wager proof, the wager reviewer, and the withdrawal reviewer.
+  const authority = path.join(root, "synthetic-wager-financial-proof.json");
+  const wagerRole = path.join(root, "synthetic-wager-approval-public.json");
+  const withdrawalRole = path.join(root, "synthetic-withdrawal-approval-public.json");
+  const withdrawalKeyHex = generateKeyPairSync("ed25519").publicKey
+    .export({format: "der", type: "spki"}).subarray(-32).toString("hex");
+  assert.notEqual(withdrawalKeyHex,publicKeyHex);
   writeFileSync(authority, JSON.stringify({trust_anchor: fixture.anchor, vault: intent.Sender,
     betting_escrow: intent.Vault, approval_public_key_hex: publicKeyHex}), {mode: 0o600});
+  writeFileSync(wagerRole,JSON.stringify({wager_approval_public_key_hex:publicKeyHex}),{mode:0o600});
+  writeFileSync(withdrawalRole,JSON.stringify({approval_public_key_hex:withdrawalKeyHex}),{mode:0o600});
   Object.assign(process.env, {WAR_SATCHEL_PROOF_VERIFIER_ENABLED: "true",
     WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED: "true", WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS: intent.Sender,
     WAR_SATCHEL_SIGNER_AUTH_TOKEN: "t".repeat(64), WAR_SATCHEL_VERIFIER_BINARY: binary,
-    WAR_SATCHEL_VERIFIER_AUTHORITY_FILE: authority, WAR_SATCHEL_VERIFIER_SHA256: process.env.SATCHEL_TEST_BINARY_SHA256});
+    WAR_SATCHEL_VERIFIER_AUTHORITY_FILE: withdrawalRole,
+    WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE: wagerRole,
+    WAR_SATCHEL_WAGER_PROOF_VERIFIER_AUTHORITY_FILE: authority,
+    WAR_SATCHEL_VERIFIER_SHA256: process.env.SATCHEL_TEST_BINARY_SHA256});
   const snapshot: SatchelWagerSnapshot = {executionId: 1, ownerUserId: 1, ownerUid: intent.OwnerID,
     ownerWallet: intent.Vault, reservationId: "satchel:reserve:1", operationId: "satchel:ticket:1", ticketId: 1,
     vault: intent.Sender, recipient: intent.Vault, amountUwolo: intent.AmountUWolo, memo,
