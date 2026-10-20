@@ -21,7 +21,12 @@ test("website v1.6.5 metadata advertises French and pending financial features w
 
 test("website restores only the app-scoped macOS launch command", async () => {
   const page = await file("app/download/page.tsx");
-  assert.ok(page.includes("Mac launch command"));
+  assert.ok(page.includes("Mac says “damaged and can’t be opened”?"));
+  assert.ok(page.includes("official 1.6.5 release"));
+  assert.ok(page.includes("published checksums"));
+  assert.ok(page.includes("choose <strong>Cancel</strong>"));
+  assert.ok(page.includes("does not"));
+  assert.ok(page.includes("Do not run it on unverified downloads."));
   assert.ok(page.includes("xattr -dr com.apple.quarantine"));
   assert.ok(page.includes('"/Applications/AoE2HDBets Watcher.app"'));
   assert.ok(page.includes("open"));
