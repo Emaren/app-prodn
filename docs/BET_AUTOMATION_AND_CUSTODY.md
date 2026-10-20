@@ -30,7 +30,13 @@ a separately provisioned, absolute, nonsymlink private authority file
 named by `WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE`, containing
 **only** `{"wager_approval_public_key_hex":"<64 lowercase hex>"}`.
 The existing `WAR_SATCHEL_VERIFIER_AUTHORITY_FILE` continues to contain
-`approval_public_key_hex` for **withdrawals only**. The reader denies
+`approval_public_key_hex` for **withdrawals only**. A third, distinct,
+privately pinned `WAR_SATCHEL_WAGER_PROOF_VERIFIER_AUTHORITY_FILE` supplies
+the Wolo SDK offline verifier's exact financial trust-anchor/vault/escrow
+configuration with `approval_public_key_hex` set to the independent **wager**
+public key. That file must not be the withdrawal or wager-key-only file.
+This is essential because the Go offline verifier's generic JSON field
+name does not itself indicate the economic authorization role. The reader denies
 a shared file, duplicate public keys, missing keys, symlinks and a
 group/world-accessible wager key file. It fails closed without both
 independent roles and never creates, stores or imports private signing
