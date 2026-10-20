@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-gate-trailing-newline-20261019` at `4ce8ab477b7261be2d8646fb5553b2897ccc1c06`
+Implementation baseline: `fix/watcher-mac-launch-command-20261019` at `cc29dcf7ca76ab0287762757fa46fe61fe90a181`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
