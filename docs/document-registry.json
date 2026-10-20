@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
+      "sha256": "535d884f21d111169c8d6ce0fadcb46d33827ebdc29a58c7d1d18597d2a49063",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "daf588b7641b7a614e0d1b004729fa541c98a106d9d2b95a03b13032ee97197a",
+      "sha256": "525a22c541668b7301922f459dbb8966cbdae37eab41912d2659699ed4d852db",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/kingdom-instruments-release-eslint-20261020",
-    "commit": "65d6587d5e550bab3560a08906ae510625f99bf0"
+    "branch": "integration/20261020-satchel-main-reconciliation-held",
+    "commit": "1c0d99c3b64af04600146178417f1d20835c3f53"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
