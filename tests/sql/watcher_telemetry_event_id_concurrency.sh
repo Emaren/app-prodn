@@ -14,6 +14,8 @@ rows="$(psql -X -v ON_ERROR_STOP=1 -At -c "SELECT COUNT(*) FROM watcher_client_e
 echo "Watcher event-ID concurrent race: durable rows=$rows"
 test "$rows" = "1"
 # Across the two racing connections, exactly one insert acquired the ID.
-returns=$(( $(wc -l < "$tmp/first") + $(wc -l < "$tmp/second") ))
+# psql may print command tags (INSERT 0 N) as additional lines.
+# Count only the numeric RETURNING id row from each connection.
+returns="$(cat "$tmp/first" "$tmp/second" | awk '/^[0-9]+$/ {n++} END {print n+0}')"
 echo "Watcher event-ID concurrent race: inserted returns=$returns"
 test "$returns" -eq 1
