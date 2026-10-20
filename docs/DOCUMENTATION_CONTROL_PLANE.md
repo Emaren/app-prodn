@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-satchel-separate-wager-review-key` at `55141211211e0a4f09e4db7c4c598c1484cc1ec6`
+Implementation baseline: `fix/20261020-satchel-separate-wager-review-key` at `657fb91623a3092b8ffad92da4856e009740e631`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
