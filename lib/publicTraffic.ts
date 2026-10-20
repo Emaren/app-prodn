@@ -64,12 +64,25 @@ export function normalizePublicTrafficPayload(
   payload: CanonicalTrafficPayload,
   todayUtc = new Date().toISOString().slice(0, 10),
 ): PublicTrafficPayload {
+  // Without timestamps, the archive's FINAL row can be a partial day
+  // captured at the morning forge. This remains unsafe even weeks later
+  // when a failed timer has stopped publishing subsequent days.
+  const legacyFinalDay =
+    !payload.archive_calculated_at && Array.isArray(payload.points)
+      ? payload.points
+          .filter((p) => typeof p?.date === "string")
+          .map((p) => p.date as string)
+          .sort()
+          .at(-1) ?? null
+      : null;
+
   const points = Array.isArray(payload.points)
     ? payload.points
         .filter(
           (point) =>
             typeof point?.date === "string" &&
             Boolean(point.values) &&
+            !(legacyFinalDay === point.date && !point.calculatedAt) &&
             isPublishedCompleteDay(
               point.date,
               point.calculatedAt ?? payload.archive_calculated_at,

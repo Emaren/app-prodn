@@ -120,3 +120,25 @@ test("invalid calendar dates and future dates cannot appear on chart", () => {
   }, "2026-10-20");
   assert.equal(result.points.length, 0);
 });
+
+test("legacy archive frozen on October 14 hides its unverified last day even on October 20", () => {
+  const result = normalizePublicTrafficPayload({
+    coverage_ended_at: "2026-10-14",
+    points: [
+      { date: "2026-10-12", values: { totalTraffic: 7050, suspectedHuman: 648, confirmedHuman: 292 } },
+      { date: "2026-10-13", values: { totalTraffic: 6971, suspectedHuman: 330, confirmedHuman: 190 } },
+      { date: "2026-10-14", values: { totalTraffic: 907, suspectedHuman: 115, confirmedHuman: 60 } },
+    ],
+  }, "2026-10-20");
+  assert.deepEqual(result.points.map(p => p.date), ["2026-10-12", "2026-10-13"]);
+});
+
+test("per-row calculation timestamp permits last day only if its UTC day ended before calculation", () => {
+  const result = normalizePublicTrafficPayload({
+    points: [
+      { date: "2026-10-13", calculatedAt: "2026-10-14T06:17:00Z", values: { totalTraffic: 6971, suspectedHuman: 330, confirmedHuman: 190 } },
+      { date: "2026-10-14", calculatedAt: "2026-10-14T06:17:00Z", values: { totalTraffic: 907, suspectedHuman: 115, confirmedHuman: 60 } },
+    ],
+  }, "2026-10-20");
+  assert.deepEqual(result.points.map(p => p.date), ["2026-10-13"]);
+});
