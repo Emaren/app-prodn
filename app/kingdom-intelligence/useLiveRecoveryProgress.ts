@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  isOperatorPreviewOnlyPayload,
+  isUsableLiveRecoveryPayload,
+  LIVE_RECOVERY_POLL_INTERVAL_MS,
+  LIVE_RECOVERY_REQUEST_TIMEOUT_MS,
+  shouldPollLiveRecovery,
+} from "./liveRecoveryPolicy";
 
 export type LiveRecoveryProgress = {
   available: boolean;
@@ -58,6 +65,9 @@ type Listener = (value: LiveRecoveryProgress | null) => void;
 let sharedValue: LiveRecoveryProgress | null = null;
 let sharedTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedPollPromise: Promise<void> | null = null;
+let sharedController: AbortController | null = null;
+let generation = 0;
+let operatorPreviewOnly = false;
 const listeners = new Set<Listener>();
 
 function publish(value: LiveRecoveryProgress | null) {
@@ -65,8 +75,35 @@ function publish(value: LiveRecoveryProgress | null) {
   for (const listener of listeners) listener(value);
 }
 
+function canPoll() {
+  return (
+    typeof document !== "undefined" &&
+    !operatorPreviewOnly &&
+    shouldPollLiveRecovery(listeners.size, document.visibilityState)
+  );
+}
+
+function cancelSharedPolling() {
+  generation += 1; // Fence completions from older fetches, including aborted ones.
+  if (sharedTimer) clearTimeout(sharedTimer);
+  sharedTimer = null;
+  sharedController?.abort();
+  sharedController = null;
+  sharedPollPromise = null;
+  publish(null); // Never show a hidden/abandoned "live" sample as fresh.
+}
+
 async function pollSharedRecovery() {
+  if (!canPoll()) return;
   if (sharedPollPromise) return sharedPollPromise;
+
+  const requestGeneration = ++generation;
+  const controller = new AbortController();
+  sharedController = controller;
+  const timeout = setTimeout(
+    () => controller.abort(),
+    LIVE_RECOVERY_REQUEST_TIMEOUT_MS,
+  );
 
   sharedPollPromise = (async () => {
     try {
@@ -74,22 +111,40 @@ async function pollSharedRecovery() {
         "/api/kingdom-intelligence/live-recovery",
         {
           cache: "no-store",
+          signal: controller.signal,
         },
       );
 
-      if (response.ok) {
-        const payload = (await response.json()) as LiveRecoveryProgress;
-        publish(payload);
+      if (!response.ok) throw new Error("Recovery signal unavailable");
+
+      const payload: unknown = await response.json();
+      if (!isUsableLiveRecoveryPayload(payload)) {
+        throw new Error("Recovery signal malformed");
+      }
+
+      if (requestGeneration === generation && canPoll()) {
+        if (isOperatorPreviewOnlyPayload(payload)) {
+          operatorPreviewOnly = true; // Do not keep polling a disabled public-only API.
+          publish(null);
+        } else {
+          publish(payload as LiveRecoveryProgress);
+        }
       }
     } catch {
-      // Best-effort operator enhancement. Published KI remains authoritative.
+      // A failed or timed-out response must not keep a stale live override.
+      if (requestGeneration === generation && canPoll()) publish(null);
     } finally {
-      sharedPollPromise = null;
+      clearTimeout(timeout);
+      if (requestGeneration === generation) {
+        sharedPollPromise = null;
+        sharedController = null;
 
-      if (listeners.size > 0) {
-        sharedTimer = setTimeout(() => {
-          void pollSharedRecovery();
-        }, 5000);
+        if (canPoll()) {
+          sharedTimer = setTimeout(() => {
+            sharedTimer = null;
+            void pollSharedRecovery();
+          }, LIVE_RECOVERY_POLL_INTERVAL_MS);
+        }
       }
     }
   })();
@@ -97,39 +152,43 @@ async function pollSharedRecovery() {
   return sharedPollPromise;
 }
 
+function handleVisibilityChange() {
+  if (!canPoll()) {
+    cancelSharedPolling();
+    return;
+  }
+  if (sharedTimer) clearTimeout(sharedTimer);
+  sharedTimer = null;
+  void pollSharedRecovery();
+}
+
 function subscribe(listener: Listener) {
+  const firstSubscriber = listeners.size === 0;
   listeners.add(listener);
   listener(sharedValue);
 
-  if (listeners.size === 1) {
-    if (sharedTimer) {
-      clearTimeout(sharedTimer);
-      sharedTimer = null;
-    }
-    void pollSharedRecovery();
+  if (firstSubscriber && !operatorPreviewOnly) {
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    handleVisibilityChange();
   }
 
   return () => {
     listeners.delete(listener);
-
-    if (listeners.size === 0 && sharedTimer) {
-      clearTimeout(sharedTimer);
-      sharedTimer = null;
+    if (listeners.size === 0) {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      cancelSharedPolling();
     }
   };
 }
 
 export function useLiveRecoveryProgress(enabled = true) {
-  const [value, setValue] = useState<LiveRecoveryProgress | null>(
-    sharedValue,
-  );
+  const [value, setValue] = useState<LiveRecoveryProgress | null>(sharedValue);
 
   useEffect(() => {
     if (!enabled) {
       setValue(null);
       return;
     }
-
     return subscribe(setValue);
   }, [enabled]);
 

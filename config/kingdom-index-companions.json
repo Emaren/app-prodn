@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "policy": "The Watcher is an independently versioned desktop companion, not a Next.js route. No numeric score without independently authenticated exact-source, installed-client and multi-platform evidence. The uniform 100-point Index rubric applies; desktop-specific gates are mandatory.",
+  "companions": [
+    {
+      "id": "aoe2-watcher",
+      "label": "The Watcher",
+      "version": "1.6.5",
+      "releaseSourceSha": "b49f31bb69fea629378072faa22220cdfcc2f1ef",
+      "repositoryUrl": "https://github.com/Emaren/aoe2-watcher",
+      "downloadHref": "/download",
+      "gates": [
+        {
+          "id": "source-and-release-drift",
+          "dimension": "maintainability",
+          "requirement": "Exact Watcher Git source, tagged release, published binary SHA-256, downloaded artifact and installed application version independently reconciled; no stale or untracked code."
+        },
+        {
+          "id": "replay-upload-integrity",
+          "dimension": "correctness",
+          "requirement": "Live, final, historical and retry uploads preserve immutable bytes, hashes, provenance and server acknowledgments; no silently lost or duplicated final games."
+        },
+        {
+          "id": "idle-cpu-memory-wakeups",
+          "dimension": "performance",
+          "requirement": "Real Windows/macOS/Linux idle, monitoring, replay upload and streaming cohorts measured against the last qualified release; detect and explain regressions."
+        },
+        {
+          "id": "failure-and-recovery",
+          "dimension": "functionality",
+          "requirement": "Missing/renamed folders, offline mode, midgame restart, failed disk writes and parser backpressure recover without undue upload restrictions or false result authority."
+        },
+        {
+          "id": "video-and-replay-arbitration",
+          "dimension": "correctness",
+          "requirement": "Replay transfer wins over video chunks without interrupting gameplay, leaking capture sources or manufacturing viewer or result evidence."
+        },
+        {
+          "id": "security-and-financial-boundary",
+          "dimension": "correctness",
+          "requirement": "Paired identity, secrets, telemetry privacy, code-signing and capture consent verified; no wallet custody, betting, signer or settlement authority in Watcher."
+        },
+        {
+          "id": "update-and-rollback",
+          "dimension": "functionality",
+          "requirement": "Installed Windows, unsigned Mac and Linux update handoffs verified against real binaries, consent, active-play deferral, recovery and rollback."
+        },
+        {
+          "id": "dependency-and-dead-code",
+          "dimension": "maintainability",
+          "requirement": "Electron dependency graph, permissions, reachable code, obsolete paths and source-to-artifact package contents audited without risk-increasing rewrites."
+        },
+        {
+          "id": "release-specific-regression-tests",
+          "dimension": "tests",
+          "requirement": "Frozen 1.6.4/1.6.5 replay fixtures, physical-client soak, crashes, EN/FR, both presentations and cross-platform canaries pass before 1.6.6 promotion."
+        }
+      ]
+    }
+  ]
+}
