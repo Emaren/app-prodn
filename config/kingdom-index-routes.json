@@ -306,6 +306,78 @@
     "sourceTree": "src-7fec61d1b036c9c1"
   },
   {
+    "href": "/renaissance",
+    "label": "Renaissance OS",
+    "district": "citadel",
+    "sourceTree": "src-0e707fb1d8f6c29c"
+  },
+  {
+    "href": "/renaissance/arbiter",
+    "label": "Renaissance Arbiter",
+    "district": "citadel",
+    "sourceTree": "src-988f609945042247"
+  },
+  {
+    "href": "/renaissance/architect",
+    "label": "Renaissance Architect",
+    "district": "citadel",
+    "sourceTree": "src-dbf72151e394d65b"
+  },
+  {
+    "href": "/renaissance/atlas",
+    "label": "Renaissance Atlas",
+    "district": "citadel",
+    "sourceTree": "src-617082a73a5ce449"
+  },
+  {
+    "href": "/renaissance/chronicles",
+    "label": "Renaissance Chronicles",
+    "district": "citadel",
+    "sourceTree": "src-d9fcf962d1fd7979"
+  },
+  {
+    "href": "/renaissance/circuit",
+    "label": "Renaissance Circuit",
+    "district": "citadel",
+    "sourceTree": "src-fbee1a0c26455ae0"
+  },
+  {
+    "href": "/renaissance/doctor",
+    "label": "Renaissance Doctor",
+    "district": "citadel",
+    "sourceTree": "src-21c97d9f881a97da"
+  },
+  {
+    "href": "/renaissance/forge",
+    "label": "Renaissance Test Forge",
+    "district": "citadel",
+    "sourceTree": "src-b819e8224a1e29bd"
+  },
+  {
+    "href": "/renaissance/marshal",
+    "label": "Renaissance Marshal",
+    "district": "citadel",
+    "sourceTree": "src-a40a58b0d961b7d3"
+  },
+  {
+    "href": "/renaissance/sentinel",
+    "label": "Renaissance Sentinel",
+    "district": "citadel",
+    "sourceTree": "src-60470d7f96c4a383"
+  },
+  {
+    "href": "/renaissance/train",
+    "label": "Renaissance Integration Train",
+    "district": "citadel",
+    "sourceTree": "src-1de31fe749de56d2"
+  },
+  {
+    "href": "/renaissance/vault",
+    "label": "Renaissance Vault",
+    "district": "citadel",
+    "sourceTree": "src-e98811266e65e607"
+  },
+  {
     "href": "/replay-laboratory",
     "label": "Replay Laboratory",
     "district": "forge",

@@ -114,6 +114,7 @@ MODULE_GRAPH="$BIN_DIR/../scripts/aoe2_module_graph.py"
 ROUTE_AUTHORITY="$BIN_DIR/../scripts/aoe2_route_authority.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 DEPENDENCY_SECURITY="$BIN_DIR/../scripts/check_dependency_security.py"
+RENAISSANCE_OS="$BIN_DIR/../scripts/renaissance.py"
 
 usage() {
   cat <<'EOF'
@@ -142,6 +143,7 @@ Usage:
   aoe2war truth <status|census|audit|closure|target> [options]
   aoe2war truth native-control <prepare|run|verify> --run-id LABEL [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
+  aoe2war renaissance <verify|map|next|doctor|impact> [ROUTE_OR_PATH] [--json]
   aoe2war deps
   aoe2war deps-security [--json]
   aoe2war host <status|tidy|maintenance-plan> [options]
@@ -206,6 +208,14 @@ SAFE / READ-ONLY
       hygiene, toolchains, Operator Bridge, capacity, semantic map completeness,
       architecture seams and disaster-recovery readiness. Warnings are advisory;
       blockers return nonzero.
+
+  aoe2war renaissance verify
+      Verify the full 132-target campaign plus twelve engineering instruments
+      against actual Next page entrypoints. Refuses uncatalogued templates.
+
+  aoe2war renaissance doctor /kingdom-intelligence --json
+      Read-only source-bound route dossier. Does not grant browser, runtime,
+      quality or financial certification.
 
   aoe2war docs status
       Show cheap documentation health: implementation baseline, semantic impact,
@@ -598,6 +608,10 @@ case "$command" in
   doctor)
     shift
     exec "$AOE2WAR_PYTHON" "$DOCTOR" "$@"
+    ;;
+  renaissance)
+    shift
+    exec "$AOE2WAR_PYTHON" "$RENAISSANCE_OS" "$@"
     ;;
   inspections)
     shift
