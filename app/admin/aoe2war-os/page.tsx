@@ -267,7 +267,10 @@ export default function AoE2WarOsAdminPage() {
       const payload = (await response.json().catch(() => ({}))) as Dashboard & {
         detail?: string;
       };
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        if (timedOut) throw new Error("AoE2WAR OS state refresh timed out.");
+        return;
+      }
       if (!response.ok) {
         throw new Error(payload.detail || "Could not load AoE2WAR OS state.");
       }
