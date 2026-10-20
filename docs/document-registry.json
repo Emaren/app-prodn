@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f9b21aaec857268019c8da65823c152a83d2804d0f5c5dfe5ca2f572d6ac674e",
+      "sha256": "98a54ce1d67824fe97a854ce09e04a8985e305a53dff8d345e6cc92f49a4f11a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261020-satchel-settlement-exact-held",
-    "commit": "f4a6a879289e8538eefa84fab76fa1961dc0778c"
+    "branch": "fix/20261020-satchel-aged-review-execution-clock-held",
+    "commit": "d97f5f534852f2703dd285e303d5855be0094178"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
