@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
   for (const [index, result] of writeResults.entries()) {
     const admission = acceptedAdmissions[index];
     if (result.status === "fulfilled") {
+      watcherTelemetryCoalescer.recordWriteSuccess(admission);
       if (result.value.duplicate) {
         suppressed += 1;
       } else {

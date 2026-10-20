@@ -20,6 +20,9 @@ type CoalescerEntry = {
   suppressedCount: number;
   // Only the original failed event ID may reopen a closed coalescing window.
   pendingRetryEventId: string | null;
+  // The exact ID of a currently uncommitted insert must not receive a
+  // premature coalescer-only HTTP ACK. Its own DB write decides the receipt.
+  inFlightEventId: string | null;
 };
 
 export type WatcherTelemetryAdmission<T> = {
@@ -47,7 +50,7 @@ function metadataRecord(value: unknown): Record<string, unknown> {
 function telemetryEventId(event: CoalescibleWatcherEvent) {
   const value = metadataRecord(event.metadata).telemetryEventId;
   return typeof value === "string" && /^telemetry_[a-f0-9]{32}$/i.test(value)
-    ? value : null;
+    ? value.toLowerCase() : null;
 }
 
 function ignoredReason(event: CoalescibleWatcherEvent) {
@@ -212,7 +215,9 @@ export function createWatcherTelemetryCoalescer({
       // ordinary duplicate suppression on retry. Reopen only for the exact
       // original ID; other busy filesystem notifications stay coalesced.
       const retryId = telemetryEventId(event);
-      if (prior?.pendingRetryEventId && retryId === prior.pendingRetryEventId) {
+      if (retryId && prior &&
+        (retryId === prior.pendingRetryEventId ||
+         retryId === prior.inFlightEventId)) {
         generation += 1;
         const representedCount = Math.max(1, prior.suppressedCount);
         entries.set(key, {
@@ -221,6 +226,7 @@ export function createWatcherTelemetryCoalescer({
           lastSeenAt: observedAt,
           suppressedCount: 0,
           pendingRetryEventId: null,
+          inFlightEventId: retryId,
         });
         return {
           accepted: true,
@@ -253,6 +259,7 @@ export function createWatcherTelemetryCoalescer({
         lastSeenAt: observedAt,
         suppressedCount: 0,
         pendingRetryEventId: null,
+        inFlightEventId: retryId,
       });
       prune(observedAt, entries.size > effectiveMaxKeys);
 
@@ -282,6 +289,16 @@ export function createWatcherTelemetryCoalescer({
       current.suppressedCount += Number.isSafeInteger(represented) && represented > 0
         ? represented : 1;
       current.pendingRetryEventId = telemetryEventId(admission.event as CoalescibleWatcherEvent);
+      current.inFlightEventId = null;
+    },
+
+    recordWriteSuccess<T>(admission: WatcherTelemetryAdmission<T>) {
+      if (!admission.key || admission.generation === null) return;
+      const current = entries.get(admission.key);
+      if (!current || current.generation !== admission.generation) return;
+      // A retry after a committed/duplicate DB write may be suppressed again.
+      current.inFlightEventId = null;
+      current.pendingRetryEventId = null;
     },
 
     size() {

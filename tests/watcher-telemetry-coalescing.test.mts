@@ -168,6 +168,7 @@ test("failed same-ID coalesced event may retry inside the existing window",()=>{
   const retry=coalescer.admit(payload,identity);
   assert.equal(retry.accepted,true,"exact durable retry must reach DB, not be suppressed");
   assert.equal((retry.event.metadata as Record<string,unknown>).serverCoalescedCount,2);
+  coalescer.recordWriteSuccess(retry);
   assert.equal(coalescer.admit(payload,identity).accepted,false,"successful retry closes window again");
   coalescer.recordWriteFailure(retry);
   now+=1;
@@ -180,4 +181,45 @@ test("failed single-event writes return retryable HTTP status without changing b
   assert.match(source,/ok: failed === 0/);
   assert.match(source,/status: failed > 0 && events\.length === 1 \? 503 : 200/);
   assert.match(source,/watcherTelemetryCoalescer\.recordWriteFailure/);
+});
+
+test("same-ID overlapping monitoring writes never return a premature coalesced ACK",()=>{
+  const coalescer=createWatcherTelemetryCoalescer({now:()=>1000,windowMs:30_000});
+  const event={...ignored("overlapping.aoe2record"),metadata:{
+    reason:"monitoring",telemetryEventId:"telemetry_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }};
+  const first=coalescer.admit(event,identity);
+  const overlapping=coalescer.admit(event,identity);
+  assert.equal(first.accepted,true);
+  assert.equal(overlapping.accepted,true,"uncommitted exact ID must reach DB rather than a 200 coalescer suppression");
+  assert.notEqual(first.generation,overlapping.generation);
+  const different={...event,metadata:{...event.metadata,
+    telemetryEventId:"telemetry_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}};
+  assert.equal(coalescer.admit(different,identity).accepted,false,
+    "unrelated monitoring event stays coalesced during overlap");
+  // The first completion is stale after a newer admission; it cannot
+  // override the latest generation's write status.
+  coalescer.recordWriteFailure(first);
+  coalescer.recordWriteFailure(overlapping);
+  const retry=coalescer.admit(event,identity);
+  assert.equal(retry.accepted,true,"exact durable retry must still be admitted after both fail");
+  coalescer.recordWriteSuccess(retry);
+  assert.equal(coalescer.admit(event,identity).accepted,false,
+    "only a confirmed stored or duplicate outcome closes the retry window");
+});
+
+test("a committed overlapping event clears only its generation's in-flight receipt",()=>{
+  const coalescer=createWatcherTelemetryCoalescer({now:()=>1000});
+  const event={...ignored("race.aoe2record"),metadata:{
+    reason:"monitoring",telemetryEventId:"telemetry_cccccccccccccccccccccccccccccccc"
+  }};
+  const first=coalescer.admit(event,identity);
+  const second=coalescer.admit(event,identity);
+  coalescer.recordWriteSuccess(first);
+  assert.equal(coalescer.admit(event,identity).accepted,true,
+    "first completion cannot falsely close a newer concurrent admission");
+  const third=coalescer.admit(event,identity);
+  coalescer.recordWriteSuccess(third);
+  assert.equal(coalescer.admit(event,identity).accepted,false);
+  assert.equal(second.accepted,true);
 });
