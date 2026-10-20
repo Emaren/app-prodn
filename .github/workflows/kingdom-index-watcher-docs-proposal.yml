@@ -78,8 +78,8 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3137
       AOE2_BACKEND_UPSTREAM: http://127.0.0.1:39999
       BROWSER_BASE_URL: http://127.0.0.1:3137
-      PW_HOME: ${{ runner.temp }}/renaissance-playwright
-      AOE2WAR_BROWSER_EVIDENCE: ${{ runner.temp }}/renaissance-browser-evidence
+      PW_HOME: /tmp/renaissance-playwright
+      AOE2WAR_BROWSER_EVIDENCE: /tmp/renaissance-browser-evidence
       CI: "1"
 
     steps:
