@@ -67,25 +67,6 @@ try{
  accept(await post(event(id("a"))),1);
  assert.equal(await count(id("a")),1);
  const duplicate=await post(event(id("a")));
- if(duplicate.status!==200){
-  // Isolated CI fixture only; never print a live key, request or connection URL.
-  // Diagnose the real PrismaPg P2002 shape rather than guessing its metadata.
-  const {createRequire}=await import("node:module");
-  const require=createRequire(import.meta.url);
-  const {PrismaClient}=require("../../lib/generated/prisma");
-  const {PrismaPg}=require("@prisma/adapter-pg");
-  const diagnosticPool=new pg.Pool({connectionString:DB,max:1});
-  const client=new PrismaClient({adapter:new PrismaPg(diagnosticPool)});
-  try{
-   await client.watcherClientEvent.create({
-    data:{eventType:"heartbeat",telemetryEventId:id("a")},
-   });
-  }catch(error){
-   console.error("CI_ONLY_PRISMA_DUPLICATE_ERROR_META",JSON.stringify({
-    code:error.code,meta:error.meta,clientVersion:error.clientVersion,
-   }));
-  }finally{await client.$disconnect();await diagnosticPool.end();}
- }
  accept(duplicate,0);
  assert.equal(await count(id("a")),1);
  console.log("WATCHER_HTTP_PG_DUPLICATE_ACK_PASS");

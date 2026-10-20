@@ -23,6 +23,40 @@ test("database duplicate constraint is narrowly scoped to the event identity",()
   assert.equal(isTelemetryIdDuplicateError({code:"P2002"}),false);
   assert.equal(isTelemetryIdDuplicateError({code:"P1001"}),false);
 });
+const prisma7AdapterCollision={
+  code:"P2002",
+  meta:{
+    modelName:"WatcherClientEvent",
+    driverAdapterError:{
+      name:"DriverAdapterError",
+      cause:{
+        originalCode:"23505",
+        kind:"UniqueConstraintViolation",
+        constraint:{index:"uq_watcher_client_events_telemetry_event_id"},
+        table:"watcher_client_events",
+      },
+    },
+  },
+};
+test("Prisma 7 PostgreSQL adapter telemetry collisions are acknowledged by exact index only",()=>{
+  assert.equal(isTelemetryIdDuplicateError(prisma7AdapterCollision),true);
+  assert.equal(isTelemetryIdDuplicateError({...prisma7AdapterCollision,meta:{
+    ...prisma7AdapterCollision.meta,
+    modelName:"User",
+  }}),false,"a different Prisma model must not receive a false ACK");
+  for(const [field,bad] of [
+    ["originalCode","23503"],
+    ["kind","ForeignKeyConstraintViolation"],
+    ["constraint",{index:"uq_users_email"}],
+  ]){
+    const cause={...prisma7AdapterCollision.meta.driverAdapterError.cause,[field]:bad};
+    assert.equal(isTelemetryIdDuplicateError({...prisma7AdapterCollision,meta:{
+      ...prisma7AdapterCollision.meta,driverAdapterError:{cause},
+    }}),false,"bad collision metadata "+field);
+  }
+  assert.equal(isTelemetryIdDuplicateError({...prisma7AdapterCollision,code:"P1001"}),false);
+});
+
 test("exact event retries are accepted only when database uniqueness proves duplication",async()=>{
   let calls=0;
   assert.equal(await storeTelemetryIdempotently(async()=>{calls++},id),"stored");
