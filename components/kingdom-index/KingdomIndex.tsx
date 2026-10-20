@@ -198,7 +198,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
               <p>Replay ingestion · capture · telemetry · cross-platform update lifecycle</p></div>
             <div className={styles.companionGrade}><b aria-label="No independently certified desktop quality score">—<small>/100</small></b><span>UNMEASURED</span></div>
           </div>
-          <p className={styles.companionNote}>Desktop quality shares the Kingdom's 100-point rubric, but needs its own installed-client, source-drift, resource and replay integrity receipts. The release SHA is a baseline, not proof that a user's installed version or live runtime is current.</p>
+          <p className={styles.companionNote}>Desktop quality shares the Kingdom&apos;s 100-point rubric, but needs its own installed-client, source-drift, resource and replay integrity receipts. The release SHA is a baseline, not proof that a user&apos;s installed version or live runtime is current.</p>
           <div className={styles.companionLinks}>
             <Link href={companion.downloadHref}>DOWNLOAD &amp; RELEASE <ArrowUpRight size={13}/></Link>
             <a href={companion.repositoryUrl} target="_blank" rel="noopener noreferrer">SOURCE REPOSITORY <ArrowUpRight size={13}/></a>
