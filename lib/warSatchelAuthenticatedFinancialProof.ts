@@ -11,7 +11,7 @@ import { isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 import { verifyIndependentWagerReservation } from "./warSatchelWagerReservation.ts";
-import { readWithdrawalReviewerKey } from "./warSatchelWithdrawalReview.ts";
+import { readWagerReviewerKey } from "./warSatchelWagerReviewerKey.ts";
 
 const invoke = promisify(execFile);
 const MARK = Symbol("authenticated-wolo-comet-financial-proof");
@@ -304,7 +304,7 @@ export async function authenticateWarSatchelFinancialProof(
     signal.throwIfAborted();
     // Isolate nested approvals from callers mutating their object during I/O.
     expected = JSON.parse(JSON.stringify(expected)) as ExpectedWarSatchelFinancialProof;
-    const approvalPublicKey = expected.kind === "wager" ? await readWithdrawalReviewerKey() : undefined;
+    const approvalPublicKey = expected.kind === "wager" ? await readWagerReviewerKey() : undefined;
     assertExpectedWarSatchelFinancialProof(expected, approvalPublicKey);
     const cfg = requireConfiguration(expected);
     const response = await reader(ENDPOINT + expected.requestPath, {
