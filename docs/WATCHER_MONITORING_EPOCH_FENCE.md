@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Watcher monitoring telemetry — Cross-window database completion fence
+# Watcher Monitoring Telemetry — Cross-window Database Completion Fence
 
 In a 30-second monitoring-coalescing epoch, only writes admitted during that epoch may authorize suppression. An earlier epoch could have stored successfully, but that receipt cannot make a later failed write look durable. This change records the first accepted generation in each new window and resets its in-memory committed marker. Late completions from previous epochs are tracked for their own retry status but cannot certify the new window.
 
