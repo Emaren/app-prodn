@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-satchel-aged-review-execution-clock-held` at `d97f5f534852f2703dd285e303d5855be0094178`
+Implementation baseline: `fix/20261020-matched-volume-and-fee-conservation-held` at `9f587ba11693d09172b4946064e5afac966a99b5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
