@@ -25,7 +25,9 @@ import {
   WATCHER_RELEASE,
 } from "@/lib/watcherRelease";
 
-const MAC_TERMINAL_FALLBACK = `xattr -dr com.apple.quarantine "/Applications/AoE2HDBets Watcher.app"\nopen "/Applications/AoE2HDBets Watcher.app"`;\n\nconst QUICK_STEPS = [
+const MAC_TERMINAL_FALLBACK = `xattr -dr com.apple.quarantine "/Applications/AoE2HDBets Watcher.app"\nopen "/Applications/AoE2HDBets Watcher.app"`;
+
+const QUICK_STEPS = [
   {
     step: "01",
     title: "Download",
