@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "31f6898f5cb88c731628c2fa1c5059d6fcdd6283821ff9fea86eaaa1dd2fc903",
+      "sha256": "d25a638caf1b2cb02824c15ef0dff32399c3c9a5c0b5879224198161e407152d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/traffic-finalized-daily-buckets-20261020",
-    "commit": "b7466cb6726e7da647116f8904cb0faad8833526"
+    "branch": "fix/traffic-stale-legacy-trailing-day-20261020",
+    "commit": "4908aae90ca84d13d3c5acbb0b0daffedccc3cb2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

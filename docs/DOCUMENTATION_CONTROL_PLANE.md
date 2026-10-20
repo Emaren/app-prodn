@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/traffic-finalized-daily-buckets-20261020` at `b7466cb6726e7da647116f8904cb0faad8833526`
+Implementation baseline: `fix/traffic-stale-legacy-trailing-day-20261020` at `4908aae90ca84d13d3c5acbb0b0daffedccc3cb2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
