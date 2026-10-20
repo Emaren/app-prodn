@@ -11,7 +11,7 @@
  */
 import type { IsolatedSatchelSigner } from "./warSatchelAutoBetExecutor.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
-import {readWithdrawalReviewerKey} from "./warSatchelWithdrawalReview.ts";
+import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
 import {readWarSatchelBoundedUtf8} from "./warSatchelBoundedBody.ts";
 
 const ENDPOINT = "http://127.0.0.1:8094";
@@ -144,7 +144,7 @@ export async function connectCertifiedSatchelSigner(
           return {kind:"unknown" as const,reason:"invalid_or_ambiguous_signer_payload"};
         }
         if(!sameConfiguration())return {kind:"unknown" as const,reason:"signer_configuration_changed"};
-        const publicKey=await readWithdrawalReviewerKey();
+        const publicKey=await readWagerReviewerKey();
         const expected={operationId:p.requestId,ownerUid:p.ownerUid,vault:p.senderAddress,
           recipient:p.recipientAddress,amountUwolo:p.amountUwolo,memo:p.memo,
           reservationDigest:approval.reservation_digest,ledgerRevision:approval.ledger_revision,
