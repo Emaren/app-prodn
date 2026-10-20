@@ -131,7 +131,7 @@ test("bounds key memory and keeps failed writes inside the admission window", ()
   assert.equal(
     (retrySummary.event.metadata as Record<string, unknown>)
       .serverCoalescedCount,
-    4,
+    3,
   );
 
   now += 1;
@@ -172,7 +172,8 @@ test("failed same-ID coalesced event may retry inside the existing window",()=>{
   coalescer.recordWriteSuccess(different);
   const retry=coalescer.admit(payload,identity);
   assert.equal(retry.accepted,true,"exact durable retry must reach DB, not be suppressed");
-  assert.ok(Number((retry.event.metadata as Record<string,unknown>).serverCoalescedCount)>=2);
+  assert.equal(Number((retry.event.metadata as Record<string,unknown>).serverCoalescedCount),1,
+    "a separately admitted monitoring event must not be counted as coalesced");
   coalescer.recordWriteSuccess(retry);
   assert.equal(coalescer.admit(payload,identity).accepted,false,"successful retry closes window again");
   coalescer.recordWriteFailure(retry);
@@ -224,9 +225,9 @@ test("a committed overlapping event clears only its generation's in-flight recei
   const first=coalescer.admit(event,identity);
   const second=coalescer.admit(event,identity);
   coalescer.recordWriteSuccess(first);
-  assert.equal(coalescer.admit(event,identity).accepted,true,
-    "first completion cannot falsely close a newer concurrent admission");
   const third=coalescer.admit(event,identity);
+  assert.equal(third.accepted,true,
+    "first completion cannot falsely close a newer concurrent admission");
   coalescer.recordWriteSuccess(third);
   coalescer.recordWriteSuccess(second);
   assert.equal(coalescer.admit(event,identity).accepted,false);
