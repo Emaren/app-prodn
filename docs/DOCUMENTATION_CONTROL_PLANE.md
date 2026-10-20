@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-satchel-live-readiness-compat-held` at `74b1036bd5fc317624307fc0d54599fade9d1b0b`
+Implementation baseline: `fix/20261020-satchel-live-readiness-compat-held` at `ceaa0c653a5593b08b6084d3765b1ae63049bc1d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
