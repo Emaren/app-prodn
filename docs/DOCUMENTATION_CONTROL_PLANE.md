@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-matched-volume-and-fee-conservation-held` at `e1bc4adad6461172e28ceecf974b714780a50f34`
+Implementation baseline: `fix/20261020-mecha-watcher-admission-provenance-held` at `320dd3e15add3b177bc7e924013894929a611a9d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
