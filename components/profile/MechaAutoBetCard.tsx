@@ -180,7 +180,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
 
   const status = !server ? "UNLINKED" : !armed ? "STANDBY" :
     server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
-    !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
+    !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED CONFIGURED";
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
   const satchelVerifiedBalanceWolo = satchelBalance ?
     formatMinimalDenomAmount(satchelBalance.availableUwolo) : null;
