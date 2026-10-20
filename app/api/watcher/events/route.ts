@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
   const acceptedAdmissions = admissions.filter(
     (admission) => admission.accepted
   );
-  const suppressed = admissions.length - acceptedAdmissions.length;
+  let suppressed = admissions.length - acceptedAdmissions.length;
 
   if (acceptedAdmissions.length > 0) {
     try {
@@ -131,7 +131,11 @@ export async function POST(request: NextRequest) {
   for (const [index, result] of writeResults.entries()) {
     const admission = acceptedAdmissions[index];
     if (result.status === "fulfilled") {
-      storedEvents.push(admission.event);
+      if (result.value.duplicate) {
+        suppressed += 1;
+      } else {
+        storedEvents.push(admission.event);
+      }
       continue;
     }
 
