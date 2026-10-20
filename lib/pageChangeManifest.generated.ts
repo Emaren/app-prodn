@@ -15,12 +15,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-92adf8e684a9a7c49785",
+    version: "src-b6f26f55f24bdb26b12f",
   },
   {
     href: "/champions",
     label: "Champions",
-    version: "src-6e1bafb4e12f663b1ae9",
+    version: "src-e71ddbb4075dc59d5437",
   },
   {
     href: "/chaosium",
@@ -125,6 +125,6 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/aoe2war-os",
     label: "AoE2WAR OS",
-    version: "src-b80e3817daef3d3ac54d",
+    version: "src-62d3051232637a375bca",
   },
 ] as const;
