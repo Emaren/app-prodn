@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync,existsSync} from "node:fs";
-const root=new URL("../",import.meta.url);
 const data=JSON.parse(readFileSync(new URL("../config/renaissance-campaign.json",import.meta.url),"utf8"));
 const routes=data.phases.flatMap((p:{id:string;routes:string[]})=>p.routes);
 test("all 132 source templates have one canonical campaign assignment",()=>{
