@@ -64,6 +64,7 @@ import {
 } from "@/lib/replayAchievementMetrics";
 import { loadReplayDesyncIncidentProvenance } from "@/lib/replayDesyncIncidents";
 import { normalizeReplayPlayer } from "@/lib/teamResolution";
+import { parseGameStatsRouteId } from "./parseGameStatsRouteId";
 import {
   resolvePublicWarEngineStatus,
   WAR_ENGINE_CASE_RELATION,
@@ -86,8 +87,8 @@ export default async function GameStatsDetailPage({
   searchParams?: Promise<{ view?: string | string[] }>;
 }) {
   const { id } = await params;
-  const gameId = Number(id);
-  if (!Number.isInteger(gameId) || gameId <= 0) {
+  const gameId = parseGameStatsRouteId(id);
+  if (gameId === null) {
     notFound();
   }
 
