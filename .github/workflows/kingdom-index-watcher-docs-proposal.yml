@@ -1,0 +1,147 @@
+name: Kingdom Index Watcher DocsV2 Source-Bound Proposal
+
+on:
+  pull_request:
+    paths:
+      - "components/kingdom-index/**"
+      - "config/kingdom-index-companions.json"
+      - "config/kingdom-index-routes.json"
+      - "lib/kingdomIndex.ts"
+      - "docs/WATCHER_KINGDOM_INDEX_COMPANION.md"
+      - ".github/workflows/kingdom-index-watcher-docs-proposal.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  propose-baseline:
+    name: Proposed Index companion DocsV2 baseline (review only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Generate documentation proposal without committing
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          test -n "$GITHUB_HEAD_REF"
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch "$GITHUB_HEAD_REF" --head "$head"
+          python3 scripts/docs_v2_check.py
+          git diff --check
+          mkdir -p .review-evidence
+          git diff --binary -- \
+            docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml > .review-evidence/docs-v2-baseline.patch
+          git diff --stat -- \
+            docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml | tee .review-evidence/diff-stat.txt
+          sha256sum docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml > .review-evidence/generated-sha256.txt
+          printf 'Candidate source SHA: %s\nBranch: %s\n' \
+            "$head" "$GITHUB_HEAD_REF" > .review-evidence/source.txt
+          test -s .review-evidence/docs-v2-baseline.patch
+      - name: Upload generated documentation for independent review
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-watcher-docs-v2-proposed-baseline
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            docs/document-registry.json
+            docs/DOCUMENTATION_CONTROL_PLANE.md
+            catalog-info.yaml
+            .review-evidence/docs-v2-baseline.patch
+            .review-evidence/diff-stat.txt
+            .review-evidence/generated-sha256.txt
+            .review-evidence/source.txt
+  isolated-instruments-browser:
+    if: github.event_name == 'pull_request' && github.head_ref == 'integration/renaissance-instruments-source-closure-20261020'
+    name: Chromium — six Kingdom instrument pages, isolated exact source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci_no_server
+      SESSION_SECRET: ci-local-browser-no-production-secret
+      NEXTAUTH_SECRET: ci-local-browser-no-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      AOE2_BACKEND_UPSTREAM: http://127.0.0.1:39999
+      BROWSER_BASE_URL: http://127.0.0.1:3137
+      PW_HOME: /tmp/renaissance-playwright
+      AOE2WAR_BROWSER_EVIDENCE: /tmp/renaissance-instruments-browser-evidence
+      CI: "1"
+
+    steps:
+      - name: Check out the exact proposed source and ancestry
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pinned Node and dependencies
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+
+      - name: Install ephemeral pinned Chromium driver, outside application dependency tree
+        run: |
+          set -euo pipefail
+          mkdir -p "$PW_HOME"
+          npm install --prefix "$PW_HOME" --no-save --no-package-lock --ignore-scripts --audit=false --fund=false playwright@1.55.1
+          "$PW_HOME/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Build exact candidate; no runtime preview credentials or live database
+        run: |
+          set -euo pipefail
+          yarn build
+          git rev-parse HEAD
+          test -s .next/BUILD_ID
+
+      - name: Run bounded, read-only browser proof against ephemeral Next runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$AOE2WAR_BROWSER_EVIDENCE"
+          ./node_modules/.bin/next start -H 127.0.0.1 -p 3137 \
+            >"$AOE2WAR_BROWSER_EVIDENCE/next-runtime.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 80); do
+            if curl --silent --max-time 1 -o /dev/null "http://127.0.0.1:3137/kingdom-tests"; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "Local candidate Next runtime stopped before becoming ready"
+              exit 1
+            fi
+            sleep 1
+          done
+          node scripts/renaissance-instruments-browser-acceptance.cjs
+          git status --short
+
+      - name: Upload candidate-bound browser receipts including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-instruments-browser-proof-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: /tmp/renaissance-instruments-browser-evidence
