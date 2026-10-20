@@ -1,0 +1,41 @@
+name: Seal reconciled machine instruments docs
+
+on:
+  push:
+    branches:
+      - feature/kingdom-transparent-machinery-20261019
+    paths:
+      - ".kingdom-instrument-reconcile-trigger"
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Full-ancestry isolated checkout
+        uses: actions/checkout@v4
+        with:
+          ref: feature/kingdom-transparent-machinery-20261019
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Retire helper, reconcile documents against exact merged source
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "feature/kingdom-transparent-machinery-20261019"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/refresh-kingdom-instruments-reconciled.yml .kingdom-instrument-reconcile-trigger
+          git commit -m "chore(kingdom): retire branch-only docs reconciliation helper"
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch feature/kingdom-transparent-machinery-20261019 \
+            --head "$(git rev-parse HEAD)"
+          python3 scripts/docs_v2_check.py
+          git add docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "docs(kingdom): federate six instruments with current Watcher source"
+          fi
+          test -z "$(git status --porcelain)"
+          git push origin HEAD:feature/kingdom-transparent-machinery-20261019
