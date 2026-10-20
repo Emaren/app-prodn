@@ -18,11 +18,11 @@ type CoalescerEntry = {
   generation: number;
   lastSeenAt: number;
   suppressedCount: number;
-  // Only the original failed event ID may reopen a closed coalescing window.
-  pendingRetryEventId: string | null;
-  // The exact ID of a currently uncommitted insert must not receive a
-  // premature coalescer-only HTTP ACK. Its own DB write decides the receipt.
-  inFlightEventId: string | null;
+  // Coalescing is an acknowledgment, which requires a durable predecessor.
+  committed: boolean;
+  pendingGenerations: Map<number, string | null>;
+  failedEventIds: Set<string>;
+  forceAdmission: boolean;
 };
 
 export type WatcherTelemetryAdmission<T> = {
@@ -34,6 +34,8 @@ export type WatcherTelemetryAdmission<T> = {
 
 export const WATCHER_IGNORED_EVENT_COALESCE_WINDOW_MS = 30_000;
 export const WATCHER_IGNORED_EVENT_COALESCE_MAX_KEYS = 2_048;
+const MAX_PENDING_PER_KEY = 64;
+const MAX_FAILED_IDS_PER_KEY = 64;
 
 function normalized(value: unknown) {
   return typeof value === "string"
@@ -117,7 +119,7 @@ export function createWatcherTelemetryCoalescer({
 } = {}) {
   const effectiveMaxKeys =
     Number.isSafeInteger(maxKeys) && maxKeys > 0
-      ? maxKeys
+      ? Math.min(maxKeys, 4_096)
       : WATCHER_IGNORED_EVENT_COALESCE_MAX_KEYS;
   const effectiveWindowMs =
     Number.isFinite(windowMs) && windowMs > 0
@@ -211,65 +213,47 @@ export function createWatcherTelemetryCoalescer({
       }
 
       const prior = entries.get(key);
-      // A failed database write must never be incorrectly acknowledged as
-      // ordinary duplicate suppression on retry. Reopen only for the exact
-      // original ID; other busy filesystem notifications stay coalesced.
       const retryId = telemetryEventId(event);
-      if (retryId && prior &&
-        (retryId === prior.pendingRetryEventId ||
-         retryId === prior.inFlightEventId)) {
-        generation += 1;
-        const representedCount = Math.max(1, prior.suppressedCount);
-        entries.set(key, {
-          acceptedAt: observedAt,
-          generation,
-          lastSeenAt: observedAt,
-          suppressedCount: 0,
-          pendingRetryEventId: null,
-          inFlightEventId: retryId,
-        });
-        return {
-          accepted: true,
-          event: withCoalescingSummary(event, representedCount, effectiveWindowMs),
-          generation,
-          key,
-        };
-      }
-      if (
-        prior &&
-        observedAt - prior.acceptedAt < effectiveWindowMs
-      ) {
+      const unresolved = (prior?.pendingGenerations.size ?? 0) > 0;
+      const failedRetry = Boolean(retryId && prior?.failedEventIds.has(retryId));
+      // A coalescer-only HTTP 200 is unsafe until an earlier write commits.
+      if (prior && prior.committed && !unresolved && !failedRetry &&
+          !prior.forceAdmission &&
+          observedAt - prior.acceptedAt < effectiveWindowMs) {
         prior.lastSeenAt = observedAt;
         prior.suppressedCount += 1;
-        return {
-          accepted: false,
-          event,
-          generation: null,
-          key,
-        };
+        return { accepted: false, event, generation: null, key };
       }
 
       generation += 1;
       const nextGeneration = generation;
       const representedCount = (prior?.suppressedCount ?? 0) + 1;
-
-      entries.set(key, {
+      const current: CoalescerEntry = prior ?? {
         acceptedAt: observedAt,
         generation: nextGeneration,
         lastSeenAt: observedAt,
         suppressedCount: 0,
-        pendingRetryEventId: null,
-        inFlightEventId: retryId,
-      });
+        committed: false,
+        pendingGenerations: new Map(),
+        failedEventIds: new Set(),
+        forceAdmission: false,
+      };
+      current.acceptedAt = observedAt;
+      current.lastSeenAt = observedAt;
+      current.generation = nextGeneration;
+      current.suppressedCount = 0;
+      if (current.pendingGenerations.size < MAX_PENDING_PER_KEY) {
+        current.pendingGenerations.set(nextGeneration, retryId);
+      } else {
+        // Prefer another PostgreSQL write over an unproven HTTP ACK.
+        current.forceAdmission = true;
+      }
+      entries.set(key, current);
       prune(observedAt, entries.size > effectiveMaxKeys);
 
       return {
         accepted: true,
-        event: withCoalescingSummary(
-          event,
-          representedCount,
-          effectiveWindowMs,
-        ),
+        event: withCoalescingSummary(event, representedCount, effectiveWindowMs),
         generation: nextGeneration,
         key,
       };
@@ -277,28 +261,32 @@ export function createWatcherTelemetryCoalescer({
 
     recordWriteFailure<T>(admission: WatcherTelemetryAdmission<T>) {
       if (!admission.key || admission.generation === null) return;
-
       const current = entries.get(admission.key);
-      if (!current || current.generation !== admission.generation) return;
-
-      // Preserve bounded coalescing for new events, but permit a durable
-      // retry of this exact failed telemetryEventId through the same window.
-      // The failed summary may already represent many suppressed events.
+      if (!current?.pendingGenerations.has(admission.generation)) return;
+      const eventId = current.pendingGenerations.get(admission.generation);
+      current.pendingGenerations.delete(admission.generation);
       const metadata = metadataRecord((admission.event as CoalescibleWatcherEvent).metadata);
-      const represented = Number(metadata.serverCoalescedCount);
-      current.suppressedCount += Number.isSafeInteger(represented) && represented > 0
-        ? represented : 1;
-      current.pendingRetryEventId = telemetryEventId(admission.event as CoalescibleWatcherEvent);
-      current.inFlightEventId = null;
+      const count = Number(metadata.serverCoalescedCount);
+      current.suppressedCount += Number.isSafeInteger(count) && count > 0 ? count : 1;
+      if (eventId) {
+        if (current.failedEventIds.size < MAX_FAILED_IDS_PER_KEY) {
+          current.failedEventIds.add(eventId);
+        } else {
+          current.forceAdmission = true;
+        }
+      } else {
+        current.forceAdmission = true;
+      }
     },
 
     recordWriteSuccess<T>(admission: WatcherTelemetryAdmission<T>) {
       if (!admission.key || admission.generation === null) return;
       const current = entries.get(admission.key);
-      if (!current || current.generation !== admission.generation) return;
-      // A retry after a committed/duplicate DB write may be suppressed again.
-      current.inFlightEventId = null;
-      current.pendingRetryEventId = null;
+      if (!current?.pendingGenerations.has(admission.generation)) return;
+      const eventId = current.pendingGenerations.get(admission.generation);
+      current.pendingGenerations.delete(admission.generation);
+      current.committed = true;
+      if (eventId) current.failedEventIds.delete(eventId);
     },
 
     size() {
