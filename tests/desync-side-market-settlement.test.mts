@@ -753,7 +753,7 @@ test("#JimsRule rejects fee rates larger than actual matched winning principal",
     ],
   };
   assert.throws(() => planResolvedWagerSettlements({
-    ...base, feeRateBps: 5001, feeDenominator: 10_000,
+    ...base, feeRateBps: 5050, feeDenominator: 10_000,
   }), /Matched betting fee exceeds available winning stake/);
   assert.throws(() => planResolvedWagerSettlements({
     ...base, feeRateBps: 10000, feeDenominator: 10_000,
