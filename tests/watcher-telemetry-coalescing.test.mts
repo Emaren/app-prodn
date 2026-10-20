@@ -252,15 +252,17 @@ test("concurrent different IDs require their own DB outcome; failed IDs survive 
 
 test("all failed pending requests reopen admission; normal coalescing resumes after stored outcome",()=>{
  const c=createWatcherTelemetryCoalescer({now:()=>1000});
- const first=c.admit(ignored("all-failed.aoe2record"),identity);
- const second=c.admit(ignored("all-failed.aoe2record"),identity);
+ const event={...ignored("all-failed.aoe2record"),metadata:{
+  reason:"monitoring",telemetryEventId:"telemetry_"+"d".repeat(32)}};
+ const first=c.admit(event,identity);
+ const second=c.admit(event,identity);
  assert.equal(second.accepted,true);
  c.recordWriteFailure(first);
  c.recordWriteFailure(second);
- const third=c.admit(ignored("all-failed.aoe2record"),identity);
+ const third=c.admit(event,identity);
  assert.equal(third.accepted,true,"no completed write means no successful suppression");
  c.recordWriteSuccess(third);
- assert.equal(c.admit(ignored("all-failed.aoe2record"),identity).accepted,false);
+ assert.equal(c.admit(event,identity).accepted,false);
 });
 
 test("constructor-supplied maxKeys cannot expand the coalescer indefinitely",()=>{
