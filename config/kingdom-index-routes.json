@@ -192,6 +192,30 @@
     "sourceTree": "src-44c3b83b198005e1"
   },
   {
+    "href": "/kingdom-recovery",
+    "label": "Kingdom Recovery",
+    "district": "citadel",
+    "sourceTree": "src-b56626edc460e69b"
+  },
+  {
+    "href": "/kingdom-sensors",
+    "label": "Kingdom Sensors",
+    "district": "citadel",
+    "sourceTree": "src-b4c9f05ec0b73abb"
+  },
+  {
+    "href": "/kingdom-systems",
+    "label": "Kingdom Systems",
+    "district": "citadel",
+    "sourceTree": "src-d1493242a2cf9780"
+  },
+  {
+    "href": "/kingdom-tests",
+    "label": "Kingdom Tests",
+    "district": "citadel",
+    "sourceTree": "src-b720a68d5b74f9b2"
+  },
+  {
     "href": "/kingdom-treasury",
     "label": "Kingdom Treasury",
     "district": "citadel",
@@ -280,6 +304,12 @@
     "label": "Realm",
     "district": "commons",
     "sourceTree": "src-7fec61d1b036c9c1"
+  },
+  {
+    "href": "/replay-laboratory",
+    "label": "Replay Laboratory",
+    "district": "forge",
+    "sourceTree": "src-6e8ac6a3be55298a"
   },
   {
     "href": "/replay-parser",
@@ -394,6 +424,12 @@
     "label": "Wolo 1",
     "district": "bazaar",
     "sourceTree": "src-457be4f9279122b5"
+  },
+  {
+    "href": "/wolo-machine",
+    "label": "Wolo Machine",
+    "district": "forge",
+    "sourceTree": "src-392c69cd7e19a5a6"
   },
   {
     "href": "/wolochain",
