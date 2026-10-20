@@ -11,6 +11,7 @@ test("public Traffic normalization excludes the partial current UTC day", () => 
     {
       coverage_started_at: "2026-09-09T00:00:00Z",
       coverage_ended_at: "2026-09-11T12:00:00Z",
+      archive_calculated_at: "2026-09-11T12:00:00Z",
       points: [
         {
           date: "2026-09-10",
@@ -47,6 +48,7 @@ test("public Traffic normalization fails closed on impossible audience hierarchy
           points: [
             {
               date: "2026-09-10",
+              calculatedAt: "2026-09-11T06:15:00Z",
               values: {
                 totalTraffic: 5,
                 suspectedHuman: 7,
@@ -70,4 +72,51 @@ test("Traffic page preloads canonical data on the server without a client fetch 
   assert.doesNotMatch(page, /useEffect|fetch\("\/api\/traffic\/public/);
   assert.match(page, /await loadPublicTraffic\(\)/);
   assert.match(route, /await loadPublicTraffic\(\)/);
+});
+
+test("a 06:15 archive cannot publish today's partial result after UTC midnight", () => {
+  const result = normalizePublicTrafficPayload({
+    archive_calculated_at: "2026-10-19T06:15:00Z",
+    points: [
+      { date: "2026-10-18", values: { totalTraffic: 700, suspectedHuman: 65, confirmedHuman: 27 } },
+      { date: "2026-10-19", values: { totalTraffic: 21, suspectedHuman: 2, confirmedHuman: 1 } },
+    ],
+  }, "2026-10-20");
+  assert.deepEqual(result.points.map(p => p.date), ["2026-10-18"]);
+});
+
+test("completed previous day appears when next-day calculation proves midnight", () => {
+  const result = normalizePublicTrafficPayload({
+    archive_calculated_at: "2026-10-20T06:15:00Z",
+    points: [{ date: "2026-10-19", values: { totalTraffic: 800, suspectedHuman: 90, confirmedHuman: 50 } }],
+  }, "2026-10-20");
+  assert.equal(result.points[0].values.totalTraffic, 800);
+});
+
+test("legacy backend without timestamps omits the risky previous day", () => {
+  const result = normalizePublicTrafficPayload({
+    points: [
+      { date: "2026-10-18", values: { totalTraffic: 100, suspectedHuman: 40, confirmedHuman: 12 } },
+      { date: "2026-10-19", values: { totalTraffic: 1, suspectedHuman: 0, confirmedHuman: 0 } },
+    ],
+  }, "2026-10-20");
+  assert.deepEqual(result.points.map(p => p.date), ["2026-10-18"]);
+});
+
+test("missing counts must never be interpreted as observed zero", () => {
+  assert.throws(() => normalizePublicTrafficPayload({
+    archive_calculated_at: "2026-10-20T06:15:00Z",
+    points: [{ date: "2026-10-19", values: { totalTraffic: 100, confirmedHuman: 10 } }],
+  }, "2026-10-20"), /Invalid canonical Traffic potential/);
+});
+
+test("invalid calendar dates and future dates cannot appear on chart", () => {
+  const result = normalizePublicTrafficPayload({
+    archive_calculated_at: "2026-10-20T06:15:00Z",
+    points: [
+      { date: "2026-10-40", values: { totalTraffic: 1, suspectedHuman: 1, confirmedHuman: 1 } },
+      { date: "2026-10-21", values: { totalTraffic: 1, suspectedHuman: 1, confirmedHuman: 1 } },
+    ],
+  }, "2026-10-20");
+  assert.equal(result.points.length, 0);
 });
