@@ -41,3 +41,13 @@ test("Page refuses invalid IDs with notFound before any Prisma request", () => {
   assert.match(page, /resolveReliableReplayWinner/);
   assert.match(page, /applyReplayAdjudicationToGameStats/);
 });
+
+test("single-segment replay URL guard executes before streamed HTML and preserves review routes", () => {
+  const middleware = readFileSync("middleware.ts", "utf8");
+  assert.match(middleware, /matcher:\s*\["\/game-stats\/:id"\]/);
+  assert.match(middleware, /parseGameStatsRouteId\(slug\) === null/);
+  assert.match(middleware, /NextResponse\.rewrite\(new URL\("\/_not-found", request\.url\), \{/);
+  assert.match(middleware, /status: 404/);
+  assert.match(middleware, /return NextResponse\.next\(\)/);
+  assert.doesNotMatch(middleware, /\/admin\/|\/wallet\/|\/bets\/|\/game-stats\/:id\/review/);
+});
