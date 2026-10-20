@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-166-telemetry-retry-receipts-20261019` at `2a157151c0df34de35ab477a2681d33c5cdeaf5d`
+Implementation baseline: `fix/watcher-166-telemetry-retry-receipts-20261019` at `b5168febba658739c5a756ccc7cac2946d58cf8f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **102**
+- Authoritative repository documents: **103**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 64
+- `reference`: 65
 - `runbook`: 19
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 86
+- `active`: 87
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -118,6 +118,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
 | [AoE2WAR Certified Release Engineering Seal — 2026-08-10](RELEASE_ENGINEERING_SEAL_2026-08-10.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Release Recovery OS](RELEASE_RECOVERY_OS.md) | `reference` | `active` | `release-recovery-contract` |
+| [Renaissance OS](RENAISSANCE_OS.md) | `reference` | `active` | `renaissance-campaign-integration-contract` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Replay Truth OS](REPLAY_TRUTH_OS.md) | `runbook` | `active` | `operational-procedure` |

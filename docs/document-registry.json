@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "00bb7156355d79cbd2d8ed93d5e5c3c1b4e7717393cdf7dfde2b2a6139224a88",
+      "sha256": "4e982c6eadb100049cd825283d482e95ad32cc78a9bcaa5b7f6c2e2dabde34b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1576,6 +1576,31 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "renaissance-campaign-integration-contract",
+      "id": "aoe2war.app-prodn.renaissance-os",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "67c7413c75c4e6fe48830e50462f9c0229725982d0cd8c4a490271947a0e0740",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Renaissance OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "metric-contract",
       "id": "aoe2war.app-prodn.docs-replay-corpus-metrics",
       "owner": "aoe2war-web",
@@ -2351,7 +2376,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/watcher-166-telemetry-retry-receipts-20261019",
-    "commit": "2a157151c0df34de35ab477a2681d33c5cdeaf5d"
+    "commit": "b5168febba658739c5a756ccc7cac2946d58cf8f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
