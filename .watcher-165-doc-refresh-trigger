@@ -6,3 +6,5 @@ stage_validator_manifest_order=exact_sha256_preserving_v165
 revision=release_gate_trailing_eof_newline
 
 revision=mac_damaged_gatekeeper_help_scoped
+
+revision=route_source_fingerprint_literal_separator
