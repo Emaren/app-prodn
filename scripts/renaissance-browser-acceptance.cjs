@@ -127,14 +127,21 @@ async function run() {
     await anonymousAdmin.close();
 
     const invalidIds = ["0", "-1", "1e3", "0x10", "2147483648", "9007199254740992"];
+    const invalidHttpResults = [];
     for (const id of invalidIds) {
       const response = await context.request.get(base + "/game-stats/" + id, {
         failOnStatusCode: false,
         timeout: 15000,
       });
-      assert.equal(response.status(), 404, "invalid replay route " + id + " must be 404");
+      const status = response.status();
+      const html = status !== 404 ? (await response.text()).slice(0, 3000) : "";
+      invalidHttpResults.push({
+        id,
+        status,
+        fallback404Marker: /NEXT_NOT_FOUND|404|not found/i.test(html),
+      });
     }
-    result.tested.push({ name: "invalid replay route IDs yield HTTP 404", inputs: invalidIds });
+    result.tested.push({ name: "invalid replay URL status and streamed fallback", results: invalidHttpResults });
 
     const page = await context.newPage();
     const pageErrors = [];
@@ -225,6 +232,10 @@ async function run() {
     });
     await foreground.close();
     await context.close();
+    const wrongHttp = invalidHttpResults.filter((entry) => entry.status !== 404);
+    if (wrongHttp.length) {
+      throw new Error("Invalid replay URLs did not return HTTP 404: " + JSON.stringify(wrongHttp));
+    }
   } finally {
     await browser.close();
   }
