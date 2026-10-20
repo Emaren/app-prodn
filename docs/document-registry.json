@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "75f419dd7f9f797088c5124fafe1c5be0c822d614691cfbc1ade7341dc910dbe",
+      "sha256": "188b4ab333e4d75e76c79cc79cf16eecf7913a53058f575dc4d636a7c508d7e7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/renaissance-pilot-train-20261020",
-    "commit": "c0c63c083d6a6068fe6d11a3fdb4ed4e3463d881"
+    "commit": "6048a2c1af7e026cb966699f6b71cff574df702c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
