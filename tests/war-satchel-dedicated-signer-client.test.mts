@@ -102,6 +102,18 @@ test("configuration change before send or during health prevents POST",async()=>
  configure();let calls=0,sends=0;
  const reader=(async(input:RequestInfo|URL)=>{if(String(input).endsWith("/health")){if(++calls===2)process.env.WOLO_BET_ESCROW_ADDRESS=addr;return Response.json(health());}sends++;return Response.json(ack());})as typeof fetch;
  const other=await connectCertifiedSatchelSigner(reader);assert.equal((await other.submitOneShot(args())).kind,"unknown");assert.equal(sends,0);
+ configure();
+ let secondHealth=0,afterKeySwapSends=0;
+ const keySwapReader=(async(input:RequestInfo|URL)=>{
+  if(String(input).endsWith("/health")){
+   if(++secondHealth===2)process.env.WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE=authority;
+   return Response.json(health());
+  }
+  afterKeySwapSends++;return Response.json(ack());
+ })as typeof fetch;
+ const keySwap=await connectCertifiedSatchelSigner(keySwapReader);
+ assert.equal((await keySwap.submitOneShot(args())).kind,"unknown");
+ assert.equal(afterKeySwapSends,0,"wager-role authority changed after approval read");
 }finally{restore();}});
 
 test("review expiry during health is caught before POST",async()=>{try{configure();
