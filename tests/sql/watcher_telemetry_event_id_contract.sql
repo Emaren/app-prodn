@@ -1,11 +1,11 @@
 -- Exact PostgreSQL uniqueness and legacy compatibility proof.
 -- This is a fixture-only synthetic table, not real production migration.
-DO $
+DO $$
 BEGIN
   IF (SELECT COUNT(*) FROM "watcher_client_events" WHERE "telemetry_event_id" IS NULL) <> 2 THEN
     RAISE EXCEPTION 'Legacy NULL telemetry IDs were rejected';
   END IF;
-END $;
+END $$;
 
 INSERT INTO "watcher_client_events" ("event_type","telemetry_event_id")
 VALUES ('heartbeat','telemetry_0123456789abcdef0123456789abcdef');
@@ -21,10 +21,10 @@ BEGIN
   END;
 END $$;
 
-DO $
+DO $$
 BEGIN
   IF (SELECT COUNT(*) FROM "watcher_client_events"
       WHERE "telemetry_event_id"='telemetry_0123456789abcdef0123456789abcdef') <> 1 THEN
     RAISE EXCEPTION 'Duplicate telemetry IDs reached durable table';
   END IF;
-END $;
+END $$;
