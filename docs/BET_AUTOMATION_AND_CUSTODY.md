@@ -8,12 +8,49 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-14"
+reviewed_at: "2026-10-20"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## October 20 — reviewer ED25519 role split (held source, NOT activation)
+
+The independently controlled Wolo signer `Policy` binds three distinct
+public keys: activation, **wager approval**, and **withdrawal approval**.
+The original held HD app mistakenly loaded the withdrawal public key when
+validating signed wager reviews at the private 8095 pickup, signer handoff,
+financial proof verification and three serializable ledger boundaries.
+That error would reject legitimate independent wager signatures and could
+mislead operators into provisioning the wrong key.
+
+The corrected wager-only reader is `readWagerReviewerKey`. It requires
+a separately provisioned, absolute, nonsymlink private authority file
+named by `WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE`, containing
+**only** `{"wager_approval_public_key_hex":"<64 lowercase hex>"}`.
+The existing `WAR_SATCHEL_VERIFIER_AUTHORITY_FILE` continues to contain
+`approval_public_key_hex` for **withdrawals only**. A third, distinct,
+privately pinned `WAR_SATCHEL_WAGER_PROOF_VERIFIER_AUTHORITY_FILE` supplies
+the Wolo SDK offline verifier's exact financial trust-anchor/vault/escrow
+configuration with `approval_public_key_hex` set to the independent **wager**
+public key. That file must not be the withdrawal or wager-key-only file.
+This is essential because the Go offline verifier's generic JSON field
+name does not itself indicate the economic authorization role. The reader denies
+a shared file, duplicate public keys, missing keys, symlinks and a
+group/world-accessible wager key file. It fails closed without both
+independent roles and never creates, stores or imports private signing
+keys. The separate WoloChain vault signer config still must prove
+`wager_approval_key_hex` matches the independently reviewed wagering
+key, without using an app assertion as custody attestation.
+
+Both financial features remain disabled behind
+`SATCHEL_FINANCIAL_BRIDGE_READY=false`; no production keys should be
+provisioned or activation flags changed until independent Comet bank
+solvency, all HD/DE/external liabilities and pending fees, Watcher
+witness issuer and Wolo issue #5 six-controls are complete and signed
+off. The change is source-only and adds regression tests.
+
 
 ## October 19 — one original-debit rule for review, first send and refund
 

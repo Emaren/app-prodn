@@ -14,19 +14,23 @@ const reviewer=createPrivateKey({format:"der",type:"pkcs8",key:Buffer.concat([
  Buffer.from("302e020100300506032b657004220420","hex"),Buffer.alloc(32,11)])});
 const pub=createPublicKey(reviewer).export({format:"der",type:"spki"}).subarray(-32).toString("hex");
 const directory=realpathSync(mkdtempSync(join(tmpdir(),"satchel-client-public-authority-")));
-const authority=join(directory,"authority.json");
-writeFileSync(authority,JSON.stringify({approval_public_key_hex:pub}),{mode:0o600});
+const authority=join(directory,"withdrawal-authority.json");
+const wagerAuthority=join(directory,"wager-authority.json");
+const withdrawalPublicKey="3".repeat(64); // purpose-specific, never the wager signer key
+writeFileSync(authority,JSON.stringify({approval_public_key_hex:withdrawalPublicKey}),{mode:0o600});
+writeFileSync(wagerAuthority,JSON.stringify({wager_approval_public_key_hex:pub}),{mode:0o600});
 after(()=>rmSync(directory,{recursive:true,force:true}));
 const envKeys=["WAR_SATCHEL_SIGNER_CLIENT_ENABLED","WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED",
  "WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED","WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS",
  "WAR_SATCHEL_SIGNER_BUILD_SHA256","WAR_SATCHEL_SIGNER_AUTH_TOKEN","WOLO_BET_ESCROW_ADDRESS",
- "WAR_SATCHEL_VERIFIER_AUTHORITY_FILE"];
+ "WAR_SATCHEL_VERIFIER_AUTHORITY_FILE","WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE"];
 const original=Object.fromEntries(envKeys.map(k=>[k,process.env[k]]));
 function configure(){Object.assign(process.env,{
  WAR_SATCHEL_SIGNER_CLIENT_ENABLED:"true",WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED:"true",
  WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED:"true",WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS:addr,
  WAR_SATCHEL_SIGNER_BUILD_SHA256:code,WAR_SATCHEL_SIGNER_AUTH_TOKEN:token,
  WOLO_BET_ESCROW_ADDRESS:escrow,WAR_SATCHEL_VERIFIER_AUTHORITY_FILE:authority,
+ WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE:wagerAuthority,
 });}
 function restore(){for(const k of envKeys){if(original[k]===undefined)delete process.env[k];else process.env[k]=original[k];}}
 function args(patch:Partial<SatchelWagerReservation>={}){
@@ -98,6 +102,18 @@ test("configuration change before send or during health prevents POST",async()=>
  configure();let calls=0,sends=0;
  const reader=(async(input:RequestInfo|URL)=>{if(String(input).endsWith("/health")){if(++calls===2)process.env.WOLO_BET_ESCROW_ADDRESS=addr;return Response.json(health());}sends++;return Response.json(ack());})as typeof fetch;
  const other=await connectCertifiedSatchelSigner(reader);assert.equal((await other.submitOneShot(args())).kind,"unknown");assert.equal(sends,0);
+ configure();
+ let secondHealth=0,afterKeySwapSends=0;
+ const keySwapReader=(async(input:RequestInfo|URL)=>{
+  if(String(input).endsWith("/health")){
+   if(++secondHealth===2)process.env.WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE=authority;
+   return Response.json(health());
+  }
+  afterKeySwapSends++;return Response.json(ack());
+ })as typeof fetch;
+ const keySwap=await connectCertifiedSatchelSigner(keySwapReader);
+ assert.equal((await keySwap.submitOneShot(args())).kind,"unknown");
+ assert.equal(afterKeySwapSends,0,"wager-role authority changed after approval read");
 }finally{restore();}});
 
 test("review expiry during health is caught before POST",async()=>{try{configure();

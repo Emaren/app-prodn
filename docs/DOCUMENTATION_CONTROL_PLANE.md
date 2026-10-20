@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261019-mecha-pending-review-outbox` at `24c66086af55d7e92cd48be242ebfa925b77c81a`
+Implementation baseline: `fix/20261020-satchel-separate-wager-review-key` at `c21f37a7ea69e4f171f466850d45ef5c2f77b62c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

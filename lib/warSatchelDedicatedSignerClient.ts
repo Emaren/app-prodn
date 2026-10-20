@@ -11,7 +11,7 @@
  */
 import type { IsolatedSatchelSigner } from "./warSatchelAutoBetExecutor.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
-import {readWithdrawalReviewerKey} from "./warSatchelWithdrawalReview.ts";
+import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
 import {readWarSatchelBoundedUtf8} from "./warSatchelBoundedBody.ts";
 
 const ENDPOINT = "http://127.0.0.1:8094";
@@ -45,7 +45,9 @@ function config() {
       !/^[A-Za-z0-9_-]+$/.test(token)) {
     refuse("signer_provisioning_incomplete");
   }
-  return { address, escrow, build, token, reviewAuthority:process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "" };
+  return { address, escrow, build, token,
+    reviewAuthority:process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "",
+    wagerReviewAuthority:process.env.WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE || "" };
 }
 function abortable<T>(pending:Promise<T>,signal:AbortSignal):Promise<T>{
   signal.throwIfAborted();
@@ -120,7 +122,9 @@ export async function connectCertifiedSatchelSigner(
   function sameConfiguration(){
     const current=config();
     return current.address===cfg.address&&current.escrow===cfg.escrow&&
-      current.build===cfg.build&&current.token===cfg.token&&current.reviewAuthority===cfg.reviewAuthority;
+      current.build===cfg.build&&current.token===cfg.token&&
+      current.reviewAuthority===cfg.reviewAuthority&&
+      current.wagerReviewAuthority===cfg.wagerReviewAuthority;
   }
   return Object.freeze({
     custodyRole: "exclusive-war-satchel-v1" as const,
@@ -144,7 +148,7 @@ export async function connectCertifiedSatchelSigner(
           return {kind:"unknown" as const,reason:"invalid_or_ambiguous_signer_payload"};
         }
         if(!sameConfiguration())return {kind:"unknown" as const,reason:"signer_configuration_changed"};
-        const publicKey=await readWithdrawalReviewerKey();
+        const publicKey=await readWagerReviewerKey();
         const expected={operationId:p.requestId,ownerUid:p.ownerUid,vault:p.senderAddress,
           recipient:p.recipientAddress,amountUwolo:p.amountUwolo,memo:p.memo,
           reservationDigest:approval.reservation_digest,ledgerRevision:approval.ledger_revision,
