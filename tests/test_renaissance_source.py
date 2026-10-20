@@ -22,6 +22,10 @@ class RenaissanceSourceTests(unittest.TestCase):
         expected=set(routes)|{m["href"] for m in doc["modules"]}
         discovered={("/"+p.relative_to(ROOT/"app").parent.as_posix()).replace("/.","/") for p in (ROOT/"app").rglob("page.tsx")}
         self.assertEqual(discovered,expected)
+    def test_operator_cli_exposes_renaissance_read_only_commands(self):
+        cli=(ROOT/"bin"/"aoe2war").read_text(encoding="utf-8")
+        self.assertIn('renaissance)\n    shift\n    exec "$AOE2WAR_PYTHON" "$RENAISSANCE_OS" "$@"',cli)
+        self.assertIn("aoe2war renaissance verify",cli)
     def test_all_instrument_pages_dedicated_and_present(self):
         doc,routes=MODULE.load()
         for module in doc["modules"]:
