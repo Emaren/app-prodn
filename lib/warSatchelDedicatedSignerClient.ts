@@ -45,7 +45,9 @@ function config() {
       !/^[A-Za-z0-9_-]+$/.test(token)) {
     refuse("signer_provisioning_incomplete");
   }
-  return { address, escrow, build, token, reviewAuthority:process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "" };
+  return { address, escrow, build, token,
+    reviewAuthority:process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "",
+    wagerReviewAuthority:process.env.WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE || "" };
 }
 function abortable<T>(pending:Promise<T>,signal:AbortSignal):Promise<T>{
   signal.throwIfAborted();
@@ -120,7 +122,9 @@ export async function connectCertifiedSatchelSigner(
   function sameConfiguration(){
     const current=config();
     return current.address===cfg.address&&current.escrow===cfg.escrow&&
-      current.build===cfg.build&&current.token===cfg.token&&current.reviewAuthority===cfg.reviewAuthority;
+      current.build===cfg.build&&current.token===cfg.token&&
+      current.reviewAuthority===cfg.reviewAuthority&&
+      current.wagerReviewAuthority===cfg.wagerReviewAuthority;
   }
   return Object.freeze({
     custodyRole: "exclusive-war-satchel-v1" as const,
