@@ -187,6 +187,31 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
         </div>)}
       </section>}
       {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={()=>setSelected(null)}/></div>}
+      <section className={styles.companionSection} aria-label="Companion applications engineering index">
+        <header className={styles.companionHeader}>
+          <div><span className={styles.eyebrow}>EXTERNAL SYSTEMS / DESKTOP</span><h2>COMPANION APPLICATIONS</h2></div>
+          <span className={styles.companionCount}>{String(snapshot.companions?.length??0).padStart(2,"0")} COMPANION</span>
+        </header>
+        {(snapshot.companions??[]).map(companion=><article className={styles.companionCard} key={companion.id}>
+          <div className={styles.companionSummary}>
+            <div><span className={styles.eyebrow}>DESKTOP · RELEASE {companion.version}</span><h3>{companion.label}</h3>
+              <p>Replay ingestion · capture · telemetry · cross-platform update lifecycle</p></div>
+            <div className={styles.companionGrade}><b aria-label="No independently certified desktop quality score">—<small>/100</small></b><span>UNMEASURED</span></div>
+          </div>
+          <p className={styles.companionNote}>Desktop quality shares the Kingdom's 100-point rubric, but needs its own installed-client, source-drift, resource and replay integrity receipts. The release SHA is a baseline, not proof that a user's installed version or live runtime is current.</p>
+          <div className={styles.companionLinks}>
+            <Link href={companion.downloadHref}>DOWNLOAD &amp; RELEASE <ArrowUpRight size={13}/></Link>
+            <a href={companion.repositoryUrl} target="_blank" rel="noopener noreferrer">SOURCE REPOSITORY <ArrowUpRight size={13}/></a>
+            <code title={companion.sourceSha}>RELEASE SOURCE {companion.sourceSha.slice(0,12)}</code>
+          </div>
+          <details className={styles.companionChecks}>
+            <summary>INSPECTION GATES · {companion.gates.length} UNVERIFIED <ChevronDown size={15}/></summary>
+            <div className={styles.assuranceList} role="list">{companion.gates.map(gate=><div className={styles.assuranceItem} role="listitem" key={gate.id}>
+              <div><strong>{gate.id.replace(/-/g," ")}</strong><span>{gate.status.toUpperCase()}</span></div><p>{gate.requirement}</p>
+            </div>)}</div>
+          </details>
+        </article>)}
+      </section>
       <footer className={styles.footer}>
         <span><span className={styles.liveDot}/> {connectionLost?"SIGNAL UNAVAILABLE":snapshot.source==="file"?"INSPECTION FEED":"SOURCE REVIEW BASELINE"}</span>
         <span>{snapshot.drifted>0?`${snapshot.drifted} AGED / DRIFTED`:"NO VERIFIED DRIFT"} <span className={styles.footerDivider}>·</span> {formatStamp(snapshot.generatedAt)}</span>
