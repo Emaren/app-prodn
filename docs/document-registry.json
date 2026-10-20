@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6227fed2b79e9f76e70f9d549c4fec6000c1676d2c85f49cef4b86daeebc8ed9",
+      "sha256": "daf588b7641b7a614e0d1b004729fa541c98a106d9d2b95a03b13032ee97197a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/renaissance-os-visual-platform-20261019",
-    "commit": "c459394432bd21653e0a89ecb76ffe56f8f5d367"
+    "branch": "fix/kingdom-instruments-release-eslint-20261020",
+    "commit": "65d6587d5e550bab3560a08906ae510625f99bf0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
