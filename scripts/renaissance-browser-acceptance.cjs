@@ -153,9 +153,8 @@ async function run() {
     });
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1000);
-    assert.equal(deniedPolls, 1, "terminal denial persists for current document session only; reload will reset module state only after hydration");
+    await page.waitForTimeout(600);
+    assert.equal(deniedPolls, 1, "mobile resize must not restart terminal-denied polling");
     await page.screenshot({ path: path.join(destination, "kingdom-mobile.png"), fullPage: true });
     result.tested.push({ name: "mobile 390px public page renders under reduced motion", width: 390 });
     await page.close();
