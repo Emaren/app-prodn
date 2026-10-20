@@ -13,12 +13,33 @@ export function isTelemetryIdDuplicateError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const input = error as {code?:unknown;meta?:{target?:unknown}};
   if (input.code !== "P2002") return false;
-  const target = input.meta?.target;
+  const meta = input.meta as {
+    target?: unknown;
+    modelName?: unknown;
+    driverAdapterError?: {
+      cause?: {
+        originalCode?: unknown;
+        kind?: unknown;
+        constraint?: { index?: unknown };
+      };
+    };
+  } | undefined;
+  const target = meta?.target;
   const candidates = Array.isArray(target) ? target : [target];
-  return candidates.some(value =>
+  if (candidates.some(value =>
     value === "telemetry_event_id" ||
     value === "telemetryEventId" ||
-    value === "uq_watcher_client_events_telemetry_event_id");
+    value === "uq_watcher_client_events_telemetry_event_id")) {
+    return true;
+  }
+  // Prisma 7 + @prisma/adapter-pg reports a different P2002 shape.
+  // Match the actual PostgreSQL SQLSTATE AND exact model/index: general
+  // uniqueness collisions (users, bets, wallets) are never ACKs.
+  const cause = meta?.driverAdapterError?.cause;
+  return meta?.modelName === "WatcherClientEvent" &&
+    cause?.originalCode === "23505" &&
+    cause?.kind === "UniqueConstraintViolation" &&
+    cause?.constraint?.index === "uq_watcher_client_events_telemetry_event_id";
 }
 
 export async function storeTelemetryIdempotently(
