@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/kingdom-instruments-release-eslint-20261020` at `65d6587d5e550bab3560a08906ae510625f99bf0`
+Implementation baseline: `fix/traffic-finalized-daily-buckets-20261020` at `7ebc303d16f35bd86e3454ff744b28eeb86ee9b5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
