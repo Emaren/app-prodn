@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f4a01aab66464c312f40da59580e7ca5c613b958d7e78d8c0183bfa4a6d4d9a",
+      "sha256": "75f419dd7f9f797088c5124fafe1c5be0c822d614691cfbc1ade7341dc910dbe",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-index-watcher-companion-20261019",
-    "commit": "26c4c750f4c5290bc8f931fd780ba89e0937cf99"
+    "branch": "integration/renaissance-pilot-train-20261020",
+    "commit": "c0c63c083d6a6068fe6d11a3fdb4ed4e3463d881"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
