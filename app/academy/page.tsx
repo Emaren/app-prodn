@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import AcademyHero from "./AcademyHero";
+import { formatAcademyReplayEvidence } from "./advisorEvidence";
 import {
   ArrowRight,
   BrainCircuit,
@@ -109,7 +110,7 @@ async function loadZodiacCard() {
       avatarUrl: `${fallbackAvatar}${
         fallbackAvatar.includes("?") ? "&" : "?"
       }size=card`,
-      matchCount: 0,
+      matchCount: null,
     };
   }
 }
@@ -159,23 +160,20 @@ async function AcademyAdvisors() {
                 Founding advisor
               </span>
               <span className="rounded-full border border-emerald-100/18 bg-emerald-300/10 px-3 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-100 backdrop-blur-md">
-                Accepting apprentices
+                {ZODIAC_TRAINING_CONFIG.trainingAvailability}
               </span>
             </div>
             <div className="academy-advisor-title-row">
                 <h3 className="academy-advisor-name">{zodiac.name}</h3>
-                <span className="academy-advisor-stat-rotator" aria-label="Advisor record and ELO">
-                  <span className="academy-advisor-stat academy-advisor-stat--record">9-0-0</span>
-                  <span className="academy-advisor-stat academy-advisor-stat--elo">1671 ELO</span>
-                </span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/70">Deathmatch</span>
               </div>
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
               Deathmatch · civ judgment · multi-front command
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/12 pt-5">
               <div className="flex items-center gap-4 text-xs text-slate-400">
-                <span>{zodiac.matchCount} replay-backed wars</span>
-                <span className="text-amber-100">First lesson · 100 WOLO</span>
+                <span>{formatAcademyReplayEvidence(zodiac.matchCount)}</span>
+                <span className="text-amber-100">First lesson · {ZODIAC_TRAINING_CONFIG.coachingPriceWolo} WOLO</span>
               </div>
               <span className="inline-flex items-center gap-2 text-sm font-black text-violet-100 transition group-hover:text-white">
                 Train under the Zodiac
