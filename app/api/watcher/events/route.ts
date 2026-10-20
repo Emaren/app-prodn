@@ -241,12 +241,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Watcher sends one event per request and uses a durable retry queue.
+  // A failed single-event write is NOT a successful HTTP acknowledgment.
+  // Keep older batch response status behavior unchanged until an explicit
+  // per-index batch receipt and idempotent persistence protocol is released.
   return NextResponse.json({
-    ok: true,
+    ok: failed === 0,
     stored: storedEvents.length,
     suppressed,
     failed,
     linked: identity.resolved,
     userUid: identity.userUid,
-  });
+  }, { status: failed > 0 && events.length === 1 ? 503 : 200 });
 }

@@ -153,3 +153,31 @@ test("watcher ingress reports exact stored and suppressed counts", () => {
   assert.match(source, /suppressed,/);
   assert.match(source, /failed,/);
 });
+
+test("failed same-ID coalesced event may retry inside the existing window",()=>{
+  let now = 1000;
+  const coalescer = createWatcherTelemetryCoalescer({now:()=>now,windowMs:30_000});
+  const payload = {...ignored("retry.aoe2record"), metadata:{
+    reason:"monitoring",telemetryEventId:"telemetry_0123456789abcdef0123456789abcdef"
+  }};
+  const first=coalescer.admit(payload,identity);
+  assert.equal(first.accepted,true);
+  coalescer.recordWriteFailure(first);
+  assert.equal(coalescer.admit({...payload,metadata:{...payload.metadata,telemetryEventId:
+    "telemetry_ffffffffffffffffffffffffffffffff"}},identity).accepted,false);
+  const retry=coalescer.admit(payload,identity);
+  assert.equal(retry.accepted,true,"exact durable retry must reach DB, not be suppressed");
+  assert.equal((retry.event.metadata as Record<string,unknown>).serverCoalescedCount,2);
+  assert.equal(coalescer.admit(payload,identity).accepted,false,"successful retry closes window again");
+  coalescer.recordWriteFailure(retry);
+  now+=1;
+  assert.equal(coalescer.admit(payload,identity).accepted,true,"repeat failures remain retryable");
+  assert.equal(coalescer.size(),1);
+});
+
+test("failed single-event writes return retryable HTTP status without changing batch compatibility",()=>{
+  const source=readFileSync(new URL("../app/api/watcher/events/route.ts",import.meta.url),"utf8");
+  assert.match(source,/ok: failed === 0/);
+  assert.match(source,/status: failed > 0 && events\.length === 1 \? 503 : 200/);
+  assert.match(source,/watcherTelemetryCoalescer\.recordWriteFailure/);
+});

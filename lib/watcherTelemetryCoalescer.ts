@@ -18,6 +18,8 @@ type CoalescerEntry = {
   generation: number;
   lastSeenAt: number;
   suppressedCount: number;
+  // Only the original failed event ID may reopen a closed coalescing window.
+  pendingRetryEventId: string | null;
 };
 
 export type WatcherTelemetryAdmission<T> = {
@@ -40,6 +42,12 @@ function metadataRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function telemetryEventId(event: CoalescibleWatcherEvent) {
+  const value = metadataRecord(event.metadata).telemetryEventId;
+  return typeof value === "string" && /^telemetry_[a-f0-9]{32}$/i.test(value)
+    ? value : null;
 }
 
 function ignoredReason(event: CoalescibleWatcherEvent) {
@@ -200,6 +208,27 @@ export function createWatcherTelemetryCoalescer({
       }
 
       const prior = entries.get(key);
+      // A failed database write must never be incorrectly acknowledged as
+      // ordinary duplicate suppression on retry. Reopen only for the exact
+      // original ID; other busy filesystem notifications stay coalesced.
+      const retryId = telemetryEventId(event);
+      if (prior?.pendingRetryEventId && retryId === prior.pendingRetryEventId) {
+        generation += 1;
+        const representedCount = Math.max(1, prior.suppressedCount);
+        entries.set(key, {
+          acceptedAt: observedAt,
+          generation,
+          lastSeenAt: observedAt,
+          suppressedCount: 0,
+          pendingRetryEventId: null,
+        });
+        return {
+          accepted: true,
+          event: withCoalescingSummary(event, representedCount, effectiveWindowMs),
+          generation,
+          key,
+        };
+      }
       if (
         prior &&
         observedAt - prior.acceptedAt < effectiveWindowMs
@@ -223,6 +252,7 @@ export function createWatcherTelemetryCoalescer({
         generation: nextGeneration,
         lastSeenAt: observedAt,
         suppressedCount: 0,
+        pendingRetryEventId: null,
       });
       prune(observedAt, entries.size > effectiveMaxKeys);
 
@@ -244,11 +274,14 @@ export function createWatcherTelemetryCoalescer({
       const current = entries.get(admission.key);
       if (!current || current.generation !== admission.generation) return;
 
-      // Keep the admission window closed after a failed write. Reopening it
-      // would turn a database outage back into one attempted write per raw
-      // filesystem notification. The failed observation is represented in
-      // the next admitted summary instead.
-      current.suppressedCount += 1;
+      // Preserve bounded coalescing for new events, but permit a durable
+      // retry of this exact failed telemetryEventId through the same window.
+      // The failed summary may already represent many suppressed events.
+      const metadata = metadataRecord((admission.event as CoalescibleWatcherEvent).metadata);
+      const represented = Number(metadata.serverCoalescedCount);
+      current.suppressedCount += Number.isSafeInteger(represented) && represented > 0
+        ? represented : 1;
+      current.pendingRetryEventId = telemetryEventId(admission.event as CoalescibleWatcherEvent);
     },
 
     size() {
