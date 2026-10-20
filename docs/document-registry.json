@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d758ebb9ffe994263cf40544699cfabe1b9d6e5b68f13e8b15a8c9175c3656b",
+      "sha256": "e80119aca390227630dbad9e951f712e10d45a628ac403752589177493d11eaa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2143,7 +2143,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/watcher-mac-launch-command-20261019",
-    "commit": "cc29dcf7ca76ab0287762757fa46fe61fe90a181"
+    "commit": "45f5c040fdea28bfbb256ca8b187ef7521594444"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
