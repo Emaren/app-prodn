@@ -3,18 +3,20 @@ import {readFileSync} from "node:fs";
 import test from "node:test";
 import {pollVerifiedWatcherFundedMecha} from "../lib/warSatchelFundedWatcherPoll.ts";
 const src=readFileSync(new URL("../lib/warSatchelFundedWatcherPoll.ts",import.meta.url),"utf8");
-test("funded Mecha polls only exactly Watcher-vetted, unclaimed and enabled owner bets",()=>{
- assert.match(src,/status:"shadow_ready"/);
- assert.match(src,/ticketId:null/);
- assert.match(src,/reservationId:null/);
- assert.match(src,/attemptCount:0/);
- assert.match(src,/selfOnly:true/);
- assert.match(src,/enabled:true/);
- assert.match(src,/walletAddress:\{not:null\}/);
- assert.match(src,/orderBy:\[\{id:"asc"\}\]/);
- assert.match(src,/take:maxBatch/);
+test("legacy Watcher poll delegates to the same canonical bounded financial selector as the protected tick",()=>{
+ assert.match(src,/readEligibleFundedMechaIds\(prisma,\{limit:maxBatch\}\)/);
+ assert.match(src,/MAX_BATCH=FUNDED_MECHA_CANDIDATE_LIMIT/);
  assert.match(src,/executeFundedMechaTicketBatch\(prisma,signer,ids\)/);
+ assert.doesNotMatch(src,/betAutoExecution\.findMany\(/);
  assert.doesNotMatch(src,/prepareBetStakeTicket\(|getWoloBetEscrowRuntime\(|sendTokens\(/);
+ const selector=readFileSync(new URL("../lib/warSatchelEligibleOutbox.ts",import.meta.url),"utf8");
+ for(const pattern of [
+   /createdAt: \{ gte: earliest, lte: now \}/,
+   /winnerMarket: \{ status: "live", integrityStatus: "verified"/,
+   /wagerAuthorization: \{ isNot: null \}/,
+   /spendExpiresAt: \{ gt: now \}/,
+   /satchelFundedBalance: \{ is: \{ OR:/,
+ ]) assert.match(selector,pattern);
 });
 test("poll hard-fails if real signer, refund or withdrawals have not been certified",()=>{
  for(const key of [
@@ -29,7 +31,7 @@ test("poll hard-fails if real signer, refund or withdrawals have not been certif
   assert(src.includes(key),key);
  }
  assert.match(src,/maxBatch>MAX_BATCH/);
- assert.match(src,/MAX_BATCH=25/);
+ assert.match(src,/FUNDED_MECHA_CANDIDATE_LIMIT/);
  assert.doesNotMatch(src,/export async function (GET|POST|PUT|DELETE)/);
 });
 

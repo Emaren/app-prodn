@@ -7,6 +7,7 @@ const load=(path:string)=>readFileSync(new URL("../"+path,import.meta.url),"utf8
 test("one bounded signed Watcher selector feeds both financial entrypoints",()=>{
   const tick=load("lib/warSatchelFundedOutboxTick.ts");
   const cli=load("scripts/war-satchel-funded-mecha-worker.ts");
+  const legacyPoll=load("lib/warSatchelFundedWatcherPoll.ts");
   const selector=load("lib/warSatchelEligibleOutbox.ts");
   assert.match(selector,/FUNDED_MECHA_CANDIDATE_LIMIT = 25/);
   assert.match(selector,/FUNDED_MECHA_CANDIDATE_MAX_AGE_MS = 4 \* 60 \* 1000/);
@@ -24,7 +25,8 @@ test("one bounded signed Watcher selector feeds both financial entrypoints",()=>
   assert.match(selector,/requireSatchelFinancialBridge\(\)/);
   assert.match(tick,/readEligibleFundedMechaIds\(prisma,options\)/);
   assert.match(cli,/readEligibleFundedMechaIds\(prisma,\{limit:MAX_BATCH\}\)/);
-  assert.doesNotMatch(tick+cli,/betAutoExecution\.findMany/);
+  assert.match(legacyPoll,/readEligibleFundedMechaIds\(prisma,\{limit:maxBatch\}\)/);
+  assert.doesNotMatch(tick+cli+legacyPoll,/betAutoExecution\.findMany/);
   assert.match(tick,/executeFundedMechaTicketBatch\(/);
   assert.match(tick,/warSatchelDedicatedSignerClient/);
   assert.doesNotMatch(tick+cli,/warSatchelIsolatedSignerClient|warSatchelIsolatedSignerTransport|makeSatchelLoopbackSigner|createLocalIsolatedSatchelSigner/);

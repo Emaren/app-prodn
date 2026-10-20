@@ -16,6 +16,10 @@ import {
   type IsolatedSatchelSigner,
 } from "./warSatchelAutoBetExecutor.ts";
 import type { FundedAutoWorkerCounts } from "./betAutomationFundedTransition.ts";
+import {
+  FUNDED_MECHA_CANDIDATE_LIMIT,
+  readEligibleFundedMechaIds,
+} from "./warSatchelEligibleOutbox.ts";
 
 export type FundedMechaWatcherPoll = Readonly<{
   readyIds: readonly number[];
@@ -23,7 +27,7 @@ export type FundedMechaWatcherPoll = Readonly<{
   result: FundedAutoWorkerCounts;
 }>;
 
-const MAX_BATCH=25;
+const MAX_BATCH=FUNDED_MECHA_CANDIDATE_LIMIT;
 function guarded(){
   // A collection read is already an operational act. Do not consult the
   // funded queue until source authority has independently been released.
@@ -56,25 +60,10 @@ export async function pollVerifiedWatcherFundedMecha(
   const maxBatch=options.maxBatch??MAX_BATCH;
   if(!Number.isSafeInteger(maxBatch)||maxBatch<1||maxBatch>MAX_BATCH)
     throw Error("MECHA_WATCHER_BATCH_OUT_OF_RANGE");
-  const ready=await prisma.betAutoExecution.findMany({
-    where:{
-      status:"shadow_ready",
-      ticketId:null,
-      reservationId:null,
-      attemptCount:0,
-      preset:{
-        is:{
-          enabled:true,
-          selfOnly:true,
-          user:{is:{walletAddress:{not:null}}},
-        },
-      },
-    },
-    orderBy:[{id:"asc"}],
-    take:maxBatch,
-    select:{id:true},
-  });
-  const ids=ready.map(item=>item.id);
+  // Use the same age-, market-, consent-, balance- and reservation-fenced
+  // selector as the protected CLI/tick. Never maintain a second, looser
+  // financial queue discovery path that can pick stale or revoked plans.
+  const ids=await readEligibleFundedMechaIds(prisma,{limit:maxBatch});
   if(ids.length===0){
     return Object.freeze({
       readyIds:Object.freeze([]),
