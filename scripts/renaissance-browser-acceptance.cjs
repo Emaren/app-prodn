@@ -100,15 +100,31 @@ async function run() {
     assert.equal(denied.detail, "Unauthorized");
     result.tested.push({ name: "anonymous admin GET denied", status: anonGet.status() });
 
-    const adminPage = await context.request.get(base + "/admin/aoe2war-os", {
-      failOnStatusCode: false,
-      maxRedirects: 0,
-      timeout: 15000,
+    // Next server-component redirects can be emitted as a streamed 200 with
+    // a client redirect instruction rather than a traditional HTTP 3xx.
+    // Judge access by the actual Chromium navigation, not status-code folklore.
+    const anonymousAdmin = await context.newPage();
+    const anonymousNavigation = await anonymousAdmin.goto(base + "/admin/aoe2war-os", {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
     });
-    assert.ok([302, 303, 307, 308].includes(adminPage.status()),
-      "anonymous admin page must redirect before serving client controls");
-    assert.equal(new URL(adminPage.headers().location || "/", base).pathname, "/");
-    result.tested.push({ name: "anonymous admin page redirects at server layout", status: adminPage.status() });
+    const initialStatus = anonymousNavigation?.status() ?? null;
+    result.tested.push({ name: "anonymous admin page browser redirect", initialStatus });
+    try {
+      await anonymousAdmin.waitForURL(
+        (url) => url.pathname === "/",
+        { timeout: 12000 },
+      );
+    } catch (cause) {
+      const html = await anonymousAdmin.content();
+      result.errors.push("Admin redirect missing: initial HTTP " + initialStatus +
+        "; final pathname " + new URL(anonymousAdmin.url()).pathname +
+        "; streamed redirect marker " + /NEXT_REDIRECT|next-page-redirect/i.test(html));
+      throw cause;
+    }
+    assert.equal(new URL(anonymousAdmin.url()).pathname, "/");
+    result.tested.at(-1).finalPath = "/";
+    await anonymousAdmin.close();
 
     const invalidIds = ["0", "-1", "1e3", "0x10", "2147483648", "9007199254740992"];
     for (const id of invalidIds) {
