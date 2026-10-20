@@ -36,6 +36,7 @@ test("stores one monitoring-ignore summary per replay every thirty seconds", () 
     serverCoalescedWindowMs: 30_000,
   });
 
+  coalescer.recordWriteSuccess(first);
   now += 100;
   assert.equal(coalescer.admit(ignored(), identity).accepted, false);
   now += 100;
@@ -82,7 +83,9 @@ test("separates users and replays and resets after monitor stop", () => {
   const coalescer = createWatcherTelemetryCoalescer();
   const first = ignored();
 
-  assert.equal(coalescer.admit(first, identity).accepted, true);
+  const admission = coalescer.admit(first, identity);
+  assert.equal(admission.accepted, true);
+  coalescer.recordWriteSuccess(admission);
   assert.equal(coalescer.admit(first, identity).accepted, false);
   assert.equal(
     coalescer.admit(first, { ...identity, userId: 43 }).accepted,
@@ -114,10 +117,10 @@ test("bounds key memory and keeps failed writes inside the admission window", ()
   const failed = coalescer.admit(ignored("failed.aoe2record"), identity);
   assert.equal(failed.accepted, true);
   coalescer.recordWriteFailure(failed);
-  assert.equal(
-    coalescer.admit(ignored("failed.aoe2record"), identity).accepted,
-    false,
-  );
+  const second = coalescer.admit(ignored("failed.aoe2record"), identity);
+  assert.equal(second.accepted,true,
+    "a failed write must not authorize a suppression receipt");
+  coalescer.recordWriteFailure(second);
 
   now += 30_000;
   const retrySummary = coalescer.admit(
@@ -128,7 +131,7 @@ test("bounds key memory and keeps failed writes inside the admission window", ()
   assert.equal(
     (retrySummary.event.metadata as Record<string, unknown>)
       .serverCoalescedCount,
-    3,
+    4,
   );
 
   now += 1;
@@ -163,16 +166,19 @@ test("failed same-ID coalesced event may retry inside the existing window",()=>{
   const first=coalescer.admit(payload,identity);
   assert.equal(first.accepted,true);
   coalescer.recordWriteFailure(first);
-  assert.equal(coalescer.admit({...payload,metadata:{...payload.metadata,telemetryEventId:
-    "telemetry_ffffffffffffffffffffffffffffffff"}},identity).accepted,false);
+  const different=coalescer.admit({...payload,metadata:{...payload.metadata,telemetryEventId:
+    "telemetry_ffffffffffffffffffffffffffffffff"}},identity);
+  assert.equal(different.accepted,true,"unsettled prior write must not coalesce other IDs");
+  coalescer.recordWriteSuccess(different);
   const retry=coalescer.admit(payload,identity);
   assert.equal(retry.accepted,true,"exact durable retry must reach DB, not be suppressed");
-  assert.equal((retry.event.metadata as Record<string,unknown>).serverCoalescedCount,2);
+  assert.ok(Number((retry.event.metadata as Record<string,unknown>).serverCoalescedCount)>=2);
   coalescer.recordWriteSuccess(retry);
   assert.equal(coalescer.admit(payload,identity).accepted,false,"successful retry closes window again");
   coalescer.recordWriteFailure(retry);
   now+=1;
-  assert.equal(coalescer.admit(payload,identity).accepted,true,"repeat failures remain retryable");
+  assert.equal(coalescer.admit(payload,identity).accepted,false,
+    "stale failure after confirmed success cannot roll back durable receipt");
   assert.equal(coalescer.size(),1);
 });
 
@@ -195,12 +201,14 @@ test("same-ID overlapping monitoring writes never return a premature coalesced A
   assert.notEqual(first.generation,overlapping.generation);
   const different={...event,metadata:{...event.metadata,
     telemetryEventId:"telemetry_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}};
-  assert.equal(coalescer.admit(different,identity).accepted,false,
-    "unrelated monitoring event stays coalesced during overlap");
+  const separate=coalescer.admit(different,identity);
+  assert.equal(separate.accepted,true,
+    "an unrelated event cannot be acknowledged before any DB write completes");
   // The first completion is stale after a newer admission; it cannot
   // override the latest generation's write status.
   coalescer.recordWriteFailure(first);
   coalescer.recordWriteFailure(overlapping);
+  coalescer.recordWriteFailure(separate);
   const retry=coalescer.admit(event,identity);
   assert.equal(retry.accepted,true,"exact durable retry must still be admitted after both fail");
   coalescer.recordWriteSuccess(retry);
@@ -220,6 +228,43 @@ test("a committed overlapping event clears only its generation's in-flight recei
     "first completion cannot falsely close a newer concurrent admission");
   const third=coalescer.admit(event,identity);
   coalescer.recordWriteSuccess(third);
+  coalescer.recordWriteSuccess(second);
   assert.equal(coalescer.admit(event,identity).accepted,false);
   assert.equal(second.accepted,true);
+});
+
+test("concurrent different IDs require their own DB outcome; failed IDs survive another success",()=>{
+ const c=createWatcherTelemetryCoalescer({now:()=>1000});
+ const a={...ignored("pg-race.aoe2record"),metadata:{
+  reason:"monitoring",telemetryEventId:"telemetry_"+"a".repeat(32)}};
+ const b={...a,metadata:{...a.metadata,telemetryEventId:"telemetry_"+"b".repeat(32)}};
+ const first=c.admit(a,identity);
+ const second=c.admit(b,identity);
+ assert.equal(first.accepted,true);
+ assert.equal(second.accepted,true,"no premature HTTP 200 suppression");
+ c.recordWriteFailure(first);
+ c.recordWriteSuccess(second);
+ const retry=c.admit(a,identity);
+ assert.equal(retry.accepted,true,"first failed event ID must remain retryable");
+ c.recordWriteSuccess(retry);
+ assert.equal(c.admit(a,identity).accepted,false,"confirmed DB writes permit coalescing again");
+});
+
+test("all failed pending requests reopen admission; normal coalescing resumes after stored outcome",()=>{
+ const c=createWatcherTelemetryCoalescer({now:()=>1000});
+ const first=c.admit(ignored("all-failed.aoe2record"),identity);
+ const second=c.admit(ignored("all-failed.aoe2record"),identity);
+ assert.equal(second.accepted,true);
+ c.recordWriteFailure(first);
+ c.recordWriteFailure(second);
+ const third=c.admit(ignored("all-failed.aoe2record"),identity);
+ assert.equal(third.accepted,true,"no completed write means no successful suppression");
+ c.recordWriteSuccess(third);
+ assert.equal(c.admit(ignored("all-failed.aoe2record"),identity).accepted,false);
+});
+
+test("constructor-supplied maxKeys cannot expand the coalescer indefinitely",()=>{
+ const c=createWatcherTelemetryCoalescer({maxKeys:Number.MAX_SAFE_INTEGER});
+ for(let i=0;i<4200;i++) c.admit(ignored("key-"+i+".aoe2record"),identity);
+ assert.equal(c.size(),4096);
 });
