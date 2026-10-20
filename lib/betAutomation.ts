@@ -1,5 +1,6 @@
 import { normalizeReplaySteamId } from "./replayPlayerIdentity.ts";
 import { normalizeReplayPlayers } from "./teamResolution.ts";
+import { observeFundedMechaPublicReadiness } from "./warSatchelLiveModeReadiness.ts";
 
 export const BET_AUTOMATION_CUSTODY_CAPABILITY = "bet-custody-v1";
 export const BET_AUTOMATION_MAX_RESERVE_WOLO = 10_000;
@@ -30,7 +31,8 @@ export type BetAutomationRuntime = {
     | "PREVIEW_READY"
     | "AUTOMATION_DISABLED"
     | "LIVE_CUSTODY_UNAVAILABLE"
-    | "LIVE_EXECUTOR_UNAVAILABLE";
+    | "LIVE_EXECUTOR_UNAVAILABLE"
+    | "CERTIFIED_FUNDED_MECHA_CONFIGURED";
   detail: string;
 };
 
@@ -231,6 +233,24 @@ export function readBetAutomationRuntime(
       BET_AUTOMATION_CUSTODY_CAPABILITY &&
     isLocalBetCustodyEndpoint(env.WOLO_BET_CUSTODY_URL) &&
     Boolean(env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim());
+
+  // The independent Satchel funded worker has a different signer/reviewer
+  // than legacy 8092 custody. Only the source-released, independently
+  // attested Satchel lane may advertise a live profile mode. Never use
+  // this display field to authorize a transaction.
+  if (configuredMode === "live" &&
+      observeFundedMechaPublicReadiness(env).ready) {
+    return {
+      configuredMode,
+      mode: "live",
+      previewOnly: false,
+      executionReady: true,
+      custodyCapabilityPresent: true,
+      code: "CERTIFIED_FUNDED_MECHA_CONFIGURED",
+      detail:
+        "Certified funded Mecha is configured. Actual wagers still require current live Watcher, owner consent, independent signer health and authenticated chain receipts.",
+    };
+  }
 
   if (configuredMode === "disabled") {
     return {

@@ -103,7 +103,9 @@ function responsePayload(input: {
       executionReady: automationRuntime.executionReady,
       detail: storedIssue
         ? "The stored plan no longer passes financial integrity checks. Review and save a new plan before automation can evaluate it. No WOLO has been moved."
-        : "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
+        : automationRuntime.mode === "live" && automationRuntime.executionReady
+          ? "Funded Mecha execution is configured. Each wager still requires the original LIVE Watcher, a valid owner mandate, available Satchel funds, independently certified signer health and authenticated chain evidence."
+          : "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
     },
     preset: serializePreset(input.preset),
     effectiveEnabled:
