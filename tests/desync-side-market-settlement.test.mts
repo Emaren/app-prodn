@@ -623,3 +623,122 @@ test("fee-bearing matched volume excludes unmatched principal and voided markets
     200,
   );
 });
+
+
+test("#JimsRule rejects unsafe whole-WOLO numeric inputs before settlement", () => {
+  const base = {
+    winningSide: "left" as const,
+    marketType: "winner",
+    desyncMarketType: "desync",
+    seedLeftWolo: 0,
+    seedRightWolo: 0,
+    feeRateBps: 200,
+    feeDenominator: 10_000,
+  };
+  for (const wagers of [
+    [{ id: 1, side: "left", amountWolo: Number.MAX_SAFE_INTEGER + 1 }],
+    [{ id: 1, side: "left", amountWolo: 1.5 }],
+    [{ id: 1, side: "left", amountWolo: -1 }],
+    [{ id: 1, side: "left", amountWolo: 2 }, { id: 1, side: "right", amountWolo: 2 }],
+    [{ id: 1, side: "left", amountWolo: Number.MAX_SAFE_INTEGER },
+      { id: 2, side: "left", amountWolo: 1 }],
+    [{ id: 1, side: "left", amountWolo: Number.MAX_SAFE_INTEGER },
+      { id: 2, side: "right", amountWolo: Number.MAX_SAFE_INTEGER }],
+  ]) {
+    assert.throws(() => planResolvedWagerSettlements({ ...base, wagers }), /safe|unique|range/i);
+  }
+});
+
+test("#JimsRule exact BigInt pro-rata math preserves a near-safe-limit pool", () => {
+  // Individual stake and total are safe but their naive floating-point
+  // multiplication inside a pro-rata allocator is not.
+  const leftA = 4_503_599_627_370_495;
+  const leftB = 1;
+  const right = 4_503_599_627_370_495;
+  const plan = planResolvedWagerSettlements({
+    winningSide: "left",
+    marketType: "winner",
+    desyncMarketType: "desync",
+    seedLeftWolo: 0,
+    seedRightWolo: 0,
+    wagers: [
+      { id: 10, side: "left", amountWolo: leftA },
+      { id: 20, side: "left", amountWolo: leftB },
+      { id: 30, side: "right", amountWolo: right },
+    ],
+    feeRateBps: 200,
+    feeDenominator: 10_000,
+  });
+  assert.equal(plan.settledUserPool, Number.MAX_SAFE_INTEGER);
+  assert.equal(plan.matchedVolumeWolo, Number.MAX_SAFE_INTEGER - 1);
+  assert.equal(plan.unmatchedVolumeWolo, 1);
+  assert.deepEqual(plan.exposures.map(({ matchedWolo, unmatchedWolo }) => ({
+    matchedWolo, unmatchedWolo,
+  })), [
+    { matchedWolo: leftA - 1, unmatchedWolo: 1 },
+    { matchedWolo: 1, unmatchedWolo: 0 },
+    { matchedWolo: right, unmatchedWolo: 0 },
+  ]);
+  const sumPayout = plan.outcomes.reduce(
+    (sum, row) => sum + BigInt(row.payoutWolo), 0n
+  );
+  assert.equal(sumPayout + BigInt(plan.bettingFeePoolWolo),
+               BigInt(Number.MAX_SAFE_INTEGER));
+});
+
+test("#JimsRule deterministic ties and half-up matched fees conserve every whole WOLO", () => {
+  const plan = planResolvedWagerSettlements({
+    winningSide: "left",
+    marketType: "winner",
+    desyncMarketType: "desync",
+    seedLeftWolo: 0,
+    seedRightWolo: 0,
+    wagers: [
+      { id: 11, side: "left", amountWolo: 1 },
+      { id: 12, side: "left", amountWolo: 1 },
+      { id: 13, side: "left", amountWolo: 1 },
+      { id: 14, side: "right", amountWolo: 2 },
+    ],
+    feeRateBps: 1,
+    feeDenominator: 2,
+  });
+  assert.deepEqual(plan.exposures.map(w => [w.id, w.matchedWolo, w.unmatchedWolo]), [
+    [11, 1, 0], [12, 1, 0], [13, 0, 1], [14, 2, 0],
+  ]);
+  assert.equal(plan.matchedVolumeWolo, 4);
+  assert.equal(plan.unmatchedVolumeWolo, 1);
+  assert.equal(plan.bettingFeePoolWolo, 2);
+  assert.equal(plan.outcomes.reduce((sum, x) => sum + x.payoutWolo + x.bettingFeeWolo, 0), 5);
+});
+
+test("#JimsRule matched-only accounting survives varied bounded market configurations", () => {
+  for (let seed = 1; seed <= 120; seed++) {
+    const a = (seed * 13) % 177;
+    const b = (seed * 31) % 211;
+    const c = (seed * 41) % 101;
+    const wagers = [
+      { id: 1, side: "left", amountWolo: a },
+      { id: 2, side: "right", amountWolo: b },
+      { id: 3, side: "left", amountWolo: c },
+    ];
+    for (const winningSide of ["left", "right", null] as const) {
+      const plan = planResolvedWagerSettlements({
+        winningSide, marketType: "winner", desyncMarketType: "desync",
+        seedLeftWolo: 500_000, seedRightWolo: 800_000,
+        wagers, feeRateBps: 200, feeDenominator: 10_000,
+      });
+      const total = a + b + c;
+      const matched = 2 * Math.min(a + c, b);
+      assert.equal(plan.matchedVolumeWolo, matched);
+      assert.equal(plan.unmatchedVolumeWolo, total - matched);
+      assert.equal(plan.exposures.reduce((sum, x) => sum + x.matchedWolo + x.unmatchedWolo, 0), total);
+      assert.equal(plan.outcomes.reduce((sum, x) => sum + x.payoutWolo + x.bettingFeeWolo, 0), total);
+      assert.equal(plan.bettingFeePoolWolo, winningSide ? Math.round(matched * 0.02) : 0);
+      for (const exposure of plan.exposures) {
+        assert.ok(exposure.matchedWolo >= 0 && exposure.matchedWolo <= exposure.amountWolo);
+        assert.equal(exposure.matchedWolo + exposure.unmatchedWolo, exposure.amountWolo);
+      }
+      if (!matched || !winningSide) assert.equal(plan.bettingFeePoolWolo, 0);
+    }
+  }
+});

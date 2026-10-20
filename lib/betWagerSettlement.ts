@@ -70,52 +70,84 @@ export type ResolvedWagerSettlementPlan = {
 };
 
 function assertWholeWolo(value: number, label: string) {
-  if (!Number.isInteger(value) || value < 0) {
-    throw new Error(`${label} must be a non-negative whole-WOLO amount.`);
+  // Plain integer checks permit >2^53 values whose WOLO units are not exact.
+  // The betting interface is numeric: refuse those inputs before any money math.
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} must be a safe non-negative whole-WOLO amount.`);
   }
 }
 
+const MAX_SAFE_WOLO = BigInt(Number.MAX_SAFE_INTEGER);
+
+function safeWoloFromBigInt(value: bigint, label: string): number {
+  if (value < BigInt(0) || value > MAX_SAFE_WOLO) {
+    throw new Error(`${label} exceeds safe whole-WOLO accounting range.`);
+  }
+  return Number(value);
+}
+
+/**
+ * Allocate whole WOLO with exact integer quotients/remainders.
+ *
+ * Multiplying two otherwise-safe numbers as JS floats can already lose units
+ * before Math.floor/Math.round, changing fees and owner attribution. BigInt
+ * keeps the numerator exact; each returned amount must still be safe Number.
+ */
 function allocateProRataByWagerId(
   wagers: Array<{ id: number; amountWolo: number }>,
   totalToAllocate: number
 ) {
+  assertWholeWolo(totalToAllocate, "Pro-rata allocation");
   const allocationByWagerId = new Map<number, number>();
-  const totalStake = wagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+  const totalStake = wagers.reduce((sum, wager) => {
+    assertWholeWolo(wager.amountWolo, `Wager #${wager.id}`);
+    return sum + BigInt(wager.amountWolo);
+  }, BigInt(0));
+  safeWoloFromBigInt(totalStake, "Aggregate pro-rata stake");
 
-  if (totalToAllocate <= 0 || totalStake <= 0) {
+  if (totalToAllocate === 0 || totalStake === BigInt(0)) {
     for (const wager of wagers) allocationByWagerId.set(wager.id, 0);
     return allocationByWagerId;
   }
 
-  const boundedTotal = Math.min(totalStake, Math.max(0, totalToAllocate));
+  const requested = BigInt(totalToAllocate);
+  const boundedTotal = requested < totalStake ? requested : totalStake;
   const allocations = wagers.map((wager) => {
-    const exact = (boundedTotal * wager.amountWolo) / totalStake;
-    const base = Math.floor(exact);
+    const product = boundedTotal * BigInt(wager.amountWolo);
     return {
       id: wager.id,
       amountWolo: wager.amountWolo,
-      allocatedWolo: base,
-      remainder: exact - base,
+      allocatedWolo: product / totalStake,
+      remainder: product % totalStake,
     };
   });
 
   let remaining =
-    boundedTotal - allocations.reduce((sum, row) => sum + row.allocatedWolo, 0);
+    boundedTotal - allocations.reduce((sum, row) => sum + row.allocatedWolo, BigInt(0));
 
-  allocations
-    .sort((left, right) => {
-      if (right.remainder !== left.remainder) return right.remainder - left.remainder;
-      if (right.amountWolo !== left.amountWolo) return right.amountWolo - left.amountWolo;
-      return left.id - right.id;
-    })
-    .forEach((allocation) => {
-      if (remaining <= 0) return;
-      allocation.allocatedWolo += 1;
-      remaining -= 1;
-    });
+  allocations.sort((left, right) => {
+    if (right.remainder !== left.remainder) {
+      return right.remainder > left.remainder ? 1 : -1;
+    }
+    if (right.amountWolo !== left.amountWolo) return right.amountWolo - left.amountWolo;
+    return left.id - right.id;
+  });
 
+  // Hamilton remainder allocation: leftover units are < number of wagers.
   for (const allocation of allocations) {
-    allocationByWagerId.set(allocation.id, allocation.allocatedWolo);
+    if (remaining <= BigInt(0)) break;
+    allocation.allocatedWolo += BigInt(1);
+    remaining -= BigInt(1);
+  }
+
+  if (remaining !== BigInt(0)) {
+    throw new Error("Pro-rata allocation did not conserve whole WOLO.");
+  }
+  for (const allocation of allocations) {
+    allocationByWagerId.set(
+      allocation.id,
+      safeWoloFromBigInt(allocation.allocatedWolo, "Pro-rata owner allocation")
+    );
   }
 
   return allocationByWagerId;
@@ -127,7 +159,10 @@ export function matchedMarketVolumeWolo(
 ) {
   assertWholeWolo(leftPoolWolo, "Left wager pool");
   assertWholeWolo(rightPoolWolo, "Right wager pool");
-  return Math.min(leftPoolWolo, rightPoolWolo) * 2;
+  return safeWoloFromBigInt(
+    BigInt(Math.min(leftPoolWolo, rightPoolWolo)) * BigInt(2),
+    "Matched market volume"
+  );
 }
 
 /**
@@ -144,7 +179,12 @@ export function matchedMarketVolumeWolo(
 export function planMatchedWagerExposure(
   wagers: ResolvedWagerInput[]
 ): MatchedWagerExposurePlan {
+  const seenIds = new Set<number>();
   const normalized = wagers.map((wager) => {
+    if (!Number.isSafeInteger(wager.id) || wager.id <= 0 || seenIds.has(wager.id)) {
+      throw new Error("Wager IDs must be unique positive safe integers.");
+    }
+    seenIds.add(wager.id);
     if (wager.side !== "left" && wager.side !== "right") {
       throw new Error(`Unsupported wager side for wager #${wager.id}: ${wager.side}`);
     }
@@ -162,8 +202,14 @@ export function planMatchedWagerExposure(
 
   const leftWagers = normalized.filter((wager) => wager.side === "left");
   const rightWagers = normalized.filter((wager) => wager.side === "right");
-  const leftPoolWolo = leftWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
-  const rightPoolWolo = rightWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+  const leftPoolWolo = safeWoloFromBigInt(
+    leftWagers.reduce((sum, wager) => sum + BigInt(wager.amountWolo), BigInt(0)),
+    "Left wager pool"
+  );
+  const rightPoolWolo = safeWoloFromBigInt(
+    rightWagers.reduce((sum, wager) => sum + BigInt(wager.amountWolo), BigInt(0)),
+    "Right wager pool"
+  );
   const matchedVolumeWolo = matchedMarketVolumeWolo(leftPoolWolo, rightPoolWolo);
   const matchedPerSideWolo = matchedVolumeWolo / 2;
   const leftMatched = allocateProRataByWagerId(leftWagers, matchedPerSideWolo);
@@ -179,7 +225,9 @@ export function planMatchedWagerExposure(
     };
   });
 
-  const settledUserPool = leftPoolWolo + rightPoolWolo;
+  const settledUserPool = safeWoloFromBigInt(
+    BigInt(leftPoolWolo) + BigInt(rightPoolWolo), "Settled user pool"
+  );
   return {
     leftPoolWolo,
     rightPoolWolo,
@@ -241,9 +289,12 @@ export function planResolvedWagerSettlements(input: {
   const byId = new Map(exposure.wagers.map((wager) => [wager.id, wager] as const));
   const settledUserPool = exposure.leftPoolWolo + exposure.rightPoolWolo;
   const winningUserPool = input.winningSide
-    ? exposure.wagers
-        .filter((wager) => wager.side === input.winningSide)
-        .reduce((sum, wager) => sum + wager.amountWolo, 0)
+    ? safeWoloFromBigInt(
+        exposure.wagers
+          .filter((wager) => wager.side === input.winningSide)
+          .reduce((sum, wager) => sum + BigInt(wager.amountWolo), BigInt(0)),
+        "Winning user pool"
+      )
     : 0;
   const losingSidePool = input.winningSide ? exposure.matchedPerSideWolo : 0;
   const unbackedDesyncWinningSide =
@@ -254,9 +305,11 @@ export function planResolvedWagerSettlements(input: {
 
   const bettingFeePoolWolo =
     input.winningSide && exposure.matchedVolumeWolo > 0
-      ? Math.round(
-          (exposure.matchedVolumeWolo * input.feeRateBps) /
-            input.feeDenominator
+      ? safeWoloFromBigInt(
+          (BigInt(exposure.matchedVolumeWolo) * BigInt(input.feeRateBps) +
+            BigInt(Math.floor(input.feeDenominator / 2))) /
+            BigInt(input.feeDenominator),
+          "Matched betting fee"
         )
       : 0;
 
@@ -295,10 +348,11 @@ export function planResolvedWagerSettlements(input: {
     }
 
     const bettingFeeWolo = feeByWinningWagerId.get(wager.id) ?? 0;
-    const matchedGrossReturnWolo = matched.matchedWolo * 2;
-    const payoutWolo = Math.max(
-      0,
-      matched.unmatchedWolo + matchedGrossReturnWolo - bettingFeeWolo
+    const grossReturn = BigInt(matched.unmatchedWolo) +
+      BigInt(matched.matchedWolo) * BigInt(2) - BigInt(bettingFeeWolo);
+    const payoutWolo = safeWoloFromBigInt(
+      grossReturn > BigInt(0) ? grossReturn : BigInt(0),
+      "Resolved wager payout"
     );
 
     return {
