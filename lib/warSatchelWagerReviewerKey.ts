@@ -57,4 +57,5 @@ export async function readWagerReviewerKey(): Promise<string> {
   } finally {
     await fd?.close();
   }
+  refuse();
 }
