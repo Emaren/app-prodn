@@ -62,6 +62,138 @@
       ]
     },
     {
+      "key": "accounts",
+      "label": "ACCOUNTS",
+      "owner": "Cosmos SDK auth",
+      "kind": "protocol",
+      "proof": "Chain-authenticated accounts and account sequence",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "vesting",
+      "label": "VESTING",
+      "owner": "Cosmos SDK vesting",
+      "kind": "protocol",
+      "proof": "Vesting schedule chain state",
+      "neighbors": [
+        "accounts",
+        "bank"
+      ]
+    },
+    {
+      "key": "slashing",
+      "label": "SLASHING",
+      "owner": "Cosmos SDK slashing",
+      "kind": "protocol",
+      "proof": "Validator infraction and penalty records",
+      "neighbors": [
+        "staking"
+      ]
+    },
+    {
+      "key": "rewards",
+      "label": "DISTRIBUTION",
+      "owner": "Cosmos SDK distribution",
+      "kind": "protocol",
+      "proof": "Reward distribution records",
+      "neighbors": [
+        "staking",
+        "bank"
+      ]
+    },
+    {
+      "key": "mint",
+      "label": "MINT",
+      "owner": "Cosmos SDK mint",
+      "kind": "protocol",
+      "proof": "Mint module rules and chain state; not permission for silent supply change",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "delegation",
+      "label": "AUTHZ",
+      "owner": "Cosmos SDK authz",
+      "kind": "protocol",
+      "proof": "Grants and authorizations",
+      "neighbors": [
+        "accounts"
+      ]
+    },
+    {
+      "key": "upgrade",
+      "label": "UPGRADE",
+      "owner": "Cosmos SDK upgrade",
+      "kind": "protocol",
+      "proof": "On-chain upgrade plan state",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "evidence",
+      "label": "EVIDENCE",
+      "owner": "Cosmos SDK evidence",
+      "kind": "protocol",
+      "proof": "Evidence processing state",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "group",
+      "label": "GROUP",
+      "owner": "Cosmos SDK group",
+      "kind": "protocol",
+      "proof": "Group proposals and permissions",
+      "neighbors": [
+        "governance"
+      ]
+    },
+    {
+      "key": "nft",
+      "label": "NFT",
+      "owner": "Cosmos SDK NFT",
+      "kind": "protocol",
+      "proof": "Class and NFT records",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "feegrant",
+      "label": "FEE GRANTS",
+      "owner": "Cosmos SDK feegrant",
+      "kind": "protocol",
+      "proof": "Fee-grant allowances",
+      "neighbors": [
+        "accounts"
+      ]
+    },
+    {
+      "key": "circuit",
+      "label": "CIRCUIT",
+      "owner": "Cosmos SDK circuit",
+      "kind": "protocol",
+      "proof": "Message execution circuit breaker state",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "epochs",
+      "label": "EPOCHS",
+      "owner": "Cosmos SDK epochs",
+      "kind": "protocol",
+      "proof": "Period and epoch records",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
       "key": "settlement",
       "label": "HD SETTLEMENT",
       "owner": "Protected WoloChain service",
@@ -90,5 +222,11 @@
       "proof": "No HD execution or source authority delegated to DE",
       "neighbors": []
     }
-  ]
+  ],
+  "upstream": {
+    "repository": "Emaren/wolochain",
+    "sourceSha": "a2fba6bfd98d7b28fb113badbadf23ec9096a4af",
+    "appConfig": "app/app_config.go",
+    "scope": "DECLARED_CHAIN_SOURCE_MODULES_ONLY"
+  }
 }
