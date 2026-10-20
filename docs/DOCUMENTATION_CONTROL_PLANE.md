@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-index-watcher-companion-20261019` at `26c4c750f4c5290bc8f931fd780ba89e0937cf99`
+Implementation baseline: `integration/renaissance-instruments-source-closure-20261020` at `65e7d747c1e1648039b2391d904aefaed6861b70`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
