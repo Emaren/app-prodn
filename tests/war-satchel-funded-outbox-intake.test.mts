@@ -47,7 +47,8 @@ test("outbox execution uses only the canonical signed-reservation adapter",()=>{
   const source=load("lib/warSatchelDedicatedSignerClient.ts");
   assert.match(source,/const ENDPOINT = "http:\/\/127\.0\.0\.1:8094"/);
   assert.match(source,/Authorization:\s*"Bearer "\s*\+\s*token/);
-  assert.match(source,/readWithdrawalReviewerKey\(/);
+  assert.match(source,/readWagerReviewerKey\(/);
+  assert.doesNotMatch(source,/readWithdrawalReviewerKey\(/);
   assert.match(source,/verifyIndependentWagerReservation\(/);
   assert.match(source,/request\("\/satchel\/v2\/one-shot"/);
   assert.match(source,/reservation:reviewed/);
