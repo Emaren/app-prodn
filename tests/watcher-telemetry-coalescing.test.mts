@@ -271,3 +271,39 @@ test("constructor-supplied maxKeys cannot expand the coalescer indefinitely",()=
  for(let i=0;i<4200;i++) c.admit(ignored("key-"+i+".aoe2record"),identity);
  assert.equal(c.size(),4096);
 });
+
+test("prior window success cannot certify a fresh failed monitoring window",()=>{
+ let now=1000;
+ const coalescer=createWatcherTelemetryCoalescer({now:()=>now,windowMs:30_000});
+ const a={...ignored("fresh-window.aoe2record"),metadata:{
+  reason:"monitoring",telemetryEventId:"telemetry_"+"e".repeat(32)}};
+ const b={...a,metadata:{...a.metadata,telemetryEventId:"telemetry_"+"f".repeat(32)}};
+ const first=coalescer.admit(a,identity);
+ coalescer.recordWriteSuccess(first);
+ now+=30_001;
+ const reopened=coalescer.admit(b,identity);
+ assert.equal(reopened.accepted,true);
+ coalescer.recordWriteFailure(reopened);
+ const further=coalescer.admit(a,identity);
+ assert.equal(further.accepted,true,
+   "a write from the expired window must not authorize a new-window suppression");
+});
+
+test("late old-window DB completion cannot mark a newer unresolved window as committed",()=>{
+ let now=1000;
+ const coalescer=createWatcherTelemetryCoalescer({now:()=>now,windowMs:30_000});
+ const event={...ignored("delayed-db.aoe2record"),metadata:{
+  reason:"monitoring",telemetryEventId:"telemetry_"+"1".repeat(32)}};
+ const old=coalescer.admit(event,identity);
+ now+=31_000;
+ const recent=coalescer.admit({...event,metadata:{...event.metadata,
+  telemetryEventId:"telemetry_"+"2".repeat(32)}},identity);
+ coalescer.recordWriteSuccess(old);
+ const next=coalescer.admit({...event,metadata:{...event.metadata,
+  telemetryEventId:"telemetry_"+"3".repeat(32)}},identity);
+ assert.equal(next.accepted,true,"old-window completion is not a receipt for current window");
+ coalescer.recordWriteSuccess(recent);
+ coalescer.recordWriteSuccess(next);
+ assert.equal(coalescer.admit(event,identity).accepted,false,
+   "current-window durable receipt restores bounded coalescing");
+});

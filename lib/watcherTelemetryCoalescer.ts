@@ -16,6 +16,9 @@ type CoalescibleWatcherEvent = {
 type CoalescerEntry = {
   acceptedAt: number;
   generation: number;
+  // The first accepted sequence for the current coalescing window.
+  // A late DB response from an older window cannot certify this one.
+  windowStartGeneration: number;
   lastSeenAt: number;
   suppressedCount: number;
   // Coalescing is an acknowledgment, which requires a durable predecessor.
@@ -231,6 +234,7 @@ export function createWatcherTelemetryCoalescer({
       const current: CoalescerEntry = prior ?? {
         acceptedAt: observedAt,
         generation: nextGeneration,
+        windowStartGeneration: nextGeneration,
         lastSeenAt: observedAt,
         suppressedCount: 0,
         committed: false,
@@ -238,6 +242,10 @@ export function createWatcherTelemetryCoalescer({
         failedEventIds: new Set(),
         forceAdmission: false,
       };
+      if (prior && observedAt - prior.acceptedAt >= effectiveWindowMs) {
+        current.windowStartGeneration = nextGeneration;
+        current.committed = false;
+      }
       current.acceptedAt = observedAt;
       current.lastSeenAt = observedAt;
       current.generation = nextGeneration;
@@ -285,7 +293,9 @@ export function createWatcherTelemetryCoalescer({
       if (!current?.pendingGenerations.has(admission.generation)) return;
       const eventId = current.pendingGenerations.get(admission.generation);
       current.pendingGenerations.delete(admission.generation);
-      current.committed = true;
+      if (admission.generation >= current.windowStartGeneration) {
+        current.committed = true;
+      }
       if (eventId) current.failedEventIds.delete(eventId);
     },
 
