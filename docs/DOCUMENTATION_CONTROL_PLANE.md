@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/traffic-stale-legacy-trailing-day-20261020` at `4908aae90ca84d13d3c5acbb0b0daffedccc3cb2`
+Implementation baseline: `fix/20261020-settlement-safe-integer-conservation-held` at `5b3db3f480fbecf0499b14b5848516b063e6231a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
