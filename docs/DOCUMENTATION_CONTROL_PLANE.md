@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-mecha-watcher-admission-provenance-held` at `320dd3e15add3b177bc7e924013894929a611a9d`
+Implementation baseline: `fix/20261020-satchel-live-readiness-compat-held` at `371867f69547fdad17df88267b23996676c76f8c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
