@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "687a2b94c98b5dd4045aa26da82a75d115a4a85dfc57ee90a9f040dffa0a5fc9",
+      "sha256": "bf3d7102eee496f5b5efcafdf250bb2e3e44ea86babaa9af024ba2646cec2e7f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2167,7 +2167,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/watcher-165-mac-gatekeeper-help-20261019",
-    "commit": "8ff1a79b7e927bef5f76a6d9447c1104c0b6c5b9"
+    "commit": "218620ecb76fa86559e4c3562565b1a3403cedd9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

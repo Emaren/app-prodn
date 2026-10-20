@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-165-mac-gatekeeper-help-20261019` at `8ff1a79b7e927bef5f76a6d9447c1104c0b6c5b9`
+Implementation baseline: `fix/watcher-165-mac-gatekeeper-help-20261019` at `218620ecb76fa86559e4c3562565b1a3403cedd9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
