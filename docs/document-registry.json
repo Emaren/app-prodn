@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "02a67609fe871ecfe37df1a354f23a617e3a25c195dfd3ad8137cb25ea46ae33",
+      "sha256": "892a7e3493899f879ee3cd775a74563d800098afbb111f9bbf793a636080c411",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -996,6 +996,30 @@
       ],
       "title": "Kingdom Knowledge Router",
       "type": "explanation"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "visual-only-read-side-projection-contract",
+      "id": "aoe2war.app-prodn.transparent-machinery-instruments",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_TRANSPARENT_MACHINERY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "6f413c553ab9c92b96afae9ad08efd93baba611b28b7d2ed1fc6afec8d09c5e5",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "aoe2-watcher"
+      ],
+      "title": "Transparent Kingdom Machine Instruments",
+      "type": "reference"
     },
     {
       "audience": [
@@ -2142,8 +2166,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-gate-trailing-newline-20261019",
-    "commit": "4ce8ab477b7261be2d8646fb5553b2897ccc1c06"
+    "branch": "feature/kingdom-transparent-machinery-20261019",
+    "commit": "0a512886d4896144be09a7d9574f30a3e67c961a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
