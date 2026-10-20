@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-transparent-machinery-20261019` at `4a4e37d593a1c6f0a5bd14c12eec7a162548c453`
+Implementation baseline: `fix/watcher-165-mac-gatekeeper-help-20261019` at `8ff1a79b7e927bef5f76a6d9447c1104c0b6c5b9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
