@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/renaissance-instruments-source-closure-20261020` at `3ae655b069e53dffdfa73244240a5c8da07e4d36`
+Implementation baseline: `integration/renaissance-phase1-unified-20261020` at `f2999f5c4a3c684af86d9408a3dde97c63f180d3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
