@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "kind": "kingdom-machinery-candidate-handoff",
+  "recordedAt": "2026-10-19",
+  "sourceSha": "b61d1ccf7cdb5d27c74eae3fbf40d2a6d12f7700",
+  "authority": "READ_ONLY_CONCEPT_AND_SOURCE_ONLY",
+  "newRoutes": [
+    "/kingdom-sensors",
+    "/kingdom-tests",
+    "/kingdom-recovery",
+    "/kingdom-systems",
+    "/replay-laboratory",
+    "/wolo-machine"
+  ],
+  "indexRegisteredPublicRouteCount": 76,
+  "fullBuildPageTemplateCount": "NOT_CURRENTLY_REVERIFIED",
+  "hdOnly": true,
+  "deIntegration": "INERT_NONAUTHORIZING_STUB",
+  "woloTopology": {
+    "sourceRepo": "Emaren/wolochain",
+    "sourceSha": "a2fba6bfd98d7b28fb113badbadf23ec9096a4af",
+    "status": "DECLARED_NOT_RUNTIME_CERTIFIED"
+  },
+  "sources": [
+    "/api/general-inspections",
+    "/api/kingdom-index",
+    "/api/kingdom-intelligence",
+    "/api/kingdom-patrol",
+    "/api/kingdom-route-census",
+    "/api/wolo/status",
+    "/api/hd-replay-engine"
+  ],
+  "release": {
+    "candidateMerged": false,
+    "productionDeployed": false,
+    "financialHoldCleared": false,
+    "reason": "Existing WoloChain production checkout/implementation baseline mismatch remains protected"
+  },
+  "checks": [
+    "exact-head source census",
+    "full TypeScript/Next contract build",
+    "documentation federation",
+    "isolated Steam-rating PostgreSQL",
+    "real browser visual review still required"
+  ]
+}
