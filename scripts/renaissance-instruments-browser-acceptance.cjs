@@ -90,7 +90,7 @@ async function setVisibility(page, value) {
   assert.equal(state, value);
 }
 function stateLocator(page, source) {
-  return page.locator('section[aria-label="Telemetry source states"] [title="' + source + '"] b');
+  return page.locator('main[data-kind]:visible').first().locator('section[aria-label="Telemetry source states"] [title="' + source + '"] b');
 }
 
 async function run() {
@@ -136,7 +136,7 @@ async function run() {
         timeout: 50000,
       });
       assert.equal(response?.status(), 200, entry.slug + " should return HTTP 200");
-      await page.locator('main[data-kind="' + entry.kind + '"]').waitFor();
+      await page.locator('main[data-kind="' + entry.kind + '"]:visible').first().waitFor();
       await poll(() => entry.urls.every((url) => calls[url] >= 1), entry.slug + " initial GET");
       await poll(async () => {
         for (const url of entry.urls) {
@@ -144,7 +144,7 @@ async function run() {
         }
         return true;
       }, entry.slug + " readable source badges");
-      const summary = page.locator('section[aria-label="Telemetry source states"]');
+      const summary = page.locator('main[data-kind]:visible').first().locator('section[aria-label="Telemetry source states"]');
       assert.ok((await summary.textContent()).includes("OBSERVED"));
       await page.screenshot({
         path: path.join(evidenceDir, entry.slug + "-desktop.png"),
