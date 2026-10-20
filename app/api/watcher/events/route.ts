@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { readBoundedWatcherJson } from "@/lib/watcherBoundedJson";
+import { toWatcherEventArray, type RawWatcherEvent } from "@/lib/watcherTelemetryBatch";
 import {
   reconcileAutomaticWatcherTerminalResults,
 } from "@/lib/replayResultAdjudications";
@@ -35,23 +36,6 @@ const TERMINAL_RECONCILE_EVENT_TYPES =
     "final_result_review_observation_complete",
     "monitor_stop",
   ]);
-
-type RawWatcherEvent = Record<string, unknown>;
-
-function toEventArray(payload: unknown): RawWatcherEvent[] {
-  if (payload && typeof payload === "object" && !Array.isArray(payload) &&
-      Array.isArray((payload as { events?: unknown }).events)) {
-    const batch = (payload as { events: unknown[] }).events;
-    // Never silently discard malformed batch rows and then return a partial
-    // HTTP 200. Every requested event must be represented in the response.
-    if (batch.some((entry) => !entry || typeof entry !== "object" || Array.isArray(entry))) {
-      throw new Error("Invalid watcher batch entry.");
-    }
-    return batch as RawWatcherEvent[];
-  }
-  return payload && typeof payload === "object" && !Array.isArray(payload)
-    ? [payload as RawWatcherEvent] : [];
-}
 
 function normalizeEvent(raw: RawWatcherEvent): WatcherClientEventInput {
   const eventType = raw.eventType || raw.event_type;
@@ -87,7 +71,7 @@ export async function POST(request: NextRequest) {
   const payload = read.kind === "ok" ? read.payload : null;
   let rawEvents: RawWatcherEvent[];
   try {
-    rawEvents = toEventArray(payload);
+    rawEvents = toWatcherEventArray(payload);
   } catch {
     return NextResponse.json(
       { ok: false, detail: "Invalid watcher batch entry." },
