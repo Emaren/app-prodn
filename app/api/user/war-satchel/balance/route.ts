@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
+import { observeFundedMechaPublicReadiness } from "@/lib/warSatchelLiveModeReadiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,7 +53,9 @@ export async function GET(request: NextRequest) {
       depositEnabled: process.env.WAR_SATCHEL_DEPOSIT_INSTRUCTIONS_ENABLED === "true" &&
         process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED === "true" &&
         process.env.WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED === "true",
-      wageringEnabled: false, // live worker still requires certified signer
+      // This is a read-only display hint. The independent worker separately
+      // validates real bank, mandate, signer, market and Watcher authority.
+      wageringEnabled: observeFundedMechaPublicReadiness().ready,
       latestDeposits: recent.map(x => ({
         txHash: x.txHash, amountUwolo: String(x.amountUwolo),
         canonicalHeight: String(x.canonicalHeight),
