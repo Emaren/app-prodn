@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf3d7102eee496f5b5efcafdf250bb2e3e44ea86babaa9af024ba2646cec2e7f",
+      "sha256": "00bb7156355d79cbd2d8ed93d5e5c3c1b4e7717393cdf7dfde2b2a6139224a88",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1922,6 +1922,167 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "docs-v2-release-control",
+      "id": "aoe2war.app-prodn.docs-watcher-166-documentation-baseline-review",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_166_DOCS_BASELINE_REVIEW.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "522123eccfa2c33eba37b66b6cc3c87d18ed7913aa829bb8be643ca9ce0cfc9b",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Source-bound Documentation Review Procedure",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-166-telemetry-body-limit",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_166_TELEMETRY_BODY_LIMIT.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "b24ccede976be5692b41568b89150e0d07de407a3efddb95b222a22223e1ce4c",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher diagnostic request bounded-read proof",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-166-telemetry-idempotency",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_166_TELEMETRY_IDEMPOTENCY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "cbf5d145e7c26cc6304c054199d5ce63dc0367d23cd917c31be310f6beade7af",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Server-side telemetry retry idempotency",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-1-6-6-same-id-ack-race",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_1_6_6_SAME_ID_ACK_RACE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "9e8f1e9d35a5c3f79433c35f2f679e7ba1edb55af78606668f4817ec7c84ced9",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Same-ID coalescing receipt race (source candidate)",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-release-proof",
+      "id": "aoe2war.app-prodn.docs-watcher-http-pg-failure-proof",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_HTTP_PG_FAILURE_PROOF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "59ce2d7e06e4f03d1512db02e5a2cbcfbf682f253624f8df4056e7156da6ab84",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Real HTTP/Prisma/PostgreSQL Failure Injection",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-monitoring-durable-ack",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_MONITORING_DURABLE_ACK.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "5be649ead278d6179612676823a0a831929d90ec6ad287c58ff28773d3757759",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher Monitoring Telemetry \u2014 Durable Acknowledgment During Database Writes",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-monitoring-epoch-fence",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_MONITORING_EPOCH_FENCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "b7ea69c65e9fe63eb04ae6faf2489527db90bcf2db6f0a4dcf7cca617e6b4669",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher Monitoring Telemetry \u2014 Cross-window Database Completion Fence",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "stream-ingest-contract",
       "id": "aoe2war.app-prodn.docs-watcher-native-stream-handoff",
       "owner": "aoe2war-web",
@@ -1961,6 +2122,29 @@
         "aoe2-watcher"
       ],
       "title": "Watcher Telemetry",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-telemetry-batch-completeness",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_TELEMETRY_BATCH_COMPLETENESS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "66f031dcd8e5fc55c7fdfe8b949d51117301c3ca18cd8a4ff2b5ba397ca7decf",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher telemetry batch completeness invariant",
       "type": "reference"
     },
     {
@@ -2166,8 +2350,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-165-mac-gatekeeper-help-20261019",
-    "commit": "218620ecb76fa86559e4c3562565b1a3403cedd9"
+    "branch": "fix/watcher-166-telemetry-retry-receipts-20261019",
+    "commit": "2a157151c0df34de35ab477a2681d33c5cdeaf5d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
