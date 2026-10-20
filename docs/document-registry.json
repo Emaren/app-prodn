@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f4a01aab66464c312f40da59580e7ca5c613b958d7e78d8c0183bfa4a6d4d9a",
+      "sha256": "fbde5ba3833b9ebc06c2e2036fe5fabbad537bc5c726ce180a12fd18c4eb0846",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-index-watcher-companion-20261019",
-    "commit": "26c4c750f4c5290bc8f931fd780ba89e0937cf99"
+    "branch": "integration/renaissance-instruments-source-closure-20261020",
+    "commit": "65e7d747c1e1648039b2391d904aefaed6861b70"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
