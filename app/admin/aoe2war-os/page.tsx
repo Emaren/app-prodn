@@ -25,7 +25,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ActionDefinition = {
   action: string;
@@ -246,31 +246,74 @@ export default function AoE2WarOsAdminPage() {
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [confirmations, setConfirmations] = useState<Record<string, string>>({});
   const [clock, setClock] = useState(() => Date.now());
+  const refreshAbortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
+    // GET only: protect the operator dashboard from overlapping slow scans.
+    if (refreshAbortRef.current) return;
+    const controller = new AbortController();
+    refreshAbortRef.current = controller;
+    let timedOut = false;
+    const timeout = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 8_000);
+
     try {
-      const response = await fetch("/api/admin/aoe2war-os", { cache: "no-store" });
+      const response = await fetch("/api/admin/aoe2war-os", {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       const payload = (await response.json().catch(() => ({}))) as Dashboard & {
         detail?: string;
       };
+      if (controller.signal.aborted) return;
       if (!response.ok) {
         throw new Error(payload.detail || "Could not load AoE2WAR OS state.");
       }
       setDashboard(payload);
       setError(null);
     } catch (loadError) {
-      setError(
-        loadError instanceof Error ? loadError.message : "Could not load AoE2WAR OS state."
-      );
+      if (!controller.signal.aborted || timedOut) {
+        setDashboard(null); // Never leave an unverified operator state displayed as current.
+        setError(
+          timedOut
+            ? "AoE2WAR OS state refresh timed out."
+            : loadError instanceof Error
+              ? loadError.message
+              : "Could not load AoE2WAR OS state."
+        );
+      }
     } finally {
-      setLoading(false);
+      window.clearTimeout(timeout);
+      if (refreshAbortRef.current === controller) refreshAbortRef.current = null;
+      if (!controller.signal.aborted || timedOut) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void refresh();
-    const interval = window.setInterval(() => void refresh(), 3000);
-    return () => window.clearInterval(interval);
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        refreshAbortRef.current?.abort();
+        setDashboard(null);
+        setError(null);
+        setLoading(true);
+      } else {
+        void refresh();
+      }
+    };
+
+    onVisibilityChange();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 3_000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      refreshAbortRef.current?.abort();
+    };
   }, [refresh]);
 
   useEffect(() => {
