@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "535d884f21d111169c8d6ce0fadcb46d33827ebdc29a58c7d1d18597d2a49063",
+      "sha256": "b60f5f79dcdeef6012feb17b7d56f2d228c1a1805656099fc9bdc5aaa3a30aa6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2f00331abebd4879b7a281660eaf6bb9d3885ecbf4cb4e2d99118af16afa3cc1",
+      "sha256": "a168aab3b5a379d3703abb1947aab9d02b4aa6bc1714944f3dfcdb301ed16d0b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261020-mecha-watcher-admission-provenance-held",
-    "commit": "320dd3e15add3b177bc7e924013894929a611a9d"
+    "branch": "fix/20261020-satchel-live-readiness-compat-held",
+    "commit": "371867f69547fdad17df88267b23996676c76f8c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
