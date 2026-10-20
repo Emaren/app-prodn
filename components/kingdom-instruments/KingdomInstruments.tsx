@@ -146,7 +146,7 @@ function RecoveryCanvas({ intelligence, inspection }: {intelligence:Reading;insp
 
 function SystemsCanvas({ census, patrol, intelligence }: {census:Reading;patrol:Reading;intelligence:Reading}) {
   const counts=rec(census.counts),runtime=census.status==="verified";
-  const lanes=[["PUBLIC",counts.publicStatic],["DYNAMIC",counts.publicDynamic],["UTILITY",counts.publicUtility],["ADMIN",counts.admin],["SENSITIVE",counts.sensitiveDynamic],["API",counts.apiHandlers]];
+  const lanes: Array<[string, unknown]>=[["PUBLIC",counts.publicStatic],["DYNAMIC",counts.publicDynamic],["UTILITY",counts.publicUtility],["ADMIN",counts.admin],["SENSITIVE",counts.sensitiveDynamic],["API",counts.apiHandlers]];
   return <div className={styles.stageStack}>
     <div className={styles.rackFrame}><div className={styles.rackHeader}><Cpu size={19}/> BUILD MANIFEST <span>{runtime?"EXACT DEPLOYED SOURCE":"RUNTIME MANIFEST UNKNOWN"}</span></div>
       <div className={styles.rackRows}>{lanes.map(([name,n],i)=><div className={styles.rackUnit} key={String(name)}><span>{String(i+1).padStart(2,"0")}</span><strong>{name}</strong><div className={styles.rackLights}>{Array.from({length:8},(_,j)=><i key={j} className={runtime&&num(n)!==null&&j<Math.min(8,Math.ceil((num(n)||0)/10))?styles.rackOn:""}/>)}</div><b>{runtime?fmt(n):"—"}</b></div>)}</div>
