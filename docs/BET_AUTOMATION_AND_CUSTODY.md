@@ -1968,3 +1968,33 @@ This is a source-level reachability and scheduling correction under
 custody, review issuer, wallet, chain transaction or fund balance is
 activated by it. It must be revalidated in the continuous 8095→8094
 isolated trial before any approved production canary.
+
+## Funded Mecha public live-status compatibility (held)
+
+The original shadow-only `readBetAutomationRuntime` must not permanently
+report preview once an **independently certified** Satchel-funded executor has
+actually shipped. The read-only status adapter
+`lib/warSatchelLiveModeReadiness.ts` now provides a single source of truth
+for the profile auto-bet status and owner-scoped Satchel balance
+`wageringEnabled` display bit. It requires both the immutable
+`satchelFinancialBridgeReady()` **source** gate and every exact-value
+financial/custody/executor, original LIVE Watcher and runtime signer-health
+operator-attestation flag. With the current source HOLD, every possible
+environment configuration remains **preview/not live**.
+
+The compatibility adapter has **NO financial authority**. An operator flag
+or UI status can never replace independently verified LIVE Watcher evidence,
+a valid owner ADR-36 mandate, physical reservation/receipt, authenticated
+bank and owner liabilities, independent signer/reviewer approval, one-shot
+execution fences or chain receipt proof. An owner may save a plan while the
+financial bridge remains held, but it must never be represented as a live
+funded wager or a completed transfer. A future positive owner-facing status
+means *configuration claimed after source certification*, not proof that
+the last game produced an actual wager.
+
+The old 8092 legacy custody capability remains separate from the new
+Satchel 8094 signer/reviewer lane. It MUST NOT be used as a shortcut to
+enable the funded Satchel status or permit a Satchel transfer. Until
+independent release certification, the held PR remains source-only and
+NO mainnet funds or production services are affected.
+
