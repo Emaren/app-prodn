@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf3d7102eee496f5b5efcafdf250bb2e3e44ea86babaa9af024ba2646cec2e7f",
+      "sha256": "495999957b7ebc86e57159385e8f2b149ced0aebb42c3707bd04005535129e4b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1576,6 +1576,31 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "renaissance-campaign-integration-contract",
+      "id": "aoe2war.app-prodn.renaissance-os",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "67c7413c75c4e6fe48830e50462f9c0229725982d0cd8c4a490271947a0e0740",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Renaissance OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "metric-contract",
       "id": "aoe2war.app-prodn.docs-replay-corpus-metrics",
       "owner": "aoe2war-web",
@@ -2166,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-165-mac-gatekeeper-help-20261019",
-    "commit": "218620ecb76fa86559e4c3562565b1a3403cedd9"
+    "branch": "feature/renaissance-os-visual-platform-20261019",
+    "commit": "46625afbd2ba365e18855dc1656d59bfce00f5f2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -1,4 +1,19 @@
-# Renaissance OS — integration architecture (source baseline 16c31d6e000f)
+---
+id: "aoe2war.app-prodn.renaissance-os"
+title: "Renaissance OS"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "renaissance-campaign-integration-contract"
+reviewed_at: "2026-10-19"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
+# Renaissance OS
 
 Renaissance OS introduces a twelve-destination visual engineering campaign with **fifteen conceptual instruments** grouped into twelve independent visual views. It is a read-only *integration overlay* on existing AoE2WAR source owners, not a new domain authority.
 
