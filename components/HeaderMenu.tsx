@@ -100,7 +100,7 @@ export default function HeaderMenu({
       { href: "/kingdom-brain", label: "Kingdom Brain", icon: Network, featured: true },
       { href: "/kingdom-progress", label: "Kingdom Progress", icon: BarChart3, featured: true },
       { href: "/renaissance", label: "Renaissance OS", icon: Network, featured: true },
-      { href: "/renaissance/atlas", label: "Renaissance Atlas", icon: Map, featured: true },
+      { href: "/renaissance/atlas", label: "Renaissance Atlas", icon: Network, featured: true },
       { href: "/renaissance/circuit", label: "Renaissance Circuit", icon: Network, featured: true },
       { href: "/renaissance/marshal", label: "Renaissance Marshal", icon: Shield, featured: true },
       { href: "/renaissance/doctor", label: "Renaissance Doctor", icon: BarChart3, featured: true },
