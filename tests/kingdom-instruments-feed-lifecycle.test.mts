@@ -77,7 +77,7 @@ test("real shared instrument component fences network generations and visibility
   assert.match(source, /activeRead\.current===ctrl && !ctrl\.signal\.aborted/);
   assert.match(source, /ctrl\.abort\(\)/);
   assert.match(source, /},10000\)/);
-  assert.match(source, /},90000\)/);
+  assert.match(source, /setRefreshId\(x=>x\+1\),90000\)/);
   assert.match(source, /credentials:"same-origin"/);
   assert.doesNotMatch(source, /method:"POST"|method:"DELETE"|wallet\.sign|settleWager/);
 });
