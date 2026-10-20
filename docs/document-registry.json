@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "78c0e0d7a576b6ddc2b560a33f7497b9c3979639298015c9a4385e24073fa6cd",
+      "sha256": "14aeace57637ba650dc06469fc0389f2cf3ba2ba867de0730fb8665bbbfb5851",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f6eee108d0408c6c268821ce97351da740dd257d2ef252409b5195e2eac737ac",
+      "sha256": "268a3cc72d410497257c36b43dce1ae5f51ae9c6f89917acf52c4f8fd064df8b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261020-satchel-separate-wager-review-key",
-    "commit": "4de56213503b9c0167cc0e8fe85a1e176740d22d"
+    "commit": "c21f37a7ea69e4f171f466850d45ef5c2f77b62c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
