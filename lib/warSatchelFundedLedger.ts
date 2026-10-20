@@ -17,6 +17,7 @@ import { authenticateWarSatchelFinancialProof,financialProofFreshAt,type Authent
 import { createHash } from "node:crypto";
 import {withdrawalReservationDigest,withdrawalOwnerMandateDigest,verifyIndependentWithdrawalApproval,readWithdrawalReviewerKey,
  type WithdrawalOwnerMandate,type IndependentWithdrawalApproval,type DurableWithdrawalEconomics} from "./warSatchelWithdrawalReview.ts";
+import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
 /**
  * War Satchel C4: database-atomic, source-idempotent financial posting.
  *
@@ -674,7 +675,7 @@ export async function markSatchelSubmissionAttempt(
   prisma: PrismaClient,
   input: { executionId: number; ownerUserId: number; ticketRequestId: string; reservation: SatchelWagerReservation },
 ) {
-  const reviewKey = await readWithdrawalReviewerKey();
+  const reviewKey = await readWagerReviewerKey();
   return withExclusiveSatchelTx(prisma, async tx => {
     const reservation = await tx.satchelFundedReservation.findUnique({
       where: { executionId: input.executionId },
@@ -1527,7 +1528,7 @@ function decodeWagerAuthorization(row:{snapshotJson:unknown;operationId:string;r
 /** Trusted reviewer ingress, analogous to withdrawal approval. No public route,
  * signature generator, bearer-based authority or automatic signing fallback. */
 export async function attachIndependentSatchelWagerReview(prisma:PrismaClient,input:{operationId:string;ownerUserId:number;approval:SatchelWagerReservation}){
- const key=await readWithdrawalReviewerKey();
+ const key=await readWagerReviewerKey();
  return withExclusiveSatchelTx(prisma,async tx=>{
   const row=await tx.satchelWagerAuthorization.findUnique({where:{operationId:input.operationId}});
   if(!row||row.ownerUserId!==input.ownerUserId)stop('wager_review_owner_missing');
@@ -1550,7 +1551,7 @@ export async function loadSatchelWagerReview(prisma:PrismaClient,input:{operatio
  const row=await prisma.satchelWagerAuthorization.findUnique({where:{operationId:input.operationId},include:{approval:true,broadcast:true}});
  if(!row||row.ownerUserId!==input.ownerUserId)stop('wager_review_owner_missing');
  const a=decodeWagerAuthorization(row),raw=row.approval?.approvalJson as unknown as SatchelWagerReservation|undefined;
- const review=raw?verifyIndependentWagerReservation(raw,wagerReviewContext(a,raw),await readWithdrawalReviewerKey(),historical?raw.issued_at*1000:Date.now()):null;
+ const review=raw?verifyIndependentWagerReservation(raw,wagerReviewContext(a,raw),await readWagerReviewerKey(),historical?raw.issued_at*1000:Date.now()):null;
  return {authorization:a,review,candidateHash:row.broadcast?.txHash??null};
 }
 /** Persist ACK identity before any proof I/O. A conflicting hash remains held. */
