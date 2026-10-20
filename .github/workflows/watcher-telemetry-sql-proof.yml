@@ -49,14 +49,15 @@ jobs:
       - uses: actions/checkout@v7
       - name: Create isolated pre-migration telemetry table
         run: |
-          psql -X -v ON_ERROR_STOP=1 -c '
-            CREATE TABLE "watcher_client_events" (
-              "id" BIGSERIAL PRIMARY KEY,
-              "event_type" VARCHAR(40) NOT NULL,
-              "metadata" JSONB
-            );
-            INSERT INTO "watcher_client_events" ("event_type") VALUES (\x27legacy\x27), (\x27legacy\x27);
-          '
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE "watcher_client_events" (
+            "id" BIGSERIAL PRIMARY KEY,
+            "event_type" VARCHAR(40) NOT NULL,
+            "metadata" JSONB
+          );
+          INSERT INTO "watcher_client_events" ("event_type")
+          VALUES ('legacy'), ('legacy');
+          SQL
       - name: Apply additive migration and prove duplicates cannot insert
         run: |
           psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261020_030000_watcher_telemetry_event_id/migration.sql
