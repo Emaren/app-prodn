@@ -39,6 +39,10 @@
 /kingdom-brain
 /kingdom-intelligence
 /kingdom-progress
+/kingdom-recovery
+/kingdom-sensors
+/kingdom-systems
+/kingdom-tests
 /kingdom-treasury
 /kingdom-forge
 /leaderboard
@@ -60,6 +64,7 @@
 /profile
 /radio
 /realm
+/replay-laboratory
 /replay-parser
 /requests
 /rivalries
@@ -82,6 +87,7 @@
 /watch
 /wolo
 /wolo-1
+/wolo-machine
 /wolochain
 /wolomania
 /workshop

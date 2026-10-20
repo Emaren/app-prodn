@@ -1,0 +1,232 @@
+{
+  "schema": 1,
+  "version": "2026-10-19-v1",
+  "source": "WoloChain source architecture and AoE2WAR integration contracts",
+  "semantics": "DECLARED_CAPABILITIES_ONLY_NOT_LIVE_DEPLOYMENT_PROOF",
+  "mainnetId": "wolo-1",
+  "audience": "HD_INTERNAL",
+  "policy": "DE is a nonauthorizing external stub; never invoke DE services or present its health as HD financial readiness.",
+  "modules": [
+    {
+      "key": "consensus",
+      "label": "CONSENSUS",
+      "owner": "CometBFT",
+      "kind": "protocol",
+      "proof": "RPC latest block + height freshness",
+      "neighbors": [
+        "staking",
+        "governance"
+      ]
+    },
+    {
+      "key": "bank",
+      "label": "BANK",
+      "owner": "Cosmos SDK bank",
+      "kind": "protocol",
+      "proof": "Consensus-authenticated chain balance/tx receipts",
+      "neighbors": [
+        "staking",
+        "ibc",
+        "settlement"
+      ]
+    },
+    {
+      "key": "staking",
+      "label": "STAKING",
+      "owner": "Cosmos SDK staking",
+      "kind": "protocol",
+      "proof": "Authenticated validator/delegation records",
+      "neighbors": [
+        "consensus",
+        "bank"
+      ]
+    },
+    {
+      "key": "governance",
+      "label": "GOVERNANCE",
+      "owner": "Cosmos SDK governance",
+      "kind": "protocol",
+      "proof": "Proposal and vote records",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "ibc",
+      "label": "IBC",
+      "owner": "Cosmos interoperability",
+      "kind": "protocol",
+      "proof": "Channel/packet evidence",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "accounts",
+      "label": "ACCOUNTS",
+      "owner": "Cosmos SDK auth",
+      "kind": "protocol",
+      "proof": "Chain-authenticated accounts and account sequence",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "vesting",
+      "label": "VESTING",
+      "owner": "Cosmos SDK vesting",
+      "kind": "protocol",
+      "proof": "Vesting schedule chain state",
+      "neighbors": [
+        "accounts",
+        "bank"
+      ]
+    },
+    {
+      "key": "slashing",
+      "label": "SLASHING",
+      "owner": "Cosmos SDK slashing",
+      "kind": "protocol",
+      "proof": "Validator infraction and penalty records",
+      "neighbors": [
+        "staking"
+      ]
+    },
+    {
+      "key": "rewards",
+      "label": "DISTRIBUTION",
+      "owner": "Cosmos SDK distribution",
+      "kind": "protocol",
+      "proof": "Reward distribution records",
+      "neighbors": [
+        "staking",
+        "bank"
+      ]
+    },
+    {
+      "key": "mint",
+      "label": "MINT",
+      "owner": "Cosmos SDK mint",
+      "kind": "protocol",
+      "proof": "Mint module rules and chain state; not permission for silent supply change",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "delegation",
+      "label": "AUTHZ",
+      "owner": "Cosmos SDK authz",
+      "kind": "protocol",
+      "proof": "Grants and authorizations",
+      "neighbors": [
+        "accounts"
+      ]
+    },
+    {
+      "key": "upgrade",
+      "label": "UPGRADE",
+      "owner": "Cosmos SDK upgrade",
+      "kind": "protocol",
+      "proof": "On-chain upgrade plan state",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "evidence",
+      "label": "EVIDENCE",
+      "owner": "Cosmos SDK evidence",
+      "kind": "protocol",
+      "proof": "Evidence processing state",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "group",
+      "label": "GROUP",
+      "owner": "Cosmos SDK group",
+      "kind": "protocol",
+      "proof": "Group proposals and permissions",
+      "neighbors": [
+        "governance"
+      ]
+    },
+    {
+      "key": "nft",
+      "label": "NFT",
+      "owner": "Cosmos SDK NFT",
+      "kind": "protocol",
+      "proof": "Class and NFT records",
+      "neighbors": [
+        "bank"
+      ]
+    },
+    {
+      "key": "feegrant",
+      "label": "FEE GRANTS",
+      "owner": "Cosmos SDK feegrant",
+      "kind": "protocol",
+      "proof": "Fee-grant allowances",
+      "neighbors": [
+        "accounts"
+      ]
+    },
+    {
+      "key": "circuit",
+      "label": "CIRCUIT",
+      "owner": "Cosmos SDK circuit",
+      "kind": "protocol",
+      "proof": "Message execution circuit breaker state",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "epochs",
+      "label": "EPOCHS",
+      "owner": "Cosmos SDK epochs",
+      "kind": "protocol",
+      "proof": "Period and epoch records",
+      "neighbors": [
+        "consensus"
+      ]
+    },
+    {
+      "key": "settlement",
+      "label": "HD SETTLEMENT",
+      "owner": "Protected WoloChain service",
+      "kind": "application",
+      "proof": "Exact running binary, transfer journal, balances, held release controls",
+      "neighbors": [
+        "bank",
+        "custody"
+      ]
+    },
+    {
+      "key": "custody",
+      "label": "WAR SATCHEL",
+      "owner": "Held independent financial services",
+      "kind": "application",
+      "proof": "Owner mandate + reviewer + signed custody journal",
+      "neighbors": [
+        "settlement"
+      ]
+    },
+    {
+      "key": "de",
+      "label": "DE STUB",
+      "owner": "Separate external consumer",
+      "kind": "external",
+      "proof": "No HD execution or source authority delegated to DE",
+      "neighbors": []
+    }
+  ],
+  "upstream": {
+    "repository": "Emaren/wolochain",
+    "sourceSha": "a2fba6bfd98d7b28fb113badbadf23ec9096a4af",
+    "appConfig": "app/app_config.go",
+    "scope": "DECLARED_CHAIN_SOURCE_MODULES_ONLY"
+  }
+}
