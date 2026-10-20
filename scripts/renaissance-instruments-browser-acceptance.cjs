@@ -138,17 +138,12 @@ async function run() {
       assert.equal(response?.status(), 200, entry.slug + " should return HTTP 200");
       await page.locator('main[data-kind="' + entry.kind + '"]').waitFor();
       await poll(() => entry.urls.every((url) => calls[url] >= 1), entry.slug + " initial GET");
-      await poll(async () => entry.urls.every(async (url) =>
-        (await stateLocator(page, url).textContent()) === "OBSERVED"
-      ), entry.slug + " reader badges").catch(async () => {
-        // Promise-returning Array.every() is not a completeness proof.
-        await poll(async () => {
-          for (const url of entry.urls) {
-            if ((await stateLocator(page, url).textContent()) !== "OBSERVED") return false;
-          }
-          return true;
-        }, entry.slug + " readable source badges");
-      });
+      await poll(async () => {
+        for (const url of entry.urls) {
+          if ((await stateLocator(page, url).textContent()) !== "OBSERVED") return false;
+        }
+        return true;
+      }, entry.slug + " readable source badges");
       const summary = page.locator('section[aria-label="Telemetry source states"]');
       assert.ok((await summary.textContent()).includes("OBSERVED"));
       await page.screenshot({
