@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "265765147bf4b7241c9ff7924375945e5e98b20650191778f29702e705b37796",
+      "sha256": "892febe259e2ab2fa62e06b978c3dd7f91c2346d5dcbf7df2c486e8d3b2705b6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261020-satchel-separate-wager-review-key",
-    "commit": "55141211211e0a4f09e4db7c4c598c1484cc1ec6"
+    "commit": "657fb91623a3092b8ffad92da4856e009740e631"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
