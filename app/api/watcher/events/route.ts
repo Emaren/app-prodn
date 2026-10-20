@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { readBoundedWatcherJson } from "@/lib/watcherBoundedJson";
 import {
   reconcileAutomaticWatcherTerminalResults,
 } from "@/lib/replayResultAdjudications";
@@ -73,7 +74,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, detail: "Watcher telemetry payload too large." }, { status: 413 });
   }
 
-  const payload = await request.json().catch(() => null);
+  const read = await readBoundedWatcherJson(request, MAX_BODY_BYTES);
+  if (read.kind === "too_large") {
+    return NextResponse.json({ ok: false, detail: "Watcher telemetry payload too large." }, { status: 413 });
+  }
+  const payload = read.kind === "ok" ? read.payload : null;
   const rawEvents = toEventArray(payload);
   if (rawEvents.length === 0) {
     return NextResponse.json({ ok: false, detail: "No watcher events supplied." }, { status: 400 });
