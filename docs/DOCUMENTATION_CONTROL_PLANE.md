@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-transparent-machinery-20261019` at `0a512886d4896144be09a7d9574f30a3e67c961a`
+Implementation baseline: `feature/kingdom-transparent-machinery-20261019` at `fe32741ad14b66de5c2ad279672d290339b0346c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
