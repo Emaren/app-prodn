@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "320fda9dec84b7b169a821c60acaa98288b280a5afdc478410d167315037d458",
+      "sha256": "bf3d7102eee496f5b5efcafdf250bb2e3e44ea86babaa9af024ba2646cec2e7f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2166,8 +2166,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-transparent-machinery-20261019",
-    "commit": "4a4e37d593a1c6f0a5bd14c12eec7a162548c453"
+    "branch": "fix/watcher-165-mac-gatekeeper-help-20261019",
+    "commit": "218620ecb76fa86559e4c3562565b1a3403cedd9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
