@@ -18,9 +18,11 @@ export type PublicTrafficPayload = {
 type CanonicalTrafficPayload = {
   coverage_started_at?: string | null;
   coverage_ended_at?: string | null;
+  archive_calculated_at?: string | null;
   semantics?: Record<string, unknown>;
   points?: Array<{
     date?: string;
+    calculatedAt?: string | null;
     values?: {
       totalTraffic?: number;
       suspectedHuman?: number;
@@ -29,9 +31,33 @@ type CanonicalTrafficPayload = {
   }>;
 };
 
-function finiteNumber(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+const DAY_MS = 86_400_000;
+
+function trafficCount(value: unknown, day: string, label: string): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`Invalid canonical Traffic ${label} on ${day}.`);
+  }
+  return value;
+}
+
+function isPublishedCompleteDay(
+  day: string,
+  calculatedAt: string | null | undefined,
+  todayUtc: string,
+): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= todayUtc) return false;
+  const start = Date.parse(`${day}T00:00:00Z`);
+  const today = Date.parse(`${todayUtc}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(today) ||
+    new Date(start).toISOString().slice(0, 10) !== day) return false;
+  const end = start + DAY_MS;
+  if (calculatedAt) {
+    const published = Date.parse(calculatedAt);
+    return Number.isFinite(published) && published >= end;
+  }
+  // Legacy archive: a 06:15 current-day sample must not be promoted
+  // to completed history at the very next UTC midnight.
+  return end + DAY_MS <= today;
 }
 
 export function normalizePublicTrafficPayload(
@@ -43,13 +69,17 @@ export function normalizePublicTrafficPayload(
         .filter(
           (point) =>
             typeof point?.date === "string" &&
-            point.date < todayUtc &&
-            point.values,
+            Boolean(point.values) &&
+            isPublishedCompleteDay(
+              point.date,
+              point.calculatedAt ?? payload.archive_calculated_at,
+              todayUtc,
+            ),
         )
         .map((point) => {
-          const totalTraffic = finiteNumber(point.values?.totalTraffic);
-          const suspectedHuman = finiteNumber(point.values?.suspectedHuman);
-          const confirmedHuman = finiteNumber(point.values?.confirmedHuman);
+          const totalTraffic = trafficCount(point.values?.totalTraffic, point.date!, "total");
+          const suspectedHuman = trafficCount(point.values?.suspectedHuman, point.date!, "potential");
+          const confirmedHuman = trafficCount(point.values?.confirmedHuman, point.date!, "confirmed");
 
           if (
             totalTraffic < suspectedHuman ||
@@ -69,7 +99,14 @@ export function normalizePublicTrafficPayload(
             },
           };
         })
+        .sort((a, b) => a.date.localeCompare(b.date))
     : [];
+
+  for (let i = 1; i < points.length; i++) {
+    if (points[i].date === points[i - 1].date) {
+      throw new Error(`Duplicate canonical Traffic date ${points[i].date}.`);
+    }
+  }
 
   return {
     ok: true,

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "daf588b7641b7a614e0d1b004729fa541c98a106d9d2b95a03b13032ee97197a",
+      "sha256": "31f6898f5cb88c731628c2fa1c5059d6fcdd6283821ff9fea86eaaa1dd2fc903",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/kingdom-instruments-release-eslint-20261020",
-    "commit": "65d6587d5e550bab3560a08906ae510625f99bf0"
+    "branch": "fix/traffic-finalized-daily-buckets-20261020",
+    "commit": "b7466cb6726e7da647116f8904cb0faad8833526"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
