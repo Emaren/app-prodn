@@ -4,18 +4,18 @@ import test from "node:test";
 import {pollVerifiedWatcherFundedMecha} from "../lib/warSatchelFundedWatcherPoll.ts";
 const src=readFileSync(new URL("../lib/warSatchelFundedWatcherPoll.ts",import.meta.url),"utf8");
 test("legacy Watcher poll delegates to the same canonical bounded financial selector as the protected tick",()=>{
- assert.match(src,/readEligibleFundedMechaIds\\(prisma,\\{limit:maxBatch\\}\\)/);
+ assert.match(src,/readEligibleFundedMechaIds\(prisma,\{limit:maxBatch\}\)/);
  assert.match(src,/MAX_BATCH=FUNDED_MECHA_CANDIDATE_LIMIT/);
- assert.match(src,/executeFundedMechaTicketBatch\\(prisma,signer,ids\\)/);
- assert.doesNotMatch(src,/betAutoExecution\\.findMany\\(/);
- assert.doesNotMatch(src,/prepareBetStakeTicket\\(|getWoloBetEscrowRuntime\\(|sendTokens\\(/);
+ assert.match(src,/executeFundedMechaTicketBatch\(prisma,signer,ids\)/);
+ assert.doesNotMatch(src,/betAutoExecution\.findMany\(/);
+ assert.doesNotMatch(src,/prepareBetStakeTicket\(|getWoloBetEscrowRuntime\(|sendTokens\(/);
  const selector=readFileSync(new URL("../lib/warSatchelEligibleOutbox.ts",import.meta.url),"utf8");
  for(const pattern of [
-   /createdAt: \\{ gte: earliest, lte: now \\}/,
-   /winnerMarket: \\{ status: "live", integrityStatus: "verified"/,
-   /wagerAuthorization: \\{ isNot: null \\}/,
-   /spendExpiresAt: \\{ gt: now \\}/,
-   /satchelFundedBalance: \\{ is: \\{ OR:/,
+   /createdAt: \{ gte: earliest, lte: now \}/,
+   /winnerMarket: \{ status: "live", integrityStatus: "verified"/,
+   /wagerAuthorization: \{ isNot: null \}/,
+   /spendExpiresAt: \{ gt: now \}/,
+   /satchelFundedBalance: \{ is: \{ OR:/,
  ]) assert.match(selector,pattern);
 });
 test("poll hard-fails if real signer, refund or withdrawals have not been certified",()=>{
