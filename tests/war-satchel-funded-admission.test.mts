@@ -125,6 +125,33 @@ test("stale owner identity, plan versions and consent fail closed", () => {
   rejects("owner_or_preset_version_mismatch", f => { f.consent.version=3; });
   rejects("owner_or_preset_version_mismatch", f => { f.execution.ownerUid="other-owner"; });
 });
+test("funded proposal refuses tampered Watcher evidence even if eligible is asserted", () => {
+  const mutators: Array<(admission: Record<string, unknown>) => void> = [
+    a => { a.gameIdentityKey = ""; },
+    a => { a.sessionKey = "another-session"; },
+    a => { a.selectedSide = "spectator"; },
+    a => { a.desyncMarketId = -9; },
+    a => { a.evidence = null; },
+    a => { (a.evidence as Record<string, unknown>).mode = "replay"; },
+    a => { (a.evidence as Record<string, unknown>).exactSteamRosterMatch = false; },
+    a => { (a.evidence as Record<string, unknown>).exactUploaderUidMatch = false; },
+    a => { (a.evidence as Record<string, unknown>).marketIntegrityStatus = "pending"; },
+    a => { (a.evidence as Record<string, unknown>).teamResolutionStatus = "unknown"; },
+    a => { (a.evidence as Record<string, unknown>).teamConfidence = "low"; },
+    a => { (a.evidence as Record<string, unknown>).propositionHash = "  "; },
+  ];
+  for (const mutate of mutators) {
+    const input = fixture();
+    const a = structuredClone(input.admission) as unknown as Record<string, unknown>;
+    mutate(a);
+    input.admission = a as unknown as FundedAutoAdmissionInput["admission"];
+    const result = assessFundedMechaAdmission(input);
+    assert.deepEqual(result, {
+      ready: false, reason: "watcher_admission_provenance_incomplete",
+    });
+  }
+});
+
 test("a previously accepted, leased or attempted preview cannot re-enter", () => {
   rejects("execution_already_claimed_or_not_shadow_ready", f => { f.execution.ticketId=44; });
   rejects("execution_already_claimed_or_not_shadow_ready", f => { f.execution.reservationId="old-hold"; });
