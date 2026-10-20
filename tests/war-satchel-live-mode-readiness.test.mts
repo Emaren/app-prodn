@@ -86,6 +86,8 @@ test("all three owner-facing signals share the same held-source guard", () => {
   assert.match(balance, /if \(!activated\) return NextResponse\.json/);
   assert.match(balance, /available: false, depositEnabled: false, wageringEnabled: false/);
   assert.match(panel, /FUNDED EXECUTOR CONFIGURED/);
+  assert.match(panel, /FUNDED CONFIGURED/);
+  assert.doesNotMatch(panel, /"FUNDED READY"/);
   assert.match(panel, /SAVE MECHA PLAN/);
   assert.match(panel, /NO WOLO MOVED · NO BET PLACED/);
   assert.doesNotMatch(panel, /FUNDING STATUS UNAVAILABLE/);
