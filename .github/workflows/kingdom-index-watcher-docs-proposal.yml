@@ -1,0 +1,68 @@
+name: Kingdom Index Watcher DocsV2 Source-Bound Proposal
+
+on:
+  pull_request:
+    paths:
+      - "components/kingdom-index/**"
+      - "config/kingdom-index-companions.json"
+      - "config/kingdom-index-routes.json"
+      - "lib/kingdomIndex.ts"
+      - "docs/WATCHER_KINGDOM_INDEX_COMPANION.md"
+      - ".github/workflows/kingdom-index-watcher-docs-proposal.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  propose-baseline:
+    name: Proposed Index companion DocsV2 baseline (review only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Generate documentation proposal without committing
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          test -n "$GITHUB_HEAD_REF"
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch "$GITHUB_HEAD_REF" --head "$head"
+          python3 scripts/docs_v2_check.py
+          git diff --check
+          mkdir -p .review-evidence
+          git diff --binary -- \
+            docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml > .review-evidence/docs-v2-baseline.patch
+          git diff --stat -- \
+            docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml | tee .review-evidence/diff-stat.txt
+          sha256sum docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml > .review-evidence/generated-sha256.txt
+          printf 'Candidate source SHA: %s\nBranch: %s\n' \
+            "$head" "$GITHUB_HEAD_REF" > .review-evidence/source.txt
+          test -s .review-evidence/docs-v2-baseline.patch
+      - name: Upload generated documentation for independent review
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-watcher-docs-v2-proposed-baseline
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            docs/document-registry.json
+            docs/DOCUMENTATION_CONTROL_PLANE.md
+            catalog-info.yaml
+            .review-evidence/docs-v2-baseline.patch
+            .review-evidence/diff-stat.txt
+            .review-evidence/generated-sha256.txt
+            .review-evidence/source.txt
