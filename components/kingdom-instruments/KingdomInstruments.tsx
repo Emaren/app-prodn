@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowUpRight, Atom, Boxes, CheckCheck, ChevronRight, CircleHelp,
-  CircuitBoard, Cpu, Database, FlaskConical, Gauge, GitBranch, HardDrive,
-  LockKeyhole, Microscope, Network, RadioTower, RefreshCw, RotateCcw,
+  Activity, ArrowUpRight, Atom, Boxes, ChevronRight, CircleHelp,
+  CircuitBoard, Cpu, Gauge, HardDrive,
+  LockKeyhole, Microscope, RadioTower, RefreshCw, RotateCcw,
   ScanLine, ShieldCheck, ShieldAlert, Waves,
 } from "lucide-react";
 import wolo from "@/config/wolo-machine-capabilities.json";
@@ -38,8 +38,6 @@ const str = (v: unknown): string | null => typeof v === "string" && v.trim() ? v
 const fmt = (v: unknown, unit = "") => { const n = num(v); return n === null ? "—" : n.toLocaleString("en-CA", { maximumFractionDigits: 1 }) + unit; };
 const pct = (v: unknown) => { const n = num(v); return n === null ? null : Math.min(100, Math.max(0, n)); };
 const time = (v: unknown) => { const s = str(v); return s && Number.isFinite(Date.parse(s)) ? new Date(s).toLocaleTimeString("en-CA",{hour:"2-digit",minute:"2-digit",hour12:false}) : "—"; };
-const box = (label: string, value: string, provenance: string) => ({label, value, provenance});
-const defaults = ["UNVERIFIED", "SOURCE UNAVAILABLE", "EVIDENCE PENDING"];
 
 function GaugePanel({ label, value, total, tone = "cyan" }: { label:string; value:number|null;total:number|null;tone?:string }) {
   const valid = value !== null && total !== null && total > 0;
@@ -127,7 +125,7 @@ function TestsCanvas({ inspection, index }: {inspection:Reading;index:Reading}) 
   </div>;
 }
 
-function RecoveryCanvas({ intelligence, inspection }: {intelligence:Reading;inspection:Reading}) {
+function RecoveryCanvas({ intelligence }: {intelligence:Reading}) {
   const campaigns=rec(intelligence.storageCampaign),storage=rec(intelligence.storage),source=rec(intelligence.source),valid=intelligence.available===true&&!intelligence.stale;
   const invariant=arr(intelligence.invariants);
   return <div className={styles.stageStack}>
@@ -157,7 +155,7 @@ function SystemsCanvas({ census, patrol, intelligence }: {census:Reading;patrol:
 }
 
 function ReplayCanvas({ replay }: {replay:Reading}) {
-  const counts=rec(replay.counts),unknown=rec(replay.unknown),parser=rec(replay.parser);
+  const counts=rec(replay.counts),unknown=rec(replay.unknown);
   const live=replay.schema===1;
   const reasons=arr(unknown.reasons).slice(0,9);
   const cases=arr(unknown.cases).slice(0,6);
@@ -207,7 +205,7 @@ export default function KingdomInstruments({ kind }: { kind: InstrumentKind }) {
   const features=kind==="wolo"?<WoloCanvas w={data("/api/wolo/status")} ki={ki}/>:
     kind==="sensors"?<SensorCanvas inspection={insp} intelligence={ki}/>:
     kind==="tests"?<TestsCanvas inspection={insp} index={data("/api/kingdom-index")}/>:
-    kind==="recovery"?<RecoveryCanvas intelligence={ki} inspection={insp}/>:
+    kind==="recovery"?<RecoveryCanvas intelligence={ki}/>:
     kind==="systems"?<SystemsCanvas census={data("/api/kingdom-route-census")} patrol={data("/api/kingdom-patrol")} intelligence={ki}/>:
     <ReplayCanvas replay={data("/api/hd-replay-engine")}/>;
   const observed=badges.filter(x=>x.state==="observed").length;
