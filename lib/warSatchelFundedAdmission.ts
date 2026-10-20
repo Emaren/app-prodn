@@ -140,6 +140,23 @@ function positiveSafeInteger(value: number): boolean {
 export function assessFundedMechaAdmission(input: FundedAutoAdmissionInput): FundedAutoAdmission {
   const { admission: a, execution: e, consent: c, preset: p, balance: b, vault: v } = input;
   if (!a.eligible) return no("watcher_admission_not_eligible");
+  // This is still only a proposal, not independently authenticated Watcher
+  // evidence. But never promote a structurally tampered/partial shadow
+  // admission into a *fundable* proposal just because eligible=true was
+  // asserted. The canonical shadow producer returns these facts together.
+  if (!a.gameIdentityKey?.trim() || a.sessionKey !== a.gameIdentityKey ||
+      (a.selectedSide !== "left" && a.selectedSide !== "right") ||
+      (a.desyncMarketId !== null && !positiveSafeInteger(a.desyncMarketId)) ||
+      !a.evidence ||
+      a.evidence.mode !== "shadow" ||
+      a.evidence.exactSteamRosterMatch !== true ||
+      a.evidence.exactUploaderUidMatch !== true ||
+      a.evidence.marketIntegrityStatus !== "verified" ||
+      a.evidence.teamResolutionStatus !== "resolved" ||
+      a.evidence.teamConfidence !== "high" ||
+      !a.evidence.propositionHash?.trim()) {
+    return no("watcher_admission_provenance_incomplete");
+  }
   if (!positiveSafeInteger(e.id) || !positiveSafeInteger(e.presetId) ||
       !positiveSafeInteger(e.winnerMarketId) || !positiveSafeInteger(e.presetVersion)) {
     return no("invalid_execution_identity");
