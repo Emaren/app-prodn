@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "495999957b7ebc86e57159385e8f2b149ced0aebb42c3707bd04005535129e4b",
+      "sha256": "fb049a2ede1cf3a4d0c0c3ae5b3764ee5f99264b612b18666a5534b36ced3d3a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-os-visual-platform-20261019",
-    "commit": "46625afbd2ba365e18855dc1656d59bfce00f5f2"
+    "commit": "4185e820ba554abb27eaec81ebf5870a0b3542ff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-os-visual-platform-20261019` at `46625afbd2ba365e18855dc1656d59bfce00f5f2`
+Implementation baseline: `feature/renaissance-os-visual-platform-20261019` at `4185e820ba554abb27eaec81ebf5870a0b3542ff`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
