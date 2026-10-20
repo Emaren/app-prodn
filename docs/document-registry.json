@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "525a22c541668b7301922f459dbb8966cbdae37eab41912d2659699ed4d852db",
+      "sha256": "2b84c74de8d38e5376371a57948d81092787de7f4dff2b80beea30cf04ccbda2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261020-satchel-main-reconciliation-held",
-    "commit": "1c0d99c3b64af04600146178417f1d20835c3f53"
+    "commit": "837274772439ea2a6dffd9d72e988277f1ba8e6b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
