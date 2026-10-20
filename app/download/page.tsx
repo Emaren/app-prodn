@@ -708,8 +708,24 @@ export default function DownloadPage() {
               basic ? tone.eyebrow : "text-amber-200/55"
             }`}
           >
-            Mac launch command
+            Mac says “damaged and can’t be opened”?
           </div>
+          <p className="mt-4 text-sm leading-7 text-slate-300">
+            Our macOS Watcher is intentionally unsigned and not Apple notarized.
+            If you see that warning, choose <strong>Cancel</strong> instead of
+            Move to Trash. Only continue with a download from the{" "}
+            <a
+              href="https://github.com/Emaren/aoe2-watcher/releases/tag/v1.6.5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-amber-200 underline underline-offset-4"
+            >
+              official 1.6.5 release
+            </a>{" "}
+            after comparing its SHA-256 with the published checksums.
+            Quit the running Watcher and copy the new app into Applications first.
+            Then run this app-specific command in Terminal:
+          </p>
           <div
             className={
               basic
@@ -721,6 +737,11 @@ export default function DownloadPage() {
               <code>{MAC_TERMINAL_FALLBACK}</code>
             </pre>
           </div>
+          <p className="mt-3 text-xs leading-6 text-slate-400">
+            This removes the download quarantine from AoE2HDBets Watcher only.
+            It overrides a macOS download protection for that app; it does not
+            sign or notarize the build. Do not run it on unverified downloads.
+          </p>
         </div>
       </section>
     </div>
