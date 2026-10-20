@@ -36,14 +36,16 @@ export type FundedMechaPublicReadiness = Readonly<{
   unresolvedControlNames: readonly string[];
 }>;
 
-/** Only a read-only status hint. The independent worker owns authority. */
-export function observeFundedMechaPublicReadiness(
-  env: Record<string, string | undefined> = process.env,
+/** Pure presentation-only evaluator: NEVER use the injectable source bit to
+ * authorize a bank, signer, escrow, wager or withdrawal operation. */
+export function evaluateFundedMechaPublicReadiness(
+  env: Record<string, string | undefined>,
+  sourceReleaseCertified: boolean,
 ): FundedMechaPublicReadiness {
   const missing = FUNDED_MECHA_PUBLIC_LIVE_CONTROLS.filter(
     name => env[name] !== "true",
   );
-  if (!satchelFinancialBridgeReady()) {
+  if (!sourceReleaseCertified) {
     return Object.freeze({
       ready: false,
       status: "CERTIFICATION_REQUIRED" as const,
@@ -59,4 +61,12 @@ export function observeFundedMechaPublicReadiness(
       : "CERTIFICATION_REQUIRED" as const,
     unresolvedControlNames: Object.freeze([...missing]),
   });
+}
+
+/** Only a read-only status hint, hard-bound to the immutable source HOLD.
+ * Production code cannot pass a caller-provided approval boolean. */
+export function observeFundedMechaPublicReadiness(
+  env: Record<string, string | undefined> = process.env,
+): FundedMechaPublicReadiness {
+  return evaluateFundedMechaPublicReadiness(env, satchelFinancialBridgeReady());
 }
