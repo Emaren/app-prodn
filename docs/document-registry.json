@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "576ea45eb97a9ffb25ecf1e7c624ddbf9ff380bbb22f7061ac2e277da1a32bdd",
+      "sha256": "3e94956b5bba74fe78b70277841987d3c2ca97a8105e00e44bf2f01154d73b1e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261020-mecha-winner-market-admission-binding",
-    "commit": "74625ec32980748cc85e9aa4986d212353331cae"
+    "branch": "fix/20261020-satchel-poll-canonical-selector",
+    "commit": "e3d203ae52076268ede05341e2badd2575e1202d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
