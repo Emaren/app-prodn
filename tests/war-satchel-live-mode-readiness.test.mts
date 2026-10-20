@@ -83,6 +83,9 @@ test("all three owner-facing signals share the same held-source guard", () => {
   assert.match(automation, /mode: "live"/);
   assert.match(automation, /executionReady: true/);
   assert.match(balance, /wageringEnabled: observeFundedMechaPublicReadiness\(\)\.ready/);
+  const settings = readFileSync(new URL("../app/api/user/bet-automation/route.ts", import.meta.url), "utf8");
+  assert.match(settings, /automationRuntime\.mode === "live" && automationRuntime\.executionReady/);
+  assert.match(settings, /a valid owner mandate, available Satchel funds/);
   assert.match(balance, /if \(!activated\) return NextResponse\.json/);
   assert.match(balance, /available: false, depositEnabled: false, wageringEnabled: false/);
   assert.match(panel, /FUNDED EXECUTOR CONFIGURED/);
