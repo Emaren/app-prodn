@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "34ae9669cd9cbd37e07d40d92b74b0445c5d96fba9c7a8cb8698cb245ec4e993",
+      "sha256": "e80119aca390227630dbad9e951f712e10d45a628ac403752589177493d11eaa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -996,30 +996,6 @@
       ],
       "title": "Kingdom Knowledge Router",
       "type": "explanation"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "visual-only-read-side-projection-contract",
-      "id": "aoe2war.app-prodn.transparent-machinery-instruments",
-      "owner": "aoe2war-web",
-      "path": "docs/KINGDOM_TRANSPARENT_MACHINERY.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-10-19",
-      "sensitivity": "internal",
-      "sha256": "6f413c553ab9c92b96afae9ad08efd93baba611b28b7d2ed1fc6afec8d09c5e5",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "wolochain",
-        "aoe2-watcher"
-      ],
-      "title": "Transparent Kingdom Machine Instruments",
-      "type": "reference"
     },
     {
       "audience": [
@@ -2166,8 +2142,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-transparent-machinery-20261019",
-    "commit": "1654b689e7a257dee71c2283803f3ab2f13ef6c3"
+    "branch": "fix/watcher-mac-launch-command-20261019",
+    "commit": "45f5c040fdea28bfbb256ca8b187ef7521594444"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

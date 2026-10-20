@@ -19,11 +19,14 @@ test("website v1.6.5 metadata advertises French and pending financial features w
   }
 });
 
-test("website does not instruct bypass of Gatekeeper for unsigned manual Mac install", async () => {
+test("website restores only the app-scoped macOS launch command", async () => {
   const page = await file("app/download/page.tsx");
-  assert.match(page, /intentionally unsigned and not Apple notarized/);
-  assert.match(page, /Privacy &amp; Security/);
-  assert.doesNotMatch(page, /xattr\s+-dr|spctl\s+--master-disable/);
+  assert.ok(page.includes("Mac launch command"));
+  assert.ok(page.includes("xattr -dr com.apple.quarantine"));
+  assert.ok(page.includes('"/Applications/AoE2HDBets Watcher.app"'));
+  assert.ok(page.includes("open"));
+  assert.ok(!page.includes("spctl --master-disable"));
+  assert.ok(!page.includes("csrutil disable"));
 });
 
 test("site release promoter preserves exact file hashes while normalizing v1.6.5 inventory order", async () => {
