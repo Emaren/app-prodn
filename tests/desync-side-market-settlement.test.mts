@@ -742,3 +742,47 @@ test("#JimsRule matched-only accounting survives varied bounded market configura
     }
   }
 });
+
+test("#JimsRule rejects fee rates larger than actual matched winning principal", () => {
+  const base = {
+    winningSide: "left" as const, marketType: "winner",
+    desyncMarketType: "desync", seedLeftWolo: 0, seedRightWolo: 0,
+    wagers: [
+      { id: 901, side: "left", amountWolo: 100 },
+      { id: 902, side: "right", amountWolo: 100 },
+    ],
+  };
+  assert.throws(() => planResolvedWagerSettlements({
+    ...base, feeRateBps: 5050, feeDenominator: 10_000,
+  }), /Matched betting fee exceeds available winning stake/);
+  assert.throws(() => planResolvedWagerSettlements({
+    ...base, feeRateBps: 10000, feeDenominator: 10_000,
+  }), /Matched betting fee exceeds available winning stake/);
+  assert.throws(() => planResolvedWagerSettlements({
+    ...base, feeRateBps: 200, feeDenominator: Number.MAX_SAFE_INTEGER + 1,
+  }), /safe integer/);
+  const valid = planResolvedWagerSettlements({
+    ...base, feeRateBps: 200, feeDenominator: 10_000,
+  });
+  assert.equal(valid.bettingFeePoolWolo, 4);
+  assert.equal(valid.outcomes.reduce((sum, outcome) =>
+    sum + outcome.payoutWolo + outcome.bettingFeeWolo, 0), 200);
+});
+
+test("#JimsRule staking fee-bearing matched volume never reports rounded cross-market totals", () => {
+  const half = (Number.MAX_SAFE_INTEGER - 1) / 2;
+  const entries = [
+    { id: 101, marketId: 1, side: "left", amountWolo: half, status: "won" },
+    { id: 102, marketId: 1, side: "right", amountWolo: half, status: "lost" },
+    { id: 201, marketId: 2, side: "left", amountWolo: 1, status: "won" },
+    { id: 202, marketId: 2, side: "right", amountWolo: 1, status: "lost" },
+  ];
+  assert.throws(() => feeBearingMatchedWagerVolumeWolo(entries),
+    /Aggregate fee-bearing matched volume exceeds safe whole-WOLO accounting range/);
+  // A void market has no fee-bearing matching even when both sides are funded.
+  assert.equal(feeBearingMatchedWagerVolumeWolo(
+    entries.map(wager => wager.marketId === 2
+      ? { ...wager, status: "void" }
+      : wager),
+  ), Number.MAX_SAFE_INTEGER - 1);
+});

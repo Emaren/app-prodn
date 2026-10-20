@@ -253,7 +253,11 @@ export function feeBearingMatchedWagerVolumeWolo(
     // A terminal void can have two-sided matched exposure but charges no fee.
     // A fee-bearing settlement must contain an actual winning wager outcome.
     if (!marketWagers.some((wager) => wager.status === "won")) continue;
-    matchedVolumeWolo += planMatchedWagerExposure(marketWagers).matchedVolumeWolo;
+    matchedVolumeWolo = safeWoloFromBigInt(
+      BigInt(matchedVolumeWolo) +
+        BigInt(planMatchedWagerExposure(marketWagers).matchedVolumeWolo),
+      "Aggregate fee-bearing matched volume"
+    );
   }
   return matchedVolumeWolo;
 }
@@ -281,8 +285,8 @@ export function planResolvedWagerSettlements(input: {
   assertWholeWolo(input.seedLeftWolo, "Left seed");
   assertWholeWolo(input.seedRightWolo, "Right seed");
   assertWholeWolo(input.feeRateBps, "Fee rate");
-  if (!Number.isInteger(input.feeDenominator) || input.feeDenominator <= 0) {
-    throw new Error("Fee denominator must be a positive integer.");
+  if (!Number.isSafeInteger(input.feeDenominator) || input.feeDenominator <= 0) {
+    throw new Error("Fee denominator must be a positive safe integer.");
   }
 
   const exposure = planMatchedWagerExposure(input.wagers);
@@ -312,6 +316,13 @@ export function planResolvedWagerSettlements(input: {
           "Matched betting fee"
         )
       : 0;
+
+  // The platform takes fees ONLY from the winning matched stake. A bad
+  // configuration must not advertise a larger fee than that stake can fund;
+  // the pro-rata allocator otherwise caps its actual deductions silently.
+  if (bettingFeePoolWolo > exposure.matchedPerSideWolo) {
+    throw new Error("Matched betting fee exceeds available winning stake.");
+  }
 
   const winningMatchedWagers = input.winningSide
     ? exposure.wagers
