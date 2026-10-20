@@ -146,7 +146,11 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
       const next = (await response.json().catch(() => null)) as Payload | null;
       if (!response.ok || !next?.preset) throw new Error(next?.detail || "Command rejected");
       hydrate(next);
-      setNotice(nextEnabled ? "Preview active" : "Preview paused");
+      setNotice(nextEnabled
+        ? next.runtime.mode === "live" && next.runtime.executionReady
+          ? "Mecha plan saved · signed Satchel spending mandate required"
+          : "Preview active"
+        : "Preview paused");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Command rejected");
     } finally { setSaving(false); }
@@ -166,7 +170,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
       const next = (await response.json().catch(() => null)) as Payload | null;
       if (!response.ok || !next?.preset) throw new Error(next?.detail || "Pause rejected");
       hydrate(next);
-      setNotice("Preview paused");
+      setNotice(server.runtime.mode === "live" && server.runtime.executionReady
+        ? "Mecha plan paused · new bets are disabled"
+        : "Preview paused");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Pause rejected");
     } finally { setSaving(false); }
@@ -271,7 +277,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <span className={"h-2.5 w-2.5 rounded-full " + (armed && readiness ? "bg-emerald-300 motion-safe:animate-pulse" : "bg-amber-300/60")} />
           {status === "SHADOW READY" ? "PREVIEW ACTIVE" : status}
         </div>
-        <div className="text-slate-400">{untilOut ? "UNTIL OUT" : (Number.isFinite(count) ? count : "—") + " GAMES"} · PREVIEW ONLY</div>
+        <div className="text-slate-400">{untilOut ? "UNTIL OUT" : (Number.isFinite(count) ? count : "—") + " GAMES"} · {previewOnly ? "PREVIEW ONLY" : "FUNDED EXECUTOR CONFIGURED"}</div>
         <button type="button" aria-expanded={dsPanel} aria-label="Desync bet settings"
           onClick={() => { setDsPanel((value) => !value); setSettings(true); }}
           className={"rounded-lg border px-3 py-2 text-xs font-black tracking-[.12em] " +
@@ -379,7 +385,8 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             </span>
             <button type="button" onClick={() => void save(Boolean(server?.preset.enabled))} disabled={!valid || !server || saving}
               className="rounded-xl bg-amber-300 px-5 py-3 text-[10px] font-black uppercase tracking-[.15em] text-slate-950 hover:bg-amber-200 disabled:opacity-40">
-              {saving ? "SAVING..." : armed ? "SAVE BET PLAN" : "ARM PREVIEW"}
+              {saving ? "SAVING..." : armed ? "SAVE BET PLAN" :
+                previewOnly ? "ARM PREVIEW" : "SAVE MECHA PLAN"}
             </button>
           </div>
         </div>
@@ -393,7 +400,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
         {error ? <span className="text-rose-300">{error}</span> :
           notice ? <span className="text-emerald-300">{notice}</span> :
           <span className="inline-flex items-center gap-1.5 text-slate-500">
-            <Coins className="h-3 w-3" />{previewOnly ? "PREVIEW ONLY · NO WOLO MOVED · NO BET PLACED" : "FUNDING STATUS UNAVAILABLE"}
+            <Coins className="h-3 w-3" />{previewOnly
+              ? "PREVIEW ONLY · NO WOLO MOVED · NO BET PLACED"
+              : "FUNDED MODE CONFIGURED · MATCH AND WALLET MANDATE REQUIRED"}
           </span>}
       </div>
     </section>
