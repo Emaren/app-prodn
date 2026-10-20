@@ -144,4 +144,4 @@ jobs:
           name: renaissance-browser-proof-${{ github.sha }}
           retention-days: 14
           if-no-files-found: warn
-          path: ${{ runner.temp }}/renaissance-browser-evidence
+          path: /tmp/renaissance-browser-evidence
