@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-watcher-166-telemetry-idempotency"
+title: "Watcher 1.6.6 — Server-side telemetry retry idempotency"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "watcher-telemetry-contract"
+reviewed_at: "2026-10-19"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Watcher 1.6.6 — Server-side telemetry retry idempotency
 
 **Draft schema/API change. No production migration or release is authorized.**

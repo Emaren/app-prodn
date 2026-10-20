@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-watcher-1-6-6-same-id-ack-race"
+title: "Watcher 1.6.6 — Same-ID coalescing receipt race (source candidate)"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "watcher-telemetry-contract"
+reviewed_at: "2026-10-19"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Watcher 1.6.6 — Same-ID coalescing receipt race (source candidate)
 
 Earlier telemetry ingress coalesced a repeated monitoring event immediately, even while the first insert of its **same `telemetryEventId`** was still awaiting PostgreSQL. A second concurrent request could receive HTTP 200 `suppressed:1` before knowing whether the original write succeeded. If the first write then failed, that response was not a valid durability acknowledgment.

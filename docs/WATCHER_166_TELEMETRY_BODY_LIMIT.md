@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-watcher-166-telemetry-body-limit"
+title: "Watcher diagnostic request bounded-read proof"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "watcher-telemetry-contract"
+reviewed_at: "2026-10-19"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Watcher diagnostic request bounded-read proof
 
 The server previously checked the HTTP Content-Length header but then used request.json(), which buffers whatever body the client actually sends. Diagnostic callers may use chunked encoding or supply no reliable size header.

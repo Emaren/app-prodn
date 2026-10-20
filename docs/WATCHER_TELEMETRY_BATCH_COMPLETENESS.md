@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-watcher-telemetry-batch-completeness"
+title: "Watcher telemetry batch completeness invariant"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "watcher-telemetry-contract"
+reviewed_at: "2026-10-19"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Watcher telemetry batch completeness invariant
 
 The server had treated `{events:[valid,null]}` as `[valid]` by filtering malformed entries before processing, then could return a success receipt despite never accounting for the second event. This is particularly unsafe for any future Watcher batched telemetry transport.
