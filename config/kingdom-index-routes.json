@@ -129,7 +129,7 @@
     "href": "/game-stats",
     "label": "Parser Observatory",
     "district": "forge",
-    "sourceTree": "src-058c8dedd6dbc85e"
+    "sourceTree": "src-270edc22eb4b58d2"
   },
   {
     "href": "/general-inspections",
@@ -183,7 +183,7 @@
     "href": "/kingdom-intelligence",
     "label": "Kingdom Intelligence",
     "district": "citadel",
-    "sourceTree": "src-20394d4e198d0d81"
+    "sourceTree": "src-2274a4a2f41bf065"
   },
   {
     "href": "/kingdom-progress",
