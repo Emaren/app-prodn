@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-satchel-poll-canonical-selector` at `9a56559d4af3c66716a617c39b226e70015e839d`
+Implementation baseline: `fix/20261020-mecha-winner-market-admission-binding` at `74625ec32980748cc85e9aa4986d212353331cae`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

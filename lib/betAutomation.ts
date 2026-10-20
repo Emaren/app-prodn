@@ -389,6 +389,7 @@ export type BetAutoShadowAdmission =
       eligible: true;
       gameIdentityKey: string;
       sessionKey: string;
+      winnerMarketId: number;
       selectedSide: "left" | "right";
       desyncMarketId: number | null;
       evidence: {
@@ -470,6 +471,11 @@ export function evaluateBetAutoShadowAdmission(input: {
     return { eligible: false, reason: "market_not_live_watcher_winner" };
   }
 
+  // A funded wager must bind the exact admitted winner market, not just
+  // the game key and side. Reject malformed IDs at the shadow origin.
+  if (!Number.isSafeInteger(input.market.id) || input.market.id <= 0) {
+    return { eligible: false, reason: "market_identity_missing" };
+  }
   const linkedSessionKey = normalizedIdentity(input.market.linkedSessionKey);
   const canonicalSessionKey = normalizedIdentity(input.session.sessionKey);
   if (!linkedSessionKey || !canonicalSessionKey) {
@@ -544,6 +550,7 @@ export function evaluateBetAutoShadowAdmission(input: {
     eligible: true,
     gameIdentityKey: canonicalSessionKey,
     sessionKey: canonicalSessionKey,
+    winnerMarketId: input.market.id,
     selectedSide: leftMatch ? "left" : "right",
     desyncMarketId,
     evidence: {

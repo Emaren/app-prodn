@@ -15,6 +15,7 @@ function fixture(): FundedAutoAdmissionInput {
       eligible: true,
       gameIdentityKey: "watcher:hd:game-12",
       sessionKey: "watcher:hd:game-12",
+      winnerMarketId: 410,
       selectedSide: "left",
       desyncMarketId: null,
       evidence: {
@@ -130,6 +131,8 @@ test("funded proposal refuses tampered Watcher evidence even if eligible is asse
     a => { a.gameIdentityKey = ""; },
     a => { a.sessionKey = "another-session"; },
     a => { a.selectedSide = "spectator"; },
+    a => { a.winnerMarketId = -1; },
+    a => { delete a.winnerMarketId; },
     a => { a.desyncMarketId = -9; },
     a => { a.evidence = null; },
     a => { (a.evidence as Record<string, unknown>).mode = "replay"; },
@@ -162,6 +165,7 @@ test("proposition or market identity drift rejects a funded conversion", () => {
   rejects("frozen_watcher_proposition_mismatch", f => { f.execution.propositionHash="B".repeat(64); });
   rejects("frozen_watcher_proposition_mismatch", f => { f.execution.gameIdentityKey="different-game"; });
   rejects("frozen_watcher_proposition_mismatch", f => { f.execution.selectedSide="right"; });
+  rejects("frozen_watcher_proposition_mismatch", f => { f.execution.winnerMarketId=411; });
   rejects("frozen_watcher_proposition_mismatch", f => { f.execution.desyncMarketId=8; });
 });
 test("zero, exhausted, malformed and over-cap presets cannot initiate funding", () => {
