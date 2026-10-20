@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "7b248ba4aabce17aff627d6735e30a8c3a847a07be3d4bb064d6b4e980b17ce1",
+      "sha256": "78c0e0d7a576b6ddc2b560a33f7497b9c3979639298015c9a4385e24073fa6cd",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3d0a4aecaca877db71286fe0209ee580a05a961e4c658a95023f9966636b6125",
+      "sha256": "265765147bf4b7241c9ff7924375945e5e98b20650191778f29702e705b37796",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261019-mecha-pending-review-outbox",
-    "commit": "24c66086af55d7e92cd48be242ebfa925b77c81a"
+    "branch": "fix/20261020-satchel-separate-wager-review-key",
+    "commit": "55141211211e0a4f09e4db7c4c598c1484cc1ec6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
