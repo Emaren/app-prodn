@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "42fedefe103a6b3fb07f34e1c75daaa0a0f13ebdbde0471c0938e1aa32738016",
+      "sha256": "34ae9669cd9cbd37e07d40d92b74b0445c5d96fba9c7a8cb8698cb245ec4e993",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2167,7 +2167,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/kingdom-transparent-machinery-20261019",
-    "commit": "fe32741ad14b66de5c2ad279672d290339b0346c"
+    "commit": "1654b689e7a257dee71c2283803f3ab2f13ef6c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
