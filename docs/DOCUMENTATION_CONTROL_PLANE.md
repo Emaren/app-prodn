@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/renaissance-pilot-train-20261020` at `c0c63c083d6a6068fe6d11a3fdb4ed4e3463d881`
+Implementation baseline: `integration/renaissance-pilot-train-20261020` at `6048a2c1af7e026cb966699f6b71cff574df702c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
