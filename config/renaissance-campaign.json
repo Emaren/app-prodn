@@ -1,0 +1,300 @@
+{
+  "schema": 1,
+  "version": "2026-10-19-v1",
+  "sourceBaselineSha": "16c31d6e000ffb26a820e79499f36c0b3218b231",
+  "kind": "aoe2war-renaissance-planning-order",
+  "policy": "Priority and phases are planning metadata only. Source inventory, domain authority, actual PR claims, CI checks, production certification and financial release have separate owners. No score or deployed claim follows from this file.",
+  "phases": [
+    {
+      "id": "I",
+      "code": "CONTROL",
+      "name": "Control planes and evidence",
+      "routes": [
+        "/kingdom-intelligence",
+        "/kingdom-brain",
+        "/kingdom-index",
+        "/kingdom-tests",
+        "/kingdom-sensors",
+        "/kingdom-agents",
+        "/general-inspections",
+        "/kingdom-progress",
+        "/kingdom-systems",
+        "/aoe2war-os",
+        "/kingdom-recovery",
+        "/speed",
+        "/admin/aoe2war-os"
+      ]
+    },
+    {
+      "id": "II",
+      "code": "REPLAY",
+      "name": "Replay and game-result evidence",
+      "routes": [
+        "/game-stats",
+        "/hd-replay-engine",
+        "/replay-parser",
+        "/replay-laboratory",
+        "/game-stats/[id]",
+        "/game-stats/[id]/review",
+        "/game-stats/live/[sessionKey]",
+        "/library",
+        "/battle-archive",
+        "/war-engine",
+        "/workshop",
+        "/submit",
+        "/upload",
+        "/admin/parser-lab",
+        "/admin/replay-review",
+        "/admin/workshop",
+        "/download",
+        "/admin/watcher-funnel"
+      ]
+    },
+    {
+      "id": "III",
+      "code": "RATINGS",
+      "name": "Player identity and ranking truth",
+      "routes": [
+        "/players",
+        "/players/[uid]",
+        "/players/by-name/[name]",
+        "/users",
+        "/profile",
+        "/settings",
+        "/leaderboard",
+        "/leaderboard/og",
+        "/lobby",
+        "/live-games",
+        "/statistics",
+        "/wargraph",
+        "/rivalries",
+        "/matchups/[left]/[right]",
+        "/matchups/team/[left]/[right]",
+        "/nations",
+        "/admin/user-list"
+      ]
+    },
+    {
+      "id": "IV",
+      "code": "CROWNS",
+      "name": "Challenges and championships",
+      "routes": [
+        "/challenge",
+        "/challenge/[id]",
+        "/leagues",
+        "/leagues/[slug]",
+        "/tournaments",
+        "/tournaments/[slug]",
+        "/olympia",
+        "/belts",
+        "/champions",
+        "/champions/[...slug]",
+        "/champions/e2",
+        "/champions/e3",
+        "/champions/e4",
+        "/champions/e5",
+        "/champions/legacy",
+        "/national-champions",
+        "/chaosium",
+        "/bounties",
+        "/zodiac",
+        "/admin/trophies",
+        "/admin/bounties"
+      ]
+    },
+    {
+      "id": "V",
+      "code": "WOLO",
+      "name": "Finance, custody and governance",
+      "routes": [
+        "/wolochain",
+        "/wolo-1",
+        "/wolo",
+        "/kingdom-treasury",
+        "/war-chest",
+        "/betting-mechanics",
+        "/bets",
+        "/bets/[marketId]",
+        "/pending-bets",
+        "/past-earnings",
+        "/kingdom-bettors",
+        "/wolo-machine",
+        "/staking",
+        "/staking/stakers/[slug]",
+        "/connect-wallet",
+        "/wallet",
+        "/market",
+        "/market/kingdom/[slug]",
+        "/market/shops/[slug]",
+        "/market/invoices/[publicId]",
+        "/oracle",
+        "/oracle/[slug]",
+        "/kingdom-forge",
+        "/round-chamber",
+        "/wolomania",
+        "/admin/wolochain",
+        "/admin/wolo-transactions",
+        "/admin/market-integrity",
+        "/admin/auto-bets",
+        "/admin/kingdom-bettors",
+        "/admin/oracle",
+        "/admin/marketplace"
+      ]
+    },
+    {
+      "id": "VI",
+      "code": "SIGNAL",
+      "name": "Media, broadcasts and assets",
+      "routes": [
+        "/television-wolo",
+        "/watch",
+        "/watch/[sessionKey]",
+        "/radio",
+        "/admin/radio",
+        "/admin/media-assets",
+        "/admin/page-heroes",
+        "/admin/hero-studio",
+        "/traffic",
+        "/admin/traffic"
+      ]
+    },
+    {
+      "id": "VII",
+      "code": "REALM",
+      "name": "Community and final integration",
+      "routes": [
+        "/clans",
+        "/clans/[slug]",
+        "/admin/clans",
+        "/forum",
+        "/forum/thread/[slug]",
+        "/admin/forum-editor",
+        "/requests",
+        "/admin/events",
+        "/ai",
+        "/admin/ai",
+        "/academy",
+        "/roadmap",
+        "/about",
+        "/contact-emaren",
+        "/app",
+        "/realm",
+        "/kingdom",
+        "/admin",
+        "/admin/translations",
+        "/offline",
+        "/"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "slug": "command",
+      "title": "Renaissance OS",
+      "kicker": "Campaign command",
+      "icon": "crown",
+      "tagline": "Command",
+      "description": "The operating theatre for every campaign",
+      "href": "/renaissance"
+    },
+    {
+      "slug": "atlas",
+      "title": "The Atlas",
+      "kicker": "Route cartography",
+      "icon": "map",
+      "tagline": "Atlas",
+      "description": "Every page, every phase, one deliberate order",
+      "href": "/renaissance/atlas"
+    },
+    {
+      "slug": "circuit",
+      "title": "The Circuit",
+      "kicker": "Dependency engine",
+      "icon": "network",
+      "tagline": "Circuit",
+      "description": "Trace the arteries of shared source",
+      "href": "/renaissance/circuit"
+    },
+    {
+      "slug": "marshal",
+      "title": "The Marshal",
+      "kicker": "Coordination authority",
+      "icon": "shield",
+      "tagline": "Marshal",
+      "description": "One owner, one scope, no silent collisions",
+      "href": "/renaissance/marshal"
+    },
+    {
+      "slug": "doctor",
+      "title": "The Doctor",
+      "kicker": "Page diagnostics",
+      "icon": "activity",
+      "tagline": "Doctor",
+      "description": "Dissect a route before touching its code",
+      "href": "/renaissance/doctor"
+    },
+    {
+      "slug": "vault",
+      "title": "The Vault",
+      "kicker": "Evidence memory",
+      "icon": "archive",
+      "tagline": "Vault",
+      "description": "Where source-bound receipts would accumulate",
+      "href": "/renaissance/vault"
+    },
+    {
+      "slug": "arbiter",
+      "title": "The Arbiter",
+      "kicker": "Quality certification",
+      "icon": "scale",
+      "tagline": "Arbiter",
+      "description": "Thirty, twenty-five, twenty, fifteen, ten",
+      "href": "/renaissance/arbiter"
+    },
+    {
+      "slug": "forge",
+      "title": "The Test Forge",
+      "kicker": "Tests and browser lab",
+      "icon": "flask",
+      "tagline": "Forge",
+      "description": "Proving grounds for code and browser",
+      "href": "/renaissance/forge"
+    },
+    {
+      "slug": "architect",
+      "title": "The Architect",
+      "kicker": "Planning and workshop",
+      "icon": "drafting",
+      "tagline": "Architect",
+      "description": "From finding to isolated improvement",
+      "href": "/renaissance/architect"
+    },
+    {
+      "slug": "train",
+      "title": "The Integration Train",
+      "kicker": "Review and release",
+      "icon": "git",
+      "tagline": "Train",
+      "description": "The guarded line between PR and production",
+      "href": "/renaissance/train"
+    },
+    {
+      "slug": "sentinel",
+      "title": "The Sentinel",
+      "kicker": "Regression patrol",
+      "icon": "radar",
+      "tagline": "Sentinel",
+      "description": "Watch dependency drift, never fabricate health",
+      "href": "/renaissance/sentinel"
+    },
+    {
+      "slug": "chronicles",
+      "title": "The Chronicles",
+      "kicker": "Engineering memory",
+      "icon": "book",
+      "tagline": "Chronicles",
+      "description": "Lessons that compound instead of disappearing",
+      "href": "/renaissance/chronicles"
+    }
+  ]
+}
