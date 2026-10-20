@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-os-visual-platform-20261019` at `c459394432bd21653e0a89ecb76ffe56f8f5d367`
+Implementation baseline: `fix/kingdom-instruments-release-eslint-20261020` at `65d6587d5e550bab3560a08906ae510625f99bf0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
