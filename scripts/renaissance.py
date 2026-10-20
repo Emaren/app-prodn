@@ -21,9 +21,13 @@ def main():
   try:
     catalog,routes=load()
     if args.action=="verify":
-      missing=[r for r in routes if not (ROOT/"app"/r.strip("/")/"page.tsx").is_file()]
-      out={"status":"SOURCE_ONLY","baseline":catalog["sourceBaselineSha"],"total":len(routes),"phases":len(catalog["phases"]),"missing":missing,"index_score_authority":"none"}
-      code=2 if missing else 0
+      instrument_routes=[m["href"] for m in catalog["modules"]]
+      expected=set(routes)|set(instrument_routes)
+      discovered={("/"+p.relative_to(ROOT/"app").parent.as_posix()).replace("/.","/") for p in (ROOT/"app").rglob("page.tsx")}
+      missing=sorted(expected-discovered)
+      uncatalogued=sorted(discovered-expected)
+      out={"status":"SOURCE_ONLY","baseline":catalog["sourceBaselineSha"],"campaign_targets":len(routes),"renaissance_instruments":len(instrument_routes),"source_template_count":len(discovered),"phases":len(catalog["phases"]),"missing":missing,"uncatalogued":uncatalogued,"index_score_authority":"none","note":"Source inventory only; scores, CI, production, ownership and release are separate."}
+      code=2 if missing or uncatalogued else 0
     elif args.action=="map":
       out={"status":"PLANNING_ORDER_ONLY","phases":[{"id":p["id"],"name":p["name"],"count":len(p["routes"]),"routes":p["routes"]} for p in catalog["phases"]]}
       code=0

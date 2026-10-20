@@ -1,0 +1,45 @@
+name: Renaissance source integrity
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'config/renaissance-campaign.json'
+      - 'scripts/renaissance.py'
+      - 'scripts/kingdom_index_dependency_evidence.py'
+      - 'tests/test_renaissance_source.py'
+      - 'tests/renaissance-campaign.test.mts'
+      - '.github/workflows/renaissance-source-integrity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconcile old campaign targets and new source template entries
+        run: python3 scripts/renaissance.py verify --json | tee renaissance-source-census.json
+      - name: Check read-only source diagnostic output
+        run: |
+          python3 scripts/renaissance.py doctor /kingdom-intelligence --json > renaissance-doctor.json
+          python3 - <<'PY'
+          import json
+          with open("renaissance-doctor.json",encoding="utf-8") as fh:
+              data=json.load(fh)
+          assert data["status"]=="SOURCE_ONLY_UNCERTIFIED"
+          assert data["dependency"]["dependency_completeness_certified"] is False
+          assert data["dependency"]["quality_score_authority"]=="none"
+          PY
+      - name: Verify source contract regression tests
+        run: |
+          python3 -m unittest discover -s tests -p test_renaissance_source.py -v
+          node --experimental-strip-types --test tests/renaissance-campaign.test.mts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-source-evidence-not-certification
+          path: |
+            renaissance-source-census.json
+            renaissance-doctor.json
+          if-no-files-found: ignore
