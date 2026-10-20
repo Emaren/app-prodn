@@ -45,7 +45,7 @@ function isPublishedCompleteDay(
   calculatedAt: string | null | undefined,
   todayUtc: string,
 ): boolean {
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(day) || day >= todayUtc) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day >= todayUtc) return false;
   const start = Date.parse(`${day}T00:00:00Z`);
   const today = Date.parse(`${todayUtc}T00:00:00Z`);
   if (!Number.isFinite(start) || !Number.isFinite(today) ||
