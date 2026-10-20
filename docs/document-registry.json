@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "33ba5daf39c0efd389bde3133d5bebe05442ee051c8bb0ac40571b8392336fc8",
+      "sha256": "576ea45eb97a9ffb25ecf1e7c624ddbf9ff380bbb22f7061ac2e277da1a32bdd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261020-satchel-live-readiness-compat-held",
-    "commit": "ceaa0c653a5593b08b6084d3765b1ae63049bc1d"
+    "branch": "fix/20261020-mecha-winner-market-admission-binding",
+    "commit": "74625ec32980748cc85e9aa4986d212353331cae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
