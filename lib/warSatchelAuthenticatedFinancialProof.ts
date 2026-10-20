@@ -111,7 +111,7 @@ export function assertExpectedWarSatchelFinancialProof(
     }, wagerApprovalPublicKeyHex || "", Number(a.issued_at) * 1000);
   }
 }
-function requireConfiguration(x: {vault: string}) {
+function requireConfiguration(x: {vault: string; kind: string}) {
   if (process.env.WAR_SATCHEL_PROOF_VERIFIER_ENABLED !== "true" ||
       process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED !== "true" ||
       process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS !== x.vault)
@@ -121,10 +121,21 @@ function requireConfiguration(x: {vault: string}) {
   const digest = PINNED_VERIFIER_SHA256;
   if (process.env.WAR_SATCHEL_VERIFIER_SHA256 && process.env.WAR_SATCHEL_VERIFIER_SHA256 !== digest)
     stop("unreviewed_verifier_digest");
-  const authority = process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "";
+  // The offline Go verifier's approval_public_key_hex is used to verify
+  // signed wager reservations. It MUST NOT be sourced from the withdrawal
+  // reviewer, whose independent public key belongs to another authority.
+  const withdrawalAuthority = process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "";
+  const authority = x.kind === "wager"
+    ? process.env.WAR_SATCHEL_WAGER_PROOF_VERIFIER_AUTHORITY_FILE || ""
+    : withdrawalAuthority;
   if (!/^[A-Za-z0-9_-]{48,512}$/.test(token) || !isAbsolute(binary) ||
       !isAbsolute(authority) || !DIGEST.test(digest) ||
-      binary === authority) stop("pinned_offline_verifier_not_provisioned");
+      binary === authority ||
+      (x.kind === "wager" && (!isAbsolute(withdrawalAuthority) ||
+       authority === withdrawalAuthority ||
+       authority === process.env.WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE))) {
+    stop("pinned_offline_verifier_not_provisioned");
+  }
   return {token, binary, digest, authority};
 }
 async function snapshotBinary(path: string, destination: string, digest: string, signal: AbortSignal) {
