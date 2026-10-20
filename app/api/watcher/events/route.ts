@@ -39,12 +39,18 @@ const TERMINAL_RECONCILE_EVENT_TYPES =
 type RawWatcherEvent = Record<string, unknown>;
 
 function toEventArray(payload: unknown): RawWatcherEvent[] {
-  if (payload && typeof payload === "object" && Array.isArray((payload as { events?: unknown }).events)) {
-    return (payload as { events: unknown[] }).events.filter(
-      (entry): entry is RawWatcherEvent => Boolean(entry && typeof entry === "object")
-    );
+  if (payload && typeof payload === "object" && !Array.isArray(payload) &&
+      Array.isArray((payload as { events?: unknown }).events)) {
+    const batch = (payload as { events: unknown[] }).events;
+    // Never silently discard malformed batch rows and then return a partial
+    // HTTP 200. Every requested event must be represented in the response.
+    if (batch.some((entry) => !entry || typeof entry !== "object" || Array.isArray(entry))) {
+      throw new Error("Invalid watcher batch entry.");
+    }
+    return batch as RawWatcherEvent[];
   }
-  return payload && typeof payload === "object" ? [payload as RawWatcherEvent] : [];
+  return payload && typeof payload === "object" && !Array.isArray(payload)
+    ? [payload as RawWatcherEvent] : [];
 }
 
 function normalizeEvent(raw: RawWatcherEvent): WatcherClientEventInput {
@@ -79,7 +85,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, detail: "Watcher telemetry payload too large." }, { status: 413 });
   }
   const payload = read.kind === "ok" ? read.payload : null;
-  const rawEvents = toEventArray(payload);
+  let rawEvents: RawWatcherEvent[];
+  try {
+    rawEvents = toEventArray(payload);
+  } catch {
+    return NextResponse.json(
+      { ok: false, detail: "Invalid watcher batch entry." },
+      { status: 400 },
+    );
+  }
   if (rawEvents.length === 0) {
     return NextResponse.json({ ok: false, detail: "No watcher events supplied." }, { status: 400 });
   }
