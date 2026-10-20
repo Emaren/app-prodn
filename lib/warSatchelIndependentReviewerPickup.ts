@@ -17,7 +17,7 @@ import { type DurableSatchelWagerAuthorization, wagerReviewContext } from "./war
 import {
   verifyIndependentWagerReservation, type SatchelWagerReservation,
 } from "./warSatchelWagerReservation.ts";
-import { readWithdrawalReviewerKey } from "./warSatchelWithdrawalReview.ts";
+import { readWagerReviewerKey } from "./warSatchelWagerReviewerKey.ts";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 
 const ENDPOINT = "http://127.0.0.1:8095/reviewer/v1/wagers";
@@ -106,7 +106,7 @@ export async function requestCertifiedIndependentSatchelReview(
   const existing = await loadSatchelWagerReview(prisma,input);
   if (existing.review) return "reviewed";
   const original = existing.authorization;
-  const publicKey = await readWithdrawalReviewerKey();
+  const publicKey = await readWagerReviewerKey();
   const signal = AbortSignal.timeout(5000);
   const response = await reader(ENDPOINT, {
     method: "POST", redirect: "error", cache: "no-store", credentials: "omit",
