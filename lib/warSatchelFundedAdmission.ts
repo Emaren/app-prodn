@@ -145,6 +145,7 @@ export function assessFundedMechaAdmission(input: FundedAutoAdmissionInput): Fun
   // admission into a *fundable* proposal just because eligible=true was
   // asserted. The canonical shadow producer returns these facts together.
   if (!a.gameIdentityKey?.trim() || a.sessionKey !== a.gameIdentityKey ||
+      !positiveSafeInteger(a.winnerMarketId) ||
       (a.selectedSide !== "left" && a.selectedSide !== "right") ||
       (a.desyncMarketId !== null && !positiveSafeInteger(a.desyncMarketId)) ||
       !a.evidence ||
@@ -175,6 +176,7 @@ export function assessFundedMechaAdmission(input: FundedAutoAdmissionInput): Fun
     return no("execution_already_claimed_or_not_shadow_ready");
   }
   if (e.gameIdentityKey !== a.gameIdentityKey ||
+      e.winnerMarketId !== a.winnerMarketId ||
       e.desyncMarketId !== a.desyncMarketId ||
       e.selectedSide !== a.selectedSide ||
       e.propositionHash !== a.evidence.propositionHash) {
