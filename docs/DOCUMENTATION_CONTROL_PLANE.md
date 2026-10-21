@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/renaissance-forward-main-20261021` at `2ce3290920861df34a110be84821da5dc8123669`
+Implementation baseline: `integration/renaissance-forward-main-20261021` at `54f0a91a9b5f0c4ac9f52abf3708ddff4df14719`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
