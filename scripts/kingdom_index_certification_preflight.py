@@ -134,12 +134,17 @@ def main() -> int:
               f"{len(result['lexical_source']['unclassified_local_imports'])} unclassified)")
         for blocker in result["independent_blockers"]:
             print(" BLOCKER:", blocker)
-        # Bounded diagnostic for the FIRST route; these are lexical findings,
-        # not automatically broken imports or independently verified defects.
-        for reference in result["lexical_source"]["unresolved_local_imports"][:24]:
-            print(" UNRESOLVED LEXICAL:", reference)
-        if len(result["lexical_source"]["unresolved_local_imports"]) > 24:
-            print(" ...remaining lexical findings:", len(result["lexical_source"]["unresolved_local_imports"]) - 24)
+        # Show the truly unclassified leads first, rather than letting dozens
+        # of declared (but UNVERIFIED) Prisma generated imports obscure them.
+        # Both categories remain unresolved until release artifact attestation.
+        for reference in result["lexical_source"]["unclassified_local_imports"][:24]:
+            print(" UNCLASSIFIED LEXICAL:", reference)
+        for row in result["lexical_source"]["generated_declarations_unverified"][:5]:
+            print(" DECLARED GENERATED, NOT AUTHENTICATED:",
+                  row["importer"], "->", row["specifier"])
+        remaining = len(result["lexical_source"]["generated_declarations_unverified"]) - 5
+        if remaining > 0:
+            print(" ...other unauthenticated generated edges:", remaining)
     return 0
 
 
