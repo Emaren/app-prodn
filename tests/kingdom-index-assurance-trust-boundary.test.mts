@@ -49,7 +49,7 @@ test("untrusted certificate claims cannot make any route appear certified",()=>{
   }
   assert.equal(status({kind:"certified",versionAligned:true,stale:false}),"provisional");
   assert.equal(status({kind:"source-review",versionAligned:true,stale:false}),"provisional");
-  assert.equal(status({kind:"agent",versionAligned:true,stale:false}),"current");
+  assert.equal(status({kind:"agent",versionAligned:true,stale:false}),"provisional");
   assert.equal(status({kind:"certified",versionAligned:false,stale:false}),"drifted");
   assert.equal(status({kind:"certified",versionAligned:true,stale:true}),"stale");
   assert.equal(status({kind:null,versionAligned:true,stale:false}),"unmeasured");
@@ -68,7 +68,8 @@ test("live quality slot never recycles historical or asserted certified scores",
   assert.equal(publicObservedKingdomScore({status:"provisional",kind:"source-review",score:64}),null);
   assert.equal(publicObservedKingdomScore({status:"stale",kind:"agent",score:82}),null);
   assert.equal(publicObservedKingdomScore({status:"provisional",kind:"certified",score:100}),null);
-  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:72}),72);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:72}),null);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:99}),null);
   assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:100}),null);
   assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:NaN}),null);
 });

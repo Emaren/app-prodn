@@ -10,6 +10,8 @@ on:
       - 'lib/**'
       - 'config/kingdom-index-routes.json'
       - 'scripts/kingdom_index_source_audit.mjs'
+      - 'scripts/kingdom_index_full_inventory.mjs'
+      - 'tests/kingdom-index-inventory.test.mts'
       - 'scripts/kingdom_index_dependency_evidence.py'
       - 'scripts/aoe2_module_graph.py'
       - 'config/**'
@@ -35,11 +37,18 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/kingdom_index_source_audit.mjs --check | tee kingdom-index-census.json
+      - name: Verify 144-page / 273-handler canonical estate and adversarial drift tests
+        run: |
+          set -euo pipefail
+          node scripts/kingdom_index_full_inventory.mjs --check | tee kingdom-index-full-inventory.json
+          node --experimental-strip-types --test tests/kingdom-index-inventory.test.mts
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: kingdom-index-source-census
-          path: kingdom-index-census.json
+          path: |
+            kingdom-index-census.json
+            kingdom-index-full-inventory.json
           if-no-files-found: ignore
 
   dependency-evidence:

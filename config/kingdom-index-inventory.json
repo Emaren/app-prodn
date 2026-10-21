@@ -1,0 +1,2253 @@
+{
+  "schema": 1,
+  "kind": "aoe2war-kingdom-page-and-handler-path-census",
+  "sourceCensus": {
+    "repository": "Emaren/app-prodn",
+    "gitCommit": "14a3fcb372c2e0623848c792d271ff5e5b432ed6",
+    "method": "complete GitHub recursive tree; 2521 blobs; truncated=false"
+  },
+  "policy": "Canonical entrypoint inventory only. Path scopes are classification hints, not authenticated access tests. Dynamic route patterns require separately governed fixtures; APIs require separate domain-owner assignments. No score, dependency completeness, authorization or production certification follows from this file. Never serve detailed protected paths in a public Index response.",
+  "counts": {
+    "pageTemplates": 144,
+    "adminTemplates": 26,
+    "dynamicTemplates": 20,
+    "publicIndexTemplates": 88,
+    "excludedStaticTemplates": 10,
+    "routeHandlerTemplates": 273,
+    "apiHandlerTemplates": 270,
+    "nonApiHandlerTemplates": 3
+  },
+  "pages": [
+    {
+      "href": "/about",
+      "entrypoint": "app/about/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/academy",
+      "entrypoint": "app/academy/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/ai",
+      "entrypoint": "app/admin/ai/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/aoe2war-os",
+      "entrypoint": "app/admin/aoe2war-os/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/auto-bets",
+      "entrypoint": "app/admin/auto-bets/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/bounties",
+      "entrypoint": "app/admin/bounties/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/clans",
+      "entrypoint": "app/admin/clans/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/events",
+      "entrypoint": "app/admin/events/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/forum-editor",
+      "entrypoint": "app/admin/forum-editor/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/hero-studio",
+      "entrypoint": "app/admin/hero-studio/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/kingdom-bettors",
+      "entrypoint": "app/admin/kingdom-bettors/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/market-integrity",
+      "entrypoint": "app/admin/market-integrity/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/marketplace",
+      "entrypoint": "app/admin/marketplace/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/media-assets",
+      "entrypoint": "app/admin/media-assets/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/oracle",
+      "entrypoint": "app/admin/oracle/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/page-heroes",
+      "entrypoint": "app/admin/page-heroes/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin",
+      "entrypoint": "app/admin/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/parser-lab",
+      "entrypoint": "app/admin/parser-lab/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/radio",
+      "entrypoint": "app/admin/radio/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/replay-review",
+      "entrypoint": "app/admin/replay-review/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/traffic",
+      "entrypoint": "app/admin/traffic/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/translations",
+      "entrypoint": "app/admin/translations/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/trophies",
+      "entrypoint": "app/admin/trophies/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/user-list",
+      "entrypoint": "app/admin/user-list/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/watcher-funnel",
+      "entrypoint": "app/admin/watcher-funnel/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/wolo-transactions",
+      "entrypoint": "app/admin/wolo-transactions/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/wolochain",
+      "entrypoint": "app/admin/wolochain/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/workshop",
+      "entrypoint": "app/admin/workshop/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/ai",
+      "entrypoint": "app/ai/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/aoe2war-os",
+      "entrypoint": "app/aoe2war-os/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/app",
+      "entrypoint": "app/app/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/battle-archive",
+      "entrypoint": "app/battle-archive/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/belts",
+      "entrypoint": "app/belts/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/bets/[marketId]",
+      "entrypoint": "app/bets/[marketId]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/bets",
+      "entrypoint": "app/bets/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/betting-mechanics",
+      "entrypoint": "app/betting-mechanics/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/bounties",
+      "entrypoint": "app/bounties/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/challenge/[id]",
+      "entrypoint": "app/challenge/[id]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/challenge",
+      "entrypoint": "app/challenge/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions/[...slug]",
+      "entrypoint": "app/champions/[...slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions/e2",
+      "entrypoint": "app/champions/e2/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions/e3",
+      "entrypoint": "app/champions/e3/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions/e4",
+      "entrypoint": "app/champions/e4/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions/e5",
+      "entrypoint": "app/champions/e5/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions/legacy",
+      "entrypoint": "app/champions/legacy/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/champions",
+      "entrypoint": "app/champions/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/chaosium",
+      "entrypoint": "app/chaosium/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/clans/[slug]",
+      "entrypoint": "app/clans/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/clans",
+      "entrypoint": "app/clans/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/connect-wallet",
+      "entrypoint": "app/connect-wallet/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/contact-emaren",
+      "entrypoint": "app/contact-emaren/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/download",
+      "entrypoint": "app/download/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/forum",
+      "entrypoint": "app/forum/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/forum/thread/[slug]",
+      "entrypoint": "app/forum/thread/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/game-stats/[id]",
+      "entrypoint": "app/game-stats/[id]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/game-stats/[id]/review",
+      "entrypoint": "app/game-stats/[id]/review/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/game-stats/live/[sessionKey]",
+      "entrypoint": "app/game-stats/live/[sessionKey]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/game-stats",
+      "entrypoint": "app/game-stats/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/general-inspections",
+      "entrypoint": "app/general-inspections/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/hd-replay-engine",
+      "entrypoint": "app/hd-replay-engine/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-agents",
+      "entrypoint": "app/kingdom-agents/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-bettors",
+      "entrypoint": "app/kingdom-bettors/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-brain",
+      "entrypoint": "app/kingdom-brain/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-forge",
+      "entrypoint": "app/kingdom-forge/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-index",
+      "entrypoint": "app/kingdom-index/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-intelligence",
+      "entrypoint": "app/kingdom-intelligence/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-progress",
+      "entrypoint": "app/kingdom-progress/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-recovery",
+      "entrypoint": "app/kingdom-recovery/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-sensors",
+      "entrypoint": "app/kingdom-sensors/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-systems",
+      "entrypoint": "app/kingdom-systems/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-tests",
+      "entrypoint": "app/kingdom-tests/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-treasury",
+      "entrypoint": "app/kingdom-treasury/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom",
+      "entrypoint": "app/kingdom/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/leaderboard/og",
+      "entrypoint": "app/leaderboard/og/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/leaderboard",
+      "entrypoint": "app/leaderboard/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/leagues/[slug]",
+      "entrypoint": "app/leagues/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/leagues",
+      "entrypoint": "app/leagues/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/library",
+      "entrypoint": "app/library/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/live-games",
+      "entrypoint": "app/live-games/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/lobby",
+      "entrypoint": "app/lobby/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/market/invoices/[publicId]",
+      "entrypoint": "app/market/invoices/[publicId]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/market/kingdom/[slug]",
+      "entrypoint": "app/market/kingdom/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/market",
+      "entrypoint": "app/market/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/market/shops/[slug]",
+      "entrypoint": "app/market/shops/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/matchups/[left]/[right]",
+      "entrypoint": "app/matchups/[left]/[right]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/matchups/team/[left]/[right]",
+      "entrypoint": "app/matchups/team/[left]/[right]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/national-champions",
+      "entrypoint": "app/national-champions/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/nations",
+      "entrypoint": "app/nations/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/offline",
+      "entrypoint": "app/offline/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/olympia",
+      "entrypoint": "app/olympia/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/oracle/[slug]",
+      "entrypoint": "app/oracle/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/oracle",
+      "entrypoint": "app/oracle/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/",
+      "entrypoint": "app/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/past-earnings",
+      "entrypoint": "app/past-earnings/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/pending-bets",
+      "entrypoint": "app/pending-bets/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/players/[uid]",
+      "entrypoint": "app/players/[uid]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/players/by-name/[name]",
+      "entrypoint": "app/players/by-name/[name]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/players",
+      "entrypoint": "app/players/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/profile",
+      "entrypoint": "app/profile/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/radio",
+      "entrypoint": "app/radio/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/realm",
+      "entrypoint": "app/realm/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/arbiter",
+      "entrypoint": "app/renaissance/arbiter/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/architect",
+      "entrypoint": "app/renaissance/architect/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/atlas",
+      "entrypoint": "app/renaissance/atlas/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/chronicles",
+      "entrypoint": "app/renaissance/chronicles/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/circuit",
+      "entrypoint": "app/renaissance/circuit/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/doctor",
+      "entrypoint": "app/renaissance/doctor/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/forge",
+      "entrypoint": "app/renaissance/forge/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/marshal",
+      "entrypoint": "app/renaissance/marshal/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance",
+      "entrypoint": "app/renaissance/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/sentinel",
+      "entrypoint": "app/renaissance/sentinel/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/train",
+      "entrypoint": "app/renaissance/train/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance/vault",
+      "entrypoint": "app/renaissance/vault/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/replay-laboratory",
+      "entrypoint": "app/replay-laboratory/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/replay-parser",
+      "entrypoint": "app/replay-parser/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/requests",
+      "entrypoint": "app/requests/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/rivalries",
+      "entrypoint": "app/rivalries/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/roadmap",
+      "entrypoint": "app/roadmap/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/round-chamber",
+      "entrypoint": "app/round-chamber/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/settings",
+      "entrypoint": "app/settings/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/speed",
+      "entrypoint": "app/speed/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/staking",
+      "entrypoint": "app/staking/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/staking/stakers/[slug]",
+      "entrypoint": "app/staking/stakers/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/statistics",
+      "entrypoint": "app/statistics/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/submit",
+      "entrypoint": "app/submit/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/television-wolo",
+      "entrypoint": "app/television-wolo/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/tournaments/[slug]",
+      "entrypoint": "app/tournaments/[slug]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/tournaments",
+      "entrypoint": "app/tournaments/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/traffic",
+      "entrypoint": "app/traffic/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/upload",
+      "entrypoint": "app/upload/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/users",
+      "entrypoint": "app/users/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wallet",
+      "entrypoint": "app/wallet/page.tsx",
+      "scope": "excluded-static",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/war-chest",
+      "entrypoint": "app/war-chest/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/war-engine",
+      "entrypoint": "app/war-engine/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wargraph",
+      "entrypoint": "app/wargraph/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/watch/[sessionKey]",
+      "entrypoint": "app/watch/[sessionKey]/page.tsx",
+      "scope": "dynamic-template",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/watch",
+      "entrypoint": "app/watch/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wolo-1",
+      "entrypoint": "app/wolo-1/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wolo-machine",
+      "entrypoint": "app/wolo-machine/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wolo",
+      "entrypoint": "app/wolo/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wolochain",
+      "entrypoint": "app/wolochain/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/wolomania",
+      "entrypoint": "app/wolomania/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/workshop",
+      "entrypoint": "app/workshop/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/zodiac",
+      "entrypoint": "app/zodiac/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    }
+  ],
+  "handlers": [
+    {
+      "entrypoint": "app/api/academy/hero-preference/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/academy/zodiac/lesson/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/ai-agents/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/ai-knowledge/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/ai-knowledge/topology/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/aoe2war-os/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/auto-bets/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/bets/broadcast-previews/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/bets/markets/[marketId]/founders/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/betting-bots/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/bounties/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/championship-challenges/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/championship-transfers/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/clans/crests/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/clans/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/delete_user/[uid]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/events/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/hero-stage-takeover/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/hero-studio/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/kingdom-bettors/nominations/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/kingdom-bettors/personas/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/kingdom-presence/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/live-ticker/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/[assetId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/assign-user-assets/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/assign-user-avatar/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/batch/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/ensure-user/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/set-user-featured-avatar/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/system-message-test/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/user-profile/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/media-assets/users/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/oracle/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/page-heroes/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio-submissions/[id]/[asset]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio-submissions/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/assets/[id]/audio/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/assets/[id]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/assets/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/listeners/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/programs/[id]/items/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/programs/[id]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/programs/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/station/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/station/start/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/radio/station/stop/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-auto-recovery/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-operations/candidate-plan/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-operations/inventory/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-operations/job-receipts/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-operations/player-recovery/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-operations/review-queue/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-operations/run-candidates/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-results/[id]/financial-authority/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/replay-roster-recovery/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/streams/retained-demo/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/tournament/matches/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/tournament/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/translations/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/trophies/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/users/[uid]/activity/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/users/[uid]/community/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/users/live/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/users/rails/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/users/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolo-claims/[claimId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolo-claims/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolo-transfers/backfill/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolochain/activity/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolochain/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolochain/scheduled-settlements/[id]/execute/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolochain/scheduled-settlements/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolochain/staking-treasury-payouts/[id]/execute/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/wolochain/staking-treasury-payouts/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/workshop/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/ai/council/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/aoe2war-os/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/auth/session/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/auth/steam/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/stake-intents/[intentId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/stake-intents/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/stake-reconciliation/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/tickets/[ticketId]/commit/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/tickets/[ticketId]/recover/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/tickets/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/wager/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/wallet-errors/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bounties/advisor/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/chain-id/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/challenges/[id]/preference/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/challenges/[id]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/challenges/history/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/challenges/reconcile/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/challenges/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/championships/held/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/attachments/[attachmentId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/events/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/invite-search/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/invites/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/messages/[messageId]/translate/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/presence/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/[slug]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/clans/purchase/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/contact-emaren/attachments/[messageId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/contact-emaren/events/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/contact-emaren/messages/[messageId]/transcribe/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/contact-emaren/messages/[messageId]/translate/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/contact-emaren/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/contact-emaren/search/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/deployment-version/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/forum/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/game-stats/live/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/game_stats/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/general-inspections/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/hd-replay-engine/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/header-summary/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/hero-stage-takeover/image/[file]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/hero-stage-takeover/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/internal/aoe2war-os/bridge/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/internal/aoe2war-os/native-replay/artifact/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-agents/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-bettors/nominations/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-bettors/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-forge/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-index/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-intelligence/live-recovery/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-intelligence/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-patrol/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-presence/anonymous-state/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-presence/events/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-presence/state/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-route-census/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/leaderboard/og/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/leagues/quote/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/leagues/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/library/activity/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/library/census/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/library/games/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/live-games/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/chat/reaction/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/chat/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/join/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/leaderboard/locate/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/leaderboard/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/recent-matches/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/stream/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/lobby/wolo-earners/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/admin/image/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/admin/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/admin/sponsor/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/business/develop/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/business/image/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/business/invoices/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/business/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/business/tax/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/invoices/[publicId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/requests/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/market/shops/[slug]/inquiries/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/media-assets/[kind]/[target]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/oracle/markets/[slug]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/oracle/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/page-change-notices/content/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/page-change-notices/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/parsed_replays/route.js",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/player-ai/development-target/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/player-profile/matches/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/players/generation/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/profile-documents/[id]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/profile-documents/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/radio/feedback/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/radio/station/audio/[publicId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/radio/station/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/radio/submissions/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/radio/tracks/[publicId]/artwork/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/radio/tracks/[publicId]/audio/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/adjudications/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/desync-incidents/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/evidence/[artifactId]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/evidence/analyze/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/evidence/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/parser-trail/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/recovery-proposal/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay-results/[id]/reparse/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay/post-ingest/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay/upload-package/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/replay/upload/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/requests/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/round-chamber/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/speed/check/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/speed/report/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/speed/sample/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/activity/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/auto-compound/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/claim/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/config/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/leaderboard/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/me/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/rewards/run/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/stake/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/stakers/[slug]/ledger/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/summary/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/staking/unstake/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/statistics/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/[streamId]/chunks/[sequence]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/[streamId]/chunks/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/[streamId]/end/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/[streamId]/heartbeat/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/[streamId]/manifest/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/[streamId]/rolling-webm/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/active/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/client-event/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/retained-demo/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/streams/start/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/tournaments/roster/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/traffic/public/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/traffic/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/trophies/[trophyId]/metadata/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/trophies/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/trophies/tributes/queue/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/activity/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/appearance/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/avatar/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/bet-automation/executions/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/bet-automation/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/clan-crests/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/exists/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/experience/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/hero-language-visibility/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/kingdom-chronicle-preferences/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/language/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/leaderboard-preferences/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/me/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/online_users/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/ping/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/presence-preference/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/register/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/theme-campaign-override/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/update_name/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/war-satchel/deposit-evidence/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/war-satchel/funding-intents/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/war-satchel/wallet-proof/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/watcher-key/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/wolo-claims/claim/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/wolo-transactions/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wargraph/advance/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wargraph/presence/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wargraph/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/watch-streams/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/watcher/events/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/watcher/release/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/balance/[address]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/daemon-log/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/faucet/claim/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/holders/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/mainnet-transfers/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/moved24h/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/network/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/osmosis-pulse/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/status/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/tx/[txHash]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/wolo/wallet-dashboard/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/workshop/ask/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/workshop/chronicle/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/workshop/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/workshop/sponsor/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/bets/broadcast-previews/[fileName]/route.ts",
+      "scope": "non-api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/download/watcher/[artifact]/route.ts",
+      "scope": "non-api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/uploads/managed-assets/[kind]/[file]/route.ts",
+      "scope": "non-api",
+      "ownership": "unassigned"
+    }
+  ]
+}

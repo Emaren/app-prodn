@@ -21,7 +21,7 @@ function scoreString(n: number | null) { return validScore(n) ? String(n) : "—
 function statusTitle(entry: KingdomIndexEntry) {
   switch (entry.status) {
     case "current": return entry.kind==="certified"?"CERTIFIED":"AGENT OBSERVED";
-    case "provisional": return entry.kind==="certified"?"CERTIFICATION CLAIM UNVERIFIED":"SOURCE REVIEW";
+    case "provisional": return entry.kind==="certified"?"CERTIFICATION CLAIM UNVERIFIED":entry.kind==="agent"?"AGENT CLAIM UNVERIFIED":"SOURCE REVIEW";
     case "stale": return "INSPECTION AGED";
     case "drifted": return "SOURCE DRIFT";
     default: return "NOT YET ASSESSED";
