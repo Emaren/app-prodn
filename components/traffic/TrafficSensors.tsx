@@ -13,11 +13,13 @@ import {
 } from "lucide-react";
 
 import type { PublicTrafficPoint } from "@/lib/publicTraffic";
+import type { TrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 
 type Props = {
   points: PublicTrafficPoint[];
   lastPublishedDay: string | null;
   lagDays: number | null;
+  insights: TrafficBrowserInsights | null;
 };
 
 const originalSeal = {
@@ -33,23 +35,23 @@ const originalSeal = {
 const visitorExhibits = [
   {
     title: "TOP FIVE COUNTRIES",
-    subtitle: "Human-qualified unique IP estimates",
+    subtitle: "Unique observed browser IDs by country",
     label: "Geographic ranking",
     Icon: Globe2,
     color: "text-sky-300",
     border: "border-sky-300/20",
     background: "from-sky-400/[0.11]",
-    why: "Country coverage and global IP classification must be independently certified before publishing a ranking.",
+    why: "Browser geolocation is observational, not verified unique-human or canonical Traffic classification.",
   },
   {
     title: "TOP FIVE PAGES",
-    subtitle: "Canonical human page sessions",
+    subtitle: "Distinct observed public page views",
     label: "Page ranking",
     Icon: Waypoints,
     color: "text-amber-300",
     border: "border-amber-300/20",
     background: "from-amber-400/[0.11]",
-    why: "Real page-session attribution must exclude assets, bots, authenticated/private routes and repeated requests.",
+    why: "Counts distinct browser page views, not HTTP requests. Bot and private routes are filtered.",
   },
   {
     title: "OBSERVED TIME ON SITE",
@@ -59,7 +61,7 @@ const visitorExhibits = [
     color: "text-emerald-300",
     border: "border-emerald-300/20",
     background: "from-emerald-400/[0.11]",
-    why: "Browser visibility and dwell events exist, but no verified public session-duration aggregate is published.",
+    why: "Average sum of maximum visible time per page view, by session. Zero-second sessions excluded.",
   },
 ] as const;
 
@@ -100,12 +102,83 @@ function Trend({
   );
 }
 
+function VisitorInsightCard({
+  exhibit, insights,
+}: {
+  exhibit: (typeof visitorExhibits)[number];
+  insights: TrafficBrowserInsights | null;
+}) {
+  const { title, subtitle, label, Icon, color, border, background, why } = exhibit;
+  const rows = title === "TOP FIVE COUNTRIES"
+    ? insights?.topCountries.map((country) => ({
+        name: country.name, amount: country.uniqueBrowserIds,
+      })) ?? []
+    : title === "TOP FIVE PAGES"
+    ? insights?.topPages.map((page) => ({
+        name: page.path, amount: page.pageViews,
+      })) ?? []
+    : [];
+  const time = title === "OBSERVED TIME ON SITE";
+  const seconds = time ? insights?.averageVisibleSeconds ?? null : null;
+  const hasData = time ? seconds !== null : rows.length > 0;
+  const average = seconds === null ? null
+    : String(Math.floor(seconds / 60)) + "m " + String(seconds % 60) + "s";
+
+  return (
+    <article className={"relative min-h-[245px] overflow-hidden rounded-[1.65rem] border bg-gradient-to-br to-[#060c15] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6 " + border + " " + background}>
+      <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full border border-white/[0.045] shadow-[0_0_70px_rgba(255,255,255,0.025)]" aria-hidden="true" />
+      <div className="relative flex items-center gap-3">
+        <div className={"grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.045] " + color}>
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div>
+          <h3 className="font-mono text-[11px] font-bold tracking-[0.2em] text-white">{title}</h3>
+          <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+      <div className="relative mt-6 border-b border-white/10 pb-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</span>
+          <span className={"rounded-md border px-2 py-1 font-mono text-[9px] tracking-wider " +
+            (insights ? "border-sky-300/20 bg-sky-300/[0.055] text-sky-200" : "border-amber-300/20 bg-amber-300/[0.055] text-amber-200")}>
+            {insights ? "BROWSER OBSERVED" : "NOT CERTIFIED"}
+          </span>
+        </div>
+        {hasData && time ? (
+          <div className="font-mono text-3xl font-semibold text-slate-100 tabular-nums">{average}</div>
+        ) : hasData ? (
+          <ol className="space-y-2">
+            {rows.map((row, index) => (
+              <li key={row.name} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-slate-200" title={row.name}>{index + 1}. {row.name}</span>
+                <span className="shrink-0 font-mono text-sky-200 tabular-nums">{compact(row.amount)}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="font-mono text-5xl font-semibold text-slate-300" aria-label="Not yet verified">—</div>
+        )}
+      </div>
+      <p className="relative mt-4 max-w-[48ch] text-[11px] leading-relaxed text-slate-400">{why}</p>
+      {insights ? (
+        <p className="relative mt-2 font-mono text-[10px] text-slate-500">
+          {insights.fromDay} – {insights.throughDay}
+          {time ? " · " + compact(insights.coverage.positiveDurationSessions) +
+            " positive sessions · " + compact(insights.coverage.excludedZeroDurationSessions) + " excluded at zero seconds"
+            : ""}
+          {title === "TOP FIVE COUNTRIES" ? " · Minimum five observed identifiers per country" : ""}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
 /**
  * Strictly a public, read-only TRAFFIC subsystem of the separate Kingdom Sensors.
  * The original /traffic chart and /kingdom-sensors are deliberately untouched.
  * A missing aggregate is NOT zero; no country, path, dwell or login data is guessed.
  */
-export default function TrafficSensors({ points, lastPublishedDay, lagDays }: Props) {
+export default function TrafficSensors({ points, lastPublishedDay, lagDays, insights }: Props) {
   const available = points.length > 0;
   const totals = available
     ? points.reduce(
@@ -164,34 +237,13 @@ export default function TrafficSensors({ points, lastPublishedDay, lagDays }: Pr
             <h2 id="traffic-intelligence-heading" className="mt-2 text-2xl font-black tracking-tight text-slate-100 sm:text-3xl">The people behind the signal.</h2>
           </div>
           <div className="rounded-full border border-sky-300/20 bg-sky-300/[0.055] px-3 py-1.5 font-mono text-[10px] tracking-widest text-sky-200">
-            VERIFIED AGGREGATES ONLY
+            OBSERVED BROWSER EVIDENCE · NOT HUMAN-CERTIFIED
           </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          {visitorExhibits.map(({ title, subtitle, label, Icon, color, border, background, why }) => (
-            <article key={title} className={"relative min-h-[245px] overflow-hidden rounded-[1.65rem] border bg-gradient-to-br to-[#060c15] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)] sm:p-6 " + border + " " + background}>
-              <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full border border-white/[0.045] shadow-[0_0_70px_rgba(255,255,255,0.025)]" aria-hidden="true" />
-              <div className="relative flex items-center gap-3">
-                <div className={"grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.045] " + color}>
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </div>
-                <div>
-                  <h3 className="font-mono text-[11px] font-bold tracking-[0.2em] text-white">{title}</h3>
-                  <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
-                </div>
-              </div>
-              <div className="relative mt-7 flex items-end justify-between gap-4 border-b border-white/10 pb-5">
-                <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
-                  <div className="mt-2 font-mono text-5xl font-semibold leading-none text-slate-300" aria-label="Not yet verified">—</div>
-                </div>
-                <span className="rounded-md border border-amber-300/20 bg-amber-300/[0.055] px-2 py-1 font-mono text-[9px] tracking-wider text-amber-200">
-                  NOT CERTIFIED
-                </span>
-              </div>
-              <p className="relative mt-4 max-w-[48ch] text-[11px] leading-relaxed text-slate-400">{why}</p>
-            </article>
+          {visitorExhibits.map((exhibit) => (
+            <VisitorInsightCard key={exhibit.title} exhibit={exhibit} insights={insights} />
           ))}
         </div>
       </section>
