@@ -110,7 +110,7 @@ test("withdrawal requirements and protected founder claim889 remain unchanged", 
 
 test("new verifier pin and only real offline verifier can issue opaque financial evidence", () => {
   const source=readFileSync(new URL("../lib/warSatchelAuthenticatedFinancialProof.ts",import.meta.url),"utf8");
-  assert.match(source,/d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac/);
+  assert.match(source,/4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3/);
   assert.doesNotMatch(source,/3c2f89936802d016a43efdb8b2ec914bd388e78e0b1251f76a837c793d5da92e/);
   assert.match(source,/await readWagerReviewerKey\(\)/);
   assert.doesNotMatch(source,/await readWithdrawalReviewerKey\(\)/);

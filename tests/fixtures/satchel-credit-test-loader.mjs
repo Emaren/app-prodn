@@ -27,7 +27,7 @@ export async function load(url, context, nextLoad) {
     // bytes. Linux CI exercises the UNMODIFIED production artifact SHA pin.
     const digest = process.env.SATCHEL_TEST_BINARY_SHA256;
     if (!/^[a-f0-9]{64}$/.test(digest || '')) throw Error('test binary identity missing');
-    source = source.replace('d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac', digest);
+    source = source.replace('4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3', digest);
   }
   return {...result, source};
 }

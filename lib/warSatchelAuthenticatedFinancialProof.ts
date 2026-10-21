@@ -17,12 +17,11 @@ const invoke = promisify(execFile);
 const MARK = Symbol("authenticated-wolo-comet-financial-proof");
 const issued = new WeakSet<object>();
 let active = 0;
-// PR39 run39129775493, exact source99f32de617964565875ed4689bea0d688bb99147.
-// Independently downloaded/raw-hashed Linux/amd64 custody-backend artifact;
-// its verify-financial-proof subcommand supports signed wager reservations.
-// Wolo docs/settlement-contracts/custody-backend-artifact-20261018.json binds
-// this NEW artifact. The historical PR29 binary is not being relabeled.
-const PINNED_VERIFIER_SHA256 = "d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac";
+// PR72 CI39636828148 artifact12363880676, exact clean source
+// 8c509e8f62ca3ec60711dc2654a03b12f22b0773, pinned Go1.24.6 Linux/amd64.
+// Independently verified archive, manifest and raw binary. Historical artifacts
+// retain their identities; this digest grants no financial activation authority.
+const PINNED_VERIFIER_SHA256 = "4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3";
 const ENDPOINT = "http://127.0.0.1:8094";
 const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -339,7 +338,7 @@ function validCommitTimestamp(value: unknown): value is string {
 
 /** Metadata extraction ONLY AFTER the pinned verifier authenticates these
  * exact transcript bytes and returns this inclusion height/block hash.
- * Source99f32de portable proofs contain /commit, not /block. Comet authenticates
+ * Portable v1 proofs contain /commit, not /block. Comet authenticates
  * the signed header's time and its binding to commit.block_id.hash. REST's
  * second-precision transaction timestamp is never used here.
  * The pure helper does not authenticate a proof or issue an opaque receipt.
