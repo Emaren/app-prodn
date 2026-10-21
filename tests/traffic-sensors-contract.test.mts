@@ -45,6 +45,13 @@ test("missing public country, path and dwell aggregates remain unavailable rathe
   assert.match(component, /NOT CERTIFIED/);
   assert.match(component, /Not yet verified/);
   assert.match(component, /21_618_093/);
+  assert.match(component, /756_819/);
+  assert.match(component, /86_956/);
+  assert.match(component, /37_399/);
+  assert.match(component, /originalPoints\.every/);
+  assert.match(component, /originalTotals\.confirmedHuman === originalSeal\.totals\.confirmedHuman/);
+  assert.match(component, /HISTORICAL SNAPSHOT MATCH/);
+  assert.match(component, /Published snapshot digest \(reference\)/);
   assert.match(component, /request rows, not visitors/);
   assert.match(component, /const available = points\.length > 0/);
   assert.match(component, /HISTORICAL ARCHIVE \/ READ ONLY/);
