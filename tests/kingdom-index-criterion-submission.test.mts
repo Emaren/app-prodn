@@ -122,6 +122,13 @@ test("future, expired, key substitution, replayed receipt and nonce store outage
  ({ctx,envelope}=setup());
  await assert.rejects(inspectSignedCriterionSubmission(envelope(payload()),{...ctx,consumeNonce:async()=>{throw Error("outage")}}),/Repeated or non-durable/);
 });
+test("provisional receipt refuses a claimed 100 even when fixture proofs all return true",async()=>{
+ const {ctx,envelope}=setup();const p=payload();
+ for(const row of p.criteria){
+  row.earned=rubric.dimensions[row.dimension].criteria.find(c=>c.id===row.id).max;
+ }
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/100 requires independent production\/browser certification/);
+});
 test("rubric mutation cannot silently change denominator",async()=>{
  const {ctx,envelope}=setup();const changed=JSON.parse(JSON.stringify(rubric));changed.dimensions.correctness.criteria[0].max=100;
  await assert.rejects(inspectSignedCriterionSubmission(envelope(payload()),{...ctx,rubric:changed}),/Dimension weight mismatch/);
