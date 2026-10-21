@@ -24,6 +24,7 @@ const originalSeal = {
   from: "2026-06-11",
   through: "2026-10-19",
   days: 131,
+  totals: { totalTraffic: 756_819, suspectedHuman: 86_956, confirmedHuman: 37_399 },
   sourceRows: 21_618_093,
   digest: "84150e4921197efd925fa2d9abccee37154d45a68b6f72e25df57dfc4e2d07b4",
   auditedAt: "2026-10-21",
@@ -116,9 +117,29 @@ export default function TrafficSensors({ points, lastPublishedDay, lagDays }: Pr
         { totalTraffic: 0, suspectedHuman: 0, confirmedHuman: 0 },
       )
     : null;
-  const validOriginalSeal = points.length >= originalSeal.days &&
-    points[0]?.date === originalSeal.from &&
-    points[originalSeal.days - 1]?.date === originalSeal.through;
+  // A dated historical receipt is not proof that the current API response agrees.
+  // Require the complete original period and exact three-series totals before
+  // describing the current public response as matching that historical snapshot.
+  const originalPoints = points.slice(0, originalSeal.days);
+  const originalTotals = originalPoints.reduce(
+    (acc, point) => ({
+      totalTraffic: acc.totalTraffic + point.values.totalTraffic,
+      suspectedHuman: acc.suspectedHuman + point.values.suspectedHuman,
+      confirmedHuman: acc.confirmedHuman + point.values.confirmedHuman,
+    }),
+    { totalTraffic: 0, suspectedHuman: 0, confirmedHuman: 0 },
+  );
+  const validOriginalSeal =
+    originalPoints.length === originalSeal.days &&
+    originalPoints[0]?.date === originalSeal.from &&
+    originalPoints.at(-1)?.date === originalSeal.through &&
+    originalPoints.every((point, index) =>
+      point.date === new Date(Date.parse(originalSeal.from + "T00:00:00Z") +
+        index * 86_400_000).toISOString().slice(0, 10)
+    ) &&
+    originalTotals.totalTraffic === originalSeal.totals.totalTraffic &&
+    originalTotals.suspectedHuman === originalSeal.totals.suspectedHuman &&
+    originalTotals.confirmedHuman === originalSeal.totals.confirmedHuman;
   const metrics = [
     { label: "TOTAL TRAFFIC", key: "totalTraffic", count: totals?.totalTraffic ?? null, color: "#f5c65b", text: "text-amber-200", description: "Canonical page sessions" },
     { label: "POTENTIAL HUMANS", key: "suspectedHuman", count: totals?.suspectedHuman ?? null, color: "#5aa9ff", text: "text-blue-300", description: "Potential-human page sessions" },
@@ -227,10 +248,10 @@ export default function TrafficSensors({ points, lastPublishedDay, lagDays }: Pr
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
-                <div className="font-mono text-[10px] tracking-[0.18em] text-slate-400">ORIGINAL HISTORY SEAL</div>
+                <div className="font-mono text-[10px] tracking-[0.18em] text-slate-400">HISTORICAL SNAPSHOT MATCH</div>
                 <div className="mt-2 font-mono text-3xl font-semibold text-emerald-300">{validOriginalSeal ? "131 DAYS" : "—"}</div>
                 <div className="mt-1 text-[11px] text-slate-500">
-                  {validOriginalSeal ? "Jun 11 – Oct 19 · original publication window" : "Original seal dates not present in current response"}
+                  {validOriginalSeal ? "Jun 11 – Oct 19 · date coverage and three series totals agree" : "Original archive totals or day coverage differ; no match claimed"}
                 </div>
               </div>
             </div>
@@ -257,7 +278,7 @@ export default function TrafficSensors({ points, lastPublishedDay, lagDays }: Pr
             <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-white/[0.07] pt-4 text-[11px] text-slate-400">
               <div className="flex flex-wrap gap-x-5 gap-y-1">
                 <span>Original source audit: <strong className="font-mono font-medium text-slate-200">{originalSeal.sourceRows.toLocaleString("en-CA")}</strong> request rows, not visitors</span>
-                <span>Original seal: <code className="text-slate-300">{originalSeal.digest.slice(0, 12)}</code>…</span>
+                <span>Published snapshot digest (reference): <code className="text-slate-300">{originalSeal.digest.slice(0, 12)}</code>…</span>
                 <span>Snapshot: {originalSeal.auditedAt}</span>
               </div>
               <Link href="/kingdom-sensors" className="inline-flex items-center gap-1 text-sky-300 underline-offset-4 hover:underline">
