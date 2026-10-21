@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-000-kingdom-index-estate-census-20261021` at `bd44400e6077d0264fe65ddeb1e6a01c0732d9bf`
+Implementation baseline: `feature/renaissance-000-signed-criterion-ingest-20261021` at `b3bed3c6dde0bf360ab72eb66f7cf0e4d8a1e0a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
