@@ -72,11 +72,12 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
     await sql.query("INSERT INTO war_satchel_proof_candidates(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at) VALUES($1,1,'wolo-1',$2,0,$3,$4,$5,$6,now())",[expected.intentId,o.TxHash,i.Sender,i.Vault,i.AmountUWolo,o.Height]);
     const adapter=()=>new PrismaPg({host:socket,user:"credit_fixture",database:"postgres"});
     db=new PrismaClient({adapter:adapter()});
-    const bank=await authenticateWarSatchelBank(i.Vault,(async(url,options)=>{
+    const bankReader=(async(url,options)=>{
       assert.equal(url,"http://127.0.0.1:8094/satchel/v1/proofs/bank");
       assert.equal(options?.method,"POST");assert.deepEqual(JSON.parse(String(options?.body)),{protocol:1});
       return Response.json(step.vault_bank_proof);
-    }) as typeof fetch);
+    }) as typeof fetch;
+    const bank=await authenticateWarSatchelBank(i.Vault,bankReader);
     assert.equal(bank.balanceUwolo,BigInt(step.vault_balance_uwolo));
     assert.equal(bank.height+1n,bank.commitHeight);assert.equal(Object.isFrozen(bank),true);
     assert.equal(authenticatedWarSatchelBankFreshAt(bank),true);
@@ -98,6 +99,32 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_physical_receipt_consumptions")).rows[0].count,"0");
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
       await sql!.query("DROP TRIGGER fixture_crash ON war_satchel_funded_journal");
+    });
+    await t.test("bank trust-root expiry during an actual PostgreSQL wait cannot mint a deposit credit",async()=>{
+      const originalAuthority=readFileSync(authority,"utf8"),shortAuthority=JSON.parse(originalAuthority);
+      shortAuthority.trust_anchor.period_seconds=60;
+      let shortBank:Awaited<ReturnType<typeof authenticateWarSatchelBank>>;
+      try{
+        // Shorten only this isolated public trust root. Both capabilities
+        // still require the real pinned verifier and exact signed SDK chain.
+        writeFileSync(authority,JSON.stringify(shortAuthority),{mode:0o600});
+        shortBank=await authenticateWarSatchelBank(i.Vault,bankReader);
+      }finally{writeFileSync(authority,originalAuthority,{mode:0o600});}
+      assert.ok(shortBank.authenticatedHeadExpiresAtMs<authenticated.authenticatedHeadExpiresAtMs-1000,
+        "fixture must exercise earlier bank-root expiry, not an already expired deposit proof");
+      let delayed=false;
+      const waiting=db!.$extends({query:{satchelFundedBalance:{async aggregate({args,query}){
+        const aggregate=await query(args);
+        const seconds=Math.max(0,(shortBank.authenticatedHeadExpiresAtMs-Date.now()+25)/1000);
+        assert.ok(seconds<15,"isolated expiry wait must remain bounded");
+        await sql!.query("SELECT pg_sleep($1::double precision)",[seconds]);
+        delayed=true;return aggregate;
+      }}}});
+      await assert.rejects(creditRecordedSatchelProof(waiting as unknown as PrismaClient,{...input,bank:shortBank}),/bank_observation_not_fresh_or_canonical/);
+      assert.equal(delayed,true);assert.equal(authenticatedWarSatchelDepositFreshAt(authenticated),true);
+      assert.equal(authenticatedWarSatchelBankFreshAt(shortBank),false);
+      for(const table of ["war_satchel_funded_receipts","war_satchel_physical_receipt_consumptions","war_satchel_funded_journal","war_satchel_funded_balances"])
+        assert.equal((await sql!.query("SELECT count(*) FROM "+table)).rows[0].count,"0","expired bank evidence must roll back "+table);
     });
     await t.test("legitimate owner credit succeeds and concurrent retries cannot increment it twice",async()=>{
       const first=await creditRecordedSatchelProof(db!,input);assert.equal(first.status,"credited");assert.equal(first.availableUwolo,i.AmountUWolo);

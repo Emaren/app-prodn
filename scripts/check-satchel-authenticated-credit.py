@@ -41,6 +41,26 @@ def isolated_sdk_transfer(source: str, amount_uwolo: int, genesis_uwolo: int) ->
     return source
 
 
+def isolated_bank_anchor_gap(source: str) -> str:
+    """One test scenario has a real fifty-second block gap after its anchor.
+
+    This changes only the disposable SDK TEST after the pinned verifier was
+    built. Signed current heads stay fresh. A sixty-second trust period can
+    therefore expire before the deposit proof's original head deadline.
+    """
+    replacements = [
+        ("start := now.Add(-2 * time.Second)",
+         'start := now.Add(-2 * time.Second)\n initialTime := start.Add(-time.Second)\n if recipe.Scenario == "authenticated_deposit_current_bank" { initialTime = now.Add(-51 * time.Second) }'),
+        ("Time: start.Add(-time.Second), AppStateBytes: state", "Time: initialTime, AppStateBytes: state"),
+        ("height++\n\t\tcometTxs :=", 'height++\n blockTime := start.Add(time.Duration(height) * 10 * time.Millisecond)\n if height == 1 && recipe.Scenario == "authenticated_deposit_current_bank" { blockTime = now.Add(-50 * time.Second) }\n\t\tcometTxs :='),
+        ("Time: start.Add(time.Duration(height) * 10 * time.Millisecond), ValidatorsHash:", "Time: blockTime, ValidatorsHash:"),
+    ]
+    for original, replacement in replacements:
+        assert source.count(original) == 1, f"unexpected SDK bank clock fixture: {original}"
+        source = source.replace(original, replacement)
+    return source
+
+
 with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     root = Path(tmp).resolve()
     source = root / "wolo"
@@ -66,6 +86,8 @@ with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     continuous_test = ROOT / "tests/fixtures/satchel-v1-continuous-sdk_test.go"
     assert continuous_test.is_file()
     (source / "internal/satchel/satchel_v1_continuous_sdk_test.go").write_bytes(continuous_test.read_bytes())
+    bank_fixture = source / "internal/satchel/isolated_lifecycle_test.go"
+    bank_fixture.write_text(isolated_bank_anchor_gap(bank_fixture.read_text()))
     # Modify only a TEST fixture after compiling the exact reviewed verifier.
     # Override the helper builder's memo BEFORE it creates the real signature.
     fixture = source / "internal/satchel/isolated_execution_test.go"

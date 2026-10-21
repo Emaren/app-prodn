@@ -285,6 +285,7 @@ export async function creditRecordedSatchelProof(
 
     // Row/aggregate waits consume the original authenticated head window too.
     // Recheck after those waits, immediately before creating a new receipt.
+    requireFreshBank(input.bank, Date.now());
     if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
       stop("authenticated_deposit_proof_stale");
 
@@ -323,6 +324,7 @@ export async function creditRecordedSatchelProof(
     });
     // Trigger/unique-index and balance writes may also wait. Throwing here
     // rolls back every new receipt, consumption, journal and balance change.
+    requireFreshBank(input.bank, Date.now());
     if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
       stop("authenticated_deposit_proof_stale");
     return Object.freeze({
@@ -511,6 +513,7 @@ export async function reserveForWatcherExecution(
     if (!existing || existing.availableUwolo < input.reserveUwolo) stop("insufficient_owner_available");
     const reservationId = "satchel:reserve:" + exec.id;
     const requestId = "satchel:ticket:" + exec.id;
+    requireFreshBank(input.bank, Date.now());
     await tx.satchelFundedReservation.create({
       data: {
         id: reservationId, ownerUserId: input.ownerUserId,
@@ -542,6 +545,7 @@ export async function reserveForWatcherExecution(
       where: { id: exec.id },
       data: { reservationId, status: "funded_reserved", attemptCount: 1 },
     });
+    requireFreshBank(input.bank, Date.now());
     return { status: "reserved" as const, reservationId };
   });
 }
@@ -941,6 +945,7 @@ export async function reserveOwnerSatchelWithdrawal(
     requireFreshBank(input.bank,Date.now());
     const outstanding=await outstandingVaultLiability(tx);
     if (outstanding>input.bank.balanceUwolo) stop("withdrawal_vault_insolvent");
+    requireFreshBank(input.bank,Date.now());
     const consumed=await tx.satchelWithdrawalChallenge.updateMany({
       where:{id:challenge.id,consumedAt:null,expiresAt:{gt:now}},
       data:{consumedAt:now},
@@ -983,6 +988,7 @@ export async function reserveOwnerSatchelWithdrawal(
         version:{increment:BigInt(1)},updatedAt:new Date(),
       },
     });
+    requireFreshBank(input.bank,Date.now());
     return Object.freeze({
       state:"reserved" as const,withdrawalId:id,
       sendTo:input.ownerKeplrWallet,
@@ -1052,11 +1058,13 @@ export async function markSatchelWithdrawalAttempt(
     const request={protocol:1,operation_id:operationId,chain_id:"wolo-1",from_address:economics.vault,
       to_address:economics.wallet,amount:{denom:"uwolo",amount:economics.amountUwolo},memo:economics.memo,
       owner_id:economics.ownerUid,approval,owner_mandate:economics.ownerMandate};
+    requireFreshBank(bank,Date.now());
     await tx.satchelWithdrawalAttempt.create({data:{operationId,withdrawalId:found.id,
       requestJson:request as Prisma.InputJsonValue,requestDigest:createHash("sha256").update(JSON.stringify(request)).digest("hex")}});
     const changed=await tx.satchelFundedWithdrawal.updateMany({where:{id:found.id,status:"reserved"},
       data:{status:"unknown_hold",updatedAt:new Date()}});
     if(changed.count!==1)stop("withdrawal_attempt_race");
+    requireFreshBank(bank,Date.now());
     return Object.freeze({state:"broadcast_uncertainty_locked" as const,operationId,request:Object.freeze(request)});
   });
 }
@@ -1154,6 +1162,7 @@ export async function finalizeProvenSatchelWithdrawal(prisma:PrismaClient,input:
     if(!account||account.withdrawalPendingUwolo<fresh.amountUwolo)stop("withdrawal_not_liability_backed");
     requireFreshBank(bank,Date.now());const liabilities=await outstandingVaultLiability(tx);
     if(liabilities<fresh.amountUwolo||bank.balanceUwolo<liabilities-fresh.amountUwolo)stop("post_withdrawal_vault_insolvent");
+    requireFreshBank(bank,Date.now());
     await tx.satchelWithdrawalPhysicalConsumption.create({data:{chainId:"wolo-1",txHash:proven.txHash,messageIndex:0,
       withdrawalId:fresh.id,ownerUserId:input.ownerUserId,amountUwolo:fresh.amountUwolo,vaultAddress:economics.vault}});
     await tx.satchelFundedJournal.create({data:{ownerUserId:input.ownerUserId,sourceKey:"satchel:withdraw:sent:"+fresh.id,
@@ -1163,6 +1172,7 @@ export async function finalizeProvenSatchelWithdrawal(prisma:PrismaClient,input:
       withdrawalPendingUwolo:{decrement:fresh.amountUwolo},version:{increment:BigInt(1)},updatedAt:new Date()}});
     await tx.satchelFundedWithdrawal.update({where:{id:fresh.id},data:{status:"sent",txHash:proven.txHash,confirmedHeight:proven.height,updatedAt:new Date()}});
     if(!financialProofFreshAt(proven))stop("withdrawal_authenticated_head_expired");
+    requireFreshBank(bank,Date.now());
     return Object.freeze({state:"sent" as const,txHash:proven.txHash});
   });
 }
@@ -1396,6 +1406,7 @@ export async function creditVerifiedSatchelClaimReturn(
     const currentBalance=await getOrCreateBalance(tx,input.ownerUserId);
     if(currentBalance.availableUwolo+proof.amountUwolo>MAX_I64)
       stop("owner_spendable_overflow");
+    requireFreshBank(bank,Date.now());
     if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_expired_before_writes");
     const receipt=await tx.satchelFundedClaimReturn.create({
       data:{
@@ -1427,6 +1438,7 @@ export async function creditVerifiedSatchelClaimReturn(
     });
     // Do not commit if row/trigger waits consumed either signed source head.
     if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_expired_before_commit");
+    requireFreshBank(bank,Date.now());
     return Object.freeze({
       status:"credited" as const,
       returnId:receipt.id.toString(),
