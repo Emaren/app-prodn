@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-10-20"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -365,6 +365,29 @@ For a reparse/backfill:
 6. Promote the smallest verified result cohort on its separate authority rail.
 7. Smoke public projections and private operator history.
 8. Record before/after counts and preserve the run manifest and receipts.
+
+## October 20, 2026 — source review and protected release boundary
+
+The app source at `25dabfda67902007cf5494cf5435c94a913455e7` was
+cross-checked for two result-authority safeguards: the terminal action-tail
+winner switch remains `false` in `lib/replayResultAdjudications.ts`, and the
+bounded rating-delta evaluator identifies policy `rating-delta-v1` in
+`lib/replayRatingDeltaAuthority.ts`. This is a **source-contract review**, not a
+fresh production replay-corpus, API/Watcher deployment, database-migration, or
+WOLO-chain attestation. Dated production examples elsewhere in this runbook
+remain observations at their recorded times only.
+
+**Important: the deployment checklist immediately below is a retained
+historical first-pass procedure, NOT the current October 2026 production
+release runbook.** In particular, its direct VPS pull, `prisma migrate deploy`,
+and service restart examples are **not** authorized as routine release steps.
+The current `config/aoe2war-operations.json` requires
+`database_automatic_migration_policy: fail-closed-reviewed-lane` and
+`finish.database_migrations: not-auto-applied`. Consult the contemporary
+`docs/RELEASE_ENGINEERING.md` and secure an independently reviewed migration
+plan before considering any schema change; keep WOLO settlement and custody
+behind their separate protected authority. Do not execute old steps simply
+because they remain visible for incident archaeology.
 
 ## Deployment and migration checklist
 
