@@ -7,7 +7,7 @@ type Keplr = {
   }>;
 };
 type Mandate = {
-  available?: boolean; signed?: boolean; expiresAtUtc?: string | null;
+  available?: boolean; signed?: boolean; canRevoke?: boolean; expiresAtUtc?: string | null;
   detail?: string;
 };
 
@@ -36,6 +36,7 @@ export default function WarSatchelSpendAuthorization({
 }) {
   const [available, setAvailable] = useState(false);
   const [signed, setSigned] = useState(false);
+  const [canRevoke, setCanRevoke] = useState(false);
   const [expires, setExpires] = useState<string | null>(null);
   const [dailyCap, setDailyCap] = useState("1000");
   const [busy, setBusy] = useState(false);
@@ -43,7 +44,7 @@ export default function WarSatchelSpendAuthorization({
 
   useEffect(() => {
     let open = true;
-    setAvailable(false); setSigned(false); setExpires(null); setDetail("");
+    setAvailable(false); setSigned(false); setCanRevoke(false); setExpires(null); setDetail("");
     if (!walletAddress || !Number.isSafeInteger(presetVersion) || presetVersion <= 0) return;
     void fetch("/api/user/war-satchel/auto-consent", {
       cache: "no-store", credentials: "same-origin",
@@ -51,6 +52,7 @@ export default function WarSatchelSpendAuthorization({
       if (!open) return;
       setAvailable(data.available === true);
       setSigned(data.signed === true);
+      setCanRevoke(data.canRevoke === true);
       setExpires(typeof data.expiresAtUtc === "string" ? data.expiresAtUtc : null);
     }).catch(() => { if (open) setAvailable(false); });
     return () => { open = false; };
@@ -84,6 +86,7 @@ export default function WarSatchelSpendAuthorization({
         throw Error("The mandate was not verified by the server.");
       }
       setSigned(true);
+      setCanRevoke(true);
       setExpires(typeof challenge.spendingExpiresAtUtc === "string" ? challenge.spendingExpiresAtUtc : null);
       setDetail("Spending authorization signed. Funded bets remain unavailable until the vault and execution service are certified.");
     } catch (error) {
@@ -91,11 +94,11 @@ export default function WarSatchelSpendAuthorization({
     } finally { setBusy(false); }
   };
   const revoke = async () => {
-    if (busy || !available || !signed) return;
+    if (busy || (!canRevoke && !signed)) return;
     setBusy(true); setDetail("");
     try {
       await send("DELETE");
-      setSigned(false); setExpires(null);
+      setSigned(false); setCanRevoke(false); setExpires(null);
       setDetail("Keplr spending mandate revoked. No new automatic wagers are authorized.");
     } catch (error) {
       setDetail(error instanceof Error ? error.message : "Revocation unavailable.");
@@ -123,10 +126,10 @@ export default function WarSatchelSpendAuthorization({
             className="mt-1 block w-36 rounded-lg border border-white/20 bg-slate-950 p-2 text-white" />
         </label>
       )}
-      <button type="button" onClick={() => void (signed ? revoke() : authorize())}
-        disabled={busy || !available || (!signed && (!valid || !walletAddress))}
+      <button type="button" onClick={() => void ((signed || canRevoke) ? revoke() : authorize())}
+        disabled={busy || (!(signed || canRevoke) && (!available || !valid || !walletAddress))}
         className="mt-3 rounded-lg border border-sky-300/40 p-3 text-xs font-bold text-sky-100 disabled:opacity-40">
-        {busy ? "VERIFYING..." : signed ? "REVOKE AUTO-BET PERMISSION" :
+        {busy ? "VERIFYING..." : (signed || canRevoke) ? "REVOKE AUTO-BET PERMISSION" :
           available ? "SIGN AUTO-BET LIMITS WITH KEPLR" : "SIGNED MANDATE NOT YET ENABLED"}
       </button>
       {detail && <p role="status" className="mt-2 text-xs text-amber-200">{detail}</p>}
