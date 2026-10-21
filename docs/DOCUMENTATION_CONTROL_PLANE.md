@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/traffic-stale-legacy-trailing-day-20261020` at `4908aae90ca84d13d3c5acbb0b0daffedccc3cb2`
+Implementation baseline: `fix/20261021-satchel-mecha-release-risk-classification` at `19d8bfdebd9da080a46bb40efdc8518e5d66d64e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

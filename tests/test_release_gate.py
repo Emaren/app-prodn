@@ -47,6 +47,47 @@ class ReleaseGateTests(unittest.TestCase):
                     "FINANCIAL",
                 )
 
+    def test_satchel_and_mecha_financial_surfaces_never_downgrade(self):
+        # A missing War Satchel prefix used to downgrade the full custody
+        # ledger to APPLICATION; Mecha/UI/worker changes must be treated with
+        # the same financial review rigor as the original betting pipeline.
+        financial_paths = (
+            "lib/warSatchelFundedLedger.ts",
+            "lib/warSatchelFinancialBridgeHold.ts",
+            "lib/warSatchelFundedWatcherPoll.ts",
+            "app/api/user/war-satchel/deposit-evidence/route.ts",
+            "app/api/user/war-satchel/withdrawal/route.ts",
+            "components/profile/MechaAutoBetCard.tsx",
+            "scripts/war-satchel-funded-mecha-worker.ts",
+            "scripts/aoe2_satchel_readiness.py",
+            "tests/war-satchel-owner-roundtrip-postgres.test.mts",
+            "tests/mecha-saved-plan-integrity.test.mts",
+        )
+        for path in financial_paths:
+            with self.subTest(path=path):
+                self.assertEqual(MODULE.path_risk(path), "FINANCIAL")
+                self.assertEqual(
+                    MODULE.classify_risk(["app/api/forum/route.ts", path]),
+                    "FINANCIAL",
+                )
+
+    def test_satchel_documentation_and_existing_risk_categories_stay_intact(self):
+        self.assertEqual(
+            MODULE.path_risk("docs/BET_AUTOMATION_AND_CUSTODY.md"), "DOCUMENTATION"
+        )
+        self.assertEqual(
+            MODULE.path_risk("docs/WAR_SATCHEL_OPERATIONS.md"), "DOCUMENTATION"
+        )
+        self.assertEqual(
+            MODULE.path_risk("scripts/aoe2_release_gate.py"), "INFRASTRUCTURE"
+        )
+        self.assertEqual(
+            MODULE.path_risk("prisma/migrations/20261021_satchel/migration.sql"),
+            "DATABASE",
+        )
+        self.assertEqual(MODULE.path_risk("app/api/forum/route.ts"), "APPLICATION")
+        self.assertEqual(MODULE.path_risk("lib/watcherSession.ts"), "WATCHER")
+
     def test_replay_truth_risk(self):
         self.assertEqual(
             MODULE.classify_risk(["lib/unresolvedWatcherResult.ts"]),

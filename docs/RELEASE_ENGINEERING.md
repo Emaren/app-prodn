@@ -8,12 +8,29 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-10-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Release Engineering
+
+## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
+
+The source release classifier in `scripts/aoe2_release_gate.py` now assigns
+**FINANCIAL** risk to War Satchel and Mecha implementation and contract-test
+paths within `app/`, `lib/`, `components/`, `scripts/`, and `tests/`.
+Previously, files such as `lib/warSatchelFundedLedger.ts` could fall through
+to ordinary APPLICATION risk, omitting financial-risk validation even though
+they controlled spendable funds. Prisma schema/migrations remain DATABASE;
+documentation-only Satchel prose remains DOCUMENTATION; existing unrelated
+application and infrastructure classifications are unchanged.
+
+A FINANCIAL release gate is an engineering test-selection/risk-classification
+input, **not** permission to deploy or activate Satchel. The separate
+`SATCHEL_FINANCIAL_BRIDGE_UNVERIFIED_HOLD`, independent custody/ledger proofs,
+WoloChain financial issue #5, and explicit owner approval remain controlling.
+Do not infer source gate success from real mainnet solvency or vice versa.
 
 ## Purpose
 
