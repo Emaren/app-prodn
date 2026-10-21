@@ -5,6 +5,7 @@ on:
       - 'lib/kingdomIndexCriterionSubmission.mjs'
       - 'lib/kingdomIndexCriterionNonceStore.mjs'
       - 'lib/kingdomIndexCriterionArtifactVerifier.mjs'
+      - 'lib/kingdomIndexCriterionProofPolicy.mjs'
       - 'tests/kingdom-index-criterion-submission.test.mts'
       - 'tests/kingdom-index-criterion-nonce-store.test.mts'
       - 'tests/kingdom-index-criterion-artifact-verifier.test.mts'

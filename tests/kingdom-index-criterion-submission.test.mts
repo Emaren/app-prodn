@@ -10,6 +10,7 @@ import { generateKeyPairSync, sign, createHash } from "node:crypto";
 import rubric from "../config/kingdom-index-quality-rubric.json" with { type:"json" };
 import assurances from "../config/kingdom-index-assurance-profiles.json" with { type:"json" };
 import { SCHEMA, inspectSignedCriterionSubmission } from "../lib/kingdomIndexCriterionSubmission.mjs";
+import { CRITERION_PROOF_KINDS, requiredProofKindsForCriterion, verifyCriterionProofPolicy } from "../lib/kingdomIndexCriterionProofPolicy.mjs";
 
 const now=Date.parse("2026-10-21T20:00:00.000Z");
 const issuedAt="2026-10-21T19:59:00.000Z";
@@ -29,7 +30,7 @@ const proof=(i,kind="source")=>({
 function payload(){
  let counter=0;
  const criteria=Object.entries(rubric.dimensions).flatMap(([dimension,info])=>
- info.criteria.map(c=>({id:c.id,dimension,earned:c.max===1?0:Math.min(1,c.max),evidence:[proof(++counter)]})));
+ info.criteria.map(c=>({id:c.id,dimension,earned:c.max===1?0:Math.min(1,c.max),evidence:[proof(++counter,requiredProofKindsForCriterion(c.id)[0])]})));
  return {schema:SCHEMA,actor:"fixture-reviewer-NOT-PRODUCTION",
   nonce:"fixture-unique-nonce",issuedAt,expiresAt,source:{...source},
   criteria,gates:gateProfile.gates.map(g=>({id:g.id,result:"fail",evidence:[proof(++counter)]}))};
@@ -57,6 +58,41 @@ function setup(){
  };
  return {ctx,envelope};
 }
+test("canonical proof kinds cover all twenty rubric criteria and pin high-risk domains",()=>{
+ assert.equal(verifyCriterionProofPolicy(rubric),true);
+ assert.equal(Object.keys(CRITERION_PROOF_KINDS).length,20);
+ for(const id of ["accessibility","responsive","critical_journeys","state_consistency","browser"])
+  assert.deepEqual(requiredProofKindsForCriterion(id),["browser"]);
+ for(const id of ["measured_latency","render_efficiency","sustained_load"])
+  assert.deepEqual(requiredProofKindsForCriterion(id),["performance"]);
+ assert.deepEqual(requiredProofKindsForCriterion("integration"),["database"]);
+ assert.deepEqual(requiredProofKindsForCriterion("release_certification"),["production"]);
+ const drift=structuredClone(rubric);
+ drift.dimensions.tests.criteria[0].id="unrecognized-criterion";
+ assert.throws(()=>verifyCriterionProofPolicy(drift),/Proof policy\/rubric drift/);
+});
+test("source-only receipts cannot earn browser, latency, DB or security points",async()=>{
+ const {ctx,envelope}=setup();
+ for(const id of ["accessibility","responsive","critical_journeys","browser",
+                  "measured_latency","render_efficiency","sustained_load",
+                  "integration","security_boundaries","release_certification","authoritative_data"]){
+  const p=payload(),row=p.criteria.find(x=>x.id===id);
+  // release_certification normally earns zero; make it a credit attempt.
+  row.earned=1;
+  row.evidence[0].kind="source";
+  await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),
+   new RegExp("Criterion proof kind insufficient: "+id));
+ }
+});
+test("zero-earned criteria may document unverified evidence without being treated as measured",async()=>{
+ const {ctx,envelope}=setup(),p=payload();
+ const latency=p.criteria.find(x=>x.id==="measured_latency");
+ latency.earned=0;latency.evidence[0].kind="source";
+ const out=await inspectSignedCriterionSubmission(envelope(p),ctx);
+ assert.equal(out.certified,false);assert.equal(out.current,false);
+ assert.equal(out.dimensions.performance,
+  p.criteria.filter(row=>row.dimension==="performance").reduce((s,row)=>s+row.earned,0));
+});
 test("fixture-signed, 20-criterion bundle validates as provisional ONLY",async()=>{
  const {ctx,envelope}=setup(),p=payload();
  const result=await inspectSignedCriterionSubmission(envelope(p),ctx);
