@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e56b22f34664db77d3a82611f91938fc19f4386df8bbf1d81b07816385add0d2",
+      "sha256": "60499e83bb6ce877e6f7e91885132a7a21c35af6a8e5d8ad61e9851b016fca66",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/traffic-observed-insights-20261021",
-    "commit": "0c94af345b3ff7decd470d0c71f00cd39008327d"
+    "commit": "037264252f061e663ef66db0ff85fd58967ae142"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
