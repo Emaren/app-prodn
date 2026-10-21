@@ -1401,3 +1401,13 @@ GitHub v1.6.4 published with exact certified digests, governed VPS download
 promotion with Wolo/runtime continuity, and committed web download metadata
 matching the hosted hashes. The native ZIP is retained for integrity but Mac
 unsigned manual installations do not claim signed self-update support.
+
+## October 21, 2026 — HD Satchel integration: separate public reads from financial writers (draft PR #779)
+
+The held Satchel/Mecha integration had five read-path financial wakeups: the homepage and /api/lobby through lobby snapshot maintenance, /api/live-games, /api/bets, /api/header-summary, and the public War Chest. Those paths could schedule `ensureBetMarkets`, which contains live settlement-capable work, in response to navigation or a performance prewarm rather than an authenticated game event.
+
+This source candidate removes those five *direct* financial wakeups while preserving the existing read projections and authenticated replay POST ingestion. It also ports source-census negative tests and regression tests that refuse the direct wakeups. The Satchel financial bridge remains hard-disabled, and this is not an exhaustive transitive import proof or a cross-process financial fence.
+
+**Positive liveness gate before integration/production:** replay/game ingestion and protected worker admission must demonstrably create and update actionable markets *before the LIVE HD game wagering deadline*. A successful GET-purity test alone is insufficient: a market that appears only after the final replay is too late for Mecha Auto Bets. Validate fresh actual Watcher sessions, multiplayer timestamps, side/owner identity, event-driven market admission, eventual expiry/result handling and a signed/no-retry financial path. Do not substitute the old user-traffic-triggered settlement queue.
+
+No DE feature development, database migrations, key access, service restarts, financial approval or live Satchel activation belongs to this candidate. Historical Wolo issue #5 financial hold and existing protected website activation remain unchanged.
