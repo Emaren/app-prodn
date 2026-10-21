@@ -220,6 +220,15 @@ def path_risk(path: str) -> str:
     if p.startswith("prisma/") or p == "prisma.config.ts":
         return "DATABASE"
 
+    # Financial-risk source selection must include the current War Satchel and
+    # Mecha paths, not just legacy betting/WOLO names. Limit this rule to
+    # executable/test surfaces: docs describing Satchel are DOCUMENTATION, and
+    # generic unrelated application pages retain their normal classifications.
+    if p.startswith(("app/", "lib/", "components/", "scripts/", "tests/")) and any(
+        marker in p for marker in ("warsatchel", "war-satchel", "mecha")
+    ):
+        return "FINANCIAL"
+
     financial_prefixes = (
         "lib/bet",
         "lib/desync",
