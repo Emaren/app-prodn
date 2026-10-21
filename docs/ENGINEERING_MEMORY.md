@@ -8,12 +8,24 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-16"
+reviewed_at: "2026-10-21"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 
 # AoE2WAR Engineering Memory and Learned Invariants
+
+## October 21, 2026 — do not downgrade new financial file families
+
+When War Satchel and Mecha introduced new filenames, the release classifier
+still recognized older `lib/bet*`, WOLO and staking paths but not
+`lib/warSatchel*`, user Satchel APIs, Mecha profile controls or worker/test
+sources. A financial ledger edit could therefore be mistakenly assessed as
+APPLICATION. Fix: explicitly classify the newer financial source families
+across app, library, component, script and test paths, with regression tests
+for representative positive paths and existing DATABASE/DOCUMENTATION/
+INFRASTRUCTURE/WATCHER negative controls. Preserve the independently held
+financial activation gate; better test selection is not deployment approval.
 
 ## Purpose
 
