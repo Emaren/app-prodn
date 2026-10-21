@@ -44,6 +44,12 @@ test("separately signed operator manifest plus byte-for-byte private artifact ca
   const verifier=createApprovedCriterionArtifactVerifier({root,operatorPublicKeyPem:pem,
    envelope:signManifest(manifest(p)),nowMs});
   assert.equal(await verifier(p,{source:{...source}},{criterionId:"safe_extension",earned:1}),true);
+  // Independent signer and operator may serialize equivalent fields in
+  // different key orders; exact values and target remain authoritative.
+  const shuffledProof=Object.fromEntries(Object.entries(p).reverse());
+  const shuffledSource=Object.fromEntries(Object.entries(source).reverse());
+  assert.equal(await verifier(shuffledProof,{source:shuffledSource},
+   {earned:1,criterionId:"safe_extension"}),true);
   assert.equal(await verifier({...p,kind:"production"},{source},{criterionId:"safe_extension",earned:1}),false);
   assert.equal(await verifier(p,{source:{...source,gitSha:"d".repeat(40)}},{criterionId:"safe_extension",earned:1}),false);
   assert.equal(await verifier({...p,url:"https://github.com/Emaren/app-prodn/issues/1"},{source},{criterionId:"safe_extension",earned:1}),false);
