@@ -40,11 +40,11 @@ test("refuses duplicate and short samples, HTTP failures and incomplete Chrome n
  const r=fixture();r.rows[0].sample=2;assert.throws(()=>audit(r),/duplicated|unsuccessful/);
  r.rows=fixture().rows.slice(1);assert.throws(()=>audit(r),/Incomplete/);
  r.rows=fixture().rows;r.rows[0].documentStatus=500;assert.throws(()=>audit(r),/unsuccessful/);
- r.rows=fixture().rows;r.rows[0].metrics.navigation.responseStart=null;assert.throws(()=>audit(r),/Missing measured/);
+ r.rows=fixture().rows;r.rows[0].metrics.navigation.responseStart=null;assert.throws(()=>audit(r),/Missing or impossible/);
 });
 test("forged LCP/TTFB percentiles and unverifiable content refuse",()=>{
  let r=fixture();r.summary.lcpMs.p95+=100;assert.throws(()=>audit(r),/Reported percentile/);
- r=fixture();r.rows[0].metrics.finalLcp.startTime=0;assert.throws(()=>audit(r),/Missing measured/);
+ r=fixture();r.rows[0].metrics.finalLcp.startTime=0;assert.throws(()=>audit(r),/Missing or impossible/);
  r=fixture();const bytes=Buffer.from(JSON.stringify(r,null,2)+"\n"+" ");
  assert.throws(()=>inspectKingdomColdBrowserReceipt(bytes,exp),/Noncanonical/);
  const duplicate=Buffer.from(JSON.stringify(r,null,2).replace('"schema": 1','"schema": 1,\n  "schema": 1')+"\n");
