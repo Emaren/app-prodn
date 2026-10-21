@@ -1,0 +1,67 @@
+name: Refresh Reviewed Watcher 1.6.6 DocsV2 Baseline
+# Reconciled Kingdom-main source; 104-document proposal reviewed in CI.
+# Activation remains restricted to this workflow-only commit on the draft branch.
+
+on:
+  push:
+    branches:
+      - fix/watcher-166-telemetry-retry-receipts-20261019
+    paths:
+      - ".github/workflows/refresh-watcher-166-reviewed-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    name: Apply reviewed Watcher DocsV2 proposal (draft branch only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Guard one-shot, exact-branch workflow activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "fix/watcher-166-telemetry-retry-receipts-20261019"
+          changed="$(git diff-tree --no-commit-id --name-only -r HEAD)"
+          test "$changed" = ".github/workflows/refresh-watcher-166-reviewed-docs.yml"
+      - name: Generate and independently verify canonical DocsV2 registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch "$GITHUB_REF_NAME" \
+            --head "$(git rev-parse HEAD)"
+          python3 scripts/docs_v2_check.py
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          permitted = {
+            "docs/document-registry.json",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md",
+            "catalog-info.yaml",
+          }
+          changed = set(subprocess.check_output(
+              ["git", "diff", "--name-only"], text=True).splitlines())
+          if not changed or not changed <= permitted:
+              raise SystemExit("STOP: unexpected file changed by DocsV2: " + repr(sorted(changed)))
+          print("Reviewed generated documentation files:", sorted(changed))
+          PY
+      - name: Commit ONLY generated documentation to the same draft source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          git diff --cached --check
+          git commit -m "docs(registry): reconcile reviewed Watcher 1.6.6 source baseline"
+          git push origin HEAD:"$GITHUB_REF_NAME"
