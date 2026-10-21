@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261021-held-satchel-financial-release-risk` at `d93ef4c2b64b0e27787dc8964f414937084bc7f8`
+Implementation baseline: `codex/satchel-live-authority-integration` at `508860b809541cff4b6a61d4ec407bf8c7f4908c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
