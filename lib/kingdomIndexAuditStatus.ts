@@ -32,9 +32,9 @@ export function classifyPublicKingdomAuditStatus({
   return "unmeasured";
 }
 
-/** Only an aligned, unexpired agent observation may expose an observed score.
- * Historical reviews and unverified certificate claims remain inspectable,
- * but never occupy the live quality slot. This is NOT a certification grant.
+/** No agent or certificate assertion can populate the live score slot until
+ * an independent per-criterion verifier is implemented and exercised.
+ * Historical reviews and unverified claims remain inspectable only.
  */
 export function publicObservedKingdomScore(_input: {
   status: PublicIndexAuditStatus;
