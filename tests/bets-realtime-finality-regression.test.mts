@@ -591,7 +591,7 @@ test(
 );
 
 test(
-  "the bets board has a bounded foreground refresh, explicit no-store response, and canonical financial session source",
+  "the bets board retains bounded foreground refresh while GET cannot enqueue settlement",
   () => {
     assert.match(
       betsPageSource,
@@ -605,7 +605,7 @@ test(
       betsPageSource,
       /window\.addEventListener\("focus", handleForegroundRefresh\)/
     );
-    assert.match(
+    assert.doesNotMatch(
       betsRouteSource,
       /queueBetMarketEnsure\(prisma, 0\)/
     );
