@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDurableCriterionNonceConsumer } from "../lib/kingdomIndexCriterionNonceStore.mjs";
 import { ARTIFACT_MANIFEST_SCHEMA, createApprovedCriterionArtifactVerifier } from "../lib/kingdomIndexCriterionArtifactVerifier.mjs";
+import { PERFORMANCE_SCHEMA,summarizePerformanceSamples } from "../lib/kingdomIndexPerformanceReceipt.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign, createHash } from "node:crypto";
@@ -237,18 +238,35 @@ test("async evidence observer cannot rewrite authenticated reviewer or pinned bu
  assert.ok(Object.isFrozen(result.source));
  assert.equal(result.certified,false);
 });
+function performanceFixture(id){
+ const samples=Array.from({length:20},(_,i)=>
+  id==="measured_latency"?{coldMs:120+i*10,warmMs:70+i*5}
+  :id==="bounded_data"?{queryMs:15+i,rowsScanned:120+i,responseBytes:500+i}
+  :id==="render_efficiency"?{rerenders:i,heapBytes:20000+i*100,jsBytes:2500+i*10}
+  :id==="sustained_load"?{requestCount:10,errorCount:i===19?1:0,latencyMs:40+i,cpuPct:25+i}
+  :(()=>{throw Error("Unknown fixture performance criterion: "+id);})()
+ );
+ return Buffer.from(JSON.stringify({
+  schema:PERFORMANCE_SCHEMA,source:{...source},criterionId:id,measuredAt:issuedAt,
+  environment:{device:"synthetic",network:"synthetic",region:"synthetic",runId:"fixture-only",concurrency:id==="sustained_load"?4:1},
+  samples,summary:summarizePerformanceSamples(id,samples)
+ }));
+}
 test("signed criteria integrate with separately approved on-disk proof bytes, without any public score",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"aoe2war-proof-signed-integration-"));
  const root=join(dir,"approved-artifacts");
  try {
   await mkdir(root,{mode:0o700});
   const {ctx,envelope}=setup(),p=payload();
-  const refs=[...p.criteria.flatMap(row=>row.evidence),...p.gates.flatMap(row=>row.evidence)];
-  for(const [i,ref] of refs.entries()){
-   const bytes=Buffer.from("untrusted-fixture-proof-"+(i+1));
-   assert.equal(createHash("sha256").update(bytes).digest("hex"),ref.sha256);
+  const assignment=[...p.criteria.map(row=>({proof:row.evidence[0],criterionId:row.id})),
+    ...p.gates.map(row=>({proof:row.evidence[0],gateId:row.id}))];
+  for(const [i,{proof:ref,criterionId}] of assignment.entries()){
+   const bytes=ref.kind==="performance"?performanceFixture(criterionId):
+    Buffer.from("untrusted-fixture-proof-"+(i+1));
+   ref.sha256=createHash("sha256").update(bytes).digest("hex");
    await writeFile(join(root,ref.sha256+".proof"),bytes,{mode:0o600});
   }
+  const refs=assignment.map(row=>row.proof);
   const approvalKey=generateKeyPairSync("ed25519");
   const manifest={schema:ARTIFACT_MANIFEST_SCHEMA,issuedAt,expiresAt,source:{...source},proofs:refs};
   const body=Buffer.from(JSON.stringify(manifest));
