@@ -3,6 +3,7 @@ import { open } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import catalog from "@/config/kingdom-index-routes.json";
+import inventory from "@/config/kingdom-index-inventory.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
@@ -59,6 +60,11 @@ export type KingdomCompanion = {
 export type KingdomIndexSnapshot = {
   schema: 1;
   generatedAt: string;
+  // Counts only. Protected/admin route names remain server-side and are NEVER
+  // serialized to the unauthenticated public Kingdom Index consumer.
+  estate: { pageTemplates:number; adminTemplates:number; dynamicTemplates:number;
+    publicIndexTemplates:number; excludedStaticTemplates:number;
+    routeHandlerTemplates:number; apiHandlerTemplates:number; nonApiHandlerTemplates:number };
   pages: KingdomIndexEntry[];
   companions: KingdomCompanion[];
   observed: number;
@@ -186,7 +192,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     };
   });
   return {
-    schema:1,generatedAt:new Date(now).toISOString(),pages,
+    schema:1,generatedAt:new Date(now).toISOString(),estate:inventory.counts,pages,
     // Desktop companions are not web routes: a Git release SHA is source
     // provenance, NOT an installed binary, field benchmark, or certified score.
     companions: companionCatalog.companions.map(companion=>({
