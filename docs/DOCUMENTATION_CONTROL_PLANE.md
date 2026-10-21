@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/renaissance-campaign-unused-shield-20261021` at `ac796c6091c7d1b92c3cfe7e5eb56a6c301d1ab3`
+Implementation baseline: `feature/renaissance-kingdom-systems-nav-hub-20261021` at `9ffe288b47207ec33f9f12ee576ff276cf2be4a2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

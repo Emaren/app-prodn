@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c4ed2f9a82f8a85e5b71884bc05c406005cfa032cb9e62e0d945d522e4ed178",
+      "sha256": "1c5b7b5b4c250c6e6253861e3905c8befa85bea84eead3ede00573be1d1aee35",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1583,7 +1583,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "dc5e02c5d735c7ecbe5963eb64a5276b0cdf80ba524ed9de50c38b4f63f31487",
+      "sha256": "4482947c5c8a52b6bcec5e4a8b604eb78f36d1cc17fedeb5f7420c5ae5af0910",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/renaissance-campaign-unused-shield-20261021",
-    "commit": "ac796c6091c7d1b92c3cfe7e5eb56a6c301d1ab3"
+    "branch": "feature/renaissance-kingdom-systems-nav-hub-20261021",
+    "commit": "9ffe288b47207ec33f9f12ee576ff276cf2be4a2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
