@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import TrafficSensors from "@/components/traffic/TrafficSensors";
+import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
 } from "@/components/observatory/PremiumTimeSeriesChart";
@@ -33,10 +35,35 @@ const SERIES: ObservatorySeries[] = [
 
 export const dynamic = "force-dynamic";
 
+// The historical chart is NOT held behind the much slower, independent
+// browser-beacon cohort query. The visitor intelligence section streams after
+// the canonical chart, and fails closed to unavailable if its source fails.
+async function ObservedTrafficSensors({
+  points, lastPublishedDay, lagDays,
+}: {
+  points: PublicTrafficPoint[];
+  lastPublishedDay: string | null;
+  lagDays: number | null;
+}) {
+  let insights = null;
+  try {
+    insights = await loadTrafficBrowserInsights();
+  } catch (error) {
+    console.warn("Observed browser insights unavailable:", error);
+  }
+  return (
+    <TrafficSensors
+      points={points}
+      lastPublishedDay={lastPublishedDay}
+      lagDays={lagDays}
+      insights={insights}
+    />
+  );
+}
+
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let failed = false;
-
   try {
     points = (await loadPublicTraffic()).points;
   } catch (error) {
@@ -75,7 +102,17 @@ export default async function TrafficPage() {
           <div className="flex min-h-[40vh] items-center justify-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025] px-6 text-sm text-slate-400">No published completed-day Traffic report is available.</div>
         )}
 
-        <TrafficSensors points={points} lastPublishedDay={lastPublishedDay} lagDays={ageDays} />
+        <Suspense fallback={
+          <section aria-live="polite" className="mt-6 rounded-2xl border border-sky-300/15 bg-sky-300/[0.035] p-6 font-mono text-sm text-sky-200">
+            Loading observed browser intelligence — historical chart remains available.
+          </section>
+        }>
+          <ObservedTrafficSensors
+            points={points}
+            lastPublishedDay={lastPublishedDay}
+            lagDays={ageDays}
+          />
+        </Suspense>
 
         {failed ? (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-600">
