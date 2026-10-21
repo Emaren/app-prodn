@@ -130,6 +130,12 @@ def main() -> int:
               f"{len(result['lexical_source']['unresolved_local_imports'])} unresolved imports)")
         for blocker in result["independent_blockers"]:
             print(" BLOCKER:", blocker)
+        # Bounded diagnostic for the FIRST route; these are lexical findings,
+        # not automatically broken imports or independently verified defects.
+        for reference in result["lexical_source"]["unresolved_local_imports"][:24]:
+            print(" UNRESOLVED LEXICAL:", reference)
+        if len(result["lexical_source"]["unresolved_local_imports"]) > 24:
+            print(" ...remaining lexical findings:", len(result["lexical_source"]["unresolved_local_imports"]) - 24)
     return 0
 
 
