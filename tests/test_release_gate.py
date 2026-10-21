@@ -430,6 +430,48 @@ class DeterministicPrismaPreparationTests(unittest.TestCase):
             ["npx", "prisma", "generate"],
         )
 
+    def test_generated_prisma_precedes_node_contract_for_every_non_doc_risk(self):
+        # Fresh worktrees have no lib/generated/prisma after yarn --ignore-scripts.
+        # CI generates the client before test discovery; the release gate must
+        # preserve the same invariant for replay, infra and finance-only edits.
+        for changed, risk in (
+            (["app/kingdom-intelligence/liveRecoveryPolicy.ts"], "REPLAY_TRUTH"),
+            (["scripts/aoe2_storage.py"], "INFRASTRUCTURE"),
+            (["lib/bets.ts"], "FINANCIAL"),
+            (["prisma/schema.prisma"], "DATABASE"),
+        ):
+            with self.subTest(changed=changed, risk=risk):
+                scope = {
+                    "mode": "committed",
+                    "base_sha": "a" * 40,
+                    "target_sha": "b" * 40,
+                    "changed_files": changed,
+                }
+                labels = [
+                    label for label, _command, _timeout
+                    in MODULE.command_plan(scope, risk)
+                ]
+                self.assertEqual(labels.count("prisma-generate"), 1)
+                self.assertEqual(labels.count("active-node-test-contract"), 1)
+                self.assertLess(
+                    labels.index("prisma-generate"),
+                    labels.index("active-node-test-contract"),
+                )
+
+    def test_document_only_gate_does_not_generate_prisma_or_run_node_suite(self):
+        scope = {
+            "mode": "committed",
+            "base_sha": "a" * 40,
+            "target_sha": "b" * 40,
+            "changed_files": ["docs/DOCUMENTATION_OS.md"],
+        }
+        labels = [
+            label for label, _command, _timeout
+            in MODULE.command_plan(scope, "DOCUMENTATION")
+        ]
+        self.assertNotIn("prisma-generate", labels)
+        self.assertNotIn("active-node-test-contract", labels)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -486,10 +486,6 @@ def command_plan(
                 120,
             )
         )
-        commands.append(
-            ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
-        )
-
     if risk not in {"NO_CHANGE", "DOCUMENTATION"} or same_source_recertification:
         commands.append(
             ("active-python-test-contract", ["python3", "scripts/run_python_contract.py"], 420)
@@ -665,9 +661,13 @@ def command_plan(
         same_source_recertification
         or requires_full_eslint(paths)
     )
+    # The Node contract suite imports the generated Prisma client even when
+    # the changed source needs no TypeScript check. Always hydrate that client
+    # *before* the tests, matching the protected GitHub CI web job.
+    requires_node_tests = risk not in {"NO_CHANGE", "DOCUMENTATION"}
     prisma_generate_added = False
 
-    if typescript_required and (ROOT / "prisma" / "schema.prisma").exists():
+    if (typescript_required or requires_node_tests) and (ROOT / "prisma" / "schema.prisma").exists():
         commands.append(
             (
                 "prisma-generate",
@@ -676,6 +676,11 @@ def command_plan(
             )
         )
         prisma_generate_added = True
+
+    if requires_node_tests:
+        commands.append(
+            ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
+        )
 
     if typescript_required:
         commands.append(("typescript", ["npx", "tsc", "--noEmit"], 600))
