@@ -93,6 +93,14 @@ test("specialized gate requirements are rendered as explicitly unverified proof 
   assert.doesNotMatch(ui,/specializedAssurance\.gates\.filter\([^\n]*=>[^\n]*"verified"/);
 });
 
+test("no operator JSON can supply unverified runtime metrics or score history",()=>{
+ const src=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+ assert.match(src,/history:\[\]/);
+ assert.match(src,/loadMs:null/);
+ assert.match(src,/bytes:null/);
+ assert.doesNotMatch(src,/loadMs:typeof obs\?\.loadMs/);
+ assert.doesNotMatch(src,/bytes:typeof obs\?\.bytes/);
+});
 test("Kingdom Index labels its route-local source evidence as non-transitive",()=>{
   const src=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
   const ui=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");

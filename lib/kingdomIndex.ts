@@ -184,9 +184,12 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       score: liveScore,
       lastReviewScore:lineage.lastReviewScore, checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
-      history:obs?.history?.slice(-40)??[],
-      loadMs:typeof obs?.loadMs==="number"&&Number.isFinite(obs.loadMs)&&obs.loadMs>=0?obs.loadMs:null,
-      bytes:typeof obs?.bytes==="number"&&Number.isFinite(obs.bytes)&&obs.bytes>=0?obs.bytes:null,
+      // Signed-JSON ingress does not itself verify benchmark artifacts or
+      // historical measurements. Keep all readout metrics unknown until a
+      // separately authenticated per-criterion/per-build verifier exists.
+      history:[],
+      loadMs:null,
+      bytes:null,
       dimensions:lineage.dimensions,
       notes:typeof obs?.notes==="string"?obs.notes.slice(0,500):null,
     };
