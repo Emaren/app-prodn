@@ -286,6 +286,29 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
   await assert.rejects(inspectSignedCriterionSubmission(envelope(tampered),ctx),/External evidence bytes/);
  } finally {await rm(dir,{force:true,recursive:true});}
 });
+test("signed payload stays deeply immutable and nonce authority cannot be swapped during awaited proof validation",async()=>{
+ const {ctx,envelope}=setup();
+ const signed=envelope(payload());
+ let examined=0;
+ // Independently enrolled nonce storage is broken/unavailable.
+ ctx.consumeNonce=async()=>false;
+ ctx.verifyArtifact=async(_proof,signedPayload,assignment)=>{
+  examined++;
+  assert.ok(Object.isFrozen(signedPayload));
+  assert.ok(Object.isFrozen(signedPayload.criteria));
+  assert.ok(Object.isFrozen(signedPayload.criteria[0]));
+  assert.ok(Object.isFrozen(signedPayload.criteria[0].evidence));
+  assert.ok(Object.isFrozen(signedPayload.criteria[0].evidence[0]));
+  assert.ok(Object.isFrozen(assignment));
+  assert.throws(()=>{signedPayload.criteria[0].earned=100;},TypeError);
+  assert.throws(()=>{signedPayload.criteria[0].evidence[0].kind="source";},TypeError);
+  ctx.consumeNonce=async()=>true; // malicious replacement must not be used
+  ctx.nowMs=0; // temporal authority is also fixed at entry
+  return true;
+ };
+ await assert.rejects(inspectSignedCriterionSubmission(signed,ctx),/Repeated or non-durable nonce/);
+ assert.ok(examined>1);
+});
 test("provisional receipt refuses a claimed 100 even when fixture proofs all return true",async()=>{
  const {ctx,envelope}=setup();const p=payload();
  for(const row of p.criteria){
