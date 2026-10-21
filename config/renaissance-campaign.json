@@ -296,5 +296,13 @@
       "description": "Lessons that compound instead of disappearing",
       "href": "/renaissance/chronicles"
     }
+  ],
+  "extensions": [
+    {
+      "href": "/kingdom-watcher",
+      "kind": "post-baseline-observatory",
+      "status": "source-only",
+      "scoreAuthority": "none"
+    }
   ]
 }
