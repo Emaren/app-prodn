@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef0e2429449c82aee152a6f4ee80db283fa47077cb41d852efcc0eab82b74e0b",
+      "sha256": "8fcd6c2cf6bdba5761931e3e0fc34a1492307f794b12bebd25199d3c205601c0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/public-read-financial-wakeup-boundary-20261021",
-    "commit": "f432d1404d5d4fc089f44a2ae5899e126c289b10"
+    "commit": "142ff76500019b8f4a5a59094c7e24430759f461"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

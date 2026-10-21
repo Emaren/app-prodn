@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/public-read-financial-wakeup-boundary-20261021` at `f432d1404d5d4fc089f44a2ae5899e126c289b10`
+Implementation baseline: `fix/public-read-financial-wakeup-boundary-20261021` at `142ff76500019b8f4a5a59094c7e24430759f461`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
