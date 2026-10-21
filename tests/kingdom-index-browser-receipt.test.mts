@@ -92,7 +92,7 @@ test("legacy responseStart is not mislabeled as network TTFB",()=>{
  r.rows.forEach((row,i)=>{row.metrics.navigation.requestStart=10+i*2;});
  const out=audit(r);
  assert.equal(out.navigationResponseStartMs.p95,127.75);
- assert.equal(out.networkTtfbMs.p95,100.65);
+ assert.ok(Math.abs(out.networkTtfbMs.p95-100.65)<1e-9);
 });
 test("missing or later-than-response requestStart is rejected as non-measured TTFB",()=>{
  let r=fixture();delete r.rows[0].metrics.navigation.requestStart;
