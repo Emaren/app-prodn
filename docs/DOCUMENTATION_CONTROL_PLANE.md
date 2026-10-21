@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261021-satchel-mecha-release-risk-classification` at `6424898bde96b9395d30139a66588574c274ec9d`
+Implementation baseline: `fix/20261021-satchel-mecha-release-risk-classification` at `19d8bfdebd9da080a46bb40efdc8518e5d66d64e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
