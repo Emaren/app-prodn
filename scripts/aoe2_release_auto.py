@@ -3425,7 +3425,13 @@ def ship_all(
     collect: Callable[[], dict],
     initial: dict,
     json_output: bool = False,
+    prepare_only: bool = False,
 ) -> int:
+    """Prepare a sealed, isolated website stage without implicitly activating it.
+
+    prepare_only never invokes migrations, activation or route proof. A
+    separately authorized activation remains an explicit operator action.
+    """
     if json_output:
         print(
             json.dumps(
@@ -3468,6 +3474,12 @@ def ship_all(
                     initial["production"],
                 )
             except AutoShipError as resume_error:
+                if prepare_only:
+                    raise AutoShipError(
+                        "prepare-only refuses ambiguous existing staged release; "
+                        "no retirement, activation, rebuild or retry attempted: "
+                        + str(resume_error)
+                    ) from resume_error
                 print(
                     "Exact current-release resume evidence is unavailable; "
                     "evaluating bounded superseded-stage recovery..."
@@ -3526,6 +3538,10 @@ def ship_all(
                     "Resume policy:  exact receipt + artifact only; "
                     "no rebuild or republish"
                 )
+                if prepare_only:
+                    print("PASS: EXISTING EXACT CANDIDATE STAGED — NO ACTIVATION")
+                    print("WOLO: UNTOUCHED · finance release remains independent")
+                    return 0
                 return activate_and_certify(
                     collect=collect,
                     release_head=release_head,
@@ -3574,6 +3590,11 @@ def ship_all(
         print(f"Stage receipt:  {stage_receipt.relative_to(ROOT)}")
         if hydrated:
             print("Receipt source: durable VPS evidence (rehydrated and re-verified)")
+        if prepare_only:
+            print("PASS: SOURCE SEALED + VERIFIED CANDIDATE STAGED — NO ACTIVATION")
+            print("Live source/runtime/DB and WOLO settlement remain unchanged.")
+            print("An independent owner-authorized release lane is required to activate.")
+            return 0
         return activate_and_certify(
             collect=collect,
             release_head=release_head,
