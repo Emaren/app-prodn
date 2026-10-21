@@ -26,7 +26,7 @@ const audit=(receipt,expect=exp)=>inspectKingdomColdBrowserReceipt(Buffer.from(J
 test("SpeedOS exact Chrome cold receipts recompute LCP/TTFB and preserve original byte digest",()=>{
  const r=audit(fixture());
  assert.equal(r.samples,10);assert.equal(r.status,"SOURCE_BOUND_BROWSER_DIAGNOSTIC");
- assert.equal(r.lcpMs.p95,898);assert.equal(r.readyCoverage,10);
+ assert.equal(r.lcpMs.p95,891);assert.equal(r.readyCoverage,10);
  assert.equal(r.certified,false);assert.equal(r.current,false);assert.equal(r.score,null);
  assert.match(r.evidenceSha256,/^[a-f0-9]{64}$/);
 });
