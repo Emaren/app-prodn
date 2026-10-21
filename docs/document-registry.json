@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261021-satchel-mecha-release-risk-classification",
-    "commit": "6424898bde96b9395d30139a66588574c274ec9d"
+    "commit": "19d8bfdebd9da080a46bb40efdc8518e5d66d64e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
