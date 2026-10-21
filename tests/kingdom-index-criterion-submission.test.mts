@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
-import { mkdtemp, mkdir, rm, readdir } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createDurableCriterionNonceConsumer } from "../lib/kingdomIndexCriterionNonceStore.mjs";
+import { ARTIFACT_MANIFEST_SCHEMA, createApprovedCriterionArtifactVerifier } from "../lib/kingdomIndexCriterionArtifactVerifier.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign, createHash } from "node:crypto";
@@ -196,6 +197,37 @@ test("async evidence observer cannot rewrite authenticated reviewer or pinned bu
  assert.equal(result.actor,actor);
  assert.ok(Object.isFrozen(result.source));
  assert.equal(result.certified,false);
+});
+test("signed criteria integrate with separately approved on-disk proof bytes, without any public score",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"aoe2war-proof-signed-integration-"));
+ const root=join(dir,"approved-artifacts");
+ try {
+  await mkdir(root,{mode:0o700});
+  const {ctx,envelope}=setup(),p=payload();
+  const refs=[...p.criteria.flatMap(row=>row.evidence),...p.gates.flatMap(row=>row.evidence)];
+  for(const [i,ref] of refs.entries()){
+   const bytes=Buffer.from("untrusted-fixture-proof-"+(i+1));
+   assert.equal(createHash("sha256").update(bytes).digest("hex"),ref.sha256);
+   await writeFile(join(root,ref.sha256+".proof"),bytes,{mode:0o600});
+  }
+  const approvalKey=generateKeyPairSync("ed25519");
+  const manifest={schema:ARTIFACT_MANIFEST_SCHEMA,issuedAt,expiresAt,source:{...source},proofs:refs};
+  const body=Buffer.from(JSON.stringify(manifest));
+  const signedManifest={schema:ARTIFACT_MANIFEST_SCHEMA,manifestBase64:body.toString("base64"),
+   signatureBase64:sign(null,body,approvalKey.privateKey).toString("base64")};
+  ctx.verifyArtifact=createApprovedCriterionArtifactVerifier({
+   root,operatorPublicKeyPem:approvalKey.publicKey.export({format:"pem",type:"spki"}).toString(),
+   envelope:signedManifest,nowMs:now,
+  });
+  const valid=await inspectSignedCriterionSubmission(envelope(p),ctx);
+  assert.equal(valid.certified,false);
+  assert.equal(valid.current,false);
+  assert.equal(valid.status,"VALIDATED_PROVISIONAL_SUBMISSION");
+  // Authentic signature + valid index do NOT permit a tampered proof body.
+  await writeFile(join(root,refs[0].sha256+".proof"),"tampered",{mode:0o600});
+  const tampered=payload();tampered.nonce="new-nonce-different-from-valid";
+  await assert.rejects(inspectSignedCriterionSubmission(envelope(tampered),ctx),/External evidence bytes/);
+ } finally {await rm(dir,{force:true,recursive:true});}
 });
 test("provisional receipt refuses a claimed 100 even when fixture proofs all return true",async()=>{
  const {ctx,envelope}=setup();const p=payload();
