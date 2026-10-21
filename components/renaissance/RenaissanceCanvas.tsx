@@ -3,6 +3,7 @@ import Link from "next/link";
 import {useMemo,useState} from "react";
 import {ArrowUpRight,Archive,BookOpen,Boxes,ChevronRight,CircleDot,ClipboardCheck,Cpu,Database,GitBranch,GitMerge,Layers,Map,Network,Radio,ScanSearch,Search,Shield,ShieldCheck,Workflow,Zap} from "lucide-react";
 import type {RenaissanceSnapshot,RenaissanceRoute,RenaissanceMode} from "@/lib/renaissance/registry";
+import campaign from "@/config/renaissance-campaign.json";
 
 const VIEWS=[
  {id:"command",href:"/renaissance",title:"RENAISSANCE OS",sub:"Command",icon:Layers},
@@ -195,6 +196,31 @@ export default function RenaissanceCanvas({mode,snapshot}:Props){
     <MiniStat big={snapshot.adminTemplates} label="ADMIN TEMPLATES" foot="COUNTS ONLY · PRIVATE"/>
     <MiniStat big={snapshot.dynamicTemplates} label="DYNAMIC TEMPLATES" foot="REQUIRE TEST FIXTURES"/>
    </section>
+   {mode==="command"&&<section className="rx-campaign-portal" aria-label="Renaissance Campaign destinations" data-renaissance-campaign>
+    <div className="rx-campaign-portal-heading">
+     <div><span className="rx-campaign-eyebrow">THE RENAISSANCE CAMPAIGN <span aria-hidden="true"> / </span> COMMAND DIRECTORY</span>
+      <h2>TWELVE CHAMBERS. <em>ONE VISION.</em></h2>
+      <p>Choose an instrument to enter its dedicated command room. Every original page and its controls remain unchanged.</p>
+     </div>
+     <div className="rx-campaign-counter" aria-label={campaign.modules.length+" campaign instruments"}><strong>{String(campaign.modules.length).padStart(2,"0")}</strong><span>INSTRUMENTS<br/>IN THE CAMPAIGN</span></div>
+    </div>
+    <div className="rx-campaign-gallery">
+     {campaign.modules.map((instrument,index)=>{
+      const view=VIEWS.find(v=>v.id===instrument.slug);
+      const InstrumentIcon=view?.icon??Layers;
+      return <Link key={instrument.href} href={instrument.href} prefetch={false} className="rx-campaign-gateway" aria-label={"Enter "+instrument.title} data-campaign-destination={instrument.slug}>
+       <span className="rx-campaign-gateway-grid" aria-hidden="true"/>
+       <span className="rx-campaign-gateway-top"><span className="rx-campaign-number">{String(index+1).padStart(2,"0")} / 12</span><span className="rx-campaign-gateway-arrow"><ArrowUpRight size={18} aria-hidden="true"/></span></span>
+       <span className="rx-campaign-gateway-sigil"><InstrumentIcon size={25} strokeWidth={1.6} aria-hidden="true"/></span>
+       <span className="rx-campaign-gateway-title">{instrument.title}</span>
+       <span className="rx-campaign-gateway-kicker">{instrument.kicker}</span>
+       <span className="rx-campaign-gateway-description">{instrument.description}</span>
+       <span className="rx-campaign-gateway-foot"><span className="rx-campaign-gateway-rule"/><span>ENTER INSTRUMENT <ChevronRight size={14} aria-hidden="true"/></span></span>
+      </Link>;
+     })}
+    </div>
+    <div className="rx-campaign-portal-foot"><span><CircleDot size={12} aria-hidden="true"/> TWELVE ORIGINAL ROUTES · ZERO REPLACED</span><span>DESIGNED FOR NAVIGATION · NOT A RELEASE CERTIFICATE</span></div>
+   </section>}
    {mode==="command"&&<section className="rx-content-grid">
     <div className="rx-section rx-section-wide"><div className="rx-section-header"><div><small>OPERATION 01 / SEVEN FRONTS</small><h2>THE CAMPAIGN ORDER</h2></div><Link href="/renaissance/atlas">OPEN THE ATLAS <ArrowUpRight size={16}/></Link></div><PhaseBars snapshot={snapshot}/></div>
     <div className="rx-section"><div className="rx-section-header"><div><small>OPERATION 02 / QUEUE HEAD</small><h2>FIRST TARGET</h2></div></div><div className="rx-prime-target"><b>/kingdom-intelligence</b><span>RANK 001 · CONTROL PLANE</span><Link href="/renaissance/doctor">OPEN DIAGNOSTICS <ArrowUpRight size={13}/></Link></div><div className="rx-caution">Worker ownership and readiness require GitHub preflight.</div></div>
