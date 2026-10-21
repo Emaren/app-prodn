@@ -79,11 +79,22 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
 '''
     assert 'hdMemoConfig{application.TxConfig()' in text
     fixture.write_text(isolated_sdk_transfer(text, 100_000_000, 103_000_000))
-    env.update({"SATCHEL_PROOF_FIXTURE_DIR":str(root),"RUN_SATCHEL_REAL_CREDIT_TESTS":"1","SATCHEL_TEST_BINARY":str(binary),"SATCHEL_TEST_BINARY_SHA256":binary_sha256})
-    run(["go","test","-tags=go1.27","./internal/satchel","-run","^TestAuthenticatedProofFromIsolatedSDKExecution$","-count=1"],cwd=source,env=env)
-    genuine_deposit = json.loads((root / "isolated-sdk-proof.json").read_text())
+    env.update({"SATCHEL_PROOF_FIXTURE_DIR":str(root),"RUN_SATCHEL_REAL_CREDIT_TESTS":"1","SATCHEL_TEST_BINARY":str(binary),"SATCHEL_TEST_BINARY_SHA256":binary_sha256,
+                "SATCHEL_LIFECYCLE_WOLO_SOURCE":str(source)})
+    # The older transfer fixture maps SDK genesis to a synthetic Comet height;
+    # it cannot provide a truthful IAVL balance proof. Use one actual aligned
+    # SDK chain for both the 100-WOLO deposit and its current H=head-1 bank.
+    deposit_recipe = root / "authenticated-deposit-recipe.json"
+    deposit_recipe.write_text(json.dumps({"version":1,"scenario":"authenticated_deposit_current_bank","steps":[{
+        "name":"deposit","sender_role":"owner","recipient_role":"vault","amount_uwolo":"100000000",
+        "memo":"aoe2war/satchel/v1/lifecycle-owner/abcdefghijklmnop"}]}))
+    env.update({"SATCHEL_LIFECYCLE_RECIPE":str(deposit_recipe),"SATCHEL_LIFECYCLE_FIXTURE_DIR":str(root)})
+    run(["go","test","-tags=go1.27","./internal/satchel","-run","^TestAuthenticatedContinuousSDKLifecycle$","-count=1"],cwd=source,env=env)
+    deposit_path = root / "authenticated_deposit_current_bank/isolated-sdk-lifecycle.json"
+    genuine_deposit = json.loads(deposit_path.read_text())
     assert genuine_deposit["fixture_only"] is True and genuine_deposit["mainnet_authority"] is False
-    assert genuine_deposit["intent"]["AmountUWolo"] == "100000000", "wrong actual SDK deposit amount"
+    assert genuine_deposit["steps"][0]["deposit_intent"]["AmountUWolo"] == "100000000", "wrong actual SDK deposit amount"
+    env["SATCHEL_CREDIT_DEPOSIT_FIXTURE"] = str(deposit_path)
     run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs","--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs","--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test","tests/war-satchel-deposit-real-verifier.test.mts"],cwd=ROOT,env=env)
     # A SECOND genuine SDK execution exercises the operation/wager contract.
     # Change only the disposable test builder BEFORE it signs and commits;
@@ -107,3 +118,12 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
     run(["go","test","-tags=go1.27","./internal/satchel",
          "-run","^TestSatchelV1ContinuousIsolatedSDKFeeConservation$",
          "-count=1"],cwd=source,env=env)
+
+    # Explicit isolated-test opt-in: actual Prisma writers consume real SDK
+    # transfer/bank proofs through the same exact native verifier, across the
+    # canonical Watcher ticket, return and withdrawal application lifecycle.
+    env["RUN_SATCHEL_FULL_LIFECYCLE_TESTS"] = "1"
+    run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs",
+         "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
+         "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
+         "tests/war-satchel-continuous-funded-lifecycle.test.mts"],cwd=ROOT,env=env)

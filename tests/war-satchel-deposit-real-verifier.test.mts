@@ -7,14 +7,18 @@ import pg from "pg";
 import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@/lib/generated/prisma";
 import {authenticateOwnerDeposit,isAuthenticatedWarSatchelDeposit,authenticatedWarSatchelDepositFreshAt} from "../lib/warSatchelAuthenticatedDeposit.ts";
+import {authenticateWarSatchelBank,authenticatedWarSatchelBankFreshAt} from "../lib/warSatchelAuthenticatedBank.ts";
 import {creditRecordedSatchelProof,readRecordedSatchelCredit} from "../lib/warSatchelFundedLedger.ts";
 import {createHash} from "node:crypto";
 
 test("real signed SDK deposit authenticates then credits the linked HD owner exactly once", {skip:process.env.RUN_SATCHEL_REAL_CREDIT_TESTS!=="1"},async t=>{
   const binary=process.env.SATCHEL_TEST_BINARY!;
-  const fixture=JSON.parse(readFileSync(path.join(path.dirname(binary),"isolated-sdk-proof.json"),"utf8"));
+  const fixturePath=process.env.SATCHEL_CREDIT_DEPOSIT_FIXTURE!;
+  assert.ok(path.isAbsolute(fixturePath),"one genuine SDK chain must supply both transfer and current bank proof");
+  const fixture=JSON.parse(readFileSync(fixturePath,"utf8"));
   assert.equal(fixture.fixture_only,true);assert.equal(fixture.mainnet_authority,false);
-  const i=fixture.intent,o=fixture.deposit_observation;
+  const step=fixture.steps.find((s:{name:string})=>s.name==="deposit");assert.ok(step);
+  const i=step.deposit_intent,o=step.observation;
   // V1 acceptance amount: actual signed SDK MsgSend of 100 WOLO.
   assert.equal(i.AmountUWolo, "100000000");
   // HD persists JavaScript millisecond ISO strings, including a .000 suffix.
@@ -24,11 +28,11 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
   const socket=path.join(root,"socket"),data=path.join(root,"data");mkdirSync(socket,{mode:0o700});
   const authority=path.join(root,"authority.json");
   const publicFixture=JSON.parse(readFileSync(new URL("fixtures/satchel-financial-bridge-v1.json",import.meta.url),"utf8"));
-  writeFileSync(authority,JSON.stringify({trust_anchor:fixture.anchor,vault:i.Vault,betting_escrow:publicFixture.betting_escrow,approval_public_key_hex:publicFixture.approval_public_key_hex}),{mode:0o600});
+  writeFileSync(authority,JSON.stringify({trust_anchor:fixture.anchor,vault:i.Vault,betting_escrow:fixture.roles.escrow,approval_public_key_hex:publicFixture.approval_public_key_hex}),{mode:0o600});
   const context={protocol:1,kind:"deposit",owner_id:i.OwnerID,sender:i.Sender,recipient:i.Vault,amount_uwolo:i.AmountUWolo,memo:i.Memo,tx_hash:o.TxHash,created_at:i.CreatedAt,expires_at:i.ExpiresAt};
-  const envelope={protocol:1,chain_id:"wolo-1",denom:"uwolo",context,context_digest:createHash("sha256").update(JSON.stringify(context)).digest("hex"),tx_hash:o.TxHash,receipt_id:`wolo-1:${o.TxHash}:0`,transfer_index:0,message_index:0,height:o.Height,block_hash:o.BlockHash,consensus_authenticated:true,credit_authorized:false,proof:fixture.deposit_proof};
+  const envelope={protocol:1,chain_id:"wolo-1",denom:"uwolo",context,context_digest:createHash("sha256").update(JSON.stringify(context)).digest("hex"),tx_hash:o.TxHash,receipt_id:`wolo-1:${o.TxHash}:0`,transfer_index:0,message_index:0,height:o.Height,block_hash:o.BlockHash,consensus_authenticated:true,credit_authorized:false,proof:step.deposit_proof};
   const expected={intentId:"00000000-0000-4000-8000-000000000001",ownerUid:i.OwnerID,sender:i.Sender,vault:i.Vault,amountUwolo:i.AmountUWolo,memo:i.Memo,createdAtUtc:i.CreatedAt,expiresAtUtc:i.ExpiresAt,txHash:o.TxHash};
-  Object.assign(process.env,{WAR_SATCHEL_PROOF_VERIFIER_ENABLED:"true",WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED:"true",WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS:i.Vault,WAR_SATCHEL_SIGNER_AUTH_TOKEN:"t".repeat(64),WAR_SATCHEL_VERIFIER_BINARY:binary,WAR_SATCHEL_VERIFIER_AUTHORITY_FILE:authority,WAR_SATCHEL_VERIFIER_SHA256:process.env.SATCHEL_TEST_BINARY_SHA256,WAR_SATCHEL_FUNDED_LEDGER_ENABLED:"true",WOLO_BET_ESCROW_ADDRESS:publicFixture.betting_escrow,WOLO_BET_PAYOUT_ADDRESS:i.Sender});
+  Object.assign(process.env,{WAR_SATCHEL_PROOF_VERIFIER_ENABLED:"true",WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED:"true",WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS:i.Vault,WAR_SATCHEL_SIGNER_AUTH_TOKEN:"t".repeat(64),WAR_SATCHEL_VERIFIER_BINARY:binary,WAR_SATCHEL_VERIFIER_AUTHORITY_FILE:authority,WAR_SATCHEL_VERIFIER_SHA256:process.env.SATCHEL_TEST_BINARY_SHA256,WAR_SATCHEL_FUNDED_LEDGER_ENABLED:"true",WOLO_BET_ESCROW_ADDRESS:fixture.roles.escrow,WOLO_BET_PAYOUT_ADDRESS:i.Sender});
   const reader=(body:unknown)=>(async(url,options)=>{
     assert.equal(url,"http://127.0.0.1:8094/satchel/v1/proofs/deposit");assert.equal(options?.method,"POST");
     return new Response(JSON.stringify(body),{status:200});
@@ -68,7 +72,20 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
     await sql.query("INSERT INTO war_satchel_proof_candidates(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at) VALUES($1,1,'wolo-1',$2,0,$3,$4,$5,$6,now())",[expected.intentId,o.TxHash,i.Sender,i.Vault,i.AmountUWolo,o.Height]);
     const adapter=()=>new PrismaPg({host:socket,user:"credit_fixture",database:"postgres"});
     db=new PrismaClient({adapter:adapter()});
-    const input={ownerUserId:1,ownerUid:i.OwnerID,proofCandidateId:BigInt(1),expectedTxHash:o.TxHash,authenticatedDeposit:authenticated,bank:{chainId:"wolo-1" as const,denom:"uwolo" as const,vaultAddress:i.Vault,balanceUwolo:BigInt(i.AmountUWolo),height:BigInt(102),observedAtMs:Date.now()}};
+    const bank=await authenticateWarSatchelBank(i.Vault,(async(url,options)=>{
+      assert.equal(url,"http://127.0.0.1:8094/satchel/v1/proofs/bank");
+      assert.equal(options?.method,"POST");assert.deepEqual(JSON.parse(String(options?.body)),{protocol:1});
+      return Response.json(step.vault_bank_proof);
+    }) as typeof fetch);
+    assert.equal(bank.balanceUwolo,BigInt(step.vault_balance_uwolo));
+    assert.equal(bank.height+1n,bank.commitHeight);assert.equal(Object.isFrozen(bank),true);
+    assert.equal(authenticatedWarSatchelBankFreshAt(bank),true);
+    assert.equal(authenticatedWarSatchelBankFreshAt({...bank}),false);
+    const input={ownerUserId:1,ownerUid:i.OwnerID,proofCandidateId:BigInt(1),expectedTxHash:o.TxHash,authenticatedDeposit:authenticated,bank};
+    await t.test("a copied genuine bank receipt cannot authorize a financial write",async()=>{
+      await assert.rejects(creditRecordedSatchelProof(db!,{...input,bank:{...bank}}),/bank_observation_not_fresh_or_canonical/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+    });
     await t.test("an expired genuine proof cannot enter the financial transaction",async inner=>{
       inner.mock.method(Date,"now",()=>authenticated.authenticatedHeadExpiresAtMs);
       try { await assert.rejects(creditRecordedSatchelProof(db!,input),/authenticated_comet_deposit_required/); }
