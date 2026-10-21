@@ -17,7 +17,7 @@ test("public Traffic chart remains unmodified and new work mounts BELOW it", () 
     '            speedReadyRoute="/traffic"',
     '          />',
   ].join("\n"));
-  assert.ok(page.indexOf("<TrafficSensors") > page.indexOf(chart!));
+  assert.ok(page.indexOf("<ObservedTrafficSensors") > page.indexOf(chart!));
   assert.match(page, /const lastPublishedDay = points\.at\(-1\)\?\.date/);
   assert.match(page, /color: "#f5c65b"/);
   assert.match(page, /color: "#5aa9ff"/);
@@ -30,7 +30,7 @@ test("Traffic Sensors are a subsystem, not a replacement for independent Kingdom
   const trafficPage = read("app/traffic/page.tsx");
   const component = read("components/traffic/TrafficSensors.tsx");
   assert.match(page, /KingdomInstruments kind="sensors"/);
-  assert.match(trafficPage, /TrafficSensors points=\{points\}/);
+  assert.match(trafficPage, /<ObservedTrafficSensors/);
   assert.match(component, /Traffic Sensors/);
   assert.match(component, /KINGDOM SENSORS \/ TRAFFIC SUBSYSTEM/);
   assert.match(component, /href="\/kingdom-sensors"/);
@@ -70,7 +70,10 @@ test("Traffic instrumentation defaults open and uses only the canonical server-l
   assert.match(component, /points\.slice\(-30\)/);
   assert.match(component, /lastPublishedDay/);
   assert.match(component, /lagDays/);
-  assert.match(page, /loadPublicTraffic\(\),/);
-  assert.match(page, /loadTrafficBrowserInsights\(\),/);
-  assert.match(page, /Promise\.allSettled/);
+  assert.match(page, /await loadPublicTraffic\(\)/);
+  assert.match(page, /await loadTrafficBrowserInsights\(\)/);
+  assert.match(page, /<Suspense fallback=/);
+  assert.match(page, /async function ObservedTrafficSensors/);
+  assert.doesNotMatch(page, /Promise\.allSettled/);
+  assert.match(read("lib/publicTrafficInsights.ts"), /controller\.abort\(\), 16000/);
 });
