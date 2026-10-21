@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5f28f4de29fd232a10fc82d754ae7b09fb83355ff4864f6dd5271a83c4f28a76",
+      "sha256": "8e9ffc9c61ea25a56d2533f4ffc29a9c92443678ab723d8c878b1a3077135734",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/traffic-sensors-observatory-20261021",
-    "commit": "cd7c8b533d7bcd51e1de0870b5a35f9fb3329eac"
+    "branch": "feat/traffic-observed-insights-20261021",
+    "commit": "cfe6ef240065e90c198c7ec296d6b42e0ff18e66"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
