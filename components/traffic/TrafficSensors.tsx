@@ -217,7 +217,7 @@ export default function TrafficSensors({ points, lastPublishedDay, lagDays }: Pr
               <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
                 <div className="font-mono text-[10px] tracking-[0.18em] text-slate-400">COMPLETED UTC DAYS</div>
                 <div className="mt-2 font-mono text-3xl font-semibold text-white tabular-nums">{available ? compact(points.length) : "—"}</div>
-                <div className="mt-1 text-[11px] text-slate-500">{available ? points[0].date + " → " + points[points.length - 1].date : "Publication not available"}</div>
+                <div className="mt-1 text-[11px] text-slate-500">{available ? points[0]?.date + " → " + points.at(-1)?.date : "Publication not available"}</div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
                 <div className="font-mono text-[10px] tracking-[0.18em] text-slate-400">MOST RECENT PUBLISHED DAY</div>
