@@ -79,8 +79,8 @@ class FirstPagePreflightContract(unittest.TestCase):
         locale = messages / "en.json"
         locale.write_text('{"title":"old"}')
         entry = self.root / "app/kingdom-index/page.tsx"
-        entry.write_text('import strings from "@/messages/en.json";\\n'
-                         'export default function Page(){ return strings.title; }')
+        entry.write_text("import strings from \"@/messages/en.json\";" + chr(10) +
+                         "export default function Page(){ return strings.title; }")
         report = self.report()["lexical_source"]
         self.assertEqual(report["unresolved_local_imports"], [])
         previous = report["closure"]
