@@ -799,9 +799,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-20",
+      "reviewed_at": "2026-10-20",
       "sensitivity": "restricted",
-      "sha256": "9f7b4c55d84b06b545153eeb13132b454848b06172dbfb7b28cf509c08f3acc4",
+      "sha256": "865f51b03311ba2c85db15d10e20ce88e48f3cc4b240d2a9f50a9092f595415c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -986,9 +986,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_KNOWLEDGE_ROUTER.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-21",
+      "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "08b175c37865bc13ebf8de40d4003854d4ecff73153bf782f64988a3daee45e6",
+      "sha256": "05a94a3b79603476156d3be78db8c84aa49e497212eca7da8960da7686e6ad59",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

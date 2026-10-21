@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-10-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -17,6 +17,16 @@ sensitivity: "internal"
 
 The Kingdom Knowledge Router (KKR) is the shared read-only knowledge plane for
 AoE2WAR AI agents.
+
+**Source review — October 20, 2026.** Compared the public repository
+catalog and bounded router implementation (`lib/kingdomKnowledgeCatalog.ts`,
+`lib/kingdomKnowledgeRouter.ts`) with this contract and confirmed the
+operator inspector at `app/api/admin/ai-knowledge/route.ts` retains its
+`requireAdmin` gate. This review establishes source-level routing and
+access-boundary intent, **not** correctness or freshness of every live
+repository result, a production browser certificate, or permission to expose
+viewer-private data. Historical shadow-parity discussion below remains
+conditional on its stated environment and time.
 
 ## Product contract
 
