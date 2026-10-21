@@ -94,7 +94,13 @@ async function request(
 function healthIsExact(
   health: Record<string, unknown>, cfg: ReturnType<typeof config>,
 ) {
-  if (health.ok !== true || health.accepting !== true || health.execution_protocol !== 2 ||
+  // Source-level signing admission is not proof of actual funded custody.
+  // The current Wolo service explicitly reports UNAVAILABLE, even with an
+  // accepting test permit. Never POST money on the strength of "ok" alone.
+  // AVAILABLE must only be issued by a separately certified, reserve-backed
+  // custody service; no environment flag or app-side fallback can supply it.
+  if (health.custody_capability !== "AVAILABLE" ||
+      health.ok !== true || health.accepting !== true || health.execution_protocol !== 2 ||
       health.owner_bound_wager_reservation_required !== true || health.chain_id !== "wolo-1" ||
       health.signer_role !== "exclusive-war-satchel-v1" ||
       health.durable_one_shot !== true ||
