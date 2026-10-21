@@ -84,7 +84,7 @@ const QUALIFIED_HEAD = "6adeb78a1294a07bfe63fcd43137f260e059c3b0";
 const QUALIFIED_PR = "https://github.com/Emaren/aoe2-watcher/pull/76";
 const QUALIFIED_RUN = "https://github.com/Emaren/aoe2-watcher/actions/runs/39693198445";
 function nextPatchVersion(current: string): string {
-  const parts = current.match(/^(\\d+)\\.(\\d+)\\.(\\d+)$/);
+  const parts = current.match(/^(\d+)\.(\d+)\.(\d+)$/);
   return parts ? parts[1]+"."+parts[2]+"."+(Number(parts[3])+1) : "pending";
 }
 async function reconcileCandidate(snapshot: WatcherPublicSnapshot) {
