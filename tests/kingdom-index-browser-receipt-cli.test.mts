@@ -28,7 +28,7 @@ test("operator CLI audits immutable sample receipt without network and fails clo
   const opts=["--input",file,"--url",url,"--release-sha",sha,"--build-version","fixture",
    "--collector-sha",collector,"--viewport","desktop"];
   const run=(args)=>spawnSync(process.execPath,[cli.pathname,...args],{encoding:"utf8",timeout:10000});
-  let ok=run(opts);
+  const ok=run(opts);
   assert.equal(ok.status,0,ok.stderr);
   const result=JSON.parse(ok.stdout);
   assert.equal(result.certified,false);assert.equal(result.score,null);
