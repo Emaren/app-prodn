@@ -141,6 +141,7 @@ const KINGDOM_LINKS = [
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
   { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
   { href: "/kingdom-brain", label: "Kingdom Brain", icon: BrainCircuit, body: "Follow the flow of truth across the machine" },
+  { href: "/kingdom-watcher", label: "Kingdom Watcher", icon: Radio, body: "Fleet telemetry, software releases and replay-engine evidence" },
   { href: "/kingdom-progress", label: "Kingdom Progress", icon: BarChart3, body: "Evidence-bound campaigns and milestones" },
   { href: "/renaissance", label: "Renaissance Campaign", icon: Crown, body: "Twelve engineering instruments · one command gateway" },
   { href: "/kingdom-sensors", label: "Kingdom Sensors", icon: Radio, body: "Observation arrays and provenance-bound signals" },
