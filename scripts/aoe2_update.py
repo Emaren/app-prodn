@@ -939,12 +939,21 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
     today = datetime.now(timezone.utc).date()
     for item in items:
         match = re.fullmatch(
-            r"([a-z0-9_-]+):(docs/[A-Za-z0-9_./-]+): documentation review expired on (\d{4}-\d{2}-\d{2})",
+            r"([a-z0-9_-]+):((?:docs|context)/[A-Za-z0-9_./-]+): documentation review expired on (\d{4}-\d{2}-\d{2})",
             item,
         )
         if match is None:
             return False
         repo_id, path, expired_on = match.groups()
+        # The canonical VPSSentry registry also owns two context maps.
+        # Admit only those exact documents, not arbitrary context paths or
+        # another repository's context. All normal review/date/hash checks
+        # still apply before detached central federation can be regenerated.
+        if path.startswith("context/") and (
+            repo_id != "vpssentry"
+            or path not in {"context/SYSTEM_MAP.md", "context/SERVER_STORAGE_MAP.md"}
+        ):
+            return False
         repo = SOURCES.get(repo_id)
         if repo is None or ".." in Path(path).parts:
             return False
