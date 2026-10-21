@@ -225,7 +225,7 @@ def path_risk(path: str) -> str:
     # executable/test surfaces: docs describing Satchel are DOCUMENTATION, and
     # generic unrelated application pages retain their normal classifications.
     if p.startswith(("app/", "lib/", "components/", "scripts/", "tests/")) and any(
-        marker in p for marker in ("warsatchel", "war-satchel", "mecha")
+        marker in p for marker in ("satchel", "mecha")
     ):
         return "FINANCIAL"
 
