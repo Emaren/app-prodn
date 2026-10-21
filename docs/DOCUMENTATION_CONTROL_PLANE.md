@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261020-satchel-poll-canonical-selector` at `e3d203ae52076268ede05341e2badd2575e1202d`
+Implementation baseline: `fix/20261021-held-satchel-financial-release-risk` at `d93ef4c2b64b0e27787dc8964f414937084bc7f8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
