@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/maintenance-reviewed-vps-context-20261021` at `33c725deba0a92c64edea301ebcede05b908a014`
+Implementation baseline: `fix/maintenance-renewal-expiry-day-boundary-20261021` at `24d4ae22565cecd8ce1a75281f65cfe8f8527a4c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
