@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-live-authority-integration` at `6b15fd8d8afca12bfb5e79b8aa9b37aee64ce2d3`
+Implementation baseline: `fix/hd-satchel-public-read-fence-20261021` at `8d793663574f765dd2f05727b275393e1fbe33d7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
