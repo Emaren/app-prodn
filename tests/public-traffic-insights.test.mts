@@ -76,10 +76,8 @@ test("rejects unapproved status or invalid public path", () => {
   );
   const raw = valid();
   raw.top_pages[0].path = "/admin/secret";
-  // This test asserts that normalization currently only guarantees an
-  // anonymous public-JSON path shape; API-side exclusion is separately proven.
-  assert.equal(
-    normalizeTrafficBrowserInsights(raw, "2026-10-21").topPages[0].path,
-    "/admin/secret",
+  assert.throws(
+    () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
+    /Invalid page/,
   );
 });
