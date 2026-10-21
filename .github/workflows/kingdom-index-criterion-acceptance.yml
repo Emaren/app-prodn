@@ -3,7 +3,9 @@ on:
   pull_request:
     paths:
       - 'lib/kingdomIndexCriterionSubmission.mjs'
+      - 'lib/kingdomIndexCriterionNonceStore.mjs'
       - 'tests/kingdom-index-criterion-submission.test.mts'
+      - 'tests/kingdom-index-criterion-nonce-store.test.mts'
       - 'config/kingdom-index-quality-rubric.json'
       - 'config/kingdom-index-assurance-profiles.json'
       - '.github/workflows/kingdom-index-criterion-acceptance.yml'
@@ -23,7 +25,7 @@ jobs:
       - name: Exercise signed criterion evidence boundary
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts
       - name: Confirm no public live score authority was activated
         run: |
           set -euo pipefail
