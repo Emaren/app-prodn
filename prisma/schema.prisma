@@ -2167,6 +2167,7 @@ model WatcherDownloadEvent {
 model WatcherClientEvent {
   id          BigInt   @id @default(autoincrement())
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  telemetryEventId String? @unique(map: "uq_watcher_client_events_telemetry_event_id") @map("telemetry_event_id") @db.VarChar(64)
   userId      Int?     @map("user_id")
   userUid     String?  @map("user_uid") @db.VarChar(100)
   eventType   String   @map("event_type") @db.VarChar(40)

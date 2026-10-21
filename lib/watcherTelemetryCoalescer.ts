@@ -16,8 +16,16 @@ type CoalescibleWatcherEvent = {
 type CoalescerEntry = {
   acceptedAt: number;
   generation: number;
+  // The first accepted sequence for the current coalescing window.
+  // A late DB response from an older window cannot certify this one.
+  windowStartGeneration: number;
   lastSeenAt: number;
   suppressedCount: number;
+  // Coalescing is an acknowledgment, which requires a durable predecessor.
+  committed: boolean;
+  pendingGenerations: Map<number, string | null>;
+  failedEventIds: Set<string>;
+  forceAdmission: boolean;
 };
 
 export type WatcherTelemetryAdmission<T> = {
@@ -29,6 +37,8 @@ export type WatcherTelemetryAdmission<T> = {
 
 export const WATCHER_IGNORED_EVENT_COALESCE_WINDOW_MS = 30_000;
 export const WATCHER_IGNORED_EVENT_COALESCE_MAX_KEYS = 2_048;
+const MAX_PENDING_PER_KEY = 64;
+const MAX_FAILED_IDS_PER_KEY = 64;
 
 function normalized(value: unknown) {
   return typeof value === "string"
@@ -40,6 +50,12 @@ function metadataRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+}
+
+function telemetryEventId(event: CoalescibleWatcherEvent) {
+  const value = metadataRecord(event.metadata).telemetryEventId;
+  return typeof value === "string" && /^telemetry_[a-f0-9]{32}$/i.test(value)
+    ? value.toLowerCase() : null;
 }
 
 function ignoredReason(event: CoalescibleWatcherEvent) {
@@ -106,7 +122,7 @@ export function createWatcherTelemetryCoalescer({
 } = {}) {
   const effectiveMaxKeys =
     Number.isSafeInteger(maxKeys) && maxKeys > 0
-      ? maxKeys
+      ? Math.min(maxKeys, 4_096)
       : WATCHER_IGNORED_EVENT_COALESCE_MAX_KEYS;
   const effectiveWindowMs =
     Number.isFinite(windowMs) && windowMs > 0
@@ -200,39 +216,52 @@ export function createWatcherTelemetryCoalescer({
       }
 
       const prior = entries.get(key);
-      if (
-        prior &&
-        observedAt - prior.acceptedAt < effectiveWindowMs
-      ) {
+      const retryId = telemetryEventId(event);
+      const unresolved = (prior?.pendingGenerations.size ?? 0) > 0;
+      const failedRetry = Boolean(retryId && prior?.failedEventIds.has(retryId));
+      // A coalescer-only HTTP 200 is unsafe until an earlier write commits.
+      if (prior && prior.committed && !unresolved && !failedRetry &&
+          !prior.forceAdmission &&
+          observedAt - prior.acceptedAt < effectiveWindowMs) {
         prior.lastSeenAt = observedAt;
         prior.suppressedCount += 1;
-        return {
-          accepted: false,
-          event,
-          generation: null,
-          key,
-        };
+        return { accepted: false, event, generation: null, key };
       }
 
       generation += 1;
       const nextGeneration = generation;
       const representedCount = (prior?.suppressedCount ?? 0) + 1;
-
-      entries.set(key, {
+      const current: CoalescerEntry = prior ?? {
         acceptedAt: observedAt,
         generation: nextGeneration,
+        windowStartGeneration: nextGeneration,
         lastSeenAt: observedAt,
         suppressedCount: 0,
-      });
+        committed: false,
+        pendingGenerations: new Map(),
+        failedEventIds: new Set(),
+        forceAdmission: false,
+      };
+      if (prior && observedAt - prior.acceptedAt >= effectiveWindowMs) {
+        current.windowStartGeneration = nextGeneration;
+        current.committed = false;
+      }
+      current.acceptedAt = observedAt;
+      current.lastSeenAt = observedAt;
+      current.generation = nextGeneration;
+      current.suppressedCount = 0;
+      if (current.pendingGenerations.size < MAX_PENDING_PER_KEY) {
+        current.pendingGenerations.set(nextGeneration, retryId);
+      } else {
+        // Prefer another PostgreSQL write over an unproven HTTP ACK.
+        current.forceAdmission = true;
+      }
+      entries.set(key, current);
       prune(observedAt, entries.size > effectiveMaxKeys);
 
       return {
         accepted: true,
-        event: withCoalescingSummary(
-          event,
-          representedCount,
-          effectiveWindowMs,
-        ),
+        event: withCoalescingSummary(event, representedCount, effectiveWindowMs),
         generation: nextGeneration,
         key,
       };
@@ -240,15 +269,34 @@ export function createWatcherTelemetryCoalescer({
 
     recordWriteFailure<T>(admission: WatcherTelemetryAdmission<T>) {
       if (!admission.key || admission.generation === null) return;
-
       const current = entries.get(admission.key);
-      if (!current || current.generation !== admission.generation) return;
+      if (!current?.pendingGenerations.has(admission.generation)) return;
+      const eventId = current.pendingGenerations.get(admission.generation);
+      current.pendingGenerations.delete(admission.generation);
+      const metadata = metadataRecord((admission.event as CoalescibleWatcherEvent).metadata);
+      const count = Number(metadata.serverCoalescedCount);
+      current.suppressedCount += Number.isSafeInteger(count) && count > 0 ? count : 1;
+      if (eventId) {
+        if (current.failedEventIds.size < MAX_FAILED_IDS_PER_KEY) {
+          current.failedEventIds.add(eventId);
+        } else {
+          current.forceAdmission = true;
+        }
+      } else {
+        current.forceAdmission = true;
+      }
+    },
 
-      // Keep the admission window closed after a failed write. Reopening it
-      // would turn a database outage back into one attempted write per raw
-      // filesystem notification. The failed observation is represented in
-      // the next admitted summary instead.
-      current.suppressedCount += 1;
+    recordWriteSuccess<T>(admission: WatcherTelemetryAdmission<T>) {
+      if (!admission.key || admission.generation === null) return;
+      const current = entries.get(admission.key);
+      if (!current?.pendingGenerations.has(admission.generation)) return;
+      const eventId = current.pendingGenerations.get(admission.generation);
+      current.pendingGenerations.delete(admission.generation);
+      if (admission.generation >= current.windowStartGeneration) {
+        current.committed = true;
+      }
+      if (eventId) current.failedEventIds.delete(eventId);
     },
 
     size() {

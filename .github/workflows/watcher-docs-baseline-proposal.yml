@@ -1,0 +1,68 @@
+name: Watcher DocsV2 Source-Bound Baseline Proposal
+
+on:
+  pull_request:
+    paths:
+      - "app/api/watcher/events/route.ts"
+      - "lib/watcherTelemetry*.ts"
+      - "lib/watcherBoundedJson.ts"
+      - "docs/WATCHER*.md"
+      - "tests/integration/watcher-http-pg.mjs"
+      - ".github/workflows/watcher-docs-baseline-proposal.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  propose-baseline:
+    name: Proposed DocsV2 baseline (review only; not approval)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Generate a source-bound documentation proposal without committing
+        shell: bash
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          test -n "$GITHUB_HEAD_REF"
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch "$GITHUB_HEAD_REF" --head "$head"
+          python3 scripts/docs_v2_check.py
+          git diff --check
+          mkdir -p .review-evidence
+          git diff --binary -- \
+            docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml > .review-evidence/docs-v2-baseline.patch
+          git diff --stat -- \
+            docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml | tee .review-evidence/diff-stat.txt
+          sha256sum docs/document-registry.json \
+            docs/DOCUMENTATION_CONTROL_PLANE.md \
+            catalog-info.yaml > .review-evidence/generated-sha256.txt
+          printf 'Candidate source SHA: %s\nBranch: %s\n' \
+            "$head" "$GITHUB_HEAD_REF" > .review-evidence/source.txt
+          test -s .review-evidence/docs-v2-baseline.patch
+      - name: Upload generated documents and unapproved diff for human review
+        uses: actions/upload-artifact@v4
+        with:
+          name: watcher-166-docs-v2-proposed-baseline
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            docs/document-registry.json
+            docs/DOCUMENTATION_CONTROL_PLANE.md
+            catalog-info.yaml
+            .review-evidence/docs-v2-baseline.patch
+            .review-evidence/diff-stat.txt
+            .review-evidence/generated-sha256.txt
+            .review-evidence/source.txt

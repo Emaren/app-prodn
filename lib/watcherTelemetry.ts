@@ -5,6 +5,10 @@ import type { NextRequest } from "next/server";
 
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { readWatcherDownloadIpAddress, readWatcherDownloadUserAgent } from "@/lib/watcherDownloads";
+import {
+  readTelemetryEventId,
+  storeTelemetryIdempotently,
+} from "@/lib/watcherTelemetryIdempotency";
 
 export const WATCHER_CLIENT_EVENT_TYPES = [
   "app_open",
@@ -311,8 +315,11 @@ export async function recordWatcherClientEvent(
 ) {
   const metadata = sanitizeWatcherMetadata(input.metadata);
 
-  return prisma.watcherClientEvent.create({
+  const eventId = readTelemetryEventId(metadata);
+  const outcome = await storeTelemetryIdempotently(
+    () => prisma.watcherClientEvent.create({
     data: {
+      telemetryEventId: eventId,
       userId: identity.userId,
       userUid: identity.userUid || normalizeWatcherString((metadata as Record<string, unknown>).userUid, 100),
       eventType: input.eventType,
@@ -332,5 +339,7 @@ export async function recordWatcherClientEvent(
         authResolved: identity.resolved,
       },
     },
-  });
+  }),
+  eventId);
+  return { stored: outcome === "stored", duplicate: outcome === "duplicate" };
 }

@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 — presentation and release contract",
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "af35780920865f09a7b05b5360717589a9b9176e25f9cfb96dcac479d97e8039",
+      "sha256": "5cccdfd2d26883c19268f2ecc2bfa5c564ad143945fb037454f9c2b3df39aa2b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1316,7 +1316,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1338,7 +1338,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1406,7 +1406,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1453,7 +1453,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1545,7 +1545,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1640,7 +1640,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1947,6 +1947,121 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "docs-v2-release-control",
+      "id": "aoe2war.app-prodn.docs-watcher-166-documentation-baseline-review",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_166_DOCS_BASELINE_REVIEW.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "522123eccfa2c33eba37b66b6cc3c87d18ed7913aa829bb8be643ca9ce0cfc9b",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Source-bound Documentation Review Procedure",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-166-telemetry-body-limit",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_166_TELEMETRY_BODY_LIMIT.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "b24ccede976be5692b41568b89150e0d07de407a3efddb95b222a22223e1ce4c",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher diagnostic request bounded-read proof",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-166-telemetry-idempotency",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_166_TELEMETRY_IDEMPOTENCY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "cbf5d145e7c26cc6304c054199d5ce63dc0367d23cd917c31be310f6beade7af",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Server-side telemetry retry idempotency",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-1-6-6-same-id-ack-race",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_1_6_6_SAME_ID_ACK_RACE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "9e8f1e9d35a5c3f79433c35f2f679e7ba1edb55af78606668f4817ec7c84ced9",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Same-ID coalescing receipt race (source candidate)",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-release-proof",
+      "id": "aoe2war.app-prodn.docs-watcher-http-pg-failure-proof",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_HTTP_PG_FAILURE_PROOF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "59ce2d7e06e4f03d1512db02e5a2cbcfbf682f253624f8df4056e7156da6ab84",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.6 \u2014 Real HTTP/Prisma/PostgreSQL Failure Injection",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "watcher-desktop-companion-assurance",
       "id": "aoe2war.app-prodn.docs-watcher-kingdom-index-companion",
       "owner": "aoe2war-web",
@@ -1961,7 +2076,53 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-monitoring-durable-ack",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_MONITORING_DURABLE_ACK.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "5be649ead278d6179612676823a0a831929d90ec6ad287c58ff28773d3757759",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher Monitoring Telemetry \u2014 Durable Acknowledgment During Database Writes",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-monitoring-epoch-fence",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_MONITORING_EPOCH_FENCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "b7ea69c65e9fe63eb04ae6faf2489527db90bcf2db6f0a4dcf7cca617e6b4669",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher Monitoring Telemetry \u2014 Cross-window Database Completion Fence",
       "type": "reference"
     },
     {
@@ -2009,6 +2170,29 @@
         "aoe2-watcher"
       ],
       "title": "Watcher Telemetry",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "watcher-telemetry-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-telemetry-batch-completeness",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_TELEMETRY_BATCH_COMPLETENESS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-19",
+      "sensitivity": "internal",
+      "sha256": "66f031dcd8e5fc55c7fdfe8b949d51117301c3ca18cd8a4ff2b5ba397ca7decf",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher telemetry batch completeness invariant",
       "type": "reference"
     },
     {
@@ -2186,7 +2370,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2214,8 +2398,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/renaissance-forward-main-20261021",
-    "commit": "54f0a91a9b5f0c4ac9f52abf3708ddff4df14719"
+    "branch": "fix/watcher-166-telemetry-retry-receipts-20261019",
+    "commit": "0168e21a69f5b91ab0534a10b88e48a10d98074e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
