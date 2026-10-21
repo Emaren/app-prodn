@@ -129,6 +129,11 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
     const signer={attestedVaultAddress:vault,custodyRole:"exclusive-war-satchel-v1" as const,async submitOneShot(input:Parameters<IsolatedSatchelSigner["submitOneShot"]>[0]){
       const count=(senderCalls.get(input.requestId)||0)+1;senderCalls.set(input.requestId,count);assert.equal(count,1);
       const n=Number(input.requestId.split(":").at(-1)),step=fixture.steps.find(s=>s.name==="wager_"+n)!;
+      assert.equal(input.ownerUid,seeded.owner.uid);
+      assert.equal(input.chainId,"wolo-1");assert.equal(input.denom,"uwolo");
+      assert.equal(input.senderAddress,step.intent.Sender);
+      assert.equal(input.recipientAddress,step.intent.Recipient);
+      assert.deepEqual(input.reservation,reservationReviews.get(input.requestId));
       assert.equal(input.memo,step.intent.Memo);assert.equal(input.amountUwolo,step.intent.AmountUWolo);bankStep=step;
       return {kind:"broadcast_accepted" as const,txHash:step.tx_hash};
     }};
