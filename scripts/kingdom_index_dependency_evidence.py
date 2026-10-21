@@ -112,13 +112,13 @@ def generated_prisma_declarations(root: Path, unresolved: set[str]) -> list[dict
         configuration = json.loads(package.read_text(encoding="utf-8"))
     except (ValueError, UnicodeDecodeError, OSError):
         return []
-    generator = re.search(r"generator\\s+client\\s*\\{([^{}]{1,1500})\\}", definition)
+    generator = re.search(r"generator\s+client\s*\{([^{}]{1,1500})\}", definition)
     if generator is None:
         return []
     body = generator.group(1)
-    if not re.search(r'provider\\s*=\\s*"prisma-client-js"', body):
+    if not re.search(r'provider\s*=\s*"prisma-client-js"', body):
         return []
-    if not re.search(r'output\\s*=\\s*"\\.\\./lib/generated/prisma"', body):
+    if not re.search(r'output\s*=\s*"\.\./lib/generated/prisma"', body):
         return []
     if "prisma generate" not in configuration.get("scripts", {}).get("prebuild", ""):
         return []
