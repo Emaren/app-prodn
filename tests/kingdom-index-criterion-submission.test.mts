@@ -286,6 +286,18 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
   assert.equal(valid.certified,false);
   assert.equal(valid.current,false);
   assert.equal(valid.status,"VALIDATED_PROVISIONAL_SUBMISSION");
+  // Source-bound signed bytes do not authorize a different criterion award.
+  const substituted=structuredClone(p);
+  substituted.nonce="different-nonce-for-credit-substitution";
+  substituted.criteria.find(row=>row.id==="measured_latency").earned=0;
+  await assert.rejects(inspectSignedCriterionSubmission(envelope(substituted),ctx),
+   /External evidence bytes/);
+  // An operator-approved failed specialized gate cannot be upgraded to pass.
+  const gateUpgrade=structuredClone(p);
+  gateUpgrade.nonce="different-nonce-for-gate-upgrade";
+  gateUpgrade.gates[0].result="pass";
+  await assert.rejects(inspectSignedCriterionSubmission(envelope(gateUpgrade),ctx),
+   /External evidence bytes/);
   // Authentic signature + valid index do NOT permit a tampered proof body.
   await writeFile(join(root,refs[0].sha256+".proof"),"tampered",{mode:0o600});
   const tampered=payload();tampered.nonce="new-nonce-different-from-valid";
