@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c5b7b5b4c250c6e6253861e3905c8befa85bea84eead3ede00573be1d1aee35",
+      "sha256": "ebc7adb0f44a8e1fbfcdea71ff14d2a8ab4a769a432085365bec3435882daec6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-kingdom-systems-nav-hub-20261021",
-    "commit": "9ffe288b47207ec33f9f12ee576ff276cf2be4a2"
+    "commit": "fc7a2daf69e7c6e307e50626daeb8c658dbf41e0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

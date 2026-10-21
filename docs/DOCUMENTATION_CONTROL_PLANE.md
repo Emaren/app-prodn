@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-kingdom-systems-nav-hub-20261021` at `9ffe288b47207ec33f9f12ee576ff276cf2be4a2`
+Implementation baseline: `feature/renaissance-kingdom-systems-nav-hub-20261021` at `fc7a2daf69e7c6e307e50626daeb8c658dbf41e0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
