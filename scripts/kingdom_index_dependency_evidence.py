@@ -94,6 +94,48 @@ def resolve_local(importer: str, specifier: str, known: set[str]) -> str | None:
     return None
 
 
+def generated_prisma_declarations(root: Path, unresolved: set[str]) -> list[dict[str, str]]:
+    """Classify exact generated-client imports without declaring them resolved.
+
+    A Prisma generator declaration is only a promise of build output. Never
+    include nonexistent client files in the source closure or infer that the
+    generated artifact exists, matches the schema, or is deployed.
+    """
+    schema = root / "prisma/schema.prisma"
+    package = root / "package.json"
+    if not schema.is_file() or schema.is_symlink() or not package.is_file() or package.is_symlink():
+        return []
+    if schema.stat().st_size > MAX_SOURCE_BYTES or package.stat().st_size > MAX_SOURCE_BYTES:
+        return []
+    try:
+        definition = schema.read_text(encoding="utf-8")
+        configuration = json.loads(package.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeDecodeError, OSError):
+        return []
+    generator = re.search(r"generator\\s+client\\s*\\{([^{}]{1,1500})\\}", definition)
+    if generator is None:
+        return []
+    body = generator.group(1)
+    if not re.search(r'provider\\s*=\\s*"prisma-client-js"', body):
+        return []
+    if not re.search(r'output\\s*=\\s*"\\.\\./lib/generated/prisma"', body):
+        return []
+    if "prisma generate" not in configuration.get("scripts", {}).get("prebuild", ""):
+        return []
+    result = []
+    for reference in sorted(unresolved):
+        importer, separator, target = reference.partition(" -> ")
+        if separator and target == "@/lib/generated/prisma":
+            result.append({
+                "importer": importer,
+                "specifier": target,
+                "generator": "prisma/schema.prisma#generator-client",
+                "output": "lib/generated/prisma",
+                "status": "DECLARED_GENERATED_OUTPUT_NOT_AUTHENTICATED",
+            })
+    return result
+
+
 def _source(root: Path, rel: str, known: dict[str, Path]) -> bytes:
     file = known[rel]
     if file.is_symlink() or not file.is_file():
@@ -175,6 +217,10 @@ def route_evidence(root: Path, href: str,
         if DYNAMIC_IMPORT.search(source):
             nonliteral.add(rel)
 
+    generated = generated_prisma_declarations(root, unresolved)
+    generated_refs = {row["importer"] + " -> " + row["specifier"] for row in generated}
+    unclassified = sorted(unresolved - generated_refs)
+
     # Shared build configuration is never invisible to the source version.
     bound = sorted(visited | (present & set(GLOBAL_INPUTS)))
     h = hashlib.sha256()
@@ -193,6 +239,8 @@ def route_evidence(root: Path, href: str,
         "files": bound,
         "referenced_api_routes": sorted(api_routes),
         "unresolved_local_imports": sorted(unresolved),
+        "generated_declarations_unverified": generated,
+        "unclassified_local_imports": unclassified,
         "nonliteral_import_modules": sorted(nonliteral),
         "external_package_specifiers": sorted(external),
         "dependency_completeness_certified": False,

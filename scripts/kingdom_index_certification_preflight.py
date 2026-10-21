@@ -88,6 +88,8 @@ def plan_for_route(root: Path, href: str, known: dict | None = None) -> dict[str
             "files": dependencies["file_count"],
             "status": dependencies["status"],
             "unresolved_local_imports": dependencies["unresolved_local_imports"],
+            "generated_declarations_unverified": dependencies["generated_declarations_unverified"],
+            "unclassified_local_imports": dependencies["unclassified_local_imports"],
             "nonliteral_import_modules": dependencies["nonliteral_import_modules"],
             "transitive_build_closure_certified": False,
         },
@@ -127,7 +129,9 @@ def main() -> int:
         print(f"Maximum: 100 · EARNED: UNKNOWN · status: {result['status']}")
         print(f"Lexical closure: {result['lexical_source']['closure']} "
               f"({result['lexical_source']['files']} files, "
-              f"{len(result['lexical_source']['unresolved_local_imports'])} unresolved imports)")
+              f"{len(result['lexical_source']['unresolved_local_imports'])} unresolved imports; "
+              f"{len(result['lexical_source']['generated_declarations_unverified'])} generated declarations, "
+              f"{len(result['lexical_source']['unclassified_local_imports'])} unclassified)")
         for blocker in result["independent_blockers"]:
             print(" BLOCKER:", blocker)
         # Bounded diagnostic for the FIRST route; these are lexical findings,

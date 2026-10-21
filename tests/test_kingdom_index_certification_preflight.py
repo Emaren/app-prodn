@@ -87,6 +87,26 @@ class FirstPagePreflightContract(unittest.TestCase):
         locale.write_text('{"title":"new"}')
         self.assertNotEqual(previous, self.report()["lexical_source"]["closure"])
 
+    def test_declared_prisma_generation_classified_but_never_certified(self):
+        schema = self.root / "prisma/schema.prisma"
+        schema.parent.mkdir()
+        schema.write_text("generator client {" + chr(10) + '  provider = "prisma-client-js"' + chr(10) + '  output = "../lib/generated/prisma"' + chr(10) + "}")
+        (self.root / "package.json").write_text(
+            '{"scripts":{"prebuild":"prisma generate && next build"}}')
+        entry = self.root / "app/kingdom-index/page.tsx"
+        entry.write_text('import { PrismaClient } from "@/lib/generated/prisma";' + chr(10) + 'export default function Page(){ return PrismaClient; }')
+        r = self.report()
+        graph = r["lexical_source"]
+        self.assertEqual(len(graph["generated_declarations_unverified"]), 1)
+        self.assertEqual(graph["unclassified_local_imports"], [])
+        self.assertEqual(len(graph["unresolved_local_imports"]), 1)
+        self.assertFalse(r["certified"])
+        self.assertFalse(r["publication_authorized"])
+        schema.write_text(schema.read_text().replace("prisma-client-js", "unknown-generator"))
+        changed = self.report()["lexical_source"]
+        self.assertEqual(changed["generated_declarations_unverified"], [])
+        self.assertEqual(len(changed["unclassified_local_imports"]), 1)
+
     def test_dependency_fingerprint_and_missing_source_refusal(self):
         a = self.report()["lexical_source"]["closure"]
         file = self.root / "app/kingdom-index/page.tsx"
