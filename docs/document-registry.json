@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0d0379bb313ad310e3f23f974d288e10e02c2be51c332cc1ea60197e9a419268",
+      "sha256": "76b45d93787dabce85210b9baec4abf642dc3e22df9c99e43d9f73f08b70b7bd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/satchel-live-authority-integration",
-    "commit": "508860b809541cff4b6a61d4ec407bf8c7f4908c"
+    "commit": "6b15fd8d8afca12bfb5e79b8aa9b37aee64ce2d3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
