@@ -1,3 +1,4 @@
+import TrafficSensors from "@/components/traffic/TrafficSensors";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
 } from "@/components/observatory/PremiumTimeSeriesChart";
@@ -73,6 +74,8 @@ export default async function TrafficPage() {
         ) : (
           <div className="flex min-h-[40vh] items-center justify-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025] px-6 text-sm text-slate-400">No published completed-day Traffic report is available.</div>
         )}
+
+        <TrafficSensors points={points} lastPublishedDay={lastPublishedDay} lagDays={ageDays} />
 
         {failed ? (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-600">

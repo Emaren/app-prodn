@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c4ed2f9a82f8a85e5b71884bc05c406005cfa032cb9e62e0d945d522e4ed178",
+      "sha256": "5f28f4de29fd232a10fc82d754ae7b09fb83355ff4864f6dd5271a83c4f28a76",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/renaissance-campaign-unused-shield-20261021",
-    "commit": "ac796c6091c7d1b92c3cfe7e5eb56a6c301d1ab3"
+    "branch": "feat/traffic-sensors-observatory-20261021",
+    "commit": "cd7c8b533d7bcd51e1de0870b5a35f9fb3329eac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
