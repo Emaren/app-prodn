@@ -16,18 +16,27 @@ const instruments = [
   ["wolo-machine", "wolo", "betting"],
 ] as const;
 
-test("six independent information pages have one canonical navigation and source authority", () => {
+test("six independent pages retain route/source authority behind one Systems navigation gateway", () => {
   const titles = read("app/AppShell.tsx");
   const menu = read("components/HeaderMenu.tsx");
   const hrefs = routes.map((r: {href: string}) => r.href);
   assert.equal(new Set(hrefs).size, hrefs.length);
+  const shared = read("components/kingdom-instruments/KingdomInstruments.tsx");
+  const nested = new Set(["kingdom-sensors", "kingdom-tests", "kingdom-recovery"]);
   for (const [name, kind, profile] of instruments) {
     const route = "/" + name;
     assert.ok(hrefs.includes(route));
     assert.equal(assurances.routeProfiles[route],profile);
     assert.ok(cohort.includes(route));
-    assert.ok(titles.includes('href: "' + route + '"'));
-    assert.ok(menu.includes('href: "' + route + '"'));
+    if (nested.has(name)) {
+      assert.ok(!titles.includes('href: "' + route + '"'), "no duplicate castle entry "+route);
+      assert.ok(!menu.includes('href: "' + route + '"'), "no duplicate account entry "+route);
+      assert.ok(shared.includes('href: "' + route + '"'), "station must remain accessible "+route);
+      assert.match(shared,/kind==="systems"&&<SystemsStationDirectory\/>/);
+    } else {
+      assert.ok(titles.includes('href: "' + route + '"'));
+      assert.ok(menu.includes('href: "' + route + '"'));
+    }
     const page = read("app/" + name + "/page.tsx");
     assert.ok(page.includes('kind="' + kind + '"'));
     assert.ok(page.includes('canonical: "' + route + '"'));

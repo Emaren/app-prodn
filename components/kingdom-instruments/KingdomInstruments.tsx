@@ -169,6 +169,24 @@ function ReplayCanvas({ replay }: {replay:Reading}) {
   </div>;
 }
 
+const SYSTEMS_STATIONS = [
+  { href: "/kingdom-sensors", name: "Kingdom Sensors", number: "01", kicker: "OBSERVATION ARRAY", description: "Provenance-bound telemetry and live signal readers", Icon: RadioTower },
+  { href: "/kingdom-tests", name: "Kingdom Tests", number: "02", kicker: "PROVING GROUNDS", description: "Evidence lanes, tests, and certification boundaries", Icon: Microscope },
+  { href: "/kingdom-recovery", name: "Kingdom Recovery", number: "03", kicker: "BLACK VAULT", description: "Restore receipts, rollback truth, and recovery invariants", Icon: RotateCcw },
+] as const;
+
+function SystemsStationDirectory() {
+  return <section className={styles.systemsStationDirectory} aria-label="Kingdom Systems stations" data-systems-stations>
+    <div className={styles.systemsStationHeading}><div><span>SYSTEMS / COMMAND ACCESS</span><h2>ONE MACHINE DECK. <em>FOUR STATIONS.</em></h2><p>Systems telemetry lives above. Enter a dedicated station without losing its original route or instrument controls.</p></div><small>03 SUBSYSTEMS · 04 TOTAL STATIONS</small></div>
+    <div className={styles.systemsStationGrid}>{SYSTEMS_STATIONS.map(({href,name,number,kicker,description,Icon})=><Link key={href} href={href} prefetch={false} className={styles.systemStation} data-station-href={href}>
+      <span className={styles.systemStationNumber}>{number} / 03 <ArrowUpRight size={16} aria-hidden="true"/></span>
+      <span className={styles.systemStationSymbol}><Icon size={23} strokeWidth={1.6} aria-hidden="true"/></span>
+      <strong>{name}</strong><span className={styles.systemStationKicker}>{kicker}</span><p>{description}</p>
+      <span className={styles.systemStationEnter}>OPEN INSTRUMENT <ChevronRight size={14} aria-hidden="true"/></span>
+    </Link>)}</div>
+  </section>;
+}
+
 export default function KingdomInstruments({ kind }: { kind: InstrumentKind }) {
   const [feeds,setFeeds] = useState<InstrumentFeeds>({});
   const [refreshId,setRefreshId]=useState(0);
@@ -268,6 +286,7 @@ export default function KingdomInstruments({ kind }: { kind: InstrumentKind }) {
       </header>
       <section className={styles.evidenceStrip} aria-label="Telemetry source states"><div className={styles.evidenceSummary}><ScanLine size={18}/><strong>{observed}/{badges.length}</strong><small>RESPONDING READERS</small></div>{badges.map(b=><SourceTag key={b.url} source={b.url} state={b.state}/>)}</section>
       {features}
+      {kind==="systems"&&<SystemsStationDirectory/>}
       <footer className={styles.footer}><span><CircleHelp size={14}/> LIVE NUMBERS REQUIRE A REAL READER · UNVERIFIED ≠ ZERO</span><nav><Link href="/kingdom-brain">BRAIN</Link><Link href="/kingdom-agents">AGENTS</Link><Link href="/kingdom-index">INDEX</Link><Link href="/kingdom-intelligence">INTELLIGENCE</Link></nav></footer>
     </div>
   </main>;

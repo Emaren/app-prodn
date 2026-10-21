@@ -50,3 +50,7 @@ node --experimental-strip-types --test tests/renaissance-campaign.test.mts
 ```
 
 Only after PR review, exact-head CI, protected merge and independently cleared release gates may an authorized operator consider the existing `./bin/aoe2war status`, `update --json`, `finish` workflow. This PR is **NOT DEPLOYED** and **NOT financially authorized**.
+
+## Kingdom Systems consolidation — 2026-10-21
+
+The castle/Kingdom and account menu now expose **Kingdom Systems** as one gateway for Systems, Sensors, Tests and Recovery. The systems page adds three accessible launch links while preserving the original three dedicated URLs, telemetry feeds and instrument components. The `/kingdom-bettors` link keeps its route but is labeled **Bettors** in the menus only. This is a navigation integration, not a source, finance, or 100-point engineering certification. The objective Renaissance scoring campaign separately targets all **144 Next page templates** on canonical `main@14a3fcb3`; the public Kingdom Index currently catalogs only 88, and authenticated/dynamic coverage is a future work item.
