@@ -21,11 +21,11 @@ export type WatcherPublicSnapshot = {
     version: string;
     phase: "development";
     certification: "not-certified";
-    pullRequest: string;
-    source: string;
-    checkedEvidence: string;
-    nodeTests: number;
-    nativeJobs: number;
+    pullRequest: string | null;
+    source: string | null;
+    checkedEvidence: string | null;
+    nodeTests: number | null;
+    nativeJobs: number | null;
     hardwareBenchmarks: null;
   };
   fleet: {
@@ -80,6 +80,42 @@ function resourcesFrom(metadata: unknown) {
 function avg(values: number[]): number | null {
   return values.length ? Math.round(values.reduce((sum, n) => sum + n, 0) / values.length * 10) / 10 : null;
 }
+const QUALIFIED_HEAD = "6adeb78a1294a07bfe63fcd43137f260e059c3b0";
+const QUALIFIED_PR = "https://github.com/Emaren/aoe2-watcher/pull/76";
+const QUALIFIED_RUN = "https://github.com/Emaren/aoe2-watcher/actions/runs/39693198445";
+function nextPatchVersion(current: string): string {
+  const parts = current.match(/^(\\d+)\\.(\\d+)\\.(\\d+)$/);
+  return parts ? parts[1]+"."+parts[2]+"."+(Number(parts[3])+1) : "pending";
+}
+async function reconcileCandidate(snapshot: WatcherPublicSnapshot) {
+  // No newer-release draft is assumed after the published version changes.
+  // The next version label follows the release authority automatically.
+  if (snapshot.build.version !== "1.6.6") return;
+  try {
+    const response = await fetch("https://api.github.com/repos/Emaren/aoe2-watcher/pulls/76", {
+      next: { revalidate: 300 },
+      headers: { Accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(4500),
+    });
+    if (!response.ok) return;
+    const data: unknown = await response.json();
+    if (!data || typeof data !== "object") return;
+    const p = data as { state?: unknown; draft?: unknown; head?: { sha?: unknown; ref?: unknown } };
+    if (p.state !== "open" || p.draft !== true ||
+        p.head?.ref !== "test/watcher-166-packaged-single-instance-20261021" ||
+        typeof p.head?.sha !== "string" || !/^[a-f0-9]{40}$/.test(p.head.sha)) return;
+    snapshot.build.source = p.head.sha;
+    if (p.head.sha !== QUALIFIED_HEAD) {
+      // A fresh push is NOT entitled to reuse the last HEAD's green test count.
+      snapshot.build.nodeTests = null;
+      snapshot.build.nativeJobs = null;
+      snapshot.build.checkedEvidence = null;
+    }
+  } catch {
+    // Deliberate last-reviewed evidence fallback, never claim GitHub is live.
+  }
+}
+
 function emptySnapshot(now: Date): WatcherPublicSnapshot {
   return {
     schema: 1,
@@ -97,14 +133,14 @@ function emptySnapshot(now: Date): WatcherPublicSnapshot {
     // Engineering source receipts are a pinned, explicitly non-release proof,
     // NEVER substituted for runtime production measurements.
     build: {
-      version: "1.6.6",
+      version: nextPatchVersion(WATCHER_RELEASE.version),
       phase: "development",
       certification: "not-certified",
-      pullRequest: "https://github.com/Emaren/aoe2-watcher/pull/76",
-      source: "6adeb78a1294a07bfe63fcd43137f260e059c3b0",
-      checkedEvidence: "https://github.com/Emaren/aoe2-watcher/actions/runs/39693198445",
-      nodeTests: 455,
-      nativeJobs: 4,
+      pullRequest: WATCHER_RELEASE.version === "1.6.5" ? QUALIFIED_PR : null,
+      source: WATCHER_RELEASE.version === "1.6.5" ? QUALIFIED_HEAD : null,
+      checkedEvidence: WATCHER_RELEASE.version === "1.6.5" ? QUALIFIED_RUN : null,
+      nodeTests: WATCHER_RELEASE.version === "1.6.5" ? 455 : null,
+      nativeJobs: WATCHER_RELEASE.version === "1.6.5" ? 4 : null,
       hardwareBenchmarks: null,
     },
     fleet: {
@@ -256,6 +292,7 @@ export async function loadKingdomWatcherPublic(): Promise<WatcherPublicSnapshot>
     } catch (error) {
       console.warn("Kingdom Watcher public aggregate unavailable", error instanceof Error ? error.message : "unknown");
     }
+    await reconcileCandidate(result);
     cached = { snapshot: result, until: Date.now() + 20_000 };
     return result;
   })();
