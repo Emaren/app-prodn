@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "080b81982dab95e7e395c151b83fe006902764a66af0547f09a5c349f44e0f4f",
+      "sha256": "5bc624f79a205c47856144ef63baa9aed2b2c7427561e42e4978007887690a51",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-campaign-gateway-20261021",
-    "commit": "0c5142d73070c837264a21d26f1c53d824033d73"
+    "commit": "9f028d303ffd67e4f77a6a690accff5367858499"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
