@@ -1,0 +1,31 @@
+name: Kingdom Index criterion submission boundary
+on:
+  pull_request:
+    paths:
+      - 'lib/kingdomIndexCriterionSubmission.mjs'
+      - 'tests/kingdom-index-criterion-submission.test.mts'
+      - 'config/kingdom-index-quality-rubric.json'
+      - 'config/kingdom-index-assurance-profiles.json'
+      - '.github/workflows/kingdom-index-criterion-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  adversarial-evidence-boundary:
+    name: Untrusted receipt, signature, rubric and replay refusal (fixtures only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exercise signed criterion evidence boundary
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts
+      - name: Confirm no public live score authority was activated
+        run: |
+          set -euo pipefail
+          ! grep -q 'kingdomIndexCriterionSubmission' lib/kingdomIndex.ts
+          grep -q 'return null;' lib/kingdomIndexAuditStatus.ts
