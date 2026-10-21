@@ -977,7 +977,12 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
             expired_date = date.fromisoformat(expired_on)
         except ValueError:
             return False
-        if reviewed_date <= expired_date or not (0 <= (today - reviewed_date).days < interval):
+        # A newly reviewed source can legitimately be reviewed *on* the old
+        # central copy's expiry date. That is still a renewed, current review:
+        # the old central entry expired before this federation was regenerated.
+        # Keep rejecting reviews earlier than expiry and reviews no longer live
+        # under their own positive review interval.
+        if reviewed_date < expired_date or not (0 <= (today - reviewed_date).days < interval):
             return False
     return True
 

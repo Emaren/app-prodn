@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5b3c42db6ceb7c4de0ea79a329b2eef665e4eaf755664b560c27dac41e15e496",
+      "sha256": "d4e22359d91a393de62acf5449832e02ec315da7f31a8209ea19443798936015",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/maintenance-reviewed-vps-context-20261021",
-    "commit": "33c725deba0a92c64edea301ebcede05b908a014"
+    "branch": "fix/maintenance-renewal-expiry-day-boundary-20261021",
+    "commit": "24d4ae22565cecd8ce1a75281f65cfe8f8527a4c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
