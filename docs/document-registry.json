@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "60499e83bb6ce877e6f7e91885132a7a21c35af6a8e5d8ad61e9851b016fca66",
+      "sha256": "92043e4fc9bac43cdbc76cdd81cd35cbc3cdeb8aa09f578e3b0da190da62ae99",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2000,7 +2000,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "49a5edd281a8b3dba3e6259fbe45e8d74d650dd7c07ec1ee1c85704abd4b3854",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2212,10 +2212,10 @@
       "type": "reference"
     }
   ],
-  "generated_at": "2026-09-05T02:38:00Z",
+  "generated_at": "2026-10-21T23:54:52.551Z",
   "implementation_baseline": {
-    "branch": "feat/traffic-observed-insights-20261021",
-    "commit": "037264252f061e663ef66db0ff85fd58967ae142"
+    "branch": "feat/kingdom-watcher-observatory-20261021",
+    "commit": "8d18c1e5d3411491bc6065932d2170c81b13af07"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
