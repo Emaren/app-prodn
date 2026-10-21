@@ -45,7 +45,8 @@ export default function WarSatchelSpendAuthorization({
   useEffect(() => {
     let open = true;
     setAvailable(false); setSigned(false); setCanRevoke(false); setExpires(null); setDetail("");
-    if (!walletAddress || !Number.isSafeInteger(presetVersion) || presetVersion <= 0) return;
+    // Revocation uses the authenticated owner session, even after Keplr is
+    // disconnected or the current plan is removed. Issuance still needs both.
     void fetch("/api/user/war-satchel/auto-consent", {
       cache: "no-store", credentials: "same-origin",
     }).then(parse).then((data: Mandate) => {
@@ -59,7 +60,8 @@ export default function WarSatchelSpendAuthorization({
   }, [walletAddress, presetVersion]);
 
   const cap = /^\d+$/.test(dailyCap.trim()) ? Number(dailyCap.trim()) : NaN;
-  const valid = Number.isSafeInteger(cap) && cap >= plannedStakeWolo &&
+  const valid = Number.isSafeInteger(presetVersion) && presetVersion > 0 &&
+    Number.isSafeInteger(cap) && cap >= plannedStakeWolo &&
     cap <= 10000 && plannedStakeWolo > 0 && plannedStakeWolo <= 1000;
   const authorize = async () => {
     if (busy || signed || !available || !valid || !walletAddress) return;

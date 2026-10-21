@@ -72,11 +72,11 @@ test("unversioned, old, held and future epochs cannot replay into a released ori
   assert.throws(()=>current.verifyDurableSatchelAutoSpendMandate(revoked),/absent expired or revoked/);
 });
 
-async function routeHarness(options:{uid?:string|null;failWrite?:boolean;revocable?:boolean}={}) {
+async function routeHarness(options:{uid?:string|null;failWrite?:boolean;revocable?:boolean;walletAddress?:string|null}={}) {
   const calls:{kind:string;value?:unknown}[]=[];
   const tx={$executeRaw:async(parts:TemplateStringsArray,...values:unknown[])=>{calls.push({kind:"lock",value:[...parts,...values]});return 1;},
     satchelAutoSpendConsent:{updateMany:async(value:unknown)=>{calls.push({kind:"revoke",value});if(options.failWrite)throw Error("isolated write failure");return{count:2};}}};
-  const db={user:{findUnique:async()=>({id:7,uid:"epoch-owner",walletAddress:wallet,betAutoPreset:null})},
+  const db={user:{findUnique:async()=>({id:7,uid:"epoch-owner",walletAddress:options.walletAddress===undefined?wallet:options.walletAddress,betAutoPreset:null})},
     satchelAutoSpendConsent:{findFirst:async(value:unknown)=>{calls.push({kind:"read",value});return options.revocable===false?null:{id:"owned-consent"};}},
     $transaction:async(fn:(value:typeof tx)=>unknown)=>fn(tx)};
   const identity="__satchel_epoch_route_"+randomUUID().replaceAll("-","");
@@ -99,7 +99,7 @@ function request(origin="https://aoe2war.com",site="same-origin") {
 }
 
 test("actual consent route keeps owner revocation available while every new issuance gate is closed",async()=>{
-  const harness=await routeHarness();
+  const harness=await routeHarness({walletAddress:null});
   const previous=process.env.WAR_SATCHEL_AUTO_CONSENT_ENABLED;
   process.env.WAR_SATCHEL_AUTO_CONSENT_ENABLED="false";
   try{
@@ -115,6 +115,9 @@ test("actual consent route keeps owner revocation available while every new issu
     const component=readFileSync(new URL("../components/profile/WarSatchelSpendAuthorization.tsx",import.meta.url),"utf8");
     assert.match(component,/setCanRevoke\(data\.canRevoke === true\)/);
     assert.match(component,/if \(busy \|\| \(!canRevoke && !signed\)\) return;/);
+    const effect=component.slice(component.indexOf("useEffect(() =>"),component.indexOf("const cap ="));
+    assert.doesNotMatch(effect,/if \(!walletAddress|presetVersion <= 0\) return/,
+      "Keplr disconnection or removed plan cannot hide session-owned revocation");
   }finally{harness.dispose();if(previous===undefined)delete process.env.WAR_SATCHEL_AUTO_CONSENT_ENABLED;else process.env.WAR_SATCHEL_AUTO_CONSENT_ENABLED=previous;}
 });
 
