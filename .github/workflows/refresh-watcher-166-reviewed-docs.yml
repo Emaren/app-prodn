@@ -1,4 +1,6 @@
 name: Refresh Reviewed Watcher 1.6.6 DocsV2 Baseline
+# Reconciled Kingdom-main source; 104-document proposal reviewed in CI.
+# Activation remains restricted to this workflow-only commit on the draft branch.
 
 on:
   push:
