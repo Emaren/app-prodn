@@ -63,7 +63,7 @@ FORBIDDEN_PUBLIC_READ_EDGES = {
     "app/api/bets/route.ts": ("queueBetMarketEnsure(", "ensureBetMarkets("),
     "app/api/header-summary/route.ts": ("queueBetMarketEnsure(", "ensureBetMarkets("),
     "lib/warChest.ts": ("queueBetMarketEnsure(", "ensureBetMarkets("),
-)
+}
 
 EXTERNAL_OWNERS_NOT_AUTHENTICATED = (
     "HD web/API/cron and process-level timers",
