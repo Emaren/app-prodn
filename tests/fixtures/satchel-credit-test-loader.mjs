@@ -6,6 +6,18 @@ export async function load(url, context, nextLoad) {
   if (process.env.RUN_SATCHEL_REAL_CREDIT_TESTS !== '1') return result;
   let source = result.source?.toString();
   if (!source) return result;
+  if (process.env.RUN_SATCHEL_FULL_LIFECYCLE_TESTS === '1' && url.endsWith('/lib/warSatchelAutoSpendConsent.ts')) {
+    // A distinct signed test epoch, never a signature or authority bypass.
+    // Existing production/held-era owner mandates remain unusable.
+    const heldEpoch = 'aoe2war/satchel/mecha/v2/held-integration-1';
+    if (source.split(heldEpoch).length !== 2) throw Error('exact held test epoch missing');
+    source = source.replace(heldEpoch, 'aoe2war/satchel/mecha/v2/release/isolated-test-only');
+  }
+  if (process.env.RUN_SATCHEL_FULL_LIFECYCLE_TESTS === '1' && url.endsWith('/lib/bets.ts')) {
+    // Exercise the actual canonical settlement writer without invoking the
+    // broad production scheduler. This export exists only in this test loader.
+    source += '\nexport {settleResolvedMarketWagers as settleIsolatedLifecycleMarkets};\n';
+  }
   if (url.endsWith('/lib/warSatchelFinancialBridgeHold.ts')) {
     source = source.replace('SATCHEL_FINANCIAL_BRIDGE_READY = false as const', 'SATCHEL_FINANCIAL_BRIDGE_READY = true as const');
   }
