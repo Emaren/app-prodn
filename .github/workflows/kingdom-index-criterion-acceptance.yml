@@ -1,0 +1,49 @@
+name: Kingdom Index criterion submission boundary
+on:
+  pull_request:
+    paths:
+      - 'lib/kingdomIndexCriterionSubmission.mjs'
+      - 'lib/kingdomIndexCriterionNonceStore.mjs'
+      - 'lib/kingdomIndexCriterionArtifactVerifier.mjs'
+      - 'lib/kingdomIndexCriterionProofPolicy.mjs'
+      - 'lib/kingdomIndexPerformanceReceipt.mjs'
+      - 'lib/kingdomIndexBrowserReceipt.mjs'
+      - 'scripts/kingdom_index_browser_receipt_audit.mjs'
+      - 'scripts/kingdom_index_certification_preflight.py'
+      - 'tests/kingdom-index-criterion-submission.test.mts'
+      - 'tests/kingdom-index-criterion-nonce-store.test.mts'
+      - 'tests/kingdom-index-criterion-artifact-verifier.test.mts'
+      - 'tests/kingdom-index-performance-receipt.test.mts'
+      - 'tests/kingdom-index-browser-receipt.test.mts'
+      - 'tests/kingdom-index-browser-receipt-cli.test.mts'
+      - 'tests/test_kingdom_index_certification_preflight.py'
+      - 'config/kingdom-index-quality-rubric.json'
+      - 'config/kingdom-index-assurance-profiles.json'
+      - '.github/workflows/kingdom-index-criterion-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  adversarial-evidence-boundary:
+    name: Untrusted receipt, signature, rubric and replay refusal (fixtures only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exercise signed criterion evidence boundary
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts
+      - name: Exercise first-page 100-point qualification plan (not a certificate)
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_kingdom_index_certification_preflight.py'
+          python3 scripts/kingdom_index_certification_preflight.py --route /kingdom-index
+      - name: Confirm no public live score authority was activated
+        run: |
+          set -euo pipefail
+          ! grep -q 'kingdomIndexCriterionSubmission' lib/kingdomIndex.ts
+          grep -q 'return null;' lib/kingdomIndexAuditStatus.ts

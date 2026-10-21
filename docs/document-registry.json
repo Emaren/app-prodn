@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef9189abba5fd015ca1f9ed094cca37ee026b81e559fd3642ace04f14c151e65",
+      "sha256": "113caed603583ed8be2795cc6e7b9414a5cb56616e32dcb9699e2c107fb1715d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/renaissance-000-kingdom-index-estate-census-20261021",
-    "commit": "bd44400e6077d0264fe65ddeb1e6a01c0732d9bf"
+    "branch": "feature/renaissance-000-signed-criterion-ingest-20261021",
+    "commit": "ede14a0fd4332e792c309d62f69faedbc8c192cc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
