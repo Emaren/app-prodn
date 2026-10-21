@@ -222,6 +222,12 @@
     "sourceTree": "src-5dc93baf4a126903"
   },
   {
+    "href": "/kingdom-watcher",
+    "label": "Kingdom Watcher",
+    "district": "citadel",
+    "sourceTree": "src-142e825bfd029c7a"
+  },
+  {
     "href": "/leaderboard",
     "label": "HD Leaderboard",
     "district": "arena",
