@@ -14,7 +14,7 @@ function fixture(){
   return {sample:i,viewport:"desktop",loaded:true,harnessAttempt:1,documentStatus:200,
    documentFromDiskCache:false,documentFromServiceWorker:false,failedResources:[],
    metrics:{href:exp.url,readyMs:300+i*10,finalLcp:{startTime:700+i*20},
-    navigation:{responseStart:80+i*5,responseEnd:120+i*5}}};
+    navigation:{requestStart:60+i*5,responseStart:80+i*5,responseEnd:120+i*5}}};
  });
  return {schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:"2026-10-21T20:30:00.000Z",
   releaseSha:exp.releaseSha,buildVersion:exp.buildVersion,collectorSourceSha:exp.collectorSha,
@@ -28,6 +28,9 @@ test("SpeedOS exact Chrome cold receipts recompute LCP/TTFB and preserve origina
  const r=audit(fixture());
  assert.equal(r.samples,10);assert.equal(r.status,"SOURCE_BOUND_BROWSER_DIAGNOSTIC");
  assert.equal(r.lcpMs.p95,891);assert.equal(r.readyCoverage,10);
+ assert.equal(r.navigationResponseStartMs.p95,127.75);
+ assert.equal(r.networkTtfbMs.p95,20);
+ assert.notEqual(r.navigationResponseStartMs.p95,r.networkTtfbMs.p95);
  assert.equal(r.certified,false);assert.equal(r.current,false);assert.equal(r.score,null);
  assert.match(r.evidenceSha256,/^[a-f0-9]{64}$/);
 });
@@ -81,4 +84,21 @@ test("impossible LCP-before-TTFB and forged partial Ready percentiles refuse",()
  assert.equal(audit(r).readyCoverage,9);
  r.summary.readyMs.p95+=50;
  assert.throws(()=>audit(r),/Partial Ready percentile drift/);
+});
+
+test("legacy responseStart is not mislabeled as network TTFB",()=>{
+ const r=fixture();
+ // Same network duration across samples, but navigation overhead changes.
+ r.rows.forEach((row,i)=>{row.metrics.navigation.requestStart=10+i*2;});
+ const out=audit(r);
+ assert.equal(out.navigationResponseStartMs.p95,127.75);
+ assert.equal(out.networkTtfbMs.p95,100.65);
+});
+test("missing or later-than-response requestStart is rejected as non-measured TTFB",()=>{
+ let r=fixture();delete r.rows[0].metrics.navigation.requestStart;
+ assert.throws(()=>audit(r),/Missing or impossible/);
+ r=fixture();r.rows[0].metrics.navigation.requestStart=r.rows[0].metrics.navigation.responseStart;
+ assert.throws(()=>audit(r),/Missing or impossible/);
+ r=fixture();r.rows[0].metrics.navigation.requestStart=-1;
+ assert.throws(()=>audit(r),/Missing or impossible/);
 });

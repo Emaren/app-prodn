@@ -13,7 +13,7 @@ function makeReceipt(){
   sample:i+1,viewport:"desktop",loaded:true,documentStatus:200,harnessAttempt:1,
   documentFromDiskCache:false,documentFromServiceWorker:false,failedResources:[],
   metrics:{href:url,readyMs:300+i*10,finalLcp:{startTime:500+i*20},
-   navigation:{responseStart:50+i*2,responseEnd:80+i*2}}
+   navigation:{requestStart:30+i*2,responseStart:50+i*2,responseEnd:80+i*2}}
  }));
  return {schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:"2026-10-21T20:00:00.000Z",
   releaseSha:sha,buildVersion:"fixture",collectorSourceSha:collector,url,viewport:"desktop",samples:10,
