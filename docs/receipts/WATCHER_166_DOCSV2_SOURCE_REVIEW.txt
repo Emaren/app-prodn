@@ -1,0 +1,20 @@
+AOE2WAR / Watcher 1.6.6 — Documentation Source Review Receipt
+================================================================
+Draft PR: Emaren/app-prodn#722
+Reviewed DocsV2 proposal source: 097c014b296170fee83168eace7c0d07971ded11
+Review artifact: watcher-166-docs-v2-proposed-baseline
+GitHub Actions artifact ID: 12243732554
+Review workflow run ID: 39377807736
+Reviewed change: 94 -> 102 catalogued documents (+8 Watcher references/runbooks)
+Reviewed patch: documentation index and generated document registry only
+Reviewed implementation baseline: fix/watcher-166-telemetry-retry-receipts-20261019
+One-shot generator workflow source SHA: 2a157151c0df34de35ab477a2681d33c5cdeaf5d
+Generated DocsV2 commit: ea83e4ecc0ee472a896a55b88f83aa1cbd1fc72d
+Generator modified only:
+  docs/DOCUMENTATION_CONTROL_PLANE.md
+  docs/document-registry.json
+
+This file is a review/audit receipt and docs-only CI qualification trigger.
+It is not a generated registry entry or an operational release PASS.
+No change to database schema, replay uploading, Watcher client, finance,
+or protected release-controller permissions is authorized by this receipt.
