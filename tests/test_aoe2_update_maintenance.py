@@ -159,6 +159,75 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertTrue(rejected["blocked"])
                 self.assertEqual(len(rejected["unknown_p0"]), 2)
 
+    def test_renewed_vpssentry_context_map_and_app_doc_admit_exact_central_recovery(self):
+        # Real Oct 20 incident spans canonical VPSSentry context/ and app docs/.
+        expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        renewed = datetime.now(timezone.utc).date().isoformat()
+        paths = ("context/SYSTEM_MAP.md", "docs/KINGDOM_KNOWLEDGE_ROUTER.md")
+        detail = (
+            "- vpssentry:context/SYSTEM_MAP.md: documentation review expired on "
+            + expired
+            + " | - app-prodn:docs/KINGDOM_KNOWLEDGE_ROUTER.md: documentation review expired on "
+            + expired
+            + " | make: *** [generate] Error 1"
+        )
+        payload = renewed_review_incident()
+        for item in payload["findings"]:
+            if item["severity"] == "P0":
+                item["detail"] = detail
+
+        registry = {"documents": [
+            {"path": path, "reviewed_at": renewed, "review_interval_days": 14}
+            for path in paths
+        ]}
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            plan = self.plan(payload)
+        self.assertFalse(plan["blocked"])
+        self.assertEqual(len(plan["auto_remediable_p0"]), 2)
+        self.assertEqual(plan["unknown_p0"], [])
+        self.assertEqual(plan["external_hold"], {"proof": "exact"})
+
+        # An unrenewed source is *never* admitted merely because it uses the
+        # newly recognized VPSSentry path shape.
+        stale = {"documents": [
+            {"path": path, "reviewed_at": expired, "review_interval_days": 14}
+            for path in paths
+        ]}
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=stale):
+            held = self.plan(payload)
+        self.assertTrue(held["blocked"])
+        self.assertEqual(len(held["unknown_p0"]), 2)
+
+    def test_central_review_context_exception_is_exactly_scoped(self):
+        expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        registry = {"documents": [
+            {"path": path, "reviewed_at": datetime.now(timezone.utc).date().isoformat(),
+             "review_interval_days": 14}
+            for path in ("context/SYSTEM_MAP.md", "context/SERVER_STORAGE_MAP.md",
+                         "context/UNKNOWN.md")
+        ]}
+        good = (
+            "- vpssentry:context/SERVER_STORAGE_MAP.md: documentation review expired on "
+            + expired + " | make: *** [generate] Error 1"
+        )
+        cases = (
+            (good, True),
+            (good.replace("vpssentry:", "app-prodn:"), False),
+            (good.replace("SERVER_STORAGE_MAP.md", "UNKNOWN.md"), False),
+            (good.replace("context/", "context/../"), False),
+            (good.replace("documentation review expired", "signature invalid"), False),
+        )
+        for detail, expected in cases:
+            with self.subTest(detail=detail):
+                payload = renewed_review_incident()
+                for item in payload["findings"]:
+                    if item["severity"] == "P0":
+                        item["detail"] = detail
+                with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+                    plan = self.plan(payload)
+                self.assertEqual(plan["blocked"], not expected)
+                self.assertEqual(len(plan["auto_remediable_p0"]), 2 if expected else 0)
+
     def test_checker_summary_truncation_never_admits_stale_canonical_review(self):
         expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
         payload = renewed_review_incident()
