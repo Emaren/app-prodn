@@ -39,7 +39,7 @@ function setup(){
   // For tests only: no external I/O. Real production integration must inspect
   // external artifact bytes, verify digests and independently authenticated provenance.
   verifyArtifact:async()=>true,
-  consumeNonce:async(ns,nonce,digest)=>{
+  consumeNonce:async(ns,nonce)=>{
    // Replay namespace + nonce cannot be reused with a different payload digest.
    const key=ns+"|"+nonce;
    if(used.has(key))return false;used.add(key);return true;
@@ -97,7 +97,7 @@ test("unmeasured, overcredited, duplicated, and proof-reusing criteria refuse",a
  await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/Same proof bytes/);
 });
 test("specialized gate denial and missing authority refuse; failed gates never certify",async()=>{
- let {ctx,envelope}=setup();let p=payload();
+ let {ctx,envelope}=setup();const p=payload();
  p.gates.pop();
  await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/Incomplete route-specific gates/);
  ({ctx,envelope}=setup());
