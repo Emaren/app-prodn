@@ -1,4 +1,8 @@
 import { readFileSync } from "node:fs";
+import { mkdtemp, mkdir, rm, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createDurableCriterionNonceConsumer } from "../lib/kingdomIndexCriterionNonceStore.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign, createHash } from "node:crypto";
@@ -156,6 +160,26 @@ test("validated score and source snapshots are deeply immutable at their exposed
  const originalRoute=output.source.route;
  ctx.expected.route="/tampered-after-verification";
  assert.equal(output.source.route,originalRoute);
+});
+test("real persistent nonce store integrates with signed verification; proof rejection does not consume",async()=>{
+ const directory=await mkdtemp(join(tmpdir(),"aoe2war-criterion-integrated-"));
+ const store=join(directory,"ledger");
+ try {
+  await mkdir(store,{mode:0o700});
+  const {ctx,envelope}=setup();
+  ctx.consumeNonce=createDurableCriterionNonceConsumer(store);
+  const signed=envelope(payload());
+  await assert.rejects(inspectSignedCriterionSubmission(signed,{...ctx,verifyArtifact:async()=>false}),/External evidence/);
+  assert.deepEqual(await readdir(store),[]);
+  const first=await inspectSignedCriterionSubmission(signed,ctx);
+  assert.equal(first.certified,false);
+  assert.ok(first.score>0&&first.score<100);
+  const freshCallback=createDurableCriterionNonceConsumer(store);
+  await assert.rejects(inspectSignedCriterionSubmission(signed,{...ctx,consumeNonce:freshCallback}),/Repeated or non-durable nonce/);
+  const changed=payload();changed.criteria[0].earned=0;
+  await assert.rejects(inspectSignedCriterionSubmission(envelope(changed),{...ctx,consumeNonce:freshCallback}),/Repeated or non-durable nonce/);
+  assert.equal((await readdir(store)).length,1);
+ } finally {await rm(directory,{recursive:true,force:true});}
 });
 test("provisional receipt refuses a claimed 100 even when fixture proofs all return true",async()=>{
  const {ctx,envelope}=setup();const p=payload();
