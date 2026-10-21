@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-16",
+      "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "73ac821dd5a1f6662aff94a90fe3641e8fd0571e36bdbeabae8f0264870874ee",
+      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1513,9 +1513,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "648af026a9cbab7ac1cf72b20eb810e68008d814e16699bf5958f7353ac141eb",
+      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/traffic-stale-legacy-trailing-day-20261020",
-    "commit": "4908aae90ca84d13d3c5acbb0b0daffedccc3cb2"
+    "branch": "fix/20261021-satchel-mecha-release-risk-classification",
+    "commit": "6424898bde96b9395d30139a66588574c274ec9d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
