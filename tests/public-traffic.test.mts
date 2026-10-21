@@ -71,6 +71,9 @@ test("Traffic page preloads canonical data on the server without a client fetch 
   assert.doesNotMatch(page, /^"use client"/m);
   assert.doesNotMatch(page, /useEffect|fetch\("\/api\/traffic\/public/);
   assert.match(page, /await loadPublicTraffic\(\)/);
+  assert.match(page, /await loadTrafficBrowserInsights\(\)/);
+  assert.match(page, /<Suspense fallback=/);
+  assert.ok(page.indexOf("<ObservedTrafficSensors") > page.indexOf("<PremiumTimeSeriesChart"));
   assert.match(route, /await loadPublicTraffic\(\)/);
 });
 

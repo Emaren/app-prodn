@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, ArrowUpRight, Atom, Boxes, ChevronRight, CircleHelp,
   CircuitBoard, Cpu, Gauge, HardDrive,
@@ -13,7 +13,7 @@ import styles from "./KingdomInstruments.module.css";
 
 export type InstrumentKind = "sensors" | "tests" | "recovery" | "systems" | "replay" | "wolo";
 type Reading = Record<string, unknown>;
-type Feed = { payload: Reading | null; state: "loading" | "observed" | "unavailable"; fetchedAt: string | null };
+import { beginInstrumentReads, expirePendingInstrumentReads, hideInstrumentReads, type InstrumentFeeds } from "./instrumentFeedPolicy";
 const sources: Record<InstrumentKind, readonly string[]> = {
   sensors: ["/api/general-inspections", "/api/kingdom-intelligence"],
   tests: ["/api/general-inspections", "/api/kingdom-index"],
@@ -170,33 +170,82 @@ function ReplayCanvas({ replay }: {replay:Reading}) {
 }
 
 export default function KingdomInstruments({ kind }: { kind: InstrumentKind }) {
-  const [feeds,setFeeds] = useState<Record<string,Feed>>({});
+  const [feeds,setFeeds] = useState<InstrumentFeeds>({});
   const [refreshId,setRefreshId]=useState(0);
   const [now,setNow]=useState<string|null>(null);
-  const [visible,setVisible]=useState(true);
+  // Initial render is unmeasured until the browser confirms foreground visibility.
+  const [visible,setVisible]=useState(false);
+  const wasVisible=useRef(false);
+  const activeRead=useRef<AbortController|null>(null);
   const title=titles[kind];
+
   useEffect(()=>{
-    const handler=()=>setVisible(document.visibilityState==="visible");
-    handler();document.addEventListener("visibilitychange",handler);
+    const handler=()=>{
+      const nextVisible=document.visibilityState==="visible";
+      if(!nextVisible) {
+        // Abort synchronously so a rapid hide/resume cannot resurrect old results.
+        const previous=activeRead.current;
+        activeRead.current=null;
+        previous?.abort();
+        setFeeds(prev=>hideInstrumentReads(prev,sources[kind]));
+        setNow(null);
+      } else if(!wasVisible.current) {
+        // Force a new read even when React batches adjacent hide/resume states.
+        setRefreshId(value=>value+1);
+      }
+      wasVisible.current=nextVisible;
+      setVisible(nextVisible);
+    };
+    handler();
+    document.addEventListener("visibilitychange",handler);
     return()=>document.removeEventListener("visibilitychange",handler);
-  },[]);
+  },[kind]);
+
   useEffect(()=>{
     if(!visible)return;
-    const ctrl=new AbortController();
-    const timeout=window.setTimeout(()=>ctrl.abort(),10000);
     const urls=sources[kind];
+    const ctrl=new AbortController();
+    const pending=new Set(urls);
+    activeRead.current=ctrl;
+    setFeeds(prev=>beginInstrumentReads(prev,urls));
+    setNow(null);
+
+    const timeout=window.setTimeout(()=>{
+      if(activeRead.current!==ctrl)return;
+      // Abort and invalidate only readers not completed in this generation.
+      ctrl.abort();
+      activeRead.current=null;
+      setFeeds(prev=>expirePendingInstrumentReads(prev,pending));
+    },10000);
+
     void Promise.all(urls.map(async url=>{
       try {
         const r=await fetch(url,{cache:"no-store",signal:ctrl.signal,credentials:"same-origin"});
-        if(!r.ok) throw new Error("unavailable");
-        const payload: unknown=await r.json();
+        if(!r.ok)throw new Error("unavailable");
+        const payload:unknown=await r.json();
         if(!isRecord(payload))throw new Error("malformed");
-        if(!ctrl.signal.aborted) setFeeds(prev=>({...prev,[url]:{state:"observed",payload,fetchedAt:new Date().toISOString()}}));
+        if(activeRead.current===ctrl && !ctrl.signal.aborted) {
+          pending.delete(url);
+          setFeeds(prev=>({...prev,[url]:{state:"observed",payload,fetchedAt:new Date().toISOString()}}));
+        }
       }catch {
-        if(!ctrl.signal.aborted) setFeeds(prev=>({...prev,[url]:{state:"unavailable",payload:null,fetchedAt:null}}));
+        if(activeRead.current===ctrl && !ctrl.signal.aborted) {
+          pending.delete(url);
+          setFeeds(prev=>({...prev,[url]:{state:"unavailable",payload:null,fetchedAt:null}}));
+        }
       }
-    })).then(()=>{if(!ctrl.signal.aborted)setNow(new Date().toISOString())}).finally(()=>window.clearTimeout(timeout));
-    return()=>{ctrl.abort();window.clearTimeout(timeout)};
+    })).then(()=>{
+      if(activeRead.current===ctrl && !ctrl.signal.aborted)setNow(new Date().toISOString());
+    }).finally(()=>{
+      window.clearTimeout(timeout);
+      if(activeRead.current===ctrl)activeRead.current=null;
+    });
+
+    return()=>{
+      if(activeRead.current===ctrl)activeRead.current=null;
+      ctrl.abort();
+      window.clearTimeout(timeout);
+    };
   },[kind,refreshId,visible]);
   useEffect(()=>{if(!visible)return;const timer=window.setInterval(()=>setRefreshId(x=>x+1),90000);return()=>window.clearInterval(timer)},[visible]);
   const data=useCallback((url:string)=>rec(feeds[url]?.payload),[feeds]);

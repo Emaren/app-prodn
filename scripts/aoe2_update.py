@@ -939,12 +939,21 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
     today = datetime.now(timezone.utc).date()
     for item in items:
         match = re.fullmatch(
-            r"([a-z0-9_-]+):(docs/[A-Za-z0-9_./-]+): documentation review expired on (\d{4}-\d{2}-\d{2})",
+            r"([a-z0-9_-]+):((?:docs|context)/[A-Za-z0-9_./-]+): documentation review expired on (\d{4}-\d{2}-\d{2})",
             item,
         )
         if match is None:
             return False
         repo_id, path, expired_on = match.groups()
+        # The canonical VPSSentry registry also owns two context maps.
+        # Admit only those exact documents, not arbitrary context paths or
+        # another repository's context. All normal review/date/hash checks
+        # still apply before detached central federation can be regenerated.
+        if path.startswith("context/") and (
+            repo_id != "vpssentry"
+            or path not in {"context/SYSTEM_MAP.md", "context/SERVER_STORAGE_MAP.md"}
+        ):
+            return False
         repo = SOURCES.get(repo_id)
         if repo is None or ".." in Path(path).parts:
             return False
@@ -968,7 +977,12 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
             expired_date = date.fromisoformat(expired_on)
         except ValueError:
             return False
-        if reviewed_date <= expired_date or not (0 <= (today - reviewed_date).days < interval):
+        # A newly reviewed source can legitimately be reviewed *on* the old
+        # central copy's expiry date. That is still a renewed, current review:
+        # the old central entry expired before this federation was regenerated.
+        # Keep rejecting reviews earlier than expiry and reviews no longer live
+        # under their own positive review interval.
+        if reviewed_date < expired_date or not (0 <= (today - reviewed_date).days < interval):
             return False
     return True
 

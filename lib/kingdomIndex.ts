@@ -6,6 +6,7 @@ import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
+import companionCatalog from "@/config/kingdom-index-companions.json";
 import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
 import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
 
@@ -43,10 +44,23 @@ export type KingdomIndexEntry = {
   notes: string | null;
   specializedAssurance: { profile: string; gates: { id: string; requirement: string; status: "unverified" }[] };
 };
+export type KingdomCompanion = {
+  id: string;
+  label: string;
+  version: string;
+  sourceSha: string;
+  sourceAuthority: "published-release-source";
+  repositoryUrl: string;
+  downloadHref: string;
+  status: "unmeasured";
+  score: null;
+  gates: { id: string; dimension: string; requirement: string; status: "unverified" }[];
+};
 export type KingdomIndexSnapshot = {
   schema: 1;
   generatedAt: string;
   pages: KingdomIndexEntry[];
+  companions: KingdomCompanion[];
   observed: number;
   certified: number;
   drifted: number;
@@ -173,6 +187,15 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
   });
   return {
     schema:1,generatedAt:new Date(now).toISOString(),pages,
+    // Desktop companions are not web routes: a Git release SHA is source
+    // provenance, NOT an installed binary, field benchmark, or certified score.
+    companions: companionCatalog.companions.map(companion=>({
+      id:companion.id,label:companion.label,version:companion.version,
+      sourceSha:companion.releaseSourceSha,sourceAuthority:"published-release-source" as const,
+      repositoryUrl:companion.repositoryUrl,downloadHref:companion.downloadHref,
+      status:"unmeasured" as const,score:null,
+      gates:companion.gates.map(gate=>({...gate,status:"unverified" as const})),
+    })),
     observed:pages.filter(p=>p.kind!==null).length,
     certified:pages.filter(p=>p.status==="current"&&p.kind==="certified").length,
     drifted:pages.filter(p=>p.status==="drifted"||p.status==="stale").length,
