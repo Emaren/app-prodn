@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { readBoundedWatcherJson } from "@/lib/watcherBoundedJson";
+import { toWatcherEventArray, type RawWatcherEvent } from "@/lib/watcherTelemetryBatch";
 import {
   reconcileAutomaticWatcherTerminalResults,
 } from "@/lib/replayResultAdjudications";
@@ -35,17 +37,6 @@ const TERMINAL_RECONCILE_EVENT_TYPES =
     "monitor_stop",
   ]);
 
-type RawWatcherEvent = Record<string, unknown>;
-
-function toEventArray(payload: unknown): RawWatcherEvent[] {
-  if (payload && typeof payload === "object" && Array.isArray((payload as { events?: unknown }).events)) {
-    return (payload as { events: unknown[] }).events.filter(
-      (entry): entry is RawWatcherEvent => Boolean(entry && typeof entry === "object")
-    );
-  }
-  return payload && typeof payload === "object" ? [payload as RawWatcherEvent] : [];
-}
-
 function normalizeEvent(raw: RawWatcherEvent): WatcherClientEventInput {
   const eventType = raw.eventType || raw.event_type;
   if (!isWatcherClientEventType(eventType)) {
@@ -73,8 +64,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, detail: "Watcher telemetry payload too large." }, { status: 413 });
   }
 
-  const payload = await request.json().catch(() => null);
-  const rawEvents = toEventArray(payload);
+  const read = await readBoundedWatcherJson(request, MAX_BODY_BYTES);
+  if (read.kind === "too_large") {
+    return NextResponse.json({ ok: false, detail: "Watcher telemetry payload too large." }, { status: 413 });
+  }
+  const payload = read.kind === "ok" ? read.payload : null;
+  let rawEvents: RawWatcherEvent[];
+  try {
+    rawEvents = toWatcherEventArray(payload);
+  } catch {
+    return NextResponse.json(
+      { ok: false, detail: "Invalid watcher batch entry." },
+      { status: 400 },
+    );
+  }
   if (rawEvents.length === 0) {
     return NextResponse.json({ ok: false, detail: "No watcher events supplied." }, { status: 400 });
   }
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest) {
   const acceptedAdmissions = admissions.filter(
     (admission) => admission.accepted
   );
-  const suppressed = admissions.length - acceptedAdmissions.length;
+  let suppressed = admissions.length - acceptedAdmissions.length;
 
   if (acceptedAdmissions.length > 0) {
     try {
@@ -131,7 +134,12 @@ export async function POST(request: NextRequest) {
   for (const [index, result] of writeResults.entries()) {
     const admission = acceptedAdmissions[index];
     if (result.status === "fulfilled") {
-      storedEvents.push(admission.event);
+      watcherTelemetryCoalescer.recordWriteSuccess(admission);
+      if (result.value.duplicate) {
+        suppressed += 1;
+      } else {
+        storedEvents.push(admission.event);
+      }
       continue;
     }
 
@@ -241,12 +249,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Watcher sends one event per request and uses a durable retry queue.
+  // A failed single-event write is NOT a successful HTTP acknowledgment.
+  // Keep older batch response status behavior unchanged until an explicit
+  // per-index batch receipt and idempotent persistence protocol is released.
   return NextResponse.json({
-    ok: true,
+    ok: failed === 0,
     stored: storedEvents.length,
     suppressed,
     failed,
     linked: identity.resolved,
     userUid: identity.userUid,
-  });
+  }, { status: failed > 0 && events.length === 1 ? 503 : 200 });
 }
