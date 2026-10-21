@@ -47,7 +47,7 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
             baseline = MODULE.inspect(root)
             self.assertTrue(baseline["known_source_edges_intact"])
             victim = root / "app" / "api" / "live-games" / "route.ts"
-            victim.write_text("export async function GET() { return null; }\n")
+            victim.write_text("export async function POST() { return null; }\n")
             changed = MODULE.inspect(root)
             self.assertFalse(changed["known_source_edges_intact"])
             self.assertTrue(any(x["status"] == "SOURCE_DRIFT" for x in changed["observations"]))
