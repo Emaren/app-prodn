@@ -34,7 +34,7 @@ function setup(){
  const publicPem=keys.publicKey.export({format:"pem",type:"spki"}).toString();
  const used=new Set();
  const ctx={
-  trustedKeys:new Map([["fixture-key",{pem:publicPem,actor:"fixture-reviewer-NOT-PRODUCTION",routes:["/kingdom-index"]}]]),expected:source,
+  trustedKeys:new Map([["fixture-key",{pem:publicPem,actor:"fixture-reviewer-NOT-PRODUCTION",routes:["/kingdom-index"]}]]),expected:{...source},
   rubric,profile:gateProfile,nowMs:now,
   // For tests only: no external I/O. Real production integration must inspect
   // external artifact bytes, verify digests and independently authenticated provenance.
