@@ -43,6 +43,10 @@ test("missing public country, path and dwell aggregates remain unavailable rathe
   assert.match(component, /TOP FIVE PAGES/);
   assert.match(component, /OBSERVED TIME ON SITE/);
   assert.match(component, /NOT CERTIFIED/);
+  assert.match(component, /BROWSER OBSERVED/);
+  assert.match(component, /excluded at zero seconds/);
+  assert.match(read("lib/publicTrafficInsights.ts"), /positiveDurationSessions/);
+  assert.match(read("lib/publicTrafficInsights.ts"), /"OBSERVED_ONLY"/);
   assert.match(component, /Not yet verified/);
   assert.match(component, /21_618_093/);
   assert.match(component, /756_819/);
@@ -66,5 +70,7 @@ test("Traffic instrumentation defaults open and uses only the canonical server-l
   assert.match(component, /points\.slice\(-30\)/);
   assert.match(component, /lastPublishedDay/);
   assert.match(component, /lagDays/);
-  assert.match(page, /await loadPublicTraffic\(\)/);
+  assert.match(page, /loadPublicTraffic\(\),/);
+  assert.match(page, /loadTrafficBrowserInsights\(\),/);
+  assert.match(page, /Promise\.allSettled/);
 });
