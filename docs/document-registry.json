@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d4e22359d91a393de62acf5449832e02ec315da7f31a8209ea19443798936015",
+      "sha256": "af35780920865f09a7b05b5360717589a9b9176e25f9cfb96dcac479d97e8039",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1947,6 +1947,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "watcher-desktop-companion-assurance",
+      "id": "aoe2war.app-prodn.docs-watcher-kingdom-index-companion",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_KINGDOM_INDEX_COMPANION.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-20",
+      "sensitivity": "internal",
+      "sha256": "66b99b7a2f6eb6205a9a8363fa5c224ce595e9492c4561857873c047a924dbba",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "stream-ingest-contract",
       "id": "aoe2war.app-prodn.docs-watcher-native-stream-handoff",
       "owner": "aoe2war-web",
@@ -2191,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/maintenance-renewal-expiry-day-boundary-20261021",
-    "commit": "24d4ae22565cecd8ce1a75281f65cfe8f8527a4c"
+    "branch": "integration/renaissance-forward-main-20261021",
+    "commit": "54f0a91a9b5f0c4ac9f52abf3708ddff4df14719"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
