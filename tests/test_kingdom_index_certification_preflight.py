@@ -71,6 +71,22 @@ class FirstPagePreflightContract(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing registered"):
             self.report()
 
+    def test_committed_localization_data_changes_route_dependency_closure(self):
+        # @/messages is a real tsconfig alias subtree outside historical
+        # module roots; a translation change must invalidate page source proof.
+        messages = self.root / "messages"
+        messages.mkdir()
+        locale = messages / "en.json"
+        locale.write_text('{"title":"old"}')
+        entry = self.root / "app/kingdom-index/page.tsx"
+        entry.write_text('import strings from "@/messages/en.json";\\n'
+                         'export default function Page(){ return strings.title; }')
+        report = self.report()["lexical_source"]
+        self.assertEqual(report["unresolved_local_imports"], [])
+        previous = report["closure"]
+        locale.write_text('{"title":"new"}')
+        self.assertNotEqual(previous, self.report()["lexical_source"]["closure"])
+
     def test_dependency_fingerprint_and_missing_source_refusal(self):
         a = self.report()["lexical_source"]["closure"]
         file = self.root / "app/kingdom-index/page.tsx"

@@ -22,7 +22,7 @@ import aoe2_module_graph as modules
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_SUFFIXES = frozenset({".css", ".scss", ".json", ".svg", ".png", ".jpg", ".jpeg", ".webp"})
-EXTRA_ROOTS = ("config", "public")
+EXTRA_ROOTS = ("config", "public", "messages")
 # These repository-wide inputs affect all routes regardless of direct imports.
 # This is source evidence, not an emitted-bundle or deployment attestation.
 GLOBAL_INPUTS = (
