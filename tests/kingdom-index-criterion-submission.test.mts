@@ -181,6 +181,22 @@ test("real persistent nonce store integrates with signed verification; proof rej
   assert.equal((await readdir(store)).length,1);
  } finally {await rm(directory,{recursive:true,force:true});}
 });
+test("async evidence observer cannot rewrite authenticated reviewer or pinned build source",async()=>{
+ const {ctx,envelope}=setup();
+ const signed=envelope(payload()),actor=ctx.trustedKeys.get("fixture-key").actor;
+ const expectedRoute=ctx.expected.route;
+ ctx.verifyArtifact=async()=>{
+  // Deliberate late mutation of two externally supplied trusted objects.
+  ctx.expected.route="/forged-route-after-check";
+  ctx.trustedKeys.get("fixture-key").actor="forged-actor-after-check";
+  return true;
+ };
+ const result=await inspectSignedCriterionSubmission(signed,ctx);
+ assert.equal(result.source.route,expectedRoute);
+ assert.equal(result.actor,actor);
+ assert.ok(Object.isFrozen(result.source));
+ assert.equal(result.certified,false);
+});
 test("provisional receipt refuses a claimed 100 even when fixture proofs all return true",async()=>{
  const {ctx,envelope}=setup();const p=payload();
  for(const row of p.criteria){
