@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-000-signed-criterion-ingest-20261021` at `cf62611761b48f62c0347e22d75c6d35f91a8eaa`
+Implementation baseline: `feature/renaissance-000-signed-criterion-ingest-20261021` at `d675b7987f0ce58d18e1a6b8d0ec242f54f8f874`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
