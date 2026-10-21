@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/website-release-stage-only-20261021` at `b2cc40e9e1fc1a6e08dc83b5fb9cc5d2cd70cb87`
+Implementation baseline: `feature/renaissance-campaign-gateway-20261021` at `0c5142d73070c837264a21d26f1c53d824033d73`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

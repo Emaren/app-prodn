@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f7a4041ce17934c7a9921db173475edc7e2164dae3066da27681c5fc83571587",
+      "sha256": "080b81982dab95e7e395c151b83fe006902764a66af0547f09a5c349f44e0f4f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1583,7 +1583,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "67c7413c75c4e6fe48830e50462f9c0229725982d0cd8c4a490271947a0e0740",
+      "sha256": "dc5e02c5d735c7ecbe5963eb64a5276b0cdf80ba524ed9de50c38b4f63f31487",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/website-release-stage-only-20261021",
-    "commit": "b2cc40e9e1fc1a6e08dc83b5fb9cc5d2cd70cb87"
+    "branch": "feature/renaissance-campaign-gateway-20261021",
+    "commit": "0c5142d73070c837264a21d26f1c53d824033d73"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
