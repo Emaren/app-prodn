@@ -73,7 +73,7 @@ jobs:
             .review-evidence/generated-sha256.txt
             .review-evidence/source.txt
   isolated-instruments-browser:
-    if: github.event_name == 'pull_request' && github.head_ref == 'integration/renaissance-phase1-unified-20261020'
+    if: github.event_name == 'pull_request' && (github.head_ref == 'integration/renaissance-phase1-unified-20261020' || github.head_ref == 'integration/renaissance-forward-main-20261021')
     name: Chromium — six Kingdom instrument pages, isolated exact source
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -152,7 +152,7 @@ jobs:
           if-no-files-found: warn
           path: /tmp/renaissance-instruments-browser-evidence
   isolated-browser:
-    if: github.event_name == 'pull_request' && github.head_ref == 'integration/renaissance-phase1-unified-20261020'
+    if: github.event_name == 'pull_request' && (github.head_ref == 'integration/renaissance-phase1-unified-20261020' || github.head_ref == 'integration/renaissance-forward-main-20261021')
     name: Chromium — exact candidate, no production data or operator mutations
     runs-on: ubuntu-24.04
     timeout-minutes: 35
