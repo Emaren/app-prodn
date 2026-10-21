@@ -25,7 +25,7 @@ test("one Renaissance Campaign doorway in both castle and account menus",()=>{
  const account=readFileSync(new URL("../components/HeaderMenu.tsx",import.meta.url),"utf8");
  for(const [name,source,start,end] of [
   ["castle",shell,"const KINGDOM_LINKS = [","function KingdomNavItem("],
-  ["account",account,"const menuEntries = useMemo<MenuEntry[]>(()","const visibleEntries ="],
+  ["account",account,"const menuEntries = useMemo<MenuEntry[]>(","const visibleEntries ="],
  ] as const){
   const startAt=source.indexOf(start);
   assert.ok(startAt>=0,name+" menu start");
