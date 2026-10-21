@@ -55,13 +55,13 @@ const visitorExhibits = [
   },
   {
     title: "OBSERVED TIME ON SITE",
-    subtitle: "Visible, measured engagement",
-    label: "Engaged time",
+    subtitle: "Mean observed browser-visible time",
+    label: "Nonzero visible time",
     Icon: Clock3,
     color: "text-emerald-300",
     border: "border-emerald-300/20",
     background: "from-emerald-400/[0.11]",
-    why: "Average sum of maximum visible time per page view, by session. Zero-second sessions excluded.",
+    why: "Average cumulative visible-tab time across observed sessions. Zero-second sessions excluded; tab visibility does not prove active attention.",
   },
 ] as const;
 
@@ -141,7 +141,7 @@ function VisitorInsightCard({
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-slate-500">{label}</span>
           <span className={"rounded-md border px-2 py-1 font-mono text-[9px] tracking-wider " +
             (insights ? "border-sky-300/20 bg-sky-300/[0.055] text-sky-200" : "border-amber-300/20 bg-amber-300/[0.055] text-amber-200")}>
-            {insights ? "BROWSER OBSERVED" : "NOT CERTIFIED"}
+            {insights ? (hasData ? "BROWSER OBSERVED" : "NO QUALIFYING DATA") : "NOT CERTIFIED"}
           </span>
         </div>
         {hasData && time ? (
