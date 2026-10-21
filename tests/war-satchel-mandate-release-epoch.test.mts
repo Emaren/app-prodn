@@ -91,8 +91,8 @@ async function routeHarness(options:{uid?:string|null;failWrite?:boolean;revocab
     .replace(/import \{ Prisma \} from "@\/lib\/generated\/prisma";/,"")
     .replace(/import \{([A-Za-z0-9_,\s]+)\} from "@\/lib\/warSatchelAutoSpendConsent";/,(_match,names:string)=>`const {${names}}=${holder}.consent;`)
     .replace(/from "@\/lib\/([^\"]+)"/g,(_match,name:string)=>`from ${JSON.stringify(new URL("../lib/"+name+".ts",import.meta.url).href)}`);
-  const module=await import("data:text/javascript;base64,"+Buffer.from(source).toString("base64"));
-  return {module,calls,dispose:()=>{delete globals[identity];}};
+  const handlers=await import("data:text/javascript;base64,"+Buffer.from(source).toString("base64"));
+  return {module:handlers,calls,dispose:()=>{delete globals[identity];}};
 }
 function request(origin="https://aoe2war.com",site="same-origin") {
   return {headers:new Headers({origin,"sec-fetch-site":site})};
