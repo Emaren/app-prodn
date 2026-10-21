@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/traffic-sensors-observatory-20261021` at `cd7c8b533d7bcd51e1de0870b5a35f9fb3329eac`
+Implementation baseline: `feature/renaissance-000-kingdom-index-estate-census-20261021` at `bd44400e6077d0264fe65ddeb1e6a01c0732d9bf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
