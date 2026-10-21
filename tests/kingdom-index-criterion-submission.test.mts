@@ -34,7 +34,7 @@ function setup(){
  const publicPem=keys.publicKey.export({format:"pem",type:"spki"}).toString();
  const used=new Set();
  const ctx={
-  trustedKeys:new Map([["fixture-key",publicPem]]),expected:source,
+  trustedKeys:new Map([["fixture-key",{pem:publicPem,actor:"fixture-reviewer-NOT-PRODUCTION",routes:["/kingdom-index"]}]]),expected:source,
   rubric,profile:gateProfile,nowMs:now,
   // For tests only: no external I/O. Real production integration must inspect
   // external artifact bytes, verify digests and independently authenticated provenance.
@@ -72,7 +72,7 @@ test("tamper, forged key, noncanonical signed JSON and schema substitution refus
  const keys=generateKeyPairSync("ed25519");
  const bad={...original,payloadBase64:Buffer.from(text).toString("base64"),
   signatureBase64:sign(null,Buffer.from(text),keys.privateKey).toString("base64"),keyId:"alternative"};
- const alt={...ctx,trustedKeys:new Map([["alternative",keys.publicKey.export({format:"pem",type:"spki"}).toString()]])};
+ const alt={...ctx,trustedKeys:new Map([["alternative",{pem:keys.publicKey.export({format:"pem",type:"spki"}).toString(),actor:"fixture-reviewer-NOT-PRODUCTION",routes:["/kingdom-index"]}]])};
  await assert.rejects(inspectSignedCriterionSubmission(bad,alt),/Ambiguous signed JSON/);
 });
 test("candidate SHA/build substitution and untrusted proof source refuse",async()=>{
@@ -121,6 +121,41 @@ test("future, expired, key substitution, replayed receipt and nonce store outage
  await assert.rejects(inspectSignedCriterionSubmission(envelope(altered),ctx),/Repeated or non-durable/);
  ({ctx,envelope}=setup());
  await assert.rejects(inspectSignedCriterionSubmission(envelope(payload()),{...ctx,consumeNonce:async()=>{throw Error("outage")}}),/Repeated or non-durable/);
+});
+
+test("enrolled actor identity cannot be self-declared by a valid signature",async()=>{
+ const {ctx,envelope}=setup();
+ const forged=payload();forged.actor="impersonated-independent-reviewer";
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(forged),ctx),/Signed actor does not match enrolled signer/);
+});
+test("a signer can attest only to independently assigned exact routes",async()=>{
+ const {ctx,envelope}=setup();
+ ctx.trustedKeys.set("fixture-key",{...ctx.trustedKeys.get("fixture-key"),routes:["/leaderboard"]});
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(payload()),ctx),/Signer not authorized for this route/);
+ ctx.trustedKeys.set("fixture-key",{...ctx.trustedKeys.get("fixture-key"),routes:["/kingdom-index","/kingdom-index"]});
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(payload()),ctx),/Invalid trusted signer enrollment/);
+});
+test("two key IDs for the same enrolled public key cannot replay the same nonce",async()=>{
+ const {ctx,envelope}=setup();
+ ctx.trustedKeys.set("aliased-enrollment",ctx.trustedKeys.get("fixture-key"));
+ const signed=envelope(payload());
+ await inspectSignedCriterionSubmission(signed,ctx);
+ await assert.rejects(
+  inspectSignedCriterionSubmission({...signed,keyId:"aliased-enrollment"},ctx),
+  /Repeated or non-durable nonce/
+ );
+});
+test("validated score and source snapshots are deeply immutable at their exposed boundary",async()=>{
+ const {ctx,envelope}=setup();
+ const output=await inspectSignedCriterionSubmission(envelope(payload()),ctx);
+ assert.ok(Object.isFrozen(output));
+ assert.ok(Object.isFrozen(output.source));
+ assert.ok(Object.isFrozen(output.dimensions));
+ assert.ok(Object.isFrozen(output.gateResults));
+ assert.ok(output.gateResults.every(Object.isFrozen));
+ const originalRoute=output.source.route;
+ ctx.expected.route="/tampered-after-verification";
+ assert.equal(output.source.route,originalRoute);
 });
 test("provisional receipt refuses a claimed 100 even when fixture proofs all return true",async()=>{
  const {ctx,envelope}=setup();const p=payload();
