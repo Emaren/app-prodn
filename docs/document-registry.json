@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c4ed2f9a82f8a85e5b71884bc05c406005cfa032cb9e62e0d945d522e4ed178",
+      "sha256": "ef0e2429449c82aee152a6f4ee80db283fa47077cb41d852efcc0eab82b74e0b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1515,7 +1515,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
+      "sha256": "c06d6874b21b0c51b9eb57d2f75f63bec704e4780ae6190fe70e19b3bd0034a1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/renaissance-campaign-unused-shield-20261021",
-    "commit": "ac796c6091c7d1b92c3cfe7e5eb56a6c301d1ab3"
+    "branch": "fix/public-read-financial-wakeup-boundary-20261021",
+    "commit": "f432d1404d5d4fc089f44a2ae5899e126c289b10"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
