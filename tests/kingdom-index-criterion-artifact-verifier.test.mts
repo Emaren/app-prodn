@@ -20,7 +20,7 @@ const setup=()=>{
  const pem=keys.publicKey.export({format:"pem",type:"spki"}).toString();
  const target={criterionId:"safe_extension",earned:1};
  const manifest=p=>({schema:ARTIFACT_MANIFEST_SCHEMA,issuedAt,expiresAt,source:{...source},
-  proofs:[{proof:p,target:{...target}}]});
+  proofs:[{proof:p,target:{criterionId:"safe_extension",earned:1}}]});
  const signManifest=obj=>{
   const body=Buffer.from(JSON.stringify(obj));
   return {schema:ARTIFACT_MANIFEST_SCHEMA,manifestBase64:body.toString("base64"),
@@ -44,9 +44,9 @@ test("separately signed operator manifest plus byte-for-byte private artifact ca
   const verifier=createApprovedCriterionArtifactVerifier({root,operatorPublicKeyPem:pem,
    envelope:signManifest(manifest(p)),nowMs});
   assert.equal(await verifier(p,{source:{...source}},{criterionId:"safe_extension",earned:1}),true);
-  assert.equal(await verifier({...p,kind:"production"},{source},{...target}),false);
-  assert.equal(await verifier(p,{source:{...source,gitSha:"d".repeat(40)}},{...target}),false);
-  assert.equal(await verifier({...p,url:"https://github.com/Emaren/app-prodn/issues/1"},{source},{...target}),false);
+  assert.equal(await verifier({...p,kind:"production"},{source},{criterionId:"safe_extension",earned:1}),false);
+  assert.equal(await verifier(p,{source:{...source,gitSha:"d".repeat(40)}},{criterionId:"safe_extension",earned:1}),false);
+  assert.equal(await verifier({...p,url:"https://github.com/Emaren/app-prodn/issues/1"},{source},{criterionId:"safe_extension",earned:1}),false);
   assert.equal(await verifier(p,{source},{criterionId:"safe_extension",earned:2}),false);
   assert.equal(await verifier(p,{source},{criterionId:"business_invariants",earned:1}),false);
   assert.equal(await verifier(p,{source},{gateId:"safe_extension",result:"pass"}),false);
@@ -107,7 +107,7 @@ test("v1 operator manifests and malformed score/gate target approvals refuse",()
  const old=manifest(p);old.schema="aoe2war.kingdom-index.operator-approved-proofs.v1";
  assert.throws(()=>createApprovedCriterionArtifactVerifier({
   root:"/nonexistent",operatorPublicKeyPem:pem,envelope:signManifest(old),nowMs
- }),/schema mismatch/i);
+ }),/Invalid operator manifest metadata/);
  let bad=manifest(p);bad.proofs[0].target={criterionId:"safe_extension"};
  assert.throws(()=>createApprovedCriterionArtifactVerifier({
   root:"/nonexistent",operatorPublicKeyPem:pem,envelope:signManifest(bad),nowMs
