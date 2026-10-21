@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Activity, ArrowDownRight, ArrowUpRight, BrainCircuit, CheckCircle2,
-  ChevronRight, CircleHelp, Cpu, Download, Eye, Gauge, GitBranch,
-  HardDrive, Monitor, Radio, RefreshCw, ScanLine, ShieldCheck,
-  Signal, Sparkles, Swords, Waves, Zap,
+  Activity, ArrowUpRight, BrainCircuit,
+  ChevronRight, CircleHelp, Download, Eye, Gauge, GitBranch,
+  Radio, RefreshCw, ScanLine, ShieldCheck,
+  Signal, Sparkles, Waves,
 } from "lucide-react";
 import type { WatcherPublicSnapshot, WatcherSignalState } from "@/lib/kingdomWatcherPublic";
 import styles from "./KingdomWatcher.module.css";
@@ -210,7 +210,7 @@ export default function KingdomWatcherClient({ initial }: { initial: WatcherPubl
         <div className={styles.versionGrid}>
           <div className={styles.versionCard}><div className={styles.versionTitle}>PREVIOUS RELEASE <span>HISTORICAL</span></div><strong>{snapshot.release.previous}</strong><div className={styles.versionBar}><i style={{width:"100%",background:"#617b8e"}}/></div><p>Historical published generation</p><div className={styles.versionSpecs}><div><span>MEASURED CODE SCORE</span><b>—</b></div><div><span>CPU / RAM BASELINE</span><b>—</b></div><div><span>VERIFIED PACKAGE SIZE</span><b>—</b></div></div><small>No unsupported historical metrics invented.</small></div>
           <div className={styles.versionCardCurrent}><div className={styles.versionTitle}>CURRENT LIVE RELEASE <span>PRODUCTION</span></div><strong>{snapshot.release.current}</strong><div className={styles.versionBar}><i style={{width:"100%",background:"#62eadc"}}/></div><p>{snapshot.release.releasedOn} · {snapshot.release.formats} packages · {snapshot.release.platforms} platforms</p><div className={styles.versionSpecs}><div><span>MEASURED CODE SCORE</span><b>—</b></div><div><span>CPU / RAM BASELINE</span><b>—</b></div><div><span>VERIFIED PACKAGE SIZE</span><b>—</b></div></div><small>Live release source: application download registry.</small></div>
-          <div className={styles.versionCardNext}><div className={styles.versionTitle}>NEXT GENERATION <span>UNDER CONSTRUCTION</span></div><strong>{snapshot.build.version}</strong><div className={styles.versionBar}><i style={{width:"100%",background:"#b98dff"}}/></div><p>Unmerged development source · not shipped to users</p><div className={styles.versionSpecs}><div><span>NODE CONTRACTS</span><b>{format(snapshot.build.nodeTests)}</b></div><div><span>CI JOBS GREEN</span><b>{snapshot.build.nativeJobs}/4</b></div><div><span>PHYSICAL BENCHMARK</span><b>—</b></div></div><a href={snapshot.build.checkedEvidence} target="_blank" rel="noopener noreferrer">VIEW TEST RECEIPT <ArrowUpRight size={13}/></a></div>
+          <div className={styles.versionCardNext}><div className={styles.versionTitle}>NEXT GENERATION <span>UNDER CONSTRUCTION</span></div><strong>{snapshot.build.version}</strong><div className={styles.versionBar}><i style={{width:"100%",background:"#b98dff"}}/></div><p>Unmerged development source · not shipped to users</p><div className={styles.versionSpecs}><div><span>NODE CONTRACTS</span><b>{format(snapshot.build.nodeTests)}</b></div><div><span>CI JOBS GREEN</span><b>{snapshot.build.nativeJobs === null ? "—" : snapshot.build.nativeJobs + "/4"}</b></div><div><span>PHYSICAL BENCHMARK</span><b>—</b></div></div>{snapshot.build.checkedEvidence ? <a href={snapshot.build.checkedEvidence} target="_blank" rel="noopener noreferrer">VIEW TEST RECEIPT <ArrowUpRight size={13}/></a> : <small>Fresh exact-head CI evidence pending</small>}</div>
         </div>
         <div className={styles.comparisonCaveat}><CircleHelp size={16}/> PASSING SOURCE TESTS IS NOT A 100/100 SCORE. EXACT-SOURCE HARDWARE PERFORMANCE, REPLAY FINALITY, SIGNED MAC UPDATE/ROLLBACK AND PROTECTED DEPLOYMENT ARE STILL OPEN.</div>
       </section>
