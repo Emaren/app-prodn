@@ -70,7 +70,9 @@ test("Traffic page preloads canonical data on the server without a client fetch 
 
   assert.doesNotMatch(page, /^"use client"/m);
   assert.doesNotMatch(page, /useEffect|fetch\("\/api\/traffic\/public/);
-  assert.match(page, /await loadPublicTraffic\(\)/);
+  assert.match(page, /Promise\.allSettled/);
+  assert.match(page, /loadPublicTraffic\(\),/);
+  assert.match(page, /loadTrafficBrowserInsights\(\),/);
   assert.match(route, /await loadPublicTraffic\(\)/);
 });
 
