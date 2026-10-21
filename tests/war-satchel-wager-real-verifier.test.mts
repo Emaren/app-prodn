@@ -40,8 +40,10 @@ test("real SDK wager authenticates through the pinned offline financial verifier
   const withdrawalKeyHex = generateKeyPairSync("ed25519").publicKey
     .export({format: "der", type: "spki"}).subarray(-32).toString("hex");
   assert.notEqual(withdrawalKeyHex,publicKeyHex);
-  writeFileSync(authority, JSON.stringify({trust_anchor: fixture.anchor, vault: intent.Sender,
-    betting_escrow: intent.Vault, approval_public_key_hex: publicKeyHex}), {mode: 0o600});
+  const nativeAuthority={trust_anchor: fixture.anchor, vault: intent.Sender,
+    betting_escrow: intent.Vault, approval_public_key_hex: withdrawalKeyHex,
+    wager_approval_public_key_hex: publicKeyHex};
+  writeFileSync(authority, JSON.stringify(nativeAuthority), {mode: 0o600});
   writeFileSync(wagerRole,JSON.stringify({wager_approval_public_key_hex:publicKeyHex}),{mode:0o600});
   writeFileSync(withdrawalRole,JSON.stringify({approval_public_key_hex:withdrawalKeyHex}),{mode:0o600});
   Object.assign(process.env, {WAR_SATCHEL_PROOF_VERIFIER_ENABLED: "true",
@@ -109,6 +111,20 @@ test("real SDK wager authenticates through the pinned offline financial verifier
       }
       const another = buildSatchelWagerAuthorization({...snapshot, ownerUid: "other-owner"});
       assert.throws(() => assertAuthenticatedSatchelWager(authenticated, another, review(another), txHash), /authenticated_wager_proof_required/);
+    });
+    await t.test("native wager verification refuses omitted, substituted or wrong-role public authority",async()=>{
+      const unrelated=generateKeyPairSync("ed25519").publicKey.export({format:"der",type:"spki"}).subarray(-32).toString("hex");
+      try{
+        for(const changed of [
+          {...nativeAuthority,wager_approval_public_key_hex:undefined},
+          {...nativeAuthority,approval_public_key_hex:publicKeyHex,wager_approval_public_key_hex:undefined},
+          {...nativeAuthority,wager_approval_public_key_hex:withdrawalKeyHex},
+          {...nativeAuthority,wager_approval_public_key_hex:unrelated},
+        ]){
+          writeFileSync(authority,JSON.stringify(changed),{mode:0o600});
+          await assert.rejects(authenticateWarSatchelFinancialProof(expected(),reader(body)),/financial proof UNVERIFIABLE/);
+        }
+      }finally{writeFileSync(authority,JSON.stringify(nativeAuthority),{mode:0o600});}
     });
     await t.test("valid review of a different fee cannot override the actual SDK transaction fee", async () => {
       const wrongFee = review(authorized, {fee_uwolo: "2"});
