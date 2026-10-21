@@ -84,10 +84,13 @@ test("source-only receipts cannot earn browser, latency, DB or security points",
    new RegExp("Criterion proof kind insufficient: "+id));
  }
 });
-test("zero-earned criteria may document unverified evidence without being treated as measured",async()=>{
+test("a zero-point measurement still needs domain evidence; unknown is not a fake measured zero",async()=>{
  const {ctx,envelope}=setup(),p=payload();
  const latency=p.criteria.find(x=>x.id==="measured_latency");
  latency.earned=0;latency.evidence[0].kind="source";
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),
+  /Criterion proof kind insufficient: measured_latency/);
+ latency.evidence[0].kind="performance";
  const out=await inspectSignedCriterionSubmission(envelope(p),ctx);
  assert.equal(out.certified,false);assert.equal(out.current,false);
  assert.equal(out.dimensions.performance,
