@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/renaissance-forward-main-20261021` at `54f0a91a9b5f0c4ac9f52abf3708ddff4df14719`
+Implementation baseline: `fix/watcher-166-telemetry-retry-receipts-20261019` at `0168e21a69f5b91ab0534a10b88e48a10d98074e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **96**
+- Authoritative repository documents: **104**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 60
-- `runbook`: 17
+- `reference`: 66
+- `runbook`: 19
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 80
+- `active`: 88
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -134,9 +134,17 @@ This page is generated from the validated front matter in this repository. Cross
 | [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |
 | [War Room Forum](WAR_ROOM_FORUM.md) | `reference` | `active` | `product-contract` |
 | [Watcher 1.6.4 Download Artwork](WATCHER_164_DOWNLOAD_ART.md) | `runbook` | `active` | `release-engineering-contract` |
+| [Watcher 1.6.6 — Source-bound Documentation Review Procedure](WATCHER_166_DOCS_BASELINE_REVIEW.md) | `runbook` | `active` | `docs-v2-release-control` |
+| [Watcher diagnostic request bounded-read proof](WATCHER_166_TELEMETRY_BODY_LIMIT.md) | `reference` | `active` | `watcher-telemetry-contract` |
+| [Watcher 1.6.6 — Server-side telemetry retry idempotency](WATCHER_166_TELEMETRY_IDEMPOTENCY.md) | `reference` | `active` | `watcher-telemetry-contract` |
+| [Watcher 1.6.6 — Same-ID coalescing receipt race (source candidate)](WATCHER_1_6_6_SAME_ID_ACK_RACE.md) | `reference` | `active` | `watcher-telemetry-contract` |
+| [Watcher 1.6.6 — Real HTTP/Prisma/PostgreSQL Failure Injection](WATCHER_HTTP_PG_FAILURE_PROOF.md) | `runbook` | `active` | `watcher-telemetry-release-proof` |
 | [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
+| [Watcher Monitoring Telemetry — Durable Acknowledgment During Database Writes](WATCHER_MONITORING_DURABLE_ACK.md) | `reference` | `active` | `watcher-telemetry-contract` |
+| [Watcher Monitoring Telemetry — Cross-window Database Completion Fence](WATCHER_MONITORING_EPOCH_FENCE.md) | `reference` | `active` | `watcher-telemetry-contract` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
+| [Watcher telemetry batch completeness invariant](WATCHER_TELEMETRY_BATCH_COMPLETENESS.md) | `reference` | `active` | `watcher-telemetry-contract` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
