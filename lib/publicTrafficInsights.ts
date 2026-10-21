@@ -82,7 +82,10 @@ export function normalizeTrafficBrowserInsights(
   const pages = value.top_pages.map((item) => {
     const row = item as Record<string, unknown>;
     if (typeof row?.path !== "string" || !row.path.startsWith("/") ||
-        row.path.length > 240 || /[<>\s]/.test(row.path)) throw new Error("Invalid page");
+        row.path.length > 240 || /[<>\s]/.test(row.path) ||
+        /^\/(api|admin|_next|static|assets|auth|login|signup|account|settings|billing|profile|internal)(\/|$)/i.test(row.path)) {
+      throw new Error("Invalid page");
+    }
     const pageViews = count(row.page_views, "page views");
     if (pageViews < 1) throw new Error("Empty ranked page");
     return { path: row.path, pageViews };
