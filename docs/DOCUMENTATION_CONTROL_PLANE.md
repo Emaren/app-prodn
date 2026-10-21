@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/renaissance-campaign-unused-shield-20261021` at `ac796c6091c7d1b92c3cfe7e5eb56a6c301d1ab3`
+Implementation baseline: `feat/traffic-sensors-observatory-20261021` at `495b7eb770c3649db2c4b171bef4a0af2361cb94`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
