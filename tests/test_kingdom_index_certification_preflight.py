@@ -100,6 +100,13 @@ class FirstPagePreflightContract(unittest.TestCase):
         self.assertEqual(len(graph["generated_declarations_unverified"]), 1)
         self.assertEqual(graph["unclassified_local_imports"], [])
         self.assertEqual(len(graph["unresolved_local_imports"]), 1)
+        another = self.root / "lib/replayAdjudications.ts"
+        another.parent.mkdir(exist_ok=True)
+        another.write_text('import { PrismaClient } from "./generated/prisma/index.js";')
+        entry.write_text('import "./../../lib/replayAdjudications";')
+        with_relative = self.report()["lexical_source"]
+        self.assertEqual(len(with_relative["generated_declarations_unverified"]), 1)
+        self.assertEqual(with_relative["unclassified_local_imports"], [])
         self.assertFalse(r["certified"])
         self.assertFalse(r["publication_authorized"])
         schema.write_text(schema.read_text().replace("prisma-client-js", "unknown-generator"))

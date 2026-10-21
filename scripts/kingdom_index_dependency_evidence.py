@@ -125,7 +125,14 @@ def generated_prisma_declarations(root: Path, unresolved: set[str]) -> list[dict
     result = []
     for reference in sorted(unresolved):
         importer, separator, target = reference.partition(" -> ")
-        if separator and target == "@/lib/generated/prisma":
+        declared_alias = target == "@/lib/generated/prisma"
+        relative_generated_index = (
+            importer.startswith("lib/")
+            and target == "./generated/prisma/index.js"
+            and posixpath.normpath(posixpath.join(posixpath.dirname(importer), target))
+                == "lib/generated/prisma/index.js"
+        )
+        if separator and (declared_alias or relative_generated_index):
             result.append({
                 "importer": importer,
                 "specifier": target,
