@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3e94956b5bba74fe78b70277841987d3c2ca97a8105e00e44bf2f01154d73b1e",
+      "sha256": "b51cca2077cf56566250e29787ffc44b92c4a5050608d79afd50bec692e5b8d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-16",
+      "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "73ac821dd5a1f6662aff94a90fe3641e8fd0571e36bdbeabae8f0264870874ee",
+      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -799,9 +799,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-20",
+      "reviewed_at": "2026-10-21",
       "sensitivity": "restricted",
-      "sha256": "9f7b4c55d84b06b545153eeb13132b454848b06172dbfb7b28cf509c08f3acc4",
+      "sha256": "81ecadfa938cbab0bb401827c1bfeca359077ac90af096622abd1dd228bfe2da",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -986,9 +986,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_KNOWLEDGE_ROUTER.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-21",
+      "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "08b175c37865bc13ebf8de40d4003854d4ecff73153bf782f64988a3daee45e6",
+      "sha256": "f33b37f809e28abefb328cf74c642ea7ac8e3d0e50394ae13369806a652152fa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1513,9 +1513,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "648af026a9cbab7ac1cf72b20eb810e68008d814e16699bf5958f7353ac141eb",
+      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261020-satchel-poll-canonical-selector",
-    "commit": "e3d203ae52076268ede05341e2badd2575e1202d"
+    "branch": "fix/20261021-held-satchel-financial-release-risk",
+    "commit": "d93ef4c2b64b0e27787dc8964f414937084bc7f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -8,12 +8,20 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-10-21"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # HD Replay Truth Pipeline and Operator Runbook
+
+## Review scope — 2026-10-21 UTC
+
+This source-document review preserves separate authority for replay archival,
+parser success, statistics, trusted results, and betting eligibility. Watcher
+provenance alone is neither winner truth nor financial authorization. Dated
+replay investigations remain historical evidence; this review is **not** a new
+production full-corpus certification or authorization for WOLO movement.
 
 ## Scope and ownership
 

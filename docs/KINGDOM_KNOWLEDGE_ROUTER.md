@@ -8,12 +8,20 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-10-21"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Kingdom Knowledge Router
+
+## Review scope — 2026-10-21 UTC
+
+The documented KKR contract keeps public Kingdom knowledge read-only,
+Hall-private context audience-filtered, and viewer-private wallet and wager
+data outside the public knowledge plane. This is a source-contract review,
+not an attestation of current live query completeness or response latency.
+No production AI permission or financial authority is changed here.
 
 The Kingdom Knowledge Router (KKR) is the shared read-only knowledge plane for
 AoE2WAR AI agents.
