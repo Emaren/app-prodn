@@ -1,4 +1,5 @@
 import TrafficSensors from "@/components/traffic/TrafficSensors";
+import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
 } from "@/components/observatory/PremiumTimeSeriesChart";
@@ -37,11 +38,21 @@ export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let failed = false;
 
-  try {
-    points = (await loadPublicTraffic()).points;
-  } catch (error) {
+  // Both observations remain independent: an insights outage must not erase
+  // the canonical audience chart, nor may it fabricate visitor metrics.
+  const [seriesResult, insightsResult] = await Promise.allSettled([
+    loadPublicTraffic(),
+    loadTrafficBrowserInsights(),
+  ]);
+  if (seriesResult.status === "fulfilled") {
+    points = seriesResult.value.points;
+  } else {
     failed = true;
-    console.error("Traffic page preload failed:", error);
+    console.error("Traffic page preload failed:", seriesResult.reason);
+  }
+  const insights = insightsResult.status === "fulfilled" ? insightsResult.value : null;
+  if (insightsResult.status === "rejected") {
+    console.warn("Observed browser insights unavailable:", insightsResult.reason);
   }
 
   const lastPublishedDay = points.at(-1)?.date ?? null;
@@ -75,7 +86,7 @@ export default async function TrafficPage() {
           <div className="flex min-h-[40vh] items-center justify-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025] px-6 text-sm text-slate-400">No published completed-day Traffic report is available.</div>
         )}
 
-        <TrafficSensors points={points} lastPublishedDay={lastPublishedDay} lagDays={ageDays} />
+        <TrafficSensors points={points} lastPublishedDay={lastPublishedDay} lagDays={ageDays} insights={insights} />
 
         {failed ? (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-600">
