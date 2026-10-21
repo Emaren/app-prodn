@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b7fe6cda495f581341866a4942e02e1bf2bc51bb3e64151a260db12eba6219fc",
+      "sha256": "0b64c5296f3bbee888f677ae962ab0a5efc758de3da3ad18b5845c1aaaae938b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-000-signed-criterion-ingest-20261021",
-    "commit": "d675b7987f0ce58d18e1a6b8d0ec242f54f8f874"
+    "commit": "acae224f4c1877eac128a42a23394d613dbc3f2c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
