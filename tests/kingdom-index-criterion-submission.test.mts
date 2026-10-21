@@ -259,7 +259,7 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
   await mkdir(root,{mode:0o700});
   const {ctx,envelope}=setup(),p=payload();
   const assignment=[...p.criteria.map(row=>({proof:row.evidence[0],criterionId:row.id})),
-    ...p.gates.map(row=>({proof:row.evidence[0],gateId:row.id}))];
+    ...p.gates.map(row=>({proof:row.evidence[0],gateId:row.id,result:row.result}))];
   for(const [i,{proof:ref,criterionId}] of assignment.entries()){
    const bytes=ref.kind==="performance"?performanceFixture(criterionId):
     Buffer.from("untrusted-fixture-proof-"+(i+1));
@@ -268,7 +268,13 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
   }
   const refs=assignment.map(row=>row.proof);
   const approvalKey=generateKeyPairSync("ed25519");
-  const manifest={schema:ARTIFACT_MANIFEST_SCHEMA,issuedAt,expiresAt,source:{...source},proofs:refs};
+  const manifest={schema:ARTIFACT_MANIFEST_SCHEMA,issuedAt,expiresAt,source:{...source},
+   proofs:assignment.map(entry=>({
+    proof:entry.proof,
+    target:entry.criterionId?
+     {criterionId:entry.criterionId,earned:p.criteria.find(row=>row.id===entry.criterionId).earned}:
+     {gateId:entry.gateId,result:entry.result}
+   }))};
   const body=Buffer.from(JSON.stringify(manifest));
   const signedManifest={schema:ARTIFACT_MANIFEST_SCHEMA,manifestBase64:body.toString("base64"),
    signatureBase64:sign(null,body,approvalKey.privateKey).toString("base64")};
