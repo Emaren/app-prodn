@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Shield, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
