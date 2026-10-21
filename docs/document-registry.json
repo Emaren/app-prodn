@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d25a638caf1b2cb02824c15ef0dff32399c3c9a5c0b5879224198161e407152d",
+      "sha256": "c24c3bef33ae89d1451006aef669b25c569a34ccba3c4f8526b5200e3403a108",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2191,8 +2191,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/traffic-stale-legacy-trailing-day-20261020",
-    "commit": "4908aae90ca84d13d3c5acbb0b0daffedccc3cb2"
+    "branch": "fix/release-gate-prisma-before-node-tests-20261020",
+    "commit": "ddb94482e3435997174f94ed62ca405bab41808a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
