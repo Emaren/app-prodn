@@ -40,7 +40,8 @@ function setup(){
   // external artifact bytes, verify digests and independently authenticated provenance.
   verifyArtifact:async()=>true,
   consumeNonce:async(ns,nonce,digest)=>{
-   const key=ns+"|"+nonce+"|"+digest;
+   // Replay namespace + nonce cannot be reused with a different payload digest.
+   const key=ns+"|"+nonce;
    if(used.has(key))return false;used.add(key);return true;
   }
  };
@@ -91,7 +92,9 @@ test("unmeasured, overcredited, duplicated, and proof-reusing criteria refuse",a
  p=payload();p.criteria[1].id=p.criteria[0].id;
  await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/Invalid, missing or duplicate/);
  p=payload();p.criteria[1].evidence=p.criteria[0].evidence;
- await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/Same proof reused/);
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/Same proof/);
+ p=payload();p.criteria[1].evidence[0].sha256=p.criteria[0].evidence[0].sha256;
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(p),ctx),/Same proof bytes/);
 });
 test("specialized gate denial and missing authority refuse; failed gates never certify",async()=>{
  let {ctx,envelope}=setup();let p=payload();
@@ -114,6 +117,8 @@ test("future, expired, key substitution, replayed receipt and nonce store outage
  const same=envelope(payload());
  await inspectSignedCriterionSubmission(same,ctx);
  await assert.rejects(inspectSignedCriterionSubmission(same,ctx),/Repeated or non-durable/);
+ const altered=payload();altered.criteria[0].earned=0;
+ await assert.rejects(inspectSignedCriterionSubmission(envelope(altered),ctx),/Repeated or non-durable/);
  ({ctx,envelope}=setup());
  await assert.rejects(inspectSignedCriterionSubmission(envelope(payload()),{...ctx,consumeNonce:async()=>{throw Error("outage")}}),/Repeated or non-durable/);
 });
