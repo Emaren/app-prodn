@@ -1,5 +1,5 @@
 import {buildSatchelWagerAuthorization,wagerReviewContext,assertAuthenticatedSatchelWager,assertSatchelWagerTicketLegs,type SatchelWagerSnapshot} from "./warSatchelWagerAuthorization.ts";
-import { readBoundedSatchelBankJson } from "./warSatchelBankJsonTransport.ts";
+import { authenticateWarSatchelBank,authenticatedWarSatchelBankFreshAt,type AuthenticatedWarSatchelBank } from "./warSatchelAuthenticatedBank.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { prebroadcastReleaseEvidenceIssue } from "./warSatchelPrebroadcastReleaseEvidence.ts";
@@ -32,22 +32,12 @@ import { warSatchelVaultDistinctFromKnownWallets } from "./warSatchelVaultBounda
 import { resolveCommunityTreasuryAddressConfig } from "./woloCommunityTreasury.ts";
 
 const MAX_I64 = BigInt("9223372036854775807");
-const BANK_HEAD_MAX_AGE_MS = 30_000;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const TX_HASH = /^[A-F0-9]{64}$/;
-const RPC = "https://rpc-mainnet.aoe2war.com";
-const REST = "https://rest-mainnet.aoe2war.com";
 const FINANCIAL_LOCK_CLASS = 724176;
 const FINANCIAL_LOCK_ID = 47;
 
-export type CanonicalSatchelBank = Readonly<{
-  chainId: "wolo-1";
-  denom: "uwolo";
-  vaultAddress: string;
-  balanceUwolo: bigint;
-  height: bigint;
-  observedAtMs: number;
-}>;
+export type CanonicalSatchelBank = AuthenticatedWarSatchelBank;
 
 function stop(reason: string): never {
   throw new Error("WAR_SATCHEL_FUNDED_REFUSED:" + reason);
@@ -83,23 +73,11 @@ function fundedVaultAddress(): string {
   return vault;
 }
 
-function chainObject(input: unknown): Record<string, unknown> {
-  if (!input || typeof input !== "object" || Array.isArray(input)) stop("bad_chain_response");
-  return input as Record<string, unknown>;
-}
-function chainAmount(value: unknown, allowZero = false): bigint {
-  if (typeof value !== "string" || !/^(0|[1-9][0-9]{0,18})$/.test(value)) {
-    stop("invalid_bank_integer");
-  }
-  const n = BigInt(value);
-  if (n > MAX_I64 || (!allowZero && n === BigInt(0))) stop("bank_integer_out_of_range");
-  return n;
-}
-
 /**
- * Independently read a *physical* mainnet vault bank balance and canonical
- * head. Never use a player's wallet JSON, request headers, or a simulation
- * journal as authority. A bank snapshot does NOT attest signer key control.
+ * Authenticate physical vault bank state against the operator's protected
+ * Comet trust root through the exact pinned offline verifier. Untrusted HTTP
+ * evidence cannot mint this capability. The balance does not attest signer
+ * control or completeness of external liabilities.
  */
 export async function readIndependentSatchelBank(
   reader: typeof fetch = fetch,
@@ -107,26 +85,9 @@ export async function readIndependentSatchelBank(
 ): Promise<CanonicalSatchelBank> {
   noFundsUntilCertified();
   const vault = fundedVaultAddress();
-  const [status, bank] = await Promise.all([
-    readBoundedSatchelBankJson(RPC + "/status", reader),
-    readBoundedSatchelBankJson(REST + "/cosmos/bank/v1beta1/balances/" + vault + "/by_denom?denom=uwolo", reader),
-  ]);
-  const result = chainObject(status.result);
-  const node = chainObject(result.node_info);
-  const sync = chainObject(result.sync_info);
-  if (node.network !== "wolo-1" || sync.catching_up !== false) stop("chain_or_sync_mismatch");
-  const height = chainAmount(sync.latest_block_height);
-  const balance = chainObject(bank.balance);
-  if (balance.denom !== "uwolo") stop("wrong_bank_denom");
-  const amount = chainAmount(balance.amount, true);
-  return Object.freeze({
-    chainId: "wolo-1" as const,
-    denom: "uwolo" as const,
-    vaultAddress: vault,
-    balanceUwolo: amount,
-    height,
-    observedAtMs: nowMs,
-  });
+  const bank=await authenticateWarSatchelBank(vault,reader);
+  requireFreshBank(bank,Math.max(Date.now(),nowMs));
+  return bank;
 }
 
 async function withExclusiveSatchelTx<T>(
@@ -154,11 +115,10 @@ async function outstandingVaultLiability(tx: Prisma.TransactionClient): Promise<
     (aggregate._sum.withdrawalPendingUwolo ?? BigInt(0));
 }
 function requireFreshBank(bank: CanonicalSatchelBank, nowMs: number) {
-  if (bank.chainId !== "wolo-1" || bank.denom !== "uwolo" ||
+  if (!authenticatedWarSatchelBankFreshAt(bank,nowMs)||bank.chainId !== "wolo-1" || bank.denom !== "uwolo" ||
       bank.vaultAddress !== fundedVaultAddress() ||
       !positiveAmount(bank.height) || bank.balanceUwolo < BigInt(0) ||
-      bank.balanceUwolo > MAX_I64 ||
-      bank.observedAtMs > nowMs || nowMs - bank.observedAtMs > BANK_HEAD_MAX_AGE_MS) {
+      bank.balanceUwolo > MAX_I64) {
     stop("bank_observation_not_fresh_or_canonical");
   }
 }

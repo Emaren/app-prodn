@@ -121,9 +121,9 @@ function requireConfiguration(x: {vault: string; kind: string}) {
   const digest = PINNED_VERIFIER_SHA256;
   if (process.env.WAR_SATCHEL_VERIFIER_SHA256 && process.env.WAR_SATCHEL_VERIFIER_SHA256 !== digest)
     stop("unreviewed_verifier_digest");
-  // The offline Go verifier's approval_public_key_hex is used to verify
-  // signed wager reservations. It MUST NOT be sourced from the withdrawal
-  // reviewer, whose independent public key belongs to another authority.
+  // The wager proof authority contains an explicit wager_approval_public_key_hex
+  // distinct from its withdrawal-role approval_public_key_hex. Go verifies
+  // reservations with the wager role only; a generic key is never substituted.
   const withdrawalAuthority = process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE || "";
   const authority = x.kind === "wager"
     ? process.env.WAR_SATCHEL_WAGER_PROOF_VERIFIER_AUTHORITY_FILE || ""
@@ -226,6 +226,93 @@ export function verifiedFinancialTranscriptHeadExpiry(
   if (!Number.isSafeInteger(expiresAtMs) || nowMs >= expiresAtMs)
     stop("authenticated_chain_head_expired");
   return expiresAtMs;
+}
+
+export type VerifiedWarSatchelBankObservation=Readonly<{
+  vaultAddress:string;balanceUwolo:bigint;height:bigint;commitHeight:bigint;
+  blockHash:string;appHash:string;verifiedAtMs:number;authenticatedHeadExpiresAtMs:number;
+}>;
+
+/** Pure receipt validation only, after the pinned executable authenticated the
+ * exact proof. Calling this helper cannot mint the opaque bank capability.
+ * State H must be committed by the current authenticated head H+1; retaining
+ * the executable's original minimum deadline also bounds trust-anchor expiry.
+ */
+export function verifiedBankReceiptMetadata(
+  value:unknown,vault:string,height:number,nowMs=Date.now(),
+):VerifiedWarSatchelBankObservation{
+  const receipt=receiptObject(value);
+  const exact=["protocol","status","chain_id","denom","vault","balance_uwolo","height","commit_height",
+    "block_hash","app_hash","head_height","head_block_hash","head_time","authenticated_expires_at",
+    "credit_authorized","spending_authorized","solvency_authorized"];
+  if(!ADDRESS.test(vault)||!Number.isSafeInteger(height)||height<=0||height>=Number.MAX_SAFE_INTEGER||
+     !Number.isSafeInteger(nowMs)||Object.keys(receipt).length!==exact.length||
+     Object.keys(receipt).some(k=>!exact.includes(k))||
+     receipt.protocol!==1||receipt.status!=="AUTHENTICATED_BANK_NONAUTHORIZING"||
+     receipt.chain_id!=="wolo-1"||receipt.denom!=="uwolo"||receipt.vault!==vault||
+     receipt.height!==height||receipt.commit_height!==height+1||receipt.head_height!==height+1||
+     receipt.head_block_hash!==receipt.block_hash||
+     typeof receipt.balance_uwolo!=="string"||!/^(0|[1-9][0-9]{0,18})$/.test(receipt.balance_uwolo)||
+     BigInt(receipt.balance_uwolo)>BigInt("9223372036854775807")||
+     !HASH.test(String(receipt.block_hash))||!HASH.test(String(receipt.app_hash))||
+     receipt.block_hash==="0".repeat(64)||receipt.app_hash==="0".repeat(64)||
+     !validCommitTimestamp(receipt.head_time)||!validCommitTimestamp(receipt.authenticated_expires_at)||
+     receipt.credit_authorized!==false||receipt.spending_authorized!==false||receipt.solvency_authorized!==false)
+    stop("bank_verifier_receipt_invalid");
+  // Date.parse truncates nanos conservatively. Never grant a new thirty-second
+  // window at verification completion or while waiting for a database lock.
+  const headAtMs=Date.parse(receipt.head_time),expiresAtMs=Date.parse(receipt.authenticated_expires_at);
+  if(!Number.isSafeInteger(headAtMs)||!Number.isSafeInteger(expiresAtMs)||headAtMs>nowMs+5000||
+     expiresAtMs>headAtMs+30000||expiresAtMs<=nowMs)
+    stop("authenticated_bank_evidence_expired");
+  return Object.freeze({vaultAddress:vault,balanceUwolo:BigInt(receipt.balance_uwolo),height:BigInt(height),
+    commitHeight:BigInt(height+1),blockHash:String(receipt.block_hash),appHash:String(receipt.app_hash),
+    verifiedAtMs:nowMs,authenticatedHeadExpiresAtMs:expiresAtMs});
+}
+
+/** Fixed read-only bank route and command, sharing the exact reviewed binary
+ * snapshot and public authority file used by the financial proof boundary.
+ * This returns authenticated assets only, never complete solvency authority. */
+export async function collectAndVerifyPinnedWarSatchelBankProof(
+  vault:string, reader:typeof fetch=fetch, canceled?:AbortSignal,
+):Promise<VerifiedWarSatchelBankObservation>{
+  if(!ADDRESS.test(vault)||active>=4)stop("bank_verifier_unavailable");
+  active++;
+  const signal=AbortSignal.any([AbortSignal.timeout(30_000),...(canceled?[canceled]:[])]);
+  try{
+    signal.throwIfAborted();
+    const cfg=requireConfiguration({vault,kind:"bank"});
+    const response=await reader(ENDPOINT+"/satchel/v1/proofs/bank",{
+      method:"POST",redirect:"error",cache:"no-store",
+      headers:{Authorization:"Bearer "+cfg.token,"Content-Type":"application/json",Accept:"application/json"},
+      body:JSON.stringify({protocol:1}),signal,
+    });
+    const size=response.headers.get("content-length"), media=response.headers.get("content-type")||"";
+    if(!response.ok||response.status!==200||
+       !/^application\/json(?:;\s*charset=utf-8)?$/i.test(media)||
+       response.headers.has("content-encoding")||
+       size!==null&&(!/^(0|[1-9][0-9]{0,10})$/.test(size)||Number(size)>PROOF_LIMIT)){
+      void response.body?.cancel().catch(()=>{});
+      stop("bank_proof_export_unavailable");
+    }
+    const exported=await readWarSatchelBoundedUtf8(response.body,PROOF_LIMIT);
+    if(!exported)stop("bank_proof_envelope_unavailable");
+    const proof=receiptObject(JSON.parse(exported) as unknown),height=proof.height;
+    if(proof.version!==1||proof.chain_id!=="wolo-1"||proof.denom!=="uwolo"||proof.address!==vault||
+       typeof height!=="number"||!Number.isSafeInteger(height)||height<=0||height>=Number.MAX_SAFE_INTEGER)
+      stop("bank_proof_identity_invalid");
+    const directory=await realpath(await mkdtemp(join(tmpdir(),"aoe2war-satchel-bank-proof-")));
+    try{
+      await chmod(directory,0o700);
+      const proofPath=join(directory,"untrusted-bank-proof.json"),binaryPath=join(directory,"verified-wolosatcheld");
+      await writeFile(proofPath,exported,{mode:0o600,flag:"wx"});
+      await snapshotBinary(cfg.binary,binaryPath,cfg.digest,signal);
+      const {stdout}=await invoke(binaryPath,["verify-bank-proof","--authority",cfg.authority,
+        "--height",String(height),"--proof",proofPath],{timeout:25_000,maxBuffer:16384,windowsHide:true,signal});
+      signal.throwIfAborted();
+      return verifiedBankReceiptMetadata(JSON.parse(stdout) as unknown,vault,height);
+    }finally{await rm(directory,{recursive:true,force:true});}
+  }finally{active--;}
 }
 
 function timestampObject(value: unknown, allowed: readonly string[]) {
