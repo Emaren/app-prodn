@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "af35780920865f09a7b05b5360717589a9b9176e25f9cfb96dcac479d97e8039",
+      "sha256": "f7a4041ce17934c7a9921db173475edc7e2164dae3066da27681c5fc83571587",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/renaissance-forward-main-20261021",
-    "commit": "54f0a91a9b5f0c4ac9f52abf3708ddff4df14719"
+    "branch": "feature/website-release-stage-only-20261021",
+    "commit": "b2cc40e9e1fc1a6e08dc83b5fb9cc5d2cd70cb87"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
