@@ -13,7 +13,7 @@ const reply = (stream: ReadableStream<Uint8Array>, headers?: Record<string,strin
   new Response(stream, {status:200, headers});
 const deny = /WAR_SATCHEL_FUNDED_REFUSED:/;
 
-test("private bank and status JSON use bounded transport with no finance authority", async () => {
+test("diagnostic bank and status JSON use bounded transport outside financial authority", async () => {
   const calls: string[] = [];
   const fake = (async (url: string, init?: RequestInit) => {
     calls.push(url);
@@ -28,7 +28,8 @@ test("private bank and status JSON use bounded transport with no finance authori
   assert.ok((await readBoundedSatchelBankJson(bank,fake)).result);
   assert.deepEqual(calls,[rpc,bank]);
   const ledger=readFileSync(new URL("../lib/warSatchelFundedLedger.ts",import.meta.url),"utf8");
-  assert.match(ledger,/readBoundedSatchelBankJson\(/);
+  assert.doesNotMatch(ledger,/readBoundedSatchelBankJson\(/,
+    "bounded REST JSON is diagnostic input and must not mint financial bank evidence");
   assert.doesNotMatch(ledger,/response\.text\(\)/);
   assert.match(ledger,/noFundsUntilCertified\(\)/);
 });

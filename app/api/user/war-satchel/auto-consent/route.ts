@@ -11,7 +11,9 @@ import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import {
   satchelAutoSpendChallengeText, verifySatchelAutoSpendSignature,
   storedSatchelSpendChallenge, verifyDurableSatchelAutoSpendMandate,
+  satchelAutoSpendAuthorizationEpochReleased,
 } from "@/lib/warSatchelAutoSpendConsent";
+import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +23,8 @@ function reply(status: number, payload: Record<string, unknown>) {
   return NextResponse.json(payload, { status, headers: HEADERS });
 }
 function enabled() {
-  return process.env.WAR_SATCHEL_AUTO_CONSENT_ENABLED === "true";
+  return satchelFinancialBridgeReady() && satchelAutoSpendAuthorizationEpochReleased() &&
+    process.env.WAR_SATCHEL_AUTO_CONSENT_ENABLED === "true";
 }
 function sameOrigin(request: NextRequest) {
   return request.headers.get("origin") === "https://aoe2war.com" &&
@@ -52,9 +55,15 @@ async function jsonBody(request: NextRequest) {
   } catch { return null; }
 }
 export async function GET(request: NextRequest) {
-  if (!enabled()) return reply(200, { available: false, signed: false });
+  const available = enabled();
   const actor = await viewer(request);
-  if (!actor?.user.betAutoPreset) return reply(200, { available: true, signed: false });
+  if (!actor) return reply(200, { available, signed: false, canRevoke: false });
+  const revocable = await actor.prisma.satchelAutoSpendConsent.findFirst({
+    where: { ownerUserId: actor.user.id, revokedAt: null }, select: { id: true },
+  });
+  if (!available || !actor.user.betAutoPreset) {
+    return reply(200, { available, signed: false, canRevoke: !!revocable });
+  }
   const now = new Date();
   const plan = actor.user.betAutoPreset;
   const signed = await actor.prisma.satchelAutoSpendConsent.findFirst({
@@ -71,7 +80,7 @@ export async function GET(request: NextRequest) {
       presetVersion:plan.version, untilOut:plan.untilOut, gamesRemaining:plan.gamesRemaining, now});
     originalVerified = true;
   } catch { /* A historical signedAt flag alone never grants permission. */ }
-  return reply(200, { available: true, signed: originalVerified,
+  return reply(200, { available, signed: originalVerified, canRevoke: !!revocable,
     presetVersion: plan.version, perGameCapWolo: signed?.perGameCapWolo ?? null,
     dailyCapWolo: signed?.dailyCapWolo ?? null,
     expiresAtUtc: signed?.spendExpiresAt.toISOString() ?? null });
@@ -212,7 +221,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 export async function DELETE(request: NextRequest) {
-  if (!enabled()) return reply(503, { detail: "Signed Mecha mandate disabled." });
   if (!sameOrigin(request)) return reply(403, { detail: "Invalid origin." });
   const actor = await viewer(request);
   if (!actor) return reply(401, { detail: "Sign in required." });
@@ -226,7 +234,6 @@ export async function DELETE(request: NextRequest) {
       await tx.satchelAutoSpendConsent.updateMany({
         where: {
           ownerUserId: actor.user.id, revokedAt: null,
-          signedAt: { not: null },
         },
         data: { revokedAt: new Date() },
       });

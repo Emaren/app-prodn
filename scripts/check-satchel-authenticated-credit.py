@@ -10,11 +10,11 @@ import hashlib
 import json
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = "99f32de617964565875ed4689bea0d688bb99147"
-# The reviewed PR #39 custody-backend artifact, not the historical PR #29
+SOURCE = "8c509e8f62ca3ec60711dc2654a03b12f22b0773"
+# Reviewed PR #72, CI39636828148 artifact12363880676, not historical PR #29
 # financial-proof binary. Native macOS tests compile this same clean source;
 # Linux AMD64 CI must reproduce the reviewed production byte identity too.
-LINUX_AMD64_SHA256 = "d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac"
+LINUX_AMD64_SHA256 = "4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3"
 
 def run(args, **kw):
     return subprocess.run(args, check=True, timeout=600, **kw)
@@ -38,6 +38,26 @@ def isolated_sdk_transfer(source: str, amount_uwolo: int, genesis_uwolo: int) ->
         assert source.count(original) == 1, f"unexpected pinned fixture source for {original}"
         source = source.replace(original, replacement)
     assert "sdk.NewInt64Coin(Denom, 1)" in source, "SDK ante fee fixture must remain unchanged"
+    return source
+
+
+def isolated_bank_anchor_gap(source: str) -> str:
+    """One test scenario has a real fifty-second block gap after its anchor.
+
+    This changes only the disposable SDK TEST after the pinned verifier was
+    built. Signed current heads stay fresh. A sixty-second trust period can
+    therefore expire before the deposit proof's original head deadline.
+    """
+    replacements = [
+        ("start := now.Add(-2 * time.Second)",
+         'start := now.Add(-2 * time.Second)\n initialTime := start.Add(-time.Second)\n if recipe.Scenario == "authenticated_deposit_current_bank" { initialTime = now.Add(-51 * time.Second) }'),
+        ("Time: start.Add(-time.Second), AppStateBytes: state", "Time: initialTime, AppStateBytes: state"),
+        ("height++\n\t\tcometTxs :=", 'height++\n blockTime := start.Add(time.Duration(height) * 10 * time.Millisecond)\n if height == 1 && recipe.Scenario == "authenticated_deposit_current_bank" { blockTime = now.Add(-50 * time.Second) }\n\t\tcometTxs :='),
+        ("Time: start.Add(time.Duration(height) * 10 * time.Millisecond), ValidatorsHash:", "Time: blockTime, ValidatorsHash:"),
+    ]
+    for original, replacement in replacements:
+        assert source.count(original) == 1, f"unexpected SDK bank clock fixture: {original}"
+        source = source.replace(original, replacement)
     return source
 
 
@@ -66,6 +86,8 @@ with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     continuous_test = ROOT / "tests/fixtures/satchel-v1-continuous-sdk_test.go"
     assert continuous_test.is_file()
     (source / "internal/satchel/satchel_v1_continuous_sdk_test.go").write_bytes(continuous_test.read_bytes())
+    bank_fixture = source / "internal/satchel/isolated_lifecycle_test.go"
+    bank_fixture.write_text(isolated_bank_anchor_gap(bank_fixture.read_text()))
     # Modify only a TEST fixture after compiling the exact reviewed verifier.
     # Override the helper builder's memo BEFORE it creates the real signature.
     fixture = source / "internal/satchel/isolated_execution_test.go"
@@ -79,11 +101,22 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
 '''
     assert 'hdMemoConfig{application.TxConfig()' in text
     fixture.write_text(isolated_sdk_transfer(text, 100_000_000, 103_000_000))
-    env.update({"SATCHEL_PROOF_FIXTURE_DIR":str(root),"RUN_SATCHEL_REAL_CREDIT_TESTS":"1","SATCHEL_TEST_BINARY":str(binary),"SATCHEL_TEST_BINARY_SHA256":binary_sha256})
-    run(["go","test","-tags=go1.27","./internal/satchel","-run","^TestAuthenticatedProofFromIsolatedSDKExecution$","-count=1"],cwd=source,env=env)
-    genuine_deposit = json.loads((root / "isolated-sdk-proof.json").read_text())
+    env.update({"SATCHEL_PROOF_FIXTURE_DIR":str(root),"RUN_SATCHEL_REAL_CREDIT_TESTS":"1","SATCHEL_TEST_BINARY":str(binary),"SATCHEL_TEST_BINARY_SHA256":binary_sha256,
+                "SATCHEL_LIFECYCLE_WOLO_SOURCE":str(source)})
+    # The older transfer fixture maps SDK genesis to a synthetic Comet height;
+    # it cannot provide a truthful IAVL balance proof. Use one actual aligned
+    # SDK chain for both the 100-WOLO deposit and its current H=head-1 bank.
+    deposit_recipe = root / "authenticated-deposit-recipe.json"
+    deposit_recipe.write_text(json.dumps({"version":1,"scenario":"authenticated_deposit_current_bank","steps":[{
+        "name":"deposit","sender_role":"owner","recipient_role":"vault","amount_uwolo":"100000000",
+        "memo":"aoe2war/satchel/v1/lifecycle-owner/abcdefghijklmnop"}]}))
+    env.update({"SATCHEL_LIFECYCLE_RECIPE":str(deposit_recipe),"SATCHEL_LIFECYCLE_FIXTURE_DIR":str(root)})
+    run(["go","test","-tags=go1.27","./internal/satchel","-run","^TestAuthenticatedContinuousSDKLifecycle$","-count=1"],cwd=source,env=env)
+    deposit_path = root / "authenticated_deposit_current_bank/isolated-sdk-lifecycle.json"
+    genuine_deposit = json.loads(deposit_path.read_text())
     assert genuine_deposit["fixture_only"] is True and genuine_deposit["mainnet_authority"] is False
-    assert genuine_deposit["intent"]["AmountUWolo"] == "100000000", "wrong actual SDK deposit amount"
+    assert genuine_deposit["steps"][0]["deposit_intent"]["AmountUWolo"] == "100000000", "wrong actual SDK deposit amount"
+    env["SATCHEL_CREDIT_DEPOSIT_FIXTURE"] = str(deposit_path)
     run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs","--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs","--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test","tests/war-satchel-deposit-real-verifier.test.mts"],cwd=ROOT,env=env)
     # A SECOND genuine SDK execution exercises the operation/wager contract.
     # Change only the disposable test builder BEFORE it signs and commits;
@@ -107,3 +140,12 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
     run(["go","test","-tags=go1.27","./internal/satchel",
          "-run","^TestSatchelV1ContinuousIsolatedSDKFeeConservation$",
          "-count=1"],cwd=source,env=env)
+
+    # Explicit isolated-test opt-in: actual Prisma writers consume real SDK
+    # transfer/bank proofs through the same exact native verifier, across the
+    # canonical Watcher ticket, return and withdrawal application lifecycle.
+    env["RUN_SATCHEL_FULL_LIFECYCLE_TESTS"] = "1"
+    run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs",
+         "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
+         "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
+         "tests/war-satchel-continuous-funded-lifecycle.test.mts"],cwd=ROOT,env=env)

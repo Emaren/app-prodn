@@ -9,6 +9,17 @@
 import { makeSignDoc, pubkeyToAddress, serializeSignDoc } from "@cosmjs/amino";
 import { createPublicKey, ECDH, verify as verifyEcdsa } from "node:crypto";
 
+// Rotating this literal is a reviewed source release, not operator environment
+// configuration. Held-era signatures must never acquire financial authority
+// merely because an issuance flag or the separate custody interlock changes.
+export const SATCHEL_AUTO_SPEND_AUTHORIZATION_PROTOCOL = "aoe2war/satchel/mecha-auto-spend/v2" as const;
+export const SATCHEL_AUTO_SPEND_AUTHORIZATION_EPOCH = "aoe2war/satchel/mecha/v2/held-integration-1" as const;
+export function satchelAutoSpendAuthorizationEpochReleased(): boolean {
+  return /^aoe2war\/satchel\/mecha\/v2\/release\/[A-Za-z0-9._-]{8,100}$/.test(
+    SATCHEL_AUTO_SPEND_AUTHORIZATION_EPOCH,
+  );
+}
+
 const ADDR = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const OWNER = /^[A-Za-z0-9_.:-]{1,100}$/;
 const NONCE = /^[a-f0-9]{32}$/;
@@ -77,6 +88,8 @@ export function satchelAutoSpendChallengeText(c: SatchelSpendChallenge) {
     spend > challenge && spend - issue <= 86400000, "unbounded consent interval");
   return [
     "AoE2WAR War Satchel Mecha AUTO BET SPENDING AUTHORIZATION",
+    "Authorization protocol: " + SATCHEL_AUTO_SPEND_AUTHORIZATION_PROTOCOL,
+    "Authorization epoch: " + SATCHEL_AUTO_SPEND_AUTHORIZATION_EPOCH,
     "Origin: aoe2war.com",
     "Chain: wolo-1",
     "Denom: uwolo",
@@ -154,6 +167,8 @@ export function verifySatchelAutoSpendSignature(input: {
     perGameCapWolo: c.perGameCapWolo,
     dailyCapWolo: c.dailyCapWolo,
     expiresAtUtc: c.spendExpiresAtUtc,
+    authorizationProtocol: SATCHEL_AUTO_SPEND_AUTHORIZATION_PROTOCOL,
+    authorizationEpoch: SATCHEL_AUTO_SPEND_AUTHORIZATION_EPOCH,
     // Money movement is NEVER authorized by this pure proof alone.
     creditAuthorized: false as const,
     wagerAuthorized: false as const,
@@ -199,6 +214,7 @@ export function verifyDurableSatchelAutoSpendMandate(input: {
     input.gamesRemaining! <= m.gamesRemaining!), "finite game mandate changed");
   const original = storedSatchelSpendChallenge(c, m);
   enforce(satchelAutoSpendChallengeText(original) === m.challengeText, "stored challenge text changed");
+  enforce(satchelAutoSpendAuthorizationEpochReleased(), "authorization epoch is held");
   return verifySatchelAutoSpendSignature({ challenge: {...original, signedAtUtc: null},
     ownerUid: input.ownerUid, ownerWallet: input.ownerWallet,
     presetId: input.presetId, presetVersion: input.presetVersion,

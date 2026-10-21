@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { chmod, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -13,7 +13,7 @@ const wagerKey = "2".repeat(64);
 test("wager-review authority is never substituted with the withdrawal key", async () => {
   const priorW = process.env.WAR_SATCHEL_WAGER_VERIFIER_AUTHORITY_FILE;
   const priorD = process.env.WAR_SATCHEL_VERIFIER_AUTHORITY_FILE;
-  const dir = await mkdtemp(join(tmpdir(), "aoe2war-wager-review-role-"));
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "aoe2war-wager-review-role-")));
   const withdrawalPath = join(dir, "withdrawal-public.json");
   const wagerPath = join(dir, "wager-public.json");
   const symlinkPath = join(dir, "wager-link.json");

@@ -15,6 +15,52 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 21 — current authenticated integration, still financially HELD
+
+The current proof adapters and isolated CI runner pin Wolo implementation
+`8c509e8f62ca3ec60711dc2654a03b12f22b0773`, built twice with Go 1.24.6 in
+[artifact run 39636828148](https://github.com/Emaren/wolochain/actions/runs/39636828148).
+The independently downloaded archive/manifest/raw binary checks passed; Linux
+AMD64 binary SHA256 is
+`4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3`.
+Earlier `99f32de6`/`d431` milestones below retain their historical identities.
+Wolo PR #72 merged only into HELD custody at `54837443`; API original LIVE
+source PR #56 merged only into its HELD branch at `5a275084`.
+
+Physical bank assets now require the private 8094 bank transcript and the
+pinned offline SDK/Comet verifier. Both authenticated heads must identify the
+state commitment; a known newer signed witness refuses. Opaque immutable
+bank evidence retains its original trust/head expiration, checked after
+transaction waits and before commit. Bounded REST JSON, cloned objects and
+local timestamps cannot mint this evidence. Actual PostgreSQL regression
+reproduced an improper credit after bank-root expiry while the deposit head
+remained fresh; the corrected transaction rolls back. Assets remain distinct
+from complete liabilities or spendability.
+
+ADR-36 Mecha protocol v2 binds a source-controlled authorization epoch. The
+current `held-integration-1` epoch cannot issue or execute a financial mandate;
+activation requires reviewed matching source rotation in app and reviewer and
+new owner signatures. Authenticated revocation remains possible while issuance
+is disabled, including after Keplr disconnects. Wager reviewer, withdrawal/
+return reviewer and execution signer retain distinct roles and no key fallback.
+
+The isolated acceptance test uses actual PostgreSQL with all eleven Satchel
+SQL guard migrations, the actual app consumers and one real SDK/Comet history.
+Twelve canonical tickets prove eight full unmatched refunds, matched-only fees,
+exactly-once credits, reservations and physical receipts, and a lost-ACK owner
+withdrawal reconciled without another broadcast. A 100-WOLO deposit yields
+98 WOLO withdrawn, 4 WOLO matched fees and 30 uwolo gas across both players'
+actual transfers. Reviewer signatures, signer/reconcile transport and game
+results remain controlled fixture authorities; original LIVE governance and
+mainnet custody are not certified. No production migration was executed.
+
+`SATCHEL_FINANCIAL_BRIDGE_READY=false` and Wolo issue #5's five BLOCKED controls
+and global solvency UNKNOWN remain unchanged. The source global census refuses
+missing HD/DE/external exposure. Operator-controlled independent vault/signers,
+Comet root/witness and LIVE capture authority, comprehensive reconciliation,
+protected maintenance/backup/rollback evidence and separate owner approval are
+still required. These commits authorize no production cutover or real transfer.
+
 ## October 19 — source-linked public GET and prewarm financial producer census
 
 `scripts/aoe2_financial_producer_source_census.py --check` is a
