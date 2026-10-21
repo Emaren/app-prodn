@@ -111,7 +111,10 @@ export function normalizeTrafficBrowserInsights(
 export async function loadTrafficBrowserInsights(): Promise<TrafficBrowserInsights> {
   const base = (process.env.TRAFFIC_API_BASE || "http://127.0.0.1:3345").replace(/\/+$/, "");
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 4000);
+  // Cold browser evidence aggregation is independently bounded to 12s in
+  // Traffic API. This separate streamed section may wait longer; the canonical
+  // Traffic chart must never block on this API or mistake an outage for zero.
+  const timeout = setTimeout(() => controller.abort(), 16000);
   try {
     const response = await fetch(
       base + "/api/projects/aoe2hdbets/observed-browser-insights",
