@@ -10,13 +10,14 @@ function percentile(arr,q){const s=[...arr].sort((a,b)=>a-b),x=(s.length-1)*q,l=
 function summary(arr){return {count:arr.length,p50:percentile(arr,0.5),p75:percentile(arr,0.75),p95:percentile(arr,0.95),max:Math.max(...arr)};}
 function makeReceipt(){
  const rows=Array.from({length:10},(_,i)=>({
-  sample:i+1,viewport:"desktop",loaded:true,documentStatus:200,harnessAttempt:1,failedResources:[],
+  sample:i+1,viewport:"desktop",loaded:true,documentStatus:200,harnessAttempt:1,
+  documentFromDiskCache:false,documentFromServiceWorker:false,failedResources:[],
   metrics:{href:url,readyMs:300+i*10,finalLcp:{startTime:500+i*20},
    navigation:{responseStart:50+i*2,responseEnd:80+i*2}}
  }));
  return {schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:"2026-10-21T20:00:00.000Z",
   releaseSha:sha,buildVersion:"fixture",collectorSourceSha:collector,url,viewport:"desktop",samples:10,
-  sampleAttempts:2,productionMutated:false,databaseMutated:false,woloMutated:false,
+  sampleAttempts:2,retriedSamples:[],productionMutated:false,databaseMutated:false,woloMutated:false,
   summary:{readyMs:summary(rows.map(r=>r.metrics.readyMs)),lcpMs:summary(rows.map(r=>r.metrics.finalLcp.startTime)),
    documentTtfbMs:summary(rows.map(r=>r.metrics.navigation.responseStart))},rows};
 }

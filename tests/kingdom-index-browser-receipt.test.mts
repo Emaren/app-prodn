@@ -11,13 +11,14 @@ function sum(a){return {count:a.length,p50:percent(a,0.5),p75:percent(a,0.75),p9
 function fixture(){
  const rows=Array.from({length:10},(_,k)=>{
   const i=k+1;
-  return {sample:i,viewport:"desktop",loaded:true,harnessAttempt:1,documentStatus:200,failedResources:[],
+  return {sample:i,viewport:"desktop",loaded:true,harnessAttempt:1,documentStatus:200,
+   documentFromDiskCache:false,documentFromServiceWorker:false,failedResources:[],
    metrics:{href:exp.url,readyMs:300+i*10,finalLcp:{startTime:700+i*20},
     navigation:{responseStart:80+i*5,responseEnd:120+i*5}}};
  });
  return {schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:"2026-10-21T20:30:00.000Z",
   releaseSha:exp.releaseSha,buildVersion:exp.buildVersion,collectorSourceSha:exp.collectorSha,
-  url:exp.url,viewport:exp.viewport,samples:10,sampleAttempts:2,productionMutated:false,
+  url:exp.url,viewport:exp.viewport,samples:10,sampleAttempts:2,retriedSamples:[],productionMutated:false,
   databaseMutated:false,woloMutated:false,
   summary:{readyMs:sum(rows.map(x=>x.metrics.readyMs)),documentTtfbMs:sum(rows.map(x=>x.metrics.navigation.responseStart)),
    lcpMs:sum(rows.map(x=>x.metrics.finalLcp.startTime))},rows};
@@ -55,4 +56,29 @@ test("missing Ready remains explicitly incomplete, never a zero-filled success",
  r.summary.readyMs=sum(values);
  const out=audit(r);assert.equal(out.status,"INCOMPLETE_BROWSER_READY");
  assert.equal(out.readyMs,null);assert.equal(out.readyCoverage,9);assert.equal(out.score,null);
+});
+
+test("cold Chrome flags and retry metadata cannot contradict individual samples",()=>{
+ let r=fixture();r.rows[0].documentFromDiskCache=true;
+ assert.throws(()=>audit(r),/cached or unsuccessful/);
+ r=fixture();r.rows[0].documentFromServiceWorker=true;
+ assert.throws(()=>audit(r),/cached or unsuccessful/);
+ r=fixture();r.rows[0].harnessAttempt=2;
+ assert.throws(()=>audit(r),/unsuccessful/);
+ r=fixture();r.rows[0].harnessAttempt=2;r.retriedSamples=[1];
+ assert.equal(audit(r).status,"SOURCE_BOUND_BROWSER_DIAGNOSTIC");
+ r.retriedSamples=[1,1];
+ assert.throws(()=>audit(r),/retry metadata/);
+ r=fixture();r.sampleAttempts=4;
+ assert.throws(()=>audit(r),/retry metadata/);
+});
+test("impossible LCP-before-TTFB and forged partial Ready percentiles refuse",()=>{
+ let r=fixture();r.rows[0].metrics.finalLcp.startTime=1;
+ assert.throws(()=>audit(r),/impossible/);
+ r=fixture();r.rows[0].metrics.readyMs=null;
+ const partial=r.rows.map(x=>x.metrics.readyMs).filter(x=>x!==null);
+ r.summary.readyMs=sum(partial);
+ assert.equal(audit(r).readyCoverage,9);
+ r.summary.readyMs.p95+=50;
+ assert.throws(()=>audit(r),/Partial Ready percentile drift/);
 });
