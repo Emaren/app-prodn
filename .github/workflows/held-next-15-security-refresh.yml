@@ -33,7 +33,28 @@ jobs:
           if [ "$current" = "15.5.28" ]; then
             yarn install --frozen-lockfile --ignore-scripts --non-interactive
             node -e 'const p=require("./node_modules/next/package.json");if(p.version!=="15.5.28")process.exit(1)'
-            echo "Exact package and lockfile already pinned."
+            python3 scripts/check_dependency_security.py
+            if python3 scripts/docs_v2_check.py; then
+              echo "Exact pinned security source and documentation seal qualified."
+              exit 0
+            fi
+            # Source is committed. Seal the exact immutable commit in a SECOND
+            # docs-only Git commit; do not falsely record a pre-commit SHA.
+            python3 scripts/docs_v2_check.py --write --refresh-baseline
+            python3 scripts/docs_v2_check.py
+            git diff --check
+            while IFS= read -r file; do
+              case "$file" in
+                docs/document-registry.json|docs/DOCUMENTATION_CONTROL_PLANE.md|catalog-info.yaml) ;;
+                *) echo "REFUSE unexpected docs-only seal mutation: $file" >&2; exit 1 ;;
+              esac
+            done < <(git diff --name-only)
+            git add docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+            test -n "$(git diff --cached --name-only)"
+            git config user.name 'aoe2war-held-document-bot'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m "docs(HOLD): seal exact Next.js 15.5.28 security source baseline"
+            git push origin HEAD:refs/heads/security/next-15.5.28-20261022
             exit 0
           fi
           test "$current" = "15.5.27"
