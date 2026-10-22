@@ -1,5 +1,5 @@
-import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 "use client";
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
