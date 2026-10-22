@@ -85,3 +85,76 @@ test("duplicate test categories cannot select an ambiguous authority", () => {
 test("invalid calendar dates are not accepted as proof timestamps", () => {
   assert.equal(evidenceAge("2026-02-30T12:00:00.000Z", now), "UNKNOWN");
 });
+
+test("server-claimed execution and pass counts never enter independently verified state", () => {
+  const injected = { ...fixture(), passed: 9999, executed: 9999, certified: true, coverage: 100, kind: "certified" };
+  const found = inspectKingdomTestsEvidence(injected, now);
+  assert.equal(found.state, "CLAIMS_ONLY");
+  assert.equal(found.independentlyVerified, null);
+  assert.ok(!("passed" in found));
+  assert.ok(!("coverage" in found));
+  assert.ok(!("certified" in found));
+});
+
+test("zero declared checks is not falsely converted into zero verified executions", () => {
+  const input = fixture();
+  input.categories[0].checks = [];
+  const found = inspectKingdomTestsEvidence(input, now);
+  assert.equal(found.state, "CLAIMS_ONLY");
+  assert.equal(found.checks.length, 0);
+  assert.equal(found.independentlyVerified, null);
+});
+
+test("an ancient check and a future assembled response remain independent observations", () => {
+  const input = fixture();
+  input.generatedAt = "2099-01-01T00:00:00.000Z";
+  input.categories[0].checks[0].evidenceAt = "2019-01-01T00:00:00.000Z";
+  const found = inspectKingdomTestsEvidence(input, now);
+  assert.equal(found.assemblyAge, "FUTURE");
+  assert.equal(found.checks[0].age, "STALE");
+});
+
+test("non-object and malformed check rows fail closed instead of rendering", () => {
+  const input = { ...fixture(), categories: [{ id: "tests", checks: [null, false, "bad"] }] };
+  assert.equal(inspectKingdomTestsEvidence(input, now).state, "UNAVAILABLE");
+});
+
+test("more than thirty-two declared source categories is rejected", () => {
+  const input = { ...fixture(), categories: Array.from({length: 33}, (_, i) => ({id: i === 0 ? "tests" : String(i), checks: []})) };
+  assert.equal(inspectKingdomTestsEvidence(input, now).state, "UNAVAILABLE");
+});
+
+test("hostile display text remains a bounded source-claim string without HTML interpretation", () => {
+  const injected = {
+    ...fixture(),
+    categories: [{id: "tests", checks: [{
+      id: "evil", label: "<img src=x onerror=alert(1)>",
+      detail: "<script>window.__owned=1</script>", state: "green",
+      evidenceAt: at(2),
+    }]}],
+  };
+  const found = inspectKingdomTestsEvidence(injected, now);
+  assert.equal(found.state, "CLAIMS_ONLY");
+  assert.equal(found.checks[0].label, "<img src=x onerror=alert(1)>");
+  assert.equal(found.checks[0].detail, "<script>window.__owned=1</script>");
+  assert.equal(found.independentlyVerified, null);
+});
+
+test("keyboard inspection trigger remains focusable while waiting, with explicit cancel", () => {
+  const source = readFileSync("components/kingdom-tests/KingdomTestProofPanel.tsx", "utf8");
+  assert.match(source, /function cancelInspection\(\)/);
+  assert.match(source, /active\.current = null;\s*previous\?\.abort\(\)/);
+  assert.match(source, /"Cancel inspection"/);
+  assert.doesNotMatch(source, /disabled=\{state === "loading"\}/);
+  assert.match(source, /Inspection cancelled; no evidence result was retained/);
+});
+
+test("optional source reader is bounded, read-only, and generation-fenced", () => {
+  const source = readFileSync("components/kingdom-tests/KingdomTestProofPanel.tsx", "utf8");
+  assert.match(source, /READ_DEADLINE_MS = 10_000/);
+  assert.match(source, /bytes > 256_000/);
+  assert.match(source, /await reader\.cancel\(\)/);
+  assert.match(source, /active\.current !== controller \|\| controller\.signal\.aborted/);
+  assert.match(source, /credentials: "same-origin"/);
+  assert.doesNotMatch(source, /setInterval|method:\s*["'](?:POST|PUT|PATCH|DELETE)["']/);
+});
