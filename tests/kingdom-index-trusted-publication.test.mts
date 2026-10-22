@@ -77,7 +77,7 @@ test("missing reviewer, same physical key under two roles and invalid signature 
   const good=seal(payload());
   await assert.rejects(verifyKingdomIndexPublication({...good,signatures:good.signatures.slice(0,1)},ctx()),/dual attestation/);
   const duplicateTrust=new Map(trust);
-  duplicateTrust.set("reviewer",{pem:trust.get("release")!.pem,role:"reviewer"});
+  duplicateTrust.set("reviewer",{...trust.get("reviewer")!,pem:trust.get("release")!.pem});
   const bad=seal(payload());
   bad.signatures[1].signatureBase64=bad.signatures[0].signatureBase64;
   await assert.rejects(verifyKingdomIndexPublication(bad,ctx({trustedKeys:duplicateTrust})),/Shared signer key/);
