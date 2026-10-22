@@ -3,16 +3,16 @@
   "kind": "non-authorizing-release-evidence-handoff",
   "date": "2026-10-22",
   "source_branch": "integration/20261022-satchel-mainline-held",
-  "implementation_commit": "4f6686977fd42850e756ae256d85a630f779e7db",
-  "documentation_seal": "137a51c85ff563eef410274f2b4cc1478e55d2f7",
-  "main_ancestor": "b6a15b5e230ec489312e63dae2c8f211bd270953",
+  "implementation_commit": "ded6ae65587a744b27be11fc1b54f77daaccb750",
+  "documentation_seal": "d1e2d6e01431b30da8f86beda5a96488a57b7156",
+  "main_ancestor": "8f2f3b45accea6765aca7340184a1f4df7f05611",
   "independent_codework": [
     "Codex 10000-WOLO refund boundary and incomplete-balance refusal incorporated through merged held PR #814",
     "separate security patch from current main preserved with Next.js 15.5.28",
     "WoloChain issue #5 remains the financial release authority"
   ],
-  "source_qualification": "PENDING_CURRENT_EXACT_HEAD_CI",
+  "source_qualification": "PENDING_REQUALIFICATION_AFTER_MAINLINE_SYNC",
   "financial_activation": "HARD_HOLD",
   "production_deployment_authorized": false,
-  "operator_note": "Triggers maintainer-authored normal CI after documentation seal. It does not approve website deployment, DB migration, signer operation, WOLO transfers, Wolo chain custody or historical settlement. Await new exact-head checks before promotion."
+  "operator_note": "Requalification triggered after preserving merged PR #815 manual CI dispatch, original-live, refund and truthful-balance code in one held candidate. This is an observational JSON record only, not a financial permit, mainnet custody proof or production release authorization."
 }
