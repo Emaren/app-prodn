@@ -9,6 +9,7 @@ import { readFileSync, existsSync } from "node:fs";
 
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 const root=resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const read=name=>JSON.parse(readFileSync(join(root,"config",name),"utf8"));
 const stop=reason=>{throw Error("RENAISSANCE LAUNCH STOP: "+reason)};
@@ -16,6 +17,14 @@ const dims=[["correctness",30],["functionality",25],["performance",20],["maintai
 const routePattern=/^\/(?:[a-z0-9-]+(?:\/[a-z0-9-]+)*)?$/;
 const shaPattern=/^[a-f0-9]{40}$/;
 const routeFile=route=>join("app",...(route==="/"?[]:route.slice(1).split("/")),"page.tsx");
+/** Guard the actual local source state; a user-supplied SHA is not an attestation. */
+export function assertCheckoutProvenance({requestedSha,checkoutSha,dirtyTracked}){
+ if(typeof requestedSha!=="string"||!shaPattern.test(requestedSha))stop("exact 40-character Git SHA required");
+ if(typeof checkoutSha!=="string"||!shaPattern.test(checkoutSha))stop("could not verify local Git HEAD");
+ if(requestedSha!==checkoutSha)stop("requested source SHA differs from local Git HEAD; change checkout or use its exact hash");
+ if(typeof dirtyTracked!=="string"||dirtyTracked.trim())stop("tracked checkout changes invalidate source-bound worker packet; commit or switch to a clean worktree");
+}
+
 
 /** A pure redirect wrapper is a route alias, not an independently owned content page. */
 export function redirectAliasDestination(source){
@@ -145,6 +154,10 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
    process.stdout.write(JSON.stringify(publicCandidateQueue({catalog,campaign,sourceText:relative=>readFileSync(join(root,relative),"utf8")}),null,2)+"\n");
   }else{
    if(!["json","markdown"].includes(format))stop("unknown output format");
+   // These calls are read-only. Untracked artefacts (node_modules, local receipts) are ignored.
+   const checkoutSha=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"}).trim();
+   const dirtyTracked=execFileSync("git",["status","--porcelain","--untracked-files=no"],{cwd:root,encoding:"utf8"});
+   assertCheckoutProvenance({requestedSha:options["--sha"],checkoutSha,dirtyTracked});
    const c=buildPublicPageAssignment({route:options["--route"],sourceSha:options["--sha"],catalog,campaign,
     rubric:read("kingdom-index-quality-rubric.json"),profiles:read("kingdom-index-assurance-profiles.json"),
     sourceExists:relative=>existsSync(join(root,relative)),
