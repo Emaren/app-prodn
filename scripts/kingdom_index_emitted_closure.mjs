@@ -142,5 +142,10 @@ async function main(){
   process.stdout.write(JSON.stringify(output,null,2)+"\n");
   if(output.status!=="OBSERVED_NOT_CERTIFIED")process.exitCode=2;
 }
-if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1]))
+// macOS /var -> /private/var and symlinked temporary entrypoints must
+// resolve to the same physical file; a lexical comparison silently skipped main().
+const invokedScript=process.argv[1]
+  ? await realpath(resolve(process.argv[1])).catch(()=>null)
+  : null;
+if(invokedScript===fileURLToPath(import.meta.url))
   main().catch(err=>{console.error(String(err.message));process.exitCode=2;});
