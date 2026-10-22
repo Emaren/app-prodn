@@ -154,3 +154,11 @@ export function brainSettledResult<T>(source: BrainSignalSource, result: Promise
   if (result.status === "rejected") return { ...unavailableBrainSignal(), data: null, receivedAt: atMs };
   return { ...classifyBrainSignal(source, result.value, atMs), data: result.value, receivedAt: atMs };
 }
+
+/**
+ * Narrow-screen label for already validated UTC source observation times.
+ * The full ISO provenance remains available on the owning DOM element.
+ */
+export function brainSourceTimeLabel(sourceAt: string | null): string {
+  return sourceAt ? sourceAt.slice(5, 10) + " " + sourceAt.slice(11, 16) + "Z" : "NO SOURCE TIME";
+}
