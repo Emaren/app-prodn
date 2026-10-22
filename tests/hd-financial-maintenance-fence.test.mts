@@ -66,12 +66,17 @@ test("build measurement refuses dirty source, missing generation and environment
   try{
     git("init");git("config","user.name","Fixture");git("config","user.email","fixture@example.invalid");
     writeFileSync(path.join(root,".gitignore"),".aoe2war-build-version\n");writeFileSync(path.join(root,"entry.ts"),"original\n");
+    writeFileSync(path.join(root,"next-env.d.ts"),'/// <reference path="./.next/types/routes.d.ts" />\n');
     git("add",".");git("commit","-m","fixture");assert.equal(measure(root),null);
     writeFileSync(path.join(root,".aoe2war-build-version"),"20261021220000-a1b2c3d4e5\n");
     const a=measure(root);assert.ok(a);assert.equal(a.source,git("rev-parse","HEAD").toString().trim());
+    writeFileSync(path.join(root,"next-env.d.ts"),'/// <reference path="./.next-release/types/routes.d.ts" />\n');assert.deepEqual(measure(root),a);
+    writeFileSync(path.join(root,"next-env.d.ts"),'/// <reference path="./.next-release/types/routes.d.ts" />\ndeclare const injected: true;\n');assert.equal(measure(root),null);
+    writeFileSync(path.join(root,"next-env.d.ts"),'/// <reference path="./.next/types/routes.d.ts" />\n');
     writeFileSync(path.join(root,"entry.ts"),"dirty\n");assert.equal(measure(root),null);writeFileSync(path.join(root,"entry.ts"),"original\n");
     writeFileSync(path.join(root,"injected.ts"),"untracked\n");assert.equal(measure(root),null);rmSync(path.join(root,"injected.ts"));
     writeFileSync(path.join(root,".aoe2war-build-version"),"20261021220001-a1b2c3d4e5\n");assert.notEqual(measure(root).deployment,a.deployment);
+    writeFileSync(path.join(root,"next-env.d.ts"),'/// <reference path="./.next-release/types/routes.d.ts" />\n');git("add","next-env.d.ts");assert.equal(measure(root),null);
   }finally{rmSync(root,{recursive:true,force:true});}
 });
 

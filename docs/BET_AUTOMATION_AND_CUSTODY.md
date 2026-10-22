@@ -73,7 +73,10 @@ and `satchel-withdrawal`; scopes are `hd-legacy` and `hd-satchel`.
 
 Next embeds an immutable build literal using `scripts/hd-financial-build-identity.cjs`.
 It measures Git rather than trusting an environment SHA, refuses dirty or
-untracked source and a missing/development build generation. Old processes
+untracked source and a missing/development build generation. The sole generated
+exception is Next's type-only `next-env.d.ts` output-directory reference:
+every other byte and file mode must match HEAD. No executable-source exception
+is allowed; the canonical page-change manifest must already be committed. Old processes
 cannot adopt a newly rotated authority/permit by reading newer sidecars.
 Unbundled Node/CLI workers have no compiled identity and **remain HELD**;
 source-bound worker packaging is required before their financial use. The
