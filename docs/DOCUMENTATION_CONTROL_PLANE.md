@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `security/next-15.5.28-20261022` at `10411f4ca5a1f76e79af2802eedd7de082cb83cb`
+Implementation baseline: `integration/renaissance-worker-on-next-security-20261022` at `23a134230287402fd9d252218bab77443fae03c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
