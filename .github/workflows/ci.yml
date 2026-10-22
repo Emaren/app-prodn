@@ -3,7 +3,7 @@ name: AoE2WAR CI
 on:
   pull_request:
   push:
-    branches: [main, codex/20261022-original-live-admission-held]
+    branches: [main, codex/20261022-original-live-admission-held, integration/20261022-final-mainnet-github-held]
 
 permissions:
   contents: read
