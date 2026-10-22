@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { auditOpenPulls, formatAudit } from "../scripts/renaissance_pr_overlap_audit.mjs";
+import { auditOpenPulls, formatAudit, recoverTruncatedPullFiles } from "../scripts/renaissance_pr_overlap_audit.mjs";
 
 const sha="a".repeat(40),other="b".repeat(40),last="c".repeat(40);
 const mk=(number,paths,hash=sha)=>({
@@ -42,4 +42,32 @@ test("malformed PR metadata and hostile paths refuse to claim clearance",()=>{
  assert.throws(()=>auditOpenPulls({pulls:[mk(805,["a"],"main")],targetNumber:805}),/exact head commit/);
  assert.throws(()=>auditOpenPulls({pulls:[{...mk(805,["a"]),changedFiles:10}],targetNumber:805}),/incomplete/);
  assert.throws(()=>auditOpenPulls({pulls:[{...mk(805,["a"]),title:null}],targetNumber:805}),/title or exact head/);
+});
+
+test("truncated 196-path PR #801-style census is recovered only from complete pagination",()=>{
+ const paths=Array.from({length:196},(_,i)=>"app/example/file"+i+".tsx");
+ const partial={...mk(801,paths),files:paths.slice(0,100).map(path=>({path}))};
+ const target=mk(805,["app/example/file150.tsx"]);
+ let fetched=0;
+ const restored=recoverTruncatedPullFiles([target,partial],pr=>{
+   assert.equal(pr.number,801);
+   fetched++;
+   return paths;
+ });
+ assert.equal(fetched,1,"only truncated PR fetched; completed entries are reused");
+ assert.equal(restored[1].files.length,196);
+ const result=auditOpenPulls({pulls:restored,targetNumber:805});
+ assert.equal(result.result,"EXACT_OVERLAP");
+ assert.deepEqual(result.exactOverlaps[0].files,["app/example/file150.tsx"]);
+ assert.equal(result.writeLease,false);
+});
+test("pagination is fail-closed on omitted, replaced, duplicate or invalid paths",()=>{
+ const all=Array.from({length:196},(_,i)=>"app/example/item"+i+".tsx");
+ const partial={...mk(801,all),files:all.slice(0,100).map(path=>({path}))};
+ const tryRecover=(fn)=>recoverTruncatedPullFiles([partial],fn);
+ assert.throws(()=>tryRecover(()=>all.slice(0,195)),/incomplete/);
+ assert.throws(()=>tryRecover(()=>[...all.slice(0,195),"app/wrong.tsx"]),/changed while paginating/);
+ assert.throws(()=>tryRecover(()=>[...all.slice(0,195),all[0]]),/duplicates/);
+ assert.throws(()=>tryRecover(()=>[...all.slice(0,195),"../invalid"]),/malformed/);
+ assert.throws(()=>tryRecover(()=>null),/incomplete/);
 });
