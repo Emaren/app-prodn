@@ -819,3 +819,76 @@ unchanged.
 
 This is end-to-end production proof that Watcher 1.5.9's server-guided retry
 behavior has a real deployed `Retry-After` source to consume.
+
+
+## Kingdom Watcher exhibition — proposed, not deployed (2026-10-21)
+
+Public UI route: `/kingdom-watcher`. Read-only API: `/api/kingdom-watcher`.
+This is the proposed, source-bound Watcher exhibition and **is not an
+authorization to publish Watcher v1.6.6**. The public release and previous
+generation derive exclusively from `lib/watcherRelease.ts`. Under-construction
+source HEAD can refresh from the constrained public GitHub draft PR #76; any
+new, unqualified commit loses its predecessor's CI numbers until independently
+qualified. Future release identity advances only when the governed published
+release registry does. The page never awards a fabricated 100/100.
+
+The public sensor computes unique signed-in **download receipt holders**, not
+installed clients. It counts recently authenticated sessions, not distinct
+humans or proven ongoing matches, and uses a 150-second recent-event cutoff.
+It classifies batch/import, stream starts, replay detection, monitored and
+idle according to recent actual event transitions. Recent detection does
+not attest a game is still in progress; stream-start events do not prove
+completed streams. Manual file-import receipts are separate from Watcher
+batch activity. The observed UTC streaming chart contains **actual
+received stream-start dates only**; missing days are not fabricated zeros.
+Capped samples display an explicit partial-data status.
+
+For privacy, public objects NEVER expose account names, stable user or
+session identifiers, API keys, replay filenames/hashes, IP addresses or
+device fingerprints. Radar beacons represent anonymous latest-session
+states; explicit user opt-in is required before public player-level
+identity or individually identifiable running-status exposure.
+
+Client heartbeat CPU%, working-set MiB and idle wakeups/s are shown only
+when finite and reported by signed-in active sessions. These do not
+measure watts, benchmark parity, package bytes or battery savings.
+Published previous/current physical benchmark scores remain **unmeasured**
+until real exact-version comparisons exist. Hosted CI counts and the
+frozen-replay source qualification are shown as build evidence only.
+
+The collection uses bounded server reads (2400 recent events and 12000
+recent stream-start rows), a 20-second cache and 30-second foreground-only
+API refresh. If any authority fails, including initial Prisma client acquisition, the panel shows unavailable rather
+than inventing zero. Production audience and Watcher credentials cannot
+be recovered from the public JSON response. This page does not change
+replay admission, uploads, Wolo/War Satchel execution, telemetry ingest,
+or website database schema.
+
+Release gate: after Kingdom Intelligence/Index has a genuine certified
+100/100 with matching source receipt, run independent page CI, source
+census and protected release-controller audits. Do not merge or deploy
+this visual draft early. Separate Mac signing, installed replay, security
+and resource certification remain mandatory for Watcher v1.6.6.
+
+
+## Exact release artifact weight comparison
+
+The Kingdom Watcher page makes one objectively measurable
+v1.6.5-versus-v1.6.4 comparison **without interpreting package size as
+process memory, CPU, watts or performance**. It queries each exact
+published public GitHub release tag from
+`Emaren/aoe2-watcher` using a bounded, cached read and checks
+`tag_name`, `draft=false`, `prerelease=false` and the unique
+expected Windows NSIS, Mac arm64 DMG and Linux AppImage artifact names.
+Only safe, positive integer byte lengths are admitted. Missing,
+duplicated or unavailable release assets display **unmeasured**, never
+a fabricated zero. A fresh release registry advances both tags.
+
+Official Oct 21 receipts demonstrate the contract: macOS arm64 DMG
+v1.6.4 131087395 bytes and v1.6.5 129213289 bytes (smaller);
+Windows NSIS 108051528 to 108077776 (slightly larger); Linux AppImage
+134034429 to 134067137 (slightly larger). The user interface reports
+the percentage accurately in either direction and retains official
+GitHub release links. No improvement assertion is made about these
+changes beyond those byte counts, and no automatic end-user adoption
+or installation can be inferred from release download counters.

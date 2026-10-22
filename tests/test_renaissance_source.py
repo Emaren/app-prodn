@@ -19,7 +19,7 @@ class RenaissanceSourceTests(unittest.TestCase):
         self.assertEqual(len(set(routes)|{m["href"] for m in doc["modules"]}),144)
     def test_all_source_pages_accounted_for(self):
         doc,routes=MODULE.load()
-        expected=set(routes)|{m["href"] for m in doc["modules"]}
+        expected=set(routes)|{m["href"] for m in doc["modules"]}|{r["href"] for r in doc.get("extensions",[])}
         discovered={("/"+p.relative_to(ROOT/"app").parent.as_posix()).replace("/.","/") for p in (ROOT/"app").rglob("page.tsx")}
         self.assertEqual(discovered,expected)
     def test_operator_cli_exposes_renaissance_read_only_commands(self):

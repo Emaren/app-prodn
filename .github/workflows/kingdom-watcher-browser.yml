@@ -1,0 +1,99 @@
+name: Kingdom Watcher isolated browser proof
+
+on:
+  pull_request:
+    paths:
+      - "app/kingdom-watcher/**"
+      - "app/api/kingdom-watcher/**"
+      - "lib/kingdomWatcherPublic.ts"
+      - "lib/watcherRelease.ts"
+      - "scripts/kingdom-watcher-browser-acceptance.cjs"
+      - ".github/workflows/kingdom-watcher-browser.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-exhibition:
+    name: Isolated Chromium — real Kingdom Watcher GUI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: postgresql://isolated:isolated@127.0.0.1:5432/aoe2war_intentionally_unavailable
+      SESSION_SECRET: test-only-never-a-real-session-secret
+      NEXTAUTH_SECRET: test-only-never-a-real-session-secret
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      AOE2_BACKEND_UPSTREAM: http://127.0.0.1:39999
+      BROWSER_BASE_URL: http://127.0.0.1:3137
+      PW_HOME: /tmp/watcher-playwright
+      WATCHER_BROWSER_EVIDENCE: /tmp/kingdom-watcher-browser-evidence
+      CI: "1"
+
+    steps:
+      - name: Checkout exact PR source — read only
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pinned build dependencies
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+
+      - name: Restore canonical frozen application graph
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+
+      - name: Install isolated Playwright browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PW_HOME"
+          npm install --prefix "$PW_HOME" --no-save --no-package-lock --ignore-scripts --audit=false --fund=false playwright@1.55.1
+          "$PW_HOME/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Compile exact Next candidate
+        run: |
+          set -euo pipefail
+          yarn build
+          test -s .next/BUILD_ID
+          git rev-parse HEAD
+
+      - name: Exercise real public page without production data or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$WATCHER_BROWSER_EVIDENCE"
+          ./node_modules/.bin/next start -H 127.0.0.1 -p 3137 \
+            >"$WATCHER_BROWSER_EVIDENCE/next-runtime.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 80); do
+            if curl --silent --max-time 1 -o /dev/null "http://127.0.0.1:3137/kingdom-watcher"; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              echo "STOP: isolated Watcher Next runtime failed to start"
+              exit 1
+            fi
+            sleep 1
+          done
+          node scripts/kingdom-watcher-browser-acceptance.cjs
+          printf 'Source: %s\n' "$(git rev-parse HEAD)"
+          printf 'No real production DB, cookies or external browser requests.\n'
+
+      - name: Preserve source-bound screenshots and browser logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdom-watcher-browser-${{ github.sha }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: /tmp/kingdom-watcher-browser-evidence
