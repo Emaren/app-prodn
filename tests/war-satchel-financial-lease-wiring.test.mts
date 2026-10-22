@@ -28,7 +28,7 @@ test("new withdrawals acquire a signed lease BEFORE the only atomic durable atte
  assert.match(first,/fenced\.request,reader,signal/);
  assert.match(first,/attempt\?"unknown_hold":"release_held"/);
  assert.doesNotMatch(first,/allowUnfenced|permitOverride|skipAuthorization/);
- assert.match(s,/request\("/satchel\/v1\/reconcile"/);
+ assert.ok(s.includes('request("/satchel/v1/reconcile"'),"recovery remains strictly reconciliation-only");
 });
 test("environment flags cannot convert the currently source-held financial bridge into spending authority",()=>{
  const hold=source("lib/warSatchelFinancialBridgeHold.ts");
