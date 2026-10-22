@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/20261022-original-live-admission-held` at `217c76033dae25abf44defaa3d4f6162a1c21dae`
+Implementation baseline: `codex/20261022-original-live-admission-held` at `991601181bed255eff5aa91eb5c0b395393ed4a8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
