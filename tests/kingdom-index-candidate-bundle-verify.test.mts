@@ -50,6 +50,16 @@ async function fixture(){
     kingdomIndexStatus:"unmeasured",indexScore:null})),
   consistent:true,certified:false,criterionPointsAwarded:null,note:"Uncertified synthetic fixture"},"sha256");
  await put("api-loopback.json",api);
+ const burstTimes=Array.from({length:40},(_,i)=>22+i);
+ const concurrent=digest({schema:1,kind:"aoe2war.kingdom-index.concurrent-loopback-smoke.v1",
+  sourceSha:sha,buildId,origin:"LOOPBACK_ONLY",endpoint:"/api/kingdom-index",
+  concurrency:4,requests:40,wallMs:333,
+  latencyMs:{p50:percentile(burstTimes,.5),p75:percentile(burstTimes,.75),p95:percentile(burstTimes,.95)},
+  consistent:true,observed:burstTimes.map((elapsedMs,i)=>({sequence:i+1,elapsedMs,
+   responseBytes:1024,routeCount:88,certified:0,indexStatus:"unmeasured",indexScore:null})),
+  errors:0,certified:false,criterionPointsAwarded:null,
+  limitations:"Untrusted synthetic burst fixture"},"sha256");
+ await put("concurrent-loopback.json",concurrent);
  for(const viewport of ["desktop","phone"]){
   const url="http://127.0.0.1:3030/kingdom-index";
   const rows=Array.from({length:10},(_,i)=>({
@@ -82,6 +92,8 @@ test("complete synthetic exact-bound bundle is internally consistent but never c
   assert.equal(r.chrome.desktop.samples,10);
   assert.equal(r.chrome.phone.samples,10);
   assert.equal(r.api.samples,12);
+  assert.equal(r.concurrent.requests,40);
+  assert.equal(r.concurrent.concurrency,4);
   assert.equal(r.certified,false);
   assert.equal(r.criterionPointsAwarded,null);
  }finally{await rm(root,{recursive:true,force:true})}
@@ -178,5 +190,24 @@ test("ledger cannot launder incomplete bundle or modified canonical weights into
   await assert.rejects(candidateEvidenceLedger({root,...args,rubric,profile:missing}),/Changed rubric/);
   await mutate(root,"api-loopback.json",d=>{d.certified=true});
   await assert.rejects(candidateEvidenceLedger({root,...args,rubric,profile:profiles.profiles.index}));
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+
+test("forged concurrent burst build/response/P95 and false certificate are rejected",async()=>{
+ const root=await fixture();
+ try{
+  await mutate(root,"concurrent-loopback.json",d=>{
+   d.buildId="wrong-build";
+   d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
+  });
+  await assert.rejects(verifyIndexCandidateBundle(root,args),/concurrent API smoke/);
+  const other=await fixture();
+  try{
+   await mutate(other,"concurrent-loopback.json",d=>{
+    d.latencyMs={p50:1,p75:1,p95:1};
+    d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
+   });
+   await assert.rejects(verifyIndexCandidateBundle(other,args),/Concurrent API percentile/);
+  }finally{await rm(other,{recursive:true,force:true})}
  }finally{await rm(root,{recursive:true,force:true})}
 });
