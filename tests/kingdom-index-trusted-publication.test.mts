@@ -17,8 +17,10 @@ const source={
 };
 const keys=[generateKeyPairSync("ed25519"),generateKeyPairSync("ed25519")];
 const trust=new Map([
-  ["release",{pem:keys[0].publicKey.export({type:"spki",format:"pem"}),role:"release"}],
-  ["reviewer",{pem:keys[1].publicKey.export({type:"spki",format:"pem"}),role:"reviewer"}],
+  ["release",{pem:keys[0].publicKey.export({type:"spki",format:"pem"}),role:"release",
+    route:"/kingdom-index",notBefore:new Date(NOW-86400000).toISOString(),notAfter:new Date(NOW+86400000).toISOString()}],
+  ["reviewer",{pem:keys[1].publicKey.export({type:"spki",format:"pem"}),role:"reviewer",
+    route:"/kingdom-index",notBefore:new Date(NOW-86400000).toISOString(),notAfter:new Date(NOW+86400000).toISOString()}],
 ]);
 function proof(name:string,kind:string){
   return {url:"https://github.com/Emaren/app-prodn/issues/776",sha256:SHA(name),
@@ -123,4 +125,58 @@ test("altered canonical weights, point ceilings and mandatory gates cannot certi
   const swapped=structuredClone(profiles.profiles.index);
   swapped.gates[0].id="invented-perfect-score";
   await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({profile:swapped})),/Canonical rubric or three Index assurance gates drifted/);
+});
+
+test("issuer authorization interval, exact route and conflicting enrollment refuse",async()=>{
+  const exp=new Map(trust);
+  exp.set("reviewer",{...trust.get("reviewer")!,notAfter:new Date(NOW-1000).toISOString()});
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({trustedKeys:exp})),/Issuer authority expired/);
+  const early=new Map(trust);
+  early.set("release",{...trust.get("release")!,notBefore:new Date(NOW+60000).toISOString()});
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({trustedKeys:early})),/Issuer authority expired/);
+  const wrong=new Map(trust);
+  wrong.set("reviewer",{...trust.get("reviewer")!,route:"/kingdom-tests"});
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({trustedKeys:wrong})),/not enrolled for this exact route/);
+  const long=new Map(trust);
+  long.set("release",{...trust.get("release")!,notBefore:new Date(NOW-400*86400000).toISOString()});
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({trustedKeys:long})),/Issuer authority expired/);
+});
+test("publication expires beyond independent reviewer enrollment even if signature valid",async()=>{
+  const almostExpired=new Map(trust);
+  almostExpired.set("reviewer",{...trust.get("reviewer")!,notAfter:new Date(NOW+10000).toISOString()});
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({trustedKeys:almostExpired})),/Issuer authority expired/);
+});
+test("signed claim and proof assignment are immutable across asynchronous artifact inspection",async()=>{
+  let calls=0;
+  const approved=await verifyKingdomIndexPublication(seal(payload()),ctx({
+    verifyArtifact:async(proof:any,info:any,assignment:any)=>{
+      calls++;
+      assert.ok(Object.isFrozen(proof));
+      assert.ok(Object.isFrozen(info.source));
+      assert.ok(Object.isFrozen(assignment));
+      assert.throws(()=>{proof.kind="production";},TypeError);
+      assert.throws(()=>{proof.sha256="0".repeat(64);},TypeError);
+      assert.throws(()=>{assignment.earned=100;},TypeError);
+      return true;
+    }
+  }));
+  assert.equal(calls,23);
+  assert.equal(approved.certified,true);
+});
+test("unexpected enrollment fields cannot silently become issuer authority",async()=>{
+  const changed=new Map(trust);
+  changed.set("release",{...trust.get("release")!,revokedAt:null});
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({trustedKeys:changed})),/Invalid trust enrollment fields/);
+});
+test("wrong route or BUILD_ID in independently asserted source refuses grade",async()=>{
+  const badRoute={...source,route:"/kingdom-tests"};
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({expected:badRoute})),/Deployed source or asset mismatch/);
+  const badBuild={...source,buildId:"another-build"};
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({expected:badBuild})),/Deployed source or asset mismatch/);
+});
+test("duplicate gate and replay refusal are independent of valid signatures",async()=>{
+  const duplicate=payload();
+  duplicate.gates[1].id=duplicate.gates[0].id;
+  await assert.rejects(verifyKingdomIndexPublication(seal(duplicate),ctx()),/Missing or repeated gate/);
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({isCommitted:async()=>false})),/Missing independent durable ingestion receipt/);
 });
