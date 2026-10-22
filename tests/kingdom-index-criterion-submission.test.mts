@@ -255,7 +255,9 @@ function performanceFixture(id){
 // Fake Chrome fixture only for parser/approval contract tests. It is NEVER a
 // production browser receipt, independently enrolled run, or earned score.
 const FAKE_BROWSER_COLLECTOR_SHA="9".repeat(40);
-function syntheticBrowserFixture(){
+function syntheticBrowserFixture(sequence){
+ // Distinct synthetic captures cannot share a single artifact digest across
+ // several criterion awards; production likewise prohibits duplicate credit.
  const values=Array.from({length:10},(_,i)=>i+1);
  const stats=fn=>{
   const rows=values.map(fn).sort((a,b)=>a-b),pct=q=>{
@@ -271,7 +273,7 @@ function syntheticBrowserFixture(){
     finalLcp:{startTime:120+i},
     navigation:{requestStart:10+i,responseStart:45+i,responseEnd:55+i}}
  }));
- const d={schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:issuedAt,
+ const d={schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:new Date(Date.parse(issuedAt)+sequence).toISOString(),
   releaseSha:source.gitSha,buildVersion:source.buildId,collectorSourceSha:FAKE_BROWSER_COLLECTOR_SHA,
   url:"https://aoe2war.com/kingdom-index",viewport:"desktop",samples:10,
   sampleAttempts:1,retriedSamples:[],productionMutated:false,databaseMutated:false,woloMutated:false,
@@ -288,7 +290,7 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
     ...p.gates.map(row=>({proof:row.evidence[0],gateId:row.id,result:row.result}))];
   for(const [i,{proof:ref,criterionId}] of assignment.entries()){
    const bytes=ref.kind==="performance"?performanceFixture(criterionId):
-    ref.kind==="browser"?syntheticBrowserFixture():
+    ref.kind==="browser"?syntheticBrowserFixture(i+1):
     Buffer.from("untrusted-fixture-proof-"+(i+1));
    if(ref.kind==="browser")ref.conditions="viewport=desktop";
    ref.sha256=createHash("sha256").update(bytes).digest("hex");
