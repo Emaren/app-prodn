@@ -85,7 +85,13 @@ export async function collectIndexEmittedClosure(root,head,expectedSha){
       if(!trstat.isFile()||trstat.size>1024*1024)stop("Oversize/nonregular trace");
       doc=parsedJson(await readFile(join(root,trace),"utf8"),trace);
     }
-    catch{missing.push(trace);continue;}
+    catch(error){
+      // Required trace paths are checked again by the shared file-hash loop.
+      // Avoid reporting each absent .nft.json twice, while preserving a
+      // distinct invalid-trace signal for malformed/unreadable existing files.
+      if(error?.code!=="ENOENT")invalidTraces.push(trace+":invalid-or-unreadable");
+      continue;
+    }
     if(!doc||!Array.isArray(doc.files)||doc.files.length>FILE_MAX||
       doc.files.some(x=>typeof x!=="string"||x.length>800))
       {invalidTraces.push(trace);continue;}
