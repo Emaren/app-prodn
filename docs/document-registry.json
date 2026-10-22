@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1779318ed665be69b9d867cbe0bfd39df4d64c0a2e0ee0005c3938363041ed33",
+      "sha256": "8fdfc6c7494be2a037b1da431e81ebbe23f60c94a74ef6b646524d13131babad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261022-satchel-mainline-held",
-    "commit": "2bfb156a6081393bd40df2bd23e8e43dbeb2d346"
+    "commit": "9d280775f23d757be253d4f6c74622ec883fdf4c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
