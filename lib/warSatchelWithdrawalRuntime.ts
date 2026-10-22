@@ -52,8 +52,12 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
     // Database commit completes BEFORE the only permitted submission call.
     let attempted=false;
     try{reply=await withHdFinancialLease({scope:"hd-satchel",producer:"satchel-withdrawal",wallet:process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS||""},async signal=>{
+      // Losing the database COMMIT acknowledgement is itself uncertain.
+      // The durable row controls every subsequent pass; never label it an
+      // unattempted maintenance refusal merely because this await rejected.
+      attempted=true;
       const fenced=await markSatchelWithdrawalAttempt(prisma,{withdrawalId,ownerUserId:record.ownerUserId});
-      attempted=true;return request("/v1/satchel/withdrawals",fenced.request,reader,signal);
+      return request("/v1/satchel/withdrawals",fenced.request,reader,signal);
     });}catch{
       if(!attempted)return {state:"financial_maintenance_hold"};
       await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:null,state:"unknown"}});

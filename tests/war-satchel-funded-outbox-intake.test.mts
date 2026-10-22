@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import {fundedMechaEligibleQuery,FUNDED_MECHA_CANDIDATE_LIMIT} from "../lib/warSatchelEligibleOutbox.ts";
 
 const load=(path:string)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
@@ -76,5 +77,6 @@ test("empty funded Watcher outbox does not probe the custody signer",()=>{
  assert.ok(query>=0 && empty>query && signer>empty && execute>signer,
   "read-only queue selection and empty return must precede signer connection");
  assert.match(source,/if\(!satchelFinancialBridgeReady\(\)/);
- assert.match(source,/const MAX=FUNDED_MECHA_CANDIDATE_LIMIT/);
+ assert.equal(fundedMechaEligibleQuery({limit:FUNDED_MECHA_CANDIDATE_LIMIT}).take,FUNDED_MECHA_CANDIDATE_LIMIT);
+ assert.throws(()=>fundedMechaEligibleQuery({limit:FUNDED_MECHA_CANDIDATE_LIMIT+1}),/INVALID_BOUND/);
 });

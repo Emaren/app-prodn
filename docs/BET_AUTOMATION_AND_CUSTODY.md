@@ -122,7 +122,12 @@ Actual isolated PostgreSQL tests cover independent reader posture, forged
 permits, CLOSE-before-wait, separate OS producer leases, process restart,
 expiry during queued I/O and terminated policy connections. Wire-format unit
 tests explicitly inject only a test callback; the real client separately
-refuses financial POST without real admission. These are source receipts,
+refuses financial POST without real admission. The existing 100-WOLO/twelve-ticket
+SDK/PG qualification also installs the actual policy SQL with a separate
+NOINHERIT reader and Ed25519 permit: HOLD creates zero withdrawal attempts;
+OPEN allows the existing UNKNOWN/reconciliation path. Its filesystem/build/TLS
+authority, game capture and transport reviewers remain controlled test inputs.
+These are source receipts,
 not a live fence or evidence that issue #5 control A is VERIFIED.
 
 ## October 21 — canonical Watcher proposition and admission clock validation
