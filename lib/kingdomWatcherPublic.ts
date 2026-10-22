@@ -55,6 +55,10 @@ export type WatcherPublicSnapshot = {
     truncated: boolean;
     totalObserved: number | null;
   };
+  packageWeights: {
+    authority: "official-github-release-assets";
+    rows: Array<{ platform: "windows" | "macos" | "linux"; previousBytes: number | null; currentBytes: number | null; deltaPercent: number | null }>;
+  };
 };
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
@@ -161,6 +165,14 @@ function emptySnapshot(now: Date): WatcherPublicSnapshot {
     },
     resources: { cpuPercent: null, workingSetMb: null, idleWakeupsPerSecond: null, reportingSessions: 0 },
     streaming: { fourteenDays: [], truncated: false, totalObserved: null },
+    packageWeights: {
+      authority: "official-github-release-assets",
+      rows: [
+        { platform: "windows", previousBytes: null, currentBytes: null, deltaPercent: null },
+        { platform: "macos", previousBytes: null, currentBytes: null, deltaPercent: null },
+        { platform: "linux", previousBytes: null, currentBytes: null, deltaPercent: null },
+      ],
+    },
   };
 }
 type Row = {
@@ -190,6 +202,52 @@ function stateFor(events: Row[], nowMs: number): WatcherSignalState {
     case "monitor_start": return "monitoring";
     default: return "idle";
   }
+}
+
+type OfficialRelease = {
+  tag_name?: unknown;
+  draft?: unknown;
+  prerelease?: unknown;
+  assets?: Array<{ name?: unknown; size?: unknown }>;
+};
+async function readOfficialReleaseBytes(version: string): Promise<Record<"windows"|"macos"|"linux",number|null>> {
+  const unavailable = { windows: null, macos: null, linux: null };
+  if (!/^\\d+\\.\\d+\\.\\d+$/.test(version)) return unavailable;
+  try {
+    const response = await fetch("https://api.github.com/repos/Emaren/aoe2-watcher/releases/tags/v"+version, {
+      next: { revalidate: 3600 },
+      headers: { Accept: "application/vnd.github+json" },
+      signal: AbortSignal.timeout(1800),
+    });
+    if (!response.ok) return unavailable;
+    const data = await response.json() as OfficialRelease;
+    if (data.tag_name !== "v"+version || data.draft !== false || data.prerelease !== false ||
+        !Array.isArray(data.assets)) return unavailable;
+    const rows = data.assets.filter((row): row is { name: string; size: number } =>
+      typeof row.name === "string" && typeof row.size === "number" &&
+      Number.isSafeInteger(row.size) && row.size > 1_000_000 && row.size < 2_000_000_000);
+    const find = (kind: "windows"|"macos"|"linux") => {
+      const patterns = {
+        windows: /^AoE2HDBets[.]Watcher[.]Setup[.]\\d+[.]\\d+[.]\\d+[.]exe$/i,
+        macos: /^AoE2HDBets[.]Watcher-\\d+[.]\\d+[.]\\d+-arm64[.]dmg$/i,
+        linux: /^AoE2HDBets[.]Watcher-\\d+[.]\\d+[.]\\d+[.]AppImage$/i,
+      };
+      const matched = rows.filter(row => patterns[kind].test(row.name));
+      return matched.length === 1 ? matched[0].size : null;
+    };
+    return { windows: find("windows"), macos: find("macos"), linux: find("linux") };
+  } catch { return unavailable; }
+}
+async function attachOfficialPackageWeights(snapshot: WatcherPublicSnapshot) {
+  const [previous,current] = await Promise.all([
+    readOfficialReleaseBytes(snapshot.release.previous),
+    readOfficialReleaseBytes(snapshot.release.current),
+  ]);
+  snapshot.packageWeights.rows = snapshot.packageWeights.rows.map(row => {
+    const p = previous[row.platform],c = current[row.platform];
+    return { ...row, previousBytes:p, currentBytes:c,
+      deltaPercent:p !== null && c !== null ? Math.round((c-p)/p*10000)/100 : null };
+  });
 }
 
 let pending: Promise<WatcherPublicSnapshot> | null = null;
@@ -292,7 +350,7 @@ export async function loadKingdomWatcherPublic(): Promise<WatcherPublicSnapshot>
     } catch (error) {
       console.warn("Kingdom Watcher public aggregate unavailable", error instanceof Error ? error.message : "unknown");
     }
-    await reconcileCandidate(result);
+    await Promise.allSettled([reconcileCandidate(result), attachOfficialPackageWeights(result)]);
     cached = { snapshot: result, until: Date.now() + 20_000 };
     return result;
   })();
