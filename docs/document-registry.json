@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "458fafba3fe4efbb48ace3f9b485e1fe210081282d5bc1907838b085100a8cd0",
+      "sha256": "022dd061a3cf72dc75bbb6d52edfeb8597f1cddd0df61752c94a2c758d1ae353",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1583,7 +1583,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "dc5e02c5d735c7ecbe5963eb64a5276b0cdf80ba524ed9de50c38b4f63f31487",
+      "sha256": "f7e3a71b1942b0e94c1bc43ea820bbe49be50ddd9b6044246e4731e38bfd2daf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "security/next-15.5.28-20261022",
-    "commit": "10411f4ca5a1f76e79af2802eedd7de082cb83cb"
+    "branch": "integration/renaissance-worker-on-next-security-20261022",
+    "commit": "23a134230287402fd9d252218bab77443fae03c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
