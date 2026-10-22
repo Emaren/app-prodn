@@ -1,0 +1,55 @@
+name: Release Flight Recorder (evidence only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_pr:
+        description: "AoE2WAR source candidate PR number (read-only)"
+        required: true
+        default: "801"
+        type: string
+      wolo_pr:
+        description: "WoloChain source candidate PR number (read-only)"
+        required: true
+        default: "82"
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  issues: read
+
+jobs:
+  evidence-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APP_PR: ${{ inputs.app_pr }}
+      WOLO_PR: ${{ inputs.wolo_pr }}
+    steps:
+      - name: Checkout observer source only
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up standard-library Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Verify fail-closed contract without network
+        run: python3 -m unittest discover -s tests -p 'test_release_flight_recorder.py' -v
+      - name: Observe current PR heads, exact check runs and financial issue
+        run: |
+          python3 scripts/release_flight_recorder.py \
+            --app-pr "$APP_PR" \
+            --wolo-pr "$WOLO_PR" \
+            --output-dir "$RUNNER_TEMP/release-flight-recorder"
+      - name: Preserve observed evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-flight-recorder-${{ github.run_id }}
+          path: ${{ runner.temp }}/release-flight-recorder/
+          if-no-files-found: warn
+          retention-days: 14
