@@ -8,11 +8,30 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-10-22"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 # AoE2WAR Betting Constitution
+
+## October 22 UTC — audited source contract, not a funded authorization
+
+Review scope: verified the current `lib/betWagerSettlement.ts` implementation
+retains one-for-one matched exposure, proportional within-side matching, whole
+unmatched principal return on BOTH sides, fee-free voids, and the 2% fee on
+**matched two-sided** volume only. The historical September 9, 2026 Jim audit
+remains a *dated* reconciliation, not proof of October balances or complete
+global liabilities. This document does not retroactively rerun or settle any
+old claims.
+
+New Mecha Auto Bets, War Satchel vault deposits, AI/house counterliquidity
+and phase-book market admission are distinct, held implementation boundaries.
+House liquidity must be real independently funded matching exposure, never
+an invented display seed. No consent flag, preview, scheduled market or source
+test authorizes money movement. Historical accepted escrow transaction and
+founder #889 remain WoloChain issue #5 financial HOLD; native chain proof,
+owner-bounded custody and complete solvency evidence are required before
+funded activation. DE feature development remains out of scope.
 
 ## Status and authority
 
