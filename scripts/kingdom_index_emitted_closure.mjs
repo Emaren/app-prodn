@@ -56,7 +56,7 @@ async function digestFile(root,path,budget){
   return {path,bytes:stat.size,sha256:sha.digest("hex")};
 }
 async function findStatic(root,rel,paths,budget){
-  if(paths.length>=FILE_MAX)stop("Static asset count exceeds bound");
+  if(paths.size>=FILE_MAX)stop("Static asset count exceeds bound");
   const dir=resolve(root,rel);
   if(!inside(root,dir))stop("Unsafe static directory");
   for(const row of await readdir(dir,{withFileTypes:true})){
@@ -80,7 +80,11 @@ export async function collectIndexEmittedClosure(root,head,expectedSha){
   const paths=new Set(REQUIRED),missing=[],invalidTraces=[];
   for(const trace of TRACES){
     let doc;
-    try{doc=parsedJson(await readFile(join(root,trace),"utf8"),trace)}
+    try{
+      const trstat=await lstat(join(root,trace));
+      if(!trstat.isFile()||trstat.size>1024*1024)stop("Oversize/nonregular trace");
+      doc=parsedJson(await readFile(join(root,trace),"utf8"),trace);
+    }
     catch{missing.push(trace);continue;}
     if(!doc||!Array.isArray(doc.files)||doc.files.length>FILE_MAX||
       doc.files.some(x=>typeof x!=="string"||x.length>800))
