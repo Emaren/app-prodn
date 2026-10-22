@@ -82,10 +82,17 @@ export function renderSnapshot(snapshot){
   "|---|---|---|---|---|"
  ];
  for(const p of snapshot.prs){
-  s.push("| #"+p.pr+" | "+tick+p.headSha+tick+" | "+tick+p.baseBranch+tick+" @ "+tick+p.baseSha.slice(0,12)+tick+" | "+
+  s.push("| #"+p.pr+" | "+tick+p.headSha+tick+" | "+tick+(p.baseBranch??"UNKNOWN")+tick+" @ "+tick+p.baseSha.slice(0,12)+tick+" | "+
     p.state+(p.draft?"/draft":"/review")+" | "+p.workflowObservation+" |");
-  for(const run of p.runs)
-   s.push("  - #"+p.pr+" run "+run.id+": "+run.name+" — "+run.status+"/"+(run.conclusion??"UNKNOWN"));
+ }
+ s.push("","## Exact-head workflow observations");
+ for(const p of snapshot.prs){
+  s.push("","**PR #"+p.pr+"**");
+  if(!p.runs.length)s.push("- No exact-head workflow runs observed");
+  for(const run of p.runs){
+   const safeName=run.name.replace(/[\r\n|<>]/g," ").slice(0,120);
+   s.push("- Run "+run.id+": "+safeName+" — "+run.status+"/"+(run.conclusion??"UNKNOWN"));
+  }
  }
  s.push("","**Score: UNKNOWN · No merge, certification or production release approved.**",
   "",snapshot.limitations);
