@@ -24,7 +24,7 @@ export function classifyTrackedChanges(changes){
     const {path,status,beforeBlob,afterBlob}=row??{};
     if(typeof path!=="string"||path.length>1000||!path||
        path.includes("\u0000")||path.startsWith("/")||path.startsWith("../")||
-       path.includes("/../")||!(/^[A-Z?]+$/.test(status??"")))
+       path.includes("/../")||!(/^[AMDTCU]$/.test(status??"")))
        stop("Unsafe git status record");
     return {path,status,classification:TYPES[path]??"UNCLASSIFIED_TRACKED_SOURCE_MUTATION",
       beforeBlob:HEX40.test(beforeBlob??"")?beforeBlob:null,
