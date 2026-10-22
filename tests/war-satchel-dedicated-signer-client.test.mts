@@ -101,6 +101,18 @@ test("capability loss between initial connection and second health check holds t
  assert.equal(sendCalls,0);
 }finally{restore();}});
 
+test("independent wager signer enforces the same exact 10,000 WOLO product cap as the ledger",async()=>{try{configure();
+  const t=mockRead();
+  const signer=await connectCertifiedSatchelSigner(t.reader);
+  // This is a synthetic reviewer key and mock signer, never live custody.
+  assert.deepEqual(await signer.submitOneShot(args({amount_uwolo:"10000000000"})),
+    {kind:"broadcast_accepted",txHash:"B".repeat(64)});
+  assert.equal(t.calls().sendCalls,1);
+  assert.deepEqual(await signer.submitOneShot(args({amount_uwolo:"10001000000"})),
+    {kind:"unknown",reason:"invalid_or_ambiguous_signer_payload"});
+  assert.equal(t.calls().sendCalls,1,"over-cap principal must not reach signer POST");
+}finally{restore();}});
+
 test("signed v2 one-shot returns broadcast_accepted only, never financial confirmation",async()=>{try{configure();
  const t=mockRead();const signer=await connectCertifiedSatchelSigner(t.reader);const input=args();
  assert.deepEqual(await signer.submitOneShot(input),{kind:"broadcast_accepted",txHash:"B".repeat(64)});
