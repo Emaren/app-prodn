@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/hd-live-market-admission` at `e4da11f6d583ccc9e280fdadaa8707c33611ec9c`
+Implementation baseline: `codex/hd-live-market-admission` at `1452686c356554b74b11b61c9d558d65ce0430c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

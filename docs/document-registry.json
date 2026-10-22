@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cf58826edfa39be4273579c726728274ae08e5752c10f69e47ac0603d30507fa",
+      "sha256": "505740f4ee9cf95926cd6ef31882c02b926f6c361b50c506adc7994e1ee46c2a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/hd-live-market-admission",
-    "commit": "e4da11f6d583ccc9e280fdadaa8707c33611ec9c"
+    "commit": "1452686c356554b74b11b61c9d558d65ce0430c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
