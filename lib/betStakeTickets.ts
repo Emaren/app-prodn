@@ -1,3 +1,4 @@
+import {normalizeNewBetAmount} from "./betMoneyLimits.ts";
 import {requireSatchelFinancialBridge} from "./warSatchelFinancialBridgeHold.ts";
 import {buildSatchelWagerAuthorization,assertAuthenticatedSatchelWager,assertSatchelWagerTicketLegs,type SatchelWagerTicketLeg} from "./warSatchelWagerAuthorization.ts";
 import type {AuthenticatedWarSatchelFinancialProof} from "./warSatchelAuthenticatedFinancialProof.ts";
@@ -189,15 +190,7 @@ function normalizePositiveInt(value: unknown) {
 }
 
 function normalizeTotalAmount(value: unknown) {
-  const parsed =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number(value)
-        : Number.NaN;
-  return Number.isSafeInteger(parsed) && parsed >= 1 && parsed <= 100_000
-    ? parsed
-    : null;
+  return normalizeNewBetAmount(value);
 }
 
 function normalizeLegs(value: unknown): NormalizedTicketLeg[] {

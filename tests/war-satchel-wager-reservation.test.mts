@@ -95,12 +95,12 @@ test("exact second boundary and short maximum execution window are enforced", ()
   }
 });
 
-test("canonical decimal, int64 and existing whole-WOLO 1000/game ceilings fail closed", () => {
+test("canonical decimal, int64 and existing whole-WOLO 10000/game ceilings fail closed", () => {
   for (const amount of ["0", "01", "1e6", "+1000000", "1000000.0", "1000001",
-    "1001000000", "9223372036854775808", "9".repeat(1000), 1000000, null]) {
+    "10001000000", "9223372036854775808", "9".repeat(1000), 1000000, null]) {
     assert.throws(() => verifyFixture({ ...fixture, amount_uwolo: amount }), /invalid_economics/);
   }
-  const ceiling = signed({ amount_uwolo: "1000000000" });
+  const ceiling = signed({ amount_uwolo: "10000000000" });
   assert.doesNotThrow(() => verifyIndependentWagerReservation(ceiling, context(ceiling), testPublicKey, now));
   for (const fee of ["0", "05000", "5000.0", "1000001", "9223372036854775808", 5000, null]) {
     assert.throws(() => verifyFixture({ ...fixture, fee_uwolo: fee }), /invalid_economics/);

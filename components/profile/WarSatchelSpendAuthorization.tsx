@@ -1,4 +1,5 @@
 "use client";
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 import { useEffect, useState } from "react";
 
 type Keplr = {
@@ -62,7 +63,7 @@ export default function WarSatchelSpendAuthorization({
   const cap = /^\d+$/.test(dailyCap.trim()) ? Number(dailyCap.trim()) : NaN;
   const valid = Number.isSafeInteger(presetVersion) && presetVersion > 0 &&
     Number.isSafeInteger(cap) && cap >= plannedStakeWolo &&
-    cap <= 10000 && plannedStakeWolo > 0 && plannedStakeWolo <= 1000;
+    cap <= AUTO_BET_MAX_DAILY_WOLO && plannedStakeWolo > 0 && plannedStakeWolo <= BET_MAX_STAKE_WOLO;
   const authorize = async () => {
     if (busy || signed || !available || !valid || !walletAddress) return;
     setBusy(true); setDetail("");
@@ -123,7 +124,7 @@ export default function WarSatchelSpendAuthorization({
         <label className="mt-3 block text-xs text-slate-300">
           Maximum daily automatic bets (WOLO)
           <input aria-label="Signed maximum daily WOLO" type="number" inputMode="numeric"
-            min={plannedStakeWolo > 0 ? plannedStakeWolo : 1} max={10000}
+            min={plannedStakeWolo > 0 ? plannedStakeWolo : 1} max={AUTO_BET_MAX_DAILY_WOLO}
             value={dailyCap} onChange={e => setDailyCap(e.target.value)}
             className="mt-1 block w-36 rounded-lg border border-white/20 bg-slate-950 p-2 text-white" />
         </label>

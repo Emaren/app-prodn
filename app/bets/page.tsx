@@ -1,4 +1,5 @@
 "use client";
+import {BET_MAX_STAKE_WOLO} from "@/lib/betMoneyLimits";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -79,7 +80,7 @@ import {
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const BETTING_HALL_HERO_SRC = "/bets/betting_hall2.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
-const BET_STAKE_APP_CAP_WOLO = 50_000;
+const BET_STAKE_APP_CAP_WOLO = BET_MAX_STAKE_WOLO;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";

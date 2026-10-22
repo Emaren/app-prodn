@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import {normalizeHistoricalBetRecoveryAmount} from "@/lib/betMoneyLimits";
 
 import { loadBetBoardSnapshot } from "@/lib/bets";
 import {
@@ -80,7 +81,6 @@ export async function POST(request: NextRequest) {
     };
 
     const side = normalizeBetSide(payload.side);
-    const amountWolo = normalizeBetAmount(payload.amountWolo);
     const marketId =
       typeof payload.marketId === "number"
         ? payload.marketId
@@ -93,6 +93,11 @@ export async function POST(request: NextRequest) {
         : typeof payload.intentId === "string"
           ? Number.parseInt(payload.intentId, 10)
           : null;
+    // A durable historical transfer is reconciled by placePooledBetWager's
+    // exact intent/chain-proof gate. This parse does not authorize a new bet.
+    const amountWolo = normalizeBetAmount(payload.amountWolo) ??
+      (Number.isSafeInteger(intentId) && typeof payload.stakeTxHash === "string"
+        ? normalizeHistoricalBetRecoveryAmount(payload.amountWolo) : null);
 
     if (!Number.isFinite(marketId) || !side || !amountWolo) {
       return NextResponse.json(
