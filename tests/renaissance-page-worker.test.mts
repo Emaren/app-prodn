@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync,existsSync} from "node:fs";
 import { buildPublicPageAssignment, renderPublicPagePrompt, publicCandidateQueue, redirectAliasDestination } from "../scripts/renaissance_page_worker.mjs";
 const sha="184281be67c16e0c3b7013ee7cbbab394b928889";
 const catalog=[{href:"/kingdom-index",sourceTree:"src-0123456789abcdef"},{href:"/speed",sourceTree:"src-ffffffffffffffff"}];
@@ -58,4 +59,29 @@ test("redirect-only /about and /roadmap aliases cannot claim separate page worke
 });
 test("source must actually be available before any work packet is issued",()=>{
  assert.throws(()=>buildPublicPageAssignment({...fixture,sourceText:()=>null}),/page source unavailable/);
+});
+
+test("Renaissance instrument modules extend Phase I without reordering existing entries",()=>{
+ const module={href:"/renaissance/atlas",sourceTree:"src-9999999999999999"};
+ const extended={...fixture, catalog:[...catalog,module],
+  campaign:{phases:[{id:"I",routes:["/kingdom-index","/speed"]},{id:"II",routes:[]}],
+    modules:[{slug:"atlas",href:"/renaissance/atlas"}]}};
+ const actual=publicCandidateQueue(extended);
+ assert.deepEqual(actual.map(x=>x.route),["/kingdom-index","/speed","/renaissance/atlas"]);
+ assert.deepEqual(actual.map(x=>x.phase),["I","I","I"]);
+ assert.equal(buildPublicPageAssignment({...extended,route:"/renaissance/atlas"}).phase,"I");
+});
+test("repository's real indexed route corpus has a complete honest phase queue",()=>{
+ const config=name=>JSON.parse(readFileSync(new URL("../config/"+name,import.meta.url),"utf8"));
+ const catalog=config("kingdom-index-routes.json"),campaign=config("renaissance-campaign.json");
+ const queue=publicCandidateQueue({catalog,campaign,sourceText:relative=>readFileSync(new URL("../"+relative,import.meta.url),"utf8")});
+ assert.equal(queue.length,catalog.length);
+ assert.deepEqual(queue.slice(0,3).map(x=>x.route),["/kingdom-intelligence","/kingdom-brain","/kingdom-index"]);
+ assert.deepEqual(queue.filter(x=>x.route==="/about"||x.route==="/roadmap").map(x=>[x.route,x.kind,x.canonicalTarget]).sort(),
+  [["/about","REDIRECT_ALIAS","/requests#about"],["/roadmap","REDIRECT_ALIAS","/requests#roadmap"]]);
+ assert.ok(queue.some(x=>x.route==="/renaissance/atlas"&&x.phase==="I"));
+ for(const row of queue){
+  const file=new URL("../app"+(row.route==="/"?"/":row.route+"/")+"page.tsx",import.meta.url);
+  assert.ok(existsSync(file),row.route+" missing backing page");
+ }
 });
