@@ -62,7 +62,6 @@ export async function captureIndexLoopback({origin,samples=12,expectedBuildId,de
      method:"GET",redirect:"manual",credentials:"omit",cache:"no-store",
      headers:{"accept":"application/json"},signal:AbortSignal.timeout(10000),
    });
-   const elapsed=Math.round((performance.now()-start)*1000)/1000;
    if(response.status!==200)stop("API non-200 or redirected "+response.status);
    const declared=Number(response.headers.get("content-length")??"0");
    if(!Number.isFinite(declared)||declared<0||declared>MAX_BYTES)
@@ -85,6 +84,7 @@ export async function captureIndexLoopback({origin,samples=12,expectedBuildId,de
    for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.byteLength;}
    let snapshot;
    try{snapshot=JSON.parse(new TextDecoder().decode(raw))}catch{stop("API invalid JSON")}
+   const elapsed=Math.round((performance.now()-start)*1000)/1000;
    const state=validateIndexApiSnapshot(snapshot,response.headers);
    const self=snapshot.pages.find(x=>x.href==="/kingdom-index");
    if(self?.authenticatedPublication&&self.authenticatedPublication.buildId!==expectedBuildId)
