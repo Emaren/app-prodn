@@ -6,9 +6,9 @@
       "module": "braces",
       "version": "3.0.3",
       "scope": "dev-only",
-      "dependency_digest": "08e45dc62b4a5da874e78cdb66f5cd829dd161a1475d80c926656205199e6a91",
+      "dependency_digest": "7deb7fdde3a7af4eb2d163373214a7e14768ce5438b2f692c94f93e10068a35a",
       "expires_on": "2026-10-24",
-      "reason": "2026-10-17 scoped renewal, to 2026-10-24 only: audited six resolution paths for braces@3.0.3 are exclusively in build/lint devDependencies, not a production runtime input; upstream issue #73 still lists no patched release. The unchanged graph SHA-256, exact 3.0.3 version, module/advisory ID, all dev-only ancestry and strict expiry remain fail-closed gates. Review before 2026-10-24; do NOT extend if patched version becomes available or any production path appears.",
+      "reason": "2026-10-22 Next.js-only security patch re-seal: exact braces 3.0.3 dev-only graph must independently pass check_dependency_security.py path-root analysis before Git commit. Original 2026-10-24 expiry preserved; no runtime, new advisory or blanket waiver allowed.",
       "upstream": "https://github.com/micromatch/braces/issues/73"
     }
   ]
