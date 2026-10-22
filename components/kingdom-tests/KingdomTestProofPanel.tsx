@@ -30,8 +30,22 @@ export default function KingdomTestProofPanel() {
       if (!response.ok) throw new Error("Inspection reader unavailable");
       const declaredLength = Number(response.headers.get("content-length"));
       if (Number.isFinite(declaredLength) && declaredLength > 256_000) throw new Error("Oversized evidence");
-      const body = await response.text();
-      if (body.length > 256_000) throw new Error("Oversized evidence");
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Missing bounded response stream");
+      const decoder = new TextDecoder();
+      let body = "";
+      let bytes = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        bytes += value.byteLength;
+        if (bytes > 256_000) {
+          await reader.cancel();
+          throw new Error("Oversized evidence");
+        }
+        body += decoder.decode(value, { stream: true });
+      }
+      body += decoder.decode();
       const payload: unknown = JSON.parse(body);
       if (active.current !== controller || controller.signal.aborted) return;
       setProof(inspectKingdomTestsEvidence(payload));
