@@ -61,8 +61,25 @@ Run from a clean checkout at the exact desired Git revision. The CLI now checks 
 ```bash
 node scripts/renaissance_page_worker.mjs --format queue
 node scripts/renaissance_page_worker.mjs --route /kingdom-intelligence --sha "$(git rev-parse HEAD)"
-node --experimental-strip-types --test tests/renaissance-page-worker.test.mts tests/renaissance-pr-overlap-audit.test.mts
+node --experimental-strip-types --test tests/renaissance-page-worker.test.mts tests/renaissance-pr-overlap-audit.test.mts tests/renaissance-command-snapshot.test.mts
 ```
+
+### Read-only live command snapshot for repeatable session handoffs
+
+Capture current GitHub `main`, exact heads of all currently assigned specialist PRs, and the workflow **runs observed on each exact head** in one source-bound handoff. Run with authenticated `gh` from the isolated tools worktree:
+
+```bash
+node scripts/renaissance_command_snapshot.mjs \
+  --repo Emaren/app-prodn \
+  --prs 802,805,808,807,816,817 --format markdown
+
+node scripts/renaissance_command_snapshot.mjs \
+  --repo Emaren/app-prodn \
+  --prs 802,805,808,807,816,817 --format json \
+  > renaissance-command-snapshot.json
+```
+
+The read-only collector reads current main **twice** and each target PR **twice**; a changed head or main during inspection stops the report. Workflow runs must match each PR's exact head; missing, uncompleted, non-success, malformed or truncated run histories do not become a green claim. An entirely missing run list is marked `NO_EXACT_HEAD_RUN_OBSERVED`, not passed. The snapshot includes no app/browser production BUILD_ID or authenticated score; source-tree changes after the captured moment invalidate its relevance. A workflow with `OBSERVED_RUNS_SUCCESS` may still lack required jobs or external release controls. Use only as a handoff/current-state aid, **never** proof of completion, branch ownership, approval or release.
 
 ### Read-only PR file-overlap preflight
 
