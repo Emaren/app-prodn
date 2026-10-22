@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 — presentation and release contract",
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "47cc2abb847eff215ca36b79f09a90c388dbd2a4046c3a2ee2d266859be75601",
+      "sha256": "9ff7e77c8bda48cbb7a982852018d0b7b0df8d871848b951a939478eec7e3dda",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1316,7 +1316,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1338,7 +1338,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1406,7 +1406,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1453,7 +1453,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1545,7 +1545,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1640,7 +1640,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1961,7 +1961,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2186,7 +2186,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-funded-admission-canonical-proposition-time-20261021",
-    "commit": "f5acc15683c22a41621f002af02693e43e21050d"
+    "branch": "codex/20261022-satchel-final-mainnet-recovery-held",
+    "commit": "329a08364aaf8a72c89bcc199f9b4b5f7b760d88"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
