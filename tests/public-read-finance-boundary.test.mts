@@ -24,12 +24,14 @@ test("public reads cannot directly enqueue settlement-capable work", () => {
   }
 });
 
-test("authenticated replay post-ingest retains explicit financial admission after auth", () => {
+test("authenticated replay post-ingest awaits committed admission only after auth", () => {
   const post = source("app/api/replay/post-ingest/route.ts");
   const auth = post.indexOf("if (!authorized(request))");
-  const queue = post.indexOf("queueBetMarketEnsure(prisma, 0);");
+  const admission = post.indexOf("await coordinateReplayPostIngest(");
   assert.ok(auth >= 0, "post-ingest must authenticate first");
-  assert.ok(queue > auth, "event-trigger queue must follow authentication");
+  assert.ok(admission > auth, "awaited event admission must follow authentication");
+  assert.doesNotMatch(post, /queueBetMarketEnsure/);
+  assert.match(post, /admission: report\.admission/);
   assert.match(post, /internalApiKeyMatches/);
 });
 

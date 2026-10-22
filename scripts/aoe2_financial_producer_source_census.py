@@ -47,8 +47,10 @@ EVIDENCE = (
     Evidence("scripts/prewarm-production.mjs", '"/api/lobby",', "prewarm -> public lobby read", "public_read_surface"),
     Evidence("scripts/prewarm-production.mjs", '"/api/live-games",', "prewarm -> public live-game read", "public_read_surface"),
     Evidence("app/api/replay/post-ingest/route.ts", "internalApiKeyMatches(", "post-ingest route requires configured internal credential", "authenticated_writer_boundary"),
-    Evidence("app/api/replay/post-ingest/route.ts", "queueBetMarketEnsure(prisma, 0);", "post-ingest may request financial reconciliation", "authenticated_writer_boundary"),
-    Evidence("app/api/replay/upload/route.ts", "queueBetMarketEnsure(prisma, 0);", "authorized replay upload may request financial reconciliation", "event_driven_writer"),
+    Evidence("app/api/replay/post-ingest/route.ts", "await coordinateReplayPostIngest(", "private post-ingest awaits committed replay stages", "authenticated_writer_boundary"),
+    Evidence("app/api/replay/upload/route.ts", "await coordinateReplayPostIngest(", "authorized replay upload awaits committed replay stages", "event_driven_writer"),
+    Evidence("lib/replayPostIngest.ts", "ensureBetMarketsAfterCommit(", "trusted-final coordinator retains financial reconciliation", "money_moving_possible"),
+    Evidence("lib/bets.ts", "export async function admitCommittedLiveWatcherMarkets(", "private LIVE admission has a separate metadata/preview entry", "nonfinancial_live_admission"),
 )
 
 # Public GET/render paths may not directly or through the immediately used
