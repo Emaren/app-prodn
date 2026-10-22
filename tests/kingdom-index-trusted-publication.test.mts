@@ -111,3 +111,16 @@ test("public read without independently configured deploy trust returns UNKNOWN,
   });
   assert.equal(result,null);
 });
+
+test("altered canonical weights, point ceilings and mandatory gates cannot certify",async()=>{
+  const wrong=structuredClone(rubric);
+  wrong.dimensions.correctness.criteria[0].max=9;
+  wrong.dimensions.correctness.criteria[1].max=9;
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({rubric:wrong})),/Unknown or altered criterion weight/);
+  const missing=structuredClone(profiles.profiles.index);
+  missing.gates.pop();
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({profile:missing})),/Canonical rubric or three Index assurance gates drifted/);
+  const swapped=structuredClone(profiles.profiles.index);
+  swapped.gates[0].id="invented-perfect-score";
+  await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({profile:swapped})),/Canonical rubric or three Index assurance gates drifted/);
+});
