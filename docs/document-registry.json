@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "cde8f69d55eb1cd21bfc7dd387a70263b3e51ded4b147747d259df94bfbaecb0",
+      "sha256": "974a866b8d75fe129c18db8ffbfc22ddce621c105682367233319de62deda15b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -222,7 +222,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "87e61af8d1cb141a818b2d4cd01b36419194c2d8ae2281951b35eb578058d862",
+      "sha256": "dcae4631bb8edcdac15e7ba08c4c8d97c6f2ee3432bde2c453c6b80180416c9e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fe1f28e56c5fd114a086151a5c553a224b5176e2e2c7402177f49dd49aa4ea62",
+      "sha256": "5ba2fe3c7df2b0f4213d280f0c022b2d9b25ea2a576b78d5e3552b965ee110db",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1196,7 +1196,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "f8c84bc55d5f80c3ca0ac56dcafa101f81347913b273e4cfc8f563ceb4d4754f",
+      "sha256": "c95f4da4376b1ccec9562a26e8a8f471cab31c710158dc084090289fd654b582",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261022-final-mainnet-github-held",
-    "commit": "33d46a8ae4ba8460c983099766f0081d0a8c2b5b"
+    "branch": "integration/20261022-satchel-mainline-held",
+    "commit": "b5a311660b11f9b90b16ce5bbad28df25fc45f59"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
