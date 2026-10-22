@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261022-satchel-mainline-held` at `9cdc6711e88ec40e96e9eabe389e365875718741`
+Implementation baseline: `codex/satchel-auto-cap-refund-regression` at `c1b967557074241a6c6d8baff442dfff715c31b6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
