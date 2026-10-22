@@ -66,7 +66,7 @@ test("pagination is fail-closed on omitted, replaced, duplicate or invalid paths
  const partial={...mk(801,all),files:all.slice(0,100).map(path=>({path}))};
  const tryRecover=(fn)=>recoverTruncatedPullFiles([partial],fn);
  assert.throws(()=>tryRecover(()=>all.slice(0,195)),/incomplete/);
- assert.throws(()=>tryRecover(()=>[...all.slice(0,195),"app/wrong.tsx"]),/changed while paginating/);
+ assert.throws(()=>tryRecover(()=>[...all.slice(1),"app/wrong.tsx"]),/changed while paginating/);
  assert.throws(()=>tryRecover(()=>[...all.slice(0,195),all[0]]),/duplicates/);
  assert.throws(()=>tryRecover(()=>[...all.slice(0,195),"../invalid"]),/malformed/);
  assert.throws(()=>tryRecover(()=>null),/incomplete/);
