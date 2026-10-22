@@ -14,7 +14,7 @@ export type TrafficBrowserInsights = {
     positiveDurationSessions: number;
     excludedZeroDurationSessions: number;
   };
-  topCountries: Array<{ name: string; uniqueBrowserIds: number | null; smallCohort: boolean }>;
+  topCountries: Array<{ name: string; uniqueBrowserIds: number | null; smallCohort: boolean; observedBrowserIds: number | null }>;
   topPages: Array<{ path: string; pageViews: number }>;
   averageVisibleSeconds: number | null;
 };
@@ -89,7 +89,18 @@ export function normalizeTrafficBrowserInsights(
     if (row.small_cohort !== true && row.small_cohort !== false) {
       throw new Error("Missing country privacy flag");
     }
-    return { name: row.name, uniqueBrowserIds, smallCohort };
+    // API schema evolves additively: the previous certified frontend can
+    // continue reading the suppressed legacy fields until its replacement
+    // activates. The exact field is a country-only aggregate, not an ID list.
+    const observedBrowserIds = row.observed_browser_ids === undefined
+      ? null : count(row.observed_browser_ids, "observed country count");
+    if (observedBrowserIds !== null &&
+        (observedBrowserIds < 1 ||
+         (smallCohort && observedBrowserIds >= 5) ||
+         (!smallCohort && observedBrowserIds !== uniqueBrowserIds))) {
+      throw new Error("Country aggregate disagrees with legacy cohort");
+    }
+    return { name: row.name, uniqueBrowserIds, smallCohort, observedBrowserIds };
   });
   const pages = value.top_pages.map((item) => {
     const row = item as Record<string, unknown>;
