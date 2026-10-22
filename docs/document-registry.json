@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "b90c5e21d9acd2d977e73fcfe05bba1ab28bff459b4705572eb555cc99722eeb",
+      "sha256": "3c2f8842e08ec58a01d449ed48cc4647ebdca1327a5ef8b86f7e4968eb361469",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "125951bb49834323f5c5ecff01d5c93dbbd7b3438dd4ca27af31b911a14e2757",
+      "sha256": "f28b4d90f213b12b6f5fe347c9de0e300f8bf8d8fb7d70708de5c33f67eb62c5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/hd-durable-finance-fence",
-    "commit": "76908ccaab3260f4880b3662aa84002cbf1efedc"
+    "commit": "88d6b37d95aa116d2a504db7bb11845ae28c2c9e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
