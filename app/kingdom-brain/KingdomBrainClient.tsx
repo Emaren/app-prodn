@@ -6,9 +6,9 @@ import { Activity, ArrowUpRight, BrainCircuit, CircleHelp, Database, GitBranch, 
 import atlas from "@/config/kingdom-brain-authorities.json";
 import styles from "./KingdomBrain.module.css";
 import {
-  BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS, classifyBrainSignal,
+  BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS, brainSettledResult,
   createBrainRefreshCoordinator, isBrainSignalDisplayable, unavailableBrainSignal,
-  type BrainSignalDecision, type BrainSignalSource,
+  type BrainSignalObservation,
 } from "./brainSignalPolicy";
 
 type Node = (typeof atlas.nodes)[number];
@@ -16,12 +16,8 @@ type IndexSignal = { schema?: number; generatedAt?: string; source?: string; pag
 type CensusSignal = { schema?: number; status?: string; source?: string; capturedAt?: string | null; buildVersion?: string | null; counts?: { totalPages?: number; apiHandlers?: number; publicStatic?: number; publicDynamic?: number; publicUtility?: number; admin?: number; sensitiveDynamic?: number } | null };
 type PatrolSignal = { schema?: number; generatedAt?: string; registered?: number; assigned?: number; entries?: unknown[]; agentsRunning?: null; policyVersion?: string };
 type AgentSignal = { schema?: number; observedAt?: string; releaseSha?: string | null; agents?: unknown[]; sources?: { intelligence?: boolean; inspections?: boolean; intelligenceStale?: boolean; releaseAlignment?: string } };
-type Signal<T> = BrainSignalDecision & { data: T | null; receivedAt: number | null };
+type Signal<T> = BrainSignalObservation<T>;
 const empty = <T,>(): Signal<T> => ({ ...unavailableBrainSignal(), state: "unverified", reason: "timestamp-unknown", data: null, receivedAt: null });
-const signalResult = <T,>(source: BrainSignalSource, result: PromiseSettledResult<T>, atMs: number): Signal<T> => {
-  if (result.status === "rejected") return { ...unavailableBrainSignal(), data: null, receivedAt: atMs };
-  return { ...classifyBrainSignal(source, result.value, atMs), data: result.value, receivedAt: atMs };
-};
 type RefreshResults = [PromiseSettledResult<IndexSignal>, PromiseSettledResult<AgentSignal>, PromiseSettledResult<PatrolSignal>, PromiseSettledResult<CensusSignal>];
 const points: Record<string, [number, number]> = {
   git: [110, 100], release: [348, 62], identity: [104, 262], rating: [125, 474],
@@ -79,8 +75,8 @@ export default function KingdomBrainClient() {
       publish: ([a, b, c, d]) => {
         const now = Date.now();
         const next = [
-          signalResult("index", a, now), signalResult("agents", b, now),
-          signalResult("patrol", c, now), signalResult("census", d, now),
+          brainSettledResult("index", a, now), brainSettledResult("agents", b, now),
+          brainSettledResult("patrol", c, now), brainSettledResult("census", d, now),
         ] as const;
         setIndex(next[0]); setAgents(next[1]); setPatrol(next[2]); setCensus(next[3]);
         setClockMs(now);
