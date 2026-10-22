@@ -14,7 +14,7 @@ export type TrafficBrowserInsights = {
     positiveDurationSessions: number;
     excludedZeroDurationSessions: number;
   };
-  topCountries: Array<{ name: string; uniqueBrowserIds: number }>;
+  topCountries: Array<{ name: string; uniqueBrowserIds: number | null; smallCohort: boolean; observedBrowserIds: number | null }>;
   topPages: Array<{ path: string; pageViews: number }>;
   averageVisibleSeconds: number | null;
 };
@@ -75,9 +75,32 @@ export function normalizeTrafficBrowserInsights(
     const row = item as Record<string, unknown>;
     if (typeof row?.name !== "string" || !row.name.trim() || row.name.length > 80 ||
         /[<>]/.test(row.name)) throw new Error("Invalid country");
-    const uniqueBrowserIds = count(row.unique_browser_ids, "country identifiers");
-    if (uniqueBrowserIds < 5) throw new Error("Country below privacy threshold");
-    return { name: row.name, uniqueBrowserIds };
+    // The API may rank a real small country, but its exact count must be
+    // suppressed. Only an explicit small_cohort=true with a null count is safe.
+    const smallCohort = row.small_cohort === true;
+    if (smallCohort !== (row.unique_browser_ids === null)) {
+      throw new Error("Invalid country small-cohort suppression");
+    }
+    const uniqueBrowserIds = smallCohort
+      ? null : count(row.unique_browser_ids, "country identifiers");
+    if (uniqueBrowserIds !== null && uniqueBrowserIds < 5) {
+      throw new Error("Country below privacy threshold");
+    }
+    if (row.small_cohort !== true && row.small_cohort !== false) {
+      throw new Error("Missing country privacy flag");
+    }
+    // API schema evolves additively: the previous certified frontend can
+    // continue reading the suppressed legacy fields until its replacement
+    // activates. The exact field is a country-only aggregate, not an ID list.
+    const observedBrowserIds = row.observed_browser_ids === undefined
+      ? null : count(row.observed_browser_ids, "observed country count");
+    if (observedBrowserIds !== null &&
+        (observedBrowserIds < 1 ||
+         (smallCohort && observedBrowserIds >= 5) ||
+         (!smallCohort && observedBrowserIds !== uniqueBrowserIds))) {
+      throw new Error("Country aggregate disagrees with legacy cohort");
+    }
+    return { name: row.name, uniqueBrowserIds, smallCohort, observedBrowserIds };
   });
   const pages = value.top_pages.map((item) => {
     const row = item as Record<string, unknown>;
