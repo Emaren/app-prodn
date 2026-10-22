@@ -62,8 +62,8 @@ test("source must actually be available before any work packet is issued",()=>{
 });
 
 test("Renaissance instrument modules extend Phase I without reordering existing entries",()=>{
- const module={href:"/renaissance/atlas",sourceTree:"src-9999999999999999"};
- const extended={...fixture, catalog:[...catalog,module],
+ const instrument={href:"/renaissance/atlas",sourceTree:"src-9999999999999999"};
+ const extended={...fixture, catalog:[...catalog,instrument],
   campaign:{phases:[{id:"I",routes:["/kingdom-index","/speed"]},{id:"II",routes:[]}],
     modules:[{slug:"atlas",href:"/renaissance/atlas"}]}};
  const actual=publicCandidateQueue(extended);
