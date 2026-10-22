@@ -155,6 +155,41 @@ test("funded proposal refuses tampered Watcher evidence even if eligible is asse
   }
 });
 
+
+test("a mutually forged non-hash Watcher proposition cannot become a funded ticket proposal", () => {
+  for (const value of ["same-garbage-in-both-rows", "", " ", "A".repeat(63), "G".repeat(64)]) {
+    rejects("watcher_admission_provenance_incomplete", f => {
+      if (!f.admission.eligible) throw Error("fixture unexpectedly ineligible");
+      f.admission.evidence.propositionHash = value;
+      f.execution.propositionHash = value;
+    });
+  }
+});
+
+test("calendar-impossible or noncanonical UTC proofs cannot qualify a funded proposal", () => {
+  rejects("expired_consent_or_stale_vault_evidence", f => {
+    // V8 normalizes February 30 to March 2. None of these strings should
+    // become an authority after silent calendar normalization.
+    f.nowUtc="2026-02-30T00:05:20.000Z";
+    f.vault.observedAtUtc="2026-03-02T00:05:00.000Z";
+    f.consent.expiresAtUtc="2026-03-03T01:00:00.000Z";
+  });
+  rejects("expired_consent_or_stale_vault_evidence", f => {
+    f.nowUtc="2026-03-02T00:05:20.000Z";
+    f.vault.observedAtUtc="2026-02-30T00:05:00.000Z";
+    f.consent.expiresAtUtc="2026-03-03T01:00:00.000Z";
+  });
+  rejects("expired_consent_or_stale_vault_evidence", f => {
+    f.consent.expiresAtUtc="2027-02-29T01:00:00.000Z";
+  });
+  rejects("expired_consent_or_stale_vault_evidence", f => {
+    f.vault.observedAtUtc="2026-10-17T00:05:00.0000Z";
+  });
+  rejects("expired_consent_or_stale_vault_evidence", f => {
+    f.nowUtc="2026-10-17T00:05:20+00:00";
+  });
+});
+
 test("a previously accepted, leased or attempted preview cannot re-enter", () => {
   rejects("execution_already_claimed_or_not_shadow_ready", f => { f.execution.ticketId=44; });
   rejects("execution_already_claimed_or_not_shadow_ready", f => { f.execution.reservationId="old-hold"; });

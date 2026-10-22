@@ -15,6 +15,31 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 21 — canonical Watcher proposition and admission clock validation
+
+The read-only `assessFundedMechaAdmission` proposal function now rejects
+a Watcher proposition that is not an exact 64-character hexadecimal digest.
+Previously, the shadow admission and persisted execution could both carry the
+same non-hash value and pass the equality test, despite exact signed
+proposition identity being required before any real wager.
+
+All three admission timestamps (`nowUtc`, owner consent expiration,
+and independently observed vault-bank time) must describe their **exact
+canonical UTC instant**. JavaScript date parsing can normalize impossible
+calendar dates, including February 30; timestamp structure alone is not
+sufficient to establish a valid observation time. Accepted source strings
+are reconstructed and round-tripped rather than silently normalized.
+The existing maximum vault-age, chronological and consent checks remain in
+force; negative regression tests cover mutually forged digests, impossible
+calendar dates and noncanonical time encodings.
+
+This does **not** independently authenticate the Watcher roster, chain bank
+or owner consent, grant a stake ticket, supply a financial permit, or bypass
+`SATCHEL_FINANCIAL_BRIDGE_UNVERIFIED_HOLD`. It is a structural, fail-closed
+gate within the HELD admission proposal stage only. A final funded transaction
+must revalidate these identities under its durable owner/market lock against
+signed and independently verified sources.
+
 ## October 21 — current authenticated integration, still financially HELD
 
 The current proof adapters and isolated CI runner pin Wolo implementation
