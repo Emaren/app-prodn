@@ -111,8 +111,9 @@ function VisitorInsightCard({
   const { title, subtitle, label, Icon, color, border, background, why } = exhibit;
   const rows = title === "TOP FIVE COUNTRIES"
     ? insights?.topCountries.map((country) => ({
-        name: country.name, amount: country.uniqueBrowserIds,
-        smallCohort: country.smallCohort,
+        name: country.name,
+        amount: country.observedBrowserIds ?? country.uniqueBrowserIds,
+        smallCohort: country.smallCohort && country.observedBrowserIds === null,
       })) ?? []
     : title === "TOP FIVE PAGES"
     ? insights?.topPages.map((page) => ({
@@ -153,7 +154,7 @@ function VisitorInsightCard({
             {rows.map((row, index) => (
               <li key={row.name} className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate text-slate-200" title={row.name}>{index + 1}. {row.name}</span>
-                <span className="shrink-0 font-mono text-sky-200 tabular-nums" aria-label={row.smallCohort ? "Fewer than five observed browser identifiers" : undefined}>
+                <span className="shrink-0 font-mono text-sky-200 tabular-nums" aria-label={row.smallCohort ? "Exact small-cohort count not yet available" : undefined}>
                   {row.smallCohort ? "1–4" : compact(row.amount)}
                 </span>
               </li>
@@ -172,7 +173,7 @@ function VisitorInsightCard({
             : ""}
           {title === "TOP FIVE COUNTRIES" ?
             (rows.length < 5 ? " · " + String(rows.length) + " countries observed; no invented rows" :
-              " · Small country counts shown as 1–4 for privacy") : ""}
+              " · Country aggregates count browser IDs, not people") : ""}
         </p>
       ) : null}
     </article>
