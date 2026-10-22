@@ -78,3 +78,70 @@ jobs:
         run: |
           set -euo pipefail
           yarn tsc --noEmit --pretty false
+
+  emitted-artifact-observation:
+    name: Exact PR-head Next emitted closure (observation ONLY)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+      EXPECTED_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate source, not synthetic PR merge
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - name: Resolve immutable source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "Inspected Git SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "This read-only job is NOT release approval or production closure." >> "$GITHUB_STEP_SUMMARY"
+      - name: Install exact pinned build dependencies
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+      - name: Build isolated candidate, not production
+        run: |
+          set -euo pipefail
+          yarn build
+      - name: Capture emitted source/build evidence without certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kingdom-index-build-evidence
+          node scripts/kingdom_index_emitted_closure.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" \
+            > kingdom-index-build-evidence/emitted-closure.json
+          node --input-type=module - <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report=JSON.parse(readFileSync('kingdom-index-build-evidence/emitted-closure.json','utf8'));
+          if(report.certified!==false||report.publicationAuthorized!==false||
+             report.sourceSha!==process.env.EXPECTED_CANDIDATE_SHA)
+            throw Error('Misleading or unbound collector receipt');
+          console.log('Build observation:',report.status,report.buildId,
+            'files',report.files.length,'missing',report.missing.length);
+          NODE
+      - name: Upload inspectable build evidence (not a release receipt)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdom-index-emitted-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: kingdom-index-build-evidence/emitted-closure.json
+          if-no-files-found: ignore
+          retention-days: 14
