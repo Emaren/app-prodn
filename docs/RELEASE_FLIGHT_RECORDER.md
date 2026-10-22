@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Release Flight Recorder — read-only cross-repository evidence
+# AoE2WAR Release Flight Recorder
 
 The one-click **Release Flight Recorder (evidence only)** GitHub Actions workflow
 answers a recurring engineering handoff question: *which source SHA, PR head
