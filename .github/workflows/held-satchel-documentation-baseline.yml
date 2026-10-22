@@ -4,6 +4,7 @@ on:
     branches:
       - codex/20261022-satchel-final-mainnet-recovery-held
       - integration/20261022-final-mainnet-github-held
+      - integration/20261022-satchel-mainline-held
   workflow_dispatch:
 permissions:
   contents: write
@@ -12,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   baseline:
-    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/integration/20261022-final-mainnet-github-held'
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/integration/20261022-satchel-mainline-held'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,7 +28,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git branch --show-current)" = integration/20261022-final-mainnet-github-held
+          test "$(git branch --show-current)" = integration/20261022-satchel-mainline-held
           if python3 scripts/docs_v2_check.py; then
             echo "Document control already certified for this source revision."
             exit 0
@@ -50,4 +51,4 @@ jobs:
           git config user.name 'aoe2war-held-document-bot'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "docs(held): seal reviewed Satchel source implementation baseline"
-          git push origin HEAD:refs/heads/integration/20261022-final-mainnet-github-held
+          git push origin HEAD:refs/heads/integration/20261022-satchel-mainline-held
