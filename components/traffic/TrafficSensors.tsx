@@ -35,7 +35,7 @@ const originalSeal = {
 const visitorExhibits = [
   {
     title: "TOP FIVE COUNTRIES",
-    subtitle: "Unique observed browser IDs by country",
+    subtitle: "Up to five countries · observed browser IDs",
     label: "Geographic ranking",
     Icon: Globe2,
     color: "text-sky-300",
@@ -111,11 +111,14 @@ function VisitorInsightCard({
   const { title, subtitle, label, Icon, color, border, background, why } = exhibit;
   const rows = title === "TOP FIVE COUNTRIES"
     ? insights?.topCountries.map((country) => ({
-        name: country.name, amount: country.uniqueBrowserIds,
+        name: country.name,
+        amount: country.observedBrowserIds ?? country.uniqueBrowserIds,
+        smallCohort: country.smallCohort && country.observedBrowserIds === null,
       })) ?? []
     : title === "TOP FIVE PAGES"
     ? insights?.topPages.map((page) => ({
         name: page.path, amount: page.pageViews,
+        smallCohort: false,
       })) ?? []
     : [];
   const time = title === "OBSERVED TIME ON SITE";
@@ -151,7 +154,9 @@ function VisitorInsightCard({
             {rows.map((row, index) => (
               <li key={row.name} className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate text-slate-200" title={row.name}>{index + 1}. {row.name}</span>
-                <span className="shrink-0 font-mono text-sky-200 tabular-nums">{compact(row.amount)}</span>
+                <span className="shrink-0 font-mono text-sky-200 tabular-nums" aria-label={row.smallCohort ? "Exact small-cohort count not yet available" : undefined}>
+                  {row.smallCohort ? "1–4" : compact(row.amount)}
+                </span>
               </li>
             ))}
           </ol>
@@ -166,7 +171,9 @@ function VisitorInsightCard({
           {time ? " · " + compact(insights.coverage.positiveDurationSessions) +
             " positive sessions · " + compact(insights.coverage.excludedZeroDurationSessions) + " excluded at zero seconds"
             : ""}
-          {title === "TOP FIVE COUNTRIES" ? " · Minimum five observed identifiers per country" : ""}
+          {title === "TOP FIVE COUNTRIES" ?
+            (rows.length < 5 ? " · " + String(rows.length) + " countries observed; no invented rows" :
+              " · Country aggregates count browser IDs, not people") : ""}
         </p>
       ) : null}
     </article>
