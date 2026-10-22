@@ -258,11 +258,11 @@ export async function loadKingdomWatcherPublic(): Promise<WatcherPublicSnapshot>
   pending = (async () => {
     const now = new Date();
     const result = emptySnapshot(now);
-    const prisma = getPrisma();
     const recentCutoff = new Date(now.getTime() - FIFTEEN_MINUTES);
     const streamsCutoff = new Date(now.getTime() - 14 * 86_400_000);
     const dayCutoff = new Date(now.getTime() - 86_400_000);
     try {
+      const prisma = getPrisma();
       const [events, downloads, signedIn, manual, streams] = await Promise.all([
         prisma.watcherClientEvent.findMany({
           where: { createdAt: { gte: recentCutoff }, userId: { not: null } },
