@@ -1,3 +1,4 @@
+import {normalizeNewBetAmount,normalizeHistoricalBetRecoveryAmount} from "./betMoneyLimits.ts";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import { runBetCounterShadowWorkerBestEffort } from "@/lib/bettingBotShadowWorker";
@@ -102,16 +103,7 @@ export function normalizeBetSide(value: unknown) {
 }
 
 export function normalizeBetAmount(value: unknown) {
-  const parsed =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : NaN;
-  if (!Number.isFinite(parsed)) return null;
-  const rounded = Math.round(parsed);
-  if (rounded < 1 || rounded > 50_000) return null;
-  return rounded;
+  return normalizeNewBetAmount(value);
 }
 
 export function normalizeBetTxHash(value: string | null | undefined) {
@@ -598,6 +590,9 @@ export async function placePooledBetWager(
     stakeIntentId?: number | null;
   }
 ): Promise<PlaceBetWagerResult> {
+  if (normalizeHistoricalBetRecoveryAmount(input.amountWolo) !== input.amountWolo) {
+    throw new BetWagerError(400, "Stake must be an exact whole-WOLO amount.");
+  }
   const escrowRuntime = getWoloBetEscrowRuntime();
   const normalizedStakeTxHash = normalizeBetTxHash(input.stakeTxHash);
   const normalizedWalletAddress = input.walletAddress?.trim() || input.viewer.walletAddress || "";
@@ -843,6 +838,13 @@ export async function placePooledBetWager(
             market.settlementExecutedAt,
         })
       : false;
+
+  // The new admission ceiling must not strand an already transferred legacy
+  // stake. Only the exact original intent + verified transfer recovery above
+  // can retain its historical amount; a hash or caller flag is insufficient.
+  if (normalizeNewBetAmount(input.amountWolo) !== input.amountWolo && !postBroadcastRecovery) {
+    throw new BetWagerError(409, "New wagers cannot exceed 10,000 WOLO.");
+  }
 
   assertBetMarketPreflight(
     context,

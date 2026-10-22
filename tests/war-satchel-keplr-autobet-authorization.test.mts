@@ -111,9 +111,9 @@ test("replayed, revoked and expired authorization challenges are rejected before
 
 test("unbounded auto-bet caps are refused even with a valid test signature", () => {
   assert.throws(() => satchelAutoSpendChallengeText({
-    ...original, perGameCapWolo: 1001,
+    ...original, perGameCapWolo: 10001,
   }), /unsafe spending ceiling/);
   assert.throws(() => satchelAutoSpendChallengeText({
-    ...original, dailyCapWolo: 10001,
+    ...original, dailyCapWolo: 50001,
   }), /unsafe spending ceiling/);
 });

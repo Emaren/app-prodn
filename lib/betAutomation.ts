@@ -1,11 +1,12 @@
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "./betMoneyLimits.ts";
 import { normalizeReplaySteamId } from "./replayPlayerIdentity.ts";
 import { normalizeReplayPlayers } from "./teamResolution.ts";
 import { observeFundedMechaPublicReadiness } from "./warSatchelLiveModeReadiness.ts";
 
 export const BET_AUTOMATION_CUSTODY_CAPABILITY = "bet-custody-v1";
-export const BET_AUTOMATION_MAX_RESERVE_WOLO = 10_000;
-/** Auto-bet combined winner + Desync stake cap; manual wagers retain 50k. */
-export const BET_AUTOMATION_MAX_PER_GAME_WOLO = 1_000;
+export const BET_AUTOMATION_MAX_RESERVE_WOLO = AUTO_BET_MAX_DAILY_WOLO;
+/** Combined winner + Desync exposure shares the owner's per-bet ceiling. */
+export const BET_AUTOMATION_MAX_PER_GAME_WOLO = BET_MAX_STAKE_WOLO;
 export const BET_AUTOMATION_MAX_GAMES = 10_000;
 
 export type BetAutomationMode = "disabled" | "shadow" | "live";

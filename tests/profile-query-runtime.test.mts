@@ -62,6 +62,9 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
     if (specifier === "@/lib/warSatchelBalanceRead") {
       return loadProductionModule("lib/warSatchelBalanceRead.ts");
     }
+    if (specifier === "@/lib/betMoneyLimits") {
+      return loadProductionModule("lib/betMoneyLimits.ts");
+    }
     if (specifier === "@/lib/woloChain") {
       return {
         WOLO_BASE_DENOM: "uwolo",

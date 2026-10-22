@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-10-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -43,6 +43,40 @@ The `WOLO` suffix is an explicit label for its amount input, so clicking the
 word focuses the field. Founder controls default to 2 WOLO per participant and
 1,000 WOLO for Founders Win. Each deliberate modal opening creates one request
 ID; retries reuse it and cannot duplicate an award.
+
+## Authoritative money limits, October 21
+
+The owner's Operation Final Mainnet mandate defines **10,000 WOLO per bet** and
+**50,000 WOLO per UTC day for Auto Bets**. `lib/betMoneyLimits.ts` is the shared
+source ceiling for new manual/combined tickets, Mecha presets, exact ADR-36
+challenge validation, immutable wager-review snapshots, reserves, native signer
+payloads and funded return context. Winner plus optional Desync exposure cannot
+exceed the combined ticket ceiling. Noninteger or malformed stake strings are
+rejected; no rounding or clamping creates a different monetary request.
+
+An existing smaller signed limit remains authoritative. No challenge text,
+signature, release epoch, balance, journal or historical obligation is rewritten
+or enlarged. Daily admission sums every UTC-day `wager_reserve` journal under
+the existing exclusive Satchel transaction, including refunded and UNKNOWN
+attempts. A historical manual stake above the new ceiling may be reconciled
+only through its exact persisted original intent and verified transfer recovery
+path; it cannot authorize a new larger wager.
+
+Forward migration `20261021_230000_satchel_authoritative_product_limits` aligns
+existing CHECK constraints and future journal timestamps. It alters existing
+table constraints/defaults, so it needs separate protected financial schema
+review; the CREATE-TABLE-only automatic lane must refuse it. It does not execute
+against production as part of this source change. Future journal defaults use
+UTC explicitly, independent of PostgreSQL session timezone. Existing timestamps
+are preserved; their historical timezone semantics still need operational
+verification before financial activation.
+
+The disposable PostgreSQL test applies original migrations then the forward
+change, preserves an old signed 1,000/10,000 limit unchanged, rejects attempted
+enlargement and overcap rows, verifies a full unmatched 10,000-WOLO principal
+return, and races daily admissions under a non-UTC session. War Chest already
+counts matched-only volume through `warChestMatchedVolume`; its implementation
+is unchanged. Source tests provide no live custody or deployment certification.
 
 ## Canonical battle numbers
 
@@ -158,7 +192,7 @@ constraint additionally requires real custody verification, reservation, and
 stake transaction proof before a committed counterstake can exist.
 
 The profile Auto Bet Reserve is Preview only. It stores self-only winner and
-optional Desync settings, finite games or Until Out, and a 10,000 WOLO plan
+optional Desync settings, finite games or Until Out, and a 50,000 WOLO plan
 envelope. The durable shadow worker now evaluates exact eligible live Watcher
 winner markets after canonical market reconciliation and records one
 `shadow_ready` evidence row per preset/canonical game. Admission requires exact

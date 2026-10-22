@@ -25,7 +25,9 @@ test("Mecha admin evidence is session-gated, no-store, bounded and read only", (
   assert.match(page, /READ-ONLY COMMAND/);
 });
 
-test("Manual wager policy remains independently capped at 50000 WOLO", () => {
+test("New manual wagers use the owner-authorized 10000 WOLO ceiling", () => {
   const policy = readFileSync(new URL("../lib/betWagering.ts", import.meta.url), "utf8");
-  assert.match(policy, /50_000/);
+  assert.match(policy, /return normalizeNewBetAmount\(value\)/);
+  const limits = readFileSync(new URL("../lib/betMoneyLimits.ts", import.meta.url), "utf8");
+  assert.match(limits, /BET_MAX_STAKE_WOLO = 10_000/);
 });

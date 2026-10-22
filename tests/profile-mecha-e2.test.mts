@@ -94,7 +94,7 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(card, /PREVIEW ACTIVE/);
   assert.match(card, /ARM PREVIEW/);
   assert.doesNotMatch(card, /onClick=.*sendTokens|SigningStargateClient|MsgSend/);
-  assert.match(card, /MAX_AUTO_GAME_WOLO = 1_000/);
+  assert.match(card, /MAX_AUTO_GAME_WOLO = BET_MAX_STAKE_WOLO/);
   assert.match(card, /expectedVersion: server.preset.version/);
   assert.match(card, /if \(armed\) void pause\(\)/);
   assert.match(card, /action: "pause"/);
