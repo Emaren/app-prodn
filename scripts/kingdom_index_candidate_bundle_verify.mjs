@@ -17,7 +17,7 @@ const fail=m=>{throw Error("KINGDOM BUNDLE STOP: "+m)};
 const hash=x=>createHash("sha256").update(x).digest("hex");
 const paths=[
  "source-checkout.json","source-dependencies.json","source-built.json","source-emitted.json",
- "emitted-closure.json","api-loopback.json",
+ "emitted-closure.json","api-loopback.json","concurrent-loopback.json",
  "chrome-desktop/receipt.json","chrome-desktop/inspection.json",
  "chrome-phone/receipt.json","chrome-phone/inspection.json"
 ];
@@ -114,6 +114,31 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
     ["p50","p75","p95"].some((k,i)=>
       Math.abs(api.latencyMs[k]-percentile(durations,[.5,.75,.95][i]))>0.002))
     fail("API cohort percentile or response-size contradiction");
+ const burst=parse(data.get("concurrent-loopback.json"),"concurrent-loopback.json");
+ digestBody(burst,"sha256");
+ if(burst.kind!=="aoe2war.kingdom-index.concurrent-loopback-smoke.v1"||
+    burst.sourceSha!==sourceSha||burst.buildId!==buildId||
+    burst.origin!=="LOOPBACK_ONLY"||burst.endpoint!=="/api/kingdom-index"||
+    burst.requests!==40||burst.concurrency!==4||burst.errors!==0||
+    burst.certified!==false||burst.criterionPointsAwarded!==null||
+    burst.consistent!==true||!Number.isFinite(burst.wallMs)||burst.wallMs<=0||
+    !Array.isArray(burst.observed)||burst.observed.length!==40)
+    fail("Invalid or contradicted exact-head concurrent API smoke");
+ const elapsed=[],burstRows=new Set();
+ for(let i=0;i<burst.observed.length;i++){
+  const row=burst.observed[i];
+  if(row.sequence!==i+1||!Number.isFinite(row.elapsedMs)||row.elapsedMs<=0||
+     row.routeCount!==88||row.certified!==0||row.indexScore!==null||
+     row.indexStatus!=="unmeasured"||
+     !Number.isInteger(row.responseBytes)||row.responseBytes<100||
+     row.responseBytes>524288)
+    fail("Concurrent API sample mismatch or false score");
+  elapsed.push(row.elapsedMs);burstRows.add(row.responseBytes);
+ }
+ if(burstRows.size!==1||[...burstRows][0]!==[...sizes][0]||
+    ["p50","p75","p95"].some((k,i)=>
+      Math.abs(burst.latencyMs?.[k]-percentile(elapsed,[.5,.75,.95][i]))>0.002))
+    fail("Concurrent API percentile or bounded response mismatch");
  const chrome={};
  for(const viewport of ["desktop","phone"]){
   const name="chrome-"+viewport+"/",raw=data.get(name+"receipt.json");
@@ -135,6 +160,7 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
   checkpoints,emitted:{files:emitted.files.length,bytes:observedBytes,
     receiptSha256:emitted.receiptSha256,missing:0,invalidTraces:0},
   api:{sha256:api.sha256,samples:12,latencyMs:api.latencyMs},
+  concurrent:{sha256:burst.sha256,requests:burst.requests,concurrency:burst.concurrency,latencyMs:burst.latencyMs},
   chrome,certified:false,criterionPointsAwarded:null,
   status:"SELF_CONSISTENT_CANDIDATE_EVIDENCE_ONLY",
   limitation:"Receipt hashes and internal data consistency only. Original emitted asset bytes, independent GitHub run origin, live production, authentication, warm/a11y/load and criterion approvals are NOT established."
