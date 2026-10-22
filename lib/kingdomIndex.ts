@@ -210,7 +210,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     if(entry){
       const gateMap=new Map(publication.gates.map(g=>[g.id,g.result]));
       entry.specializedAssurance.gates=entry.specializedAssurance.gates.map(g=>({
-        ...g,status:gateMap.get(g.id)==="pass"?"verified":"unverified",
+        ...g,status:(gateMap.get(g.id)==="pass"?"verified":"unverified") as "verified" | "unverified",
       }));
       if(publication.certified||publication.score<100){
         entry.score=publication.score;
