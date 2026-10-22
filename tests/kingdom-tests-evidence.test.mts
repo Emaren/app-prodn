@@ -71,6 +71,8 @@ test("route keeps shared instrument and adds on-demand read-only evidence inspec
   assert.match(page, /<KingdomTestProofPanel\s*\/>/);
   assert.match(component, /\/api\/general-inspections/);
   assert.match(component, /AbortController/);
+  assert.match(component, /getReader\(\)/);
+  assert.match(component, /reader\.cancel\(\)/);
   assert.match(component, /type="button"/);
   assert.doesNotMatch(component, /setInterval|method:\s*["'](?:POST|PUT|PATCH|DELETE)["']/);
 });
