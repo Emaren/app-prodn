@@ -91,3 +91,31 @@ test("symlinked/macOS realpath entrypoint executes instead of silently returning
     assert.match(result.stderr,/Require --expected-sha/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test("absent local .next tree reports each required trace once, never fabricates a BUILD_ID",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"index-no-local-build-"));
+  try{
+    const report=await collectIndexEmittedClosure(root,SHA,SHA);
+    assert.equal(report.status,"INCOMPLETE");
+    assert.equal(report.buildId,null);
+    assert.equal(report.files.length,0);
+    assert.equal(report.invalidTraces.length,0);
+    for(const path of [
+      ".next/server/app/kingdom-index/page.js.nft.json",
+      ".next/server/app/api/kingdom-index/route.js.nft.json"
+    ]){
+      assert.equal(report.missing.filter(x=>x.startsWith(path)).length,1,
+        "a missing required NFT trace must not be double-counted");
+    }
+    assert.equal(report.certified,false);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+test("malformed existing NFT trace is independently classified as invalid",async()=>{
+  const root=await fixture();
+  try{
+    await writeFile(join(root,".next/server/app/kingdom-index/page.js.nft.json"),"{not-json");
+    const report=await collectIndexEmittedClosure(root,SHA,SHA);
+    assert.equal(report.status,"INCOMPLETE");
+    assert.ok(report.invalidTraces.some(x=>x.includes("page.js.nft.json:invalid-or-unreadable")));
+  }finally{await rm(root,{recursive:true,force:true});}
+});
