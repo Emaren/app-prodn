@@ -1,4 +1,5 @@
 "use client";
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -75,7 +76,7 @@ type AutomationExecution = {
   };
 };
 
-const FALLBACK_MAX_RESERVE_WOLO = 10_000;
+const FALLBACK_MAX_RESERVE_WOLO = AUTO_BET_MAX_DAILY_WOLO;
 
 function readWholeNumber(value: string) {
   const trimmed = value.trim();
@@ -172,11 +173,11 @@ export default function AutoBetReserveCard() {
     (Number.isFinite(winnerStakeWolo) ? winnerStakeWolo : 0) +
     (Number.isFinite(desyncStakeWolo) ? desyncStakeWolo : 0);
   const maxReserveWolo =
-    payload?.limits.maxEstimatedReserveWolo ?? FALLBACK_MAX_RESERVE_WOLO;
+    Math.min(payload?.limits.maxEstimatedReserveWolo ?? FALLBACK_MAX_RESERVE_WOLO,AUTO_BET_MAX_DAILY_WOLO);
   const estimatedPlanWolo = untilOut
     ? maxReserveWolo
     : perGameWolo * (Number.isFinite(gamesRemaining) ? gamesRemaining : 0);
-  const maxPerGameWolo = payload?.limits.maxPerGameWolo ?? 1_000;
+  const maxPerGameWolo = Math.min(payload?.limits.maxPerGameWolo ?? BET_MAX_STAKE_WOLO,BET_MAX_STAKE_WOLO);
   const planOverLimit = estimatedPlanWolo > maxReserveWolo || perGameWolo > maxPerGameWolo;
 
   const planSummary = useMemo(() => {

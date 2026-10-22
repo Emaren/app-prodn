@@ -23,6 +23,23 @@ test('durable wager snapshot binds all economics, consent, ledger and actual tic
  assert.notEqual(buildSatchelWagerAuthorization({...input,legs:[{...input.legs[0],side:'right'}]}).reservationDigest,a.reservationDigest);
  assert.deepEqual(buildSatchelWagerAuthorization({...input,ownerSignatureJson:{signature:'original'}}),a);
 });
+test('durable economic snapshot accepts 10000 WOLO and refuses 10001 or nonwhole amounts',()=>{
+ const large={...input,amountUwolo:'10000000000',
+   availableUwolo:'11000000000',reservedUwolo:'10000000000',
+   legs:[{...input.legs[0],amountWolo:10000}]};
+ assert.equal(buildSatchelWagerAuthorization(large).snapshot.amountUwolo,'10000000000');
+ for(const invalid of ['10001000000','10000000001','010000000000','1e10','0']){
+  assert.throws(()=>buildSatchelWagerAuthorization({
+   ...large,amountUwolo:invalid,
+   legs:[{...input.legs[0],amountWolo:10001}],
+  }),/snapshot_identity_or_economics/,invalid);
+ }
+ assert.throws(()=>buildSatchelWagerAuthorization({
+  ...large,amountUwolo:'10000000000',
+  legs:[{...input.legs[0],amountWolo:9999}],
+ }),/snapshot_identity_or_economics/,'signed amount never substitutes for exact ticket legs');
+});
+
 test('review context uses durable snapshot, never signer supplied economics',()=>{
  const a=buildSatchelWagerAuthorization(input);
  const c=wagerReviewContext(a,{fee_uwolo:'5000',issued_at:1800000000,expires_at:1800000120});

@@ -12,6 +12,7 @@ import { satchelFinancialBridgeReady } from "./warSatchelFinancialBridgeHold.ts"
 import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
 import { readEligibleFundedMechaIds } from "./warSatchelEligibleOutbox.ts";
+import { withHdFinancialLease } from "./hdFinancialMaintenanceFence.ts";
 
 export type FundedMechaIntakeReport=Readonly<{
   state:"disabled"|"empty"|"examined";
@@ -58,8 +59,35 @@ export async function runFundedMechaOutboxTick(
   // Every reserved ticket still undergoes independent signed review before
   // any transfer; this change does not relax the source financial HOLD.
   const signer=await connectCertifiedSatchelSigner();
+  // Health is observational; EACH actual signer POST gets a new, independent
+  // signed source/build/wallet-bound PostgreSQL lease. Never share one lease
+  // across the batch, and do not allow an environmental flag to grant one.
+  const leaseBoundSigner:typeof signer=Object.freeze({
+    custodyRole:signer.custodyRole,
+    attestedVaultAddress:signer.attestedVaultAddress,
+    async submitOneShot(input){
+      try{
+        return await withHdFinancialLease({
+          scope:"hd-satchel",producer:"war-satchel-auto-bet",
+          wallet:signer.attestedVaultAddress,
+        },async signal=>{
+          signal.throwIfAborted();
+          // A fresh authenticated sidecar is bound to the SAME exclusive vault
+          // and cancellation signal for the full single-operation lease.
+          const current=await connectCertifiedSatchelSigner(fetch,signal);
+          if(current.attestedVaultAddress!==signer.attestedVaultAddress)
+            throw Error("SATCHEL_FENCED_SIGNER_IDENTITY_CHANGED");
+          return current.submitOneShot(input);
+        });
+      }catch{
+        // Reservation has a durable independent UNKNOWN fence. Never retry
+        // this ticket after uncertain transport or an expiring financial lease.
+        return {kind:"unknown" as const,reason:"financial_fence_held_or_unknown"};
+      }
+    },
+  });
   const counts=await executeFundedMechaTicketBatch(
-    prisma,signer,ids,
+    prisma,leaseBoundSigner,ids,
   );
   return Object.freeze({
     state:"examined" as const,source:"watcher-shadow-outbox" as const,

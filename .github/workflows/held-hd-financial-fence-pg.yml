@@ -1,0 +1,48 @@
+name: Held HD financial fence PostgreSQL qualification
+on:
+  pull_request:
+    paths:
+      - 'lib/hdFinancialMaintenanceFence.ts'
+      - 'scripts/hd-financial-build-identity.cjs'
+      - 'prisma/migrations/20261021_220000_hd_financial_maintenance_fence/**'
+      - 'tests/hd-financial-fence-postgres.integration.test.mts'
+      - '.github/workflows/held-hd-financial-fence-pg.yml'
+  push:
+    branches:
+      - codex/20261022-durable-financial-fence-held
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-real-postgresql:
+    name: Source-bound finance fence / isolated PostgreSQL 16
+    if: github.repository == 'Emaren/app-prodn'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      RUN_HD_FINANCIAL_FENCE_PG_TESTS: '1'
+      AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
+      DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - name: Use the pinned repository package manager
+        run: corepack enable
+      - name: Install isolated PostgreSQL 16 binaries on ephemeral CI host
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16
+          test -x /usr/lib/postgresql/16/bin/initdb
+          test -x /usr/lib/postgresql/16/bin/pg_ctl
+      - name: Install immutable project dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Exercise durable policy, signed permit, role and generation proofs
+        run: |
+          node --experimental-strip-types \
+            --experimental-loader ./scripts/aoe2-alias-loader.mjs \
+            --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+            --test tests/hd-financial-maintenance-lease-boundaries.test.mts \
+                   tests/hd-financial-fence-postgres.integration.test.mts

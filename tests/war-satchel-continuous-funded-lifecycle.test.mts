@@ -281,7 +281,21 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
       return Response.json({operation_id:operationId,request_id:operationId,chain_id:"wolo-1",signer_role:"exclusive-war-satchel-v1",
         durable_request_fenced:true,status:"CONFIRMED",tx_hash:withdrawal.tx_hash});
     }) as typeof fetch;
-    assert.deepEqual(await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader),{state:"unknown_hold"});
+    // Stage 1: real production lease implementation has no root-owned trust
+    // anchor/approval in this isolated fixture. Refuse BEFORE an attempt,
+    // signer POST, bank mutation, or indefinite UNKNOWN reservation.
+    assert.deepEqual(await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader),{state:"release_held"});
+    assert.equal(submissions,0);
+    assert.equal(await db.prisma.satchelWithdrawalAttempt.count(),0);
+    // Stage 2: only the expressly opted-in offline SDK fixture loader creates
+    // a synthetic, withdrawal-only short lease; the production lease stays
+    // unchanged. This demonstrates the real lost-ACK recovery contract.
+    process.env.SATCHEL_CI_SYNTHETIC_WITHDRAWAL_LEASE="local-fixture-only";
+    try {
+      assert.deepEqual(await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader),{state:"unknown_hold"});
+    } finally {
+      delete process.env.SATCHEL_CI_SYNTHETIC_WITHDRAWAL_LEASE;
+    }
     const confirmed=await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader);
     assert.equal(confirmed.state,"sent");
     assert.deepEqual(await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader),{state:"sent"});

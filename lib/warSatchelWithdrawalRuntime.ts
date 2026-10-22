@@ -4,6 +4,7 @@
 import type {PrismaClient} from "@/lib/generated/prisma";
 import {requireSatchelFinancialBridge} from "./warSatchelFinancialBridgeHold.ts";
 import {readWarSatchelBoundedUtf8} from "./warSatchelBoundedBody.ts";
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
 import {markSatchelWithdrawalAttempt,finalizeProvenSatchelWithdrawal} from "./warSatchelFundedLedger.ts";
 
 const ENDPOINT="http://127.0.0.1:8094";
@@ -18,10 +19,10 @@ function token(){
   const key=process.env.WAR_SATCHEL_SIGNER_AUTH_TOKEN||"";
   if(!/^[A-Za-z0-9_-]{48,512}$/.test(key))stop("credential_missing");return key;
 }
-async function request(path:"/v1/satchel/withdrawals"|"/satchel/v1/reconcile",body:unknown,reader:typeof fetch){
+async function request(path:"/v1/satchel/withdrawals"|"/satchel/v1/reconcile",body:unknown,reader:typeof fetch,canceled?:AbortSignal){
   const response=await reader(ENDPOINT+path,{method:"POST",redirect:"error",cache:"no-store",
     headers:{Authorization:"Bearer "+token(),"Content-Type":"application/json",Accept:"application/json"},
-    body:JSON.stringify(body),signal:AbortSignal.timeout(8500)});
+    body:JSON.stringify(body),signal:AbortSignal.any([AbortSignal.timeout(8500),...(canceled?[canceled]:[])])});
   if(!response.ok||response.status!==200)stop("signer_outcome_unknown");
   const raw=await readWarSatchelBoundedUtf8(response.body,16384);
   if(!raw)stop("signer_outcome_unknown");
@@ -48,11 +49,33 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
   const operationId="satchel:withdrawal:"+withdrawalId;
   let reply:Record<string,unknown>|null=null;
   if(record.status==="reserved"){
-    // Database commit completes BEFORE the only permitted submission call.
-    const fenced=await markSatchelWithdrawalAttempt(prisma,{withdrawalId,ownerUserId:record.ownerUserId});
-    try{reply=await request("/v1/satchel/withdrawals",fenced.request,reader);}catch{
-      await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:null,state:"unknown"}});
-      return {state:"unknown_hold"};
+    // No new withdrawal attempt can be reserved or sent without its OWN
+    // independently signed source/build/vault/producer-bound PG lease.
+    // Keep the lease through the atomic durable UNKNOWN fence and first POST.
+    // An unavailable lease must not mutate a reserved withdrawal.
+    try{
+      reply=await withHdFinancialLease({
+        scope:"hd-satchel",producer:"war-satchel-withdrawal",
+        wallet:(process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS||"").trim(),
+      },async signal=>{
+        signal.throwIfAborted();
+        const fenced=await markSatchelWithdrawalAttempt(prisma,{
+          withdrawalId,ownerUserId:record.ownerUserId,
+        });
+        signal.throwIfAborted();
+        return request("/v1/satchel/withdrawals",fenced.request,reader,signal);
+      });
+    }catch{
+      // The callback may have fenced an attempted send before transport loss.
+      // Never infer no-broadcast from a timeout; only the original durable
+      // attempt can enter reconciliation, NEVER a second signer POST.
+      const attempt=await prisma.satchelWithdrawalAttempt.findUnique({where:{withdrawalId}});
+      if(attempt){
+        await prisma.satchelWithdrawalObservation.create({
+          data:{operationId,txHash:null,state:"unknown"},
+        });
+      }
+      return {state:attempt?"unknown_hold":"release_held"};
     }
   }else if(record.status==="unknown_hold"){
     // Existing operation reconciliation validates original signed bytes and

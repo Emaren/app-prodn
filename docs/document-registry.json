@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5c6acc22102596ffec2bc4bfa91577b8e5c8be1d8f24075edb4ffdeb38f91de2",
+      "sha256": "fe1f28e56c5fd114a086151a5c553a224b5176e2e2c7402177f49dd49aa4ea62",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/20261022-original-live-admission-held",
-    "commit": "66465453e5d926c316d471f111257dba0f882e40"
+    "branch": "integration/20261022-final-mainnet-github-held",
+    "commit": "33d46a8ae4ba8460c983099766f0081d0a8c2b5b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
