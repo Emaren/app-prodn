@@ -117,6 +117,8 @@ jobs:
         run: python3 scripts/run_test_contract.py
       - name: Build production application
         run: yarn build
+      - name: Prove compiled financial gate source and build generation
+        run: node scripts/check-hd-financial-build-identity.cjs
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
 
