@@ -1,6 +1,7 @@
 name: AoE2WAR CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]

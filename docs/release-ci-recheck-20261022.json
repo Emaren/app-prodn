@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "kind": "read-only-ci-handoff",
+  "date": "2026-10-22",
+  "source_branch": "ops/exact-head-ci-dispatch-20261022",
+  "implementation_reviewed_at": "aba29056b128f89273f318bc01a49450aab91b49",
+  "documentation_seal": "7fc4236f8a2f345affeefa485016bc78d4153758",
+  "purpose": "Record review of the sealed CI workflow_dispatch change and trigger normal maintainer-authored pull_request CI on the documentation-equivalent final source. This JSON document is not an implementation source change.",
+  "expected_source_controls": [
+    "frozen documentation baseline valid",
+    "TypeScript, contracts, production build and PostgreSQL tests must independently run at newest HEAD",
+    "financial and production approval remain external"
+  ],
+  "financial_activation_authorized": false,
+  "production_deployment_authorized": false,
+  "note": "Evidence record only. A passed check must reference the new exact HEAD; this file itself does not confer green CI."
+}
