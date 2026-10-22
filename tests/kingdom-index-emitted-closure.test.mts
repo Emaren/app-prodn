@@ -14,7 +14,7 @@ const FILES=[
  ".next/required-server-files.json",
  ".next/server/app/kingdom-index/page.js.nft.json",
  ".next/server/app/api/kingdom-index/route.js.nft.json",
- "node_modules/.prisma/client/index.js",
+ "lib/generated/prisma/index.js",
  ".next/static/chunks/kingdom.js"
 ];
 async function fixture(){
@@ -38,7 +38,7 @@ test("bounded emitted capture hashes exact bytes but NEVER grants certification"
     assert.equal(result.missing.length,0);
     assert.match(result.receiptSha256,/^[a-f0-9]{64}$/);
     assert.equal(result.files.some(r=>r.path===".next/static/chunks/kingdom.js"),true);
-    assert.equal(result.files.some(r=>r.path==="node_modules/.prisma/client/index.js"),true);
+    assert.equal(result.files.some(r=>r.path==="lib/generated/prisma/index.js"),true);
   }finally{await rm(root,{recursive:true,force:true});}
 });
 test("altered expected source SHA is refused without reading fake build",async()=>{
@@ -49,12 +49,12 @@ test("altered expected source SHA is refused without reading fake build",async()
 test("missing required Prisma output or source trace fails visibly",async()=>{
   const root=await fixture();
   try{
-    await rm(join(root,"node_modules/.prisma/client/index.js"));
+    await rm(join(root,"lib/generated/prisma/index.js"));
     await rm(join(root,".next/server/app/kingdom-index/page.js.nft.json"));
     const result=await collectIndexEmittedClosure(root,SHA,SHA);
     assert.equal(result.status,"INCOMPLETE");
     assert.equal(result.certified,false);
-    assert.ok(result.missing.some(s=>s.includes("node_modules/.prisma/client/index.js")));
+    assert.ok(result.missing.some(s=>s.includes("lib/generated/prisma/index.js")));
     assert.ok(result.missing.some(s=>s.includes("page.js.nft.json")));
   }finally{await rm(root,{recursive:true,force:true});}
 });
