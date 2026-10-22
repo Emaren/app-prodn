@@ -8,11 +8,16 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-10-22"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 # AoE2WAR Betting Constitution
+
+## October 22, 2026 — scope-preserving review
+
+Reviewed the live/current `#JimsRule` versus proposed Phase Books distinction, matched-only 2% betting fee, one-for-one funded opponent ceiling, unmatched-principal protection, zero-fee void refunds, and grandfathered historical settlements. The observed-browser Traffic-country presentation work neither changes nor authorizes financial matching, fees, chain custody, phase-book activation, claims or payouts. WoloChain remains the chain-money authority and its independent financial release HOLD is unchanged. No new constitution amendment or financial certification is implied.
+
 
 ## Status and authority
 

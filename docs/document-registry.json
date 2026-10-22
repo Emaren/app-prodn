@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "8944550f617b74783342c0c2137bfee36b67b9b1bb03345ad3e21ceac37c01a6",
+      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "fcc9849787cfef56c6cd6d9289d2152919ca9ed421dc0712f25ee94c02693dab",
+      "sha256": "aa31669d2f3ce6065afe0004a181379182beed5fd298d374e6833f6e8c77a9cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "60499e83bb6ce877e6f7e91885132a7a21c35af6a8e5d8ad61e9851b016fca66",
+      "sha256": "0723f5420fc16bfeb49a2e33f3352faa0d8e10c93d8971bbc9b510a1ed533ad4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1194,9 +1194,9 @@
       "owner": "aoe2war-web",
       "path": "docs/OPERATOR_START_HERE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "fe29207619d89508e623cbc0279ef21d9121c9b2745ae0464405be68228f713e",
+      "sha256": "2d9589b7c05e71eb9fdc9638ad6abd010de1615caa01e66fd9126deaf6c5bab2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/traffic-observed-insights-20261021",
-    "commit": "037264252f061e663ef66db0ff85fd58967ae142"
+    "branch": "main",
+    "commit": "fefb7579683f1655d20bd6aba1cd4f21c36e09af"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -17,7 +17,7 @@ const valid = () => ({
     excluded_zero_duration_sessions: 8,
     rows_scanned: 370,
   },
-  top_countries: [{ name: "Canada", unique_browser_ids: 20 }],
+  top_countries: [{ name: "Canada", unique_browser_ids: 20, small_cohort: false }],
   top_pages: [{ path: "/traffic", page_views: 19 }],
   average_visible_seconds: 94,
 });
@@ -52,6 +52,40 @@ test("rejects inconsistent qualifying and excluded duration cohorts", () => {
 test("rejects countries below the five-identifier privacy floor", () => {
   const raw = valid();
   raw.top_countries[0].unique_browser_ids = 4;
+  assert.throws(
+    () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
+    /privacy threshold/,
+  );
+});
+
+test("accepts up to five observed countries while hiding exact small-cohort counts", () => {
+  const raw = valid();
+  raw.top_countries = [
+    { name: "Canada", unique_browser_ids: 19, small_cohort: false },
+    { name: "United States", unique_browser_ids: 14, small_cohort: false },
+    { name: "Netherlands", unique_browser_ids: 6, small_cohort: false },
+    { name: "Germany", unique_browser_ids: null, small_cohort: true },
+    { name: "France", unique_browser_ids: null, small_cohort: true },
+  ] as unknown as typeof raw.top_countries;
+  const result = normalizeTrafficBrowserInsights(raw, "2026-10-21");
+  assert.equal(result.topCountries.length, 5);
+  assert.deepEqual(result.topCountries.at(-1), {
+    name: "France", uniqueBrowserIds: null, smallCohort: true,
+  });
+});
+
+test("rejects unsuppressed tiny counts or mismatched privacy marker", () => {
+  const raw = valid();
+  raw.top_countries = [{
+    name: "Germany", unique_browser_ids: null, small_cohort: false,
+  }] as unknown as typeof raw.top_countries;
+  assert.throws(
+    () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
+    /Invalid country small-cohort suppression/,
+  );
+  raw.top_countries[0] = {
+    name: "Germany", unique_browser_ids: 3, small_cohort: false,
+  };
   assert.throws(
     () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
     /privacy threshold/,
