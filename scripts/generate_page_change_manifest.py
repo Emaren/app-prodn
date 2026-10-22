@@ -63,9 +63,9 @@ def version_for(href: str) -> tuple[str, int]:
     for path in files:
         rel = str(path.relative_to(ROOT))
         digest.update(rel.encode("utf-8"))
-        digest.update(b"\\0")
+        digest.update(b"\0")
         digest.update(path.read_bytes())
-        digest.update(b"\\0")
+        digest.update(b"\0")
     return f"src-{digest.hexdigest()[:20]}", len(files)
 
 
