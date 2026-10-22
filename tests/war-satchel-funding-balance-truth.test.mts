@@ -31,15 +31,19 @@ async function renderBalance(payload:unknown,status=200){
   };
   cache.set(filename,mod.exports as Record<string,unknown>);mod._compile(output,filename);return mod.exports as Record<string,unknown>;
  };
- globalThis.fetch=(async input=>{calls.push(String(input));return Response.json(payload,{status});}) as typeof fetch;
+ globalThis.fetch=(async input=>{const url=String(input);calls.push(url);
+  if(url==="/api/user/war-satchel/balance")return Response.json(payload,{status});
+  if(url==="/api/user/war-satchel/funding-intents")return Response.json({available:false,recentIntents:[]});
+  throw Error("unexpected fixture network path");
+ }) as typeof fetch;
  const cleanups:Array<()=>void>=[];
  try{
   const Component=load("components/profile/WarSatchelFundingAction.tsx").default as (props:{walletAddress:string;depositAmount:string})=>React.ReactNode;
-  Component({walletAddress:"",depositAmount:"100"});
+  Component({walletAddress:"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e",depositAmount:"100"});
   for(const effect of [...effects]){const cleanup=effect();if(cleanup)cleanups.push(cleanup);}
   await new Promise(resolve=>setImmediate(resolve));await new Promise(resolve=>setImmediate(resolve));
-  cursor=0;const html=renderToStaticMarkup(Component({walletAddress:"",depositAmount:"100"}));
-  assert.deepEqual(calls,["/api/user/war-satchel/balance"]);
+  cursor=0;const html=renderToStaticMarkup(Component({walletAddress:"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e",depositAmount:"100"}));
+  assert.deepEqual(calls,["/api/user/war-satchel/balance","/api/user/war-satchel/funding-intents"]);
   return html;
  }finally{for(const cleanup of cleanups)cleanup();globalThis.fetch=original;}
 }
@@ -64,4 +68,6 @@ test("complete current owner-ledger values display exactly and cannot enable hel
  assert.match(html,/FUNDING AWAITING VAULT CERTIFICATION/);
  const zero=await renderBalance({...balance,availableUwolo:"0"});
  assert.match(zero,/Verified War Satchel:.*0 WOLO available/);
+ const eligible=await renderBalance({...balance,depositEnabled:true});
+ assert.match(eligible,/TRANSFER WOLO FROM KEPLR/,"eligible presentation still requires the separate backend funding gate");
 });
