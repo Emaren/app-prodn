@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import ProcessDrilldown from "./ProcessDrilldown";
-import { formatLiveRecoveryProgressLabel, useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
+import { formatLiveRecoveryProgressLabel, useLiveRecoveryProgress, useRecoverySignalState } from "./useLiveRecoveryProgress";
 
 type AgentRow = {
   key: string;
@@ -65,6 +65,14 @@ export default function AgentConstellationPanel({
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const theme = THEMES[themeIndex] ?? "plain";
   const liveRecovery = useLiveRecoveryProgress(true);
+  const recoverySignal = useRecoverySignalState();
+  const recoveryNotice = recoverySignal === "operator_preview_only"
+    ? "Live Recovery preview unavailable"
+    : recoverySignal === "paused"
+      ? "Live Recovery sampling paused"
+      : recoverySignal === "unavailable"
+        ? "Current Recovery sample unavailable"
+        : "Awaiting a current Recovery sample";
 
   const cycleTheme = () => {
     setThemeIndex((current) => (current + 1) % THEMES.length);
@@ -72,19 +80,10 @@ export default function AgentConstellationPanel({
 
   return (
     <section
-      role="button"
-      tabIndex={0}
+      aria-label="Agent constellation"
       data-agent-constellation-theme={theme}
-      aria-label={`Agent constellation display tile. Current theme: ${theme}.`}
-      onClick={cycleTheme}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          cycleTheme();
-        }
-      }}
       className={
-        "group/constellation relative cursor-pointer overflow-hidden rounded-[2rem] border p-5 transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 " +
+        "group/constellation relative overflow-hidden rounded-[2rem] border p-5 transition-all duration-500 " +
         PANEL_SHELL
       }
     >
@@ -97,6 +96,11 @@ export default function AgentConstellationPanel({
             Eight OS agents. One Doctor.
           </h2>
         </div>
+        <button type="button" onClick={cycleTheme}
+          aria-label={`Change Agent constellation display theme; current theme ${theme}`}
+          className="shrink-0 rounded-lg border border-amber-200/20 px-2 py-1 text-xs text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-200">
+          Change theme
+        </button>
       </div>
 
       <div className="relative z-10 mt-3 space-y-2">
@@ -129,33 +133,15 @@ export default function AgentConstellationPanel({
                   agent.progressLabel,
                 )
               : trustworthySnapshotProgress !== null
-                ? agent.progressLabel
-                : "live signal syncing"
+                ? `Snapshot · ${agent.progressLabel ?? "previous progress"}`
+                : recoveryNotice
             : agent.progressLabel;
 
           return (
           <div
             key={agent.key}
-            role="button"
-            tabIndex={0}
-            aria-expanded={expanded}
-            onClick={(event) => {
-              event.stopPropagation();
-              setExpandedKey((current) =>
-                current === agent.key ? null : agent.key,
-              );
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                event.stopPropagation();
-                setExpandedKey((current) =>
-                  current === agent.key ? null : agent.key,
-                );
-              }
-            }}
             className={
-              "cursor-pointer rounded-2xl border px-4 py-2.5 transition-all duration-500 " +
+              "rounded-2xl border px-4 py-2.5 transition-all duration-500 " +
               rowShell(theme)
             }
           >
@@ -179,6 +165,12 @@ export default function AgentConstellationPanel({
                   >
                     {agent.state}
                   </span>
+                  <button type="button" aria-expanded={expanded}
+                    aria-label={`${expanded ? "Hide" : "Show"} ${agent.label} details`}
+                    onClick={() => setExpandedKey((current) => current === agent.key ? null : agent.key)}
+                    className="rounded-md border border-amber-200/20 px-2 py-0.5 text-[10px] text-amber-100 focus-visible:ring-2 focus-visible:ring-amber-200">
+                    {expanded ? "Hide details" : "Details"}
+                  </button>
                 </div>
 
                 <div className="mt-1 text-xs leading-5 text-slate-400">
@@ -212,10 +204,12 @@ export default function AgentConstellationPanel({
                 ) : recoveryItem ? (
                   <div className="mt-2">
                     <div className="relative h-1 overflow-hidden rounded-full bg-white/6">
-                      <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                      {recoverySignal === "awaiting_sample" ? (
+                        <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                      ) : null}
                     </div>
                     <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
-                      <span>live signal syncing</span>
+                      <span aria-live="polite">{recoveryNotice}</span>
                       <span>—</span>
                     </div>
                   </div>
@@ -224,10 +218,7 @@ export default function AgentConstellationPanel({
             </div>
 
             {expanded ? (
-              <div
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-              >
+              <div>
                 <ProcessDrilldown
                   kind="agent"
                   systemKey={agent.key}
