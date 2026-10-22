@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261021-hd-latest-main-traffic-reconcile-held` at `c6c518cd0f959107275c68f7a4948f1ba2af5455`
+Implementation baseline: `fix/hd-funded-admission-canonical-proposition-time-20261021` at `3e4023f7448196e24606c3d6434998374e2533e2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
