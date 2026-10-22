@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "09ff414e1e8382e4ad80aeaadf27f3016874cb245a744b74dc7e956f3290ef78",
+      "sha256": "56323d0abd0692e4d9c876022ec6bfe4d68db839fe656be14d2a27f45372dcee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1221,7 +1221,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "d75d0f10514fc17901f6a1b7b90208b9adb4a912e0791774ba727a56fda8cf41",
+      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1583,7 +1583,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "dc5e02c5d735c7ecbe5963eb64a5276b0cdf80ba524ed9de50c38b4f63f31487",
+      "sha256": "afe76ef2647628a8d98722915b728aae718f9ed8bae2bc270fa313c823730f4d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/renaissance-page-change-nul-delimiter-20261022",
-    "commit": "f6bf17e5dc0b957c3c9add9e690f2758e37a2552"
+    "branch": "feature/renaissance-command-worker-and-overlap-check-20261022",
+    "commit": "b5c3108854ea43a29937879094a47589e785496d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
