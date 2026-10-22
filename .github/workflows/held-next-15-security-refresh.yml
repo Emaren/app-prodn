@@ -40,6 +40,22 @@ jobs:
           yarn add next@15.5.28 --exact --ignore-scripts --non-interactive
           test "$(node -p "require('./package.json').dependencies.next")" = 15.5.28
           node -e 'const p=require("./node_modules/next/package.json");if(p.version!=="15.5.28")process.exit(1)'
+          # A scoped pre-existing braces@3.0.3 dev-only waiver is bound to
+          # SHA-256(package.json + yarn.lock), so any safe Next patch revokes
+          # that seal until the new graph is independently rescanned.
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.check_dependency_security import dependency_digest
+          p=Path("config/dependency-security-waivers.json")
+          d=json.loads(p.read_text())
+          assert d["schema"]==1 and len(d["waivers"])==1
+          w=d["waivers"][0]
+          assert (w["advisory_id"],w["module"],w["version"],w["scope"],w["expires_on"]) == (1240992,"braces","3.0.3","dev-only","2026-10-24")
+          w["dependency_digest"]=dependency_digest()
+          w["reason"]="2026-10-22 Next.js-only security patch re-seal: exact braces 3.0.3 dev-only graph must independently pass check_dependency_security.py path-root analysis before Git commit. Original 2026-10-24 expiry preserved; no runtime, new advisory or blanket waiver allowed."
+          p.write_text(json.dumps(d,indent=2)+"\\n")
+          PY
           python3 scripts/check_dependency_security.py
           python3 scripts/docs_v2_check.py --write --refresh-baseline
           python3 scripts/docs_v2_check.py
@@ -47,11 +63,11 @@ jobs:
           files="$(git diff --name-only)"
           while IFS= read -r file; do
             case "$file" in
-              package.json|yarn.lock|docs/document-registry.json|docs/DOCUMENTATION_CONTROL_PLANE.md|catalog-info.yaml) ;;
+              package.json|yarn.lock|config/dependency-security-waivers.json|docs/document-registry.json|docs/DOCUMENTATION_CONTROL_PLANE.md|catalog-info.yaml) ;;
               *) echo "REFUSE unexpected dependency mutation: $file" >&2; exit 1 ;;
             esac
           done <<< "$files"
-          git add package.json yarn.lock docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          git add package.json yarn.lock config/dependency-security-waivers.json docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
           test -n "$(git diff --cached --name-only)"
           git config user.name 'aoe2war-held-dependency-bot'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
