@@ -197,6 +197,36 @@
           "requirement": "Steam identity, names, wallet ownership and claimed status correctly distinguished"
         }
       ]
+    },
+    "watcher": {
+      "label": "Watcher exhibition and live client evidence",
+      "gates": [
+        {
+          "id": "release-source-authority",
+          "dimension": "correctness",
+          "requirement": "Published and in-development Watcher source, artifacts and CI receipts independently match exact versions; no guessed 100/100"
+        },
+        {
+          "id": "fleet-privacy-and-freshness",
+          "dimension": "correctness",
+          "requirement": "Authenticated user event counts, consent boundaries, 150-second freshness and anonymous public publication independently audited"
+        },
+        {
+          "id": "multi-state-integrity",
+          "dimension": "functionality",
+          "requirement": "Watching, detected, batch, manual import, streaming and idle states never imply more authority than their actual telemetry"
+        },
+        {
+          "id": "real-hardware-resource-parity",
+          "dimension": "performance",
+          "requirement": "Installed 1.6.5 vs 1.6.6 CPU, RSS, wakeups, replay uploads and battery cohorts observed on real OS builds"
+        },
+        {
+          "id": "route-source-and-ui-proof",
+          "dimension": "tests",
+          "requirement": "Exact route census, source-defined API, keyboard/touch/motion, mobile and visual browser checks pass without private-source leakage"
+        }
+      ]
     }
   },
   "routeProfiles": {
@@ -287,6 +317,7 @@
     "/wolochain": "betting",
     "/wolomania": "betting",
     "/workshop": "release",
-    "/zodiac": "general"
+    "/zodiac": "general",
+    "/kingdom-watcher": "watcher"
   }
 }
