@@ -17,6 +17,8 @@ on:
       - 'tests/kingdom-index-emitted-closure.test.mts'
       - 'scripts/kingdom_index_loopback_api_probe.mjs'
       - 'tests/kingdom-index-loopback-api-probe.test.mts'
+      - 'scripts/kingdom_index_loopback_browser_audit.mjs'
+      - 'tests/kingdom-index-loopback-browser-audit.test.mts'
       - 'scripts/kingdom_index_tracked_provenance.mjs'
       - 'tests/kingdom-index-tracked-provenance.test.mts'
       - 'tests/kingdom-index-criterion-nonce-store.test.mts'
@@ -44,7 +46,7 @@ jobs:
       - name: Exercise signed criterion evidence boundary
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-tracked-provenance.test.mts
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-loopback-browser-audit.test.mts tests/kingdom-index-tracked-provenance.test.mts
       - name: Exercise first-page 100-point qualification plan (not a certificate)
         run: |
           set -euo pipefail
@@ -187,11 +189,71 @@ jobs:
           console.log('Build observation:',report.status,report.buildId,
             'files',report.files.length,'missing',report.missing.length);
           NODE
+      - name: Exercise exact built Next Index API and desktop/mobile real Chrome (isolated loopback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          BUILD_ID="$(cat .next/BUILD_ID)"
+          test -n "$BUILD_ID"
+          COLLECTOR_SHA="$(git rev-parse HEAD:scripts/aoe2_speed_cold_lcp.mjs)"
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME" && test -x "$CHROME" || {
+            echo "::error::No real Chrome binary on runner; browser evidence unavailable"
+            exit 2
+          }
+          ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3030 \
+            > kingdom-index-build-evidence/local-next-start.log 2>&1 &
+          NEXT_PID=$!
+          trap 'kill "$NEXT_PID" 2>/dev/null || true; wait "$NEXT_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 90); do
+            if curl --silent --fail --max-time 2 \
+              http://127.0.0.1:3030/api/kingdom-index >/dev/null; then
+              break
+            fi
+            if ! kill -0 "$NEXT_PID" 2>/dev/null; then
+              echo "::error::Isolated Next process exited before readiness"; exit 2
+            fi
+            sleep 1
+          done
+          curl --silent --show-error --fail --max-time 8 \
+            http://127.0.0.1:3030/api/kingdom-index >/dev/null
+          node scripts/kingdom_index_loopback_api_probe.mjs \
+            --origin http://127.0.0.1:3030/ --samples 12 \
+            --expected-build-id "$BUILD_ID" \
+            > kingdom-index-build-evidence/api-loopback.json
+          for VIEW in desktop phone; do
+            mkdir -p "kingdom-index-build-evidence/chrome-$VIEW"
+            node scripts/aoe2_speed_cold_lcp.mjs \
+              --url http://127.0.0.1:3030/kingdom-index \
+              --samples 10 --viewport "$VIEW" \
+              --release-sha "$EXPECTED_CANDIDATE_SHA" \
+              --build-version "$BUILD_ID" \
+              --collector-sha "$COLLECTOR_SHA" \
+              --out-dir "kingdom-index-build-evidence/chrome-$VIEW" \
+              --chrome "$CHROME" --post-load-ms 750 \
+              --load-timeout-ms 20000 \
+              > "kingdom-index-build-evidence/chrome-$VIEW/collector-result.json"
+            node scripts/kingdom_index_loopback_browser_audit.mjs \
+              --input "kingdom-index-build-evidence/chrome-$VIEW/receipt.json" \
+              --source-sha "$EXPECTED_CANDIDATE_SHA" \
+              --build-id "$BUILD_ID" --collector-sha "$COLLECTOR_SHA" \
+              --viewport "$VIEW" \
+              > "kingdom-index-build-evidence/chrome-$VIEW/inspection.json"
+          done
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase emitted \
+            > kingdom-index-build-evidence/source-emitted.json
+          echo "Real built Next loopback API + two real Chrome cohorts captured; candidate ONLY." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload inspectable build evidence (not a release receipt)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: kingdom-index-emitted-observation-${{ github.run_id }}-${{ github.run_attempt }}
-          path: kingdom-index-build-evidence/
+          path: |
+            kingdom-index-build-evidence/*.json
+            kingdom-index-build-evidence/chrome-desktop/*.json
+            kingdom-index-build-evidence/chrome-phone/*.json
           if-no-files-found: ignore
           retention-days: 14
