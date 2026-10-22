@@ -1,0 +1,47 @@
+name: Held Flight Recorder documentation seal
+on:
+  push:
+    branches:
+      - tools/release-flight-recorder-20261022
+permissions:
+  contents: write
+concurrency:
+  group: held-flight-recorder-docs
+  cancel-in-progress: false
+jobs:
+  seal:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/tools/release-flight-recorder-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Seal only generated documentation metadata for recorder source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "tools/release-flight-recorder-20261022"
+          if python3 scripts/docs_v2_check.py; then
+            echo "Docs baseline already matches source."
+            exit 0
+          fi
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py
+          git diff --check
+          changed="$(git diff --name-only)"
+          test -n "$changed"
+          while IFS= read -r file; do
+            case "$file" in
+              docs/document-registry.json|docs/DOCUMENTATION_CONTROL_PLANE.md|catalog-info.yaml) ;;
+              *) echo "Unexpected non-documentation path: $file" >&2; exit 1 ;;
+            esac
+          done <<< "$changed"
+          git add docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          git config user.name 'aoe2war-held-document-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "docs(ops): seal exact Flight Recorder documentation source baseline"
+          git push origin HEAD:refs/heads/tools/release-flight-recorder-20261022
