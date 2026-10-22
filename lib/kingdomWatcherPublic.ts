@@ -212,7 +212,7 @@ type OfficialRelease = {
 };
 async function readOfficialReleaseBytes(version: string): Promise<Record<"windows"|"macos"|"linux",number|null>> {
   const unavailable = { windows: null, macos: null, linux: null };
-  if (!/^\\d+\\.\\d+\\.\\d+$/.test(version)) return unavailable;
+  if (!/^\d+\.\d+\.\d+$/.test(version)) return unavailable;
   try {
     const response = await fetch("https://api.github.com/repos/Emaren/aoe2-watcher/releases/tags/v"+version, {
       next: { revalidate: 3600 },
@@ -228,9 +228,9 @@ async function readOfficialReleaseBytes(version: string): Promise<Record<"window
       Number.isSafeInteger(row.size) && row.size > 1_000_000 && row.size < 2_000_000_000);
     const find = (kind: "windows"|"macos"|"linux") => {
       const patterns = {
-        windows: /^AoE2HDBets[.]Watcher[.]Setup[.]\\d+[.]\\d+[.]\\d+[.]exe$/i,
-        macos: /^AoE2HDBets[.]Watcher-\\d+[.]\\d+[.]\\d+-arm64[.]dmg$/i,
-        linux: /^AoE2HDBets[.]Watcher-\\d+[.]\\d+[.]\\d+[.]AppImage$/i,
+        windows: /^AoE2HDBets[.]Watcher[.]Setup[.]\d+[.]\d+[.]\d+[.]exe$/i,
+        macos: /^AoE2HDBets[.]Watcher-\d+[.]\d+[.]\d+-arm64[.]dmg$/i,
+        linux: /^AoE2HDBets[.]Watcher-\d+[.]\d+[.]\d+[.]AppImage$/i,
       };
       const matched = rows.filter(row => patterns[kind].test(row.name));
       return matched.length === 1 ? matched[0].size : null;
