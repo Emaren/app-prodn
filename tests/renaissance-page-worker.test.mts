@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync,existsSync} from "node:fs";
-import { buildPublicPageAssignment, renderPublicPagePrompt, publicCandidateQueue, redirectAliasDestination } from "../scripts/renaissance_page_worker.mjs";
+import { buildPublicPageAssignment, renderPublicPagePrompt, publicCandidateQueue, redirectAliasDestination, assertCheckoutProvenance } from "../scripts/renaissance_page_worker.mjs";
 const sha="184281be67c16e0c3b7013ee7cbbab394b928889";
 const catalog=[{href:"/kingdom-index",sourceTree:"src-0123456789abcdef"},{href:"/speed",sourceTree:"src-ffffffffffffffff"}];
 const campaign={phases:[{id:"I",routes:["/kingdom-index","/speed","/admin","/game-stats/[id]"]}]};
@@ -85,4 +85,12 @@ test("repository's real indexed route corpus has a complete honest phase queue",
   const file=new URL("../app"+(row.route==="/"?"/":row.route+"/")+"page.tsx",import.meta.url);
   assert.ok(existsSync(file),row.route+" missing backing page");
  }
+});
+
+test("CLI provenance guard binds requested SHA to a clean tracked checkout",()=>{
+ assert.doesNotThrow(()=>assertCheckoutProvenance({requestedSha:sha,checkoutSha:sha,dirtyTracked:""}));
+ assert.throws(()=>assertCheckoutProvenance({requestedSha:sha,checkoutSha:"1".repeat(40),dirtyTracked:""}),/differs from local Git HEAD/);
+ assert.throws(()=>assertCheckoutProvenance({requestedSha:"main",checkoutSha:sha,dirtyTracked:""}),/exact 40-character/);
+ assert.throws(()=>assertCheckoutProvenance({requestedSha:sha,checkoutSha:sha,dirtyTracked:" M app/page.tsx"}),/tracked checkout changes/);
+ assert.throws(()=>assertCheckoutProvenance({requestedSha:sha,checkoutSha:sha}),/tracked checkout changes/);
 });
