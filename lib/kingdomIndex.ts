@@ -10,6 +10,7 @@ import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
 import companionCatalog from "@/config/kingdom-index-companions.json";
 import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
 import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
+import { loadCurrentKingdomIndexTrustedPublication } from "@/lib/kingdomIndexTrustedPublicationRead.mjs";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
 export type PageAuditKind = "certified" | "agent" | "source-review";
@@ -43,7 +44,8 @@ export type KingdomIndexEntry = {
   bytes: number | null;
   dimensions: PageObservation["dimensions"] | null;
   notes: string | null;
-  specializedAssurance: { profile: string; gates: { id: string; requirement: string; status: "unverified" }[] };
+  specializedAssurance: { profile: string; gates: { id: string; requirement: string; status: "unverified" | "verified" }[] };
+  authenticatedPublication: null | { evidenceSha256:string; gitSha:string; buildId:string; releaseSha256:string; issuedAt:string; expiresAt:string };
 };
 export type KingdomCompanion = {
   id: string;
@@ -156,8 +158,14 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       .filter((r): r is PageObservation => validRecord(r,allowed) && r.kind==="source-review")
       .map(r=>[r.href,r] as const),
   );
+  // The optional source-bound publication reader is fail-closed. It verifies
+  // actual private evidence bytes, independent signers, nonce commitment and
+  // emitted BUILD_ID; ordinary operator observations can never populate scores.
+  const publication=await loadCurrentKingdomIndexTrustedPublication({
+    rubric:qualityRubric,profile:assuranceProfiles.profiles.index,nowMs:now,
+  });
   const pages: KingdomIndexEntry[]=catalog.map(route=>{
-    // All 68 routes use the same CI-regenerated source census. The older
+    // All 88 public routes use the same CI-regenerated source census. The older
     // PAGE_CHANGE_MANIFEST uses a separate algorithm and only covers a subset;
     // mixing those versions could claim a source match for obsolete code.
     // This is a route-local fingerprint, NOT complete transitive provenance.
@@ -192,8 +200,33 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       bytes:null,
       dimensions:lineage.dimensions,
       notes:typeof obs?.notes==="string"?obs.notes.slice(0,500):null,
+      authenticatedPublication:null,
     };
   });
+  // A raw 100 cannot be shown when a single mandatory gate fails.
+  // All other rows retain their established unmeasured/provisional status.
+  if(publication){
+    const entry=pages.find(page=>page.href==="/kingdom-index");
+    if(entry){
+      const gateMap=new Map(publication.gates.map(g=>[g.id,g.result]));
+      entry.specializedAssurance.gates=entry.specializedAssurance.gates.map(g=>({
+        ...g,status:gateMap.get(g.id)==="pass"?"verified":"unverified",
+      }));
+      if(publication.certified||publication.score<100){
+        entry.score=publication.score;
+        entry.kind="certified";
+        entry.status=publication.certified?"current":"provisional";
+        entry.checkedAt=publication.issuedAt;
+        entry.measuredVersion=entry.sourceVersion;
+        entry.dimensions={...publication.dimensions};
+      }
+      entry.authenticatedPublication={
+        evidenceSha256:publication.evidenceSha256,gitSha:publication.source.gitSha,
+        buildId:publication.source.buildId,releaseSha256:publication.source.releaseSha256,
+        issuedAt:publication.issuedAt,expiresAt:publication.expiresAt,
+      };
+    }
+  }
   return {
     schema:1,generatedAt:new Date(now).toISOString(),estate:inventory.counts,pages,
     // Desktop companions are not web routes: a Git release SHA is source
