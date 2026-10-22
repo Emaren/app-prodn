@@ -27,6 +27,7 @@ test("failed CI stays failed even when PR is mergeable",()=>{
  assert.equal(r.score,null);assert.equal(r.mergeAuthorized,false);
  assert.equal(r.independentlyCertified,false);assert.equal(r.releaseAuthorized,false);
  assert.match(renderSnapshot(r),/HAS_NON_SUCCESS_RUNS/);
+ assert.match(renderSnapshot(r),/## Exact-head workflow observations/);
  assert.match(renderSnapshot(r),/UNKNOWN/);
 });
 test("no exact-head runs are UNKNOWN, not inferred success",()=>{
@@ -76,4 +77,15 @@ test("snapshot never upgrades successful source-only workflows into a score",()=
  assert.equal(r.prs[0].workflowObservation,"OBSERVED_RUNS_SUCCESS");
  assert.equal(r.score,null);assert.equal(r.independentlyCertified,false);
  assert.match(renderSnapshot(r),/No merge, certification or production release approved/);
+});
+
+test("Markdown formatting keeps table intact and flattens untrusted run names",()=>{
+ const f=fields();
+ f.runsByPr=[{total_count:1,workflow_runs:[{...run,name:"Build\n| injected heading <script>"}]}];
+ const output=renderSnapshot(validateRenaissanceSnapshot(f));
+ assert.match(output,/\n\| #802 \|/);
+ assert.match(output,/\n## Exact-head workflow observations/);
+ assert.ok(!output.includes("<script>"));
+ assert.ok(!output.includes("\n| injected heading"));
+ assert.match(output,/Run 39849197289:/);
 });
