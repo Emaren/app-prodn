@@ -4,10 +4,9 @@
  * never awards points, signs, consumes a nonce or upgrades any Index gate.
  * The operator/reviewer provenance enrollment and live release remain external.
  */
-import {readFile,writeFile} from "node:fs/promises";
-import {join,resolve} from "node:path";
+import {readFile,realpath} from "node:fs/promises";
+import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {realpath} from "node:fs/promises";
 import {verifyIndexCandidateBundle} from "./kingdom_index_candidate_bundle_verify.mjs";
 
 const fail=m=>{throw Error("KINGDOM LEDGER STOP: "+m)};
