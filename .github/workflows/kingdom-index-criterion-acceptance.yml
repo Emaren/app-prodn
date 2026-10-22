@@ -20,6 +20,7 @@ on:
       - 'scripts/kingdom_index_loopback_browser_audit.mjs'
       - 'tests/kingdom-index-loopback-browser-audit.test.mts'
       - 'scripts/kingdom_index_candidate_bundle_verify.mjs'
+      - 'scripts/kingdom_index_candidate_evidence_ledger.mjs'
       - 'tests/kingdom-index-candidate-bundle-verify.test.mts'
       - 'scripts/kingdom_index_tracked_provenance.mjs'
       - 'tests/kingdom-index-tracked-provenance.test.mts'
@@ -256,6 +257,12 @@ jobs:
             --expected-build-id "$BUILD_ID" \
             --collector-sha "$COLLECTOR_SHA" \
             > kingdom-index-build-evidence/candidate-bundle-inspection.json
+          node scripts/kingdom_index_candidate_evidence_ledger.mjs \
+            --evidence-dir kingdom-index-build-evidence \
+            --expected-source "$EXPECTED_CANDIDATE_SHA" \
+            --expected-build-id "$BUILD_ID" \
+            --collector-sha "$COLLECTOR_SHA" \
+            > kingdom-index-build-evidence/candidate-evidence-ledger.json
           echo "Real built Next loopback API + two real Chrome cohorts captured; candidate ONLY." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload inspectable build evidence (not a release receipt)
         if: always()
