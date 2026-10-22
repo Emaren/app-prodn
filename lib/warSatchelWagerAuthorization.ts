@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_UWOLO} from "./betMoneyLimits.ts";
 /** Immutable HD reservation snapshots; no issuer, key, broadcast or balance authority. */
 import { createHash } from 'node:crypto';
 import { financialProofFreshAt, type AuthenticatedWarSatchelFinancialProof } from './warSatchelAuthenticatedFinancialProof.ts';
@@ -28,7 +29,7 @@ export function buildSatchelWagerAuthorization(input:SatchelWagerSnapshot):Durab
   if(![s.executionId,s.ownerUserId,s.ticketId,s.presetId,s.presetVersion].every(n=>Number.isSafeInteger(n)&&n>0)||
     s.reservationId!=='satchel:reserve:'+s.executionId||s.operationId!=='satchel:ticket:'+s.executionId||
     s.memo!=='AoE2HDBets bet ticket v1 · ticket '+s.ticketId||!s.ownerUid||!s.ownerWallet||s.vault===s.recipient||
-    !/^[1-9][0-9]{0,9}$/.test(s.amountUwolo)||BigInt(s.amountUwolo)>BigInt(1000000000)||
+    !/^[1-9][0-9]{0,10}$/.test(s.amountUwolo)||BigInt(s.amountUwolo)>BET_MAX_STAKE_UWOLO||
     !s.challengeText||!s.ownerSignatureJson||!s.legs.length||s.legs.length>2||
     s.legs.some(l=>!Number.isSafeInteger(l.amountWolo)||l.amountWolo<=0||!['left','right'].includes(l.side)||
       l.propositionHash!==s.propositionHash)||
