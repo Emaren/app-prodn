@@ -31,7 +31,7 @@ export function buildPublicPageAssignment({route,sourceSha,catalog,campaign,rubr
  if(!Array.isArray(catalog)||!Array.isArray(campaign?.phases))stop("canonical catalogs missing");
  const enrolled=catalog.find(row=>row.href===route);
  const phases=campaign.phases.filter(phase=>phase.routes?.includes(route));
- const modules=campaign.modules?.filter(module=>module.href===route)??[];
+ const modules=campaign.modules?.filter(candidate=>candidate.href===route)??[];
  const isUnphasedModule=phases.length===0&&modules.length===1&&route.startsWith("/renaissance");
  if(!enrolled||(phases.length!==1&&!isUnphasedModule))stop("not a uniquely registered public page or Renaissance module; protected/dynamic/unknown pages require private assignment");
  if(typeof enrolled.sourceTree!=="string"||!/^src-[a-f0-9]{16}$/.test(enrolled.sourceTree))stop("route-local source census missing");
@@ -120,10 +120,10 @@ export function publicCandidateQueue({catalog,campaign,sourceText=()=>null}){
  for(const phase of campaign.phases){
   for(const route of phase.routes||[])append(route,phase.id);
   if(phase.id==="I"){
-   for(const module of campaign.modules||[]){
-    if(typeof module.href!=="string"||!module.href.startsWith("/renaissance"))
+   for(const registered of campaign.modules||[]){
+    if(typeof registered.href!=="string"||!registered.href.startsWith("/renaissance"))
      stop("invalid Renaissance module registration");
-    if(!seen.has(module.href))append(module.href,"I");
+    if(!seen.has(registered.href))append(registered.href,"I");
    }
   }
  }
