@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { spawnSync } from "node:child_process";
 import { evidenceAge, inspectKingdomTestsEvidence } from "../lib/kingdomTestsEvidence.ts";
 
 const now = Date.parse("2026-10-22T18:00:00.000Z");
@@ -157,4 +158,24 @@ test("optional source reader is bounded, read-only, and generation-fenced", () =
   assert.match(source, /active\.current !== controller \|\| controller\.signal\.aborted/);
   assert.match(source, /credentials: "same-origin"/);
   assert.doesNotMatch(source, /setInterval|method:\s*["'](?:POST|PUT|PATCH|DELETE)["']/);
+});
+
+test("real Next acceptance script is syntactically valid Python without writing generated files", () => {
+  const script = "tests/kingdom-tests-next-acceptance.py";
+  const result = spawnSync("python3", ["-c", "import ast,pathlib;ast.parse(pathlib.Path(" + JSON.stringify(script) + ").read_text())"], {encoding:"utf8", timeout:15000});
+  assert.equal(result.status, 0, result.stderr || result.error?.message || "Python parse failed");
+});
+
+test("CI browser runner fails closed on source identity, real build, non-loopback host, and live certified claims", () => {
+  const script = readFileSync("tests/kingdom-tests-next-acceptance.py", "utf8");
+  assert.match(script, /EXPECTED_CANDIDATE_SHA/);
+  assert.match(script, /re\.fullmatch\(r"\[0-9a-f\]\{40\}"/);
+  assert.match(script, /status","--porcelain","--untracked-files=no"/);
+  assert.match(script, /"\.next"\/"BUILD_ID"/);
+  assert.match(script, /origin\.hostname!="127\.0\.0\.1"/);
+  assert.match(script, /"Transfer-Encoding", "chunked"/);
+  assert.match(script, /330000/);
+  assert.match(script, /"certified": True/);
+  assert.match(script, /"shared_claim_blocker"/);
+  assert.doesNotMatch(script, /workflow_dispatch|POST.*\/api\/general-inspections/);
 });
