@@ -1,0 +1,57 @@
+name: Held original-LIVE Watcher PostgreSQL qualification
+on:
+  pull_request:
+    paths:
+      - 'lib/bets.ts'
+      - 'lib/liveWatcherMarketAdmission.ts'
+      - 'lib/replayPostIngest.ts'
+      - 'app/api/replay/post-ingest/route.ts'
+      - 'app/api/admin/replay-auto-recovery/route.ts'
+      - 'tests/live-watcher-admission-*.test.mts'
+      - 'tests/fixtures/live-watcher-market-admission.mts'
+      - '.github/workflows/held-live-watcher-admission-pg.yml'
+  push:
+    branches:
+      - codex/20261022-original-live-admission-held
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-original-live-postgresql:
+    name: Original-LIVE HD admission / isolated PostgreSQL 16
+    if: github.repository == 'Emaren/app-prodn'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      RUN_LIVE_MARKET_PG_TESTS: '1'
+      AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
+      DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
+      SESSION_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - name: Enable repository package manager
+        run: corepack enable
+      - name: Install isolated PostgreSQL 16 binaries
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16
+          test -x /usr/lib/postgresql/16/bin/initdb
+          test -x /usr/lib/postgresql/16/bin/pg_ctl
+      - name: Install immutable dependencies and Prisma client
+        run: |
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+      - name: Exercise original LIVE, post-ingest, races and missing notifications
+        run: |
+          node --experimental-strip-types \
+            --experimental-loader ./scripts/aoe2-alias-loader.mjs \
+            --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+            --test tests/live-watcher-admission-provenance.test.mts \
+                   tests/live-watcher-admission-orchestration.test.mts \
+                   tests/live-watcher-admission-postgres.integration.test.mts
