@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -22,7 +23,7 @@ type Payload = {
   detail?: string;
 };
 type Execution = { id: number; status: string; winnerMarket: { title: string } };
-const MAX_AUTO_GAME_WOLO = 1_000;
+const MAX_AUTO_GAME_WOLO = BET_MAX_STAKE_WOLO;
 const number = (raw: string) => /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : NaN;
 
 /** E2 presentation operates exclusively on existing *shadow-only* user endpoints. */
@@ -113,7 +114,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
   const ds = dsSide === "none" ? 0 : number(dsStake);
   const perGame = stake + ds;
   const count = number(games);
-  const planLimit = server?.limits.maxEstimatedReserveWolo ?? 10_000;
+  const planLimit = Math.min(server?.limits.maxEstimatedReserveWolo ?? AUTO_BET_MAX_DAILY_WOLO,AUTO_BET_MAX_DAILY_WOLO);
   const plan = untilOut ? planLimit : perGame * count;
   const valid = Number.isSafeInteger(stake) && stake >= 1 &&
     Number.isSafeInteger(ds) && ds >= (dsSide === "none" ? 0 : 1) &&
@@ -380,8 +381,8 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           ) : <button type="button" onClick={() => setDsPanel(true)} className="mt-4 text-[10px] font-black uppercase tracking-[.12em] text-sky-200">DESYNC OPTIONS ↗</button>}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className={"text-xs " + (valid ? "text-slate-400" : "text-rose-300")}>
-              {valid ? perGame.toLocaleString() + " / 1,000 MATCH · " + plan.toLocaleString() + " / " + planLimit.toLocaleString() + " PLAN" :
-                "1–1,000 WOLO PER MATCH · 10,000 PLAN MAX"}
+              {valid ? perGame.toLocaleString() + " / " + MAX_AUTO_GAME_WOLO.toLocaleString() + " MATCH · " + plan.toLocaleString() + " / " + planLimit.toLocaleString() + " PLAN" :
+                "1–" + MAX_AUTO_GAME_WOLO.toLocaleString() + " WOLO PER MATCH · " + planLimit.toLocaleString() + " PLAN MAX"}
             </span>
             <button type="button" onClick={() => void save(Boolean(server?.preset.enabled))} disabled={!valid || !server || saving}
               className="rounded-xl bg-amber-300 px-5 py-3 text-[10px] font-black uppercase tracking-[.15em] text-slate-950 hover:bg-amber-200 disabled:opacity-40">
