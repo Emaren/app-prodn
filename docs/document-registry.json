@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "985fe6006712e1be945b3f552058e16948629af474543e8f6e13a81f08a3cd9f",
+      "sha256": "2de4d54f4b57cf25da9f8188dfee6bd899b18feada2f8ab542c32f2d73250ebb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5a62ff170a1f4f3cd5a7c408d38dc97b55cdfea9c90cd91866e5908665ec7cce",
+      "sha256": "3471e964da9a6ac23aeb0da2b45e6305d89a278eeb8f43fbcfbe66f102e6a924",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261021-hd-latest-main-traffic-reconcile-held",
-    "commit": "c6c518cd0f959107275c68f7a4948f1ba2af5455"
+    "branch": "fix/hd-funded-admission-canonical-proposition-time-20261021",
+    "commit": "3e4023f7448196e24606c3d6434998374e2533e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
