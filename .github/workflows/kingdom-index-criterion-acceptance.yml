@@ -49,3 +49,28 @@ jobs:
           set -euo pipefail
           ! grep -q 'kingdomIndexCriterionSubmission' lib/kingdomIndex.ts
           grep -q 'return null;' lib/kingdomIndexAuditStatus.ts
+
+  independent-type-probe:
+    name: Index exact-head TS contract (NOT production approval)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install exact locked packages without lifecycle execution
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Generate Prisma client for typing, never connect to live DB
+        run: |
+          set -euo pipefail
+          yarn prisma:generate
+      - name: Type-check source only; does not waive dependency security or release holds
+        run: |
+          set -euo pipefail
+          yarn tsc --noEmit --pretty false
