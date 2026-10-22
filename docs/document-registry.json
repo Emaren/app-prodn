@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9a6c530e9dbac7287dd08bb4c0d9829812a5c91aae91e70a1c47dbf4780ed7a7",
+      "sha256": "1779318ed665be69b9d867cbe0bfd39df4d64c0a2e0ee0005c3938363041ed33",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261022-codex-regressions-held",
-    "commit": "85160b4f59067da54a5a99e2db93b8cdc11b1a9f"
+    "branch": "integration/20261022-satchel-mainline-held",
+    "commit": "2bfb156a6081393bd40df2bd23e8e43dbeb2d346"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
