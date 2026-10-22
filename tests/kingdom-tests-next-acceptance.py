@@ -201,14 +201,20 @@ async def inspect_browser(args, proxy, report):
                 viewport:innerWidth,scrollWidth:document.documentElement.scrollWidth,
                 reducedMotion:matchMedia('(prefers-reduced-motion:reduce)').matches,
                 resources:performance.getEntriesByType('resource').length,
+                inspectionResources:performance.getEntriesByType('resource')
+                    .filter(x=>x.name.includes('/api/general-inspections'))
+                    .map(x=>({name:x.name,transfer:x.transferSize,
+                              encoded:x.encodedBodySize,decoded:x.decodedBodySize,duration:x.duration})),
                 navigation:performance.getEntriesByType('navigation').map(x=>({
                     duration:x.duration,transfer:x.transferSize,decoded:x.decodedBodySize})),
                 heap:performance.memory?.usedJSHeapSize??null})""")
             assert metrics["scrollWidth"] <= metrics["viewport"]+2
             assert metrics["reducedMotion"]
             report["viewports"][name] = {
-                "cold_navigation_samples_ms":navigation,
-                "cold_navigation":percentile(navigation),
+                "first_fresh_context_navigation_ms":navigation[0],
+                "same_context_repeat_navigation_samples_ms":navigation[1:],
+                "same_context_repeat_navigation":percentile(navigation[1:]),
+                "mixed_navigation_samples_ms":navigation,
                 "metrics":metrics, "page_errors":browser_errors, "inspection_responses":observations}
             await page.screenshot(path=str(args.output.parent/("kingdom-tests-next-"+name+".png")),full_page=True)
             # Whole-page inherited claim defect is a FAIL, not part of inspector certificate.
