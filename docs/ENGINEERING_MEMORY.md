@@ -8,12 +8,27 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-10-22"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 
 # AoE2WAR Engineering Memory and Learned Invariants
+
+## October 22 — preserve recovered LIVE source and qualify the missing boundary
+
+Newer held source already incorporated the private LIVE stage, table SHARE lock
+and durable-row recovery. Compare current ancestry before moving recovered WIP;
+add only missing regressions and immediate pre-write checks. A row lock alone
+cannot serialize an unseen final INSERT. The source-table SHARE boundary must
+stay short, timeout-bounded and free of parsers/network/source writes; verify
+actual PostgreSQL writer blocking and fail-closed contention.
+
+Private API checkout availability is separate from consumer correctness. Full
+local capture executes actual API auth/HMAC/archive/commit with an explicitly
+controlled parser; hosted CI replays the immutable sanitized result into actual
+HD PostgreSQL and says so. Never call fixture replay a fresh HMAC check, a human
+LIVE game, financial authorization or production certification.
 
 ## October 21 — preserve proof authority through waits and release epochs
 

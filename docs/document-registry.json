@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "771c435a67d4a023c9cbeb93602c3e94541fb7a64aaa3aa2be570b4fd6a949c5",
+      "sha256": "e7b2cc5bf28678dff954b711f605d3ab51ee90233493535734da3462238115f8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "7cf52e4e6b5db93a4331cbdd6fd92d47e6aedc133c51f47fbf43a35804d63138",
+      "sha256": "335c614a6474a8365216b13fe01fd2d8cccf939448143fe33577d9890b878259",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -799,9 +799,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "81ecadfa938cbab0bb401827c1bfeca359077ac90af096622abd1dd228bfe2da",
+      "sha256": "329308dd51e61b0535449b892c45f1d770ccf5bfc956c654890f5c72f69d147a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261022-satchel-mainline-held",
-    "commit": "9cdc6711e88ec40e96e9eabe389e365875718741"
+    "branch": "codex/hd-live-admission-qualification",
+    "commit": "0e756e6078bb1d7b0c656236ecbd447702ff247a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
