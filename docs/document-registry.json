@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "879eea12327d8a0d672b797197fe86eb6026f46c2ca8506921f7dbb8b39e0082",
+      "sha256": "4cf47982f20db4294d2613141643ad17c8f1136087a4c1e0119843aa991991bb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-command-worker-and-overlap-check-20261022",
-    "commit": "af68c6a962a6fc615299867b67cb1f0ff36e47c3"
+    "commit": "b4373dbe982daf6d1006fc11a8e750f35f5ba5a3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
