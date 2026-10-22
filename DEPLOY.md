@@ -15,6 +15,10 @@ sensitivity: "internal"
 
 # app-prodn Deploy
 
+## October 22, 2026 — targeted release-safety review
+
+Rechecked the ordinary protected release path, exact Git source identity, isolated staging, runtime/public version parity, fast and durable rollback, and Wolo 8092/8093 observer boundary against the current `scripts/aoe2_release.py` / `scripts/aoe2_release_ship.py` controls. This review does **not** grant any additional one-time exception or authorize settlement, signer, custody, schema migration or restart outside the release controller. The Traffic Observatory country presentation correction must use a new reviewed, artifact-bound website activation and separately coordinated Traffic API rollout. Dated historical deployment examples remain evidence of their own time, not current runtime truth.
+
 ## October 22 UTC — source reviewed, financial release still HARD HOLD
 
 This runbook was source-reviewed against the active release engine,
