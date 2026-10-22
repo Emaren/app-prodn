@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4cf47982f20db4294d2613141643ad17c8f1136087a4c1e0119843aa991991bb",
+      "sha256": "18f9295881a18039dc34897cb2d666c23da0f8a7e04efde3250adbaa850a4db9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1221,7 +1221,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
+      "sha256": "d75d0f10514fc17901f6a1b7b90208b9adb4a912e0791774ba727a56fda8cf41",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/renaissance-command-worker-and-overlap-check-20261022",
-    "commit": "b4373dbe982daf6d1006fc11a8e750f35f5ba5a3"
+    "branch": "fix/renaissance-page-change-nul-delimiter-20261022",
+    "commit": "87cd2180a1075e7ea7e4b332a709a0baa94b35c5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
