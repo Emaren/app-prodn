@@ -17,6 +17,8 @@ on:
       - 'tests/kingdom-index-emitted-closure.test.mts'
       - 'scripts/kingdom_index_loopback_api_probe.mjs'
       - 'tests/kingdom-index-loopback-api-probe.test.mts'
+      - 'scripts/kingdom_index_tracked_provenance.mjs'
+      - 'tests/kingdom-index-tracked-provenance.test.mts'
       - 'tests/kingdom-index-criterion-nonce-store.test.mts'
       - 'tests/kingdom-index-criterion-artifact-verifier.test.mts'
       - 'tests/kingdom-index-performance-receipt.test.mts'
@@ -42,7 +44,7 @@ jobs:
       - name: Exercise signed criterion evidence boundary
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-tracked-provenance.test.mts
       - name: Exercise first-page 100-point qualification plan (not a certificate)
         run: |
           set -euo pipefail
@@ -110,16 +112,64 @@ jobs:
           test -z "$(git status --porcelain --untracked-files=no)"
           echo "Inspected Git SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
           echo "This read-only job is NOT release approval or production closure." >> "$GITHUB_STEP_SUMMARY"
+      - name: Capture pre-install clean committed source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kingdom-index-build-evidence
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase checkout \
+            > kingdom-index-build-evidence/source-checkout.json
       - name: Install exact pinned build dependencies
         run: |
           set -euo pipefail
           corepack enable
           yarn install --frozen-lockfile --ignore-scripts --non-interactive
           npx prisma generate
+      - name: Diagnose dependency-generation tracked changes (read only)
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase dependencies \
+            > kingdom-index-build-evidence/source-dependencies.json || rc=$?
+          python3 - <<'PY'
+          import json
+          d=json.load(open("kingdom-index-build-evidence/source-dependencies.json"))
+          print("AFTER DEPENDENCIES: tracked clean =",d["trackedClean"])
+          for row in d["trackedChangedFiles"]:
+              print("TRACKED:",row["status"],row["classification"],row["path"])
+          PY
+          # Do not waive or assume harmless: postbuild provenance gate will reject
+          # all tracked changes, while this captures the first mutation phase.
       - name: Build isolated candidate, not production
         run: |
           set -euo pipefail
           yarn build
+      - name: Diagnose post-build tracked mutations and enforce immutable source
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase built \
+            > kingdom-index-build-evidence/source-built.json
+          RESULT=$?
+          set -e
+          python3 - <<'PY'
+          import json
+          d=json.load(open("kingdom-index-build-evidence/source-built.json"))
+          print("AFTER NEXT BUILD: tracked clean =",d["trackedClean"])
+          for row in d["trackedChangedFiles"]:
+              print("TRACKED:",row["status"],row["classification"],row["path"],
+                "HEAD BLOB",row["beforeBlob"],"BUILT BLOB",row["afterBlob"])
+          PY
+          if [ "$RESULT" -ne 0 ]; then
+            echo "::error::Source provenance drift: inspect uploaded source-built.json and reseal exact generated compile input before rebuilding"
+            exit "$RESULT"
+          fi
       - name: Capture emitted source/build evidence without certification
         shell: bash
         run: |
@@ -142,6 +192,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kingdom-index-emitted-observation-${{ github.run_id }}-${{ github.run_attempt }}
-          path: kingdom-index-build-evidence/emitted-closure.json
+          path: kingdom-index-build-evidence/
           if-no-files-found: ignore
           retention-days: 14
