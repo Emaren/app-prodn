@@ -13,6 +13,8 @@ on:
       - 'scripts/kingdom_index_certification_preflight.py'
       - 'tests/kingdom-index-criterion-submission.test.mts'
       - 'tests/kingdom-index-trusted-publication.test.mts'
+      - 'scripts/kingdom_index_emitted_closure.mjs'
+      - 'tests/kingdom-index-emitted-closure.test.mts'
       - 'tests/kingdom-index-criterion-nonce-store.test.mts'
       - 'tests/kingdom-index-criterion-artifact-verifier.test.mts'
       - 'tests/kingdom-index-performance-receipt.test.mts'
@@ -38,7 +40,7 @@ jobs:
       - name: Exercise signed criterion evidence boundary
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts
       - name: Exercise first-page 100-point qualification plan (not a certificate)
         run: |
           set -euo pipefail
