@@ -123,3 +123,22 @@ test("v1 operator manifests and malformed score/gate target approvals refuse",()
   root:"/nonexistent",operatorPublicKeyPem:pem,envelope:signManifest(bad),nowMs
  }),/Invalid approved specialized gate target/);
 });
+
+test("even independently signed arbitrary browser bytes cannot earn browser criterion",async()=>{
+ await withArchive(async({root})=>{
+  const bytes=Buffer.from("fabricated screenshot or DOM summary with no browser navigation evidence");
+  const p={...proof(bytes),kind:"browser",conditions:"viewport=desktop"};
+  await writeFile(join(root,p.sha256+".proof"),bytes,{mode:0o600});
+  const {pem,manifest,signManifest}=setup();
+  const signed=signManifest(manifest(p));
+  const assigned={criterionId:"safe_extension",earned:1};
+  const ver=createApprovedCriterionArtifactVerifier({root,operatorPublicKeyPem:pem,
+   browserCollectorSha:"d".repeat(40),envelope:signed,nowMs});
+  assert.equal(await ver(p,{source},assigned),false,
+   "Signing nonsense bytes never authenticates a browser measurement");
+  const noCollector=createApprovedCriterionArtifactVerifier({root,operatorPublicKeyPem:pem,
+   envelope:signed,nowMs});
+  assert.equal(await noCollector(p,{source},assigned),false,
+   "Missing independent SpeedOS collector enrollment must refuse");
+ });
+});
