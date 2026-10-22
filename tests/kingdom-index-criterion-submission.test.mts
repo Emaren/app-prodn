@@ -276,7 +276,7 @@ function syntheticBrowserFixture(){
   url:"https://aoe2war.com/kingdom-index",viewport:"desktop",samples:10,
   sampleAttempts:1,retriedSamples:[],productionMutated:false,databaseMutated:false,woloMutated:false,
   rows,summary:{lcpMs:stats(i=>120+i),documentTtfbMs:stats(i=>45+i),readyMs:stats(i=>80+i)}};
- return Buffer.from(JSON.stringify(d,null,2)+"\\n");
+ return Buffer.from(JSON.stringify(d,null,2)+"\n");
 }
 test("signed criteria integrate with separately approved on-disk proof bytes, without any public score",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"aoe2war-proof-signed-integration-"));
