@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
@@ -224,4 +225,23 @@ test("independent source expiry uses earliest deadline, without more requests", 
   assert.equal((client.match(/window\.setInterval\(/g) ?? []).length, 1);
   assert.equal(BRAIN_REFRESH_INTERVAL_MS, 120_000);
   assert.equal(BRAIN_ENDPOINT_COUNT, 4);
+});
+
+
+test("versioned real Next runner compiles and refuses non-source-bound execution", () => {
+  const filename = new URL("./kingdom-brain-next-app-acceptance.py", import.meta.url);
+  const runner = readFileSync(filename, "utf8");
+  for (const required of [
+    "rev-parse", "BUILD_ID", "--hostname", "127.0.0.1",
+    "playwright.async_api", "python", "sourceSha", "productionAttested",
+    "REAL_NEXT_CONTROLLED_API_FIXTURE", "REAL_NEXT_APPLICATION",
+    "page.clock.run_for(1600)", "getComputedStyle",
+  ]) assert.ok(runner.includes(required), "Runner missing boundary " + required);
+  assert.ok(runner.includes("git(\\"status\\",\\"--porcelain\\",\\"--untracked-files=no\\")"));
+  assert.ok(runner.includes("tests/kingdom-brain-next-app-acceptance.py") === false,
+    "Runner must not depend on its own repository path");
+  const compiled = spawnSync("python3", ["-m", "py_compile", filename.pathname], {
+    encoding: "utf8", timeout: 10_000,
+  });
+  assert.equal(compiled.status, 0, compiled.stderr || compiled.error?.message);
 });
