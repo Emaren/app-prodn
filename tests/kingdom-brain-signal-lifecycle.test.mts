@@ -235,7 +235,7 @@ test("versioned real Next runner compiles and refuses non-source-bound execution
     "rev-parse", "BUILD_ID", "--hostname", "127.0.0.1",
     "playwright.async_api", "python", "sourceSha", "productionAttested",
     "REAL_NEXT_CONTROLLED_API_FIXTURE", "REAL_NEXT_APPLICATION",
-    "page.clock.run_for(1600)", "getComputedStyle",
+    "page.clock.run_for(5000)", "getComputedStyle",
   ]) assert.ok(runner.includes(required), "Runner missing boundary " + required);
   assert.ok(runner.includes("git(\\"status\\",\\"--porcelain\\",\\"--untracked-files=no\\")"));
   assert.ok(runner.includes("tests/kingdom-brain-next-app-acceptance.py") === false,
