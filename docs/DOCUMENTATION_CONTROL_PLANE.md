@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261022-satchel-mainline-held` at `9cdc6711e88ec40e96e9eabe389e365875718741`
+Implementation baseline: `codex/hd-live-admission-qualification` at `0e756e6078bb1d7b0c656236ecbd447702ff247a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
