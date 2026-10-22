@@ -147,3 +147,10 @@ export function createBrainRefreshCoordinator<T>(options: {
     },
   };
 }
+
+/** One endpoint failure must not erase independently valid neighboring sources. */
+export type BrainSignalObservation<T> = BrainSignalDecision & { data: T | null; receivedAt: number | null };
+export function brainSettledResult<T>(source: BrainSignalSource, result: PromiseSettledResult<T>, atMs: number): BrainSignalObservation<T> {
+  if (result.status === "rejected") return { ...unavailableBrainSignal(), data: null, receivedAt: atMs };
+  return { ...classifyBrainSignal(source, result.value, atMs), data: result.value, receivedAt: atMs };
+}
