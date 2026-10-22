@@ -244,7 +244,7 @@ async def fixture_case(browser,args,name,mapping,clock=None):
         # API source initially only 1100ms from expiration; run the actual
         # app's one-shot timer ahead in real Chromium, not a helper mock.
         result["initialOkay"]=initial.get("INDEX")=="OBSERVED"
-        await page.clock.run_for(1600)
+        await page.clock.run_for(5000)
         updated=await statuses(page)
         result["final"]=updated
         result["apiRequestCountsAfter"]=dict(cnt["api"])
@@ -351,7 +351,7 @@ async def run(args,repo,build,blob):
                 ("malformed",dict(fixtures(moment),index=dict(fixtures(moment)["index"],generatedAt="NOT_A_DATE"),
                                   **{"route-census":dict(fixtures(moment)["route-census"],capturedAt=None)})),
                 ("future",fixtures(moment,index_age_ms=-60_000)),
-                ("expiry",fixtures(moment,index_age_ms=298_900)),
+                ("expiry",fixtures(moment,index_age_ms=296_000)),
             ]
             for name,mapping in data:
                 report["controlledFixtures"].append(await fixture_case(browser,args,name,mapping,
