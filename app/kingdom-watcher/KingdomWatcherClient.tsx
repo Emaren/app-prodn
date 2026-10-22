@@ -50,6 +50,28 @@ function Evidence({ title, value, detail, good }: { title: string; value: string
     <small>{detail}</small>
   </div>;
 }
+function PackageWeights({ snapshot }: { snapshot: WatcherPublicSnapshot }) {
+  const names = { windows: "WINDOWS INSTALLER", macos: "macOS ARM64 DMG", linux: "LINUX APPIMAGE" };
+  const bytes = (value: number | null) => value === null ? "—" : (value / 1024 / 1024).toFixed(2)+" MiB";
+  return <section className={styles.packageArea} aria-label="Measured published package size comparison">
+    <div className={styles.packageHeading}>
+      <div><span>OFFICIAL RELEASE ARTIFACTS</span><strong>THE WEIGHT OF THE MACHINE</strong></div>
+      <a href={"https://github.com/Emaren/aoe2-watcher/releases/tag/v"+snapshot.release.current} target="_blank" rel="noopener noreferrer">RELEASE BYTES <ArrowUpRight size={14}/></a>
+    </div>
+    <div className={styles.packageRows}>
+      {snapshot.packageWeights.rows.map(row => <div className={styles.packageRow} key={row.platform}>
+        <span>{names[row.platform]}</span>
+        <div><small>v{snapshot.release.previous}</small><strong>{bytes(row.previousBytes)}</strong></div>
+        <div><small>v{snapshot.release.current}</small><strong>{bytes(row.currentBytes)}</strong></div>
+        <b className={row.deltaPercent === null ? styles.packageUnknown : row.deltaPercent <= 0 ? styles.packageSmaller : styles.packageLarger}>
+          {row.deltaPercent === null ? "UNMEASURED" : (row.deltaPercent > 0 ? "+" : "")+row.deltaPercent.toFixed(2)+"%"}
+        </b>
+      </div>)}
+    </div>
+    <small className={styles.packageFoot}>Exact byte lengths from official published GitHub release assets; not installed RAM, CPU, battery or a claim that every platform improved.</small>
+  </section>;
+}
+
 function StreamChart({ rows, truncated }: { rows: WatcherPublicSnapshot["streaming"]["fourteenDays"]; truncated: boolean }) {
   const values = rows.map(row => row.starts);
   const max = Math.max(1, ...values);
@@ -212,6 +234,7 @@ export default function KingdomWatcherClient({ initial }: { initial: WatcherPubl
           <div className={styles.versionCardCurrent}><div className={styles.versionTitle}>CURRENT LIVE RELEASE <span>PRODUCTION</span></div><strong>{snapshot.release.current}</strong><div className={styles.versionBar}><i style={{width:"100%",background:"#62eadc"}}/></div><p>{snapshot.release.releasedOn} · {snapshot.release.formats} packages · {snapshot.release.platforms} platforms</p><div className={styles.versionSpecs}><div><span>MEASURED CODE SCORE</span><b>—</b></div><div><span>CPU / RAM BASELINE</span><b>—</b></div><div><span>VERIFIED PACKAGE SIZE</span><b>—</b></div></div><small>Live release source: application download registry.</small></div>
           <div className={styles.versionCardNext}><div className={styles.versionTitle}>NEXT GENERATION <span>UNDER CONSTRUCTION</span></div><strong>{snapshot.build.version}</strong><div className={styles.versionBar}><i style={{width:"100%",background:"#b98dff"}}/></div><p>Unmerged development source · not shipped to users</p><div className={styles.versionSpecs}><div><span>NODE CONTRACTS</span><b>{format(snapshot.build.nodeTests)}</b></div><div><span>CI JOBS GREEN</span><b>{snapshot.build.nativeJobs === null ? "—" : snapshot.build.nativeJobs + "/4"}</b></div><div><span>PHYSICAL BENCHMARK</span><b>—</b></div></div>{snapshot.build.checkedEvidence ? <a href={snapshot.build.checkedEvidence} target="_blank" rel="noopener noreferrer">VIEW TEST RECEIPT <ArrowUpRight size={13}/></a> : <small>Fresh exact-head CI evidence pending</small>}</div>
         </div>
+        <PackageWeights snapshot={snapshot}/>
         <div className={styles.comparisonCaveat}><CircleHelp size={16}/> PASSING SOURCE TESTS IS NOT A 100/100 SCORE. EXACT-SOURCE HARDWARE PERFORMANCE, REPLAY FINALITY, SIGNED MAC UPDATE/ROLLBACK AND PROTECTED DEPLOYMENT ARE STILL OPEN.</div>
       </section>
 
