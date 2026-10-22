@@ -6,6 +6,9 @@ import {join} from "node:path";
 import {createHash} from "node:crypto";
 import {inspectIndexLoopbackChrome} from "../scripts/kingdom_index_loopback_browser_audit.mjs";
 import {verifyIndexCandidateBundle} from "../scripts/kingdom_index_candidate_bundle_verify.mjs";
+import {candidateEvidenceLedger} from "../scripts/kingdom_index_candidate_evidence_ledger.mjs";
+import rubric from "../config/kingdom-index-quality-rubric.json" with {type:"json"};
+import profiles from "../config/kingdom-index-assurance-profiles.json" with {type:"json"};
 
 const sha="1".repeat(40),tree="2".repeat(40),collector="3".repeat(40),buildId="next-exact-build-123";
 const args={sourceSha:sha,buildId,collectorSha:collector};
@@ -136,5 +139,44 @@ test("API contradictory percentile, false public certification, and missing evid
      d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))))});
    await assert.rejects(verifyIndexCandidateBundle(other,args),/Invalid bounded Next API cohort/);
   }finally{await rm(other,{recursive:true,force:true})}
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+
+test("canonical 20-criterion candidate ledger never awards points or passes any gate",async()=>{
+ const root=await fixture();
+ try{
+  const report=await candidateEvidenceLedger({root,...args,rubric,profile:profiles.profiles.index});
+  assert.equal(report.criteria.length,20);
+  assert.equal(report.criteria.reduce((n,r)=>n+r.maximum,0),100);
+  assert.equal(report.grade,null);
+  assert.equal(report.earned,null);
+  assert.equal(report.publicationAuthorized,false);
+  assert.equal(report.certified,false);
+  assert.equal(report.gates.length,3);
+  for(const row of report.criteria){
+   assert.equal(row.earned,null,row.id);
+   assert.equal(row.approvedArtifactSha256,null,row.id);
+   assert.equal(row.independentIssuer,null,row.id);
+   assert.equal(row.approvalExpiresAt,null,row.id);
+   assert.equal(row.status,"UNKNOWN_INDEPENDENT_APPROVAL",row.id);
+   assert.equal(row.candidateSourceSha,sha);
+   assert.equal(row.candidateBuildId,buildId);
+  }
+  assert.deepEqual(report.gates.map(g=>g.status),["UNKNOWN","UNKNOWN","UNKNOWN"]);
+  assert.equal(report.criteria.find(r=>r.id==="accessibility")?.candidateObservation,"NOT_COLLECTED");
+  assert.equal(report.criteria.find(r=>r.id==="measured_latency")?.candidateObservation,"PARTIAL_CANDIDATE_ONLY");
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+test("ledger cannot launder incomplete bundle or modified canonical weights into a grade",async()=>{
+ const root=await fixture();
+ try{
+  const wrong=structuredClone(rubric);
+  wrong.dimensions.performance.weight=21;
+  await assert.rejects(candidateEvidenceLedger({root,...args,rubric:wrong,profile:profiles.profiles.index}),/Canonical weight/);
+  const missing=structuredClone(profiles.profiles.index);
+  missing.gates.pop();
+  await assert.rejects(candidateEvidenceLedger({root,...args,rubric,profile:missing}),/Changed rubric/);
+  await mutate(root,"api-loopback.json",d=>{d.certified=true});
+  await assert.rejects(candidateEvidenceLedger({root,...args,rubric,profile:profiles.profiles.index}));
  }finally{await rm(root,{recursive:true,force:true})}
 });
