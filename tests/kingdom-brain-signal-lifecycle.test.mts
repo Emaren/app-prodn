@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   BRAIN_ENDPOINT_COUNT, BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS,
   BRAIN_SIGNAL_MAX_AGE_MS, BRAIN_SIGNAL_FUTURE_SKEW_MS,
-  classifyBrainSignal, createBrainRefreshCoordinator, isBrainSignalDisplayable,
+  classifyBrainSignal, createBrainRefreshCoordinator, isBrainSignalDisplayable, brainSettledResult,
   unavailableBrainSignal,
 } from "../app/kingdom-brain/brainSignalPolicy.ts";
 
@@ -162,12 +162,30 @@ test("partial-success independent sources and request budget remain in page-clie
   assert.equal(BRAIN_REFRESH_INTERVAL_MS, 120_000);
   assert.equal(BRAIN_REFRESH_TIMEOUT_MS, 12_000);
   assert.match(code, /Promise\.allSettled/);
-  assert.match(code, /signalResult\("index", a/);
-  assert.match(code, /signalResult\("agents", b/);
-  assert.match(code, /signalResult\("patrol", c/);
-  assert.match(code, /signalResult\("census", d/);
+  assert.match(code, /brainSettledResult\("index", a/);
+  assert.match(code, /brainSettledResult\("agents", b/);
+  assert.match(code, /brainSettledResult\("patrol", c/);
+  assert.match(code, /brainSettledResult\("census", d/);
   assert.match(code, /coordinator\.dispose\(\)/);
   assert.match(code, /visibilitychange/);
   assert.doesNotMatch(code, /state:\s*"current"/i);
   assert.doesNotMatch(code, /method:\s*["'](?:POST|PUT|PATCH|DELETE)/);
+});
+
+test("four concurrent endpoints preserve partial success and independent unavailability", async () => {
+  const arrivals = await Promise.allSettled([
+    Promise.resolve(index()), Promise.reject(Error("Agents 503")),
+    Promise.resolve(patrol()), Promise.resolve(census(time - BRAIN_SIGNAL_MAX_AGE_MS - 1)),
+  ]);
+  const decisions = [
+    brainSettledResult("index", arrivals[0], time),
+    brainSettledResult("agents", arrivals[1], time),
+    brainSettledResult("patrol", arrivals[2], time),
+    brainSettledResult("census", arrivals[3], time),
+  ];
+  assert.deepEqual(decisions.map(item => item.state), ["observed", "unavailable", "policy-only", "stale"]);
+  assert.equal(decisions[0].data?.source, "review-baseline");
+  assert.equal(decisions[1].data, null);
+  assert.equal(isBrainSignalDisplayable(decisions[2], time), true);
+  assert.equal(isBrainSignalDisplayable(decisions[3], time), false);
 });
