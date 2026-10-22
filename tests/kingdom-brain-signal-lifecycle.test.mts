@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   BRAIN_ENDPOINT_COUNT, BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS,
   BRAIN_SIGNAL_MAX_AGE_MS, BRAIN_SIGNAL_FUTURE_SKEW_MS,
-  classifyBrainSignal, createBrainRefreshCoordinator, isBrainSignalDisplayable, brainSettledResult,
+  classifyBrainSignal, createBrainRefreshCoordinator, isBrainSignalDisplayable, brainSettledResult, brainSourceTimeLabel,
   unavailableBrainSignal,
 } from "../app/kingdom-brain/brainSignalPolicy.ts";
 
@@ -188,4 +188,13 @@ test("four concurrent endpoints preserve partial success and independent unavail
   assert.equal(decisions[1].data, null);
   assert.equal(isBrainSignalDisplayable(decisions[2], time), true);
   assert.equal(isBrainSignalDisplayable(decisions[3], time), false);
+});
+
+test("mobile source timestamp keeps UTC age visible and full ISO readable to assistive tech", () => {
+  assert.equal(brainSourceTimeLabel("2026-10-22T19:17:04.689Z"), "10-22 19:17Z");
+  assert.equal(brainSourceTimeLabel(null), "NO SOURCE TIME");
+  const client = readFileSync(new URL("../app/kingdom-brain/KingdomBrainClient.tsx", import.meta.url), "utf8");
+  assert.match(client, /aria-label=\{signal\.sourceAt \? "Source observation at "/);
+  assert.match(client, /brainSourceTimeLabel\(signal\.sourceAt\)/);
+  assert.match(client, /aria-live="polite"/);
 });
