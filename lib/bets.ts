@@ -8088,7 +8088,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           const sourceIds=liveSources.map(row=>row.id);
           await tx.$queryRaw(Prisma.sql`SELECT id FROM game_stats WHERE id IN (${Prisma.join(sourceIds)}) ORDER BY id FOR SHARE`);
           const currentRows=await tx.gameStats.findMany({where:{id:{in:sourceIds}},select:LIVE_ADMISSION_SOURCE_SELECT});
-          const currentSnapshot=await loadLiveSessionSnapshot(tx);
+          const currentSnapshot=await loadLiveSessionSnapshot(tx as unknown as PrismaClient);
           const currentSession=currentSnapshot.activeSessions.find(session=>
             session.sessionKey===seed.linkedSessionKey && session.teamResolution.propositionHash===seed.propositionHash &&
             currentRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null && liveSessionMatchesCommittedWatcher(row,session)));
