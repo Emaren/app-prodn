@@ -72,7 +72,9 @@ export default function AgentConstellationPanel({
       ? "Live Recovery sampling paused"
       : recoverySignal === "unavailable"
         ? "Current Recovery sample unavailable"
-        : "Awaiting a current Recovery sample";
+        : recoverySignal === "live"
+          ? "Live Recovery progress percentage unavailable"
+          : "Awaiting a current Recovery sample";
 
   const cycleTheme = () => {
     setThemeIndex((current) => (current + 1) % THEMES.length);
@@ -200,6 +202,11 @@ export default function AgentConstellationPanel({
                         %
                       </span>
                     </div>
+                    {recoveryItem && trustworthyLiveProgress === null && trustworthySnapshotProgress !== null ? (
+                      <div role="status" className="mt-1 text-[9px] uppercase tracking-[0.15em] text-slate-500">
+                        {recoveryNotice}
+                      </div>
+                    ) : null}
                   </div>
                 ) : recoveryItem ? (
                   <div className="mt-2">
