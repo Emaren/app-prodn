@@ -21,6 +21,8 @@ on:
       - 'tests/kingdom-index-loopback-browser-audit.test.mts'
       - 'scripts/kingdom_index_candidate_bundle_verify.mjs'
       - 'scripts/kingdom_index_candidate_evidence_ledger.mjs'
+      - 'scripts/kingdom_index_bounded_load_probe.mjs'
+      - 'tests/kingdom-index-bounded-load-probe.test.mts'
       - 'tests/kingdom-index-candidate-bundle-verify.test.mts'
       - 'scripts/kingdom_index_tracked_provenance.mjs'
       - 'tests/kingdom-index-tracked-provenance.test.mts'
@@ -49,7 +51,7 @@ jobs:
       - name: Exercise signed criterion evidence boundary
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-loopback-browser-audit.test.mts tests/kingdom-index-candidate-bundle-verify.test.mts tests/kingdom-index-tracked-provenance.test.mts
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-loopback-browser-audit.test.mts tests/kingdom-index-candidate-bundle-verify.test.mts tests/kingdom-index-bounded-load-probe.test.mts tests/kingdom-index-tracked-provenance.test.mts
       - name: Exercise first-page 100-point qualification plan (not a certificate)
         run: |
           set -euo pipefail
@@ -226,6 +228,11 @@ jobs:
             --origin http://127.0.0.1:3030/ --samples 12 \
             --expected-build-id "$BUILD_ID" \
             > kingdom-index-build-evidence/api-loopback.json
+          node scripts/kingdom_index_bounded_load_probe.mjs \
+            --origin http://127.0.0.1:3030/ \
+            --source-sha "$EXPECTED_CANDIDATE_SHA" \
+            --expected-build-id "$BUILD_ID" \
+            > kingdom-index-build-evidence/concurrent-loopback.json
           for VIEW in desktop phone; do
             mkdir -p "kingdom-index-build-evidence/chrome-$VIEW"
             node scripts/aoe2_speed_cold_lcp.mjs \
