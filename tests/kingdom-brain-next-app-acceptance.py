@@ -146,7 +146,14 @@ async def one_real(browser,args,viewport,label,n,output):
         path=urlparse(resp.url).path
         if "/_next/static/" in path and resp.ok:asset_count[0]+=1
         if path in ENDPOINTS:
-            payload.append({"path":path,"status":resp.status,"contentLength":resp.headers.get("content-length")})
+            reported=resp.headers.get("content-length")
+            info={"path":path,"status":resp.status,"contentLength":reported,"bodyBytes":None}
+            try:
+                if reported is None or int(reported)<=262_144:
+                    info["bodyBytes"]=len(await resp.body())
+            except Exception:
+                pass
+            payload.append(info)
     page.on("response",lambda r:asyncio.create_task(response_hook(r)))
     response,latency=await mount(page,args.url,cnt)
     # Wait for actual useEffect fetches rather than inferring hydration from HTML.
@@ -157,6 +164,11 @@ async def one_real(browser,args,viewport,label,n,output):
     checks={}
     check(bool(response and response.status==200),"http_200",checks)
     check(await graph.count()==14,"fourteen_graph_nodes",checks)
+    expected_nodes=json.loads((Path(args.repo)/"config"/"kingdom-brain-authorities.json").read_text())["nodes"]
+    expected_labels={node["label"] for node in expected_nodes}
+    actual_labels=set(await page.locator('button[aria-pressed] > span:nth-of-type(2)').all_inner_texts())
+    check(len(expected_nodes)==14 and actual_labels==expected_labels,
+          "all_14_exact_authority_labels",checks)
     check(await page.locator('[aria-live="polite"]').count()>=1,"status_announced",checks)
     check(asset_count[0]>0,"next_static_assets_loaded",checks)
     check(cnt["blocked"]==0,"no_blocked_external_or_mutation",checks)
