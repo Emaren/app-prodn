@@ -164,10 +164,11 @@ async def one_real(browser,args,viewport,label,n,output):
           "reduced_motion_requested",checks)
     if await graph.count()>=2:
         button=graph.nth(1)
+        await page.keyboard.press("Tab")  # keyboard modality before focus-visible assertion
         await button.focus();await button.press("Enter")
         check(await button.get_attribute("aria-pressed")=="true","keyboard_select_node",checks)
         check(await button.evaluate("(e)=>document.activeElement===e"),"focus_retained",checks)
-        check(await button.evaluate("(e)=>getComputedStyle(e).outlineStyle!=='none'"),"visible_focus_outline",checks)
+        check(await button.evaluate("(e)=>e.matches(':focus-visible') && getComputedStyle(e).borderStyle!=='none'"),"visible_focus_treatment",checks)
     else:
         check(False,"keyboard_select_node",checks)
     status=await statuses(page)
