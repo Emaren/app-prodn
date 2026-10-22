@@ -330,7 +330,7 @@ test("stored Mecha presets cannot bypass the 50k plan budget or fabricate Desync
     { eligible: false, reason: "stored_preset_invalid" },
   );
   assert.deepEqual(
-    evaluate({ preset: { winnerStakeWolo: 1_001 } }),
+    evaluate({ preset: { winnerStakeWolo: 10_001 } }),
     { eligible: false, reason: "auto_stake_cap_exceeded" },
   );
   assert.equal(evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 100 } }).eligible, true);
