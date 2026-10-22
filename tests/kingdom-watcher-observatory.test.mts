@@ -47,3 +47,17 @@ test("future release comparisons use canonical live version and never forge past
  assert.match(ui, /VIEW TEST RECEIPT/);
  assert.doesNotMatch(ui, /score:\s*100|qualityScore:\s*100|watts:\s*0/);
 });
+
+test("published binary size comparison is sourced from exact official release artifacts", () => {
+ assert.match(server, /official-github-release-assets/);
+ assert.match(server, /Emaren\/aoe2-watcher\/releases\/tags\/v/);
+ assert.match(server, /data\.draft !== false/);
+ assert.match(server, /data\.prerelease !== false/);
+ assert.match(server, /Number\.isSafeInteger\(row\.size\)/);
+ assert.match(server, /matched\.length === 1/);
+ assert.match(server, /deltaPercent:/);
+ assert.match(ui, /THE WEIGHT OF THE MACHINE/);
+ assert.match(ui, /Exact byte lengths from official published GitHub release assets/);
+ assert.match(ui, /not installed RAM, CPU, battery/);
+ assert.doesNotMatch(server, /previousBytes: 131087395|currentBytes: 129213289/);
+});
