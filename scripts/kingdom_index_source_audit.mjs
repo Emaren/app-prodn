@@ -7,6 +7,7 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync,readFileSync,writeFileSync } from "node:fs";
 import path from "node:path";
+import { INSTRUMENT_IMPORT, sharedSourcePrefixesForHref, validateInstrumentImporters } from "./kingdom_index_shared_dependencies.mjs";
 const root=process.cwd();
 const target=path.join(root,"config/kingdom-index-routes.json");
 const current=JSON.parse(readFileSync(target,"utf8"));
@@ -34,6 +35,11 @@ if(missing.length||obsolete.length){
  process.exit(2);
 }
 const raw=execFileSync("git",["ls-tree","-r","HEAD","--","app","components","lib"],{encoding:"utf8",maxBuffer:16_000_000});
+const knownImporters = execFileSync(
+ "git", ["grep", "-l", "-F", INSTRUMENT_IMPORT, "HEAD", "--", "app"],
+ {encoding:"utf8",maxBuffer:2_000_000}
+).trim().split("\n").filter(Boolean).map(line=>line.replace(/^HEAD:/,""));
+validateInstrumentImporters(knownImporters);
 const files=raw.split("\n").map(line=>{
  const m=line.match(/^\d+ blob ([a-f0-9]{40})\t(.+)$/);
  return m?{sha:m[1],path:m[2]}:null;
@@ -41,7 +47,7 @@ const files=raw.split("\n").map(line=>{
 function versionOf(href) {
  const direct=href.slice(1);
  const directory="app/"+direct+(direct?"/":"");
- const prefixes=direct?[directory,"components/"+direct+"/","lib/"+direct+"/"]:[];
+ const prefixes=direct?[directory,"components/"+direct+"/","lib/"+direct+"/",...sharedSourcePrefixesForHref(href)]:[];
  const exact=direct?new Set(["lib/"+direct+".ts","lib/"+direct+".tsx",...(href==="/kingdom-bettors"?["lib/kingdomBettors.ts"]:[])]):new Set(["app/page.tsx","app/HomePageClient.tsx"]);
  const selected=files.filter(file=>
   (direct?prefixes.some(prefix=>file.path.startsWith(prefix)):false)||exact.has(file.path)
@@ -58,7 +64,7 @@ function versionOf(href) {
 }
 const next=current.map(row=>({...row,sourceTree:versionOf(row.href)}));
 const drift=next.filter((row,index)=>row.sourceTree!==current[index].sourceTree).map(row=>row.href);
-const report={schema:1,commit:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),pages:next.length,drift,checkedAt:new Date().toISOString(),scoreAuthority:"none",note:"Source-census/fingerprint only; NOT an engineering-score or production certificate"};
+const report={schema:1,commit:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),pages:next.length,drift,checkedAt:new Date().toISOString(),scoreAuthority:"none",note:"Route-local census plus explicitly bounded shared instrument imports; NOT full dependency closure, an engineering score, or production certification"};
 if(process.argv.includes("--write")){
  writeFileSync(target,JSON.stringify(next,null,2)+"\n");
  console.log(JSON.stringify(report,null,2));

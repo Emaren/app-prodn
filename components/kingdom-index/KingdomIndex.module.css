@@ -118,3 +118,25 @@
 .assuranceItem strong{text-transform:capitalize;font-size:10px;color:#d6d9cd;font-weight:550}
 .assuranceItem span{font-size:9px;letter-spacing:.08em;color:#d8ab85;font-weight:600}
 .assuranceItem p{font-size:10px;color:#8fa1a0;line-height:1.6;margin:7px 0 0;overflow-wrap:anywhere}
+
+/* Companion desktop applications are NOT public route-census entries. */
+.companionSection{margin-top:29px;border:1px solid rgba(197,205,201,.22);border-radius:20px;padding:25px;background:linear-gradient(135deg,#111c23,#080e14)}
+.companionHeader{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:17px;flex-wrap:wrap}
+.companionHeader h2{font:normal clamp(20px,2.5vw,29px) Georgia,serif;letter-spacing:.025em;color:#e4ded0;margin:9px 0 0}
+.companionCount{font-size:9px;letter-spacing:.13em;color:#bbaa85}
+.companionCard{border:1px solid rgba(197,208,197,.15);border-radius:13px;padding:20px;background:rgba(10,20,26,.8)}
+.companionSummary{display:flex;gap:18px;align-items:center;justify-content:space-between}
+.companionSummary h3{font:normal 24px Georgia,serif;color:#e7e2d6;margin:6px 0}
+.companionSummary p,.companionNote{font-size:11px;line-height:1.6;color:#95a6a5;margin:9px 0 0}
+.companionGrade{text-align:right;flex:none}
+.companionGrade b{font:normal 34px Georgia,serif;color:#c8c5b5;display:block}
+.companionGrade small{font:11px Arial,sans-serif;color:#798c92}
+.companionGrade span{font-size:9px;letter-spacing:.11em;color:#bbaa85}
+.companionLinks{display:flex;flex-wrap:wrap;gap:11px 22px;align-items:center;margin:17px 0}
+.companionLinks a{display:inline-flex;align-items:center;gap:6px;color:#d7c495;text-decoration:none;font-size:10px;font-weight:600;letter-spacing:.07em}
+.companionLinks code{font-size:10px;color:#879ca0}
+.companionChecks{border-top:1px solid rgba(197,208,197,.14);padding-top:15px}
+.companionChecks summary{display:flex;cursor:pointer;align-items:center;justify-content:space-between;gap:8px;font-size:10px;letter-spacing:.12em;color:#bda97f;list-style:none}
+.companionChecks summary::-webkit-details-marker{display:none}
+.companionChecks[open] summary svg{transform:rotate(180deg)}
+@media(max-width:570px){.companionSection{padding:15px}.companionSummary h3{font-size:20px}.companionLinks{gap:14px}}

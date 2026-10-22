@@ -833,6 +833,8 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--stage", action="store_true")
+    parser.add_argument("--prepare-only", action="store_true",
+                        help="publish verified source and stage beside live; never activate")
     parser.add_argument("--activate", metavar="STAGE_RECEIPT")
     parser.add_argument("--limit", type=int, default=10)
     args = parser.parse_args()
@@ -847,8 +849,8 @@ def main() -> int:
             return 2
 
     if args.command == "releases":
-        if args.dry_run or args.stage or args.activate:
-            parser.error("--dry-run, --stage, and --activate are not valid with releases")
+        if args.dry_run or args.stage or args.activate or args.prepare_only:
+            parser.error("ship options are not valid with releases")
         if args.limit < 1:
             parser.error("--limit must be at least 1")
         history = release_history(args.limit)
@@ -864,8 +866,8 @@ def main() -> int:
     data = collect()
 
     if args.command == "rollback":
-        if args.stage or args.activate:
-            parser.error("--stage and --activate are not valid with rollback")
+        if args.stage or args.activate or args.prepare_only:
+            parser.error("--stage, --prepare-only and --activate are not valid with rollback")
         from aoe2_release_rollback import rollback_release
         action = lambda: rollback_release(
             data,
@@ -878,6 +880,8 @@ def main() -> int:
         return run_mutating_release(action)
 
     if args.command == "ship":
+        if args.prepare_only and (args.stage or args.activate or args.dry_run):
+            parser.error("--prepare-only cannot combine with --stage, --activate or --dry-run")
         if args.stage and args.activate:
             parser.error("ship accepts only one of --stage or --activate")
         if args.dry_run and args.stage:
@@ -918,12 +922,13 @@ def main() -> int:
                 collect=collect,
                 initial=data,
                 json_output=args.json,
+                prepare_only=args.prepare_only,
             )
         )
 
-    if args.dry_run or args.stage or args.activate:
+    if args.dry_run or args.stage or args.activate or args.prepare_only:
         parser.error(
-            "--dry-run, --stage, and --activate are only valid with ship"
+            "--dry-run, --stage, --prepare-only, and --activate are only valid with ship"
         )
 
     if args.command in {"gate", "manifest"}:

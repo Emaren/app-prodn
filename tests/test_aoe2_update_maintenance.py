@@ -159,6 +159,125 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertTrue(rejected["blocked"])
                 self.assertEqual(len(rejected["unknown_p0"]), 2)
 
+    def test_renewed_vpssentry_context_map_and_app_doc_admit_exact_central_recovery(self):
+        # Real Oct 20 incident spans canonical VPSSentry context/ and app docs/.
+        expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        renewed = datetime.now(timezone.utc).date().isoformat()
+        paths = ("context/SYSTEM_MAP.md", "docs/KINGDOM_KNOWLEDGE_ROUTER.md")
+        detail = (
+            "- vpssentry:context/SYSTEM_MAP.md: documentation review expired on "
+            + expired
+            + " | - app-prodn:docs/KINGDOM_KNOWLEDGE_ROUTER.md: documentation review expired on "
+            + expired
+            + " | make: *** [generate] Error 1"
+        )
+        payload = renewed_review_incident()
+        for item in payload["findings"]:
+            if item["severity"] == "P0":
+                item["detail"] = detail
+
+        registry = {"documents": [
+            {"path": path, "reviewed_at": renewed, "review_interval_days": 14}
+            for path in paths
+        ]}
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            plan = self.plan(payload)
+        self.assertFalse(plan["blocked"])
+        self.assertEqual(len(plan["auto_remediable_p0"]), 2)
+        self.assertEqual(plan["unknown_p0"], [])
+        self.assertEqual(plan["external_hold"], {"proof": "exact"})
+
+        # An unrenewed source is *never* admitted merely because it uses the
+        # newly recognized VPSSentry path shape.
+        stale_date = (datetime.now(timezone.utc).date() - timedelta(days=2)).isoformat()
+        stale = {"documents": [
+            {"path": path, "reviewed_at": stale_date, "review_interval_days": 14}
+            for path in paths
+        ]}
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=stale):
+            held = self.plan(payload)
+        self.assertTrue(held["blocked"])
+        self.assertEqual(len(held["unknown_p0"]), 2)
+
+    def test_source_renewed_exactly_on_old_central_expiry_day_is_eligible(self):
+        # On October 20, VPSSentry reviewed its source map on the precise
+        # expiry date recorded by the old central snapshot. Requiring the
+        # review date to be strictly later incorrectly blocks regeneration.
+        today = datetime.now(timezone.utc).date()
+        central_expiry = today - timedelta(days=1)
+        detail = (
+            "- vpssentry:context/SYSTEM_MAP.md: documentation review expired on "
+            + central_expiry.isoformat()
+            + " | - app-prodn:docs/KINGDOM_KNOWLEDGE_ROUTER.md: documentation review expired on "
+            + central_expiry.isoformat()
+            + " | make: *** [generate] Error 1"
+        )
+        payload = renewed_review_incident()
+        for item in payload["findings"]:
+            if item["severity"] == "P0":
+                item["detail"] = detail
+
+        registry = {"documents": [
+            {"path": "context/SYSTEM_MAP.md",
+             "reviewed_at": central_expiry.isoformat(), "review_interval_days": 14},
+            {"path": "docs/KINGDOM_KNOWLEDGE_ROUTER.md",
+             "reviewed_at": today.isoformat(), "review_interval_days": 60},
+        ]}
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            plan = self.plan(payload)
+        self.assertFalse(plan["blocked"])
+        self.assertEqual(len(plan["auto_remediable_p0"]), 2)
+        self.assertEqual(plan["unknown_p0"], [])
+        self.assertEqual(plan["external_hold"], {"proof": "exact"})
+
+        # An apparently current date that precedes the central expiry
+        # remains ineligible; review-date equality is the only new seam.
+        registry["documents"][0]["reviewed_at"] = (
+            central_expiry - timedelta(days=1)
+        ).isoformat()
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            denied = self.plan(payload)
+        self.assertTrue(denied["blocked"])
+        self.assertEqual(len(denied["unknown_p0"]), 2)
+
+        # Even date equality never admits an outdated review beyond its
+        # original positive interval.
+        registry["documents"][0]["reviewed_at"] = central_expiry.isoformat()
+        registry["documents"][0]["review_interval_days"] = 1
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            denied_expired = self.plan(payload)
+        self.assertTrue(denied_expired["blocked"])
+
+    def test_central_review_context_exception_is_exactly_scoped(self):
+        expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        registry = {"documents": [
+            {"path": path, "reviewed_at": datetime.now(timezone.utc).date().isoformat(),
+             "review_interval_days": 14}
+            for path in ("context/SYSTEM_MAP.md", "context/SERVER_STORAGE_MAP.md",
+                         "context/UNKNOWN.md")
+        ]}
+        good = (
+            "- vpssentry:context/SERVER_STORAGE_MAP.md: documentation review expired on "
+            + expired + " | make: *** [generate] Error 1"
+        )
+        cases = (
+            (good, True),
+            (good.replace("vpssentry:", "app-prodn:"), False),
+            (good.replace("SERVER_STORAGE_MAP.md", "UNKNOWN.md"), False),
+            (good.replace("context/", "context/../"), False),
+            (good.replace("documentation review expired", "signature invalid"), False),
+        )
+        for detail, expected in cases:
+            with self.subTest(detail=detail):
+                payload = renewed_review_incident()
+                for item in payload["findings"]:
+                    if item["severity"] == "P0":
+                        item["detail"] = detail
+                with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+                    plan = self.plan(payload)
+                self.assertEqual(plan["blocked"], not expected)
+                self.assertEqual(len(plan["auto_remediable_p0"]), 2 if expected else 0)
+
     def test_checker_summary_truncation_never_admits_stale_canonical_review(self):
         expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
         payload = renewed_review_incident()
@@ -169,9 +288,10 @@ class MaintenanceTests(unittest.TestCase):
                     "documentation review expired on " + expired +
                     " | make: *** [generate] Error 1"
                 )
+        old_review = (datetime.now(timezone.utc).date() - timedelta(days=2)).isoformat()
         with mock.patch.object(update.aoe2_audit, "load_json", return_value={
             "documents": [{"path": "docs/replay-intelligence/engine-witness-pilot.md",
-                           "reviewed_at": expired, "review_interval_days": 30}]
+                           "reviewed_at": old_review, "review_interval_days": 30}]
         }):
             plan = self.plan(payload)
         self.assertTrue(plan["blocked"])
@@ -193,7 +313,7 @@ class MaintenanceTests(unittest.TestCase):
                 self.assertEqual(len(plan["unknown_p0"]), 1)
 
     def test_central_p0_recovery_rejects_unrenewed_or_missing_source_reviews(self):
-        old = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        old = (datetime.now(timezone.utc).date() - timedelta(days=2)).isoformat()
         for registry in (
             renewed_review_registry(reviewed_at=old),
             {"documents": []},
