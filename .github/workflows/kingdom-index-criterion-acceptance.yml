@@ -22,6 +22,8 @@ on:
       - 'scripts/kingdom_index_candidate_bundle_verify.mjs'
       - 'scripts/kingdom_index_candidate_evidence_ledger.mjs'
       - 'scripts/kingdom_index_bounded_load_probe.mjs'
+      - 'scripts/kingdom_index_interaction_chrome.mjs'
+      - 'tests/kingdom-index-interaction-chrome.test.mts'
       - 'tests/kingdom-index-bounded-load-probe.test.mts'
       - 'tests/kingdom-index-candidate-bundle-verify.test.mts'
       - 'scripts/kingdom_index_tracked_provenance.mjs'
@@ -51,7 +53,7 @@ jobs:
       - name: Exercise signed criterion evidence boundary
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-loopback-browser-audit.test.mts tests/kingdom-index-candidate-bundle-verify.test.mts tests/kingdom-index-bounded-load-probe.test.mts tests/kingdom-index-tracked-provenance.test.mts
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-loopback-browser-audit.test.mts tests/kingdom-index-candidate-bundle-verify.test.mts tests/kingdom-index-bounded-load-probe.test.mts tests/kingdom-index-interaction-chrome.test.mts tests/kingdom-index-tracked-provenance.test.mts
       - name: Exercise first-page 100-point qualification plan (not a certificate)
         run: |
           set -euo pipefail
@@ -270,6 +272,11 @@ jobs:
             --expected-build-id "$BUILD_ID" \
             --collector-sha "$COLLECTOR_SHA" \
             > kingdom-index-build-evidence/candidate-evidence-ledger.json
+          node scripts/kingdom_index_interaction_chrome.mjs \
+            --source-sha "$EXPECTED_CANDIDATE_SHA" \
+            --build-id "$BUILD_ID" \
+            --chrome "$CHROME" \
+            > kingdom-index-build-evidence/interaction-chrome.json
           echo "Real built Next loopback API + two real Chrome cohorts captured; candidate ONLY." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload inspectable build evidence (not a release receipt)
         if: always()
