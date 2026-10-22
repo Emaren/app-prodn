@@ -1,3 +1,4 @@
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
 /**
  * War Satchel dedicated one-shot custody signer CLIENT PORT.
  *
@@ -161,12 +162,12 @@ export async function connectCertifiedSatchelSigner(
         if(!sameConfiguration())return {kind:"unknown" as const,reason:"signer_configuration_changed"};
         canceled?.throwIfAborted();
         const reviewed=verifyIndependentWagerReservation(approval,expected,publicKey,Date.now());
-        const receipt=await request("/satchel/v2/one-shot",cfg.token,{
+        const receipt=await withHdFinancialLease({scope:"hd-satchel",producer:"satchel-wager",wallet:cfg.address},lease=>request("/satchel/v2/one-shot",cfg.token,{
           protocol:2,request_id:p.requestId,owner_id:p.ownerUid,chain_id:p.chainId,
           signer_role:"exclusive-war-satchel-v1",from_address:p.senderAddress,
           to_address:p.recipientAddress,amount:{denom:"uwolo",amount:p.amountUwolo},
           memo:p.memo,reservation:reviewed,
-        },reader,canceled);
+        },reader,AbortSignal.any([lease,...(canceled?[canceled]:[])])));
         const allowed=["operation_id","request_id","chain_id","signer_role","status",
           "durable_request_fenced","kind","reason","tx_hash","credit_authorized","confirmed"];
         const accepted=receipt.status==="ACCEPTED"&&receipt.kind==="broadcast_accepted"&&receipt.confirmed===false;

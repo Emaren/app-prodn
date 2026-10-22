@@ -4,7 +4,21 @@ import {mkdtempSync,writeFileSync,rmSync,realpathSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {after,test} from "node:test";
-import {connectCertifiedSatchelSigner} from "../lib/warSatchelDedicatedSignerClient.ts";
+import {Module} from "node:module";
+import ts from "typescript";
+import {readFileSync} from "node:fs";
+import {resolve,dirname} from "node:path";
+// Wire-format unit fixture only. The real admission authority is independently
+// exercised against PostgreSQL in hd-financial-maintenance-fence.test.mts.
+const filename=resolve("lib/warSatchelDedicatedSignerClient.ts");
+const unitSource=readFileSync(filename,"utf8").replace('import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";',
+  'const withHdFinancialLease=async (_scope:unknown,action:(signal:AbortSignal)=>Promise<unknown>)=>action(new AbortController().signal);');
+const unitModule=new Module(filename);unitModule.filename=filename;
+// @ts-expect-error Node private loader is confined to a disposable unit fixture.
+unitModule.paths=Module._nodeModulePaths(dirname(filename));
+// @ts-expect-error Production file/export is never rewritten.
+unitModule._compile(ts.transpileModule(unitSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,filename);
+const {connectCertifiedSatchelSigner}=unitModule.exports as typeof import("../lib/warSatchelDedicatedSignerClient.ts");
 import {wagerReservationSignBytes,type SatchelWagerReservation} from "../lib/warSatchelWagerReservation.ts";
 
 const addr="wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e";
@@ -167,4 +181,12 @@ test("pre-aborted connection and bounded concurrent health reads release resourc
  assert.equal(entered,4);shared.abort();
  const finished=await Promise.allSettled(pending);assert(finished.every(x=>x.status==="rejected"));
  const normal=mockRead();await assert.doesNotReject(()=>connectCertifiedSatchelSigner(normal.reader));
+}finally{restore();}});
+
+// A wire-unit's explicit callback fixture above never establishes production
+// admission. The unchanged real module must refuse POST without its own gate.
+test("production signer transport refuses money POST when maintenance admission is unavailable",async()=>{try{configure();
+ const {connectCertifiedSatchelSigner:production}=await import("../lib/warSatchelDedicatedSignerClient.ts");
+ const transport=mockRead();const signer=await production(transport.reader);
+ assert.equal((await signer.submitOneShot(args())).kind,"unknown");assert.equal(transport.calls().sendCalls,0);
 }finally{restore();}});

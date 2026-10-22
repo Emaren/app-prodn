@@ -129,6 +129,7 @@ jobs:
       # cluster under /tmp, exercises authority selection, then destroys it.
       RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
       RUN_SATCHEL_PHYSICAL_PG_TESTS: "1"
+      RUN_HD_FINANCIAL_FENCE_PG_TESTS: "1"
       AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
     steps:
@@ -154,7 +155,7 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts tests/hd-financial-maintenance-fence.test.mts
 
       - name: Pin Go for actual Satchel verifier integration
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
