@@ -44,6 +44,7 @@
 /kingdom-systems
 /kingdom-tests
 /kingdom-treasury
+/kingdom-watcher
 /kingdom-forge
 /leaderboard
 /leagues
