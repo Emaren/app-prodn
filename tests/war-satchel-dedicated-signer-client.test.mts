@@ -108,7 +108,12 @@ test("independent wager signer enforces the same exact 10,000 WOLO product cap a
   assert.deepEqual(await signer.submitOneShot(args({amount_uwolo:"10000000000"})),
     {kind:"broadcast_accepted",txHash:"B".repeat(64)});
   assert.equal(t.calls().sendCalls,1);
-  assert.deepEqual(await signer.submitOneShot(args({amount_uwolo:"10001000000"})),
+  // A canonical reviewer correctly REFUSES to sign over-cap economics.
+  // Present forged transport data to the signer and prove it refuses POST.
+  const original=args();
+  const forged={...original,amountUwolo:"10001000000",
+    reservation:{...original.reservation,amount_uwolo:"10001000000"}};
+  assert.deepEqual(await signer.submitOneShot(forged),
     {kind:"unknown",reason:"invalid_or_ambiguous_signer_payload"});
   assert.equal(t.calls().sendCalls,1,"over-cap principal must not reach signer POST");
 }finally{restore();}});

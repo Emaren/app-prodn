@@ -56,6 +56,9 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
     if (specifier === "@/hooks/useWoloBalance") {
       return loadProductionModule("hooks/useWoloBalance.ts");
     }
+    if (specifier === "@/lib/betMoneyLimits") {
+      return loadProductionModule("lib/betMoneyLimits.ts");
+    }
     if (specifier === "@/lib/woloBalanceRead" || specifier === "./woloBalanceRead.ts") {
       return loadProductionModule("lib/woloBalanceRead.ts");
     }
