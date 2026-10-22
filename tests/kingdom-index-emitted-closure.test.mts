@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp,mkdir,writeFile,rm } from "node:fs/promises";
+import { mkdtemp,mkdir,writeFile,rm,symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join,dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { collectIndexEmittedClosure } from "../scripts/kingdom_index_emitted_closure.mjs";
 const SHA="a".repeat(40);
 const FILES=[
@@ -75,5 +77,17 @@ test("trace-file hash changes when emitted bytes change (no fake parity)",async(
     const second=await collectIndexEmittedClosure(root,SHA,SHA);
     assert.notEqual(first.receiptSha256,second.receiptSha256);
     assert.equal(second.certified,false);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test("symlinked/macOS realpath entrypoint executes instead of silently returning zero",async()=>{
+  const root=await mkdtemp(join(tmpdir(),"index-entrypoint-alias-"));
+  try{
+    const source=fileURLToPath(new URL("../scripts/kingdom_index_emitted_closure.mjs",import.meta.url));
+    const alias=join(root,"alias-collector.mjs");
+    await symlink(source,alias);
+    const result=spawnSync(process.execPath,[alias,"--invalid"],{encoding:"utf8",timeout:5000});
+    assert.equal(result.status,2,"physical alias must invoke the collector and reject invalid CLI args");
+    assert.match(result.stderr,/Require --expected-sha/);
   }finally{await rm(root,{recursive:true,force:true});}
 });
