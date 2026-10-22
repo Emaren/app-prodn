@@ -4,7 +4,7 @@ import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
 } from "@/lib/betStakeFunding";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
-import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
+import { matchedVolumeFromSideTotals } from "@/lib/warChestMatchedVolume";
 import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import type {
   LobbyWoloEarnersBoard,
@@ -105,23 +105,6 @@ function displayActorName(input: {
     normalizePublicPlayerName(input.steamPersonaName) ||
     input.uid
   );
-}
-
-function matchedVolumeFromSideTotals(
-  rows: Array<{ marketId: number; side: string; _sum: { amountWolo: number | null } }>
-) {
-  const byMarket = new Map<number, { left: number; right: number }>();
-  for (const row of rows) {
-    const current = byMarket.get(row.marketId) ?? { left: 0, right: 0 };
-    if (row.side === "left") current.left += row._sum.amountWolo ?? 0;
-    if (row.side === "right") current.right += row._sum.amountWolo ?? 0;
-    byMarket.set(row.marketId, current);
-  }
-  let total = 0;
-  for (const pools of byMarket.values()) {
-    total += matchedMarketVolumeWolo(pools.left, pools.right);
-  }
-  return total;
 }
 
 function visibleMainnetClaimWhere(

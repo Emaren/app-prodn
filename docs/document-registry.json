@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "8944550f617b74783342c0c2137bfee36b67b9b1bb03345ad3e21ceac37c01a6",
+      "sha256": "cde8f69d55eb1cd21bfc7dd387a70263b3e51ded4b147747d259df94bfbaecb0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "fcc9849787cfef56c6cd6d9289d2152919ca9ed421dc0712f25ee94c02693dab",
+      "sha256": "87e61af8d1cb141a818b2d4cd01b36419194c2d8ae2281951b35eb578058d862",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-10-20",
       "sensitivity": "internal",
-      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
+      "sha256": "2de4d54f4b57cf25da9f8188dfee6bd899b18feada2f8ab542c32f2d73250ebb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "60499e83bb6ce877e6f7e91885132a7a21c35af6a8e5d8ad61e9851b016fca66",
+      "sha256": "47cc2abb847eff215ca36b79f09a90c388dbd2a4046c3a2ee2d266859be75601",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
+      "sha256": "7cf52e4e6b5db93a4331cbdd6fd92d47e6aedc133c51f47fbf43a35804d63138",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "ead67e4cbf0ef503e19b2b9ee1f23faf05cc8b58dda3d1ea42dec0602b707b71",
+      "sha256": "e393a4982bec66b4aa59091086ae9e42208d655ca3215bd384709a05153be685",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1194,9 +1194,9 @@
       "owner": "aoe2war-web",
       "path": "docs/OPERATOR_START_HERE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "fe29207619d89508e623cbc0279ef21d9121c9b2745ae0464405be68228f713e",
+      "sha256": "f8c84bc55d5f80c3ca0ac56dcafa101f81347913b273e4cfc8f563ceb4d4754f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1515,7 +1515,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
+      "sha256": "55edf5d44a0b6be28286c2538a0f1af0df7203cf309524ac1d4db00da020aba9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2069,7 +2069,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "8e79666b17dbedfed13670eb1fc06c8984031f178b804b615193972da93782a2",
+      "sha256": "3be74c74dd73e234526d24839d3ec9cfc332cdcaacd0eb069ef7e6829686bf97",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/traffic-observed-insights-20261021",
-    "commit": "037264252f061e663ef66db0ff85fd58967ae142"
+    "branch": "fix/hd-funded-admission-canonical-proposition-time-20261021",
+    "commit": "f5acc15683c22a41621f002af02693e43e21050d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
