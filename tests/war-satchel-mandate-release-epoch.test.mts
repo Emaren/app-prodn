@@ -34,7 +34,7 @@ function durable(text:string) {
 async function isolatedReleaseModule(epoch:string):Promise<typeof held> {
   const source=readFileSync(new URL("../lib/warSatchelAutoSpendConsent.ts",import.meta.url),"utf8");
   assert.equal(source.split(heldEpoch).length-1,1);
-  const rewritten=source.replace(heldEpoch,epoch).replace('from "@cosmjs/amino"',`from ${JSON.stringify(import.meta.resolve("@cosmjs/amino"))}`);
+  const rewritten=source.replace(heldEpoch,epoch).replace('from "@cosmjs/amino"',`from ${JSON.stringify(import.meta.resolve("@cosmjs/amino"))}`).replace('from "./betMoneyLimits.ts"',`from ${JSON.stringify(import.meta.resolve("../lib/betMoneyLimits.ts"))}`);
   // This private module changes an isolated test source epoch, never the
   // application's literal source or a mutable financial environment flag.
   return import("data:text/javascript;base64,"+Buffer.from(stripTypeScriptTypes(rewritten)).toString("base64"));
