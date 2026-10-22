@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { captureIndexLoopback,validateIndexApiSnapshot } from "../scripts/kingdom_index_loopback_api_probe.mjs";
+type Row={href:string;status:string;score:number|null;kind:string|null;authenticatedPublication:null|{buildId:string}};
 const mk=()=>{
- const pages=Array.from({length:87},(_,i)=>({
+ const pages:Row[]=Array.from({length:87},(_,i)=>({
    href:"/fixture-"+i,status:"unmeasured",score:null,kind:null,
    authenticatedPublication:null
  }));
