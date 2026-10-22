@@ -1,0 +1,171 @@
+#!/usr/bin/env node
+/** Headless Chrome CDP, read-only source-bound interaction evidence.
+ * Keyboard, AX names and warm navigation are real candidate observations,
+ * NOT full screen-reader testing, deployment identity or a scored criterion.
+ */
+import {spawn} from "node:child_process";
+import {mkdtemp,readFile,rm,realpath} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join,resolve} from "node:path";
+import {createHash} from "node:crypto";
+import {fileURLToPath} from "node:url";
+const stop=m=>{throw Error("KINGDOM INTERACTION STOP: "+m)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const pct=(arr,q)=>{
+ const b=[...arr].sort((a,c)=>a-c),at=(b.length-1)*q,lo=Math.floor(at),hi=Math.ceil(at);
+ return Math.round((b[lo]+(b[hi]-b[lo])*(at-lo))*1000)/1000;
+};
+export function inspectInteractionReceipt(doc,{sourceSha,buildId}){
+ if(!/^[a-f0-9]{40}$/.test(sourceSha)||typeof buildId!=="string"||
+    doc?.kind!=="aoe2war.kingdom-index.real-interaction.v1"||
+    doc.sourceSha!==sourceSha||doc.buildId!==buildId||
+    doc.origin!=="LOOPBACK_ONLY"||doc.route!=="/kingdom-index"||
+    doc.certified!==false||doc.criterionPointsAwarded!==null||
+    !Array.isArray(doc.viewports)||doc.viewports.length!==2)
+    stop("Missing exact-source unscored Chrome authority");
+ const visited=new Set();
+ for(const row of doc.viewports){
+  if(!["desktop","phone"].includes(row.viewport)||visited.has(row.viewport)||
+     row.url!=="http://127.0.0.1:3030/kingdom-index"||row.documentStatus!==200||
+     !Number.isInteger(row.viewportWidth)||row.viewportWidth<300||
+     !Number.isInteger(row.scrollWidth)||row.scrollWidth<0||
+     row.reducedMotionEmulated!==true||
+     !row.keyboard||!row.accessibility||!row.warm||
+     !["ledgerActivated","mapRestored","detailOpened","detailClosed"].every(k=>typeof row.keyboard[k]==="boolean")||
+     !Number.isInteger(row.accessibility.axNodeCount)||row.accessibility.axNodeCount<1||
+     !Number.isInteger(row.accessibility.namedButtons)||row.accessibility.namedButtons<1||
+     !Number.isInteger(row.accessibility.unnamedButtons)||row.accessibility.unnamedButtons<0||
+     !Array.isArray(row.warm.samplesMs)||row.warm.samplesMs.length!==10||
+     row.warm.samplesMs.some(x=>!Number.isFinite(x)||x<=0||x>120000)||
+     Math.abs(row.warm.p75Ms-pct(row.warm.samplesMs,.75))>0.002||
+     Math.abs(row.warm.p95Ms-pct(row.warm.samplesMs,.95))>0.002)
+    stop("Invalid keyboard, AX, viewport or Chrome warm cohort");
+  visited.add(row.viewport);
+ }
+ return {valid:true,keyboardInteractionsObserved:doc.viewports.every(v=>Object.values(v.keyboard).every(Boolean)),
+  horizontalOverflowObserved:doc.viewports.some(v=>v.scrollWidth>v.viewportWidth+2),
+  certified:false,score:null};
+}
+async function capture(chrome,viewport){
+ const profile=await mkdtemp(join(tmpdir(),"aoe2war-index-interaction-"));
+ const child=spawn(chrome,["--headless=new","--remote-debugging-port=0",
+  "--user-data-dir="+profile,"--no-first-run","--disable-default-apps",
+  "--disable-background-networking","about:blank"],{stdio:"ignore"});
+ let ws;
+ try{
+  let port;
+  for(let n=0;n<200;n++){
+   try{const raw=await readFile(join(profile,"DevToolsActivePort"),"utf8");
+    const found=Number(raw.split("\n")[0]);if(Number.isInteger(found)&&found>0){port=found;break}}
+   catch{}
+   if(child.exitCode!==null)stop("Chrome exited before CDP connection");
+   await sleep(50);
+  }
+  if(!port)stop("Chrome DevTools unavailable");
+  const tab=await fetch("http://127.0.0.1:"+port+"/json/new?about:blank",{method:"PUT"}).then(x=>x.json());
+  ws=new WebSocket(tab.webSocketDebuggerUrl);
+  await new Promise((ok,bad)=>{ws.onopen=ok;ws.onerror=bad});
+  let seq=0;const pending=new Map(),events=[];
+  ws.onmessage=event=>{
+   let item;try{item=JSON.parse(event.data)}catch{return}
+   const p=pending.get(item.id);
+   if(p){clearTimeout(p.timer);pending.delete(item.id);
+    item.error?p.bad(Error(item.error.message)):p.ok(item.result);
+   }else if(events.length<2500)events.push(item);
+  };
+  const command=(method,params={})=>new Promise((ok,bad)=>{
+   const id=++seq,timer=setTimeout(()=>{pending.delete(id);bad(Error("CDP timeout "+method))},12000);
+   pending.set(id,{ok,bad,timer});ws.send(JSON.stringify({id,method,params}));
+  });
+  await command("Page.enable");await command("Runtime.enable");
+  await command("Network.enable");await command("Accessibility.enable");
+  await command("Emulation.setDeviceMetricsOverride",{
+   width:viewport==="desktop"?1440:390,height:viewport==="desktop"?900:844,
+   deviceScaleFactor:1,mobile:viewport==="phone"
+  });
+  await command("Emulation.setEmulatedMedia",{features:[{name:"prefers-reduced-motion",value:"reduce"}]});
+  const url="http://127.0.0.1:3030/kingdom-index";
+  async function navigate(){
+   const start=events.length;await command("Page.navigate",{url});
+   for(let n=0;n<140;n++){
+    if(events.slice(start).some(e=>e.method==="Page.loadEventFired")){
+     const document=events.slice(start).find(e=>e.method==="Network.responseReceived"&&
+       e.params?.type==="Document"&&e.params?.response?.url===url);
+     return document?.params?.response?.status??0;
+    }
+    await sleep(50);
+   }
+   stop("Real Chrome did not load Index");
+  }
+  const evaluate=async expression=>{
+   const result=await command("Runtime.evaluate",{expression,returnByValue:true,awaitPromise:true});
+   if(result.exceptionDetails)stop("Chrome script exception");
+   return result.result?.value;
+  };
+  const key=async (name,number)=>{
+   for(const type of ["rawKeyDown","keyUp"])await command("Input.dispatchKeyEvent",{
+    type,key:name,code:name,windowsVirtualKeyCode:number,nativeVirtualKeyCode:number
+   });
+   await sleep(250);
+  };
+  const initialStatus=await navigate();await sleep(500);
+  const info=await evaluate("({url:location.href,scrollWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches})");
+  const ax=await command("Accessibility.getFullAXTree");
+  const meaningful=(ax.nodes??[]).filter(x=>x.ignored!==true),buttons=meaningful.filter(x=>x.role?.value==="button");
+  const named=buttons.filter(x=>typeof x.name?.value==="string"&&x.name.value.trim().length>0);
+  const keyboard={ledgerActivated:false,mapRestored:false,detailOpened:false,detailClosed:false};
+  await evaluate("document.querySelector('button[aria-label=\"Performance ledger\"]')?.focus()");
+  await key("Enter",13);
+  keyboard.ledgerActivated=!!(await evaluate("document.querySelector('button[aria-label=\"Performance ledger\"]')?.getAttribute('aria-pressed')==='true'&&!!document.querySelector('[aria-label=\"Engineering ledger\"]')"));
+  await evaluate("document.querySelector('button[aria-label=\"Kingdom map\"]')?.focus()");
+  await key("Enter",13);
+  keyboard.mapRestored=!!(await evaluate("document.querySelector('button[aria-label=\"Kingdom map\"]')?.getAttribute('aria-pressed')==='true'"));
+  await evaluate("document.querySelector('button[aria-label=\"Inspect Kingdom Index\"]')?.focus()");
+  await key("Enter",13);
+  keyboard.detailOpened=!!(await evaluate("!!document.querySelector('section[aria-label=\"Kingdom Index engineering evidence\"]')"));
+  await evaluate("document.querySelector('button[aria-label=\"Close details\"]')?.focus()");
+  await key("Enter",13);
+  keyboard.detailClosed=!!(await evaluate("!document.querySelector('section[aria-label=\"Kingdom Index engineering evidence\"]')"));
+  const samples=[];
+  for(let i=0;i<10;i++){
+   if(await navigate()!==200)stop("Warm document returned non-200");
+   const ms=await evaluate("(performance.getEntriesByType('navigation')[0]?.responseEnd??null)");
+   if(typeof ms!=="number"||!Number.isFinite(ms)||ms<=0)stop("Missing measured warm response end");
+   samples.push(Math.round(ms*1000)/1000);
+  }
+  return {viewport,url,documentStatus:initialStatus,
+   viewportWidth:info.viewportWidth,scrollWidth:info.scrollWidth,
+   reducedMotionEmulated:info.reducedMotion,
+   accessibility:{axNodeCount:meaningful.length,namedButtons:named.length,
+     unnamedButtons:buttons.length-named.length},
+   keyboard,warm:{samplesMs:samples,p75Ms:pct(samples,.75),p95Ms:pct(samples,.95)}};
+ }finally{
+  try{ws?.close()}catch{}
+  if(child.exitCode===null){child.kill("SIGTERM");await sleep(250);if(child.exitCode===null)child.kill("SIGKILL")}
+  await rm(profile,{recursive:true,force:true,maxRetries:8,retryDelay:100});
+ }
+}
+async function main(){
+ const a=process.argv.slice(2),v={};
+ if(a.length!==6)stop("Require --source-sha --build-id --chrome");
+ for(let i=0;i<a.length;i+=2){
+  const k=a[i]?.startsWith("--")?a[i].slice(2):"";
+  if(!["source-sha","build-id","chrome"].includes(k)||Object.hasOwn(v,k))stop("Unsupported/duplicate parameter");
+  v[k]=a[i+1];
+ }
+ if(!/^[a-f0-9]{40}$/.test(v["source-sha"])||
+    (await readFile(".next/BUILD_ID","utf8")).trim()!==v["build-id"])
+   stop("Wrong independently expected local source/build");
+ const viewports=[];
+ for(const viewport of ["desktop","phone"])viewports.push(await capture(v.chrome,viewport));
+ const report={schema:1,kind:"aoe2war.kingdom-index.real-interaction.v1",
+  sourceSha:v["source-sha"],buildId:v["build-id"],
+  origin:"LOOPBACK_ONLY",route:"/kingdom-index",viewports,
+  certified:false,criterionPointsAwarded:null,
+  limitations:"Read-only actual Chrome keyboard, AX-name and warm candidate observations. Not full screen-reader, production, real mobile hardware, independent source proof, or score."};
+ inspectInteractionReceipt(report,{sourceSha:v["source-sha"],buildId:v["build-id"]});
+ return {...report,sha256:createHash("sha256").update(JSON.stringify(report)).digest("hex")};
+}
+if(process.argv[1]&&await realpath(resolve(process.argv[1])).catch(()=>null)===fileURLToPath(import.meta.url))
+ main().then(x=>process.stdout.write(JSON.stringify(x,null,2)+"\n"))
+  .catch(e=>{console.error(String(e.message));process.exitCode=2});
