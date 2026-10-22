@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/20261022-durable-financial-fence-held` at `6006621a5ccfdf269d938ac119f55ec32bf18343`
+Implementation baseline: `codex/20261022-durable-financial-fence-held` at `9e78e115362f7d6488c09dc40f9087cdede59133`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

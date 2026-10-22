@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6f4604e7721fb51cf5af3840650d41d741b785896021dddc437e1da638e126eb",
+      "sha256": "02c687b64f79a67e8d56432bd08a8005d251c8bef89d1fc545cf2b03cbb1b78a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/20261022-durable-financial-fence-held",
-    "commit": "6006621a5ccfdf269d938ac119f55ec32bf18343"
+    "commit": "9e78e115362f7d6488c09dc40f9087cdede59133"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
