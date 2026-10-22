@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9ff7e77c8bda48cbb7a982852018d0b7b0df8d871848b951a939478eec7e3dda",
+      "sha256": "6213d2d325fb7a0c0bd78b4160d1a4426f26c08477a947e8d898e0f7814ddd97",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/20261022-satchel-final-mainnet-recovery-held",
-    "commit": "329a08364aaf8a72c89bcc199f9b4b5f7b760d88"
+    "branch": "codex/20261022-durable-financial-fence-held",
+    "commit": "59b414ee100b56776c96f3e5ceb0c16b2e12efb8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
