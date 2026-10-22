@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   BRAIN_ENDPOINT_COUNT, BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS,
   BRAIN_SIGNAL_MAX_AGE_MS, BRAIN_SIGNAL_FUTURE_SKEW_MS,
-  classifyBrainSignal, createBrainRefreshCoordinator, isBrainSignalDisplayable, brainSettledResult, brainSourceTimeLabel,
+  classifyBrainSignal, createBrainRefreshCoordinator, isBrainSignalDisplayable, brainSettledResult, brainSourceTimeLabel, nextBrainSignalExpiryDelay,
   unavailableBrainSignal,
 } from "../app/kingdom-brain/brainSignalPolicy.ts";
 
@@ -197,4 +197,31 @@ test("mobile source timestamp keeps UTC age visible and full ISO readable to ass
   assert.match(client, /aria-label=\{signal\.sourceAt \? "Source observation at "/);
   assert.match(client, /brainSourceTimeLabel\(signal\.sourceAt\)/);
   assert.match(client, /aria-live="polite"/);
+});
+
+test("source expires at its actual deadline, not next 120-second HTTP refresh", () => {
+  const observed = get("index", index());
+  assert.equal(nextBrainSignalExpiryDelay([observed], time, time), BRAIN_SIGNAL_MAX_AGE_MS + 1);
+  assert.equal(nextBrainSignalExpiryDelay([observed], time, time + BRAIN_SIGNAL_MAX_AGE_MS - 8), 9);
+  assert.equal(nextBrainSignalExpiryDelay([observed], time, time + BRAIN_SIGNAL_MAX_AGE_MS + 80), 0);
+  const expiredClock = time + BRAIN_SIGNAL_MAX_AGE_MS + 1;
+  assert.equal(isBrainSignalDisplayable(observed, expiredClock), false);
+  assert.equal(nextBrainSignalExpiryDelay([observed], expiredClock, expiredClock), null);
+});
+
+test("independent source expiry uses earliest deadline, without more requests", () => {
+  const first = get("index", index(time - 30_000));
+  const second = get("patrol", patrol(time - 10_000));
+  const unavailable = unavailableBrainSignal();
+  assert.equal(nextBrainSignalExpiryDelay([second, first, unavailable], time, time), BRAIN_SIGNAL_MAX_AGE_MS - 30_000 + 1);
+  const firstExpiry = time + BRAIN_SIGNAL_MAX_AGE_MS - 30_000 + 1;
+  assert.equal(nextBrainSignalExpiryDelay([second, first, unavailable], firstExpiry, firstExpiry), 20_000);
+  assert.equal(nextBrainSignalExpiryDelay([unavailable], time, time), null);
+  assert.equal(nextBrainSignalExpiryDelay([second], Number.NaN, time), null);
+  const client = readFileSync(new URL("../app/kingdom-brain/KingdomBrainClient.tsx", import.meta.url), "utf8");
+  assert.match(client, /nextBrainSignalExpiryDelay\(signals, clockMs, Date\.now\(\)\)/);
+  assert.match(client, /window\.clearTimeout\(timer\)/);
+  assert.equal((client.match(/window\.setInterval\(/g) ?? []).length, 1);
+  assert.equal(BRAIN_REFRESH_INTERVAL_MS, 120_000);
+  assert.equal(BRAIN_ENDPOINT_COUNT, 4);
 });
