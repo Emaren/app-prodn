@@ -858,7 +858,7 @@ frozen-replay source qualification are shown as build evidence only.
 
 The collection uses bounded server reads (2400 recent events and 12000
 recent stream-start rows), a 20-second cache and 30-second foreground-only
-API refresh. If any authority fails, the panel shows unavailable rather
+API refresh. If any authority fails, including initial Prisma client acquisition, the panel shows unavailable rather
 than inventing zero. Production audience and Watcher credentials cannot
 be recovered from the public JSON response. This page does not change
 replay admission, uploads, Wolo/War Satchel execution, telemetry ingest,
