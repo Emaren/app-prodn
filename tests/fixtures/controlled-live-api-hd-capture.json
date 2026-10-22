@@ -1,0 +1,605 @@
+{
+  "api_source": "5a2750849e59f0e4551c6e9e0417b59254cff467",
+  "archive_verified": true,
+  "captured_at": "2026-10-22T18:28:53.246831+00:00",
+  "committed_invalid_hmac_row": {
+    "createdAt": "2026-10-22T18:28:53.245074+00:00",
+    "game_type": "Random Map",
+    "game_version": "Version.HD",
+    "id": 2,
+    "is_final": false,
+    "key_events": {
+      "completed": false,
+      "platform_match_id": "controlled-hd-forged-hmac",
+      "postgame_available": false,
+      "restore_time_ms": 7000,
+      "result_resolution": {
+        "result_confidence": "review",
+        "result_evidence": {
+          "complete_losing_team_resignation": false,
+          "fully_resigned_team_ids": [],
+          "partially_resigned_team_ids": [],
+          "postgame_available": false,
+          "resignation_counts_by_team": [
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000001"
+            },
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000002"
+            }
+          ],
+          "resignation_derived_winning_team_id": null,
+          "resignation_result_conflict": false,
+          "resignation_state": "no_complete_team",
+          "scoreboard_available": false,
+          "single_team_winner_flag_team_id": null,
+          "sources": [],
+          "team_completion_from_resignations": false,
+          "winner_flag_team_id": null,
+          "winner_flags_coherent": false,
+          "winner_flags_single_team": false
+        },
+        "result_provenance": "insufficient_result_evidence",
+        "result_status": "review_required",
+        "result_trusted": false,
+        "winning_player_keys": [],
+        "winning_player_names": [],
+        "winning_team_id": null
+      },
+      "saved_game_raw_deflate_complete": true,
+      "saved_game_snapshot": true,
+      "saved_game_structure_scope": "initial_state_prefix",
+      "snapshot_elapsed_seconds": 7,
+      "team_resolution": {
+        "confidence": "high",
+        "format": "1v1",
+        "player_count": 2,
+        "provenance": "one_vs_one_roster",
+        "reason_codes": [],
+        "result_confidence": "review",
+        "result_evidence": {
+          "complete_losing_team_resignation": false,
+          "fully_resigned_team_ids": [],
+          "partially_resigned_team_ids": [],
+          "postgame_available": false,
+          "resignation_counts_by_team": [
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000001"
+            },
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000002"
+            }
+          ],
+          "resignation_derived_winning_team_id": null,
+          "resignation_result_conflict": false,
+          "resignation_state": "no_complete_team",
+          "scoreboard_available": false,
+          "single_team_winner_flag_team_id": null,
+          "sources": [],
+          "team_completion_from_resignations": false,
+          "winner_flag_team_id": null,
+          "winner_flags_coherent": false,
+          "winner_flags_single_team": false
+        },
+        "result_provenance": "insufficient_result_evidence",
+        "result_status": "review_required",
+        "result_trusted": false,
+        "status": "resolved",
+        "team_count": 2,
+        "teams": [
+          {
+            "player_keys": [
+              "steam:76561198000000001"
+            ],
+            "players": [
+              "LiveOwner"
+            ],
+            "team_id": "steam:76561198000000001"
+          },
+          {
+            "player_keys": [
+              "steam:76561198000000002"
+            ],
+            "players": [
+              "LiveOpponent"
+            ],
+            "team_id": "steam:76561198000000002"
+          }
+        ],
+        "winning_player_keys": [],
+        "winning_player_names": [],
+        "winning_team_id": null
+      },
+      "watcher_upload": {
+        "checkpoint_final_rejected": false,
+        "client_sha256": "9bc626edc1dfa41f54582e5271be217981ed39c96af40eba083786ffc176a1b3",
+        "client_sha256_verified": true,
+        "file_role": "live_checkpoint",
+        "file_role_source": "extension_enforced",
+        "file_size_bytes": 105,
+        "ingestion_provenance": "live_monitor",
+        "provenance_signature_supplied": true,
+        "provenance_signature_verified": false,
+        "replay_fingerprint": "invalid-signature-fingerprint",
+        "server_sha256": "9bc626edc1dfa41f54582e5271be217981ed39c96af40eba083786ffc176a1b3",
+        "watcher_id": "controlled-original-hd-watcher",
+        "watcher_session_id": "invalid-signature-session"
+      }
+    },
+    "original_filename": "bad game @2026.10.22 182823.aoe2mpgame",
+    "parse_iteration": 1,
+    "parse_source": "watcher_live",
+    "played_on": "2026-10-22T18:28:23+00:00",
+    "players": [
+      {
+        "achievements": null,
+        "civilization": null,
+        "civilization_name": null,
+        "color_id": null,
+        "eapm": null,
+        "name": "LiveOwner",
+        "number": null,
+        "position": null,
+        "rate_snapshot": null,
+        "score": null,
+        "steam_id": "76561198000000001",
+        "team_id": 0,
+        "user_id": "76561198000000001",
+        "winner": null
+      },
+      {
+        "achievements": null,
+        "civilization": null,
+        "civilization_name": null,
+        "color_id": null,
+        "eapm": null,
+        "name": "LiveOpponent",
+        "number": null,
+        "position": null,
+        "rate_snapshot": null,
+        "score": null,
+        "steam_id": "76561198000000002",
+        "team_id": 1,
+        "user_id": "76561198000000002",
+        "winner": null
+      }
+    ],
+    "replayHash": "9bc626edc1dfa41f54582e5271be217981ed39c96af40eba083786ffc176a1b3",
+    "replay_file": "bad game @2026.10.22 182823.aoe2mpgame",
+    "user": {
+      "steamId": "76561198000000001",
+      "uid": "controlled-live-owner"
+    },
+    "winner": "Unknown"
+  },
+  "committed_live_row": {
+    "createdAt": "2026-10-22T18:28:53.235226+00:00",
+    "game_type": "Random Map",
+    "game_version": "Version.HD",
+    "id": 1,
+    "is_final": false,
+    "key_events": {
+      "completed": false,
+      "platform_match_id": "controlled-hd-1v1-rm",
+      "postgame_available": false,
+      "restore_time_ms": 7000,
+      "result_resolution": {
+        "result_confidence": "review",
+        "result_evidence": {
+          "complete_losing_team_resignation": false,
+          "fully_resigned_team_ids": [],
+          "partially_resigned_team_ids": [],
+          "postgame_available": false,
+          "resignation_counts_by_team": [
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000001"
+            },
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000002"
+            }
+          ],
+          "resignation_derived_winning_team_id": null,
+          "resignation_result_conflict": false,
+          "resignation_state": "no_complete_team",
+          "scoreboard_available": false,
+          "single_team_winner_flag_team_id": null,
+          "sources": [],
+          "team_completion_from_resignations": false,
+          "winner_flag_team_id": null,
+          "winner_flags_coherent": false,
+          "winner_flags_single_team": false
+        },
+        "result_provenance": "insufficient_result_evidence",
+        "result_status": "review_required",
+        "result_trusted": false,
+        "winning_player_keys": [],
+        "winning_player_names": [],
+        "winning_team_id": null
+      },
+      "saved_game_raw_deflate_complete": true,
+      "saved_game_snapshot": true,
+      "saved_game_structure_scope": "initial_state_prefix",
+      "snapshot_elapsed_seconds": 7,
+      "team_resolution": {
+        "confidence": "high",
+        "format": "1v1",
+        "player_count": 2,
+        "provenance": "one_vs_one_roster",
+        "reason_codes": [],
+        "result_confidence": "review",
+        "result_evidence": {
+          "complete_losing_team_resignation": false,
+          "fully_resigned_team_ids": [],
+          "partially_resigned_team_ids": [],
+          "postgame_available": false,
+          "resignation_counts_by_team": [
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000001"
+            },
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000002"
+            }
+          ],
+          "resignation_derived_winning_team_id": null,
+          "resignation_result_conflict": false,
+          "resignation_state": "no_complete_team",
+          "scoreboard_available": false,
+          "single_team_winner_flag_team_id": null,
+          "sources": [],
+          "team_completion_from_resignations": false,
+          "winner_flag_team_id": null,
+          "winner_flags_coherent": false,
+          "winner_flags_single_team": false
+        },
+        "result_provenance": "insufficient_result_evidence",
+        "result_status": "review_required",
+        "result_trusted": false,
+        "status": "resolved",
+        "team_count": 2,
+        "teams": [
+          {
+            "player_keys": [
+              "steam:76561198000000001"
+            ],
+            "players": [
+              "LiveOwner"
+            ],
+            "team_id": "steam:76561198000000001"
+          },
+          {
+            "player_keys": [
+              "steam:76561198000000002"
+            ],
+            "players": [
+              "LiveOpponent"
+            ],
+            "team_id": "steam:76561198000000002"
+          }
+        ],
+        "winning_player_keys": [],
+        "winning_player_names": [],
+        "winning_team_id": null
+      },
+      "watcher_upload": {
+        "checkpoint_final_rejected": false,
+        "client_sha256": "d2f82bd67297969b6072bff630b134162139e2fd78e0c7ec185f6e2a0ad5be8d",
+        "client_sha256_verified": true,
+        "file_role": "live_checkpoint",
+        "file_role_source": "extension_enforced",
+        "file_size_bytes": 75,
+        "ingestion_provenance": "live_monitor",
+        "provenance_signature_supplied": true,
+        "provenance_signature_verified": true,
+        "replay_fingerprint": "original-live-fingerprint/1v1-rm",
+        "server_sha256": "d2f82bd67297969b6072bff630b134162139e2fd78e0c7ec185f6e2a0ad5be8d",
+        "watcher_id": "controlled-original-hd-watcher",
+        "watcher_session_id": "original-live/1v1-rm"
+      }
+    },
+    "original_filename": "game @2026.10.22 182823.aoe2mpgame",
+    "parse_iteration": 1,
+    "parse_source": "watcher_live",
+    "played_on": "2026-10-22T18:28:23+00:00",
+    "players": [
+      {
+        "achievements": null,
+        "civilization": null,
+        "civilization_name": null,
+        "color_id": null,
+        "eapm": null,
+        "name": "LiveOwner",
+        "number": null,
+        "position": null,
+        "rate_snapshot": null,
+        "score": null,
+        "steam_id": "76561198000000001",
+        "team_id": 0,
+        "user_id": "76561198000000001",
+        "winner": null
+      },
+      {
+        "achievements": null,
+        "civilization": null,
+        "civilization_name": null,
+        "color_id": null,
+        "eapm": null,
+        "name": "LiveOpponent",
+        "number": null,
+        "position": null,
+        "rate_snapshot": null,
+        "score": null,
+        "steam_id": "76561198000000002",
+        "team_id": 1,
+        "user_id": "76561198000000002",
+        "winner": null
+      }
+    ],
+    "replayHash": "d2f82bd67297969b6072bff630b134162139e2fd78e0c7ec185f6e2a0ad5be8d",
+    "replay_file": "game @2026.10.22 182823.aoe2mpgame",
+    "user": {
+      "steamId": "76561198000000001",
+      "uid": "controlled-live-owner"
+    },
+    "winner": "Unknown"
+  },
+  "controlled_parser": true,
+  "financial_authority": false,
+  "game_id": 1,
+  "hmac_verified": true,
+  "human_live_capture": false,
+  "invalid_hmac_game_id": 2,
+  "original_capture_recorded": true,
+  "original_live_capture": {
+    "captured_at": "2026-10-22T18:28:23.000000Z",
+    "checkpoint_sha256": "d2f82bd67297969b6072bff630b134162139e2fd78e0c7ec185f6e2a0ad5be8d",
+    "financial_authorized": false,
+    "game_identity_key": "platform:controlled-hd-1v1-rm",
+    "identity_aliases": [
+      "game @2026.10.22 182823.aoe2mpgame",
+      "platform:controlled-hd-1v1-rm"
+    ],
+    "observed_at": "2026-10-22T18:28:53.236416Z",
+    "original_clock": {
+      "elapsed_seconds": 7,
+      "source": "hd.initial.restore_time"
+    },
+    "owner_steam_id": "76561198000000001",
+    "owner_uid": "controlled-live-owner",
+    "proposition_hash": "1445e486f030f0df8f72a8f8a5f25e12dd3c4cb9d77466e7b6b19a41f050507f",
+    "result_authority": false,
+    "schema": "aoe2war-satchel-original-live-capture/v1",
+    "selected_side": "left",
+    "source_parse_iteration": 1,
+    "source_roster_hash": "170bb95ef4b2cb848c3205660417661453baae94163405ad7a5d770d25470e65",
+    "teams": [
+      {
+        "player_keys": [
+          "steam:76561198000000001"
+        ],
+        "team_key": "steam:76561198000000001"
+      },
+      {
+        "player_keys": [
+          "steam:76561198000000002"
+        ],
+        "team_key": "steam:76561198000000002"
+      }
+    ],
+    "watcher_id": "controlled-original-hd-watcher",
+    "watcher_session_id": "original-live/1v1-rm"
+  },
+  "private_bridge": {
+    "receipt": {
+      "archive_verified": true,
+      "artifact_accepted": true,
+      "artifact_archived": true,
+      "betting_eligible": false,
+      "checkpoint_final_rejected": false,
+      "client_sha256_supplied": true,
+      "client_sha256_verified": true,
+      "effective_is_final": false,
+      "file_extension": ".aoe2mpgame",
+      "file_role": "live_checkpoint",
+      "file_role_source": "extension_enforced",
+      "file_size_verified": true,
+      "final_accepted": false,
+      "final_artifact_accepted": false,
+      "final_submission_received": false,
+      "finality_status": "live",
+      "game_id": 1,
+      "has_coherent_winning_team": true,
+      "has_reliable_roster": true,
+      "has_reliable_teams": true,
+      "has_reliable_winner": false,
+      "is_final": false,
+      "message": "Replay iteration 1 stored",
+      "parse_completed": true,
+      "parse_completeness": "live_roster",
+      "parse_iteration": 1,
+      "pending_parse": false,
+      "players_count": 2,
+      "raw_replay_archived": true,
+      "recovery_queued": false,
+      "recovery_reason": null,
+      "replay_hash": "d2f82bd67297969b6072bff630b134162139e2fd78e0c7ec185f6e2a0ad5be8d",
+      "requested_final": false,
+      "result_confidence": "review",
+      "result_evidence": {
+        "complete_losing_team_resignation": false,
+        "fully_resigned_team_ids": [],
+        "partially_resigned_team_ids": [],
+        "postgame_available": false,
+        "resignation_counts_by_team": [
+          {
+            "player_count": 1,
+            "resigned_player_count": 0,
+            "team_id": "steam:76561198000000001"
+          },
+          {
+            "player_count": 1,
+            "resigned_player_count": 0,
+            "team_id": "steam:76561198000000002"
+          }
+        ],
+        "resignation_derived_winning_team_id": null,
+        "resignation_result_conflict": false,
+        "resignation_state": "no_complete_team",
+        "scoreboard_available": false,
+        "single_team_winner_flag_team_id": null,
+        "sources": [],
+        "team_completion_from_resignations": false,
+        "winner_flag_team_id": null,
+        "winner_flags_coherent": false,
+        "winner_flags_single_team": false
+      },
+      "result_provenance": "insufficient_result_evidence",
+      "result_resolved": false,
+      "result_status": "review_required",
+      "result_trusted": false,
+      "safe_public_status": "Live replay received",
+      "should_continue_monitoring": true,
+      "should_retry": false,
+      "should_settle": false,
+      "statistics_available": false,
+      "statistics_complete": false,
+      "stats_eligible": false,
+      "team_resolution": {
+        "confidence": "high",
+        "format": "1v1",
+        "player_count": 2,
+        "provenance": "one_vs_one_roster",
+        "reason_codes": [],
+        "result_confidence": "review",
+        "result_evidence": {
+          "complete_losing_team_resignation": false,
+          "fully_resigned_team_ids": [],
+          "partially_resigned_team_ids": [],
+          "postgame_available": false,
+          "resignation_counts_by_team": [
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000001"
+            },
+            {
+              "player_count": 1,
+              "resigned_player_count": 0,
+              "team_id": "steam:76561198000000002"
+            }
+          ],
+          "resignation_derived_winning_team_id": null,
+          "resignation_result_conflict": false,
+          "resignation_state": "no_complete_team",
+          "scoreboard_available": false,
+          "single_team_winner_flag_team_id": null,
+          "sources": [],
+          "team_completion_from_resignations": false,
+          "winner_flag_team_id": null,
+          "winner_flags_coherent": false,
+          "winner_flags_single_team": false
+        },
+        "result_provenance": "insufficient_result_evidence",
+        "result_status": "review_required",
+        "result_trusted": false,
+        "status": "resolved",
+        "team_count": 2,
+        "teams": [
+          {
+            "player_keys": [
+              "steam:76561198000000001"
+            ],
+            "players": [
+              "LiveOwner"
+            ],
+            "team_id": "steam:76561198000000001"
+          },
+          {
+            "player_keys": [
+              "steam:76561198000000002"
+            ],
+            "players": [
+              "LiveOpponent"
+            ],
+            "team_id": "steam:76561198000000002"
+          }
+        ],
+        "winning_player_keys": [],
+        "winning_player_names": [],
+        "winning_team_id": null
+      },
+      "terminal_reason": null,
+      "unparsed_final": false,
+      "upload_mode": "watcher",
+      "uploader_uid": "controlled-live-owner",
+      "wargraph_attestation": {
+        "archive_verified": true,
+        "attestation_id": "2564a53d1950dc0185f93819073226d0ec935655271aeeea287fedaebe84bffb",
+        "commenced_at": "2026-10-22T18:28:23",
+        "file_role": "live_checkpoint",
+        "finality_status": "live",
+        "game_stats_id": 1,
+        "ingestion_provenance": "live_monitor",
+        "is_final": false,
+        "live_game_fingerprint": "631cbeca7fdd4a436bd6013b882660678ec41131b3807de9ce39931212ec77f7",
+        "live_provenance": true,
+        "participant_bound": true,
+        "platform_match_id": "controlled-hd-1v1-rm",
+        "provenance_signature_verified": true,
+        "replay_fingerprint": "original-live-fingerprint/1v1-rm",
+        "replay_hash": "d2f82bd67297969b6072bff630b134162139e2fd78e0c7ec185f6e2a0ad5be8d",
+        "result_hash": null,
+        "result_provenance": "insufficient_result_evidence",
+        "result_trusted": false,
+        "roster_hash": "02061e98de748914c006f7bc3ad1e18d925437689b882e996e98668dae70558b",
+        "roster_player_key_hashes": [
+          "0093d5d8de14fe9132da424d50053c61c01b2ea68cd4ee184f788b71421c3d47",
+          "8a918760afc47d58ca75ed3af4bd0a453a5a283910806ee8eb561dfacd212211"
+        ],
+        "schema": "aoe2war-wargraph-watcher-attestation/v1",
+        "transport_authenticated": true,
+        "uploader_player_key_hash": "8a918760afc47d58ca75ed3af4bd0a453a5a283910806ee8eb561dfacd212211",
+        "uploader_uid": "controlled-live-owner",
+        "watcher_identity_hash": "9e826bb8643ba0c41febcc905d3ee231d01c0e11ee972ec917ea78655a87b703",
+        "watcher_session_hash": "483056825def7a129796bf72d3c996625418e6f3f93813e376ece722e691350e",
+        "winning_player_key_hashes": []
+      },
+      "watcher_architecture": null,
+      "watcher_platform": null,
+      "watcher_version": null,
+      "winner": "Unknown",
+      "winning_player_keys": [],
+      "winning_player_names": [],
+      "winning_team_id": null
+    },
+    "source": "api_direct"
+  },
+  "runtime": {
+    "mgz": "1.8.51",
+    "python": "3.12.3",
+    "requirements_lock_sha256": "58231f3789f717f5d30e5388b0473f41dd46918ce102ea45e99647777ef8a6dc"
+  },
+  "schema": "controlled-original-live-api-hd/v2",
+  "transport": {
+    "actual_delivery": "captured",
+    "authentication": "internal-api-key",
+    "method": "POST",
+    "route": "/api/replay/post-ingest",
+    "spoofed_account_header_ignored": true
+  }
+}
