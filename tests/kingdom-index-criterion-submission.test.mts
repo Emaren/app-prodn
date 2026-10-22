@@ -252,6 +252,32 @@ function performanceFixture(id){
   samples,summary:summarizePerformanceSamples(id,samples)
  }));
 }
+// Fake Chrome fixture only for parser/approval contract tests. It is NEVER a
+// production browser receipt, independently enrolled run, or earned score.
+const FAKE_BROWSER_COLLECTOR_SHA="9".repeat(40);
+function syntheticBrowserFixture(){
+ const values=Array.from({length:10},(_,i)=>i+1);
+ const stats=fn=>{
+  const rows=values.map(fn).sort((a,b)=>a-b),pct=q=>{
+   const i=(rows.length-1)*q,lo=Math.floor(i),hi=Math.ceil(i);
+   return rows[lo]+(rows[hi]-rows[lo])*(i-lo);
+  };
+  return {count:rows.length,p50:pct(.5),p75:pct(.75),p95:pct(.95),max:rows.at(-1)};
+ };
+ const rows=values.map(i=>({
+  sample:i,viewport:"desktop",loaded:true,documentStatus:200,harnessAttempt:1,
+  documentFromDiskCache:false,documentFromServiceWorker:false,failedResources:[],
+  metrics:{href:"https://aoe2war.com/kingdom-index",readyMs:80+i,
+    finalLcp:{startTime:120+i},
+    navigation:{requestStart:10+i,responseStart:45+i,responseEnd:55+i}}
+ }));
+ const d={schema:1,kind:"aoe2war-cold-process-lcp",generatedAt:issuedAt,
+  releaseSha:source.gitSha,buildVersion:source.buildId,collectorSourceSha:FAKE_BROWSER_COLLECTOR_SHA,
+  url:"https://aoe2war.com/kingdom-index",viewport:"desktop",samples:10,
+  sampleAttempts:1,retriedSamples:[],productionMutated:false,databaseMutated:false,woloMutated:false,
+  rows,summary:{lcpMs:stats(i=>120+i),documentTtfbMs:stats(i=>45+i),readyMs:stats(i=>80+i)}};
+ return Buffer.from(JSON.stringify(d,null,2)+"\\n");
+}
 test("signed criteria integrate with separately approved on-disk proof bytes, without any public score",async()=>{
  const dir=await mkdtemp(join(tmpdir(),"aoe2war-proof-signed-integration-"));
  const root=join(dir,"approved-artifacts");
@@ -262,7 +288,9 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
     ...p.gates.map(row=>({proof:row.evidence[0],gateId:row.id,result:row.result}))];
   for(const [i,{proof:ref,criterionId}] of assignment.entries()){
    const bytes=ref.kind==="performance"?performanceFixture(criterionId):
+    ref.kind==="browser"?syntheticBrowserFixture():
     Buffer.from("untrusted-fixture-proof-"+(i+1));
+   if(ref.kind==="browser")ref.conditions="viewport=desktop";
    ref.sha256=createHash("sha256").update(bytes).digest("hex");
    await writeFile(join(root,ref.sha256+".proof"),bytes,{mode:0o600});
   }
@@ -280,7 +308,7 @@ test("signed criteria integrate with separately approved on-disk proof bytes, wi
    signatureBase64:sign(null,body,approvalKey.privateKey).toString("base64")};
   ctx.verifyArtifact=createApprovedCriterionArtifactVerifier({
    root,operatorPublicKeyPem:approvalKey.publicKey.export({format:"pem",type:"spki"}).toString(),
-   envelope:signedManifest,nowMs:now,
+   envelope:signedManifest,nowMs:now,browserCollectorSha:FAKE_BROWSER_COLLECTOR_SHA,
   });
   const valid=await inspectSignedCriterionSubmission(envelope(p),ctx);
   assert.equal(valid.certified,false);
