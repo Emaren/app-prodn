@@ -149,7 +149,10 @@ async def one_real(browser,args,viewport,label,n,output):
             payload.append({"path":path,"status":resp.status,"contentLength":resp.headers.get("content-length")})
     page.on("response",lambda r:asyncio.create_task(response_hook(r)))
     response,latency=await mount(page,args.url,cnt)
-    await page.wait_for_timeout(600)
+    # Wait for actual useEffect fetches rather than inferring hydration from HTML.
+    for _ in range(40):
+        if all(cnt["api"].get(path,0)>=1 for path in ENDPOINTS):break
+        await page.wait_for_timeout(200)
     graph=page.locator('button[aria-pressed]')
     checks={}
     check(bool(response and response.status==200),"http_200",checks)
@@ -177,6 +180,20 @@ async def one_real(browser,args,viewport,label,n,output):
     heap=next((x["value"] for x in metrics.get("metrics",[]) if x["name"]=="JSHeapUsedSize"),None)
     if n==0:
         await page.screenshot(path=str(output/f"real-{label}.png"),full_page=True)
+        # One user-triggered refresh, 4 more read-only API requests, no timer loop.
+        before=dict(cnt["api"])
+        try:
+            refresh=page.get_by_role("button",name="Refresh authority signals")
+            await refresh.wait_for(state="visible",timeout=12000)
+            await refresh.click(timeout=12000)
+            for _ in range(40):
+                if all(cnt["api"].get(path,0)>=before.get(path,0)+1 for path in ENDPOINTS):break
+                await page.wait_for_timeout(200)
+            check(all(cnt["api"].get(path,0)==before.get(path,0)+1 for path in ENDPOINTS),
+                  "one_manual_refresh_adds_exactly_four_gets",checks)
+        except Exception as error:
+            checks["one_manual_refresh_adds_exactly_four_gets"]=False
+            errors.append("Manual refresh: "+str(error)[:200])
     await ctx.close()
     return {"n":n+1,"navigationMs":latency,"checks":checks,"states":status,"heapBytes":heap,
             "requests":cnt,"apiResponses":payload,"width":width,"pageErrors":errors}
@@ -207,6 +224,10 @@ async def fixture_case(browser,args,name,mapping,clock=None):
         result["passed"]=initial.get("AGENTS")=="UNVERIFIED" and initial.get("CENSUS")=="OBSERVED"
     elif name=="partial":
         result["passed"]=initial.get("AGENTS")=="UNAVAILABLE" and initial.get("INDEX")=="OBSERVED"
+    elif name=="malformed":
+        result["passed"]=initial.get("INDEX")=="UNVERIFIED" and initial.get("CENSUS")=="UNVERIFIED" and initial.get("PATROL")=="POLICY-ONLY"
+    elif name=="future":
+        result["passed"]=initial.get("INDEX")=="UNVERIFIED" and initial.get("AGENTS")=="OBSERVED"
     elif name=="expiry":
         # API source initially only 1100ms from expiration; run the actual
         # app's one-shot timer ahead in real Chromium, not a helper mock.
@@ -244,6 +265,9 @@ async def run(args,repo,build,blob):
                 ("stale",fixtures(moment,index_age_ms=360_000)),
                 ("denied",fixtures(moment,bad_agents=True)),
                 ("partial",fixtures(moment,unavailable_agents=True)),
+                ("malformed",dict(fixtures(moment),index=dict(fixtures(moment)["index"],generatedAt="NOT_A_DATE"),
+                                  **{"route-census":dict(fixtures(moment)["route-census"],capturedAt=None)})),
+                ("future",fixtures(moment,index_age_ms=-60_000)),
                 ("expiry",fixtures(moment,index_age_ms=298_900)),
             ]
             for name,mapping in data:
