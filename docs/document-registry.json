@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-20",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "2de4d54f4b57cf25da9f8188dfee6bd899b18feada2f8ab542c32f2d73250ebb",
+      "sha256": "69641186c0871f2b13ba9425e58bdb72cfa77a470ca759d2f0e9db794878d97c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "771c435a67d4a023c9cbeb93602c3e94541fb7a64aaa3aa2be570b4fd6a949c5",
+      "sha256": "f80cba3e00fa2198762a907af5fbad438945cdd4820d9f9bea25011a1f84be74",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261022-satchel-mainline-held",
-    "commit": "9cdc6711e88ec40e96e9eabe389e365875718741"
+    "branch": "codex/satchel-funding-balance-truth",
+    "commit": "42c4df65235d6f5f2b3dd6ce294de835a8f88618"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

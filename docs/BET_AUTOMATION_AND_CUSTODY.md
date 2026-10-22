@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-20"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -39,6 +39,20 @@ or owner consent, grant a stake ticket, supply a financial permit, or bypass
 gate within the HELD admission proposal stage only. A final funded transaction
 must revalidate these identities under its durable owner/market lock against
 signed and independently verified sources.
+
+## October 22 — funding balance presentation refuses incomplete observations
+
+The Keplr funding panel reuses the strict owner-ledger response parser already
+used by the Mecha card. HTTP failures, missing or malformed native balances,
+wrong chain/denomination and out-of-range amounts now display an unavailable
+balance; missing fields cannot become a fabricated verified zero. A genuine
+complete zero remains distinguishable from unavailable evidence. Refreshes
+apply the same checks. The owner ledger is distinct from vault solvency.
+
+Controlled runtime component tests execute the actual mount effects and render
+private fixture responses. They prove presentation only, never custody, a
+credit, a new financial permission or mainnet certification. Funding remains
+behind the unchanged server source HOLD and deposit-enabled gate.
 
 ## October 21 — current authenticated integration, still financially HELD
 
