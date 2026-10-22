@@ -64,15 +64,32 @@ export async function captureIndexLoopback({origin,samples=12,expectedBuildId,de
    });
    const elapsed=Math.round((performance.now()-start)*1000)/1000;
    if(response.status!==200)stop("API non-200 or redirected "+response.status);
-   const raw=await response.arrayBuffer();
-   if(raw.byteLength<2||raw.byteLength>MAX_BYTES)stop("API body size exceeds safe bound");
+   const declared=Number(response.headers.get("content-length")??"0");
+   if(!Number.isFinite(declared)||declared<0||declared>MAX_BYTES)
+      stop("API declared body exceeds safe bound");
+   if(!response.body)stop("Missing API response body");
+   const reader=response.body.getReader(),chunks=[];
+   let byteCount=0;
+   try{
+     for(;;){
+       const {value,done}=await reader.read();
+       if(done)break;
+       byteCount+=value.byteLength;
+       if(byteCount>MAX_BYTES)stop("API streaming body exceeds safe bound");
+       chunks.push(value);
+     }
+   }finally{await reader.cancel().catch(()=>{});}
+   if(byteCount<2)stop("Missing API response data");
+   const raw=new Uint8Array(byteCount);
+   let offset=0;
+   for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.byteLength;}
    let snapshot;
    try{snapshot=JSON.parse(new TextDecoder().decode(raw))}catch{stop("API invalid JSON")}
    const state=validateIndexApiSnapshot(snapshot,response.headers);
    const self=snapshot.pages.find(x=>x.href==="/kingdom-index");
    if(self?.authenticatedPublication&&self.authenticatedPublication.buildId!==expectedBuildId)
       stop("Observed public certificate build mismatches local emitted build");
-   rows.push({sequence:i+1,elapsedMs:elapsed,responseBytes:raw.byteLength,
+   rows.push({sequence:i+1,elapsedMs:elapsed,responseBytes:byteCount,
      certified:state.certified,kingdomIndexStatus:self?.status??"unmeasured",
      indexScore:self?.score??null});
    states.push(JSON.stringify({certified:snapshot.certified,score:self?.score??null,status:self?.status}));
