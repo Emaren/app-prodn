@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync,existsSync} from "node:fs";
 const data=JSON.parse(readFileSync(new URL("../config/renaissance-campaign.json",import.meta.url),"utf8"));
 const routes=data.phases.flatMap((p:{id:string;routes:string[]})=>p.routes);
-test("all 132 source templates have one canonical campaign assignment",()=>{
- assert.equal(routes.length,132);assert.equal(new Set(routes).size,132);assert.equal(data.phases.length,7);
+test("all 144 source templates have one canonical campaign assignment",()=>{
+ assert.equal(routes.length,144);assert.equal(new Set(routes).size,144);assert.equal(data.phases.length,7);
  assert.equal(data.modules.length,12);
  for(const r of routes){const path=new URL("../app"+(r==="/"?"/":r+"/")+"page.tsx",import.meta.url);assert.ok(existsSync(path),r);}
 });

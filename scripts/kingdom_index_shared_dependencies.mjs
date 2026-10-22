@@ -35,8 +35,12 @@ export function validateInstrumentImporters(foundPaths) {
   }
 }
 
+// Conservative direct server-authority fingerprint for the Index page. This
+// is still NOT complete transitive build/deployment closure.
+export const INDEX_SERVER_SOURCE_PREFIX = "lib/kingdomIndex";
 export function sharedSourcePrefixesForHref(href) {
   const page = "app/" + href.replace(/^\//, "") + "/page.tsx";
+  if (href === "/kingdom-index") return [INDEX_SERVER_SOURCE_PREFIX];
   return INSTRUMENT_CONSUMER_PAGES.includes(page)
     ? [INSTRUMENT_SOURCE_PREFIX]
     : [];

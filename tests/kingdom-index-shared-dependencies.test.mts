@@ -7,6 +7,7 @@ import {
   INSTRUMENT_CONSUMER_PAGES,
   INSTRUMENT_IMPORT,
   INSTRUMENT_SOURCE_PREFIX,
+  INDEX_SERVER_SOURCE_PREFIX,
   sharedSourcePrefixesForHref,
   validateInstrumentImporters,
 } from "../scripts/kingdom_index_shared_dependencies.mjs";
@@ -21,11 +22,18 @@ test("all six canonical instrument pages include the shared source root", () => 
   for (const href of routes) {
     assert.deepEqual(sharedSourcePrefixesForHref(href), [INSTRUMENT_SOURCE_PREFIX]);
   }
-  for (const href of ["/kingdom-intelligence", "/game-stats", "/", "/kingdom-index"]) {
+  for (const href of ["/kingdom-intelligence", "/game-stats", "/"]) {
     assert.deepEqual(sharedSourcePrefixesForHref(href), [], href + " must not over-invalidate");
   }
 });
 
+test("Kingdom Index fingerprints server-side score and audit policy modules",()=>{
+ assert.deepEqual(sharedSourcePrefixesForHref("/kingdom-index"),[INDEX_SERVER_SOURCE_PREFIX]);
+ for (const path of ["lib/kingdomIndex.ts","lib/kingdomIndexAuditStatus.ts","lib/kingdomIndexScoreLineage.ts","lib/kingdomIndexCriterionSubmission.mjs"]) {
+  assert.ok(sharedSourcePrefixesForHref("/kingdom-index").some(prefix=>path.startsWith(prefix)),path);
+ }
+ assert.deepEqual(sharedSourcePrefixesForHref("/leaderboard"),[]);
+});
 test("fail closed on unknown, missing or unexpected instrument consumers", () => {
   assert.doesNotThrow(() => validateInstrumentImporters(INSTRUMENT_CONSUMER_PAGES));
   assert.throws(

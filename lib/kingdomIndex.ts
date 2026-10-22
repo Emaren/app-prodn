@@ -3,6 +3,7 @@ import { open } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import catalog from "@/config/kingdom-index-routes.json";
+import inventory from "@/config/kingdom-index-inventory.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
@@ -59,6 +60,11 @@ export type KingdomCompanion = {
 export type KingdomIndexSnapshot = {
   schema: 1;
   generatedAt: string;
+  // Counts only. Protected/admin route names remain server-side and are NEVER
+  // serialized to the unauthenticated public Kingdom Index consumer.
+  estate: { pageTemplates:number; adminTemplates:number; dynamicTemplates:number;
+    publicIndexTemplates:number; excludedStaticTemplates:number;
+    routeHandlerTemplates:number; apiHandlerTemplates:number; nonApiHandlerTemplates:number };
   pages: KingdomIndexEntry[];
   companions: KingdomCompanion[];
   observed: number;
@@ -178,15 +184,18 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       score: liveScore,
       lastReviewScore:lineage.lastReviewScore, checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
-      history:obs?.history?.slice(-40)??[],
-      loadMs:typeof obs?.loadMs==="number"&&Number.isFinite(obs.loadMs)&&obs.loadMs>=0?obs.loadMs:null,
-      bytes:typeof obs?.bytes==="number"&&Number.isFinite(obs.bytes)&&obs.bytes>=0?obs.bytes:null,
+      // Signed-JSON ingress does not itself verify benchmark artifacts or
+      // historical measurements. Keep all readout metrics unknown until a
+      // separately authenticated per-criterion/per-build verifier exists.
+      history:[],
+      loadMs:null,
+      bytes:null,
       dimensions:lineage.dimensions,
       notes:typeof obs?.notes==="string"?obs.notes.slice(0,500):null,
     };
   });
   return {
-    schema:1,generatedAt:new Date(now).toISOString(),pages,
+    schema:1,generatedAt:new Date(now).toISOString(),estate:inventory.counts,pages,
     // Desktop companions are not web routes: a Git release SHA is source
     // provenance, NOT an installed binary, field benchmark, or certified score.
     companions: companionCatalog.companions.map(companion=>({
