@@ -79,7 +79,9 @@ export default function WarPulsePanel({
       ? "Live Recovery sampling paused"
       : recoverySignal === "unavailable"
         ? "Current Recovery sample unavailable"
-        : "Awaiting a current Recovery sample";
+        : recoverySignal === "live"
+          ? "Live Recovery progress percentage unavailable"
+          : "Awaiting a current Recovery sample";
 
   const cycleTheme = () => {
     setThemeIndex((current) => (current + 1) % THEMES.length);
@@ -268,6 +270,11 @@ export default function WarPulsePanel({
                         %
                       </span>
                     </div>
+                    {recoveryItem && trustworthyLiveProgress === null && trustworthySnapshotProgress !== null ? (
+                      <div role="status" className="mt-1 text-[9px] uppercase tracking-[0.14em] text-cyan-100/50">
+                        {recoveryNotice}
+                      </div>
+                    ) : null}
                   </div>
                 ) : item.current && recoveryItem ? (
                   <div className="mt-2">
