@@ -61,3 +61,15 @@ test("published binary size comparison is sourced from exact official release ar
  assert.match(ui, /not installed RAM, CPU, battery/);
  assert.doesNotMatch(server, /previousBytes: 131087395|currentBytes: 129213289/);
 });
+
+test("fleet API degrades to unavailable when database connection initialization fails",()=>{
+ const begin=server.indexOf("pending = (async () => {");
+ const at=server.indexOf("const prisma = getPrisma()",begin);
+ const guarded=server.lastIndexOf("    try {",at);
+ const catchAt=server.indexOf('console.warn("Kingdom Watcher public aggregate unavailable"',at);
+ assert.ok(begin>=0 && guarded>begin && at>guarded && catchAt>at,
+   "Prisma initialization must be inside the same fail-closed fleet catch as its queries");
+ assert.match(server,/available: false/);
+ assert.match(server,/downloadReceipts: null/);
+ assert.match(server,/active: null/);
+});
