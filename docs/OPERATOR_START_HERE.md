@@ -15,6 +15,10 @@ sensitivity: "internal"
 
 # AoE2WAR Operator Start Here
 
+## October 22, 2026 — protected Traffic presentation release review
+
+For the Traffic Observatory country-ranking change, preserve the ordinary authority order: inspect live `aoe2war status`, pin the exact reviewed source, pass the documentation/gate/manifest checks, stage without changing the current runtime, obtain a new one-time artifact-specific owner approval if standing website-only financial isolation remains unresolved, then activate solely through the protected controller and independently verify public build parity and Wolo listener continuity. Never reuse the already consumed `3f1f2680` authorization. The separate Traffic API change requires its own service-specific preflight and proof; no legacy public audience timer or unverified October 20/21 public publication is implied.
+
 ## Purpose
 
 This is the first repository-local document for a fresh operator, terminal, or
