@@ -66,7 +66,7 @@ test("accepts up to five observed countries while hiding exact small-cohort coun
     { name: "Netherlands", unique_browser_ids: 6, small_cohort: false },
     { name: "Germany", unique_browser_ids: null, small_cohort: true },
     { name: "France", unique_browser_ids: null, small_cohort: true },
-  ] as typeof raw.top_countries;
+  ] as unknown as typeof raw.top_countries;
   const result = normalizeTrafficBrowserInsights(raw, "2026-10-21");
   assert.equal(result.topCountries.length, 5);
   assert.deepEqual(result.topCountries.at(-1), {
@@ -78,7 +78,7 @@ test("rejects unsuppressed tiny counts or mismatched privacy marker", () => {
   const raw = valid();
   raw.top_countries = [{
     name: "Germany", unique_browser_ids: null, small_cohort: false,
-  }] as typeof raw.top_countries;
+  }] as unknown as typeof raw.top_countries;
   assert.throws(
     () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
     /Invalid country small-cohort suppression/,
