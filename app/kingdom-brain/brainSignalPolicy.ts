@@ -162,3 +162,21 @@ export function brainSettledResult<T>(source: BrainSignalSource, result: Promise
 export function brainSourceTimeLabel(sourceAt: string | null): string {
   return sourceAt ? sourceAt.slice(5, 10) + " " + sourceAt.slice(11, 16) + "Z" : "NO SOURCE TIME";
 }
+
+/**
+ * Schedules exactly one age-bound UI update, not an API poll.
+ * The caller's display clock and wall clock are separate so that a throttled
+ * background tab cannot keep a source visibly qualified on resume.
+ */
+export function nextBrainSignalExpiryDelay(
+  signals: readonly BrainSignalDecision[],
+  displayedAtMs: number,
+  wallNowMs: number,
+): number | null {
+  if (!Number.isFinite(displayedAtMs) || !Number.isFinite(wallNowMs)) return null;
+  const candidates = signals
+    .filter(signal => isBrainSignalDisplayable(signal, displayedAtMs) && signal.sourceAtMs !== null)
+    .map(signal => signal.sourceAtMs! + BRAIN_SIGNAL_MAX_AGE_MS + 1);
+  if (!candidates.length) return null;
+  return Math.max(0, Math.min(...candidates) - wallNowMs);
+}
