@@ -30,7 +30,7 @@ const REQUIRED=[
   ".next/server/app-paths-manifest.json",".next/build-manifest.json",
   ".next/required-server-files.json",
   ...TRACES,
-  "node_modules/.prisma/client/index.js"
+  "lib/generated/prisma/index.js"
 ];
 function inside(root,file){
   const r=relative(root,file);
@@ -124,7 +124,7 @@ export async function collectIndexEmittedClosure(root,head,expectedSha){
     limitations:[
       "CAPTURE ONLY: Next emitted route traces are not independently proven exhaustive.",
       "No actual server request, dynamic-import execution, database query, signed reviewer, production parity or certification gate is established.",
-      "Generated Prisma file presence and hashes do not prove runtime Prisma authority."
+      "Custom-output Prisma file presence and hashes do not prove runtime Prisma authority."
     ],
     files:verified,
     missing:[...new Set(missing)].sort(),
