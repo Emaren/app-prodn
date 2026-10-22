@@ -67,6 +67,19 @@ test("retired sidecar entry points contain no callable financial transport",()=>
   }
 });
 
+test("every real one-shot signer submission is source/build-bound to a revocable short PostgreSQL financial lease",()=>{
+  const source=load("lib/warSatchelFundedOutboxTick.ts");
+  assert.match(source,/withHdFinancialLease\(/);
+  assert.match(source,/scope:"hd-satchel",producer:"war-satchel-auto-bet"/);
+  assert.match(source,/wallet:signer\.attestedVaultAddress/);
+  assert.match(source,/connectCertifiedSatchelSigner\(fetch,signal\)/);
+  assert.match(source,/current\.attestedVaultAddress!==signer\.attestedVaultAddress/);
+  assert.match(source,/prisma,leaseBoundSigner,ids/);
+  assert.doesNotMatch(source,/prisma,signer,ids/);
+  assert.match(source,/financial_fence_held_or_unknown/);
+  assert.doesNotMatch(source,/privateKey|mnemonic|approveAll|allowUnfenced/);
+});
+
 test("empty funded Watcher outbox does not probe the custody signer",()=>{
  const source=load("lib/warSatchelFundedOutboxTick.ts");
  const query=source.indexOf("const ids=await readEligibleFundedMechaIds(prisma,options);");
