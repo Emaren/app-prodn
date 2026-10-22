@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-product-money-limits` at `908095539cd400d979ba478b2569a04058a7665f`
+Implementation baseline: `codex/satchel-product-money-limits` at `6819cf7266548ad4975a862e981df862508cd2e7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

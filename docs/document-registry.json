@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "367b09c7fa80a12cb19e1e5e60b579dba5775ad9e68f9979cc1f60e43cbd4419",
+      "sha256": "469a04f0f0d268dd0791ec95afacea90d83e9e96203e86cde3939c0bab233056",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/satchel-product-money-limits",
-    "commit": "908095539cd400d979ba478b2569a04058a7665f"
+    "commit": "6819cf7266548ad4975a862e981df862508cd2e7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
