@@ -12,6 +12,8 @@ import datetime as dt
 import http.client
 import json
 import math
+import os
+import re
 import pathlib
 import subprocess
 import threading
@@ -20,7 +22,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright
 
-SHA = "d79980ba95ce7a6514c3e794c222efe400d1b319"
+SHA = os.environ.get("EXPECTED_CANDIDATE_SHA", "")
 NOW = dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 HOP = {"connection", "keep-alive", "transfer-encoding", "upgrade", "proxy-connection", "te", "trailer"}
 
@@ -231,7 +233,8 @@ async def main():
                                       text=True,stderr=subprocess.DEVNULL).strip()
     except (OSError,subprocess.CalledProcessError):
         raise SystemExit("STOP: no verifiable source-pinned Git checkout")
-    if head!=SHA or dirty: raise SystemExit("STOP: exact PR #807 SHA mismatch or modified tracked files")
+    if not re.fullmatch(r"[0-9a-f]{40}", SHA) or head!=SHA or dirty:
+        raise SystemExit("STOP: authenticated EXPECTED_CANDIDATE_SHA missing/mismatched, or modified tracked source")
     build=args.repo/".next"/"BUILD_ID"
     if not build.is_file() or not build.read_text().strip(): raise SystemExit("STOP: no real .next/BUILD_ID")
     if not 2<=args.samples<=30: raise SystemExit("STOP: bounded sample count required (2..30)")
