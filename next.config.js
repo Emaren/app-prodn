@@ -100,6 +100,7 @@ module.exports = {
   webpack(config, { webpack } = {}) {
     // Bind every financial admission attempt to the exact compiled source
     // and generation; build environment flags cannot supply a missing seal.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const financialIdentity = require("./scripts/hd-financial-build-identity.cjs")(__dirname);
     if (webpack) {
       config.plugins = config.plugins || [];
