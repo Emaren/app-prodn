@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3471e964da9a6ac23aeb0da2b45e6305d89a278eeb8f43fbcfbe66f102e6a924",
+      "sha256": "47cc2abb847eff215ca36b79f09a90c388dbd2a4046c3a2ee2d266859be75601",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/hd-funded-admission-canonical-proposition-time-20261021",
-    "commit": "3e4023f7448196e24606c3d6434998374e2533e2"
+    "commit": "f5acc15683c22a41621f002af02693e43e21050d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
