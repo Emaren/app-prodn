@@ -27,6 +27,18 @@ test("client-side Mecha and Keplr limits stay coupled to owner signed 10k/50k fi
  assert.match(keplr,/plannedStakeWolo <= BET_MAX_STAKE_WOLO/);
  assert.match(keplr,/max=\{AUTO_BET_MAX_DAILY_WOLO\}/);
 });
+test("authenticated Keplr consent route enforces the same owner spending caps under source locks",()=>{
+ const route=readFileSync(new URL("../app/api/user/war-satchel/auto-consent/route.ts",import.meta.url),"utf8");
+ assert.match(route,/BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO/);
+ assert.match(route,/stake < 1 \|\| stake > BET_MAX_STAKE_WOLO/);
+ assert.match(route,/\(body\.dailyCapWolo as number\) > AUTO_BET_MAX_DAILY_WOLO/);
+ assert.doesNotMatch(route,/stake > 1000|dailyCapWolo as number\) > 10000/);
+ assert.match(route,/pg_advisory_xact_lock\(724176, 47\)/);
+ assert.match(route,/pg_advisory_xact_lock\(721005/);
+ assert.match(route,/plan\.version !== body\.expectedPresetVersion/);
+ assert.match(route,/originalMandate:\{is:\{signedAt:\{not:null\}\}\}/);
+});
+
 test("lower server-plan limits remain binding in presentation and exact Keplr challenge",()=>{
  const [mecha,reserve,keplr]=contents;
  assert.match(mecha,/Math\.min\(server\?\.limits\.maxEstimatedReserveWolo/);
