@@ -5,7 +5,7 @@ import {
   normalizeNewBetAmount,normalizeHistoricalBetRecoveryAmount,autoBetDailyBudgetAvailable
 } from "../lib/betMoneyLimits.ts";
 
-test("new wager ceiling is 10k WOLO, not historical 50k",()=>{
+test("new Auto Bet ceiling is 10k WOLO, independent of legacy manual rules",()=>{
   assert.equal(BET_MAX_STAKE_WOLO,10_000);
   assert.equal(BET_MAX_STAKE_UWOLO,10_000_000_000n);
   assert.equal(normalizeNewBetAmount("10000"),10_000);

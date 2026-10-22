@@ -1,4 +1,5 @@
-/** Owner product contract: 10,000 WOLO per bet; 50,000 daily Auto Bet.
+/** Owner Auto Bet contract: 10,000 WOLO per ticket; 50,000 per UTC day.
+ * Legacy manual wager admission keeps its separate existing limits.
  * These are ceilings, never permission to enlarge an existing signed budget.
  * No custody/activation flag or historical financial record is changed here.
  */

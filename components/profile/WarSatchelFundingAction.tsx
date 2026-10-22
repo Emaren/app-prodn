@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {parseCertifiedWarSatchelRead} from "@/lib/warSatchelBalanceRead";
 
 type Keplr = {
   enable(chainId: string): Promise<void>;
@@ -92,33 +93,23 @@ export default function WarSatchelFundingAction({
   const [mayHaveSent, setMayHaveSent] = useState(false);
 
   const refreshBalance = async () => {
+    setBalance(null);
     const response = await fetch("/api/user/war-satchel/balance", {
       credentials: "same-origin", cache: "no-store",
     });
     const data = await reply(response);
-    if (response.ok) {
-      setBalance({
-        available: data.available === true,
-        depositEnabled: data.depositEnabled === true,
-        availableUwolo: typeof data.availableUwolo === "string" ? data.availableUwolo : "0",
-        reservedUwolo: typeof data.reservedUwolo === "string" ? data.reservedUwolo : "0",
-        withdrawalPendingUwolo: typeof data.withdrawalPendingUwolo === "string" ? data.withdrawalPendingUwolo : "0",
-      });
-    }
+    if (!response.ok) { setBalance(null); return; }
+    const ledger=parseCertifiedWarSatchelRead(data);
+    setBalance(ledger?{available:true,depositEnabled:data.depositEnabled===true,...ledger}:null);
   };
   useEffect(() => {
     let active = true;
     void fetch("/api/user/war-satchel/balance", {
       credentials: "same-origin", cache: "no-store",
-    }).then(reply).then(data => {
+    }).then(async response => response.ok?reply(response):null).then(data => {
       if (!active) return;
-      setBalance({
-        available: data.available === true,
-        depositEnabled: data.depositEnabled === true,
-        availableUwolo: typeof data.availableUwolo === "string" ? data.availableUwolo : "0",
-        reservedUwolo: typeof data.reservedUwolo === "string" ? data.reservedUwolo : "0",
-        withdrawalPendingUwolo: typeof data.withdrawalPendingUwolo === "string" ? data.withdrawalPendingUwolo : "0",
-      });
+      const ledger=parseCertifiedWarSatchelRead(data);
+      setBalance(ledger?{available:true,depositEnabled:data?.depositEnabled===true,...ledger}:null);
     }).catch(() => { if (active) setBalance(null); });
     return () => { active = false; };
   }, []);
