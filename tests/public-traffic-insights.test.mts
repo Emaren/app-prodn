@@ -58,19 +58,19 @@ test("rejects countries below the five-identifier privacy floor", () => {
   );
 });
 
-test("accepts up to five observed countries while hiding exact small-cohort counts", () => {
+test("accepts exact observed country aggregates while preserving compatible legacy fields", () => {
   const raw = valid();
   raw.top_countries = [
-    { name: "Canada", unique_browser_ids: 19, small_cohort: false },
-    { name: "United States", unique_browser_ids: 14, small_cohort: false },
-    { name: "Netherlands", unique_browser_ids: 6, small_cohort: false },
-    { name: "Germany", unique_browser_ids: null, small_cohort: true },
-    { name: "France", unique_browser_ids: null, small_cohort: true },
+    { name: "Canada", unique_browser_ids: 19, small_cohort: false, observed_browser_ids: 19 },
+    { name: "United States", unique_browser_ids: 14, small_cohort: false, observed_browser_ids: 14 },
+    { name: "Netherlands", unique_browser_ids: 6, small_cohort: false, observed_browser_ids: 6 },
+    { name: "Germany", unique_browser_ids: null, small_cohort: true, observed_browser_ids: 3 },
+    { name: "France", unique_browser_ids: null, small_cohort: true, observed_browser_ids: 1 },
   ] as unknown as typeof raw.top_countries;
   const result = normalizeTrafficBrowserInsights(raw, "2026-10-21");
   assert.equal(result.topCountries.length, 5);
   assert.deepEqual(result.topCountries.at(-1), {
-    name: "France", uniqueBrowserIds: null, smallCohort: true,
+    name: "France", uniqueBrowserIds: null, smallCohort: true, observedBrowserIds: 1,
   });
 });
 
@@ -90,6 +90,38 @@ test("rejects unsuppressed tiny counts or mismatched privacy marker", () => {
     () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
     /privacy threshold/,
   );
+});
+
+test("rejects an inconsistent exact country aggregate before public rendering", () => {
+  const raw = valid();
+  raw.top_countries = [{
+    name: "Germany", unique_browser_ids: null, small_cohort: true,
+    observed_browser_ids: 6,
+  }] as unknown as typeof raw.top_countries;
+  assert.throws(
+    () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
+    /Country aggregate disagrees/,
+  );
+  raw.top_countries = [{
+    name: "Canada", unique_browser_ids: 7, small_cohort: false,
+    observed_browser_ids: 4,
+  }] as unknown as typeof raw.top_countries;
+  assert.throws(
+    () => normalizeTrafficBrowserInsights(raw, "2026-10-21"),
+    /Country aggregate disagrees/,
+  );
+});
+
+test("continues accepting the old API until the exact aggregate backend deploys", () => {
+  const raw = valid();
+  raw.top_countries = [{
+    name: "China", unique_browser_ids: null, small_cohort: true,
+  }] as unknown as typeof raw.top_countries;
+  const result = normalizeTrafficBrowserInsights(raw, "2026-10-21");
+  assert.deepEqual(result.topCountries[0], {
+    name: "China", uniqueBrowserIds: null,
+    smallCohort: true, observedBrowserIds: null,
+  });
 });
 
 test("rejects fabricated zero duration when qualifying visits exist", () => {
