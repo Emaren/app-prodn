@@ -5,6 +5,7 @@ import rubric from "../config/kingdom-index-quality-rubric.json" with {type:"jso
 import profiles from "../config/kingdom-index-assurance-profiles.json" with {type:"json"};
 import { requiredProofKindsForCriterion } from "../lib/kingdomIndexCriterionProofPolicy.mjs";
 import { PUBLICATION_SCHEMA, verifyKingdomIndexPublication } from "../lib/kingdomIndexTrustedPublication.mjs";
+import { loadCurrentKingdomIndexTrustedPublication } from "../lib/kingdomIndexTrustedPublicationRead.mjs";
 
 const SHA=(value:string)=>createHash("sha256").update(value).digest("hex");
 const NOW=Date.parse("2026-10-22T19:00:00.000Z");
@@ -102,4 +103,11 @@ test("duplicated proof, unapproved category, partial criterion and altered signe
   await assert.rejects(verifyKingdomIndexPublication(seal(c),ctx()),/Incomplete canonical evidence/);
   const d=seal(payload());d.payloadBase64=Buffer.from(d.payloadBase64,"base64").toString("base64").replace(/.$/,"A");
   await assert.rejects(verifyKingdomIndexPublication(d,ctx()));
+});
+
+test("public read without independently configured deploy trust returns UNKNOWN, never self-mints",async()=>{
+  const result=await loadCurrentKingdomIndexTrustedPublication({
+    rubric,profile:profiles.profiles.index,nowMs:NOW,
+  });
+  assert.equal(result,null);
 });
