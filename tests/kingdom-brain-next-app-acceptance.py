@@ -240,6 +240,77 @@ async def fixture_case(browser,args,name,mapping,clock=None):
     else:result["passed"]=False
     await ctx.close()
     return result
+async def lifecycle_race_case(browser,args):
+    """Real Next page with controlled delayed GETs; independent of mocked React."""
+    ctx,page=await new_page(browser,{"width":1280,"height":800})
+    counts={"api":{},"blocked":0};await guard(page,counts)
+    started=asyncio.Event();release_old=asyncio.Event()
+    third_started=asyncio.Event();release_third=asyncio.Event()
+    number=[0];errors=[];page.on("pageerror",lambda e:errors.append(str(e)[:250]))
+    source=fixtures(datetime.now(timezone.utc))
+    old=fixtures(datetime.now(timezone.utc),index_age_ms=360_000)["index"]
+    async def serve(route):
+        key=urlparse(route.request.url).path.removeprefix("/api/kingdom-")
+        if key=="index":
+            number[0]+=1
+            i=number[0]
+            if i==1:
+                started.set();await release_old.wait()
+            if i==3:
+                third_started.set();await release_third.wait()
+            payload=old if i==1 else source["index"]
+        else:payload=source[key]
+        try:
+            await route.fulfill(status=200,content_type="application/json",
+                                body=json.dumps(payload,separators=(",",":")))
+        except Exception:
+            # Browser AbortController may cancel the request before fixture
+            # fulfillment. This does not count as a healthy response.
+            pass
+    for path in ENDPOINTS:await page.route("**"+path,serve)
+    report={"name":"race_visibility_unmount","mode":"REAL_NEXT_CONTROLLED_API_FIXTURE",
+            "passed":False,"source":"real Next page, delayed read-only endpoints"}
+    spare=None
+    try:
+        await mount(page,args.url,counts)
+        await asyncio.wait_for(started.wait(),timeout=12)
+        spare=await ctx.new_page();await spare.bring_to_front()
+        await page.wait_for_function("document.visibilityState==='hidden'",timeout=6000)
+        report["hidden"]=True
+        await page.bring_to_front()
+        await page.wait_for_function("document.visibilityState==='visible'",timeout=6000)
+        report["returnedVisible"]=True
+        for _ in range(50):
+            if (await statuses(page)).get("INDEX")=="OBSERVED":break
+            await page.wait_for_timeout(200)
+        report["latestBeforeOld"]=(await statuses(page)).get("INDEX")
+        release_old.set()
+        await page.wait_for_timeout(500)
+        report["latestAfterOld"]=(await statuses(page)).get("INDEX")
+        # An additional in-flight refresh must be aborted on unmount.
+        refresh=page.get_by_role("button",name="Refresh authority signals")
+        await refresh.click(timeout=12000)
+        await asyncio.wait_for(third_started.wait(),timeout=12)
+        await page.goto(args.url+"/kingdom-index",wait_until="domcontentloaded",timeout=20000)
+        release_third.set()
+        await page.wait_for_timeout(500)
+        report["unmounted"]=not page.url.endswith("/kingdom-brain")
+        report["indexRequests"]=number[0]
+        report["allApiRequests"]=dict(counts["api"])
+        report["pageErrors"]=errors
+        report["passed"]=all((report["latestBeforeOld"]=="OBSERVED",
+                              report["latestAfterOld"]=="OBSERVED",
+                              report["hidden"],report["returnedVisible"],
+                              report["unmounted"],number[0]==3,
+                              not errors,counts["blocked"]==0))
+    except Exception as error:
+        report["error"]=str(error)[:300]
+    finally:
+        release_old.set();release_third.set()
+        if spare is not None:await spare.close()
+        await ctx.close()
+    return report
+
 async def run(args,repo,build,blob):
     output=Path(args.output);output.mkdir(parents=True,exist_ok=True)
     report={"status":"RUNNING","sourceSha":args.sha,"clientBlobSha":blob,"emittedBuildId":build,
@@ -273,6 +344,7 @@ async def run(args,repo,build,blob):
             for name,mapping in data:
                 report["controlledFixtures"].append(await fixture_case(browser,args,name,mapping,
                     clock=moment if name=="expiry" else None))
+            report["controlledFixtures"].append(await lifecycle_race_case(browser,args))
             await browser.close()
         report["status"]="PASS" if all(all(x["checks"].values()) and not x["pageErrors"] for x in report["realApi"]) and all(x["passed"] for x in report["controlledFixtures"]) else "FAIL"
     finally:
