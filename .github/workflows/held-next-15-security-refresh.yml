@@ -54,7 +54,7 @@ jobs:
           assert (w["advisory_id"],w["module"],w["version"],w["scope"],w["expires_on"]) == (1240992,"braces","3.0.3","dev-only","2026-10-24")
           w["dependency_digest"]=dependency_digest()
           w["reason"]="2026-10-22 Next.js-only security patch re-seal: exact braces 3.0.3 dev-only graph must independently pass check_dependency_security.py path-root analysis before Git commit. Original 2026-10-24 expiry preserved; no runtime, new advisory or blanket waiver allowed."
-          p.write_text(json.dumps(d,indent=2)+"\\n")
+          p.write_text(json.dumps(d,indent=2))
           PY
           python3 scripts/check_dependency_security.py
           python3 scripts/docs_v2_check.py --write --refresh-baseline
