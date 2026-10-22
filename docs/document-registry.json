@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "595b733d200850ebe51bf14b9846c03436725fe9ef47cf19e08824026661f2a9",
+      "sha256": "777caf1226b12f8ca4273b833bebdcd430eb4927fd8cb811e6536e3d9e466f4d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/20261022-original-live-admission-held",
-    "commit": "546b5175bc2b1d8fc0f16db8a8bd0c570d80fef9"
+    "commit": "217c76033dae25abf44defaa3d4f6162a1c21dae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
