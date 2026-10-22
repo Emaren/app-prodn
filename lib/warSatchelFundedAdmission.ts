@@ -131,7 +131,7 @@ function utc(value: string): number | null {
   // timestamp must describe the claimed instant, not a normalized successor.
   const canonical = new Date(ms).toISOString();
   const expected = value.replace(
-    /(?:\\.(\\d{1,3}))?Z$/,
+    /(?:\.(\d{1,3}))?Z$/,
     (_match, fraction: string | undefined) =>
       "." + (fraction ?? "").padEnd(3, "0") + "Z",
   );
