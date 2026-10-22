@@ -56,7 +56,7 @@ The Oct 22 user-provided protected release status showed Mac/production `3f1f268
 
 ## CLI usage for future specialist sessions
 
-Run from a clean checkout at the exact desired Git revision. The `--sha` argument is a supplied identity, not a fresh Git attestation; first obtain and verify `git rev-parse HEAD` and compare with current `origin/main`, active PR ownership and intended deployment separately.
+Run from a clean checkout at the exact desired Git revision. The CLI now checks that `--sha` **matches actual local Git HEAD** and refuses tracked working-tree modifications before creating a work packet. It cannot authenticate remote `origin/main`, protect against malicious Git configurations, lock a GitHub PR or independently attest the deployed build; review current remote main, active PR ownership and production separately.
 
 ```bash
 node scripts/renaissance_page_worker.mjs --format queue
