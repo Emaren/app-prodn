@@ -26,7 +26,7 @@ const format = (n: number | null | undefined) => typeof n === "number" && Number
 const metric = (n: number | null | undefined, suffix = "") => typeof n === "number" && Number.isFinite(n) ? n.toFixed(1) + suffix : "—";
 const age = (iso: string) => {
   const date = new Date(iso);
-  return Number.isFinite(date.getTime()) ? date.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }) : "—";
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(11, 16) : "—";
 };
 const colors: Record<WatcherSignalState, string> = Object.fromEntries(STATES.map(row => [row.key, row.color])) as Record<WatcherSignalState, string>;
 const coordinates = (index: number) => {
