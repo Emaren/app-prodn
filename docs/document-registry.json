@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6be60f8742dca85420d5f313f5674d126d25a5668a5a99c2316ecd0b31b5b05d",
+      "sha256": "09ff414e1e8382e4ad80aeaadf27f3016874cb245a744b74dc7e956f3290ef78",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1221,7 +1221,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
+      "sha256": "d75d0f10514fc17901f6a1b7b90208b9adb4a912e0791774ba727a56fda8cf41",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "f112d1be35395232385c458d7d15c8566dd9d326"
+    "branch": "fix/renaissance-page-change-nul-delimiter-20261022",
+    "commit": "f6bf17e5dc0b957c3c9add9e690f2758e37a2552"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
