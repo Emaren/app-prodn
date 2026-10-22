@@ -60,6 +60,17 @@ export default function KingdomTestProofPanel() {
     }
   }
 
+  function cancelInspection() {
+    // Do not disable the triggering button: Chromium otherwise drops keyboard
+    // focus to BODY while the bounded reader is pending.
+    const previous = active.current;
+    active.current = null;
+    previous?.abort();
+    setProof(null);
+    setError("Inspection cancelled; no evidence result was retained.");
+    setState("error");
+  }
+
   return (
     <section aria-labelledby="kingdom-test-proof-title" className="mx-auto my-5 w-full max-w-[1440px] rounded-2xl border border-cyan-300/15 bg-slate-950 p-5 text-slate-200 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -67,8 +78,8 @@ export default function KingdomTestProofPanel() {
           <p id="kingdom-test-proof-title" className="text-lg font-bold tracking-wide text-cyan-200">TEST EVIDENCE · TRUST BOUNDARY</p>
           <p className="mt-2 text-sm leading-6 text-slate-300">The existing matrix reports <strong>General Inspections readiness checks</strong>, not independently authenticated test executions. A green readiness score, a freshly fetched response, or a declared check does not certify passing tests or a Renaissance page grade.</p>
         </div>
-        <button type="button" disabled={state === "loading"} onClick={() => void inspect()} className="rounded-lg border border-cyan-300/40 px-4 py-2 text-sm font-semibold text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200 disabled:opacity-50">
-          {state === "loading" ? "Inspecting evidence…" : "Inspect published claims"}
+        <button type="button" onClick={() => state === "loading" ? cancelInspection() : void inspect()} className="rounded-lg border border-cyan-300/40 px-4 py-2 text-sm font-semibold text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200">
+          {state === "loading" ? "Cancel inspection" : "Inspect published claims"}
         </button>
       </div>
       <div aria-live="polite" aria-atomic="true" className="mt-4 text-sm">
