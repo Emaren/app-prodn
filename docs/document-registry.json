@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "505740f4ee9cf95926cd6ef31882c02b926f6c361b50c506adc7994e1ee46c2a",
+      "sha256": "bc6feb188c1a45f5eba50550eb4c9be100269b317981b85c88d41fe163a3b2fb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "d544648292f16e86efe5a7a6ecfdbbfa47bfb23824a14ac8b248da3d39fada87",
+      "sha256": "aa4019344d8e84a26709772451904caf9b5239554ecb76feda0856c0bded9650",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -801,7 +801,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "restricted",
-      "sha256": "cc4b0ed9a0be493d5a7d488c3542ebe5a52f50c79a84b3b01ee379a7fd7d2b80",
+      "sha256": "5d9155631da831639116397d93fe2a1818f6bc1357e556fe0dbd41e5af411f53",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2192,7 +2192,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/hd-live-market-admission",
-    "commit": "1452686c356554b74b11b61c9d558d65ce0430c3"
+    "commit": "c0fd3e41ea19ede2a2f8c994dcc0cb60fa95576a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
