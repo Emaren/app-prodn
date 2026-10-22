@@ -99,6 +99,53 @@ to review and cannot open the financial rail. Single/watcher ingestion retains
 its existing tournament-proof refresh behavior, but uses the same trusted-result
 gate for markets.
 
+### Awaited authenticated LIVE market admission — October 21
+
+A direct Replay API upload already schedules the private bearer-authenticated
+`POST /api/replay/post-ingest`; the web proxy calls the same coordinator after
+its commit. LIVE receipts now select at most 64 exact durable `game_stats` IDs
+for `admitCommittedLiveWatcherMarkets`. HTTP receipt flags never supply roster,
+owner, time, platform, game-version or money authority. The stage is awaited;
+a database failure is reported as retryable HTTP 503 instead of acknowledged
+before a process-local market/settlement timer runs.
+
+The new source policy requires HD, canonical RM/DM, nonfinal parsed Watcher
+LIVE evidence, actual verified provenance and byte-hash metadata, a DB-linked
+Steam owner appearing exactly once, a complete two-team roster and the existing
+12-minute LIVE horizon. It reuses the canonical session snapshot, identity
+promotion, winner/Desync seed builders, public battle numbers and market writer.
+Inside the game advisory lock it reloads and share-locks source rows, refreshes
+the canonical snapshot and rechecks terminal/freshness/roster authority before
+writing. A terminal result committed during a wait wins. Existing closed,
+voided, settled, expired or roster-frozen books cannot be reopened by replaying
+a LIVE callback. A future scheduled cutoff is retained.
+
+This narrow admission only materializes market metadata and the existing
+nonfinancial Mecha preview outbox. It never reserves money, creates tickets or
+wagers, retries claims, settles payments or calls a signer. Trusted final-result
+reconciliation remains a separate private stage. Public GET/SSR remains
+read-only; custody and the source financial bridge remain held.
+
+`python3 scripts/check-live-watcher-admission.py` composes exact Replay API
+`5a2750849e59f0e4551c6e9e0417b59254cff467` with the actual private PostgreSQL
+HD schema and canonical writers. It runs the real stored Watcher-key account
+binding, HMAC verification, upload hashing/archive, original-capture evidence,
+SQL commit and background notifier. Parser bytes and parser output are
+controlled test inputs, and notifier delivery is captured. The same test proves
+that a spoofed account header cannot change ownership, bad HMAC cannot admit,
+concurrent callbacks make one book/preview, team/RM/DM work, stale/DE/custom
+inputs fail, and terminal or freshness changes during locks cannot mint books.
+This is reusable source qualification, not a human LIVE capture or mainnet,
+reviewer, custody, matching, funding or independent game-oracle certification.
+The explicit consenting-Watcher live canary remains required for activation.
+
+The Replay API notifier currently has three bounded process-local attempts.
+Its process can still die after commit and before delivery; the admission is
+idempotent on redelivery, but this change does not manufacture a durable API
+outbox or claim guaranteed delivery across that gap. Preserve the committed
+upload/parse-attempt identity and use an authorized retry/reconciliation source
+when completing the operational delivery guarantee.
+
 Tournament and market stages fail independently after accepted bytes have been
 preserved. Their error receipts must be shown to operators and retried through
 the idempotent reconciler; a downstream reconciliation failure must not be

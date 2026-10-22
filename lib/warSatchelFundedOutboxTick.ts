@@ -11,9 +11,8 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { satchelFinancialBridgeReady } from "./warSatchelFinancialBridgeHold.ts";
 import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
-import { readEligibleFundedMechaIds, FUNDED_MECHA_CANDIDATE_LIMIT } from "./warSatchelEligibleOutbox.ts";
+import { readEligibleFundedMechaIds } from "./warSatchelEligibleOutbox.ts";
 
-const MAX=FUNDED_MECHA_CANDIDATE_LIMIT;
 export type FundedMechaIntakeReport=Readonly<{
   state:"disabled"|"empty"|"examined";
   source:"watcher-shadow-outbox";

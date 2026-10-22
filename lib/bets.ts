@@ -1,3 +1,4 @@
+import {committedLiveWatcherAdmissionIssue,liveSessionMatchesCommittedWatcher,type CommittedLiveWatcherRow} from "./liveWatcherMarketAdmission.ts";
 import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -8060,26 +8061,36 @@ async function reconcileAuthorizedReplayVerdictMarkets(
   }
 }
 
-async function runBetMarketEnsure(prisma: PrismaClient) {
-  await archiveLowConfidenceZeroPotMarkets(prisma);
-  const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
-  const {
-    seeds,
-    reconciledSessionKeys,
-    activeSessions,
-  } = await buildOpenMarketSeeds(prisma);
-  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
-  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+/** Shared canonical seed writer. Advisory locks and terminal/roster latches
+ * apply equally to routine reconciliation and authenticated live admission. */
+const LIVE_ADMISSION_SOURCE_SELECT = {id:true,is_final:true,parse_source:true,
+  parse_iteration:true,replayHash:true,game_version:true,game_type:true,createdAt:true,played_on:true,winner:true,
+  players:true,key_events:true,user:{select:{uid:true,steamId:true}}} as const;
 
-  await Promise.all(
+async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[]){
+  const liveOnly = liveSources !== undefined;
+  return Promise.all(
     seeds.map(async (seed) => {
-      await prisma.$transaction(async (tx) => {
+      return prisma.$transaction(async (tx) => {
         const seedLockKey =
           canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)) ??
           `bet-market-seed:${seed.slug}`;
         await tx.$executeRaw(
           Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${seedLockKey}, 0))`
         );
+        if (liveSources) {
+          // Parsing can finish or freshness can expire while this seed waits.
+          // Lock/reload durable source rows only after the canonical game lock;
+          // updates to these rows cannot race the ensuing market write.
+          const sourceIds = liveSources.map(row=>row.id);
+          await tx.$queryRaw(Prisma.sql`SELECT id FROM game_stats WHERE id IN (${Prisma.join(sourceIds)}) ORDER BY id FOR SHARE`);
+          const currentRows = await tx.gameStats.findMany({where:{id:{in:sourceIds}},select:LIVE_ADMISSION_SOURCE_SELECT});
+          const currentSnapshot = await loadLiveSessionSnapshot(tx);
+          const currentSession = currentSnapshot.activeSessions.find(session=>
+            session.sessionKey===seed.linkedSessionKey && session.teamResolution.propositionHash===seed.propositionHash &&
+            currentRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null && liveSessionMatchesCommittedWatcher(row,session)));
+          if (!currentSession) return {created:false,admitted:false};
+        }
         const existing = await tx.betMarket.findUnique({
           where: { slug: seed.slug },
           select: {
@@ -8104,6 +8115,10 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             createdAt: true,
           },
         });
+        if (liveOnly && existing && (
+          !["open","live"].includes(existing.status) || existing.settledAt || existing.winnerSide ||
+          existing.closeAt && existing.closeAt.getTime() <= Date.now()
+        )) return {created:false,admitted:false};
         const rosterChangedAfterStake = Boolean(
           existing?.firstStakeAcceptedAt &&
           existing.propositionHash &&
@@ -8112,7 +8127,8 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
         const persisted = await tx.betMarket.upsert({
           where: { slug: seed.slug },
           create: marketSeedCreateData(seed),
-          update: marketSeedUpdateData(seed, existing),
+          update: {...marketSeedUpdateData(seed, existing),
+            ...(liveOnly && existing?.closeAt ? {closeAt:existing.closeAt} : {})},
         });
         if (rosterChangedAfterStake) {
           await tx.betMarketIntegrityIncident.upsert({
@@ -8142,9 +8158,24 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             },
           });
         }
-      });
+        return {created:!existing,admitted:persisted.status === "live" || persisted.status === "open"};
+      }, liveOnly ? {maxWait:5000,timeout:9000} : undefined);
     })
   );
+}
+
+async function runBetMarketEnsure(prisma: PrismaClient) {
+  await archiveLowConfidenceZeroPotMarkets(prisma);
+  const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
+  const {
+    seeds,
+    reconciledSessionKeys,
+    activeSessions,
+  } = await buildOpenMarketSeeds(prisma);
+  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
+  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+
+  await persistBetMarketSeeds(prisma,seeds);
 
   try {
     await materializeBetPhaseBookShadows(prisma, seeds);
@@ -8313,6 +8344,46 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   } catch (error) {
     console.warn("Auto Bet shadow evaluation failed after market reconciliation:", error);
   }
+}
+
+/** Awaited private post-commit admission. Receipt IDs only select durable rows;
+ * they never supply game, owner, platform, roster, clock or financial authority.
+ * No page visit, timer, WOLO transfer, claim retry or settlement is called here. */
+export async function admitCommittedLiveWatcherMarkets(prisma:PrismaClient,gameStatsIds:readonly (string|number|null|undefined)[]){
+  if(process.env.AOE2WAR_PROD_DB_PREVIEW === "true")throw Error("LIVE_MARKET_ADMISSION_READ_ONLY_PREVIEW");
+  const ids=[...new Set(gameStatsIds.map(id=>typeof id === "number"?id:typeof id === "string"&&/^[1-9][0-9]{0,9}$/.test(id)?Number(id):0))];
+  if(ids.length>64||ids.some(id=>!Number.isSafeInteger(id)||id<=0))throw Error("LIVE_MARKET_ADMISSION_INVALID_COMMITTED_IDS");
+  if(!ids.length)return {createdCount:0,existingCount:0,skippedCount:0};
+  const rows=await prisma.gameStats.findMany({where:{id:{in:ids}},select:LIVE_ADMISSION_SOURCE_SELECT});
+  const eligible=rows.filter(row=>committedLiveWatcherAdmissionIssue(row)===null);
+  if(!eligible.length)return {createdCount:0,existingCount:0,skippedCount:ids.length};
+  const snapshot=await loadLiveSessionSnapshot(prisma);
+  const sessions=snapshot.activeSessions.filter(session=>eligible.some(row=>liveSessionMatchesCommittedWatcher(row,session)));
+  let seeds=sessions.flatMap((session,index)=>{
+    const winner=buildSessionMarketSeed(session,-300+index,false);
+    if(!winner||winner.status!=="live")return [];
+    const desync=buildDesyncSideMarketSeed(winner);
+    return desync?[winner,desync]:[winner];
+  });
+  const blocked=await reconcileWatcherMarketIdentityPromotions(prisma,seeds);
+  seeds=seeds.filter(seed=>!blocked.has(normalizeName(seed.linkedSessionKey)));
+  const identities=await ensurePublicBattleIdentities(prisma,seeds.filter(seed=>seed.marketType===WINNER_MARKET_TYPE).map(seed=>({
+    sessionKey:normalizeName(seed.linkedSessionKey),state:"live" as const,startedAt:resolveWatcherBattleStartedAt(
+      buildWatcherBattleStartIndex(sessions),seed.linkedSessionKey),completedAt:null,allowCreate:true})));
+  for(const seed of seeds){const key=canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)),identity=key?identities.get(key):null;
+    seed.battleId=identity?.id??null;seed.battlePublicNumber=identity?.publicNumber??null;}
+  const results=await persistBetMarketSeeds(prisma,seeds,eligible);
+  for(const parent of seeds.filter(seed=>seed.marketType===WINNER_MARKET_TYPE)){
+    const winner=await prisma.betMarket.findUnique({where:{slug:parent.slug},select:{id:true}});
+    const child=buildDesyncSideMarketSeed(parent);
+    if(winner&&child)await prisma.betMarket.updateMany({where:{slug:child.slug,marketType:DESYNC_SIDE_MARKET_TYPE},data:{parentMarketId:winner.id}});
+  }
+  const admittedSessions=sessions.filter(session=>seeds.some((seed,index)=>
+    seed.marketType===WINNER_MARKET_TYPE&&seed.linkedSessionKey===session.sessionKey&&results[index]?.admitted));
+  await runBetAutoShadowWorker(prisma,{activeSessions:admittedSessions});
+  return {createdCount:results.filter(r=>r?.admitted&&r.created).length,
+    existingCount:results.filter(r=>r?.admitted&&!r.created).length,
+    skippedCount:Math.max(0,ids.length-sessions.length)+results.filter(r=>!r?.admitted).length};
 }
 
 // Several public/admin/replay routes can request the same reconciliation pass.

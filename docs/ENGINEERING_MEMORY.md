@@ -15,6 +15,24 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## October 21 — private LIVE admission is an awaited, nonfinancial stage
+
+Public GET/SSR isolation exposed a private-ingest gap: a LIVE upload scheduled
+full financial `ensureBetMarkets` on an unawaited process timer. Reuse canonical
+seed/identity/session code in a bounded private admission stage instead. Reload
+committed source rows under the game advisory lock, protect them through the
+write and recheck current terminal/freshness truth. The real PG counterexample
+created two live books after a terminal update without this guard; guarded code
+creates none. Duplicate delivery and restart replay must retain the same books
+and preview identity, never revive closed books or wake a financial producer.
+
+A controlled original-upload test now exercises real API key/HMAC/archive/SQL
+and the actual HD PostgreSQL consumer. Its parser/capture and delivery transport
+are controlled, and source holds remain false. Preserve that limit: no human
+LIVE, independently governed game authority, custody or production financial
+success is established. The API's process-local post-commit delivery gap also
+remains distinct from idempotent HD admission.
+
 ## October 21 — preserve proof authority through waits and release epochs
 
 A valid historical bank proof is not current assets when an authenticated
