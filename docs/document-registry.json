@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d8ebaf873fb1659b19c6e0e229da2efa72d82db57ed11a97a25d928baf452122",
+      "sha256": "05673cfbbdbae10e9774863ddc889b6a56d05e1effa4106ddec4839cc1cddc54",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261022-final-mainnet-github-held",
-    "commit": "54d0b72c02f328b16067e798be201e32446e1071"
+    "commit": "fa50d0be5e78d0f926fa3fe3a84ab4ef1a0d9d24"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
