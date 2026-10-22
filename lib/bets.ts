@@ -1,3 +1,4 @@
+import {committedLiveWatcherAdmissionIssue,liveSessionMatchesCommittedWatcher,LIVE_WATCHER_ADMISSION_MAX_AGE_MS,type CommittedLiveWatcherRow} from "./liveWatcherMarketAdmission.ts";
 import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -8060,26 +8061,40 @@ async function reconcileAuthorizedReplayVerdictMarkets(
   }
 }
 
-async function runBetMarketEnsure(prisma: PrismaClient) {
-  await archiveLowConfidenceZeroPotMarkets(prisma);
-  const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
-  const {
-    seeds,
-    reconciledSessionKeys,
-    activeSessions,
-  } = await buildOpenMarketSeeds(prisma);
-  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
-  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+/** Exact committed source, under a bounded lock, wins over receipts and timers. */
+const LIVE_ADMISSION_SOURCE_SELECT={id:true,is_final:true,parse_source:true,
+  parse_iteration:true,replayHash:true,game_version:true,game_type:true,createdAt:true,played_on:true,winner:true,
+  players:true,key_events:true,user:{select:{uid:true,steamId:true}}} as const;
 
-  await Promise.all(
+async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[]){
+  return Promise.all(
     seeds.map(async (seed) => {
-      await prisma.$transaction(async (tx) => {
+      return prisma.$transaction(async (tx) => {
+        if(liveSources){
+          await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
+          await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
+        }
         const seedLockKey =
           canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)) ??
           `bet-market-seed:${seed.slug}`;
         await tx.$executeRaw(
           Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${seedLockKey}, 0))`
         );
+        let liveAuthorityRows: readonly CommittedLiveWatcherRow[] | undefined;
+        if(liveSources){
+          // Row locks alone cannot prevent a new, unseen terminal INSERT.
+          // Serialize the short live seed write behind every GameStats writer.
+          await tx.$executeRaw`LOCK TABLE game_stats IN SHARE MODE`;
+          const sourceIds=liveSources.map(row=>row.id);
+          await tx.$queryRaw(Prisma.sql`SELECT id FROM game_stats WHERE id IN (${Prisma.join(sourceIds)}) ORDER BY id FOR SHARE`);
+          const currentRows=await tx.gameStats.findMany({where:{id:{in:sourceIds}},select:LIVE_ADMISSION_SOURCE_SELECT});
+          const currentSnapshot=await loadLiveSessionSnapshot(tx);
+          const currentSession=currentSnapshot.activeSessions.find(session=>
+            session.sessionKey===seed.linkedSessionKey && session.teamResolution.propositionHash===seed.propositionHash &&
+            currentRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null && liveSessionMatchesCommittedWatcher(row,session)));
+          if(!currentSession)return {created:false,admitted:false};
+          liveAuthorityRows=currentRows.filter(row=>liveSessionMatchesCommittedWatcher(row,currentSession));
+        }
         const existing = await tx.betMarket.findUnique({
           where: { slug: seed.slug },
           select: {
@@ -8104,6 +8119,10 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             createdAt: true,
           },
         });
+        if(liveSources&&existing&&(
+          !["open","live"].includes(existing.status)||existing.settledAt||existing.winnerSide||
+          (existing.closeAt&&existing.closeAt.getTime()<=Date.now())
+        ))return {created:false,admitted:false};
         const rosterChangedAfterStake = Boolean(
           existing?.firstStakeAcceptedAt &&
           existing.propositionHash &&
@@ -8112,7 +8131,8 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
         const persisted = await tx.betMarket.upsert({
           where: { slug: seed.slug },
           create: marketSeedCreateData(seed),
-          update: marketSeedUpdateData(seed, existing),
+          update: {...marketSeedUpdateData(seed, existing),
+            ...(liveSources&&existing?.closeAt?{closeAt:existing.closeAt}:{})},
         });
         if (rosterChangedAfterStake) {
           await tx.betMarketIntegrityIncident.upsert({
@@ -8142,9 +8162,27 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             },
           });
         }
-      });
+        if(liveAuthorityRows&&!liveAuthorityRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null))
+          throw Error("LIVE_MARKET_ADMISSION_AUTHORITY_EXPIRED_BEFORE_COMMIT");
+        return {created:!existing,admitted:persisted.status==="live"||persisted.status==="open"};
+      }, liveSources ? {maxWait:5000,timeout:9000} : undefined);
     })
   );
+
+}
+
+async function runBetMarketEnsure(prisma: PrismaClient) {
+  await archiveLowConfidenceZeroPotMarkets(prisma);
+  const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
+  const {
+    seeds,
+    reconciledSessionKeys,
+    activeSessions,
+  } = await buildOpenMarketSeeds(prisma);
+  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
+  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+
+  await persistBetMarketSeeds(prisma,seeds);
 
   try {
     await materializeBetPhaseBookShadows(prisma, seeds);
