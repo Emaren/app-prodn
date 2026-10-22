@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {captureIndexConcurrentLoopback} from "../scripts/kingdom_index_bounded_load_probe.mjs";
 const sourceSha="a".repeat(40),buildId="next-build-exact-123";
 const opts={origin:"http://127.0.0.1:3030/",expectedBuildId:buildId,sourceSha};
-function response({status=200,score=null,cache="no-store",wrongRows=false}={}){
+function response({status=200,score=null,cache="no-store",wrongRows=false}:{status?:number;score?:number|null;cache?:string;wrongRows?:boolean}={}){
  const pages=Array.from({length:88},(_,i)=>({
   href:i===0?"/kingdom-index":"/fixture-route-"+i,
   score:i===0?score:null,
