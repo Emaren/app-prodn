@@ -1,4 +1,4 @@
-import {committedLiveWatcherAdmissionIssue,liveSessionMatchesCommittedWatcher,type CommittedLiveWatcherRow} from "./liveWatcherMarketAdmission.ts";
+import {committedLiveWatcherAdmissionIssue,liveSessionMatchesCommittedWatcher,LIVE_WATCHER_ADMISSION_MAX_AGE_MS,type CommittedLiveWatcherRow} from "./liveWatcherMarketAdmission.ts";
 import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -8384,6 +8384,39 @@ export async function admitCommittedLiveWatcherMarkets(prisma:PrismaClient,gameS
   return {createdCount:results.filter(r=>r?.admitted&&r.created).length,
     existingCount:results.filter(r=>r?.admitted&&!r.created).length,
     skippedCount:Math.max(0,ids.length-sessions.length)+results.filter(r=>!r?.admitted).length};
+}
+
+/** Recover a commit whose process died before the best-effort API notifier.
+ * Reuse the existing private recovery scheduler, durable GameStats and canonical
+ * admission. No new queue, parser dispatch, financial ensure or public trigger.
+ * Rotate at most 64 distinct authenticated streams through the 12-minute lane;
+ * the report exposes backlog/cadence instead of asserting timely live delivery.
+ */
+export async function recoverCommittedLiveWatcherMarkets(prisma:PrismaClient,options:{dryRun:boolean;targetGameStatsId?:number|null}){
+  const now=new Date(),cutoff=new Date(now.getTime()-LIVE_WATCHER_ADMISSION_MAX_AGE_MS),minuteBucket=Math.floor(now.getTime()/60_000);
+  const rows=await prisma.$queryRaw<Array<{id:number;total:number}>>`
+    WITH heads AS (
+      SELECT DISTINCT ON (game.user_uid,game.key_events #>> '{watcher_upload,watcher_session_id}',game.key_events #>> '{watcher_upload,replay_fingerprint}')
+        game.id
+      FROM game_stats AS game
+      WHERE game.is_final=FALSE AND game.parse_source='watcher_live' AND game.parse_iteration>0
+        AND lower(game.game_version) IN ('hd','version.hd')
+        AND game.created_at BETWEEN ${cutoff} AND ${now} AND game.played_on BETWEEN ${cutoff} AND ${now}
+        AND game.key_events #>> '{watcher_upload,ingestion_provenance}'='live_monitor'
+        AND game.key_events #>> '{watcher_upload,provenance_signature_verified}'='true'
+        AND game.key_events #>> '{watcher_upload,client_sha256_verified}'='true'
+        AND (${options.targetGameStatsId??null}::integer IS NULL OR game.id=${options.targetGameStatsId??null}::integer)
+      ORDER BY game.user_uid,game.key_events #>> '{watcher_upload,watcher_session_id}',game.key_events #>> '{watcher_upload,replay_fingerprint}',game.created_at DESC,game.id DESC
+    ), numbered AS (
+      SELECT id,row_number() OVER (ORDER BY id) AS ordinal,count(*) OVER ()::integer AS total FROM heads
+    ) SELECT id,total FROM numbered
+      WHERE mod(ordinal-1+${minuteBucket}::bigint*64,total)<64 ORDER BY ordinal LIMIT 64
+  `;
+  const candidateIds=rows.map(row=>row.id),candidateCount=rows[0]?.total??0;
+  return {mode:"metadata-and-preview-only" as const,dryRun:options.dryRun,candidateIds,candidateCount,
+    selectedCount:candidateIds.length,truncated:candidateCount>64,
+    freshnessHorizonMs:LIVE_WATCHER_ADMISSION_MAX_AGE_MS,rotationBucket:minuteBucket,
+    admission:options.dryRun?null:await admitCommittedLiveWatcherMarkets(prisma,candidateIds)};
 }
 
 // Several public/admin/replay routes can request the same reconciliation pass.

@@ -54,3 +54,11 @@ test("authenticated ingest has no process-local LIVE financial timer fallback",(
   const privateRoute=readFileSync(new URL("../app/api/replay/post-ingest/route.ts",import.meta.url),"utf8");
   assert.ok(privateRoute.indexOf("if (!authorized(request))")<privateRoute.indexOf("coordinateReplayPostIngest({"));
 });
+
+test("existing private recovery handles missed LIVE commits before parser work and preserves dry-run",()=>{
+  const source=readFileSync(new URL("../app/api/admin/replay-auto-recovery/route.ts",import.meta.url),"utf8");
+  assert.ok(source.indexOf("!authorized(request)")<source.indexOf("await recoverCommittedLiveWatcherMarkets("));
+  assert.ok(source.indexOf("await recoverCommittedLiveWatcherMarkets(")<source.indexOf("await prisma.$queryRaw<"));
+  assert.match(source,/recoverCommittedLiveWatcherMarkets\(prisma,\{dryRun,targetGameStatsId\}\)/);
+  assert.match(source,/liveAdmission,/);
+});

@@ -140,11 +140,24 @@ reviewer, custody, matching, funding or independent game-oracle certification.
 The explicit consenting-Watcher live canary remains required for activation.
 
 The Replay API notifier currently has three bounded process-local attempts.
-Its process can still die after commit and before delivery; the admission is
-idempotent on redelivery, but this change does not manufacture a durable API
-outbox or claim guaranteed delivery across that gap. Preserve the committed
-upload/parse-attempt identity and use an authorized retry/reconciliation source
-when completing the operational delivery guarantee.
+Its process can die after commit and before delivery. The existing authenticated
+`POST /api/admin/replay-auto-recovery` now runs a separate LIVE metadata lane
+before its slower final-parser work: durable recent original-stream heads are
+selected in bounded, minute-rotated batches of at most 64 and passed through the
+same canonical admission. `?dryRun=1` only reports IDs/counts and writes nothing;
+normal JSON exposes `liveAdmission` with candidate/selected counts, truncation,
+rotation bucket, freshness horizon and created/existing/skipped counts. Repeated
+recovery creates neither duplicate books nor duplicate preview events. No new
+queue, timer, parser, full financial ensure or public trigger is introduced.
+
+This is durable-row recovery on invocation, not a durable API delivery outbox or
+an asserted running scheduler. Before activation independently verify the
+existing recovery service's ownership, private authentication, actual success,
+cadence and backlog. Its polling plus complete batch rotation must finish within
+the 12-minute LIVE horizon (and any future market cutoff). A missing, stopped,
+slow or overloaded scheduler remains an explicit timely-delivery blocker. The
+push notification remains the fast path; old or terminal evidence fails closed
+rather than opening a book late.
 
 Tournament and market stages fail independently after accepted bytes have been
 preserved. Their error receipts must be shown to operators and retried through

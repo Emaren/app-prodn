@@ -30,8 +30,10 @@ A controlled original-upload test now exercises real API key/HMAC/archive/SQL
 and the actual HD PostgreSQL consumer. Its parser/capture and delivery transport
 are controlled, and source holds remain false. Preserve that limit: no human
 LIVE, independently governed game authority, custody or production financial
-success is established. The API's process-local post-commit delivery gap also
-remains distinct from idempotent HD admission.
+success is established. The API's process-local post-commit delivery gap is
+recovered by the existing private recovery job from bounded durable LIVE rows,
+not a second queue. Source tests do not prove the operator's scheduler cadence;
+verify actual recurrence/backlog against the LIVE horizon before activation.
 
 ## October 21 — preserve proof authority through waits and release epochs
 

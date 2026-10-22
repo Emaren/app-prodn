@@ -9,7 +9,7 @@ import {setTimeout as sleep} from "node:timers/promises";
 import test from "node:test";
 import type {Prisma} from "../lib/generated/prisma/index.js";
 import {coordinateReplayPostIngest,classifyReplayIngestReceipt} from "../lib/replayPostIngest.ts";
-import {admitCommittedLiveWatcherMarkets} from "../lib/bets.ts";
+import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets} from "../lib/bets.ts";
 import {freshBettingCloseReason} from "../lib/betMarketWagerability.ts";
 import {startLifecycleDatabase} from "./fixtures/satchel-lifecycle-db.mts";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
@@ -169,6 +169,17 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:"platform:controlled-hd-stale-during-wait"}}),0);
     });
     assert.equal(await db.prisma.betMarket.count(),8);assert.equal(await db.prisma.betAutoExecution.count(),4);
+    await t.test("existing private recovery replays a durable LIVE commit lost before notification; dry run writes nothing",async()=>{
+      const row=await persist("lost-notification");
+      const plan=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:true,targetGameStatsId:row.id});
+      assert.deepEqual(plan.candidateIds,[row.id]);assert.equal(plan.admission,null);
+      assert.equal(await db.prisma.betMarket.count(),8);assert.equal(await db.prisma.betAutoExecution.count(),4);
+      const first=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:false,targetGameStatsId:row.id});
+      assert.equal(first.admission?.createdCount,2);
+      const second=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:false,targetGameStatsId:row.id});
+      assert.equal(second.admission?.createdCount,0);assert.equal(second.admission?.existingCount,2);
+      assert.equal(await db.prisma.betMarket.count(),10);assert.equal(await db.prisma.betAutoExecution.count(),5);
+    });
     assert.equal(await db.prisma.betWager.count(),0);assert.equal(await db.prisma.satchelFundedReservation.count(),0);
     assert.equal(await db.prisma.pendingWoloClaim.count(),0);assert.equal(networkCalls,0);
     assert.match(readFileSync(new URL("../lib/warSatchelFinancialBridgeHold.ts",import.meta.url),"utf8"),/SATCHEL_FINANCIAL_BRIDGE_READY = false as const/);
