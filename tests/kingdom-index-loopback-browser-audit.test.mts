@@ -18,7 +18,7 @@ function receipt(){
  productionMutated:false,databaseMutated:false,woloMutated:false,rows,
  summary:{lcpMs:{count:10,p50:705.5,p75:707.75,p95:709.55,max:710}}};
 }
-const raw=(doc:any)=>Buffer.from(JSON.stringify(doc,null,2)+"\n");
+const raw=(doc:unknown)=>Buffer.from(JSON.stringify(doc,null,2)+"\n");
 test("10 actual-shaped source aligned Chrome samples produce ONLY noncertifying loopback observation",()=>{
  const d=inspectIndexLoopbackChrome(raw(receipt()),expected);
  assert.equal(d.samples,10);assert.equal(d.certified,false);assert.equal(d.score,null);
@@ -35,12 +35,12 @@ test("refuse wrong source SHA, build, route, viewport and incomplete Chrome coho
 });
 test("duplicate, cached, failure, no LCP and untrustworthy percentile refuse",()=>{
  for(const rewrite of [
-  (d:any)=>{d.rows[9].sample=1},
-  (d:any)=>{d.rows[0].documentStatus=500},
-  (d:any)=>{d.rows[0].documentFromDiskCache=true},
-  (d:any)=>{d.rows[0].metrics.finalLcp=null},
-  (d:any)=>{d.rows[0].metrics.href="/another-route"},
-  (d:any)=>{d.summary.lcpMs.p95=1},
+  (d:ReturnType<typeof receipt>)=>{d.rows[9].sample=1},
+  (d:ReturnType<typeof receipt>)=>{d.rows[0].documentStatus=500},
+  (d:ReturnType<typeof receipt>)=>{d.rows[0].documentFromDiskCache=true},
+  (d:ReturnType<typeof receipt>)=>{d.rows[0].metrics.finalLcp=null as never},
+  (d:ReturnType<typeof receipt>)=>{d.rows[0].metrics.href="/another-route"},
+  (d:ReturnType<typeof receipt>)=>{d.summary.lcpMs.p95=1},
  ]){
   const d=receipt();rewrite(d);
   assert.throws(()=>inspectIndexLoopbackChrome(raw(d),expected));
