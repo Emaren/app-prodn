@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261022-satchel-mainline-held` at `b5a311660b11f9b90b16ce5bbad28df25fc45f59`
+Implementation baseline: `integration/20261022-satchel-mainline-held` at `9cdc6711e88ec40e96e9eabe389e365875718741`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
