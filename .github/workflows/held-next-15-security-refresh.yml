@@ -1,0 +1,59 @@
+name: HELD Next.js 15.5.28 critical-security dependency refresh
+on:
+  push:
+    branches:
+      - security/next-15.5.28-20261022
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: next-security-lockfile-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  pinned-security-refresh:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/security/next-15.5.28-20261022'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - name: Upgrade and lock only Next.js 15.5.28, without lifecycle scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          test "$(git branch --show-current)" = security/next-15.5.28-20261022
+          current="$(node -p "require('./package.json').dependencies.next")"
+          if [ "$current" = "15.5.28" ]; then
+            yarn install --frozen-lockfile --ignore-scripts --non-interactive
+            node -e 'const p=require("./node_modules/next/package.json");if(p.version!=="15.5.28")process.exit(1)'
+            echo "Exact package and lockfile already pinned."
+            exit 0
+          fi
+          test "$current" = "15.5.27"
+          yarn add next@15.5.28 --exact --ignore-scripts --non-interactive
+          test "$(node -p "require('./package.json').dependencies.next")" = 15.5.28
+          node -e 'const p=require("./node_modules/next/package.json");if(p.version!=="15.5.28")process.exit(1)'
+          python3 scripts/check_dependency_security.py
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py
+          git diff --check
+          files="$(git diff --name-only)"
+          while IFS= read -r file; do
+            case "$file" in
+              package.json|yarn.lock|docs/document-registry.json|docs/DOCUMENTATION_CONTROL_PLANE.md|catalog-info.yaml) ;;
+              *) echo "REFUSE unexpected dependency mutation: $file" >&2; exit 1 ;;
+            esac
+          done <<< "$files"
+          git add package.json yarn.lock docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          test -n "$(git diff --cached --name-only)"
+          git config user.name 'aoe2war-held-dependency-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "security: pin Next.js 15.5.28 and sealed dependency lock for Oct 2026 advisories"
+          git push origin HEAD:refs/heads/security/next-15.5.28-20261022
