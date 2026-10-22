@@ -38,6 +38,51 @@ function normalizePulls(pulls){
   return {number:pr.number,title:pr.title,headRefOid:pr.headRefOid,files};
  });
 }
+/**
+ * GitHub CLI's `gh pr list --json files` may return only the first 100 changed
+ * paths for a single PR. Complete ONLY those truncated lists through the
+ * paginated Pull Request Files REST endpoint. The source list is never enough
+ * to authorize writes or merges.
+ */
+export function recoverTruncatedPullFiles(pulls,fetchAllFiles){
+ if(!Array.isArray(pulls)||typeof fetchAllFiles!=="function")error("PR census/fetcher unavailable");
+ return pulls.map(pr=>{
+  if(!Number.isSafeInteger(pr?.changedFiles)||pr.changedFiles<0||!Array.isArray(pr.files))
+   error("open PR census is malformed");
+  if(pr.files.length===pr.changedFiles)return pr;
+  if(pr.files.length>pr.changedFiles)error("PR "+pr.number+" reports more files than changed count");
+  const paths=fetchAllFiles(pr);
+  if(!Array.isArray(paths)||paths.length!==pr.changedFiles)
+   error("PR "+pr.number+" paginated file list incomplete ("+(paths?.length??"invalid")+"/"+pr.changedFiles+")");
+  if(paths.some(p=>typeof p!=="string"||!SAFE_PATH.test(p)||p.length>512||p.includes("//")))
+   error("PR "+pr.number+" paginated file path malformed");
+  if(new Set(paths).size!==paths.length)error("PR "+pr.number+" paginated files have duplicates");
+  const full=new Set(paths);
+  if(pr.files.some(f=>!full.has(f?.path)))
+   error("PR "+pr.number+" file census changed while paginating");
+  return {...pr,files:paths.map(path=>({path}))};
+ });
+}
+function ghJson(args){
+ try{
+  return JSON.parse(execFileSync("gh",args,{
+   encoding:"utf8",timeout:120000,maxBuffer:32*1024*1024,stdio:["ignore","pipe","pipe"]
+  }));
+ }catch(e){error("GitHub metadata pagination failed; no ownership clearance ("+String(e?.message||e).slice(0,180)+")");}
+}
+function fetchCompletePrFiles(repo,pr){
+ // Fetch full paginated REST file list. Slurp preserves page boundaries as
+ // arrays, avoiding unsafe newline-splitting of filenames.
+ const pages=ghJson(["api","--paginate","--slurp",
+  "repos/"+repo+"/pulls/"+pr.number+"/files?per_page=100"]);
+ if(!Array.isArray(pages)||pages.length===0||pages.some(page=>!Array.isArray(page)))
+  error("PR "+pr.number+" REST pagination yielded invalid pages");
+ const paths=pages.flatMap(page=>page.map(f=>f?.filename));
+ const detail=ghJson(["api","repos/"+repo+"/pulls/"+pr.number]);
+ if(detail?.state!=="open"||detail?.head?.sha!==pr.headRefOid||detail?.changed_files!==pr.changedFiles)
+  error("PR "+pr.number+" head/changed-files moved during paginated inspection");
+ return paths;
+}
 export function auditOpenPulls({pulls,targetNumber,source="fixture",maxResults=500}){
  if(!Number.isSafeInteger(targetNumber)||targetNumber<1)error("target PR number required");
  if(!Number.isSafeInteger(maxResults)||maxResults<1)error("invalid enumeration bound");
@@ -100,7 +145,7 @@ export function readLivePulls(repo){
     "pr","list","--repo",repo,"--state","open","--limit","500",
     "--json","number,title,headRefOid,changedFiles,files"
   ],{encoding:"utf8",timeout:120000,maxBuffer:16*1024*1024,stdio:["ignore","pipe","pipe"]});
-  return JSON.parse(output);
+  return recoverTruncatedPullFiles(JSON.parse(output),pr=>fetchCompletePrFiles(repo,pr));
  }catch(e){
   error("GitHub PR list failed or unavailable; no ownership clearance ("+String(e?.message||e).slice(0,180)+")");
  }
