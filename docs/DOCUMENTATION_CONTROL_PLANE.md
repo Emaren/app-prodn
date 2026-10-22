@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `f112d1be35395232385c458d7d15c8566dd9d326`
+Implementation baseline: `fix/renaissance-page-change-nul-delimiter-20261022` at `f6bf17e5dc0b957c3c9add9e690f2758e37a2552`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
