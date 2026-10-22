@@ -7,7 +7,7 @@ import atlas from "@/config/kingdom-brain-authorities.json";
 import styles from "./KingdomBrain.module.css";
 import {
   BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS, brainSettledResult, brainSourceTimeLabel,
-  createBrainRefreshCoordinator, isBrainSignalDisplayable, unavailableBrainSignal,
+  createBrainRefreshCoordinator, isBrainSignalDisplayable, nextBrainSignalExpiryDelay, unavailableBrainSignal,
   type BrainSignalObservation,
 } from "./brainSignalPolicy";
 
@@ -110,6 +110,17 @@ export default function KingdomBrainClient() {
       if (coordinatorRef.current === coordinator) coordinatorRef.current = null;
     };
   }, []);
+
+  // The existing 120-second interval performs network refreshes. This separate
+  // one-shot deadline only clears aging local evidence at its exact expiry.
+  // No additional fetch, collector or recurring poll is introduced.
+  useEffect(() => {
+    const signals = [index, agents, patrol, census];
+    const delay = nextBrainSignalExpiryDelay(signals, clockMs, Date.now());
+    if (delay === null) return;
+    const timer = window.setTimeout(() => setClockMs(Date.now()), delay);
+    return () => window.clearTimeout(timer);
+  }, [index, agents, patrol, census, clockMs]);
 
   const chosen: Node = useMemo(() => atlas.nodes.find(node => node.id === selected) ?? atlas.nodes[0], [selected]);
   const incoming = atlas.edges.filter(edge => edge.to === selected);
