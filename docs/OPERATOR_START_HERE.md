@@ -8,12 +8,19 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-21"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Operator Start Here
+
+## Source review scope — October 22, 2026
+
+The command/authority and source-versus-runtime rules were rechecked for the
+private LIVE admission change. No new production observation or authorization
+is asserted. Follow the fresh-state commands below before a release; source
+qualification and a controlled replay fixture never certify live custody.
 
 ## Purpose
 

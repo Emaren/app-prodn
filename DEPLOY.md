@@ -8,12 +8,22 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-21"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # app-prodn Deploy
+
+## Source review scope — October 22, 2026
+
+The registered release, migration, rollback and protected-Wolo procedures were
+reviewed against the source control contracts for the private LIVE admission
+change. This is a source review only. Dated deployments, counts, funding values
+and historical signer examples below remain historical evidence; refresh actual
+runtime/build/service and financial authority before any operational action.
+In particular, the older testnet staking example is not a current mainnet
+signer configuration. This change deploys or activates nothing.
 
 ## Production truth
 

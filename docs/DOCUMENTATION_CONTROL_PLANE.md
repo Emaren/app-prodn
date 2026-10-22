@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-satchel-public-read-fence-20261021` at `8d793663574f765dd2f05727b275393e1fbe33d7`
+Implementation baseline: `codex/hd-live-market-admission` at `e4da11f6d583ccc9e280fdadaa8707c33611ec9c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-10-22"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -27,6 +27,15 @@ not independently authorize a production financial migration.
 
 AoE2HDBets owns bettor entitlement and market rules. WoloChain remains the
 authority for signed custody, transfers, balances, and final payout truth.
+
+## LIVE admission source review — October 22, 2026
+
+Private authenticated LIVE events may create canonical market metadata before
+the result. Their source, owner, roster, freshness and terminal state are
+rechecked under the game lock. This does not reserve WOLO or grant settlement
+authority, activate Phase Books V2, alter matching/fees, or revise grandfathered
+history. The current settlement planner and its conservation tests continue to
+control the law below; financial activation remains separately held.
 
 ## Constitutional principles
 
