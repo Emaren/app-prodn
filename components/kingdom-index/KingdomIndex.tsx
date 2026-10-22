@@ -19,6 +19,11 @@ type Mode = "realm" | "ledger";
 const validScore = (n: number | null): n is number => n !== null && Number.isFinite(n);
 function scoreString(n: number | null) { return validScore(n) ? String(n) : "—"; }
 function statusTitle(entry: KingdomIndexEntry) {
+  if (entry.authenticatedPublication) {
+    if (entry.status==="current" && entry.score===100) return "CURRENT · CERTIFIED";
+    if (entry.score!==null) return "VERIFIED · PROVISIONAL";
+    return "EVIDENCE INCOMPLETE · NOT CERTIFIED";
+  }
   switch (entry.status) {
     case "current": return entry.kind==="certified"?"CERTIFIED":"AGENT OBSERVED";
     case "provisional": return entry.kind==="certified"?"CERTIFICATION CLAIM UNVERIFIED":"SOURCE REVIEW";
@@ -61,6 +66,14 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
     <div className={styles.detailScore}><Score entry={item}/><Sparkline points={item.history} score={item.score}/></div>
     {item.lastReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>HISTORICAL REVIEW: {item.lastReviewScore}/100. No current source-aligned engineering score is independently established.</p>}
     <p className={styles.evidenceNote}>Route source fingerprint is a local Git census only; transitive dependencies and deployed runtime still require independent proof.</p>
+    {item.authenticatedPublication&&<section className={styles.evidenceNote} aria-label="Authenticated certification provenance">
+      <strong>INDEPENDENTLY SIGNED PUBLICATION</strong>
+      <p>Deployed source: <code>{item.authenticatedPublication.gitSha}</code></p>
+      <p>Emitted build: <code>{item.authenticatedPublication.buildId}</code></p>
+      <p>Evidence SHA-256: <code>{item.authenticatedPublication.evidenceSha256}</code></p>
+      <p>Release receipt SHA-256: <code>{item.authenticatedPublication.releaseSha256}</code></p>
+      <p>Issued: {formatStamp(item.authenticatedPublication.issuedAt)} · Expires: {formatStamp(item.authenticatedPublication.expiresAt)}</p>
+    </section>}
     <div className={styles.detailMetrics}>
       <div><span>LAST REVIEW</span><b>{formatStamp(item.checkedAt)}</b></div>
       <div><span>PAGE LOAD</span><b>{item.loadMs!==null?`${Math.round(item.loadMs)} ms`:"—"}</b></div>
