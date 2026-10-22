@@ -6,6 +6,7 @@
  * Built against canonical public Index catalog + full campaign planning order.
  */
 import { readFileSync, existsSync } from "node:fs";
+
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 const root=resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,7 +17,15 @@ const routePattern=/^\/(?:[a-z0-9-]+(?:\/[a-z0-9-]+)*)?$/;
 const shaPattern=/^[a-f0-9]{40}$/;
 const routeFile=route=>join("app",...(route==="/"?[]:route.slice(1).split("/")),"page.tsx");
 
-export function buildPublicPageAssignment({route,sourceSha,catalog,campaign,rubric,profiles,sourceExists=()=>true}){
+/** A pure redirect wrapper is a route alias, not an independently owned content page. */
+export function redirectAliasDestination(source){
+ if(typeof source!=="string")stop("page source unavailable for alias classification");
+ const found=source.match(/export\s+default\s+(?:async\s+)?function\s+\w*\s*\([^)]*\)\s*\{\s*redirect\(\s*["'](\/[^"']+)["']\s*\)\s*;?\s*\}/);
+ return found&&/from\s*["']next\/navigation["']/.test(source)?found[1]:null;
+}
+
+
+export function buildPublicPageAssignment({route,sourceSha,catalog,campaign,rubric,profiles,sourceExists=()=>true,sourceText=()=>null}){
  if(typeof route!=="string"||!routePattern.test(route))stop("invalid literal public route");
  if(typeof sourceSha!=="string"||!shaPattern.test(sourceSha))stop("exact 40-character Git SHA required");
  if(!Array.isArray(catalog)||!Array.isArray(campaign?.phases))stop("canonical catalogs missing");
@@ -26,6 +35,8 @@ export function buildPublicPageAssignment({route,sourceSha,catalog,campaign,rubr
  if(typeof enrolled.sourceTree!=="string"||!/^src-[a-f0-9]{16}$/.test(enrolled.sourceTree))stop("route-local source census missing");
  const entrypoint=routeFile(route);
  if(!sourceExists(entrypoint))stop("source page template not found");
+ const alias=redirectAliasDestination(sourceText(entrypoint));
+ if(alias)stop("redirect-only alias "+route+" -> "+alias+"; assign the canonical owning page instead");
  const profileId=profiles?.routeProfiles?.[route],profile=profiles?.profiles?.[profileId];
  if(!profileId||!profile||!Array.isArray(profile.gates))stop("missing route-specific assurance profile");
  if(rubric?.maximum!==100||!rubric?.version)stop("unrecognized canonical rubric");
@@ -91,13 +102,15 @@ export function renderPublicPagePrompt(c){
   "**NO GRADE OR LIVE RELEASE AUTHORIZED BY THIS TEMPLATE.**");
  return lines.join("\n")+"\n";
 }
-export function publicCandidateQueue({catalog,campaign}){
+export function publicCandidateQueue({catalog,campaign,sourceText=()=>null}){
  const included=new Set(catalog.map(row=>row.href)), seen=new Set(),queue=[];
  for(const phase of campaign.phases){
   for(const route of phase.routes||[]){
    if(included.has(route)){
     if(seen.has(route))stop("duplicate public route assignment");
-    seen.add(route);queue.push({route,phase:phase.id});
+    seen.add(route);
+    const alias=redirectAliasDestination(sourceText(routeFile(route)));
+    queue.push({route,phase:phase.id,kind:alias?"REDIRECT_ALIAS":"PAGE",canonicalTarget:alias||null});
    }
   }
  }
@@ -116,12 +129,13 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const format=options["--format"]||"markdown";
   if(format==="queue"){
    if(options["--route"]||options["--sha"])stop("queue mode takes no route/SHA");
-   process.stdout.write(JSON.stringify(publicCandidateQueue({catalog,campaign}),null,2)+"\n");
+   process.stdout.write(JSON.stringify(publicCandidateQueue({catalog,campaign,sourceText:relative=>readFileSync(join(root,relative),"utf8")}),null,2)+"\n");
   }else{
    if(!["json","markdown"].includes(format))stop("unknown output format");
    const c=buildPublicPageAssignment({route:options["--route"],sourceSha:options["--sha"],catalog,campaign,
     rubric:read("kingdom-index-quality-rubric.json"),profiles:read("kingdom-index-assurance-profiles.json"),
-    sourceExists:relative=>existsSync(join(root,relative))});
+    sourceExists:relative=>existsSync(join(root,relative)),
+    sourceText:relative=>readFileSync(join(root,relative),"utf8")});
    process.stdout.write(format==="json"?JSON.stringify(c,null,2)+"\n":renderPublicPagePrompt(c));
   }
  }catch(e){console.error(e.message);process.exitCode=2;}
