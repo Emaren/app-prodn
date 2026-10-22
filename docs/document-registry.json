@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d497442b60b1538d267ccebe73b194deb10ef87fc2fe5e1de6250337935d5bde",
+      "sha256": "a56014fc763d2824e16675452165ae123c4bc9786347866ed7d40a2a539af8fd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2000,7 +2000,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-10",
       "sensitivity": "restricted",
-      "sha256": "49a5edd281a8b3dba3e6259fbe45e8d74d650dd7c07ec1ee1c85704abd4b3854",
+      "sha256": "8117888ce31a4a683f46c644148d2c899bd1eb98460ae5a914aa8ce3ad8e3fe9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2212,10 +2212,10 @@
       "type": "reference"
     }
   ],
-  "generated_at": "2026-10-22T00:13:29.893Z",
+  "generated_at": "2026-10-22T00:25:37.431Z",
   "implementation_baseline": {
     "branch": "feat/kingdom-watcher-observatory-20261021",
-    "commit": "23eef9bb4ee9154e053013ca5e9c904b46fe3d24"
+    "commit": "6659984f22bf6f92ebe3295d0bc73e42c4beadae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/kingdom-watcher-observatory-20261021` at `23eef9bb4ee9154e053013ca5e9c904b46fe3d24`
+Implementation baseline: `feat/kingdom-watcher-observatory-20261021` at `6659984f22bf6f92ebe3295d0bc73e42c4beadae`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
