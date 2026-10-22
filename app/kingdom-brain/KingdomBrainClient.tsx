@@ -6,7 +6,7 @@ import { Activity, ArrowUpRight, BrainCircuit, CircleHelp, Database, GitBranch, 
 import atlas from "@/config/kingdom-brain-authorities.json";
 import styles from "./KingdomBrain.module.css";
 import {
-  BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS, brainSettledResult,
+  BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS, brainSettledResult, brainSourceTimeLabel,
   createBrainRefreshCoordinator, isBrainSignalDisplayable, unavailableBrainSignal,
   type BrainSignalObservation,
 } from "./brainSignalPolicy";
@@ -159,7 +159,7 @@ export default function KingdomBrainClient() {
               <small>{name}</small>
               <strong style={{ fontSize: 11 }}>{isBrainSignalDisplayable(signal, clockMs) ? signal.state.toUpperCase() : signal.state === "observed" || signal.state === "policy-only" ? "STALE" : signal.state.toUpperCase()}</strong>
               <small title={signal.reason}>{signal.reason.toUpperCase().replaceAll("-", " ")}</small>
-              <small title="Source-issued observation timestamp">{signal.sourceAt ?? "NO SOURCE TIMESTAMP"}</small>
+              <small title={signal.sourceAt ?? "Source observation timestamp unavailable"} aria-label={signal.sourceAt ? "Source observation at " + signal.sourceAt : "Source observation timestamp unavailable"}>{brainSourceTimeLabel(signal.sourceAt)}</small>
             </div>
           ))}
           <span className={styles.railSource}>OBSERVATION ≠ CERTIFICATION · POLICY ≠ LIVE PATROL</span>
