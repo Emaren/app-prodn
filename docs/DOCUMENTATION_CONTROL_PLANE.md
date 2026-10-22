@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-funded-admission-canonical-proposition-time-20261021` at `f5acc15683c22a41621f002af02693e43e21050d`
+Implementation baseline: `codex/satchel-product-money-limits` at `908095539cd400d979ba478b2569a04058a7665f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
