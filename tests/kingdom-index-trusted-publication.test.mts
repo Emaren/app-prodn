@@ -149,7 +149,7 @@ test("publication expires beyond independent reviewer enrollment even if signatu
 test("signed claim and proof assignment are immutable across asynchronous artifact inspection",async()=>{
   let calls=0;
   const approved=await verifyKingdomIndexPublication(seal(payload()),ctx({
-    verifyArtifact:async(proof:any,info:any,assignment:any)=>{
+    verifyArtifact:async(proof:{kind:string;sha256:string},info:{source:object},assignment:{earned?:number})=>{
       calls++;
       assert.ok(Object.isFrozen(proof));
       assert.ok(Object.isFrozen(info.source));
