@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-command-worker-and-overlap-check-20261022` at `b5c3108854ea43a29937879094a47589e785496d`
+Implementation baseline: `feature/renaissance-command-worker-and-overlap-check-20261022` at `af68c6a962a6fc615299867b67cb1f0ff36e47c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
