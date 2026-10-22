@@ -32,13 +32,12 @@ test("direct API final receipts enter the idempotent web coordinator", () => {
   assert.match(bridgeSource, /INTERNAL_API_KEY/);
   assert.match(bridgeSource, /classifyReplayIngestReceipt/);
   assert.match(bridgeSource, /coordinateReplayPostIngest/);
-  assert.match(bridgeSource, /queueBetMarketEnsure/);
+  // Direct receipts await source-bound admission; never fall back to a
+  // process-local settlement-capable timer after the response is returned.
+  assert.doesNotMatch(bridgeSource, /queueBetMarketEnsure/);
   assert.match(bridgeSource, /Cache-Control/);
   assert.match(bridgeSource, /replayPostIngestReportSucceeded/);
-  assert.match(
-    bridgeSource,
-    /report\.financial\.markets\.succeeded === false/
-  );
+  assert.match(bridgeSource, /admission: report\.admission/);
 });
 
 test("post-ingest financial work requires a pass started after commit", () => {
@@ -56,8 +55,10 @@ test("post-ingest financial work requires a pass started after commit", () => {
 
   assert.ok(dependencyStart >= 0);
   assert.ok(dependencyEnd > dependencyStart);
-  assert.match(dependencyBlock, /\{ ensureBetMarketsAfterCommit \}/);
+  assert.match(dependencyBlock, /\{ ensureBetMarketsAfterCommit, admitCommittedLiveWatcherMarkets \}/);
   assert.match(dependencyBlock, /ensureBetMarketsAfterCommit\(/);
+  assert.match(dependencyBlock, /admitLiveWatcherMarkets:/);
+  assert.match(dependencyBlock, /admitCommittedLiveWatcherMarkets\(/);
   assert.doesNotMatch(dependencyBlock, /\{ ensureBetMarkets \}/);
 });
 

@@ -3,7 +3,7 @@ name: AoE2WAR CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, codex/20261022-original-live-admission-held]
 
 permissions:
   contents: read

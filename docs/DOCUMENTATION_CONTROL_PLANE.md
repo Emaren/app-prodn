@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/20261022-satchel-final-mainnet-recovery-held` at `2cd2f677b5c6d244246c23b362c991921b3e0df7`
+Implementation baseline: `codex/20261022-original-live-admission-held` at `66465453e5d926c316d471f111257dba0f882e40`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

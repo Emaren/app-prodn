@@ -107,6 +107,7 @@ export type ReplayPostIngestReport = {
     identities: ReplayPostIngestAutomationExecution;
   };
   warGraph: ReplayPostIngestWarGraphExecution;
+  admission: { liveMarkets: ReplayPostIngestAutomationExecution };
   financial: {
     eligibleCount: number;
     tournament: ReplayPostIngestStageExecution;
@@ -117,10 +118,11 @@ export type ReplayPostIngestReport = {
 export function replayPostIngestReportSucceeded(
   report: Pick<
     ReplayPostIngestReport,
-    "automatic" | "warGraph" | "financial"
+    "automatic" | "warGraph" | "financial" | "admission"
   >
 ) {
   const stages = [
+    report.admission.liveMarkets,
     report.automatic.results,
     report.automatic.identities,
     report.warGraph,
@@ -136,6 +138,8 @@ export function replayPostIngestReportSucceeded(
 }
 
 export type ReplayPostIngestDependencies<TPrisma> = {
+  admitLiveWatcherMarkets?: (prisma:TPrisma,gameStatsIds:readonly (string|number|null|undefined)[]) =>
+    Promise<{createdCount:number;existingCount:number;skippedCount:number}>;
   reconcileTournamentMatchProofs: (prisma: TPrisma) => Promise<unknown>;
   ensureBetMarkets: (prisma: TPrisma) => Promise<unknown>;
   reconcileAutomaticWatcherTerminalResults?: (
@@ -439,7 +443,7 @@ function stableReceiptIdentity(receipt: ReplayIngestReceipt, index: number) {
 export function summarizeReplayIngestStages(
   receipts: ReplayIngestReceipt[],
   source: string
-): Omit<ReplayPostIngestReport, "financial" | "automatic" | "warGraph"> & {
+): Omit<ReplayPostIngestReport, "financial" | "automatic" | "warGraph" | "admission"> & {
   financial: Pick<ReplayPostIngestReport["financial"], "eligibleCount">;
 } {
   const accepted = receipts.filter((receipt) => receipt.accepted);
@@ -501,7 +505,7 @@ async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
 > {
   const [
     { reconcileTournamentMatchProofs },
-    { ensureBetMarketsAfterCommit },
+    { ensureBetMarketsAfterCommit, admitCommittedLiveWatcherMarkets },
     { reconcileAutomaticWatcherTerminalResults },
     { ensureReplayIdentityProjections },
   ] = await Promise.all([
@@ -512,6 +516,8 @@ async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
   ]);
 
   return {
+    admitLiveWatcherMarkets:(prisma,ids)=>admitCommittedLiveWatcherMarkets(
+      prisma as Parameters<typeof admitCommittedLiveWatcherMarkets>[0],ids),
     reconcileTournamentMatchProofs: (prisma) =>
       reconcileTournamentMatchProofs(
         prisma as Parameters<typeof reconcileTournamentMatchProofs>[0],
@@ -566,7 +572,8 @@ async function executeAutomation<TPrisma>(input: {
   stage: ReplayPostIngestAutomationExecution;
   runner:
     | ReplayPostIngestDependencies<TPrisma>["reconcileAutomaticWatcherTerminalResults"]
-    | ReplayPostIngestDependencies<TPrisma>["ensureReplayIdentityProjections"];
+    | ReplayPostIngestDependencies<TPrisma>["ensureReplayIdentityProjections"]
+    | ReplayPostIngestDependencies<TPrisma>["admitLiveWatcherMarkets"];
   prisma: TPrisma;
   gameStatsIds: readonly (string | number | null | undefined)[];
 }) {
@@ -654,6 +661,9 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
   const summary = summarizeReplayIngestStages(options.receipts, options.source);
   const acceptedUpload = summary.acceptedCount > 0;
   const gameStatsIds = acceptedFinalGameIds(options.receipts);
+  const liveGameIds=[...new Set(options.receipts.filter(receipt=>receipt.accepted&&receipt.gameId!==null&&
+    (receipt.effectiveFinal===false||receipt.finalityStatus==="live")).map(receipt=>receipt.gameId))];
+  const liveMarkets=pendingAutomation(liveGameIds.length>0);
   const automaticResults = pendingAutomation(gameStatsIds.length > 0);
   const automaticIdentities = pendingAutomation(gameStatsIds.length > 0);
   const warGraph = pendingWarGraphExecution(options.receipts);
@@ -666,6 +676,11 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
     );
 
   let dependencies = options.dependencies;
+  if(liveGameIds.length){
+    dependencies=dependencies||(await defaultReplayPostIngestDependencies<TPrisma>());
+    await executeAutomation({stage:liveMarkets,runner:dependencies.admitLiveWatcherMarkets,
+      prisma:options.prisma,gameStatsIds:liveGameIds});
+  }
 
   await executeWarGraphPersistence({
     stage: warGraph,
@@ -751,6 +766,7 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
       identities: automaticIdentities,
     },
     warGraph,
+    admission: {liveMarkets},
     financial: {
       ...summary.financial,
       eligibleCount:

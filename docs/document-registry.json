@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "92ec7fdc72fcc5f60c2e1563ba3489531330b1d8154ad6368e30ed46f3437563",
+      "sha256": "5c6acc22102596ffec2bc4bfa91577b8e5c8be1d8f24075edb4ffdeb38f91de2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/20261022-satchel-final-mainnet-recovery-held",
-    "commit": "2cd2f677b5c6d244246c23b362c991921b3e0df7"
+    "branch": "codex/20261022-original-live-admission-held",
+    "commit": "66465453e5d926c316d471f111257dba0f882e40"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
