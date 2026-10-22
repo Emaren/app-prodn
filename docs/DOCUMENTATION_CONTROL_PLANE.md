@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/exact-head-ci-dispatch-20261022` at `aba29056b128f89273f318bc01a49450aab91b49`
+Implementation baseline: `feature/renaissance-command-worker-and-overlap-check-20261022` at `b4373dbe982daf6d1006fc11a8e750f35f5ba5a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
