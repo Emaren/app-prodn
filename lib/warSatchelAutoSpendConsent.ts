@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "./betMoneyLimits.ts";
 /**
  * Owner-scoped Keplr ADR-36 consent for funded Mecha automation.
  * This signature authorizes finite, versioned Satchel stake exposure ONLY.
@@ -76,10 +77,10 @@ export function satchelAutoSpendChallengeText(c: SatchelSpendChallenge) {
   const combined = c.winnerStakeWolo + c.desyncStakeWolo;
   enforce(typeof c.untilOut === "boolean" && (c.untilOut ? c.gamesRemaining === null :
     Number.isSafeInteger(c.gamesRemaining) && c.gamesRemaining! > 0 &&
-    c.gamesRemaining! * combined <= 10000), "invalid finite game authorization");
-  enforce(Number.isSafeInteger(c.perGameCapWolo) && c.perGameCapWolo <= 1000 &&
+    c.gamesRemaining! * combined <= AUTO_BET_MAX_DAILY_WOLO), "invalid finite game authorization");
+  enforce(Number.isSafeInteger(c.perGameCapWolo) && c.perGameCapWolo <= BET_MAX_STAKE_WOLO &&
     c.perGameCapWolo >= combined &&
-    Number.isSafeInteger(c.dailyCapWolo) && c.dailyCapWolo <= 10000 &&
+    Number.isSafeInteger(c.dailyCapWolo) && c.dailyCapWolo <= AUTO_BET_MAX_DAILY_WOLO &&
     c.dailyCapWolo >= c.perGameCapWolo, "unsafe spending ceiling");
   const issue = parseUtc(c.issuedAtUtc);
   const challenge = parseUtc(c.challengeExpiresAtUtc);

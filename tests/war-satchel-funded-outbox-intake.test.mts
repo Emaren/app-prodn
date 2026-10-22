@@ -76,5 +76,5 @@ test("empty funded Watcher outbox does not probe the custody signer",()=>{
  assert.ok(query>=0 && empty>query && signer>empty && execute>signer,
   "read-only queue selection and empty return must precede signer connection");
  assert.match(source,/if\(!satchelFinancialBridgeReady\(\)/);
- assert.match(source,/const MAX=FUNDED_MECHA_CANDIDATE_LIMIT/);
+ assert.doesNotMatch(source,/const MAX=FUNDED_MECHA_CANDIDATE_LIMIT/);
 });

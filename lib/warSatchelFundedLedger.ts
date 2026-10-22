@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_UWOLO,AUTO_BET_MAX_DAILY_WOLO,autoBetDailyBudgetAvailable} from "./betMoneyLimits.ts";
 import {buildSatchelWagerAuthorization,wagerReviewContext,assertAuthenticatedSatchelWager,assertSatchelWagerTicketLegs,type SatchelWagerSnapshot} from "./warSatchelWagerAuthorization.ts";
 import { authenticateWarSatchelBank,authenticatedWarSatchelBankFreshAt,type AuthenticatedWarSatchelBank } from "./warSatchelAuthenticatedBank.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
@@ -358,7 +359,7 @@ export async function reserveForWatcherExecution(
       !Number.isSafeInteger(input.executionId) || input.executionId <= 0 ||
       !Number.isSafeInteger(input.presetVersion) || input.presetVersion <= 0 ||
       !positiveAmount(input.reserveUwolo) ||
-      input.reserveUwolo > BigInt(1000) * BigInt(1000000) ||
+      input.reserveUwolo > BET_MAX_STAKE_UWOLO ||
       input.reserveUwolo % BigInt(1000000) !== BigInt(0)) stop("unverified_spending_consent_or_reserve");
   return withExclusiveSatchelTx(prisma, async tx => {
     const found = await tx.satchelFundedReservation.findUnique({
@@ -413,7 +414,7 @@ export async function reserveForWatcherExecution(
         mandate.desyncSide !== exec.desyncSide ||
         mandate.desyncStakeWolo !== exec.desyncStakeWolo ||
         mandate.perGameCapWolo < exec.winnerStakeWolo + exec.desyncStakeWolo ||
-        mandate.dailyCapWolo > 10000 ||
+        mandate.dailyCapWolo > AUTO_BET_MAX_DAILY_WOLO ||
         mandate.signedAt === null) {
       stop("keplr_signed_spending_mandate_missing_or_stale");
     }
@@ -498,8 +499,7 @@ export async function reserveForWatcherExecution(
       _sum: { amountUwolo: true },
     });
     const dailySpent = daily._sum.amountUwolo ?? BigInt(0);
-    if (dailySpent + input.reserveUwolo >
-        BigInt(mandate.dailyCapWolo) * BigInt(1000000)) {
+    if (!autoBetDailyBudgetAvailable(dailySpent, input.reserveUwolo, mandate.dailyCapWolo)) {
       stop("daily_watcher_wager_cap_exhausted");
     }
 
