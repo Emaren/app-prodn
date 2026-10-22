@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {createHash,generateKeyPairSync,sign} from "node:crypto";
 import { readFileSync } from "node:fs";
 import { verifySatchelSignedV2Return } from "../lib/warSatchelSignedV2Return.ts";
 
@@ -118,4 +119,33 @@ test("Go v2 signatures must expire within the reviewed 300-second window", () =>
   assert.throws(() => verify(altered(x => {
     x.allocation.expires_at = x.allocation.issued_at + 301;
   })), /invalid_signature_interval/);
+});
+
+// Fresh, private fixture-only reviewer key. Real Ed25519 verification runs;
+// these signatures attest bounded economics only, never bank funds or custody.
+function signedPrincipalReturn(value:string) {
+  const pair=generateKeyPairSync("ed25519");
+  const approval=structuredClone(fixture.return_approval);
+  const allocation=approval.allocation,leg=allocation.legs[0],ent=leg.entitlements[0];
+  leg.stake_uwolo=value;ent.principal_uwolo=value;ent.amount_uwolo=value;
+  approval.amount_uwolo=value;
+  const economics=(JSON.parse(fixture.allocation_sign_bytes) as unknown[]).slice(0,-2);
+  economics[18]=[[leg.leg_id,leg.market_id,value,[[ent.entitlement_id,ent.claim_id,ent.claim_kind,value,value]]]];
+  const digest=createHash("sha256").update(JSON.stringify(economics)).digest("hex");
+  allocation.signature=sign(null,Buffer.from(JSON.stringify([...economics,allocation.issued_at,allocation.expires_at])),pair.privateKey).toString("base64");
+  approval.allocation_digest=digest;
+  const returnBytes=JSON.parse(fixture.return_approval_sign_bytes) as unknown[];
+  returnBytes[14]=value;returnBytes[15]=digest;
+  approval.signature=sign(null,Buffer.from(JSON.stringify(returnBytes)),pair.privateKey).toString("base64");
+  return {approval,independentOperatorPublicKeyHex:pair.publicKey.export({format:"der",type:"spki"}).subarray(-32).toString("hex"),
+    expected:{...expected,amountUwolo:value,principalUwolo:value,stakeUwolo:value,fundedAmountUwolo:value}};
+}
+
+test("a genuine signed 10000-WOLO Auto Bet allocation returns every unmatched principal uwolo",()=>{
+  const input=signedPrincipalReturn("10000000000");
+  const returned=verifySatchelSignedV2Return(input);
+  assert.equal(returned.amountUwolo,10_000_000_000n);
+  assert.equal(returned.nonCrediting,true,"signed economics alone never authorize credit");
+  assert.throws(()=>verifySatchelSignedV2Return({...input,expected:{...input.expected,ownerId:"wrong-owner"}}),/wrong_owner_or_original_funding/);
+  assert.throws(()=>verifySatchelSignedV2Return(signedPrincipalReturn("10001000000")),/invalid_reviewed_budget/);
 });

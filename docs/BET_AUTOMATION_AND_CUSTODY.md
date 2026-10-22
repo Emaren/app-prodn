@@ -8,12 +8,50 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-20"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## October 22 — Auto Bet limits and complete unmatched returns
+
+New Auto Bets have a combined winner/Desync ticket ceiling of 10,000 WOLO and
+an owner-signed UTC daily ceiling of 50,000 WOLO. The effective authority is
+always the smaller immutable owner mandate, configured transport bound and
+product maximum. Legacy manual wager parsing, its 50,000-WOLO rule and the
+existing combined manual ticket contract remain separate and unchanged.
+
+The signed v2 return verifier now uses that same Auto Bet funding ceiling. A
+real Ed25519 regression reproduced the old 1,000-WOLO check refusing an exact
+10,000-WOLO unmatched allocation. The complete principal now verifies; an
+otherwise correctly signed 10,001-WOLO allocation still refuses. Signed
+allocation verification remains NONCREDITING and requires separate authenticated
+physical transfer evidence before any durable credit.
+
+The restored disposable PostgreSQL regression applies the actual forward cap
+migration, proves that existing smaller signed budgets cannot be enlarged,
+checks full 10,000-WOLO principal, and races daily reservations in a deliberately
+non-UTC session. The forward UTC journal default affects future rows only;
+historical timestamp interpretation remains an operational reconciliation
+requirement. These ALTER constraints/defaults require separately protected
+schema review and have not been executed against production.
+
+## October 22 — funding balance presentation refuses incomplete observations
+
+The Keplr funding panel reuses the strict owner-ledger response parser already
+used by the Mecha card. HTTP failures, missing or malformed native balances,
+wrong chain/denomination and out-of-range amounts now display an unavailable
+balance; missing fields cannot become a fabricated verified zero. A genuine
+complete zero remains distinguishable from unavailable evidence. Refreshes
+apply the same checks. The owner ledger is distinct from vault solvency.
+
+Controlled runtime component tests execute the actual mount effects and render
+private fixture responses. They prove presentation only, never custody, a
+credit, a new financial permission or mainnet certification. Funding remains
+behind the unchanged server source HOLD and deposit-enabled gate.
+
 
 ## October 21 — canonical Watcher proposition and admission clock validation
 
