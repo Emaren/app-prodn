@@ -869,3 +869,26 @@ Release gate: after Kingdom Intelligence/Index has a genuine certified
 census and protected release-controller audits. Do not merge or deploy
 this visual draft early. Separate Mac signing, installed replay, security
 and resource certification remain mandatory for Watcher v1.6.6.
+
+
+## Exact release artifact weight comparison
+
+The Kingdom Watcher page makes one objectively measurable
+v1.6.5-versus-v1.6.4 comparison **without interpreting package size as
+process memory, CPU, watts or performance**. It queries each exact
+published public GitHub release tag from
+`Emaren/aoe2-watcher` using a bounded, cached read and checks
+`tag_name`, `draft=false`, `prerelease=false` and the unique
+expected Windows NSIS, Mac arm64 DMG and Linux AppImage artifact names.
+Only safe, positive integer byte lengths are admitted. Missing,
+duplicated or unavailable release assets display **unmeasured**, never
+a fabricated zero. A fresh release registry advances both tags.
+
+Official Oct 21 receipts demonstrate the contract: macOS arm64 DMG
+v1.6.4 131087395 bytes and v1.6.5 129213289 bytes (smaller);
+Windows NSIS 108051528 to 108077776 (slightly larger); Linux AppImage
+134034429 to 134067137 (slightly larger). The user interface reports
+the percentage accurately in either direction and retains official
+GitHub release links. No improvement assertion is made about these
+changes beyond those byte counts, and no automatic end-user adoption
+or installation can be inferred from release download counters.
