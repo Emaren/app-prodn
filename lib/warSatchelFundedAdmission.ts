@@ -125,7 +125,17 @@ function utc(value: string): number | null {
     return null;
   }
   const ms = Date.parse(value);
-  return Number.isFinite(ms) ? ms : null;
+  if (!Number.isFinite(ms)) return null;
+  // Date.parse can normalize impossible calendar days (e.g. February 30).
+  // Reconstruct the exact accepted representation; a syntactically valid
+  // timestamp must describe the claimed instant, not a normalized successor.
+  const canonical = new Date(ms).toISOString();
+  const expected = value.replace(
+    /(?:\.(\d{1,3}))?Z$/,
+    (_match, fraction: string | undefined) =>
+      "." + (fraction ?? "").padEnd(3, "0") + "Z",
+  );
+  return expected === canonical ? ms : null;
 }
 
 function positiveSafeInteger(value: number): boolean {
@@ -155,7 +165,7 @@ export function assessFundedMechaAdmission(input: FundedAutoAdmissionInput): Fun
       a.evidence.marketIntegrityStatus !== "verified" ||
       a.evidence.teamResolutionStatus !== "resolved" ||
       a.evidence.teamConfidence !== "high" ||
-      !a.evidence.propositionHash?.trim()) {
+      !HASH.test(a.evidence.propositionHash ?? "")) {
     return no("watcher_admission_provenance_incomplete");
   }
   if (!positiveSafeInteger(e.id) || !positiveSafeInteger(e.presetId) ||

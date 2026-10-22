@@ -57,7 +57,9 @@ function args(patch:Partial<SatchelWagerReservation>={}){
  return {requestId:signed.operation_id,ownerUid:signed.owner_id,chainId:"wolo-1" as const,senderAddress:addr,
   recipientAddress:escrow,denom:"uwolo" as const,amountUwolo:signed.amount_uwolo,memo:signed.memo,reservation:signed};
 }
-function health(patch:Record<string,unknown>={}){return {ok:true,accepting:true,chain_id:"wolo-1",signer_role:"exclusive-war-satchel-v1",
+// Positive capability here is a deliberately fabricated test fixture, not
+// an attested live vault. The current Wolo server advertises UNAVAILABLE.
+function health(patch:Record<string,unknown>={}){return {ok:true,accepting:true,custody_capability:"AVAILABLE",chain_id:"wolo-1",signer_role:"exclusive-war-satchel-v1",
  durable_one_shot:true,replay_after_restart_forbidden:true,refunds_require_chain_proof:true,vault_address:addr,
  build_sha256:code,custody_mnemonic_shared_with_other_roles:false,execution_protocol:2,
  owner_bound_wager_reservation_required:true,...patch};}
@@ -86,6 +88,31 @@ test("health must advertise exact v2 owner review and isolated signer",async()=>
  for(const patch of [{custody_mnemonic_shared_with_other_roles:true},{execution_protocol:1},{owner_bound_wager_reservation_required:false},{accepting:false}]){
   const t=mockRead(ack(),health(patch));await assert.rejects(()=>connectCertifiedSatchelSigner(t.reader),/signer_is_not_exclusive_or_not_attested/);assert.equal(t.calls().sendCalls,0);
  }
+}finally{restore();}});
+
+test("UNAVAILABLE, missing or contradictory custody capability never reaches a money-moving POST",async()=>{try{configure();
+ for(const capability of ["UNAVAILABLE","UNKNOWN","available",null,false,0,{}]){
+  const t=mockRead(ack(),health({custody_capability:capability}));
+  await assert.rejects(()=>connectCertifiedSatchelSigner(t.reader),/signer_is_not_exclusive_or_not_attested/);
+  assert.deepEqual(t.calls(),{healthCalls:1,sendCalls:0});
+ }
+ const missing=health();delete (missing as Record<string,unknown>).custody_capability;
+ const t=mockRead(ack(),missing);
+ await assert.rejects(()=>connectCertifiedSatchelSigner(t.reader),/signer_is_not_exclusive_or_not_attested/);
+ assert.deepEqual(t.calls(),{healthCalls:1,sendCalls:0});
+}finally{restore();}});
+
+test("capability loss between initial connection and second health check holds the wager without POST",async()=>{try{configure();
+ let healthCalls=0,sendCalls=0;
+ const reader=(async(input:RequestInfo|URL)=>{
+  if(String(input).endsWith("/health"))return Response.json(
+   health(++healthCalls===1?{}:{custody_capability:"UNAVAILABLE"}));
+  sendCalls++;return Response.json(ack());
+ })as typeof fetch;
+ const signer=await connectCertifiedSatchelSigner(reader);
+ assert.deepEqual(await signer.submitOneShot(args()),{kind:"unknown",reason:"signer_transport_or_identity_unknown"});
+ assert.equal(healthCalls,2);
+ assert.equal(sendCalls,0);
 }finally{restore();}});
 
 test("signed v2 one-shot returns broadcast_accepted only, never financial confirmation",async()=>{try{configure();

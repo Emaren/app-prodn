@@ -33,7 +33,7 @@ Renaissance OS introduces a twelve-destination visual engineering campaign with 
 - Twelve separately routed, visually differentiated destinations across Command, Atlas, Circuit, Marshal, Doctor, Vault, Arbiter, Test Forge, Architect, Integration Train, Sentinel and Chronicles.
 - Server-side snapshot of real versioned campaign data and existing public Index scores (no fabricated agents, workers, test passes, performance or production certifications).
 - A read-only operator CLI for `verify`, `map`, `next`, `doctor /route` and `impact path`, reusing the existing bounded static dependency analyzer.
-- Shared dropdown navigation and links for all new views; no existing page redesign.
+- A single **Renaissance Campaign** navigation doorway in both castle and account menus; the command landing page adds an accessible twelve-chamber gateway using the canonical module registry. All twelve existing destination pages, content and direct URLs remain intact, as do the existing in-page instrument tabs.
 - Contract tests for route uniqueness, phase coverage, private-route exclusion and route-page existence.
 
 ## Explicitly not yet implemented

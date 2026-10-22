@@ -758,6 +758,85 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
             source,
         )
 
+    def test_prepare_only_stages_exact_release_without_activating_or_migrating(self):
+        initial = sample()
+        staged = copy.deepcopy(initial)
+        staged["production"]["staged_build_id"] = "candidate-build"
+        receipt = MODULE.ROOT / ".aoe2war-release" / "stage-receipts" / "prepared.json"
+        source = initial["local"]["head"]
+        collect = mock.Mock(side_effect=[initial, initial, staged])
+
+        with (
+            mock.patch.object(MODULE, "ensure_documentation_baseline", return_value=source) as docs,
+            mock.patch.object(MODULE, "publish_exact") as publish,
+            mock.patch.object(MODULE, "gate_release", return_value=0) as gate,
+            mock.patch.object(MODULE, "manifest_release", return_value=0) as manifest,
+            mock.patch.object(MODULE, "stage_release", return_value=0) as stage,
+            mock.patch.object(MODULE, "resolve_stage_receipt", return_value=(receipt, False)) as resolve,
+            mock.patch.object(MODULE, "activate_and_certify") as activate,
+            mock.patch.object(MODULE, "apply_production_migrations_if_needed") as migrate,
+        ):
+            result = MODULE.ship_all(collect=collect, initial=initial, prepare_only=True)
+
+        self.assertEqual(result, 0)
+        docs.assert_called_once_with(initial)
+        gate.assert_called_once()
+        publish.assert_called_once_with(source)
+        manifest.assert_called_once()
+        stage.assert_called_once()
+        resolve.assert_called_once_with(source, "candidate-build", staged["production"])
+        activate.assert_not_called()
+        migrate.assert_not_called()
+
+    def test_prepare_only_reuses_exact_existing_stage_without_any_mutation(self):
+        initial = sample()
+        initial["production"]["staged_build_id"] = "candidate-build"
+        receipt = MODULE.ROOT / ".aoe2war-release" / "stage-receipts" / "prepared.json"
+        collect = mock.Mock()
+        with (
+            mock.patch.object(MODULE, "resolve_stage_receipt", return_value=(receipt, False)) as resolve,
+            mock.patch.object(MODULE, "retire_superseded_stage") as retire,
+            mock.patch.object(MODULE, "ensure_documentation_baseline") as docs,
+            mock.patch.object(MODULE, "gate_release") as gate,
+            mock.patch.object(MODULE, "stage_release") as stage,
+            mock.patch.object(MODULE, "activate_and_certify") as activate,
+        ):
+            result = MODULE.ship_all(collect=collect, initial=initial, prepare_only=True)
+        self.assertEqual(result, 0)
+        resolve.assert_called_once()
+        for fn in (collect, retire, docs, gate, stage, activate):
+            fn.assert_not_called()
+
+    def test_prepare_only_refuses_unverified_existing_stage_without_retirement(self):
+        initial = sample()
+        initial["production"]["staged_build_id"] = "candidate-build"
+        collect = mock.Mock()
+        with (
+            mock.patch.object(MODULE, "resolve_stage_receipt", side_effect=MODULE.AutoShipError("unsafe stage")),
+            mock.patch.object(MODULE, "retire_superseded_stage") as retire,
+            mock.patch.object(MODULE, "stage_release") as stage,
+            mock.patch.object(MODULE, "activate_and_certify") as activate,
+        ):
+            result = MODULE.ship_all(collect=collect, initial=initial, prepare_only=True)
+        self.assertEqual(result, 2)
+        for fn in (collect, retire, stage, activate):
+            fn.assert_not_called()
+
+    def test_prepare_only_still_obeys_listener_and_dirty_source_preflight(self):
+        for field, value in (("wolo_8092_count", 0), ("wolo_8093_count", 2), ("service", "inactive")):
+            with self.subTest(field=field):
+                initial = sample()
+                initial["production"][field] = value
+                with mock.patch.object(MODULE, "ensure_documentation_baseline") as docs:
+                    result = MODULE.ship_all(collect=mock.Mock(), initial=initial, prepare_only=True)
+                self.assertEqual(result, 2)
+                docs.assert_not_called()
+        initial = sample()
+        initial["local"]["dirty_count"] = 1
+        with mock.patch.object(MODULE, "stage_release") as stage:
+            self.assertEqual(MODULE.ship_all(collect=mock.Mock(), initial=initial, prepare_only=True), 2)
+            stage.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

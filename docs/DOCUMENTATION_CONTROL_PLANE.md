@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-live-authority-integration` at `6b15fd8d8afca12bfb5e79b8aa9b37aee64ce2d3`
+Implementation baseline: `fix/hd-funded-admission-canonical-proposition-time-20261021` at `f5acc15683c22a41621f002af02693e43e21050d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **95**
+- Authoritative repository documents: **96**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 59
+- `reference`: 60
 - `runbook`: 17
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 79
+- `active`: 80
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -134,6 +134,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |
 | [War Room Forum](WAR_ROOM_FORUM.md) | `reference` | `active` | `product-contract` |
 | [Watcher 1.6.4 Download Artwork](WATCHER_164_DOWNLOAD_ART.md) | `runbook` | `active` | `release-engineering-contract` |
+| [The Watcher — Kingdom Index Desktop Companion Certification](WATCHER_KINGDOM_INDEX_COMPANION.md) | `reference` | `active` | `watcher-desktop-companion-assurance` |
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
