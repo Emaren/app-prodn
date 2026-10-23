@@ -8,12 +8,14 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-23"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR WarGraph V1
+
+**2026-10-23 source review (bounded):** Rechecked the tracked `lib/wargraph/runtime.ts`, `lib/wargraph/settlementWorker.ts`, and `app/api/wargraph/` implementation paths in app `main` `8f2f3b45`. The constitutional topology and API ownership remain documented source contracts. Founding seats, live clocks, individual game outcomes and economic settlement were **not** independently re-queried or attested in this review; use current guarded runtime evidence before acting on them.
 
 ## Purpose
 
