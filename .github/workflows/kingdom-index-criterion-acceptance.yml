@@ -244,7 +244,7 @@ jobs:
               --build-version "$BUILD_ID" \
               --collector-sha "$COLLECTOR_SHA" \
               --out-dir "kingdom-index-build-evidence/chrome-$VIEW" \
-              --chrome "$CHROME" --post-load-ms 750 \
+              --chrome "$CHROME" --post-load-ms 2500 \
               --load-timeout-ms 20000 \
               > "kingdom-index-build-evidence/chrome-$VIEW/collector-result.json"
             node scripts/kingdom_index_loopback_browser_audit.mjs \

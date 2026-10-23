@@ -9,7 +9,7 @@ const mk=()=>{
  }));
  pages.push({href:"/kingdom-index",status:"unmeasured",score:null,kind:null,authenticatedPublication:null});
  return {schema:1,generatedAt:"2026-10-22T18:00:00.000Z",
-   estate:{pageTemplates:144,routeHandlerTemplates:273},certified:0,pages};
+   estate:{pageTemplates:144,routeHandlerTemplates:279},certified:0,pages};
 };
 const headers=new Headers({"cache-control":"private, no-store, max-age=0"});
 test("valid finite loopback cohort returns measured local latency but never a certificate",async()=>{

@@ -1,5 +1,6 @@
 import { normalizeReplaySteamId } from "./replayPlayerIdentity.ts";
 import { normalizeReplayPlayers } from "./teamResolution.ts";
+import { observeFundedMechaPublicReadiness } from "./warSatchelLiveModeReadiness.ts";
 
 export const BET_AUTOMATION_CUSTODY_CAPABILITY = "bet-custody-v1";
 export const BET_AUTOMATION_MAX_RESERVE_WOLO = 10_000;
@@ -30,7 +31,8 @@ export type BetAutomationRuntime = {
     | "PREVIEW_READY"
     | "AUTOMATION_DISABLED"
     | "LIVE_CUSTODY_UNAVAILABLE"
-    | "LIVE_EXECUTOR_UNAVAILABLE";
+    | "LIVE_EXECUTOR_UNAVAILABLE"
+    | "CERTIFIED_FUNDED_MECHA_CONFIGURED";
   detail: string;
 };
 
@@ -232,6 +234,24 @@ export function readBetAutomationRuntime(
     isLocalBetCustodyEndpoint(env.WOLO_BET_CUSTODY_URL) &&
     Boolean(env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim());
 
+  // The independent Satchel funded worker has a different signer/reviewer
+  // than legacy 8092 custody. Only the source-released, independently
+  // attested Satchel lane may advertise a live profile mode. Never use
+  // this display field to authorize a transaction.
+  if (configuredMode === "live" &&
+      observeFundedMechaPublicReadiness(env).ready) {
+    return {
+      configuredMode,
+      mode: "live",
+      previewOnly: false,
+      executionReady: true,
+      custodyCapabilityPresent: true,
+      code: "CERTIFIED_FUNDED_MECHA_CONFIGURED",
+      detail:
+        "Certified funded Mecha is configured. Actual wagers still require current live Watcher, owner consent, independent signer health and authenticated chain receipts.",
+    };
+  }
+
   if (configuredMode === "disabled") {
     return {
       configuredMode,
@@ -369,6 +389,7 @@ export type BetAutoShadowAdmission =
       eligible: true;
       gameIdentityKey: string;
       sessionKey: string;
+      winnerMarketId: number;
       selectedSide: "left" | "right";
       desyncMarketId: number | null;
       evidence: {
@@ -450,6 +471,11 @@ export function evaluateBetAutoShadowAdmission(input: {
     return { eligible: false, reason: "market_not_live_watcher_winner" };
   }
 
+  // A funded wager must bind the exact admitted winner market, not just
+  // the game key and side. Reject malformed IDs at the shadow origin.
+  if (!Number.isSafeInteger(input.market.id) || input.market.id <= 0) {
+    return { eligible: false, reason: "market_identity_missing" };
+  }
   const linkedSessionKey = normalizedIdentity(input.market.linkedSessionKey);
   const canonicalSessionKey = normalizedIdentity(input.session.sessionKey);
   if (!linkedSessionKey || !canonicalSessionKey) {
@@ -524,6 +550,7 @@ export function evaluateBetAutoShadowAdmission(input: {
     eligible: true,
     gameIdentityKey: canonicalSessionKey,
     sessionKey: canonicalSessionKey,
+    winnerMarketId: input.market.id,
     selectedSide: leftMatch ? "left" : "right",
     desyncMarketId,
     evidence: {

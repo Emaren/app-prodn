@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/kingdom_index_source_audit.mjs --check | tee kingdom-index-census.json
-      - name: Verify 144-page / 273-handler canonical estate and adversarial drift tests
+      - name: Verify 144-page / 279-handler canonical estate and adversarial drift tests
         run: |
           set -euo pipefail
           node scripts/kingdom_index_full_inventory.mjs --check | tee kingdom-index-full-inventory.json
