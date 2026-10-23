@@ -9,12 +9,14 @@ than the mutable Mac worktree or older deployed Wolo checkout.
 from __future__ import annotations
 
 import argparse
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
 
 # Wolo operational PR #91: reviewed cockpit source and adversarial tests.
 REVIEWED_OPS_COMMIT = "98f781d61fa6b35d2cc09b48f84605a617efc2c4"
+EXPECTED_COCKPIT_SHA256 = "4b480c66b13da3c9c8b33a65d78188610861f1306176e61a0b8c8556f4a76e64"
 COCKPIT_PATH = "scripts/mainnet-release-cockpit.py"
 REMOTE = "root@hel1"
 MAX_SOURCE_BYTES = 128 * 1024
@@ -27,7 +29,7 @@ def reviewed_cockpit(repo: Path, run=subprocess.run) -> bytes | None:
         return None
     try:
         result = run(
-            ["git", "-C", str(repo), "--no-optional-locks", "show",
+            ["git", "--no-replace-objects", "-C", str(repo), "--no-optional-locks", "show",
              f"{REVIEWED_OPS_COMMIT}:{COCKPIT_PATH}"],
             capture_output=True, timeout=15, check=False,
         )
@@ -38,7 +40,8 @@ def reviewed_cockpit(repo: Path, run=subprocess.run) -> bytes | None:
             or len(source) > MAX_SOURCE_BYTES
             or not source.startswith(b"#!/usr/bin/env python3\n")
             or b"FINANCIAL_HARD_HOLD" not in source
-            or b"def render_brief(" not in source):
+            or b"def render_brief(" not in source
+            or hashlib.sha256(source).hexdigest() != EXPECTED_COCKPIT_SHA256):
         return None
     return source
 
