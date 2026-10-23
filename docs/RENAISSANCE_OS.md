@@ -50,3 +50,39 @@ node --experimental-strip-types --test tests/renaissance-campaign.test.mts
 ```
 
 Only after PR review, exact-head CI, protected merge and independently cleared release gates may an authorized operator consider the existing `./bin/aoe2war status`, `update --json`, `finish` workflow. This PR is **NOT DEPLOYED** and **NOT financially authorized**.
+
+
+## Master-owned real Next.js/Chrome candidate acceptance (Brain and Tests)
+
+The shared workflow at .github/workflows/renaissance-page-next-acceptance.yml
+collects read-only, bounded candidate browser observations, never releases or
+independent scoring approvals. On its PR it executes a two-page matrix and,
+after approved default-branch integration, supports manual workflow dispatch:
+
+- Brain draft PR #808: tests/kingdom-brain-next-app-acceptance.py
+- Tests draft PR #807: tests/kingdom-tests-next-acceptance.py
+
+Each job resolves the current same-repository, open draft PR head through the
+GitHub API, checks out that exact SHA rather than a synthetic merge, installs
+frozen Yarn dependencies without install scripts, builds real Next.js,
+then executes its existing source-bound desktop/phone Chromium runner
+against loopback Next and controlled API fixtures. It checks the PR head again
+afterwards, rejecting changed-source evidence, and uploads output even on
+test failure when available. Test-generated JSON, BUILD_ID and screenshots
+are candidate-only and must remain labelled accordingly.
+
+IMPORTANT: The old branches inherit an incorrectly hashing legacy prebuild
+page-change manifest generator. Until reviewed master PR #817 is approved and
+integrated, this browser-only workflow invokes the direct Next.js compiler
+after Prisma and build-version generation to avoid mutating committed tracked
+sources. It is NOT a full yarn build lifecycle, release preflight or approved
+release-equivalent build. Required DocsV2, security-patched source, route census,
+normal build-lifecycle, trusted score issuer and exact production SHA/BUILD_ID
+attestation are separate and must stay fail-closed. All browser values from
+controlled responses are fixtures, not live backend observations.
+
+The shared Kingdom Instruments wording OVERALL VERIFIED SCORE still belongs to
+issue #745 and can legitimately fail the Tests whole-page evidence trust check.
+Do not weaken that assertion to make the browser job green. Never attach
+production credentials, direct browser tests at production, touch WoloChain
+or held War Satchel, or publish a criterion score from these receipts.
