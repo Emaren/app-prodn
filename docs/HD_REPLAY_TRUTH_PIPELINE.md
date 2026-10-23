@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -83,6 +83,44 @@ The executable boundary is source-sensitive:
 Do not solve this by excluding every pending-parse placeholder. That would hide
 real newly detected games before they become parseable. The invariant is that
 **finality observation cannot manufacture active-live authority**.
+
+### Original LIVE admission source qualification — October 22
+
+Private post-ingest awaits `admitCommittedLiveWatcherMarkets` from exact
+committed GameStats IDs, separately from settlement-capable final-result work.
+HD/RM/DM, account-linked Steam participation, signed Watcher provenance, upload
+bytes, complete teams, freshness and nonterminal state come from durable source
+rows and the canonical session snapshot. Public GET/SSR cannot wake this rail.
+
+The existing guarded writer takes the game advisory lock, a short `game_stats`
+table SHARE lock and source row locks. This serializes unseen final-artifact
+INSERTs as well as updates through the refreshed snapshot and market write.
+One-second lock, eight-second statement and nine-second transaction limits
+fail closed under contention. No source write, parser or network request runs
+under this lock. Freshness is checked again immediately before write and commit.
+Real PostgreSQL tests cover committed terminal state during lock waits, a new
+final INSERT racing after the source read, expired authority, busy writers,
+concurrent duplicate ingestion, team/RM/DM, closed books and lost notifications.
+
+Use `python3 scripts/check-live-watcher-admission.py --replay` for hosted CI.
+It verifies an immutable sanitized controlled API capture and its SHA-256, then
+feeds its committed rows/receipt through the real HD PostgreSQL coordinator.
+Capture-relative clocks are explicitly rebased only for this isolated test;
+API authentication/HMAC do not execute in replay and the fixture grants no LIVE
+or financial authority. The separate `--capture --api-source <clean-local-api>
+--api-python <local-interpreter>` mode executes the actual reviewed API
+`5a2750849e59f0e4551c6e9e0417b59254cff467` upload/key/HMAC/archive/SQL/notifier
+code using a controlled parser and captured delivery transport. It writes a new
+sanitized fixture only after the complete local qualification succeeds. It
+requires an authorized local checkout; CI never clones the private repository
+or silently substitutes replay for a requested capture.
+
+The source already recovers missing notifications from durable LIVE rows in the
+existing authenticated replay-auto-recovery one-shot, before slower final work.
+It is bounded and idempotent and dry-run stays read-only. Activation still needs
+independently verified scheduler ownership, authentication, actual cadence and
+backlog compatible with the 12-minute horizon. Neither test mode is a consenting
+human Watcher capture, independent game witness or mainnet custody canary.
 
 ### Single, watcher, and package upload parity
 
