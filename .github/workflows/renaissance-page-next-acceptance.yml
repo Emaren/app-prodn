@@ -12,6 +12,7 @@ on:
         options:
           - all
           - brain
+          - intelligence
           - tests
 permissions:
   contents: read
@@ -30,8 +31,9 @@ jobs:
         include: >-
           ${{ fromJSON(
             inputs.target == 'brain' && '[{"pr":808,"page":"brain"}]' ||
+            inputs.target == 'intelligence' && '[{"pr":805,"page":"intelligence"}]' ||
             inputs.target == 'tests' && '[{"pr":807,"page":"tests"}]' ||
-            '[{"pr":808,"page":"brain"},{"pr":807,"page":"tests"}]'
+            '[{"pr":808,"page":"brain"},{"pr":805,"page":"intelligence"},{"pr":807,"page":"tests"}]'
           ) }}
     env:
       NODE_ENV: production
@@ -119,7 +121,13 @@ jobs:
               --repo "$GITHUB_WORKSPACE" --sha "$EXPECTED_CANDIDATE_SHA" \
               --url http://127.0.0.1:3108 --chrome "$CHROME" --samples 3 \
               --output renaissance-page-evidence
-          else
+          elif [ "${{ matrix.page }}" = "intelligence" ]; then
+            test -f tests/kingdom-intelligence-next-app-acceptance.py
+            timeout -k 10s 12m python3 -u tests/kingdom-intelligence-next-app-acceptance.py \
+              --repo "$GITHUB_WORKSPACE" --sha "$EXPECTED_CANDIDATE_SHA" \
+              --origin http://127.0.0.1:3138 --chrome "$CHROME" \
+              --output renaissance-page-evidence
+          elif [ "${{ matrix.page }}" = "tests" ]; then
             test -f tests/kingdom-tests-next-acceptance.py
             node ./node_modules/next/dist/bin/next start \
               --hostname 127.0.0.1 --port 3030 \
@@ -138,6 +146,9 @@ jobs:
               --repo "$GITHUB_WORKSPACE" --origin http://127.0.0.1:3030 \
               --chrome "$CHROME" --samples 3 \
               --output renaissance-page-evidence/kingdom-tests-next-receipt.json
+          else
+            echo "::error::Unknown Renaissance page acceptance candidate"
+            exit 2
           fi
       - name: Fail closed if PR head changed during acceptance
         if: always()
