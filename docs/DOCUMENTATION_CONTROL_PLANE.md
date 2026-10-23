@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/exact-head-ci-dispatch-20261022` at `aba29056b128f89273f318bc01a49450aab91b49`
+Implementation baseline: `feature/renaissance-exact-page-next-acceptance-20261022` at `93114279b853f700b7bd0aa8527da8c77be53eb4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
