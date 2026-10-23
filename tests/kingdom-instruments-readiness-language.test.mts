@@ -26,7 +26,7 @@ test("declared inspection checks are not represented as completed tests", () => 
   assert.doesNotMatch(canvas, /TESTS PASSED|VERIFIED CHECKS|EXECUTED TESTS/);
 });
 test("schema-only, missing and malformed category sets cannot promote overall readiness", () => {
-  assert.match(canvas, /inspection\.schema===1&&Array\.isArray\(inspection\.categories\)/);
+  assert.match(canvas, /validReportedInspectionReadiness\(inspection\)/);
   assert.match(canvas, /valid\?fmt\(inspection\.overallScore\):"—"/);
   assert.match(canvas, /NO SOURCE-REPORTED INSPECTION CATEGORIES/);
 });
