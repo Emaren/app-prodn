@@ -18,6 +18,18 @@ export async function load(url, context, nextLoad) {
     // broad production scheduler. This export exists only in this test loader.
     source += '\nexport {settleResolvedMarketWagers as settleIsolatedLifecycleMarkets};\n';
   }
+  if(process.env.RUN_SATCHEL_FULL_LIFECYCLE_TESTS === '1' && url.endsWith('/lib/hdFinancialMaintenanceFence.ts')){
+    // Synthetic operator/build/filesystem authority and private Unix transport;
+    // actual Ed25519 policy, restricted PG role and lease kernel are retained.
+    const start=source.indexOf('export async function withHdFinancialLease');
+    if(start<0)throw Error('maintenance fixture kernel entrypoint missing');
+    source=source.slice(0,start)+`export async function withHdFinancialLease(input,action){
+      const fixture=JSON.parse(process.env.SATCHEL_TEST_FINANCIAL_AUTHORITY||"null");
+      if(!fixture||!(fixture.socket.startsWith("/tmp/aoe2-satchel-lifecycle-")||fixture.socket.startsWith("/private/tmp/aoe2-satchel-lifecycle-")))throw Error("isolated financial policy missing");
+      const a=fixture.authority;
+      return withConfiguredLease(new pg.Client({host:fixture.socket,port:5432,user:a.readerRole,database:"postgres"}),a,input,action);
+    }`;
+  }
   if (url.endsWith('/lib/warSatchelFinancialBridgeHold.ts')) {
     source = source.replace('SATCHEL_FINANCIAL_BRIDGE_READY = false as const', 'SATCHEL_FINANCIAL_BRIDGE_READY = true as const');
   }

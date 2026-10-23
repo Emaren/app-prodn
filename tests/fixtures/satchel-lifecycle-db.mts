@@ -2,7 +2,7 @@
  * production schema mutation, financial activation or network chain source. */
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {createECDH, createPrivateKey, randomBytes, randomUUID, sign} from "node:crypto";
+import {createECDH, createPrivateKey, createPublicKey, randomBytes, randomUUID, sign} from "node:crypto";
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync} from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -12,6 +12,7 @@ import {PrismaClient} from "../../lib/generated/prisma/index.js";
 import {makeSignDoc, pubkeyToAddress, serializeSignDoc} from "@cosmjs/amino";
 import {satchelAutoSpendChallengeText, verifySatchelAutoSpendSignature, type SatchelSpendChallenge} from "../../lib/warSatchelAutoSpendConsent.ts";
 import {normalizeReplayPlayers, resolveReplayTeams} from "../../lib/teamResolution.ts";
+import {hdFinancialPermitMessage} from "../../lib/hdFinancialMaintenanceFence.ts";
 import type {LiveGameSession} from "../../lib/liveSessionSnapshot.ts";
 
 const REPOSITORY = fileURLToPath(new URL("../../", import.meta.url));
@@ -79,10 +80,30 @@ export async function startLifecycleDatabase() {
     assert.ok(tableCount > 100, "canonical application dependencies must use full relational schema");
     prisma = new PrismaClient({adapter: new PrismaPg({host: socket, port: 5432, user: ROLE, database: "postgres", max: 6})});
     await prisma.$queryRaw`SELECT 1`;
-    return {prisma, sql, root, cleanup, migrations, tableCount};
+    return {prisma, sql, root, socket, cleanup, migrations, tableCount};
   } catch (error) { await cleanup(); throw error; }
 }
 export type LifecycleDatabase = Awaited<ReturnType<typeof startLifecycleDatabase>>;
+
+/** Actual policy-table/Ed25519/NOINHERIT admission in the private fixture.
+ * Only filesystem authority, compiled identity and Unix/TLS transport are test
+ * dependencies. The production admission kernel/SQL and callback lease run. */
+export async function installLifecycleFinancialAdmission(db:LifecycleDatabase,vault:string,closed=false){
+  assert.ok(db.socket.startsWith(db.root+"/")&&/^\/(?:private\/)?tmp\/aoe2-satchel-lifecycle-/.test(db.root));
+  const existing=await db.sql.query("SELECT to_regclass('public.hd_financial_maintenance_policy') AS name");
+  if(!existing.rows[0].name){
+    await db.sql.query(readFileSync(path.join(REPOSITORY,"prisma/migrations/20261021_220000_hd_financial_maintenance_fence/migration.sql"),"utf8"));
+    await db.sql.query("CREATE ROLE hd_finance_fixture_reader LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS; GRANT USAGE ON SCHEMA public TO hd_finance_fixture_reader; GRANT SELECT ON hd_financial_maintenance_policy TO hd_finance_fixture_reader");
+  }
+  const privateKey=createPrivateKey({format:"der",type:"pkcs8",key:Buffer.concat([Buffer.from("302e020100300506032b657004220420","hex"),Buffer.alloc(32,91)])});
+  const current=await db.sql.query("SELECT generation::text FROM hd_financial_maintenance_policy WHERE scope='hd-satchel'");
+  const generation=(BigInt(current.rows[0].generation)+1n).toString(),now=Math.floor(Date.now()/1000);
+  const identity={source:"f".repeat(40),deployment:"e".repeat(64)};
+  const permit={protocol:1,...identity,scope:"hd-satchel",generation,producers:["satchel-withdrawal"],wallets:[vault],issued_at:now-1,expires_at:now+55};
+  await db.sql.query("UPDATE hd_financial_maintenance_policy SET generation=$1,closed=$2,permit=$3,signature=$4 WHERE scope='hd-satchel'",[generation,closed,permit,sign(null,hdFinancialPermitMessage(permit),privateKey).toString("base64")]);
+  process.env.SATCHEL_TEST_FINANCIAL_AUTHORITY=JSON.stringify({socket:db.socket,authority:{...identity,readerRole:"hd_finance_fixture_reader",
+    publicKey:createPublicKey(privateKey).export({format:"der",type:"spki"}).subarray(-32).toString("hex")}});
+}
 
 /** Public, test-only secp256k1 key material may be supplied by the continuous
  * isolated SDK fixture. Never load a mnemonic, keyring or environment secret. */

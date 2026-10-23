@@ -8,12 +8,127 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-20"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## October 22 — build-bound HD financial admission (source only)
+
+`lib/hdFinancialMaintenanceFence.ts` adds a last-hop barrier around primary
+and founder payout POSTs, escrow grouped runs, local payout signing, staking
+unstake CLI/mnemonic signing, faucet CLI signing, dedicated Satchel wagers and
+first withdrawal submission. Read-only health, transaction proof and existing
+withdrawal reconciliation remain available. The retired 8194 prototype stays
+refused. This is an HD admission barrier, not a global producer, solvency or
+financial-drain certificate. `SATCHEL_FINANCIAL_BRIDGE_READY` remains false.
+
+The migration `20261021_220000_hd_financial_maintenance_fence` creates only the
+policy relation and two HOLD tombstones. UPDATE must increase generation;
+DELETE/TRUNCATE refuse. **It has not been run in production.** It creates no
+role, credential, signing key, OPEN permit or new financial ledger. Policy
+ownership and grants must be provisioned by the independent operator through
+an approved financial migration/provisioning procedure, not an ordinary
+website-only migration. A table owned or writable by an application principal
+is insufficient. Use a dedicated policy database/authority inaccessible to
+app writers, even if the application migration was rehearsed elsewhere.
+
+Each admission opens a fresh, TLS-verified read-only PostgreSQL connection as
+a dedicated unprivileged NOINHERIT reader. The kernel rejects role membership,
+superuser/bypass/creation privileges, owner control, RLS/views and table or
+column write grants. It stabilizes relation identity against DDL, obtains the
+scope's shared transaction lease, then reads policy and **database time**.
+No cached OPEN, process-local flag or timer reactivation can bypass HOLD.
+
+`HD_FINANCIAL_FENCE_AUTHORITY_FILE` points to a bounded root-owned file under
+root-owned non-writable directories, with these exact fields:
+
+| Field | Contract |
+| --- | --- |
+| `protocol` | Integer 1 |
+| `database_url` | Password-authenticated `postgresql:` URL, no query/hash overrides |
+| `database_ca_file` | Root-protected CA file; TLS hostname/certificate verification required |
+| `reader_role` | Exact dedicated PostgreSQL login/current role |
+| `deployment` | SHA256 of build-generation domain, exact source and existing build-version |
+| `source` | Full clean 40-hex source commit embedded in this running bundle |
+| `public_key_hex` | Independent Ed25519 admission authority; no private key in application |
+
+The service runs without root privileges. Its credential file can be readable
+by a dedicated service group but must not be group/other writable. The table,
+connection, CA and authority must be independently controlled, including any
+application database administrator with potential write access. Source checks
+cannot independently establish that operator separation.
+
+The public `hdFinancialPermitMessage` canonicalizes the signing domain
+`aoe2war/hd-financial-admission/v1` followed by protocol, scope, generation,
+deployment, source, sorted unique producers, sorted unique wallet addresses,
+issued/expires Unix seconds. No extra fields, aliases, duplicate list entries,
+zero/future dates or duration above 60 seconds are accepted. Policy's base64
+Ed25519 signature must match the protected public key, generation and exact
+scope/producer/wallet. Producer IDs are `settlement-payout`, `founder-payout`,
+`settlement-run`, `local-payout`, `staking-unstake`, `faucet`, `satchel-wager`
+and `satchel-withdrawal`; scopes are `hd-legacy` and `hd-satchel`.
+
+Next embeds an immutable build literal using `scripts/hd-financial-build-identity.cjs`.
+It measures Git rather than trusting an environment SHA, refuses dirty or
+untracked source and a missing/development build generation. The sole generated
+exception is Next's type-only `next-env.d.ts` output-directory reference:
+every other byte and file mode must match HEAD. No executable-source exception
+is allowed; the canonical page-change manifest must already be committed. Old processes
+cannot adopt a newly rotated authority/permit by reading newer sidecars.
+Unbundled Node/CLI workers have no compiled identity and **remain HELD**;
+source-bound worker packaging is required before their financial use. The
+build tuple is not itself artifact attestation or custody certification.
+
+An admitted callback retains its lease through I/O and result processing;
+expiry/connection loss aborts its signal. The kernel waits for callback unwind
+instead of releasing the lease while an ignored promise can still send. HTTP
+and CLI transports have explicit cancellation/time limits. CosmJS cannot
+cancel every already-started network action: timeout, loss of the policy
+connection, process death or COMMIT acknowledgement failure after admission
+is **UNKNOWN**, never proof that a payment failed. Existing immutable attempt
+journals and authenticated read-only reconciliation remain authoritative;
+this change adds no retry or second payment ledger.
+
+### Coordinated maintenance boundary
+
+1. Independently prove exact runtime/build, protected policy ownership and
+   every credential holder. Old binaries, raw workers, direct keyring/CLI
+   access, manual/external holders and shared DE routes still need their
+   specific service/credential fences. Do not stop unrelated website/consensus.
+2. Commit `closed=true, generation=generation+1` for each affected scope
+   **before** waiting for leases; keep OPEN issuance disabled. Never restore an
+   older policy row or replay its permit as rollback. Prove fresh/restarted
+   callers are refused and record current queue/request/attempt identities.
+3. Acquire exclusive policy advisory leases `(724176,48)` then `(724176,49)`
+   as required. A first withdrawal can hold policy 49 while acquiring the
+   application vault lock: acquire application `(724176,47)` **after** policy
+   leases, in the application database when distinct. Keep these sessions
+   alive; loss of any session invalidates the maintenance proof. Do not
+   invert lock order or equate same numeric keys across databases.
+4. Read existing attempt journals, queues and authenticated outcomes after
+   the wait. Lease absence alone cannot prove remote requests, abandoned
+   UNKNOWN operations or external producers are drained. Separately fence
+   financial row producers not participating in the vault lock; quiescence,
+   current backups and paired rollback require the existing issue #5 witness.
+5. Preserve all liabilities, UNKNOWN holds and request identities. Restore
+   only the individually approved producers after paired verification, new
+   source/build-bound permits and queue review. Never restore financial state
+   from stale backups or restart consensus as settlement rollback.
+
+Actual isolated PostgreSQL tests cover independent reader posture, forged
+permits, CLOSE-before-wait, separate OS producer leases, process restart,
+expiry during queued I/O and terminated policy connections. Wire-format unit
+tests explicitly inject only a test callback; the real client separately
+refuses financial POST without real admission. The existing 100-WOLO/twelve-ticket
+SDK/PG qualification also installs the actual policy SQL with a separate
+NOINHERIT reader and Ed25519 permit: HOLD creates zero withdrawal attempts;
+OPEN allows the existing UNKNOWN/reconciliation path. Its filesystem/build/TLS
+authority, game capture and transport reviewers remain controlled test inputs.
+These are source receipts,
+not a live fence or evidence that issue #5 control A is VERIFIED.
 
 ## October 21 — canonical Watcher proposition and admission clock validation
 

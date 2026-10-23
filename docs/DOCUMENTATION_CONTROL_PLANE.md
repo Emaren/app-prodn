@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-funded-admission-canonical-proposition-time-20261021` at `f5acc15683c22a41621f002af02693e43e21050d`
+Implementation baseline: `codex/hd-durable-finance-fence` at `768ff1803c5b08acc6919f8231914b999323d4c1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

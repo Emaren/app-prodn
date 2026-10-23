@@ -10,7 +10,7 @@ import test from "node:test";
 import type {IsolatedSatchelSigner} from "../lib/warSatchelAutoBetExecutor.ts";
 import type {SatchelWagerSnapshot} from "../lib/warSatchelWagerAuthorization.ts";
 import type {SatchelWagerReservation} from "../lib/warSatchelWagerReservation.ts";
-import {startLifecycleDatabase,seedLifecycleOwnerAndMarkets,seedLifecycleSession,lifecycleOwnerKey} from "./fixtures/satchel-lifecycle-db.mts";
+import {startLifecycleDatabase,installLifecycleFinancialAdmission,seedLifecycleOwnerAndMarkets,seedLifecycleSession,lifecycleOwnerKey} from "./fixtures/satchel-lifecycle-db.mts";
 
 const U=1000000n;
 const digest=(x:unknown)=>createHash("sha256").update(JSON.stringify(x).replace(/[<>&\u2028\u2029]/g,c=>"\\u"+c.charCodeAt(0).toString(16).padStart(4,"0"))).digest("hex");
@@ -281,6 +281,10 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
       return Response.json({operation_id:operationId,request_id:operationId,chain_id:"wolo-1",signer_role:"exclusive-war-satchel-v1",
         durable_request_fenced:true,status:"CONFIRMED",tx_hash:withdrawal.tx_hash});
     }) as typeof fetch;
+    await installLifecycleFinancialAdmission(db,vault,true);
+    assert.deepEqual(await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader),{state:"financial_maintenance_hold"});
+    assert.equal(submissions,0);assert.equal(await db.prisma.satchelWithdrawalAttempt.count(),0);
+    await installLifecycleFinancialAdmission(db,vault);
     assert.deepEqual(await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader),{state:"unknown_hold"});
     const confirmed=await withdrawalRuntime.processCertifiedSatchelWithdrawal(db.prisma,reserved.withdrawalId,withdrawalReader);
     assert.equal(confirmed.state,"sent");
@@ -288,6 +292,7 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
     assert.equal(submissions,1);assert.equal(reconciliations,1);
     assert.equal(await db.prisma.satchelWithdrawalAttempt.count(),1);
     assert.equal(await db.prisma.satchelWithdrawalPhysicalConsumption.count(),1);
+    delete process.env.SATCHEL_TEST_FINANCIAL_AUTHORITY;
     const finalBalance=await db.prisma.satchelFundedBalance.findUniqueOrThrow({where:{ownerUserId:seeded.owner.id}});
     assert.equal(finalBalance.availableUwolo,0n);assert.equal(finalBalance.reservedUwolo,0n);assert.equal(finalBalance.withdrawalPendingUwolo,0n);
     assert.equal(withdrawal.intent.AmountUWolo,"98000000");

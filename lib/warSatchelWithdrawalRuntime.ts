@@ -1,3 +1,4 @@
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
 /** Server-owned withdrawal execution/recovery. No public request may choose a
  * transaction hash, approval, endpoint, vault or proof context. The first send
  * follows an atomic UNKNOWN fence; every later pass is reconcile-only. */
@@ -18,10 +19,10 @@ function token(){
   const key=process.env.WAR_SATCHEL_SIGNER_AUTH_TOKEN||"";
   if(!/^[A-Za-z0-9_-]{48,512}$/.test(key))stop("credential_missing");return key;
 }
-async function request(path:"/v1/satchel/withdrawals"|"/satchel/v1/reconcile",body:unknown,reader:typeof fetch){
+async function request(path:"/v1/satchel/withdrawals"|"/satchel/v1/reconcile",body:unknown,reader:typeof fetch,canceled?:AbortSignal){
   const response=await reader(ENDPOINT+path,{method:"POST",redirect:"error",cache:"no-store",
     headers:{Authorization:"Bearer "+token(),"Content-Type":"application/json",Accept:"application/json"},
-    body:JSON.stringify(body),signal:AbortSignal.timeout(8500)});
+    body:JSON.stringify(body),signal:AbortSignal.any([AbortSignal.timeout(8500),...(canceled?[canceled]:[])])});
   if(!response.ok||response.status!==200)stop("signer_outcome_unknown");
   const raw=await readWarSatchelBoundedUtf8(response.body,16384);
   if(!raw)stop("signer_outcome_unknown");
@@ -49,8 +50,16 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
   let reply:Record<string,unknown>|null=null;
   if(record.status==="reserved"){
     // Database commit completes BEFORE the only permitted submission call.
-    const fenced=await markSatchelWithdrawalAttempt(prisma,{withdrawalId,ownerUserId:record.ownerUserId});
-    try{reply=await request("/v1/satchel/withdrawals",fenced.request,reader);}catch{
+    let attempted=false;
+    try{reply=await withHdFinancialLease({scope:"hd-satchel",producer:"satchel-withdrawal",wallet:process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS||""},async signal=>{
+      // Losing the database COMMIT acknowledgement is itself uncertain.
+      // The durable row controls every subsequent pass; never label it an
+      // unattempted maintenance refusal merely because this await rejected.
+      attempted=true;
+      const fenced=await markSatchelWithdrawalAttempt(prisma,{withdrawalId,ownerUserId:record.ownerUserId});
+      return request("/v1/satchel/withdrawals",fenced.request,reader,signal);
+    });}catch{
+      if(!attempted)return {state:"financial_maintenance_hold"};
       await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:null,state:"unknown"}});
       return {state:"unknown_hold"};
     }

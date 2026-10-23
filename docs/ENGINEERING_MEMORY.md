@@ -15,6 +15,19 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## October 22 — financial permits bind the running build
+
+A permit matching a newly rotated root configuration does not identify the
+process using it. Compile the clean source and unique build generation into
+that process; never reread a replaced source/build sidecar as runtime identity.
+Absent raw-worker packaging stays HELD. Signed policy uses database time and
+fresh reads under cross-process leases. Commit HOLD before waiting; do not
+release a lease by racing an uncancelled financial callback against a timer.
+Connection loss after admission is UNKNOWN, not proof of no broadcast. Policy
+lease absence still cannot certify external signers, remote in-flight requests
+or complete liabilities. Preserve the original payment journals and all holds.
+
+
 ## October 21 — preserve proof authority through waits and release epochs
 
 A valid historical bank proof is not current assets when an authenticated
