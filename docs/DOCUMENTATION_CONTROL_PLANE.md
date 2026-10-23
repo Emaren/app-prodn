@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/final-satchel-qualification` at `3bfa581468319b8de421fb25baacb5897b390201`
+Implementation baseline: `fix/20261023-held-legacy-financial-entrypoint-fence` at `174a0a6e5dfdde3347159428dfcbdf167ca008a2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
