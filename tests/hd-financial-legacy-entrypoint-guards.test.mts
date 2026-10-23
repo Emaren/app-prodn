@@ -51,6 +51,21 @@ test("both settlement lanes and local signer route through one bounded lease", (
   assert.doesNotMatch(founder, /await fetch\(\x60\$\{baseUrl\}\/settlement\/v1\/payouts/);
 });
 
+test("grouped mainnet settlement cannot fall back after ambiguous POST", () => {
+  const source = file("lib/woloBetSettlement.ts");
+  const action = within(source, "export async function executeWoloSettlementRun(input:", "export async function validateWoloEscrowSettlementRun");
+  const unknown = within(source, "function groupedRunUnknown(", "export async function executeWoloSettlementRun(input:");
+  assert.match(action, /financialSettlementPost<SettlementRunPayload>/);
+  assert.match(action, /"escrow-settlement-run"/);
+  assert.match(action, /"payout-settlement-run"/);
+  assert.match(action, /groupedRunUnknown\(input,/);
+  assert.doesNotMatch(action, /await fetch\(\x60\$\{baseUrl\}\/settlement\/v1\/runs/);
+  assert.match(unknown, /retryable:\s*false/);
+  assert.match(unknown, /status:\s*"unknown"/);
+  assert.match(unknown, /attempted:\s*true/);
+  assert.match(unknown, /executedTotalUWolo:\s*null/);
+});
+
 test("Satchel financial bridge source interlock is still hard disabled", () => {
   const source = file("lib/warSatchelFinancialBridgeHold.ts");
   assert.match(source, /export const SATCHEL_FINANCIAL_BRIDGE_READY = false as const/);
