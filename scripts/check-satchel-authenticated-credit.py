@@ -61,6 +61,39 @@ def isolated_bank_anchor_gap(source: str) -> str:
     return source
 
 
+def isolated_max_auto_principal(source: str) -> str:
+    """Scale ONLY disposable continuous SDK test genesis to a 10k principal.
+
+    Pinned production binary is already built and checksum-verified. Existing
+    actual SDK, one-uwolo ante fees, byte replay rejection, Comet and IAVL proof
+    code stay unchanged. Operating gas is independently funded, not principal.
+    """
+    replacements = [
+        ("balance(owner, 100000001)", "balance(owner, 10000000001)"),
+        ("int64(100000201)+opponentInitial", "int64(10000000201)+opponentInitial"),
+        ('snapshot("genesis", 0, [3]int64{100000001, 100, 100}',
+         'snapshot("genesis", 0, [3]int64{10000000001, 100, 100}'),
+        ('remaining := map[string]int64{"owner": 100000001,',
+         'remaining := map[string]int64{"owner": 10000000001,'),
+    ]
+    for original, replacement in replacements:
+        assert source.count(original) == 1, f"unexpected disposable SDK genesis: {original}"
+        source = source.replace(original, replacement)
+    assert "sdk.NewInt64Coin(Denom, 1)" in source, "real SDK ante fee must remain unchanged"
+    return source
+
+
+def isolated_max_auto_recipe(source: str) -> str:
+    """Align the TEST recipe bound and its negative with the reviewed 10k cap."""
+    for original, replacement in [
+        ("amount > 1000000000", "amount > 10000000000"),
+        ('r.Steps[0].AmountUWolo = "1000000001"', 'r.Steps[0].AmountUWolo = "10000000001"'),
+    ]:
+        assert source.count(original) == 1, f"unexpected disposable SDK recipe: {original}"
+        source = source.replace(original, replacement)
+    return source
+
+
 with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     root = Path(tmp).resolve()
     source = root / "wolo"
@@ -149,3 +182,26 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
          "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
          "tests/war-satchel-continuous-funded-lifecycle.test.mts"],cwd=ROOT,env=env)
+
+    # Boundary qualification reuses the SAME continuous SDK/Comet/IAVL fixture.
+    # Only test genesis/recipe bounds change after the exact verifier was built.
+    # No new production verifier, database credit or financial authority exists.
+    bank_fixture.write_text(isolated_max_auto_principal(bank_fixture.read_text()))
+    recipe_fixture = source / "internal/satchel/isolated_lifecycle_recipe_test.go"
+    recipe_fixture.write_text(isolated_max_auto_recipe(recipe_fixture.read_text()))
+    max_recipe = root / "max-auto-return-recipe.json"
+    max_recipe.write_text(json.dumps({"version":1,"scenario":"max_auto_unmatched_return","steps":[
+        {"name":"deposit","sender_role":"owner","recipient_role":"vault","amount_uwolo":"10000000000",
+         "memo":"aoe2war/satchel/v1/lifecycle-owner/abcdefghijklmnop"},
+        {"name":"wager","sender_role":"vault","recipient_role":"escrow","amount_uwolo":"10000000000",
+         "memo":"AoE2HDBets bet ticket v1 · ticket 1"},
+        {"name":"full_unmatched_return","sender_role":"escrow","recipient_role":"vault","amount_uwolo":"10000000000",
+         "memo":"aoe2war/satchel/claim-return/v1/101"},
+    ]}))
+    env.update({"SATCHEL_LIFECYCLE_RECIPE":str(max_recipe),"SATCHEL_LIFECYCLE_FIXTURE_DIR":str(root)})
+    run(["go","test","-tags=go1.27","./internal/satchel","-run","^TestAuthenticatedContinuousSDKLifecycle$","-count=1"],cwd=source,env=env)
+    env["SATCHEL_TEST_MAX_AUTO_RETURN_FIXTURE"]=str(root / "max_auto_unmatched_return/isolated-sdk-lifecycle.json")
+    run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs",
+         "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
+         "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
+         "tests/war-satchel-max-auto-return-real-verifier.test.mts"],cwd=ROOT,env=env)
