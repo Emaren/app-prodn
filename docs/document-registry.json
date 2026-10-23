@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261023-main-satchel-fence-held",
-    "commit": "009a69c5d65067b32f92037bea9c85eddd468429"
+    "commit": "538a47cffd254f1b3805a48aa819070f33b9e733"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
