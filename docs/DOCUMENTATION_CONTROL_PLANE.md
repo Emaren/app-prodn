@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/final-satchel-qualification` at `a45b8e6be37c34f8a41d0e894f81c4ec4669d17c`
+Implementation baseline: `codex/final-satchel-qualification` at `e95f03286021220c71646be0c2c45f7bb4c38f4e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "b2a5d6b3a46d9322681108a9404cd3caf445feeb3125e96e5768e17472f99b00",
+      "sha256": "2b9f2cfd9c8b68b699d090c9c9fc22f0ac3135bdc09b73275e22d0c32ac8ade8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef5b6c6a5a5538ca0d62b6de5b6c332a0e2128a25828b716f8bbdd51b70fd878",
+      "sha256": "7d33a55351a0275e725a55918cf908e6801323756a989ec7ad707e4b2e313b7a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "335c614a6474a8365216b13fe01fd2d8cccf939448143fe33577d9890b878259",
+      "sha256": "627bb294f7f14715cd001a07ff8b8a12de339a5b58bef7de481accb1eca55640",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -801,7 +801,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "329308dd51e61b0535449b892c45f1d770ccf5bfc956c654890f5c72f69d147a",
+      "sha256": "ed9450310bf8a0b76d4172f0ced8704c756928beef78b988882125b4006c7af1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/final-satchel-qualification",
-    "commit": "a45b8e6be37c34f8a41d0e894f81c4ec4669d17c"
+    "commit": "e95f03286021220c71646be0c2c45f7bb4c38f4e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
