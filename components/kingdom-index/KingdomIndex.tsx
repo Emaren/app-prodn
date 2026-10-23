@@ -53,8 +53,16 @@ function Sparkline({ points, score, compact=false }: {points: KingdomIndexEntry[
   </svg>;
 }
 function Score({ entry, small=false }: {entry:KingdomIndexEntry;small?:boolean}) {
-  return <span className={small?styles.scoreSmall:styles.score} data-status={entry.status} aria-label={validScore(entry.score)?`${entry.score} out of 100, ${statusTitle(entry)}`:statusTitle(entry)}>
-    {scoreString(entry.score)}{validScore(entry.score)&&<span className={styles.denom}>/100</span>}
+  const measured=validScore(entry.score);
+  const provisional=!measured && validScore(entry.provisionalReviewScore);
+  const visible=measured?entry.score:(provisional?entry.provisionalReviewScore:null);
+  const accessible=measured?`${visible} out of 100, ${statusTitle(entry)}`:
+    provisional?`Approximately ${visible} out of 100, unverified operator source review; NOT a certified quality score`:statusTitle(entry);
+  return <span className={small?styles.scoreSmall:styles.score} data-status={entry.status} aria-label={accessible}
+    title={provisional?"PROVISIONAL SOURCE REVIEW · NOT INDEPENDENTLY CERTIFIED":statusTitle(entry)}>
+    {provisional&&<span aria-hidden="true">~</span>}{scoreString(visible)}
+    {validScore(visible)&&<span className={styles.denom}>/100</span>}
+    {provisional&&!small&&<span className={styles.denom}> REVIEW</span>}
   </span>;
 }
 function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
@@ -64,6 +72,11 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
       <button className={styles.close} onClick={close} type="button" aria-label="Close details"><X size={17}/></button>
     </div>
     <div className={styles.detailScore}><Score entry={item}/><Sparkline points={item.history} score={item.score}/></div>
+    {item.provisionalReviewScore!==null&&item.score===null&&<section className={styles.evidenceNote} aria-label="Unverified review references">
+      <p>OPERATOR SOURCE REVIEW ONLY. This approximate /100 estimate is NOT an independently audited or certified engineering score. Missing browser, production, domain and financial proof remains unknown; review references are claims, not validated artifacts.</p>
+      <p>Review references (claims only):</p>
+      <ul>{item.provisionalReviewRefs.map(ref=><li key={ref}><a href={ref} target="_blank" rel="noopener noreferrer">{ref}</a></li>)}</ul>
+    </section>}
     {item.lastReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>HISTORICAL REVIEW: {item.lastReviewScore}/100. No current source-aligned engineering score is independently established.</p>}
     <p className={styles.evidenceNote}>Route source fingerprint is a local Git census only; transitive dependencies and deployed runtime still require independent proof.</p>
     {item.authenticatedPublication&&<section className={styles.evidenceNote} aria-label="Authenticated certification provenance">
@@ -198,7 +211,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
           {REGIONS.map(region=><DistrictSection key={region.id} region={region} pages={byRegion.get(region.id)??[]} selected={selected} focus={focus}/>)}
         </div>
       </div>:<section className={styles.ledger} aria-label="Engineering ledger">
-        <header className={styles.ledgerHead}><span>REALM / ROUTE</span><span>QUALITY</span><span>HISTORY</span><span>OBSERVED</span><span/></header>
+        <header className={styles.ledgerHead}><span>REALM / ROUTE</span><span title="A score is published only after independent evidence; a ~score is an unverified, provisional source review.">QUALITY / REVIEW</span><span>HISTORY</span><span>OBSERVED</span><span/></header>
         {rows.map(item=><div key={item.href} className={styles.ledgerGroup}>
           <div className={styles.ledgerRow} data-status={item.status}>
             <div className={styles.ledgerName}><span className={styles.signal}/><div><Link href={item.href}>{item.label}<ArrowUpRight size={12}/></Link><span>{item.href}</span></div></div>

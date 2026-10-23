@@ -8,7 +8,7 @@ import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
 import companionCatalog from "@/config/kingdom-index-companions.json";
-import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
+import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, provisionalOperatorReviewScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
 import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
 import { loadCurrentKingdomIndexTrustedPublication } from "@/lib/kingdomIndexTrustedPublicationRead.mjs";
 
@@ -35,6 +35,10 @@ export type KingdomIndexEntry = {
   sourceVersionAuthority: "route-local-git-census";
   measuredVersion: string | null;
   score: number | null;
+  // Visible but explicitly unauthenticated operator source-review, never certification.
+  provisionalReviewScore: number | null;
+  // Review links are public provenance claims, not independently authenticated proof.
+  provisionalReviewRefs: string[];
   lastReviewScore: number | null;
   checkedAt: string | null;
   kind: PageAuditKind | null;
@@ -180,6 +184,10 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       kind:obs?.kind??null, versionAligned, stale,
     });
     const liveScore=publicObservedKingdomScore({status,kind:obs?.kind??null,score:obs?.score??null});
+    const provisionalReviewScore=provisionalOperatorReviewScore({
+      status,kind:obs?.kind??null,score:obs?.score??null,
+      dimensions:obs?.dimensions,evidenceRefs:obs?.evidenceRefs,
+    });
     const lineage=selectKingdomScoreLineage(reviews.get(route.href)??null,obs??null,liveScore);
     const profile = (assuranceProfiles.routeProfiles as Record<string,string>)[route.href] ?? "unclassified";
     const specialty = (assuranceProfiles.profiles as Record<string,{gates: {id:string;requirement:string}[]}>)[profile]
@@ -189,7 +197,8 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       specializedAssurance: {profile, gates: specialty.gates.map(gate=>({id:gate.id,requirement:gate.requirement,status:"unverified" as const}))},
       sourceVersion:version,sourceVersionAuthority:"route-local-git-census",measuredVersion,
       // Keep a historical score visible only with an explicit noncurrent state.
-      score: liveScore,
+      score: liveScore,provisionalReviewScore,
+      provisionalReviewRefs:provisionalReviewScore!==null?obs?.evidenceRefs??[]:[],
       lastReviewScore:lineage.lastReviewScore, checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
       // Signed-JSON ingress does not itself verify benchmark artifacts or
@@ -214,6 +223,8 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       }));
       if(publication.certified||publication.score<100){
         entry.score=publication.score;
+        entry.provisionalReviewScore=null;
+        entry.provisionalReviewRefs=[];
         entry.kind="certified";
         entry.status=publication.certified?"current":"provisional";
         entry.checkedAt=publication.issuedAt;

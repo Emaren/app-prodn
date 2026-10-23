@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updatedAt": "2026-10-18",
+  "updatedAt": "2026-10-23",
   "observations": [
     {
       "href": "/leaderboard",
@@ -22,6 +22,86 @@
         }
       ],
       "notes": "Provisional code-and-screenshot engineering assessment; no certified cold-browser run or complete database audit. Movement snapshots unavailable, bookmark projection incomplete."
+    },
+    {
+      "href": "/kingdom-index",
+      "score": 62,
+      "checkedAt": "2026-10-23T20:45:00Z",
+      "sourceVersion": "src-8773d63ebe1e8ff6",
+      "kind": "source-review",
+      "dimensions": {
+        "correctness": 17,
+        "functionality": 17,
+        "performance": 8,
+        "maintainability": 11,
+        "tests": 9
+      },
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-index/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ],
+      "notes": "AI-assisted provisional source review: signed-publication boundary and browser/source tests are present; no independently enrolled live scoring issuer or complete per-criterion production performance receipts. Source estimate, NOT certification."
+    },
+    {
+      "href": "/kingdom-intelligence",
+      "score": 63,
+      "checkedAt": "2026-10-23T20:45:00Z",
+      "sourceVersion": "src-d35c2832feb098e2",
+      "kind": "source-review",
+      "dimensions": {
+        "correctness": 18,
+        "functionality": 19,
+        "performance": 8,
+        "maintainability": 10,
+        "tests": 8
+      },
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-intelligence/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ],
+      "notes": "AI-assisted provisional source review: real integrated Chrome passed recovery/view cases, but live data provenance and sustained traffic evidence are not independently graded. Conservative estimate, NOT certification."
+    },
+    {
+      "href": "/kingdom-brain",
+      "score": 61,
+      "checkedAt": "2026-10-23T20:45:00Z",
+      "sourceVersion": "src-86326a0b62a4bae7",
+      "kind": "source-review",
+      "dimensions": {
+        "correctness": 18,
+        "functionality": 17,
+        "performance": 8,
+        "maintainability": 10,
+        "tests": 8
+      },
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-brain/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ],
+      "notes": "AI-assisted provisional source review: real Chrome lifecycle and visibility/unmount tests passed after fixture correction; independent production measurements and domain assurances remain incomplete. Not certified."
+    },
+    {
+      "href": "/kingdom-tests",
+      "score": 60,
+      "checkedAt": "2026-10-23T20:45:00Z",
+      "sourceVersion": "src-3718f23fe8567b9a",
+      "kind": "source-review",
+      "dimensions": {
+        "correctness": 17,
+        "functionality": 17,
+        "performance": 8,
+        "maintainability": 10,
+        "tests": 8
+      },
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-tests/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ],
+      "notes": "AI-assisted provisional source review: integrated Chrome assertions and evidence-panel consistency passed, but source-reported readiness is not verified test success for every route. Performance/domain proof incomplete; not certified."
     }
   ]
 }
