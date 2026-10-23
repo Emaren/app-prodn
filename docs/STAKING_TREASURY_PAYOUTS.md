@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -21,7 +21,7 @@ Community Treasury for each finalized distribution.
 
 ## Source and recipient
 
-- Source signer: fresh mainnet Bet Payout signer (`WOLO_BET_PAYOUT_ADDRESS=wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu`) after 8092 health is green
+- Source signer: configured Staking Distribution Reserve role (`WOLO_BET_PAYOUT_ADDRESS`); verify the actual independently approved runtime identity before execution.
 - Recipient: Community Treasury (`WOLO_COMMUNITY_TREASURY_ADDRESS`)
 - Settlement helper: `validateWoloSettlementRun` / `executeWoloSettlementRun`
 
@@ -33,6 +33,10 @@ Mainnet execution is gated on the WoloChain settlement service at
 `/settlement/v1/health`. If health reports `PAYOUT_FEE_HEADROOM_TOO_LOW`,
 `ESCROW_BALANCE_TOO_LOW`, or any non-ok state, AoE2HDBets must keep this as a
 blocked dry-run and must not retry against `127.0.0.1:8091`.
+
+Green service health and a successful dry-run are technical preconditions only.
+They do not close WoloChain issue #5, establish global solvency, or authorize
+financial execution while its release HOLD remains active.
 
 ## Bookkeeping
 
@@ -67,7 +71,12 @@ POST /api/admin/wolochain/staking-treasury-payouts/:id/execute
 
 Execution is idempotent at the app ledger and settlement request-id layers. A
 distribution with a recorded Treasury tx hash is refused on retry. Failed rows
-remain retryable after operator review.
+must not be retried merely because their status is `FAILED`. The current legacy
+exception path can record `FAILED` without conclusive chain outcome; stale
+`PROCESSING` and absent hashes are also uncertain. Independently reconcile the
+original deterministic request and chain outcome, then obtain explicit operator
+review before any separately authorized recovery. Never infer an unpaid
+obligation or create a fresh request identity from missing evidence.
 
 The execute route always performs grouped dry-run validation first. A failed or
 unavailable dry-run stops execution before any live payout request is sent.

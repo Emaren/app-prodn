@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "stream-ingest-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -51,6 +51,15 @@ is changed. Never put the key in a URL, JSON body, log, or telemetry payload.
 The app may also end a stream when trusted replay finality is observed. A
 Watcher receiving `finality: "replay_final"` should stop sending new media and
 treat the server's stream payload as terminal.
+
+## Terminal media pressure contract
+
+Capable clients advertise `x-aoe2war-stream-capabilities: server-media-shed-v1`.
+A `409 STREAM_MEDIA_SHED` response with `terminal: true` ends this capture before
+the server reads its body. Replay pressure sheds capable clients for 15 seconds;
+the operator media kill applies for 60 seconds to all clients. `Retry-After`
+permits a future admission attempt, never resumption or renumbering of the ended
+capture. This is media pressure control, not game/result or financial authority.
 
 ## Retry and failure contract
 

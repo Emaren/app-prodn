@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "fcd149ddb486c7512dca17974e5d73808f37524ebaaf4849ffc6aab055946ea3",
+      "sha256": "b2a5d6b3a46d9322681108a9404cd3caf445feeb3125e96e5768e17472f99b00",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "038e75286adb2d35ad3598d35f6861e4f114b2ebc22a100880ddb90fd71ff62d",
+      "sha256": "ef5b6c6a5a5538ca0d62b6de5b6c332a0e2128a25828b716f8bbdd51b70fd878",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "7cf52e4e6b5db93a4331cbdd6fd92d47e6aedc133c51f47fbf43a35804d63138",
+      "sha256": "335c614a6474a8365216b13fe01fd2d8cccf939448143fe33577d9890b878259",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -799,9 +799,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "81ecadfa938cbab0bb401827c1bfeca359077ac90af096622abd1dd228bfe2da",
+      "sha256": "329308dd51e61b0535449b892c45f1d770ccf5bfc956c654890f5c72f69d147a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1397,9 +1397,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "a195659fe9d10f051b0f66d3d972fada5c12cb280eeb0bb08df674d5508a3443",
+      "sha256": "fc3642092b84c342e83793a760b663de781841280f02aee2283391a72937f928",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1767,9 +1767,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STAKING_TREASURY_PAYOUTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "9cd93fd5a156fa0e19e94d448fd484a6fab1cf36f70f687695139d27d3674024",
+      "sha256": "aa0f1e0da7ea1799ef2f120858888111a59dc059b6e65d94e988e34648e69372",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1860,9 +1860,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WARGRAPH_V1.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "2e8d237b335e7722309be8689fe4ba9af34d8e2453c16e259afcb03a0322db2f",
+      "sha256": "57e5d20a9b3d02598087029ebdfaf7d0b36e0134e33faa6fe6af62f9b804c18f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1975,9 +1975,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_NATIVE_STREAM_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "c5f9719aa5649dce098e801787ce9236762ced61446978324ce516089c16a9f8",
+      "sha256": "13cfbd0239b9504b6a729c3816a9565fc80cca37217ebd54a537f39c9c2b8796",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261022-satchel-mainline-held",
-    "commit": "ded6ae65587a744b27be11fc1b54f77daaccb750"
+    "branch": "codex/final-satchel-qualification",
+    "commit": "a45b8e6be37c34f8a41d0e894f81c4ec4669d17c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

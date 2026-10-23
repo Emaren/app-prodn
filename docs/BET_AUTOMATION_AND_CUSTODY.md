@@ -15,6 +15,44 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 22 — exact custody runtime and real maintenance-lease qualification
+
+The current held app adapters and SDK runner pin Wolo source
+`72a3bca5f66aff51e1c6577b914d64403785d635` (PR #83), built by
+`a4c6b30d3d88b44dc3b978be29477e13ecaf3a65` in
+[artifact run 39832394775](https://github.com/Emaren/wolochain/actions/runs/39832394775).
+The independently downloaded Linux AMD64 binary SHA-256 is
+`37e2c13b68a6d14b3019ad7a9dc12d38360c63b42094daac14e881e3626898ef`;
+candidate artifact `12450191108` and external receipt `12450330632` bind the
+actual clean embedded revision, Go 1.24.6, workflow, archive and manifest.
+The new `custody-runtime` profile leaves the historical `custody-backend`
+8c509e8f artifact contract unchanged. None of these bytes is installed in
+production. The newer verifier supplies the native 10,000-WOLO ceiling;
+smaller immutable mandates and configured signer limits remain binding.
+
+The twelve-ticket application/SDK regression now retains the **actual**
+PostgreSQL maintenance policy, restricted NOINHERIT reader, Ed25519 verifier
+and callback lease kernel. Missing authority and a CLOSED policy both refuse
+before a durable withdrawal attempt or signer submission. A signed fixture
+OPEN permit permits one lost-ACK send and reconciliation without another send.
+Operator/build/filesystem/TLS inputs and signer transport are controlled test
+dependencies; this does not provision the production authority wrapper or
+certify independent financial permission. CI also inspects actual compiled
+Next server chunks for their immutable exact source/build identities.
+
+A lost database COMMIT acknowledgement after admission must return
+`unknown_hold`, even when the follow-up audit write is unavailable. The durable
+attempt/status owns recovery; a database read failure cannot reclassify an
+uncertain payment as a maintenance refusal. Pre-admission refusal remains
+`release_held`, creates no attempt and submits no transaction. Caller regression
+covers CLOSED, lost COMMIT ACK, lost send ACK and audit-database outage; actual
+PostgreSQL/SDK tests establish the connected persistence behavior.
+
+The source bridge remains false. Independent mainnet roots, dedicated custody
+control, complete liabilities, six-control closure and separately scoped
+operator approval are still absent. Artifact or fixture success supplies no
+production financial authority.
+
 ## October 22 — Auto Bet limits and complete unmatched returns
 
 New Auto Bets have a combined winner/Desync ticket ceiling of 10,000 WOLO and
@@ -78,9 +116,9 @@ gate within the HELD admission proposal stage only. A final funded transaction
 must revalidate these identities under its durable owner/market lock against
 signed and independently verified sources.
 
-## October 21 — current authenticated integration, still financially HELD
+## October 21 — historical authenticated integration, still financially HELD
 
-The current proof adapters and isolated CI runner pin Wolo implementation
+At this historical milestone the proof adapters and isolated CI runner pinned
 `8c509e8f62ca3ec60711dc2654a03b12f22b0773`, built twice with Go 1.24.6 in
 [artifact run 39636828148](https://github.com/Emaren/wolochain/actions/runs/39636828148).
 The independently downloaded archive/manifest/raw binary checks passed; Linux
