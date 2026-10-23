@@ -15,6 +15,16 @@ sensitivity: "restricted"
 
 # HD Replay Truth Pipeline and Operator Runbook
 
+## October 23 — complete bounded LIVE failures before recovery
+
+Private LIVE admission awaits both Winner and Desync database transactions even
+when one refuses on a bounded lock timeout. It reports the failure only after
+all siblings settle, so a reported refusal cannot leave a writer waiting to
+create a late book during recovery. The actual PostgreSQL regression staggers
+the existing deadlines, proves zero remaining writers/books on refusal, and
+retains the exact two-book idempotent retry. Source/terminal/freshness guards and
+financial HOLD remain unchanged.
+
 ## Review scope — 2026-10-21 UTC
 
 This source-document review preserves separate authority for replay archival,
