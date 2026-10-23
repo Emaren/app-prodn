@@ -18,7 +18,7 @@ const within = (src: string, start: string, end: string) => {
 test("legacy faucet transfer does not invoke keyring CLI outside financial lease", () => {
   const source = file("app/api/wolo/faucet/claim/route.ts");
   assert.match(source, /import.*withHdFinancialLease.*hdFinancialMaintenanceFence/);
-  const action = within(source, "async function execute", "export "); // will need source-specific anchors
+  const action = within(source, "async function sendFaucetTransfer", "async function fetchBalanceAfterClaim");
   assert.match(action, /withHdFinancialLease\(/);
   assert.match(action, /producer:\s*"faucet"/);
   assert.match(action, /execFileAsync\(FAUCET_CLI,\s*txArgs/);
