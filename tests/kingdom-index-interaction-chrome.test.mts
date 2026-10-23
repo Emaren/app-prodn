@@ -10,7 +10,7 @@ function fixture(){
     viewportWidth:viewport==="desktop"?1440:390,scrollWidth:viewport==="desktop"?1440:390,
     documentStatus:200,reducedMotionEmulated:true,
     accessibility:{axNodeCount:300,namedButtons:25,unnamedButtons:0},
-    keyboard:{ledgerActivated:true,mapRestored:true,detailOpened:true,detailClosed:true},
+    keyboard:{ledgerActivated:true,mapRestored:true,detailOpened:true,detailClosed:true,focusRestored:true},
     diagnostics:{snapshots:["initial","after-ledger-enter","after-map-enter","after-inspect-enter","after-close-enter"].map(phase=>({
       phase,href:"http://127.0.0.1:3030/kingdom-index",
       focus:{tag:"BUTTON",name:phase==="after-map-enter"?"Kingdom map":"Inspect Kingdom Index",role:null},
@@ -63,6 +63,7 @@ test("an unopened detail remains a failed close transition, not successful acces
  const doc=fixture();
  doc.viewports[0].keyboard.detailOpened=false;
  doc.viewports[0].keyboard.detailClosed=false;
+ doc.viewports[0].keyboard.focusRestored=false;
  const result=inspectInteractionReceipt(doc,expected);
  assert.equal(result.keyboardInteractionsObserved,false);
  assert.equal(result.certified,false);
@@ -80,4 +81,12 @@ test("CDP Enter sequence synthesizes a native button click, never a rawKeyDown n
  assert.equal(events[1].type,"keyUp");
  assert.equal(events[1].text,undefined);
  assert.ok(!events.some(event=>event.type==="rawKeyDown"));
+});
+
+test("detail focus loss remains a failed keyboard verdict even when close removes panel",()=>{
+ const d=fixture();
+ d.viewports[0].keyboard.focusRestored=false;
+ const report=inspectInteractionReceipt(d,expected);
+ assert.equal(report.keyboardInteractionsObserved,false);
+ assert.equal(report.certified,false);
 });
