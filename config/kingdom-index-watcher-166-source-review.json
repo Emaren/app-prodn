@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "companionId": "aoe2-watcher",
+  "candidateVersion": "1.6.6",
+  "candidateState": "DRAFT_UNRELEASED",
+  "sourceSha": "6adeb78a1294a07bfe63fcd43137f260e059c3b0",
+  "evaluatedAt": "2026-10-23",
+  "score": 58,
+  "scoreAuthority": "AI_ASSISTED_SOURCE_TRIAGE_UNCERTIFIED",
+  "dimensions": {
+    "correctness": 20,
+    "functionality": 13,
+    "performance": 5,
+    "maintainability": 12,
+    "tests": 8
+  },
+  "criteria": [
+    {
+      "dimension": "correctness",
+      "id": "authoritative_data",
+      "max": 10,
+      "estimated": 4,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "correctness",
+      "id": "business_invariants",
+      "max": 8,
+      "estimated": 6,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "correctness",
+      "id": "failure_semantics",
+      "max": 6,
+      "estimated": 5,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "correctness",
+      "id": "security_boundaries",
+      "max": 6,
+      "estimated": 5,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "functionality",
+      "id": "critical_journeys",
+      "max": 9,
+      "estimated": 5,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "functionality",
+      "id": "state_consistency",
+      "max": 6,
+      "estimated": 5,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "functionality",
+      "id": "accessibility",
+      "max": 5,
+      "estimated": 1,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "functionality",
+      "id": "responsive",
+      "max": 5,
+      "estimated": 2,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "performance",
+      "id": "measured_latency",
+      "max": 7,
+      "estimated": 1,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "performance",
+      "id": "bounded_data",
+      "max": 5,
+      "estimated": 3,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "performance",
+      "id": "render_efficiency",
+      "max": 4,
+      "estimated": 1,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "performance",
+      "id": "sustained_load",
+      "max": 4,
+      "estimated": 0,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "maintainability",
+      "id": "module_boundaries",
+      "max": 5,
+      "estimated": 4,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "maintainability",
+      "id": "dependency_visibility",
+      "max": 4,
+      "estimated": 3,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "maintainability",
+      "id": "documentation",
+      "max": 3,
+      "estimated": 3,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "maintainability",
+      "id": "safe_extension",
+      "max": 3,
+      "estimated": 2,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "tests",
+      "id": "domain_regressions",
+      "max": 4,
+      "estimated": 4,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "tests",
+      "id": "integration",
+      "max": 3,
+      "estimated": 3,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "tests",
+      "id": "browser",
+      "max": 2,
+      "estimated": 1,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    },
+    {
+      "dimension": "tests",
+      "id": "release_certification",
+      "max": 1,
+      "estimated": 0,
+      "authority": "UNVERIFIED_SOURCE_TRIAGE"
+    }
+  ],
+  "publishedReleaseStill": "1.6.5",
+  "allNineDesktopGates": "UNVERIFIED",
+  "notes": "Source-only preliminary engineering triage. Real published/installed 1.6.6 performance, replay finality, Windows/Mac/Linux install/update and Mac signed/notarized updater/recovery proof remain absent. CI package success is not physical install or quality certification. This score must not appear as a current live release grade.",
+  "refs": [
+    "https://github.com/Emaren/aoe2-watcher/pull/76",
+    "https://github.com/Emaren/aoe2-watcher/actions/runs/39693198445",
+    "https://github.com/Emaren/aoe2-watcher/issues/59",
+    "https://github.com/Emaren/aoe2-watcher/issues/49"
+  ]
+}
