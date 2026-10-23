@@ -1,6 +1,6 @@
-import { validReportedInspectionReadiness } from "@/lib/kingdomInstrumentsInspectionValidity.mjs";
 "use client";
 
+import { validReportedInspectionReadiness } from "@/lib/kingdomInstrumentsInspectionValidity.mjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
