@@ -140,13 +140,13 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"· **Upcoming within {report['window_days']} days:** {report['upcoming']} "
         f"· **Content integrity problems:** {report['integrity_issues']}",
         "",
-        "| Due UTC | State | Document | Owner | Authority | Systems | Hash |",
-        "|---|---|---|---|---|---|---|",
+        "| Due UTC | State | Document | Title | Owner | Authority | Systems | Hash |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for item in report["items"]:
         rows.append("| " + " | ".join(_cell(v) for v in (
-            item["due_date"], item["status"], item["path"], item["owner"],
-            item["authority"], ", ".join(item["systems"]), item["content_integrity"],
+            item["due_date"], item["status"], item["path"], item["title"],
+            item["owner"], item["authority"], ", ".join(item["systems"]), item["content_integrity"],
         )) + " |")
     if not report["items"]:
         rows.extend(["", "No review items within the requested window."])
