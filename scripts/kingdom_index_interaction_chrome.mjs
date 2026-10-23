@@ -39,7 +39,7 @@ export function inspectInteractionReceipt(doc,{sourceSha,buildId}){
      !Number.isInteger(row.scrollWidth)||row.scrollWidth<0||
      row.reducedMotionEmulated!==true||
      !row.keyboard||!row.accessibility||!row.warm||
-     !["ledgerActivated","mapRestored","detailOpened","detailClosed"].every(k=>typeof row.keyboard[k]==="boolean")||
+     !["ledgerActivated","mapRestored","detailOpened","detailClosed","focusRestored"].every(k=>typeof row.keyboard[k]==="boolean")||
      !Number.isInteger(row.accessibility.axNodeCount)||row.accessibility.axNodeCount<1||
      !Number.isInteger(row.accessibility.namedButtons)||row.accessibility.namedButtons<1||
      !Number.isInteger(row.accessibility.unnamedButtons)||row.accessibility.unnamedButtons<0||
@@ -156,7 +156,7 @@ async function capture(chrome,viewport,screenshotsDir){
    screenshots.push({phase,name,bytes:bytes.length,
      sha256:createHash("sha256").update(bytes).digest("hex")});
   };
-  const keyboard={ledgerActivated:false,mapRestored:false,detailOpened:false,detailClosed:false};
+  const keyboard={ledgerActivated:false,mapRestored:false,detailOpened:false,detailClosed:false,focusRestored:false};
   await snapshot("initial");
   await evaluate("document.querySelector('button[aria-label=\"Performance ledger\"]')?.focus()");
   await key("Enter",13);
@@ -176,6 +176,7 @@ async function capture(chrome,viewport,screenshotsDir){
   await key("Enter",13);
   await snapshot("after-close-enter");
   keyboard.detailClosed=keyboard.detailOpened&&!!(await evaluate("!document.querySelector('section[aria-label=\"Kingdom Index engineering evidence\"]')"));
+  keyboard.focusRestored=keyboard.detailClosed&&!!(await evaluate("document.activeElement?.tagName==='BUTTON'&&document.activeElement?.getAttribute('aria-label')==='Inspect Kingdom Index'"));
   const samples=[];
   for(let i=0;i<10;i++){
    if(await navigate()!==200)stop("Warm document returned non-200");
