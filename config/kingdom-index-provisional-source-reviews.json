@@ -1,0 +1,741 @@
+{
+  "schema": 1,
+  "kind": "aoe2war.kingdom-index.ai-assisted-provisional-source-reviews.v1",
+  "date": "2026-10-23",
+  "authority": "AI_ASSISTED_ESTIMATE_NOT_AN_INDEPENDENT_SCORE",
+  "deployedBaseline": "f234ad56be826b5edd351091d9a91cc950ba10b0",
+  "rubricVersion": "2026-10-18-v1",
+  "scoreMeaning": "Subjective source-review triage estimate (/100), not audited quality score, never certified. Individual criterion figures are unverified estimates, not points independently earned.",
+  "limitations": [
+    "No domain-authoritative independent DB/chain truth receipts for the assessed page flows",
+    "No independently enrolled certifier keys or signed 20-criterion production publication",
+    "Candidate Chrome and release CI are not a complete production browser/accessibility/performance review",
+    "Unassessed 84 routes remain UNKNOWN and are not assigned invented values"
+  ],
+  "reviews": [
+    {
+      "href": "/kingdom-index",
+      "routeSourceVersion": "src-0a0a018529d65ce0",
+      "sourceCommit": "f234ad56be826b5edd351091d9a91cc950ba10b0",
+      "score": 62,
+      "dimensions": {
+        "correctness": 17,
+        "functionality": 17,
+        "performance": 8,
+        "maintainability": 11,
+        "tests": 9
+      },
+      "criteria": [
+        {
+          "id": "authoritative_data",
+          "dimension": "correctness",
+          "maximum": 10,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "business_invariants",
+          "dimension": "correctness",
+          "maximum": 8,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "failure_semantics",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "security_boundaries",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "critical_journeys",
+          "dimension": "functionality",
+          "maximum": 9,
+          "estimated": 7,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "state_consistency",
+          "dimension": "functionality",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "accessibility",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "responsive",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "measured_latency",
+          "dimension": "performance",
+          "maximum": 7,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "bounded_data",
+          "dimension": "performance",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "render_efficiency",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "sustained_load",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 0,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "module_boundaries",
+          "dimension": "maintainability",
+          "maximum": 5,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "dependency_visibility",
+          "dimension": "maintainability",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "documentation",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "safe_extension",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "domain_regressions",
+          "dimension": "tests",
+          "maximum": 4,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "integration",
+          "dimension": "tests",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "browser",
+          "dimension": "tests",
+          "maximum": 2,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "release_certification",
+          "dimension": "tests",
+          "maximum": 1,
+          "estimated": 1,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        }
+      ],
+      "reason": "AI-assisted provisional source review: signed-publication boundary and browser/source tests are present; no independently enrolled live scoring issuer or complete per-criterion production performance receipts. Source estimate, NOT certification.",
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-index/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ]
+    },
+    {
+      "href": "/kingdom-intelligence",
+      "routeSourceVersion": "src-d35c2832feb098e2",
+      "sourceCommit": "f234ad56be826b5edd351091d9a91cc950ba10b0",
+      "score": 63,
+      "dimensions": {
+        "correctness": 18,
+        "functionality": 19,
+        "performance": 8,
+        "maintainability": 10,
+        "tests": 8
+      },
+      "criteria": [
+        {
+          "id": "authoritative_data",
+          "dimension": "correctness",
+          "maximum": 10,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "business_invariants",
+          "dimension": "correctness",
+          "maximum": 8,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "failure_semantics",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "security_boundaries",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "critical_journeys",
+          "dimension": "functionality",
+          "maximum": 9,
+          "estimated": 8,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "state_consistency",
+          "dimension": "functionality",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "accessibility",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "responsive",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "measured_latency",
+          "dimension": "performance",
+          "maximum": 7,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "bounded_data",
+          "dimension": "performance",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "render_efficiency",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "sustained_load",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 0,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "module_boundaries",
+          "dimension": "maintainability",
+          "maximum": 5,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "dependency_visibility",
+          "dimension": "maintainability",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "documentation",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "safe_extension",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "domain_regressions",
+          "dimension": "tests",
+          "maximum": 4,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "integration",
+          "dimension": "tests",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "browser",
+          "dimension": "tests",
+          "maximum": 2,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "release_certification",
+          "dimension": "tests",
+          "maximum": 1,
+          "estimated": 1,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        }
+      ],
+      "reason": "AI-assisted provisional source review: real integrated Chrome passed recovery/view cases, but live data provenance and sustained traffic evidence are not independently graded. Conservative estimate, NOT certification.",
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-intelligence/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ]
+    },
+    {
+      "href": "/kingdom-brain",
+      "routeSourceVersion": "src-86326a0b62a4bae7",
+      "sourceCommit": "f234ad56be826b5edd351091d9a91cc950ba10b0",
+      "score": 61,
+      "dimensions": {
+        "correctness": 18,
+        "functionality": 17,
+        "performance": 8,
+        "maintainability": 10,
+        "tests": 8
+      },
+      "criteria": [
+        {
+          "id": "authoritative_data",
+          "dimension": "correctness",
+          "maximum": 10,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "business_invariants",
+          "dimension": "correctness",
+          "maximum": 8,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "failure_semantics",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "security_boundaries",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "critical_journeys",
+          "dimension": "functionality",
+          "maximum": 9,
+          "estimated": 7,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "state_consistency",
+          "dimension": "functionality",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "accessibility",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "responsive",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "measured_latency",
+          "dimension": "performance",
+          "maximum": 7,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "bounded_data",
+          "dimension": "performance",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "render_efficiency",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "sustained_load",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 0,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "module_boundaries",
+          "dimension": "maintainability",
+          "maximum": 5,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "dependency_visibility",
+          "dimension": "maintainability",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "documentation",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "safe_extension",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "domain_regressions",
+          "dimension": "tests",
+          "maximum": 4,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "integration",
+          "dimension": "tests",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "browser",
+          "dimension": "tests",
+          "maximum": 2,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "release_certification",
+          "dimension": "tests",
+          "maximum": 1,
+          "estimated": 1,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        }
+      ],
+      "reason": "AI-assisted provisional source review: real Chrome lifecycle and visibility/unmount tests passed after fixture correction; independent production measurements and domain assurances remain incomplete. Not certified.",
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-brain/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ]
+    },
+    {
+      "href": "/kingdom-tests",
+      "routeSourceVersion": "src-3718f23fe8567b9a",
+      "sourceCommit": "f234ad56be826b5edd351091d9a91cc950ba10b0",
+      "score": 60,
+      "dimensions": {
+        "correctness": 17,
+        "functionality": 17,
+        "performance": 8,
+        "maintainability": 10,
+        "tests": 8
+      },
+      "criteria": [
+        {
+          "id": "authoritative_data",
+          "dimension": "correctness",
+          "maximum": 10,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "business_invariants",
+          "dimension": "correctness",
+          "maximum": 8,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "failure_semantics",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "security_boundaries",
+          "dimension": "correctness",
+          "maximum": 6,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "critical_journeys",
+          "dimension": "functionality",
+          "maximum": 9,
+          "estimated": 7,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "state_consistency",
+          "dimension": "functionality",
+          "maximum": 6,
+          "estimated": 5,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "accessibility",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "responsive",
+          "dimension": "functionality",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "measured_latency",
+          "dimension": "performance",
+          "maximum": 7,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "bounded_data",
+          "dimension": "performance",
+          "maximum": 5,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "render_efficiency",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "sustained_load",
+          "dimension": "performance",
+          "maximum": 4,
+          "estimated": 0,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "module_boundaries",
+          "dimension": "maintainability",
+          "maximum": 5,
+          "estimated": 4,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "dependency_visibility",
+          "dimension": "maintainability",
+          "maximum": 4,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "documentation",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "safe_extension",
+          "dimension": "maintainability",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "domain_regressions",
+          "dimension": "tests",
+          "maximum": 4,
+          "estimated": 3,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "integration",
+          "dimension": "tests",
+          "maximum": 3,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "browser",
+          "dimension": "tests",
+          "maximum": 2,
+          "estimated": 2,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        },
+        {
+          "id": "release_certification",
+          "dimension": "tests",
+          "maximum": 1,
+          "estimated": 1,
+          "evidenceLevel": "AI_SOURCE_REVIEW_UNVERIFIED",
+          "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
+        }
+      ],
+      "reason": "AI-assisted provisional source review: integrated Chrome assertions and evidence-panel consistency passed, but source-reported readiness is not verified test success for every route. Performance/domain proof incomplete; not certified.",
+      "evidenceRefs": [
+        "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-tests/page.tsx",
+        "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
+        "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
+      ]
+    }
+  ]
+}
