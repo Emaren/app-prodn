@@ -10,11 +10,11 @@ import hashlib
 import json
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = "8c509e8f62ca3ec60711dc2654a03b12f22b0773"
-# Reviewed PR #72, CI39636828148 artifact12363880676, not historical PR #29
+SOURCE = "72a3bca5f66aff51e1c6577b914d64403785d635"
+# Reviewed PR #72, CI39832394775 artifact12450191108, not historical PR #29
 # financial-proof binary. Native macOS tests compile this same clean source;
 # Linux AMD64 CI must reproduce the reviewed production byte identity too.
-LINUX_AMD64_SHA256 = "4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3"
+LINUX_AMD64_SHA256 = "37e2c13b68a6d14b3019ad7a9dc12d38360c63b42094daac14e881e3626898ef"
 
 def run(args, **kw):
     return subprocess.run(args, check=True, timeout=600, **kw)

@@ -17,11 +17,11 @@ const invoke = promisify(execFile);
 const MARK = Symbol("authenticated-wolo-comet-financial-proof");
 const issued = new WeakSet<object>();
 let active = 0;
-// PR72 CI39636828148 artifact12363880676, exact clean source
-// 8c509e8f62ca3ec60711dc2654a03b12f22b0773, pinned Go1.24.6 Linux/amd64.
+// PR84 CI39832394775 artifact12450191108, exact clean source
+// 72a3bca5f66aff51e1c6577b914d64403785d635, pinned Go1.24.6 Linux/amd64.
 // Independently verified archive, manifest and raw binary. Historical artifacts
 // retain their identities; this digest grants no financial activation authority.
-const PINNED_VERIFIER_SHA256 = "4c69464e9f6bf46feffb96cfd9f242d40eabdb5fad514af7adf99d44397788b3";
+const PINNED_VERIFIER_SHA256 = "37e2c13b68a6d14b3019ad7a9dc12d38360c63b42094daac14e881e3626898ef";
 const ENDPOINT = "http://127.0.0.1:8094";
 const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
