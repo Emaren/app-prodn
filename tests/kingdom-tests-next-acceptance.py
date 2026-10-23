@@ -145,6 +145,11 @@ async def inspect_browser(args, proxy, report):
                     "heading", name="KINGDOM TESTS", exact=True)
                 await route_heading.wait_for(timeout=20000)
                 assert await route_heading.count() == 1
+                if trial == 0:
+                    report["checks"].append({
+                        "name": name+":unique_scoped_route_heading", "state": "PASS",
+                        "unscoped_case_insensitive_heading_matches":
+                            await page.get_by_role("heading", name="KINGDOM TESTS").count()})
                 assert resp and resp.status == 200
                 navigation.append(round(1000*(time.perf_counter()-t0),2))
             section = page.locator('section[aria-labelledby="kingdom-test-proof-title"]')
