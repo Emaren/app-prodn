@@ -16,8 +16,9 @@ sensitivity: "restricted"
 # Staking Treasury Payouts
 
 The staking Treasury share is accounting-only until an operator executes a payout.
-`staking_reward_distributions.treasury_pool_wolo` records the amount owed to the
-Community Treasury for each finalized distribution.
+`staking_reward_distributions.treasury_pool_uwolo` is the authoritative integer
+amount owed to the Community Treasury for each finalized distribution;
+`treasury_pool_wolo` is the historical/display field.
 
 ## Source and recipient
 

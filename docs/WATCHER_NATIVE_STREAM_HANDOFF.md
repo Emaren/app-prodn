@@ -18,15 +18,15 @@ sensitivity: "internal"
 ## Ownership boundary
 
 The Watcher captures and retries WebM slices. AoE2HDBets authenticates the
-Watcher key, binds the stream to the resolved app user and server-known replay,
+Watcher key, binds the stream to the resolved app user and available session identity,
 stores media, publishes playback, and owns retention. A stream heartbeat is
 media availability only. It is never replay finality, result authority, roster
 proof, wager custody, or settlement proof.
 
-All mutating requests use the Watcher's existing `x-api-key` header. The app
-resolves that key to a user; a request cannot submit its own UID. Missing,
-revoked, or unresolved keys return `401` before a chunk body is read or storage
-is changed. Never put the key in a URL, JSON body, log, or telemetry payload.
+Watcher clients use their existing `x-api-key` header; the server also accepts
+a valid app session. The app resolves that authority to a user; a request cannot
+submit its own UID. Without a valid app session, missing, revoked or unresolved
+keys return `401` before a chunk body is read or storage is changed. Never put the key in a URL, JSON body, log, or telemetry payload.
 
 ## Native upload sequence
 
@@ -92,6 +92,10 @@ returned there. Rolling playback is bounded to a 32 MiB response window.
 Normal ended media remains subject to the stream cleanup policy. Cleanup must
 report partial failures truthfully and must not mark a stream removed when its
 files were not removed.
+
+Initial streams may have provisional/free session identity; a retained
+demonstration specifically requires a server-known game. A provisional stream
+is not proof of a recognized game or any financial admission.
 
 ## Single retained demonstration
 
