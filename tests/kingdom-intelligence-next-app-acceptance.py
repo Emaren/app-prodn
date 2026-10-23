@@ -179,10 +179,8 @@ async def case(browser, args, mode, width, output):
     page.on("pageerror", lambda e: errors.append(str(e)[:240]))
     async def guard(route):
         url = urlparse(route.request.url)
-        if url.hostname not in ("127.0.0.1", "localhost") or url.scheme not in ("http", "https"):
-            counts["blocked_external"] += 1
-            counts["blocked_external_paths"].append(url.path[:180])
-            return await route.abort()
+        # Count ANY non-read attempt first, even when directed to an external host.
+        # The browser never transmits a POST, PATCH, DELETE or other mutation.
         if route.request.method not in ("GET", "HEAD"):
             counts["blocked_write"] += 1
             attempt = classify_blocked_write(route.request, urlparse(args.origin).port)
@@ -192,6 +190,10 @@ async def case(browser, args, mode, width, output):
             else:
                 counts["unexpected_writes"] += 1
             return await route.abort()  # Never fulfill or forward even a classified SpeedOS POST.
+        if url.hostname not in ("127.0.0.1", "localhost") or url.scheme not in ("http", "https"):
+            counts["blocked_external"] += 1
+            counts["blocked_external_paths"].append(url.path[:180])
+            return await route.abort()
         await route.continue_()
     async def recovery(route):
         counts["recovery"] += 1
