@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/renaissance-exact-page-next-acceptance-20261022` at `93114279b853f700b7bd0aa8527da8c77be53eb4`
+Implementation baseline: `feature/renaissance-exact-page-next-acceptance-20261022` at `223fe409e5a18ebcd3d454dd1c89399709cb9237`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
