@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "22f41491f4db2fe83a51d04abb5539e59efa2c98f9d24bfb0886eea79ef8d89b",
+      "sha256": "aee13c2c786738defdf14707578378994435da42858e14c478563369a4c1710c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1583,7 +1583,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "e61b5056047914b29808f97cdad1e9f115e2dbf52de1828fc20a1f7de58ddfc3",
+      "sha256": "228ad1ea19783fb29f4c79e8d05634d0fbe71ddbb1408e9e08405af701b83fa9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-exact-page-next-acceptance-20261022",
-    "commit": "030f0f0ade83af55c21a22ffb4c538a7c9c76aff"
+    "commit": "fb81ad7c1529e1ba2786140aefa62933b45927a9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
