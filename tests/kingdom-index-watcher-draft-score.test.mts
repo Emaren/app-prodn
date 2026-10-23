@@ -1,0 +1,31 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {readFileSync} from "node:fs";
+import review from "../config/kingdom-index-watcher-166-source-review.json" with {type:"json"};
+import rubric from "../config/kingdom-index-quality-rubric.json" with {type:"json"};
+import companions from "../config/kingdom-index-companions.json" with {type:"json"};
+
+test("unreleased Watcher source-only triage display cannot assert installed certification",()=>{
+ const w=companions.companions.find(c=>c.id==="aoe2-watcher");
+ assert.equal(w?.version,"1.6.5");
+ assert.equal(w?.gates?.length,9);
+ assert.equal(review.publishedReleaseStill,w?.version);
+ assert.equal(review.candidateVersion,"1.6.6");
+ assert.equal(review.candidateState,"DRAFT_UNRELEASED");
+ assert.equal(review.allNineDesktopGates,"UNVERIFIED");
+ assert.equal(review.sourceSha,"6adeb78a1294a07bfe63fcd43137f260e059c3b0");
+ assert.equal(review.scoreAuthority,"AI_ASSISTED_SOURCE_TRIAGE_UNCERTIFIED");
+ assert.ok(review.score<100);
+ const crit=Object.entries(rubric.dimensions).flatMap(([dim,d])=>d.criteria.map(c=>({id:c.id,dimension:dim,max:c.max})));
+ assert.equal(review.criteria.length,20);
+ review.criteria.forEach((c,i)=>{assert.equal(c.id,crit[i].id);assert.equal(c.dimension,crit[i].dimension);assert.equal(c.max,crit[i].max);assert.ok(c.estimated>=0 && c.estimated<=c.max);assert.equal(c.authority,"UNVERIFIED_SOURCE_TRIAGE")});
+ assert.equal(review.criteria.reduce((s,c)=>s+c.estimated,0),review.score);
+ for(const [name,value] of Object.entries(review.dimensions)) assert.equal(value,review.criteria.filter(c=>c.dimension===name).reduce((s,c)=>s+c.estimated,0));
+ assert.ok(review.refs.length>=2 && review.refs.every(url=>url.startsWith("https://github.com/Emaren/")));
+ const ui=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");
+ const server=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+ assert.match(ui,/UNPUBLISHED .* CANDIDATE — THIS IS NOT THE LIVE WATCHER QUALITY SCORE/);
+ assert.match(ui,/1\.6\.6 DRAFT · SOURCE REVIEW/);
+ assert.match(server,/status:"unmeasured" as const,score:null/);
+ assert.doesNotMatch(ui,/COMPANION CERTIFIED.*watcherDraftReview/);
+});
