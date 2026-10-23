@@ -4221,8 +4221,43 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
      */
 
     const claimPlanList = [...claimPlans.values()];
+    // Satchel-funded WOLO originated from the dedicated vault, NOT the
+    // player's personal Keplr account. Automatic legacy settlement must
+    // NEVER pay such a claim directly to Keplr; the claim remains pending
+    // until a verified escrow→vault transfer is allocated back to the
+    // exact owner's funded ledger. Preserve ordinary manual-wallet payouts.
+    //
+    // On a failed/truncated census, fail CLOSED for ALL auto payouts in this
+    // market while retaining the unpaid claim records for reconciliation.
+    const pooledOwnerIds = new Set<number>();
+    let pooledCensusComplete = false;
+    try {
+      const pooledWagers = await prisma.betWager.findMany({
+        where: {
+          marketId: market.id,
+          stakeLeg: {
+            is: {
+              ticket: {
+                is: { source: "auto", walletProvider: "satchel-vault" },
+              },
+            },
+          },
+        },
+        select: { userId: true },
+        take: 1001,
+      });
+      if (pooledWagers.length <= 1000) {
+        for (const wager of pooledWagers) pooledOwnerIds.add(wager.userId);
+        pooledCensusComplete = true;
+      }
+    } catch {
+      // No guesswork about custody on database errors.
+      pooledCensusComplete = false;
+    }
     const autoClaimPlans = claimPlanList.filter(
       (plan) =>
+        pooledCensusComplete &&
+        !pooledOwnerIds.has(plan.claimedByUserId ?? -1) &&
         Boolean(plan.walletAddress && plan.claimedByUserId) &&
         hasWoloEscrowSettlementExecutionConfigured()
     );
