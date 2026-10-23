@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "87e0728684e2cb67f4fa195ebd9e15763064594d5ab064c86cb856980de94145",
+      "sha256": "c69c480894353ff076026e8d55b3d3798733a2a07cdd87f35b20408756f2c1b8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/kingdom-index-provisional-review-scores-20261023",
-    "commit": "b99497e804e89478e93112c6ed66e39ceae56c95"
+    "branch": "feat/kingdom-watcher-166-provisional-companion-review-20261023",
+    "commit": "29e699267f2a9da1535a492dc6867190c504aa13"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

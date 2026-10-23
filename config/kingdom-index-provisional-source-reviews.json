@@ -15,7 +15,7 @@
   "reviews": [
     {
       "href": "/kingdom-index",
-      "routeSourceVersion": "src-8773d63ebe1e8ff6",
+      "routeSourceVersion": "src-5f39cd7bf91a196b",
       "sourceCommit": "f234ad56be826b5edd351091d9a91cc950ba10b0",
       "score": 62,
       "dimensions": {
@@ -187,7 +187,7 @@
           "uncertainty": "Absent evidence earns no certification; partial figure is an unverified triage estimate, NOT independently audited points."
         }
       ],
-      "reason": "AI-assisted provisional source review: signed-publication boundary and browser/source tests are present; no independently enrolled live scoring issuer or complete per-criterion production performance receipts. Source estimate, NOT certification.",
+      "reason": "AI-assisted provisional source review: signed-publication boundary and browser/source tests are present; no independently enrolled live scoring issuer or complete per-criterion production performance receipts. Source estimate, NOT certification. Rechecked current Index source delta: companion-only draft annotation, no signed certifier or live performance proof.",
       "evidenceRefs": [
         "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/kingdom-index/page.tsx",
         "https://github.com/Emaren/app-prodn/actions/runs/40016734430",

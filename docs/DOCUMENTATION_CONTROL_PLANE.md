@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/kingdom-index-provisional-review-scores-20261023` at `b99497e804e89478e93112c6ed66e39ceae56c95`
+Implementation baseline: `feat/kingdom-watcher-166-provisional-companion-review-20261023` at `29e699267f2a9da1535a492dc6867190c504aa13`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
