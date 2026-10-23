@@ -66,6 +66,22 @@ test("grouped mainnet settlement cannot fall back after ambiguous POST", () => {
   assert.match(unknown, /executedTotalUWolo:\s*null/);
 });
 
+test("ambiguous single-signer fallback stops remaining payouts without retry", () => {
+  const source = file("lib/woloBetSettlement.ts");
+  const fallback = within(source, "async function executeWoloSettlementRunFallback", "export async function validateWoloSettlementRun");
+  assert.match(fallback, /let unknownCount = 0/);
+  assert.match(fallback, /if \(unknownCount > 0\)/);
+  assert.match(fallback, /outcome: "held_after_unknown"/);
+  assert.match(fallback, /unknownCount \+= 1/);
+  assert.match(fallback, /failureCode: "PAYOUT_OUTCOME_UNKNOWN"/);
+  assert.match(fallback, /status: "unknown"/);
+  assert.match(fallback, /outcome: "unknown"/);
+  assert.match(fallback, /retryable: false/);
+  assert.doesNotMatch(fallback, /retryable: true/);
+  assert.match(fallback, /executedTotalUWolo: unknownCount > 0 \? null/);
+  assert.match(fallback, /status === "unknown"/);
+});
+
 test("Satchel financial bridge source interlock is still hard disabled", () => {
   const source = file("lib/warSatchelFinancialBridgeHold.ts");
   assert.match(source, /export const SATCHEL_FINANCIAL_BRIDGE_READY = false as const/);
