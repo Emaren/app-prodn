@@ -3,6 +3,16 @@ on:
   pull_request:
     paths: ['.github/workflows/renaissance-page-next-acceptance.yml', 'docs/RENAISSANCE_OS.md']
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Which exact specialist candidate to test"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - brain
+          - tests
 permissions:
   contents: read
   pull-requests: read
@@ -17,9 +27,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {pr: 808, page: brain}
-          - {pr: 807, page: tests}
+        include: >-
+          ${{ fromJSON(
+            inputs.target == 'brain' && '[{"pr":808,"page":"brain"}]' ||
+            inputs.target == 'tests' && '[{"pr":807,"page":"tests"}]' ||
+            '[{"pr":808,"page":"brain"},{"pr":807,"page":"tests"}]'
+          ) }}
     env:
       NODE_ENV: production
       DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
