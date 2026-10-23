@@ -28,7 +28,7 @@ class WoloFrontierTests(unittest.TestCase):
 
             def mock_run(argv, **kwargs):
                 calls.append((argv, kwargs))
-                return subprocess.CompletedProcess(argv, 0, stdout=PINN, stderr=b"")
+                return subprocess.CompletedProcess(argv, 0, stdout=PINNED, stderr=b"")
 
             with patch.object(router, "EXPECTED_COCKPIT_SHA256", hashlib.sha256(PINNED).hexdigest()):
                 data = router.reviewed_cockpit(repo, run=mock_run)
