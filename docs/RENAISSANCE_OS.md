@@ -56,7 +56,26 @@ Only after PR review, exact-head CI, protected merge and independently cleared r
 
 The shared workflow at .github/workflows/renaissance-page-next-acceptance.yml
 collects read-only, bounded candidate browser observations, never releases or
-independent scoring approvals. On its PR it executes a two-page matrix and,
+independent scoring approvals.
+
+After this master workflow is independently reviewed and present on the default
+branch, operators can manually dispatch an exact-head candidate run for just
+one specialist rather than wasting a second full production compilation:
+
+```bash
+gh workflow run renaissance-page-next-acceptance.yml --ref main -f target=brain
+gh workflow run renaissance-page-next-acceptance.yml --ref main -f target=tests
+```
+
+The workflow's target is an enumerated choice (all, brain, tests). Its matrix
+maps each choice to an approved PR number and page-local runner; the omitted
+input on ordinary review PRs still exercises BOTH pages. The workflow fetches
+the current exact specialist SHA at run time and rechecks it after execution.
+A requested run is not a passing result. Do not use the manual command before
+the workflow exists on the approved default branch, and never reinterpret
+an old job rerun as evidence for a changed source without inspecting the new
+attempt's receipt and SHA.
+ On its PR it executes a two-page matrix and,
 after approved default-branch integration, supports manual workflow dispatch:
 
 - Brain draft PR #808: tests/kingdom-brain-next-app-acceptance.py
