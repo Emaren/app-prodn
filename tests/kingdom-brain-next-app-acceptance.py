@@ -121,9 +121,17 @@ async def guard(page,counts):
         mutation = request.method not in ("GET","HEAD")
         if external or mutation:
             counts["blocked"]+=1
-            if mutation: counts["blockedMutations"]=counts.get("blockedMutations",0)+1
-            if external:
-                counts["blockedExternalReadOnly"]=counts.get("blockedExternalReadOnly",0)+(0 if mutation else 1)
+            if mutation:
+                counts["blockedMutations"]=counts.get("blockedMutations",0)+1
+                # Site-wide SpeedOS probes POST to a centrally owned telemetry
+                # relay. Never execute them in isolated acceptance; report
+                # attempts separately from the four Brain READ-ONLY sources.
+                if not external and url.path=="/api/speed/sample" and request.method=="POST":
+                    counts["blockedGlobalSpeedTelemetry"]=counts.get("blockedGlobalSpeedTelemetry",0)+1
+                else:
+                    counts["unexpectedMutations"]=counts.get("unexpectedMutations",0)+1
+            if external and not mutation:
+                counts["blockedExternalReadOnly"]=counts.get("blockedExternalReadOnly",0)+1
             details=counts.setdefault("blockedDetails",[])
             if len(details)<12:
                 details.append({"host":url.hostname,"path":url.path[:150],"method":request.method})
@@ -189,11 +197,11 @@ async def one_real(browser,args,viewport,label,n,output):
           "all_14_exact_authority_labels",checks)
     check(await page.locator('[aria-live="polite"]').count()>=1,"status_announced",checks)
     check(asset_count[0]>0,"next_static_assets_loaded",checks)
-    check(cnt.get("blockedMutations",0)==0, "no_mutating_http_requests", checks)
-    check(cnt["blocked"]==cnt.get("blockedExternalReadOnly",0),
-          "blocked_traffic_is_external_read_only", checks)
-    # Outbound GET attempts are blocked and recorded, never falsely reported
-    # as offline-independent assets or as successful external responses.
+    check(cnt.get("unexpectedMutations",0)==0, "no_unapproved_mutating_requests", checks)
+    check(cnt["blocked"]==cnt.get("blockedExternalReadOnly",0)+cnt.get("blockedGlobalSpeedTelemetry",0),
+          "all_blocked_traffic_attributed_to_egress_or_global_speed_telemetry", checks)
+    # External GETs and SpeedOS POSTs are ABORTED, counted, and attributable;
+    # never claim the whole shared Next shell makes zero mutation attempts.
     check(all(cnt["api"].get(path,0)==1 for path in ENDPOINTS),"exactly_four_initial_gets",checks)
     width=await page.evaluate("({w:document.documentElement.scrollWidth,v:innerWidth})")
     check(width["w"]<=width["v"]+2,"no_document_horizontal_overflow",checks)
@@ -356,7 +364,7 @@ async def lifecycle_race_case(browser,args):
                               report["hidden"],report["returnedVisible"],
                               report["no_hidden_refresh"],report["unmounted"],
                               number[0]==3, not errors,
-                              counts.get("blockedMutations",0)==0))
+                              counts.get("unexpectedMutations",0)==0))
     except Exception as error:
         report["error"]=str(error)[:300]
     finally:
