@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import profiles from "../config/kingdom-index-assurance-profiles.json" with { type: "json" };
 import catalog from "../config/kingdom-index-routes.json" with { type: "json" };
-import { classifyPublicKingdomAuditStatus as status, publicObservedKingdomScore, isKingdomObservationStale } from "../lib/kingdomIndexAuditStatus.ts";
+import { classifyPublicKingdomAuditStatus as status, publicObservedKingdomScore, provisionalOperatorReviewScore, isKingdomObservationStale } from "../lib/kingdomIndexAuditStatus.ts";
 import { readFileSync } from "node:fs";
 import { selectKingdomScoreLineage } from "../lib/kingdomIndexScoreLineage.ts";
 
@@ -130,4 +130,29 @@ test("fresh agent observations cannot overwrite historical review lineage",()=>{
  assert.match(source,/dimensions:lineage\.dimensions/);
  assert.match(source,/observed:pages\.filter\(p=>p\.kind!==null\)/);
  assert.doesNotMatch(source,/lastReviewScore:obs\?\.score/);
+});
+
+test("bounded, current source-review numbers can appear only as visibly provisional, never as certified",()=>{
+ const good={status:"provisional" as const,kind:"source-review" as const,score:64,
+  dimensions:{correctness:24,functionality:11,performance:15,maintainability:9,tests:5},
+  evidenceRefs:[
+   "https://github.com/Emaren/app-prodn/blob/f234ad56be826b5edd351091d9a91cc950ba10b0/app/leaderboard/page.tsx",
+   "https://github.com/Emaren/app-prodn/actions/runs/40017720941",
+  ]};
+ assert.equal(provisionalOperatorReviewScore(good),64);
+ assert.equal(provisionalOperatorReviewScore({...good,status:"drifted"}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,status:"stale"}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,kind:"certified"}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,kind:"agent"}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,score:100}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,score:65}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,evidenceRefs:[]}),null);
+ assert.equal(provisionalOperatorReviewScore({...good,evidenceRefs:["https://evil.example/a","https://evil.example/b"]}),null);
+ const code=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");
+ const server=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+ assert.match(code,/PROVISIONAL SOURCE REVIEW · NOT INDEPENDENTLY CERTIFIED/);
+ assert.match(code,/NOT an independently audited or certified engineering score/);
+ assert.match(server,/provisionalReviewScore=provisionalOperatorReviewScore/);
+ assert.match(server,/entry\.provisionalReviewScore=null/);
+ assert.match(server,/score: liveScore/);
 });

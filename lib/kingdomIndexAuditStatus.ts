@@ -59,3 +59,39 @@ export function isKingdomObservationStale(input: {
   const ttl = input.kind==="agent" ? 15*60*1000 : 30*24*60*60*1000;
   return age > ttl || age < -5*60*1000;
 }
+
+/**
+ * Review-only, explicitly non-certifying /100 display lane.
+ *
+ * A current route-local source fingerprint plus private operator JSON is NOT
+ * an independent quality certificate. This helper can expose a recent,
+ * inspectable source-review estimate only after a conservative shape check.
+ * It never feeds the canonical verified score or certified count.
+ */
+export function provisionalOperatorReviewScore(input: {
+  status: PublicIndexAuditStatus;
+  kind: PublicIndexAuditKind | null;
+  score: number | null;
+  dimensions?: { correctness:number; functionality:number; performance:number; maintainability:number; tests:number } | null;
+  evidenceRefs?: string[] | null;
+}): number | null {
+  if (input.status !== "provisional" || input.kind !== "source-review") return null;
+  const n = input.score;
+  if (n === null || !Number.isInteger(n) || n < 0 || n >= 100) return null;
+  const d = input.dimensions;
+  if (!d || typeof d !== "object") return null;
+  const maximum = {correctness:30,functionality:25,performance:20,maintainability:15,tests:10};
+  const values = Object.entries(maximum);
+  if (!values.every(([k,cap]) => {
+    const v=d[k as keyof typeof maximum];
+    return Number.isInteger(v) && v>=0 && v<=cap;
+  })) return null;
+  if (values.reduce((sum,[key]) => sum+d[key as keyof typeof maximum],0)!==n) return null;
+  // Links are review provenance references, never trusted certification.
+  if (!Array.isArray(input.evidenceRefs) || input.evidenceRefs.length<2 ||
+      input.evidenceRefs.length>12 ||
+      !input.evidenceRefs.every(url=>typeof url==="string" && url.length<400 &&
+        /^https:\/\/github\.com\/Emaren\/[^/]+\/(?:blob\/[a-f0-9]{40}\/|actions\/runs\/|pull\/|issues\/)/.test(url)))
+    return null;
+  return n;
+}
