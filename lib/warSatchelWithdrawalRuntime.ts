@@ -74,7 +74,7 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
       if(!admissionEntered)return {state:"release_held"};
       // A rejected/lost database COMMIT acknowledgement is uncertain even if
       // another read is unavailable. Persisted state owns subsequent recovery.
-      await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:null,state:"unknown"}});
+      await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:null,state:"unknown"}}).catch(()=>{});
       return {state:"unknown_hold"};
     }
   }else if(record.status==="unknown_hold"){
@@ -85,7 +85,8 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
     try{reply=await request("/satchel/v1/reconcile",{operation_id:operationId},reader);}catch{return {state:"unknown_hold"};}
   }else stop("withdrawal_state_unknown");
   const hash=withdrawalCandidateHash(reply,operationId);
-  await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:hash,state:hash?"candidate_hash":"unknown"}});
+  try{await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:hash,state:hash?"candidate_hash":"unknown"}});}
+  catch{return {state:"unknown_hold"};}
   if(!hash)return {state:"unknown_hold"};
   try{
     const final=await finalizeProvenSatchelWithdrawal(prisma,{withdrawalId,ownerUserId:record.ownerUserId,txHash:hash});
