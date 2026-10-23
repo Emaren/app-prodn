@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "73ee38e28e3065a0ff4b6fd7af9ba3d2f47b311406e7ed10e8fefb8f6a64605f",
+      "sha256": "28f5ae0376436858b7a5f79b61ec081089224d374304f2786d9b2501d678247b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/renaissance-kingdom-public-checkpoint-20261022",
-    "commit": "afcdd9ff6e1f3719f82cfe7064ee7805610dd647"
+    "commit": "084d15289f32c3b9fc7b9d4ed2d88a6ec76b0104"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
