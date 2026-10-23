@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/20261023-wolo-brief-router` at `05a7d5091f2935213f325609fcf5d97def82ca5a`
+Implementation baseline: `ops/20261023-wolo-brief-router` at `d725fc1838e0617adcd28aee4fa9b0f688686824`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
