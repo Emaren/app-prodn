@@ -376,6 +376,20 @@ async def lifecycle_race_case(browser,args):
         # Never accept a fourth request from Brain as a harmless Index fetch.
         report["indexHandlersBeforeNavigation"]=number[0]
         report["apiRequestsBeforeNavigation"]=dict(counts["api"])
+        # The synthetic visibility property is a controlled fixture only.
+        # Real Chrome may fire visibilitychange during navigation, and a
+        # stale forced "visible" getter would trigger a fourth outgoing
+        # Brain refresh. Restore native visibility before leaving Brain;
+        # never reclassify that extra Brain request as an Index request.
+        native_visibility=await page.evaluate("""() => {
+            if (!Object.prototype.hasOwnProperty.call(document, "visibilityState")) {
+                throw new Error("controlled visibility override disappeared");
+            }
+            delete document.visibilityState;
+            delete window.__brainFixtureVisibility;
+            return document.visibilityState;
+        }""")
+        report["nativeVisibilityRestored"]=native_visibility=="visible"
         phase[0]="navigation_to_index"
         await page.goto(args.url+"/kingdom-index",wait_until="domcontentloaded",timeout=20000)
         phase[0]="index_page_loaded"
@@ -401,6 +415,7 @@ async def lifecycle_race_case(browser,args):
                               report["hidden"],report["returnedVisible"],
                               report["no_hidden_refresh"],report["unmounted"],
                               report["indexHandlersBeforeNavigation"]==3,
+                              report["nativeVisibilityRestored"],
                               number[0] in (3,4),
                               report["postNavigationIndexAttributionPass"],
                               not errors,counts.get("unexpectedMutations",0)==0))
