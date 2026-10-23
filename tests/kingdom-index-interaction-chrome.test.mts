@@ -74,7 +74,7 @@ test("CDP Enter sequence synthesizes a native button click, never a rawKeyDown n
  assert.equal(events[0].type,"keyDown");
  assert.equal(events[0].key,"Enter");
  assert.equal(events[0].code,"Enter");
- assert.equal(events[0].text,"\\r");
+ assert.equal(events[0].text,"\r");
  assert.equal(events[0].windowsVirtualKeyCode,13);
  assert.equal(events[0].nativeVirtualKeyCode,13);
  assert.equal(events[1].type,"keyUp");
