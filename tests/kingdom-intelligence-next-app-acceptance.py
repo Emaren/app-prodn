@@ -79,6 +79,7 @@ SOURCES = (
     "tests/kingdom-intelligence-recovery-runtime.test.mts",
     "tests/kingdom-intelligence-recovery-ui.test.mts",
     "tests/oracle-kingdom-intelligence-view-modes.test.mts",
+    "tests/kingdom-intelligence-next-app-acceptance.py",
 )
 
 def git(repo, *args):
@@ -347,8 +348,16 @@ async def case(browser, args, mode, width, output):
         check("reduced_motion_media", await page.evaluate(
               "matchMedia('(prefers-reduced-motion: reduce)').matches"))
         check("no_browser_exceptions", not errors)
-        # Preserve the literal original write check as a FALSE diagnostic when shared
-        # SpeedOS attempts occur; do NOT rebrand those attempts as zero writes.
+
+        result["navigation_plus_assertions_ms"] = round((time.perf_counter() - t0) * 1000, 2)
+        if mode == "terminal":
+            await page.screenshot(path=str(output / ("intelligence-" + str(width) + "-terminal.png")),
+                                  full_page=True)
+    except Exception as error:
+        result["error"] = type(error).__name__ + ": " + str(error)[:1000]
+    finally:
+        # Always preserve security evidence, even if an earlier UI assertion throws.
+        # A classified attempt is not a transmitted HTTP request.
         result["write_guard_evidence"] = {
             "no_attempted_write_requests": counts["blocked_write"] == 0,
             "all_attempts_blocked_from_transmission": True,
@@ -362,14 +371,6 @@ async def case(browser, args, mode, width, output):
               counts["unexpected_writes"] == 0)
         check("shared_speedos_attempts_explicitly_accounted",
               counts["classified_shared_speedos"] + counts["unexpected_writes"] == counts["blocked_write"])
-
-        result["navigation_plus_assertions_ms"] = round((time.perf_counter() - t0) * 1000, 2)
-        if mode == "terminal":
-            await page.screenshot(path=str(output / ("intelligence-" + str(width) + "-terminal.png")),
-                                  full_page=True)
-    except Exception as error:
-        result["error"] = type(error).__name__ + ": " + str(error)[:1000]
-    finally:
         result["requests"] = counts
         result["pass"] = bool(checks) and all(checks.values()) and "error" not in result
         if not result["pass"]:
