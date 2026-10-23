@@ -11,6 +11,12 @@ function fixture(){
     documentStatus:200,reducedMotionEmulated:true,
     accessibility:{axNodeCount:300,namedButtons:25,unnamedButtons:0},
     keyboard:{ledgerActivated:true,mapRestored:true,detailOpened:true,detailClosed:true},
+    diagnostics:{snapshots:["initial","after-ledger-enter","after-map-enter","after-inspect-enter","after-close-enter"].map(phase=>({
+      phase,href:"http://127.0.0.1:3030/kingdom-index",
+      focus:{tag:"BUTTON",name:phase==="after-map-enter"?"Kingdom map":"Inspect Kingdom Index",role:null},
+      map:{exists:true},ledger:{exists:true},inspect:{exists:true},close:{exists:true},
+      realmVisible:true,ledgerVisible:false,detailVisible:false
+    })),screenshots:[],chromeExceptions:[]},
     warm:{samplesMs:samples,p75Ms:167.5,p95Ms:185.5}
   };
  };
@@ -51,4 +57,13 @@ test("keyboard failure or narrow viewport overflow remains a transparent observa
  assert.equal(v.keyboardInteractionsObserved,false);
  assert.equal(v.horizontalOverflowObserved,true);
  assert.equal(v.certified,false);
+});
+
+test("an unopened detail remains a failed close transition, not successful accessible keyboard proof",()=>{
+ const doc=fixture();
+ doc.viewports[0].keyboard.detailOpened=false;
+ doc.viewports[0].keyboard.detailClosed=false;
+ const result=inspectInteractionReceipt(doc,expected);
+ assert.equal(result.keyboardInteractionsObserved,false);
+ assert.equal(result.certified,false);
 });
