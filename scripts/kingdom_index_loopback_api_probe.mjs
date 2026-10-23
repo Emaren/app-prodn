@@ -19,7 +19,7 @@ const pct=(a,q)=>{
 export function validateIndexApiSnapshot(obj,headers){
  if(!obj||obj.schema!==1||!Array.isArray(obj.pages)||obj.pages.length!==CHECKS||
    !obj.estate||obj.estate.pageTemplates!==144||
-   obj.estate.routeHandlerTemplates!==273||
+   obj.estate.routeHandlerTemplates!==279||
    typeof obj.certified!=="number"||typeof obj.generatedAt!=="string")
    stop("Untrusted/missing estate contract");
  const hrefs=new Set(),invalid=[];
