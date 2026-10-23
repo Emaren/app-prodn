@@ -154,5 +154,7 @@ test("bounded, current source-review numbers can appear only as visibly provisio
  assert.match(code,/NOT an independently audited or certified engineering score/);
  assert.match(server,/provisionalReviewScore=provisionalOperatorReviewScore/);
  assert.match(server,/entry\.provisionalReviewScore=null/);
+ assert.match(server,/entry\.provisionalReviewRefs=\[\]/);
+ assert.match(code,/Unverified review references/);
  assert.match(server,/score: liveScore/);
 });

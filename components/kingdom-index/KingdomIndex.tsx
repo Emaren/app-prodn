@@ -72,7 +72,11 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
       <button className={styles.close} onClick={close} type="button" aria-label="Close details"><X size={17}/></button>
     </div>
     <div className={styles.detailScore}><Score entry={item}/><Sparkline points={item.history} score={item.score}/></div>
-    {item.provisionalReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>OPERATOR SOURCE REVIEW ONLY. This approximate /100 estimate is NOT an independently audited or certified engineering score. Missing browser, production, domain and financial proof remains unknown; review references are claims, not validated artifacts.</p>}
+    {item.provisionalReviewScore!==null&&item.score===null&&<section className={styles.evidenceNote} aria-label="Unverified review references">
+      <p>OPERATOR SOURCE REVIEW ONLY. This approximate /100 estimate is NOT an independently audited or certified engineering score. Missing browser, production, domain and financial proof remains unknown; review references are claims, not validated artifacts.</p>
+      <p>Review references (claims only):</p>
+      <ul>{item.provisionalReviewRefs.map(ref=><li key={ref}><a href={ref} target="_blank" rel="noopener noreferrer">{ref}</a></li>)}</ul>
+    </section>}
     {item.lastReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>HISTORICAL REVIEW: {item.lastReviewScore}/100. No current source-aligned engineering score is independently established.</p>}
     <p className={styles.evidenceNote}>Route source fingerprint is a local Git census only; transitive dependencies and deployed runtime still require independent proof.</p>
     {item.authenticatedPublication&&<section className={styles.evidenceNote} aria-label="Authenticated certification provenance">

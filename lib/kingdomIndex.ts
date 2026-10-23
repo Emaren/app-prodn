@@ -37,6 +37,8 @@ export type KingdomIndexEntry = {
   score: number | null;
   // Visible but explicitly unauthenticated operator source-review, never certification.
   provisionalReviewScore: number | null;
+  // Review links are public provenance claims, not independently authenticated proof.
+  provisionalReviewRefs: string[];
   lastReviewScore: number | null;
   checkedAt: string | null;
   kind: PageAuditKind | null;
@@ -196,6 +198,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       sourceVersion:version,sourceVersionAuthority:"route-local-git-census",measuredVersion,
       // Keep a historical score visible only with an explicit noncurrent state.
       score: liveScore,provisionalReviewScore,
+      provisionalReviewRefs:provisionalReviewScore!==null?obs?.evidenceRefs??[]:[],
       lastReviewScore:lineage.lastReviewScore, checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
       // Signed-JSON ingress does not itself verify benchmark artifacts or
@@ -221,6 +224,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       if(publication.certified||publication.score<100){
         entry.score=publication.score;
         entry.provisionalReviewScore=null;
+        entry.provisionalReviewRefs=[];
         entry.kind="certified";
         entry.status=publication.certified?"current":"provisional";
         entry.checkedAt=publication.issuedAt;
