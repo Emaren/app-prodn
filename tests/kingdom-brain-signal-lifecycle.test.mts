@@ -245,3 +245,22 @@ test("versioned real Next runner compiles and refuses non-source-bound execution
   });
   assert.equal(compiled.status, 0, compiled.stderr || compiled.error?.message);
 });
+
+test("real Next heading selector ignores multiple similarly named navigation headings", () => {
+  const runner = readFileSync(
+    new URL("./kingdom-brain-next-app-acceptance.py", import.meta.url), "utf8",
+  );
+  const mountStart = runner.indexOf("async def mount(page,url,counts):");
+  const mountEnd = runner.indexOf("async def one_real(", mountStart);
+  assert.ok(mountStart >= 0 && mountEnd > mountStart, "real Next mount exists");
+  const mount = runner.slice(mountStart, mountEnd);
+  assert.match(mount, /page\.get_by_role\("heading", name="KINGDOM BRAIN", exact=True\)/);
+  assert.match(mount, /page_heading\.wait_for\(state="visible", timeout=18000\)/);
+  assert.match(mount, /page_heading\.count\(\) != 1/);
+  assert.doesNotMatch(mount, /page\.locator\("h1"\)\.wait_for/);
+  // Existing real Next layout has both navigation and route H1s. Regression
+  // checks this directly in the running browser, not by first() selection.
+  assert.match(runner, /page\.locator\("h1"\)\.count\(\) >= 2/);
+  assert.match(runner, /"exact_brain_heading_unique_despite_navigation"/);
+  assert.doesNotMatch(mount, /\.first\b|\.nth\(/);
+});
