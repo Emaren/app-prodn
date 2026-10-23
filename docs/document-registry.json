@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "13518e6e071d2e5bb6e915a59c5e6e663c14a4f35d137ad24ac5a7a402a73ef0",
+      "sha256": "eda8acee91c59f98e875b1280b56b572552e87f6f4c059eadf844e7d8d7a98db",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1221,7 +1221,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
+      "sha256": "d75d0f10514fc17901f6a1b7b90208b9adb4a912e0791774ba727a56fda8cf41",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/exact-head-ci-dispatch-20261022",
-    "commit": "aba29056b128f89273f318bc01a49450aab91b49"
+    "branch": "integration/renaissance-kingdom-public-checkpoint-20261022",
+    "commit": "cd435c07c105d9817b0ddfdf1c3ee98da44e5bca"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
