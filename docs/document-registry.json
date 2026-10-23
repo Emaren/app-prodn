@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d218adff54d203658cda3986daeb03691cf9b4ebf48200569c3d1bf18dea7b31",
+      "sha256": "73ee38e28e3065a0ff4b6fd7af9ba3d2f47b311406e7ed10e8fefb8f6a64605f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1194,9 +1194,9 @@
       "owner": "aoe2war-web",
       "path": "docs/OPERATOR_START_HERE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-10-23",
       "sensitivity": "internal",
-      "sha256": "2d9589b7c05e71eb9fdc9638ad6abd010de1615caa01e66fd9126deaf6c5bab2",
+      "sha256": "b3b0da47350ae5152b0d18a083c5115e0131e9c83f77b62135d99eed9b030489",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/renaissance-kingdom-public-checkpoint-20261022",
-    "commit": "bf5fd8f2068cbd2dcc9b4a938c2076fc555693b6"
+    "commit": "afcdd9ff6e1f3719f82cfe7064ee7805610dd647"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/renaissance-kingdom-public-checkpoint-20261022` at `bf5fd8f2068cbd2dcc9b4a938c2076fc555693b6`
+Implementation baseline: `integration/renaissance-kingdom-public-checkpoint-20261022` at `afcdd9ff6e1f3719f82cfe7064ee7805610dd647`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
