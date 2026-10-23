@@ -1832,6 +1832,7 @@ async function executeWoloSettlementRunFallback(input: {
   let executedCount = 0;
   let acceptedCount = 0;
   let refusedCount = 0;
+  let unknownCount = 0;
   const replayCount = 0;
   let executedTotal = 0;
 
@@ -1840,6 +1841,22 @@ async function executeWoloSettlementRunFallback(input: {
     const requestId =
       payout.requestId?.trim() ||
       `${input.settlementRunId}:item-${String(index + 1).padStart(3, "0")}`;
+    if (unknownCount > 0) {
+      // A prior payout's bank effect is unproven. Preserve the remaining
+      // obligations without admitting even a different recipient until an
+      // independent reviewer reconciles the original immutable request.
+      results.push({
+        index, requestId, attempted: false, ok: false, status: "skipped",
+        outcome: "held_after_unknown", failureCode: "PRIOR_PAYOUT_OUTCOME_UNKNOWN",
+        retryable: false, idempotentReplay: false,
+        toAddress: payout.toAddress, amountUWolo: toUwoLoAmount(payout.amountWolo),
+        amountWolo: String(payout.amountWolo),
+        memo: payout.memo?.trim() || input.memo?.trim() || null,
+        txHash: null, detail: "Prior payout outcome UNKNOWN; independent reconciliation required.",
+        proofUrl: null, canonicalTxLookupPublic: null, canonicalTxLookupInternal: null,
+      });
+      continue;
+    }
     try {
       const result = WOLO_SETTLEMENT_URL
         ? await executeWoloPayoutViaSettlementService({
@@ -1878,7 +1895,10 @@ async function executeWoloSettlementRunFallback(input: {
         canonicalTxLookupInternal: null,
       });
     } catch (error) {
-      refusedCount += 1;
+      // The lease can be lost after transport acceptance. Even a local
+      // error does not independently prove no financial broadcast occurred.
+      // Fail closed; never turn it into an automatic retryable refusal.
+      unknownCount += 1;
       const detail =
         error instanceof Error ? error.message : "WOLO payout execution failed.";
       results.push({
@@ -1886,10 +1906,10 @@ async function executeWoloSettlementRunFallback(input: {
         requestId,
         attempted: true,
         ok: false,
-        status: "refused",
-        outcome: "refused",
-        failureCode: null,
-        retryable: true,
+        status: "unknown",
+        outcome: "unknown",
+        failureCode: "PAYOUT_OUTCOME_UNKNOWN",
+        retryable: false,
         idempotentReplay: false,
         toAddress: payout.toAddress,
         amountUWolo: toUwoLoAmount(payout.amountWolo),
@@ -1905,20 +1925,22 @@ async function executeWoloSettlementRunFallback(input: {
   }
 
   const status =
-    results.length === 0
-      ? "failed"
-      : executedCount === results.length
-        ? "confirmed"
-        : executedCount > 0
-          ? "partial"
-          : "failed";
+    unknownCount > 0
+      ? "unknown"
+      : results.length === 0
+        ? "failed"
+        : executedCount === results.length
+          ? "confirmed"
+          : executedCount > 0
+            ? "partial"
+            : "failed";
 
   return {
-    ok: executedCount > 0,
+    ok: status === "confirmed",
     dryRun: false,
     status,
-    failureCode: null,
-    retryable: status !== "confirmed",
+    failureCode: unknownCount > 0 ? "PAYOUT_OUTCOME_UNKNOWN" : null,
+    retryable: false,
     idempotentReplay: replayCount > 0,
     settlementRunId: input.settlementRunId,
     sourceApp: input.sourceApp?.trim() || null,
@@ -1934,14 +1956,18 @@ async function executeWoloSettlementRunFallback(input: {
     requestedTotalUWolo: toUwoLoAmount(
       input.payouts.reduce((sum, payout) => sum + payout.amountWolo, 0)
     ),
-    executedTotalUWolo: toUwoLoAmount(executedTotal),
+    executedTotalUWolo: unknownCount > 0 ? null : toUwoLoAmount(executedTotal),
     projectedRemainingUWolo: null,
     estimatedFeeTotalUWolo: null,
-    warnings: WOLO_SETTLEMENT_URL
-      ? ["Grouped run route unavailable; fell back to single payout requests."]
-      : ["App-local payout signer fallback is explicitly enabled in this environment."],
+    warnings: unknownCount > 0
+      ? ["Single-payout attempt has an UNKNOWN bank outcome. Remaining payouts are HELD until independent reconciliation; never retry automatically."]
+      : WOLO_SETTLEMENT_URL
+        ? ["Grouped run route unavailable; fell back to single payout requests."]
+        : ["App-local payout signer fallback is explicitly enabled in this environment."],
     detail:
-      status === "confirmed"
+      status === "unknown"
+        ? "One payout may have been accepted; reconcile original requests before resuming."
+        : status === "confirmed"
         ? `all ${executedCount} payouts confirmed on WoloChain`
         : status === "partial"
           ? `${executedCount} of ${input.payouts.length} payouts executed; inspect per-recipient results for the remaining failures`
