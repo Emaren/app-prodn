@@ -1,3 +1,5 @@
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
+import {readWarSatchelBoundedUtf8} from "./warSatchelBoundedBody.ts";
 import { fetchBoundedWoloTxJson } from "./woloBoundedTxLookup.ts";
 import { createHash } from "node:crypto";
 
@@ -1596,6 +1598,21 @@ function buildBlockedSettlementRunResult(
   };
 }
 
+/** Private last-hop admission shared by primary/founder and escrow runs.
+ * The existing immutable request journals still own UNKNOWN/reconciliation.
+ * A transport error, including lease loss, is never proof of non-broadcast. */
+async function financialSettlementPost<T>(url:string,wallet:string,producer:string,init:RequestInit){
+  return withHdFinancialLease({scope:"hd-legacy",wallet,producer},async lease=>{
+    const signal=AbortSignal.any([lease,AbortSignal.timeout(45_000)]);
+    signal.throwIfAborted();
+    const response=await fetch(url,{...init,redirect:"error",signal});
+    const raw=await readWarSatchelBoundedUtf8(response.body?.pipeThrough(new TransformStream<Uint8Array,Uint8Array>(),{signal})??null,1_048_576);
+    signal.throwIfAborted();if(!raw)throw Error("Settlement outcome UNKNOWN: invalid bounded response");
+    const payload=JSON.parse(raw) as T;
+    return {response,payload};
+  });
+}
+
 async function executeWoloPayoutViaSettlementService(input: {
   requestId?: string | null;
   toAddress: string;
@@ -1610,7 +1627,7 @@ async function executeWoloPayoutViaSettlementService(input: {
   const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
-  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+  const {response,payload} = await financialSettlementPost<SettlementExecutePayload>(`${baseUrl}/settlement/v1/payouts`, expectedSenderAddress||"", "settlement-payout", {
     method: "POST",
     headers: buildSettlementMutationHeaders(),
     body: JSON.stringify({
@@ -1622,7 +1639,6 @@ async function executeWoloPayoutViaSettlementService(input: {
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
 
   if (!response.ok || !payload.ok || !payload.tx_hash) {
     throw new Error(summarizeSettlementDetail(payload));
@@ -1656,7 +1672,7 @@ async function executeWoloPayoutViaNamedSettlementService(
   const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(baseUrlRaw);
-  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+  const {response,payload} = await financialSettlementPost<SettlementExecutePayload>(`${baseUrl}/settlement/v1/payouts`, expectedSenderAddress||"", "founder-payout", {
     method: "POST",
     headers: buildSettlementMutationHeaders(authToken),
     body: JSON.stringify({
@@ -1668,7 +1684,6 @@ async function executeWoloPayoutViaNamedSettlementService(
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
 
   if (!response.ok || !payload.ok || !payload.tx_hash) {
     throw new Error(summarizeSettlementDetail(payload));
@@ -2389,21 +2404,31 @@ export async function executeWoloPayout(input: {
 
   const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, wallet, {
     gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
+    broadcastTimeoutMs: 45_000,
   });
 
-  const result = await client.sendTokens(
-    account.address,
-    input.toAddress,
-    [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
-    resolvePayoutFee(WOLO_PAYOUT_FEE),
-    input.memo.slice(0, 180)
-  );
-
-  return {
-    txHash: result.transactionHash,
-    amountWolo: input.amountWolo,
-    toAddress: input.toAddress,
-    proofUrl: buildWoloRestTxLookupUrl(result.transactionHash),
-    expectedSenderAddress,
-  };
+  try {
+    const result = await withHdFinancialLease(
+      { scope: "hd-legacy", producer: "local-payout", wallet: account.address },
+      async (signal) => {
+        signal.throwIfAborted();
+        return client.sendTokens(
+          account.address,
+          input.toAddress,
+          [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
+          resolvePayoutFee(WOLO_PAYOUT_FEE),
+          input.memo.slice(0, 180)
+        );
+      },
+    );
+    return {
+      txHash: result.transactionHash,
+      amountWolo: input.amountWolo,
+      toAddress: input.toAddress,
+      proofUrl: buildWoloRestTxLookupUrl(result.transactionHash),
+      expectedSenderAddress,
+    };
+  } finally {
+    client.disconnect();
+  }
 }
