@@ -50,3 +50,56 @@ node --experimental-strip-types --test tests/renaissance-campaign.test.mts
 ```
 
 Only after PR review, exact-head CI, protected merge and independently cleared release gates may an authorized operator consider the existing `./bin/aoe2war status`, `update --json`, `finish` workflow. This PR is **NOT DEPLOYED** and **NOT financially authorized**.
+
+
+## Master-owned real Next.js/Chrome candidate acceptance (three specialist pages)
+
+The shared `.github/workflows/renaissance-page-next-acceptance.yml` is a
+**read-only candidate browser evidence collector**, not a production release,
+credential authority or authenticated score issuer. A normal review PR event
+executes all three isolated exact-source jobs:
+
+- Brain draft #808: `tests/kingdom-brain-next-app-acceptance.py`
+- Intelligence draft #805: `tests/kingdom-intelligence-next-app-acceptance.py`
+- Tests draft #807: `tests/kingdom-tests-next-acceptance.py`
+
+On independently reviewed integration to the default branch, manual dispatch
+accepts only `all`, `brain`, `intelligence` or `tests`. To run one:
+
+```bash
+gh workflow run renaissance-page-next-acceptance.yml --ref main -f target=brain
+gh workflow run renaissance-page-next-acceptance.yml --ref main -f target=intelligence
+gh workflow run renaissance-page-next-acceptance.yml --ref main -f target=tests
+```
+
+**These manual commands are unavailable until the workflow is approved and
+present on default `main`.** Until then the master draft PR's normal
+pull-request CI owns the test invocation. The bounded enum determines a
+fixed page-to-PR and page-to-runner mapping; no arbitrary checkout SHA,
+command, repository or target URL is operator-supplied.
+
+Each CI job resolves the current **open draft, same-repository PR** to an exact
+40-hex source SHA; checks out that commit (not an inferred merge); installs
+frozen application dependencies without install hooks; builds real Next.js;
+executes system Chromium against explicit loopback-only Next and controlled
+read-only API fixtures; then confirms the PR head did not advance. Artifacts
+retain available source SHA, emitted BUILD_ID, raw JSON/screenshot/server logs
+even on a browser failure. Source drift fails closed; passing fixture checks
+never prove the live backend or independent rubric criteria.
+
+**Candidate-only limitation:** the old unmerged specialist branches inherit
+a faulty legacy prebuild page-change manifest generator. This workflow uses
+the direct Next.js compiler after Prisma/build-version generation to avoid
+mutating tracked source. It is NOT a complete `yarn build` lifecycle, patched
+mainline integration, DocsV2 approval, canonical source census, issuer review,
+or release-equivalent BUILD_ID. Reviewed master #817 NUL hash correction,
+Next.js 15.5.28, protected release #665 and the three specialized gates
+remain separate prerequisites.
+
+The Tests whole-page acceptance deliberately rejects inherited shared
+`OVERALL VERIFIED SCORE` wording. Exclusive shared-owner draft #821
+proposes truthful source-readiness labels, but testing old #807 alone cannot
+observe #821 until reviewed combined-source integration. Do not weaken the
+whole-page assertion or treat a standalone #821 CI run as actual Tests
+acceptance. No production credentials, deployments, WoloChain or held War
+Satchel actions belong to this workflow.

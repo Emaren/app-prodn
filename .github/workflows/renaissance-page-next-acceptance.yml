@@ -1,0 +1,173 @@
+name: Renaissance exact-page Next/Chrome candidate acceptance
+on:
+  pull_request:
+    paths: ['.github/workflows/renaissance-page-next-acceptance.yml', 'docs/RENAISSANCE_OS.md']
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which exact specialist candidate to test"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - brain
+          - intelligence
+          - tests
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: renaissance-next-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  real-page:
+    name: Exact PR ${{ matrix.pr }} Next.js Chrome (candidate only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: >-
+          ${{ fromJSON(
+            inputs.target == 'brain' && '[{"pr":808,"page":"brain"}]' ||
+            inputs.target == 'intelligence' && '[{"pr":805,"page":"intelligence"}]' ||
+            inputs.target == 'tests' && '[{"pr":807,"page":"tests"}]' ||
+            '[{"pr":808,"page":"brain"},{"pr":805,"page":"intelligence"},{"pr":807,"page":"tests"}]'
+          ) }}
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: isolated-ci-not-a-production-secret
+      NEXTAUTH_SECRET: isolated-ci-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+    steps:
+      - name: Resolve exact draft page PR commit
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          SHA="$(gh api repos/Emaren/app-prodn/pulls/${{ matrix.pr }} \
+            --jq 'select(.state=="open" and .draft and .head.repo.full_name=="Emaren/app-prodn") | .head.sha')"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid PR candidate"; exit 2; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "PR #${{ matrix.pr }} candidate $SHA (NOT a release)."
+      - uses: actions/checkout@v7
+        with:
+          repository: Emaren/app-prodn
+          ref: ${{ steps.candidate.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Install frozen application and browser dependencies
+        env:
+          EXPECTED_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          NODE_ENV: development
+          YARN_PRODUCTION: 'false'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          mkdir -p renaissance-page-evidence
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          test -f node_modules/dotenv/package.json
+          test -f node_modules/typescript/package.json
+          python3 -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
+          npx prisma generate
+      - name: Direct Next compiler — candidate only, not release-equivalent
+        env:
+          EXPECTED_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          # Normal package prebuild on these old branches rewrites the known
+          # legacy manifest under a bad hash convention. Do NOT rewrite source.
+          # This direct Next compile is browser evidence, NEVER a release build.
+          node scripts/write-build-version.mjs
+          npx next build
+          test -z "$(git status --porcelain --untracked-files=no)" || {
+            echo "::error::Tracked source mutated during build"; git status --short
+            exit 2
+          }
+          test -s .next/BUILD_ID
+          cp .next/BUILD_ID renaissance-page-evidence/BUILD_ID
+          printf 'source=%s\nbuild_id=%s\nmethod=%s\ncertified=false\nrelease=false\n' \
+            "$EXPECTED_CANDIDATE_SHA" "$(cat .next/BUILD_ID)" "direct-next-compiler" \
+            > renaissance-page-evidence/source-build.txt
+      - name: Real desktop/mobile Chrome with page-local source-bound runner
+        env:
+          EXPECTED_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          test -s .next/BUILD_ID
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME" && test -x "$CHROME" || {
+            echo "::error::Actual Chrome unavailable"; exit 2;
+          }
+          if [ "${{ matrix.page }}" = "brain" ]; then
+            test -f tests/kingdom-brain-next-app-acceptance.py
+            timeout -k 10s 12m python3 -u tests/kingdom-brain-next-app-acceptance.py \
+              --repo "$GITHUB_WORKSPACE" --sha "$EXPECTED_CANDIDATE_SHA" \
+              --url http://127.0.0.1:3108 --chrome "$CHROME" --samples 3 \
+              --output renaissance-page-evidence
+          elif [ "${{ matrix.page }}" = "intelligence" ]; then
+            test -f tests/kingdom-intelligence-next-app-acceptance.py
+            timeout -k 10s 12m python3 -u tests/kingdom-intelligence-next-app-acceptance.py \
+              --repo "$GITHUB_WORKSPACE" --sha "$EXPECTED_CANDIDATE_SHA" \
+              --origin http://127.0.0.1:3138 --chrome "$CHROME" \
+              --output renaissance-page-evidence
+          elif [ "${{ matrix.page }}" = "tests" ]; then
+            test -f tests/kingdom-tests-next-acceptance.py
+            node ./node_modules/next/dist/bin/next start \
+              --hostname 127.0.0.1 --port 3030 \
+              > renaissance-page-evidence/next.log 2>&1 &
+            NEXT_PID=$!
+            trap 'kill "$NEXT_PID" 2>/dev/null || true; wait "$NEXT_PID" 2>/dev/null || true' EXIT
+            for i in $(seq 1 90); do
+              if curl -fsS --max-time 2 http://127.0.0.1:3030/kingdom-tests >/dev/null; then break; fi
+              if ! kill -0 "$NEXT_PID" 2>/dev/null; then
+                echo "::error::Next startup failed"; exit 2
+              fi
+              sleep 1
+            done
+            curl -fsS --max-time 8 http://127.0.0.1:3030/kingdom-tests >/dev/null
+            timeout -k 10s 12m python3 -u tests/kingdom-tests-next-acceptance.py \
+              --repo "$GITHUB_WORKSPACE" --origin http://127.0.0.1:3030 \
+              --chrome "$CHROME" --samples 3 \
+              --output renaissance-page-evidence/kingdom-tests-next-receipt.json
+          else
+            echo "::error::Unknown Renaissance page acceptance candidate"
+            exit 2
+          fi
+      - name: Fail closed if PR head changed during acceptance
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$EXPECTED_CANDIDATE_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          HEAD_NOW="$(gh api repos/Emaren/app-prodn/pulls/${{ matrix.pr }} --jq '.head.sha')"
+          test "$HEAD_NOW" = "$EXPECTED_CANDIDATE_SHA" || {
+            echo "::error::PR head changed: collected evidence is stale"; exit 2;
+          }
+      - name: Preserve source/BUILD_ID/browser evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-${{ matrix.page }}-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: renaissance-page-evidence/
+          if-no-files-found: warn
+          retention-days: 14
