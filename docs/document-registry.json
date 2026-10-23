@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "fcd149ddb486c7512dca17974e5d73808f37524ebaaf4849ffc6aab055946ea3",
+      "sha256": "2b9f2cfd9c8b68b699d090c9c9fc22f0ac3135bdc09b73275e22d0c32ac8ade8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 \u2014 presentation and release contract",
+      "title": "Championship Hall E5 — presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "038e75286adb2d35ad3598d35f6861e4f114b2ebc22a100880ddb90fd71ff62d",
+      "sha256": "504106bb058482546d6293eedffd90bf977679ed20ffdc42963326cfb7209228",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "7cf52e4e6b5db93a4331cbdd6fd92d47e6aedc133c51f47fbf43a35804d63138",
+      "sha256": "627bb294f7f14715cd001a07ff8b8a12de339a5b58bef7de481accb1eca55640",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -799,9 +799,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "81ecadfa938cbab0bb401827c1bfeca359077ac90af096622abd1dd228bfe2da",
+      "sha256": "ed9450310bf8a0b76d4172f0ced8704c756928beef78b988882125b4006c7af1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1316,7 +1316,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1338,7 +1338,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1397,16 +1397,16 @@
       "owner": "aoe2war-web",
       "path": "docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "a195659fe9d10f051b0f66d3d972fada5c12cb280eeb0bb08df674d5508a3443",
+      "sha256": "fc3642092b84c342e83793a760b663de781841280f02aee2283391a72937f928",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1453,7 +1453,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1545,7 +1545,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1640,7 +1640,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1767,9 +1767,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STAKING_TREASURY_PAYOUTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "restricted",
-      "sha256": "9cd93fd5a156fa0e19e94d448fd484a6fab1cf36f70f687695139d27d3674024",
+      "sha256": "4ab1c71ff13385747b0da079edcadde9334581025dbacfe85e3c8dc10a6b4720",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1860,9 +1860,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WARGRAPH_V1.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "2e8d237b335e7722309be8689fe4ba9af34d8e2453c16e259afcb03a0322db2f",
+      "sha256": "57e5d20a9b3d02598087029ebdfaf7d0b36e0134e33faa6fe6af62f9b804c18f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1961,7 +1961,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -1975,9 +1975,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_NATIVE_STREAM_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "c5f9719aa5649dce098e801787ce9236762ced61446978324ce516089c16a9f8",
+      "sha256": "c1571a7ecf22dcf27281068b0213fb97e9eb601b577cf1f887e6869cf24ed2b9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2186,7 +2186,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261022-satchel-mainline-held",
-    "commit": "ded6ae65587a744b27be11fc1b54f77daaccb750"
+    "branch": "fix/20261023-held-legacy-financial-entrypoint-fence",
+    "commit": "174a0a6e5dfdde3347159428dfcbdf167ca008a2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

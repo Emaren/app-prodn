@@ -8067,8 +8067,7 @@ const LIVE_ADMISSION_SOURCE_SELECT={id:true,is_final:true,parse_source:true,
   players:true,key_events:true,user:{select:{uid:true,steamId:true}}} as const;
 
 async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[]){
-  return Promise.all(
-    seeds.map(async (seed) => {
+  const pending = seeds.map(async (seed) => {
       return prisma.$transaction(async (tx) => {
         if(liveSources){
           await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
@@ -8088,7 +8087,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           const sourceIds=liveSources.map(row=>row.id);
           await tx.$queryRaw(Prisma.sql`SELECT id FROM game_stats WHERE id IN (${Prisma.join(sourceIds)}) ORDER BY id FOR SHARE`);
           const currentRows=await tx.gameStats.findMany({where:{id:{in:sourceIds}},select:LIVE_ADMISSION_SOURCE_SELECT});
-          const currentSnapshot=await loadLiveSessionSnapshot(tx as unknown as PrismaClient);
+          const currentSnapshot=await loadLiveSessionSnapshot(tx);
           const currentSession=currentSnapshot.activeSessions.find(session=>
             session.sessionKey===seed.linkedSessionKey && session.teamResolution.propositionHash===seed.propositionHash &&
             currentRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null && liveSessionMatchesCommittedWatcher(row,session)));
@@ -8128,6 +8127,8 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           existing.propositionHash &&
           seed.propositionHash !== existing.propositionHash
         );
+        if(liveAuthorityRows&&!liveAuthorityRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null))
+          return {created:false,admitted:false};
         const persisted = await tx.betMarket.upsert({
           where: { slug: seed.slug },
           create: marketSeedCreateData(seed),
@@ -8166,9 +8167,17 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           throw Error("LIVE_MARKET_ADMISSION_AUTHORITY_EXPIRED_BEFORE_COMMIT");
         return {created:!existing,admitted:persisted.status==="live"||persisted.status==="open"};
       }, liveSources ? {maxWait:5000,timeout:9000} : undefined);
-    })
-  );
-
+    });
+  if (!liveSources) return Promise.all(pending);
+  // A failed sibling must not leave another admission transaction running
+  // after the private consumer reports failure and its caller begins recovery.
+  const settled = await Promise.allSettled(pending);
+  const failure = settled.find(result => result.status === "rejected");
+  if (failure?.status === "rejected") throw failure.reason;
+  return settled.map(result => {
+    if (result.status === "rejected") throw result.reason;
+    return result.value;
+  });
 }
 
 async function runBetMarketEnsure(prisma: PrismaClient) {

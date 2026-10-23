@@ -118,6 +118,8 @@ jobs:
         run: python3 scripts/run_test_contract.py
       - name: Build production application
         run: yarn build
+      - name: Prove actual compiled financial runtime identity
+        run: node scripts/check-hd-financial-build-identity.mjs
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
 
@@ -156,6 +158,9 @@ jobs:
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
             --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts tests/satchel-product-money-limits-postgres.test.mts
+
+      - name: Replay immutable controlled API capture into actual HD PostgreSQL (not a fresh API execution)
+        run: python3 scripts/check-live-watcher-admission.py --replay
 
       - name: Pin Go for actual Satchel verifier integration
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff

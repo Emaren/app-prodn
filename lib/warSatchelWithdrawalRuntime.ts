@@ -53,12 +53,14 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
     // independently signed source/build/vault/producer-bound PG lease.
     // Keep the lease through the atomic durable UNKNOWN fence and first POST.
     // An unavailable lease must not mutate a reserved withdrawal.
+    let admissionEntered=false;
     try{
       reply=await withHdFinancialLease({
         scope:"hd-satchel",producer:"war-satchel-withdrawal",
         wallet:(process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS||"").trim(),
       },async signal=>{
         signal.throwIfAborted();
+        admissionEntered=true;
         const fenced=await markSatchelWithdrawalAttempt(prisma,{
           withdrawalId,ownerUserId:record.ownerUserId,
         });
@@ -69,13 +71,11 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
       // The callback may have fenced an attempted send before transport loss.
       // Never infer no-broadcast from a timeout; only the original durable
       // attempt can enter reconciliation, NEVER a second signer POST.
-      const attempt=await prisma.satchelWithdrawalAttempt.findUnique({where:{withdrawalId}});
-      if(attempt){
-        await prisma.satchelWithdrawalObservation.create({
-          data:{operationId,txHash:null,state:"unknown"},
-        });
-      }
-      return {state:attempt?"unknown_hold":"release_held"};
+      if(!admissionEntered)return {state:"release_held"};
+      // A rejected/lost database COMMIT acknowledgement is uncertain even if
+      // another read is unavailable. Persisted state owns subsequent recovery.
+      await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:null,state:"unknown"}}).catch(()=>{});
+      return {state:"unknown_hold"};
     }
   }else if(record.status==="unknown_hold"){
     // Existing operation reconciliation validates original signed bytes and
@@ -85,7 +85,8 @@ export async function processCertifiedSatchelWithdrawal(prisma:PrismaClient,with
     try{reply=await request("/satchel/v1/reconcile",{operation_id:operationId},reader);}catch{return {state:"unknown_hold"};}
   }else stop("withdrawal_state_unknown");
   const hash=withdrawalCandidateHash(reply,operationId);
-  await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:hash,state:hash?"candidate_hash":"unknown"}});
+  try{await prisma.satchelWithdrawalObservation.create({data:{operationId,txHash:hash,state:hash?"candidate_hash":"unknown"}});}
+  catch{return {state:"unknown_hold"};}
   if(!hash)return {state:"unknown_hold"};
   try{
     const final=await finalizeProvenSatchelWithdrawal(prisma,{withdrawalId,ownerUserId:record.ownerUserId,txHash:hash});

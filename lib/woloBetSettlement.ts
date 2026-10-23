@@ -1,3 +1,5 @@
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
+import {readWarSatchelBoundedUtf8} from "./warSatchelBoundedBody.ts";
 import { fetchBoundedWoloTxJson } from "./woloBoundedTxLookup.ts";
 import { createHash } from "node:crypto";
 
@@ -1596,6 +1598,21 @@ function buildBlockedSettlementRunResult(
   };
 }
 
+/** Private last-hop admission shared by primary/founder and escrow runs.
+ * The existing immutable request journals still own UNKNOWN/reconciliation.
+ * A transport error, including lease loss, is never proof of non-broadcast. */
+async function financialSettlementPost<T>(url:string,wallet:string,producer:string,init:RequestInit){
+  return withHdFinancialLease({scope:"hd-legacy",wallet,producer},async lease=>{
+    const signal=AbortSignal.any([lease,AbortSignal.timeout(45_000)]);
+    signal.throwIfAborted();
+    const response=await fetch(url,{...init,redirect:"error",signal});
+    const raw=await readWarSatchelBoundedUtf8(response.body?.pipeThrough(new TransformStream<Uint8Array,Uint8Array>(),{signal})??null,1_048_576);
+    signal.throwIfAborted();if(!raw)throw Error("Settlement outcome UNKNOWN: invalid bounded response");
+    const payload=JSON.parse(raw) as T;
+    return {response,payload};
+  });
+}
+
 async function executeWoloPayoutViaSettlementService(input: {
   requestId?: string | null;
   toAddress: string;
@@ -1610,7 +1627,7 @@ async function executeWoloPayoutViaSettlementService(input: {
   const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
-  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+  const {response,payload} = await financialSettlementPost<SettlementExecutePayload>(`${baseUrl}/settlement/v1/payouts`, expectedSenderAddress||"", "settlement-payout", {
     method: "POST",
     headers: buildSettlementMutationHeaders(),
     body: JSON.stringify({
@@ -1622,7 +1639,6 @@ async function executeWoloPayoutViaSettlementService(input: {
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
 
   if (!response.ok || !payload.ok || !payload.tx_hash) {
     throw new Error(summarizeSettlementDetail(payload));
@@ -1656,7 +1672,7 @@ async function executeWoloPayoutViaNamedSettlementService(
   const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(baseUrlRaw);
-  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+  const {response,payload} = await financialSettlementPost<SettlementExecutePayload>(`${baseUrl}/settlement/v1/payouts`, expectedSenderAddress||"", "founder-payout", {
     method: "POST",
     headers: buildSettlementMutationHeaders(authToken),
     body: JSON.stringify({
@@ -1668,7 +1684,6 @@ async function executeWoloPayoutViaNamedSettlementService(
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
 
   if (!response.ok || !payload.ok || !payload.tx_hash) {
     throw new Error(summarizeSettlementDetail(payload));
@@ -1816,7 +1831,8 @@ async function executeWoloSettlementRunFallback(input: {
   const results: SettlementRunPayoutResult[] = [];
   let executedCount = 0;
   let acceptedCount = 0;
-  let refusedCount = 0;
+  const refusedCount = 0;
+  let unknownCount = 0;
   const replayCount = 0;
   let executedTotal = 0;
 
@@ -1825,6 +1841,22 @@ async function executeWoloSettlementRunFallback(input: {
     const requestId =
       payout.requestId?.trim() ||
       `${input.settlementRunId}:item-${String(index + 1).padStart(3, "0")}`;
+    if (unknownCount > 0) {
+      // A prior payout's bank effect is unproven. Preserve the remaining
+      // obligations without admitting even a different recipient until an
+      // independent reviewer reconciles the original immutable request.
+      results.push({
+        index, requestId, attempted: false, ok: false, status: "skipped",
+        outcome: "held_after_unknown", failureCode: "PRIOR_PAYOUT_OUTCOME_UNKNOWN",
+        retryable: false, idempotentReplay: false,
+        toAddress: payout.toAddress, amountUWolo: toUwoLoAmount(payout.amountWolo),
+        amountWolo: String(payout.amountWolo),
+        memo: payout.memo?.trim() || input.memo?.trim() || null,
+        txHash: null, detail: "Prior payout outcome UNKNOWN; independent reconciliation required.",
+        proofUrl: null, canonicalTxLookupPublic: null, canonicalTxLookupInternal: null,
+      });
+      continue;
+    }
     try {
       const result = WOLO_SETTLEMENT_URL
         ? await executeWoloPayoutViaSettlementService({
@@ -1863,7 +1895,10 @@ async function executeWoloSettlementRunFallback(input: {
         canonicalTxLookupInternal: null,
       });
     } catch (error) {
-      refusedCount += 1;
+      // The lease can be lost after transport acceptance. Even a local
+      // error does not independently prove no financial broadcast occurred.
+      // Fail closed; never turn it into an automatic retryable refusal.
+      unknownCount += 1;
       const detail =
         error instanceof Error ? error.message : "WOLO payout execution failed.";
       results.push({
@@ -1871,10 +1906,10 @@ async function executeWoloSettlementRunFallback(input: {
         requestId,
         attempted: true,
         ok: false,
-        status: "refused",
-        outcome: "refused",
-        failureCode: null,
-        retryable: true,
+        status: "unknown",
+        outcome: "unknown",
+        failureCode: "PAYOUT_OUTCOME_UNKNOWN",
+        retryable: false,
         idempotentReplay: false,
         toAddress: payout.toAddress,
         amountUWolo: toUwoLoAmount(payout.amountWolo),
@@ -1890,20 +1925,22 @@ async function executeWoloSettlementRunFallback(input: {
   }
 
   const status =
-    results.length === 0
-      ? "failed"
-      : executedCount === results.length
-        ? "confirmed"
-        : executedCount > 0
-          ? "partial"
-          : "failed";
+    unknownCount > 0
+      ? "unknown"
+      : results.length === 0
+        ? "failed"
+        : executedCount === results.length
+          ? "confirmed"
+          : executedCount > 0
+            ? "partial"
+            : "failed";
 
   return {
-    ok: executedCount > 0,
+    ok: status === "confirmed",
     dryRun: false,
     status,
-    failureCode: null,
-    retryable: status !== "confirmed",
+    failureCode: unknownCount > 0 ? "PAYOUT_OUTCOME_UNKNOWN" : null,
+    retryable: false,
     idempotentReplay: replayCount > 0,
     settlementRunId: input.settlementRunId,
     sourceApp: input.sourceApp?.trim() || null,
@@ -1919,14 +1956,18 @@ async function executeWoloSettlementRunFallback(input: {
     requestedTotalUWolo: toUwoLoAmount(
       input.payouts.reduce((sum, payout) => sum + payout.amountWolo, 0)
     ),
-    executedTotalUWolo: toUwoLoAmount(executedTotal),
+    executedTotalUWolo: unknownCount > 0 ? null : toUwoLoAmount(executedTotal),
     projectedRemainingUWolo: null,
     estimatedFeeTotalUWolo: null,
-    warnings: WOLO_SETTLEMENT_URL
-      ? ["Grouped run route unavailable; fell back to single payout requests."]
-      : ["App-local payout signer fallback is explicitly enabled in this environment."],
+    warnings: unknownCount > 0
+      ? ["Single-payout attempt has an UNKNOWN bank outcome. Remaining payouts are HELD until independent reconciliation; never retry automatically."]
+      : WOLO_SETTLEMENT_URL
+        ? ["Grouped run route unavailable; fell back to single payout requests."]
+        : ["App-local payout signer fallback is explicitly enabled in this environment."],
     detail:
-      status === "confirmed"
+      status === "unknown"
+        ? "One payout may have been accepted; reconcile original requests before resuming."
+        : status === "confirmed"
         ? `all ${executedCount} payouts confirmed on WoloChain`
         : status === "partial"
           ? `${executedCount} of ${input.payouts.length} payouts executed; inspect per-recipient results for the remaining failures`
@@ -1984,6 +2025,34 @@ export async function validateWoloSettlementRun(input: {
   });
 }
 
+/** A grouped POST can be admitted before its response is lost.
+ * Never fall back to fresh per-recipient sends on an ambiguous response. */
+function groupedRunUnknown(
+  input: Parameters<typeof executeWoloSettlementRun>[0],
+  detail: string,
+): SettlementRunResult {
+  const held = buildBlockedSettlementRunResult(input, {
+    dryRun: false,
+    failureCode: "SETTLEMENT_RUN_OUTCOME_UNKNOWN",
+    detail,
+    retryable: false,
+  });
+  return {
+    ...held,
+    status: "unknown",
+    refusedPayoutCount: 0,
+    executedTotalUWolo: null,
+    warnings: ["Grouped payout may already have been accepted. Reconcile each immutable request before any resend."],
+    payouts: held.payouts.map((p) => ({
+      ...p,
+      attempted: true,
+      status: "unknown",
+      outcome: "unknown",
+      retryable: false,
+    })),
+  };
+}
+
 export async function executeWoloSettlementRun(input: {
   settlementRunId: string;
   sourceApp?: string | null;
@@ -2006,15 +2075,25 @@ export async function executeWoloSettlementRun(input: {
     }
 
     const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
-    const response = await fetch(`${baseUrl}/settlement/v1/runs`, {
-      method: "POST",
-      headers: buildSettlementMutationHeaders(),
-      body: JSON.stringify(toRunRequestPayload(input)),
-      cache: "no-store",
-    });
-
-    if (!shouldFallbackGroupedRun(response.status) && ![401, 403].includes(response.status)) {
-      const payload = (await response.json().catch(() => ({}))) as SettlementRunPayload;
+    // Bind grouped custody admission to the actually observed signer identity.
+    const wallet = input.signerRole === "escrow"
+      ? health?.escrowAddress || ""
+      : requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet()) || "";
+    try {
+      const {response, payload} = await financialSettlementPost<SettlementRunPayload>(
+        `${baseUrl}/settlement/v1/runs`,
+        wallet,
+        input.signerRole === "escrow" ? "escrow-settlement-run" : "payout-settlement-run",
+        {
+          method: "POST",
+          headers: buildSettlementMutationHeaders(),
+          body: JSON.stringify(toRunRequestPayload(input)),
+          cache: "no-store",
+        },
+      );
+      if (shouldFallbackGroupedRun(response.status) || [401, 403].includes(response.status)) {
+        return groupedRunUnknown(input, "Grouped settlement response requires independent reconciliation; no fallback payout.");
+      }
       return toSettlementRunResult(payload, {
         dryRun: false,
         settlementRunId: input.settlementRunId,
@@ -2025,6 +2104,8 @@ export async function executeWoloSettlementRun(input: {
         signerRole: input.signerRole,
         requestedPayoutCount: input.payouts.length,
       });
+    } catch {
+      return groupedRunUnknown(input, "Grouped settlement attempt or admission outcome uncertain; reconcile before retry.");
     }
   }
 
@@ -2389,21 +2470,31 @@ export async function executeWoloPayout(input: {
 
   const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, wallet, {
     gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
+    broadcastTimeoutMs: 45_000,
   });
 
-  const result = await client.sendTokens(
-    account.address,
-    input.toAddress,
-    [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
-    resolvePayoutFee(WOLO_PAYOUT_FEE),
-    input.memo.slice(0, 180)
-  );
-
-  return {
-    txHash: result.transactionHash,
-    amountWolo: input.amountWolo,
-    toAddress: input.toAddress,
-    proofUrl: buildWoloRestTxLookupUrl(result.transactionHash),
-    expectedSenderAddress,
-  };
+  try {
+    const result = await withHdFinancialLease(
+      { scope: "hd-legacy", producer: "local-payout", wallet: account.address },
+      async (signal) => {
+        signal.throwIfAborted();
+        return client.sendTokens(
+          account.address,
+          input.toAddress,
+          [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
+          resolvePayoutFee(WOLO_PAYOUT_FEE),
+          input.memo.slice(0, 180)
+        );
+      },
+    );
+    return {
+      txHash: result.transactionHash,
+      amountWolo: input.amountWolo,
+      toAddress: input.toAddress,
+      proofUrl: buildWoloRestTxLookupUrl(result.transactionHash),
+      expectedSenderAddress,
+    };
+  } finally {
+    client.disconnect();
+  }
 }
