@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eef7acb8100190544b69ecc1e19c42c47e80ad3c87db1db2fc8acbf5ab624807",
+      "sha256": "22f41491f4db2fe83a51d04abb5539e59efa2c98f9d24bfb0886eea79ef8d89b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,7 +2214,7 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "stage/renaissance-single-page-browser-dispatch-20261022",
+    "branch": "feature/renaissance-exact-page-next-acceptance-20261022",
     "commit": "030f0f0ade83af55c21a22ffb4c538a7c9c76aff"
   },
   "owner": "aoe2war-web",
