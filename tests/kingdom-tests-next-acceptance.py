@@ -139,7 +139,12 @@ async def inspect_browser(args, proxy, report):
             for trial in range(args.samples):
                 t0 = time.perf_counter()
                 resp = await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                await page.get_by_role("heading", name="KINGDOM TESTS").wait_for(timeout=20000)
+                # The navigation and route both expose Kingdom Tests headings.
+                # A global accessible-name lookup is intentionally ambiguous.
+                route_heading = page.locator('main[data-kind="tests"]').get_by_role(
+                    "heading", name="KINGDOM TESTS", exact=True)
+                await route_heading.wait_for(timeout=20000)
+                assert await route_heading.count() == 1
                 assert resp and resp.status == 200
                 navigation.append(round(1000*(time.perf_counter()-t0),2))
             section = page.locator('section[aria-labelledby="kingdom-test-proof-title"]')
