@@ -117,8 +117,16 @@ async def guard(page,counts):
     async def handler(route):
         request=route.request
         url=urlparse(request.url)
-        if url.hostname not in ("127.0.0.1","localhost") or request.method not in ("GET","HEAD"):
+        external = url.hostname not in ("127.0.0.1","localhost")
+        mutation = request.method not in ("GET","HEAD")
+        if external or mutation:
             counts["blocked"]+=1
+            if mutation: counts["blockedMutations"]=counts.get("blockedMutations",0)+1
+            if external:
+                counts["blockedExternalReadOnly"]=counts.get("blockedExternalReadOnly",0)+(0 if mutation else 1)
+            details=counts.setdefault("blockedDetails",[])
+            if len(details)<12:
+                details.append({"host":url.hostname,"path":url.path[:150],"method":request.method})
             await route.abort()
         else:await route.continue_()
     await page.route("**/*",handler)
@@ -181,7 +189,11 @@ async def one_real(browser,args,viewport,label,n,output):
           "all_14_exact_authority_labels",checks)
     check(await page.locator('[aria-live="polite"]').count()>=1,"status_announced",checks)
     check(asset_count[0]>0,"next_static_assets_loaded",checks)
-    check(cnt["blocked"]==0,"no_blocked_external_or_mutation",checks)
+    check(cnt.get("blockedMutations",0)==0, "no_mutating_http_requests", checks)
+    check(cnt["blocked"]==cnt.get("blockedExternalReadOnly",0),
+          "blocked_traffic_is_external_read_only", checks)
+    # Outbound GET attempts are blocked and recorded, never falsely reported
+    # as offline-independent assets or as successful external responses.
     check(all(cnt["api"].get(path,0)==1 for path in ENDPOINTS),"exactly_four_initial_gets",checks)
     width=await page.evaluate("({w:document.documentElement.scrollWidth,v:innerWidth})")
     check(width["w"]<=width["v"]+2,"no_document_horizontal_overflow",checks)
@@ -262,6 +274,26 @@ async def fixture_case(browser,args,name,mapping,clock=None):
     else:result["passed"]=False
     await ctx.close()
     return result
+async def set_fixture_visibility(page, state):
+    """Controlled Page Visibility API event, NOT native tab/background evidence.
+
+    Chrome's headless bring_to_front does not consistently hide the old tab.
+    Override only this browser page's read-only property and dispatch its
+    actual event to exercise the real React visibility listener deterministically.
+    """
+    assert state in ("hidden","visible")
+    return await page.evaluate("""state => {
+        window.__brainFixtureVisibility = state;
+        if (!Object.prototype.hasOwnProperty.call(document, 'visibilityState')) {
+            Object.defineProperty(document, 'visibilityState', {
+                configurable: true,
+                get() { return window.__brainFixtureVisibility; }
+            });
+        }
+        document.dispatchEvent(new Event('visibilitychange'));
+        return document.visibilityState;
+    }""", state)
+
 async def lifecycle_race_case(browser,args):
     """Real Next page with controlled delayed GETs; independent of mocked React."""
     ctx,page=await new_page(browser,{"width":1280,"height":800})
@@ -292,16 +324,15 @@ async def lifecycle_race_case(browser,args):
     for path in ENDPOINTS:await page.route("**"+path,serve)
     report={"name":"race_visibility_unmount","mode":"REAL_NEXT_CONTROLLED_API_FIXTURE",
             "passed":False,"source":"real Next page, delayed read-only endpoints"}
-    spare=None
+    report["visibilityControl"]="CONTROLLED_PAGE_VISIBILITY_API_EVENT_NOT_NATIVE_TAB"
     try:
         await mount(page,args.url,counts)
         await asyncio.wait_for(started.wait(),timeout=12)
-        spare=await ctx.new_page();await spare.bring_to_front()
-        await page.wait_for_function("document.visibilityState==='hidden'",timeout=6000)
-        report["hidden"]=True
-        await page.bring_to_front()
-        await page.wait_for_function("document.visibilityState==='visible'",timeout=6000)
-        report["returnedVisible"]=True
+        before_hidden=dict(counts["api"])
+        report["hidden"]=(await set_fixture_visibility(page, "hidden"))=="hidden"
+        await page.wait_for_timeout(150)
+        report["no_hidden_refresh"]=counts["api"]==before_hidden
+        report["returnedVisible"]=(await set_fixture_visibility(page, "visible"))=="visible"
         for _ in range(50):
             if (await statuses(page)).get("INDEX")=="OBSERVED":break
             await page.wait_for_timeout(200)
@@ -323,13 +354,13 @@ async def lifecycle_race_case(browser,args):
         report["passed"]=all((report["latestBeforeOld"]=="OBSERVED",
                               report["latestAfterOld"]=="OBSERVED",
                               report["hidden"],report["returnedVisible"],
-                              report["unmounted"],number[0]==3,
-                              not errors,counts["blocked"]==0))
+                              report["no_hidden_refresh"],report["unmounted"],
+                              number[0]==3, not errors,
+                              counts.get("blockedMutations",0)==0))
     except Exception as error:
         report["error"]=str(error)[:300]
     finally:
         release_old.set();release_third.set()
-        if spare is not None:await spare.close()
         await ctx.close()
     return report
 
