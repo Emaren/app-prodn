@@ -80,8 +80,8 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
  // and absolute/drive paths without weakening the source collector's checks.
  const safeEmittedPath=value=>{
   if(typeof value!=="string"||!value||value.length>4096||
-     value.startsWith("/")||value.includes("\\\\")||value.includes("\\0")||
-     /[\\x00-\\x1f\\x7f]/.test(value))return false;
+     value.startsWith("/")||value.includes("\\")||
+     /[\x00-\x1f\x7f]/.test(value))return false;
   const parts=value.split("/");
   return !parts.some(part=>!part||part==="."||part==="..") &&
     !/^[a-zA-Z]:/.test(parts[0]);
