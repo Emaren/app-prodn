@@ -4,7 +4,7 @@
  * NOT full screen-reader testing, deployment identity or a scored criterion.
  */
 import {spawn} from "node:child_process";
-import {mkdtemp,readFile,rm,realpath} from "node:fs/promises";
+import {mkdtemp,readFile,writeFile,rm,realpath} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {createHash} from "node:crypto";
@@ -46,7 +46,7 @@ export function inspectInteractionReceipt(doc,{sourceSha,buildId}){
   horizontalOverflowObserved:doc.viewports.some(v=>v.scrollWidth>v.viewportWidth+2),
   certified:false,score:null};
 }
-async function capture(chrome,viewport){
+async function capture(chrome,viewport,screenshotsDir){
  const profile=await mkdtemp(join(tmpdir(),"aoe2war-index-interaction-"));
  const child=spawn(chrome,["--headless=new","--remote-debugging-port=0",
   "--user-data-dir="+profile,"--no-first-run","--disable-default-apps",
@@ -113,19 +113,62 @@ async function capture(chrome,viewport){
   const ax=await command("Accessibility.getFullAXTree");
   const meaningful=(ax.nodes??[]).filter(x=>x.ignored!==true),buttons=meaningful.filter(x=>x.role?.value==="button");
   const named=buttons.filter(x=>typeof x.name?.value==="string"&&x.name.value.trim().length>0);
+
+  const snapshots=[],screenshots=[];
+  const snapshot=async phase=>{
+   const observation=await evaluate(`(()=>{
+    const get=name=>document.querySelector('button[aria-label="'+name+'"]');
+    const describe=element=>{
+     if(!element)return {exists:false};
+     const style=getComputedStyle(element);
+     return {exists:true,tag:element.tagName,role:element.getAttribute('role')||'button',
+       name:element.getAttribute('aria-label'),pressed:element.getAttribute('aria-pressed'),
+       focused:document.activeElement===element,disabled:element.disabled===true,
+       connected:element.isConnected,
+       visible:style.display!=='none'&&style.visibility!=='hidden'&&element.getClientRects().length>0};
+    };
+    const focus=document.activeElement;
+    return {href:location.href,readyState:document.readyState,
+      focus:{tag:focus?.tagName||null,name:focus?.getAttribute?.('aria-label')||null,
+        role:focus?.getAttribute?.('role')||null},
+      map:describe(get('Kingdom map')),ledger:describe(get('Performance ledger')),
+      inspect:describe(get('Inspect Kingdom Index')),close:describe(get('Close details')),
+      realmVisible:!!document.querySelector('div[aria-label="Kingdom map"]'),
+      ledgerVisible:!!document.querySelector('section[aria-label="Engineering ledger"]'),
+      detailVisible:!!document.querySelector('section[aria-label="Kingdom Index engineering evidence"]')};
+   })()`);
+   snapshots.push({phase,...observation});
+  };
+  const screenshot=async phase=>{
+   if(!screenshotsDir)return;
+   const result=await command("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+   const bytes=Buffer.from(result.data,"base64");
+   if(bytes.length<1000||bytes.length>4000000)stop("Invalid bounded screenshot capture");
+   const name="interaction-"+viewport+"-"+phase+".png";
+   await writeFile(join(screenshotsDir,name),bytes,{flag:"wx"});
+   screenshots.push({phase,name,bytes:bytes.length,
+     sha256:createHash("sha256").update(bytes).digest("hex")});
+  };
   const keyboard={ledgerActivated:false,mapRestored:false,detailOpened:false,detailClosed:false};
+  await snapshot("initial");
   await evaluate("document.querySelector('button[aria-label=\"Performance ledger\"]')?.focus()");
   await key("Enter",13);
+  await snapshot("after-ledger-enter");
   keyboard.ledgerActivated=!!(await evaluate("document.querySelector('button[aria-label=\"Performance ledger\"]')?.getAttribute('aria-pressed')==='true'&&!!document.querySelector('[aria-label=\"Engineering ledger\"]')"));
   await evaluate("document.querySelector('button[aria-label=\"Kingdom map\"]')?.focus()");
   await key("Enter",13);
+  await snapshot("after-map-enter");
+  await screenshot("after-map-enter");
   keyboard.mapRestored=!!(await evaluate("document.querySelector('button[aria-label=\"Kingdom map\"]')?.getAttribute('aria-pressed')==='true'"));
   await evaluate("document.querySelector('button[aria-label=\"Inspect Kingdom Index\"]')?.focus()");
   await key("Enter",13);
+  await snapshot("after-inspect-enter");
+  await screenshot("after-inspect-enter");
   keyboard.detailOpened=!!(await evaluate("!!document.querySelector('section[aria-label=\"Kingdom Index engineering evidence\"]')"));
   await evaluate("document.querySelector('button[aria-label=\"Close details\"]')?.focus()");
   await key("Enter",13);
-  keyboard.detailClosed=!!(await evaluate("!document.querySelector('section[aria-label=\"Kingdom Index engineering evidence\"]')"));
+  await snapshot("after-close-enter");
+  keyboard.detailClosed=keyboard.detailOpened&&!!(await evaluate("!document.querySelector('section[aria-label=\"Kingdom Index engineering evidence\"]')"));
   const samples=[];
   for(let i=0;i<10;i++){
    if(await navigate()!==200)stop("Warm document returned non-200");
@@ -138,7 +181,11 @@ async function capture(chrome,viewport){
    reducedMotionEmulated:info.reducedMotion,
    accessibility:{axNodeCount:meaningful.length,namedButtons:named.length,
      unnamedButtons:buttons.length-named.length},
-   keyboard,warm:{samplesMs:samples,p75Ms:pct(samples,.75),p95Ms:pct(samples,.95)}};
+   keyboard,diagnostics:{snapshots,screenshots,
+    chromeExceptions:events.filter(e=>e.method==="Runtime.exceptionThrown").map(e=>({
+     text:String(e.params?.exceptionDetails?.text||"Chrome exception").slice(0,180)
+    })).slice(0,20)},
+   warm:{samplesMs:samples,p75Ms:pct(samples,.75),p95Ms:pct(samples,.95)}};
  }finally{
   try{ws?.close()}catch{}
   if(child.exitCode===null){child.kill("SIGTERM");await sleep(250);if(child.exitCode===null)child.kill("SIGKILL")}
@@ -147,17 +194,17 @@ async function capture(chrome,viewport){
 }
 async function main(){
  const a=process.argv.slice(2),v={};
- if(a.length!==6)stop("Require --source-sha --build-id --chrome");
+ if(a.length!==8)stop("Require --source-sha --build-id --chrome --screenshots-dir");
  for(let i=0;i<a.length;i+=2){
   const k=a[i]?.startsWith("--")?a[i].slice(2):"";
-  if(!["source-sha","build-id","chrome"].includes(k)||Object.hasOwn(v,k))stop("Unsupported/duplicate parameter");
+  if(!["source-sha","build-id","chrome","screenshots-dir"].includes(k)||Object.hasOwn(v,k))stop("Unsupported/duplicate parameter");
   v[k]=a[i+1];
  }
  if(!/^[a-f0-9]{40}$/.test(v["source-sha"])||
     (await readFile(".next/BUILD_ID","utf8")).trim()!==v["build-id"])
    stop("Wrong independently expected local source/build");
  const viewports=[];
- for(const viewport of ["desktop","phone"])viewports.push(await capture(v.chrome,viewport));
+ for(const viewport of ["desktop","phone"])viewports.push(await capture(v.chrome,viewport,v["screenshots-dir"]));
  const report={schema:1,kind:"aoe2war.kingdom-index.real-interaction.v1",
   sourceSha:v["source-sha"],buildId:v["build-id"],
   origin:"LOOPBACK_ONLY",route:"/kingdom-index",viewports,
