@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e28a5409e720fef81d98a00bc462fed5ea001855e6e2ef446c6188653ef54157",
+      "sha256": "9d883fb3b58b68c68eed3e56b5300585481ad165fb00c90b3d47431a8258aa7e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261023-main-satchel-fence-held",
-    "commit": "383b1e2bce4dad28adc738796fc9a2248e29e6ec"
+    "commit": "009a69c5d65067b32f92037bea9c85eddd468429"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
