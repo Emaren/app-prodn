@@ -8,12 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-23"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Staking Treasury Payouts
+
+**2026-10-23 source review (bounded, FINANCIAL HOLD):** Rechecked the tracked `lib/stakingTreasuryPayouts.ts`, `lib/woloBetSettlement.ts`, and the admin treasury payout route in app `main` `8f2f3b45`. This is a description of the existing gated runbook, **not** operator approval, reconciled bank finality, proof of sufficient reserves, or authority to invoke a payout. WoloChain issue #5 remains under a separate financial-release hold; do not execute or retry unresolved transfers from this documentation review.
 
 The staking Treasury share is accounting-only until an operator executes a payout.
 `staking_reward_distributions.treasury_pool_wolo` records the amount owed to the

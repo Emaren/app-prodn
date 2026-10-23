@@ -8,12 +8,14 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "implementation-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-23"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Player Identity Wave 2 — Deterministic Discovery V2
+
+**2026-10-23 source review (bounded):** Rechecked `lib/playerIdentityDiscovery.ts`, its proposed-only `assertProposedOnlyIdentityPlan` boundary, and the tracked identity backfill script in app `main` `8f2f3b45`. The July counts and application receipts below remain historical, not a freshly re-queried production identity census. No identity claims, active links, payments, or live publication were executed or authorized by this documentation review.
 
 Review note (2026-08-28): the implementation and publication-boundary
 contract was re-reviewed against the current schema, discovery command, and

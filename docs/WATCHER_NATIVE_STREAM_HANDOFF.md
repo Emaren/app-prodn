@@ -8,12 +8,14 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "stream-ingest-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-23"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Watcher Native Stream Handoff
+
+**2026-10-23 source review (bounded):** Rechecked `app/api/streams/start/route.ts` and `app/api/streams/[streamId]/chunks/route.ts` at app `main` `8f2f3b45`. The routes resolve the actor through `resolveStreamRequestActor` and the chunk path enforces bounded media handling. No current video-upload performance, retained playback health, Watcher identity key, replay result, or financial outcome was independently certified by this documentation renewal.
 
 ## Ownership boundary
 
