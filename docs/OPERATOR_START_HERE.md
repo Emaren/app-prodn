@@ -19,7 +19,6 @@ sensitivity: "internal"
 
 For the Traffic Observatory country-ranking change, preserve the ordinary authority order: inspect live `aoe2war status`, pin the exact reviewed source, pass the documentation/gate/manifest checks, stage without changing the current runtime, obtain a new one-time artifact-specific owner approval if standing website-only financial isolation remains unresolved, then activate solely through the protected controller and independently verify public build parity and Wolo listener continuity. Never reuse the already consumed `3f1f2680` authorization. The separate Traffic API change requires its own service-specific preflight and proof; no legacy public audience timer or unverified October 20/21 public publication is implied.
 
-
 ## Purpose
 
 This is the first repository-local document for a fresh operator, terminal, or
@@ -29,6 +28,29 @@ that are expensive to rediscover.
 
 Do not infer mutable production state from a dated seal, a previous chat, or a
 commit mentioned in prose. Ask the operating system first.
+
+## October 22 UTC — reviewed handoff boundaries
+
+This operator entry point has been reviewed against the October 21 GitHub
+Traffic/Kingdom + HELD War Satchel reconciliation and the canonical
+`DEPLOY.md` release engine. This is **source-only operational review**; no
+fresh VPS state, reserve proof, vault availability, deployment, signing or
+database mutation is implied.
+
+The current financial deployment campaign remains **HOLD**: WoloChain issue
+#5 contains unproven historical obligations and five blocked release
+controls; real Satchel custody still reports unavailable. Do not interpret
+`aoe2war finish`, its generated documentation, green source CI, or a clean
+normal website response as permission to activate Mecha spending, deposits,
+withdrawals, live settlement or migration. Recover Codex's unpublished HD
+maintenance-fence, live game-admission and permit changes before proposing
+the final protected finance release. Preserve Traffic and Kingdom source
+advances; the DE sister site remains out of current feature scope.
+
+The first-60-seconds commands below are read-only discovery of mutable
+runtime truth. Any later release command must pass its own exact SHA,
+bank/ledger, backup, consent, independent custody and operator approval
+checks.
 
 ## First 60 seconds
 

@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "capturedFrom": "Emaren/app-prodn/prisma/schema.prisma",
-  "sourceBaseline": "5ceb8734270c61edb5c68ac3c0b7e27dd1ec3b5d",
+  "sourceBaseline": "6b43c50845f16ea139fee567b05947b668733b0b",
   "models": [
     "User",
     "ApiKey",
@@ -195,6 +195,26 @@
     "WarSatchelWalletChallenge",
     "WarSatchelLedgerAccount",
     "WarSatchelLedgerJournal",
-    "WarSatchelLedgerPosting"
+    "WarSatchelLedgerPosting",
+    "SatchelFundedBalance",
+    "SatchelFundedReceipt",
+    "SatchelFundedJournal",
+    "SatchelFundedReservation",
+    "SatchelAutoSpendConsent",
+    "SatchelAutoSpendMandate",
+    "SatchelFundedWithdrawal",
+    "SatchelWithdrawalChallenge",
+    "SatchelFundedClaimReturn",
+    "SatchelPhysicalReceiptConsumption",
+    "SatchelWithdrawalAuthorization",
+    "SatchelWithdrawalApproval",
+    "SatchelWithdrawalRevocation",
+    "SatchelWithdrawalAttempt",
+    "SatchelWithdrawalObservation",
+    "SatchelClaimReturnAuthorization",
+    "SatchelWithdrawalPhysicalConsumption",
+    "SatchelWagerAuthorization",
+    "SatchelWagerApproval",
+    "SatchelWagerBroadcast"
   ]
 }

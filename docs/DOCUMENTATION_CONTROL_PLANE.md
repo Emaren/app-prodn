@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/exact-head-ci-dispatch-20261022` at `aba29056b128f89273f318bc01a49450aab91b49`
+Implementation baseline: `integration/20261022-satchel-mainline-held` at `ded6ae65587a744b27be11fc1b54f77daaccb750`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

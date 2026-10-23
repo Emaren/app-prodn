@@ -102,12 +102,8 @@ export function normalizeBetSide(value: unknown) {
 }
 
 export function normalizeBetAmount(value: unknown) {
-  const parsed =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseInt(value, 10)
-        : NaN;
+  const parsed = typeof value === "number" ? value :
+    typeof value === "string" ? Number.parseInt(value, 10) : NaN;
   if (!Number.isFinite(parsed)) return null;
   const rounded = Math.round(parsed);
   if (rounded < 1 || rounded > 50_000) return null;

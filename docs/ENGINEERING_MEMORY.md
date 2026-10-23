@@ -15,6 +15,23 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## October 21 — preserve proof authority through waits and release epochs
+
+A valid historical bank proof is not current assets when an authenticated
+witness already proves a newer head. Require both heads at the state commit.
+Retain the original bank trust-root deadline: a deposit head can remain fresh
+while bank authority expires during an aggregate/row wait. Check before writes
+and commit, allowing the entire transaction to roll back. The real SDK/PG
+counterexample failed before and passes after; never replace it with a plain
+bank object or a reset local freshness clock.
+
+Offline funded wagers require an explicit distinct wager-review public key;
+withdrawal keys cannot substitute. Original ADR-36 signatures bind a reviewed
+release epoch. Held-era grants cannot become live through flags, and revocation
+must remain available to the session owner without a connected wallet. The
+continuous twelve-ticket acceptance fixture proves consumer/SDK conservation,
+not independent reviewer, game, custody or global solvency certification.
+
 ## October 21, 2026 — do not downgrade new financial file families
 
 When War Satchel and Mecha introduced new filenames, the release classifier

@@ -1,5 +1,6 @@
 import { internalApiKeyMatches } from "@/lib/internalApiKeyAuth";
 import "server-only";
+import {recoverCommittedLiveWatcherMarkets} from "@/lib/bets";
 
 import {
   extname,
@@ -334,6 +335,9 @@ export async function POST(
 
   const prisma =
     getPrisma();
+  // Recover missing original-LIVE notifications before slower final parsing;
+  // reuse the existing private scheduler, never a new money producer.
+  const liveAdmission=await recoverCommittedLiveWatcherMarkets(prisma,{dryRun,targetGameStatsId});
 
   const candidates =
     await prisma.$queryRaw<
@@ -579,6 +583,7 @@ export async function POST(
       dryRun:
         true,
 
+      liveAdmission,
       targetGameStatsId,
 
       since:
@@ -928,6 +933,7 @@ export async function POST(
     dryRun:
       false,
 
+    liveAdmission,
     targetGameStatsId,
 
     since:
