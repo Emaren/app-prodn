@@ -1831,7 +1831,7 @@ async function executeWoloSettlementRunFallback(input: {
   const results: SettlementRunPayoutResult[] = [];
   let executedCount = 0;
   let acceptedCount = 0;
-  let refusedCount = 0;
+  const refusedCount = 0;
   let unknownCount = 0;
   const replayCount = 0;
   let executedTotal = 0;
