@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b47bf5eb93b68dcc087b82042a6f8cab3697dacdff8fb3b6d1a95463ec69897f",
+      "sha256": "e396c120b7745add13f8151853f9c08d9959ba22d3a2027e4d36941271da0b93",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261023-held-legacy-financial-entrypoint-fence",
-    "commit": "2de9db08ed709e0938a00eca28a847478693e77a"
+    "commit": "50bf33c0d8e937f0251eaacbab736b848252bc0a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
