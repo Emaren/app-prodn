@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7fd3fd1b0c7e35e54c0e1024c73eb26975cae6b95bfcd987671e92660768c00d",
+      "sha256": "e487f12923d291d453d00d27bf6b13307359caec7158e51ffbc5323ce50aaab3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "ops/20261023-wolo-brief-router",
-    "commit": "4d361c588c2319250b66f5ad713e8a8faf4f5f73"
+    "commit": "7d43c59dbcea08d8f2d1d510d84f96e477f4cc63"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
