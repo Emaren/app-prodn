@@ -15,6 +15,24 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 22 — native 10,000-WOLO unmatched-return boundary fixture
+
+The existing authenticated-credit CI runner adds a three-step continuous SDK
+recipe: 10,000 WOLO owner deposit, vault-to-escrow wager, then complete unmatched
+principal back to the vault. Test-only genesis and recipe bounds are scaled
+**after** compiling and verifying the unchanged pinned `72a3bca5` executable.
+The real ante fee remains one uwolo per transfer, with operating buffers funded
+separately. Byte replays fail and retained SDK/Comet/IAVL observations must show
+all principal plus the exact remaining gas buffers.
+
+The native financial-proof and current-bank verifiers, plus the app signed
+return consumer, must accept that exact principal. A genuinely signed original
+funding context of 10,001 WOLO cannot reuse the real 10,000-WOLO return; changed
+transaction bytes also refuse. Validator and reviewer authority are isolated
+fixtures. The signed accounting reference is an actual pre-return SDK snapshot,
+not a separately authenticated escrow reserve certificate. This test creates no
+PG 10,000-WOLO credit, mainnet authority, activation permit or new withdrawal.
+
 ## October 22 — Auto Bet limits and complete unmatched returns
 
 New Auto Bets have a combined winner/Desync ticket ceiling of 10,000 WOLO and

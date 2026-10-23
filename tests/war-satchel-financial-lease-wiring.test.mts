@@ -26,7 +26,9 @@ test("new withdrawals acquire a signed lease BEFORE the only atomic durable atte
  assert.ok(lease>=0 && attempt>lease && post>attempt);
  assert.match(first,/scope:"hd-satchel",producer:"war-satchel-withdrawal"/);
  assert.match(first,/fenced\.request,reader,signal/);
- assert.match(first,/attempt\?"unknown_hold":"release_held"/);
+ assert.match(first,/if\(!admissionEntered\)return \{state:"release_held"\}/);
+ assert.match(first,/return \{state:"unknown_hold"\}/);
+ assert.doesNotMatch(first,/satchelWithdrawalAttempt\.findUnique/,"uncertainty must not depend on a successful follow-up database read");
  assert.doesNotMatch(first,/allowUnfenced|permitOverride|skipAuthorization/);
  assert.ok(s.includes('request("/satchel/v1/reconcile"'),"recovery remains strictly reconciliation-only");
 });
