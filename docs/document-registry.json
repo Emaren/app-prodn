@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fc70daf3288a0a8748855e53a6b18175d1f6597661da1a2b1081c8a98ead5c5c",
+      "sha256": "ca02142d0c0829284189ebbd14f4690fe2868b6c383ba8ac429dd2e11c12d700",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/renaissance-exact-page-next-acceptance-20261022",
-    "commit": "93114279b853f700b7bd0aa8527da8c77be53eb4"
+    "commit": "223fe409e5a18ebcd3d454dd1c89399709cb9237"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
