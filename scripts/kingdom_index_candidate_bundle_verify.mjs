@@ -75,9 +75,20 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
     !Array.isArray(emitted.missing)||emitted.missing.length||
     !Array.isArray(emitted.invalidTraces)||emitted.invalidTraces.length)
     fail("Missing or misleading exact-source emitted closure");
+ // Next.js emits route groups such as "[...slug]": dot substrings are
+ // legitimate filenames. Reject actual path-traversal COMPONENTS, separators
+ // and absolute/drive paths without weakening the source collector's checks.
+ const safeEmittedPath=value=>{
+  if(typeof value!=="string"||!value||value.length>4096||
+     value.startsWith("/")||value.includes("\\\\")||value.includes("\\0")||
+     /[\\x00-\\x1f\\x7f]/.test(value))return false;
+  const parts=value.split("/");
+  return !parts.some(part=>!part||part==="."||part==="..") &&
+    !/^[a-zA-Z]:/.test(parts[0]);
+ };
  const seen=new Set();let observedBytes=0;
  for(const file of emitted.files){
-  if(typeof file.path!=="string"||file.path.startsWith("/")||file.path.includes("..")||
+  if(!file||!safeEmittedPath(file.path)||
      seen.has(file.path)||!Number.isSafeInteger(file.bytes)||file.bytes<1||
      !HEX64.test(file.sha256))fail("Duplicated, unsafe or invalid emitted file");
   seen.add(file.path);observedBytes+=file.bytes;
