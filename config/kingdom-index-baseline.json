@@ -26,8 +26,8 @@
     {
       "href": "/kingdom-index",
       "score": 62,
-      "checkedAt": "2026-10-23T21:00:00Z",
-      "sourceVersion": "src-0a0a018529d65ce0",
+      "checkedAt": "2026-10-23T20:45:00Z",
+      "sourceVersion": "src-8773d63ebe1e8ff6",
       "kind": "source-review",
       "dimensions": {
         "correctness": 17,
@@ -46,7 +46,7 @@
     {
       "href": "/kingdom-intelligence",
       "score": 63,
-      "checkedAt": "2026-10-23T21:00:00Z",
+      "checkedAt": "2026-10-23T20:45:00Z",
       "sourceVersion": "src-d35c2832feb098e2",
       "kind": "source-review",
       "dimensions": {
@@ -66,7 +66,7 @@
     {
       "href": "/kingdom-brain",
       "score": 61,
-      "checkedAt": "2026-10-23T21:00:00Z",
+      "checkedAt": "2026-10-23T20:45:00Z",
       "sourceVersion": "src-86326a0b62a4bae7",
       "kind": "source-review",
       "dimensions": {
@@ -86,7 +86,7 @@
     {
       "href": "/kingdom-tests",
       "score": 60,
-      "checkedAt": "2026-10-23T21:00:00Z",
+      "checkedAt": "2026-10-23T20:45:00Z",
       "sourceVersion": "src-3718f23fe8567b9a",
       "kind": "source-review",
       "dimensions": {
