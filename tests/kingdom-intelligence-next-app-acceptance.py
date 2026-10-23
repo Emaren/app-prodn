@@ -126,16 +126,20 @@ async def case(browser, args, mode, width, output):
     ctx = await browser.new_context(viewport={"width": width, "height": 844 if width < 500 else 900},
                                     reduced_motion="reduce")
     page = await ctx.new_page()
-    counts = {"recovery": 0, "blocked_external": 0, "blocked_write": 0, "times": []}
+    counts = {"recovery": 0, "blocked_external": 0, "blocked_write": 0, "times": [],
+              "blocked_nonread_paths": [], "blocked_external_paths": []}
     errors, checks = [], {}
     page.on("pageerror", lambda e: errors.append(str(e)[:240]))
     async def guard(route):
         url = urlparse(route.request.url)
         if url.hostname not in ("127.0.0.1", "localhost") or url.scheme not in ("http", "https"):
             counts["blocked_external"] += 1
+            counts["blocked_external_paths"].append(url.path[:180])
             return await route.abort()
         if route.request.method not in ("GET", "HEAD"):
             counts["blocked_write"] += 1
+            counts["blocked_nonread_paths"].append({"method": route.request.method,
+                                                    "path": url.path[:180]})
             return await route.abort()
         await route.continue_()
     async def recovery(route):
@@ -157,8 +161,8 @@ async def case(browser, args, mode, width, output):
         t0 = time.perf_counter()
         response = await page.goto(args.origin + ROUTE, wait_until="domcontentloaded", timeout=60000)
         check("server_http_200", response is not None and response.status == 200)
-        war = page.locator('section[aria-label="War Pulse"]')
-        agent = page.locator('section[aria-label="Agent constellation"]')
+        war = page.locator('section[aria-label="War Pulse"]:visible')
+        agent = page.locator('section[aria-label="Agent constellation"]:visible')
         await war.wait_for(timeout=30000)
         await agent.wait_for(timeout=30000)
         check("two_real_app_panels", await war.count() == 1 and await agent.count() == 1)
@@ -172,8 +176,10 @@ async def case(browser, args, mode, width, output):
               and await agent.locator("button button,[role=button] button").count() == 0)
         theme = await agent.get_attribute("data-agent-constellation-theme")
         await button_a.press("Enter")
-        await page.wait_for_function("""previous => document.querySelector(
-          'section[aria-label="Agent constellation"]')?.dataset.agentConstellationTheme !== previous""",
+        await page.wait_for_function("""previous => [...document.querySelectorAll(
+          'section[aria-label="Agent constellation"]')]
+          .filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== "hidden")
+          .some(e => e.dataset.agentConstellationTheme !== previous)""",
                                      arg=theme, timeout=10000)
         check("real_React_Enter_hydration", await agent.get_attribute("data-agent-constellation-theme") != theme)
         await button_w.press("Space")
@@ -202,17 +208,25 @@ async def case(browser, args, mode, width, output):
             "Current Recovery sample unavailable" if mode != "fresh" else None)
         if expected:
             await agent.get_by_text(expected, exact=False).first.wait_for(timeout=15000)
-            check("truthful_status_both_panels", expected in await agent.inner_text()
-                  and expected in await war.inner_text())
-            check("historic_progress_labeled_snapshot", "Snapshot ·" in await agent.inner_text()
-                  and "Snapshot ·" in await war.inner_text())
-            check("no_false_syncing", "live signal syncing" not in await agent.inner_text()
-                  and "live signal syncing" not in await war.inner_text())
+            agent_text = (await agent.inner_text()).casefold()
+            war_text = (await war.inner_text()).casefold()
+            result["rendered_text_evidence"] = {
+                "agent_expected_visible": expected.casefold() in agent_text,
+                "war_expected_visible": expected.casefold() in war_text,
+                "agent_snapshot_visible": "snapshot ·" in agent_text,
+                "war_snapshot_visible": "snapshot ·" in war_text,
+            }
+            check("truthful_status_both_panels", expected.casefold() in agent_text
+                  and expected.casefold() in war_text)
+            check("historic_progress_labeled_snapshot", "snapshot ·" in agent_text
+                  and "snapshot ·" in war_text)
+            check("no_false_syncing", "live signal syncing" not in agent_text
+                  and "live signal syncing" not in war_text)
         else:
             await agent.get_by_text("1/2 classes", exact=False).first.wait_for(timeout=15000)
-            check("fresh_Recovery_visible", "1/2 classes" in await agent.inner_text())
+            check("fresh_Recovery_visible", "1/2 classes" in (await agent.inner_text()).casefold())
             check("no_false_unavailable_on_fresh",
-                  "Current Recovery sample unavailable" not in await agent.inner_text())
+                  "current recovery sample unavailable" not in (await agent.inner_text()).casefold())
         if mode in ("terminal", "fresh"):
             await page.wait_for_timeout(5500)
             check("correct_shared_poll_budget", counts["recovery"] == (1 if mode == "terminal" else 2))
@@ -239,7 +253,7 @@ async def case(browser, args, mode, width, output):
         check("reduced_motion_media", await page.evaluate(
               "matchMedia('(prefers-reduced-motion: reduce)').matches"))
         check("no_browser_exceptions", not errors)
-        check("no_write_requests", counts["blocked_write"] == 0)
+        check("no_attempted_write_requests", counts["blocked_write"] == 0)  # Fail closed, log paths.
         result["navigation_plus_assertions_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         if mode == "terminal":
             await page.screenshot(path=str(output / ("intelligence-" + str(width) + "-terminal.png")),
@@ -249,6 +263,12 @@ async def case(browser, args, mode, width, output):
     finally:
         result["requests"] = counts
         result["pass"] = bool(checks) and all(checks.values()) and "error" not in result
+        if not result["pass"]:
+            try:
+                await page.screenshot(path=str(output / ("intelligence-" + str(width) + "-" + mode + "-failure.png")),
+                                      full_page=True)
+            except Exception as shot_error:
+                result["screenshot_error"] = str(shot_error)[:250]
         await ctx.close()
     return result
 
