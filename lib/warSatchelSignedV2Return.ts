@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_UWOLO} from "./betMoneyLimits.ts";
 /**
  * HD's independent, NONCREDITING verifier for WoloChain signed v2 per-leg
  * Satchel return economics. A signature is NOT proof of bank execution.
@@ -162,7 +163,7 @@ export function verifySatchelSignedV2Return(input: {
   const bankHeight = num(allocation.bank_height);
   if (cap > available || cap > BigInt("100000000000000") ||
       available > BigInt("100000000000000") ||
-      funding > BigInt(1000000000) ||
+      funding > BET_MAX_STAKE_UWOLO ||
       !HASH.test(str(allocation.bank_evidence_digest)) ||
       !HASH.test(str(allocation.bank_block_hash)))
     stop("invalid_reviewed_budget");

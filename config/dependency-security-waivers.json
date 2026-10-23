@@ -8,7 +8,7 @@
       "scope": "dev-only",
       "dependency_digest": "7deb7fdde3a7af4eb2d163373214a7e14768ce5438b2f692c94f93e10068a35a",
       "expires_on": "2026-10-24",
-      "reason": "2026-10-22 Next.js-only security patch re-seal: exact braces 3.0.3 dev-only graph must independently pass check_dependency_security.py path-root analysis before Git commit. Original 2026-10-24 expiry preserved; no runtime, new advisory or blanket waiver allowed.",
+      "reason": "2026-10-22 security patch dependency renewal: reviewed the actual post-Next-15.5.28 yarn audit resolution paths for braces@3.0.3. All paths still exclusively originate in development-only tooling, with no runtime or unknown roots. No upstream patched version is available in this audit. Exact installed version, advisory ID, Yarn graph SHA-256 and the original 2026-10-24 expiry remain fail-closed; no Next.js runtime advisory is waived.",
       "upstream": "https://github.com/micromatch/braces/issues/73"
     }
   ]
