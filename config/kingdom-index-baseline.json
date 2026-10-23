@@ -26,8 +26,8 @@
     {
       "href": "/kingdom-index",
       "score": 62,
-      "checkedAt": "2026-10-23T20:45:00Z",
-      "sourceVersion": "src-8773d63ebe1e8ff6",
+      "checkedAt": "2026-10-23T21:30:00Z",
+      "sourceVersion": "src-5f39cd7bf91a196b",
       "kind": "source-review",
       "dimensions": {
         "correctness": 17,
@@ -41,7 +41,7 @@
         "https://github.com/Emaren/app-prodn/actions/runs/40016734430",
         "https://github.com/Emaren/app-prodn/actions/runs/40017720941"
       ],
-      "notes": "AI-assisted provisional source review: signed-publication boundary and browser/source tests are present; no independently enrolled live scoring issuer or complete per-criterion production performance receipts. Source estimate, NOT certification."
+      "notes": "AI-assisted provisional source review: signed-publication boundary and browser/source tests are present; no independently enrolled live scoring issuer or complete per-criterion production performance receipts. Source estimate, NOT certification. Oct 23 re-review: only added an explicitly separate Watcher 1.6.6 draft estimate/links to the companion pane; Index 62 is still subjective, not independently certified."
     },
     {
       "href": "/kingdom-intelligence",
