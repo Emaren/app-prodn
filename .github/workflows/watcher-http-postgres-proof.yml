@@ -1,0 +1,72 @@
+name: Watcher Real HTTP to PostgreSQL Failure Proof
+
+on:
+  pull_request:
+    paths:
+      - "app/api/watcher/events/route.ts"
+      - "lib/watcherTelemetry*.ts"
+      - "lib/watcherBoundedJson.ts"
+      - "tests/integration/watcher-http-pg.mjs"
+      - "tests/sql/watcher_http_pg_fixture.sql"
+      - ".github/workflows/watcher-http-postgres-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "app/api/watcher/events/route.ts"
+      - "lib/watcherTelemetry*.ts"
+      - "lib/watcherBoundedJson.ts"
+      - "tests/integration/watcher-http-pg.mjs"
+      - "tests/sql/watcher_http_pg_fixture.sql"
+      - ".github/workflows/watcher-http-postgres-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  http-postgres:
+    name: Real Watcher HTTP + Prisma + PostgreSQL 16 retry proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: watcher_ci
+          POSTGRES_PASSWORD: watcher_ci_ephemeral
+          POSTGRES_DB: watcher_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U watcher_ci -d watcher_ci"
+          --health-interval 4s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://watcher_ci:watcher_ci_ephemeral@127.0.0.1:5432/watcher_ci
+      SESSION_SECRET: ci-isolation-not-a-production-secret
+      NEXTAUTH_SECRET: ci-isolation-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:43821
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - name: Install frozen dependencies and generate real Prisma client
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+      - name: Initialize disposable PostgreSQL with delayed failing insert
+        run: |
+          PGPASSWORD=watcher_ci_ephemeral psql -h 127.0.0.1 -U watcher_ci -d watcher_ci -X -v ON_ERROR_STOP=1 -f tests/sql/watcher_http_pg_fixture.sql
+      - name: Prove actual Next HTTP to Prisma to PostgreSQL receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx next dev -H 127.0.0.1 -p 43821 > "$RUNNER_TEMP/watcher-http-next.log" 2>&1 &
+          NEXT_PID=$!
+          trap 'kill "$NEXT_PID" 2>/dev/null || true; tail -120 "$RUNNER_TEMP/watcher-http-next.log" || true' EXIT
+          node tests/integration/watcher-http-pg.mjs

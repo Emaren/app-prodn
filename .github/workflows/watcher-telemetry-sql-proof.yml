@@ -1,0 +1,68 @@
+name: Watcher Telemetry PostgreSQL Idempotency Proof
+
+on:
+  pull_request:
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/migrations/20261020_030000_watcher_telemetry_event_id/**"
+      - "tests/sql/watcher_telemetry_event_id_contract.sql"
+      - "tests/sql/watcher_telemetry_event_id_concurrency.sh"
+      - ".github/workflows/watcher-telemetry-sql-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/migrations/20261020_030000_watcher_telemetry_event_id/**"
+      - "tests/sql/watcher_telemetry_event_id_contract.sql"
+      - "tests/sql/watcher_telemetry_event_id_concurrency.sh"
+      - ".github/workflows/watcher-telemetry-sql-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  watcher-event-id:
+    name: PostgreSQL 16 / Watcher event-ID exact-once proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: watcher_ci
+          POSTGRES_PASSWORD: watcher_ci_ephemeral
+          POSTGRES_DB: watcher_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U watcher_ci -d watcher_ci"
+          --health-interval 4s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: watcher_ci
+      PGPASSWORD: watcher_ci_ephemeral
+      PGDATABASE: watcher_ci
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create isolated pre-migration telemetry table
+        run: |
+          psql -X -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE "watcher_client_events" (
+            "id" BIGSERIAL PRIMARY KEY,
+            "event_type" VARCHAR(40) NOT NULL,
+            "metadata" JSONB
+          );
+          INSERT INTO "watcher_client_events" ("event_type")
+          VALUES ('legacy'), ('legacy');
+          SQL
+      - name: Apply additive migration and prove duplicates cannot insert
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261020_030000_watcher_telemetry_event_id/migration.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/sql/watcher_telemetry_event_id_contract.sql
+      - name: Race independent database connections on same telemetry ID
+        run: bash tests/sql/watcher_telemetry_event_id_concurrency.sh
+      - name: Prove migration is idempotently repeatable
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261020_030000_watcher_telemetry_event_id/migration.sql
