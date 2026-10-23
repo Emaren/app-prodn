@@ -211,3 +211,54 @@ test("forged concurrent burst build/response/P95 and false certificate are rejec
   }finally{await rm(other,{recursive:true,force:true})}
  }finally{await rm(root,{recursive:true,force:true})}
 });
+
+test("actual CI catch-all Next chunk [...slug] is legal and does not waive path traversal",async()=>{
+ const root=await fixture();
+ try{
+  // First real rejected entry (index 488) in run 39857248772.
+  const route=".next/static/chunks/app/champions/[...slug]/page-8ca9a9142d8d1345.js";
+  await mutate(root,"emitted-closure.json",d=>{
+   const files=d.files as Array<{path:string;bytes:number;sha256:string}>;
+   files.push({path:route,bytes:2550,
+    sha256:"6857df9c9d15bd6dd4da694e90490188e9820398c9233ec9e94c1c357416f455"});
+   const budget=d.budget as {remainingBytes:number};
+   budget.remainingBytes-=2550;
+   d.receiptSha256=hash(JSON.stringify(Object.fromEntries(
+    Object.entries(d).filter(([k])=>k!=="receiptSha256"))));
+  });
+  const inspected=await verifyIndexCandidateBundle(root,args);
+  assert.equal(inspected.emitted.files,10);
+  assert.equal(inspected.certified,false);
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+test("literal dot or parent components, absolute, UNC, drive, backslash, control and duplicate emitted paths refuse",async()=>{
+ const illegal=[
+  "a/../b","a/./b","../a","./a","a//b","a/","/a",
+  "C:/outside/build.js","a\\b","\\\\server\\share\\a",
+  "a/\u0000b","a/\nb"
+ ];
+ for(const unsafe of illegal){
+  const root=await fixture();
+  try{
+   await mutate(root,"emitted-closure.json",d=>{
+    const files=d.files as Array<{path:string}>;
+    files[1].path=unsafe;
+    d.receiptSha256=hash(JSON.stringify(Object.fromEntries(
+     Object.entries(d).filter(([k])=>k!=="receiptSha256"))));
+   });
+   await assert.rejects(verifyIndexCandidateBundle(root,args),
+    /Duplicated, unsafe or invalid emitted file/,JSON.stringify(unsafe));
+  }finally{await rm(root,{recursive:true,force:true})}
+ }
+ const root=await fixture();
+ try{
+  await mutate(root,"emitted-closure.json",d=>{
+   const files=d.files as Array<{path:string}>;
+   files[1].path=files[0].path;
+   d.receiptSha256=hash(JSON.stringify(Object.fromEntries(
+    Object.entries(d).filter(([k])=>k!=="receiptSha256"))));
+  });
+  await assert.rejects(verifyIndexCandidateBundle(root,args),
+   /Duplicated, unsafe or invalid emitted file/);
+ }finally{await rm(root,{recursive:true,force:true})}
+});
