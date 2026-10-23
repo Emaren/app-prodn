@@ -129,7 +129,12 @@ async def guard(page,counts):
 async def mount(page,url,counts):
     start=time.perf_counter()
     response=await page.goto(url+"/kingdom-brain",wait_until="domcontentloaded",timeout=45000)
-    await page.locator("h1").wait_for(timeout=18000)
+    # Shared navigation renders multiple H1s. Only the exact Brain page
+    # heading proves that this route (not its navigation) actually rendered.
+    page_heading = page.get_by_role("heading", name="KINGDOM BRAIN", exact=True)
+    await page_heading.wait_for(state="visible", timeout=18000)
+    if await page_heading.count() != 1:
+        raise AssertionError("Expected exactly one visible KINGDOM BRAIN page heading")
     try:
         await page.wait_for_function(
             "() => document.querySelector('section[aria-label^=\"Source-specific signal status\"]')?.querySelectorAll('strong').length===4",
@@ -163,6 +168,11 @@ async def one_real(browser,args,viewport,label,n,output):
     graph=page.locator('button[aria-pressed]')
     checks={}
     check(bool(response and response.status==200),"http_200",checks)
+    # Regression against strict-mode ambiguity in the real Next shell: navigation
+    # may render additional h1 headings but must never satisfy this route wait.
+    check(await page.locator("h1").count() >= 2, "multiple_navigation_and_route_h1_supported", checks)
+    check(await page.get_by_role("heading", name="KINGDOM BRAIN", exact=True).count() == 1,
+          "exact_brain_heading_unique_despite_navigation", checks)
     check(await graph.count()==14,"fourteen_graph_nodes",checks)
     expected_nodes=json.loads((Path(args.repo)/"config"/"kingdom-brain-authorities.json").read_text())["nodes"]
     expected_labels={node["label"] for node in expected_nodes}
