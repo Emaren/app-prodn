@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ca02142d0c0829284189ebbd14f4690fe2868b6c383ba8ac429dd2e11c12d700",
+      "sha256": "eef7acb8100190544b69ecc1e19c42c47e80ad3c87db1db2fc8acbf5ab624807",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1583,7 +1583,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "689894a8f644c13fe6808cdf579a6ece6d032b57e55e692069d67d2fc6d95acf",
+      "sha256": "e61b5056047914b29808f97cdad1e9f115e2dbf52de1828fc20a1f7de58ddfc3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/renaissance-exact-page-next-acceptance-20261022",
-    "commit": "223fe409e5a18ebcd3d454dd1c89399709cb9237"
+    "branch": "stage/renaissance-single-page-browser-dispatch-20261022",
+    "commit": "030f0f0ade83af55c21a22ffb4c538a7c9c76aff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
