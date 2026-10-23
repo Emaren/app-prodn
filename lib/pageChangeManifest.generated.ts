@@ -15,12 +15,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-92adf8e684a9a7c49785",
+    version: "src-b6f26f55f24bdb26b12f",
   },
   {
     href: "/champions",
     label: "Champions",
-    version: "src-6e1bafb4e12f663b1ae9",
+    version: "src-e71ddbb4075dc59d5437",
   },
   {
     href: "/chaosium",
@@ -85,17 +85,17 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-2b425b7ed9c1d7b840ea",
+    version: "src-85b1d7a0cf8ec503b4bb",
   },
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-60624da412ccc5c239e6",
+    version: "src-eb49b603a64e16497a77",
   },
   {
     href: "/traffic",
     label: "Traffic Observatory",
-    version: "src-9c1303ce9b4b7f824452",
+    version: "src-bdc11db840b03c525c56",
   },
   {
     href: "/kingdom-forge",
@@ -125,6 +125,6 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/aoe2war-os",
     label: "AoE2WAR OS",
-    version: "src-b80e3817daef3d3ac54d",
+    version: "src-62d3051232637a375bca",
   },
 ] as const;
