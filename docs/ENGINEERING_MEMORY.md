@@ -15,6 +15,17 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## October 23 — a refused private admission must await its sibling transactions
+
+Winner and Desync seed writes use separate actual database transactions. A
+`Promise.all` rejection can report failure while the other transaction is still
+waiting and may later commit after a caller releases a fence. Await every LIVE
+seed transaction before reporting its first failure; retain bounded lock and
+transaction deadlines, freshness checks and idempotent recovery. The staggered
+PostgreSQL regression failed on old source with one in-flight sibling and now
+proves zero remaining writers, zero late books, and both books on a safe retry.
+This is metadata admission correctness, not financial authorization.
+
 ## October 22 — preserve recovered LIVE source and qualify the missing boundary
 
 Newer held source already incorporated the private LIVE stage, table SHARE lock

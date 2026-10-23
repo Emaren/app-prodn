@@ -43,8 +43,8 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         key_events:evidence.key_events as Prisma.InputJsonValue}});
       return row;
     }
-    async function ingest(row:{id:number;replayHash:string}){
-      return coordinateReplayPostIngest({prisma:db.prisma,source:"api_direct",receipts:[classifyReplayIngestReceipt({
+    async function ingest(row:{id:number;replayHash:string},prisma=db.prisma){
+      return coordinateReplayPostIngest({prisma,source:"api_direct",receipts:[classifyReplayIngestReceipt({
         game_id:row.id,replay_hash:row.replayHash,is_final:false,effective_is_final:false,finality_status:"live",
         parse_completed:true,result_resolved:false,result_trusted:false,should_settle:false,
       ...(actualApiReceipt&&row.id===Number(actualApiReceipt.game_id)?actualApiReceipt:{}),
@@ -276,9 +276,31 @@ test("private original HD LIVE commits admit canonical markets before result/clo
     await t.test("busy source writers cause a bounded fail-closed retry without creating books",async()=>{
       const row=await persist("source-writer-busy"),before=await db.prisma.betMarket.count();
       await db.sql.query("BEGIN");await db.sql.query("LOCK TABLE game_stats IN ROW EXCLUSIVE MODE");
+      let liveTransactions=0;
+      // Change scheduling only: every operation still runs through the actual
+      // Prisma transaction and PostgreSQL locks. Stagger the two 1s deadlines
+      // so the old Promise.all returns with a real sibling still in flight.
+      const staggered=new Proxy(db.prisma,{get(target,property){
+        if(property!=="$transaction")return Reflect.get(target,property);
+        return (callback:(tx:Prisma.TransactionClient)=>Promise<unknown>,options?:{maxWait?:number;timeout?:number})=>
+          target.$transaction(tx=>callback(new Proxy(tx,{get(transaction,key){
+            if(key!=="$executeRaw")return Reflect.get(transaction,key);
+            return async (...args:Parameters<typeof tx.$executeRaw>)=>{
+              if(Array.isArray(args[0])&&args[0].join("").includes("SET LOCAL lock_timeout")&&++liveTransactions===1)
+                await sleep(300);
+              return transaction.$executeRaw(...args);
+            };
+          }})),options);
+      }});
       let report:Awaited<ReturnType<typeof ingest>>;
       const started=Date.now();
-      try{report=await ingest(row);}finally{await db.sql.query("COMMIT");}
+      try{
+        report=await ingest(row,staggered);
+        assert.equal(liveTransactions,2,"both real seed transactions must run");
+        await db.sql.query("SELECT pg_stat_clear_snapshot()");
+        const unfinished=await db.sql.query("SELECT count(*) FROM pg_stat_activity WHERE wait_event IN ('relation','advisory') AND pid<>pg_backend_pid()");
+        assert.equal(Number(unfinished.rows[0].count),0,"a reported refusal must leave no sibling waiting to create a late book");
+      }finally{await db.sql.query("COMMIT");}
       assert.equal(report.admission.liveMarkets.succeeded,false);
       assert.match(report.admission.liveMarkets.error??"",/lock timeout|transaction/i);
       assert.ok(Date.now()-started<5000,"contention must not hold up ingestion indefinitely");
