@@ -40,16 +40,16 @@ alerts, and transient live activity.
 
 ## Covered Kingdom routes
 
-Gray Dot V2 covers 23 routes:
+Gray Dot V2's current generator registers **25 routes**:
 
 `/kingdom`, `/oracle`, `/leaderboard`, `/champions`, `/chaosium`,
 `/olympia`, `/leagues`, `/national-champions`, `/clans`, `/academy`,
 `/market`, `/ai`, `/kingdom-intelligence`, `/bounties`, `/forum`,
 `/radio`, `/workshop`, `/game-stats`, `/traffic`, `/kingdom-forge`,
-`/round-chamber`, `/statistics`, and `/speed`.
+`/round-chamber`, `/statistics`, `/speed`, `/television-wolo`, and `/aoe2war-os`.
 
 `scripts/generate_page_change_manifest.py` owns the source fingerprints.
-Do not hand-edit `pageChangeManifest.generated.ts`.
+Do not hand-edit `pageChangeManifest.generated.ts`. The canonical SHA-256 source-edition preimage hashes each lexicographically ordered page-source path, a real **NUL byte (0x00)**, the file's exact bytes, then another real NUL byte. Python `b"\\0"` would instead hash printable backslash-plus-zero and silently churn all versions; the generator must use `b"\0"`. The OS source-hash regression independently enforces this binary convention. The legacy 25-route page-change version is **not** the Kingdom Index's 88-entry route-census fingerprint or a page quality certificate.
 
 ## Two change rails
 

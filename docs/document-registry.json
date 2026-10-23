@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e487f12923d291d453d00d27bf6b13307359caec7158e51ffbc5323ce50aaab3",
+      "sha256": "ce18d6eafe03e3750a55f92e254a92791dea1c641fe0e0f9bf1e44cede25f41e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1221,7 +1221,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
+      "sha256": "d75d0f10514fc17901f6a1b7b90208b9adb4a912e0791774ba727a56fda8cf41",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/20261023-wolo-brief-router",
-    "commit": "7d43c59dbcea08d8f2d1d510d84f96e477f4cc63"
+    "branch": "integration/renaissance-kingdom-public-checkpoint-20261022",
+    "commit": "f3af9a3edecdbbb77b785daa2193d745f0f9d677"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

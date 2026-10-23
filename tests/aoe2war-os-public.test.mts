@@ -92,3 +92,14 @@ test("AoE2WAR OS change-notice version hashes exactly the three route source fil
   assert.ok(manifest.includes('version: "' + edition + '"'),
     "Page edition must be regenerated whenever the command deck source changes");
 });
+
+
+test("page-change generator hashes actual NUL bytes rather than printable slash-zero", () => {
+  const generator = source("scripts/generate_page_change_manifest.py");
+  const correct = String.raw`digest.update(b"\0")`;
+  const incorrect = String.raw`digest.update(b"\\0")`;
+  assert.equal(generator.split(correct).length - 1, 2,
+    "Both separators must be actual NUL bytes when Python evaluates its bytes literal");
+  assert.ok(!generator.includes(incorrect),
+    "Printable backslash-zero separators silently change every page-change digest");
+});

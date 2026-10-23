@@ -1,0 +1,293 @@
+name: Kingdom Index criterion submission boundary
+on:
+  pull_request:
+    paths:
+      - 'lib/kingdomIndexCriterionSubmission.mjs'
+      - 'lib/kingdomIndexTrustedPublication.mjs'
+      - 'lib/kingdomIndexCriterionNonceStore.mjs'
+      - 'lib/kingdomIndexCriterionArtifactVerifier.mjs'
+      - 'lib/kingdomIndexCriterionProofPolicy.mjs'
+      - 'lib/kingdomIndexPerformanceReceipt.mjs'
+      - 'lib/kingdomIndexBrowserReceipt.mjs'
+      - 'scripts/kingdom_index_browser_receipt_audit.mjs'
+      - 'scripts/kingdom_index_certification_preflight.py'
+      - 'tests/kingdom-index-criterion-submission.test.mts'
+      - 'tests/kingdom-index-trusted-publication.test.mts'
+      - 'scripts/kingdom_index_emitted_closure.mjs'
+      - 'tests/kingdom-index-emitted-closure.test.mts'
+      - 'scripts/kingdom_index_loopback_api_probe.mjs'
+      - 'tests/kingdom-index-loopback-api-probe.test.mts'
+      - 'scripts/kingdom_index_loopback_browser_audit.mjs'
+      - 'tests/kingdom-index-loopback-browser-audit.test.mts'
+      - 'scripts/kingdom_index_candidate_bundle_verify.mjs'
+      - 'scripts/kingdom_index_candidate_evidence_ledger.mjs'
+      - 'scripts/kingdom_index_bounded_load_probe.mjs'
+      - 'scripts/kingdom_index_interaction_chrome.mjs'
+      - 'tests/kingdom-index-interaction-chrome.test.mts'
+      - 'tests/kingdom-index-bounded-load-probe.test.mts'
+      - 'tests/kingdom-index-candidate-bundle-verify.test.mts'
+      - 'scripts/kingdom_index_tracked_provenance.mjs'
+      - 'tests/kingdom-index-tracked-provenance.test.mts'
+      - 'tests/kingdom-index-criterion-nonce-store.test.mts'
+      - 'tests/kingdom-index-criterion-artifact-verifier.test.mts'
+      - 'tests/kingdom-index-performance-receipt.test.mts'
+      - 'tests/kingdom-index-browser-receipt.test.mts'
+      - 'tests/kingdom-index-browser-receipt-cli.test.mts'
+      - 'tests/test_kingdom_index_certification_preflight.py'
+      - 'config/kingdom-index-quality-rubric.json'
+      - 'config/kingdom-index-assurance-profiles.json'
+      - '.github/workflows/kingdom-index-criterion-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  adversarial-evidence-boundary:
+    name: Untrusted receipt, signature, rubric and replay refusal (fixtures only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exercise signed criterion evidence boundary
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test tests/kingdom-index-criterion-submission.test.mts tests/kingdom-index-criterion-nonce-store.test.mts tests/kingdom-index-criterion-artifact-verifier.test.mts tests/kingdom-index-performance-receipt.test.mts tests/kingdom-index-browser-receipt.test.mts tests/kingdom-index-browser-receipt-cli.test.mts tests/kingdom-index-trusted-publication.test.mts tests/kingdom-index-emitted-closure.test.mts tests/kingdom-index-loopback-api-probe.test.mts tests/kingdom-index-loopback-browser-audit.test.mts tests/kingdom-index-candidate-bundle-verify.test.mts tests/kingdom-index-bounded-load-probe.test.mts tests/kingdom-index-interaction-chrome.test.mts tests/kingdom-index-tracked-provenance.test.mts
+      - name: Exercise first-page 100-point qualification plan (not a certificate)
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_kingdom_index_certification_preflight.py'
+          python3 scripts/kingdom_index_certification_preflight.py --route /kingdom-index
+      - name: Confirm no public live score authority was activated
+        run: |
+          set -euo pipefail
+          ! grep -q 'kingdomIndexCriterionSubmission' lib/kingdomIndex.ts
+          grep -q 'return null;' lib/kingdomIndexAuditStatus.ts
+
+  independent-type-probe:
+    name: Index exact-head TS contract (NOT production approval)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install exact locked packages without lifecycle execution
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Generate Prisma client for typing, never connect to live DB
+        run: |
+          set -euo pipefail
+          yarn prisma:generate
+      - name: Type-check source only; does not waive dependency security or release holds
+        run: |
+          set -euo pipefail
+          yarn tsc --noEmit --pretty false
+
+  emitted-artifact-observation:
+    name: Exact PR-head Next emitted closure (observation ONLY)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+      EXPECTED_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout exact candidate source, not synthetic PR merge
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - name: Resolve immutable source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "Inspected Git SHA: $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "This read-only job is NOT release approval or production closure." >> "$GITHUB_STEP_SUMMARY"
+      - name: Capture pre-install clean committed source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kingdom-index-build-evidence
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase checkout \
+            > kingdom-index-build-evidence/source-checkout.json
+      - name: Install exact pinned build dependencies
+        run: |
+          set -euo pipefail
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+      - name: Diagnose dependency-generation tracked changes (read only)
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase dependencies \
+            > kingdom-index-build-evidence/source-dependencies.json || rc=$?
+          python3 - <<'PY'
+          import json
+          d=json.load(open("kingdom-index-build-evidence/source-dependencies.json"))
+          print("AFTER DEPENDENCIES: tracked clean =",d["trackedClean"])
+          for row in d["trackedChangedFiles"]:
+              print("TRACKED:",row["status"],row["classification"],row["path"])
+          PY
+          # Do not waive or assume harmless: postbuild provenance gate will reject
+          # all tracked changes, while this captures the first mutation phase.
+      - name: Build isolated candidate, not production
+        run: |
+          set -euo pipefail
+          yarn build
+      - name: Diagnose post-build tracked mutations and enforce immutable source
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase built \
+            > kingdom-index-build-evidence/source-built.json
+          RESULT=$?
+          set -e
+          python3 - <<'PY'
+          import json
+          d=json.load(open("kingdom-index-build-evidence/source-built.json"))
+          print("AFTER NEXT BUILD: tracked clean =",d["trackedClean"])
+          for row in d["trackedChangedFiles"]:
+              print("TRACKED:",row["status"],row["classification"],row["path"],
+                "HEAD BLOB",row["beforeBlob"],"BUILT BLOB",row["afterBlob"])
+          PY
+          if [ "$RESULT" -ne 0 ]; then
+            echo "::error::Source provenance drift: inspect uploaded source-built.json and reseal exact generated compile input before rebuilding"
+            exit "$RESULT"
+          fi
+      - name: Capture emitted source/build evidence without certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kingdom-index-build-evidence
+          node scripts/kingdom_index_emitted_closure.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" \
+            > kingdom-index-build-evidence/emitted-closure.json
+          node --input-type=module - <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const report=JSON.parse(readFileSync('kingdom-index-build-evidence/emitted-closure.json','utf8'));
+          if(report.certified!==false||report.publicationAuthorized!==false||
+             report.sourceSha!==process.env.EXPECTED_CANDIDATE_SHA)
+            throw Error('Misleading or unbound collector receipt');
+          console.log('Build observation:',report.status,report.buildId,
+            'files',report.files.length,'missing',report.missing.length);
+          NODE
+      - name: Exercise exact built Next Index API and desktop/mobile real Chrome (isolated loopback)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          BUILD_ID="$(cat .next/BUILD_ID)"
+          test -n "$BUILD_ID"
+          COLLECTOR_SHA="$(git rev-parse HEAD:scripts/aoe2_speed_cold_lcp.mjs)"
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME" && test -x "$CHROME" || {
+            echo "::error::No real Chrome binary on runner; browser evidence unavailable"
+            exit 2
+          }
+          ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3030 \
+            > kingdom-index-build-evidence/local-next-start.log 2>&1 &
+          NEXT_PID=$!
+          trap 'kill "$NEXT_PID" 2>/dev/null || true; wait "$NEXT_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 90); do
+            if curl --silent --fail --max-time 2 \
+              http://127.0.0.1:3030/api/kingdom-index >/dev/null; then
+              break
+            fi
+            if ! kill -0 "$NEXT_PID" 2>/dev/null; then
+              echo "::error::Isolated Next process exited before readiness"; exit 2
+            fi
+            sleep 1
+          done
+          curl --silent --show-error --fail --max-time 8 \
+            http://127.0.0.1:3030/api/kingdom-index >/dev/null
+          node scripts/kingdom_index_loopback_api_probe.mjs \
+            --origin http://127.0.0.1:3030/ --samples 12 \
+            --expected-build-id "$BUILD_ID" \
+            > kingdom-index-build-evidence/api-loopback.json
+          node scripts/kingdom_index_bounded_load_probe.mjs \
+            --origin http://127.0.0.1:3030/ \
+            --source-sha "$EXPECTED_CANDIDATE_SHA" \
+            --expected-build-id "$BUILD_ID" \
+            > kingdom-index-build-evidence/concurrent-loopback.json
+          for VIEW in desktop phone; do
+            mkdir -p "kingdom-index-build-evidence/chrome-$VIEW"
+            node scripts/aoe2_speed_cold_lcp.mjs \
+              --url http://127.0.0.1:3030/kingdom-index \
+              --samples 10 --viewport "$VIEW" \
+              --release-sha "$EXPECTED_CANDIDATE_SHA" \
+              --build-version "$BUILD_ID" \
+              --collector-sha "$COLLECTOR_SHA" \
+              --out-dir "kingdom-index-build-evidence/chrome-$VIEW" \
+              --chrome "$CHROME" --post-load-ms 750 \
+              --load-timeout-ms 20000 \
+              > "kingdom-index-build-evidence/chrome-$VIEW/collector-result.json"
+            node scripts/kingdom_index_loopback_browser_audit.mjs \
+              --input "kingdom-index-build-evidence/chrome-$VIEW/receipt.json" \
+              --source-sha "$EXPECTED_CANDIDATE_SHA" \
+              --build-id "$BUILD_ID" --collector-sha "$COLLECTOR_SHA" \
+              --viewport "$VIEW" \
+              > "kingdom-index-build-evidence/chrome-$VIEW/inspection.json"
+          done
+          node scripts/kingdom_index_tracked_provenance.mjs \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" --phase emitted \
+            > kingdom-index-build-evidence/source-emitted.json
+          # Reconcile the capture as a WHOLE. A successful individual collector
+          # cannot conceal a mismatched BUILD_ID or substituted browser/CI row.
+          # Does NOT independently authenticate GitHub's artifact origin.
+          node scripts/kingdom_index_candidate_bundle_verify.mjs \
+            --evidence-dir kingdom-index-build-evidence \
+            --expected-source "$EXPECTED_CANDIDATE_SHA" \
+            --expected-build-id "$BUILD_ID" \
+            --collector-sha "$COLLECTOR_SHA" \
+            > kingdom-index-build-evidence/candidate-bundle-inspection.json
+          node scripts/kingdom_index_candidate_evidence_ledger.mjs \
+            --evidence-dir kingdom-index-build-evidence \
+            --expected-source "$EXPECTED_CANDIDATE_SHA" \
+            --expected-build-id "$BUILD_ID" \
+            --collector-sha "$COLLECTOR_SHA" \
+            > kingdom-index-build-evidence/candidate-evidence-ledger.json
+          node scripts/kingdom_index_interaction_chrome.mjs \
+            --source-sha "$EXPECTED_CANDIDATE_SHA" \
+            --build-id "$BUILD_ID" \
+            --chrome "$CHROME" \
+            --screenshots-dir kingdom-index-build-evidence \
+            > kingdom-index-build-evidence/interaction-chrome.json
+          echo "Real built Next loopback API + two real Chrome cohorts captured; candidate ONLY." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload inspectable build evidence (not a release receipt)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kingdom-index-emitted-observation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            kingdom-index-build-evidence/*.json
+            kingdom-index-build-evidence/interaction-*.png
+            kingdom-index-build-evidence/chrome-desktop/*.json
+            kingdom-index-build-evidence/chrome-phone/*.json
+          if-no-files-found: ignore
+          retention-days: 14

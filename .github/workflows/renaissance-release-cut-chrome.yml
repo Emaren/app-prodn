@@ -1,0 +1,148 @@
+# Central, isolated REAL Next/Chrome acceptance for the integrated Renaissance release cut.
+# Never deploys, migrates production, awards points or authorizes Wolo financial actions.
+name: Renaissance integrated Kingdom Chrome (candidate only)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/renaissance-release-cut-chrome.yml'
+      - 'app/kingdom-brain/**'
+      - 'app/kingdom-intelligence/**'
+      - 'app/kingdom-tests/**'
+      - 'components/kingdom-instruments/**'
+      - 'components/kingdom-tests/**'
+      - 'lib/kingdomInstrumentsInspectionValidity.mjs'
+      - 'lib/kingdomTestsEvidence.ts'
+      - 'tests/kingdom-brain-next-app-acceptance.py'
+      - 'tests/kingdom-intelligence-next-app-acceptance.py'
+      - 'tests/kingdom-tests-next-acceptance.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renaissance-integrated-chrome-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integrated-real-chrome:
+    name: Integrated ${{ matrix.page }} real Next/Chrome — NOT production
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'Emaren/app-prodn'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        page: [brain, intelligence, tests]
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: isolated-ci-not-a-production-secret
+      NEXTAUTH_SECRET: isolated-ci-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+      EXPECTED_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout immutable integrated candidate source (not synthetic merge)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Pin source; install immutable dependencies and browser runner
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          mkdir -p renaissance-integrated-evidence
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          python3 -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
+          npx prisma generate
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Build real Next candidate using normal app prebuild
+        run: |
+          set -euo pipefail
+          yarn build
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)" || {
+            echo "::error::Source mutated during complete build"; git status --short; exit 2;
+          }
+          test -s .next/BUILD_ID
+          cp .next/BUILD_ID renaissance-integrated-evidence/BUILD_ID
+          printf 'source_sha=%s\nbuild_id=%s\nmethod=normal-yarn-build\nproduction_attested=false\ncertified=false\n' \
+            "$EXPECTED_CANDIDATE_SHA" "$(cat .next/BUILD_ID)" \
+            > renaissance-integrated-evidence/source-build.txt
+      - name: Run existing specialist test against SAME integrated source/build
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME" && test -x "$CHROME" || {
+            echo "::error::Real Chrome unavailable"; exit 2;
+          }
+          case "${{ matrix.page }}" in
+            brain)
+              timeout -k 10s 12m python3 -u tests/kingdom-brain-next-app-acceptance.py \
+                --repo "$GITHUB_WORKSPACE" --sha "$EXPECTED_CANDIDATE_SHA" \
+                --url http://127.0.0.1:3108 --chrome "$CHROME" --samples 3 \
+                --output renaissance-integrated-evidence
+              ;;
+            intelligence)
+              timeout -k 10s 12m python3 -u tests/kingdom-intelligence-next-app-acceptance.py \
+                --repo "$GITHUB_WORKSPACE" --sha "$EXPECTED_CANDIDATE_SHA" \
+                --origin http://127.0.0.1:3138 --chrome "$CHROME" \
+                --output renaissance-integrated-evidence
+              ;;
+            tests)
+              node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3030 \
+                > renaissance-integrated-evidence/next.log 2>&1 &
+              NEXT_PID=$!
+              trap 'kill "$NEXT_PID" 2>/dev/null || true; wait "$NEXT_PID" 2>/dev/null || true' EXIT
+              for i in $(seq 1 90); do
+                if curl -fsS --max-time 2 http://127.0.0.1:3030/kingdom-tests >/dev/null; then break; fi
+                if ! kill -0 "$NEXT_PID" 2>/dev/null; then
+                  echo "::error::Next startup failed"; exit 2;
+                fi
+                sleep 1
+              done
+              curl -fsS --max-time 8 http://127.0.0.1:3030/kingdom-tests >/dev/null
+              timeout -k 10s 12m python3 -u tests/kingdom-tests-next-acceptance.py \
+                --repo "$GITHUB_WORKSPACE" --origin http://127.0.0.1:3030 \
+                --chrome "$CHROME" --samples 3 \
+                --output renaissance-integrated-evidence/kingdom-tests-next-receipt.json
+              ;;
+            *) echo "::error::Unknown page"; exit 2 ;;
+          esac
+          test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "Verified integrated candidate-only browser path. No scored criterion, DocsV2 waiver or website release authorization." >> "$GITHUB_STEP_SUMMARY"
+      - name: Summarize exact-source Chrome evidence without changing browser verdict
+        if: always()
+        env:
+          RENAISSANCE_PAGE: ${{ matrix.page }}
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_renaissance_ci_evidence_digest.py' -q
+          python3 scripts/renaissance_ci_evidence_digest.py \
+            --page "$RENAISSANCE_PAGE" \
+            --evidence-dir renaissance-integrated-evidence \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" \
+            --json-out renaissance-integrated-evidence/diagnostic-summary.json \
+            --summary-file "$GITHUB_STEP_SUMMARY"
+      - name: Upload raw source/BUILD_ID/browser evidence on success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-integrated-${{ matrix.page }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: renaissance-integrated-evidence/
+          if-no-files-found: warn
+          retention-days: 14

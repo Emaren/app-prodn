@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import BrowserLocalTime from "./BrowserLocalTime";
 import ProcessDrilldown from "./ProcessDrilldown";
-import { formatLiveRecoveryProgressLabel, useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
+import { formatLiveRecoveryProgressLabel, useLiveRecoveryProgress, useRecoverySignalState } from "./useLiveRecoveryProgress";
 
 type WarPulseItem = {
   key: string;
@@ -72,6 +72,16 @@ export default function WarPulsePanel({
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const theme = THEMES[themeIndex] ?? "plain";
   const liveRecovery = useLiveRecoveryProgress(true);
+  const recoverySignal = useRecoverySignalState();
+  const recoveryNotice = recoverySignal === "operator_preview_only"
+    ? "Live Recovery preview unavailable"
+    : recoverySignal === "paused"
+      ? "Live Recovery sampling paused"
+      : recoverySignal === "unavailable"
+        ? "Current Recovery sample unavailable"
+        : recoverySignal === "live"
+          ? "Live Recovery progress percentage unavailable"
+          : "Awaiting a current Recovery sample";
 
   const cycleTheme = () => {
     setThemeIndex((current) => (current + 1) % THEMES.length);
@@ -79,19 +89,10 @@ export default function WarPulsePanel({
 
   return (
     <section
-      role="button"
-      tabIndex={0}
+      aria-label="War Pulse"
       data-war-pulse-theme={theme}
-      aria-label={`War Pulse display tile. Current theme: ${theme}.`}
-      onClick={cycleTheme}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          cycleTheme();
-        }
-      }}
       className={
-        "group/warpulse relative flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[2rem] border transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 xl:[contain:size] " +
+        "group/warpulse relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border transition-all duration-500 xl:[contain:size] " +
         PANEL_SHELL
       }
     >
@@ -118,8 +119,13 @@ export default function WarPulsePanel({
           </div>
         </div>
 
-        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600">
-          polls every 20s
+        <div className="flex flex-col items-end gap-2">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-600">polls every 20s</span>
+          <button type="button" onClick={cycleTheme}
+            aria-label={`Change War Pulse display theme; current theme ${theme}`}
+            className="rounded-lg border border-cyan-200/20 px-2 py-1 text-xs text-cyan-100 focus-visible:ring-2 focus-visible:ring-cyan-200">
+            Change theme
+          </button>
         </div>
       </div>
 
@@ -155,33 +161,15 @@ export default function WarPulsePanel({
                     item.progressLabel,
                   )
                 : trustworthySnapshotProgress !== null
-                  ? item.progressLabel
-                  : "live signal syncing"
+                  ? `Snapshot · ${item.progressLabel ?? "previous progress"}`
+                  : recoveryNotice
               : item.progressLabel;
 
             return (
             <div
               key={item.key}
-              role="button"
-              tabIndex={0}
-              aria-expanded={expanded}
-              onClick={(event) => {
-                event.stopPropagation();
-                setExpandedKey((current) =>
-                  current === item.key ? null : item.key,
-                );
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setExpandedKey((current) =>
-                    current === item.key ? null : item.key,
-                  );
-                }
-              }}
               className={
-                "relative grid cursor-pointer grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 transition-all duration-500 " +
+                "relative grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 transition-all duration-500 " +
                 rowShell(theme, item.current)
               }
             >
@@ -240,6 +228,12 @@ export default function WarPulsePanel({
                   >
                     {item.status}
                   </span>
+                  <button type="button" aria-expanded={expanded}
+                    aria-label={`${expanded ? "Hide" : "Show"} ${item.system} details`}
+                    onClick={() => setExpandedKey((current) => current === item.key ? null : item.key)}
+                    className="rounded-md border border-cyan-200/20 px-2 py-0.5 text-[10px] text-cyan-100 focus-visible:ring-2 focus-visible:ring-cyan-200">
+                    {expanded ? "Hide details" : "Details"}
+                  </button>
                 </div>
 
                 <div
@@ -276,14 +270,21 @@ export default function WarPulsePanel({
                         %
                       </span>
                     </div>
+                    {recoveryItem && trustworthyLiveProgress === null && trustworthySnapshotProgress !== null ? (
+                      <div role="status" className="mt-1 text-[9px] uppercase tracking-[0.14em] text-cyan-100/50">
+                        {recoveryNotice}
+                      </div>
+                    ) : null}
                   </div>
                 ) : item.current && recoveryItem ? (
                   <div className="mt-2">
                     <div className="relative h-1 overflow-hidden rounded-full bg-white/8">
-                      <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent" />
+                      {recoverySignal === "awaiting_sample" ? (
+                        <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent" />
+                      ) : null}
                     </div>
                     <div className="mt-1 flex items-center justify-between text-[9px] uppercase tracking-[0.14em] text-cyan-100/40">
-                      <span>live signal syncing</span>
+                      <span aria-live="polite">{recoveryNotice}</span>
                       <span>—</span>
                     </div>
                   </div>
@@ -297,11 +298,7 @@ export default function WarPulsePanel({
               </div>
 
               {expanded ? (
-                <div
-                  className="col-span-3"
-                  onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
-                >
+                <div className="col-span-3">
                   <ProcessDrilldown
                     kind={item.current ? "process" : "event"}
                     systemKey={

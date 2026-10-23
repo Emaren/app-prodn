@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/20261023-wolo-brief-router` at `7d43c59dbcea08d8f2d1d510d84f96e477f4cc63`
+Implementation baseline: `integration/renaissance-kingdom-public-checkpoint-20261022` at `f3af9a3edecdbbb77b785daa2193d745f0f9d677`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -26,6 +26,8 @@ function createRuntime(initialVisibility = "visible") {
   ).outputText;
 
   let clock = 0;
+  // The server sends sampledAt; fake only the client acceptance clock.
+  const observedAtMs = Date.parse("2026-10-20T18:05:00.000Z");
   let nextTimer = 0;
   const timers = new Map<number, { at: number; callback: () => void }>();
   const fetches: Array<{
@@ -34,6 +36,7 @@ function createRuntime(initialVisibility = "visible") {
     options: { cache: string; signal: AbortSignal };
     settle: (data: unknown, ok?: boolean) => void;
     fail: (reason?: Error) => void;
+    invalidJson: () => void;
   }> = [];
   const listeners = new Map<string, Set<() => void>>();
   const document = {
@@ -71,6 +74,9 @@ function createRuntime(initialVisibility = "visible") {
           fail(error = new Error("unavailable")) {
             reject(error);
           },
+          invalidJson() {
+            resolve({ ok: true, json: async () => { throw new SyntaxError("invalid JSON"); } });
+          },
         });
       });
     },
@@ -79,7 +85,9 @@ function createRuntime(initialVisibility = "visible") {
       if (name === "./liveRecoveryPolicy") {
         return {
           isOperatorPreviewOnlyPayload,
-          isUsableLiveRecoveryPayload,
+          isUsableLiveRecoveryPayload(value: unknown) {
+            return isUsableLiveRecoveryPayload(value, observedAtMs + clock);
+          },
           LIVE_RECOVERY_POLL_INTERVAL_MS,
           LIVE_RECOVERY_REQUEST_TIMEOUT_MS,
           shouldPollLiveRecovery,
@@ -119,7 +127,7 @@ async function settleMicrotasks() {
   await new Promise<void>((resolve) => setImmediate(resolve));
 }
 
-const validProgress = (date = "2026-10-20T18:00:00.000Z") => ({
+const validProgress = (date = "2026-10-20T18:05:00.000Z") => ({
   available: true,
   sampledAt: date,
   observedBytes: 512,
@@ -169,18 +177,73 @@ test("hidden/resumed Recovery tab aborts old request and fences late completion"
   rt.visibility("visible");
   assert.equal(rt.fetches.length, 2, "resume must request fresh data immediately");
 
-  const fresh = validProgress("2026-10-20T18:05:00.000Z");
+  const fresh = validProgress("2026-10-20T18:06:00.000Z");
   rt.fetches[1].settle(fresh);
   await settleMicrotasks();
   assert.equal((observed.at(-1) as { sampledAt?: string })?.sampledAt, fresh.sampledAt);
 
-  rt.fetches[0].settle(validProgress("2026-10-20T18:00:00.000Z"));
+  rt.fetches[0].settle(validProgress("2026-10-20T18:05:59.000Z"));
   await settleMicrotasks();
   assert.equal((observed.at(-1) as { sampledAt?: string })?.sampledAt, fresh.sampledAt,
     "the cancelled previous generation cannot overwrite resumed evidence");
 
   unsubscribe();
   assert.equal(rt.listeners.get("visibilitychange")?.size, 0);
+});
+
+test("stale or impossible successful responses clear live override without stopping polling", async () => {
+  const rt = createRuntime();
+  const seen: unknown[] = [];
+  const stop = rt.bridge.subscribe((value) => seen.push(value));
+  rt.fetches[0].settle(validProgress());
+  await settleMicrotasks();
+  assert.equal((seen.at(-1) as { available?: boolean })?.available, true);
+
+  rt.advance(5_000);
+  rt.fetches[1].settle(validProgress("2020-01-01T00:00:00.000Z"));
+  await settleMicrotasks();
+  assert.equal(seen.at(-1), null, "stale sample cannot remain a live override");
+
+  rt.advance(5_000);
+  rt.fetches[2].settle({ ...validProgress(), completedClasses: 5, totalClasses: 2 });
+  await settleMicrotasks();
+  assert.equal(seen.at(-1), null, "impossible class totals fail closed");
+  rt.advance(5_000);
+  rt.fetches[3].settle(validProgress());
+  await settleMicrotasks();
+  assert.equal((seen.at(-1) as { available?: boolean })?.available, true,
+    "future valid Recovery samples still work");
+  stop();
+});
+
+test("HTTP denial, malformed JSON and transport errors fail closed but recover", async () => {
+  const rt = createRuntime();
+  const observed: unknown[] = [];
+  const unsubscribe = rt.bridge.subscribe((value) => observed.push(value));
+  rt.fetches[0].settle(validProgress());
+  await settleMicrotasks();
+  assert.equal((observed.at(-1) as { available?: boolean })?.available, true);
+
+  rt.advance(5_000);
+  rt.fetches[1].settle({ error: "unavailable" }, false);
+  await settleMicrotasks();
+  assert.equal(observed.at(-1), null, "HTTP failures clear the live override");
+
+  rt.advance(5_000);
+  rt.fetches[2].invalidJson();
+  await settleMicrotasks();
+  assert.equal(observed.at(-1), null, "invalid JSON fails closed");
+
+  rt.advance(5_000);
+  rt.fetches[3].fail(new Error("network disconnected"));
+  await settleMicrotasks();
+  assert.equal(observed.at(-1), null, "network failures fail closed");
+
+  rt.advance(5_000);
+  rt.fetches[4].settle(validProgress("2026-10-20T18:05:20.000Z"));
+  await settleMicrotasks();
+  assert.equal((observed.at(-1) as { available?: boolean })?.available, true);
+  unsubscribe();
 });
 
 test("4s deadline aborts Recovery GET; failed response clears previous live override", async () => {
