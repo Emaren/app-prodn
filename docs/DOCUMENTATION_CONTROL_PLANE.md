@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261023-held-legacy-financial-entrypoint-fence` at `50bf33c0d8e937f0251eaacbab736b848252bc0a`
+Implementation baseline: `fix/20261023-held-legacy-financial-entrypoint-fence` at `59e0fba4e9766d9048657597606db32179c7a639`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
