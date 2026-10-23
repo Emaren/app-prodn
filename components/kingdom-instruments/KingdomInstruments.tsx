@@ -1,5 +1,6 @@
 "use client";
 
+import { validReportedInspectionReadiness } from "@/lib/kingdomInstrumentsInspectionValidity.mjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -117,11 +118,11 @@ function SensorCanvas({ inspection, intelligence }: {inspection:Reading;intellig
 }
 
 function TestsCanvas({ inspection, index }: {inspection:Reading;index:Reading}) {
-  const cats=arr(inspection.categories),pages=arr(index.pages),valid=inspection.schema===1;
+  const valid=validReportedInspectionReadiness(inspection),cats=valid?arr(inspection.categories):[],pages=arr(index.pages);
   return <div className={styles.stageStack}>
-    <div className={styles.testMatrix}>{cats.map((c,i)=><div className={styles.testLane} key={str(c.id)||i}><span>{String(i+1).padStart(2,"0")}</span><div><strong>{str(c.title)||"UNKNOWN"}</strong><small>{arr(c.checks).length} DECLARED CHECKS</small></div><div className={styles.testRail}><span style={{width:valid?(pct(c.score)||0)+"%":"0%"}}/></div><b>{valid?fmt(c.score)+"/100":"—"}</b><span className={styles.testState}>{str(c.state)?.toUpperCase()||"UNKNOWN"}</span></div>)}
-      {!cats.length&&<div className={styles.emptyGrid}>NO RECENT INSPECTION TEST EVIDENCE</div>}</div>
-    <div className={styles.testSummary}><div><small>KINGDOM INDEX ENTRIES</small><strong>{Array.isArray(index.pages)?fmt(pages.length):"—"}</strong></div><div><small>INSPECTION CHECKS</small><strong>{valid?fmt(cats.reduce((a,c)=>a+arr(c.checks).length,0)):"—"}</strong></div><div><small>OVERALL VERIFIED SCORE</small><strong>{valid?fmt(inspection.overallScore):"—"}</strong></div><Link href="/general-inspections">INSPECT PROOF <ChevronRight size={15}/></Link></div>
+    <div className={styles.testMatrix}>{cats.map((c,i)=><div className={styles.testLane} key={str(c.id)||i}><span>{String(i+1).padStart(2,"0")}</span><div><strong>{str(c.title)||"UNKNOWN"}</strong><small>{arr(c.checks).length} DECLARED INSPECTION CHECKS</small></div><div className={styles.testRail}><span style={{width:valid?(pct(c.score)||0)+"%":"0%"}}/></div><b title="Source-reported category readiness, not an independently verified test pass rate">{valid?fmt(c.score)+"/100":"—"}</b><span className={styles.testState}>{str(c.state)?.toUpperCase()||"UNKNOWN"}</span></div>)}
+      {!cats.length&&<div className={styles.emptyGrid}>NO SOURCE-REPORTED INSPECTION CATEGORIES</div>}</div>
+    <div className={styles.testSummary}><div><small>KINGDOM INDEX ENTRIES</small><strong>{Array.isArray(index.pages)?fmt(pages.length):"—"}</strong></div><div><small>DECLARED INSPECTION CHECKS</small><strong>{valid?fmt(cats.reduce((a,c)=>a+arr(c.checks).length,0)):"—"}</strong></div><div><small>OVERALL INSPECTION READINESS · SOURCE-REPORTED</small><strong title="Arithmetic mean of source-reported category readiness; not a certified engineering grade or test result">{valid?fmt(inspection.overallScore):"—"}</strong></div><Link href="/general-inspections">VIEW SOURCE INSPECTIONS <ChevronRight size={15}/></Link></div>
   </div>;
 }
 
