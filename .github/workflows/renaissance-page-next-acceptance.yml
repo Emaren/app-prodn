@@ -54,6 +54,8 @@ jobs:
       - name: Install frozen application and browser dependencies
         env:
           EXPECTED_CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          NODE_ENV: development
+          YARN_PRODUCTION: 'false'
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
@@ -61,6 +63,8 @@ jobs:
           mkdir -p renaissance-page-evidence
           corepack enable
           yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          test -f node_modules/dotenv/package.json
+          test -f node_modules/typescript/package.json
           python3 -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
           npx prisma generate
       - name: Direct Next compiler — candidate only, not release-equivalent
