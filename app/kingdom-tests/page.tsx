@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import KingdomInstruments from "@/components/kingdom-instruments/KingdomInstruments";
+import KingdomTestProofPanel from "@/components/kingdom-tests/KingdomTestProofPanel";
 
 export const metadata: Metadata = {
   title: "Kingdom Tests · AoE2WAR",
@@ -8,5 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default function KingdomTestsPage() {
-  return <KingdomInstruments kind="tests" />;
+  return <>
+    <KingdomTestProofPanel />
+    <KingdomInstruments kind="tests" />
+  </>;
 }

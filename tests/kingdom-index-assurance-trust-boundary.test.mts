@@ -49,7 +49,7 @@ test("untrusted certificate claims cannot make any route appear certified",()=>{
   }
   assert.equal(status({kind:"certified",versionAligned:true,stale:false}),"provisional");
   assert.equal(status({kind:"source-review",versionAligned:true,stale:false}),"provisional");
-  assert.equal(status({kind:"agent",versionAligned:true,stale:false}),"current");
+  assert.equal(status({kind:"agent",versionAligned:true,stale:false}),"provisional");
   assert.equal(status({kind:"certified",versionAligned:false,stale:false}),"drifted");
   assert.equal(status({kind:"certified",versionAligned:true,stale:true}),"stale");
   assert.equal(status({kind:null,versionAligned:true,stale:false}),"unmeasured");
@@ -68,7 +68,8 @@ test("live quality slot never recycles historical or asserted certified scores",
   assert.equal(publicObservedKingdomScore({status:"provisional",kind:"source-review",score:64}),null);
   assert.equal(publicObservedKingdomScore({status:"stale",kind:"agent",score:82}),null);
   assert.equal(publicObservedKingdomScore({status:"provisional",kind:"certified",score:100}),null);
-  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:72}),72);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:72}),null);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:99}),null);
   assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:100}),null);
   assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:NaN}),null);
 });
@@ -92,6 +93,14 @@ test("specialized gate requirements are rendered as explicitly unverified proof 
   assert.doesNotMatch(ui,/specializedAssurance\.gates\.filter\([^\n]*=>[^\n]*"verified"/);
 });
 
+test("no operator JSON can supply unverified runtime metrics or score history",()=>{
+ const src=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+ assert.match(src,/history:\[\]/);
+ assert.match(src,/loadMs:null/);
+ assert.match(src,/bytes:null/);
+ assert.doesNotMatch(src,/loadMs:typeof obs\?\.loadMs/);
+ assert.doesNotMatch(src,/bytes:typeof obs\?\.bytes/);
+});
 test("Kingdom Index labels its route-local source evidence as non-transitive",()=>{
   const src=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
   const ui=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");

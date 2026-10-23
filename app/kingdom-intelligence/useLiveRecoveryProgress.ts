@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   isOperatorPreviewOnlyPayload,
   isUsableLiveRecoveryPayload,
@@ -70,6 +70,31 @@ let generation = 0;
 let operatorPreviewOnly = false;
 const listeners = new Set<Listener>();
 
+// Presentation-only evidence state: never creates requests or source truth.
+export type RecoverySignalState =
+  | "awaiting_sample"
+  | "live"
+  | "unavailable"
+  | "paused"
+  | "operator_preview_only";
+let recoverySignalState: RecoverySignalState = "awaiting_sample";
+const signalListeners = new Set<() => void>();
+function publishSignalState(next: RecoverySignalState) {
+  if (next === recoverySignalState) return;
+  recoverySignalState = next;
+  for (const listener of signalListeners) listener();
+}
+function subscribeSignalState(listener: () => void) {
+  signalListeners.add(listener);
+  return () => { signalListeners.delete(listener); };
+}
+function getSignalState() { return recoverySignalState; }
+
+/** Same existing shared polling; an extra read-only presentation signal only. */
+export function useRecoverySignalState() {
+  return useSyncExternalStore(subscribeSignalState, getSignalState, () => "awaiting_sample");
+}
+
 function publish(value: LiveRecoveryProgress | null) {
   sharedValue = value;
   for (const listener of listeners) listener(value);
@@ -91,6 +116,7 @@ function cancelSharedPolling() {
   sharedController = null;
   sharedPollPromise = null;
   publish(null); // Never show a hidden/abandoned "live" sample as fresh.
+  publishSignalState(operatorPreviewOnly ? "operator_preview_only" : "paused");
 }
 
 async function pollSharedRecovery() {
@@ -100,6 +126,7 @@ async function pollSharedRecovery() {
   const requestGeneration = ++generation;
   const controller = new AbortController();
   sharedController = controller;
+  publishSignalState("awaiting_sample");
   const timeout = setTimeout(
     () => controller.abort(),
     LIVE_RECOVERY_REQUEST_TIMEOUT_MS,
@@ -125,14 +152,22 @@ async function pollSharedRecovery() {
       if (requestGeneration === generation && canPoll()) {
         if (isOperatorPreviewOnlyPayload(payload)) {
           operatorPreviewOnly = true; // Do not keep polling a disabled public-only API.
+          publishSignalState("operator_preview_only");
           publish(null);
-        } else {
+        } else if ((payload as LiveRecoveryProgress).available) {
+          publishSignalState("live");
           publish(payload as LiveRecoveryProgress);
+        } else {
+          publishSignalState("unavailable");
+          publish(null);
         }
       }
     } catch {
       // A failed or timed-out response must not keep a stale live override.
-      if (requestGeneration === generation && canPoll()) publish(null);
+      if (requestGeneration === generation && canPoll()) {
+        publishSignalState("unavailable");
+        publish(null);
+      }
     } finally {
       clearTimeout(timeout);
       if (requestGeneration === generation) {

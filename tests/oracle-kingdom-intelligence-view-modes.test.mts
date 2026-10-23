@@ -129,7 +129,9 @@ test("Kingdom Intelligence keeps Agent Constellation shell plain while rows cycl
   assert.match(intelligence, /<AgentConstellationPanel/);
   assert.match(panel, /const THEMES: ThemeKey\[\] = \["plain", "sapphire", "aurora"\]/);
   assert.match(panel, /data-agent-constellation-theme=\{theme\}/);
-  assert.match(panel, /cursor-pointer/);
+  assert.match(panel, /type="button" onClick=\{cycleTheme\}/);
+  assert.match(panel, /Change Agent constellation display theme/);
+  assert.doesNotMatch(panel, /role="button"/);
   assert.doesNotMatch(panel, /click to change/i);
   assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
 
@@ -160,7 +162,9 @@ test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two
   assert.match(intelligence, /<WarPulsePanel/);
   assert.match(panel, /const THEMES: ThemeKey\[\] = \["plain", "signal", "cosmic"\]/);
   assert.match(panel, /data-war-pulse-theme=\{theme\}/);
-  assert.match(panel, /cursor-pointer/);
+  assert.match(panel, /type="button" onClick=\{cycleTheme\}/);
+  assert.match(panel, /Change War Pulse display theme/);
+  assert.doesNotMatch(panel, /role="button"/);
   assert.doesNotMatch(panel, /click to change/i);
   assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
 
@@ -197,11 +201,13 @@ test("Kingdom Intelligence row cards drill into noob-friendly process detail wit
   const detail = source("app/kingdom-intelligence/ProcessDrilldown.tsx");
 
   assert.match(intelligence, /activeSince: agent\.activeSince/);
-  assert.match(agent, /event\.stopPropagation\(\)/);
+  assert.match(agent, /<button type="button" aria-expanded=\{expanded\}/);
+  assert.match(agent, /Show.*details/);
   assert.match(agent, /aria-expanded=\{expanded\}/);
   assert.match(agent, /<ProcessDrilldown/);
   assert.match(agent, /formatLiveRecoveryProgressLabel/);
-  assert.match(pulse, /event\.stopPropagation\(\)/);
+  assert.match(pulse, /<button type="button" aria-expanded=\{expanded\}/);
+  assert.match(pulse, /Show.*details/);
   assert.match(pulse, /aria-expanded=\{expanded\}/);
   assert.match(pulse, /<ProcessDrilldown/);
   assert.match(pulse, /formatLiveRecoveryProgressLabel/);
@@ -232,12 +238,20 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
   assert.match(hook, /formatLiveRecoveryProgressLabel/);
   assert.match(hook, /GiB/);
 
-  // A cold preview must never present the old coarse 4/5 = 80% as if it were
-  // the live byte-level result. It shows a syncing state until denominator-backed
-  // live telemetry arrives.
-  assert.match(pulse, /live signal syncing/);
+  // A cold preview must never present coarse historical class counts as a live
+  // byte-level result. The explicit unavailable/awaiting labels are distinct;
+  // snapshot values remain visibly sourced as historical progress.
+  assert.match(pulse, /Awaiting a current Recovery sample/);
+  assert.match(pulse, /Live Recovery preview unavailable/);
+  assert.match(pulse, /Current Recovery sample unavailable/);
+  assert.match(pulse, /Snapshot ·/);
+  assert.doesNotMatch(pulse, /live signal syncing/);
   assert.match(pulse, /denominatorSource !== "unavailable"/);
-  assert.match(agent, /live signal syncing/);
+  assert.match(agent, /Awaiting a current Recovery sample/);
+  assert.match(agent, /Live Recovery preview unavailable/);
+  assert.match(agent, /Current Recovery sample unavailable/);
+  assert.match(agent, /Snapshot ·/);
+  assert.doesNotMatch(agent, /live signal syncing/);
   assert.match(agent, /denominatorSource !== "unavailable"/);
   assert.match(agent, /trustworthySnapshotProgress/);
   assert.match(pulse, /trustworthySnapshotProgress/);

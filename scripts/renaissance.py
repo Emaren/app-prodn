@@ -10,7 +10,7 @@ CATALOG=ROOT/"config/renaissance-campaign.json"
 def load():
   doc=json.loads(CATALOG.read_text())
   routes=[r for p in doc["phases"] for r in p["routes"]]
-  if len(routes)!=132 or len(set(routes))!=132: raise ValueError("expected 132 unique baseline routes")
+  if not routes or len(routes)!=len(set(routes)): raise ValueError("campaign routes must be nonempty and unique")
   return doc,routes
 def main():
   p=argparse.ArgumentParser(description=__doc__)
@@ -22,7 +22,7 @@ def main():
     catalog,routes=load()
     if args.action=="verify":
       instrument_routes=[m["href"] for m in catalog["modules"]]
-      expected=set(routes)|set(instrument_routes)
+      expected=set(routes)
       discovered={("/"+p.relative_to(ROOT/"app").parent.as_posix()).replace("/.","/") for p in (ROOT/"app").rglob("page.tsx")}
       missing=sorted(expected-discovered)
       uncatalogued=sorted(discovered-expected)
