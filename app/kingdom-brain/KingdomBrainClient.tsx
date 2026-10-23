@@ -1,18 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Activity, ArrowUpRight, BrainCircuit, CircleHelp, Database, GitBranch, Network, RefreshCw, ShieldCheck } from "lucide-react";
 import atlas from "@/config/kingdom-brain-authorities.json";
 import styles from "./KingdomBrain.module.css";
+import {
+  BRAIN_REFRESH_INTERVAL_MS, BRAIN_REFRESH_TIMEOUT_MS, brainSettledResult, brainSourceTimeLabel,
+  createBrainRefreshCoordinator, isBrainSignalDisplayable, nextBrainSignalExpiryDelay, unavailableBrainSignal,
+  type BrainSignalObservation,
+} from "./brainSignalPolicy";
 
 type Node = (typeof atlas.nodes)[number];
-type IndexSignal = { schema?: number; generatedAt?: string; pages?: unknown[]; observed?: number; certified?: number; drifted?: number };
+type IndexSignal = { schema?: number; generatedAt?: string; source?: string; pages?: unknown[]; observed?: number; certified?: number; drifted?: number };
 type CensusSignal = { schema?: number; status?: string; source?: string; capturedAt?: string | null; buildVersion?: string | null; counts?: { totalPages?: number; apiHandlers?: number; publicStatic?: number; publicDynamic?: number; publicUtility?: number; admin?: number; sensitiveDynamic?: number } | null };
-type PatrolSignal = { schema?: number; registered?: number; assigned?: number; entries?: unknown[]; agentsRunning?: null; policyVersion?: string };
+type PatrolSignal = { schema?: number; generatedAt?: string; registered?: number; assigned?: number; entries?: unknown[]; agentsRunning?: null; policyVersion?: string };
 type AgentSignal = { schema?: number; observedAt?: string; releaseSha?: string | null; agents?: unknown[]; sources?: { intelligence?: boolean; inspections?: boolean; intelligenceStale?: boolean; releaseAlignment?: string } };
-type Signal<T> = { state: "unknown" | "current" | "unavailable"; data: T | null; receivedAt: number | null };
-const empty = <T,>(): Signal<T> => ({ state: "unknown", data: null, receivedAt: null });
+type Signal<T> = BrainSignalObservation<T>;
+const empty = <T,>(): Signal<T> => ({ ...unavailableBrainSignal(), state: "unverified", reason: "timestamp-unknown", data: null, receivedAt: null });
+type RefreshResults = [PromiseSettledResult<IndexSignal>, PromiseSettledResult<AgentSignal>, PromiseSettledResult<PatrolSignal>, PromiseSettledResult<CensusSignal>];
 const points: Record<string, [number, number]> = {
   git: [110, 100], release: [348, 62], identity: [104, 262], rating: [125, 474],
   replay: [348, 545], finance: [968, 500], satchel: [1000, 318],
@@ -41,48 +47,94 @@ export default function KingdomBrainClient() {
   const [census, setCensus] = useState<Signal<CensusSignal>>(empty);
   const [busy, setBusy] = useState(false);
   const [captureAt, setCaptureAt] = useState<string | null>(null);
-  const refresh = useCallback(async () => {
-    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 12000);
-    setBusy(true);
-    try {
-      const [a, b, c, d] = await Promise.allSettled([
-        read<IndexSignal>("/api/kingdom-index", value => value?.schema === 1 && Array.isArray(value.pages), controller.signal),
-        read<AgentSignal>("/api/kingdom-agents", value => value?.schema === 1 && Array.isArray(value.agents), controller.signal),
-        read<PatrolSignal>("/api/kingdom-patrol", value => value?.schema === 1 && Array.isArray(value.entries), controller.signal),
-        read<CensusSignal>("/api/kingdom-route-census", value => value?.schema === 1 && value.status === "verified" && typeof value.counts?.totalPages === "number", controller.signal),
-      ]);
-      const now = Date.now();
-      setIndex(a.status === "fulfilled" ? { state: "current", data: a.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
-      setAgents(b.status === "fulfilled" ? { state: "current", data: b.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
-      setPatrol(c.status === "fulfilled" ? { state: "current", data: c.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
-      setCensus(d.status === "fulfilled" ? { state: "current", data: d.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
-      setCaptureAt([a,b,c,d].some(result => result.status === "fulfilled") ? new Date(now).toISOString() : null);
-    } finally {
-      window.clearTimeout(timeout);
-      setBusy(false);
-    }
-  }, []);
+  const [clockMs, setClockMs] = useState(0);
+  const coordinatorRef = useRef<{ refresh(): Promise<void>; cancel(): void; dispose(): void } | null>(null);
 
   useEffect(() => {
-    void refresh();
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
-    document.addEventListener("visibilitychange", onVisible);
-    const interval = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 120000);
-    return () => { document.removeEventListener("visibilitychange", onVisible); window.clearInterval(interval); };
-  }, [refresh]);
+    const coordinator = createBrainRefreshCoordinator<RefreshResults>({
+      load: async signal => {
+        // Exactly four read-only requests, one bounded refresh generation.
+        // The coordinator owns cancellation; a separate timeout controller is
+        // needed to abort fetches without issuing another page generation.
+        const timerController = new AbortController();
+        const abortTimer = () => timerController.abort();
+        signal.addEventListener("abort", abortTimer, { once: true });
+        const watchdog = window.setTimeout(abortTimer, BRAIN_REFRESH_TIMEOUT_MS);
+        try {
+          return await Promise.allSettled([
+            read<IndexSignal>("/api/kingdom-index", value => value?.schema === 1 && Array.isArray(value.pages), timerController.signal),
+            read<AgentSignal>("/api/kingdom-agents", value => value?.schema === 1 && Array.isArray(value.agents), timerController.signal),
+            read<PatrolSignal>("/api/kingdom-patrol", value => value?.schema === 1 && Array.isArray(value.entries), timerController.signal),
+            read<CensusSignal>("/api/kingdom-route-census", value => value?.schema === 1 && value.status === "verified" && typeof value.counts?.totalPages === "number", timerController.signal),
+          ]) as RefreshResults;
+        } finally {
+          window.clearTimeout(watchdog);
+          signal.removeEventListener("abort", abortTimer);
+        }
+      },
+      publish: ([a, b, c, d]) => {
+        const now = Date.now();
+        const next = [
+          brainSettledResult("index", a, now), brainSettledResult("agents", b, now),
+          brainSettledResult("patrol", c, now), brainSettledResult("census", d, now),
+        ] as const;
+        setIndex(next[0]); setAgents(next[1]); setPatrol(next[2]); setCensus(next[3]);
+        setClockMs(now);
+        setCaptureAt(next.some(item => isBrainSignalDisplayable(item, now)) ? new Date(now).toISOString() : null);
+      },
+      setBusy,
+      failed: () => {
+        setIndex({ ...unavailableBrainSignal(), data: null, receivedAt: Date.now() });
+        setAgents({ ...unavailableBrainSignal(), data: null, receivedAt: Date.now() });
+        setPatrol({ ...unavailableBrainSignal(), data: null, receivedAt: Date.now() });
+        setCensus({ ...unavailableBrainSignal(), data: null, receivedAt: Date.now() });
+        setCaptureAt(null);
+      },
+    });
+    coordinatorRef.current = coordinator;
+    if (document.visibilityState === "visible") void coordinator.refresh();
+    const onVisibility = () => {
+      setClockMs(Date.now());
+      if (document.visibilityState === "visible") void coordinator.refresh();
+      else coordinator.cancel();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    const interval = window.setInterval(() => {
+      setClockMs(Date.now());
+      if (document.visibilityState === "visible") void coordinator.refresh();
+    }, BRAIN_REFRESH_INTERVAL_MS);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(interval);
+      coordinator.dispose();
+      if (coordinatorRef.current === coordinator) coordinatorRef.current = null;
+    };
+  }, []);
+
+  // The existing 120-second interval performs network refreshes. This separate
+  // one-shot deadline only clears aging local evidence at its exact expiry.
+  // No additional fetch, collector or recurring poll is introduced.
+  useEffect(() => {
+    const signals = [index, agents, patrol, census];
+    const delay = nextBrainSignalExpiryDelay(signals, clockMs, Date.now());
+    if (delay === null) return;
+    const timer = window.setTimeout(() => setClockMs(Date.now()), delay);
+    return () => window.clearTimeout(timer);
+  }, [index, agents, patrol, census, clockMs]);
 
   const chosen: Node = useMemo(() => atlas.nodes.find(node => node.id === selected) ?? atlas.nodes[0], [selected]);
   const incoming = atlas.edges.filter(edge => edge.to === selected);
   const outgoing = atlas.edges.filter(edge => edge.from === selected);
   const connected = new Set([...incoming.map(edge => edge.from), ...outgoing.map(edge => edge.to), selected]);
-  const indexKnown = index.state === "current" && index.data;
-  const agentsKnown = agents.state === "current" && agents.data;
-  const patrolKnown = patrol.state === "current" && patrol.data;
-  const censusKnown = census.state === "current" && census.data;
-  const agentCurrent = agentsKnown && agentsKnown.sources?.releaseAlignment === "aligned" && !agentsKnown.sources?.intelligenceStale;
-  const sourceStatus = !agentsKnown ? "UNKNOWN" : agentCurrent ? "ALIGNED" : "UNVERIFIED";
+  // Fresh transport alone never makes a domain authoritative or healthy.
+  const indexKnown = isBrainSignalDisplayable(index, clockMs) ? index.data : null;
+  const agentsKnown = isBrainSignalDisplayable(agents, clockMs) ? agents.data : null;
+  const patrolKnown = isBrainSignalDisplayable(patrol, clockMs) ? patrol.data : null;
+  const censusKnown = isBrainSignalDisplayable(census, clockMs) ? census.data : null;
+  const sourceStatus = agentsKnown?.sources?.releaseAlignment === "aligned" ? "AGENTS ALIGNED" : "UNVERIFIED";
+  const signalRows = [
+    ["INDEX", index], ["AGENTS", agents], ["PATROL", patrol], ["CENSUS", census],
+  ] as const;
 
   return (
     <main className={styles.page}>
@@ -96,8 +148,8 @@ export default function KingdomBrainClient() {
               <div className={styles.subline}><span>AUTHORITY</span><i/><span>PROVENANCE</span><i/><span>DEPENDENCIES</span></div>
             </div>
             <div className={styles.headerActions}>
-              <div className={styles.signal}><span className={styles.signalDot}/> {sourceStatus}<small>RELEASE ALIGNMENT</small></div>
-              <button type="button" className={styles.refresh} onClick={() => void refresh()} disabled={busy} aria-label="Refresh authority signals"><RefreshCw size={17} className={busy ? styles.spin : ""} /></button>
+              <div className={styles.signal}><span className={styles.signalDot}/> {sourceStatus}<small>AGENTS SOURCE ONLY · NOT GLOBAL HEALTH</small></div>
+              <button type="button" className={styles.refresh} onClick={() => void coordinatorRef.current?.refresh()} disabled={busy} aria-label="Refresh authority signals"><RefreshCw size={17} className={busy ? styles.spin : ""} /></button>
             </div>
           </div>
         </header>
@@ -106,10 +158,22 @@ export default function KingdomBrainClient() {
           <div className={styles.meter}><GitBranch size={17}/><strong>{safeCount(censusKnown ? censusKnown.counts?.totalPages : null)}</strong><span>DEPLOYED PAGE TEMPLATES</span></div>
           <div className={styles.meter}><Database size={17}/><strong>{safeCount(censusKnown ? censusKnown.counts?.apiHandlers : null)}</strong><span>DEPLOYED API HANDLERS</span></div>
           <div className={styles.meter}><GitBranch size={17}/><strong>{safeCount(indexKnown ? index.data?.pages?.length : null)}</strong><span>INDEX ROUTES</span></div>
-          <div className={styles.meter}><ShieldCheck size={17}/><strong>{safeCount(indexKnown ? index.data?.certified : null)}</strong><span>CERTIFIED</span></div>
+          <div className={styles.meter}><ShieldCheck size={17}/><strong>{safeCount(indexKnown ? index.data?.certified : null)}</strong><span>INDEX-REPORTED CERTIFIED</span></div>
           <div className={styles.meter}><Network size={17}/><strong>{safeCount(patrolKnown ? patrolKnown.assigned : null)}/{safeCount(patrolKnown ? patrolKnown.registered : null)}</strong><span>POLICY ASSIGNMENTS</span></div>
           <div className={styles.meter}><Network size={17}/><strong>{safeCount(agentsKnown ? agentsKnown.agents?.length : null)}</strong><span>OBSERVED WATCHPOSTS</span></div>
-          <div className={styles.meter}><Activity size={17}/><strong>{captureAt ? time(captureAt) : "—"}</strong><span>LAST SIGNAL RECEIVED</span></div>
+          <div className={styles.meter}><Activity size={17}/><strong>{captureAt ? time(captureAt) : "—"}</strong><span>LAST FRESH SIGNAL RECEIVED</span></div>
+        </section>
+
+        <section className={styles.routeRail} aria-label="Source-specific signal status; graph connections remain declared, not proven healthy" aria-live="polite">
+          {signalRows.map(([name, signal]) => (
+            <div className={styles.routeClass} key={name}>
+              <small>{name}</small>
+              <strong style={{ fontSize: 11 }}>{isBrainSignalDisplayable(signal, clockMs) ? signal.state.toUpperCase() : signal.state === "observed" || signal.state === "policy-only" ? "STALE" : signal.state.toUpperCase()}</strong>
+              <small title={signal.reason}>{signal.reason.toUpperCase().replaceAll("-", " ")}</small>
+              <small title={signal.sourceAt ?? "Source observation timestamp unavailable"} aria-label={signal.sourceAt ? "Source observation at " + signal.sourceAt : "Source observation timestamp unavailable"}>{brainSourceTimeLabel(signal.sourceAt)}</small>
+            </div>
+          ))}
+          <span className={styles.railSource}>OBSERVATION ≠ CERTIFICATION · POLICY ≠ LIVE PATROL</span>
         </section>
 
         <section className={styles.routeRail} aria-label="Deployed route class inventory">
@@ -128,7 +192,7 @@ export default function KingdomBrainClient() {
         </section>
 
         <section className={styles.stage} aria-label="Interactive authority graph">
-          <div className={styles.stageHeader}><span><BrainCircuit size={15}/> THE SOURCE CONSTELLATION</span><span>{atlas.nodes.length} DOMAINS · {atlas.edges.length} DECLARED FLOWS</span></div>
+          <div className={styles.stageHeader}><span><BrainCircuit size={15}/> THE SOURCE CONSTELLATION</span><span>{atlas.nodes.length} DOMAINS · {atlas.edges.length} DECLARED FLOWS · NOT HEALTH SIGNALS</span></div>
           <div className={styles.scroll}>
             <div className={styles.graph}>
               <div className={styles.orbitOne} /><div className={styles.orbitTwo} /><div className={styles.crosshair}/>
