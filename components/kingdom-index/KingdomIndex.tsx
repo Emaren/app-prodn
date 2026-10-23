@@ -102,17 +102,17 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
     <Link href={item.href} className={styles.detailLink}>ENTER PAGE <ArrowUpRight size={15}/></Link>
   </section>;
 }
-function PageNode({ item, onFocus, active }: {item:KingdomIndexEntry;onFocus:(href:string)=>void;active:boolean}) {
+function PageNode({ item, onFocus, active }: {item:KingdomIndexEntry;onFocus:(href:string,trigger:HTMLButtonElement)=>void;active:boolean}) {
   return <article className={styles.node} data-status={item.status} data-selected={active||undefined}>
     <div className={styles.nodeTop}><span className={styles.signal} aria-hidden="true"/><span className={styles.nodeStatus} title={statusTitle(item)}>{item.status==="current"?"●":item.status==="provisional"?"◒":item.status==="drifted"||item.status==="stale"?"◇":"·"}</span></div>
-    <button type="button" className={styles.nodeFocus} onClick={()=>onFocus(item.href)} aria-label={`Inspect ${item.label}`}>
+    <button type="button" className={styles.nodeFocus} onClick={event=>onFocus(item.href,event.currentTarget)} aria-label={`Inspect ${item.label}`}>
       <Score entry={item} small/>
     </button>
     <Link href={item.href} className={styles.nodeName} title={item.label}>{item.label}<ArrowUpRight size={12}/></Link>
     <span className={styles.nodePath} title={item.href}>{item.href}</span>
   </article>;
 }
-function DistrictSection({ region, pages, selected, focus }: {region:(typeof REGIONS)[number];pages:KingdomIndexEntry[];selected:string|null;focus:(href:string)=>void}) {
+function DistrictSection({ region, pages, selected, focus }: {region:(typeof REGIONS)[number];pages:KingdomIndexEntry[];selected:string|null;focus:(href:string,trigger:HTMLButtonElement)=>void}) {
   return <section className={styles.district} data-region={region.id} aria-label={region.name}>
     <div className={styles.districtCircuit} aria-hidden="true"/>
     <header className={styles.districtHeader}>
@@ -132,6 +132,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
   const [expanded,setExpanded]=useState<string|null>(null);
   const [connectionLost,setConnectionLost]=useState(false);
   const latestRefreshId=useRef(0);
+  const detailTriggerRef=useRef<HTMLButtonElement|null>(null);
   const refresh=useCallback(async (signal?:AbortSignal)=>{
     const requestId=++latestRefreshId.current;
     try{
@@ -156,7 +157,17 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
   const byRegion=useMemo(()=>new Map(REGIONS.map(r=>[r.id,snapshot.pages.filter(page=>page.district===r.id)])),[snapshot.pages]);
   const focused=snapshot.pages.find(page=>page.href===selected)??null;
   const rows=useMemo(()=>snapshot.pages.slice().sort((a,b)=>REGIONS.findIndex(r=>r.id===a.district)-REGIONS.findIndex(r=>r.id===b.district)||a.label.localeCompare(b.label)),[snapshot.pages]);
-  const focus=(href:string)=>{setSelected(prev=>prev===href?null:href);};
+  const focus=(href:string,trigger:HTMLButtonElement)=>{
+    detailTriggerRef.current=trigger;
+    setSelected(prev=>prev===href?null:href);
+  };
+  const closeDetail=()=>{
+    // Return keyboard focus before unmounting the Close details button.
+    // The originating native button remains connected in either display mode.
+    detailTriggerRef.current?.focus();
+    setSelected(null);
+    setExpanded(null);
+  };
   return <main className={styles.root}>
     <SpeedReadyMarker route="/kingdom-index"/>
     <div className={styles.ambient} aria-hidden="true"/>
@@ -194,12 +205,12 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
             <Score entry={item}/>
             <Sparkline points={item.history} score={item.score} compact/>
             <div className={styles.ledgerTime} title={formatStamp(item.checkedAt)}><Clock3 size={12}/>{item.checkedAt?new Date(item.checkedAt).toISOString().slice(0,10):"—"}</div>
-            <button className={styles.expandButton} type="button" aria-expanded={expanded===item.href} aria-label={`Details for ${item.label}`} onClick={()=>setExpanded(v=>v===item.href?null:item.href)}><ChevronDown size={18}/></button>
+            <button className={styles.expandButton} type="button" aria-expanded={expanded===item.href} aria-label={`Details for ${item.label}`} onClick={event=>{detailTriggerRef.current=event.currentTarget;setExpanded(v=>v===item.href?null:item.href);}}><ChevronDown size={18}/></button>
           </div>
-          {expanded===item.href&&<PageDetail item={item} close={()=>setExpanded(null)}/>}
+          {expanded===item.href&&<PageDetail item={item} close={closeDetail}/>}
         </div>)}
       </section>}
-      {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={()=>setSelected(null)}/></div>}
+      {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={closeDetail}/></div>}
       <section className={styles.companionSection} aria-label="Companion applications engineering index">
         <header className={styles.companionHeader}>
           <div><span className={styles.eyebrow}>EXTERNAL SYSTEMS / DESKTOP</span><h2>COMPANION APPLICATIONS</h2></div>
