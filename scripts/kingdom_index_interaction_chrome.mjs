@@ -15,6 +15,14 @@ const pct=(arr,q)=>{
  const b=[...arr].sort((a,c)=>a-c),at=(b.length-1)*q,lo=Math.floor(at),hi=Math.ceil(at);
  return Math.round((b[lo]+(b[hi]-b[lo])*(at-lo))*1000)/1000;
 };
+// CDP rawKeyDown without text produces keydown+keyup but no keypress/click
+// for native HTML buttons in Chromium. Enter must include its character text
+// on keyDown to exercise actual browser activation semantics.
+export function chromeEnterKeyEvents(){
+ const common={key:"Enter",code:"Enter",windowsVirtualKeyCode:13,nativeVirtualKeyCode:13};
+ return [{...common,type:"keyDown",text:"\r"},
+         {...common,type:"keyUp"}];
+}
 export function inspectInteractionReceipt(doc,{sourceSha,buildId}){
  if(!/^[a-f0-9]{40}$/.test(sourceSha)||typeof buildId!=="string"||
     doc?.kind!=="aoe2war.kingdom-index.real-interaction.v1"||
@@ -103,9 +111,8 @@ async function capture(chrome,viewport,screenshotsDir){
    return result.result?.value;
   };
   const key=async (name,number)=>{
-   for(const type of ["rawKeyDown","keyUp"])await command("Input.dispatchKeyEvent",{
-    type,key:name,code:name,windowsVirtualKeyCode:number,nativeVirtualKeyCode:number
-   });
+   if(name!=="Enter"||number!==13)stop("Only tested native Enter activation supported");
+   for(const event of chromeEnterKeyEvents())await command("Input.dispatchKeyEvent",event);
    await sleep(250);
   };
   const initialStatus=await navigate();await sleep(500);
