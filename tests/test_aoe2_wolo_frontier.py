@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import importlib.util
+import hashlib
 import io
 from pathlib import Path
 import subprocess
@@ -29,10 +30,22 @@ class WoloFrontierTests(unittest.TestCase):
                 calls.append((argv, kwargs))
                 return subprocess.CompletedProcess(argv, 0, stdout=PINN, stderr=b"")
 
-            data = router.reviewed_cockpit(repo, run=mock_run)
+            with patch.object(router, "EXPECTED_COCKPIT_SHA256", hashlib.sha256(PINNED).hexdigest()):
+                data = router.reviewed_cockpit(repo, run=mock_run)
             self.assertEqual(data, PINNED)
+            self.assertIn("--no-replace-objects", calls[0][0])
             self.assertEqual(calls[0][0][-1], router.REVIEWED_OPS_COMMIT + ":" + router.COCKPIT_PATH)
             self.assertNotIn("shell", calls[0][1])
+
+    def test_correct_shape_with_wrong_sha256_is_not_executed_as_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "wolo"
+            repo.mkdir()
+            def poisoned_source(argv, **kwargs):
+                return subprocess.CompletedProcess(argv, 0, stdout=PINNED, stderr=b"")
+            # Git objects are not financial trust roots. Even a header-compliant
+            # payload must match the exact externally reviewed full SHA-256.
+            self.assertIsNone(router.reviewed_cockpit(repo, run=poisoned_source))
 
     def test_source_missing_or_invalid_fails_without_ssh(self):
         with tempfile.TemporaryDirectory() as tmp:
