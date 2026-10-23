@@ -339,6 +339,7 @@ async def case(browser, args, mode, width, output):
                     break
                 await page.wait_for_timeout(100)
             check("controlled_visible_single_fresh_resume", counts["recovery"] == before_resume + 1)
+            await agent.get_by_text("1/2 classes", exact=False).first.wait_for(timeout=4000)
             check("controlled_fresh_sample_restored",
                   "1/2 classes" in (await agent.inner_text()).casefold())
             result["visibility_evidence"]["native_os_suspension_certified"] = False
