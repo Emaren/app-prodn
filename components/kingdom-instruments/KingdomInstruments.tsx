@@ -1,3 +1,4 @@
+import { validReportedInspectionReadiness } from "@/lib/kingdomInstrumentsInspectionValidity.mjs";
 "use client";
 
 import Link from "next/link";
@@ -117,7 +118,7 @@ function SensorCanvas({ inspection, intelligence }: {inspection:Reading;intellig
 }
 
 function TestsCanvas({ inspection, index }: {inspection:Reading;index:Reading}) {
-  const cats=arr(inspection.categories),pages=arr(index.pages),valid=inspection.schema===1&&Array.isArray(inspection.categories);
+  const valid=validReportedInspectionReadiness(inspection),cats=valid?arr(inspection.categories):[],pages=arr(index.pages);
   return <div className={styles.stageStack}>
     <div className={styles.testMatrix}>{cats.map((c,i)=><div className={styles.testLane} key={str(c.id)||i}><span>{String(i+1).padStart(2,"0")}</span><div><strong>{str(c.title)||"UNKNOWN"}</strong><small>{arr(c.checks).length} DECLARED INSPECTION CHECKS</small></div><div className={styles.testRail}><span style={{width:valid?(pct(c.score)||0)+"%":"0%"}}/></div><b title="Source-reported category readiness, not an independently verified test pass rate">{valid?fmt(c.score)+"/100":"—"}</b><span className={styles.testState}>{str(c.state)?.toUpperCase()||"UNKNOWN"}</span></div>)}
       {!cats.length&&<div className={styles.emptyGrid}>NO SOURCE-REPORTED INSPECTION CATEGORIES</div>}</div>
