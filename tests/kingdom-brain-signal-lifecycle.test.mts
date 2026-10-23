@@ -264,3 +264,20 @@ test("real Next heading selector ignores multiple similarly named navigation hea
   assert.match(runner, /"exact_brain_heading_unique_despite_navigation"/);
   assert.doesNotMatch(mount, /\.first\b|\.nth\(/);
 });
+
+test("real Next fixture visibility is explicitly simulated; external GETs are recorded, not silently waived", () => {
+  const runner = readFileSync(
+    new URL("./kingdom-brain-next-app-acceptance.py", import.meta.url), "utf8",
+  );
+  assert.match(runner, /set_fixture_visibility\(page, "hidden"\)/);
+  assert.match(runner, /set_fixture_visibility\(page, "visible"\)/);
+  assert.match(runner, /CONTROLLED_PAGE_VISIBILITY_API_EVENT_NOT_NATIVE_TAB/);
+  assert.match(runner, /document\.dispatchEvent\(new Event\('visibilitychange'\)\)/);
+  assert.doesNotMatch(runner, /spare\.bring_to_front\(\)/);
+  assert.match(runner, /"no_hidden_refresh"/);
+  assert.match(runner, /"blockedDetails"/);
+  assert.match(runner, /"blockedExternalReadOnly"/);
+  assert.match(runner, /"blockedMutations"/);
+  assert.match(runner, /"no_mutating_http_requests"/);
+  assert.doesNotMatch(runner, /"no_blocked_external_or_mutation"/);
+});
