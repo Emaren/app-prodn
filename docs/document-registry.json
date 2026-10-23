@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "13518e6e071d2e5bb6e915a59c5e6e663c14a4f35d137ad24ac5a7a402a73ef0",
+      "sha256": "e487f12923d291d453d00d27bf6b13307359caec7158e51ffbc5323ce50aaab3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1194,9 +1194,9 @@
       "owner": "aoe2war-web",
       "path": "docs/OPERATOR_START_HERE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-10-23",
       "sensitivity": "internal",
-      "sha256": "2d9589b7c05e71eb9fdc9638ad6abd010de1615caa01e66fd9126deaf6c5bab2",
+      "sha256": "b3b0da47350ae5152b0d18a083c5115e0131e9c83f77b62135d99eed9b030489",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/exact-head-ci-dispatch-20261022",
-    "commit": "aba29056b128f89273f318bc01a49450aab91b49"
+    "branch": "ops/20261023-wolo-brief-router",
+    "commit": "7d43c59dbcea08d8f2d1d510d84f96e477f4cc63"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
