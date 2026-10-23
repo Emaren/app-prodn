@@ -276,6 +276,7 @@ jobs:
             --source-sha "$EXPECTED_CANDIDATE_SHA" \
             --build-id "$BUILD_ID" \
             --chrome "$CHROME" \
+            --screenshots-dir kingdom-index-build-evidence \
             > kingdom-index-build-evidence/interaction-chrome.json
           echo "Real built Next loopback API + two real Chrome cohorts captured; candidate ONLY." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload inspectable build evidence (not a release receipt)
@@ -285,6 +286,7 @@ jobs:
           name: kingdom-index-emitted-observation-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             kingdom-index-build-evidence/*.json
+            kingdom-index-build-evidence/interaction-*.png
             kingdom-index-build-evidence/chrome-desktop/*.json
             kingdom-index-build-evidence/chrome-phone/*.json
           if-no-files-found: ignore
