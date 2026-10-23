@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectInteractionReceipt} from "../scripts/kingdom_index_interaction_chrome.mjs";
+import {inspectInteractionReceipt,chromeEnterKeyEvents} from "../scripts/kingdom_index_interaction_chrome.mjs";
 const sourceSha="a".repeat(40),buildId="next-exact-build-123";
 const expected={sourceSha,buildId};
 function fixture(){
@@ -66,4 +66,18 @@ test("an unopened detail remains a failed close transition, not successful acces
  const result=inspectInteractionReceipt(doc,expected);
  assert.equal(result.keyboardInteractionsObserved,false);
  assert.equal(result.certified,false);
+});
+
+test("CDP Enter sequence synthesizes a native button click, never a rawKeyDown no-op",()=>{
+ const events=chromeEnterKeyEvents();
+ assert.equal(events.length,2);
+ assert.equal(events[0].type,"keyDown");
+ assert.equal(events[0].key,"Enter");
+ assert.equal(events[0].code,"Enter");
+ assert.equal(events[0].text,"\\r");
+ assert.equal(events[0].windowsVirtualKeyCode,13);
+ assert.equal(events[0].nativeVirtualKeyCode,13);
+ assert.equal(events[1].type,"keyUp");
+ assert.equal(events[1].text,undefined);
+ assert.ok(!events.some(event=>event.type==="rawKeyDown"));
 });
