@@ -125,6 +125,19 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_CANDIDATE_SHA"
           test -z "$(git status --porcelain --untracked-files=no)"
           echo "Verified integrated candidate-only browser path. No scored criterion, DocsV2 waiver or website release authorization." >> "$GITHUB_STEP_SUMMARY"
+      - name: Summarize exact-source Chrome evidence without changing browser verdict
+        if: always()
+        env:
+          RENAISSANCE_PAGE: ${{ matrix.page }}
+        run: |
+          set -euo pipefail
+          python3 -m unittest discover -s tests -p 'test_renaissance_ci_evidence_digest.py' -q
+          python3 scripts/renaissance_ci_evidence_digest.py \
+            --page "$RENAISSANCE_PAGE" \
+            --evidence-dir renaissance-integrated-evidence \
+            --expected-sha "$EXPECTED_CANDIDATE_SHA" \
+            --json-out renaissance-integrated-evidence/diagnostic-summary.json \
+            --summary-file "$GITHUB_STEP_SUMMARY"
       - name: Upload raw source/BUILD_ID/browser evidence on success or failure
         if: always()
         uses: actions/upload-artifact@v4
