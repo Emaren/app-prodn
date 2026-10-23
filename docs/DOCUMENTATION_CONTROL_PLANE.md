@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/kingdom-index-provisional-review-scores-20261023` at `b99497e804e89478e93112c6ed66e39ceae56c95`
+Implementation baseline: `integration/20261023-main-satchel-fence-held` at `8518e1a32de77c53bb3146d45dd1f625a605bf52`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "87e0728684e2cb67f4fa195ebd9e15763064594d5ab064c86cb856980de94145",
+      "sha256": "dc655759fdd0cf8b24aab277b7fb6d20b17126663e08c7737f5d0371442b0b87",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/kingdom-index-provisional-review-scores-20261023",
-    "commit": "b99497e804e89478e93112c6ed66e39ceae56c95"
+    "branch": "integration/20261023-main-satchel-fence-held",
+    "commit": "8518e1a32de77c53bb3146d45dd1f625a605bf52"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
