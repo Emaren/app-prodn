@@ -115,6 +115,7 @@ ROUTE_AUTHORITY="$BIN_DIR/../scripts/aoe2_route_authority.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 DEPENDENCY_SECURITY="$BIN_DIR/../scripts/check_dependency_security.py"
 RENAISSANCE_OS="$BIN_DIR/../scripts/renaissance.py"
+WOLO_FRONTIER="$BIN_DIR/../scripts/aoe2_wolo_frontier.py"
 
 usage() {
   cat <<'EOF'
@@ -144,6 +145,7 @@ Usage:
   aoe2war truth native-control <prepare|run|verify> --run-id LABEL [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war renaissance <verify|map|next|doctor|impact> [ROUTE_OR_PATH] [--json]
+  aoe2war wolo brief     # read-only VPS financial frontier, always HOLD
   aoe2war deps
   aoe2war deps-security [--json]
   aoe2war host <status|tidy|maintenance-plan> [options]
@@ -612,6 +614,10 @@ case "$command" in
   renaissance)
     shift
     exec "$AOE2WAR_PYTHON" "$RENAISSANCE_OS" "$@"
+    ;;
+  wolo)
+    shift
+    exec "$AOE2WAR_PYTHON" "$WOLO_FRONTIER" "$@"
     ;;
   inspections)
     shift

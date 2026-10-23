@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-10-23"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -19,6 +19,45 @@ sensitivity: "internal"
 
 For the Traffic Observatory country-ranking change, preserve the ordinary authority order: inspect live `aoe2war status`, pin the exact reviewed source, pass the documentation/gate/manifest checks, stage without changing the current runtime, obtain a new one-time artifact-specific owner approval if standing website-only financial isolation remains unresolved, then activate solely through the protected controller and independently verify public build parity and Wolo listener continuity. Never reuse the already consumed `3f1f2680` authorization. The separate Traffic API change requires its own service-specific preflight and proof; no legacy public audience timer or unverified October 20/21 public publication is implied.
 
+
+## WoloChain mainnet release frontier — Mac-to-VPS, read-only
+
+From the AoE2WAR Mac operator CLI, including while the current directory is
+`app-prodn`:
+
+```bash
+aoe2war wolo brief
+```
+
+This command uses the existing authenticated SSH host `root@hel1` in
+**batch mode** and transmits the **pinned CI-reviewed cockpit source** from
+WoloChain operational commit
+`98f781d61fa6b35d2cc09b48f84605a617efc2c4` as Python standard
+input. It does not require a Wolo checkout change or place the cockpit
+script into the protected production Wolo checkout. It has no command to
+restart systemd, move WOLO, update PostgreSQL, deploy source, attest a
+historical payment, authorize a financial release, or resume producers.
+
+Only `brief` is accepted. The local sibling Wolo Git repository must
+already contain the exact reviewed commit; if not, the router refuses
+without contacting the VPS. Fetch it through the existing source
+management workflow without overwriting Codex's dirty working trees.
+
+The cockpit always prints `FINANCIAL_HARD_HOLD` and deliberately
+returns code **3** for a completed **read-only observation**. Code 3 is
+**not** deployment failure, financial permission or proof of solvency.
+Transport errors and unreviewed/ambiguous output fail closed with code
+4 and no finance release. The six gate labels remain source-reported,
+not independently witnessed. Unprovided private reviewer and gate
+indexes remain `UNVERIFIED`. To carry out a real financial cutover,
+use the separate, witnessed six-control release authority; this
+shortcut cannot grant it.
+
+Do not run the VPS cockpit as `python3 scripts/mainnet-release-cockpit.py`
+from `app-prodn`; that relative path does not exist here. Running
+Wolo's Python file directly on macOS also cannot inspect VPS
+systemd services. This router solves both context mistakes without
+mutating production.
 
 ## Purpose
 
