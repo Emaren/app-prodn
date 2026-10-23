@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7d33a55351a0275e725a55918cf908e6801323756a989ec7ad707e4b2e313b7a",
+      "sha256": "41b33c62d516798bc145b13402bc319fcb7a2081c769ea30dd76789ebbff5ce3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/final-satchel-qualification",
-    "commit": "e95f03286021220c71646be0c2c45f7bb4c38f4e"
+    "commit": "3bfa581468319b8de421fb25baacb5897b390201"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
