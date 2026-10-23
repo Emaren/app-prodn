@@ -309,6 +309,23 @@ async def lifecycle_race_case(browser,args):
     started=asyncio.Event();release_old=asyncio.Event()
     third_started=asyncio.Event();release_third=asyncio.Event()
     number=[0];errors=[];page.on("pageerror",lambda e:errors.append(str(e)[:250]))
+    # Attribute request events and fixture callbacks to the active page.
+    # The destination Index page can legitimately fetch the same public APIs.
+    # Recording only method/path/frame/phase avoids exposing user identifiers.
+    phase=["brain_before_navigation"]
+    request_trace=[]
+    def observe(kind, request, ordinal=None):
+        path=urlparse(request.url).path
+        if path not in ENDPOINTS:return
+        try:
+            frame_path=urlparse(request.frame.url).path
+        except Exception:
+            frame_path="FRAME_UNAVAILABLE"
+        if len(request_trace)<32:
+            request_trace.append({"kind":kind,"path":path,"method":request.method,
+                                  "phase":phase[0],"frame_path":frame_path,
+                                  "index_ordinal":ordinal if path==ENDPOINTS[0] else None})
+    page.on("request",lambda request:observe("request",request))
     source=fixtures(datetime.now(timezone.utc))
     old=fixtures(datetime.now(timezone.utc),index_age_ms=360_000)["index"]
     async def serve(route):
@@ -316,12 +333,15 @@ async def lifecycle_race_case(browser,args):
         if key=="index":
             number[0]+=1
             i=number[0]
+            observe("fixture_handler",route.request,i)
             if i==1:
                 started.set();await release_old.wait()
             if i==3:
                 third_started.set();await release_third.wait()
             payload=old if i==1 else source["index"]
-        else:payload=source[key]
+        else:
+            observe("fixture_handler",route.request)
+            payload=source[key]
         try:
             await route.fulfill(status=200,content_type="application/json",
                                 body=json.dumps(payload,separators=(",",":")))
@@ -352,19 +372,38 @@ async def lifecycle_race_case(browser,args):
         refresh=page.get_by_role("button",name="Refresh authority signals")
         await refresh.click(timeout=12000)
         await asyncio.wait_for(third_started.wait(),timeout=12)
+        # Pin Brain's own request count BEFORE navigating to another page.
+        # Never accept a fourth request from Brain as a harmless Index fetch.
+        report["indexHandlersBeforeNavigation"]=number[0]
+        report["apiRequestsBeforeNavigation"]=dict(counts["api"])
+        phase[0]="navigation_to_index"
         await page.goto(args.url+"/kingdom-index",wait_until="domcontentloaded",timeout=20000)
+        phase[0]="index_page_loaded"
         release_third.set()
         await page.wait_for_timeout(500)
         report["unmounted"]=not page.url.endswith("/kingdom-brain")
         report["indexRequests"]=number[0]
         report["allApiRequests"]=dict(counts["api"])
+        report["requestPhaseTrace"]=request_trace
+        extras=[event for event in request_trace
+                if event["kind"]=="fixture_handler" and event["path"]==ENDPOINTS[0]
+                and isinstance(event["index_ordinal"],int)
+                and event["index_ordinal"]>3]
+        report["postNavigationIndexHandlers"]=extras
+        report["postNavigationIndexAttributionPass"]=all(
+            event["index_ordinal"]==4 and
+            event["phase"] in ("navigation_to_index","index_page_loaded") and
+            event["frame_path"]=="/kingdom-index" for event in extras
+        ) and len(extras)==max(0,number[0]-3)
         report["pageErrors"]=errors
         report["passed"]=all((report["latestBeforeOld"]=="OBSERVED",
                               report["latestAfterOld"]=="OBSERVED",
                               report["hidden"],report["returnedVisible"],
                               report["no_hidden_refresh"],report["unmounted"],
-                              number[0]==3, not errors,
-                              counts.get("unexpectedMutations",0)==0))
+                              report["indexHandlersBeforeNavigation"]==3,
+                              number[0] in (3,4),
+                              report["postNavigationIndexAttributionPass"],
+                              not errors,counts.get("unexpectedMutations",0)==0))
     except Exception as error:
         report["error"]=str(error)[:300]
     finally:
