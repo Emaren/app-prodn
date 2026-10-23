@@ -179,3 +179,12 @@ test("CI browser runner fails closed on source identity, real build, non-loopbac
   assert.match(script, /"shared_claim_blocker"/);
   assert.doesNotMatch(script, /workflow_dispatch|POST.*\/api\/general-inspections/);
 });
+
+test("real Chrome scopes the page heading when navigation duplicates Kingdom Tests", () => {
+  const source = readFileSync("tests/kingdom-tests-next-acceptance.py", "utf8");
+  assert.match(source, /page\.locator\('main\[data-kind="tests"\]'\)\.get_by_role\(/);
+  assert.match(source, /"heading", name="KINGDOM TESTS", exact=True/);
+  assert.match(source, /assert await route_heading\.count\(\) == 1/);
+  assert.match(source, /unscoped_case_insensitive_heading_matches/);
+  assert.doesNotMatch(source, /await page\.get_by_role\("heading", name="KINGDOM TESTS"\)\.wait_for/);
+});
