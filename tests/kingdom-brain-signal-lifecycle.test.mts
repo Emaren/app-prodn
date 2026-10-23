@@ -278,6 +278,11 @@ test("real Next fixture visibility is explicitly simulated; external GETs are re
   assert.match(runner, /"blockedDetails"/);
   assert.match(runner, /"blockedExternalReadOnly"/);
   assert.match(runner, /"blockedMutations"/);
-  assert.match(runner, /"no_mutating_http_requests"/);
+  assert.match(runner, /"blockedGlobalSpeedTelemetry"/);
+  assert.match(runner, /"unexpectedMutations"/);
+  assert.match(runner, /url\.path==["']\/api\/speed\/sample["']/);
+  assert.match(runner, /"no_unapproved_mutating_requests"/);
+  assert.match(runner, /"all_blocked_traffic_attributed_to_egress_or_global_speed_telemetry"/);
   assert.doesNotMatch(runner, /"no_blocked_external_or_mutation"/);
+  assert.doesNotMatch(runner, /await route\.continue_\(\)\s*#.*speed/i);
 });
