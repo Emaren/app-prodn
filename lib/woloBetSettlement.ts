@@ -1999,6 +1999,34 @@ export async function validateWoloSettlementRun(input: {
   });
 }
 
+/** A grouped POST can be admitted before its response is lost.
+ * Never fall back to fresh per-recipient sends on an ambiguous response. */
+function groupedRunUnknown(
+  input: Parameters<typeof executeWoloSettlementRun>[0],
+  detail: string,
+): SettlementRunResult {
+  const held = buildBlockedSettlementRunResult(input, {
+    dryRun: false,
+    failureCode: "SETTLEMENT_RUN_OUTCOME_UNKNOWN",
+    detail,
+    retryable: false,
+  });
+  return {
+    ...held,
+    status: "unknown",
+    refusedPayoutCount: 0,
+    executedTotalUWolo: null,
+    warnings: ["Grouped payout may already have been accepted. Reconcile each immutable request before any resend."],
+    payouts: held.payouts.map((p) => ({
+      ...p,
+      attempted: true,
+      status: "unknown",
+      outcome: "unknown",
+      retryable: false,
+    })),
+  };
+}
+
 export async function executeWoloSettlementRun(input: {
   settlementRunId: string;
   sourceApp?: string | null;
@@ -2021,15 +2049,25 @@ export async function executeWoloSettlementRun(input: {
     }
 
     const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
-    const response = await fetch(`${baseUrl}/settlement/v1/runs`, {
-      method: "POST",
-      headers: buildSettlementMutationHeaders(),
-      body: JSON.stringify(toRunRequestPayload(input)),
-      cache: "no-store",
-    });
-
-    if (!shouldFallbackGroupedRun(response.status) && ![401, 403].includes(response.status)) {
-      const payload = (await response.json().catch(() => ({}))) as SettlementRunPayload;
+    // Bind grouped custody admission to the actually observed signer identity.
+    const wallet = input.signerRole === "escrow"
+      ? health?.escrowAddress || ""
+      : requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet()) || "";
+    try {
+      const {response, payload} = await financialSettlementPost<SettlementRunPayload>(
+        `${baseUrl}/settlement/v1/runs`,
+        wallet,
+        input.signerRole === "escrow" ? "escrow-settlement-run" : "payout-settlement-run",
+        {
+          method: "POST",
+          headers: buildSettlementMutationHeaders(),
+          body: JSON.stringify(toRunRequestPayload(input)),
+          cache: "no-store",
+        },
+      );
+      if (shouldFallbackGroupedRun(response.status) || [401, 403].includes(response.status)) {
+        return groupedRunUnknown(input, "Grouped settlement response requires independent reconciliation; no fallback payout.");
+      }
       return toSettlementRunResult(payload, {
         dryRun: false,
         settlementRunId: input.settlementRunId,
@@ -2040,6 +2078,8 @@ export async function executeWoloSettlementRun(input: {
         signerRole: input.signerRole,
         requestedPayoutCount: input.payouts.length,
       });
+    } catch {
+      return groupedRunUnknown(input, "Grouped settlement attempt or admission outcome uncertain; reconcile before retry.");
     }
   }
 
