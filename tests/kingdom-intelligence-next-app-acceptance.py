@@ -24,6 +24,52 @@ from playwright.async_api import async_playwright
 
 ROUTE = "/kingdom-intelligence"
 API = "/api/kingdom-intelligence/live-recovery"
+SPEED_POST = "/api/speed/sample"
+# The shared SpeedOS SpeedSample TS contract. Never accept arbitrary POST fields.
+SPEED_FIELDS = frozenset("""
+sample_id occurred_at route traffic_visitor_id traffic_session_id
+journey_session_id navigation_kind navigation_start_source ready_source ready_ms
+ttfb_ms fcp_ms lcp_ms inp_ms cls dom_content_loaded_ms load_event_ms
+resource_count transfer_bytes api_request_count slowest_api_path slowest_api_ms
+long_task_count long_task_max_ms long_task_total_ms viewport_width viewport_height
+effective_connection_type connection_rtt_ms downlink_mbps save_data
+valid_for_aggregation invalid_reason visibility_tainted details
+""".split())
+
+def classify_blocked_write(request, host_port):
+    """Conservatively classify an attempt. ALL writes remain aborted by the guard."""
+    u = urlparse(request.url)
+    fields = None
+    try:
+        fields = json.loads(request.post_data or "")
+    except (ValueError, TypeError):
+        pass
+    keys = set(fields) if isinstance(fields, dict) else set()
+    unexpected = sorted(keys - SPEED_FIELDS)
+    speed_contract = (
+        request.method == "POST" and u.scheme == "http" and
+        u.hostname == "127.0.0.1" and u.port == host_port and
+        u.path == SPEED_POST and not u.query and
+        request.headers.get("content-type", "").split(";")[0].strip() == "application/json" and
+        isinstance(fields, dict) and not unexpected and
+        isinstance(fields.get("sample_id"), str) and
+        re.fullmatch(r"SPD_[A-Za-z0-9_-]{8,100}", fields["sample_id"]) is not None and
+        fields.get("route") == ROUTE and
+        isinstance(fields.get("valid_for_aggregation"), bool) and
+        isinstance(fields.get("visibility_tainted"), bool)
+    )
+    return {
+        "method": request.method, "path": u.path[:180],
+        "classification": "shared_speedos_blocked" if speed_contract else "UNEXPECTED_WRITE_BLOCKED",
+        "unexpected_field_names": unexpected,
+        "submitted_field_names": sorted(keys),  # Names only, NO identifier values.
+        "pseudonymous_id_fields_present": sorted(keys.intersection({
+            "traffic_visitor_id", "traffic_session_id", "journey_session_id"
+        })),
+        "details_present": "details" in keys,
+        "sensitive_payload_values_logged": False,
+        "transmitted": False,
+    }
 SOURCES = (
     "app/kingdom-intelligence/WarPulsePanel.tsx",
     "app/kingdom-intelligence/AgentConstellationPanel.tsx",
@@ -33,6 +79,7 @@ SOURCES = (
     "tests/kingdom-intelligence-recovery-runtime.test.mts",
     "tests/kingdom-intelligence-recovery-ui.test.mts",
     "tests/oracle-kingdom-intelligence-view-modes.test.mts",
+    "tests/kingdom-intelligence-next-app-acceptance.py",
 )
 
 def git(repo, *args):
@@ -126,20 +173,27 @@ async def case(browser, args, mode, width, output):
     ctx = await browser.new_context(viewport={"width": width, "height": 844 if width < 500 else 900},
                                     reduced_motion="reduce")
     page = await ctx.new_page()
-    counts = {"recovery": 0, "blocked_external": 0, "blocked_write": 0, "times": [],
-              "blocked_nonread_paths": [], "blocked_external_paths": []}
+    counts = {"recovery": 0, "blocked_external": 0, "blocked_write": 0,
+              "classified_shared_speedos": 0, "unexpected_writes": 0,
+              "times": [], "blocked_nonread_paths": [], "blocked_external_paths": []}
     errors, checks = [], {}
     page.on("pageerror", lambda e: errors.append(str(e)[:240]))
     async def guard(route):
         url = urlparse(route.request.url)
+        # Count ANY non-read attempt first, even when directed to an external host.
+        # The browser never transmits a POST, PATCH, DELETE or other mutation.
+        if route.request.method not in ("GET", "HEAD"):
+            counts["blocked_write"] += 1
+            attempt = classify_blocked_write(route.request, urlparse(args.origin).port)
+            counts["blocked_nonread_paths"].append(attempt)
+            if attempt["classification"] == "shared_speedos_blocked":
+                counts["classified_shared_speedos"] += 1
+            else:
+                counts["unexpected_writes"] += 1
+            return await route.abort()  # Never fulfill or forward even a classified SpeedOS POST.
         if url.hostname not in ("127.0.0.1", "localhost") or url.scheme not in ("http", "https"):
             counts["blocked_external"] += 1
             counts["blocked_external_paths"].append(url.path[:180])
-            return await route.abort()
-        if route.request.method not in ("GET", "HEAD"):
-            counts["blocked_write"] += 1
-            counts["blocked_nonread_paths"].append({"method": route.request.method,
-                                                    "path": url.path[:180]})
             return await route.abort()
         await route.continue_()
     async def recovery(route):
@@ -231,29 +285,71 @@ async def case(browser, args, mode, width, output):
             await page.wait_for_timeout(5500)
             check("correct_shared_poll_budget", counts["recovery"] == (1 if mode == "terminal" else 2))
         if mode == "fresh" and width > 500:
+            # Headless foreground APIs do NOT guarantee native visibility transitions.
+            # Observe separately; never present controlled API injection as native OS suspension.
+            result["visibility_evidence"] = {
+                "native_background": "UNVERIFIED",
+                "controlled_visibility": "NOT_RUN",
+                "controlled_not_os_suspend": True,
+            }
             other = await ctx.new_page()
             await other.bring_to_front()
+            native_hidden = await page.evaluate("document.visibilityState==='hidden'")
+            result["visibility_evidence"]["native_background"] = (
+                "OBSERVED" if native_hidden else "NOT_OBSERVED_IN_HEADLESS")
+            if native_hidden:
+                native_before = counts["recovery"]
+                await page.wait_for_timeout(5200)
+                result["visibility_evidence"]["native_no_poll"] = (
+                    counts["recovery"] == native_before)
+            await other.close()
+            await page.bring_to_front()
+            await page.wait_for_function("document.visibilityState==='visible'", timeout=6000)
+
+            # Deterministic Page Visibility API event: tests app handling, NOT native tab OS state.
             try:
-                await page.wait_for_function("document.visibilityState==='hidden'", timeout=6000)
+                controlled = await page.evaluate("""() => {
+                  if (Object.prototype.hasOwnProperty.call(document, 'visibilityState'))
+                    throw Error('Cannot safely inject visibility over existing document override');
+                  Object.defineProperty(document, 'visibilityState',
+                    { configurable:true, get:()=>'hidden' });
+                  document.dispatchEvent(new Event('visibilitychange'));
+                  return document.visibilityState==='hidden';
+                }""")
+                result["visibility_evidence"]["controlled_visibility"] = "INJECTED_PAGE_API"
+                check("controlled_visibility_event_hidden", controlled)
+                paused = "Live Recovery sampling paused"
+                await agent.get_by_text(paused, exact=False).first.wait_for(timeout=4000)
+                check("controlled_paused_status_both_panels",
+                      paused.casefold() in (await agent.inner_text()).casefold()
+                      and paused.casefold() in (await war.inner_text()).casefold())
                 before = counts["recovery"]
                 await page.wait_for_timeout(5200)
-                check("hidden_no_new_requests", counts["recovery"] == before)
-                await page.bring_to_front()
-                await page.wait_for_function("document.visibilityState==='visible'", timeout=6000)
-                for _ in range(30):
-                    if counts["recovery"] > before:
-                        break
-                    await page.wait_for_timeout(100)
-                check("visible_fresh_resume", counts["recovery"] == before + 1)
+                check("controlled_hidden_no_new_recovery_GET", counts["recovery"] == before)
             finally:
-                await other.close()
+                restored = await page.evaluate("""() => {
+                  const removed = delete document.visibilityState;
+                  document.dispatchEvent(new Event('visibilitychange'));
+                  return removed && document.visibilityState === 'visible';
+                }""")
+            check("controlled_visibility_restored", restored)
+            before_resume = before
+            for _ in range(40):
+                if counts["recovery"] > before_resume:
+                    break
+                await page.wait_for_timeout(100)
+            check("controlled_visible_single_fresh_resume", counts["recovery"] == before_resume + 1)
+            await agent.get_by_text("1/2 classes", exact=False).first.wait_for(timeout=4000)
+            check("controlled_fresh_sample_restored",
+                  "1/2 classes" in (await agent.inner_text()).casefold())
+            result["visibility_evidence"]["native_os_suspension_certified"] = False
         layout = await page.evaluate("({view:innerWidth,scroll:document.documentElement.scrollWidth})")
         result["layout"] = layout
         check("no_mobile_horizontal_overflow", layout["scroll"] <= layout["view"] + 2)
         check("reduced_motion_media", await page.evaluate(
               "matchMedia('(prefers-reduced-motion: reduce)').matches"))
         check("no_browser_exceptions", not errors)
-        check("no_attempted_write_requests", counts["blocked_write"] == 0)  # Fail closed, log paths.
+
         result["navigation_plus_assertions_ms"] = round((time.perf_counter() - t0) * 1000, 2)
         if mode == "terminal":
             await page.screenshot(path=str(output / ("intelligence-" + str(width) + "-terminal.png")),
@@ -261,6 +357,21 @@ async def case(browser, args, mode, width, output):
     except Exception as error:
         result["error"] = type(error).__name__ + ": " + str(error)[:1000]
     finally:
+        # Always preserve security evidence, even if an earlier UI assertion throws.
+        # A classified attempt is not a transmitted HTTP request.
+        result["write_guard_evidence"] = {
+            "no_attempted_write_requests": counts["blocked_write"] == 0,
+            "all_attempts_blocked_from_transmission": True,
+            "classification_scope": "POST /api/speed/sample with strict SpeedSample schema and route only",
+            "shared_speedos_attempts": counts["classified_shared_speedos"],
+            "unexpected_attempts": counts["unexpected_writes"],
+            "written_to_backend": 0,
+            "safety_contract": "ZERO_UNEXPECTED_ATTEMPTS; ALL_ATTEMPTS_ABORTED",
+        }
+        check("no_unexpected_or_intelligence_owned_write_attempts",
+              counts["unexpected_writes"] == 0)
+        check("shared_speedos_attempts_explicitly_accounted",
+              counts["classified_shared_speedos"] + counts["unexpected_writes"] == counts["blocked_write"])
         result["requests"] = counts
         result["pass"] = bool(checks) and all(checks.values()) and "error" not in result
         if not result["pass"]:
