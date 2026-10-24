@@ -1,0 +1,60 @@
+name: Replay Stage Radar (source-only / non-authorizing)
+
+on:
+  pull_request:
+    paths:
+      - 'app/api/replay/upload/route.ts'
+      - 'app/api/replay/post-ingest/route.ts'
+      - 'lib/replayPostIngest.ts'
+      - 'lib/replayEngineRoom.ts'
+      - 'lib/teamResolution.ts'
+      - 'lib/watcherTelemetry.ts'
+      - 'lib/betAutomationShadowWorker.ts'
+      - 'scripts/aoe2_replay_stage_radar.py'
+      - 'tests/test_aoe2_replay_stage_radar.py'
+      - '.github/workflows/replay-stage-radar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify real source evidence and adversarial receipt fixtures
+        run: python3 -m unittest discover -s tests -p 'test_aoe2_replay_stage_radar.py' -v
+      - name: Publish current source-bound Watcher to market stage radar
+        run: |
+          python3 scripts/aoe2_replay_stage_radar.py --root . --output replay-stage-source-map.json > /dev/null
+          python3 - <<'PY'
+          import os,json
+          from pathlib import Path
+          r=json.loads(Path("replay-stage-source-map.json").read_text())
+          src=r["source"]
+          lines=[
+              "## Watcher → Replay → Parser → Market source radar",
+              "",
+              "Source contract: " + src["status"],
+              "Parser identity: " + str(src["parser_contract"]),
+              "",
+              "This is an observed source map, NOT runtime readiness, bank solvency, settlement, or custody certification.",
+          ]
+          for item in src["stages"]:
+              lines.append("- "+item["stage"]+": "+item["status"]+" ("+item["path"]+")")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as f:
+              f.write("\n".join(lines)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: replay-stage-source-map
+          path: replay-stage-source-map.json
+          retention-days: 14
+          if-no-files-found: error
