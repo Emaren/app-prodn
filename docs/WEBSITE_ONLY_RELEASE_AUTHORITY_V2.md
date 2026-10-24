@@ -144,6 +144,45 @@ previous live site, independently verify its rollback certificate. A
 post-commit outside-witness conflict requires an independently approved
 incident/rollback decision; absence of a signed result is not a successful GO.
 
+## October 24 independent controller correction — exact operator tree and one lease
+
+The governed operator/controller checkout is **different from** the nine-path
+product checkout. Each four-role, candidate-bound PRE_STAGE and PRE_ACTIVATE
+signature packet must additionally contain:
+
+- `operator_controller_commit_sha`: exact, independently reviewed 40-digit
+  Git SHA of the authoritative controller checkout
+- `operator_source_inventory_sha256`: the canonical SHA256 of sorted pairs
+  `[tracked path, actual file SHA256]` for every tracked file under
+  `scripts/` and `deploy/` in that same checkout
+- Existing `controller_sha` and `protected_dispatch_sha256` must remain
+  bound to the exact two authority entrypoint bytes
+
+The controller checks the operator checkout is clean, tracked, free of hidden
+`assume-unchanged`/`skip-worktree` Git flags and executable-source symlinks.
+The full inventory is checked **inside the global release lease** and rechecked
+after all signed receipts verify, immediately before the irreversible nonce
+consumption and protected stage/activation dispatch. Source stamps from only
+the candidate main checkout are insufficient; release scripts execute from
+this distinct privileged operator tree.
+
+The operator CLI **must forward** `--signed-noninterference` to
+`verified_operation(noninterference_receipt=...)`. Stage/activate invokes
+the *existing* `aoe2_release_stage.stage_release` and
+`aoe2_release_ship.activate_release` guarded libraries once, in-process,
+using the source-specific canonical-main ROOT, while retaining the existing
+one local deployment lock and global Wolo/release lease. It does **not** spawn
+a child `aoe2_release.py ship` that would deadlock on the parent's
+nonreentrant lock, and it does **not** skip transport, source, manifest,
+gate, runtime, finality, rollback or health checks. Errors fail closed and
+consumed nonces are never silently retried.
+
+These are engineering acceptance checks, **not live production authorization**.
+The real independent signed witnesses, securely provisioned external signing
+identities, protected operator channel and two-phase artifact approvals
+remain mandatory. The historical Wolo source P1 and funded financial HOLD
+cannot be relaxed or erased by this website-only scope.
+
 ## Real GO/NO-GO
 
 This PR is source engineering only. It has no provisioned real five-human
