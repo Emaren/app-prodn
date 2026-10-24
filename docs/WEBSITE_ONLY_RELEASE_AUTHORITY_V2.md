@@ -44,7 +44,11 @@ environment to GitHub, chat, or workflow logs.
    control scripts from this **exact independently approved commit**.
    Controller checkout and product main checkout are separate, both clean.
 2. Root-owned protected public trust directory
-   `/etc/aoe2war/website-release-authority-v2/`, with **six** verification
+   `/etc/aoe2war/website-release-authority-v2/`, **mode 0755** (public
+   verification material, NOT signing secrets). Each enrolled PEM is
+   root-owned, mode 0644. This allows the ordinary authenticated Mac release
+   operator to read independent public keys without sudo or changing SSH
+   identity. The directory contains **six** verification
    certificates (five distinct human roles and independently operated runtime
    witness): `owner.pem`, `chain_reviewer.pem`,
    `finance_reviewer.pem`, `release_operator.pem`,
@@ -58,10 +62,14 @@ environment to GitHub, chat, or workflow logs.
    capture runtime truth on the authorized host and return an independently
    signed `aoe2war-independent-runtime-witness-v1` packet. Do not replace
    with an operator-supplied self-asserted JSON file.
-4. Root-owned private local ledger directory
-   `/var/lib/aoe2war-website-authority-v2`, mode 0700, one authoritative
-   operator machine, backed up under approved durable policy. The
-   controller creates SQLite `authority.sqlite3` 0600 with random
+4. Authenticated release-operator-owned private local ledger directory
+   `/var/lib/aoe2war-website-authority-v2`, mode 0700 and parent
+   `/var/lib` ROOT-owned and not group/world writable. The owner UID
+   **must equal the user executing the controller and holding the existing
+   SSH/global-release lease**. This avoids sudo silently changing Git and
+   SSH identity. One authoritative operator machine, backed up under
+   approved durable policy. The controller creates operator-owned SQLite
+   `authority.sqlite3` mode 0600 with random
    `PRE_STAGE` / `PRE_ACTIVATE` challenge issuance, full-sync transactional
    consumption and permanent rejection of reused attempts. No other
    machine/ledger may be admitted without cross-host single-instance proof.
@@ -193,3 +201,53 @@ external approvals and host access exist, **WEBSITE PRODUCTION NO-GO**.
 Funded/Wolo financial mainnet remains separately on HOLD. Original Wolo
 `vps-source-drift` P1 stays OPEN and visible after any website-only
 release; neither approval nor this code resolves it.
+
+## Exact nine-path WATCHER classification with no Watcher distribution
+
+The nine-path main release remains **risk_class WATCHER** in the existing
+conservative path classifier because draft-review filenames include
+"watcher". It does **not** publish or install Watcher 1.6.6, which remains
+explicitly UNPUBLISHED. The protected controller therefore permits WATCHER
+risk only when the signed candidate remains the **exact** main SHA, its
+manifest enumerates the exact nine paths, migrations are empty and the
+Source and Finance reviewers affirm no hidden transitive financial changes.
+
+The stage function checks `lib/watcherRelease.ts` at both exact Git
+commits. It omits a *new* Watcher distribution-vault receipt **only when
+the two versions are equal and every exact nine-path/source/migration
+condition holds**. Every real Watcher executable/version change and every
+other WATCHER candidate still requires the original vault certificate.
+Neither policy relaxes the existing Wolo P1, financial review or signer
+requirements.
+
+## macOS ordinary-operator privileges (never sudo the release command)
+
+The public trust directory must be root-administered and traverse/readable,
+and the private ledger must be owned by the authenticated operator. Do NOT
+place private signing keys under the public trust directory; do not export
+private keys to GitHub/ChatGPT. Public trust anchors are installed after
+off-host independent identities and the person holding each key have been
+authenticated and recorded by independent reviewers.
+
+A privileged installer, after explicit owner/administrator approval, may
+run these **local provisioning-only** commands. They do not issue release
+authority:
+
+```bash
+sudo install -d -o root -g wheel -m 0755 /etc/aoe2war/website-release-authority-v2
+sudo install -d -o root -g wheel -m 0755 /var/lib
+sudo install -d -o "$(id -un)" -g "$(id -gn)" -m 0700 /var/lib/aoe2war-website-authority-v2
+```
+
+Independently authenticated public PEM files are then provisioned with
+`sudo install -o root -g wheel -m 0644 <APPROVED_PUBLIC_PEM>
+/etc/aoe2war/website-release-authority-v2/<ROLE>.pem` for the five real
+human roles and distinct machine-witness role, substituting actual verified
+local file paths and names. NEVER provision a synthetic or AI-signed
+"reviewer" identity as if human. The authorized root-owned witness
+executable must be installed and separately audited before the controller
+will make a lease-held stage/activation call.
+
+Run `bash scripts/aoe2_website_release_readonly_diag.sh` from this
+controller worktree BEFORE any mutating action. Review every HOLD and its
+actual sources; this diagnostic never issues a permit.
