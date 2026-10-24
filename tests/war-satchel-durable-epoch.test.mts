@@ -21,8 +21,8 @@ test("held: exact future epoch positive predicate is STRUCTURAL only, not custod
  assert.equal(SATCHEL_FINANCIAL_BRIDGE_READY,false);
  const hold=source("lib/warSatchelFinancialBridgeHold.ts");
  assert.match(hold,/SATCHEL_FINANCIAL_BRIDGE_READY = false as const/);
- const module=source("lib/warSatchelDurableEpoch.ts");
- assert.doesNotMatch(module,/submitOneShot|broadcastTx|wallet\.sign|bank\.send/);
+ const epochSource=source("lib/warSatchelDurableEpoch.ts");
+ assert.doesNotMatch(epochSource,/submitOneShot|broadcastTx|wallet\.sign|bank\.send/);
 });
 test("no retrospective deposits, stale bank or forged vault/owner can pass",()=>{
  const fail=(e:DurableProspectiveEpoch|null,f:ProspectiveDepositFacts)=>assert.notEqual(prospectiveEpochDepositIssue(e,f),null);

@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-10-24"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -2183,3 +2183,99 @@ Satchel 8094 signer/reviewer lane. It MUST NOT be used as a shortcut to
 enable the funded Satchel status or permit a Satchel transfer. Until
 independent release certification, the held PR remains source-only and
 NO mainnet funds or production services are affected.
+
+## October 24 — HELD prospective custody epoch implementation (NOT FINANCIAL GO)
+
+Child source: `session-b/held-prospective-epoch-credit-20261024` of source-qualified funded #866 `b58592164ba6ed01a198d46b7408aacf790d39ae`.
+Only a FINANCIAL migration/recovery council may authorize the new
+`20261024_233000_war_satchel_prospective_epoch_admission/migration.sql`.
+The **original eight pinned migrations are unchanged**. The new ninth
+financial SQL is NOT a website-release migration and MUST NOT be run by
+Session A's nine-path controller.
+
+### Atomic prospective deposits
+
+`lib/warSatchelDurableEpoch.ts` reads exactly one operator-approved, immutable
+wolo-1 future epoch **under the same global serializable vault lock** already
+used by `creditRecordedSatchelProof`. No fallback epoch is guessed or
+reconstructed from a user's request. Admission requires:
+
+- An independently witnessed new vault address and authenticated wolo-1 H*
+  and app hash, with deposit transaction height strictly greater than H*.
+- Existing **opaque pinned native** bank and MsgSend proofs, three confirmed
+  blocks, original user UID+wallet+intent+memo+amount+recipient consistency.
+  Neither decoded REST alone nor caller JSON can mint those opaque objects.
+- Original deposit-intent timestamp no earlier than independently approved
+  epoch, plus separately preserved immutable legacy-claims, liability,
+  custody, reserves, signer-review and full-size HD+DE recovery digests.
+- An append-only epoch-to-physical receipt mapping in the **same transaction**
+  as the original unique physical MsgSend consumption, journal credit and
+  available balance. SQL guards compare owner, amount, transfer ordinal,
+  exact chain hash, H* and vault. Any failure rolls back all four effects.
+- A named FINANCIAL operator role, genuinely independent vault keys,
+  and authenticated review of the original public chain app hash at H*
+  **outside** the app. A record marked approved in PostgreSQL, by itself,
+  is NOT independent consensus proof or authorized capital.
+
+A separate reviewed epoch **registration/activation workflow** is still
+required. The source holds `SATCHEL_FINANCIAL_BRIDGE_READY=false` and
+`PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED=false`; neither is unlocked by
+configuration booleans, SQL rows, CI or test-only synthetic approvers.
+Historical claims 2712/2760, 889, 8477, 947 pending HD items and the
+200,000-WOLO Osmosis liquidity purpose remain untouched and excluded from
+any new-epoch credit without independent ownership proof. No legacy
+liability can be assumed zero or retrospectively discharged.
+
+### Read-only Mac to VPS inventory (NO KEY / NO DATA / NO PAYOUT)
+
+The owner may run the following from their local checked-out repository.
+This streams a committed audit script to the existing VPS without
+writing a file remotely, opening a database, printing environment values,
+touching services or looking at seed/signing material:
+
+```bash
+set -euo pipefail
+cd "$HOME/projects/AoE2HDBets/app-prodn"
+git fetch origin session-b/held-prospective-epoch-credit-20261024
+git show origin/session-b/held-prospective-epoch-credit-20261024:scripts/satchel_epoch_inventory_readonly.sh |
+  ssh -T -o BatchMode=yes -o ConnectTimeout=10 root@hel1 'bash -s'
+```
+
+The script returns only UTC time, SHA256 of hostname, selected service/process
+**names**, filesystem mount/available-byte figures, and presence of restore
+tooling. No private configuration contents, hashes of wallet keys, addresses,
+DB passwords, key files, process command lines or connection strings are
+read or printed. It does not certify writer exclusion: the operator must
+separately inventory all HD, DE, Wolo, cron, systemd, API, worker, payout,
+airdrop, staking, faucet, retry and auxiliary services with a second witness.
+
+### Evidence packet and finite release conditions
+
+| Gate | Independent evidence demanded | Present |
+| --- | --- | --- |
+| Future epoch H* | New signed Comet validators/commit + app hash + independently retained witness | UNKNOWN |
+| Custody address | Fresh WOLO address, separately controlled, custody/key-control attestation, no legacy escrow/treasury/LP reuse | UNKNOWN |
+| Credit provenance | Operator-owned trusted native verifier, exact source/build; authenticated post-H* physical receipts and owner intent | ENGINEERED; production UNKNOWN |
+| Same-height solvency | Certified spendable **new** vault assets A, distinct committed/new-epoch liabilities L, gas/chargebacks/unknown reserves R and A−L−R >= 0 | UNKNOWN |
+| Historical preservation | Signed inventory/ownership for claims 2712/2760, 889, 8477, remaining 947; 200k DEX liquidity and all separate economic claims quarantined, not written off | HOLD |
+| Reviewer separation | Owner, chain/custody, finance, withdrawal reviewer, recovery witness as separate independently provisioned public/private-key holders and off-host permit issuer | UNKNOWN |
+| Writer exclusions | Production HD+DE+Wolo fleet census, global lease and actual all-producer sign/mutate fence after restart | UNKNOWN |
+| Migration | Exact nine-migration order including **new** ninth, independently approved FINANCIAL runbook/backup and qualified rollback receipt | NOT AUTHORIZED |
+| Recovery | Full-size real HD+DE+Wolo as-of snapshot plus WAL/sequence recovery, physically isolated restore witnessed, no lost receipts | UNKNOWN |
+| Canary/rollback | Read-only preflight, isolated stage, challenge-bound signed FINANCIAL activation, bounded canary, exact submitted/unknown no-rebroadcast journal, code-only rollback preserving money state | NOT AUTHORIZED |
+
+**Stage/rollback design:** take full-size isolated backups without exposing
+credentials; independently restore, verify schema and append-only old receipts,
+reconcile newly authenticated state at exactly H*, then stage the unchanged
+noncustodial website separately from this FINANCIAL candidate. Approvers
+sign a new exact-source, source+build+schema+vault+H*+nonce permit. Only
+after chain source authority, five-human enrollment, withdrawal/recovery
+witness, no-writer crossover, and sufficient A−L−R may a separate
+finance-approved change authorize any mainnet activation. Roll back the
+application binary only; **never roll back/erase a credited ledger, undo
+chain transfers, reuse unknown broadcast intent, or reopen legacy signers**.
+
+The private SDK CI fixtures can insert a clearly marked synthetic approved
+epoch solely into disposable Unix-socket PostgreSQL. Those signed SDK tests
+are useful for code/custody conservation but are **not** human, archival,
+solvency or production migration certificates.
