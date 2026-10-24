@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-five-founder-canonical-proof` at `f527f54c0b21e7f7da3e90c6afc388932058bd4d`
+Implementation baseline: `review/20261024-five-founder-canonical-proof` at `07a8c58a4997d897f852857c41cd8b25cb5157d2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
