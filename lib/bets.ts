@@ -3945,6 +3945,9 @@ async function resolveAutomatedWatcherIntegrityIncident(
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
+      // A preview book must never enter the existing on-chain settlement
+      // executor even if stray financial rows somehow reach it.
+      bookPhase: { not: "preview_only" },
       status: { in: ["settled", "voided"] },
       wagers: {
         some: buildCountableActiveWagerWhere(),
