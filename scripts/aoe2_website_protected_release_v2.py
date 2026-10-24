@@ -270,12 +270,65 @@ def stage_facts(candidate_repo: Path, supplied_path: Path) -> dict:
             "build_id": receipt["staged_build_id"]}
 
 
+
+def operator_source_provenance(*, root: Path = ROOT) -> dict:
+    """Seal executed operator code, not only the public website candidate.
+
+    A separate operator checkout executes release scripts. Its full tracked
+    scripts/deploy surface must be an exact clean Git tree. Signers bind the
+    commit and actual bytes, not just the two admission Python entrypoints.
+    """
+    require(root.is_absolute() and root.is_dir() and not root.is_symlink(),
+            "untrusted operator controller checkout")
+    sha = git(root, "rev-parse", "--verify", "HEAD")
+    require(len(sha) == 40 and all(c in "0123456789abcdef" for c in sha),
+            "unreviewable operator controller commit")
+    require(git(root, "status", "--porcelain", "--untracked-files=all",
+                "--ignore-submodules=none") == "",
+            "dirty operator controller checkout")
+    flags = git(root, "ls-files", "-v", "-z")
+    require(flags.endswith("\x00"), "truncated operator Git index flags")
+    for entry in flags[:-1].split("\x00"):
+        require(len(entry) >= 3 and entry[1:2] == " " and entry[0] == "H",
+                "hidden operator Git index source")
+    paths_raw = git(root, "ls-files", "-z", "--", "scripts", "deploy")
+    require(paths_raw.endswith("\x00"), "empty operator executable inventory")
+    paths = paths_raw[:-1].split("\x00")
+    require(len(paths) == len(set(paths)) and len(paths) >= 6,
+            "incomplete operator source inventory")
+    manifest = []
+    for name in paths:
+        require(name.startswith(("scripts/", "deploy/")) and ".." not in name.split("/"),
+                "untrusted operator source path")
+        location = root / name
+        require(location.is_file() and not location.is_symlink(),
+                "linked/missing operator executable source")
+        require(all(not part.is_symlink() for part in location.parents
+                    if part != root and root in part.parents),
+                "symlinked operator source directory")
+        manifest.append([name, digest_file(location)])
+    required = {
+        "scripts/aoe2_website_protected_release_v2.py",
+        "scripts/aoe2_website_release_v2.py", "scripts/aoe2_release.py",
+        "scripts/aoe2_release_ship.py", "scripts/aoe2_release_stage.py",
+        "scripts/aoe2_release_gate.py",
+    }
+    require(required.issubset(set(paths)), "missing governed operator source")
+    return {"commit_sha": sha, "inventory_sha256": digest(manifest)}
+
+
+
 def reviewer_packet_binding(packet: dict, *, candidate_repo: Path,
                             scope: dict, trust_root=TRUST_ROOT,
                             now=None, allow_test_root=False) -> None:
     p = packet["payload"]
     require(p.get("protected_dispatch_sha256") == digest_file(Path(__file__)),
             "protected dispatcher implementation SHA not signed")
+    operator = operator_source_provenance()
+    require(p.get("operator_controller_commit_sha") == operator["commit_sha"] and
+            p.get("operator_source_inventory_sha256") ==
+            operator["inventory_sha256"],
+            "operator release code is not signed exact-source authority")
     require(p.get("candidate_sha") == MAIN_SOURCE_SHA and
             scope["candidate"] == MAIN_SOURCE_SHA, "wrong website release")
     require(p.get("risk_class") in ("PRESENTATION", "INFRASTRUCTURE"),
@@ -351,6 +404,7 @@ def verified_operation(*, operation: str, candidate_repo: Path,
     try:
         with release.deployment_lock():
             scope = source_scope(candidate_repo, MAIN_SOURCE_SHA)
+            operator_source_provenance()
             current = observer(trust_root=trust_root,
                                allow_test_root=allow_test_root)
             verify_witness_receipt(current, trust_root=trust_root,
@@ -403,6 +457,10 @@ def verified_operation(*, operation: str, candidate_repo: Path,
                         facts["manifest_sha256"] == p["manifest_sha256"] and
                         facts["gate_sha256"] == p["gate_sha256"],
                         "stage artifact/BUILD_ID/manifest/gate substituted")
+            # Source cannot drift between signed validation and lease-held dispatch.
+            reviewer_packet_binding(packet, candidate_repo=candidate_repo,
+                                    scope=scope, trust_root=trust_root, now=now,
+                                    allow_test_root=allow_test_root)
             signed = consume_signed_review(packet=packet, candidate=MAIN_SOURCE_SHA,
                 actual_scope=scope, state_root=state_root, trust_root=trust_root,
                 now=now, allow_test_root=allow_test_root)
