@@ -83,3 +83,69 @@ jobs:
             --manifest "$RUNNER_TEMP/collision-manifest.txt" --expect-historical || rc=$?
           test "$rc" -eq 3
           echo "PASS: all 61 synthetic SQL collision groups reconcile; NONAUTHORIZING exit 3"
+
+  indexed-founder-25-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install temporary PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+      - name: Load 25 disposable founder pairs and 80,000 unrelated indexed events
+        env:
+          PGPASSWORD: synthetic-only
+        run: |
+          python3 tests/fixtures/financial_founder_25_index_sql_fixture.py > "$RUNNER_TEMP/fixture.sql"
+          psql -X -q -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/fixture.sql" > /dev/null
+      - name: Execute EXACT bounded real-world query with eight-second read-only limit
+        env:
+          PGPASSWORD: synthetic-only
+        run: |
+          PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=8000" \
+            psql -X -qAt -F '|' -h 127.0.0.1 -U postgres -d postgres \
+              -v ON_ERROR_STOP=1 -f scripts/financial-founder-dual-index-25-readonly.sql \
+              > "$RUNNER_TEMP/founder-25.txt"
+          python3 - "$RUNNER_TEMP/founder-25.txt" <<'PY'
+          from pathlib import Path
+          import sys
+          rows=[s.split('|') for s in Path(sys.argv[1]).read_text().splitlines()]
+          assert len(rows)==25 and all(len(r)==10 for r in rows),(len(rows),rows[:2])
+          assert len({(r[0],r[1]) for r in rows})==25
+          assert sum(int(r[2]) for r in rows)==3428
+          assert sum(r[3]=='t' for r in rows)==5
+          assert sum(r[4]=='t' for r in rows)==25
+          assert sum(r[5]=='t' for r in rows)==25
+          assert sum(r[6]=='t' for r in rows)==5
+          assert sum(r[7]=='t' for r in rows)==6
+          assert sum(r[8]=='t' for r in rows)==24
+          assert sum(r[9]=='t' for r in rows)==1
+          print("PASS: indexed-only bounded SQL, 25 fixtures/3428 synthetic WOLO; no authority")
+          PY
+      - name: Verify strict source SQL read-only authority boundaries
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('scripts/financial-founder-dual-index-25-readonly.sql').read_text().upper()
+          assert 'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY' in s
+          assert 'ROLLBACK;' in s
+          assert 'W.TX_HASH = ANY(' in s
+          assert 'GROUP BY UPPER(TX_HASH)' not in s
+          assert not any(word in s for word in ['DELETE FROM ','INSERT INTO ','TRUNCATE ','UPDATE '])
+          print('PASS: source-only privacy/read-only contract')
+          PY
