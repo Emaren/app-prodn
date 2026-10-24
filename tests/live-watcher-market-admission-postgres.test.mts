@@ -16,6 +16,7 @@ import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
 import {freshBettingCloseReason,buildFreshBetMarketWriteWhere} from "../lib/betMarketWagerability.ts";
 import {loadBetMarketPreflightContext,assertBetMarketPreflight} from "../lib/betWagering.ts";
 import {createFounderBonus} from "../lib/betFounderBonuses.ts";
+import {retryPendingClaimSettlement} from "../lib/adminWoloClaims.ts";
 import {startLiveWatcherDatabase} from "./fixtures/live-watcher-db.mts";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
 
@@ -96,6 +97,20 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         /Preview-only battles cannot receive WOLO founder bonuses/,
       );
       assert.equal(await db.prisma.betMarketFounderBonus.count({where:{marketId:winner.id}}),0);
+      const fakeClaim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"preview-only-guard-probe",
+        displayPlayerName:"Preview Only Guard Probe",
+        amountWolo:1,claimKind:"bet_refund",claimGroupKey:"preview-refusal",
+        status:"pending",sourceMarketId:winner.id,
+      }});
+      const refusedRetry=await retryPendingClaimSettlement(db.prisma,fakeClaim.id);
+      assert.equal(refusedRetry.outcome,"skipped");
+      assert.equal(refusedRetry.outcome==="skipped"?refusedRetry.reason:null,"preview_only_market");
+      const afterRetry=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:fakeClaim.id}});
+      assert.equal(afterRetry.status,"pending");
+      assert.equal(afterRetry.payoutTxHash,null);
+      assert.equal(afterRetry.payoutAttemptedAt,null);
+      await db.prisma.pendingWoloClaim.delete({where:{id:fakeClaim.id}});
       assert.equal(desync.parentMarketId,winner.id);assert.equal(desync.battleId,winner.battleId);
       assert.equal(await db.prisma.betAutoExecution.count(),1);
       assert.equal((await db.prisma.betAutoPreset.findUniqueOrThrow({where:{id:preset.id}})).gamesRemaining,12);
