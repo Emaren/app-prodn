@@ -14,7 +14,7 @@ import {startLifecycleDatabase,installLifecycleFinancialAdmission,seedLifecycleO
 import type {Prisma} from "../lib/generated/prisma/index.js";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
 import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
-import {admitCommittedLiveWatcherMarkets,admitReviewedFundedWatcherBooks} from "../lib/bets.ts";
+
 import {fundedWatcherOriginSignBytes,type SignedFundedWatcherOrigin} from "../lib/warSatchelFundedWatcherOrigin.ts";
 
 const U=1000000n;
@@ -90,6 +90,11 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
     writeFileSync(wagerKeyFile,JSON.stringify({wager_approval_public_key_hex:pub(reviewer)}),{mode:0o600});
     // Stitch the FIRST ticket (not a disconnected side test) to actual signed
     // canonical Watcher admission. Original LIVE metadata stays preview-only.
+    // woloChain.ts snapshots escrow configuration at module evaluation.
+    // Load bets only AFTER the isolated Wolo env/attested addresses are set.
+    // A static import would cache a disabled escrow configuration globally.
+    const {admitCommittedLiveWatcherMarkets,admitReviewedFundedWatcherBooks}
+      =await import("../lib/bets.ts");
     const liveEvidence=controlledOriginalLiveRow({name:"sdk-continuous-connected"});
     const connectedPlayers=liveEvidence.players.map(p=>({
       ...p,name:p.steamId===seeded.owner.steamId?"LifecycleOwner":
