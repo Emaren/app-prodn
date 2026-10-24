@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "66375fd945bff5f4ff9a64a6484454ad813d12dd627bd9719f2d463d38de7d1b",
+      "sha256": "2511ba45d9cb81d0bac59da89f0bd663d3a2ccb063634f1f6aa506ce7a220263",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b0c417a3c24bc71c0d4706a48d29e7c32e3793c508ff45edfe6c3c68b8a7d177",
+      "sha256": "56dff8135235d0e510b1e4a4bf2ed34dfb297b88341d598fb54aee6e31449249",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-live-preview-finance-boundary-held",
-    "commit": "9de33506641c1adbe3bb047d6c51a72822a69dc3"
+    "commit": "6447842b964360c96a261440548f16604eb09704"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
