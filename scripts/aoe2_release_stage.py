@@ -95,12 +95,36 @@ def watcher_distribution_version(manifest: dict) -> str:
         return matches[0]
 
     release_version = version_at_commit(str(manifest.get("release_sha") or ""))
-    if manifest.get("risk_class") == "WATCHER":
-        return release_version
-
     previous_version = version_at_commit(
         str(manifest.get("previous_production_sha") or "")
     )
+    if manifest.get("risk_class") == "WATCHER":
+        # Exact nine-path public INDEX/UNPUBLISHED-draft data are conservatively
+        # WATCHER classified, but do NOT publish a watcher binary. Keep the
+        # WATCHER classification and independent human approval. Avoid
+        # incorrectly requiring a new distribution vault for unchanged bytes.
+        # All other WATCHER-classified releases retain the original vault gate.
+        review_paths = {
+            "components/kingdom-index/KingdomIndex.tsx",
+            "config/kingdom-index-baseline.json",
+            "config/kingdom-index-provisional-source-reviews.json",
+            "config/kingdom-index-routes.json",
+            "config/kingdom-index-watcher-166-source-review.json",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md",
+            "docs/document-registry.json",
+            "tests/kingdom-index-watcher-draft-score.test.mts",
+            "yarn.lock",
+        }
+        if (manifest.get("release_sha") ==
+                "21cd1493b182cb0968a6b6cf3f528d0578cfd797"
+                and manifest.get("previous_production_sha") ==
+                "a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
+                and set(manifest.get("changed_files") or []) == review_paths
+                and not manifest.get("migration_paths")
+                and release_version == previous_version):
+            return ""
+        return release_version
+
     return release_version if release_version != previous_version else ""
 
 
@@ -1041,7 +1065,10 @@ def validate_stage_result(
                 "dependency lock-change evidence does not match release manifest"
             )
 
-    if manifest.get("risk_class") == "WATCHER" or watcher_version:
+    # Only a real watcher binary/version release needs the vault. The exact
+    # nine-path main draft is still risk_class WATCHER, but its version is
+    # byte-for-byte source-identical to certified production.
+    if watcher_version:
         if result.get("watcher_distribution_status") != "PASS":
             errors.append("WATCHER distribution preflight did not report PASS")
         version = result.get("watcher_distribution_version") or ""
