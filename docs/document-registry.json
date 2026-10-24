@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "226b38872cf4a0322ae108ebda60cbf41fe84631662bc55a9fe1ecea2fabf2af",
+      "sha256": "cfc3c22691fe59a13e9ae346a0ee52a1b0e81b0c2eb64c830f7c4683a23236e3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d017867cecdb4e7ac33975cdaef4f38a4ba14ef367abfb5b4c9cbdf54b83ca8e",
+      "sha256": "46fbf89f1caf43118622e79e17794a5edd46a045546aed13bee9c5db88d0fd9c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-live-website-noninterference-final",
-    "commit": "ca2c680bd39d87bc76c348fc5a8a10d8668527f2"
+    "branch": "review/20261024-live-read-noninterference-integration",
+    "commit": "2d30e983bb01f6ebbd8c0bbc7358e1e912931cd0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

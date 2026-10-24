@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-website-noninterference-final` at `ca2c680bd39d87bc76c348fc5a8a10d8668527f2`
+Implementation baseline: `review/20261024-live-read-noninterference-integration` at `2d30e983bb01f6ebbd8c0bbc7358e1e912931cd0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
