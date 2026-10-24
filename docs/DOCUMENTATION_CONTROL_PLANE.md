@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-orphan-origin-failclose` at `108aaecdacfae4853db41f32b1e37e39e063abc4`
+Implementation baseline: `integration/20261024-live-orphan-and-get-guard` at `5ff2556b54f243be79e9a7aeeb1e86336af1af5c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
