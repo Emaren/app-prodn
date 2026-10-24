@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { analyze } from '../scripts/financial-founder-five-canonical-readonly.mjs';
 
 const C=[[411,2712,1000],[417,2760,1000],[435,2939,1000],
@@ -66,4 +71,20 @@ test('two independent MsgSend ordinals cannot be confused with one',async()=>{
 test('drift in private input fails closed',async()=>{
   const truncated=source().split('\n').slice(0,9).join('\n');
   await assert.rejects(analyze(truncated,async hash=>chain(hash)),/BLOCKED_/);
+});
+
+test('macOS-style symlinked CLI path must execute and reject malformed private input, not silently return zero',()=>{
+  const tmp=mkdtempSync(join(tmpdir(),'aoe2war-cli-path-'));
+  const alias=join(tmp,'macos-var-symlink.mjs');
+  try {
+    symlinkSync(fileURLToPath(new URL('../scripts/financial-founder-five-canonical-readonly.mjs',import.meta.url)),alias);
+    const child=spawnSync(process.execPath,['--experimental-strip-types',alias],{
+      input:'[]\n',encoding:'utf8',timeout:10000,
+    });
+    assert.equal(child.status,2,`unexpected silent/skip exit: ${child.status} ${child.stderr}`);
+    assert.match(child.stderr,/BLOCKED: BLOCKED_ROW_COUNT/);
+    assert.equal(child.stdout,'');
+  }finally{
+    rmSync(tmp,{force:true,recursive:true});
+  }
 });
