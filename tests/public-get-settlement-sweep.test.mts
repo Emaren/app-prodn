@@ -152,10 +152,27 @@ test("all API GET handlers are free from known direct finance producers", () => 
   const problems: string[] = [];
   let getters = 0;
   for (const file of paths) {
-    const { handlers, calls, unsupported } = inspectRoute(readFileSync(file, "utf8"), file);
+    const routeSource = readFileSync(file, "utf8");
+    const routePath = relative(ROOT, file).replaceAll("\\\\", "/");
+    const { handlers, calls, unsupported } = inspectRoute(routeSource, file);
     getters += handlers;
+
+    // Existing tournament-admin GET deliberately refreshes proof projections.
+    // It is NOT a public GET. Keep this exception exact and guarded rather
+    // than suppressing admin routes as a whole or allowing future exceptions.
+    if (routePath === "app/api/admin/tournament/matches/route.ts") {
+      assert.deepEqual(calls, ["reconcileTournamentMatchProofs"]);
+      const get = routeSource.indexOf("export async function GET(");
+      const admin = routeSource.indexOf("const admin = await requireAdmin(request);", get);
+      const refused = routeSource.indexOf('if ("error" in admin) return admin.error;', admin);
+      const reconcile = routeSource.indexOf("await reconcileTournamentMatchProofs(admin.prisma);", refused);
+      assert.ok(get >= 0 && admin > get && refused > admin && reconcile > refused,
+        "Admin GET's existing reconciliation must remain behind an authenticated refusal");
+      continue;
+    }
+
     for (const problem of [...calls, ...unsupported]) {
-      problems.push(`${relative(ROOT, file)}: ${problem}`);
+      problems.push(`${routePath}: ${problem}`);
     }
   }
   assert.ok(getters >= 75, "GET handler count collapsed; inspect route parser coverage");
