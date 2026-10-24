@@ -76,7 +76,7 @@ test("automatic settlement and admin retry both check historical prior attempts"
   const founder = readFileSync(new URL("../lib/betFounderBonuses.ts", import.meta.url), "utf8");
   const admin = readFileSync(new URL("../lib/adminWoloClaims.ts", import.meta.url), "utf8");
   for (const source of [founder, admin]) {
-    assert.match(source, /previousEconomicAttempt = await tx\.pendingWoloClaim\.findFirst/);
+    assert.match(source, /conflictingEconomicClaim = await tx\.pendingWoloClaim\.findFirst/);
     assert.match(source, /sourceFounderBonusId:/);
     assert.match(source, /claimGroupKey: \{ not:/);
     assert.match(source, /payoutAttemptedAt: \{ not: null \}/);
