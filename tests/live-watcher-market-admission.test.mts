@@ -72,3 +72,37 @@ test("new preview admission cannot invoke financial identity promotion or repair
   assert.ok(admission);
   assert.doesNotMatch(admission,/reconcileWatcherMarketIdentityPromotions|betMarket\.updateMany/);
 });
+
+test("public bets GET never schedules market ensure, corrective refunds or any signer",()=>{
+  const source=readFileSync(new URL("../app/api/bets/route.ts",import.meta.url),"utf8");
+  assert.match(source,/export async function GET\(/);
+  assert.match(source,/ensureMarkets:\s*false/);
+  assert.doesNotMatch(source,/queueBetMarketEnsure|ensureBetMarkets\(|settleMarketIntegrityCorrections\(|executeWolo/);
+  assert.doesNotMatch(source,/\.\$transaction\(|\.\$executeRaw/);
+});
+
+test("corrective-refund writer and existing-LIVE family admission independently check persisted finance origin",()=>{
+  const source=readFileSync(new URL("../lib/bets.ts",import.meta.url),"utf8");
+  const correction=source.split("export async function settleMarketIntegrityCorrections(")[1]
+    ?.split("\nasync function ")[0];
+  assert.ok(correction);
+  assert.match(correction,/bookPhase:\s*\{\s*not:\s*"preview_only"\s*\}/);
+  assert.match(correction,/adjustment\.wager\.marketId\s*!==\s*adjustment\.incident\.marketId/);
+  assert.match(correction,/adjustment\.wager\.userId\s*!==\s*adjustment\.userId/);
+  const admission=source.split("async function persistBetMarketSeeds(")[1]
+    ?.split("async function runBetMarketEnsure(")[0];
+  assert.ok(admission);
+  assert.match(admission,/existing\.bookPhase\s*!==\s*"preview_only"/);
+  assert.match(admission,/existing\.firstStakeAcceptedAt\s*!==\s*null/);
+  assert.match(admission,/Object\.values\(existing\._count\)\.some/);
+  assert.match(admission,/LIVE_MARKET_ADMISSION_FAMILY_NOT_ADMITTED/);
+});
+
+test("dual claim origins are both validated before any payout or legacy cleanup",()=>{
+  const source=readFileSync(new URL("../lib/adminWoloClaims.ts",import.meta.url),"utf8");
+  const retry=source.split("export async function retryPendingClaimSettlement(")[1];
+  assert.ok(retry);
+  assert.ok(retry.indexOf("source_attribution_conflict")<retry.indexOf("hasAmbiguousPriorWoloPayoutAttempt(claim)"));
+  assert.ok(retry.indexOf('founderOrigin?.market.bookPhase === "preview_only"')<retry.indexOf("hasAmbiguousPriorWoloPayoutAttempt(claim)"));
+  assert.ok(retry.indexOf("source_attribution_conflict")<retry.indexOf("executeFounderWoloPayout"));
+});
