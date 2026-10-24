@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5393877fe41ad94a88baf10dc78db9c199b348ca77b22e7c3e7e7d2a1b122df4",
+      "sha256": "7f7e362e16f2a8e121d2dbc10b60d06e8017186bf8667afe018992aa32eafca7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2237,8 +2237,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-protected-web-controller-dispatch-fix",
-    "commit": "7d636991d2dce7aea862c6b5e1018e7e768d316b"
+    "branch": "review/20261024-website-protected-controller-qualified-lineage",
+    "commit": "3ebed3ff1ac24f76aa1f46f051d2cd9ac3818ae8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
