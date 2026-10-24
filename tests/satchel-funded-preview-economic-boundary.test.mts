@@ -21,8 +21,8 @@ test("under-lock reservation and last prebroadcast fence inspect both LIVE book 
   for(const [name,section] of [["reserve",reserve],["prebroadcast",attempt]] as const){
     assert.ok(section.length>500,name+" function boundaries changed; inspect this test");
     assert.match(section,/bookPhase:\s*true/,name+" must read persisted book phase");
-    assert.match(section,/market\\.bookPhase !== "funded"/,name+" must refuse display-only winner");
-    assert.match(section,/desync\\.bookPhase !== "funded"/,name+" must refuse display-only desync");
+    assert.match(section,/market\.bookPhase !== "funded"/,name+" must refuse display-only winner");
+    assert.match(section,/desync\.bookPhase !== "funded"/,name+" must refuse display-only desync");
     assert.match(section,/satchelWatcherSpendWindowIssue/,name+" must still enforce fresh Watcher identity");
   }
   assert.match(reserve,/withExclusiveSatchelTx\(prisma/);
