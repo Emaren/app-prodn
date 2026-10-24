@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-financial-claim-collision-certification` at `b5c415c0a64856d937a7dd35a9329950062750de`
+Implementation baseline: `review/20261024-financial-claim-collision-certification` at `d3bc597e6b88a3a0e542f8a289fbe6decbee261c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
