@@ -10,6 +10,8 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import {
   canonicalBattleIdentityKey,
   ensurePublicBattleIdentities,
+  ensurePublicBattleIdentitiesInTransaction,
+  type BattleIdentityCandidate,
   platformMatchIdFromBattleSession,
 } from "@/lib/battleIdentity";
 import {
@@ -8032,7 +8034,7 @@ const LIVE_ADMISSION_SOURCE_SELECT = {id:true,is_final:true,parse_source:true,
   parse_iteration:true,replayHash:true,game_version:true,game_type:true,createdAt:true,played_on:true,winner:true,
   players:true,key_events:true,user:{select:{uid:true,steamId:true}}} as const;
 
-async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[]){
+async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[],liveIdentityCandidates:BattleIdentityCandidate[]=[]){
   const liveOnly = liveSources !== undefined;
   const liveAuthorityBySlug=new Map<string,readonly CommittedLiveWatcherRow[]>();
   // LIVE winner and desync markets must share one bounded SQL transaction.
@@ -8099,7 +8101,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
         });
         if (liveOnly && existing && (
           existing.marketType !== seed.marketType || existing.scheduledMatchId !== null ||
-          existing.linkedSessionKey !== seed.linkedSessionKey || existing.battleId !== (seed.battleId??null) ||
+          existing.linkedSessionKey !== seed.linkedSessionKey ||
           !["open","live"].includes(existing.status) || existing.settledAt || existing.winnerSide ||
           existing.closeAt && existing.closeAt.getTime() <= Date.now()
         )) return {created:false,admitted:false};
@@ -8118,7 +8120,12 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           return {created:false,admitted:false};
         // A creator that does not share our advisory lock must cause a unique
         // conflict/rollback, never turn stale absence into an update of its book.
-        const persisted = liveOnly ? await tx.betMarket.create({data:marketSeedCreateData(seed)}) : await tx.betMarket.upsert({
+        const persisted = liveOnly ? await tx.betMarket.create({data:{
+          ...marketSeedCreateData(seed),
+          // Durable, main-schema discriminator. Never invite legacy WOLO
+          // stakes or recovery intents into an unapproved preview book.
+          bookPhase:"preview_only",
+        }}) : await tx.betMarket.upsert({
           where: { slug: seed.slug },
           create: marketSeedCreateData(seed),
           update: marketSeedUpdateData(seed, existing),
@@ -8219,7 +8226,26 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
         if (winner) await tx.betMarket.updateMany({where:{slug:child.slug,marketType:DESYNC_SIDE_MARKET_TYPE},
           data:{parentMarketId:winner.id}});
       }
-      // Recheck after the final parent-link I/O, immediately before commit.
+      // Only newly created, fully admitted preview families receive public
+      // battle identities. The identity allocator and the new market rows share
+      // the SAME transaction: any later expiry/error rolls both back.
+      const createdKeys = new Set(seeds.filter((_seed,index)=>results[index]?.created)
+        .map(seed=>canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)))
+        .filter((key):key is string=>Boolean(key)));
+      if (createdKeys.size) {
+        const identities=await ensurePublicBattleIdentitiesInTransaction(tx,
+          liveIdentityCandidates.filter(candidate=>createdKeys.has(
+            canonicalBattleIdentityKey(candidate.sessionKey)??"")));
+        for (const [index,seed] of seeds.entries()) {
+          if (!results[index]?.created) continue;
+          const key=canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey));
+          const identity=key?identities.get(key):null;
+          if (!identity) throw Error("LIVE_PREVIEW_BATTLE_IDENTITY_MISSING");
+          await tx.betMarket.updateMany({where:{slug:seed.slug,bookPhase:"preview_only",battleId:null},
+            data:{battleId:identity.id}});
+        }
+      }
+      // Recheck AFTER identity writes and final parent-link I/O, immediately before commit.
       if (existingRows.some(row=>row.closeAt && row.closeAt.getTime()<=Date.now() &&
         results[seeds.findIndex(seed=>seed.slug===row.slug)]?.admitted))
         throw Error("LIVE_MARKET_ADMISSION_EXISTING_BOOK_CLOSED_BEFORE_COMMIT");
@@ -8437,12 +8463,12 @@ export async function admitCommittedLiveWatcherMarkets(prisma:PrismaClient,gameS
     const desync=buildDesyncSideMarketSeed(winner);
     return desync?[winner,desync]:[winner];
   });
-  const identities=await ensurePublicBattleIdentities(prisma,seeds.filter(seed=>seed.marketType===WINNER_MARKET_TYPE).map(seed=>({
-    sessionKey:normalizeName(seed.linkedSessionKey),state:"live" as const,startedAt:resolveWatcherBattleStartedAt(
-      buildWatcherBattleStartIndex(sessions),seed.linkedSessionKey),completedAt:null,allowCreate:true})));
-  for(const seed of seeds){const key=canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)),identity=key?identities.get(key):null;
-    seed.battleId=identity?.id??null;seed.battlePublicNumber=identity?.publicNumber??null;}
-  const results=await persistBetMarketSeeds(prisma,seeds,eligible);
+  const startIndex=buildWatcherBattleStartIndex(sessions);
+  const identityCandidates:BattleIdentityCandidate[]=seeds.filter(seed=>seed.marketType===WINNER_MARKET_TYPE)
+    .map(seed=>({sessionKey:normalizeName(seed.linkedSessionKey),state:"live" as const,
+      startedAt:resolveWatcherBattleStartedAt(startIndex,seed.linkedSessionKey),
+      completedAt:null,allowCreate:true}));
+  const results=await persistBetMarketSeeds(prisma,seeds,eligible,identityCandidates);
   const admittedSessions=sessions.filter(session=>seeds.some((seed,index)=>
     seed.marketType===WINNER_MARKET_TYPE&&seed.linkedSessionKey===session.sessionKey&&results[index]?.admitted));
   await runBetAutoShadowWorker(prisma,{activeSessions:admittedSessions});
