@@ -62,4 +62,3 @@ test("a default board read performs no database mutation or financial maintenanc
   assert.deepEqual(writes, []);
   assert.deepEqual(board.openMarkets, []);
 });
-
