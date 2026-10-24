@@ -142,6 +142,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           s=Path('scripts/financial-founder-dual-index-25-readonly.sql').read_text().upper()
+          s='\n'.join(line.split('--',1)[0] for line in s.splitlines())
           assert 'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY' in s
           assert 'ROLLBACK;' in s
           assert 'W.TX_HASH = ANY(' in s
