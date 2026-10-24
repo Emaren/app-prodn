@@ -220,7 +220,7 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
       assert.equal(result.createdCount,1);
       const execution=await db.prisma.betAutoExecution.findFirstOrThrow({where:{winnerMarketId:s.market.id}});
       const first=await Promise.allSettled(Array.from({length:n===1?4:1},()=>executor.executeFundedMechaTicketBatch(db.prisma,signer,[execution.id])));
-      assert.ok(first.some(r=>r.status==="fulfilled"),"a durable reservation must survive contention");
+      assert.ok(first.some(r=>r.status==="fulfilled"),"a durable reservation must survive contention; rejected="+first.filter(r=>r.status==="rejected").map(r=>String(r.reason?.stack||r.reason)).join(" | ").slice(0,4500));
       assert.equal((await db.prisma.betAutoExecution.findUniqueOrThrow({where:{id:execution.id}})).status,"funded_reserved");
       assert.equal(await db.prisma.satchelFundedReservation.count({where:{executionId:execution.id}}),1);
       assert.equal(await db.prisma.satchelFundedJournal.count({where:{executionId:execution.id,eventKind:"wager_reserve"}}),1);
