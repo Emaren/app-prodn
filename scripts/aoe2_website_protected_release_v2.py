@@ -118,7 +118,7 @@ def verify_witness_receipt(packet: dict, *, trust_root=TRUST_ROOT,
                 len(immutable[field]) == 64 and
                 all(c in "0123456789abcdef" for c in immutable[field]),
                 "malformed protected unchanged digest " + field)
-    require(payload.get("website") and type(payload["website"]) is dict and
+    require(type(payload.get("website")) is dict and
             type(payload["website"].get("source_sha")) is str and
             type(payload["website"].get("build_id")) is str,
             "unbound active website runtime")
@@ -171,6 +171,78 @@ def evidence_bind(packet: dict, signed_prestate: dict, current: dict,
             "active website source deviated from certified runtime")
     require(p["candidate_sha"] == target, "website candidate changed")
 
+
+
+def verify_signed_noninterference(receipt: dict, *, scope: dict,
+                                  packet: dict, trust_root=TRUST_ROOT,
+                                  now=None, allow_test_root=False) -> dict:
+    """Require independent Source + Finance attestations; never trust paths alone."""
+    require(receipt.get("schema") == 2 and receipt.get("kind") ==
+            "aoe2war-website-source-finance-boundary-v2", "wrong noninterference proof")
+    payload = receipt.get("payload")
+    signatures = receipt.get("signatures")
+    require(type(payload) is dict and type(signatures) is dict and
+            set(signatures) == {"source_reviewer", "finance_reviewer"},
+            "independent source and finance approvals required")
+    require(payload.get("base_sha") == PRODUCTION_SHA and
+            payload.get("candidate_sha") == MAIN_SOURCE_SHA and
+            payload.get("scope_sha256") == scope["scope_sha256"] and
+            payload.get("changed_paths") == scope["paths"],
+            "source/finance review not bound to actual nine-file source diff")
+    issued = utc_time(payload.get("reviewed_at"))
+    current = now or datetime.now(timezone.utc)
+    require(timedelta(0) <= current - issued <= timedelta(minutes=60),
+            "stale source/finance noninterference review")
+    require(payload.get("legacy_financial_get_side_effects_exist") is True and
+            payload.get("passive_health_probes_only") is True and
+            payload.get("dependencies_transitively_reviewed") is True and
+            payload.get("fast_uri_319_reviewed") is True and
+            payload.get("ssr_layout_server_actions_reviewed") is True and
+            payload.get("restart_financial_worker_impact_proven") is True and
+            payload.get("new_financial_source_paths") == [] and
+            payload.get("new_financial_writes") is False and
+            payload.get("migration_paths") == [] and
+            payload.get("unresolved_financial_effects") == [] and
+            payload.get("wolo_p1_unwaived") is True and
+            payload.get("funded_activation") is False,
+            "source/finance noninterference not affirmatively and completely proven")
+    # The detached Source reviewer is FIFTH and independent from the council.
+    from aoe2_website_release_v2 import ROLES
+    identities = []
+    for role in (*ROLES, "source_reviewer"):
+        key = trust_root / (role + ".pem")
+        protected_key(key, trust_root, allow_test_root=allow_test_root)
+        identity = subprocess.run(
+            ["openssl", "pkey", "-pubin", "-in", str(key),
+             "-pubout", "-outform", "DER"],
+            capture_output=True, timeout=10, check=False)
+        require(identity.returncode == 0 and len(identity.stdout) > 0,
+                "unparseable independent source-review key")
+        identities.append(hashlib.sha256(identity.stdout).hexdigest())
+    require(len(set(identities)) == len(identities),
+            "source reviewer impersonates independent role")
+    for role in ("source_reviewer", "finance_reviewer"):
+        verify_detached(payload, signatures[role], trust_root / (role + ".pem"))
+    require(packet["payload"].get("financial_noninterference_sha256") == digest(payload),
+            "financial noninterference signed receipt not bound by all four roles")
+    require(packet["payload"].get("source_review_sha256") == digest(payload),
+            "source review not bound by all four roles")
+    return payload
+
+
+def assert_exact_release_manifest(candidate_repo: Path, packet: dict,
+                                  scope: dict) -> None:
+    import aoe2_release_ship as ship
+    _file, manifest, manifest_sha = ship.load_manifest(MAIN_SOURCE_SHA)
+    _gate, gate_sha = ship.gate_integrity(manifest)
+    p = packet["payload"]
+    require(manifest.get("release_sha") == MAIN_SOURCE_SHA and
+            manifest.get("previous_production_sha") == PRODUCTION_SHA and
+            manifest.get("changed_files") == scope["paths"] and
+            manifest.get("migration_paths") == [] and
+            manifest.get("risk_class") == p["risk_class"] and
+            manifest_sha == p["manifest_sha256"] and gate_sha == p["gate_sha256"],
+            "candidate source/manifest/gate differ from signed scoped release")
 
 def stage_facts(candidate_repo: Path, supplied_path: Path) -> dict:
     # Load actual controller-verified stage evidence, never arbitrary JSON fields.
@@ -234,6 +306,7 @@ def _run_guarded_release(candidate_repo: Path, mode: str,
 
 def verified_operation(*, operation: str, candidate_repo: Path,
                        packet_path: Path | None = None, witness_before: Path | None = None,
+                       noninterference_receipt: Path | None = None,
                        stage_receipt: Path | None = None,
                        attempt_id: str | None = None,
                        previous_stage_sha: str | None = None,
@@ -268,8 +341,9 @@ def verified_operation(*, operation: str, candidate_repo: Path,
             if operation == "issue-activation":
                 require(stage_receipt is not None, "stage receipt required")
                 facts = stage_facts(candidate_repo, stage_receipt)
-                require(facts["sha"] == previous_stage_sha or previous_stage_sha is not None,
-                        "stage approval and actual receipt must be supplied")
+                require(type(previous_stage_sha) is str and len(previous_stage_sha) == 64
+                        and all(c in "0123456789abcdef" for c in previous_stage_sha),
+                        "previous consumed signed stage approval digest required")
                 result = issue_challenge(state_root=state_root,
                     candidate=MAIN_SOURCE_SHA, phase="PRE_ACTIVATE", now=now,
                     attempt_id=attempt_id, previous_stage_sha=previous_stage_sha,
@@ -277,13 +351,18 @@ def verified_operation(*, operation: str, candidate_repo: Path,
                 return {**result, "artifact_sha256": facts["artifact_sha256"],
                         "stage_receipt_sha256": facts["sha"],
                         "build_id": facts["build_id"]}
-            require(packet_path is not None and witness_before is not None,
-                    "signed approval and original signed witness required")
+            require(packet_path is not None and witness_before is not None
+                    and noninterference_receipt is not None,
+                    "signed four-role approval, source+finance and original Wolo witness required")
             packet = read_json(packet_path)
             prestate = read_json(witness_before)
             reviewer_packet_binding(packet, candidate_repo=candidate_repo,
                                     scope=scope, trust_root=trust_root, now=now,
                                     allow_test_root=allow_test_root)
+            verify_signed_noninterference(read_json(noninterference_receipt),
+                scope=scope, packet=packet, trust_root=trust_root, now=now,
+                allow_test_root=allow_test_root)
+            assert_exact_release_manifest(candidate_repo, packet, scope)
             expected = "PRE_STAGE" if operation == "stage" else "PRE_ACTIVATE"
             require(packet["payload"].get("phase") == expected, "wrong authorization phase")
             evidence_bind(packet, prestate, current, target=MAIN_SOURCE_SHA,
@@ -329,7 +408,7 @@ def verified_operation(*, operation: str, candidate_repo: Path,
                     "original_wolo_p1": after["payload"]["immutable"]["source_p1_original"],
                     "financial_release_authorized": False,
                     "custody_authorized": False, "claim_889_resolved": False,
-                    "website_release_authorized": True,
+                    "website_release_authorized": operation == "activate",
                     "protected_release_result": result}
     except (Hold, OSError, subprocess.SubprocessError) as exc:
         raise Hold("PROTECTED WEBSITE HOLD: " + str(exc)) from exc
@@ -342,6 +421,7 @@ def main() -> int:
     ap.add_argument("--candidate-repo", type=Path, required=True)
     ap.add_argument("--packet", type=Path)
     ap.add_argument("--signed-wolo-prestate", type=Path)
+    ap.add_argument("--signed-noninterference", type=Path)
     ap.add_argument("--stage-receipt", type=Path)
     ap.add_argument("--attempt-id")
     ap.add_argument("--previous-stage-approval-sha256")
