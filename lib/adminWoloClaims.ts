@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { assertNoUnroutedSatchelSettlementClaim } from "./warSatchelClaimSettlementGuard.ts";
 
 import {
   resolveFounderClaimTargetUser,
@@ -889,6 +890,16 @@ export async function retryPendingClaimSettlement(
       detail,
     };
   }
+
+  // A custody-funded wager belongs to the player's Satchel ledger, NOT
+  // to the legacy direct-Keplr claim settlement lane. Never broadcast such
+  // a claim until exact escrow return attribution is implemented.
+  await assertNoUnroutedSatchelSettlementClaim(prisma, {
+    claimId: claim.id,
+    claimKind: claim.claimKind,
+    marketId: claim.sourceMarketId,
+    ownerUserId: matchedUser.id,
+  });
 
   const market =
     typeof claim.sourceMarketId === "number"

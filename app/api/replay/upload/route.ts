@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import {
   classifyReplayIngestReceipt,
   coordinateReplayPostIngest,
@@ -214,8 +213,8 @@ export async function POST(request: NextRequest) {
       receipts: [ingestReceipt],
       source: isWatcherProxyUpload ? "watcher" : "single_upload",
       // Preserve the existing single-upload behavior: non-final/live receipts
-      // also refresh tournament proof links, while market reconciliation still
-      // requires a trusted settlement-ready final.
+      // also refresh tournament proof links. Live market admission separately
+      // awaits canonical committed Watcher evidence; settlement requires a final.
       reconcileTournamentForAcceptedUpload: !isFinalUpload,
       reconcileMarketsForReadyResult: isFinalUpload,
     });
@@ -228,9 +227,6 @@ export async function POST(request: NextRequest) {
       await materializeSpontaneousChampionshipEncounters(prisma,{gameStatsIds:[championshipGameId]}).catch(error=>console.error("Spontaneous championship encounter remains queued:",error));
     }
     await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
-    if (!postIngest.financial.markets.requested) {
-      queueBetMarketEnsure(prisma, 0);
-    }
 
     if (postIngest.financial.tournament.error) {
       console.warn(
