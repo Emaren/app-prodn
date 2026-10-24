@@ -824,6 +824,60 @@ def context(data: dict) -> None:
         print(f"{key}={value if value is not None else 'unknown'}")
     print("policy=exact sealed commit; build beside live; fail closed; preserve rollback; prove internal and public; never mutate WOLO unless explicitly required")
 
+def mutating_ship_source_blockers(data: dict) -> list[str]:
+    """Apply Finish's existing read-only update-plan P1 fence before any ship mutation.
+
+    Gate/manifest source tests are NOT independent release authorization.
+    All mutating deploy entrypoints must refuse a real Wolo source-drift P1,
+    including stage-only, explicit activation, and the one-command ship path.
+    The existing emergency rollback and all dry-runs are unaffected.
+    """
+    try:
+        import aoe2_update
+
+        plan = aoe2_update.collect_plan(
+            release_data=data,
+            defer_runtime_provenance=True,
+        )
+    except Exception as exc:
+        return ["Finish source/P1 preflight unavailable: " + str(exc)[:300]]
+
+    if not isinstance(plan, dict):
+        return ["Finish source/P1 preflight returned invalid evidence"]
+
+    findings = [
+        finding
+        for key in ("unknown_p1", "auto_remediable_p1")
+        for finding in (plan.get(key) or [])
+        if isinstance(finding, dict)
+        and finding.get("area") == "WoloChain"
+        and finding.get("key") == "vps-source-drift"
+    ]
+    if findings:
+        return [
+            "WoloChain/vps-source-drift P1 remains unresolved: "
+            + str(item.get("detail") or "independent source review required")[:300]
+            for item in findings
+        ]
+
+    if plan.get("blocked") is not False:
+        blockers = []
+        for key in ("unknown_p0", "unknown_p1", "blocked_source_docs"):
+            for item in (plan.get(key) or []):
+                if isinstance(item, dict):
+                    blockers.append(
+                        str(item.get("area") or item.get("repo") or "source")
+                        + "/"
+                        + str(item.get("key") or "unresolved")
+                    )
+        return [
+            "Finish documentation/update plan BLOCKED"
+            + (": " + ", ".join(blockers[:8]) if blockers else "")
+        ]
+
+    return []
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war-release")
     parser.add_argument(
@@ -886,6 +940,26 @@ def main() -> int:
             parser.error("ship accepts only one of --stage or --activate")
         if args.dry_run and args.stage:
             parser.error("ship --stage does not accept --dry-run")
+
+        # An isolated stage is a real release mutation. The source/P1
+        # non-remediable findings enforced by Finish must also gate direct
+        # ship --stage, ship --activate and one-command ship entrypoints.
+        if not args.dry_run:
+            source_blockers = mutating_ship_source_blockers(data)
+            if source_blockers:
+                payload = {
+                    "status": "BLOCKED",
+                    "kind": "aoe2war-ship-source-p1-preflight",
+                    "errors": source_blockers,
+                    "production_mutated": False,
+                }
+                if args.json:
+                    print(json.dumps(payload, indent=2, sort_keys=True))
+                else:
+                    print("STOP: MUTATING SHIP SOURCE/P1 PREFLIGHT BLOCKED")
+                    for item in source_blockers:
+                        print("  - " + item)
+                return 2
 
         if args.activate:
             from aoe2_release_ship import activate_release
