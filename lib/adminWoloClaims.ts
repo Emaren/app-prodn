@@ -5,7 +5,7 @@ import {
   syncFounderBonusStatus,
   withFounderPayoutTargetLock,
 } from "@/lib/betFounderBonuses";
-import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
+import { buildFounderEconomicLockKey, buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
 import {
   buildBetStakeMemo,
   buildBetStakeTicketMemo,
@@ -69,7 +69,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market" | "ambiguous_claim_origin";
       detail?: string;
     }
   | {
@@ -823,6 +823,45 @@ export async function retryPendingClaimSettlement(
     return { outcome: "skipped", claimId: claim.id, reason: "not_pending" };
   }
 
+  // The finance-disabled LIVE preview may be settled for display, but it
+  // cannot generate a payout or retry. Check this BEFORE a signer call and
+  // before the legacy/pre-mainnet claim cleanup path mutates anything.
+  // Founder claims legitimately retain both their direct market and bonus
+  // origin. Resolve both: the direct reference must never hide a preview or
+  // unrelated bonus parent. Missing authoritative rows are not permission.
+  const [directMarket, founderOrigin] = await Promise.all([
+    claim.sourceMarketId !== null
+      ? prisma.betMarket.findUnique({
+        where: { id: claim.sourceMarketId },
+        select: { id: true, bookPhase: true },
+      })
+      : null,
+    claim.sourceFounderBonusId !== null
+      ? prisma.betMarketFounderBonus.findUnique({
+          where: { id: claim.sourceFounderBonusId },
+          select: { marketId: true, market: { select: { id: true, bookPhase: true } } },
+        })
+      : null,
+  ]);
+  if (directMarket?.bookPhase === "preview_only" || founderOrigin?.market?.bookPhase === "preview_only") {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "preview_only_market",
+      detail: "Preview-only battles are never authorized for WOLO payout or claim retry.",
+    };
+  }
+  if ((claim.sourceMarketId !== null && !directMarket) ||
+      (claim.sourceFounderBonusId !== null && !founderOrigin?.market) ||
+      (directMarket && founderOrigin && directMarket.id !== founderOrigin.marketId)) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "ambiguous_claim_origin",
+      detail: "Claim market origins are missing or disagree. Independent attribution review is required before cleanup, payout or retry.",
+    };
+  }
+
   if (hasAmbiguousPriorWoloPayoutAttempt(claim)) {
     return {
       outcome: "skipped",
@@ -936,11 +975,17 @@ export async function retryPendingClaimSettlement(
   if (useFounderSettlement && claim.sourceFounderBonusId) {
     const founderBonusId = claim.sourceFounderBonusId;
     const payoutAddress = matchedUser.walletAddress;
-    const payoutIdentity = buildFounderPayoutIdentity({
-      founderBonusId,
-      claimGroupKey: claim.claimGroupKey,
-      claimKind: claim.claimKind,
-    });
+    const payoutIdentity = {
+      ...buildFounderPayoutIdentity({
+        founderBonusId,
+        claimGroupKey: claim.claimGroupKey,
+        claimKind: claim.claimKind,
+      }),
+      economicLockKey: buildFounderEconomicLockKey({
+        founderBonusId,
+        normalizedPlayerName: claim.normalizedPlayerName,
+      }),
+    };
 
     try {
       return await withFounderPayoutTargetLock(
@@ -970,6 +1015,28 @@ export async function retryPendingClaimSettlement(
               claimId: claim.id,
               reason: "ambiguous_prior_attempt" as const,
               detail: "Previous payout attempt has no chain proof; no retry or broadcast permitted.",
+            };
+          }
+
+          // Distinct June/July keys for one economic participant MUST NOT
+          // independently authorize two chain sends. Under the common
+          // advisory lock, inspect all keys for the same economic entitlement.
+          // Even two hashless pending keys are ambiguous; sign neither.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
+            where: {
+              sourceFounderBonusId: founderBonusId,
+              normalizedPlayerName: claim.normalizedPlayerName,
+              claimKind: claim.claimKind,
+              claimGroupKey: { not: claim.claimGroupKey },
+            },
+            select: { id: true },
+          });
+          if (conflictingEconomicClaim) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "ambiguous_prior_attempt" as const,
+              detail: "Another claim key exists for the same Founder Bonus recipient, even if still pending. Resolve economic entitlement and historical payment proof independently before any broadcast.",
             };
           }
 

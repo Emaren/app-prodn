@@ -2,9 +2,10 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import {
   buildFounderPayoutIdentity,
+  buildFounderEconomicLockKey,
   type FounderPayoutIdentity,
 } from "@/lib/founderPayoutIdentity";
-import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
+import { createPendingWoloClaim, normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import {
@@ -35,11 +36,18 @@ const FOUNDER_PAYOUT_LOCK_TIMEOUT_MS = 120_000;
  */
 export async function withFounderPayoutTargetLock<T>(
   prisma: PrismaClient,
-  identity: Pick<FounderPayoutIdentity, "lockKey">,
+  identity: Pick<FounderPayoutIdentity, "lockKey"> & { economicLockKey?: string },
   callback: (tx: Prisma.TransactionClient) => Promise<T>
 ) {
   return prisma.$transaction(
     async (tx) => {
+      // Always take the shared economic lock BEFORE the per-key lock. This
+      // serializes canonical and namespaced generations under one parent.
+      if (identity.economicLockKey) {
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtextextended(${identity.economicLockKey}, 0))
+        `;
+      }
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(hashtextextended(${identity.lockKey}, 0))
       `;
@@ -843,6 +851,7 @@ export async function settleFounderBonuses(
       market: {
         select: {
           id: true,
+          bookPhase: true,
           title: true,
           eventLabel: true,
           leftLabel: true,
@@ -933,6 +942,11 @@ export async function settleFounderBonuses(
     : [];
 
   for (const bonus of bonuses) {
+    // Existing held-preview books are not WOLO obligations. Refuse even if an
+    // administrator or older job left a bonus row attached to such a book.
+    if (bonus.market.bookPhase === "preview_only") {
+      continue;
+    }
     const bonusType = normalizeFounderBonusType(bonus.bonusType);
     if (!bonusType) {
       continue;
@@ -1098,11 +1112,17 @@ export async function settleFounderBonuses(
         continue;
       }
 
-      const payoutIdentity = buildFounderPayoutIdentity({
-        founderBonusId: bonus.id,
-        claimGroupKey: groupKey,
-        claimKind,
-      });
+      const payoutIdentity = {
+        ...buildFounderPayoutIdentity({
+          founderBonusId: bonus.id,
+          claimGroupKey: groupKey,
+          claimKind,
+        }),
+        economicLockKey: buildFounderEconomicLockKey({
+          founderBonusId: bonus.id,
+          normalizedPlayerName: normalizePendingWoloClaimName(target.playerName),
+        }),
+      };
       const claimNote =
         bonusType === "winner"
           ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
@@ -1130,6 +1150,24 @@ export async function settleFounderBonuses(
               (currentClaim.status !== "pending" ||
                currentClaim.payoutAttemptedAt !== null ||
                Boolean(currentClaim.payoutTxHash?.trim()))) {
+            return;
+          }
+
+          // A paid/attempted June claim MUST fence a July namespaced group
+          // for the same bonus and normalized recipient. Do not turn another
+          // key into another signer request merely because its memo differs.
+          // Two pending keys are ambiguous too: neither may broadcast.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
+            where: {
+              sourceFounderBonusId: bonus.id,
+              normalizedPlayerName: normalizePendingWoloClaimName(target.playerName),
+              claimKind,
+              claimGroupKey: { not: groupKey },
+            },
+            select: { id: true },
+          });
+          if (conflictingEconomicClaim) {
+            // Immutable financial history, no retry, no payout and no mutation.
             return;
           }
 
@@ -1284,6 +1322,12 @@ export async function createFounderBonus(
   };
 
   if (requestId) {
+    const phase = await prisma.betMarket.findUnique({
+      where: { id: input.marketId }, select: { bookPhase: true },
+    });
+    if (phase?.bookPhase === "preview_only") {
+      throw new FounderBonusError(409, "Preview-only battles cannot receive WOLO founder bonuses.");
+    }
     const existing =
       await prisma.betMarketFounderBonus.findUnique({
         where: {
@@ -1312,6 +1356,7 @@ export async function createFounderBonus(
     where: { id: input.marketId },
     select: {
       id: true,
+      bookPhase: true,
       title: true,
       status: true,
       leftLabel: true,
@@ -1323,6 +1368,9 @@ export async function createFounderBonus(
 
   if (!market) {
     throw new FounderBonusError(404, "Market not found.");
+  }
+  if (market.bookPhase === "preview_only") {
+    throw new FounderBonusError(409, "Preview-only battles cannot receive WOLO founder bonuses.");
   }
 
   if (

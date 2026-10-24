@@ -56,7 +56,7 @@ test("post-ingest financial work requires a pass started after commit", () => {
 
   assert.ok(dependencyStart >= 0);
   assert.ok(dependencyEnd > dependencyStart);
-  assert.match(dependencyBlock, /\{ ensureBetMarketsAfterCommit \}/);
+  assert.match(dependencyBlock, /\{[^}]*ensureBetMarketsAfterCommit[^}]*\}/);
   assert.match(dependencyBlock, /ensureBetMarketsAfterCommit\(/);
   assert.doesNotMatch(dependencyBlock, /\{ ensureBetMarkets \}/);
 });

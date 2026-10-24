@@ -963,6 +963,9 @@ export async function commitBetStakeTicket(
           where: postBroadcastRecovery
             ? {
                 id: leg.marketId,
+                // The transfer may have been broadcast already, but a preview
+                // book is NEVER an authorized destination for a WOLO stake.
+                bookPhase: { not: "preview_only" },
                 status: { in: [...POST_BROADCAST_RECOVERY_MARKET_STATUSES] },
                 winnerSide: null,
                 settledAt: null,
