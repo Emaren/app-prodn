@@ -5,7 +5,7 @@ import {
   syncFounderBonusStatus,
   withFounderPayoutTargetLock,
 } from "@/lib/betFounderBonuses";
-import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
+import { buildFounderEconomicLockKey, buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
 import {
   buildBetStakeMemo,
   buildBetStakeTicketMemo,
@@ -959,11 +959,17 @@ export async function retryPendingClaimSettlement(
   if (useFounderSettlement && claim.sourceFounderBonusId) {
     const founderBonusId = claim.sourceFounderBonusId;
     const payoutAddress = matchedUser.walletAddress;
-    const payoutIdentity = buildFounderPayoutIdentity({
-      founderBonusId,
-      claimGroupKey: claim.claimGroupKey,
-      claimKind: claim.claimKind,
-    });
+    const payoutIdentity = {
+      ...buildFounderPayoutIdentity({
+        founderBonusId,
+        claimGroupKey: claim.claimGroupKey,
+        claimKind: claim.claimKind,
+      }),
+      economicLockKey: buildFounderEconomicLockKey({
+        founderBonusId,
+        normalizedPlayerName: claim.normalizedPlayerName,
+      }),
+    };
 
     try {
       return await withFounderPayoutTargetLock(
@@ -993,6 +999,32 @@ export async function retryPendingClaimSettlement(
               claimId: claim.id,
               reason: "ambiguous_prior_attempt" as const,
               detail: "Previous payout attempt has no chain proof; no retry or broadcast permitted.",
+            };
+          }
+
+          // Distinct June/July keys for one economic participant MUST NOT
+          // independently authorize two chain sends. Under the common
+          // advisory lock, inspect the full parent+recipient attempt history.
+          const previousEconomicAttempt = await tx.pendingWoloClaim.findFirst({
+            where: {
+              sourceFounderBonusId: founderBonusId,
+              normalizedPlayerName: claim.normalizedPlayerName,
+              claimKind: claim.claimKind,
+              claimGroupKey: { not: claim.claimGroupKey },
+              OR: [
+                { status: "claimed" },
+                { payoutAttemptedAt: { not: null } },
+                { payoutTxHash: { not: null } },
+              ],
+            },
+            select: { id: true },
+          });
+          if (previousEconomicAttempt) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "ambiguous_prior_attempt" as const,
+              detail: "Another claim key for the same Founder Bonus recipient has an attempted/final payout. Independent economic-entitlement and chain review required; no new broadcast permitted.",
             };
           }
 
