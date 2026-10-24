@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
+      "sha256": "8aba1d7e47307f656c227121096ae026bd0f63f9705c02ae4144aa5dd38cfd85",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1513,9 +1513,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "5ceb68acdf5396183cbeae593f4d71c82b85ed81fc0f0e38f3a255796767341a",
+      "sha256": "94cce5a3fed3a3444940c1951056eee775a8243feb31420224dbe480411ed2b8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
