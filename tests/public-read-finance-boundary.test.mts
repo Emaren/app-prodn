@@ -32,8 +32,9 @@ test("authenticated replay post-ingest retains explicit private financial capabi
   const admission = post.indexOf("await coordinateReplayPostIngest(");
   assert.ok(auth >= 0, "post-ingest must authenticate first");
   assert.ok(admission > auth, "awaited event admission must follow authentication");
-  const privateQueue = post.indexOf("queueBetMarketEnsure(prisma, 0)");
-  assert.ok(privateQueue > auth, "existing private reconciliation remains behind auth");
+  // The funded native pipeline awaits private reconciliation inside the
+  // authenticated coordinator, rather than scheduling an unowned queue.
+  assert.match(post, /reconcileMarketsForReadyResult:\\s*true/);
   assert.match(post, /admission: report\.admission/);
   assert.match(post, /internalApiKeyMatches/);
 });
