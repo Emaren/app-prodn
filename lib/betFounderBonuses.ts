@@ -1159,10 +1159,22 @@ export async function settleFounderBonuses(
           // Two pending keys are ambiguous too: neither may broadcast.
           const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
             where: {
-              sourceFounderBonusId: bonus.id,
               normalizedPlayerName: normalizePendingWoloClaimName(target.playerName),
               claimKind,
-              claimGroupKey: { not: groupKey },
+              OR: [
+                {
+                  sourceFounderBonusId: bonus.id,
+                  claimGroupKey: { not: groupKey },
+                },
+                {
+                  // Historical rows can lose their FK through ON DELETE SET NULL.
+                  // Their original founder:<id>: group identity still carries
+                  // economic provenance and must fence every signer request,
+                  // including an exact same-key replay under a restored FK.
+                  sourceFounderBonusId: null,
+                  claimGroupKey: { startsWith: `founder:${bonus.id}:` },
+                },
+              ],
             },
             select: { id: true },
           });
