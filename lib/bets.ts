@@ -4541,7 +4541,7 @@ async function reconcilePendingCoreBetClaims(
   }
 }
 
-async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
+export async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
   const retryCutoff = new Date(Date.now() - 5 * 60_000);
   const candidates = await prisma.betMarketFinancialAdjustment.findMany({
     where: {
@@ -4552,8 +4552,9 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
         { adjustmentStatus: "corrective_refund_processing", updatedAt: { lt: retryCutoff } },
       ],
       incident: {
-        market: { status: "voided" },
+        market: { status: "voided", bookPhase: { not: "preview_only" } },
       },
+      wager: { market: { bookPhase: { not: "preview_only" } } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     include: {
@@ -4562,13 +4563,22 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
           market: true,
         },
       },
+      wager: { select: { marketId: true, userId: true } },
     },
   });
 
   for (const adjustment of candidates) {
+    // A malformed adjustment linking another market's wager may otherwise
+    // create a real claim or call the custody signer. Never even acquire it.
+    if (adjustment.incident.market.bookPhase === "preview_only" ||
+        adjustment.wager.marketId !== adjustment.incident.marketId ||
+        adjustment.wager.userId !== adjustment.userId) continue;
     const acquired = await prisma.betMarketFinancialAdjustment.updateMany({
       where: {
         id: adjustment.id,
+        incident: { market: { status: "voided", bookPhase: { not: "preview_only" } } },
+        wager: { marketId: adjustment.incident.marketId, userId: adjustment.userId,
+          market: { bookPhase: { not: "preview_only" } } },
         amountStillOwedWolo: { gt: 0 },
         OR: [
           { adjustmentStatus: "corrective_refund_pending" },
@@ -8084,6 +8094,19 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
             linkedSessionKey: true,
             battleId: true,
             status: true,
+            bookPhase: true,
+            seedLeftWolo: true,
+            seedRightWolo: true,
+            settlementRunId: true,
+            settlementStatus: true,
+            settlementAttemptedAt: true,
+            settlementExecutedAt: true,
+            voidedAt: true,
+            refundStatus: true,
+            _count: { select: {
+              wagers: true, stakeIntents: true, stakeTicketLegs: true,
+              walletLocks: true, founderBonuses: true,
+            } },
             settledAt: true,
             winnerSide: true,
             title: true,
@@ -8103,6 +8126,13 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           },
         });
         if (liveOnly && existing && (
+          existing.bookPhase !== "preview_only" ||
+          existing.firstStakeAcceptedAt !== null ||
+          existing.seedLeftWolo !== 0 || existing.seedRightWolo !== 0 ||
+          existing.settlementRunId !== null || existing.settlementStatus !== null ||
+          existing.settlementAttemptedAt !== null || existing.settlementExecutedAt !== null ||
+          existing.voidedAt !== null || existing.refundStatus !== null ||
+          Object.values(existing._count).some(count => count !== 0) ||
           existing.marketType !== seed.marketType || existing.scheduledMatchId !== null ||
           existing.linkedSessionKey !== seed.linkedSessionKey ||
           !["open","live"].includes(existing.status) || existing.settledAt || existing.winnerSide ||
@@ -8194,10 +8224,22 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
       const existingRows=await tx.betMarket.findMany({where:{slug:{in:seeds.map(seed=>seed.slug)}},select:{
         slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,
         status:true,settledAt:true,winnerSide:true,closeAt:true,propositionHash:true,
+        bookPhase:true,firstStakeAcceptedAt:true,seedLeftWolo:true,seedRightWolo:true,
+        settlementRunId:true,settlementStatus:true,settlementAttemptedAt:true,
+        settlementExecutedAt:true,voidedAt:true,refundStatus:true,
+        _count:{select:{wagers:true,stakeIntents:true,stakeTicketLegs:true,
+          walletLocks:true,founderBonuses:true}},
       }});
       for (const seed of seeds) {
         const existing=existingRows.find(row=>row.slug===seed.slug);
-        if (existing && (existing.marketType!==seed.marketType || existing.scheduledMatchId!==null ||
+        if (existing && (existing.bookPhase!=="preview_only" ||
+          existing.firstStakeAcceptedAt!==null ||
+          existing.seedLeftWolo!==0 || existing.seedRightWolo!==0 ||
+          existing.settlementRunId!==null || existing.settlementStatus!==null ||
+          existing.settlementAttemptedAt!==null || existing.settlementExecutedAt!==null ||
+          existing.voidedAt!==null || existing.refundStatus!==null ||
+          Object.values(existing._count).some(count=>count!==0) ||
+          existing.marketType!==seed.marketType || existing.scheduledMatchId!==null ||
           existing.linkedSessionKey!==seed.linkedSessionKey ||
           existing.propositionHash!==seed.propositionHash || !["open","live"].includes(existing.status) ||
           existing.settledAt || existing.winnerSide || existing.closeAt && existing.closeAt.getTime()<=Date.now()))
