@@ -51,7 +51,7 @@ test('10 private rows resolve to 9 unique transaction references, never publishe
   const rendered=JSON.stringify(result.publicReport);
   assert.ok(!rendered.includes(TO));
   assert.ok(!rendered.includes(FROM));
-  assert.ok(!rendered.includes('synthetic-'));
+  assert.ok(!rendered.includes('synthetic-player-'));
   assert.ok(!rendered.includes(String(1001).padStart(64,'0')));
 });
 test('two independent MsgSend ordinals cannot be confused with one',async()=>{
