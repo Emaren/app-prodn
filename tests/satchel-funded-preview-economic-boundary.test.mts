@@ -9,7 +9,7 @@ const source=(path:string)=>readFileSync(new URL("../"+path,import.meta.url),"ut
 
 test("funded scheduler excludes original nonfunded LIVE preview books",()=>{
   const q=fundedMechaEligibleQuery({now:new Date("2026-10-24T12:00:00.000Z")});
-  assert.deepEqual(q.where.winnerMarket.bookPhase,{not:"preview_only"});
+  assert.deepEqual(q.where.winnerMarket.bookPhase,"funded");
   assert.equal(q.where.winnerMarket.status,"live");
   assert.equal(q.where.winnerMarket.integrityStatus,"verified");
 });
@@ -21,8 +21,8 @@ test("under-lock reservation and last prebroadcast fence inspect both LIVE book 
   for(const [name,section] of [["reserve",reserve],["prebroadcast",attempt]] as const){
     assert.ok(section.length>500,name+" function boundaries changed; inspect this test");
     assert.match(section,/bookPhase:\s*true/,name+" must read persisted book phase");
-    assert.match(section,/market\.bookPhase === "preview_only"/,name+" must refuse display-only winner");
-    assert.match(section,/desync\.bookPhase === "preview_only"/,name+" must refuse display-only desync");
+    assert.match(section,/market\\.bookPhase !== "funded"/,name+" must refuse display-only winner");
+    assert.match(section,/desync\\.bookPhase !== "funded"/,name+" must refuse display-only desync");
     assert.match(section,/satchelWatcherSpendWindowIssue/,name+" must still enforce fresh Watcher identity");
   }
   assert.match(reserve,/withExclusiveSatchelTx\(prisma/);

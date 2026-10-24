@@ -459,7 +459,7 @@ export async function reserveForWatcherExecution(
         settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true,
       },
     });
-    if (!market || market.bookPhase === "preview_only" ||
+    if (!market || market.bookPhase !== "funded" ||
         market.status !== "live" || market.marketType !== "winner" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== exec.propositionHash) {
@@ -478,7 +478,7 @@ export async function reserveForWatcherExecution(
           winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
           settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
       });
-      if (!desync || desync.bookPhase === "preview_only" ||
+      if (!desync || desync.bookPhase !== "funded" ||
           desync.status !== "live" || desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
           desync.propositionHash !== market.propositionHash ||
           desync.integrityStatus !== "verified") {
@@ -723,7 +723,7 @@ export async function markSatchelSubmissionAttempt(
         winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
         settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
     });
-    if (!market || market.bookPhase === "preview_only" || market.status !== "live" ||
+    if (!market || market.bookPhase !== "funded" || market.status !== "live" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== execution.propositionHash) {
       stop("watcher_proposition_not_live_before_broadcast");
@@ -733,7 +733,7 @@ export async function markSatchelSubmissionAttempt(
     if (windowIssue) stop(windowIssue);
     if (execution.desyncMarketId !== null) {
       const desync = await tx.betMarket.findUnique({ where: { id: execution.desyncMarketId } });
-      if (!desync || desync.bookPhase === "preview_only" ||
+      if (!desync || desync.bookPhase !== "funded" ||
           desync.parentMarketId !== execution.winnerMarketId ||
           desync.propositionHash !== execution.propositionHash || desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");

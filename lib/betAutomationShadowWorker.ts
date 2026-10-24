@@ -166,6 +166,7 @@ export async function runBetAutoShadowWorker(
   const markets = await prisma.betMarket.findMany({
     where: {
       marketType: "winner",
+      bookPhase: "funded",
       status: "live",
       scheduledMatchId: null,
       linkedSessionKey: { in: activeSessionKeys },
@@ -195,7 +196,7 @@ export async function runBetAutoShadowWorker(
       sourceRosterHash: true,
       rosterLockedAt: true,
       childMarkets: {
-        where: { marketType: "desync" },
+        where: { marketType: "desync", bookPhase: "funded" },
         orderBy: { id: "asc" },
         select: {
           id: true,

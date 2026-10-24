@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 
 export type BattleIdentityCandidate = {
   sessionKey: string;
@@ -62,6 +62,110 @@ function mergeCandidate(
   } satisfies BattleIdentityCandidate;
 }
 
+/** Same public-number allocator, inside a caller-owned atomic market admission. */
+async function writeBattleIdentityInTransaction(
+  tx: Prisma.TransactionClient,
+  identityKey: string,
+  candidate: BattleIdentityCandidate
+) {
+
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))
+  `;
+
+  const requestedPlatformMatchId = platformMatchIdFromBattleSession(
+    candidate.sessionKey
+  );
+  /*
+   * A fallback identity may already own the immutable public number when
+   * exact platform truth arrives. Promotion records that platform ID on
+   * the original row instead of burning another public number, so exact
+   * platform lookup must take precedence over the newer identity key.
+   */
+  const existingByPlatform = requestedPlatformMatchId
+    ? await tx.battleIdentity.findUnique({
+        where: { platformMatchId: requestedPlatformMatchId },
+        select: {
+          id: true,
+          identityKey: true,
+          publicNumber: true,
+          state: true,
+          platformMatchId: true,
+          startedAt: true,
+          completedAt: true,
+        },
+      })
+    : null;
+  const existing = existingByPlatform ?? await tx.battleIdentity.findUnique({
+    where: { identityKey },
+    select: {
+      id: true,
+      identityKey: true,
+      publicNumber: true,
+      state: true,
+      platformMatchId: true,
+      startedAt: true,
+      completedAt: true,
+    },
+  });
+
+  if (!existing && !candidate.allowCreate) return null;
+
+  const nextState =
+    existing?.state === "completed" ? "completed" : publicBattleState(candidate);
+  const row = existing
+    ? await tx.battleIdentity.update({
+        where: { id: existing.id },
+        data: {
+          state: nextState,
+          platformMatchId:
+            requestedPlatformMatchId ?? existing.platformMatchId,
+          startedAt: existing.startedAt ?? candidate.startedAt ?? null,
+          completedAt:
+            existing.completedAt ??
+            (candidate.state === "completed" ? candidate.completedAt ?? new Date() : null),
+          lastSeenAt: new Date(),
+        },
+        select: { id: true, identityKey: true, publicNumber: true },
+      })
+    : await tx.battleIdentity.create({
+        data: {
+          identityKey,
+          platformMatchId: requestedPlatformMatchId,
+          state: nextState,
+          startedAt: candidate.startedAt ?? null,
+          completedAt:
+            candidate.state === "completed" ? candidate.completedAt ?? new Date() : null,
+          lastSeenAt: new Date(),
+        },
+        select: { id: true, identityKey: true, publicNumber: true },
+      });
+
+  return {
+    requestedIdentityKey: identityKey,
+    row: row satisfies PublicBattleIdentity,
+  };
+}
+
+/** Preview market families must not leave identity mutations when admission rolls back. */
+export async function ensurePublicBattleIdentitiesInTransaction(
+  tx: Prisma.TransactionClient,
+  candidates: BattleIdentityCandidate[]
+) {
+  const byKey = new Map<string, BattleIdentityCandidate>();
+  for (const candidate of candidates) {
+    const identityKey = canonicalBattleIdentityKey(candidate.sessionKey);
+    if (identityKey) byKey.set(identityKey, mergeCandidate(byKey.get(identityKey), candidate));
+  }
+  const resolved: Array<{requestedIdentityKey: string; row: PublicBattleIdentity} | null> = [];
+  // Fixed order matches the seed writer's sorted canonical advisory locks.
+  for (const [identityKey, candidate] of [...byKey].sort(([a],[b])=>a.localeCompare(b))) {
+    resolved.push(await writeBattleIdentityInTransaction(tx, identityKey, candidate));
+  }
+  return new Map(resolved.filter((row):row is NonNullable<typeof row>=>Boolean(row))
+    .map(row=>[row.requestedIdentityKey,row.row] as const));
+}
+
 /**
  * Allocate one immutable public number per exact watcher/session identity.
  *
@@ -83,84 +187,7 @@ export async function ensurePublicBattleIdentities(
 
   const resolved = await Promise.all(
     [...byKey.entries()].map(async ([identityKey, candidate]) =>
-      prisma.$transaction(async (tx) => {
-        await tx.$executeRaw`
-          SELECT pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))
-        `;
-
-        const requestedPlatformMatchId = platformMatchIdFromBattleSession(
-          candidate.sessionKey
-        );
-        /*
-         * A fallback identity may already own the immutable public number when
-         * exact platform truth arrives. Promotion records that platform ID on
-         * the original row instead of burning another public number, so exact
-         * platform lookup must take precedence over the newer identity key.
-         */
-        const existingByPlatform = requestedPlatformMatchId
-          ? await tx.battleIdentity.findUnique({
-              where: { platformMatchId: requestedPlatformMatchId },
-              select: {
-                id: true,
-                identityKey: true,
-                publicNumber: true,
-                state: true,
-                platformMatchId: true,
-                startedAt: true,
-                completedAt: true,
-              },
-            })
-          : null;
-        const existing = existingByPlatform ?? await tx.battleIdentity.findUnique({
-          where: { identityKey },
-          select: {
-            id: true,
-            identityKey: true,
-            publicNumber: true,
-            state: true,
-            platformMatchId: true,
-            startedAt: true,
-            completedAt: true,
-          },
-        });
-
-        if (!existing && !candidate.allowCreate) return null;
-
-        const nextState =
-          existing?.state === "completed" ? "completed" : publicBattleState(candidate);
-        const row = existing
-          ? await tx.battleIdentity.update({
-              where: { id: existing.id },
-              data: {
-                state: nextState,
-                platformMatchId:
-                  requestedPlatformMatchId ?? existing.platformMatchId,
-                startedAt: existing.startedAt ?? candidate.startedAt ?? null,
-                completedAt:
-                  existing.completedAt ??
-                  (candidate.state === "completed" ? candidate.completedAt ?? new Date() : null),
-                lastSeenAt: new Date(),
-              },
-              select: { id: true, identityKey: true, publicNumber: true },
-            })
-          : await tx.battleIdentity.create({
-              data: {
-                identityKey,
-                platformMatchId: requestedPlatformMatchId,
-                state: nextState,
-                startedAt: candidate.startedAt ?? null,
-                completedAt:
-                  candidate.state === "completed" ? candidate.completedAt ?? new Date() : null,
-                lastSeenAt: new Date(),
-              },
-              select: { id: true, identityKey: true, publicNumber: true },
-            });
-
-        return {
-          requestedIdentityKey: identityKey,
-          row: row satisfies PublicBattleIdentity,
-        };
-      })
+      prisma.$transaction(tx => writeBattleIdentityInTransaction(tx, identityKey, candidate))
     )
   );
 

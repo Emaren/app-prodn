@@ -1029,6 +1029,8 @@ export async function commitBetStakeTicket(
           where: postBroadcastRecovery
             ? {
                 id: leg.marketId,
+                // An already-broadcast transfer cannot authorize a preview book.
+                bookPhase: { not: "preview_only" },
                 status: { in: [...POST_BROADCAST_RECOVERY_MARKET_STATUSES] },
                 winnerSide: null,
                 settledAt: null,
