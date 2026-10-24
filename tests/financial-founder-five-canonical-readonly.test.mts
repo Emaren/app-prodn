@@ -92,7 +92,7 @@ test('macOS-style symlinked CLI path must execute and reject malformed private i
 test('direct CLI rejects malformed NDJSON bytes without reaching a chain endpoint or emitting success',()=>{
   const script=fileURLToPath(new URL('../scripts/financial-founder-five-canonical-readonly.mjs',import.meta.url));
   const child=spawnSync(process.execPath,['--experimental-strip-types',script],{
-    input:'{"not":"a full JSON document"\n',encoding:'utf8',timeout:10000,
+    input:('{'+'"not":'+'\n').repeat(10),encoding:'utf8',timeout:10000,
   });
   assert.equal(child.status,2,`malformed stream should never silently succeed: ${child.status}`);
   assert.match(child.stderr,/BLOCKED: (Unexpected|Expected|Unterminated|Bad)/);
