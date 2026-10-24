@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
       ok: postIngestSucceeded,
       gameStatsId: receipt.gameId,
       idempotencyKey: report.idempotencyKey,
+      admission: report.admission,
       automatic: report.automatic,
       financial: report.financial,
     },

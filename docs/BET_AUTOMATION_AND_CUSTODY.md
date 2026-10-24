@@ -15,6 +15,39 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 24 — original LIVE admission extracted with funding disabled
+
+The private authenticated post-ingest coordinator now awaits metadata admission
+from durable original HD Watcher rows; the existing private recovery endpoint
+can recover a missed notification. Receipt flags only select row IDs. Source,
+uploader/Steam identity, HD mode, current capture, provenance and roster are
+revalidated under bounded database locks. LIVE winner/Desync creation and the
+new child link share one transaction, with freshness checked after final I/O.
+
+This extraction deliberately does **not** invoke financial identity promotion.
+It takes the existing sorted canonical/alias advisory locks and refuses occupied
+alias families. Any incompatible or terminal canonical sibling refuses the
+whole family before creation; compatible existing books are read-only. A creator
+outside the shared lock causes a unique conflict/rollback instead of an upsert
+over its state. Existing wagers, wallet locks, stake tickets/intents, founder
+bonuses, pending claims and queued refunds are not reattributed by this path.
+Synthetic PostgreSQL sentinels are regression fixtures, never dispositions of
+historical refund #8477 or claim #889.
+
+The isolated PostgreSQL qualification uses the existing main Prisma datamodel,
+not held Satchel SQL. Funded balance/reservation and maintenance-policy tables
+remain absent. Existing preview caps, UI, payment transport, public maintenance
+fallbacks and `LIVE_EXECUTOR_IMPLEMENTED=false` remain unchanged. Metadata and
+`shadow_ready` previews do not create reserves, wagers, credits or plan spending.
+The eight financial migrations and funded source in held PR #838 require their
+own reviewed release; do not deploy that mixed PR as a website-only shortcut.
+
+This candidate still touches the governed betting domain and requires normal
+exact-head CI, independent source/release review and protected website staging,
+authorization and rollback. It does not bypass `aoe2war finish` or Wolo issue
+#5. Existing public/timer financial producers still require the complete
+coordinated maintenance fence before any financial operation.
+
 ## October 19 — source-linked public GET and prewarm financial producer census
 
 `scripts/aoe2_financial_producer_source_census.py --check` is a

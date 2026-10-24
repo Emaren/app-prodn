@@ -125,6 +125,7 @@ jobs:
       # Never connect to production. The test creates a private Unix-socket
       # cluster under /tmp, exercises authority selection, then destroys it.
       RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
+      RUN_LIVE_MARKET_PG_TESTS: "1"
       AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
     steps:
@@ -150,4 +151,4 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/live-watcher-market-admission-postgres.test.mts
