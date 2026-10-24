@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "004a82bcce5ba54683e73905aeba2ca7f856205cccd08b30790d000e4c1b3b24",
+      "sha256": "3392918867f05d40ce13cf3f6e46ec3c59b305ba59f6feaa0e21b4da830620e8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-live-watcher-atomic-admission",
-    "commit": "2337493a5d71309dd86a61f6e35d052ef9ac7776"
+    "branch": "review/20261024-financial-claim-collision-certification",
+    "commit": "f1febdc295c153f720da875e149afe62115bab46"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
