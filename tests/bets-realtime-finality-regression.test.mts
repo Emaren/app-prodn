@@ -605,10 +605,11 @@ test(
       betsPageSource,
       /window\.addEventListener\("focus", handleForegroundRefresh\)/
     );
-    assert.match(
+    assert.doesNotMatch(
       betsRouteSource,
-      /queueBetMarketEnsure\(prisma, 0\)/
+      /queueBetMarketEnsure|ensureBetMarkets\s*\(/
     );
+    assert.match(betsRouteSource, /loadBetBoardSnapshot/);
     assert.match(
       betsRouteSource,
       /private, no-store, max-age=0, must-revalidate/

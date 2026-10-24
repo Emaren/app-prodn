@@ -9,7 +9,7 @@ import {setTimeout as sleep} from "node:timers/promises";
 import test from "node:test";
 import type {Prisma} from "../lib/generated/prisma/index.js";
 import {coordinateReplayPostIngest,classifyReplayIngestReceipt} from "../lib/replayPostIngest.ts";
-import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets,buildWatcherMarketSlugForSessionKey} from "../lib/bets.ts";
+import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets,buildWatcherMarketSlugForSessionKey,settleMarketIntegrityCorrections} from "../lib/bets.ts";
 import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
 import {canonicalBattleIdentityKey} from "../lib/battleIdentity.ts";
 import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
@@ -68,7 +68,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
     const first=actualApiReceipt?await db.prisma.gameStats.findUniqueOrThrow({where:{id:Number(actualApiReceipt.game_id)}}):await persist("1v1-rm");
     await t.test("four concurrent authenticated post-commit consumers create one book and one preview event",async()=>{
       const reports=await Promise.all(Array.from({length:4},()=>ingest(first)));
-      for(const report of reports){assert.equal(report.admission.liveMarkets.succeeded,true);assert.equal(report.financial.markets.requested,false);}
+      for(const report of reports){assert.equal(report.admission.liveMarkets.succeeded,true,report.admission.liveMarkets.error??undefined);assert.equal(report.financial.markets.requested,false);}
       const markets=await db.prisma.betMarket.findMany({orderBy:{id:"asc"}});
       assert.equal(markets.length,2);const winner=markets.find(m=>m.marketType==="winner")!,desync=markets.find(m=>m.marketType==="desync")!;
       assert.ok(winner);assert.ok(desync);assert.equal(winner.status,"live");assert.equal(winner.linkedGameStatsId,null);
@@ -380,6 +380,123 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         linkedSessionKey:alias,slug:buildWatcherMarketSlugForSessionKey(alias),scheduledMatchId:null,
         closeAt:new Date(Date.now()+600000),firstStakeAcceptedAt:null,refundStatus:null,settlementStatus:null}});
     }
+    for(const bookPhase of ["legacy","pre_game","opening_minute","late"] as const){
+      await t.test(`matching ${bookPhase} canonical financial parent cannot be readmitted or acquire a preview child`,async()=>{
+        const name="nonpreview-parent-"+bookPhase,row=await persist(name),canonical="platform:controlled-hd-"+name;
+        assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+        const pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical}});
+        const parent=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
+        assert.ok(parent);assert.ok(child);
+        // Use a matching actual proposition, not a mismatched template that
+        // would be refused for an unrelated reason before the phase guard.
+        await db.prisma.betAutoExecution.deleteMany({where:{winnerMarketId:parent.id}});
+        await db.prisma.betMarket.delete({where:{id:child.id}});
+        await db.prisma.betMarket.update({where:{id:parent.id},data:{bookPhase}});
+        const sentinels=await obligationSentinels(parent.id,889,300);
+        const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+        const identities=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+        try{
+          const report=await ingest(row);
+          assert.equal(report.admission.liveMarkets.succeeded,true);
+          assert.equal(report.admission.liveMarkets.createdCount,0);
+          assert.equal(report.admission.liveMarkets.existingCount,0);
+          assert.equal(await db.prisma.betMarket.count(),count);
+          assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:canonical,marketType:"desync"}}),0);
+          assert.equal(await db.prisma.betAutoExecution.count(),previews);
+          assert.deepEqual(await sentinels.snapshot(),sentinels.before);
+          assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identities);
+        }finally{await sentinels.cleanup();}
+      });
+    }
+    await t.test("a non-preview canonical child blocks redelivery of the complete matching preview family",async()=>{
+      const name="nonpreview-child",row=await persist(name),canonical="platform:controlled-hd-"+name;
+      assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+      const pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical}});
+      const parent=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
+      assert.ok(parent);assert.ok(child);
+      await db.prisma.betAutoExecution.deleteMany({where:{winnerMarketId:parent.id}});
+      await db.prisma.betMarket.update({where:{id:child.id},data:{bookPhase:"opening_minute"}});
+      const sentinels=await obligationSentinels(child.id,8477,100);
+      const parentBefore=await db.prisma.betMarket.findUniqueOrThrow({where:{id:parent.id}});
+      const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      try{
+        const report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.succeeded,true);
+        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),count);assert.equal(await db.prisma.betAutoExecution.count(),previews);
+        assert.deepEqual(await sentinels.snapshot(),sentinels.before);
+        assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:parent.id}}),parentBefore);
+      }finally{await sentinels.cleanup();}
+    });
+    await t.test("preview corrective refund cannot acquire financial work or reach a signer",async correction=>{
+      const row=await persist("preview-corrective-refund"),canonical="platform:controlled-hd-preview-corrective-refund";
+      assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+      const parent=await db.prisma.betMarket.findFirstOrThrow({where:{linkedSessionKey:canonical,marketType:"winner"}});
+      assert.equal(parent.bookPhase,"preview_only");
+      const sentinels=await obligationSentinels(parent.id,8477,100);
+      await db.prisma.betMarket.update({where:{id:parent.id},data:{status:"voided",voidedAt:new Date()}});
+      const incident=await db.prisma.betMarketIntegrityIncident.create({data:{marketId:parent.id,
+        incidentKey:"fixture-preview-corrective-refund",incidentType:"invalid_team_assignment",status:"open",
+        publicSummary:"Synthetic preview correction must never become money",evidence:{fixture_only:true},
+        originalLeftLabel:parent.leftLabel,originalRightLabel:parent.rightLabel}});
+      const adjustment=await db.prisma.betMarketFinancialAdjustment.create({data:{incidentId:incident.id,
+        wagerId:sentinels.before.wager.id,userId:owner.id,originalStakeWolo:100,voidEntitlementWolo:100,
+        amountStillOwedWolo:100,adjustmentStatus:"corrective_refund_pending"}});
+      const {SigningStargateClient}=await import("@cosmjs/stargate");
+      const {DirectSecp256k1HdWallet}=await import("@cosmjs/proto-signing");
+      const signer=correction.mock.method(SigningStargateClient,"connectWithSigner",async()=>{
+        throw Error("preview correction must never connect a signing client");
+      });
+      const wallet=correction.mock.method(DirectSecp256k1HdWallet,"fromMnemonic",async()=>{
+        throw Error("preview correction must never derive a signer");
+      });
+      const before=await sentinels.snapshot(),calls=networkCalls;
+      const counts={claims:await db.prisma.pendingWoloClaim.count(),intents:await db.prisma.betStakeIntent.count(),
+        tickets:await db.prisma.betStakeTicket.count(),adjustments:await db.prisma.betMarketFinancialAdjustment.count()};
+      try{
+        await settleMarketIntegrityCorrections(db.prisma);
+        assert.deepEqual(await db.prisma.betMarketFinancialAdjustment.findUniqueOrThrow({where:{id:adjustment.id}}),adjustment);
+        assert.deepEqual(await db.prisma.betMarketIntegrityIncident.findUniqueOrThrow({where:{id:incident.id}}),incident);
+        assert.deepEqual(await sentinels.snapshot(),before);
+        assert.deepEqual({claims:await db.prisma.pendingWoloClaim.count(),intents:await db.prisma.betStakeIntent.count(),
+          tickets:await db.prisma.betStakeTicket.count(),adjustments:await db.prisma.betMarketFinancialAdjustment.count()},counts);
+        assert.equal(networkCalls,calls);assert.equal(signer.mock.callCount(),0);assert.equal(wallet.mock.callCount(),0);
+        // Schedule only the candidate-read boundary; all rows and the atomic
+        // acquire predicate still execute against actual disposable PostgreSQL.
+        // This covers a stale/nonconforming candidate despite the finder guard.
+        for(const observedPhase of ["preview_only","legacy"] as const){
+          if(observedPhase==="legacy")await db.prisma.betMarket.update({where:{id:parent.id},data:{bookPhase:"legacy"}});
+          const candidate=await db.prisma.betMarketFinancialAdjustment.findUniqueOrThrow({where:{id:adjustment.id},
+            include:{incident:{include:{market:true}}}});
+          assert.equal(candidate.incident.market.bookPhase,observedPhase);
+          if(observedPhase==="legacy")await db.prisma.betMarket.update({where:{id:parent.id},data:{bookPhase:"preview_only"}});
+          const durableBefore=await sentinels.snapshot();let acquisitions=0;
+          const delegate=db.prisma.betMarketFinancialAdjustment;
+          const queued=new Proxy(delegate,{get(target,key){
+            if(key==="findMany")return async()=>[candidate];
+            if(key==="updateMany")return async(args:Parameters<typeof delegate.updateMany>[0])=>{
+              acquisitions++;return target.updateMany(args);
+            };
+            const value=Reflect.get(target,key);return typeof value==="function"?value.bind(target):value;
+          }});
+          const scheduled=new Proxy(db.prisma,{get(target,key){
+            if(key==="betMarketFinancialAdjustment")return queued;
+            const value=Reflect.get(target,key);return typeof value==="function"?value.bind(target):value;
+          }});
+          await settleMarketIntegrityCorrections(scheduled);
+          assert.equal(acquisitions,observedPhase==="preview_only"?0:1);
+          assert.deepEqual(await db.prisma.betMarketFinancialAdjustment.findUniqueOrThrow({where:{id:adjustment.id}}),adjustment);
+          assert.deepEqual(await sentinels.snapshot(),durableBefore);
+          assert.equal(await db.prisma.pendingWoloClaim.count(),counts.claims);
+          assert.equal(networkCalls,calls);assert.equal(signer.mock.callCount(),0);assert.equal(wallet.mock.callCount(),0);
+        }
+      }finally{
+        await db.prisma.betMarketFinancialAdjustment.delete({where:{id:adjustment.id}});
+        await db.prisma.pendingWoloClaim.deleteMany({where:{sourceMarketId:parent.id,claimGroupKey:"integrity:"+incident.id}});
+        await db.prisma.betMarketIntegrityIncident.delete({where:{id:incident.id}});
+        await sentinels.cleanup();
+      }
+    });
     await t.test("occupied fallback alias refuses the entire canonical preview family without reattributing obligations",async()=>{
       const row=await persist("occupied-alias"),identity=await sourceIdentity("occupied-alias");
       const alias=await aliasMarket(identity.alias),sentinels=await obligationSentinels(alias.id,889,300);
@@ -396,19 +513,26 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
       }finally{await sentinels.cleanup();await db.prisma.betMarket.delete({where:{id:alias.id}});}
     });
-    await t.test("redelivery reads compatible canonical books without updating financial obligations or child links",async()=>{
+    await t.test("compatible preview redelivery is read-only and a malformed child link refuses the complete family",async()=>{
       const row=await persist("occupied-canonical");assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
       const identity=await sourceIdentity("occupied-canonical"),pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:identity.canonical}});
       const winner=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
       assert.ok(winner);assert.ok(child);
       const sentinels=await obligationSentinels(winner.id,8477,100);
+      const compatibleChild=await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}});
+      const compatibleCount=await db.prisma.betMarket.count();
+      const compatible=await ingest(row);
+      assert.equal(compatible.admission.liveMarkets.createdCount,0);assert.equal(compatible.admission.liveMarkets.existingCount,2);
+      assert.equal(await db.prisma.betMarket.count(),compatibleCount);
+      assert.deepEqual(await sentinels.snapshot(),sentinels.before);
+      assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}}),compatibleChild);
       // Existing child attribution is a read-only obligation, even if a normal
       // reconciliation lane would later repair its missing parent metadata.
       await db.prisma.betMarket.update({where:{id:child.id},data:{parentMarketId:null,title:"Existing child title must survive"}});
       const childBefore=await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}});
       try{
         const count=await db.prisma.betMarket.count(),report=await ingest(row);
-        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,2);
+        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
         assert.equal(await db.prisma.betMarket.count(),count);
         assert.deepEqual(await sentinels.snapshot(),sentinels.before);
         assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}}),childBefore);

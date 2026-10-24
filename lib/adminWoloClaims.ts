@@ -69,7 +69,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market" | "ambiguous_claim_origin";
       detail?: string;
     }
   | {
@@ -826,23 +826,39 @@ export async function retryPendingClaimSettlement(
   // The finance-disabled LIVE preview may be settled for display, but it
   // cannot generate a payout or retry. Check this BEFORE a signer call and
   // before the legacy/pre-mainnet claim cleanup path mutates anything.
-  const previewMarket = typeof claim.sourceMarketId === "number"
-    ? await prisma.betMarket.findUnique({
+  // Founder claims legitimately retain both their direct market and bonus
+  // origin. Resolve both: the direct reference must never hide a preview or
+  // unrelated bonus parent. Missing authoritative rows are not permission.
+  const [directMarket, founderOrigin] = await Promise.all([
+    claim.sourceMarketId !== null
+      ? prisma.betMarket.findUnique({
         where: { id: claim.sourceMarketId },
-        select: { bookPhase: true },
+        select: { id: true, bookPhase: true },
       })
-    : claim.sourceFounderBonusId
-      ? await prisma.betMarketFounderBonus.findUnique({
+      : null,
+    claim.sourceFounderBonusId !== null
+      ? prisma.betMarketFounderBonus.findUnique({
           where: { id: claim.sourceFounderBonusId },
-          select: { market: { select: { bookPhase: true } } },
-        }).then(bonus => bonus?.market ?? null)
-      : null;
-  if (previewMarket?.bookPhase === "preview_only") {
+          select: { marketId: true, market: { select: { id: true, bookPhase: true } } },
+        })
+      : null,
+  ]);
+  if (directMarket?.bookPhase === "preview_only" || founderOrigin?.market?.bookPhase === "preview_only") {
     return {
       outcome: "skipped",
       claimId: claim.id,
       reason: "preview_only_market",
       detail: "Preview-only battles are never authorized for WOLO payout or claim retry.",
+    };
+  }
+  if ((claim.sourceMarketId !== null && !directMarket) ||
+      (claim.sourceFounderBonusId !== null && !founderOrigin?.market) ||
+      (directMarket && founderOrigin && directMarket.id !== founderOrigin.marketId)) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "ambiguous_claim_origin",
+      detail: "Claim market origins are missing or disagree. Independent attribution review is required before cleanup, payout or retry.",
     };
   }
 

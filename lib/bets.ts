@@ -4541,7 +4541,7 @@ async function reconcilePendingCoreBetClaims(
   }
 }
 
-async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
+export async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
   const retryCutoff = new Date(Date.now() - 5 * 60_000);
   const candidates = await prisma.betMarketFinancialAdjustment.findMany({
     where: {
@@ -4552,7 +4552,7 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
         { adjustmentStatus: "corrective_refund_processing", updatedAt: { lt: retryCutoff } },
       ],
       incident: {
-        market: { status: "voided" },
+        market: { status: "voided", bookPhase: { not: "preview_only" } },
       },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -4566,9 +4566,15 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
   });
 
   for (const adjustment of candidates) {
+    // Preview evidence can contain defensive/synthetic adjustment rows. It
+    // must not acquire a refund, create a claim or contact a financial rail.
+    if (adjustment.incident.market.bookPhase === "preview_only") continue;
     const acquired = await prisma.betMarketFinancialAdjustment.updateMany({
       where: {
         id: adjustment.id,
+        // Recheck the authoritative relation at atomic acquisition: a stale
+        // non-preview candidate cannot acquire a now-preview book.
+        incident: { market: { status: "voided", bookPhase: { not: "preview_only" } } },
         amountStillOwedWolo: { gt: 0 },
         OR: [
           { adjustmentStatus: "corrective_refund_pending" },
@@ -8083,6 +8089,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
             scheduledMatchId: true,
             linkedSessionKey: true,
             battleId: true,
+            bookPhase: true,
             status: true,
             settledAt: true,
             winnerSide: true,
@@ -8103,6 +8110,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           },
         });
         if (liveOnly && existing && (
+          existing.bookPhase !== "preview_only" ||
           existing.marketType !== seed.marketType || existing.scheduledMatchId !== null ||
           existing.linkedSessionKey !== seed.linkedSessionKey ||
           !["open","live"].includes(existing.status) || existing.settledAt || existing.winnerSide ||
@@ -8192,16 +8200,25 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
       await tx.$queryRaw(Prisma.sql`SELECT id FROM bet_markets WHERE slug IN
         (${Prisma.join(seeds.map(seed=>seed.slug))}) ORDER BY id FOR UPDATE`);
       const existingRows=await tx.betMarket.findMany({where:{slug:{in:seeds.map(seed=>seed.slug)}},select:{
-        slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,
+        id:true,slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,
+        bookPhase:true,parentMarketId:true,
         status:true,settledAt:true,winnerSide:true,closeAt:true,propositionHash:true,
       }});
       for (const seed of seeds) {
         const existing=existingRows.find(row=>row.slug===seed.slug);
-        if (existing && (existing.marketType!==seed.marketType || existing.scheduledMatchId!==null ||
+        if (existing && (existing.bookPhase!=="preview_only" || existing.marketType!==seed.marketType || existing.scheduledMatchId!==null ||
           existing.linkedSessionKey!==seed.linkedSessionKey ||
           existing.propositionHash!==seed.propositionHash || !["open","live"].includes(existing.status) ||
           existing.settledAt || existing.winnerSide || existing.closeAt && existing.closeAt.getTime()<=Date.now()))
           blocked.add(normalizeName(seed.linkedSessionKey));
+        if (existing && seed.marketType===WINNER_MARKET_TYPE && existing.parentMarketId!==null)
+          blocked.add(normalizeName(seed.linkedSessionKey));
+        if (existing && seed.marketType===DESYNC_SIDE_MARKET_TYPE) {
+          const parent=existingRows.find(row=>row.marketType===WINNER_MARKET_TYPE &&
+            row.linkedSessionKey===seed.linkedSessionKey);
+          if (!parent || existing.parentMarketId!==parent.id)
+            blocked.add(normalizeName(seed.linkedSessionKey));
+        }
       }
       for (const family of families) {
         const aliasSlugs=family.aliases.map(buildWatcherMarketSlugForSessionKey);
@@ -9775,7 +9792,7 @@ async function loadViewerRecentClosedBookEntries(
 
 
 type LoadBetBoardSnapshotOptions = {
-  ensureMarkets?: boolean;
+  ensureMarkets?: false;
   settlementSurfaceMode?: "full" | "fast";
 };
 
@@ -9855,9 +9872,8 @@ export async function loadBetBoardSnapshot(
   viewerUid?: string | null,
   options: LoadBetBoardSnapshotOptions = {}
 ): Promise<BetBoardSnapshot> {
-  if (options.ensureMarkets !== false) {
-    await ensureBetMarkets(prisma);
-  }
+  // Reading a board never authorizes reconciliation, claims or settlement.
+  // Authenticated committed-evidence producers own ensureBetMarkets explicitly.
   const escrowRuntime = getWoloBetEscrowRuntime();
 
   const viewer = viewerUid
