@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3bc527c2a9d6c5d703b7b23038a4adc027d7c1ec289209faa8b29628aef2c6c9",
+      "sha256": "389be5f6bfd3e2655c3cd16a96c38efeccd020c929513db2f8c425b65ecb6c6a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261024-live-orphan-and-get-guard",
-    "commit": "5ff2556b54f243be79e9a7aeeb1e86336af1af5c"
+    "branch": "review/20261024-live-deploy-p1-entry-guard",
+    "commit": "c2e06c87e73033c37d3272e83e322595dabb21e5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
