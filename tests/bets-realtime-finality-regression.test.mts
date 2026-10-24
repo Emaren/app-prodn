@@ -607,11 +607,11 @@ test(
     );
     assert.doesNotMatch(
       betsRouteSource,
-      /queueBetMarketEnsure|ensureBetMarkets\\(prisma\\)/
+      /queueBetMarketEnsure|ensureBetMarkets\(prisma\)/
     );
     assert.match(
       betsRouteSource,
-      /ensureMarkets:\\s*false/
+      /ensureMarkets:\s*false/
     );
     assert.match(
       betsRouteSource,
