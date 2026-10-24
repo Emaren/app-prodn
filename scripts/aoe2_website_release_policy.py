@@ -198,6 +198,19 @@ def assess(*, repo: Path, manifest: dict, manifest_raw: bytes, gate: dict,
            "candidate BUILD_ID or stage binding mismatch")
     ensure(stage.get("status") in ("STAGED", "PASS") and
            stage.get("wolo_mutated") is False, "unproved isolated stage")
+    ensure(stage.get("previous_production_sha") == p["base_sha"] and
+           stage.get("source_sha") == p["base_sha"] and
+           stage.get("risk_class") == "FINANCIAL", "stage source or financial risk mismatch")
+    ensure(stage.get("wolo_8092_count") == 1 and stage.get("wolo_8093_count") == 1,
+           "protected Wolo listener identity unproven")
+    ensure(all(stage.get(key) is True for key in (
+               "isolated_worktree", "build_process_sandboxed", "build_network_private",
+               "build_secret_paths_inaccessible", "cache_free_artifact",
+               "artifact_path_relocated")) and
+           all(stage.get(key) is False for key in (
+               "live_source_mutated", "live_public_mutated", "live_node_modules_mutated",
+               "live_build_version_mutated", "live_runtime_mutated")),
+           "candidate stage isolation unproven")
     ensure(manifest.get("policy", {}).get("wolo_mutation_allowed") is False,
            "Wolo mutation policy changed")
     ensure(plan.get("blocked") is True and plan.get("unknown_p0") == [] and
