@@ -120,6 +120,13 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
         self.assertNotIn("prisma/migrations/20261021/anything.sql", AUTH.ALLOWED_DELTA)
 
     def test_real_openssl_signatures_are_still_not_deployment_permission(self):
+        state = self.root / "nonce-state"
+        state.mkdir(mode=0o700)
+        issued = AUTH.issue_challenge(state_root=state, candidate=self.candidate,
+                                      phase="PRE_STAGE", now=self.now,
+                                      allow_test_root=True)
+        self.payload.update({k: issued[k] for k in ("attempt_id", "challenge",
+                                                    "issued_at", "expires_at")})
         signatures = {}
         for role in AUTH.ROLES:
             private = self.root / (role + ".private.pem")
@@ -145,6 +152,19 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
         self.assertEqual("CRYPTOGRAPHIC_REVIEW_VALID_NONAUTHORIZING", reviewed["state"])
         self.assertIs(reviewed["website_release_authorized"], False)
         self.assertIs(reviewed["financial_release_authorized"], False)
+        consumed = AUTH.consume_signed_review(packet=packet, candidate=self.candidate,
+            actual_scope=self.scope, state_root=state, trust_root=self.trust,
+            now=self.now, allow_test_root=True)
+        self.assertTrue(consumed["nonce_consumed"])
+        self.assertFalse(consumed["website_release_authorized"])
+        with self.assertRaisesRegex(AUTH.Hold, "replayed"):
+            AUTH.consume_signed_review(packet=packet, candidate=self.candidate,
+                actual_scope=self.scope, state_root=state, trust_root=self.trust,
+                now=self.now, allow_test_root=True)
+        activate = AUTH.issue_challenge(state_root=state, candidate=self.candidate,
+            phase="PRE_ACTIVATE", now=self.now, attempt_id=issued["attempt_id"],
+            previous_stage_sha=consumed["signed_packet_sha256"], allow_test_root=True)
+        self.assertNotEqual(issued["challenge"], activate["challenge"])
         tampered = json.loads(json.dumps(packet))
         tampered["payload"]["manifest_sha256"] = "f" * 64
         with self.assertRaisesRegex(AUTH.Hold, "cryptographic"):
