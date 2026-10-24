@@ -44,7 +44,7 @@ test("review pickup remains bounded by canonical current live verified game and 
   });
   assert.deepEqual(q.where.winnerMarket,{
     status:"live",integrityStatus:"verified",marketType:"winner",
-    bookPhase:{not:"preview_only"},
+    bookPhase:"funded",
   });
   assert.deepEqual(q.orderBy,[{createdAt:"asc"},{id:"asc"}]);
 });
