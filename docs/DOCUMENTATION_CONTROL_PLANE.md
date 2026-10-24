@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-deploy-p1-entry-guard` at `c2e06c87e73033c37d3272e83e322595dabb21e5`
+Implementation baseline: `review/20261024-locked-source-p1-admission` at `3b0188e8248e797c86fdf7e7f2e36f5aa17b9ad1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
