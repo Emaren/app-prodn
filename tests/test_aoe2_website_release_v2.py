@@ -156,5 +156,25 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
             self.inspect(packet)
 
 
+    def test_durable_challenge_cannot_reissue_or_activate_without_stage(self):
+        state = self.root / "state"
+        state.mkdir(mode=0o700)
+        stage = AUTH.issue_challenge(state_root=state, candidate=self.candidate,
+                                     phase="PRE_STAGE", now=self.now,
+                                     allow_test_root=True)
+        self.assertFalse(stage["website_release_authorized"])
+        self.assertGreaterEqual(len(stage["challenge"]), 24)
+        with self.assertRaisesRegex(AUTH.Hold, "stage attempt not consumed"):
+            AUTH.issue_challenge(state_root=state, candidate=self.candidate,
+                                 phase="PRE_ACTIVATE", now=self.now,
+                                 attempt_id=stage["attempt_id"],
+                                 previous_stage_sha="f" * 64, allow_test_root=True)
+        cx = AUTH._state_connection(state, allow_test_root=True)
+        try:
+            self.assertEqual(1, cx.execute("SELECT count(*) FROM attempts").fetchone()[0])
+        finally:
+            cx.close()
+
+
 if __name__ == "__main__":
     unittest.main()

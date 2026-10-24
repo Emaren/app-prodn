@@ -15,6 +15,8 @@ import hashlib
 import json
 import os
 import re
+import secrets
+import sqlite3
 import stat
 import subprocess
 import tempfile
@@ -248,6 +250,139 @@ def assess(packet: dict, *, candidate: str, actual_scope: dict, now=None,
         "reason": "NO live issuer/atomic consumption/Ship integration or independently witnessed runtime continuity; review is not release.",
     }
 
+
+
+# Executable **nondeploying** issuance and replay primitives. A future reviewed
+# Ship integration must call these only under its authenticated global lease.
+# Nothing in this module initiates a release.
+STATE_ROOT = Path("/var/lib/aoe2war-website-authority-v2")
+
+
+def _state_connection(state_root: Path, *, allow_test_root=False):
+    require(state_root.is_absolute() and state_root.is_dir()
+            and not state_root.is_symlink(), "unprovisioned/linked nonce authority")
+    root_mode = state_root.stat()
+    if not allow_test_root:
+        require(root_mode.st_uid == 0, "nonce authority not root owned")
+    require(not (root_mode.st_mode & (stat.S_IWGRP | stat.S_IWOTH)),
+            "nonce authority directory writable by untrusted actors")
+    db = state_root / "authority.sqlite3"
+    require(not db.is_symlink(), "linked nonce ledger")
+    if not db.exists():
+        fd = os.open(db, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(fd)
+    mode = db.stat()
+    if not allow_test_root:
+        require(mode.st_uid == 0, "nonce ledger not root owned")
+    require(stat.S_ISREG(mode.st_mode) and not (mode.st_mode & 0o077),
+            "nonce ledger must be private 0600")
+    cx = sqlite3.connect(str(db), timeout=5, isolation_level=None)
+    cx.execute("PRAGMA busy_timeout=5000")
+    cx.execute("PRAGMA journal_mode=DELETE")
+    cx.execute("PRAGMA synchronous=FULL")
+    cx.execute("""CREATE TABLE IF NOT EXISTS attempts(
+        attempt_id TEXT NOT NULL, phase TEXT NOT NULL, challenge TEXT UNIQUE NOT NULL,
+        candidate_sha TEXT NOT NULL, issued_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+        previous_stage_sha TEXT, signed_packet_sha TEXT, consumed INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY(attempt_id, phase)
+    )""")
+    return cx
+
+
+def _stamp(moment: datetime) -> str:
+    require(moment.utcoffset() == timedelta(0), "issuer clock must be UTC")
+    return moment.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def issue_challenge(*, state_root: Path, candidate: str, phase: str,
+                    now=None, attempt_id=None, previous_stage_sha=None,
+                    allow_test_root=False) -> dict:
+    """Generate a real random, durable one-use challenge, never an approval."""
+    require(type(candidate) is str and HEX40.fullmatch(candidate) is not None,
+            "unbound issuer candidate")
+    require(phase in ("PRE_STAGE", "PRE_ACTIVATE"), "unrecognized issuer phase")
+    moment = now or datetime.now(timezone.utc)
+    require(moment.utcoffset() == timedelta(0), "issuer clock not UTC")
+    identity = attempt_id or secrets.token_urlsafe(32)
+    challenge = secrets.token_urlsafe(32)
+    require(NONCE.fullmatch(identity) is not None and
+            NONCE.fullmatch(challenge) is not None, "unrecognized challenge identity")
+    issued, expiry = _stamp(moment), _stamp(moment + timedelta(minutes=20))
+    cx = _state_connection(state_root, allow_test_root=allow_test_root)
+    try:
+        cx.execute("BEGIN IMMEDIATE")
+        if phase == "PRE_STAGE":
+            require(attempt_id is None and previous_stage_sha is None,
+                    "new PRE_STAGE must have newly minted identity")
+        else:
+            require(type(previous_stage_sha) is str and
+                    HEX64.fullmatch(previous_stage_sha) is not None,
+                    "activation must bind consumed stage approval")
+            prior = cx.execute(
+                "SELECT consumed,signed_packet_sha,candidate_sha FROM attempts "
+                "WHERE attempt_id=? AND phase='PRE_STAGE'", (identity,)).fetchone()
+            require(prior is not None and prior[0] == 1
+                    and prior[1] == previous_stage_sha and prior[2] == candidate,
+                    "stage attempt not consumed or replaced")
+        cx.execute(
+            "INSERT INTO attempts(attempt_id,phase,challenge,candidate_sha,issued_at,"
+            "expires_at,previous_stage_sha) VALUES(?,?,?,?,?,?,?)",
+            (identity, phase, challenge, candidate, issued, expiry, previous_stage_sha))
+        cx.commit()
+    except BaseException:
+        cx.rollback()
+        raise
+    finally:
+        cx.close()
+    return {"attempt_id": identity, "challenge": challenge, "phase": phase,
+            "candidate_sha": candidate, "issued_at": issued, "expires_at": expiry,
+            "previous_stage_sha": previous_stage_sha,
+            "website_release_authorized": False}
+
+
+def consume_signed_review(*, packet: dict, candidate: str, actual_scope: dict,
+                          state_root: Path, trust_root: Path = TRUST_ROOT,
+                          now=None, allow_test_root=False) -> dict:
+    """Atomic, durable replay exclusion; STILL not Ship or release permission.
+
+    Integration must separately bind the validated stage/activate to exactly one
+    protected lease transaction. This function alone cannot mutate production.
+    """
+    moment = now or datetime.now(timezone.utc)
+    report = assess(packet, candidate=candidate, actual_scope=actual_scope,
+                    now=moment, trust_root=trust_root, allow_test_root=allow_test_root)
+    p = packet["payload"]
+    fingerprint = hashlib.sha256(canonical(packet)).hexdigest()
+    cx = _state_connection(state_root, allow_test_root=allow_test_root)
+    try:
+        cx.execute("BEGIN IMMEDIATE")
+        record = cx.execute(
+            "SELECT challenge,candidate_sha,issued_at,expires_at,previous_stage_sha,"
+            "consumed FROM attempts WHERE attempt_id=? AND phase=?",
+            (p["attempt_id"], p["phase"])).fetchone()
+        require(record is not None, "unissued challenge")
+        require(record[0] == p["challenge"] and record[1] == candidate
+                and record[2] == p["issued_at"] and record[3] == p["expires_at"],
+                "challenge/attempt/validity substitution")
+        require(record[5] == 0, "replayed already consumed release review")
+        if p["phase"] == "PRE_ACTIVATE":
+            require(record[4] == p["stage_approval_sha256"],
+                    "activation stage signature link substitution")
+        cx.execute(
+            "UPDATE attempts SET consumed=1,signed_packet_sha=? "
+            "WHERE attempt_id=? AND phase=? AND consumed=0",
+            (fingerprint, p["attempt_id"], p["phase"]))
+        require(cx.execute("SELECT changes()").fetchone()[0] == 1,
+                "non-atomic or duplicate consumption")
+        cx.commit()
+    except BaseException:
+        cx.rollback()
+        raise
+    finally:
+        cx.close()
+    return {**report, "signed_packet_sha256": fingerprint,
+            "nonce_consumed": True,
+            "website_release_authorized": False}
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
