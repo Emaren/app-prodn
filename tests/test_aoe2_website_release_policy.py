@@ -56,6 +56,14 @@ class WebsiteReviewPolicyTests(unittest.TestCase):
         self.stage = {
             "status": "STAGED", "release_sha": self.candidate,
             "staged_build_id": "example-build-123",
+            "previous_production_sha": self.base, "source_sha": self.base,
+            "risk_class": "FINANCIAL", "wolo_8092_count": 1, "wolo_8093_count": 1,
+            "isolated_worktree": True, "build_process_sandboxed": True,
+            "build_network_private": True, "build_secret_paths_inaccessible": True,
+            "cache_free_artifact": True, "artifact_path_relocated": True,
+            "live_source_mutated": False, "live_public_mutated": False,
+            "live_node_modules_mutated": False, "live_build_version_mutated": False,
+            "live_runtime_mutated": False,
             "manifest_sha256": POLICY.digest(self.manifest_raw),
             "gate_sha256": POLICY.digest(self.gate_raw), "wolo_mutated": False,
         }
@@ -193,6 +201,28 @@ class WebsiteReviewPolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(POLICY.Hold, "funded or entitlement"):
                     self.check()
                 self.payload[key] = False
+
+    def test_stage_cannot_hide_runtime_or_wolo_mutation(self):
+        for key, invalid in (("live_source_mutated", True), ("live_runtime_mutated", True),
+                             ("isolated_worktree", False), ("build_secret_paths_inaccessible", False),
+                             ("wolo_8092_count", 0), ("wolo_8093_count", 2)):
+            with self.subTest(key=key):
+                original = self.stage[key]
+                self.stage[key] = invalid
+                with self.assertRaises(POLICY.Hold):
+                    self.check()
+                self.stage[key] = original
+
+    def test_stage_financial_risk_and_prior_source_exact(self):
+        for key, invalid in (("risk_class", "PRESENTATION"),
+                             ("source_sha", "f" * 40),
+                             ("previous_production_sha", "a" * 40)):
+            with self.subTest(key=key):
+                original = self.stage[key]
+                self.stage[key] = invalid
+                with self.assertRaises(POLICY.Hold):
+                    self.check()
+                self.stage[key] = original
 
     def test_wrong_staged_build_id(self):
         self.payload["candidate_build_id"] = "another-build"
