@@ -5,7 +5,6 @@ import {
 } from "@/lib/betStakeFunding";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
 import { matchedVolumeFromSideTotals } from "@/lib/warChestMatchedVolume";
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import type {
   LobbyWoloEarnersBoard,
   LobbyWoloEarnersMode,
@@ -130,11 +129,9 @@ export async function loadWarChestSnapshot(
     createdAt: { gte: weeklyWindowStart },
   });
 
-  // Reconciliation may call external settlement rails and should not hold the
-  // public page response open. Queue it once, then start every independent
-  // evidence family immediately. The reporting clock is captured once so the
-  // earner board and weekly SQL lane share one exact UTC-week boundary.
-  queueBetMarketEnsure(prisma);
+  // The War Chest only reads projections. Reconciliation must be admitted by
+  // authenticated producer events, not by HTTP GET or SSR. Preserve the same
+  // report clock across earners and wager volume lanes.
 
   const earnersPromise =
     loadLobbyWoloEarnersBoard(
