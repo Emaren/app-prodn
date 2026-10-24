@@ -6,6 +6,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "agent-operating-contract",
+      "id": "aoe2war.app-prodn.agents",
+      "owner": "aoe2war-web",
+      "path": "AGENTS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-24",
+      "sensitivity": "internal",
+      "sha256": "817b186d1909bf1ec632500f3e0888edaed2e400ace33cd796e1b73814bafe0f",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "AoE2WAR Agent Operating Contract",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "architecture-explanation",
       "id": "aoe2war.app-prodn.architecture",
       "owner": "aoe2war-web",
@@ -639,7 +662,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c32e85942b8f02a3c189b8f5e596a3a355f5774e63bbc13d5e76eec9852758e6",
+      "sha256": "92d89e1de4efb3a06fc4616b993c3c7b76da107834ee995c9f16cd7163f04b3a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
