@@ -1151,12 +1151,12 @@ test -n "$candidate_dependency_identity"
 
 candidate_content_sha="$(content_hash .next-release)"
 test -n "$candidate_content_sha"
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
+# The currently active legacy GET /api/bets and /api/lobby handlers can
+# schedule financial reconciliation. Before activation (including dry-run),
+# probe ONLY the explicitly non-financial deployment identity endpoint.
+# Candidate critical-route smoke/soak remains mandatory AFTER activation.
+critical_get http://127.0.0.1:3030/api/deployment-version
+critical_get "$PUBLIC/api/deployment-version"
 
 if [ "$MODE" = "DRY_RUN" ]; then
   printf 'status\\tPREPARED\\n'
