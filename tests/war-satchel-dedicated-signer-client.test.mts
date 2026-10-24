@@ -121,6 +121,16 @@ test("signed v2 one-shot returns broadcast_accepted only, never financial confir
  assert.deepEqual(t.calls(),{healthCalls:2,sendCalls:1});
 }finally{restore();}});
 
+test("private signer transport accepts the exact product ceiling and refuses overcap before POST",async()=>{try{configure();
+ const positive=mockRead();const signer=await connectCertifiedSatchelSigner(positive.reader);
+ assert.deepEqual(await signer.submitOneShot(args({amount_uwolo:"10000000000"})),{kind:"broadcast_accepted",txHash:"B".repeat(64)});
+ assert.equal(positive.calls().sendCalls,1);
+ const negative=mockRead();const held=await connectCertifiedSatchelSigner(negative.reader);
+ const overcap={...args(),amountUwolo:"10001000000"};
+ assert.deepEqual(await held.submitOneShot(overcap),{kind:"unknown",reason:"invalid_or_ambiguous_signer_payload"});
+ assert.equal(negative.calls().sendCalls,0);
+}finally{restore();}});
+
 test("even service CONFIRMED is only a candidate for independent proof",async()=>{try{configure();
  const result=ack({status:"CONFIRMED",kind:"unknown"});delete (result as Record<string,unknown>).confirmed;
  const t=mockRead(result);const signer=await connectCertifiedSatchelSigner(t.reader);

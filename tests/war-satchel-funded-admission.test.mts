@@ -206,7 +206,7 @@ test("proposition or market identity drift rejects a funded conversion", () => {
 test("zero, exhausted, malformed and over-cap presets cannot initiate funding", () => {
   rejects("preset_invalid_or_exhausted", f => { f.preset.enabled=false; });
   rejects("preset_invalid_or_exhausted", f => { f.preset.gamesRemaining=0; });
-  rejects("preset_invalid_or_exhausted", f => { f.preset.winnerStakeWolo=1001; });
+  rejects("preset_invalid_or_exhausted", f => { f.preset.winnerStakeWolo=10001; });
   rejects("preset_invalid_or_exhausted", f => { f.preset.desyncSide="yes"; });
 });
 test("unauthenticated, expired, paused and non-self consent fail closed", () => {
@@ -235,7 +235,7 @@ test("bank shortfalls, uncounted user liabilities and overflowed money refuse en
 test("daily risk exposure and verified owner balance enforce exact 1,000,000 uwolo / WOLO", () => {
   rejects("owner_signed_budget_exceeded", f => { f.consent.perGameCapWolo=200; });
   rejects("owner_signed_budget_exceeded", f => { f.consent.dailyCommittedWolo=900; });
-  rejects("owner_signed_budget_exceeded", f => { f.consent.dailyCapWolo=10001; });
+  rejects("owner_signed_budget_exceeded", f => { f.consent.dailyCapWolo=50001; });
   rejects("insufficient_owner_available_balance", f => { f.balance.availableUwolo="249999999"; });
 });
 test("verified optional Desync reserves both exact stakes in one proposed ticket", () => {

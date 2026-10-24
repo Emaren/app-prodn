@@ -241,8 +241,10 @@ export function assessFundedMechaAdmission(input: FundedAutoAdmissionInput): Fun
   if (!positiveSafeInteger(stake) ||
       stake > BET_AUTOMATION_MAX_PER_GAME_WOLO ||
       !positiveSafeInteger(c.perGameCapWolo) ||
+      c.perGameCapWolo > BET_AUTOMATION_MAX_PER_GAME_WOLO ||
       stake > c.perGameCapWolo ||
       !positiveSafeInteger(c.dailyCapWolo) ||
+      c.dailyCapWolo < c.perGameCapWolo ||
       c.dailyCapWolo > BET_AUTOMATION_MAX_RESERVE_WOLO ||
       !Number.isSafeInteger(c.dailyCommittedWolo) || c.dailyCommittedWolo < 0 ||
       !Number.isSafeInteger(c.dailyReservedWolo) || c.dailyReservedWolo < 0 ||

@@ -1,4 +1,5 @@
 import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
+import {BET_MAX_STAKE_UWOLO} from "./betMoneyLimits.ts";
 /**
  * War Satchel dedicated one-shot custody signer CLIENT PORT.
  *
@@ -150,7 +151,7 @@ export async function connectCertifiedSatchelSigner(
             !/^satchel:ticket:[1-9][0-9]{0,11}$/.test(p.requestId)||
             !/^[a-zA-Z0-9_.:-]{1,100}$/.test(p.ownerUid)||
             !/^[1-9][0-9]{0,18}$/.test(p.amountUwolo)||
-            BigInt(p.amountUwolo)>BigInt(1000)*BigInt(1000000)||
+            BigInt(p.amountUwolo)>BET_MAX_STAKE_UWOLO||
             BigInt(p.amountUwolo)%BigInt(1000000)!==BigInt(0)||!EXACT_TICKET_MEMO.test(p.memo)){
           return {kind:"unknown" as const,reason:"invalid_or_ambiguous_signer_payload"};
         }

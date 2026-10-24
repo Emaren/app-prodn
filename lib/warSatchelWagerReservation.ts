@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_UWOLO} from "./betMoneyLimits.ts";
 /** Exact Wolo protocol-2 owner reservation review. Pure verification only:
  * the caller supplies independently persisted economics and a separately
  * provisioned public key. A bearer, digest or signature is not solvency proof.
@@ -47,7 +48,7 @@ const CONTEXT_KEYS = ["operationId", "ownerUid", "vault", "recipient",
   "feeUwolo", "issuedAt", "expiresAt"];
 const DIGEST = /^[a-f0-9]{64}$/;
 const MAX_I64 = BigInt("9223372036854775807");
-const MAX_WAGER_UWOLO = BigInt(1000) * BigInt(1000000);
+const MAX_WAGER_UWOLO = BET_MAX_STAKE_UWOLO;
 const MAX_UNIX_SECONDS = Math.floor(Number.MAX_SAFE_INTEGER / 1000);
 
 function stop(reason: string): never {

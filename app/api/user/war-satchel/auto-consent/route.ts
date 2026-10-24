@@ -1,3 +1,4 @@
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 /** Owner-specific Keplr signed War Satchel AUTO-WAGER mandate; OFF by default.
  * POST issue challenge, PUT verify+consume, DELETE revoke, GET current state.
  * No wallet sends, no token credit and no direct bet placement.
@@ -102,10 +103,10 @@ export async function POST(request: NextRequest) {
   const stake = plan.winnerStakeWolo + plan.desyncStakeWolo;
   if (!plan.enabled || !plan.selfOnly || plan.version !== body.expectedPresetVersion ||
       !["none", "yes", "no"].includes(plan.desyncSide) ||
-      stake < 1 || stake > 1000 ||
+      stake < 1 || stake > BET_MAX_STAKE_WOLO ||
       (plan.desyncSide === "none" ? plan.desyncStakeWolo !== 0 : plan.desyncStakeWolo <= 0) ||
       (body.dailyCapWolo as number) < stake ||
-      (body.dailyCapWolo as number) > 10000) {
+      (body.dailyCapWolo as number) > AUTO_BET_MAX_DAILY_WOLO) {
     return reply(409, { detail: "Saved betting plan or daily allowance changed." });
   }
   try {
