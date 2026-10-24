@@ -7,7 +7,8 @@
  * historical bank-state effects; no financial payment/retry authority.
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, openSync, writeFileSync, closeSync } from 'node:fs';
+import { readFileSync, openSync, writeFileSync, closeSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { inspectWoloPayoutTxEnvelope } from '../lib/woloCanonicalPayoutEnvelope.ts';
 import { extractCanonicalWoloMsgSends } from '../lib/woloCanonicalBankSends.ts';
 
@@ -174,7 +175,18 @@ export async function analyze(feed,inspect=chainEvidence){
       hashes,dbRows:rows,transactionEvidence:[...evidence.entries()]},
   };
 }
-if(import.meta.url==='file://'+process.argv[1]){
+// Resolve symlinks and macOS /var -> /private/var aliases before deciding whether
+// to run as the CLI. A literal file:// + argv comparison silently skipped this
+// entrypoint on the operator's Mac, returning exit 0 with no audit performed.
+function isDirectInvocation(){
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(fileURLToPath(import.meta.url))===realpathSync(process.argv[1]);
+  } catch {
+    return false; // Imported as library or path unavailable; no side effects.
+  }
+}
+if(isDirectInvocation()){
   try{
     const {publicReport,privateEvidence}=await analyze(readFileSync(0,'utf8'));
     if(privateArg){
