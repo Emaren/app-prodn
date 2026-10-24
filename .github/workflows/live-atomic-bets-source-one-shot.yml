@@ -1,0 +1,55 @@
+name: One-shot held LIVE admission Kingdom /bets source seal (NO DEPLOY)
+
+on:
+  push:
+    branches:
+      - review/20261024-live-watcher-atomic-admission
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-live-atomic-bets-source-seal-20261024
+  cancel-in-progress: false
+
+jobs:
+  seal-source:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/review/20261024-live-watcher-atomic-admission'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Self-retire temporary workflow before source scope
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/live-atomic-bets-source-one-shot.yml
+          git commit -m "ci(held): retire LIVE /bets source seal helper"
+      - name: Update only canonical Kingdom Index fingerprints and DocsV2
+        run: |
+          node scripts/kingdom_index_source_audit.mjs --write
+          node scripts/kingdom_index_source_audit.mjs --check
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py
+          python3 - <<'PY'
+          import subprocess
+          allowed={'config/kingdom-index-routes.json','catalog-info.yaml','docs/DOCUMENTATION_CONTROL_PLANE.md','docs/document-registry.json'}
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          untracked=set(subprocess.check_output(['git','ls-files','--others','--exclude-standard'],text=True).splitlines())
+          unexpected=(changed|untracked)-allowed
+          if unexpected:
+              raise SystemExit('STOP unexpected generated files '+str(sorted(unexpected)))
+          print('Canonical source outputs:',sorted(changed))
+          PY
+          git add -- config/kingdom-index-routes.json catalog-info.yaml docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet || git commit -m "docs(held): reseal /bets exact LIVE admission source fingerprint"
+          git push origin HEAD:refs/heads/review/20261024-live-watcher-atomic-admission
