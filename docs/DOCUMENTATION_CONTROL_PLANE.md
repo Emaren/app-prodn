@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **96**
+- Authoritative repository documents: **97**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 60
+- `reference`: 61
 - `runbook`: 17
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 80
+- `active`: 81
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -51,6 +51,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 | Document | Type | Status | Authority |
 | --- | --- | --- | --- |
+| [AoE2WAR Agent Operating Contract](../AGENTS.md) | `reference` | `active` | `agent-operating-contract` |
 | [app-prodn Architecture](../ARCHITECTURE.md) | `explanation` | `active` | `architecture-explanation` |
 | [app-prodn Deploy](../DEPLOY.md) | `runbook` | `active` | `operational-procedure` |
 | [app-prodn Product State](../PRODUCT_STATE.md) | `historical` | `historical` | `historical-evidence` |
