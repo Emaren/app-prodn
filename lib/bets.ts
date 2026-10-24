@@ -8608,6 +8608,21 @@ export async function admitReviewedFundedWatcherBooks(prisma:PrismaClient,input:
       sourceGameStatsId:input.sourceGameStatsId},
   });
   const names=fundedWatcherBookNames(verified);
+  // PostgreSQL transaction timeout is 9 seconds. A signed approval must have
+  // more than that entire window PLUS commit/scheduling margin remaining at
+  // the last mutation boundary. A signature valid only at request entry is
+  // insufficient; no approval-time TTL extension is granted here.
+  const originCommitSafetyMs=15000;
+  const requireFreshOriginAtCommitBoundary=()=>{
+    const now=Date.now();
+    if(verified.expires_at*1000-now<=originCommitSafetyMs)
+      throw Error("FUNDED_WATCHER_ORIGIN_TOO_CLOSE_TO_EXPIRY");
+    verifyIndependentFundedWatcherOrigin({
+      signed:input.signedOrigin,publicKeyHex:reviewerKey,nowMs:now,
+      expected:{sessionKey:verified.session_key,propositionHash:verified.proposition_hash,
+        rosterHash:verified.roster_hash,sourceGameStatsId:input.sourceGameStatsId},
+    });
+  };
   return prisma.$transaction(async tx=>{
     await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
     await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
@@ -8663,13 +8678,9 @@ export async function admitReviewedFundedWatcherBooks(prisma:PrismaClient,input:
     }
     if(preexisting.some(book=>book.slug===names.winnerSlug||book.slug===names.desyncSlug))
        throw Error("FUNDED_WATCHER_SLUG_REUSE_REFUSED");
-    // The approval cannot remain valid just because it was valid before
-    // waiting for the lock and source re-read. Reverify before first insert.
-    verifyIndependentFundedWatcherOrigin({
-      signed:input.signedOrigin,publicKeyHex:reviewerKey,nowMs:Date.now(),
-      expected:{sessionKey:verified.session_key,propositionHash:verified.proposition_hash,
-        rosterHash:verified.roster_hash,sourceGameStatsId:input.sourceGameStatsId},
-    });
+    // Under lock, require enough approval lifetime for the complete 9s PG
+    // transaction and commit. Near-expiry approval writes must not even start.
+    requireFreshOriginAtCommitBoundary();
     const winner=await tx.betMarket.create({data:{
       ...marketSeedCreateData(winnerSeed),slug:names.winnerSlug,
       bookPhase:"funded",phaseBookKey:names.winnerPhaseKey,
@@ -8680,6 +8691,9 @@ export async function admitReviewedFundedWatcherBooks(prisma:PrismaClient,input:
       bookPhase:"funded",phaseBookKey:names.desyncPhaseKey,
       parentMarketId:winner.id,seedLeftWolo:0,seedRightWolo:0,
     },select:{id:true}});
+    // Validate AFTER both inserts and final parent linkage, immediately
+    // before returning to Prisma for COMMIT. Any failure rolls back both.
+    requireFreshOriginAtCommitBoundary();
     return {created:true,winnerMarketId:winner.id,desyncMarketId:desync.id};
   },{maxWait:5000,timeout:9000});
 }
