@@ -451,7 +451,7 @@ export async function reserveForWatcherExecution(
     const market = await tx.betMarket.findUnique({
       where: { id: exec.winnerMarketId },
       select: {
-        id: true, status: true, marketType: true,
+        id: true, status: true, marketType: true, bookPhase: true,
         integrityStatus: true, propositionHash: true,
         scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
         closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
@@ -459,7 +459,8 @@ export async function reserveForWatcherExecution(
         settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true,
       },
     });
-    if (!market || market.status !== "live" || market.marketType !== "winner" ||
+    if (!market || market.bookPhase === "preview_only" ||
+        market.status !== "live" || market.marketType !== "winner" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== exec.propositionHash) {
       stop("canonical_watcher_market_not_live");
@@ -470,15 +471,15 @@ export async function reserveForWatcherExecution(
     if (exec.desyncMarketId !== null) {
       const desync = await tx.betMarket.findUnique({
         where: { id: exec.desyncMarketId },
-        select: { status: true, marketType: true, parentMarketId: true,
+        select: { status: true, marketType: true, parentMarketId: true, bookPhase: true,
           propositionHash: true, integrityStatus: true,
           scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
           closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
           winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
           settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
       });
-      if (!desync || desync.status !== "live" ||
-          desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
+      if (!desync || desync.bookPhase === "preview_only" ||
+          desync.status !== "live" || desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
           desync.propositionHash !== market.propositionHash ||
           desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");
@@ -717,12 +718,12 @@ export async function markSatchelSubmissionAttempt(
     const market = await tx.betMarket.findUnique({
       where: { id: execution.winnerMarketId },
       select: { status: true, integrityStatus: true, propositionHash: true,
-        marketType: true, scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
+        marketType: true, bookPhase: true, scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
         closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
         winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
         settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
     });
-    if (!market || market.status !== "live" ||
+    if (!market || market.bookPhase === "preview_only" || market.status !== "live" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== execution.propositionHash) {
       stop("watcher_proposition_not_live_before_broadcast");
@@ -732,7 +733,8 @@ export async function markSatchelSubmissionAttempt(
     if (windowIssue) stop(windowIssue);
     if (execution.desyncMarketId !== null) {
       const desync = await tx.betMarket.findUnique({ where: { id: execution.desyncMarketId } });
-      if (!desync || desync.parentMarketId !== execution.winnerMarketId ||
+      if (!desync || desync.bookPhase === "preview_only" ||
+          desync.parentMarketId !== execution.winnerMarketId ||
           desync.propositionHash !== execution.propositionHash || desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");
       }
