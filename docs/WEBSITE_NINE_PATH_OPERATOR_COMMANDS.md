@@ -92,6 +92,11 @@ python3 scripts/aoe2_website_protected_release_v2.py issue-stage \
 
 Capture the exact JSON output (`attempt_id`, `challenge`,
 `issued_at`, `expires_at`). Independently authenticate all reviews.
+Signers must complete the phase before the strict 20-minute challenge expires.
+The human-approved signed reference witness may be up to 20 minutes old,
+but the controller re-observes the SAME Wolo + website identity with a
+separately signed <=90-second reading under the global release lease.
+Do not extend those clocks or bypass this continuity proof.
 Four distinct real humans sign canonical PRE_STAGE JSON specifying:
 candidate/main SHA, scope, controller SHA and entire operator executable
 inventory digest, actual gate/manifest, Source+Finance attestations, live
@@ -107,6 +112,7 @@ set -euo pipefail
 : "${SIGNED_SOURCE_FINANCE:?absolute path to distinct Source+Finance attestations}"
 : "${SIGNED_WOLO_PRESTAGE:?absolute path to fresh independently signed witness}"
 : "${EVIDENCE_DIR:?private operator receipt directory OUTSIDE both repos}"
+install -d -m 0700 "$EVIDENCE_DIR"
 test -f "$PRE_STAGE_PACKET"
 test -f "$SIGNED_SOURCE_FINANCE"
 test -f "$SIGNED_WOLO_PRESTAGE"
