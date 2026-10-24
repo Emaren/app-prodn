@@ -281,9 +281,22 @@ def _state_connection(state_root: Path, *, allow_test_root=False):
             and not state_root.is_symlink(), "unprovisioned/linked nonce authority")
     root_mode = state_root.stat()
     if not allow_test_root:
-        require(root_mode.st_uid == 0, "nonce authority not root owned")
-    require(not (root_mode.st_mode & (stat.S_IWGRP | stat.S_IWOTH)),
-            "nonce authority directory writable by untrusted actors")
+        # Controller executes as the *authenticated Mac operator* holding
+        # the existing SSH/global lease. Requiring root-owned 0700 made that
+        # legitimate unprivileged operator unable to issue or consume nonces,
+        # and sudo would switch SSH/Git identity mid-transaction. The ledger
+        # is instead private to the exact effective operator UID under the
+        # independently root-protected /var/lib parent; public role keys stay
+        # separately root-administered and signatures remain mandatory.
+        require(root_mode.st_uid == os.geteuid(),
+                "nonce authority is not owned by authenticated operator")
+        parent = state_root.parent
+        require(not parent.is_symlink() and parent.stat().st_uid == 0
+                and not (parent.stat().st_mode & 0o022),
+                "nonce ledger parent is not root-controlled")
+    require(stat.S_ISDIR(root_mode.st_mode) and
+            not (root_mode.st_mode & 0o077),
+            "nonce authority directory must be private mode 0700")
     db = state_root / "authority.sqlite3"
     require(not db.is_symlink(), "linked nonce ledger")
     if not db.exists():
@@ -291,7 +304,8 @@ def _state_connection(state_root: Path, *, allow_test_root=False):
         os.close(fd)
     mode = db.stat()
     if not allow_test_root:
-        require(mode.st_uid == 0, "nonce ledger not root owned")
+        require(mode.st_uid == os.geteuid(),
+                "nonce ledger not owned by authenticated operator")
     require(stat.S_ISREG(mode.st_mode) and not (mode.st_mode & 0o077),
             "nonce ledger must be private 0600")
     cx = sqlite3.connect(str(db), timeout=5, isolation_level=None)
