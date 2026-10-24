@@ -81,6 +81,21 @@ test("signed separate funded Watcher books preserve original preview in real iso
       assert.equal(await db.prisma.betMarket.count(),2);
       assert.equal(await db.prisma.pendingWoloClaim.count(),0);
     });
+    await t.test("authentic but near-expiry signature cannot start either market insert",async()=>{
+      const near={...unsigned,nonce:"synthetic-expiry-under-lock-00001",
+        expires_at:Math.floor(Date.now()/1000)+6,signature:""};
+      const signedNear={...near,signature:sign(null,fundedWatcherOriginSignBytes(near),reviewer.privateKey).toString("base64")};
+      assert.ok(signedNear.expires_at>Math.floor(Date.now()/1000),
+        "negative approval is genuinely valid at request entrance");
+      await assert.rejects(admitReviewedFundedWatcherBooks(db.prisma,{
+        sourceGameStatsId:game.id,signedOrigin:signedNear,
+      }),/FUNDED_WATCHER_ORIGIN_TOO_CLOSE_TO_EXPIRY/);
+      assert.equal(await db.prisma.betMarket.count(),2);
+      assert.equal(await db.prisma.betAutoExecution.count(),0);
+      assert.equal(await db.prisma.satchelFundedReservation.count(),0);
+      assert.equal(await db.prisma.pendingWoloClaim.count(),0);
+      assert.equal(network,0,"expired-boundary denial may never invoke signer/network");
+    });
     const first=await admitReviewedFundedWatcherBooks(db.prisma,{sourceGameStatsId:game.id,signedOrigin:approved});
     assert.equal(first.created,true);
     assert.ok(first.winnerMarketId>0&&first.desyncMarketId>0);
