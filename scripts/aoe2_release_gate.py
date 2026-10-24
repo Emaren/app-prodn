@@ -9,7 +9,10 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+# Operator controller selects the already reviewed, clean canonical main checkout.
+# The override is never a reason to weaken the existing Wolo P1.
+ROOT = Path(os.environ.get("AOE2WAR_WEBSITE_CANDIDATE_ROOT",
+        str(Path(__file__).resolve().parents[1]))).resolve()
 STATE_DIR = ROOT / ".aoe2war-release"
 GATE_DIR = STATE_DIR / "gates"
 MANIFEST_DIR = STATE_DIR / "manifests"

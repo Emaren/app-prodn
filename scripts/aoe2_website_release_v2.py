@@ -386,6 +386,17 @@ def consume_signed_review(*, packet: dict, candidate: str, actual_scope: dict,
         if p["phase"] == "PRE_ACTIVATE":
             require(record[4] == p["stage_approval_sha256"],
                     "activation stage signature link substitution")
+            stage = cx.execute(
+                "SELECT challenge,consumed,signed_packet_sha,candidate_sha "
+                "FROM attempts WHERE attempt_id=? AND phase='PRE_STAGE'",
+                (p["attempt_id"],)).fetchone()
+            require(stage is not None and stage[1] == 1
+                    and stage[2] == p["stage_approval_sha256"]
+                    and stage[3] == candidate,
+                    "missing genuine consumed earlier PRE_STAGE")
+            require(p.get("stage_challenge") == stage[0]
+                    and p["challenge"] != stage[0],
+                    "activation stage challenge does not match actual issued nonce")
         cx.execute(
             "UPDATE attempts SET consumed=1,signed_packet_sha=? "
             "WHERE attempt_id=? AND phase=? AND consumed=0",

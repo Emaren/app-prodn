@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a45a0a1ea2f4dad3ae673e38ab0aa8424df560151b124fdc65478611ec1ad9c5",
+      "sha256": "5393877fe41ad94a88baf10dc78db9c199b348ca77b22e7c3e7e7d2a1b122df4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2017,6 +2017,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonauthorizing-source-engineering",
+      "id": "aoe2war.app-prodn.website-only-release-authority-v2",
+      "owner": "aoe2war-web",
+      "path": "docs/WEBSITE_ONLY_RELEASE_AUTHORITY_V2.md",
+      "review_interval_days": 1,
+      "reviewed_at": "2026-10-24",
+      "sensitivity": "internal",
+      "sha256": "c17ace2d13546ef1d30827d7b0ea32ccd48c8512a2175c44bd8a4b307ce47e93",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Held Website-Only Release Authority V2",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "cross-repository-handoff",
       "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
       "owner": "aoe2war-web",
@@ -2214,8 +2237,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-website-v2-canonical-reviewer-keys",
-    "commit": "b266a235d3efc318404b26309d2f82d0b98875b7"
+    "branch": "review/20261024-protected-web-controller-dispatch-fix",
+    "commit": "7d636991d2dce7aea862c6b5e1018e7e768d316b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

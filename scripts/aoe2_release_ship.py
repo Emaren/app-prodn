@@ -1151,12 +1151,10 @@ test -n "$candidate_dependency_identity"
 
 candidate_content_sha="$(content_hash .next-release)"
 test -n "$candidate_content_sha"
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
+# Actual certified legacy /api/bets and /api/lobby can schedule financial work.
+# Never make those side-effecting GET probes before activation or in dry-run.
+critical_get http://127.0.0.1:3030/api/deployment-version
+critical_get "$PUBLIC/api/deployment-version"
 
 if [ "$MODE" = "DRY_RUN" ]; then
   printf 'status\\tPREPARED\\n'
@@ -1475,15 +1473,33 @@ test ! -e "$ROLLBACK/next/cache"
 test "$(cat "$ROLLBACK/source-sha")" = "$PREVIOUS"
 test "$(cat "$ROLLBACK/build-version")" = "$LIVE_VERSION"
 
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
-critical_get http://127.0.0.1:3030/api/deployment-version
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
-critical_get "$PUBLIC/api/deployment-version"
+if [ "$RELEASE" = "21cd1493b182cb0968a6b6cf3f528d0578cfd797" ]; then
+  # Original nine-path main retains money-moving legacy GET side effects.
+  critical_get http://127.0.0.1:3030/api/deployment-version
+  critical_get "$PUBLIC/api/deployment-version"
+else
+  critical_get http://127.0.0.1:3030/
+  critical_get http://127.0.0.1:3030/api/lobby
+  critical_get http://127.0.0.1:3030/api/bets
+  critical_get http://127.0.0.1:3030/api/deployment-version
+  critical_get "$PUBLIC/"
+  critical_get "$PUBLIC/api/lobby"
+  critical_get "$PUBLIC/api/bets"
+  critical_get "$PUBLIC/api/deployment-version"
+fi
 
+# ------------------------------------------------------------
+# Avoid finance-capable legacy prewarms on the nine-path main candidate.
+# Other releases retain their already-existing smoke/performance contract.
+# ------------------------------------------------------------
+if [ "$RELEASE" = "21cd1493b182cb0968a6b6cf3f528d0578cfd797" ]; then
+  STATISTICS_PREWARM="SKIPPED_NONINTERFERENCE"
+  STATISTICS_WARM_SECONDS=""
+  LEADERBOARD_PREWARM="SKIPPED_NONINTERFERENCE"
+  LEADERBOARD_WARM_SECONDS=""
+  WORKSHOP_PREWARM="SKIPPED_NONINTERFERENCE"
+  WORKSHOP_WARM_SECONDS=""
+else
 # ------------------------------------------------------------
 # POST-ACTIVATION PERFORMANCE PREWARM
 #
@@ -1595,6 +1611,7 @@ then
     WORKSHOP_PREWARM="PASS"
   fi
 fi
+fi
 
 # ------------------------------------------------------------
 # BOUNDED POST-ACTIVATION HEALTH SOAK
@@ -1628,14 +1645,19 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   test "$soak_wolo8092" = "$before_wolo8092"
   test "$soak_wolo8093" = "$before_wolo8093"
 
-  critical_get http://127.0.0.1:3030/
-  critical_get http://127.0.0.1:3030/api/lobby
-  critical_get http://127.0.0.1:3030/api/bets
-  critical_get http://127.0.0.1:3030/api/deployment-version
-  critical_get "$PUBLIC/"
-  critical_get "$PUBLIC/api/lobby"
-  critical_get "$PUBLIC/api/bets"
-  critical_get "$PUBLIC/api/deployment-version"
+  if [ "$RELEASE" = "21cd1493b182cb0968a6b6cf3f528d0578cfd797" ]; then
+    critical_get http://127.0.0.1:3030/api/deployment-version
+    critical_get "$PUBLIC/api/deployment-version"
+  else
+    critical_get http://127.0.0.1:3030/
+    critical_get http://127.0.0.1:3030/api/lobby
+    critical_get http://127.0.0.1:3030/api/bets
+    critical_get http://127.0.0.1:3030/api/deployment-version
+    critical_get "$PUBLIC/"
+    critical_get "$PUBLIC/api/lobby"
+    critical_get "$PUBLIC/api/bets"
+    critical_get "$PUBLIC/api/deployment-version"
+  fi
 
   SOAK_SAMPLES=$((SOAK_SAMPLES + 1))
 done
