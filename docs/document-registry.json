@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4106041b5b72c5303e8c8589720afcca20cfd1799bcc1a5691157703f3db871b",
+      "sha256": "6e591df2c0a6988d2fa7d5f51a6d189d4c24bd92e7c9149f27134f03199eb55e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-live-website-noninterference-final",
-    "commit": "75edced534aa097e3540a46495ab2a0a62b51640"
+    "commit": "7220b828cb317154e864fedcdbc47a1c6f76d368"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
