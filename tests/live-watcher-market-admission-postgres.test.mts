@@ -15,6 +15,7 @@ import {canonicalBattleIdentityKey} from "../lib/battleIdentity.ts";
 import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
 import {freshBettingCloseReason,buildFreshBetMarketWriteWhere} from "../lib/betMarketWagerability.ts";
 import {loadBetMarketPreflightContext,assertBetMarketPreflight} from "../lib/betWagering.ts";
+import {createFounderBonus} from "../lib/betFounderBonuses.ts";
 import {startLiveWatcherDatabase} from "./fixtures/live-watcher-db.mts";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
 
@@ -87,6 +88,14 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(forbiddenStakeWrite.count,0,"final financial write cannot lock preview book");
       assert.equal(await db.prisma.betStakeIntent.count(),0);
       assert.equal(await db.prisma.betWager.count(),0);
+      await assert.rejects(
+        () => createFounderBonus(db.prisma,{
+          marketId:winner.id,bonusType:"participants",amountWolo:100,
+          createdByUserId:owner.id,requestId:"no-founder-on-preview",
+        }),
+        /Preview-only battles cannot receive WOLO founder bonuses/,
+      );
+      assert.equal(await db.prisma.betMarketFounderBonus.count({where:{marketId:winner.id}}),0);
       assert.equal(desync.parentMarketId,winner.id);assert.equal(desync.battleId,winner.battleId);
       assert.equal(await db.prisma.betAutoExecution.count(),1);
       assert.equal((await db.prisma.betAutoPreset.findUniqueOrThrow({where:{id:preset.id}})).gamesRemaining,12);
