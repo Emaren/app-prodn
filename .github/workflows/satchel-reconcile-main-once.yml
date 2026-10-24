@@ -1,0 +1,75 @@
+name: One-time safe ancestry merge for held Satchel (no deployment)
+
+on:
+  push:
+    branches:
+      - integration/20261023-satchel-final-gated
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-time-held-satchel-main-reconcile-20261023
+  cancel-in-progress: false
+
+jobs:
+  merge-known-docs-conflict:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/integration/20261023-satchel-final-gated'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Retire privileged temporary action before Git integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/satchel-reconcile-main-once.yml
+          git commit -m "ci(held): self-retire one-time Git reconciliation workflow"
+      - name: Merge qualified main preserving all real source conflicts
+        run: |
+          git fetch --no-tags origin main
+          git merge --no-commit --no-ff origin/main || true
+          python3 - <<'PY'
+          import subprocess
+          conflicts=set(subprocess.check_output(['git','diff','--name-only','--diff-filter=U'],text=True).splitlines())
+          allowed={'docs/DOCUMENTATION_CONTROL_PLANE.md','docs/document-registry.json'}
+          if conflicts - allowed:
+              raise SystemExit('STOP: non-document merge conflict: '+repr(sorted(conflicts-allowed)))
+          if not (open('.git/MERGE_HEAD').read().strip() if __import__('os').path.isfile('.git/MERGE_HEAD') else True):
+              raise SystemExit('STOP: invalid merge state')
+          for path in sorted(conflicts):
+              subprocess.check_call(['git','checkout','--ours','--',path])
+              subprocess.check_call(['git','add','--',path])
+          remaining=subprocess.check_output(['git','diff','--name-only','--diff-filter=U'],text=True).strip()
+          if remaining:
+              raise SystemExit('STOP: unresolved merge conflicts: '+remaining)
+          print('Exact conflicted files resolved by documented postmerge regeneration:',sorted(conflicts))
+          PY
+          git diff --cached --check
+          git commit -m "merge(held): reconcile current main security and ancestry without releasing finance"
+      - name: Regenerate exact-source DocsV2 after true main merge
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 - <<'PY'
+          import subprocess
+          allowed={'docs/DOCUMENTATION_CONTROL_PLANE.md','docs/document-registry.json','catalog-info.yaml'}
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          if changed - allowed:
+              raise SystemExit('STOP: unexpected DocsV2 change: '+repr(sorted(changed-allowed)))
+          print('DocsV2 change paths',sorted(changed))
+          PY
+          python3 scripts/docs_v2_check.py
+          git add -- catalog-info.yaml docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet || git commit -m "docs(held): source-seal Satchel and qualified main integration"
+      - name: Publish only clean, source-bound held branch
+        run: |
+          python3 scripts/docs_v2_check.py
+          git diff --exit-code
+          git diff --cached --exit-code
+          git push origin HEAD:refs/heads/integration/20261023-satchel-final-gated
