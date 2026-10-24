@@ -4,6 +4,7 @@ on:
     branches:
       - review/20261024-live-orphan-origin-failclose
       - review/20261024-live-deploy-p1-entry-guard
+      - review/20261024-locked-source-p1-admission
 permissions:
   contents: read
 jobs:
