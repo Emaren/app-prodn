@@ -1,0 +1,39 @@
+name: Historic founder chain evidence — private feed contracts only
+on:
+  push:
+    branches:
+      - review/20261024-five-founder-canonical-proof
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nonauthorizing-evidence-contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Existing canonical parser + shared-send allocation tests
+        run: |
+          node --version
+          node --experimental-strip-types --test tests/financial-founder-five-canonical-readonly.test.mts \
+            tests/wolo-bank-send-ordinal-integrity.test.mts \
+            tests/wolo-payout-canonical-envelope.test.mts
+      - name: Prove feed is strictly read-only and bounded
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          sql=Path('scripts/financial-founder-five-private-feed-readonly.sql').read_text()
+          code='\n'.join(line.split('--',1)[0] for line in sql.upper().splitlines())
+          assert 'REPEATABLE READ READ ONLY' in code and 'ROLLBACK;' in code
+          assert 'W.TX_HASH = ANY(' in code
+          for token in ['INSERT INTO ','DELETE FROM ','UPDATE ','TRUNCATE ']:
+              assert token not in code,token
+          src=Path('scripts/financial-founder-five-canonical-readonly.mjs').read_text()
+          assert "inspectWoloPayoutTxEnvelope" in src
+          assert "extractCanonicalWoloMsgSends" in src
+          assert "CHAIN_SEND_OBSERVED_UNATTESTED" in src
+          assert "solvency:'UNKNOWN'" in src
+          assert "financialReleaseAuthorized:false" in src
+          assert 'fetch(' in src and 'POST' not in src
+          print('PASS: strictly nonauthorizing, no credentials, no full database census')
+          PY
