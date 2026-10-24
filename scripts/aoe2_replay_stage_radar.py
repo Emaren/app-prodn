@@ -22,7 +22,7 @@ STAGES = (
     ("internal_post_ingest", "app/api/replay/post-ingest/route.ts",
      ("internalApiKeyMatches(", "classifyReplayIngestReceipt(", "coordinateReplayPostIngest(")),
     ("receipt_and_finality", "lib/replayPostIngest.ts",
-     ("export function classifyReplayIngestReceipt(", "export async function coordinateReplayPostIngest(",
+     ("export function classifyReplayIngestReceipt(", "export async function coordinateReplayPostIngest",
       "await dependencies.ensureBetMarkets(")),
     ("parser_contract", "lib/replayEngineRoom.ts",
      ("HD_REPLAY_PARSER_BASE_CONTRACT", "export const HD_REPLAY_PARSER_CONTRACT")),
