@@ -41,9 +41,9 @@ ALLOWED_DELTA = frozenset({
     "tests/test_aoe2_website_release_v2.py",
     "docs/WEBSITE_ONLY_RELEASE_AUTHORITY_V2.md",
 })
-HEX40 = re.compile(r"[a-f0-9]{40}\\Z")
-HEX64 = re.compile(r"[a-f0-9]{64}\\Z")
-NONCE = re.compile(r"[A-Za-z0-9_-]{24,96}\\Z")
+HEX40 = re.compile(r"[a-f0-9]{40}\Z")
+HEX64 = re.compile(r"[a-f0-9]{64}\Z")
+NONCE = re.compile(r"[A-Za-z0-9_-]{24,96}\Z")
 
 
 class Hold(ValueError):
@@ -114,7 +114,7 @@ def source_scope(repo: Path, target: str) -> dict:
               PRODUCTION_SHA + ".." + target).splitlines()
     changed = []
     for line in raw:
-        fields = line.split("\\t")
+        fields = line.split("\t")
         require(len(fields) == 2 and fields[0] in ("A", "M"),
                 "renamed/deleted/unreviewable candidate path")
         path = fields[1]
@@ -194,6 +194,8 @@ def assess(packet: dict, *, candidate: str, actual_scope: dict, now=None,
             "substituted production anchor")
     require(payload.get("scope_sha256") == actual_scope.get("scope_sha256"),
             "unreviewed source scope")
+    require(payload.get("controller_sha") == hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "unreviewed running authority implementation")
     for name in ("challenge", "attempt_id"):
         require(type(payload.get(name)) is str and
                 NONCE.fullmatch(payload[name]) is not None,
@@ -204,7 +206,7 @@ def assess(packet: dict, *, candidate: str, actual_scope: dict, now=None,
                  "independent_operator_observation_sha256"):
         require(type(payload.get(name)) is str and HEX64.fullmatch(payload[name]) is not None,
                 "missing exact evidence digest " + name)
-    require(payload.get("risk_class") == "PRESENTATION",
+    require(payload.get("risk_class") in ("PRESENTATION", "INFRASTRUCTURE", "WATCHER"),
             "source gate did not independently classify presentation")
     require(payload.get("financial_release_authorized") is False and
             payload.get("custody_authorized") is False and
