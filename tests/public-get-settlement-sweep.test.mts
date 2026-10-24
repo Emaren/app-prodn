@@ -153,7 +153,7 @@ test("all API GET handlers are free from known direct finance producers", () => 
   let getters = 0;
   for (const file of paths) {
     const routeSource = readFileSync(file, "utf8");
-    const routePath = relative(ROOT, file).replaceAll("\\\\", "/");
+    const routePath = relative(ROOT, file).split(String.fromCharCode(92)).join("/");
     const { handlers, calls, unsupported } = inspectRoute(routeSource, file);
     getters += handlers;
 
