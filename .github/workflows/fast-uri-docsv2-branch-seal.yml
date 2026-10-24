@@ -1,0 +1,54 @@
+name: One-shot DocsV2 seal for patched fast-uri security branch
+
+# Restricted to a dedicated dependency-only patch branch, never app main.
+on:
+  push:
+    branches:
+      - fix/20261023-fast-uri-security-319
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-v2-fast-uri-security-319
+  cancel-in-progress: false
+
+jobs:
+  regenerate-and-seal:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/fix/20261023-fast-uri-security-319'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact branch with required history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Regenerate only official DocsV2 indexes and source baseline
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 - <<'PY'
+          import subprocess
+          allowed={"docs/document-registry.json","docs/DOCUMENTATION_CONTROL_PLANE.md","catalog-info.yaml"}
+          changed=set(subprocess.check_output(["git","diff","--name-only"],text=True).splitlines())
+          untracked=set(subprocess.check_output(["git","ls-files","--others","--exclude-standard"],text=True).splitlines())
+          unexpected=(changed|untracked)-allowed
+          if unexpected:
+              raise SystemExit("DocsV2 generated unexpected output paths: "+str(sorted(unexpected)))
+          print("Verified generated paths:",sorted(changed|untracked))
+          PY
+          python3 scripts/docs_v2_check.py
+      - name: Commit generated DocsV2 seal ONLY to this isolated branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- catalog-info.yaml docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          if git diff --cached --quiet; then
+            echo "Already sealed: no generated changes"
+          else
+            git commit -m "docs(control): seal vetted fast-uri 3.1.9 dependency-only change"
+            git push origin HEAD:refs/heads/fix/20261023-fast-uri-security-319
+          fi
