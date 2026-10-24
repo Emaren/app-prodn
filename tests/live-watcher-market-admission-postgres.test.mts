@@ -636,7 +636,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         await db.sql.query("DROP TRIGGER fixture_expire_parent_during_child ON bet_markets; DROP FUNCTION fixture_expire_parent_during_child()");
       }
     });
-    assert.equal(await db.prisma.betWager.count(),0);assert.equal((await db.sql.query("SELECT to_regclass('public.war_satchel_funded_reservations') AS name")).rows[0].name,null);
+    assert.equal(await db.prisma.betWager.count(),0);assert.equal((await db.sql.query("SELECT count(*)::int AS n FROM war_satchel_funded_reservations")).rows[0].n,0,"original preview never creates any funded reservation");
     assert.equal(await db.prisma.pendingWoloClaim.count(),0);assert.equal(networkCalls,0);
     assert.equal(readBetAutomationRuntime({BET_AUTOMATION_MODE:"live",WOLO_BET_CUSTODY_CAPABILITY:"bet-custody-v1",
       WOLO_BET_CUSTODY_URL:"http://127.0.0.1:8092",WOLO_SETTLEMENT_AUTH_TOKEN:"fixture-only"}).executionReady,false);
