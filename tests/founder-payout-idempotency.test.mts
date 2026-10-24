@@ -67,7 +67,8 @@ test("admin Founder retries use the same identity and hold the lock through clai
   const ledgerIndex = source.indexOf("tx.pendingWoloClaim.updateMany({", executionIndex);
 
   assert.ok(identityIndex >= 0);
-  assert.ok(lockIndex > identityIndex);\n  assert.match(source, /economicLockKey: buildFounderEconomicLockKey/);
+  assert.ok(lockIndex > identityIndex);
+  assert.match(source, /economicLockKey: buildFounderEconomicLockKey/);
   assert.ok(recoveryIndex > lockIndex);
   assert.ok(executionIndex > recoveryIndex);
   assert.ok(ledgerIndex > executionIndex);
