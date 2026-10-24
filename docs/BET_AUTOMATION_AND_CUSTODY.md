@@ -39,6 +39,14 @@ market (including duplicate-request replay); Founder Bonus settlement skips
 such books without writing a payout/claim. This prevents the nonfunded preview
 from creating a new founder entitlement through an older admin route.
 
+The legacy settled/voided wager payout selector excludes `preview_only`
+markets even if malformed financial records were injected by a separate
+writer. The central pending-claim retry controller also refuses preview-origin
+claims (including founder bonuses whose market relationship points to a
+preview), before any payout attempt or claim mutation. A disposable
+PostgreSQL regression inserts and then deletes a synthetic claim to verify
+the refusal and unchanged financial fields.
+
 A user might nevertheless send funds to an
 address outside application control: this safeguard cannot itself reverse
 or certify an external chain payment.
