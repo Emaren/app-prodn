@@ -8604,6 +8604,7 @@ function buildMarketCard(
 
   const bettingCloseReason =
     freshBettingCloseReason({
+      bookPhase: market.bookPhase,
       status: market.status,
       marketType: market.marketType,
       closeAt: market.closeAt,
