@@ -1156,21 +1156,17 @@ export async function settleFounderBonuses(
           // A paid/attempted June claim MUST fence a July namespaced group
           // for the same bonus and normalized recipient. Do not turn another
           // key into another signer request merely because its memo differs.
-          const previousEconomicAttempt = await tx.pendingWoloClaim.findFirst({
+          // Two pending keys are ambiguous too: neither may broadcast.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
             where: {
               sourceFounderBonusId: bonus.id,
               normalizedPlayerName: normalizePendingWoloClaimName(target.playerName),
               claimKind,
               claimGroupKey: { not: groupKey },
-              OR: [
-                { status: "claimed" },
-                { payoutAttemptedAt: { not: null } },
-                { payoutTxHash: { not: null } },
-              ],
             },
             select: { id: true },
           });
-          if (previousEconomicAttempt) {
+          if (conflictingEconomicClaim) {
             // Immutable financial history, no retry, no payout and no mutation.
             return;
           }
