@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-founder-cross-key-settlement-fence` at `ba85e2df96ce6c5438d0d5e8f49f8bcf30a12a6e`
+Implementation baseline: `review/20261024-founder-cross-key-settlement-fence` at `66a01d8db8f76d0a0aab498a0ff265261f2e1d9c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
