@@ -1,0 +1,32 @@
+name: Review-only financial DocsV2 baseline regeneration
+on:
+  pull_request:
+    branches:
+      - integration/20261023-satchel-final-gated
+permissions:
+  contents: read
+jobs:
+  source-bound-docs-review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Regenerate reviewed source baseline on disposable runner
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch review/20261024-financial-claim-collision-certification \
+            --head "$(git rev-parse HEAD)"
+          python3 scripts/docs_v2_check.py
+      - name: Return generated artifacts as bounded quoted log chunks (no secrets)
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          for name,path in [('INDEX','docs/DOCUMENTATION_CONTROL_PLANE.md'),
+                            ('REGISTRY','docs/document-registry.json')]:
+              value=Path(path).read_text()
+              for i in range(0,len(value),1000):
+                  print('AOE2_FINANCE_DOCS_%s_%04d='%(name,i//1000)+json.dumps(value[i:i+1000]))
+          PY
