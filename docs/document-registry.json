@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
+      "sha256": "35faec8e9ac7e8948b5ad1b2c2a3b3c144f7fd00c5cb9a9623fee2be7e6a70c9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c32e85942b8f02a3c189b8f5e596a3a355f5774e63bbc13d5e76eec9852758e6",
+      "sha256": "52edde5069afd5f095956d491d779ef6616153e8b3df333acb2a2f9d49ecb616",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261023-fast-uri-security-319",
-    "commit": "bb2c18e15ce8fe81a0a1dd745dae1bbc43430656"
+    "branch": "codex/disabled-live-preview-extract",
+    "commit": "8a156e83a83971ac07ef4b1a5d42337dc0a9e172"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
