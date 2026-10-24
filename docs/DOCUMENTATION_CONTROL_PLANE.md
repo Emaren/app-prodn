@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-public-get-settlement-regression` at `13c7cedfd33d878e87500c8e74e7235e8619723f`
+Implementation baseline: `review/20261024-public-get-settlement-regression` at `1d15b2b8550c559999ec1ed6faefb1b2281580b0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
