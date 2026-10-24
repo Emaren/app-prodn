@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "389be5f6bfd3e2655c3cd16a96c38efeccd020c929513db2f8c425b65ecb6c6a",
+      "sha256": "66893995f0198a76ac1ee7ac3a02457f0ed052769f740ac7037ac54b9258aed4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-live-deploy-p1-entry-guard",
-    "commit": "c2e06c87e73033c37d3272e83e322595dabb21e5"
+    "branch": "review/20261024-locked-source-p1-admission",
+    "commit": "3b0188e8248e797c86fdf7e7f2e36f5aa17b9ad1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
