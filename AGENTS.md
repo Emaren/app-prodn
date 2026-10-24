@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.agents"
+title: "AoE2WAR Agent Operating Contract"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "agent-operating-contract"
+reviewed_at: "2026-10-24"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # AoE2WAR Agent Operating Contract
 
 This file applies to agents working in `Emaren/app-prodn`. Read it before producing a human-facing operator command or proposing a release. Keep the implementation, evidence, approval and operational-state boundaries separate.
