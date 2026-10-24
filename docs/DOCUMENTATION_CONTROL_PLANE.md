@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261024-held-future-funded-combined-acceptance` at `3a1237a4b6c60e180c2dbf50dfbf4113734f2c34`
+Implementation baseline: `integration/20261024-held-future-funded-combined-acceptance` at `0204dd21cf0db9478e2b5011b10c40a458cca940`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
