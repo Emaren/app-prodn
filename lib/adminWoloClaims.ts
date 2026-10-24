@@ -69,7 +69,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market" | "source_attribution_conflict";
       detail?: string;
     }
   | {
@@ -826,18 +826,31 @@ export async function retryPendingClaimSettlement(
   // The finance-disabled LIVE preview may be settled for display, but it
   // cannot generate a payout or retry. Check this BEFORE a signer call and
   // before the legacy/pre-mainnet claim cleanup path mutates anything.
-  const previewMarket = typeof claim.sourceMarketId === "number"
+  // Validate both nullable origins independently. A direct market must not
+  // mask a preview Founder book or redirect the signer to another game.
+  const directOrigin = claim.sourceMarketId !== null
     ? await prisma.betMarket.findUnique({
-        where: { id: claim.sourceMarketId },
-        select: { bookPhase: true },
+        where: { id: claim.sourceMarketId }, select: { id: true, bookPhase: true },
       })
-    : claim.sourceFounderBonusId
-      ? await prisma.betMarketFounderBonus.findUnique({
-          where: { id: claim.sourceFounderBonusId },
-          select: { market: { select: { bookPhase: true } } },
-        }).then(bonus => bonus?.market ?? null)
-      : null;
-  if (previewMarket?.bookPhase === "preview_only") {
+    : null;
+  const founderOrigin = claim.sourceFounderBonusId !== null
+    ? await prisma.betMarketFounderBonus.findUnique({
+        where: { id: claim.sourceFounderBonusId },
+        select: { marketId: true, market: { select: { bookPhase: true } } },
+      })
+    : null;
+  if ((claim.sourceMarketId !== null && !directOrigin) ||
+      (claim.sourceFounderBonusId !== null && !founderOrigin) ||
+      (directOrigin && founderOrigin && directOrigin.id !== founderOrigin.marketId)) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "source_attribution_conflict",
+      detail: "Direct-market and Founder Bonus claim origins conflict. Independent entitlement review required before any payout or retry.",
+    };
+  }
+  if (directOrigin?.bookPhase === "preview_only" ||
+      founderOrigin?.market.bookPhase === "preview_only") {
     return {
       outcome: "skipped",
       claimId: claim.id,
@@ -982,6 +995,8 @@ export async function retryPendingClaimSettlement(
               status: true,
               payoutTxHash: true,
               payoutAttemptedAt: true,
+              sourceMarketId: true,
+              sourceFounderBonusId: true,
             },
           });
           if (!currentClaim || currentClaim.status !== "pending") {
@@ -989,6 +1004,16 @@ export async function retryPendingClaimSettlement(
               outcome: "skipped" as const,
               claimId: claim.id,
               reason: currentClaim ? "not_pending" as const : "not_found" as const,
+            };
+          }
+          // Origin may change while waiting for the economic payout lock.
+          if (currentClaim.sourceMarketId !== claim.sourceMarketId ||
+              currentClaim.sourceFounderBonusId !== claim.sourceFounderBonusId) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "source_attribution_conflict" as const,
+              detail: "Claim origin changed while waiting for payout authority.",
             };
           }
           // Revalidate INSIDE founder idempotency lock: a concurrent prior
