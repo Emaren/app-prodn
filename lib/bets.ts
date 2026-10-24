@@ -1,3 +1,7 @@
+import {requireSatchelFinancialBridge} from "./warSatchelFinancialBridgeHold.ts";
+import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
+import {verifyIndependentFundedWatcherOrigin,fundedWatcherBookNames,type SignedFundedWatcherOrigin}
+  from "./warSatchelFundedWatcherOrigin.ts";
 import {committedLiveWatcherAdmissionIssue,liveSessionMatchesCommittedWatcher,LIVE_WATCHER_ADMISSION_MAX_AGE_MS,type CommittedLiveWatcherRow} from "./liveWatcherMarketAdmission.ts";
 import {
   applyReplayAdjudicationToGameStats,
@@ -8570,6 +8574,107 @@ export async function admitCommittedLiveWatcherMarkets(prisma:PrismaClient,gameS
  * Rotate at most 64 distinct authenticated streams through the 12-minute lane;
  * the report exposes backlog/cadence instead of asserting timely live delivery.
  */
+/** Future funded admission: a signed, role-separated authority creates NEW
+ * market IDs. No original LIVE preview book is updated or financially inherited.
+ * Mainnet remains unreachable while SATCHEL_FINANCIAL_BRIDGE_READY is false.
+ * This function is never called by public GET/SSR or the original LIVE importer.
+ */
+export async function admitReviewedFundedWatcherBooks(prisma:PrismaClient,input:{
+  sourceGameStatsId:number;signedOrigin:SignedFundedWatcherOrigin;
+}):Promise<{created:boolean;winnerMarketId:number;desyncMarketId:number}>{
+  requireSatchelFinancialBridge();
+  if(!Number.isSafeInteger(input.sourceGameStatsId)||input.sourceGameStatsId<=0)
+    throw Error("FUNDED_WATCHER_INVALID_COMMITTED_SOURCE");
+  const reviewerKey=await readWagerReviewerKey();
+  // An operator signature has no authority to invent Watcher propositions.
+  const row=await prisma.gameStats.findUnique({
+    where:{id:input.sourceGameStatsId},select:LIVE_ADMISSION_SOURCE_SELECT,
+  });
+  if(!row||committedLiveWatcherAdmissionIssue(row)!==null)
+    throw Error("FUNDED_WATCHER_COMMITTED_SOURCE_UNVERIFIED");
+  const snap=await loadLiveSessionSnapshot(prisma);
+  const active=snap.activeSessions.find(session=>
+    liveSessionMatchesCommittedWatcher(row,session)&&
+    session.teamResolution.status==="resolved"&&
+    session.teamResolution.confidence==="high");
+  if(!active)throw Error("FUNDED_WATCHER_CANONICAL_GAME_UNVERIFIED");
+  const verified=verifyIndependentFundedWatcherOrigin({
+    signed:input.signedOrigin,publicKeyHex:reviewerKey,nowMs:Date.now(),
+    expected:{sessionKey:active.sessionKey,
+      propositionHash:active.teamResolution.propositionHash||"",
+      rosterHash:active.teamResolution.rosterHash||"",
+      sourceGameStatsId:input.sourceGameStatsId},
+  });
+  const names=fundedWatcherBookNames(verified);
+  return prisma.$transaction(async tx=>{
+    await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
+    await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${"funded-book:"+verified.originKey}, 0))`);
+    // Source writers share this lock protocol. No new terminal GameStats row
+    // may slip between final Watcher verification and both create-only inserts.
+    await tx.$executeRaw`LOCK TABLE game_stats IN SHARE MODE`;
+    const current=await tx.gameStats.findUnique({
+      where:{id:input.sourceGameStatsId},select:LIVE_ADMISSION_SOURCE_SELECT,
+    });
+    const latest=await loadLiveSessionSnapshot(tx);
+    const live=current&&latest.activeSessions.find(session=>
+      session.sessionKey===verified.session_key&&
+      session.teamResolution.propositionHash===verified.proposition_hash&&
+      session.teamResolution.rosterHash===verified.roster_hash&&
+      liveSessionMatchesCommittedWatcher(current,session));
+    if(!current||committedLiveWatcherAdmissionIssue(current)!==null||!live)
+      throw Error("FUNDED_WATCHER_SOURCE_CHANGED_UNDER_LOCK");
+    // The original seed provides only canonical teams/roster, NEVER a financial
+    // market ID, pending claim, escrow allocation, stake or settlement record.
+    const winnerSeed=buildSessionMarketSeed(live,-300,false);
+    if(!winnerSeed||winnerSeed.status!=="live"||
+       winnerSeed.propositionHash!==verified.proposition_hash)
+      throw Error("FUNDED_WATCHER_SEED_UNVERIFIED");
+    const desyncSeed=buildDesyncSideMarketSeed(winnerSeed);
+    if(!desyncSeed)throw Error("FUNDED_WATCHER_DESYNC_UNVERIFIED");
+    const preexisting=await tx.betMarket.findMany({
+      where:{linkedSessionKey:verified.session_key},
+      select:{id:true,slug:true,bookPhase:true,phaseBookKey:true,
+        marketType:true,propositionHash:true,scheduledMatchId:true,
+        parentMarketId:true,seedLeftWolo:true,seedRightWolo:true},
+    });
+    // A pre-existing original LIVE book is always read-only preview. Reject
+    // any legacy/funded collision; do not promote by upsert or marketId reuse.
+    if(preexisting.some(book=>book.bookPhase!=="preview_only"&&
+       !(book.bookPhase==="funded"&&
+         [names.winnerPhaseKey,names.desyncPhaseKey].includes(book.phaseBookKey||""))))
+       throw Error("FUNDED_WATCHER_UNRELATED_FINANCIAL_BOOK_COLLISION");
+    const first=preexisting.find(b=>b.phaseBookKey===names.winnerPhaseKey);
+    const second=preexisting.find(b=>b.phaseBookKey===names.desyncPhaseKey);
+    if(Boolean(first)!==Boolean(second))
+      throw Error("FUNDED_WATCHER_PARTIAL_ORIGIN_REQUIRES_REVIEW");
+    if(first&&second){
+      if(first.bookPhase!=="funded"||second.bookPhase!=="funded"||
+         first.marketType!=="winner"||second.marketType!=="desync"||
+         second.parentMarketId!==first.id||
+         first.propositionHash!==verified.proposition_hash||
+         second.propositionHash!==verified.proposition_hash||
+         first.seedLeftWolo!==0||first.seedRightWolo!==0||
+         second.seedLeftWolo!==0||second.seedRightWolo!==0)
+        throw Error("FUNDED_WATCHER_REPLAY_CONFLICT");
+      return {created:false,winnerMarketId:first.id,desyncMarketId:second.id};
+    }
+    if(preexisting.some(book=>book.slug===names.winnerSlug||book.slug===names.desyncSlug))
+       throw Error("FUNDED_WATCHER_SLUG_REUSE_REFUSED");
+    const winner=await tx.betMarket.create({data:{
+      ...marketSeedCreateData(winnerSeed),slug:names.winnerSlug,
+      bookPhase:"funded",phaseBookKey:names.winnerPhaseKey,
+      seedLeftWolo:0,seedRightWolo:0,
+    },select:{id:true}});
+    const desync=await tx.betMarket.create({data:{
+      ...marketSeedCreateData(desyncSeed),slug:names.desyncSlug,
+      bookPhase:"funded",phaseBookKey:names.desyncPhaseKey,
+      parentMarketId:winner.id,seedLeftWolo:0,seedRightWolo:0,
+    },select:{id:true}});
+    return {created:true,winnerMarketId:winner.id,desyncMarketId:desync.id};
+  },{maxWait:5000,timeout:9000});
+}
+
 export async function recoverCommittedLiveWatcherMarkets(prisma:PrismaClient,options:{dryRun:boolean;targetGameStatsId?:number|null}){
   const now=new Date(),cutoff=new Date(now.getTime()-LIVE_WATCHER_ADMISSION_MAX_AGE_MS),minuteBucket=Math.floor(now.getTime()/60_000);
   const rows=await prisma.$queryRaw<Array<{id:number;total:number}>>`
