@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/kingdom-watcher-166-provisional-companion-review-20261023` at `29e699267f2a9da1535a492dc6867190c504aa13`
+Implementation baseline: `fix/20261023-fast-uri-security-319` at `bb2c18e15ce8fe81a0a1dd745dae1bbc43430656`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
