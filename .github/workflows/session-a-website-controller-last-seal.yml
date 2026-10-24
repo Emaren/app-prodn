@@ -1,0 +1,52 @@
+name: One-shot final website authority security source seal
+on:
+  push:
+    branches:
+      - session-a/20261024-website-protected-release-controller
+permissions:
+  contents: write
+concurrency:
+  group: session-a-website-controller-last-seal
+  cancel-in-progress: false
+jobs:
+  source-seal:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/session-a/20261024-website-protected-release-controller'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Retire one-use CI file before hashing implementation
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/session-a/20261024-website-protected-release-controller"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/session-a-website-controller-last-seal.yml
+          git commit -m "ci: retire final one-shot protected website source sealer"
+      - name: Refresh exact governed DocsV2 registry and baseline
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 - <<'PY'
+          import subprocess
+          allowed={"docs/document-registry.json","docs/DOCUMENTATION_CONTROL_PLANE.md","catalog-info.yaml"}
+          changed=set(subprocess.check_output(["git","diff","--name-only"],text=True).splitlines())
+          untracked=set(subprocess.check_output(["git","ls-files","--others","--exclude-standard"],text=True).splitlines())
+          if not changed or (changed|untracked)-allowed:
+              raise SystemExit("Unsafe generated docs drift: "+str(sorted(changed|untracked)))
+          print("Sealed governed docs only:",sorted(changed))
+          PY
+          python3 scripts/docs_v2_check.py
+      - name: Save canonical docs only to the one isolated review branch
+        run: |
+          set -euo pipefail
+          git add -- docs/document-registry.json docs/DOCUMENTATION_CONTROL_PLANE.md catalog-info.yaml
+          git diff --cached --quiet && exit 2
+          git commit -m "docs(control): seal stage-challenge-linked website authority security"
+          git push origin HEAD:refs/heads/session-a/20261024-website-protected-release-controller
