@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261023-fast-uri-security-319` at `19a499064132128da2b3ac5c85b7a4ebd7e70d04`
+Implementation baseline: `fix/20261023-fast-uri-security-319` at `07cc12086ac54c4e01370b18be5205ddc42e6683`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

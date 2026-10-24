@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6ed42c2d73adbadd28e86f6af8badb9ebbb137649377d112194ec54569ea1201",
+      "sha256": "1f9ec6968fecd17d540e60999f6cc9d70ef0264e0feffc6574423d9fda724f04",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261023-fast-uri-security-319",
-    "commit": "19a499064132128da2b3ac5c85b7a4ebd7e70d04"
+    "commit": "07cc12086ac54c4e01370b18be5205ddc42e6683"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
