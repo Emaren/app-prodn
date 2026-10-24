@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-funded-live-origin-fence` at `ba6cf39d20b4ed5d9f870979cd6f637c56ec1eb6`
+Implementation baseline: `integration/20261024-held-future-funded-combined-acceptance` at `3a1237a4b6c60e180c2dbf50dfbf4113734f2c34`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
