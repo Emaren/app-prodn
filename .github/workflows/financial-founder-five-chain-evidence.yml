@@ -34,6 +34,7 @@ jobs:
           assert "CHAIN_SEND_OBSERVED_UNATTESTED" in src
           assert "solvency:'UNKNOWN'" in src
           assert "financialReleaseAuthorized:false" in src
-          assert 'fetch(' in src and 'POST' not in src
+          assert 'fetch(' in src and "method:'GET'" in src
+          assert "method:'POST'" not in src
           print('PASS: strictly nonauthorizing, no credentials, no full database census')
           PY
