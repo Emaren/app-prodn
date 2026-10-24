@@ -1004,27 +1004,23 @@ export async function retryPendingClaimSettlement(
 
           // Distinct June/July keys for one economic participant MUST NOT
           // independently authorize two chain sends. Under the common
-          // advisory lock, inspect the full parent+recipient attempt history.
-          const previousEconomicAttempt = await tx.pendingWoloClaim.findFirst({
+          // advisory lock, inspect all keys for the same economic entitlement.
+          // Even two hashless pending keys are ambiguous; sign neither.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
             where: {
               sourceFounderBonusId: founderBonusId,
               normalizedPlayerName: claim.normalizedPlayerName,
               claimKind: claim.claimKind,
               claimGroupKey: { not: claim.claimGroupKey },
-              OR: [
-                { status: "claimed" },
-                { payoutAttemptedAt: { not: null } },
-                { payoutTxHash: { not: null } },
-              ],
             },
             select: { id: true },
           });
-          if (previousEconomicAttempt) {
+          if (conflictingEconomicClaim) {
             return {
               outcome: "skipped" as const,
               claimId: claim.id,
               reason: "ambiguous_prior_attempt" as const,
-              detail: "Another claim key for the same Founder Bonus recipient has an attempted/final payout. Independent economic-entitlement and chain review required; no new broadcast permitted.",
+              detail: "Another claim key exists for the same Founder Bonus recipient, even if still pending. Resolve economic entitlement and historical payment proof independently before any broadcast.",
             };
           }
 
