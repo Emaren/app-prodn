@@ -55,7 +55,7 @@ class WebsiteReviewPolicyTests(unittest.TestCase):
         self.manifest_raw = POLICY.canonical(self.manifest)
         self.stage = {
             "status": "STAGED", "release_sha": self.candidate,
-            "candidate_build_id": "example-build-123",
+            "staged_build_id": "example-build-123",
             "manifest_sha256": POLICY.digest(self.manifest_raw),
             "gate_sha256": POLICY.digest(self.gate_raw), "wolo_mutated": False,
         }
