@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-preview-finance-boundary-held` at `9de33506641c1adbe3bb047d6c51a72822a69dc3`
+Implementation baseline: `review/20261024-live-preview-finance-boundary-held` at `6447842b964360c96a261440548f16604eb09704`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
