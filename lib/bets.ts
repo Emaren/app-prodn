@@ -4552,8 +4552,9 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
         { adjustmentStatus: "corrective_refund_processing", updatedAt: { lt: retryCutoff } },
       ],
       incident: {
-        market: { status: "voided" },
+        market: { status: "voided", bookPhase: { not: "preview_only" } },
       },
+      wager: { market: { bookPhase: { not: "preview_only" } } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     include: {
@@ -4562,13 +4563,22 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
           market: true,
         },
       },
+      wager: { select: { marketId: true, userId: true } },
     },
   });
 
   for (const adjustment of candidates) {
+    // A malformed adjustment linking another market's wager may otherwise
+    // create a real claim or call the custody signer. Never even acquire it.
+    if (adjustment.incident.market.bookPhase === "preview_only" ||
+        adjustment.wager.marketId !== adjustment.incident.marketId ||
+        adjustment.wager.userId !== adjustment.userId) continue;
     const acquired = await prisma.betMarketFinancialAdjustment.updateMany({
       where: {
         id: adjustment.id,
+        incident: { market: { status: "voided", bookPhase: { not: "preview_only" } } },
+        wager: { marketId: adjustment.incident.marketId, userId: adjustment.userId,
+          market: { bookPhase: { not: "preview_only" } } },
         amountStillOwedWolo: { gt: 0 },
         OR: [
           { adjustmentStatus: "corrective_refund_pending" },
