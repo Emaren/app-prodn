@@ -3949,6 +3949,8 @@ async function resolveAutomatedWatcherIntegrityIncident(
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
+      // A display-only LIVE battle must never enter the original signer path.
+      bookPhase: { not: "preview_only" },
       status: { in: ["settled", "voided"] },
       wagers: {
         some: buildCountableActiveWagerWhere(),
