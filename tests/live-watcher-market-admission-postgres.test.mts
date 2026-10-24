@@ -531,6 +531,31 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(networkCalls,calls);
       await db.prisma.betMarket.delete({where:{id:occupied.id}});
     });
+    await t.test("orphan direct claim on existing preview book refuses both canonical family members",async()=>{
+      const row=await persist("claim-only-occupied"),key="platform:controlled-hd-claim-only-occupied";
+      const market=await aliasMarket(key);
+      const claim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"claim-only-occupant",displayPlayerName:"Claim only occupant",
+        amountWolo:25,claimKind:"bet_refund",claimGroupKey:"orphan-claim-only",
+        status:"pending",sourceMarketId:market.id,
+      }});
+      try{
+        const initialMarket=await db.prisma.betMarket.findUniqueOrThrow({where:{id:market.id}});
+        const initialClaim=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}});
+        const marketCount=await db.prisma.betMarket.count(),networkBefore=networkCalls;
+        const report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.createdCount,0);
+        assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),marketCount);
+        assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:key,marketType:"desync"}}),0);
+        assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:market.id}}),initialMarket);
+        assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),initialClaim);
+        assert.equal(networkCalls,networkBefore);
+      }finally{
+        await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});
+        await db.prisma.betMarket.delete({where:{id:market.id}});
+      }
+    });
     await t.test("terminal canonical winner with no child refuses the complete family without creating a desync book",async()=>{
       const row=await persist("terminal-parent-missing-child"),canonical="platform:controlled-hd-terminal-parent-missing-child";
       const winner=await aliasMarket(canonical);
