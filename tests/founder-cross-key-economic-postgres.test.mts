@@ -127,6 +127,43 @@ test("historical Founder Bonus claim keys fail closed in disposable PostgreSQL",
       assert.equal(afterJuly.payoutAttemptedAt, null);
       assert.equal(afterJuly.payoutTxHash, null);
     });
+    await t.test("two entirely pending key generations both refuse signing", async () => {
+      const secondBonus = await db.prisma.betMarketFounderBonus.create({
+        data: {
+          marketId: market.id,
+          bonusType: "participants",
+          totalAmountWolo: 2000,
+          status: "partial",
+        },
+      });
+      const makeClaim = (key: string) => db.prisma.pendingWoloClaim.create({
+        data: {
+          normalizedPlayerName: "foundersleft",
+          displayPlayerName: "FoundersLeft",
+          amountWolo: 1000,
+          claimKind: "founders_bonus",
+          claimGroupKey: key,
+          targetScope: "both_participants",
+          sourceMarketId: market.id,
+          sourceFounderBonusId: secondBonus.id,
+          status: "pending",
+        },
+      });
+      const june = await makeClaim(`founder:${secondBonus.id}:left`);
+      const july = await makeClaim(`founder:${secondBonus.id}:left:FoundersLeft`);
+      const outcomes = await Promise.all([
+        retryPendingClaimSettlement(db.prisma, june.id),
+        retryPendingClaimSettlement(db.prisma, july.id),
+      ]);
+      assert.ok(outcomes.every(x => x.outcome === "skipped" && x.reason === "ambiguous_prior_attempt"));
+      assert.equal(networkCalls, 0, "even concurrent pending generations have zero signer attempts");
+      const current = await db.prisma.pendingWoloClaim.findMany({
+        where: { sourceFounderBonusId: secondBonus.id },
+      });
+      assert.equal(current.length, 2);
+      assert.ok(current.every(row => row.status === "pending" && row.payoutAttemptedAt === null &&
+        row.payoutTxHash === null));
+    });
   } finally {
     globalThis.fetch = previousFetch;
     await db.cleanup();
