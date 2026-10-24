@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "65f5c28cf7e39fa1dbdb0451fc25b35a2b10fce3753e0d730f8d3a288c200db3",
+      "sha256": "0457de64f1322563ca3ea75b54975899d4afadedd7610f0c7001dfbe3a1b749f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-financial-claim-collision-certification",
-    "commit": "d3bc597e6b88a3a0e542f8a289fbe6decbee261c"
+    "branch": "review/20261024-five-founder-canonical-proof",
+    "commit": "07a8c58a4997d897f852857c41cd8b25cb5157d2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
