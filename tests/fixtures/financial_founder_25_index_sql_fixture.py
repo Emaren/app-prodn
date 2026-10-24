@@ -58,7 +58,7 @@ INSERT INTO wolo_indexed_transfers
         for hash_,rec,time_,height in [
             (old_hash,wallet,"2026-06-22 00:00:00",old_height),
             (july_hash,jul_rec,jul_event,jul_height)]:
-            print("INSERT INTO wolo_indexed_transfers VALUES ("+",",".join([
+            print("INSERT INTO wolo_indexed_transfers VALUES (" + ",".join([
                 quoted(hash_),"0","'wolo-1'","'uwolo'",
                 str(amount*1000000),quoted(rec),"'synthetic-only-sender'",
                 quoted(time_),str(height)])+");")
