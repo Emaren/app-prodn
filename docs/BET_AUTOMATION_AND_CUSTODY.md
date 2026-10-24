@@ -85,7 +85,7 @@ historical refund #8477 or claim #889.
 
 The isolated PostgreSQL qualification uses the existing main Prisma datamodel,
 not held Satchel SQL. Funded balance/reservation and maintenance-policy tables
-remain absent. Existing preview caps, UI, payment transport, public maintenance
+remain absent. Existing preview caps, UI, payment transport,
 funding restrictions and `LIVE_EXECUTOR_IMPLEMENTED=false` remain unchanged. Metadata and
 `shadow_ready` previews do not create reserves, wagers, credits or plan spending.
 The eight financial migrations and funded source in held PR #838 require their
