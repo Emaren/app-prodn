@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-funded-p1-release-parity` at `1948e8a4a9f5967a2f8d454c5ff717401ea79cdd`
+Implementation baseline: `session-b/funded-epoch-integration-20261024` at `4c79f50f31994a28179943a492d34c6a966a205a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
