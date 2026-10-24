@@ -8209,6 +8209,15 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
         },select:{id:true}});
         if (occupied) blocked.add(family.canonicalSessionKey);
       }
+      if (process.env.RUN_LIVE_MARKET_PG_TESTS === "1" && existingRows.length) {
+        console.error("PREVIEW_REDELIVERY_PRECHECK", JSON.stringify({
+          blocked:[...blocked],families:families.map(f=>({canonical:f.canonicalSessionKey,aliases:f.aliases})),
+          existing:existingRows.map(row=>({slug:row.slug,status:row.status,hash:row.propositionHash,session:row.linkedSessionKey,
+            closeAt:row.closeAt,marketType:row.marketType})),
+          proposed:seeds.map(seed=>({slug:seed.slug,status:seed.status,hash:seed.propositionHash,
+            session:seed.linkedSessionKey,marketType:seed.marketType})),
+        }));
+      }
       const results: Awaited<ReturnType<typeof writeSeed>>[] = [];
       for (const seed of seeds) results.push(blocked.has(normalizeName(seed.linkedSessionKey))
         ? {created:false,admitted:false} : await writeSeed(tx, seed));
