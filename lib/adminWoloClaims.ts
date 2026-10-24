@@ -69,7 +69,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market";
       detail?: string;
     }
   | {
@@ -821,6 +821,29 @@ export async function retryPendingClaimSettlement(
 
   if (claim.status !== "pending") {
     return { outcome: "skipped", claimId: claim.id, reason: "not_pending" };
+  }
+
+  // The finance-disabled LIVE preview may be settled for display, but it
+  // cannot generate a payout or retry. Check this BEFORE a signer call and
+  // before the legacy/pre-mainnet claim cleanup path mutates anything.
+  const previewMarket = typeof claim.sourceMarketId === "number"
+    ? await prisma.betMarket.findUnique({
+        where: { id: claim.sourceMarketId },
+        select: { bookPhase: true },
+      })
+    : claim.sourceFounderBonusId
+      ? await prisma.betMarketFounderBonus.findUnique({
+          where: { id: claim.sourceFounderBonusId },
+          select: { market: { select: { bookPhase: true } } },
+        }).then(bonus => bonus?.market ?? null)
+      : null;
+  if (previewMarket?.bookPhase === "preview_only") {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "preview_only_market",
+      detail: "Preview-only battles are never authorized for WOLO payout or claim retry.",
+    };
   }
 
   if (hasAmbiguousPriorWoloPayoutAttempt(claim)) {
