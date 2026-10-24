@@ -85,8 +85,8 @@ historical refund #8477 or claim #889.
 
 The isolated PostgreSQL qualification uses the existing main Prisma datamodel,
 not held Satchel SQL. Funded balance/reservation and maintenance-policy tables
-remain absent. Existing preview caps, UI, payment transport, public maintenance
-fallbacks and `LIVE_EXECUTOR_IMPLEMENTED=false` remain unchanged. Metadata and
+remain absent. Existing preview caps, UI, payment transport,
+funding restrictions and `LIVE_EXECUTOR_IMPLEMENTED=false` remain unchanged. Metadata and
 `shadow_ready` previews do not create reserves, wagers, credits or plan spending.
 The eight financial migrations and funded source in held PR #838 require their
 own reviewed release; do not deploy that mixed PR as a website-only shortcut.
@@ -94,8 +94,31 @@ own reviewed release; do not deploy that mixed PR as a website-only shortcut.
 This candidate still touches the governed betting domain and requires normal
 exact-head CI, independent source/release review and protected website staging,
 authorization and rollback. It does not bypass `aoe2war finish` or Wolo issue
-#5. Existing public/timer financial producers still require the complete
+#5. Private/timer and external financial producers still require the complete
 coordinated maintenance fence before any financial operation.
+
+### Final preview noninterference guards
+
+Existing canonical winner and Desync rows must themselves be `preview_only`
+with the correct parent relationship before the entire family can be admitted.
+Legacy, pre-game, opening-minute and late financial books cannot be converted
+or acknowledged as preview books. Corrective refunds exclude preview markets
+at candidate selection, hydrated-row inspection and atomic acquisition, before
+adjustment changes, claim creation, wallet lookup or financial calls.
+
+Admin claim recovery resolves both direct-market and Founder Bonus origins.
+Either preview origin refuses payment; missing or contradictory origins refuse
+cleanup and retry. Matching legitimate dual-origin records remain supported.
+The inherited cross-key Founder Bonus economic lock remains in force; it does
+not establish that a historical transfer occurred or settle ambiguous records.
+
+Public `/api/bets`, `/api/live-games`, `/api/header-summary`, lobby SSR and
+War Chest reads no longer queue settlement or tournament reconciliation. The
+board loader cannot implicitly request reconciliation. Authenticated committed
+replay ingestion and private recovery retain their existing explicit paths;
+this is not a blanket pause of historical settlement services. The source
+producer census verifies direct read-edge removal while still reporting
+external authority UNKNOWN, no global isolation and no deployment permission.
 
 ## October 19 — source-linked public GET and prewarm financial producer census
 

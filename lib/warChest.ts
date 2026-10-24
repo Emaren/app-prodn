@@ -5,7 +5,6 @@ import {
 } from "@/lib/betStakeFunding";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
 import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import type {
   LobbyWoloEarnersBoard,
   LobbyWoloEarnersMode,
@@ -147,11 +146,8 @@ export async function loadWarChestSnapshot(
     createdAt: { gte: weeklyWindowStart },
   });
 
-  // Reconciliation may call external settlement rails and should not hold the
-  // public page response open. Queue it once, then start every independent
-  // evidence family immediately. The reporting clock is captured once so the
-  // earner board and weekly SQL lane share one exact UTC-week boundary.
-  queueBetMarketEnsure(prisma);
+  // Read existing accounting projections without scheduling financial work.
+  // Capture one clock for the earner board and weekly SQL boundary.
 
   const earnersPromise =
     loadLobbyWoloEarnersBoard(

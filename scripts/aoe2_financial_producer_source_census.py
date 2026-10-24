@@ -21,31 +21,41 @@ class Evidence:
     needle: str
     edge: str
     classification: str
+    expected_present: bool = True
 
-# These are source-linked *observations*, not a guessed dynamic call graph.
-# All strings are anchored to currently reviewed app/main at e6bd62f7.
+# Bounded source observations, not a complete dynamic call graph. Absence
+# checks prove removal of these direct scheduling edges only. Authenticated
+# private producers and unknown external writers remain financially capable.
 EVIDENCE = (
-    Evidence("app/page.tsx", "loadLobbySnapshot(", "SSR / -> loadLobbySnapshot", "read_to_async_financial_producer"),
-    Evidence("app/api/lobby/route.ts", "export async function GET(", "GET /api/lobby -> loadLobbySnapshot", "read_to_async_financial_producer"),
-    Evidence("app/api/lobby/route.ts", "loadLobbySnapshot(", "GET /api/lobby -> loadLobbySnapshot", "read_to_async_financial_producer"),
-    Evidence("lib/lobbySnapshot.ts", "queueLobbyMaintenance(prisma);", "loadLobbySnapshotFresh -> queueLobbyMaintenance", "read_to_async_financial_producer"),
-    Evidence("lib/lobbySnapshot.ts", ".then(() => reconcileTournamentMatchProofs(prisma))", "lobby maintenance -> tournament proof reconciliation", "mutation_capable_async_work"),
-    Evidence("lib/lobbySnapshot.ts", ".then(() => ensureBetMarkets(prisma))", "lobby maintenance -> ensureBetMarkets", "settlement_capable_async_work"),
-    Evidence("app/api/live-games/route.ts", "export async function GET(", "GET /api/live-games route", "read_to_async_financial_producer"),
-    Evidence("app/api/live-games/route.ts", "queueBetMarketEnsure(prisma, 0);", "GET /api/live-games -> timed market ensure", "read_to_async_financial_producer"),
-    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsureTimer = setTimeout(() => {", "market ensure queue -> detached timer", "process_local_timer"),
-    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsurePromise = ensureBetMarkets(prisma)", "timer -> ensureBetMarkets", "settlement_capable_async_work"),
+    Evidence("app/page.tsx", "loadLobbySnapshot(", "SSR / -> public lobby projection", "read_only_projection"),
+    Evidence("app/api/lobby/route.ts", "export async function GET(", "GET /api/lobby", "read_only_projection"),
+    Evidence("app/api/lobby/route.ts", "loadLobbySnapshot(", "GET /api/lobby -> lobby projection", "read_only_projection"),
+    Evidence("lib/lobbySnapshot.ts", "async function loadLobbySnapshotFresh(", "public lobby projection", "read_only_projection"),
+    Evidence("lib/lobbySnapshot.ts", "queueLobbyMaintenance", "removed lobby financial scheduling", "removed_public_financial_edge", False),
+    Evidence("lib/lobbySnapshot.ts", "reconcileTournamentMatchProofs", "removed lobby tournament reconciler import/call", "removed_public_financial_edge", False),
+    Evidence("lib/lobbySnapshot.ts", "ensureBetMarkets", "removed lobby financial ensure import/call", "removed_public_financial_edge", False),
+    Evidence("app/api/live-games/route.ts", "loadPublicLiveGamesSnapshot(prisma)", "GET /api/live-games -> public projection", "read_only_projection"),
+    Evidence("app/api/live-games/route.ts", "queueBetMarketEnsure", "removed live-games financial scheduling", "removed_public_financial_edge", False),
+    Evidence("app/api/header-summary/route.ts", "loadLiveGamesSnapshot(prisma)", "GET header summary -> live projection", "read_only_projection"),
+    Evidence("app/api/header-summary/route.ts", "queueBetMarketEnsure", "removed header polling financial scheduling", "removed_public_financial_edge", False),
+    Evidence("app/api/bets/route.ts", "ensureMarkets: false,", "GET /api/bets explicitly reads projections", "explicit_read_mode_exception"),
+    Evidence("app/api/bets/route.ts", "queueBetMarketEnsure", "removed bets GET financial scheduling", "removed_public_financial_edge", False),
+    Evidence("lib/warChest.ts", "ensureMarkets: false,", "War Chest reads existing board projections", "explicit_read_mode_exception"),
+    Evidence("lib/warChest.ts", "queueBetMarketEnsure", "removed War Chest financial scheduling", "removed_public_financial_edge", False),
+    Evidence("app/api/replay/post-ingest/route.ts", "if (!authorized(request))", "private replay post-ingest authentication boundary", "private_producer_authentication_check"),
+    Evidence("app/api/replay/post-ingest/route.ts", "queueBetMarketEnsure(prisma, 0);", "private post-ingest retains reconciliation fallback", "private_financial_producer"),
+    Evidence("app/api/replay/upload/route.ts", "queueBetMarketEnsure(prisma, 0);", "private upload retains reconciliation fallback", "private_financial_producer"),
+    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsureTimer = setTimeout(() => {", "private market queue -> process-local timer", "process_local_timer"),
+    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsurePromise = ensureBetMarkets(prisma)", "private timer -> financial reconciliation", "settlement_capable_async_work"),
     Evidence("lib/betMarketEnsureQueue.ts", 'process.env.AOE2WAR_PROD_DB_PREVIEW === "true"', "one queue preview flag only", "insufficient_global_fence"),
-    Evidence("lib/bets.ts", "export async function ensureBetMarkets(prisma: PrismaClient)", "financial reconciliation entry", "settlement_capable_work"),
-    Evidence("lib/bets.ts", "await settleResolvedMarketWagers(prisma);", "market ensure -> settlement", "money_moving_possible"),
-    Evidence("lib/bets.ts", "await reconcilePendingCoreBetClaims(prisma);", "market ensure -> claim reconciliation", "money_moving_possible"),
-    Evidence("lib/bets.ts", "await settleFounderBonuses(prisma);", "market ensure -> founder bonus settlement", "money_moving_possible"),
-    Evidence("lib/bets.ts", "let betMarketEnsurePromise: Promise<void> | null = null;", "single-flight is process-local", "insufficient_global_fence"),
-    Evidence("scripts/prewarm-production.mjs", '"/",', "prewarm -> /", "indirect_financial_wakeup"),
-    Evidence("scripts/prewarm-production.mjs", '"/api/lobby",', "prewarm -> GET /api/lobby", "indirect_financial_wakeup"),
-    Evidence("scripts/prewarm-production.mjs", '"/api/live-games",', "prewarm -> GET /api/live-games", "indirect_financial_wakeup"),
-    Evidence("app/api/bets/route.ts", "export async function GET(", "GET /api/bets", "explicit_read_mode_exception"),
-    Evidence("app/api/bets/route.ts", "ensureMarkets: false,", "GET /api/bets explicitly opts out of ensure", "explicit_read_mode_exception"),
+    Evidence("lib/bets.ts", "export async function ensureBetMarkets(prisma: PrismaClient)", "financial reconciliation entry remains", "settlement_capable_work"),
+    Evidence("lib/bets.ts", "await settleResolvedMarketWagers(prisma);", "private market ensure -> settlement", "money_moving_possible"),
+    Evidence("lib/bets.ts", "await reconcilePendingCoreBetClaims(prisma);", "private market ensure -> claim reconciliation", "money_moving_possible"),
+    Evidence("lib/bets.ts", "await settleFounderBonuses(prisma);", "private market ensure -> founder bonus settlement", "money_moving_possible"),
+    Evidence("lib/bets.ts", "let betMarketEnsurePromise: Promise<void> | null = null;", "single-flight remains process-local", "insufficient_global_fence"),
+    Evidence("scripts/prewarm-production.mjs", '"/",', "prewarm -> public lobby projection", "read_only_consumer"),
+    Evidence("scripts/prewarm-production.mjs", '"/api/lobby",', "prewarm -> public lobby projection", "read_only_consumer"),
+    Evidence("scripts/prewarm-production.mjs", '"/api/live-games",', "prewarm -> public live projection", "read_only_consumer"),
 )
 
 EXTERNAL_OWNERS_NOT_AUTHENTICATED = (
@@ -83,14 +93,16 @@ def inspect(root: Path) -> dict:
             continue
         lines, fingerprint = actual
         matching = [n for n, text in enumerate(lines, 1) if item.needle in text]
+        satisfied = bool(matching) == item.expected_present
         observations.append({
             "edge": item.edge, "path": item.path,
             "classification": item.classification,
-            "status": "SOURCE_OBSERVED" if matching else "SOURCE_DRIFT",
+            "expected_present": item.expected_present,
+            "status": ("SOURCE_OBSERVED" if item.expected_present else "SOURCE_ABSENCE_OBSERVED") if satisfied else "SOURCE_DRIFT",
             "line": matching[0] if matching else None,
             "source_sha256": fingerprint,
         })
-    complete_known = all(o["status"] == "SOURCE_OBSERVED" for o in observations)
+    complete_known = all(o["status"] in {"SOURCE_OBSERVED", "SOURCE_ABSENCE_OBSERVED"} for o in observations)
     return {
         "schema": "aoe2war.app.financial_producer_source_census.v1",
         "classification": "SOURCE_OBSERVATION_ONLY",
