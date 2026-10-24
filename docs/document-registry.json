@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e56d8260ae9858510e32b4e4f36d50017b2865d5d71c95760d2c7d451f0a6f19",
+      "sha256": "004a82bcce5ba54683e73905aeba2ca7f856205cccd08b30790d000e4c1b3b24",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-live-watcher-atomic-admission",
-    "commit": "f367f70381f106e4f9953f6be5bcbbb62cdc239f"
+    "commit": "2337493a5d71309dd86a61f6e35d052ef9ac7776"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
