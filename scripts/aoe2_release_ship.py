@@ -1151,12 +1151,10 @@ test -n "$candidate_dependency_identity"
 
 candidate_content_sha="$(content_hash .next-release)"
 test -n "$candidate_content_sha"
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
+# Actual certified legacy /api/bets and /api/lobby can schedule financial work.
+# Never make those side-effecting GET probes before activation or in dry-run.
+critical_get http://127.0.0.1:3030/api/deployment-version
+critical_get "$PUBLIC/api/deployment-version"
 
 if [ "$MODE" = "DRY_RUN" ]; then
   printf 'status\\tPREPARED\\n'
