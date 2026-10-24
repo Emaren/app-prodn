@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-10-24"
 review_interval_days: 30
 sensitivity: "internal"
 ---
