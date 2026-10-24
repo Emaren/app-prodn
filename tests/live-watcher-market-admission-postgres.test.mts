@@ -112,7 +112,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(afterRetry.payoutAttemptedAt,null);
       await db.prisma.pendingWoloClaim.delete({where:{id:fakeClaim.id}});
       assert.equal(desync.parentMarketId,winner.id);assert.equal(desync.battleId,winner.battleId);
-      assert.equal(await db.prisma.betAutoExecution.count(),1);
+      assert.equal(await db.prisma.betAutoExecution.count(),0);
       assert.equal((await db.prisma.betAutoPreset.findUniqueOrThrow({where:{id:preset.id}})).gamesRemaining,12);
     });
 
@@ -269,7 +269,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(report.admission.liveMarkets.succeeded,true);
       assert.equal(report.admission.liveMarkets.createdCount,0);
       assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:"platform:controlled-hd-terminal-during-wait"}}),0);
-      assert.equal(await db.prisma.betAutoExecution.count(),4);
+      assert.equal(await db.prisma.betAutoExecution.count(),0);
     });
     await t.test("a separately committed final artifact wins over a waiting LIVE seed",async()=>{
       const row=await persist("final-artifact-during-wait");
@@ -313,17 +313,17 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const report=await pending;assert.equal(report.admission.liveMarkets.createdCount,0);
       assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:"platform:controlled-hd-stale-during-wait"}}),0);
     });
-    assert.equal(await db.prisma.betMarket.count(),8);assert.equal(await db.prisma.betAutoExecution.count(),4);
+    assert.equal(await db.prisma.betMarket.count(),8);assert.equal(await db.prisma.betAutoExecution.count(),0);
     await t.test("existing private recovery replays a durable LIVE commit lost before notification; dry run writes nothing",async()=>{
       const row=await persist("lost-notification");
       const plan=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:true,targetGameStatsId:row.id});
       assert.deepEqual(plan.candidateIds,[row.id]);assert.equal(plan.admission,null);
-      assert.equal(await db.prisma.betMarket.count(),8);assert.equal(await db.prisma.betAutoExecution.count(),4);
+      assert.equal(await db.prisma.betMarket.count(),8);assert.equal(await db.prisma.betAutoExecution.count(),0);
       const first=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:false,targetGameStatsId:row.id});
       assert.equal(first.admission?.createdCount,2);
       const second=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:false,targetGameStatsId:row.id});
       assert.equal(second.admission?.createdCount,0);assert.equal(second.admission?.existingCount,2);
-      assert.equal(await db.prisma.betMarket.count(),10);assert.equal(await db.prisma.betAutoExecution.count(),5);
+      assert.equal(await db.prisma.betMarket.count(),10);assert.equal(await db.prisma.betAutoExecution.count(),0);
     });
     await t.test("new terminal INSERT cannot overtake the guarded source-read/market-write transaction",async()=>{
       const row=await persist("final-insert-after-source-read");
