@@ -8263,7 +8263,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
       await tx.$queryRaw(Prisma.sql`SELECT id FROM bet_markets WHERE slug IN
         (${Prisma.join(seeds.map(seed=>seed.slug))}) ORDER BY id FOR UPDATE`);
       const existingRows=await tx.betMarket.findMany({where:{slug:{in:seeds.map(seed=>seed.slug)}},select:{
-        id:true,slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,
+        id:true,slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,parentMarketId:true,
         status:true,settledAt:true,winnerSide:true,closeAt:true,propositionHash:true,
         bookPhase:true,firstStakeAcceptedAt:true,seedLeftWolo:true,seedRightWolo:true,
         settlementRunId:true,settlementStatus:true,settlementAttemptedAt:true,
@@ -8292,6 +8292,15 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
           existing.propositionHash!==seed.propositionHash || !["open","live"].includes(existing.status) ||
           existing.settledAt || existing.winnerSide || existing.closeAt && existing.closeAt.getTime()<=Date.now()))
           blocked.add(normalizeName(seed.linkedSessionKey));
+        // Refuse preexisting malformed canonical parent/child families outright.
+        if (existing && seed.marketType===WINNER_MARKET_TYPE && existing.parentMarketId!==null)
+          blocked.add(normalizeName(seed.linkedSessionKey));
+        if (existing && seed.marketType===DESYNC_SIDE_MARKET_TYPE) {
+          const parent=existingRows.find(row=>row.marketType===WINNER_MARKET_TYPE &&
+            row.linkedSessionKey===seed.linkedSessionKey);
+          if (!parent || existing.parentMarketId!==parent.id)
+            blocked.add(normalizeName(seed.linkedSessionKey));
+        }
       }
       for (const family of families) {
         const aliasSlugs=family.aliases.map(buildWatcherMarketSlugForSessionKey);
@@ -10066,9 +10075,8 @@ export async function loadBetBoardSnapshot(
   viewerUid?: string | null,
   options: LoadBetBoardSnapshotOptions = {}
 ): Promise<BetBoardSnapshot> {
-  if (options.ensureMarkets !== false) {
-    await ensureBetMarkets(prisma);
-  }
+  // A board projection never triggers market/financial reconciliation.
+  // Authenticated private producers explicitly call ensureBetMarkets.
   const escrowRuntime = getWoloBetEscrowRuntime();
 
   const viewer = viewerUid

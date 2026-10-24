@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import type { PrismaClient } from "../lib/generated/prisma/index.js";
+import { loadBetBoardSnapshot } from "../lib/bets.ts";
 
 const root = new URL("../", import.meta.url);
 function source(path: string): string {
@@ -24,13 +26,14 @@ test("public reads cannot directly enqueue settlement-capable work", () => {
   }
 });
 
-test("authenticated replay post-ingest awaits committed admission only after auth", () => {
+test("authenticated replay post-ingest retains explicit private financial capability after auth", () => {
   const post = source("app/api/replay/post-ingest/route.ts");
   const auth = post.indexOf("if (!authorized(request))");
   const admission = post.indexOf("await coordinateReplayPostIngest(");
   assert.ok(auth >= 0, "post-ingest must authenticate first");
   assert.ok(admission > auth, "awaited event admission must follow authentication");
-  assert.doesNotMatch(post, /queueBetMarketEnsure/);
+  const privateQueue = post.indexOf("queueBetMarketEnsure(prisma, 0)");
+  assert.ok(privateQueue > auth, "existing private reconciliation remains behind auth");
   assert.match(post, /admission: report\.admission/);
   assert.match(post, /internalApiKeyMatches/);
 });
@@ -40,4 +43,22 @@ test("public readers retain their projection and non-mutating board contract", (
   assert.match(source("lib/warChest.ts"), /ensureMarkets: false/);
   assert.match(source("app/api/live-games/route.ts"), /loadPublicLiveGamesSnapshot/);
   assert.match(source("lib/lobbySnapshot.ts"), /loadLobbySnapshotFresh/);
+});
+
+test("a default board read performs no database mutation or financial maintenance", async () => {
+  const writes: string[] = [];
+  const model = (name: string) => new Proxy({}, { get: (_target, method: string) => {
+    if (["findMany", "groupBy"].includes(method)) return async () => [];
+    if (["findFirst", "findUnique"].includes(method)) return async () => null;
+    if (method === "count") return async () => 0;
+    return async () => { writes.push(`${name}.${method}`); throw Error("Board read attempted a mutation"); };
+  } });
+  const prisma = new Proxy({}, { get: (_target, name: string) =>
+    name.startsWith("$")
+      ? async () => { writes.push(name); throw Error("Board read attempted database execution"); }
+      : model(name),
+  }) as PrismaClient;
+  const board = await loadBetBoardSnapshot(prisma, null, { settlementSurfaceMode: "fast" });
+  assert.deepEqual(writes, []);
+  assert.deepEqual(board.openMarkets, []);
 });
