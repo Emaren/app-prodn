@@ -8,12 +8,59 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-10-24"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # app-prodn Deploy
+
+## October 24, 2026 — nonmutating legacy health checks and release-wave handoff
+
+**Active runtime and candidate must never be conflated.** At this review, the
+last certified production source is `a2b941f154fdc31ec4d6c4ece6d0e49036c48abd`
+(BUILD_ID `fQ3sweWsBmfRKrrYGYz4w`). The qualified original LIVE website
+source is held draft PR #862 `1274fd96ec421df0b97fd0c364713d6246068fa9`,
+with the read-only legacy probe correction in held child #863.
+These are historical, **not automatic live runtime assertions**: re-read
+actual production identity and signed receipts before any operation.
+
+The legacy active website's `GET /api/bets` schedules `queueBetMarketEnsure`;
+its `GET /api/lobby` can schedule `reconcileTournamentMatchProofs` and
+`ensureBetMarkets`. Therefore **do not probe those routes before website
+activation, in a dry-run, or during rollback to legacy code**. The verified
+nonfinancial `GET /api/deployment-version` returns only the configured build
+version. The held #863 release tooling uses that endpoint on internal/public
+paths for legacy-runtime preflight and rollback; it preserves the required
+fuller critical-route smoke and bounded soak **after activating** the hardened
+read-only website. Keep independent SHA, BUILD_ID, version, service, node
+dependency, 8092/8093, rollback-image and global-lease checks intact.
+Never run a direct `curl /api/bets` as an ostensibly read-only old-runtime
+readiness check.
+
+For website-source admission, compare **certified production** to candidate,
+not merely `main` to candidate. The observed production→#863 review scope on
+October 24 was **57 changed paths including `yarn.lock`** (transitive
+`fast-uri` 3.1.8→3.1.9), with zero Prisma migrations. This counts source
+scope, **not** transitive-financial noninterference proof or approval. Use
+`python3 scripts/aoe2_website_scope_review.py --base <CERTIFIED_PROD_SHA> --candidate <CLEAN_CANDIDATE_SHA>`
+only for bounded NONAUTHORIZING diagnostics (its exit code 2 is expected);
+never promote an unsigned report into protected Finish authority.
+
+**Two waves, independent approvals.** Wave A is original preview-only website
+features, without real funds or new migrations. Wave B is funded Mecha and
+War Satchel, with eight separately governed migrations and
+`SATCHEL_FINANCIAL_BRIDGE_READY=false` until independently authorized.
+Website issue #665 describes a still-unissued two-phase release authority;
+#844 is nonauthorizing. The real Wolo source-P1 evidence and FINANCIAL
+classification remain visible. No manual raw stage, service restart, bypass,
+treasury-write or rollback may substitute for a protected, candidate-bound
+pre-stage and fresh artifact-bound pre-activation permit.
+
+Record exact candidate, deployed runtime, independent role approvals,
+stage/activation receipts, post-deploy health and Wolo continuity in
+Central Command #839. A green PR, source-only report or byte-reproducible
+Wolo binary is not a financial release certificate.
 
 ## October 22, 2026 — targeted release-safety review
 

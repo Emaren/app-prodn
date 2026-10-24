@@ -8,12 +8,50 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-10-24"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Release Engineering
+
+## October 24 — old-production read-only probe boundary and documentation receipts
+
+Production source `a2b941f154fdc31ec4d6c4ece6d0e49036c48abd`
+had GET-side-effects that predated the new preview-only website hardening:
+`app/api/bets/route.ts` called `queueBetMarketEnsure(prisma, 0)`, and
+`lib/lobbySnapshot.ts` scheduled match proof reconciliation and
+`ensureBetMarkets`. Calling `/api/bets` or `/api/lobby` from a deployment
+dry-run, old-runtime preflight or rollback can therefore create background
+financial work. The old `GET /api/deployment-version` is a synchronous,
+nonfinancial build-version response.
+
+Draft #863 adds an **exact-source, nonauthorizing** correction stacked on
+qualified website #862: old-active preactivation probes and pre/post rollback
+probes use only internal/public `/api/deployment-version`; they retain the
+remaining source/runtime/rollback/Wolo equality checks. The hardened website
+must still pass its normal public/internal `/`, `/api/bets` and
+`/api/lobby` smoke tests plus bounded postactivation soak. The new GET
+handlers themselves have no background market ensure. This rule must survive
+future funded #862+#860 branch reconciliation.
+
+The candidate scope must be compared from the **certified deployment**
+rather than just canonical main: actual production→#863 was 57 paths on
+2026-10-24, including `yarn.lock` and transitive
+`fast-uri@^3.0.1` 3.1.8→3.1.9. Zero Prisma migration files does not
+itself certify noninterference. Exact Git/source review, dependency graph,
+financial signer/writer state, Wolo continuity and independently issued
+two-phase permit are still required. The already-existing
+`scripts/aoe2_website_scope_review.py` is a nonauthorizing diagnostic, not
+a permit or a source of true current runtime state.
+
+Keep these as **dated audit breadcrumbs**, not claims of current deployment.
+Central issue #839 owns the evidence chronology; `DEPLOY.md` owns the
+operational runbook. Public site activation is held until the genuine
+independent website/chain/finance/release authorization and protected
+stage/activation receipts exist. Funded Satchel remains a separate Wave B
+NO-GO pending actual custody, historical entitlement/solvency, writer/nonce,
+and full recovery proof.
 
 ## October 24 — positive source evidence before mutating ship
 
