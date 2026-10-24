@@ -33,3 +33,53 @@ jobs:
           assert 'INSERT INTO' not in a.upper() and 'TRUNCATE ' not in a.upper()
           print('SOURCE-ONLY AUDIT GUARDS: PASS (no release authority)')
           PY
+
+  isolated-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install ephemeral PostgreSQL client
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+      - name: Create disposable synthetic financial claim and transfer tables
+        env:
+          PGPASSWORD: synthetic-only
+        run: |
+          python3 tests/fixtures/financial_claim_collision_sql_fixture.py > "$RUNNER_TEMP/fixture.sql"
+          psql -X -q -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/fixture.sql" > /dev/null
+      - name: Execute EXACT production-target audit SQL against disposable 61-group data
+        env:
+          PGPASSWORD: synthetic-only
+        run: |
+          PGOPTIONS="-c default_transaction_read_only=on -c statement_timeout=8000" \
+            psql -X -qAt -F '|' -h 127.0.0.1 -U postgres -d postgres \
+              -v ON_ERROR_STOP=1 -f scripts/financial-claim-collision-manifest-readonly.sql \
+              > "$RUNNER_TEMP/collision-manifest.txt"
+          python3 - "$RUNNER_TEMP/collision-manifest.txt" <<'PY'
+          import pathlib,sys
+          path=pathlib.Path(sys.argv[1])
+          text=path.read_text()
+          assert len(text.splitlines())==61, "unexpected SQL output/cardinality"
+          assert "BEGIN" not in text and "ROLLBACK" not in text
+          PY
+          rc=0
+          python3 scripts/financial_claim_collision_audit_readonly.py \
+            --manifest "$RUNNER_TEMP/collision-manifest.txt" --expect-historical || rc=$?
+          test "$rc" -eq 3
+          echo "PASS: all 61 synthetic SQL collision groups reconcile; NONAUTHORIZING exit 3"
