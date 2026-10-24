@@ -179,7 +179,7 @@ export async function seedLifecycleSession(db:LifecycleDatabase, options:{ownerU
   assert.ok(teamResolution.propositionHash); assert.ok(teamResolution.rosterHash);
   const sessionKey = options.sessionKey ?? "watcher:lifecycle:" + randomUUID();
   const market = await db.prisma.betMarket.create({data: {slug: "lifecycle-" + randomUUID(), title: "Isolated lifecycle owner/team wager",
-    eventLabel: "Isolated SDK/PG lifecycle", marketType: "winner", status: "live", integrityStatus: "verified",
+    eventLabel: "Isolated SDK/PG lifecycle", marketType: "winner", bookPhase: "funded", status: "live", integrityStatus: "verified",
     linkedSessionKey: sessionKey, teamFormat: teamResolution.format, teamResolutionStatus: teamResolution.status,
     teamResolutionProvenance: teamResolution.provenance, teamConfidence: teamResolution.confidence,
     leftRosterSnapshot: rawPlayers.filter(p => p.teamId === 1), rightRosterSnapshot: rawPlayers.filter(p => p.teamId === 2),
