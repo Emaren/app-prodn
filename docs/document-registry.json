@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "39c212b1ca5dc9ed6461864a2506d089263e6f1aac87f33e323e2926fd45f11f",
+      "sha256": "e05509b76e20c9f93d41cee1b83729ebef5f6ee880812b9aef0af67c662d1ab0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-live-orphan-origin-failclose",
-    "commit": "a9c693d8b09a995057be534e97d06e3b234956ca"
+    "commit": "108aaecdacfae4853db41f32b1e37e39e063abc4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
