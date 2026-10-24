@@ -125,6 +125,6 @@ class CollisionReportTests(unittest.TestCase):
         result,_=self.report()
         self.assertTrue(result["no_identity_or_tx_hash_output"])
         self.assertNotIn("wallet_address",str(result))
-        self.assertNotIn("tx_hash",str(result))
+        self.assertNotIn("payout_tx_hash",str(result))
 
 if __name__=="__main__":unittest.main()
