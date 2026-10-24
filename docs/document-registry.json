@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "84eda601ab5a801084052eb1ff27ce6915d0eb1444bb219e8fbd112caf562ad6",
+      "sha256": "56bacda31618e2b8f8e5e531445312a3cf01552ee028a3b8613a38cb36fc5f34",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/funded-epoch-integration-20261024",
-    "commit": "a547d7f32a13dd2165d3c4fe70283dc495fc2f6f"
+    "commit": "9ea0b267adeac3622084dace824fc8c570e500d4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
