@@ -16,11 +16,13 @@ import argparse
 import base64
 import binascii
 import hashlib
+import io
 import json
 import os
 import stat
 import subprocess
 import sys
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -268,12 +270,65 @@ def stage_facts(candidate_repo: Path, supplied_path: Path) -> dict:
             "build_id": receipt["staged_build_id"]}
 
 
+
+def operator_source_provenance(*, root: Path = ROOT) -> dict:
+    """Seal executed operator code, not only the public website candidate.
+
+    A separate operator checkout executes release scripts. Its full tracked
+    scripts/deploy surface must be an exact clean Git tree. Signers bind the
+    commit and actual bytes, not just the two admission Python entrypoints.
+    """
+    require(root.is_absolute() and root.is_dir() and not root.is_symlink(),
+            "untrusted operator controller checkout")
+    sha = git(root, "rev-parse", "--verify", "HEAD")
+    require(len(sha) == 40 and all(c in "0123456789abcdef" for c in sha),
+            "unreviewable operator controller commit")
+    require(git(root, "status", "--porcelain", "--untracked-files=all",
+                "--ignore-submodules=none") == "",
+            "dirty operator controller checkout")
+    flags = git(root, "ls-files", "-v", "-z")
+    require(flags.endswith("\x00"), "truncated operator Git index flags")
+    for entry in flags[:-1].split("\x00"):
+        require(len(entry) >= 3 and entry[1:2] == " " and entry[0] == "H",
+                "hidden operator Git index source")
+    paths_raw = git(root, "ls-files", "-z", "--", "scripts", "deploy")
+    require(paths_raw.endswith("\x00"), "empty operator executable inventory")
+    paths = paths_raw[:-1].split("\x00")
+    require(len(paths) == len(set(paths)) and len(paths) >= 6,
+            "incomplete operator source inventory")
+    manifest = []
+    for name in paths:
+        require(name.startswith(("scripts/", "deploy/")) and ".." not in name.split("/"),
+                "untrusted operator source path")
+        location = root / name
+        require(location.is_file() and not location.is_symlink(),
+                "linked/missing operator executable source")
+        require(all(not part.is_symlink() for part in location.parents
+                    if part != root and root in part.parents),
+                "symlinked operator source directory")
+        manifest.append([name, digest_file(location)])
+    required = {
+        "scripts/aoe2_website_protected_release_v2.py",
+        "scripts/aoe2_website_release_v2.py", "scripts/aoe2_release.py",
+        "scripts/aoe2_release_ship.py", "scripts/aoe2_release_stage.py",
+        "scripts/aoe2_release_gate.py",
+    }
+    require(required.issubset(set(paths)), "missing governed operator source")
+    return {"commit_sha": sha, "inventory_sha256": digest(manifest)}
+
+
+
 def reviewer_packet_binding(packet: dict, *, candidate_repo: Path,
                             scope: dict, trust_root=TRUST_ROOT,
                             now=None, allow_test_root=False) -> None:
     p = packet["payload"]
     require(p.get("protected_dispatch_sha256") == digest_file(Path(__file__)),
             "protected dispatcher implementation SHA not signed")
+    operator = operator_source_provenance()
+    require(p.get("operator_controller_commit_sha") == operator["commit_sha"] and
+            p.get("operator_source_inventory_sha256") ==
+            operator["inventory_sha256"],
+            "operator release code is not signed exact-source authority")
     require(p.get("candidate_sha") == MAIN_SOURCE_SHA and
             scope["candidate"] == MAIN_SOURCE_SHA, "wrong website release")
     require(p.get("risk_class") in ("PRESENTATION", "INFRASTRUCTURE"),
@@ -284,24 +339,44 @@ def reviewer_packet_binding(packet: dict, *, candidate_repo: Path,
 
 def _run_guarded_release(candidate_repo: Path, mode: str,
                          *, stage_receipt: str | None = None) -> dict:
+    """Call the SAME guarded release libraries within the caller's held lease.
+
+    Launching aoe2_release.py in a child process would independently acquire
+    deployment_lock() while its parent still owns that nonreentrant flock.
+    Do not transfer or waive the lease: perform the normal stage/activate
+    library operation exactly once under this process's existing lease.
+    """
     require(mode in ("stage", "activate"), "unsupported protected action")
-    # Dispatch the SECURITY-PATCHED controller source from this reviewed branch;
-    # all mutable source manifests and app bytes resolve from canonical main.
-    environment = os.environ.copy()
-    environment["AOE2WAR_WEBSITE_CANDIDATE_ROOT"] = str(candidate_repo)
-    argv = [sys.executable, str(ROOT / "scripts" / "aoe2_release.py"),
-            "ship", "--stage" if mode == "stage" else "--activate", "--json"]
+    import aoe2_release as release
+    import aoe2_release_ship as ship
+    import aoe2_release_stage as stage
+
+    # The executable modules live in the separately sealed operator branch;
+    # their app/manifests/receipts MUST resolve from the exact main candidate.
+    for mod in (release, ship, stage):
+        require(Path(mod.ROOT).resolve() == candidate_repo.resolve(),
+                "release module points at wrong candidate root")
     if mode == "activate":
-        require(stage_receipt is not None, "activation must cite exact stage receipt")
-        argv = [sys.executable, str(ROOT / "scripts" / "aoe2_release.py"),
-                "ship", "--activate", stage_receipt, "--json"]
-    p = subprocess.run(argv, cwd=candidate_repo, env=environment,
-                       capture_output=True, text=True, timeout=1900,
-                       check=False)
-    require(p.returncode == 0, "protected stage/activation failed: no blind retry")
-    result = strict_json_bytes(p.stdout.encode())
-    require(result.get("status") in ("STAGED", "CERTIFIED"),
-            "protected release returned unverified state")
+        require(stage_receipt is not None,
+                "activation must cite exact stage receipt")
+    data = release.collect()
+    require(data.get("local", {}).get("head") == MAIN_SOURCE_SHA and
+            data.get("local", {}).get("dirty_count") == 0,
+            "mutating release source/dirty preflight failed")
+
+    output = io.StringIO()
+    with redirect_stdout(output):
+        if mode == "stage":
+            rc = stage.stage_release(data, json_output=True)
+        else:
+            rc = ship.activate_release(
+                data, stage_receipt=stage_receipt,
+                dry_run=False, json_output=True)
+    require(rc == 0, "protected stage/activation failed: no blind retry")
+    result = strict_json_bytes(output.getvalue().encode("utf-8"))
+    require(result.get("status") ==
+            ("STAGED" if mode == "stage" else "CERTIFIED"),
+            "protected release returned unverified stage/certification state")
     return result
 
 
@@ -329,6 +404,7 @@ def verified_operation(*, operation: str, candidate_repo: Path,
     try:
         with release.deployment_lock():
             scope = source_scope(candidate_repo, MAIN_SOURCE_SHA)
+            operator_source_provenance()
             current = observer(trust_root=trust_root,
                                allow_test_root=allow_test_root)
             verify_witness_receipt(current, trust_root=trust_root,
@@ -381,6 +457,10 @@ def verified_operation(*, operation: str, candidate_repo: Path,
                         facts["manifest_sha256"] == p["manifest_sha256"] and
                         facts["gate_sha256"] == p["gate_sha256"],
                         "stage artifact/BUILD_ID/manifest/gate substituted")
+            # Source cannot drift between signed validation and lease-held dispatch.
+            reviewer_packet_binding(packet, candidate_repo=candidate_repo,
+                                    scope=scope, trust_root=trust_root, now=now,
+                                    allow_test_root=allow_test_root)
             signed = consume_signed_review(packet=packet, candidate=MAIN_SOURCE_SHA,
                 actual_scope=scope, state_root=state_root, trust_root=trust_root,
                 now=now, allow_test_root=allow_test_root)
@@ -434,6 +514,7 @@ def main() -> int:
         result = verified_operation(
             operation=args.operation, candidate_repo=args.candidate_repo,
             packet_path=args.packet, witness_before=args.signed_wolo_prestate,
+            noninterference_receipt=args.signed_noninterference,
             stage_receipt=args.stage_receipt,
             attempt_id=args.attempt_id,
             previous_stage_sha=args.previous_stage_approval_sha256)

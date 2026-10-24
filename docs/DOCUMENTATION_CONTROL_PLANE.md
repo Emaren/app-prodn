@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-a/20261024-website-protected-release-controller` at `7f2e23335677764de252d6362dd7b740d46648e6`
+Implementation baseline: `review/20261024-protected-web-controller-dispatch-fix` at `7d636991d2dce7aea862c6b5e1018e7e768d316b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
