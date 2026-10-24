@@ -159,7 +159,16 @@ def verify_signatures(payload: dict, signatures: dict,
     for role in ROLES:
         key = trust_root / (role + ".pem")
         raw = protected_key(key, trust_root, allow_test_root=allow_test_root)
-        fingerprint = hashlib.sha256(raw).hexdigest()
+        # Reviewer identity is the mathematical public key, not PEM text:
+        # rewrapping the same SPKI as 32- vs 64-column base64 must NOT
+        # impersonate a second independent approval role.
+        identity = subprocess.run(
+            ["openssl", "pkey", "-pubin", "-in", str(key),
+             "-pubout", "-outform", "DER"],
+            capture_output=True, timeout=10, check=False)
+        require(identity.returncode == 0 and 0 < len(identity.stdout) < 8192,
+                "unparseable independent reviewer key")
+        fingerprint = hashlib.sha256(identity.stdout).hexdigest()
         require(fingerprint not in fingerprints, "duplicate reviewer identity")
         fingerprints.add(fingerprint)
         try:
