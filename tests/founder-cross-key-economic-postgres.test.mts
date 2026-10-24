@@ -164,6 +164,69 @@ test("historical Founder Bonus claim keys fail closed in disposable PostgreSQL",
       assert.ok(current.every(row => row.status === "pending" && row.payoutAttemptedAt === null &&
         row.payoutTxHash === null));
     });
+    await t.test("orphaned Founder Bonus FK cannot bypass historical group-key provenance", async () => {
+      const orphanCaseBonus = await db.prisma.betMarketFounderBonus.create({
+        data: {
+          marketId: market.id,
+          bonusType: "participants",
+          totalAmountWolo: 2000,
+          status: "partial",
+        },
+      });
+      const legacyGroupKey = `founder:${orphanCaseBonus.id}:left`;
+      const julyGroupKey = `founder:${orphanCaseBonus.id}:left:FoundersLeft`;
+      const historical = await db.prisma.pendingWoloClaim.create({
+        data: {
+          normalizedPlayerName: "foundersleft",
+          displayPlayerName: "FoundersLeft",
+          amountWolo: 1000,
+          claimKind: "founders_bonus",
+          claimGroupKey: legacyGroupKey,
+          targetScope: "both_participants",
+          // Models a historical attribution record with SetNull FK.
+          sourceFounderBonusId: null,
+          sourceMarketId: null,
+          status: "claimed",
+          claimedByUserId: user.id,
+          payoutAttemptedAt: new Date("2026-06-20T12:00:00Z"),
+          payoutTxHash: "b".repeat(64),
+        },
+      });
+      const newClaim = (key: string) => db.prisma.pendingWoloClaim.create({
+        data: {
+          normalizedPlayerName: "foundersleft",
+          displayPlayerName: "FoundersLeft",
+          amountWolo: 1000,
+          claimKind: "founders_bonus",
+          claimGroupKey: key,
+          targetScope: "both_participants",
+          sourceMarketId: market.id,
+          sourceFounderBonusId: orphanCaseBonus.id,
+          status: "pending",
+        },
+      });
+      // Even equal keys require refusal: sourceMarketId NULL allows an old
+      // historical row and a linked replacement to coexist in this schema.
+      const equalKeyReplacement = await newClaim(legacyGroupKey);
+      const julyReplacement = await newClaim(julyGroupKey);
+      const outcomes = await Promise.all([
+        retryPendingClaimSettlement(db.prisma, equalKeyReplacement.id),
+        retryPendingClaimSettlement(db.prisma, julyReplacement.id),
+      ]);
+      assert.ok(outcomes.every(x =>
+        x.outcome === "skipped" && x.reason === "ambiguous_prior_attempt"
+      ));
+      assert.equal(networkCalls, 0, "orphaned historical FK cannot issue a replacement signer call");
+      const latest = await db.prisma.pendingWoloClaim.findMany({
+        where: { id: { in: [historical.id, equalKeyReplacement.id, julyReplacement.id] } },
+        orderBy: { id: "asc" },
+      });
+      assert.equal(latest.length, 3);
+      assert.equal(latest.find(x => x.id === historical.id)?.status, "claimed");
+      assert.ok(latest.filter(x => x.id !== historical.id).every(x =>
+        x.status === "pending" && x.payoutAttemptedAt === null && x.payoutTxHash === null
+      ));
+    });
   } finally {
     globalThis.fetch = previousFetch;
     await db.cleanup();
