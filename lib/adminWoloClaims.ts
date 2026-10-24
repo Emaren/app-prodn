@@ -98,6 +98,11 @@ function compactDbDetail(value: string | null | undefined) {
 }
 
 const MARKET_SETTLEMENT_CLAIM_KINDS = new Set(["bet_payout", "bet_refund", "winner_bounty", "founders_bonus"]);
+// Historical Founder wins and corrective refunds have market provenance too,
+// but MUST NOT be added to market escrow retry routing by this safety fix.
+const ORIGIN_REQUIRED_CLAIM_KINDS = new Set([
+  ...MARKET_SETTLEMENT_CLAIM_KINDS, "founders_win", "bet_corrective_refund",
+]);
 
 function isMarketSettlementClaim(claim: {
   sourceMarketId: number | null;
@@ -834,7 +839,7 @@ export async function retryPendingClaimSettlement(
   // Non-market claim kinds retain their existing explicit legacy treatment.
   if (claim.sourceMarketId === null &&
       claim.sourceFounderBonusId === null &&
-      MARKET_SETTLEMENT_CLAIM_KINDS.has((claim.claimKind || "").trim())) {
+      ORIGIN_REQUIRED_CLAIM_KINDS.has((claim.claimKind || "").trim())) {
     return {
       outcome: "skipped",
       claimId: claim.id,
