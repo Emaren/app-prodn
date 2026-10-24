@@ -1,0 +1,49 @@
+name: One-shot final LIVE atomic DocsV2 descendant baseline seal (NO DEPLOY)
+
+on:
+  push:
+    branches:
+      - review/20261024-live-watcher-atomic-admission
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-live-final-descendant-docsv2-20261024
+  cancel-in-progress: false
+
+jobs:
+  seal-descendant:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/review/20261024-live-watcher-atomic-admission'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Self-retire the temporary workflow before baseline capture
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/live-atomic-docsv2-descendant-once.yml
+          git commit -m "ci(held): retire final DocsV2 descendant baseline helper"
+      - name: Refresh baseline after all non-doc implementation commits
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py
+          python3 - <<'PY'
+          import subprocess
+          allowed={'catalog-info.yaml','docs/DOCUMENTATION_CONTROL_PLANE.md','docs/document-registry.json'}
+          changed=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          untracked=set(subprocess.check_output(['git','ls-files','--others','--exclude-standard'],text=True).splitlines())
+          if (changed|untracked)-allowed:
+              raise SystemExit('STOP unexpected DocsV2 outputs '+str(sorted((changed|untracked)-allowed)))
+          print('DocsV2 descendant diff:',sorted(changed))
+          PY
+          git add -- catalog-info.yaml docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet || git commit -m "docs(held): baseline after LIVE atomic market and /bets registry source"
+          git push origin HEAD:refs/heads/review/20261024-live-watcher-atomic-admission
