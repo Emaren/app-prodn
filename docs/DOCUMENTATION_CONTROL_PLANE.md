@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261023-satchel-final-gated` at `3101ac9ecdce04b2a14be5140649c380e88726e0`
+Implementation baseline: `review/20261024-satchel-sql-exact-source-lock` at `d8c3f512972f3cc1f1332c41d27d366aedfa05cf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
