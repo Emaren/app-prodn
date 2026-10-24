@@ -107,8 +107,17 @@ def source_scope(repo: Path, target: str) -> dict:
             "invalid candidate sha")
     require(git(repo, "rev-parse", "--verify", "HEAD") == target,
             "candidate checkout is not exact")
-    require(git(repo, "status", "--porcelain", "--untracked-files=all") == "",
+    require(git(repo, "status", "--porcelain", "--untracked-files=all",
+                "--ignore-submodules=none") == "",
             "dirty candidate")
+    # Porcelain status may conceal edited build inputs when Git index flags
+    # mark paths assume-unchanged or skip-worktree. A reviewed Git SHA does
+    # not certify an uninspected working tree's actual build bytes.
+    flags = git(repo, "ls-files", "-v", "-z")
+    require(flags.endswith("\x00"), "truncated Git index flags")
+    for entry in flags[:-1].split("\x00"):
+        require(len(entry) >= 3 and entry[1:2] == " " and entry[0] == "H",
+                "hidden or unreviewable Git index flags")
     require(git(repo, "merge-base", PRODUCTION_SHA, target) == PRODUCTION_SHA,
             "certified production is not ancestor")
     # Name-status catches path substitutions/renames, not just changed counts.
