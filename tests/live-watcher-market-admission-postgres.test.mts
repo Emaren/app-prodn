@@ -13,7 +13,8 @@ import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets,buil
 import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
 import {canonicalBattleIdentityKey} from "../lib/battleIdentity.ts";
 import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
-import {freshBettingCloseReason} from "../lib/betMarketWagerability.ts";
+import {freshBettingCloseReason,buildFreshBetMarketWriteWhere} from "../lib/betMarketWagerability.ts";
+import {loadBetMarketPreflightContext,assertBetMarketPreflight} from "../lib/betWagering.ts";
 import {startLiveWatcherDatabase} from "./fixtures/live-watcher-db.mts";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
 
@@ -69,7 +70,23 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const markets=await db.prisma.betMarket.findMany({orderBy:{id:"asc"}});
       assert.equal(markets.length,2);const winner=markets.find(m=>m.marketType==="winner")!,desync=markets.find(m=>m.marketType==="desync")!;
       assert.ok(winner);assert.ok(desync);assert.equal(winner.status,"live");assert.equal(winner.linkedGameStatsId,null);
-      assert.equal(winner.winnerSide,null);assert.equal(freshBettingCloseReason(winner),null);
+      assert.equal(winner.winnerSide,null);
+      assert.equal(winner.bookPhase,"preview_only");
+      assert.equal(desync.bookPhase,"preview_only");
+      assert.equal(freshBettingCloseReason(winner),"market_not_open");
+      assert.equal(freshBettingCloseReason(desync),"market_not_open");
+      assert.ok(winner.battleId !== null,"public identity is attached atomically to admitted preview");
+      const context=await loadBetMarketPreflightContext(db.prisma,{marketId:winner.id,side:"left"});
+      assert.throws(()=>assertBetMarketPreflight(context,{
+        viewer:{id:owner.id,inGameName:owner.inGameName,steamPersonaName:null},side:"left",
+      }),/preview-only battle/);
+      const forbiddenStakeWrite=await db.prisma.betMarket.updateMany({
+        where:{id:winner.id,...buildFreshBetMarketWriteWhere()},
+        data:{bettingLockedAt:new Date()},
+      });
+      assert.equal(forbiddenStakeWrite.count,0,"final financial write cannot lock preview book");
+      assert.equal(await db.prisma.betStakeIntent.count(),0);
+      assert.equal(await db.prisma.betWager.count(),0);
       assert.equal(desync.parentMarketId,winner.id);assert.equal(desync.battleId,winner.battleId);
       assert.equal(await db.prisma.betAutoExecution.count(),1);
       assert.equal((await db.prisma.betAutoPreset.findUniqueOrThrow({where:{id:preset.id}})).gamesRemaining,12);
@@ -80,7 +97,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:"platform:controlled-hd-forged-hmac"}}),0);
     });
     for(const [name,team,mode] of [["team-rm",true,"Random Map"],["1v1-dm",false,"Deathmatch"],["team-dm",true,"Deathmatch"]] as const){
-      await t.test(`canonical ${name} LIVE event is wagerable before final evidence`,async()=>{
+      await t.test(`canonical ${name} LIVE preview is visible but not fundable before final evidence`,async()=>{
         const row=await persist(name,team,mode),report=await ingest(row);
         assert.equal(report.admission.liveMarkets.succeeded,true);assert.equal(report.admission.liveMarkets.createdCount,2);
         assert.equal(report.financial.markets.requested,false);assert.equal(report.financial.tournament.requested,false);
@@ -344,6 +361,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const alias=await aliasMarket(identity.alias),sentinels=await obligationSentinels(alias.id,889,300);
       try{
         const marketCount=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+        const identitiesBefore=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
         const report=await ingest(row);
         assert.equal(report.admission.liveMarkets.succeeded,true);
         assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
@@ -351,6 +369,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:identity.canonical}}),0);
         assert.equal(await db.prisma.betAutoExecution.count(),previews);
         assert.deepEqual(await sentinels.snapshot(),sentinels.before);
+        assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
       }finally{await sentinels.cleanup();await db.prisma.betMarket.delete({where:{id:alias.id}});}
     });
     await t.test("redelivery reads compatible canonical books without updating financial obligations or child links",async()=>{
@@ -433,6 +452,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const sentinels=await obligationSentinels(parent.id,8477,100);
       await db.prisma.betMarket.update({where:{id:parent.id},data:{closeAt:new Date(Date.now()+1500)}});
       const before=await sentinels.snapshot(),count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      const identitiesBefore=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
       await db.sql.query(`CREATE FUNCTION fixture_expire_parent_during_child() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
         IF NEW.linked_session_key='platform:controlled-hd-parent-clock-during-child' AND NEW.market_type='desync' THEN
           PERFORM pg_sleep(1.8);
@@ -447,6 +467,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.equal(await db.prisma.betMarket.count(),count);
         assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:canonical,marketType:"desync"}}),0);
         assert.deepEqual(await sentinels.snapshot(),before);
+        assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
         assert.equal(await db.prisma.betAutoExecution.count(),previews);
       }finally{
         await db.sql.query("DROP TRIGGER fixture_expire_parent_during_child ON bet_markets; DROP FUNCTION fixture_expire_parent_during_child()");
