@@ -497,5 +497,113 @@ class MutatingShipSourceP1Tests(unittest.TestCase):
             fake_rollback.rollback_release.assert_called_once()
 
 
+    def test_all_malformed_evidence_lists_refuse_without_silent_skip(self):
+        for field in ("unknown_p0", "unknown_p1", "auto_remediable_p1",
+                      "blocked_source_docs"):
+            with self.subTest(field=field):
+                for bad in (None, {}, "ignored", ["not a finding"]):
+                    evidence = self._plan(**{field: bad})
+                    result = self._evaluate(evidence)
+                    self.assertTrue(result)
+                    self.assertIn("malformed " + field, result[0])
+
+    def test_nonboolean_blocked_flag_refuses(self):
+        for value in (0, "", "false", None):
+            with self.subTest(value=value):
+                errors = self._evaluate(self._plan(blocked=value))
+                self.assertIn("blocked flag", errors[0])
+
+    def test_locked_action_refreshes_source_and_refuses_new_p1_before_action(self):
+        fresh = {"production": {"source_sha": "c" * 40}}
+        action = mock.Mock(return_value=0)
+        with patch.object(MODULE, "collect", return_value=fresh) as collector:
+            with patch.object(
+                MODULE, "mutating_ship_source_blockers",
+                return_value=["WoloChain/vps-source-drift newly observed"],
+            ) as guard:
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    result = MODULE.locked_mutating_ship(action)
+        self.assertEqual(result, 2)
+        self.assertIn("LOCKED MUTATING SHIP", output.getvalue())
+        collector.assert_called_once()
+        guard.assert_called_once_with(fresh)
+        action.assert_not_called()
+
+    def test_locked_action_uses_fresh_snapshot_only_when_source_clear(self):
+        fresh = {"production": {"source_sha": "d" * 40}}
+        action = mock.Mock(return_value=17)
+        with patch.object(MODULE, "collect", return_value=fresh):
+            with patch.object(
+                MODULE, "mutating_ship_source_blockers", return_value=[],
+            ):
+                self.assertEqual(MODULE.locked_mutating_ship(action), 17)
+        action.assert_called_once_with(fresh)
+
+    def test_locked_snapshot_read_error_refuses_mutation(self):
+        action = mock.Mock(return_value=0)
+        with patch.object(
+            MODULE, "collect", side_effect=RuntimeError("VPS unavailable"),
+        ):
+            self.assertEqual(MODULE.locked_mutating_ship(action), 2)
+        action.assert_not_called()
+
+    def test_mutating_dispatch_executes_locked_check_before_all_four_actions(self):
+        fake_node = SimpleNamespace(
+            ensure_build_node_runtime=mock.Mock(),
+            BuildNodeError=RuntimeError,
+        )
+        fake_ship = SimpleNamespace(activate_release=mock.Mock(return_value=0))
+        fake_stage = SimpleNamespace(stage_release=mock.Mock(return_value=0))
+        fake_auto = SimpleNamespace(ship_all=mock.Mock(return_value=0))
+        initial = {"local": {"head": "a" * 40}}
+        fresh = {"local": {"head": "b" * 40}}
+        modes = ([], ["--stage"], ["--activate", "existing-receipt"],
+                 ["--prepare-only"])
+        for mode in modes:
+            with self.subTest(mode=mode):
+                fake_ship.activate_release.reset_mock()
+                fake_stage.stage_release.reset_mock()
+                fake_auto.ship_all.reset_mock()
+                state = {"checks": 0}
+
+                def guard(_snapshot):
+                    state["checks"] += 1
+                    return [] if state["checks"] == 1 else [
+                        "WoloChain/vps-source-drift changed while awaiting lease"
+                    ]
+
+                with patch.dict(sys.modules, {
+                    "aoe2_node_runtime": fake_node,
+                    "aoe2_release_ship": fake_ship,
+                    "aoe2_release_stage": fake_stage,
+                    "aoe2_release_auto": fake_auto,
+                }):
+                    with patch.object(sys, "argv", [
+                        "aoe2war-release", "ship", *mode,
+                    ]):
+                        with patch.object(
+                            MODULE, "collect", side_effect=[initial, fresh],
+                        ):
+                            with patch.object(
+                                MODULE, "mutating_ship_source_blockers",
+                                side_effect=guard,
+                            ):
+                                # Test the exact callable while standing in for
+                                # lock acquisition. The real lock remains owned
+                                # by run_mutating_release in production.
+                                with patch.object(
+                                    MODULE, "run_mutating_release",
+                                    side_effect=lambda action: action(),
+                                ):
+                                    with redirect_stdout(io.StringIO()):
+                                        rc = MODULE.main()
+                self.assertEqual(rc, 2)
+                self.assertEqual(state["checks"], 2)
+                fake_ship.activate_release.assert_not_called()
+                fake_stage.stage_release.assert_not_called()
+                fake_auto.ship_all.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -844,9 +844,10 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
 
     if (not isinstance(plan, dict) or type(plan.get("schema")) is not int or
             plan["schema"] != 1 or plan.get("maintenance_only") is not False or
-            "external_hold" not in plan or plan["external_hold"] is not None or
-            type(plan.get("blocked")) is not bool):
+            "external_hold" not in plan or plan["external_hold"] is not None):
         return ["Finish source/P1 preflight returned invalid evidence"]
+    if type(plan.get("blocked")) is not bool:
+        return ["Finish source/P1 preflight missing authoritative blocked flag"]
 
     # An absent/error observation must not become a clean plan simply because
     # the audit currently treats unavailable direct Wolo SSH proof as optional.
@@ -855,7 +856,7 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
                 "auto_remediable_p1", "blocked_source_docs"):
         entries = plan.get(key)
         if not isinstance(entries, list) or any(not isinstance(item, dict) for item in entries):
-            return ["Finish source/P1 preflight returned invalid findings: " + key]
+            return ["Finish source/P1 preflight malformed " + key]
     maintenance_errors = plan.get("maintenance_errors")
     if (not isinstance(maintenance_errors, list) or
             any(not isinstance(item, str) for item in maintenance_errors)):
@@ -912,6 +913,39 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
         ]
 
     return []
+
+
+def locked_mutating_ship(action, *, json_output: bool = False) -> int:
+    """Re-evaluate actual source/P1 state *inside* the protected release lease.
+
+    A first check in main gives quick feedback, but must not be the only
+    check: source/Wolo evidence can change while waiting for the lease.
+    Caller passes an action(fresh_release_snapshot). This helper only runs
+    inside run_mutating_release's deployment_lock, before stage/activation.
+    """
+    try:
+        fresh = collect()
+    except Exception as exc:
+        blockers = ["Locked source/P1 snapshot unavailable: " + str(exc)[:300]]
+    else:
+        blockers = mutating_ship_source_blockers(fresh)
+
+    if blockers:
+        payload = {
+            "status": "BLOCKED",
+            "kind": "aoe2war-ship-locked-source-p1-preflight",
+            "errors": blockers,
+            "production_mutated": False,
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: LOCKED MUTATING SHIP SOURCE/P1 PREFLIGHT BLOCKED")
+            for blocker in blockers:
+                print("  - " + blocker)
+        return 2
+
+    return action(fresh)
 
 
 def main() -> int:
@@ -999,21 +1033,32 @@ def main() -> int:
 
         if args.activate:
             from aoe2_release_ship import activate_release
-            action = lambda: activate_release(
-                data,
-                stage_receipt=args.activate,
-                dry_run=args.dry_run,
-                json_output=args.json,
-            )
             if args.dry_run:
-                return action()
-            return run_mutating_release(action)
+                return activate_release(
+                    data,
+                    stage_receipt=args.activate,
+                    dry_run=True,
+                    json_output=args.json,
+                )
+            return run_mutating_release(
+                lambda: locked_mutating_ship(
+                    lambda fresh: activate_release(
+                        fresh,
+                        stage_receipt=args.activate,
+                        dry_run=False,
+                        json_output=args.json,
+                    ),
+                    json_output=args.json,
+                )
+            )
 
         if args.stage:
             from aoe2_release_stage import stage_release
             return run_mutating_release(
-                lambda: stage_release(
-                    data,
+                lambda: locked_mutating_ship(
+                    lambda fresh: stage_release(
+                        fresh, json_output=args.json,
+                    ),
                     json_output=args.json,
                 )
             )
@@ -1028,11 +1073,14 @@ def main() -> int:
 
         from aoe2_release_auto import ship_all
         return run_mutating_release(
-            lambda: ship_all(
-                collect=collect,
-                initial=data,
+            lambda: locked_mutating_ship(
+                lambda fresh: ship_all(
+                    collect=collect,
+                    initial=fresh,
+                    json_output=args.json,
+                    prepare_only=args.prepare_only,
+                ),
                 json_output=args.json,
-                prepare_only=args.prepare_only,
             )
         )
 
