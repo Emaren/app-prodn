@@ -1,0 +1,49 @@
+name: One-shot LIVE atomic lock-test DocsV2 descendant seal (NO DEPLOY)
+
+on:
+  push:
+    branches:
+      - review/20261024-live-watcher-atomic-admission
+
+permissions:
+  contents: write
+
+concurrency:
+  group: live-atomic-lock-test-docsv2-20261024
+  cancel-in-progress: false
+
+jobs:
+  seal:
+    if: github.repository == 'Emaren/app-prodn' && github.ref == 'refs/heads/review/20261024-live-watcher-atomic-admission'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Self-retire workflow before capturing implementation baseline
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- .github/workflows/live-atomic-final-test-docsv2-once.yml
+          git commit -m "ci(held): retire lock regression baseline helper"
+      - name: Seal exact descendant docs after test source changed
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py
+          python3 - <<'PY'
+          import subprocess
+          allow={'catalog-info.yaml','docs/DOCUMENTATION_CONTROL_PLANE.md','docs/document-registry.json'}
+          paths=set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          other=set(subprocess.check_output(['git','ls-files','--others','--exclude-standard'],text=True).splitlines())
+          if (paths|other)-allow:
+              raise SystemExit('STOP unexpected generated path(s) '+str(sorted((paths|other)-allow)))
+          print('DocsV2 descendant source control verified')
+          PY
+          git add -- catalog-info.yaml docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet || git commit -m "docs(held): certify atomic LIVE lock regression test source"
+          git push origin HEAD:refs/heads/review/20261024-live-watcher-atomic-admission
