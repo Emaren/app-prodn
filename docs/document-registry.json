@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5123a3bd3c2174135f084b16abbe022c2b8c3f6852b2210c7b78b905d1e56854",
+      "sha256": "bede77d7b4133eaa4479b1377a2a2d655155204a8af6db919ec29c7eec3ff870",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-public-get-settlement-regression",
-    "commit": "13c7cedfd33d878e87500c8e74e7235e8619723f"
+    "commit": "1d15b2b8550c559999ec1ed6faefb1b2281580b0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
