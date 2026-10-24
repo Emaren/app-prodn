@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4da78ce98c609ce2da40908982d540b09a77c1f7f5f9f368dfea1dc524fd32c0",
+      "sha256": "67a18102cd7576c802c8991d43656ff346842835c2e9be9673136a0ebe366cde",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-live-preview-finance-boundary-held",
-    "commit": "1150f2ba89f513183238da2d1aae5ecce4b7c3d2"
+    "commit": "308770ac1ad380674086009b8ee0273cc20baa46"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
