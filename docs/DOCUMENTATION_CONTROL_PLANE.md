@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261024-original-live-preview-policy-held` at `9e3a0c139a8806e50e96171966f2c49c126a218c`
+Implementation baseline: `review/20261024-founder-cross-key-settlement-fence` at `9537fc27f2a88739ce329713e2cf6d9574090431`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

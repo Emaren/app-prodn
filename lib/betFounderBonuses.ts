@@ -2,9 +2,10 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
 import {
   buildFounderPayoutIdentity,
+  buildFounderEconomicLockKey,
   type FounderPayoutIdentity,
 } from "@/lib/founderPayoutIdentity";
-import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
+import { createPendingWoloClaim, normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import {
@@ -35,11 +36,18 @@ const FOUNDER_PAYOUT_LOCK_TIMEOUT_MS = 120_000;
  */
 export async function withFounderPayoutTargetLock<T>(
   prisma: PrismaClient,
-  identity: Pick<FounderPayoutIdentity, "lockKey">,
+  identity: Pick<FounderPayoutIdentity, "lockKey"> & { economicLockKey?: string },
   callback: (tx: Prisma.TransactionClient) => Promise<T>
 ) {
   return prisma.$transaction(
     async (tx) => {
+      // Always take the shared economic lock BEFORE the per-key lock. This
+      // serializes canonical and namespaced generations under one parent.
+      if (identity.economicLockKey) {
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(hashtextextended(${identity.economicLockKey}, 0))
+        `;
+      }
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(hashtextextended(${identity.lockKey}, 0))
       `;
@@ -1104,11 +1112,17 @@ export async function settleFounderBonuses(
         continue;
       }
 
-      const payoutIdentity = buildFounderPayoutIdentity({
-        founderBonusId: bonus.id,
-        claimGroupKey: groupKey,
-        claimKind,
-      });
+      const payoutIdentity = {
+        ...buildFounderPayoutIdentity({
+          founderBonusId: bonus.id,
+          claimGroupKey: groupKey,
+          claimKind,
+        }),
+        economicLockKey: buildFounderEconomicLockKey({
+          founderBonusId: bonus.id,
+          normalizedPlayerName: normalizePendingWoloClaimName(target.playerName),
+        }),
+      };
       const claimNote =
         bonusType === "winner"
           ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
@@ -1136,6 +1150,36 @@ export async function settleFounderBonuses(
               (currentClaim.status !== "pending" ||
                currentClaim.payoutAttemptedAt !== null ||
                Boolean(currentClaim.payoutTxHash?.trim()))) {
+            return;
+          }
+
+          // A paid/attempted June claim MUST fence a July namespaced group
+          // for the same bonus and normalized recipient. Do not turn another
+          // key into another signer request merely because its memo differs.
+          // Two pending keys are ambiguous too: neither may broadcast.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
+            where: {
+              normalizedPlayerName: normalizePendingWoloClaimName(target.playerName),
+              claimKind,
+              OR: [
+                {
+                  sourceFounderBonusId: bonus.id,
+                  claimGroupKey: { not: groupKey },
+                },
+                {
+                  // Historical rows can lose their FK through ON DELETE SET NULL.
+                  // Their original founder:<id>: group identity still carries
+                  // economic provenance and must fence every signer request,
+                  // including an exact same-key replay under a restored FK.
+                  sourceFounderBonusId: null,
+                  claimGroupKey: { startsWith: `founder:${bonus.id}:` },
+                },
+              ],
+            },
+            select: { id: true },
+          });
+          if (conflictingEconomicClaim) {
+            // Immutable financial history, no retry, no payout and no mutation.
             return;
           }
 

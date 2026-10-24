@@ -151,4 +151,4 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts tests/live-watcher-market-admission-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/live-watcher-market-admission-postgres.test.mts tests/founder-cross-key-economic-postgres.test.mts

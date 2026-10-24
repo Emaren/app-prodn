@@ -5,7 +5,7 @@ import {
   syncFounderBonusStatus,
   withFounderPayoutTargetLock,
 } from "@/lib/betFounderBonuses";
-import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
+import { buildFounderEconomicLockKey, buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
 import {
   buildBetStakeMemo,
   buildBetStakeTicketMemo,
@@ -959,11 +959,17 @@ export async function retryPendingClaimSettlement(
   if (useFounderSettlement && claim.sourceFounderBonusId) {
     const founderBonusId = claim.sourceFounderBonusId;
     const payoutAddress = matchedUser.walletAddress;
-    const payoutIdentity = buildFounderPayoutIdentity({
-      founderBonusId,
-      claimGroupKey: claim.claimGroupKey,
-      claimKind: claim.claimKind,
-    });
+    const payoutIdentity = {
+      ...buildFounderPayoutIdentity({
+        founderBonusId,
+        claimGroupKey: claim.claimGroupKey,
+        claimKind: claim.claimKind,
+      }),
+      economicLockKey: buildFounderEconomicLockKey({
+        founderBonusId,
+        normalizedPlayerName: claim.normalizedPlayerName,
+      }),
+    };
 
     try {
       return await withFounderPayoutTargetLock(
@@ -993,6 +999,39 @@ export async function retryPendingClaimSettlement(
               claimId: claim.id,
               reason: "ambiguous_prior_attempt" as const,
               detail: "Previous payout attempt has no chain proof; no retry or broadcast permitted.",
+            };
+          }
+
+          // Distinct June/July keys for one economic participant MUST NOT
+          // independently authorize two chain sends. Under the common
+          // advisory lock, inspect all keys for the same economic entitlement.
+          // Even two hashless pending keys are ambiguous; sign neither.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
+            where: {
+              normalizedPlayerName: claim.normalizedPlayerName,
+              claimKind: claim.claimKind,
+              OR: [
+                {
+                  sourceFounderBonusId: founderBonusId,
+                  claimGroupKey: { not: claim.claimGroupKey },
+                },
+                {
+                  // A legacy FK may be NULL even while its original bonus id
+                  // survives in founder:<id>:...; do not let missing FK
+                  // silently erase historical attempted/claimed provenance.
+                  sourceFounderBonusId: null,
+                  claimGroupKey: { startsWith: `founder:${founderBonusId}:` },
+                },
+              ],
+            },
+            select: { id: true },
+          });
+          if (conflictingEconomicClaim) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "ambiguous_prior_attempt" as const,
+              detail: "Another claim key exists for the same Founder Bonus recipient, even if still pending. Resolve economic entitlement and historical payment proof independently before any broadcast.",
             };
           }
 

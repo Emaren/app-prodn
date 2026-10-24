@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "aa380735c6e01ab82f017cfa9cdb2401fe80db3ed7f71504c70f81bb9c4d2cc9",
+      "sha256": "d6685e15604f08331d686ff887117b80629633992c8e403b95d2ff4047022a8f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/20261024-original-live-preview-policy-held",
-    "commit": "9e3a0c139a8806e50e96171966f2c49c126a218c"
+    "branch": "review/20261024-founder-cross-key-settlement-fence",
+    "commit": "9537fc27f2a88739ce329713e2cf6d9574090431"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

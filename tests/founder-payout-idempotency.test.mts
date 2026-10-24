@@ -60,7 +60,7 @@ test("automatic Founder settlement locks, recovers, and records under one transa
 
 test("admin Founder retries use the same identity and hold the lock through claim finalization", async () => {
   const source = await readFile("lib/adminWoloClaims.ts", "utf8");
-  const identityIndex = source.indexOf("const payoutIdentity = buildFounderPayoutIdentity({");
+  const identityIndex = source.indexOf("const payoutIdentity = {\n      ...buildFounderPayoutIdentity({");
   const lockIndex = source.indexOf("return await withFounderPayoutTargetLock(", identityIndex);
   const recoveryIndex = source.indexOf("findConfirmedWoloPayoutByMemo({", lockIndex);
   const executionIndex = source.indexOf("payout = await executeFounderWoloPayout({", recoveryIndex);
@@ -68,6 +68,7 @@ test("admin Founder retries use the same identity and hold the lock through clai
 
   assert.ok(identityIndex >= 0);
   assert.ok(lockIndex > identityIndex);
+  assert.match(source, /economicLockKey: buildFounderEconomicLockKey/);
   assert.ok(recoveryIndex > lockIndex);
   assert.ok(executionIndex > recoveryIndex);
   assert.ok(ledgerIndex > executionIndex);
