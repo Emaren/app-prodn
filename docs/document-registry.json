@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1f81a40503bde019866ac717e8107a77290e8fd1d30e6e238cb24f57f1a0177f",
+      "sha256": "a37999ce75c4b048ecf7899a313cf1594e0d4d39f30017c2908ec1b798822126",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/ironclad-live-integration",
-    "commit": "2eab2d5d4ffe06a670c1e1d056a5f4822913c1a0"
+    "commit": "6de7f597025c54d77267c27e7b3c8d06385220e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/ironclad-live-integration` at `2eab2d5d4ffe06a670c1e1d056a5f4822913c1a0`
+Implementation baseline: `codex/ironclad-live-integration` at `6de7f597025c54d77267c27e7b3c8d06385220e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
