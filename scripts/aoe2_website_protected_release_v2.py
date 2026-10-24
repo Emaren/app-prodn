@@ -16,11 +16,13 @@ import argparse
 import base64
 import binascii
 import hashlib
+import io
 import json
 import os
 import stat
 import subprocess
 import sys
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -284,24 +286,44 @@ def reviewer_packet_binding(packet: dict, *, candidate_repo: Path,
 
 def _run_guarded_release(candidate_repo: Path, mode: str,
                          *, stage_receipt: str | None = None) -> dict:
+    """Call the SAME guarded release libraries within the caller's held lease.
+
+    Launching aoe2_release.py in a child process would independently acquire
+    deployment_lock() while its parent still owns that nonreentrant flock.
+    Do not transfer or waive the lease: perform the normal stage/activate
+    library operation exactly once under this process's existing lease.
+    """
     require(mode in ("stage", "activate"), "unsupported protected action")
-    # Dispatch the SECURITY-PATCHED controller source from this reviewed branch;
-    # all mutable source manifests and app bytes resolve from canonical main.
-    environment = os.environ.copy()
-    environment["AOE2WAR_WEBSITE_CANDIDATE_ROOT"] = str(candidate_repo)
-    argv = [sys.executable, str(ROOT / "scripts" / "aoe2_release.py"),
-            "ship", "--stage" if mode == "stage" else "--activate", "--json"]
+    import aoe2_release as release
+    import aoe2_release_ship as ship
+    import aoe2_release_stage as stage
+
+    # The executable modules live in the separately sealed operator branch;
+    # their app/manifests/receipts MUST resolve from the exact main candidate.
+    for mod in (release, ship, stage):
+        require(Path(mod.ROOT).resolve() == candidate_repo.resolve(),
+                "release module points at wrong candidate root")
     if mode == "activate":
-        require(stage_receipt is not None, "activation must cite exact stage receipt")
-        argv = [sys.executable, str(ROOT / "scripts" / "aoe2_release.py"),
-                "ship", "--activate", stage_receipt, "--json"]
-    p = subprocess.run(argv, cwd=candidate_repo, env=environment,
-                       capture_output=True, text=True, timeout=1900,
-                       check=False)
-    require(p.returncode == 0, "protected stage/activation failed: no blind retry")
-    result = strict_json_bytes(p.stdout.encode())
-    require(result.get("status") in ("STAGED", "CERTIFIED"),
-            "protected release returned unverified state")
+        require(stage_receipt is not None,
+                "activation must cite exact stage receipt")
+    data = release.collect()
+    require(data.get("local", {}).get("head") == MAIN_SOURCE_SHA and
+            data.get("local", {}).get("dirty_count") == 0,
+            "mutating release source/dirty preflight failed")
+
+    output = io.StringIO()
+    with redirect_stdout(output):
+        if mode == "stage":
+            rc = stage.stage_release(data, json_output=True)
+        else:
+            rc = ship.activate_release(
+                data, stage_receipt=stage_receipt,
+                dry_run=False, json_output=True)
+    require(rc == 0, "protected stage/activation failed: no blind retry")
+    result = strict_json_bytes(output.getvalue().encode("utf-8"))
+    require(result.get("status") ==
+            ("STAGED" if mode == "stage" else "CERTIFIED"),
+            "protected release returned unverified stage/certification state")
     return result
 
 
@@ -434,6 +456,7 @@ def main() -> int:
         result = verified_operation(
             operation=args.operation, candidate_repo=args.candidate_repo,
             packet_path=args.packet, witness_before=args.signed_wolo_prestate,
+            noninterference_receipt=args.signed_noninterference,
             stage_receipt=args.stage_receipt,
             attempt_id=args.attempt_id,
             previous_stage_sha=args.previous_stage_approval_sha256)
