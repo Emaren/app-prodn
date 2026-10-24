@@ -56,6 +56,7 @@ export type BetMarketPreflightContext = {
     id: number;
     parentMarketId: number | null;
     slug: string;
+    bookPhase: string;
     status: string;
     winnerSide: string | null;
     settledAt: Date | null;
@@ -271,6 +272,7 @@ export async function loadBetMarketPreflightContext(
         id: true,
         parentMarketId: true,
         slug: true,
+        bookPhase: true,
         status: true,
         winnerSide: true,
         settledAt: true,
@@ -441,6 +443,12 @@ export function assertBetMarketPreflight(
   }
 ) {
   const normalizedWalletAddress = input.walletAddress?.trim() || "";
+
+  // This check is unconditional, including the post-broadcast recovery path.
+  // A preview-only book cannot accept a stake intent or a verified transfer.
+  if (context.market.bookPhase === "preview_only") {
+    throw new BetWagerError(409, "This is a preview-only battle. WOLO staking is disabled.");
+  }
 
   const desyncSideMarket =
     isDesyncSideMarketType(
@@ -894,6 +902,7 @@ export async function placePooledBetWager(
             ? {
                 id:
                   input.marketId,
+                bookPhase: { not: "preview_only" },
                 status: {
                   in: [
                     ...POST_BROADCAST_RECOVERY_MARKET_STATUSES,
