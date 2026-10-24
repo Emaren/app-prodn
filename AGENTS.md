@@ -9,7 +9,7 @@ This file applies to agents working in `Emaren/app-prodn`. Read it before produc
 For every human-facing multi-step Bash command:
 
 1. Print a descriptive `STEP=...` label before each action.
-2. Print the action's actual exit code immediately afterward: `rc=$?; printf 'STEP_X_EXIT=%s\\n' "$rc"`. Do not immediately overwrite `$?` with `echo` or any other command.
+2. Print the action's actual exit code immediately afterward: `rc=$?; printf 'STEP_X_EXIT=%s\n' "$rc"`. Do not immediately overwrite `$?` with `echo` or any other command.
 3. Print useful error diagnostics on failure, with secrets, wallet identifiers and private evidence redacted.
 4. If later actions are unsafe without an earlier prerequisite, explicitly skip them with `BLOCKED_<STEP>=<reason>`; do not quietly continue or claim PASS.
 5. At the end, emit `FINAL_STATUS=PASS|BLOCKED|UNKNOWN` and an explicit meaningful overall exit code.
@@ -24,7 +24,7 @@ For every human-facing multi-step Bash command:
 echo 'STEP=VERIFY_RELEASE_SOURCE'
 git rev-parse --verify HEAD
 source_rc=$?
-printf 'SOURCE_EXIT=%s\\n' "$source_rc"
+printf 'SOURCE_EXIT=%s\n' "$source_rc"
 
 if [ "$source_rc" -ne 0 ]; then
   echo 'FINAL_STATUS=BLOCKED SOURCE_UNAVAILABLE'
