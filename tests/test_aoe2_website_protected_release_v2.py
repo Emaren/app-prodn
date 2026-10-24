@@ -243,5 +243,127 @@ class ProtectedWebsiteControllerTests(unittest.TestCase):
 
 
 
+    def test_cli_forwards_required_source_finance_receipt(self):
+        # No files are read and no production functions run in this parser test.
+        from unittest.mock import Mock
+        import sys
+        fake = Mock(return_value={"status": "HOLD", "website_release_authorized": False})
+        arguments = ["website-controller", "stage", "--candidate-repo",
+                     str(self.root), "--packet", str(self.root / "signed.json"),
+                     "--signed-wolo-prestate", str(self.root / "wolo.json"),
+                     "--signed-noninterference", str(self.root / "finance.json")]
+        with patch.object(sys, "argv", arguments), \
+             patch.object(CONTROL, "verified_operation", fake):
+            self.assertEqual(0, CONTROL.main())
+        self.assertEqual(self.root / "finance.json",
+                         fake.call_args.kwargs["noninterference_receipt"])
+
+    def test_dispatch_executes_existing_release_libraries_without_child_lock(self):
+        # Exercise the concrete production dispatch path in a non-VPS mock,
+        # including both phases; the old implementation would spawn a child
+        # aoe2_release.py process that tried to acquire the parent's flock.
+        import aoe2_release as release
+        import aoe2_release_stage as stage
+        import aoe2_release_ship as ship
+        from unittest.mock import Mock
+        production = {"local": {"head": AUTH.MAIN_SOURCE_SHA,
+                                "dirty_count": 0}}
+        calls = []
+        def stage_only(data, *, json_output):
+            calls.append(("stage", data, json_output))
+            print(json.dumps({"status": "STAGED",
+                              "release_sha": AUTH.MAIN_SOURCE_SHA}))
+            return 0
+        def activation_only(data, *, stage_receipt, dry_run, json_output):
+            calls.append(("activate", stage_receipt, dry_run, json_output))
+            print(json.dumps({"status": "CERTIFIED",
+                              "release_sha": AUTH.MAIN_SOURCE_SHA}))
+            return 0
+        with patch.object(release, "ROOT", self.root), \
+             patch.object(stage, "ROOT", self.root), \
+             patch.object(ship, "ROOT", self.root), \
+             patch.object(release, "collect", return_value=production), \
+             patch.object(stage, "stage_release", side_effect=stage_only), \
+             patch.object(ship, "activate_release", side_effect=activation_only), \
+             patch.object(CONTROL.subprocess, "run",
+                          side_effect=AssertionError("nested release subprocess")):
+            result = CONTROL._run_guarded_release(self.root, "stage")
+            self.assertEqual("STAGED", result["status"])
+            result = CONTROL._run_guarded_release(
+                self.root, "activate", stage_receipt="exact-validated-stage")
+            self.assertEqual("CERTIFIED", result["status"])
+        self.assertEqual(["stage", "activate"], [v[0] for v in calls])
+        self.assertEqual(("activate", "exact-validated-stage", False, True),
+                         calls[-1])
+
+    def test_operator_source_seal_fails_on_modified_and_hidden_execution_code(self):
+        repo = self.root / "operator"
+        repo.mkdir()
+        (repo / "scripts").mkdir()
+        required = [
+            "aoe2_website_protected_release_v2.py",
+            "aoe2_website_release_v2.py", "aoe2_release.py",
+            "aoe2_release_ship.py", "aoe2_release_stage.py",
+            "aoe2_release_gate.py",
+        ]
+        for name in required:
+            (repo / "scripts" / name).write_text("# reviewed " + name + "\\n")
+
+        def git(*args):
+            p = subprocess.run(["git", "-C", str(repo), *args],
+                               text=True, capture_output=True, check=False,
+                               timeout=20)
+            self.assertEqual(0, p.returncode, p.stderr)
+            return p.stdout.strip()
+
+        git("init", "-q")
+        git("add", ".")
+        git("-c", "user.name=ReviewFixture",
+            "-c", "user.email=fixture@example.invalid",
+            "commit", "-qm", "approved controller fixture")
+        proof = CONTROL.operator_source_provenance(root=repo)
+        self.assertEqual(40, len(proof["commit_sha"]))
+        self.assertEqual(64, len(proof["inventory_sha256"]))
+        script = repo / "scripts" / "aoe2_release_ship.py"
+        original = script.read_text()
+        script.write_text(original + "# unauthorized dispatch edit\\n")
+        with self.assertRaisesRegex(AUTH.Hold, "dirty operator"):
+            CONTROL.operator_source_provenance(root=repo)
+        git("restore", "--", "scripts/aoe2_release_ship.py")
+        for flag, undo in (("--assume-unchanged", "--no-assume-unchanged"),
+                           ("--skip-worktree", "--no-skip-worktree")):
+            with self.subTest(flag=flag):
+                git("update-index", flag, "--", "scripts/aoe2_release_ship.py")
+                script.write_text(original + "# hidden financial release edit\\n")
+                self.assertEqual("", git("status", "--porcelain"))
+                with self.assertRaisesRegex(AUTH.Hold, "hidden operator"):
+                    CONTROL.operator_source_provenance(root=repo)
+                git("update-index", undo, "--", "scripts/aoe2_release_ship.py")
+                git("restore", "--", "scripts/aoe2_release_ship.py")
+        self.assertEqual(proof, CONTROL.operator_source_provenance(root=repo))
+
+    def test_review_signatures_cover_exact_operator_commit_and_executable_bytes(self):
+        scope = self.scope
+        trusted = {"commit_sha": "a" * 40, "inventory_sha256": "b" * 64}
+        packet = {"payload": {
+            "protected_dispatch_sha256": CONTROL.digest_file(Path(CONTROL.__file__)),
+            "candidate_sha": AUTH.MAIN_SOURCE_SHA,
+            "risk_class": "PRESENTATION",
+            "operator_controller_commit_sha": trusted["commit_sha"],
+            "operator_source_inventory_sha256": trusted["inventory_sha256"],
+        }}
+        with patch.object(CONTROL, "operator_source_provenance",
+                          return_value=trusted), \
+             patch.object(CONTROL, "assess", return_value={}):
+            CONTROL.reviewer_packet_binding(
+                packet, candidate_repo=self.root, scope=scope,
+                trust_root=self.trust, now=self.now, allow_test_root=True)
+            packet["payload"]["operator_source_inventory_sha256"] = "c" * 64
+            with self.assertRaisesRegex(AUTH.Hold, "signed exact-source"):
+                CONTROL.reviewer_packet_binding(
+                    packet, candidate_repo=self.root, scope=scope,
+                    trust_root=self.trust, now=self.now, allow_test_root=True)
+
+
 if __name__ == "__main__":
     unittest.main()
