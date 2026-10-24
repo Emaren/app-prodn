@@ -88,3 +88,26 @@ test('macOS-style symlinked CLI path must execute and reject malformed private i
     rmSync(tmp,{force:true,recursive:true});
   }
 });
+
+test('direct CLI rejects malformed NDJSON bytes without reaching a chain endpoint or emitting success',()=>{
+  const script=fileURLToPath(new URL('../scripts/financial-founder-five-canonical-readonly.mjs',import.meta.url));
+  const child=spawnSync(process.execPath,['--experimental-strip-types',script],{
+    input:'{"not":"a full JSON document"\n',encoding:'utf8',timeout:10000,
+  });
+  assert.equal(child.status,2,`malformed stream should never silently succeed: ${child.status}`);
+  assert.match(child.stderr,/BLOCKED: (Unexpected|Expected|Unterminated|Bad)/);
+  assert.equal(child.stdout,'');
+});
+test('symlinked CLI rejects truncated valid NDJSON with no output, never exit zero',()=>{
+  const tmp=mkdtempSync(join(tmpdir(),'aoe2war-private-path-'));
+  const alias=join(tmp,'private-var-alias.mjs');
+  try {
+    symlinkSync(fileURLToPath(new URL('../scripts/financial-founder-five-canonical-readonly.mjs',import.meta.url)),alias);
+    const child=spawnSync(process.execPath,['--experimental-strip-types',alias],{
+      input:'{"claim_id":411}\n',encoding:'utf8',timeout:10000,
+    });
+    assert.equal(child.status,2);
+    assert.match(child.stderr,/BLOCKED: BLOCKED_ROW_COUNT/);
+    assert.equal(child.stdout,'');
+  }finally{rmSync(tmp,{force:true,recursive:true});}
+});
