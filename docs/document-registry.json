@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "df0262bf20081c385408944b29a2ff4cf1ba168401b55d49088bf54083e76e3a",
+      "sha256": "a45a0a1ea2f4dad3ae673e38ab0aa8424df560151b124fdc65478611ec1ad9c5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-website-v2-canonical-reviewer-keys",
-    "commit": "4730cc69587052e4aeb77afbce68fe75fb0c7122"
+    "commit": "b266a235d3efc318404b26309d2f82d0b98875b7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
