@@ -1,0 +1,35 @@
+name: Financial collision audit — nonauthorizing
+on:
+  push:
+    branches:
+      - review/20261024-financial-claim-collision-certification
+  pull_request:
+    branches:
+      - integration/20261023-satchel-final-gated
+permissions:
+  contents: read
+jobs:
+  fixture-reconciliation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Python parser compile
+        run: python3 -m py_compile scripts/financial_claim_collision_audit_readonly.py
+      - name: Synthetic 61-collision report contracts
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -m unittest discover -s tests -p test_financial_claim_collision_audit_readonly.py -v
+      - name: Preserve source-only hold scope
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a=Path('scripts/financial-claim-collision-manifest-readonly.sql').read_text()
+          b=Path('scripts/financial_claim_collision_audit_readonly.py').read_text()
+          assert 'REPEATABLE READ READ ONLY' in a and 'ROLLBACK;' in a
+          assert "status='claimed'" in a and 'wolo_indexed_transfers' in a
+          assert 'financial_release_authorized' in b and 'False' in b
+          assert 'DELETE FROM' not in a.upper() and 'UPDATE ' not in a.upper()
+          assert 'INSERT INTO' not in a.upper() and 'TRUNCATE ' not in a.upper()
+          print('SOURCE-ONLY AUDIT GUARDS: PASS (no release authority)')
+          PY
