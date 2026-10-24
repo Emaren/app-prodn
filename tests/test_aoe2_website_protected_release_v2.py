@@ -131,6 +131,14 @@ class ProtectedWebsiteControllerTests(unittest.TestCase):
                         packet=self.packet(changed), trust_root=self.trust,
                         now=self.now, allow_test_root=True)
 
+    def test_runtime_witness_key_must_not_impersonate_any_human_signer(self):
+        (self.trust / "runtime_witness.pem").write_bytes(
+            (self.trust / "owner.pem").read_bytes())
+        with self.assertRaisesRegex(AUTH.Hold, "impersonates"):
+            CONTROL.verify_signed_noninterference(
+                self.receipt(), scope=self.scope, packet=self.packet(),
+                trust_root=self.trust, now=self.now, allow_test_root=True)
+
     def test_rewritten_source_approval_or_path_refused(self):
         tampered = copy.deepcopy(self.receipt())
         tampered["payload"]["changed_paths"].append("lib/warChest.ts")
