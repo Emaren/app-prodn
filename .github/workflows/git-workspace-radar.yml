@@ -1,0 +1,53 @@
+name: Git Workspace Radar (read-only)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/aoe2_workspace_radar.py'
+      - 'tests/test_aoe2_workspace_radar.py'
+      - '.github/workflows/git-workspace-radar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  no-mutation-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test real isolated Git repositories and linked worktrees
+        run: python3 -m unittest discover -s tests -p 'test_aoe2_workspace_radar.py' -v
+      - name: Snapshot ONLY this CI checkout; never infer Mac worktree state
+        run: |
+          python3 scripts/aoe2_workspace_radar.py --root . --output ci-workspace-radar.json > /dev/null
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads(Path('ci-workspace-radar.json').read_text())
+          lines=[
+              '## Git workspace radar (CI checkout only)',
+              '',
+              'Inspected: ' + str(r['repos_inspected']),
+              'Dirty: ' + str(r['dirty_repos']),
+              'Unknown: ' + str(r['unknown_repos']),
+              'Detached: ' + str(r['detached_heads']),
+              'Result: ' + r['status'],
+              '',
+              'This is NOT a full Mac / VPS audit. Never prune or force-clean from this status.'
+          ]
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as f:
+              f.write('\n'.join(lines) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-git-workspace-radar
+          path: ci-workspace-radar.json
+          retention-days: 14
+          if-no-files-found: error
