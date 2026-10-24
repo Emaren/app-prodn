@@ -214,6 +214,20 @@ class WebsiteReviewPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(POLICY.Hold, "misclassified"):
             self.check()
 
+    def test_gate_risk_must_also_remain_financial(self):
+        self.gate["risk_class"] = "APPLICATION"
+        self.gate_raw = POLICY.canonical(self.gate)
+        self.manifest["gate"]["receipt_sha256"] = POLICY.digest(self.gate_raw)
+        self.manifest_raw = POLICY.canonical(self.manifest)
+        self.stage["gate_sha256"] = POLICY.digest(self.gate_raw)
+        self.stage["manifest_sha256"] = POLICY.digest(self.manifest_raw)
+        self.stage_raw = POLICY.canonical(self.stage)
+        self.payload["gate_sha256"] = POLICY.digest(self.gate_raw)
+        self.payload["manifest_sha256"] = POLICY.digest(self.manifest_raw)
+        self.payload["stage_sha256"] = POLICY.digest(self.stage_raw)
+        with self.assertRaisesRegex(POLICY.Hold, "release gate not independently passing"):
+            self.check()
+
     def test_protected_trust_anchor_cannot_be_branch_supplied(self):
         with self.assertRaisesRegex(POLICY.Hold, "independently provisioned"):
             POLICY.trust_key(self.trust / "owner.pem", self.trust)
