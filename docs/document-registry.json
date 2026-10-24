@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "14f85b3291383631b92f077b6c5b053bf8a660aaad90773607f45e57a8949249",
+      "sha256": "0457de64f1322563ca3ea75b54975899d4afadedd7610f0c7001dfbe3a1b749f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261024-five-founder-canonical-proof",
-    "commit": "f527f54c0b21e7f7da3e90c6afc388932058bd4d"
+    "commit": "07a8c58a4997d897f852857c41cd8b25cb5157d2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
