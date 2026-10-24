@@ -200,13 +200,6 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const first=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:false,targetGameStatsId:row.id});
       assert.equal(first.admission?.createdCount,2);
       const second=await recoverCommittedLiveWatcherMarkets(db.prisma,{dryRun:false,targetGameStatsId:row.id});
-      if (second.admission?.existingCount!==2) {
-        const persisted=await db.prisma.betMarket.findMany({where:{linkedSessionKey:"platform:controlled-hd-lost-notification"},
-          select:{id:true,slug:true,bookPhase:true,status:true,propositionHash:true,battleId:true}});
-        console.error("LIVE_PREVIEW_IDEMPOTENCE_DIAGNOSTIC",JSON.stringify({
-          first:first.admission,second:second.admission,persisted,
-        }));
-      }
       assert.equal(second.admission?.createdCount,0);assert.equal(second.admission?.existingCount,2);
       assert.equal(await db.prisma.betMarket.count(),10);assert.equal(await db.prisma.betAutoExecution.count(),5);
     });
