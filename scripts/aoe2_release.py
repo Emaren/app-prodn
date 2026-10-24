@@ -17,7 +17,10 @@ from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+# Operator controller selects the already reviewed, clean canonical main checkout.
+# The override is never a reason to weaken the existing Wolo P1.
+ROOT = Path(os.environ.get("AOE2WAR_WEBSITE_CANDIDATE_ROOT",
+        str(Path(__file__).resolve().parents[1]))).resolve()
 PROD_HOST = os.getenv("AOE2_RELEASE_HOST", "hel1")
 PROD_REPO = os.getenv("AOE2_RELEASE_PROD_REPO", "/var/www/AoE2HDBets/app-prodn")
 SERVICE = os.getenv("AOE2_RELEASE_SERVICE", "aoe2hdbets-web.service")
