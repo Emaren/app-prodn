@@ -274,5 +274,49 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
             cx.close()
 
 
+    def test_activation_signed_review_must_name_exact_original_stage_nonce(self):
+        # This is an intentionally synthetic ledger fixture, not a production
+        # actor or approval. Verify strict linkage even if packet signature
+        # verification has already succeeded.
+        state = self.root / "activation-challenge-db"
+        state.mkdir(mode=0o700)
+        first = AUTH.issue_challenge(
+            state_root=state, candidate=self.candidate,
+            phase="PRE_STAGE", now=self.now, allow_test_root=True)
+        stage_sha = "a" * 64
+        cx = AUTH._state_connection(state, allow_test_root=True)
+        try:
+            cx.execute("UPDATE attempts SET consumed=1,signed_packet_sha=? "
+                       "WHERE attempt_id=? AND phase='PRE_STAGE'",
+                       (stage_sha, first["attempt_id"]))
+        finally:
+            cx.close()
+        second = AUTH.issue_challenge(
+            state_root=state, candidate=self.candidate,
+            phase="PRE_ACTIVATE", now=self.now,
+            attempt_id=first["attempt_id"], previous_stage_sha=stage_sha,
+            allow_test_root=True)
+        payload = {
+            "phase": "PRE_ACTIVATE", "attempt_id": second["attempt_id"],
+            "challenge": second["challenge"], "candidate_sha": self.candidate,
+            "issued_at": second["issued_at"], "expires_at": second["expires_at"],
+            "stage_approval_sha256": stage_sha, "stage_challenge": "different_" + "x"*32,
+        }
+        with mock.patch.object(AUTH, "assess",
+                               return_value={"website_release_authorized": False}):
+            with self.assertRaisesRegex(AUTH.Hold, "stage challenge"):
+                AUTH.consume_signed_review(
+                    packet={"payload": payload}, candidate=self.candidate,
+                    actual_scope=self.scope, state_root=state, trust_root=self.trust,
+                    now=self.now, allow_test_root=True)
+        cx = AUTH._state_connection(state, allow_test_root=True)
+        try:
+            self.assertEqual(0, cx.execute(
+                "SELECT consumed FROM attempts WHERE attempt_id=? AND phase='PRE_ACTIVATE'",
+                (first["attempt_id"],)).fetchone()[0])
+        finally:
+            cx.close()
+
+
 if __name__ == "__main__":
     unittest.main()
