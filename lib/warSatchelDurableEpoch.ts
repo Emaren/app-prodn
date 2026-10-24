@@ -52,7 +52,7 @@ export function prospectiveEpochDepositIssue(
      e.custodyWitnessDigest,e.recoveryWitnessDigest,e.reservesWitnessDigest,
      e.fiveReviewerDigest,e.chainAnchorWitnessDigest].every(hex))
    return "epoch_source_or_evidence_incomplete";
- if(!/^[A-F0-9]{64}$/.test(x.txHash))return "invalid_physical_receipt";
+ if(!/^[A-F0-9]{64}$/.test(x.txHash)||x.txHash==="0".repeat(64))return "invalid_physical_receipt";
  return null;
 }
 function stop(issue:string):never{throw Error("WAR_SATCHEL_EPOCH_ADMISSION_REFUSED:"+issue);}
@@ -92,6 +92,26 @@ export async function requireDurableProspectiveDepositEpoch(
  txSender:input.deposit.sender,bankHeight:input.bank.height,bankVault:input.bank.vaultAddress,
  });
  if(issue)stop(issue);
+ // A new physical vault cannot inherit unmatched historical funded receipts.
+ // On the FIRST credit, require an entirely empty funded financial estate.
+ // Older founder/pending claims remain untouched in their original estate.
+ const boundary=await tx.$queryRaw<Array<{orphan:boolean;firstCredit:boolean;oldEstate:boolean}>>(Prisma.sql`
+ SELECT
+ EXISTS(SELECT 1 FROM war_satchel_funded_receipts r
+   LEFT JOIN war_satchel_epoch_deposit_receipts er ON er.receipt_id=r.id
+   WHERE er.receipt_id IS NULL) AS orphan,
+ NOT EXISTS(SELECT 1 FROM war_satchel_epoch_deposit_receipts) AS "firstCredit",
+ (EXISTS(SELECT 1 FROM war_satchel_funded_balances)
+  OR EXISTS(SELECT 1 FROM war_satchel_funded_journal)
+  OR EXISTS(SELECT 1 FROM war_satchel_funded_claim_returns)
+  OR EXISTS(SELECT 1 FROM war_satchel_funded_reservations)
+  OR EXISTS(SELECT 1 FROM war_satchel_funded_withdrawals)
+  OR EXISTS(SELECT 1 FROM war_satchel_physical_receipt_consumptions)
+ ) AS "oldEstate"
+ `);
+ if(boundary.length!==1||boundary[0].orphan||
+    (boundary[0].firstCredit&&boundary[0].oldEstate))
+   stop("legacy_funded_estate_requires_segregation");
  return Object.freeze(e);
 }
 export async function bindDurableEpochReceipt(tx:Transaction,input:{

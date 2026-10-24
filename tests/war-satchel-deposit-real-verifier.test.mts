@@ -88,7 +88,26 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
       await assert.rejects(creditRecordedSatchelProof(db!,input),/one_operator_approved_epoch_required/);
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
     });
+    await t.test("database refuses epoch approval against any existing legacy-funded estate",async()=>{
+      await sql!.query("INSERT INTO war_satchel_funded_balances(owner_user_id,available_uwolo) VALUES(1,0)");
+      try{
+        await assert.rejects(seedIsolatedProspectiveEpoch(sql!,{
+          vault:i.Vault,txHeight:BigInt(o.Height),intentCreatedAt:new Date(i.CreatedAt),
+        }),/SATCHEL_EPOCH_OLD_FUNDED_ESTATE_NOT_EMPTY/);
+      }finally{
+        await sql!.query("DELETE FROM war_satchel_funded_balances WHERE owner_user_id=1");
+      }
+    });
     await seedIsolatedProspectiveEpoch(sql!,{vault:i.Vault,txHeight:BigInt(o.Height),intentCreatedAt:new Date(i.CreatedAt)});
+    await t.test("historical funded balance, even zero-valued, forbids a clean new-money credit",async()=>{
+      await sql!.query("INSERT INTO war_satchel_funded_balances(owner_user_id,available_uwolo) VALUES(1,0)");
+      try{
+        await assert.rejects(creditRecordedSatchelProof(db!,input),/legacy_funded_estate_requires_segregation/);
+        assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"0");
+      }finally{
+        await sql!.query("DELETE FROM war_satchel_funded_balances WHERE owner_user_id=1");
+      }
+    });
     await t.test("a copied genuine bank receipt cannot authorize a financial write",async()=>{
       await assert.rejects(creditRecordedSatchelProof(db!,{...input,bank:{...bank}}),/bank_observation_not_fresh_or_canonical/);
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
