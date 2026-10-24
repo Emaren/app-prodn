@@ -31,6 +31,7 @@ export type ProspectiveEpochSignature=Readonly<{
 }>;
 export type ProspectiveEpochReviewerKeys=Readonly<Record<EpochReviewerRole,string>>;
 
+const issuedReviews=new WeakSet<object>();
 const KEYS=[
  "schema","chain_id","epoch_id","start_height","start_app_hash","vault_address",
  "source_commit","legacy_claims_digest","legacy_liability_containment_digest",
@@ -91,20 +92,23 @@ export function reviewProspectiveEpoch(input:{
  if(seenRoles.size!==PROSPECTIVE_EPOCH_REQUIRED_ROLES.length)refuse("missing_role");
  // Cryptographically reviewed DATA, not chain finality, human identity,
  // actual account control, approved financial migration, or funding permission.
- return Object.freeze({status:"REVIEW_ONLY" as const,epochId:x.epoch_id,
+ const reviewed=Object.freeze({status:"REVIEW_ONLY" as const,epochId:x.epoch_id,
    startHeight:BigInt(x.start_height),vault:x.vault_address});
+ issuedReviews.add(reviewed);
+ return reviewed;
 }
 export function prospectiveDepositBoundaryIssue(input:{
  reviewed:Readonly<{status:"REVIEW_ONLY";startHeight:bigint;vault:string}>;
  txHeight:bigint;txVault:string;bankHeight:bigint;bankVault:string;
 }):string|null{
  const x=input;
- if(x.reviewed?.status!=="REVIEW_ONLY"||typeof x.reviewed.startHeight!=="bigint")
+ if(!x.reviewed||typeof x.reviewed!=="object"||!issuedReviews.has(x.reviewed)||
+    x.reviewed.status!=="REVIEW_ONLY"||typeof x.reviewed.startHeight!=="bigint")
   return "missing_epoch_review";
  if(!PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED)return "live_financial_epoch_hold";
  if(x.txHeight<=x.reviewed.startHeight)return "historical_or_boundary_height";
  if(x.txVault!==x.reviewed.vault||x.bankVault!==x.reviewed.vault)
   return "segregated_vault_mismatch";
- if(x.bankHeight<x.txHeight+2n)return "insufficient_authenticated_confirmations";
+ if(x.bankHeight<x.txHeight+BigInt(2))return "insufficient_authenticated_confirmations";
  return null;
 }
