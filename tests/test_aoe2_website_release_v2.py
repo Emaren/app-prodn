@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -199,6 +200,58 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(AUTH.Hold, "duplicate reviewer"):
             self.inspect(packet)
+
+
+    def test_real_git_scope_rejects_assume_unchanged_and_skip_worktree(self):
+        repo = self.root / "real-git"
+        repo.mkdir()
+        source_file = repo / "components/kingdom-index/KingdomIndex.tsx"
+        source_file.parent.mkdir(parents=True)
+        source_file.write_text("before\n")
+        (repo / "yarn.lock").write_text("locked dependency bytes\n")
+
+        def git(*args):
+            result = subprocess.run(
+                ["git", "-C", str(repo), *args], capture_output=True,
+                text=True, timeout=15, check=False)
+            self.assertEqual(0, result.returncode, result.stderr)
+            return result.stdout.strip()
+
+        git("init", "-q")
+        git("add", ".")
+        git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+            "commit", "-qm", "baseline")
+        baseline = git("rev-parse", "HEAD")
+        source_file.write_text("reviewed change\n")
+        git("add", ".")
+        git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+            "commit", "-qm", "candidate")
+        candidate = git("rev-parse", "HEAD")
+        lock_blob = git("rev-parse", candidate + ":yarn.lock")
+        with mock.patch.object(AUTH, "PRODUCTION_SHA", baseline), \
+             mock.patch.object(AUTH, "FAST_URI_PATCH_BLOB_SHA", lock_blob):
+            proof = AUTH.source_scope(repo, candidate)
+            self.assertEqual([source_file.relative_to(repo).as_posix()],
+                             proof["paths"])
+            self.assertFalse(proof["transitive_noninterference_certified"])
+
+            for flag, undo in (
+                ("--assume-unchanged", "--no-assume-unchanged"),
+                ("--skip-worktree", "--no-skip-worktree"),
+            ):
+                with self.subTest(flag=flag):
+                    git("update-index", flag, "--",
+                        source_file.relative_to(repo).as_posix())
+                    source_file.write_text("unreviewed local build bytes\n")
+                    # This is precisely the condition in which status alone
+                    # can falsely declare the checkout clean.
+                    self.assertEqual("", git("status", "--porcelain"))
+                    with self.assertRaisesRegex(
+                            AUTH.Hold, "hidden or unreviewable Git index flags"):
+                        AUTH.source_scope(repo, candidate)
+                    git("update-index", undo, "--",
+                        source_file.relative_to(repo).as_posix())
+                    git("restore", "--", source_file.relative_to(repo).as_posix())
 
 
     def test_durable_challenge_cannot_reissue_or_activate_without_stage(self):
