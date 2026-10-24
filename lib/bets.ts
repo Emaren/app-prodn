@@ -8106,6 +8106,7 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
             _count: { select: {
               wagers: true, stakeIntents: true, stakeTicketLegs: true,
               walletLocks: true, founderBonuses: true,
+              integrityIncidents: true,
             } },
             settledAt: true,
             winnerSide: true,
@@ -8141,7 +8142,11 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
         if (liveOnly && existing) {
           // This extracted path may acknowledge compatible metadata, but must
           // never rewrite an existing book, roster latch or financial history.
-          return {created:false,admitted:existing.propositionHash === seed.propositionHash &&
+          const linkedClaimCount=await tx.pendingWoloClaim.count({
+            where:{sourceMarketId:existing.id},
+          });
+          return {created:false,admitted:linkedClaimCount===0 &&
+            existing.propositionHash === seed.propositionHash &&
             Boolean(liveAuthorityRows?.some(row=>committedLiveWatcherAdmissionIssue(row)===null))};
         }
         const rosterChangedAfterStake = Boolean(
@@ -8222,17 +8227,24 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
       await tx.$queryRaw(Prisma.sql`SELECT id FROM bet_markets WHERE slug IN
         (${Prisma.join(seeds.map(seed=>seed.slug))}) ORDER BY id FOR UPDATE`);
       const existingRows=await tx.betMarket.findMany({where:{slug:{in:seeds.map(seed=>seed.slug)}},select:{
-        slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,
+        id:true,slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,
         status:true,settledAt:true,winnerSide:true,closeAt:true,propositionHash:true,
         bookPhase:true,firstStakeAcceptedAt:true,seedLeftWolo:true,seedRightWolo:true,
         settlementRunId:true,settlementStatus:true,settlementAttemptedAt:true,
         settlementExecutedAt:true,voidedAt:true,refundStatus:true,
         _count:{select:{wagers:true,stakeIntents:true,stakeTicketLegs:true,
-          walletLocks:true,founderBonuses:true}},
+          walletLocks:true,founderBonuses:true,integrityIncidents:true}},
       }});
+      const linkedClaimOwners=new Set(
+        (existingRows.length?await tx.pendingWoloClaim.findMany({
+          where:{sourceMarketId:{in:existingRows.map(row=>row.id)}},
+          select:{sourceMarketId:true},
+        }):[]).map(claim=>claim.sourceMarketId)
+      );
       for (const seed of seeds) {
         const existing=existingRows.find(row=>row.slug===seed.slug);
-        if (existing && (existing.bookPhase!=="preview_only" ||
+        if (existing && (linkedClaimOwners.has(existing.id) ||
+          existing.bookPhase!=="preview_only" ||
           existing.firstStakeAcceptedAt!==null ||
           existing.seedLeftWolo!==0 || existing.seedRightWolo!==0 ||
           existing.settlementRunId!==null || existing.settlementStatus!==null ||
