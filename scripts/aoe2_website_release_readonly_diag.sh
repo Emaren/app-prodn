@@ -36,17 +36,17 @@ describe_checkout() {
     if [ -f "$root/.aoe2war-release/stage-receipts" ]; then
       out "STAGE_RECEIPTS" "UNEXPECTED_NON_DIRECTORY"
     elif [ -d "$root/.aoe2war-release/stage-receipts" ]; then
-      count="$(find "$root/.aoe2war-release/stage-receipts" -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+      count="$(find "$root/.aoe2war-release/stage-receipts" -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
       out "STAGE_RECEIPT_FILES" "${count:-0} (validate exact receipt before using)"
     else
       out "STAGE_RECEIPT_FILES" "NONE"
     fi
     for name in gates manifests; do
       if [ -d "$root/.aoe2war-release/$name" ]; then
-        count="$(find "$root/.aoe2war-release/$name" -maxdepth 1 -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
-        out "LOCAL_${name^^}_FILES" "$count (NOT an approval)"
+        count="$(find "$root/.aoe2war-release/$name" -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
+        out "LOCAL_$(printf "%s" "$name" | tr "[:lower:]" "[:upper:]")_FILES" "$count (NOT an approval)"
       else
-        out "LOCAL_${name^^}_FILES" "NONE"
+        out "LOCAL_$(printf "%s" "$name" | tr "[:lower:]" "[:upper:]")_FILES" "NONE"
       fi
     done
   fi
@@ -132,14 +132,14 @@ if [ -d "$WEB" ]; then
   out "REMOTE_GIT_DIRTY_COUNT" "$count"
   for key in ".next/BUILD_ID" ".next-release/BUILD_ID" ".aoe2war-build-version"; do
     if [ -f "$WEB/$key" ]; then
-      value="$(head -c 120 "$WEB/$key" | tr -cd '[:alnum:]_-.' )"
+      value="$(head -c 120 "$WEB/$key" | tr -cd '[:alnum:]_.-' )"
       out "REMOTE_$key" "${value:-EMPTY}"
     else
       out "REMOTE_$key" "NOT_PRESENT"
     fi
   done
 fi
-out "WEB_SERVICE" "$(systemctl is-active aoe2hdbets-web.service 2>/dev/null || printf UNKNOWN)"
+out "WEB_SERVICE" "$(systemctl is-active aoe2hdbets-web.service 2>/dev/null || true)"
 if command -v ss >/dev/null 2>&1; then
   listeners="$(ss -ltn 2>/dev/null || true)"
   for port in 8092 8093; do
