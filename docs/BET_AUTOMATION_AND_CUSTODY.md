@@ -101,6 +101,9 @@ coordinated maintenance fence before any financial operation.
 
 Existing canonical winner and Desync rows must themselves be `preview_only`
 with the correct parent relationship before the entire family can be admitted.
+The winner must have no parent; an existing Desync row must reference that
+same family's existing winner. Missing or contradictory parentage refuses
+the whole family without repairing or creating a sibling.
 Legacy, pre-game, opening-minute and late financial books cannot be converted
 or acknowledged as preview books. Corrective refunds exclude preview markets
 at candidate selection, hydrated-row inspection and atomic acquisition, before

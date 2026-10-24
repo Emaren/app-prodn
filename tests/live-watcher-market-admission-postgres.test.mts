@@ -16,6 +16,7 @@ import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
 import {freshBettingCloseReason,buildFreshBetMarketWriteWhere} from "../lib/betMarketWagerability.ts";
 import {loadBetMarketPreflightContext,assertBetMarketPreflight} from "../lib/betWagering.ts";
 import {createFounderBonus} from "../lib/betFounderBonuses.ts";
+import {buildFounderEconomicLockKey} from "../lib/founderPayoutIdentity.ts";
 import {retryPendingClaimSettlement} from "../lib/adminWoloClaims.ts";
 import {startLiveWatcherDatabase} from "./fixtures/live-watcher-db.mts";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
@@ -494,6 +495,59 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
       }finally{await sentinels.cleanup();await db.prisma.betMarket.delete({where:{id:alias.id}});}
     });
+    await t.test("an empty correctly linked canonical preview family supports read-only redelivery",async()=>{
+      const row=await persist("compatible-linked-preview"),canonical="platform:controlled-hd-compatible-linked-preview";
+      assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+      const before=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}});
+      const parent=before.find(value=>value.marketType==="winner")!,child=before.find(value=>value.marketType==="desync")!;
+      assert.ok(parent);assert.ok(child);assert.equal(parent.parentMarketId,null);assert.equal(child.parentMarketId,parent.id);
+      const previews=await db.prisma.betAutoExecution.count(),calls=networkCalls;
+      const identities=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+      const report=await ingest(row);
+      assert.equal(report.admission.liveMarkets.succeeded,true);
+      assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,2);
+      assert.deepEqual(await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}}),before);
+      assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identities);
+      assert.equal(await db.prisma.betAutoExecution.count(),previews);assert.equal(networkCalls,calls);
+    });
+    for(const malformation of ["winner-has-parent","child-parent-null","child-parent-other-family","child-without-winner"] as const){
+      await t.test(`canonical preview ${malformation} refuses the entire family without repairs or side effects`,async()=>{
+        const name="malformed-preview-"+malformation,row=await persist(name),canonical="platform:controlled-hd-"+name;
+        assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+        const pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical}});
+        const parent=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
+        assert.ok(parent);assert.ok(child);assert.equal(child.parentMarketId,parent.id);
+        await db.prisma.betAutoExecution.deleteMany({where:{winnerMarketId:parent.id}});
+        const other=await db.prisma.betMarket.findFirstOrThrow({where:{marketType:"winner",id:{not:parent.id}}});
+        if(malformation==="winner-has-parent"){
+          await db.prisma.betMarket.update({where:{id:parent.id},data:{parentMarketId:other.id}});
+        }else if(malformation==="child-parent-other-family"){
+          await db.prisma.betMarket.update({where:{id:child.id},data:{parentMarketId:other.id}});
+        }else{
+          await db.prisma.betMarket.update({where:{id:child.id},data:{parentMarketId:null}});
+          if(malformation==="child-without-winner")await db.prisma.betMarket.delete({where:{id:parent.id}});
+        }
+        const before=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}});
+        // No sentinel exposure is attached: refusal must come from the exact
+        // malformed parent relationship, not a separate financial guard.
+        assert.ok(before.every(value=>value.bookPhase==="preview_only"&&value.firstStakeAcceptedAt===null));
+        const identities=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+        const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count(),calls=networkCalls;
+        try{
+          const report=await ingest(row);
+          assert.equal(report.admission.liveMarkets.succeeded,true);
+          assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+          assert.equal(await db.prisma.betMarket.count(),count);assert.equal(await db.prisma.betAutoExecution.count(),previews);
+          assert.deepEqual(await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}}),before);
+          assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identities);
+          assert.equal(networkCalls,calls);
+        }finally{
+          await db.prisma.betAutoExecution.deleteMany({where:{winnerMarketId:parent.id}});
+          await db.prisma.betMarket.delete({where:{id:child.id}});
+          if(malformation!=="child-without-winner")await db.prisma.betMarket.delete({where:{id:parent.id}});
+        }
+      });
+    }
     await t.test("redelivery reads compatible canonical books without updating financial obligations or child links",async()=>{
       const row=await persist("occupied-canonical");assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
       const identity=await sourceIdentity("occupied-canonical"),pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:identity.canonical}});
@@ -641,4 +695,56 @@ test("private original HD LIVE commits admit canonical markets before result/clo
     assert.equal(readBetAutomationRuntime({BET_AUTOMATION_MODE:"live",WOLO_BET_CUSTODY_CAPABILITY:"bet-custody-v1",
       WOLO_BET_CUSTODY_URL:"http://127.0.0.1:8092",WOLO_SETTLEMENT_AUTH_TOKEN:"fixture-only"}).executionReady,false);
   }finally{globalThis.fetch=originalFetch;if(previousMode===undefined)delete process.env.BET_AUTOMATION_MODE;else process.env.BET_AUTOMATION_MODE=previousMode;await db.cleanup();}
+});
+
+test("admin claim origins changed during an actual economic-lock wait cannot borrow earlier attribution",{
+  skip:process.env.RUN_LIVE_MARKET_PG_TESTS!=="1",timeout:120000,
+},async t=>{
+  const db=await startLiveWatcherDatabase(),originalFetch=globalThis.fetch;
+  let networkCalls=0;
+  globalThis.fetch=(async()=>{networkCalls++;throw Error("Origin drift cannot reach a chain lookup or signer");}) as typeof fetch;
+  try{
+    const user=await db.prisma.user.create({data:{uid:"claim-origin-race-user",inGameName:"OriginRaceOwner",
+      steamId:"76561198000004568",verified:true,verificationLevel:2,walletAddress:`wolo1${"a".repeat(38)}`}});
+    const makeMarket=(slug:string)=>db.prisma.betMarket.create({data:{slug,title:"Isolated origin race",
+      eventLabel:"Disposable regression",leftLabel:"OriginRaceOwner",rightLabel:"OriginRaceOpponent",
+      status:"settled",winnerSide:"left",bookPhase:"legacy"}});
+    const market=await makeMarket("claim-origin-race-source"),otherMarket=await makeMarket("claim-origin-race-other");
+    const makeBonus=()=>db.prisma.betMarketFounderBonus.create({data:{marketId:market.id,bonusType:"participants",
+      totalAmountWolo:2000,status:"partial"}});
+    const bonus=await makeBonus(),otherBonus=await makeBonus();
+    for(const field of ["sourceMarketId","sourceFounderBonusId"] as const){
+      await t.test(`${field} is rechecked after acquiring the real PostgreSQL economic lock`,async()=>{
+        const claim=await db.prisma.pendingWoloClaim.create({data:{normalizedPlayerName:"originraceowner",
+          displayPlayerName:"OriginRaceOwner",amountWolo:1000,claimKind:"founders_bonus",
+          claimGroupKey:`founder:${bonus.id}:left:${field}`,targetScope:"both_participants",
+          sourceMarketId:market.id,sourceFounderBonusId:bonus.id,status:"pending",createdAt:new Date("2026-07-04T12:00:00Z")}});
+        const key=buildFounderEconomicLockKey({founderBonusId:bonus.id,normalizedPlayerName:claim.normalizedPlayerName});
+        await db.sql.query("BEGIN");await db.sql.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[key]);
+        const pending=retryPendingClaimSettlement(db.prisma,claim.id);
+        let afterFixtureChange=claim;
+        try{
+          let waiting=false;
+          for(let attempt=0;attempt<100;attempt++){
+            await db.sql.query("SELECT pg_stat_clear_snapshot()");
+            const observed=await db.sql.query("SELECT count(*) FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND wait_event='advisory' AND query ILIKE '%pg_advisory_xact_lock%'");
+            if(Number(observed.rows[0].count)>0){waiting=true;break;}await sleep(10);
+          }
+          assert.equal(waiting,true,"Retry must finish initial origin checks and then wait on the actual economic lock");
+          const changedId=field==="sourceMarketId"?otherMarket.id:otherBonus.id;
+          await db.prisma.pendingWoloClaim.update({where:{id:claim.id},data:{[field]:changedId}});
+          // Prisma updates updatedAt for our intentional fixture mutation.
+          // Compare to this full durable row, not the pre-mutation timestamp.
+          afterFixtureChange=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}});
+        }finally{await db.sql.query("COMMIT");}
+        try{
+          const result=await pending;
+          assert.equal(result.outcome,"skipped");
+          assert.equal(result.outcome==="skipped"?result.reason:null,"source_attribution_conflict");
+          assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),afterFixtureChange);
+          assert.equal(networkCalls,0);assert.equal(await db.prisma.user.count({where:{id:user.id}}),1);
+        }finally{await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});}
+      });
+    }
+  }finally{globalThis.fetch=originalFetch;await db.cleanup();}
 });

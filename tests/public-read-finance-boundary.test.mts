@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import type { PrismaClient } from "../lib/generated/prisma/index.js";
+import { loadBetBoardSnapshot } from "../lib/bets.ts";
 
 const root = new URL("../", import.meta.url);
 function source(path: string): string {
@@ -41,5 +43,23 @@ test("public readers retain their projection and non-mutating board contract", (
   assert.match(source("lib/warChest.ts"), /ensureMarkets: false/);
   assert.match(source("app/api/live-games/route.ts"), /loadPublicLiveGamesSnapshot/);
   assert.match(source("lib/lobbySnapshot.ts"), /loadLobbySnapshotFresh/);
+});
+
+test("a default board read performs no database mutation or financial maintenance", async () => {
+  const writes: string[] = [];
+  const model = (name: string) => new Proxy({}, { get: (_target, method: string) => {
+    if (["findMany", "groupBy"].includes(method)) return async () => [];
+    if (["findFirst", "findUnique"].includes(method)) return async () => null;
+    if (method === "count") return async () => 0;
+    return async () => { writes.push(`${name}.${method}`); throw Error("Board read attempted a mutation"); };
+  } });
+  const prisma = new Proxy({}, { get: (_target, name: string) =>
+    name.startsWith("$")
+      ? async () => { writes.push(name); throw Error("Board read attempted database execution"); }
+      : model(name),
+  }) as PrismaClient;
+  const board = await loadBetBoardSnapshot(prisma, null, { settlementSurfaceMode: "fast" });
+  assert.deepEqual(writes, []);
+  assert.deepEqual(board.openMarkets, []);
 });
 
