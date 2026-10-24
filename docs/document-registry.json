@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0457de64f1322563ca3ea75b54975899d4afadedd7610f0c7001dfbe3a1b749f",
+      "sha256": "f7a35900babe53f88f388ed2e26410ac96015d2d3ad1143117b2a19fb1b375b2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-five-founder-canonical-proof",
-    "commit": "07a8c58a4997d897f852857c41cd8b25cb5157d2"
+    "branch": "review/20261024-founder-private-evidence-preservation",
+    "commit": "5e7ce589e34cf4f4f3ac283e5426b7a70a69a46e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
