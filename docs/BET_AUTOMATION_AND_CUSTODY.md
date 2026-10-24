@@ -15,6 +15,88 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 24 — post-review preview financial noninterference fix (HELD)
+
+PR #842's extracted `live` markets can otherwise qualify for the original
+mainnet escrow rail even while the new Satchel signer remains disabled. A
+newly created LIVE winner/Desync family is therefore written with
+`BetMarket.bookPhase = "preview_only"` (already in the main datamodel; no
+migration). This durable discriminator survives ordinary routine market
+updates, which do not alter `bookPhase`. Existing legacy market books retain
+their original phase and their prior product behavior.
+
+The shared wagerability predicate rejects preview-only books; the public
+BetBoard card projection passes `bookPhase` to that predicate so the UI does
+not falsely invite a stake. Wallet/stake preflight checks the marker even
+for post-broadcast recovery; final single-leg and multi-leg ticket writes
+exclude preview books at the SQL update predicate, including their narrow
+post-broadcast recovery branches. This covers ordinary wagers, stake intents,
+and the multi-leg ticket code's shared preflight/write guard. A
+`preview_only` family must not invite a real Keplr transfer or count as
+an authorized funded release, even if the legacy escrow address/settlement
+rail is otherwise configured. The existing admin Founder Bonus creation path also refuses a preview-only
+market (including duplicate-request replay); Founder Bonus settlement skips
+such books without writing a payout/claim. This prevents the nonfunded preview
+from creating a new founder entitlement through an older admin route.
+
+The legacy settled/voided wager payout selector excludes `preview_only`
+markets even if malformed financial records were injected by a separate
+writer. The central pending-claim retry controller also refuses preview-origin
+claims (including founder bonuses whose market relationship points to a
+preview), before any payout attempt or claim mutation. A disposable
+PostgreSQL regression inserts and then deletes a synthetic claim to verify
+the refusal and unchanged financial fields.
+
+A user might nevertheless send funds to an
+address outside application control: this safeguard cannot itself reverse
+or certify an external chain payment.
+
+The preview admission's public battle-number allocation now occurs inside the
+same database transaction as the created winner/Desync family. A rejected
+alias, terminal/owner-conflicting family, lock timeout, delayed cutoff expiry
+or failed commit cannot leave newly created/updated `BattleIdentity` rows
+from the rejected preview request. Already existing markets and their public
+battle identities remain read-only on the preview path.
+
+Qualify the actual isolated PostgreSQL refusal/rollback tests and production
+source build before any website release. FINANCIAL risk classification remains
+unchanged; the Wolo runtime source-drift P1 and protected Finish HOLD must not
+be waived. This change is review source only, not a financial approval,
+production deploy, migration, signer activation or chain transaction.
+
+## October 24 — original LIVE admission extracted with funding disabled
+
+The private authenticated post-ingest coordinator now awaits metadata admission
+from durable original HD Watcher rows; the existing private recovery endpoint
+can recover a missed notification. Receipt flags only select row IDs. Source,
+uploader/Steam identity, HD mode, current capture, provenance and roster are
+revalidated under bounded database locks. LIVE winner/Desync creation and the
+new child link share one transaction, with freshness checked after final I/O.
+
+This extraction deliberately does **not** invoke financial identity promotion.
+It takes the existing sorted canonical/alias advisory locks and refuses occupied
+alias families. Any incompatible or terminal canonical sibling refuses the
+whole family before creation; compatible existing books are read-only. A creator
+outside the shared lock causes a unique conflict/rollback instead of an upsert
+over its state. Existing wagers, wallet locks, stake tickets/intents, founder
+bonuses, pending claims and queued refunds are not reattributed by this path.
+Synthetic PostgreSQL sentinels are regression fixtures, never dispositions of
+historical refund #8477 or claim #889.
+
+The isolated PostgreSQL qualification uses the existing main Prisma datamodel,
+not held Satchel SQL. Funded balance/reservation and maintenance-policy tables
+remain absent. Existing preview caps, UI, payment transport, public maintenance
+fallbacks and `LIVE_EXECUTOR_IMPLEMENTED=false` remain unchanged. Metadata and
+`shadow_ready` previews do not create reserves, wagers, credits or plan spending.
+The eight financial migrations and funded source in held PR #838 require their
+own reviewed release; do not deploy that mixed PR as a website-only shortcut.
+
+This candidate still touches the governed betting domain and requires normal
+exact-head CI, independent source/release review and protected website staging,
+authorization and rollback. It does not bypass `aoe2war finish` or Wolo issue
+#5. Existing public/timer financial producers still require the complete
+coordinated maintenance fence before any financial operation.
+
 ## October 19 — source-linked public GET and prewarm financial producer census
 
 `scripts/aoe2_financial_producer_source_census.py --check` is a

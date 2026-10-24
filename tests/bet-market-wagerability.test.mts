@@ -384,3 +384,23 @@ test(
     );
   }
 );
+
+test("preview-only original LIVE winner and Desync books never offer WOLO staking", () => {
+  for (const marketType of ["winner", "desync"]) {
+    for (const status of ["open", "live"]) {
+      const market = {
+        bookPhase: "preview_only",
+        marketType,
+        status,
+        closeAt: null,
+        linkedSessionKey: "platform:watcher-live-preview",
+        scheduledMatchId: null,
+      };
+      assert.equal(freshBettingCloseReason(market, NOW), "market_not_open");
+      assert.equal(isFreshBetMarketWagerable(market, NOW), false);
+      const legacy = {...market, bookPhase: "pre_game"};
+      assert.equal(freshBettingCloseReason(legacy, NOW), null);
+    }
+  }
+  assert.deepEqual(buildFreshBetMarketWriteWhere(NOW).bookPhase, {not:"preview_only"});
+});
