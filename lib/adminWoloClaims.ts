@@ -70,7 +70,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market" | "source_attribution_conflict";
       detail?: string;
     }
   | {
@@ -99,6 +99,11 @@ function compactDbDetail(value: string | null | undefined) {
 }
 
 const MARKET_SETTLEMENT_CLAIM_KINDS = new Set(["bet_payout", "bet_refund", "winner_bounty", "founders_bonus"]);
+// Historical Founder wins and corrective refunds require economic origins,
+// but MUST NOT join the existing market-escrow payout routing.
+const ORIGIN_REQUIRED_CLAIM_KINDS = new Set([
+  ...MARKET_SETTLEMENT_CLAIM_KINDS, "founders_win", "bet_corrective_refund",
+]);
 
 function isMarketSettlementClaim(claim: {
   sourceMarketId: number | null;
@@ -822,6 +827,50 @@ export async function retryPendingClaimSettlement(
 
   if (claim.status !== "pending") {
     return { outcome: "skipped", claimId: claim.id, reason: "not_pending" };
+  }
+
+  // The original nonfunded LIVE website uses bookPhase=preview_only.
+  // Never let a missing SetNull historical origin or a display-only market
+  // become signer authority, even during legacy claim cleanup.
+  if (claim.sourceMarketId === null &&
+      claim.sourceFounderBonusId === null &&
+      ORIGIN_REQUIRED_CLAIM_KINDS.has((claim.claimKind || "").trim())) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "source_attribution_conflict",
+      detail: "Market-linked claim has no surviving economic origin; independent entitlement review required.",
+    };
+  }
+  const directOrigin = claim.sourceMarketId !== null
+    ? await prisma.betMarket.findUnique({
+        where: { id: claim.sourceMarketId }, select: { id: true, bookPhase: true },
+      })
+    : null;
+  const founderOrigin = claim.sourceFounderBonusId !== null
+    ? await prisma.betMarketFounderBonus.findUnique({
+        where: { id: claim.sourceFounderBonusId },
+        select: { marketId: true, market: { select: { bookPhase: true } } },
+      })
+    : null;
+  if ((claim.sourceMarketId !== null && !directOrigin) ||
+      (claim.sourceFounderBonusId !== null && !founderOrigin) ||
+      (directOrigin && founderOrigin && directOrigin.id !== founderOrigin.marketId)) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "source_attribution_conflict",
+      detail: "Direct-market and Founder Bonus origins conflict; independent entitlement review required.",
+    };
+  }
+  if (directOrigin?.bookPhase === "preview_only" ||
+      founderOrigin?.market.bookPhase === "preview_only") {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "preview_only_market",
+      detail: "Preview-only LIVE battles cannot generate WOLO payout or claim retries.",
+    };
   }
 
   if (hasAmbiguousPriorWoloPayoutAttempt(claim)) {

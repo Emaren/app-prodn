@@ -38,7 +38,7 @@ export function fundedMechaEligibleQuery(
       createdAt: { gte: earliest, lte: now },
       OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
       winnerMarket: { status: "live", integrityStatus: "verified",
-        marketType: "winner" },
+        marketType: "winner", bookPhase: { not: "preview_only" } },
       preset: {
         enabled: true, selfOnly: true,
         OR: [{ untilOut: true }, { gamesRemaining: { gt: 0 } }],

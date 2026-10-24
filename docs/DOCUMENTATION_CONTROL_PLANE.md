@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-watcher-atomic-admission` at `2337493a5d71309dd86a61f6e35d052ef9ac7776`
+Implementation baseline: `review/20261024-funded-live-origin-fence` at `ba6cf39d20b4ed5d9f870979cd6f637c56ec1eb6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
