@@ -134,7 +134,12 @@ def verify_signatures(payload: dict, signatures: dict, trust_root: Path) -> None
     for role in REQUIRED_ROLES:
         key = trust_root / (role + ".pem")
         pem = trust_key(key, trust_root)
-        fingerprint = digest(pem)
+        der = subprocess.run(["openssl", "pkey", "-pubin", "-in", str(key),
+                              "-pubout", "-outform", "DER"],
+                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             timeout=10, check=False)
+        ensure(der.returncode == 0 and der.stdout, "invalid reviewer public key")
+        fingerprint = digest(der.stdout)
         ensure(fingerprint not in fingerprints, "reviewer identity not independent")
         fingerprints.add(fingerprint)
         try:
@@ -177,7 +182,8 @@ def assess(*, repo: Path, manifest: dict, manifest_raw: bytes, gate: dict,
            "manifest source or prior production mismatch")
     ensure(manifest.get("risk_class") == "FINANCIAL", "financial scope misclassified")
     ensure(manifest.get("migration_paths") == [], "mixed or unauthorized migrations")
-    ensure(manifest.get("gate", {}).get("status") == "PASS" and gate.get("status") == "PASS",
+    ensure(manifest.get("gate", {}).get("status") == "PASS" and gate.get("status") == "PASS"
+           and gate.get("risk_class") == "FINANCIAL",
            "release gate not independently passing")
     ensure(manifest.get("gate", {}).get("receipt_sha256") == digest(gate_raw),
            "gate not bound into manifest")
