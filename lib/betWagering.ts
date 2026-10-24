@@ -56,6 +56,7 @@ export type BetMarketPreflightContext = {
     id: number;
     parentMarketId: number | null;
     slug: string;
+    bookPhase: string;
     status: string;
     winnerSide: string | null;
     settledAt: Date | null;
