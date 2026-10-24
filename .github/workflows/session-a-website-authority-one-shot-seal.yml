@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          test "$(git branch --show-current)" = "session-a/website-authority-v2-20261024"
+          test "$GITHUB_REF" = "refs/heads/session-a/website-authority-v2-20261024"
           git rm -- .github/workflows/session-a-website-authority-one-shot-seal.yml
           git commit -m "ci: retire Session A temporary docs sealer before baseline"
       - name: Regenerate only source-bound canonical DocsV2 files
