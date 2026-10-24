@@ -47,15 +47,19 @@ export async function startLiveWatcherDatabase() {
     const ddl = execFileSync(path.join(REPOSITORY, "node_modules/.bin/prisma"), ["migrate", "diff", "--from-empty", "--to-schema", path.join(REPOSITORY, "prisma/schema.prisma"), "--script"],
       {cwd: REPOSITORY, env, encoding: "utf8", maxBuffer: 16 * 1024 * 1024, timeout: 120000});
     assert.ok(ddl.includes('CREATE TABLE "bet_markets"') && ddl.includes('CREATE TABLE "game_stats"'), "offline Prisma diff omitted canonical LIVE tables");
-    assert.ok(!ddl.includes('CREATE TABLE "war_satchel_funded_balances"'), "funded Satchel schema must stay excluded");
+    // The combined integration datamodel includes held Satchel table shapes.
+    // This private DB has NO protected migration authorization, chain or signer.
+    assert.ok(ddl.includes('CREATE TABLE "war_satchel_funded_balances"'), "combined funded datamodel absent");
     // The schema intentionally refers to this separately managed sequence.
     await sql.query("CREATE SEQUENCE battle_public_number_seq START 1");
     await sql.query(ddl);
-    // Use only the existing main datamodel, never held custody SQL or activation.
-    // LIVE admission writes metadata and preview evidence in existing tables.
+    // Prisma creates synthetic TABLE SHAPES, not protected migrations or custody.
+    // Original LIVE admission must never write into any funded balance.
     const forbidden = await sql.query("SELECT to_regclass('public.war_satchel_funded_balances') AS funded, to_regclass('public.hd_financial_maintenance_policy') AS policy");
-    assert.equal(forbidden.rows[0].funded, null);
-    assert.equal(forbidden.rows[0].policy, null);
+    assert.ok(forbidden.rows[0].funded,"synthetic funded table schema must exist for joint qualification");
+    assert.equal(forbidden.rows[0].policy, null,"protected financial-maintenance SQL never ran");
+    const balance = await sql.query("SELECT count(*)::int AS n FROM war_satchel_funded_balances");
+    assert.equal(balance.rows[0].n,0,"no funded custody data belongs in original LIVE fixture");
     const tableCount = Number((await sql.query("SELECT count(*) FROM pg_tables WHERE schemaname='public'")).rows[0].count);
     assert.ok(tableCount > 100, "existing main application dependencies must use full relational schema");
     prisma = new PrismaClient({adapter: new PrismaPg({host: socket, port: 5432, user: ROLE, database: "postgres", max: 6})});
