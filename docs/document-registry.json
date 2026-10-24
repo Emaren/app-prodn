@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "69a85b908b866c0b24cdceee8b895c415983ee9d612c7bf555b1fe45862b8069",
+      "sha256": "56bacda31618e2b8f8e5e531445312a3cf01552ee028a3b8613a38cb36fc5f34",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-funded-p1-release-parity",
-    "commit": "1948e8a4a9f5967a2f8d454c5ff717401ea79cdd"
+    "branch": "session-b/funded-epoch-integration-20261024",
+    "commit": "9ea0b267adeac3622084dace824fc8c570e500d4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

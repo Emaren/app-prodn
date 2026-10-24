@@ -494,6 +494,59 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
       }finally{await sentinels.cleanup();await db.prisma.betMarket.delete({where:{id:alias.id}});}
     });
+    await t.test("an empty correctly linked canonical preview family supports read-only redelivery",async()=>{
+      const row=await persist("compatible-linked-preview"),canonical="platform:controlled-hd-compatible-linked-preview";
+      assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+      const before=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}});
+      const parent=before.find(value=>value.marketType==="winner")!,child=before.find(value=>value.marketType==="desync")!;
+      assert.ok(parent);assert.ok(child);assert.equal(parent.parentMarketId,null);assert.equal(child.parentMarketId,parent.id);
+      const previews=await db.prisma.betAutoExecution.count(),calls=networkCalls;
+      const identities=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+      const report=await ingest(row);
+      assert.equal(report.admission.liveMarkets.succeeded,true);
+      assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,2);
+      assert.deepEqual(await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}}),before);
+      assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identities);
+      assert.equal(await db.prisma.betAutoExecution.count(),previews);assert.equal(networkCalls,calls);
+    });
+    for(const malformation of ["winner-has-parent","child-parent-null","child-parent-other-family","child-without-winner"] as const){
+      await t.test(`canonical preview ${malformation} refuses the entire family without repairs or side effects`,async()=>{
+        const name="malformed-preview-"+malformation,row=await persist(name),canonical="platform:controlled-hd-"+name;
+        assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+        const pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical}});
+        const parent=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
+        assert.ok(parent);assert.ok(child);assert.equal(child.parentMarketId,parent.id);
+        await db.prisma.betAutoExecution.deleteMany({where:{winnerMarketId:parent.id}});
+        const other=await db.prisma.betMarket.findFirstOrThrow({where:{marketType:"winner",id:{not:parent.id}}});
+        if(malformation==="winner-has-parent"){
+          await db.prisma.betMarket.update({where:{id:parent.id},data:{parentMarketId:other.id}});
+        }else if(malformation==="child-parent-other-family"){
+          await db.prisma.betMarket.update({where:{id:child.id},data:{parentMarketId:other.id}});
+        }else{
+          await db.prisma.betMarket.update({where:{id:child.id},data:{parentMarketId:null}});
+          if(malformation==="child-without-winner")await db.prisma.betMarket.delete({where:{id:parent.id}});
+        }
+        const before=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}});
+        // No sentinel exposure is attached: refusal must come from the exact
+        // malformed parent relationship, not a separate financial guard.
+        assert.ok(before.every(value=>value.bookPhase==="preview_only"&&value.firstStakeAcceptedAt===null));
+        const identities=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+        const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count(),calls=networkCalls;
+        try{
+          const report=await ingest(row);
+          assert.equal(report.admission.liveMarkets.succeeded,true);
+          assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+          assert.equal(await db.prisma.betMarket.count(),count);assert.equal(await db.prisma.betAutoExecution.count(),previews);
+          assert.deepEqual(await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical},orderBy:{id:"asc"}}),before);
+          assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identities);
+          assert.equal(networkCalls,calls);
+        }finally{
+          await db.prisma.betAutoExecution.deleteMany({where:{winnerMarketId:parent.id}});
+          await db.prisma.betMarket.delete({where:{id:child.id}});
+          if(malformation!=="child-without-winner")await db.prisma.betMarket.delete({where:{id:parent.id}});
+        }
+      });
+    }
     await t.test("redelivery reads compatible canonical books without updating financial obligations or child links",async()=>{
       const row=await persist("occupied-canonical");assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
       const identity=await sourceIdentity("occupied-canonical"),pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:identity.canonical}});

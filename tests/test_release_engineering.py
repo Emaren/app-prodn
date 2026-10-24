@@ -314,18 +314,18 @@ class ReleaseEngineeringTests(unittest.TestCase):
             finally:
                 MODULE.ACTIVATION_RECEIPT_DIR = original
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MutatingShipSourceP1Tests(unittest.TestCase):
     def _plan(self, **changes):
+        # Synthetic collector-shaped unit evidence; never a real release permit.
         value = {
+            "schema": 1, "maintenance_only": False, "external_hold": None,
             "blocked": False,
-            "unknown_p0": [],
-            "unknown_p1": [],
-            "auto_remediable_p1": [],
-            "blocked_source_docs": [],
+            "unknown_p0": [], "unknown_p1": [],
+            "auto_remediable_p0": [], "auto_remediable_p1": [],
+            "blocked_source_docs": [], "maintenance_errors": [],
+            "audit": {"schema": 1, "estate": "HEALTHY", "p0": 0, "p1": 0,
+                      "findings": [], "info": {"wolo_vps": {
+                          "head": "b" * 40, "expected_implementation_baseline": "b" * 40}}},
         }
         value.update(changes)
         return value
@@ -417,3 +417,193 @@ class MutatingShipSourceP1Tests(unittest.TestCase):
                         self.assertEqual(MODULE.main(), 2)
         guard.assert_not_called()
         fake_ship.ship_release.assert_called_once()
+
+    def test_missing_positive_wolo_observation_fails_closed(self):
+        for evidence in (None, {}, {"wolo_vps": None}, {"wolo_vps": {}},
+                         {"wolo_vps": {"head": "b" * 40}}):
+            with self.subTest(evidence=evidence):
+                plan = self._plan()
+                plan["audit"]["info"] = evidence
+                self.assertTrue(self._evaluate(plan))
+
+    def test_malformed_or_different_observed_wolo_heads_do_not_manufacture_parity(self):
+        for value in (None, "", "b" * 39, "B" * 40, "0" * 40, "b" * 40 + "\n", 1, []):
+            for field in ("head", "expected_implementation_baseline"):
+                with self.subTest(field=field, value=value):
+                    plan = self._plan()
+                    plan["audit"]["info"]["wolo_vps"][field] = value
+                    self.assertTrue(self._evaluate(plan))
+        plan = self._plan()
+        plan["audit"]["info"]["wolo_vps"]["head"] = "c" * 40
+        self.assertTrue(self._evaluate(plan), "different genuine observations remain P1 even if its finding was lost")
+
+    def test_missing_malformed_or_maintenance_plan_cannot_admit_ship(self):
+        self.assertTrue(self._evaluate({"blocked": False}))
+        for field in ("unknown_p0", "unknown_p1", "auto_remediable_p0", "auto_remediable_p1", "blocked_source_docs", "maintenance_errors"):
+            for malformed in (None, {}, "", [None]):
+                with self.subTest(field=field, malformed=malformed):
+                    plan = self._plan()
+                    plan[field] = malformed
+                    self.assertTrue(self._evaluate(plan))
+            plan = self._plan()
+            del plan[field]
+            self.assertTrue(self._evaluate(plan))
+        for change in ({"schema": True}, {"schema": 2}, {"maintenance_only": True},
+                       {"external_hold": {"status": "DOCS_MAINTENANCE_ONLY"}}):
+            self.assertTrue(self._evaluate(self._plan(**change)))
+
+    def test_unblocked_flag_cannot_hide_unknown_or_source_documentation_errors(self):
+        for field in ("unknown_p0", "unknown_p1", "blocked_source_docs"):
+            with self.subTest(field=field):
+                plan = self._plan()
+                plan[field] = [{"area": "Release", "key": "unreviewed-source"}]
+                self.assertTrue(self._evaluate(plan))
+        self.assertTrue(self._evaluate(self._plan(maintenance_errors=["missing evidence"])))
+
+    def test_audit_wolo_p1_cannot_disappear_from_planner_classification(self):
+        plan = self._plan()
+        plan["audit"].update(estate="ATTENTION_REQUIRED", p1=1, findings=[{
+            "severity": "P1", "area": "WoloChain", "key": "vps-source-drift", "detail": "still unresolved"}])
+        self.assertTrue(self._evaluate(plan))
+        for audit in (None, {}, {"schema": 1}, {"schema": 1, "findings": "missing"}):
+            self.assertTrue(self._evaluate(self._plan(audit=audit)))
+        for change in ({"estate": "APPROVED"}, {"p1": 1}, {"p0": False}, {"schema": True}, {"findings": [None]}):
+            plan = self._plan()
+            plan["audit"].update(change)
+            self.assertTrue(self._evaluate(plan))
+
+    def test_missing_observation_blocks_actual_mutating_dispatch_for_all_ship_modes(self):
+        fake_node = SimpleNamespace(ensure_build_node_runtime=mock.Mock(), BuildNodeError=RuntimeError)
+        provider = SimpleNamespace(collect_plan=mock.Mock(return_value={"blocked": False}))
+        for mode in ([], ["--stage"], ["--activate", "fake-stage-receipt"], ["--prepare-only"]):
+            with self.subTest(mode=mode), patch.dict(sys.modules, {"aoe2_node_runtime": fake_node, "aoe2_update": provider}), \
+                 patch.object(sys, "argv", ["aoe2war-release", "ship", "--json", *mode]), \
+                 patch.object(MODULE, "collect", return_value={}), patch.object(MODULE, "run_mutating_release") as mutator:
+                with redirect_stdout(io.StringIO()):
+                    self.assertEqual(MODULE.main(), 2)
+                mutator.assert_not_called()
+
+
+    def test_emergency_rollback_keeps_existing_receipt_authority_instead_of_ship_guard(self):
+        fake_rollback = SimpleNamespace(rollback_release=mock.Mock(return_value=7))
+        with patch.dict(sys.modules, {"aoe2_release_rollback": fake_rollback}), \
+             patch.object(sys, "argv", ["aoe2war-release", "rollback"]), \
+             patch.object(MODULE, "collect", return_value={}), \
+             patch.object(MODULE, "mutating_ship_source_blockers") as guard, \
+             patch.object(MODULE, "run_mutating_release", side_effect=lambda action: action()) as mutation_lease:
+            self.assertEqual(MODULE.main(), 7)
+            guard.assert_not_called()
+            mutation_lease.assert_called_once()
+            fake_rollback.rollback_release.assert_called_once()
+
+
+    def test_all_malformed_evidence_lists_refuse_without_silent_skip(self):
+        for field in ("unknown_p0", "unknown_p1", "auto_remediable_p1",
+                      "blocked_source_docs"):
+            with self.subTest(field=field):
+                for bad in (None, {}, "ignored", ["not a finding"]):
+                    evidence = self._plan(**{field: bad})
+                    result = self._evaluate(evidence)
+                    self.assertTrue(result)
+                    self.assertIn("malformed " + field, result[0])
+
+    def test_nonboolean_blocked_flag_refuses(self):
+        for value in (0, "", "false", None):
+            with self.subTest(value=value):
+                errors = self._evaluate(self._plan(blocked=value))
+                self.assertIn("blocked flag", errors[0])
+
+    def test_locked_action_refreshes_source_and_refuses_new_p1_before_action(self):
+        fresh = {"production": {"source_sha": "c" * 40}}
+        action = mock.Mock(return_value=0)
+        with patch.object(MODULE, "collect", return_value=fresh) as collector:
+            with patch.object(
+                MODULE, "mutating_ship_source_blockers",
+                return_value=["WoloChain/vps-source-drift newly observed"],
+            ) as guard:
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    result = MODULE.locked_mutating_ship(action)
+        self.assertEqual(result, 2)
+        self.assertIn("LOCKED MUTATING SHIP", output.getvalue())
+        collector.assert_called_once()
+        guard.assert_called_once_with(fresh)
+        action.assert_not_called()
+
+    def test_locked_action_uses_fresh_snapshot_only_when_source_clear(self):
+        fresh = {"production": {"source_sha": "d" * 40}}
+        action = mock.Mock(return_value=17)
+        with patch.object(MODULE, "collect", return_value=fresh):
+            with patch.object(
+                MODULE, "mutating_ship_source_blockers", return_value=[],
+            ):
+                self.assertEqual(MODULE.locked_mutating_ship(action), 17)
+        action.assert_called_once_with(fresh)
+
+    def test_locked_snapshot_read_error_refuses_mutation(self):
+        action = mock.Mock(return_value=0)
+        with patch.object(
+            MODULE, "collect", side_effect=RuntimeError("VPS unavailable"),
+        ):
+            self.assertEqual(MODULE.locked_mutating_ship(action), 2)
+        action.assert_not_called()
+
+    def test_mutating_dispatch_executes_locked_check_before_all_four_actions(self):
+        fake_node = SimpleNamespace(
+            ensure_build_node_runtime=mock.Mock(),
+            BuildNodeError=RuntimeError,
+        )
+        fake_ship = SimpleNamespace(activate_release=mock.Mock(return_value=0))
+        fake_stage = SimpleNamespace(stage_release=mock.Mock(return_value=0))
+        fake_auto = SimpleNamespace(ship_all=mock.Mock(return_value=0))
+        initial = {"local": {"head": "a" * 40}}
+        fresh = {"local": {"head": "b" * 40}}
+        modes = ([], ["--stage"], ["--activate", "existing-receipt"],
+                 ["--prepare-only"])
+        for mode in modes:
+            with self.subTest(mode=mode):
+                fake_ship.activate_release.reset_mock()
+                fake_stage.stage_release.reset_mock()
+                fake_auto.ship_all.reset_mock()
+                state = {"checks": 0}
+
+                def guard(_snapshot):
+                    state["checks"] += 1
+                    return [] if state["checks"] == 1 else [
+                        "WoloChain/vps-source-drift changed while awaiting lease"
+                    ]
+
+                with patch.dict(sys.modules, {
+                    "aoe2_node_runtime": fake_node,
+                    "aoe2_release_ship": fake_ship,
+                    "aoe2_release_stage": fake_stage,
+                    "aoe2_release_auto": fake_auto,
+                }):
+                    with patch.object(sys, "argv", [
+                        "aoe2war-release", "ship", *mode,
+                    ]):
+                        with patch.object(
+                            MODULE, "collect", side_effect=[initial, fresh],
+                        ):
+                            with patch.object(
+                                MODULE, "mutating_ship_source_blockers",
+                                side_effect=guard,
+                            ):
+                                # Test the exact callable while standing in for
+                                # lock acquisition. The real lock remains owned
+                                # by run_mutating_release in production.
+                                with patch.object(
+                                    MODULE, "run_mutating_release",
+                                    side_effect=lambda action: action(),
+                                ):
+                                    with redirect_stdout(io.StringIO()):
+                                        rc = MODULE.main()
+                self.assertEqual(rc, 2)
+                self.assertEqual(state["checks"], 2)
+                fake_ship.activate_release.assert_not_called()
+                fake_stage.stage_release.assert_not_called()
+                fake_auto.ship_all.assert_not_called()
+
+
+if __name__ == "__main__":
+    unittest.main()
