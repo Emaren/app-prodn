@@ -4541,7 +4541,7 @@ async function reconcilePendingCoreBetClaims(
   }
 }
 
-async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
+export async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
   const retryCutoff = new Date(Date.now() - 5 * 60_000);
   const candidates = await prisma.betMarketFinancialAdjustment.findMany({
     where: {
