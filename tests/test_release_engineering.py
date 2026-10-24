@@ -1,4 +1,9 @@
 import fcntl
+import io
+import sys
+from contextlib import redirect_stdout
+from types import SimpleNamespace
+from unittest import mock
 import importlib.util
 import json
 import os
@@ -311,3 +316,104 @@ class ReleaseEngineeringTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MutatingShipSourceP1Tests(unittest.TestCase):
+    def _plan(self, **changes):
+        value = {
+            "blocked": False,
+            "unknown_p0": [],
+            "unknown_p1": [],
+            "auto_remediable_p1": [],
+            "blocked_source_docs": [],
+        }
+        value.update(changes)
+        return value
+
+    def _evaluate(self, plan):
+        provider = SimpleNamespace(collect_plan=mock.Mock(return_value=plan))
+        with patch.dict(sys.modules, {"aoe2_update": provider}):
+            errors = MODULE.mutating_ship_source_blockers({"local": {"head": "a" * 40}})
+        provider.collect_plan.assert_called_once_with(
+            release_data={"local": {"head": "a" * 40}},
+            defer_runtime_provenance=True,
+        )
+        return errors
+
+    def test_existing_real_wolo_p1_refused_before_any_ship_mutation(self):
+        p1 = {"area": "WoloChain", "key": "vps-source-drift",
+              "detail": "VPS runtime differs from reviewed baseline"}
+        errors = self._evaluate(self._plan(blocked=True, unknown_p1=[p1]))
+        self.assertIn("WoloChain/vps-source-drift", errors[0])
+
+    def test_remediable_label_does_not_auto_clear_wolo_p1(self):
+        p1 = {"area": "WoloChain", "key": "vps-source-drift",
+              "detail": "still needs independent disposition"}
+        errors = self._evaluate(self._plan(auto_remediable_p1=[p1]))
+        self.assertIn("WoloChain/vps-source-drift", errors[0])
+
+    def test_other_finish_unknown_findings_fail_closed(self):
+        errors = self._evaluate(self._plan(
+            blocked=True,
+            unknown_p0=[{"area": "Release", "key": "unreviewed-source"}],
+        ))
+        self.assertIn("Release/unreviewed-source", errors[0])
+
+    def test_unblocked_plan_no_wolo_source_drift_allows_next_protected_gate(self):
+        self.assertEqual(self._evaluate(self._plan()), [])
+
+    def test_missing_or_broken_update_plan_fails_closed(self):
+        provider = SimpleNamespace(collect_plan=mock.Mock(
+            side_effect=RuntimeError("evidence inspection unavailable"),
+        ))
+        with patch.dict(sys.modules, {"aoe2_update": provider}):
+            self.assertIn("unavailable", MODULE.mutating_ship_source_blockers({})[0])
+        self.assertTrue(self._evaluate({"status": "UNVERIFIED"}))
+
+    def test_every_mutating_ship_entrypoint_refuses_source_p1_before_action(self):
+        modes = ([], ["--stage"], ["--activate", "fake-stage-receipt"],
+                 ["--prepare-only"])
+        fake_node = SimpleNamespace(
+            ensure_build_node_runtime=mock.Mock(),
+            BuildNodeError=RuntimeError,
+        )
+        for mode in modes:
+            with self.subTest(mode=mode):
+                with patch.dict(sys.modules, {"aoe2_node_runtime": fake_node}):
+                    with patch.object(sys, "argv", ["aoe2war-release", "ship", *mode]):
+                        with patch.object(MODULE, "collect", return_value={}):
+                            with patch.object(
+                                MODULE, "mutating_ship_source_blockers",
+                                return_value=["WoloChain/vps-source-drift"],
+                            ) as guard:
+                                with patch.object(
+                                    MODULE, "run_mutating_release",
+                                ) as mutator:
+                                    output = io.StringIO()
+                                    with redirect_stdout(output):
+                                        rc = MODULE.main()
+                self.assertEqual(rc, 2)
+                self.assertIn("SOURCE/P1 PREFLIGHT BLOCKED", output.getvalue())
+                guard.assert_called_once_with({})
+                mutator.assert_not_called()
+
+    def test_read_only_ship_dry_run_does_not_invoke_mutation_p1_guard(self):
+        fake_node = SimpleNamespace(
+            ensure_build_node_runtime=mock.Mock(),
+            BuildNodeError=RuntimeError,
+        )
+        fake_ship = SimpleNamespace(ship_release=mock.Mock(return_value=2))
+        with patch.dict(sys.modules, {
+            "aoe2_node_runtime": fake_node,
+            "aoe2_release_ship": fake_ship,
+        }):
+            with patch.object(sys, "argv", [
+                "aoe2war-release", "ship", "--dry-run",
+            ]):
+                with patch.object(MODULE, "collect", return_value={}):
+                    with patch.object(
+                        MODULE, "mutating_ship_source_blockers",
+                    ) as guard:
+                        self.assertEqual(MODULE.main(), 2)
+        guard.assert_not_called()
+        fake_ship.ship_release.assert_called_once()
