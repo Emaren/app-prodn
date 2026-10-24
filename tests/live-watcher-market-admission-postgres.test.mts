@@ -1,23 +1,29 @@
 /** Controlled original-LIVE admission through actual committed PG rows and HD
  * coordinator/market writers. No game client, independent oracle or finance
- * activation is certified; no token, stake, claim or reserve is fabricated. */
+ * activation is certified. Obligation sentinels are explicitly synthetic;
+ * no real token movement, historical disposition or custody is inferred. */
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {setTimeout as sleep} from "node:timers/promises";
 import test from "node:test";
 import type {Prisma} from "../lib/generated/prisma/index.js";
 import {coordinateReplayPostIngest,classifyReplayIngestReceipt} from "../lib/replayPostIngest.ts";
-import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets} from "../lib/bets.ts";
-import {freshBettingCloseReason} from "../lib/betMarketWagerability.ts";
-import {startLifecycleDatabase} from "./fixtures/satchel-lifecycle-db.mts";
+import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets,buildWatcherMarketSlugForSessionKey,settleMarketIntegrityCorrections} from "../lib/bets.ts";
+import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
+import {canonicalBattleIdentityKey} from "../lib/battleIdentity.ts";
+import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
+import {freshBettingCloseReason,buildFreshBetMarketWriteWhere} from "../lib/betMarketWagerability.ts";
+import {loadBetMarketPreflightContext,assertBetMarketPreflight} from "../lib/betWagering.ts";
+import {createFounderBonus} from "../lib/betFounderBonuses.ts";
+import {retryPendingClaimSettlement} from "../lib/adminWoloClaims.ts";
+import {startLiveWatcherDatabase} from "./fixtures/live-watcher-db.mts";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
 
 test("private original HD LIVE commits admit canonical markets before result/close without page visits",{
   skip:process.env.RUN_LIVE_MARKET_PG_TESTS!=="1",timeout:120000,
 },async t=>{
-  const db=await startLifecycleDatabase(),originalFetch=globalThis.fetch,previousMode=process.env.BET_AUTOMATION_MODE;
+  const db=await startLiveWatcherDatabase(),originalFetch=globalThis.fetch,previousMode=process.env.BET_AUTOMATION_MODE;
   let networkCalls=0;
   globalThis.fetch=(async()=>{networkCalls++;throw Error("live admission may not reach a signer or chain");}) as typeof fetch;
   process.env.BET_AUTOMATION_MODE="shadow";
@@ -66,10 +72,146 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const markets=await db.prisma.betMarket.findMany({orderBy:{id:"asc"}});
       assert.equal(markets.length,2);const winner=markets.find(m=>m.marketType==="winner")!,desync=markets.find(m=>m.marketType==="desync")!;
       assert.ok(winner);assert.ok(desync);assert.equal(winner.status,"live");assert.equal(winner.linkedGameStatsId,null);
-      assert.equal(winner.winnerSide,null);assert.equal(freshBettingCloseReason(winner),null);
+      assert.equal(winner.winnerSide,null);
+      assert.equal(winner.bookPhase,"preview_only");
+      assert.equal(desync.bookPhase,"preview_only");
+      assert.equal(freshBettingCloseReason(winner),"market_not_open");
+      assert.equal(freshBettingCloseReason(desync),"market_not_open");
+      assert.ok(winner.battleId !== null,"public identity is attached atomically to admitted preview");
+      const context=await loadBetMarketPreflightContext(db.prisma,{marketId:winner.id,side:"left"});
+      assert.throws(()=>assertBetMarketPreflight(context,{
+        viewer:{id:owner.id,inGameName:owner.inGameName,steamPersonaName:null},side:"left",
+      }),/preview-only battle/);
+      const forbiddenStakeWrite=await db.prisma.betMarket.updateMany({
+        where:{id:winner.id,...buildFreshBetMarketWriteWhere()},
+        data:{bettingLockedAt:new Date()},
+      });
+      assert.equal(forbiddenStakeWrite.count,0,"final financial write cannot lock preview book");
+      assert.equal(await db.prisma.betStakeIntent.count(),0);
+      assert.equal(await db.prisma.betWager.count(),0);
+      await assert.rejects(
+        () => createFounderBonus(db.prisma,{
+          marketId:winner.id,bonusType:"participants",amountWolo:100,
+          createdByUserId:owner.id,requestId:"no-founder-on-preview",
+        }),
+        /Preview-only battles cannot receive WOLO founder bonuses/,
+      );
+      assert.equal(await db.prisma.betMarketFounderBonus.count({where:{marketId:winner.id}}),0);
+      const fakeClaim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"preview-only-guard-probe",
+        displayPlayerName:"Preview Only Guard Probe",
+        amountWolo:1,claimKind:"bet_refund",claimGroupKey:"preview-refusal",
+        status:"pending",sourceMarketId:winner.id,
+      }});
+      const refusedRetry=await retryPendingClaimSettlement(db.prisma,fakeClaim.id);
+      assert.equal(refusedRetry.outcome,"skipped");
+      assert.equal(refusedRetry.outcome==="skipped"?refusedRetry.reason:null,"preview_only_market");
+      const afterRetry=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:fakeClaim.id}});
+      assert.equal(afterRetry.status,"pending");
+      assert.equal(afterRetry.payoutTxHash,null);
+      assert.equal(afterRetry.payoutAttemptedAt,null);
+      await db.prisma.pendingWoloClaim.delete({where:{id:fakeClaim.id}});
       assert.equal(desync.parentMarketId,winner.id);assert.equal(desync.battleId,winner.battleId);
       assert.equal(await db.prisma.betAutoExecution.count(),1);
       assert.equal((await db.prisma.betAutoPreset.findUniqueOrThrow({where:{id:preset.id}})).gamesRemaining,12);
+    });
+
+    await t.test("corrective-refund worker ignores voided preview and malformed cross-book adjustments before any claim or signer",async()=>{
+      const createBook=async(slug:string,bookPhase:"preview_only"|"legacy")=>db.prisma.betMarket.create({data:{
+        slug,title:"Isolated corrective refusal",eventLabel:"PG noninterference",
+        leftLabel:"Fixture A",rightLabel:"Fixture B",marketType:"winner",
+        bookPhase,status:"voided",
+      }});
+      const preview=await createBook("pg-corrective-preview","preview_only");
+      const legacy=await createBook("pg-corrective-legacy","legacy");
+      const wager=await db.prisma.betWager.create({data:{
+        marketId:preview.id,userId:owner.id,side:"left",amountWolo:10,status:"void",
+        executionMode:"escrow",
+      }});
+      const incidents=[] as number[],adjustments=[] as number[];
+      try {
+        for(const [name,market] of [["preview",preview],["cross-origin",legacy]] as const) {
+          const incident=await db.prisma.betMarketIntegrityIncident.create({data:{
+            marketId:market.id,incidentKey:"pg-corrective-"+name,
+            incidentType:"invalid_team_assignment",status:"open",publicSummary:"Synthetic",
+            evidence:{fixture:true},originalLeftLabel:"Fixture A",originalRightLabel:"Fixture B",
+          }});
+          incidents.push(incident.id);
+          const adjustment=await db.prisma.betMarketFinancialAdjustment.create({data:{
+            incidentId:incident.id,wagerId:wager.id,userId:owner.id,
+            originalStakeWolo:10,voidEntitlementWolo:10,amountStillOwedWolo:10,
+            adjustmentStatus:"corrective_refund_pending",
+          }});
+          adjustments.push(adjustment.id);
+        }
+        const before=await db.prisma.betMarketFinancialAdjustment.findMany({
+          where:{id:{in:adjustments}},orderBy:{id:"asc"},
+        });
+        const claimsBefore=await db.prisma.pendingWoloClaim.count();
+        const attemptsBefore=networkCalls;
+        await settleMarketIntegrityCorrections(db.prisma);
+        const after=await db.prisma.betMarketFinancialAdjustment.findMany({
+          where:{id:{in:adjustments}},orderBy:{id:"asc"},
+        });
+        assert.deepEqual(after,before,"malformed preview adjustments must not even become processing");
+        assert.equal(await db.prisma.pendingWoloClaim.count(),claimsBefore);
+        assert.equal(networkCalls,attemptsBefore,"no chain, payout or signing attempt");
+      } finally {
+        await db.prisma.betMarketFinancialAdjustment.deleteMany({where:{id:{in:adjustments}}});
+        await db.prisma.betMarketIntegrityIncident.deleteMany({where:{id:{in:incidents}}});
+        await db.prisma.betWager.delete({where:{id:wager.id}});
+        await db.prisma.betMarket.deleteMany({where:{id:{in:[preview.id,legacy.id]}}});
+      }
+    });
+    await t.test("dual-origin pending claim with mismatched direct/Founder market is immutable before admin retry",async()=>{
+      const markets=await db.prisma.betMarket.findMany({
+        where:{bookPhase:"preview_only",status:"live"},orderBy:{id:"asc"},take:2,
+      });
+      assert.equal(markets.length,2);
+      const bonus=await db.prisma.betMarketFounderBonus.create({data:{
+        marketId:markets[1].id,bonusType:"winner",totalAmountWolo:1,status:"pending",
+        requestId:"dual-origin-probe",createdByUserId:owner.id,
+      }});
+      const claim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"dual-origin-fixture",displayPlayerName:"Dual origin fixture",
+        amountWolo:1,claimKind:"founders_win",claimGroupKey:"founder:"+bonus.id+":recipient",
+        status:"pending",sourceMarketId:markets[0].id,sourceFounderBonusId:bonus.id,
+      }});
+      try {
+        const before=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}});
+        const callCount=networkCalls;
+        const result=await retryPendingClaimSettlement(db.prisma,claim.id);
+        assert.equal(result.outcome,"skipped");
+        assert.equal(result.outcome==="skipped"?result.reason:null,"source_attribution_conflict");
+        assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),before);
+        assert.equal(networkCalls,callCount);
+      } finally {
+        await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});
+        await db.prisma.betMarketFounderBonus.delete({where:{id:bonus.id}});
+      }
+    });
+    await t.test("fully orphaned market payment claim refuses generic signer without any mutation",async()=>{
+      // NULL origin FKs are possible after historical onDelete SetNull cleanup.
+      // This must not elevate a once-market-bound claim to generic payout.
+      for(const claimKind of ["bet_refund","bet_payout","winner_bounty","founders_bonus","founders_win","bet_corrective_refund"] as const){
+        const orphan=await db.prisma.pendingWoloClaim.create({data:{
+          normalizedPlayerName:"orphan-origin-probe-"+claimKind,
+          displayPlayerName:"Orphan origin probe",
+          amountWolo:1,claimKind,claimGroupKey:"orphan-no-source-"+claimKind,
+          status:"pending",sourceMarketId:null,sourceFounderBonusId:null,
+        }});
+        try {
+          const before=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:orphan.id}});
+          const calls=networkCalls;
+          const result=await retryPendingClaimSettlement(db.prisma,orphan.id);
+          assert.equal(result.outcome,"skipped");
+          assert.equal(result.outcome==="skipped"?result.reason:null,"source_attribution_conflict");
+          assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:orphan.id}}),before);
+          assert.equal(networkCalls,calls,"no generic payout or chain lookup");
+        }finally{
+          await db.prisma.pendingWoloClaim.delete({where:{id:orphan.id}});
+        }
+      }
     });
     if(invalidHmacGameId)await t.test("actual API rejects HMAC elevation despite a spoofed account header and valid upload bytes",async()=>{
       const row=await db.prisma.gameStats.findUniqueOrThrow({where:{id:invalidHmacGameId}});
@@ -77,7 +219,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:"platform:controlled-hd-forged-hmac"}}),0);
     });
     for(const [name,team,mode] of [["team-rm",true,"Random Map"],["1v1-dm",false,"Deathmatch"],["team-dm",true,"Deathmatch"]] as const){
-      await t.test(`canonical ${name} LIVE event is wagerable before final evidence`,async()=>{
+      await t.test(`canonical ${name} LIVE preview is visible but not fundable before final evidence`,async()=>{
         const row=await persist(name,team,mode),report=await ingest(row);
         assert.equal(report.admission.liveMarkets.succeeded,true);assert.equal(report.admission.liveMarkets.createdCount,2);
         assert.equal(report.financial.markets.requested,false);assert.equal(report.financial.tournament.requested,false);
@@ -272,8 +414,231 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(markets.length,2);
       assert.ok(markets.every(market=>market.status==="voided"&&market.refundStatus==="queued"));
     });
-    assert.equal(await db.prisma.betWager.count(),0);assert.equal(await db.prisma.satchelFundedReservation.count(),0);
+    // Synthetic obligations exercise noninterference; these are NOT observations
+    // or dispositions of the real historical #889 / accepted-100-WOLO records.
+    async function obligationSentinels(marketId:number,claimId:number,amountWolo:number){
+      const market=await db.prisma.betMarket.update({where:{id:marketId},data:{refundStatus:"queued",
+        settlementStatus:"accepted",settlementDetail:"fixture-only unresolved request",firstStakeAcceptedAt:new Date(Date.now()-5000)}});
+      const wallet="wolo1fixtureonlyneverfunded000000000000000000";
+      const intent=await db.prisma.betStakeIntent.create({data:{marketId,userId:owner.id,side:"left",amountWolo,
+        propositionHash:market.propositionHash,walletAddress:wallet,status:"broadcast_submitted",broadcastSubmittedAt:new Date()}});
+      const ticket=await db.prisma.betStakeTicket.create({data:{userId:owner.id,clientRequestId:"fixture-obligation-"+claimId,
+        totalAmountWolo:amountWolo,propositionSetHash:market.propositionHash??"a".repeat(64),walletAddress:wallet,
+        status:"broadcast_submitted",broadcastSubmittedAt:new Date()}});
+      const leg=await db.prisma.betStakeLeg.create({data:{ticketId:ticket.id,marketId,legRole:"winner",side:"left",amountWolo,
+        propositionHash:market.propositionHash??"a".repeat(64)}});
+      const wager=await db.prisma.betWager.create({data:{marketId,userId:owner.id,stakeIntentId:intent.id,stakeLegId:leg.id,
+        side:"left",amountWolo,status:"active",executionMode:"escrow",stakeWalletAddress:wallet}});
+      const marketWallet=await db.prisma.betMarketWallet.create({data:{marketId,userId:owner.id,walletAddress:wallet,side:"left"}});
+      const bonus=await db.prisma.betMarketFounderBonus.create({data:{marketId,bonusType:"founders_win",totalAmountWolo:300,
+        status:"pending",createdByUserId:owner.id,requestId:"fixture-bonus-"+claimId}});
+      const claim=await db.prisma.pendingWoloClaim.create({data:{id:claimId,normalizedPlayerName:"fixture-owner-"+claimId,
+        displayPlayerName:"Synthetic obligation sentinel",amountWolo,claimKind:claimId===889?"founders_win":"bet_refund",
+        claimGroupKey:"fixture-only-"+claimId,sourceMarketId:marketId,sourceFounderBonusId:bonus.id,status:"pending",
+        payoutAttemptedAt:new Date(),payoutTxHash:null,errorState:"fixture UNKNOWN; never retry or infer chain outcome"}});
+      const snapshot=async()=>({
+        market:await db.prisma.betMarket.findUniqueOrThrow({where:{id:marketId}}),
+        claim:await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),
+        bonus:await db.prisma.betMarketFounderBonus.findUniqueOrThrow({where:{id:bonus.id}}),
+        wager:await db.prisma.betWager.findUniqueOrThrow({where:{id:wager.id}}),
+        wallet:await db.prisma.betMarketWallet.findUniqueOrThrow({where:{id:marketWallet.id}}),
+        intent:await db.prisma.betStakeIntent.findUniqueOrThrow({where:{id:intent.id}}),
+        ticket:await db.prisma.betStakeTicket.findUniqueOrThrow({where:{id:ticket.id}}),
+        leg:await db.prisma.betStakeLeg.findUniqueOrThrow({where:{id:leg.id}}),
+      });
+      const before=await snapshot();
+      return {before,snapshot,cleanup:async()=>{
+        await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});
+        await db.prisma.betMarketFounderBonus.delete({where:{id:bonus.id}});
+        await db.prisma.betWager.delete({where:{id:wager.id}});
+        await db.prisma.betMarketWallet.delete({where:{id:marketWallet.id}});
+        await db.prisma.betStakeIntent.delete({where:{id:intent.id}});
+        await db.prisma.betStakeTicket.delete({where:{id:ticket.id}});
+      }};
+    }
+    async function sourceIdentity(name:string){
+      const canonical="platform:controlled-hd-"+name;
+      // A real alias requires an earlier fallback observation of the SAME
+      // replay/watcher context before a platform ID becomes available.
+      const origin=await db.prisma.gameStats.findFirstOrThrow({where:{replay_file:"controlled-original-live-"+name+".aoe2record"},orderBy:{id:"asc"}});
+      const fallbackEvents=JSON.parse(JSON.stringify(origin.key_events)) as Record<string,unknown>;
+      delete fallbackEvents.platform_match_id;
+      const fallbackHash=controlledOriginalLiveRow({name:name+"-earlier-fallback"}).replayHash;
+      fallbackEvents.watcher_upload={...(fallbackEvents.watcher_upload as Record<string,unknown>),server_sha256:fallbackHash,client_sha256:fallbackHash};
+      await persist(name,false,"Random Map",{createdAt:new Date(origin.createdAt.getTime()-500),
+        played_on:origin.played_on,key_events:fallbackEvents,replayHash:fallbackHash});
+      const session=(await loadLiveSessionSnapshot(db.prisma)).activeSessions.find(value=>value.sessionKey===canonical);
+      assert.ok(session);const alias=session.identityAliases?.find(value=>value!==canonical);assert.ok(alias);
+      return {canonical,alias,session};
+    }
+    async function aliasMarket(alias:string){
+      const template=await db.prisma.betMarket.findFirstOrThrow({where:{marketType:"winner",status:"live"}});
+      const {id,createdAt,updatedAt,...data}=template;void id;void createdAt;void updatedAt;
+      return db.prisma.betMarket.create({data:{...data,battleId:null,parentMarketId:null,phaseBookKey:null,
+        linkedSessionKey:alias,slug:buildWatcherMarketSlugForSessionKey(alias),scheduledMatchId:null,
+        closeAt:new Date(Date.now()+600000),firstStakeAcceptedAt:null,refundStatus:null,settlementStatus:null}});
+    }
+    await t.test("occupied fallback alias refuses the entire canonical preview family without reattributing obligations",async()=>{
+      const row=await persist("occupied-alias"),identity=await sourceIdentity("occupied-alias");
+      const alias=await aliasMarket(identity.alias),sentinels=await obligationSentinels(alias.id,889,300);
+      try{
+        const marketCount=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+        const identitiesBefore=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+        const report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.succeeded,true);
+        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),marketCount);
+        assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:identity.canonical}}),0);
+        assert.equal(await db.prisma.betAutoExecution.count(),previews);
+        assert.deepEqual(await sentinels.snapshot(),sentinels.before);
+        assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
+      }finally{await sentinels.cleanup();await db.prisma.betMarket.delete({where:{id:alias.id}});}
+    });
+    await t.test("redelivery reads compatible canonical books without updating financial obligations or child links",async()=>{
+      const row=await persist("occupied-canonical");assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+      const identity=await sourceIdentity("occupied-canonical"),pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:identity.canonical}});
+      const winner=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
+      assert.ok(winner);assert.ok(child);
+      const sentinels=await obligationSentinels(winner.id,8477,100);
+      // Existing child attribution is a read-only obligation, even if a normal
+      // reconciliation lane would later repair its missing parent metadata.
+      await db.prisma.betMarket.update({where:{id:child.id},data:{parentMarketId:null,title:"Existing child title must survive"}});
+      const childBefore=await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}});
+      try{
+        const count=await db.prisma.betMarket.count(),report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),count);
+        assert.deepEqual(await sentinels.snapshot(),sentinels.before);
+        assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}}),childBefore);
+      }finally{await sentinels.cleanup();}
+    });
+    await t.test("alias admission waits for the existing promotion lock and observes a newly committed occupied alias",async()=>{
+      const row=await persist("concurrent-occupied-alias"),identity=await sourceIdentity("concurrent-occupied-alias");
+      const key=canonicalBattleIdentityKey(identity.alias);assert.ok(key);
+      const before=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      await db.sql.query("BEGIN");await db.sql.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[key]);
+      const pending=ingest(row);let alias:Awaited<ReturnType<typeof aliasMarket>>|undefined;
+      try{
+        let waiting=false;
+        for(let attempt=0;attempt<90;attempt++){
+          await db.sql.query("SELECT pg_stat_clear_snapshot()");
+          const blocked=await db.sql.query("SELECT count(*) FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND wait_event_type='Lock' AND query ILIKE '%pg_advisory_xact_lock%'");
+          if(Number(blocked.rows[0].count)>0){waiting=true;break;}await sleep(5);
+        }
+        assert.equal(waiting,true,"LIVE metadata must share canonical/alias advisory locks with financial promotion");
+        alias=await aliasMarket(identity.alias);
+      }finally{await db.sql.query("COMMIT");}
+      try{
+        const report=await pending;assert.equal(report.admission.liveMarkets.succeeded,true);
+        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),before+1);
+        assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:identity.canonical}}),0);
+        assert.equal(await db.prisma.betAutoExecution.count(),previews);
+      }finally{if(alias)await db.prisma.betMarket.delete({where:{id:alias.id}});}
+    });
+    await t.test("existing legacy funded canonical owner is never reused or given an orphan Desync child",async()=>{
+      const row=await persist("legacy-canonical"),key="platform:controlled-hd-legacy-canonical";
+      const occupied=await aliasMarket(key);
+      await db.prisma.betMarket.update({where:{id:occupied.id},data:{
+        bookPhase:"legacy",firstStakeAcceptedAt:new Date(),seedLeftWolo:25,
+      }});
+      const before=await db.prisma.betMarket.findUniqueOrThrow({where:{id:occupied.id}});
+      const count=await db.prisma.betMarket.count();
+      const calls=networkCalls;
+      const report=await ingest(row);
+      assert.equal(report.admission.liveMarkets.createdCount,0);
+      assert.equal(report.admission.liveMarkets.existingCount,0);
+      assert.equal(await db.prisma.betMarket.count(),count);
+      assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:occupied.id}}),before);
+      assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:key,marketType:"desync"}}),0);
+      assert.equal(networkCalls,calls);
+      await db.prisma.betMarket.delete({where:{id:occupied.id}});
+    });
+    await t.test("orphan direct claim on existing preview book refuses both canonical family members",async()=>{
+      const row=await persist("claim-only-occupied"),key="platform:controlled-hd-claim-only-occupied";
+      const market=await aliasMarket(key);
+      const claim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"claim-only-occupant",displayPlayerName:"Claim only occupant",
+        amountWolo:25,claimKind:"bet_refund",claimGroupKey:"orphan-claim-only",
+        status:"pending",sourceMarketId:market.id,
+      }});
+      try{
+        const initialMarket=await db.prisma.betMarket.findUniqueOrThrow({where:{id:market.id}});
+        const initialClaim=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}});
+        const marketCount=await db.prisma.betMarket.count(),networkBefore=networkCalls;
+        const report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.createdCount,0);
+        assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),marketCount);
+        assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:key,marketType:"desync"}}),0);
+        assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:market.id}}),initialMarket);
+        assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),initialClaim);
+        assert.equal(networkCalls,networkBefore);
+      }finally{
+        await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});
+        await db.prisma.betMarket.delete({where:{id:market.id}});
+      }
+    });
+    await t.test("terminal canonical winner with no child refuses the complete family without creating a desync book",async()=>{
+      const row=await persist("terminal-parent-missing-child"),canonical="platform:controlled-hd-terminal-parent-missing-child";
+      const winner=await aliasMarket(canonical);
+      await db.prisma.betMarket.update({where:{id:winner.id},data:{status:"voided",refundStatus:"queued",settledAt:new Date(),voidedAt:new Date()}});
+      const before=await db.prisma.betMarket.findUniqueOrThrow({where:{id:winner.id}});
+      const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      const report=await ingest(row);
+      assert.equal(report.admission.liveMarkets.succeeded,true);
+      assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+      assert.equal(await db.prisma.betMarket.count(),count);
+      assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:winner.id}}),before);
+      assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:canonical,marketType:"desync"}}),0);
+      assert.equal(await db.prisma.betAutoExecution.count(),previews);
+    });
+    await t.test("an unrelated canonical slug owner with no child cannot admit or create any part of a preview family",async()=>{
+      const row=await persist("unrelated-parent-missing-child"),canonical="platform:controlled-hd-unrelated-parent-missing-child";
+      const occupied=await aliasMarket(canonical);
+      await db.prisma.betMarket.update({where:{id:occupied.id},data:{linkedSessionKey:"platform:unrelated-existing-owner",marketType:"desync"}});
+      const before=await db.prisma.betMarket.findUniqueOrThrow({where:{id:occupied.id}});
+      const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      const report=await ingest(row);
+      assert.equal(report.admission.liveMarkets.succeeded,true);
+      assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
+      assert.equal(await db.prisma.betMarket.count(),count);
+      assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:occupied.id}}),before);
+      assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:canonical}}),0);
+      assert.equal(await db.prisma.betAutoExecution.count(),previews);
+    });
+    await t.test("existing parent close clock expiring during child INSERT rolls back the complete preview family",async()=>{
+      const row=await persist("parent-clock-during-child"),canonical="platform:controlled-hd-parent-clock-during-child";
+      assert.equal((await ingest(row)).admission.liveMarkets.createdCount,2);
+      const pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:canonical}});
+      const parent=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
+      assert.ok(parent);assert.ok(child);
+      await db.prisma.betMarket.delete({where:{id:child.id}});
+      await db.prisma.betMarket.update({where:{id:parent.id},data:{closeAt:new Date(Date.now()+1500)}});
+      const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      const identitiesBefore=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
+      await db.sql.query(`CREATE FUNCTION fixture_expire_parent_during_child() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+        IF NEW.linked_session_key='platform:controlled-hd-parent-clock-during-child' AND NEW.market_type='desync' THEN
+          PERFORM pg_sleep(1.8);
+        END IF;
+        RETURN NEW;
+      END $$; CREATE TRIGGER fixture_expire_parent_during_child BEFORE INSERT ON bet_markets
+        FOR EACH ROW EXECUTE FUNCTION fixture_expire_parent_during_child()`);
+      try{
+        const report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.succeeded,false);
+        assert.match(report.admission.liveMarkets.error??"",/LIVE_MARKET_ADMISSION_EXISTING_BOOK_CLOSED_BEFORE_COMMIT/);
+        assert.equal(await db.prisma.betMarket.count(),count);
+        assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:canonical,marketType:"desync"}}),0);
+        assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
+        assert.equal(await db.prisma.betAutoExecution.count(),previews);
+      }finally{
+        await db.sql.query("DROP TRIGGER fixture_expire_parent_during_child ON bet_markets; DROP FUNCTION fixture_expire_parent_during_child()");
+      }
+    });
+    assert.equal(await db.prisma.betWager.count(),0);assert.equal((await db.sql.query("SELECT to_regclass('public.war_satchel_funded_reservations') AS name")).rows[0].name,null);
     assert.equal(await db.prisma.pendingWoloClaim.count(),0);assert.equal(networkCalls,0);
-    assert.match(readFileSync(new URL("../lib/warSatchelFinancialBridgeHold.ts",import.meta.url),"utf8"),/SATCHEL_FINANCIAL_BRIDGE_READY = false as const/);
+    assert.equal(readBetAutomationRuntime({BET_AUTOMATION_MODE:"live",WOLO_BET_CUSTODY_CAPABILITY:"bet-custody-v1",
+      WOLO_BET_CUSTODY_URL:"http://127.0.0.1:8092",WOLO_SETTLEMENT_AUTH_TOKEN:"fixture-only"}).executionReady,false);
   }finally{globalThis.fetch=originalFetch;if(previousMode===undefined)delete process.env.BET_AUTOMATION_MODE;else process.env.BET_AUTOMATION_MODE=previousMode;await db.cleanup();}
 });
