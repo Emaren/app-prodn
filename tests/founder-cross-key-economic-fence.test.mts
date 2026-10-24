@@ -84,8 +84,8 @@ test("automatic settlement and admin retry both check historical prior attempts"
     assert.ok(guardStart >= 0 && guardEnd > guardStart);
     const guardedSource = source.slice(guardStart, guardEnd);
     assert.match(guardedSource, /sourceFounderBonusId: null/);
-    assert.match(guardedSource, /claimGroupKey: \\{ startsWith:/);
-    assert.match(guardedSource, /claimGroupKey: \\{ not:/);
+    assert.ok(guardedSource.includes("claimGroupKey: { startsWith:"));
+    assert.ok(guardedSource.includes("claimGroupKey: { not:"));
     assert.doesNotMatch(guardedSource, /status:|payoutAttemptedAt:/);
     assert.match(source, /economicLockKey: buildFounderEconomicLockKey/);
   }
