@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "105d1b017b5496ae81d0e70dd1a2d0ea0e8be0d3e9bebef6cc47702c3723c1ff",
+      "sha256": "747e3b0ca3c9a85758d086a0713ddf96393a5194340ff5848634214dbe3410f6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261024-held-future-funded-combined-acceptance",
-    "commit": "0204dd21cf0db9478e2b5011b10c40a458cca940"
+    "commit": "09d4ff33eb35aa27e980f41c37ce1011e83e999c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
