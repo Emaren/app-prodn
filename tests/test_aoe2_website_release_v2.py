@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import tempfile
+import textwrap
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -172,6 +173,30 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
         # One duplicated key material pretending to occupy two roles is refused.
         (self.trust / "finance_reviewer.pem").write_bytes(
             (self.trust / "owner.pem").read_bytes())
+        with self.assertRaisesRegex(AUTH.Hold, "duplicate reviewer"):
+            self.inspect(packet)
+
+        # Reformat the SAME owner's SPKI into a different valid PEM wrapping.
+        # A raw-PEM digest would accept it as a distinct reviewer identity.
+        pem = (self.trust / "owner.pem").read_text()
+        encoded = "".join(pem.splitlines()[1:-1])
+        reformatted = (
+            "-----BEGIN PUBLIC KEY-----\\n"
+            + "\\n".join(textwrap.wrap(encoded, 32))
+            + "\\n-----END PUBLIC KEY-----\\n"
+        ).replace("\\\\n", "\\n")
+        (self.trust / "finance_reviewer.pem").write_text(reformatted)
+        signed_same_private_key = subprocess.run(
+            ["openssl", "dgst", "-sha256", "-sign",
+             str(self.root / "owner.private.pem"), str(message)],
+            capture_output=True, timeout=10, check=False)
+        self.assertEqual(0, signed_same_private_key.returncode)
+        packet["signatures"]["finance_reviewer"] = base64.b64encode(
+            signed_same_private_key.stdout).decode("ascii")
+        self.assertNotEqual(
+            hashlib.sha256(reformatted.encode()).hexdigest(),
+            hashlib.sha256(pem.encode()).hexdigest(),
+        )
         with self.assertRaisesRegex(AUTH.Hold, "duplicate reviewer"):
             self.inspect(packet)
 
