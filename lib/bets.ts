@@ -8069,13 +8069,10 @@ const LIVE_ADMISSION_SOURCE_SELECT = {id:true,is_final:true,parse_source:true,
 
 async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[]){
   const liveOnly = liveSources !== undefined;
-  return Promise.all(
-    seeds.map(async (seed) => {
-      return prisma.$transaction(async (tx) => {
-        if(liveOnly){
-          await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
-          await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
-        }
+  // LIVE winner and desync markets must share one bounded SQL transaction.
+  // The former Promise.all could report lock failure while the sibling
+  // transaction committed afterward, leaving a partial canonical book.
+  const writeSeed = async (tx: Prisma.TransactionClient, seed: MarketSeed) => {
         const seedLockKey =
           canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)) ??
           `bet-market-seed:${seed.slug}`;
@@ -8177,9 +8174,22 @@ async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSe
         if (liveAuthorityRows&&!liveAuthorityRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null))
           throw Error("LIVE_MARKET_ADMISSION_AUTHORITY_EXPIRED_BEFORE_COMMIT");
         return {created:!existing,admitted:persisted.status === "live" || persisted.status === "open"};
-      }, liveOnly ? {maxWait:5000,timeout:9000} : undefined);
-    })
-  );
+  };
+
+  if (liveOnly) {
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
+      await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
+      const results: Awaited<ReturnType<typeof writeSeed>>[] = [];
+      for (const seed of seeds) results.push(await writeSeed(tx, seed));
+      return results;
+    }, {maxWait:5000,timeout:9000});
+  }
+
+  // Keep the established per-seed concurrency for ordinary reconciliation.
+  return Promise.all(seeds.map((seed) =>
+    prisma.$transaction((tx) => writeSeed(tx, seed))
+  ));
 }
 
 async function runBetMarketEnsure(prisma: PrismaClient) {
