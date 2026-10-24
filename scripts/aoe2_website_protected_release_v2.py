@@ -85,7 +85,8 @@ def verify_detached(payload: dict, signature: str, key: Path) -> None:
 
 
 def verify_witness_receipt(packet: dict, *, trust_root=TRUST_ROOT,
-                           now=None, allow_test_root=False) -> dict:
+                           now=None, allow_test_root=False,
+                           max_age_seconds=90) -> dict:
     require(packet.get("schema") == 1 and packet.get("kind") ==
             "aoe2war-independent-runtime-witness-v1", "unsupported witness")
     payload = packet.get("payload")
@@ -93,7 +94,9 @@ def verify_witness_receipt(packet: dict, *, trust_root=TRUST_ROOT,
             "witness lacks signed payload")
     when = now or datetime.now(timezone.utc)
     observed = utc_time(payload.get("observed_at"))
-    require(timedelta(seconds=0) <= when - observed <= timedelta(seconds=90),
+    require(type(max_age_seconds) is int and 0 < max_age_seconds <= 1200,
+            "invalid bounded Wolo witness age policy")
+    require(timedelta(seconds=0) <= when - observed <= timedelta(seconds=max_age_seconds),
             "stale/future runtime witness")
     require(payload.get("source_p1_open") is True and
             payload.get("financial_release_authorized") is False and
@@ -161,15 +164,24 @@ def same_financial_runtime(before: dict, after: dict) -> None:
 def evidence_bind(packet: dict, signed_prestate: dict, current: dict,
                   *, target: str, trust_root=TRUST_ROOT, now=None,
                   allow_test_root=False) -> None:
+    # Human four-role PRE_STAGE/PRE_ACTIVATE signing can occupy the
+    # controller's bounded 20-minute issuance window. The original signed
+    # snapshot may be that old, but the independently signed live witness
+    # acquired UNDER the global lease must still be <=90 seconds fresh
+    # and prove byte/identity equality to the signed approval reference.
     pb = verify_witness_receipt(signed_prestate, trust_root=trust_root,
-                                now=now, allow_test_root=allow_test_root)
+                                now=now, allow_test_root=allow_test_root,
+                                max_age_seconds=1200)
     pc = verify_witness_receipt(current, trust_root=trust_root,
-                               now=now, allow_test_root=allow_test_root)
+                               now=now, allow_test_root=allow_test_root,
+                               max_age_seconds=90)
     p = packet["payload"]
     require(p["wolo_prestate_sha256"] == digest(pb),
             "independent Wolo evidence is not source-signature-bound")
     require(pb["immutable"] == pc["immutable"],
             "Wolo source/consensus/financial/hold changed after review")
+    require(pb["website"] == pc["website"],
+            "live website source/BUILD_ID changed since signed human witness")
     require(pc["website"]["source_sha"] == PRODUCTION_SHA,
             "active website source deviated from certified runtime")
     require(p["candidate_sha"] == target, "website candidate changed")
