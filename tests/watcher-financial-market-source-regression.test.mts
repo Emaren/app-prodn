@@ -112,7 +112,10 @@ test("promotion and stale seed upserts share exact advisory identity locks", () 
     ?.split("async function runBetMarketEnsure(")[0];
   assert.ok(seedsWriter,"canonical market seed writer must remain present");
   assert.match(seedsWriter,/const writeSeed = async \(tx: Prisma\.TransactionClient, seed: MarketSeed\)[\s\S]*canonicalBattleIdentityKey\(normalizeName\(seed\.linkedSessionKey\)\)[\s\S]*pg_advisory_xact_lock[\s\S]*tx\.betMarket\.upsert/);
-  assert.match(seedsWriter,/if \(liveOnly\) \{[\s\S]*return prisma\.\$transaction\(async \(tx\) => \{[\s\S]*for \(const seed of seeds\) results\.push\(await writeSeed\(tx, seed\)\)/);
+  assert.match(seedsWriter,/if \(liveOnly\) \{[\s\S]*return prisma\.\$transaction\(async \(tx\) => \{/);
+  assert.match(seedsWriter,/const blocked=new Set<string>\(\)/);
+  assert.match(seedsWriter,/if \(occupied\) blocked\.add\(family\.canonicalSessionKey\)/);
+  assert.match(seedsWriter,/for \(const seed of seeds\) results\.push\(blocked\.has\(normalizeName\(seed\.linkedSessionKey\)\)/);
   assert.doesNotMatch(seedsWriter,/Promise\.all\(\s*seeds\.map\(async \(seed\)/);
 });
 

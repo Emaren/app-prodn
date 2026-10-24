@@ -24,7 +24,7 @@ test("CLI and scheduled tick share a precise four-minute and deferred-candidate 
   ]);
   assert.deepEqual(query.where.winnerMarket,{
     status:"live",integrityStatus:"verified",marketType:"winner",
-    bookPhase:{not:"preview_only"},
+    bookPhase:"funded",
   });
   assert.deepEqual(query.where.preset,{
     enabled:true,selfOnly:true,

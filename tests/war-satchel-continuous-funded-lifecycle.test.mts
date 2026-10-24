@@ -11,6 +11,11 @@ import type {IsolatedSatchelSigner} from "../lib/warSatchelAutoBetExecutor.ts";
 import type {SatchelWagerSnapshot} from "../lib/warSatchelWagerAuthorization.ts";
 import type {SatchelWagerReservation} from "../lib/warSatchelWagerReservation.ts";
 import {startLifecycleDatabase,installLifecycleFinancialAdmission,seedLifecycleOwnerAndMarkets,seedLifecycleSession,lifecycleOwnerKey} from "./fixtures/satchel-lifecycle-db.mts";
+import type {Prisma} from "../lib/generated/prisma/index.js";
+import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
+import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
+
+import {fundedWatcherOriginSignBytes,type SignedFundedWatcherOrigin} from "../lib/warSatchelFundedWatcherOrigin.ts";
 
 const U=1000000n;
 const digest=(x:unknown)=>createHash("sha256").update(JSON.stringify(x).replace(/[<>&\u2028\u2029]/g,c=>"\\u"+c.charCodeAt(0).toString(16).padStart(4,"0"))).digest("hex");
@@ -83,6 +88,82 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
     writeFileSync(authority,JSON.stringify({trust_anchor:fixture.anchor,vault,betting_escrow:escrow,approval_public_key_hex:pub(financial)}),{mode:0o600});
     writeFileSync(wagerAuthority,JSON.stringify({trust_anchor:fixture.anchor,vault,betting_escrow:escrow,approval_public_key_hex:pub(financial),wager_approval_public_key_hex:pub(reviewer)}),{mode:0o600});
     writeFileSync(wagerKeyFile,JSON.stringify({wager_approval_public_key_hex:pub(reviewer)}),{mode:0o600});
+    // Stitch the FIRST ticket (not a disconnected side test) to actual signed
+    // canonical Watcher admission. Original LIVE metadata stays preview-only.
+    // woloChain.ts snapshots escrow configuration at module evaluation.
+    // Load bets only AFTER the isolated Wolo env/attested addresses are set.
+    // A static import would cache a disabled escrow configuration globally.
+    const {admitCommittedLiveWatcherMarkets,admitReviewedFundedWatcherBooks}
+      =await import("../lib/bets.ts");
+    const liveEvidence=controlledOriginalLiveRow({name:"sdk-continuous-connected"});
+    const connectedPlayers=liveEvidence.players.map(p=>({
+      ...p,name:p.steamId===seeded.owner.steamId?"LifecycleOwner":
+        p.steamId==="76561198000000002"?"LifecycleOpponent":p.name,
+    }));
+    const watcherGame=await db.prisma.gameStats.create({data:{
+      userUid:seeded.owner.uid,replay_file:"sdk-connected.aoe2record",
+      original_filename:"sdk-connected.aoe2record",replayHash:liveEvidence.replayHash,
+      is_final:false,parse_source:liveEvidence.parse_source,
+      parse_iteration:liveEvidence.parse_iteration,parse_reason:"watcher_live_snapshot",
+      game_version:liveEvidence.game_version,game_type:liveEvidence.game_type,
+      createdAt:liveEvidence.createdAt,timestamp:liveEvidence.createdAt,
+      played_on:liveEvidence.played_on,game_duration:30,winner:null,
+      players:connectedPlayers as Prisma.InputJsonValue,
+      key_events:liveEvidence.key_events as Prisma.InputJsonValue,
+    }});
+    const previewAdmission=await admitCommittedLiveWatcherMarkets(db.prisma,[watcherGame.id]);
+    assert.equal(previewAdmission.createdCount,2);
+    const previewBooks=await db.prisma.betMarket.findMany({
+      where:{bookPhase:"preview_only",linkedSessionKey:"platform:controlled-hd-sdk-continuous-connected"},
+      select:{id:true,slug:true,bookPhase:true,status:true},
+    });
+    assert.equal(previewBooks.length,2);
+    const currentSnapshot=await loadLiveSessionSnapshot(db.prisma);
+    const connectedSession=currentSnapshot.activeSessions.find(
+      v=>v.sessionKey==="platform:controlled-hd-sdk-continuous-connected");
+    assert.ok(connectedSession?.teamResolution.propositionHash&&
+      connectedSession.teamResolution.rosterHash,"canonical signed Watcher source required");
+    const nowSec=Math.floor(Date.now()/1000);
+    const originUnsigned:SignedFundedWatcherOrigin={
+      version:1,chain_id:"wolo-1",session_key:connectedSession.sessionKey,
+      proposition_hash:connectedSession.teamResolution.propositionHash,
+      roster_hash:connectedSession.teamResolution.rosterHash,
+      source_game_stats_id:watcherGame.id,nonce:"isolated-sdk-origin-reviewer-0001",
+      issued_at:nowSec-2,expires_at:nowSec+45,signature:"",
+    };
+    const signedOrigin={...originUnsigned,
+      signature:sign(null,fundedWatcherOriginSignBytes(originUnsigned),reviewer.privateKey).toString("base64")};
+    await assert.rejects(admitReviewedFundedWatcherBooks(db.prisma,{
+      sourceGameStatsId:watcherGame.id,
+      signedOrigin:{...signedOrigin,nonce:"invalid-reviewer-replay-00002"},
+    }),/FUNDED_WATCHER_ORIGIN_REFUSED:independent_signature/);
+    assert.equal(await db.prisma.betMarket.count({where:{bookPhase:"preview_only"}}),2);
+    assert.equal(await db.prisma.satchelFundedReceipt.count(),0);
+    const admitted=await admitReviewedFundedWatcherBooks(db.prisma,{
+      sourceGameStatsId:watcherGame.id,signedOrigin,
+    });
+    assert.equal(admitted.created,true);
+    const idempotent=await admitReviewedFundedWatcherBooks(db.prisma,{
+      sourceGameStatsId:watcherGame.id,signedOrigin,
+    });
+    assert.equal(idempotent.created,false);
+    assert.equal(idempotent.winnerMarketId,admitted.winnerMarketId);
+    assert.equal(idempotent.desyncMarketId,admitted.desyncMarketId);
+    assert.ok(previewBooks.every(row=>row.id!==admitted.winnerMarketId&&
+      row.id!==admitted.desyncMarketId),"no preview financial identity can be reused");
+    const fundedMarket=await db.prisma.betMarket.findUniqueOrThrow({
+      where:{id:admitted.winnerMarketId},
+    });
+    assert.equal(fundedMarket.bookPhase,"funded");
+    assert.equal(fundedMarket.seedLeftWolo,0);
+    assert.equal(fundedMarket.seedRightWolo,0);
+    // Feed precisely the independently issued market to the real auto-bet,
+    // reservation, reviewed signer, finality, settlement and journal loop.
+    sessions[0]={...seeded,session:connectedSession,market:fundedMarket};
+    assert.equal(await db.prisma.betWager.count({where:{
+      marketId:{in:previewBooks.map(row=>row.id)},
+    }}),0);
+
     const ledger=await import("../lib/warSatchelFundedLedger.ts"),deposit=await import("../lib/warSatchelAuthenticatedDeposit.ts"),shadow=await import("../lib/betAutomationShadowWorker.ts"),executor=await import("../lib/warSatchelAutoBetExecutor.ts");
     const wager=await import("../lib/warSatchelWagerAuthorization.ts"),review=await import("../lib/warSatchelWagerReservation.ts");
     const canonical=await import("../lib/bets.ts") as unknown as {settleIsolatedLifecycleMarkets(prisma:typeof db.prisma):Promise<void>};
@@ -144,7 +225,7 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
       assert.equal(result.createdCount,1);
       const execution=await db.prisma.betAutoExecution.findFirstOrThrow({where:{winnerMarketId:s.market.id}});
       const first=await Promise.allSettled(Array.from({length:n===1?4:1},()=>executor.executeFundedMechaTicketBatch(db.prisma,signer,[execution.id])));
-      assert.ok(first.some(r=>r.status==="fulfilled"),"a durable reservation must survive contention");
+      assert.ok(first.some(r=>r.status==="fulfilled"),"a durable reservation must survive contention; rejected="+first.filter(r=>r.status==="rejected").map(r=>String(r.reason?.stack||r.reason)).join(" | ").slice(0,4500));
       assert.equal((await db.prisma.betAutoExecution.findUniqueOrThrow({where:{id:execution.id}})).status,"funded_reserved");
       assert.equal(await db.prisma.satchelFundedReservation.count({where:{executionId:execution.id}}),1);
       assert.equal(await db.prisma.satchelFundedJournal.count({where:{executionId:execution.id,eventKind:"wager_reserve"}}),1);
@@ -194,8 +275,16 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
         await manual.placePooledBetWager(db.prisma,{viewer:opponent,marketId:s.market.id,side:"right",amountWolo:25,walletAddress:opponent.walletAddress,stakeTxHash:native.tx_hash,stakeIntentId:intent.id});
       }
       const winningSide=n>=11?"right":"left";
-      const finalPlayers=s.session.players.map(p=>({name:p.name,steam_id:p.steamId,team_id:p.teamId,winner:(p.teamId==="2")===(winningSide==="right")}));
-      const final=await db.prisma.gameStats.create({data:{userUid:seeded.owner.uid,replay_file:"isolated-final-"+n+".aoe2record",original_filename:"isolated-final-"+n+".aoe2record",replayHash:createHash("sha256").update("isolated-final-"+n).digest("hex"),is_final:true,parse_iteration:2,parse_source:"watcher_final",parse_reason:"watcher_final_submission",game_type:"Random Map",players:finalPlayers,winner:finalPlayers.filter(p=>p.winner).map(p=>p.name).join(" / "),key_events:{completed:true,postgame_available:true,result_resolution:{result_status:"resolved",result_trusted:true,result_provenance:"postgame_winner_flags",winning_player_keys:s.session.players.filter(p=>(p.teamId==="2")===(winningSide==="right")).map(p=>p.stablePlayerKey),winning_player_names:finalPlayers.filter(p=>p.winner).map(p=>p.name)},team_resolution:{status:"resolved",confidence:"high"}}}});
+      // Native final truth is keyed to the signed original Watcher roster,
+      // not a fabricated assumption that team identifiers are always "1"/"2".
+      // The accepted LIVE fixture uses "0"/"1", while historical SDK rows
+      // use "1"/"2"; both must resolve to the frozen market side.
+      const winningTeam=s.session.teamResolution.teams[winningSide==="right"?1:0];
+      assert.ok(winningTeam&&winningTeam.players.length>0);
+      const winningKeys=new Set(winningTeam.players.map(p=>p.stablePlayerKey));
+      const finalPlayers=s.session.players.map(p=>({name:p.name,steam_id:p.steamId,
+        team_id:p.teamId,winner:winningKeys.has(p.stablePlayerKey)}));
+      const final=await db.prisma.gameStats.create({data:{userUid:seeded.owner.uid,replay_file:"isolated-final-"+n+".aoe2record",original_filename:"isolated-final-"+n+".aoe2record",replayHash:createHash("sha256").update("isolated-final-"+n).digest("hex"),is_final:true,parse_iteration:2,parse_source:"watcher_final",parse_reason:"watcher_final_submission",game_type:"Random Map",players:finalPlayers,winner:finalPlayers.filter(p=>p.winner).map(p=>p.name).join(" / "),key_events:{completed:true,postgame_available:true,result_resolution:{result_status:"resolved",result_trusted:true,result_provenance:"postgame_winner_flags",winning_player_keys:[...winningKeys],winning_player_names:finalPlayers.filter(p=>p.winner).map(p=>p.name)},team_resolution:{status:"resolved",confidence:"high"}}}});
       await db.prisma.betMarket.update({where:{id:s.market.id},data:{status:"settled",winnerSide:winningSide,linkedGameStatsId:final.id,settledAt:new Date()}});
       await canonical.settleIsolatedLifecycleMarkets(db.prisma);
       const settled=await db.prisma.betWager.findFirstOrThrow({where:{marketId:s.market.id,userId:seeded.owner.id}});
@@ -226,6 +315,16 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
     }
     assert.equal(expectedAvailable,98n*U);
     assert.equal(await db.prisma.satchelFundedClaimReturn.count(),10);
+    assert.equal(await db.prisma.betWager.count({where:{
+      marketId:{in:previewBooks.map(row=>row.id)},
+    }}),0,"original LIVE preview never acquires any funded or manual wager");
+    assert.equal(await db.prisma.pendingWoloClaim.count({where:{
+      sourceMarketId:{in:previewBooks.map(row=>row.id)},
+    }}),0,"original LIVE preview cannot inherit settlement entitlements");
+    assert.deepEqual(await db.prisma.betMarket.findMany({
+      where:{id:{in:previewBooks.map(row=>row.id)}},
+      select:{id:true,slug:true,bookPhase:true,status:true},
+    }),previewBooks,"all original LIVE identities and statuses remain unchanged after native SDK settlement");
     const settledBefore=await db.prisma.betWager.findMany({orderBy:{id:"asc"},select:{id:true,payoutWolo:true,status:true,updatedAt:true}});
     await canonical.settleIsolatedLifecycleMarkets(db.prisma);
     assert.deepEqual(await db.prisma.betWager.findMany({orderBy:{id:"asc"},select:{id:true,payoutWolo:true,status:true,updatedAt:true}}),settledBefore,"terminalized wagers cannot settle or charge a fee twice");

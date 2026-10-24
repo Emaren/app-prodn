@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c02308d4d5a0f470b48cec7636ce3d7987c16ec4b5339d8d6ad7a19def957413",
+      "sha256": "747e3b0ca3c9a85758d086a0713ddf96393a5194340ff5848634214dbe3410f6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-funded-live-origin-fence",
-    "commit": "ba6cf39d20b4ed5d9f870979cd6f637c56ec1eb6"
+    "branch": "integration/20261024-held-future-funded-combined-acceptance",
+    "commit": "09d4ff33eb35aa27e980f41c37ce1011e83e999c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
