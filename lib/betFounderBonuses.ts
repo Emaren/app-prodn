@@ -843,6 +843,7 @@ export async function settleFounderBonuses(
       market: {
         select: {
           id: true,
+          bookPhase: true,
           title: true,
           eventLabel: true,
           leftLabel: true,
@@ -933,6 +934,11 @@ export async function settleFounderBonuses(
     : [];
 
   for (const bonus of bonuses) {
+    // Existing held-preview books are not WOLO obligations. Refuse even if an
+    // administrator or older job left a bonus row attached to such a book.
+    if (bonus.market.bookPhase === "preview_only") {
+      continue;
+    }
     const bonusType = normalizeFounderBonusType(bonus.bonusType);
     if (!bonusType) {
       continue;
@@ -1284,6 +1290,12 @@ export async function createFounderBonus(
   };
 
   if (requestId) {
+    const phase = await prisma.betMarket.findUnique({
+      where: { id: input.marketId }, select: { bookPhase: true },
+    });
+    if (phase?.bookPhase === "preview_only") {
+      throw new FounderBonusError(409, "Preview-only battles cannot receive WOLO founder bonuses.");
+    }
     const existing =
       await prisma.betMarketFounderBonus.findUnique({
         where: {
@@ -1312,6 +1324,7 @@ export async function createFounderBonus(
     where: { id: input.marketId },
     select: {
       id: true,
+      bookPhase: true,
       title: true,
       status: true,
       leftLabel: true,
@@ -1323,6 +1336,9 @@ export async function createFounderBonus(
 
   if (!market) {
     throw new FounderBonusError(404, "Market not found.");
+  }
+  if (market.bookPhase === "preview_only") {
+    throw new FounderBonusError(409, "Preview-only battles cannot receive WOLO founder bonuses.");
   }
 
   if (
