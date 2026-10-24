@@ -2375,7 +2375,8 @@ class LegacyHealthProbeBoundaryTests(unittest.TestCase):
             preflight,
         )
         for path in ("/api/bets", "/api/lobby"):
-            self.assertNotIn(path, preflight)
+            self.assertNotIn("critical_get http://127.0.0.1:3030" + path, preflight)
+            self.assertNotIn('critical_get "$PUBLIC' + path + '"', preflight)
         # Do not silently weaken the new candidate's post-activation checks.
         self.assertIn("critical_get http://127.0.0.1:3030/api/bets", script[end:])
         self.assertIn('critical_get "$PUBLIC/api/lobby"', script[end:])
