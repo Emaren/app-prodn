@@ -8,6 +8,7 @@ import {
 } from "@/lib/desyncSideMarket";
 
 export type FreshBetMarketLike = {
+  bookPhase?: unknown;
   status?: unknown;
   marketType?: unknown;
   closeAt?: Date | string | null;
@@ -83,6 +84,12 @@ export function freshBettingCloseReason(
   now = new Date(),
 ): FreshBettingCloseReason | null {
   if (!market) {
+    return "market_not_open";
+  }
+
+  // A live preview may be shown but must never enter the legacy WOLO wager
+  // rail. This persisted discriminator is distinct from a funded book.
+  if (market.bookPhase === "preview_only") {
     return "market_not_open";
   }
 
@@ -239,6 +246,8 @@ export function buildFreshBetMarketWriteWhere(
   now = new Date(),
 ): Prisma.BetMarketWhereInput {
   return {
+    // Guard the ACTUAL wallet-acceptance write, not only JavaScript preflight.
+    bookPhase: { not: "preview_only" },
     OR: [
       /*
        * Scheduled/challenge winner book:
