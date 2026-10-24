@@ -46,11 +46,11 @@ test("private ingest returns a retryable failure when awaited admission fails",a
   }});
   assert.equal(report.admission.liveMarkets.succeeded,false);assert.equal(replayPostIngestReportSucceeded(report),false);
 });
-test("authenticated ingest awaits metadata admission and preserves existing financial fallback",()=>{
+test("authenticated ingest awaits metadata admission without any GET/HTTP finance wakeup",()=>{
   for(const route of ["app/api/replay/post-ingest/route.ts","app/api/replay/upload/route.ts"]){
     const source=readFileSync(new URL("../"+route,import.meta.url),"utf8");
     assert.match(source, /await coordinateReplayPostIngest\(/);
-    assert.match(source, /queueBetMarketEnsure/);
+    assert.doesNotMatch(source, /queueBetMarketEnsure|executeWolo|settleMarketIntegrityCorrections/);
   }
   const privateRoute=readFileSync(new URL("../app/api/replay/post-ingest/route.ts",import.meta.url),"utf8");
   assert.ok(privateRoute.indexOf("if (!authorized(request))")<privateRoute.indexOf("coordinateReplayPostIngest({"));
