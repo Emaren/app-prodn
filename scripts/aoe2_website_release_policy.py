@@ -193,7 +193,7 @@ def assess(*, repo: Path, manifest: dict, manifest_raw: bytes, gate: dict,
     ensure(stage.get("release_sha") == p["candidate_sha"] and
            stage.get("manifest_sha256") == p["manifest_sha256"] and
            stage.get("gate_sha256") == p["gate_sha256"] and
-           stage.get("candidate_build_id") == p.get("candidate_build_id") and
+           stage.get("staged_build_id") == p.get("candidate_build_id") and
            isinstance(p.get("candidate_build_id"), str) and p["candidate_build_id"],
            "candidate BUILD_ID or stage binding mismatch")
     ensure(stage.get("status") in ("STAGED", "PASS") and
