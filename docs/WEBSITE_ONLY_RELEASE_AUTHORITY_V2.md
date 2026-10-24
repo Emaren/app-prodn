@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.website-only-release-authority-v2"
+title: "Held Website-Only Release Authority V2"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "nonauthorizing-source-engineering"
+reviewed_at: "2026-10-24"
+review_interval_days: 1
+sensitivity: "internal"
+---
+
 # Website-only nine-path source release — protected controller v2 (HELD)
 
 **Status: NOT AUTHORIZED.** This document defines independently reviewable engineering
