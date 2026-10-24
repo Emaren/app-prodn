@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/disabled-live-preview-extract` at `723c344f4ed0e03f0117c9fbed12a5e4bb6f3dd8`
+Implementation baseline: `review/20261024-live-preview-finance-boundary-held` at `1ac90cd8817f971e15a02d4a36a45ffd10ea8a65`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
