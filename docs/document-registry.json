@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "5d52e6562e2a7ee70f9d45113dd7ac6837fff2a35229802302c781a522bf27bb",
+      "sha256": "799bd296a2b002230c3956c0a074f036904831d26a066c4fa68d0eda99ae6ab1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "56bacda31618e2b8f8e5e531445312a3cf01552ee028a3b8613a38cb36fc5f34",
+      "sha256": "77ddaabcfa06473794db2b72b748dccaa7713861763d6abd9f3c1b90881df2d4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/funded-epoch-integration-20261024",
-    "commit": "9ea0b267adeac3622084dace824fc8c570e500d4"
+    "branch": "session-b/held-prospective-epoch-credit-20261024",
+    "commit": "41830718c2f94ecc420fc1e0f34df59beb292b44"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
