@@ -34,7 +34,12 @@ post-broadcast recovery branches. This covers ordinary wagers, stake intents,
 and the multi-leg ticket code's shared preflight/write guard. A
 `preview_only` family must not invite a real Keplr transfer or count as
 an authorized funded release, even if the legacy escrow address/settlement
-rail is otherwise configured. A user might nevertheless send funds to an
+rail is otherwise configured. The existing admin Founder Bonus creation path also refuses a preview-only
+market (including duplicate-request replay); Founder Bonus settlement skips
+such books without writing a payout/claim. This prevents the nonfunded preview
+from creating a new founder entitlement through an older admin route.
+
+A user might nevertheless send funds to an
 address outside application control: this safeguard cannot itself reverse
 or certify an external chain payment.
 
