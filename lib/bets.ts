@@ -8663,6 +8663,13 @@ export async function admitReviewedFundedWatcherBooks(prisma:PrismaClient,input:
     }
     if(preexisting.some(book=>book.slug===names.winnerSlug||book.slug===names.desyncSlug))
        throw Error("FUNDED_WATCHER_SLUG_REUSE_REFUSED");
+    // The approval cannot remain valid just because it was valid before
+    // waiting for the lock and source re-read. Reverify before first insert.
+    verifyIndependentFundedWatcherOrigin({
+      signed:input.signedOrigin,publicKeyHex:reviewerKey,nowMs:Date.now(),
+      expected:{sessionKey:verified.session_key,propositionHash:verified.proposition_hash,
+        rosterHash:verified.roster_hash,sourceGameStatsId:input.sourceGameStatsId},
+    });
     const winner=await tx.betMarket.create({data:{
       ...marketSeedCreateData(winnerSeed),slug:names.winnerSlug,
       bookPhase:"funded",phaseBookKey:names.winnerPhaseKey,
