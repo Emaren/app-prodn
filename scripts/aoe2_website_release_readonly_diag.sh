@@ -140,6 +140,21 @@ if [ -d "$WEB" ]; then
   done
 fi
 out "WEB_SERVICE" "$(systemctl is-active aoe2hdbets-web.service 2>/dev/null || true)"
+# Report likely money-moving units only. Names/states are NOT proof that all
+# financial producers are fenced; independent Source+Finance must certify that.
+for unit in aoe2hdbets-bet-stake-reconcile.timer aoe2hdbets-bet-stake-reconcile.service; do
+  state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  enabled="$(systemctl is-enabled "$unit" 2>/dev/null || true)"
+  out "FINANCIAL_UNIT_STATE" "$unit active=${state:-unknown} enabled=${enabled:-unknown}"
+done
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl list-units --all --type=service --type=timer --no-legend --plain 2>/dev/null \
+    | awk 'tolower($1) ~ /(satchel|autobet|auto-bet|stake-reconcile|finance|bridge|wolo.*settle)/ {print $1, $3, $4}' \
+    | head -n 20 \
+    | while read -r unit active sub; do
+        out "OTHER_FINANCE_RELATED_UNIT" "$unit active=$active sub=$sub"
+      done
+fi
 if command -v ss >/dev/null 2>&1; then
   listeners="$(ss -ltn 2>/dev/null || true)"
   for port in 8092 8093; do
