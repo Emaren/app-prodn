@@ -82,7 +82,11 @@ test("automatic settlement and admin retry both check historical prior attempts"
     const guardStart = source.indexOf("const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({");
     const guardEnd = source.indexOf("if (conflictingEconomicClaim)", guardStart);
     assert.ok(guardStart >= 0 && guardEnd > guardStart);
-    assert.doesNotMatch(source.slice(guardStart, guardEnd), /OR:|status:|payoutAttemptedAt:/);
+    const guardedSource = source.slice(guardStart, guardEnd);
+    assert.match(guardedSource, /sourceFounderBonusId: null/);
+    assert.match(guardedSource, /claimGroupKey: \\{ startsWith:/);
+    assert.match(guardedSource, /claimGroupKey: \\{ not:/);
+    assert.doesNotMatch(guardedSource, /status:|payoutAttemptedAt:/);
     assert.match(source, /economicLockKey: buildFounderEconomicLockKey/);
   }
 });
