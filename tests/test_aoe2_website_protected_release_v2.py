@@ -215,5 +215,25 @@ class ProtectedWebsiteControllerTests(unittest.TestCase):
         self.assertNotIn('critical_get "$PUBLIC/api/lobby"', rollback)
 
 
+    def test_signed_approvals_absent_never_dispatches_or_changes_production(self):
+        # The only test of real dispatch is that it is *not* called without
+        # authentic approvals. The global lock is mocked, never acquired.
+        from contextlib import nullcontext
+        from unittest.mock import Mock
+        import aoe2_release as legacy_release
+        source = self.observation()
+        dispatch = Mock()
+        with patch.object(CONTROL, "source_scope", return_value=self.scope), \
+             patch.object(legacy_release, "deployment_lock", return_value=nullcontext()):
+            with self.assertRaisesRegex(AUTH.Hold, "signed four-role"):
+                CONTROL.verified_operation(
+                    operation="stage", candidate_repo=self.root,
+                    now=self.now, state_root=self.root, trust_root=self.trust,
+                    observer=lambda **kwargs: source,
+                    dispatch=dispatch, allow_test_root=True)
+        dispatch.assert_not_called()
+
+
+
 if __name__ == "__main__":
     unittest.main()
