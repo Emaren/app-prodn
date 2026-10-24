@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf1e4175e240b9e266dcfcfa0e56d58d49b22925e80b1ed5909641ab8ea00f52",
+      "sha256": "13ead49778ce6a27ffa8c169007ef8c88c456e1fde4ae57ab6b058c7c8da92fd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261023-satchel-final-gated",
-    "commit": "739b7642ee4407edb73630bb6e017ec7f43e3da2"
+    "commit": "3101ac9ecdce04b2a14be5140649c380e88726e0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
