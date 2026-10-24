@@ -183,6 +183,13 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
          "tests/war-satchel-continuous-funded-lifecycle.test.mts"],cwd=ROOT,env=env)
 
+    # Dedicated funded book creation with explicit, independently signed
+    # synthetic approval and actual PRIVATE PostgreSQL; production HOLD stays.
+    run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs",
+         "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
+         "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
+         "tests/funded-watcher-book-postgres.test.mts"],cwd=ROOT,env=env)
+
     # Boundary qualification reuses the SAME continuous SDK/Comet/IAVL fixture.
     # Only test genesis/recipe bounds change after the exact verifier was built.
     # No new production verifier, database credit or financial authority exists.
