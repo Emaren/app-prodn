@@ -314,18 +314,18 @@ class ReleaseEngineeringTests(unittest.TestCase):
             finally:
                 MODULE.ACTIVATION_RECEIPT_DIR = original
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class MutatingShipSourceP1Tests(unittest.TestCase):
     def _plan(self, **changes):
+        # Synthetic collector-shaped unit evidence; never a real release permit.
         value = {
+            "schema": 1, "maintenance_only": False, "external_hold": None,
             "blocked": False,
-            "unknown_p0": [],
-            "unknown_p1": [],
-            "auto_remediable_p1": [],
-            "blocked_source_docs": [],
+            "unknown_p0": [], "unknown_p1": [],
+            "auto_remediable_p0": [], "auto_remediable_p1": [],
+            "blocked_source_docs": [], "maintenance_errors": [],
+            "audit": {"schema": 1, "estate": "HEALTHY", "p0": 0, "p1": 0,
+                      "findings": [], "info": {"wolo_vps": {
+                          "head": "b" * 40, "expected_implementation_baseline": "b" * 40}}},
         }
         value.update(changes)
         return value
@@ -417,3 +417,85 @@ class MutatingShipSourceP1Tests(unittest.TestCase):
                         self.assertEqual(MODULE.main(), 2)
         guard.assert_not_called()
         fake_ship.ship_release.assert_called_once()
+
+    def test_missing_positive_wolo_observation_fails_closed(self):
+        for evidence in (None, {}, {"wolo_vps": None}, {"wolo_vps": {}},
+                         {"wolo_vps": {"head": "b" * 40}}):
+            with self.subTest(evidence=evidence):
+                plan = self._plan()
+                plan["audit"]["info"] = evidence
+                self.assertTrue(self._evaluate(plan))
+
+    def test_malformed_or_different_observed_wolo_heads_do_not_manufacture_parity(self):
+        for value in (None, "", "b" * 39, "B" * 40, "0" * 40, "b" * 40 + "\n", 1, []):
+            for field in ("head", "expected_implementation_baseline"):
+                with self.subTest(field=field, value=value):
+                    plan = self._plan()
+                    plan["audit"]["info"]["wolo_vps"][field] = value
+                    self.assertTrue(self._evaluate(plan))
+        plan = self._plan()
+        plan["audit"]["info"]["wolo_vps"]["head"] = "c" * 40
+        self.assertTrue(self._evaluate(plan), "different genuine observations remain P1 even if its finding was lost")
+
+    def test_missing_malformed_or_maintenance_plan_cannot_admit_ship(self):
+        self.assertTrue(self._evaluate({"blocked": False}))
+        for field in ("unknown_p0", "unknown_p1", "auto_remediable_p0", "auto_remediable_p1", "blocked_source_docs", "maintenance_errors"):
+            for malformed in (None, {}, "", [None]):
+                with self.subTest(field=field, malformed=malformed):
+                    plan = self._plan()
+                    plan[field] = malformed
+                    self.assertTrue(self._evaluate(plan))
+            plan = self._plan()
+            del plan[field]
+            self.assertTrue(self._evaluate(plan))
+        for change in ({"schema": True}, {"schema": 2}, {"maintenance_only": True},
+                       {"external_hold": {"status": "DOCS_MAINTENANCE_ONLY"}}):
+            self.assertTrue(self._evaluate(self._plan(**change)))
+
+    def test_unblocked_flag_cannot_hide_unknown_or_source_documentation_errors(self):
+        for field in ("unknown_p0", "unknown_p1", "blocked_source_docs"):
+            with self.subTest(field=field):
+                plan = self._plan()
+                plan[field] = [{"area": "Release", "key": "unreviewed-source"}]
+                self.assertTrue(self._evaluate(plan))
+        self.assertTrue(self._evaluate(self._plan(maintenance_errors=["missing evidence"])))
+
+    def test_audit_wolo_p1_cannot_disappear_from_planner_classification(self):
+        plan = self._plan()
+        plan["audit"].update(estate="ATTENTION_REQUIRED", p1=1, findings=[{
+            "severity": "P1", "area": "WoloChain", "key": "vps-source-drift", "detail": "still unresolved"}])
+        self.assertTrue(self._evaluate(plan))
+        for audit in (None, {}, {"schema": 1}, {"schema": 1, "findings": "missing"}):
+            self.assertTrue(self._evaluate(self._plan(audit=audit)))
+        for change in ({"estate": "APPROVED"}, {"p1": 1}, {"p0": False}, {"schema": True}, {"findings": [None]}):
+            plan = self._plan()
+            plan["audit"].update(change)
+            self.assertTrue(self._evaluate(plan))
+
+    def test_missing_observation_blocks_actual_mutating_dispatch_for_all_ship_modes(self):
+        fake_node = SimpleNamespace(ensure_build_node_runtime=mock.Mock(), BuildNodeError=RuntimeError)
+        provider = SimpleNamespace(collect_plan=mock.Mock(return_value={"blocked": False}))
+        for mode in ([], ["--stage"], ["--activate", "fake-stage-receipt"], ["--prepare-only"]):
+            with self.subTest(mode=mode), patch.dict(sys.modules, {"aoe2_node_runtime": fake_node, "aoe2_update": provider}), \
+                 patch.object(sys, "argv", ["aoe2war-release", "ship", "--json", *mode]), \
+                 patch.object(MODULE, "collect", return_value={}), patch.object(MODULE, "run_mutating_release") as mutator:
+                with redirect_stdout(io.StringIO()):
+                    self.assertEqual(MODULE.main(), 2)
+                mutator.assert_not_called()
+
+
+    def test_emergency_rollback_keeps_existing_receipt_authority_instead_of_ship_guard(self):
+        fake_rollback = SimpleNamespace(rollback_release=mock.Mock(return_value=7))
+        with patch.dict(sys.modules, {"aoe2_release_rollback": fake_rollback}), \
+             patch.object(sys, "argv", ["aoe2war-release", "rollback"]), \
+             patch.object(MODULE, "collect", return_value={}), \
+             patch.object(MODULE, "mutating_ship_source_blockers") as guard, \
+             patch.object(MODULE, "run_mutating_release", side_effect=lambda action: action()) as mutation_lease:
+            self.assertEqual(MODULE.main(), 7)
+            guard.assert_not_called()
+            mutation_lease.assert_called_once()
+            fake_rollback.rollback_release.assert_called_once()
+
+
+if __name__ == "__main__":
+    unittest.main()

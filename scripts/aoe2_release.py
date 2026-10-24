@@ -842,15 +842,42 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
     except Exception as exc:
         return ["Finish source/P1 preflight unavailable: " + str(exc)[:300]]
 
-    if not isinstance(plan, dict):
+    if (not isinstance(plan, dict) or type(plan.get("schema")) is not int or
+            plan["schema"] != 1 or plan.get("maintenance_only") is not False or
+            "external_hold" not in plan or plan["external_hold"] is not None or
+            type(plan.get("blocked")) is not bool):
         return ["Finish source/P1 preflight returned invalid evidence"]
+
+    # An absent/error observation must not become a clean plan simply because
+    # the audit currently treats unavailable direct Wolo SSH proof as optional.
+    # These are actual collector fields, never an env certification/waiver bit.
+    for key in ("unknown_p0", "unknown_p1", "auto_remediable_p0",
+                "auto_remediable_p1", "blocked_source_docs"):
+        entries = plan.get(key)
+        if not isinstance(entries, list) or any(not isinstance(item, dict) for item in entries):
+            return ["Finish source/P1 preflight returned invalid findings: " + key]
+    maintenance_errors = plan.get("maintenance_errors")
+    if (not isinstance(maintenance_errors, list) or
+            any(not isinstance(item, str) for item in maintenance_errors)):
+        return ["Finish source/P1 preflight returned invalid maintenance evidence"]
+
+    audit = plan.get("audit")
+    if (not isinstance(audit, dict) or type(audit.get("schema")) is not int or
+            audit["schema"] != 1 or not isinstance(audit.get("info"), dict) or
+            not isinstance(audit.get("findings"), list) or
+            any(not isinstance(item, dict) for item in audit["findings"]) or
+            any(type(audit.get(key)) is not int or audit[key] < 0 for key in ("p0", "p1"))):
+        return ["Finish source/P1 preflight returned incomplete audit evidence"]
+    if (audit["p0"] != sum(item.get("severity") == "P0" for item in audit["findings"]) or
+            audit["p1"] != sum(item.get("severity") == "P1" for item in audit["findings"]) or
+            audit.get("estate") != ("UNSAFE" if audit["p0"] else
+                                    "ATTENTION_REQUIRED" if audit["p1"] else "HEALTHY")):
+        return ["Finish source/P1 audit state contradicts its findings"]
 
     findings = [
         finding
-        for key in ("unknown_p1", "auto_remediable_p1")
-        for finding in (plan.get(key) or [])
-        if isinstance(finding, dict)
-        and finding.get("area") == "WoloChain"
+        for finding in [*plan["unknown_p1"], *plan["auto_remediable_p1"], *audit["findings"]]
+        if finding.get("area") == "WoloChain"
         and finding.get("key") == "vps-source-drift"
     ]
     if findings:
@@ -860,16 +887,25 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
             for item in findings
         ]
 
-    if plan.get("blocked") is not False:
-        blockers = []
-        for key in ("unknown_p0", "unknown_p1", "blocked_source_docs"):
-            for item in (plan.get(key) or []):
-                if isinstance(item, dict):
-                    blockers.append(
-                        str(item.get("area") or item.get("repo") or "source")
-                        + "/"
-                        + str(item.get("key") or "unresolved")
-                    )
+    wolo = audit["info"].get("wolo_vps")
+    if (not isinstance(wolo, dict) or any(
+            not isinstance(wolo.get(key), str) or
+            re.fullmatch(r"[0-9a-f]{40}", wolo[key]) is None or wolo[key] == "0" * 40
+            for key in ("head", "expected_implementation_baseline"))):
+        return ["WoloChain source observation unavailable or malformed; independent source review required"]
+    if wolo["head"] != wolo["expected_implementation_baseline"]:
+        return ["WoloChain/vps-source-drift P1 remains unresolved: observed source differs from reviewed baseline"]
+
+    # Matching checkout observations still do not authenticate the running
+    # binary or grant custody/FINANCIAL release authority. Continue the existing
+    # protected gates only after every unresolved planner field agrees.
+    blockers = [
+        str(item.get("area") or item.get("repo") or "source") + "/" +
+        str(item.get("key") or "unresolved")
+        for key in ("unknown_p0", "unknown_p1", "blocked_source_docs")
+        for item in plan[key]
+    ]
+    if plan["blocked"] or blockers or maintenance_errors:
         return [
             "Finish documentation/update plan BLOCKED"
             + (": " + ", ".join(blockers[:8]) if blockers else "")
