@@ -591,7 +591,7 @@ test(
 );
 
 test(
-  "the bets board has a bounded foreground refresh, explicit no-store response, and canonical financial session source",
+  "the bets board has bounded foreground refresh and a no-store read-only public GET with canonical session source",
   () => {
     assert.match(
       betsPageSource,
@@ -605,9 +605,13 @@ test(
       betsPageSource,
       /window\.addEventListener\("focus", handleForegroundRefresh\)/
     );
+    assert.doesNotMatch(
+      betsRouteSource,
+      /queueBetMarketEnsure|ensureBetMarkets\\(prisma\\)/
+    );
     assert.match(
       betsRouteSource,
-      /queueBetMarketEnsure\(prisma, 0\)/
+      /ensureMarkets:\\s*false/
     );
     assert.match(
       betsRouteSource,
