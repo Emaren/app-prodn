@@ -27,7 +27,7 @@ CLASSES = {"LOCAL_INDEX_MISSING", "CHAIN_OR_DENOM_REVIEW", "CROSS_KIND_REVIEW",
            "CROSS_MARKET_REVIEW", "CLAIM_GROUP_REVIEW", "REUSED_HASH_REVIEW"}
 MAX_BYTES = 262144
 DIGITS = re.compile(r"(?:0|[1-9][0-9]*)\Z")
-DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]{1,6})?\Z")
+DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]{1,40})?\Z")
 CLAIM_IDS = re.compile(r"[1-9][0-9]*(?:,[1-9][0-9]*)*\Z")
 
 class Hold(ValueError): pass
@@ -60,8 +60,13 @@ def num(raw: str) -> int:
 
 def amount(raw: str) -> Decimal:
     need(DECIMAL.fullmatch(raw) is not None, "BAD_DECIMAL")
-    try: return Decimal(raw)
-    except InvalidOperation: raise Hold("BAD_DECIMAL") from None
+    try:
+        value=Decimal(raw)
+        need(value == value.quantize(Decimal("0.000001")),
+             "EXCESS_NONZERO_PRECISION")
+        return value
+    except InvalidOperation:
+        raise Hold("BAD_DECIMAL") from None
 
 def classify(row):
     if row["indexed_rows"] == 0: return "LOCAL_INDEX_MISSING"
