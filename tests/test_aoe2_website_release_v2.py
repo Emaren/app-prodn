@@ -181,10 +181,10 @@ class WebsiteOnlyAuthorityTests(unittest.TestCase):
         pem = (self.trust / "owner.pem").read_text()
         encoded = "".join(pem.splitlines()[1:-1])
         reformatted = (
-            "-----BEGIN PUBLIC KEY-----\\n"
-            + "\\n".join(textwrap.wrap(encoded, 32))
-            + "\\n-----END PUBLIC KEY-----\\n"
-        ).replace("\\\\n", "\\n")
+            "-----BEGIN PUBLIC KEY-----\n"
+            + "\n".join(textwrap.wrap(encoded, 32))
+            + "\n-----END PUBLIC KEY-----\n"
+        )
         (self.trust / "finance_reviewer.pem").write_text(reformatted)
         signed_same_private_key = subprocess.run(
             ["openssl", "dgst", "-sha256", "-sign",
