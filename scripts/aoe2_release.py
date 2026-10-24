@@ -845,12 +845,28 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
     if not isinstance(plan, dict):
         return ["Finish source/P1 preflight returned invalid evidence"]
 
+    # The update plan is a security input, not an informal status display.
+    # Reject malformed lists, false booleans and missing fields rather than
+    # silently treating corrupt/missing P1 evidence as an empty list.
+    evidence_lists = {}
+    for key in ("unknown_p0", "unknown_p1", "auto_remediable_p1",
+                "blocked_source_docs"):
+        value = plan.get(key)
+        if not isinstance(value, list) or any(
+            not isinstance(item, dict) for item in value
+        ):
+            return ["Finish source/P1 preflight malformed " + key]
+
+        evidence_lists[key] = value
+
+    if type(plan.get("blocked")) is not bool:
+        return ["Finish source/P1 preflight missing authoritative blocked flag"]
+
     findings = [
         finding
         for key in ("unknown_p1", "auto_remediable_p1")
-        for finding in (plan.get(key) or [])
-        if isinstance(finding, dict)
-        and finding.get("area") == "WoloChain"
+        for finding in evidence_lists[key]
+        if finding.get("area") == "WoloChain"
         and finding.get("key") == "vps-source-drift"
     ]
     if findings:
@@ -863,19 +879,51 @@ def mutating_ship_source_blockers(data: dict) -> list[str]:
     if plan.get("blocked") is not False:
         blockers = []
         for key in ("unknown_p0", "unknown_p1", "blocked_source_docs"):
-            for item in (plan.get(key) or []):
-                if isinstance(item, dict):
-                    blockers.append(
-                        str(item.get("area") or item.get("repo") or "source")
-                        + "/"
-                        + str(item.get("key") or "unresolved")
-                    )
+            for item in evidence_lists[key]:
+                blockers.append(
+                    str(item.get("area") or item.get("repo") or "source")
+                    + "/"
+                    + str(item.get("key") or "unresolved")
+                )
         return [
             "Finish documentation/update plan BLOCKED"
             + (": " + ", ".join(blockers[:8]) if blockers else "")
         ]
 
     return []
+
+
+def locked_mutating_ship(action, *, json_output: bool = False) -> int:
+    """Re-evaluate actual source/P1 state *inside* the protected release lease.
+
+    A first check in main gives quick feedback, but must not be the only
+    check: source/Wolo evidence can change while waiting for the lease.
+    Caller passes an action(fresh_release_snapshot). This helper only runs
+    inside run_mutating_release's deployment_lock, before stage/activation.
+    """
+    try:
+        fresh = collect()
+    except Exception as exc:
+        blockers = ["Locked source/P1 snapshot unavailable: " + str(exc)[:300]]
+    else:
+        blockers = mutating_ship_source_blockers(fresh)
+
+    if blockers:
+        payload = {
+            "status": "BLOCKED",
+            "kind": "aoe2war-ship-locked-source-p1-preflight",
+            "errors": blockers,
+            "production_mutated": False,
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: LOCKED MUTATING SHIP SOURCE/P1 PREFLIGHT BLOCKED")
+            for blocker in blockers:
+                print("  - " + blocker)
+        return 2
+
+    return action(fresh)
 
 
 def main() -> int:
@@ -963,21 +1011,32 @@ def main() -> int:
 
         if args.activate:
             from aoe2_release_ship import activate_release
-            action = lambda: activate_release(
-                data,
-                stage_receipt=args.activate,
-                dry_run=args.dry_run,
-                json_output=args.json,
-            )
             if args.dry_run:
-                return action()
-            return run_mutating_release(action)
+                return activate_release(
+                    data,
+                    stage_receipt=args.activate,
+                    dry_run=True,
+                    json_output=args.json,
+                )
+            return run_mutating_release(
+                lambda: locked_mutating_ship(
+                    lambda fresh: activate_release(
+                        fresh,
+                        stage_receipt=args.activate,
+                        dry_run=False,
+                        json_output=args.json,
+                    ),
+                    json_output=args.json,
+                )
+            )
 
         if args.stage:
             from aoe2_release_stage import stage_release
             return run_mutating_release(
-                lambda: stage_release(
-                    data,
+                lambda: locked_mutating_ship(
+                    lambda fresh: stage_release(
+                        fresh, json_output=args.json,
+                    ),
                     json_output=args.json,
                 )
             )
@@ -992,11 +1051,14 @@ def main() -> int:
 
         from aoe2_release_auto import ship_all
         return run_mutating_release(
-            lambda: ship_all(
-                collect=collect,
-                initial=data,
+            lambda: locked_mutating_ship(
+                lambda fresh: ship_all(
+                    collect=collect,
+                    initial=fresh,
+                    json_output=args.json,
+                    prepare_only=args.prepare_only,
+                ),
                 json_output=args.json,
-                prepare_only=args.prepare_only,
             )
         )
 
