@@ -275,8 +275,16 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
         await manual.placePooledBetWager(db.prisma,{viewer:opponent,marketId:s.market.id,side:"right",amountWolo:25,walletAddress:opponent.walletAddress,stakeTxHash:native.tx_hash,stakeIntentId:intent.id});
       }
       const winningSide=n>=11?"right":"left";
-      const finalPlayers=s.session.players.map(p=>({name:p.name,steam_id:p.steamId,team_id:p.teamId,winner:(p.teamId==="2")===(winningSide==="right")}));
-      const final=await db.prisma.gameStats.create({data:{userUid:seeded.owner.uid,replay_file:"isolated-final-"+n+".aoe2record",original_filename:"isolated-final-"+n+".aoe2record",replayHash:createHash("sha256").update("isolated-final-"+n).digest("hex"),is_final:true,parse_iteration:2,parse_source:"watcher_final",parse_reason:"watcher_final_submission",game_type:"Random Map",players:finalPlayers,winner:finalPlayers.filter(p=>p.winner).map(p=>p.name).join(" / "),key_events:{completed:true,postgame_available:true,result_resolution:{result_status:"resolved",result_trusted:true,result_provenance:"postgame_winner_flags",winning_player_keys:s.session.players.filter(p=>(p.teamId==="2")===(winningSide==="right")).map(p=>p.stablePlayerKey),winning_player_names:finalPlayers.filter(p=>p.winner).map(p=>p.name)},team_resolution:{status:"resolved",confidence:"high"}}}});
+      // Native final truth is keyed to the signed original Watcher roster,
+      // not a fabricated assumption that team identifiers are always "1"/"2".
+      // The accepted LIVE fixture uses "0"/"1", while historical SDK rows
+      // use "1"/"2"; both must resolve to the frozen market side.
+      const winningTeam=s.session.teamResolution.teams[winningSide==="right"?1:0];
+      assert.ok(winningTeam&&winningTeam.players.length>0);
+      const winningKeys=new Set(winningTeam.players.map(p=>p.stablePlayerKey));
+      const finalPlayers=s.session.players.map(p=>({name:p.name,steam_id:p.steamId,
+        team_id:p.teamId,winner:winningKeys.has(p.stablePlayerKey)}));
+      const final=await db.prisma.gameStats.create({data:{userUid:seeded.owner.uid,replay_file:"isolated-final-"+n+".aoe2record",original_filename:"isolated-final-"+n+".aoe2record",replayHash:createHash("sha256").update("isolated-final-"+n).digest("hex"),is_final:true,parse_iteration:2,parse_source:"watcher_final",parse_reason:"watcher_final_submission",game_type:"Random Map",players:finalPlayers,winner:finalPlayers.filter(p=>p.winner).map(p=>p.name).join(" / "),key_events:{completed:true,postgame_available:true,result_resolution:{result_status:"resolved",result_trusted:true,result_provenance:"postgame_winner_flags",winning_player_keys:[...winningKeys],winning_player_names:finalPlayers.filter(p=>p.winner).map(p=>p.name)},team_resolution:{status:"resolved",confidence:"high"}}}});
       await db.prisma.betMarket.update({where:{id:s.market.id},data:{status:"settled",winnerSide:winningSide,linkedGameStatsId:final.id,settledAt:new Date()}});
       await canonical.settleIsolatedLifecycleMarkets(db.prisma);
       const settled=await db.prisma.betWager.findFirstOrThrow({where:{marketId:s.market.id,userId:seeded.owner.id}});
