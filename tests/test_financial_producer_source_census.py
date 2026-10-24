@@ -25,8 +25,13 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
         self.assertGreaterEqual(len(report["unverified_producer_owners"]), 5)
         observed = report["observations"]
         self.assertGreaterEqual(len(observed), 20)
-        self.assertTrue(all(entry["status"] == "SOURCE_OBSERVED" for entry in observed))
-        self.assertTrue(all(entry["line"] and len(entry["source_sha256"]) == 64 for entry in observed))
+        self.assertTrue(all(entry["status"] in {"SOURCE_OBSERVED", "SOURCE_ABSENCE_OBSERVED"} for entry in observed))
+        self.assertTrue(all(len(entry["source_sha256"]) == 64 for entry in observed))
+        self.assertTrue(all(entry["line"] for entry in observed if entry["expected_present"]))
+        removed = [entry for entry in observed if entry["classification"] == "removed_public_financial_edge"]
+        self.assertGreaterEqual(len(removed), 7)
+        self.assertTrue(all(entry["status"] == "SOURCE_ABSENCE_OBSERVED" and entry["line"] is None for entry in removed))
+        self.assertTrue(any(entry["classification"] == "private_financial_producer" for entry in observed))
         self.assertTrue(any(entry["classification"] == "explicit_read_mode_exception"
                             for entry in observed))
         self.assertTrue(any(entry["classification"] == "money_moving_possible"
@@ -37,7 +42,9 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
             root = pathlib.Path(td)
             grouped: dict[str, list[str]] = {}
             for item in MODULE.EVIDENCE:
-                grouped.setdefault(item.path, []).append(item.needle)
+                grouped.setdefault(item.path, [])
+                if item.expected_present:
+                    grouped[item.path].append(item.needle)
             for path, needles in grouped.items():
                 p = root / path
                 p.parent.mkdir(parents=True, exist_ok=True)
@@ -55,6 +62,25 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
             missing = MODULE.inspect(root)
             self.assertTrue(any(x["status"] == "UNKNOWN_SOURCE" for x in missing["observations"]))
             self.assertFalse(missing["safe_to_deploy"])
+
+    def test_reintroduced_public_wakeup_is_source_drift_not_isolation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            for item in MODULE.EVIDENCE:
+                path = root / item.path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if not path.exists():
+                    path.write_text("")
+                if item.expected_present:
+                    path.write_text(path.read_text() + item.needle + "\n")
+            self.assertTrue(MODULE.inspect(root)["known_source_edges_intact"])
+            victim = root / "app/api/bets/route.ts"
+            victim.write_text(victim.read_text() + "queueBetMarketEnsure(prisma, 0);\n")
+            report = MODULE.inspect(root)
+            self.assertFalse(report["known_source_edges_intact"])
+            self.assertTrue(any(entry["path"] == "app/api/bets/route.ts" and entry["status"] == "SOURCE_DRIFT" for entry in report["observations"]))
+            self.assertFalse(report["all_financial_producers_isolated"])
+            self.assertFalse(report["safe_to_deploy"])
 
     def test_symlink_is_not_used_for_provenance(self):
         with tempfile.TemporaryDirectory() as td:

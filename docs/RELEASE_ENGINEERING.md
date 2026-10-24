@@ -15,6 +15,24 @@ sensitivity: "internal"
 
 # AoE2WAR Release Engineering
 
+## October 24 — positive source evidence before mutating ship
+
+Every mutating ship entrypoint (prepare, stage, activate and combined ship)
+requires a complete ordinary Finish source plan and a positive Wolo checkout
+observation against the reviewed implementation baseline. Missing or malformed
+observations, contradictory finding counts, maintenance-only evidence and an
+unresolved Wolo drift all refuse dispatch before mutation. The source plan is
+collected again under the deployment lease and that fresh snapshot is passed
+to the selected action; the earlier pre-lock check cannot authorize it.
+An empty finding list or `blocked=false` alone is insufficient. Read-only gate/manifest review
+and the existing emergency rollback retain their separate behavior.
+
+Checkout agreement is only a prerequisite: it neither authenticates the
+running binary nor supplies independent financial release authorization.
+The historical Wolo source HOLD remains unresolved until its actual protected
+provenance and reviewer requirements are met; no website scope waiver is
+introduced here.
+
 ## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
 
 The source release classifier in `scripts/aoe2_release_gate.py` now assigns

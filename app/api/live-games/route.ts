@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import { getPrisma } from "@/lib/prisma";
 import { loadPublicLiveGamesSnapshot } from "@/lib/liveGamesPublicSnapshot";
 
@@ -73,10 +72,8 @@ export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
 
-    // The live board polls continuously. Wake the existing
-    // throttled reconciler so an eligible replay proposition
-    // becomes a market without requiring a separate /bets visit.
-    queueBetMarketEnsure(prisma, 0);
+    // Public polling reads committed projections; authenticated ingestion owns
+    // LIVE admission and existing private reconciliation paths.
 
     // The process-wide four-second snapshot cache also coalesces concurrent
     // refreshes. With a five-second browser poll this stays current while one

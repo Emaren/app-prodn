@@ -1,0 +1,36 @@
+name: LIVE orphan-origin child DocsV2 source proposal (review only)
+on:
+  push:
+    branches:
+      - review/20261024-live-orphan-origin-failclose
+      - review/20261024-live-deploy-p1-entry-guard
+      - review/20261024-locked-source-p1-admission
+permissions:
+  contents: read
+jobs:
+  checked-doc-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Generate existing DocsV2 in disposable CI workspace (no commit or deploy)
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline \
+            --branch "$GITHUB_REF_NAME" \
+            --head "$(git rev-parse HEAD)"
+          python3 scripts/docs_v2_check.py
+          git diff --check
+      - name: Emit exact generated control files as bounded JSON-quoted log chunks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          for name,path in [('INDEX','docs/DOCUMENTATION_CONTROL_PLANE.md'),
+                            ('REGISTRY','docs/document-registry.json')]:
+              data=Path(path).read_text()
+              for i in range(0,len(data),1000):
+                  print('AOE2_ORPHAN_DOCS_%s_%04d='%(name,i//1000)+json.dumps(data[i:i+1000]))
+          PY
