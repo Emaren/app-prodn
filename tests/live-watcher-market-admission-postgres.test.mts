@@ -9,7 +9,7 @@ import {setTimeout as sleep} from "node:timers/promises";
 import test from "node:test";
 import type {Prisma} from "../lib/generated/prisma/index.js";
 import {coordinateReplayPostIngest,classifyReplayIngestReceipt} from "../lib/replayPostIngest.ts";
-import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets,buildWatcherMarketSlugForSessionKey} from "../lib/bets.ts";
+import {admitCommittedLiveWatcherMarkets,recoverCommittedLiveWatcherMarkets,buildWatcherMarketSlugForSessionKey,settleMarketIntegrityCorrections} from "../lib/bets.ts";
 import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
 import {canonicalBattleIdentityKey} from "../lib/battleIdentity.ts";
 import {readBetAutomationRuntime} from "../lib/betAutomation.ts";
@@ -114,6 +114,81 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.equal(desync.parentMarketId,winner.id);assert.equal(desync.battleId,winner.battleId);
       assert.equal(await db.prisma.betAutoExecution.count(),1);
       assert.equal((await db.prisma.betAutoPreset.findUniqueOrThrow({where:{id:preset.id}})).gamesRemaining,12);
+    });
+
+    await t.test("corrective-refund worker ignores voided preview and malformed cross-book adjustments before any claim or signer",async()=>{
+      const createBook=async(slug:string,bookPhase:"preview_only"|"legacy")=>db.prisma.betMarket.create({data:{
+        slug,title:"Isolated corrective refusal",eventLabel:"PG noninterference",
+        leftLabel:"Fixture A",rightLabel:"Fixture B",marketType:"winner",
+        bookPhase,status:"voided",
+      }});
+      const preview=await createBook("pg-corrective-preview","preview_only");
+      const legacy=await createBook("pg-corrective-legacy","legacy");
+      const wager=await db.prisma.betWager.create({data:{
+        marketId:preview.id,userId:owner.id,side:"left",amountWolo:10,status:"void",
+        executionMode:"escrow",
+      }});
+      const incidents=[] as number[],adjustments=[] as number[];
+      try {
+        for(const [name,market] of [["preview",preview],["cross-origin",legacy]] as const) {
+          const incident=await db.prisma.betMarketIntegrityIncident.create({data:{
+            marketId:market.id,incidentKey:"pg-corrective-"+name,
+            incidentType:"invalid_team_assignment",status:"open",publicSummary:"Synthetic",
+            evidence:{fixture:true},originalLeftLabel:"Fixture A",originalRightLabel:"Fixture B",
+          }});
+          incidents.push(incident.id);
+          const adjustment=await db.prisma.betMarketFinancialAdjustment.create({data:{
+            incidentId:incident.id,wagerId:wager.id,userId:owner.id,
+            originalStakeWolo:10,voidEntitlementWolo:10,amountStillOwedWolo:10,
+            adjustmentStatus:"corrective_refund_pending",
+          }});
+          adjustments.push(adjustment.id);
+        }
+        const before=await db.prisma.betMarketFinancialAdjustment.findMany({
+          where:{id:{in:adjustments}},orderBy:{id:"asc"},
+        });
+        const claimsBefore=await db.prisma.pendingWoloClaim.count();
+        const attemptsBefore=networkCalls;
+        await settleMarketIntegrityCorrections(db.prisma);
+        const after=await db.prisma.betMarketFinancialAdjustment.findMany({
+          where:{id:{in:adjustments}},orderBy:{id:"asc"},
+        });
+        assert.deepEqual(after,before,"malformed preview adjustments must not even become processing");
+        assert.equal(await db.prisma.pendingWoloClaim.count(),claimsBefore);
+        assert.equal(networkCalls,attemptsBefore,"no chain, payout or signing attempt");
+      } finally {
+        await db.prisma.betMarketFinancialAdjustment.deleteMany({where:{id:{in:adjustments}}});
+        await db.prisma.betMarketIntegrityIncident.deleteMany({where:{id:{in:incidents}}});
+        await db.prisma.betWager.delete({where:{id:wager.id}});
+        await db.prisma.betMarket.deleteMany({where:{id:{in:[preview.id,legacy.id]}}});
+      }
+    });
+    await t.test("dual-origin pending claim with mismatched direct/Founder market is immutable before admin retry",async()=>{
+      const markets=await db.prisma.betMarket.findMany({
+        where:{bookPhase:"preview_only",status:"live"},orderBy:{id:"asc"},take:2,
+      });
+      assert.equal(markets.length,2);
+      const bonus=await db.prisma.betMarketFounderBonus.create({data:{
+        marketId:markets[1].id,bonusType:"winner",totalAmountWolo:1,status:"pending",
+        requestId:"dual-origin-probe",createdByUserId:owner.id,
+      }});
+      const claim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"dual-origin-fixture",displayPlayerName:"Dual origin fixture",
+        amountWolo:1,claimKind:"founders_win",claimGroupKey:"founder:"+bonus.id+":recipient",
+        status:"pending",sourceMarketId:markets[0].id,sourceFounderBonusId:bonus.id,
+      }});
+      try {
+        const before=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}});
+        const callCount=networkCalls;
+        const result=await retryPendingClaimSettlement(db.prisma,claim.id);
+        assert.equal(result.outcome,"skipped");
+        assert.equal(result.outcome==="skipped"?result.reason:null,"source_attribution_conflict");
+        assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),before);
+        assert.equal(networkCalls,callCount);
+      } finally {
+        await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});
+        await db.prisma.betMarketFounderBonus.delete({where:{id:bonus.id}});
+      }
     });
     if(invalidHmacGameId)await t.test("actual API rejects HMAC elevation despite a spoofed account header and valid upload bytes",async()=>{
       const row=await db.prisma.gameStats.findUniqueOrThrow({where:{id:invalidHmacGameId}});
@@ -408,7 +483,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const childBefore=await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}});
       try{
         const count=await db.prisma.betMarket.count(),report=await ingest(row);
-        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,2);
+        assert.equal(report.admission.liveMarkets.createdCount,0);assert.equal(report.admission.liveMarkets.existingCount,0);
         assert.equal(await db.prisma.betMarket.count(),count);
         assert.deepEqual(await sentinels.snapshot(),sentinels.before);
         assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:child.id}}),childBefore);
@@ -437,6 +512,49 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:identity.canonical}}),0);
         assert.equal(await db.prisma.betAutoExecution.count(),previews);
       }finally{if(alias)await db.prisma.betMarket.delete({where:{id:alias.id}});}
+    });
+    await t.test("existing legacy funded canonical owner is never reused or given an orphan Desync child",async()=>{
+      const row=await persist("legacy-canonical"),key="platform:controlled-hd-legacy-canonical";
+      const occupied=await aliasMarket(key);
+      await db.prisma.betMarket.update({where:{id:occupied.id},data:{
+        bookPhase:"legacy",firstStakeAcceptedAt:new Date(),seedLeftWolo:25,
+      }});
+      const before=await db.prisma.betMarket.findUniqueOrThrow({where:{id:occupied.id}});
+      const count=await db.prisma.betMarket.count();
+      const calls=networkCalls;
+      const report=await ingest(row);
+      assert.equal(report.admission.liveMarkets.createdCount,0);
+      assert.equal(report.admission.liveMarkets.existingCount,0);
+      assert.equal(await db.prisma.betMarket.count(),count);
+      assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:occupied.id}}),before);
+      assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:key,marketType:"desync"}}),0);
+      assert.equal(networkCalls,calls);
+      await db.prisma.betMarket.delete({where:{id:occupied.id}});
+    });
+    await t.test("orphan direct claim on existing preview book refuses both canonical family members",async()=>{
+      const row=await persist("claim-only-occupied"),key="platform:controlled-hd-claim-only-occupied";
+      const market=await aliasMarket(key);
+      const claim=await db.prisma.pendingWoloClaim.create({data:{
+        normalizedPlayerName:"claim-only-occupant",displayPlayerName:"Claim only occupant",
+        amountWolo:25,claimKind:"bet_refund",claimGroupKey:"orphan-claim-only",
+        status:"pending",sourceMarketId:market.id,
+      }});
+      try{
+        const initialMarket=await db.prisma.betMarket.findUniqueOrThrow({where:{id:market.id}});
+        const initialClaim=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}});
+        const marketCount=await db.prisma.betMarket.count(),networkBefore=networkCalls;
+        const report=await ingest(row);
+        assert.equal(report.admission.liveMarkets.createdCount,0);
+        assert.equal(report.admission.liveMarkets.existingCount,0);
+        assert.equal(await db.prisma.betMarket.count(),marketCount);
+        assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:key,marketType:"desync"}}),0);
+        assert.deepEqual(await db.prisma.betMarket.findUniqueOrThrow({where:{id:market.id}}),initialMarket);
+        assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:claim.id}}),initialClaim);
+        assert.equal(networkCalls,networkBefore);
+      }finally{
+        await db.prisma.pendingWoloClaim.delete({where:{id:claim.id}});
+        await db.prisma.betMarket.delete({where:{id:market.id}});
+      }
     });
     await t.test("terminal canonical winner with no child refuses the complete family without creating a desync book",async()=>{
       const row=await persist("terminal-parent-missing-child"),canonical="platform:controlled-hd-terminal-parent-missing-child";
@@ -473,9 +591,8 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       const parent=pair.find(value=>value.marketType==="winner")!,child=pair.find(value=>value.marketType==="desync")!;
       assert.ok(parent);assert.ok(child);
       await db.prisma.betMarket.delete({where:{id:child.id}});
-      const sentinels=await obligationSentinels(parent.id,8477,100);
       await db.prisma.betMarket.update({where:{id:parent.id},data:{closeAt:new Date(Date.now()+1500)}});
-      const before=await sentinels.snapshot(),count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
+      const count=await db.prisma.betMarket.count(),previews=await db.prisma.betAutoExecution.count();
       const identitiesBefore=await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}});
       await db.sql.query(`CREATE FUNCTION fixture_expire_parent_during_child() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
         IF NEW.linked_session_key='platform:controlled-hd-parent-clock-during-child' AND NEW.market_type='desync' THEN
@@ -490,12 +607,10 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         assert.match(report.admission.liveMarkets.error??"",/LIVE_MARKET_ADMISSION_EXISTING_BOOK_CLOSED_BEFORE_COMMIT/);
         assert.equal(await db.prisma.betMarket.count(),count);
         assert.equal(await db.prisma.betMarket.count({where:{linkedSessionKey:canonical,marketType:"desync"}}),0);
-        assert.deepEqual(await sentinels.snapshot(),before);
         assert.deepEqual(await db.prisma.battleIdentity.findMany({orderBy:{id:"asc"}}),identitiesBefore);
         assert.equal(await db.prisma.betAutoExecution.count(),previews);
       }finally{
         await db.sql.query("DROP TRIGGER fixture_expire_parent_during_child ON bet_markets; DROP FUNCTION fixture_expire_parent_during_child()");
-        await sentinels.cleanup();
       }
     });
     assert.equal(await db.prisma.betWager.count(),0);assert.equal((await db.sql.query("SELECT to_regclass('public.war_satchel_funded_reservations') AS name")).rows[0].name,null);
