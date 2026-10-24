@@ -36,6 +36,8 @@ test("five distinct Ed25519 signatures structurally verify but NEVER authorize c
  assert.equal(review.status,"REVIEW_ONLY");
  assert.equal(review.startHeight,3000000n);
  assert.equal(PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED,false);
+ assert.equal(prospectiveDepositBoundaryIssue({reviewed:{...review},txHeight:3000001n,
+  txVault:vault,bankHeight:3000003n,bankVault:vault}),"missing_epoch_review");
  assert.equal(prospectiveDepositBoundaryIssue({reviewed:review,txHeight:3000001n,
   txVault:vault,bankHeight:3000003n,bankVault:vault}),"live_financial_epoch_hold");
 });
