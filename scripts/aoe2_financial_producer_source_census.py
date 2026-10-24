@@ -44,8 +44,9 @@ EVIDENCE = (
     Evidence("scripts/prewarm-production.mjs", '"/",', "prewarm -> /", "indirect_financial_wakeup"),
     Evidence("scripts/prewarm-production.mjs", '"/api/lobby",', "prewarm -> GET /api/lobby", "indirect_financial_wakeup"),
     Evidence("scripts/prewarm-production.mjs", '"/api/live-games",', "prewarm -> GET /api/live-games", "indirect_financial_wakeup"),
-    Evidence("app/api/bets/route.ts", "export async function GET(", "GET /api/bets", "explicit_read_mode_exception"),
-    Evidence("app/api/bets/route.ts", "ensureMarkets: false,", "GET /api/bets explicitly opts out of ensure", "explicit_read_mode_exception"),
+    Evidence("app/api/bets/route.ts", "export async function GET(", "GET /api/bets", "read_to_async_financial_producer"),
+    Evidence("app/api/bets/route.ts", "queueBetMarketEnsure(prisma, 0);", "GET /api/bets -> timed market ensure BEFORE read-only snapshot", "read_to_async_financial_producer"),
+    Evidence("app/api/bets/route.ts", "ensureMarkets: false,", "snapshot loader opts out; route queue still activates market ensure", "snapshot_opt_out_not_financial_fence"),
 )
 
 EXTERNAL_OWNERS_NOT_AUTHENTICATED = (
