@@ -193,7 +193,7 @@ test("private original HD LIVE commits admit canonical markets before result/clo
     await t.test("fully orphaned market payment claim refuses generic signer without any mutation",async()=>{
       // NULL origin FKs are possible after historical onDelete SetNull cleanup.
       // This must not elevate a once-market-bound claim to generic payout.
-      for(const claimKind of ["bet_refund","bet_payout","winner_bounty","founders_bonus"] as const){
+      for(const claimKind of ["bet_refund","bet_payout","winner_bounty","founders_bonus","founders_win","bet_corrective_refund"] as const){
         const orphan=await db.prisma.pendingWoloClaim.create({data:{
           normalizedPlayerName:"orphan-origin-probe-"+claimKind,
           displayPlayerName:"Orphan origin probe",
