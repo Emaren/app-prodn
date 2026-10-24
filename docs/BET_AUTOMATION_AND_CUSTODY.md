@@ -25,9 +25,12 @@ migration). This durable discriminator survives ordinary routine market
 updates, which do not alter `bookPhase`. Existing legacy market books retain
 their original phase and their prior product behavior.
 
-The shared wagerability predicate rejects preview-only books; the wallet/stake
-preflight checks the marker even for post-broadcast recovery; and the final
-database wager lock excludes it. This covers ordinary wagers, stake intents,
+The shared wagerability predicate rejects preview-only books; the public
+BetBoard card projection passes `bookPhase` to that predicate so the UI does
+not falsely invite a stake. Wallet/stake preflight checks the marker even
+for post-broadcast recovery; final single-leg and multi-leg ticket writes
+exclude preview books at the SQL update predicate, including their narrow
+post-broadcast recovery branches. This covers ordinary wagers, stake intents,
 and the multi-leg ticket code's shared preflight/write guard. A
 `preview_only` family must not invite a real Keplr transfer or count as
 an authorized funded release, even if the legacy escrow address/settlement
