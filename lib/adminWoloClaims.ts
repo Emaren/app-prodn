@@ -1008,10 +1008,21 @@ export async function retryPendingClaimSettlement(
           // Even two hashless pending keys are ambiguous; sign neither.
           const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
             where: {
-              sourceFounderBonusId: founderBonusId,
               normalizedPlayerName: claim.normalizedPlayerName,
               claimKind: claim.claimKind,
-              claimGroupKey: { not: claim.claimGroupKey },
+              OR: [
+                {
+                  sourceFounderBonusId: founderBonusId,
+                  claimGroupKey: { not: claim.claimGroupKey },
+                },
+                {
+                  // A legacy FK may be NULL even while its original bonus id
+                  // survives in founder:<id>:...; do not let missing FK
+                  // silently erase historical attempted/claimed provenance.
+                  sourceFounderBonusId: null,
+                  claimGroupKey: { startsWith: `founder:${founderBonusId}:` },
+                },
+              ],
             },
             select: { id: true },
           });
