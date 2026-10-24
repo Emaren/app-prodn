@@ -238,7 +238,13 @@ test("private original HD LIVE commits admit canonical markets before result/clo
       assert.match(report.admission.liveMarkets.error??"",/lock timeout|transaction/i);
       assert.ok(Date.now()-started<5000,"contention must not hold up ingestion indefinitely");
       assert.equal(await db.prisma.betMarket.count(),before);
+      // No sibling seed transaction may commit after the timeout was returned.
+      await sleep(80);
+      assert.equal(await db.prisma.betMarket.count(),before);
       const retry=await ingest(row);assert.equal(retry.admission.liveMarkets.createdCount,2);
+      const pair=await db.prisma.betMarket.findMany({where:{linkedSessionKey:"platform:controlled-hd-source-writer-busy"}});
+      assert.equal(pair.length,2,"successful retry must create the full winner/desync pair");
+      assert.equal(pair.filter(m=>m.marketType==="winner").length,1);
     });
     await t.test("terminal market writes cannot be overwritten by a concurrent LIVE redelivery",async()=>{
       const row=await persist("terminal-market-write");
