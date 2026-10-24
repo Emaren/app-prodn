@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-deploy-p1-entry-guard` at `c2e06c87e73033c37d3272e83e322595dabb21e5`
+Implementation baseline: `codex/ironclad-live-integration` at `2eab2d5d4ffe06a670c1e1d056a5f4822913c1a0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

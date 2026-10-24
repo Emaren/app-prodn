@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "cfc3c22691fe59a13e9ae346a0ee52a1b0e81b0c2eb64c830f7c4683a23236e3",
+      "sha256": "e09affa6c835449028b4d5379a132243440fac173c97257403f3d609c80fd428",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "389be5f6bfd3e2655c3cd16a96c38efeccd020c929513db2f8c425b65ecb6c6a",
+      "sha256": "1f81a40503bde019866ac717e8107a77290e8fd1d30e6e238cb24f57f1a0177f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1515,7 +1515,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
+      "sha256": "4212ffeae49de4ecdf0e06b438bbc8ee79570b86633d976fcc70824bc1030a8e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261024-live-deploy-p1-entry-guard",
-    "commit": "c2e06c87e73033c37d3272e83e322595dabb21e5"
+    "branch": "codex/ironclad-live-integration",
+    "commit": "2eab2d5d4ffe06a670c1e1d056a5f4822913c1a0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
