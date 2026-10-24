@@ -190,6 +190,29 @@ test("private original HD LIVE commits admit canonical markets before result/clo
         await db.prisma.betMarketFounderBonus.delete({where:{id:bonus.id}});
       }
     });
+    await t.test("fully orphaned market payment claim refuses generic signer without any mutation",async()=>{
+      // NULL origin FKs are possible after historical onDelete SetNull cleanup.
+      // This must not elevate a once-market-bound claim to generic payout.
+      for(const claimKind of ["bet_refund","bet_payout","winner_bounty","founders_bonus","founders_win","bet_corrective_refund"] as const){
+        const orphan=await db.prisma.pendingWoloClaim.create({data:{
+          normalizedPlayerName:"orphan-origin-probe-"+claimKind,
+          displayPlayerName:"Orphan origin probe",
+          amountWolo:1,claimKind,claimGroupKey:"orphan-no-source-"+claimKind,
+          status:"pending",sourceMarketId:null,sourceFounderBonusId:null,
+        }});
+        try {
+          const before=await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:orphan.id}});
+          const calls=networkCalls;
+          const result=await retryPendingClaimSettlement(db.prisma,orphan.id);
+          assert.equal(result.outcome,"skipped");
+          assert.equal(result.outcome==="skipped"?result.reason:null,"source_attribution_conflict");
+          assert.deepEqual(await db.prisma.pendingWoloClaim.findUniqueOrThrow({where:{id:orphan.id}}),before);
+          assert.equal(networkCalls,calls,"no generic payout or chain lookup");
+        }finally{
+          await db.prisma.pendingWoloClaim.delete({where:{id:orphan.id}});
+        }
+      }
+    });
     if(invalidHmacGameId)await t.test("actual API rejects HMAC elevation despite a spoofed account header and valid upload bytes",async()=>{
       const row=await db.prisma.gameStats.findUniqueOrThrow({where:{id:invalidHmacGameId}});
       const report=await ingest(row);assert.equal(report.admission.liveMarkets.createdCount,0);

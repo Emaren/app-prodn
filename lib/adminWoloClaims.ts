@@ -98,6 +98,11 @@ function compactDbDetail(value: string | null | undefined) {
 }
 
 const MARKET_SETTLEMENT_CLAIM_KINDS = new Set(["bet_payout", "bet_refund", "winner_bounty", "founders_bonus"]);
+// Historical Founder wins and corrective refunds have market provenance too,
+// but MUST NOT be added to market escrow retry routing by this safety fix.
+const ORIGIN_REQUIRED_CLAIM_KINDS = new Set([
+  ...MARKET_SETTLEMENT_CLAIM_KINDS, "founders_win", "bet_corrective_refund",
+]);
 
 function isMarketSettlementClaim(claim: {
   sourceMarketId: number | null;
@@ -828,6 +833,20 @@ export async function retryPendingClaimSettlement(
   // before the legacy/pre-mainnet claim cleanup path mutates anything.
   // Validate both nullable origins independently. A direct market must not
   // mask a preview Founder book or redirect the signer to another game.
+  // A deleted or detached source can leave BOTH origin FKs NULL. A
+  // market-scoped payout claim must never fall through to the generic WOLO
+  // signer merely because its historical market/Founder attribution vanished.
+  // Non-market claim kinds retain their existing explicit legacy treatment.
+  if (claim.sourceMarketId === null &&
+      claim.sourceFounderBonusId === null &&
+      ORIGIN_REQUIRED_CLAIM_KINDS.has((claim.claimKind || "").trim())) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "source_attribution_conflict",
+      detail: "Market-linked claim has no surviving market or Founder Bonus origin. Independent economic provenance review required before payout or retry.",
+    };
+  }
   const directOrigin = claim.sourceMarketId !== null
     ? await prisma.betMarket.findUnique({
         where: { id: claim.sourceMarketId }, select: { id: true, bookPhase: true },
