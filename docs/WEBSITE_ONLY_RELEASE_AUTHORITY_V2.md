@@ -13,7 +13,7 @@ review_interval_days: 1
 sensitivity: "internal"
 ---
 
-# Website-only nine-path source release — protected controller v2 (HELD)
+# Held Website-Only Release Authority V2
 
 **Status: NOT AUTHORIZED.** This document defines independently reviewable engineering
 and exact production operator prerequisites. It does not provide permission to run
