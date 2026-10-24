@@ -1,0 +1,33 @@
+name: App-Wolo Custody Contract Crosswalk (offline only)
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/aoe2_app_wolo_custody_crosswalk.py'
+      - 'tests/test_aoe2_app_wolo_custody_crosswalk.py'
+      - '.github/workflows/app-wolo-custody-crosswalk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-repo-declaration-logic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify source-declaration mismatch and nonauthorization tests
+        run: python3 -m unittest discover -s tests -p 'test_aoe2_app_wolo_custody_crosswalk.py' -v
+      - name: Explain required actual held-source validation
+        run: |
+          echo "## App ↔ WoloChain custody contract crosswalk" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Unit tests use synthetic fixtures; this job DOES NOT check private Wolo source or the Mac's held integration trees." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "On an operator machine, pass both clean, separately verified source checkouts to the offline crosswalk. Never interpret success as custody activation." >> "$GITHUB_STEP_SUMMARY"
