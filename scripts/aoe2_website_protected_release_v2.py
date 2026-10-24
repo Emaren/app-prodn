@@ -111,6 +111,7 @@ def verify_witness_receipt(packet: dict, *, trust_root=TRUST_ROOT,
         require(type(value) is dict and type(value.get("pid")) is int and
                 value["pid"] > 0 and type(value.get("exe_sha256")) is str and
                 len(value["exe_sha256"]) == 64 and
+                all(c in "0123456789abcdef" for c in value["exe_sha256"]) and
                 type(value.get("inode")) is int and value["inode"] > 0,
                 "incomplete Wolo executing process evidence")
     for field in IMMUTABLE_KEYS - {"wolo8092", "wolo8093", "consensus", "source_p1_original"}:
@@ -209,7 +210,7 @@ def verify_signed_noninterference(receipt: dict, *, scope: dict,
     # The detached Source reviewer is FIFTH and independent from the council.
     from aoe2_website_release_v2 import ROLES
     identities = []
-    for role in (*ROLES, "source_reviewer"):
+    for role in (*ROLES, "source_reviewer", "runtime_witness"):
         key = trust_root / (role + ".pem")
         protected_key(key, trust_root, allow_test_root=allow_test_root)
         identity = subprocess.run(
@@ -368,6 +369,9 @@ def verified_operation(*, operation: str, candidate_repo: Path,
             evidence_bind(packet, prestate, current, target=MAIN_SOURCE_SHA,
                           trust_root=trust_root, now=now, allow_test_root=allow_test_root)
             if operation == "activate":
+                require(packet["payload"].get("wolo_poststage_sha256") ==
+                        digest(prestate["payload"]),
+                        "activation Wolo post-stage witness SHA not signed")
                 require(stage_receipt is not None, "missing actual stage")
                 facts = stage_facts(candidate_repo, stage_receipt)
                 p = packet["payload"]
