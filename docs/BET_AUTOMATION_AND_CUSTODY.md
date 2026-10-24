@@ -15,6 +15,39 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 24 — post-review preview financial noninterference fix (HELD)
+
+PR #842's extracted `live` markets can otherwise qualify for the original
+mainnet escrow rail even while the new Satchel signer remains disabled. A
+newly created LIVE winner/Desync family is therefore written with
+`BetMarket.bookPhase = "preview_only"` (already in the main datamodel; no
+migration). This durable discriminator survives ordinary routine market
+updates, which do not alter `bookPhase`. Existing legacy market books retain
+their original phase and their prior product behavior.
+
+The shared wagerability predicate rejects preview-only books; the wallet/stake
+preflight checks the marker even for post-broadcast recovery; and the final
+database wager lock excludes it. This covers ordinary wagers, stake intents,
+and the multi-leg ticket code's shared preflight/write guard. A
+`preview_only` family must not invite a real Keplr transfer or count as
+an authorized funded release, even if the legacy escrow address/settlement
+rail is otherwise configured. A user might nevertheless send funds to an
+address outside application control: this safeguard cannot itself reverse
+or certify an external chain payment.
+
+The preview admission's public battle-number allocation now occurs inside the
+same database transaction as the created winner/Desync family. A rejected
+alias, terminal/owner-conflicting family, lock timeout, delayed cutoff expiry
+or failed commit cannot leave newly created/updated `BattleIdentity` rows
+from the rejected preview request. Already existing markets and their public
+battle identities remain read-only on the preview path.
+
+Qualify the actual isolated PostgreSQL refusal/rollback tests and production
+source build before any website release. FINANCIAL risk classification remains
+unchanged; the Wolo runtime source-drift P1 and protected Finish HOLD must not
+be waived. This change is review source only, not a financial approval,
+production deploy, migration, signer activation or chain transaction.
+
 ## October 24 — original LIVE admission extracted with funding disabled
 
 The private authenticated post-ingest coordinator now awaits metadata admission
