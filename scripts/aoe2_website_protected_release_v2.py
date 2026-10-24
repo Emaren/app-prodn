@@ -331,7 +331,7 @@ def reviewer_packet_binding(packet: dict, *, candidate_repo: Path,
             "operator release code is not signed exact-source authority")
     require(p.get("candidate_sha") == MAIN_SOURCE_SHA and
             scope["candidate"] == MAIN_SOURCE_SHA, "wrong website release")
-    require(p.get("risk_class") in ("PRESENTATION", "INFRASTRUCTURE"),
+    require(p.get("risk_class") in ("PRESENTATION", "INFRASTRUCTURE", "WATCHER"),
             "FINANCIAL candidate cannot use nine-path exception")
     assess(packet, candidate=MAIN_SOURCE_SHA, actual_scope=scope,
            trust_root=trust_root, now=now, allow_test_root=allow_test_root)
