@@ -12,11 +12,11 @@ assert SPEC and SPEC.loader
 MODULE=importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 class RenaissanceSourceTests(unittest.TestCase):
-    def test_candidate_source_census_has_144_phase_assignments_with_12_instruments(self):
+    def test_candidate_source_census_has_146_phase_assignments_with_12_instruments(self):
         doc,routes=MODULE.load()
-        self.assertEqual(len(routes),144)
+        self.assertEqual(len(routes),146)
         self.assertEqual(len(doc["modules"]),12)
-        self.assertEqual(len(set(routes)),144)
+        self.assertEqual(len(set(routes)),146)
         self.assertTrue({m["href"] for m in doc["modules"]}.issubset(set(routes)))
     def test_all_source_pages_accounted_for(self):
         doc,routes=MODULE.load()
