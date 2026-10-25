@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "556afd7a40d98c98e2c84caf87209c7db27233e72d81cc909554e15639cd33e5",
+      "sha256": "5d09de6f9495bc4b09c77a714526f6f37a2b7b66cb13a15a63d1fcc731f483c0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1770,7 +1770,7 @@
       "review_interval_days": 1,
       "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "a1b3fbb2a2aacc53c560d2d53e9dd357f9edfaba4051862fb53645272145bcee",
+      "sha256": "005d5dbe407e59bf3a5dac200cd97085813c68ea90bdbccb29169fb147f485d2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2306,8 +2306,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261025-solo-owner-v3-clock-skew-bounded",
-    "commit": "c696419e51455df3b52bd965150ab047a1927727"
+    "branch": "review/20261025-owner-v3-consumed-activation-reconcile",
+    "commit": "85f95ede017f0c1510467a194ed3db915f39a4f1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
