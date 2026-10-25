@@ -7,6 +7,7 @@
  * chain/custody/solvency. The immutable financial bridge HOLD remains separate.
  */
 import {Prisma} from "@/lib/generated/prisma";
+import {requireProspectiveEpochMainnetAuthorization} from "./warSatchelProspectiveEpoch.ts";
 import type {AuthenticatedWarSatchelBank} from "./warSatchelAuthenticatedBank.ts";
 import type {AuthenticatedWarSatchelDeposit} from "./warSatchelAuthenticatedDeposit.ts";
 
@@ -91,9 +92,25 @@ export async function requireDurableProspectiveDepositEpoch(
  ownerUserId:number;ownerUid:string;ownerWallet:string;intentCreatedAt:Date;
  bank:AuthenticatedWarSatchelBank;deposit:AuthenticatedWarSatchelDeposit;
  }):Promise<DurableProspectiveEpoch>{
+ requireProspectiveEpochMainnetAuthorization();
  // Must be invoked AFTER user, intent and native evidence match under the
  // global serializable financial lock. The ledger's opaque proof checks remain
  // separate, non-negotiable prerequisites.
+ const e=await readApprovedProspectiveEpoch(tx);
+ const issue=prospectiveEpochDepositIssue(e,{
+ ownerUserId:input.ownerUserId,ownerUid:input.ownerUid,ownerWallet:input.ownerWallet,
+ intentCreatedAt:input.intentCreatedAt,vault:input.deposit.vault,
+ txHeight:input.deposit.height,txHash:input.deposit.txHash,txOwnerUid:input.deposit.ownerUid,
+ txSender:input.deposit.sender,bankHeight:input.bank.height,bankVault:input.bank.vaultAddress,
+ });
+ if(issue)stop(issue);
+ // A new physical vault cannot inherit unmatched historical funded receipts.
+ // On the FIRST credit, require an entirely empty funded financial estate.
+ // Older founder/pending claims remain untouched in their original estate.
+ await requireProspectiveEstateBoundary(tx);
+ return Object.freeze(e);
+}
+async function readApprovedProspectiveEpoch(tx:Transaction):Promise<DurableProspectiveEpoch>{
  const rows=await tx.$queryRaw<Array<{
  epochId:string;chainId:string;vault:string;startHeight:bigint;startAppHash:string;
  manifestDigest:string;sourceCommit:string;legacyClaimsDigest:string;
@@ -114,17 +131,9 @@ export async function requireDurableProspectiveDepositEpoch(
  ORDER BY epoch_id LIMIT 2
  `);
  if(rows.length!==1)stop("one_operator_approved_epoch_required");
- const e=rows[0];
- const issue=prospectiveEpochDepositIssue(e,{
- ownerUserId:input.ownerUserId,ownerUid:input.ownerUid,ownerWallet:input.ownerWallet,
- intentCreatedAt:input.intentCreatedAt,vault:input.deposit.vault,
- txHeight:input.deposit.height,txHash:input.deposit.txHash,txOwnerUid:input.deposit.ownerUid,
- txSender:input.deposit.sender,bankHeight:input.bank.height,bankVault:input.bank.vaultAddress,
- });
- if(issue)stop(issue);
- // A new physical vault cannot inherit unmatched historical funded receipts.
- // On the FIRST credit, require an entirely empty funded financial estate.
- // Older founder/pending claims remain untouched in their original estate.
+ return Object.freeze(rows[0]);
+}
+async function requireProspectiveEstateBoundary(tx:Transaction):Promise<void>{
  const boundary=await tx.$queryRaw<Array<{orphan:boolean;firstCredit:boolean;oldEstate:boolean}>>(Prisma.sql`
  SELECT
  EXISTS(SELECT 1 FROM public.war_satchel_funded_receipts r
@@ -142,7 +151,28 @@ export async function requireDurableProspectiveDepositEpoch(
  if(boundary.length!==1||boundary[0].orphan||
     (boundary[0].firstCredit&&boundary[0].oldEstate))
    stop("legacy_funded_estate_requires_segregation");
- return Object.freeze(e);
+}
+/** Noncrediting quote precheck: do not invite a transfer into an epoch whose
+ * immutable admission/segregation prerequisites already fail. Actual credit
+ * still rechecks independently under the global financial lock with real proof.
+ */
+export async function requireDurableProspectiveFundingEpoch(tx:Transaction,input:{
+ vault:string;intentCreatedAt:Date;bank:AuthenticatedWarSatchelBank;
+}):Promise<void>{
+ requireProspectiveEpochMainnetAuthorization();
+ const e=await readApprovedProspectiveEpoch(tx);
+ if(e.state!=="approved"||e.chainId!=="wolo-1"||!ADDRESS.test(e.vault)||
+    e.vault!==input.vault||e.vault!==input.bank.vaultAddress||e.startHeight<=BigInt(0)||
+    !Number.isSafeInteger(Number(e.startHeight))||
+    input.bank.height<e.startHeight||!GIT_SHA.test(e.sourceCommit)||e.sourceCommit==="0".repeat(40)||
+    ![e.startAppHash,e.manifestDigest,e.legacyClaimsDigest,e.legacyLiabilitiesDigest,
+      e.custodyWitnessDigest,e.recoveryWitnessDigest,e.reservesWitnessDigest,
+      e.fiveReviewerDigest,e.chainAnchorWitnessDigest].every(hex)||
+    !e.approvedAt||!Number.isFinite(e.approvedAt.getTime())||
+    !Number.isFinite(e.createdAt.getTime())||!Number.isFinite(input.intentCreatedAt.getTime())||
+    e.approvedAt>e.createdAt||input.intentCreatedAt<e.approvedAt)
+   stop("funding_epoch_missing_or_conflicting");
+ await requireProspectiveEstateBoundary(tx);
 }
 export async function bindDurableEpochReceipt(tx:Transaction,input:{
  epoch:DurableProspectiveEpoch;receiptId:bigint;ownerUserId:number;

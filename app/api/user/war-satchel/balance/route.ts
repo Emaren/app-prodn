@@ -5,6 +5,8 @@ import { getSessionUid } from "@/lib/session";
 import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 import { observeFundedMechaPublicReadiness } from "@/lib/warSatchelLiveModeReadiness";
 
+import {prospectiveEpochMainnetAuthorized} from "@/lib/warSatchelProspectiveEpoch";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const H = { "Cache-Control": "private, no-store" };
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
       committedHistoricalUwolo: String(account?.committedUwolo ?? BigInt(0)),
       withdrawalPendingUwolo: String(account?.withdrawalPendingUwolo ?? BigInt(0)),
       version: String(account?.version ?? BigInt(0)),
-      depositEnabled: process.env.WAR_SATCHEL_DEPOSIT_INSTRUCTIONS_ENABLED === "true" &&
+      depositEnabled: prospectiveEpochMainnetAuthorized() && process.env.WAR_SATCHEL_DEPOSIT_INSTRUCTIONS_ENABLED === "true" &&
         process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED === "true" &&
         process.env.WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED === "true",
       // This is a read-only display hint. The independent worker separately
