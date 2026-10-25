@@ -80,12 +80,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-caae1d2b18e78b6dc68f",
+    version: "src-94f92bcd64f172889edd",
   },
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-4527a5ab790e0f1b7701",
+    version: "src-6fe54aae07d8834334fe",
   },
   {
     href: "/game-stats",

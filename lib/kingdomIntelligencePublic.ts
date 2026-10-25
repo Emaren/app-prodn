@@ -1,4 +1,6 @@
 import { loadAoe2OsDashboard, readAoe2OsKingdomIntelligence } from "@/lib/aoe2Os";
+import { inspectIntelligenceHealthEvidence } from "@/lib/kingdomIntelligenceEvidence";
+import { explainKingdomOperationalState } from "@/lib/kingdomOperationalDiagnostics";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -50,6 +52,11 @@ function publicInvariant(value: unknown) {
     status,
   };
 }
+
+const REPORTABLE_AGENT_FAILURE_STATES = new Set([
+  "ATTENTION", "ATTENTION_REQUIRED", "WATCH", "BLOCKED",
+  "FAILED", "UNSAFE", "MAINTENANCE_DUE",
+]);
 
 const PUBLIC_SYSTEM_LABELS = new Set([
   "Release OS",
@@ -191,10 +198,16 @@ export async function loadPublicKingdomIntelligence() {
       workspace: null,
       activity24h: null,
       systemAgents: [],
+      agentRuntimeAuthority: {
+        verified: false,
+        status: "UNVERIFIED" as const,
+        reason: "bridge-unavailable",
+      },
       liveActivity: [],
       recentSourceActivity: [],
       memorySeals: [],
       invariants: [],
+      diagnostics: explainKingdomOperationalState({ available: false, observation: null, nowMs: Date.now() }),
       directive: null,
     };
   }
@@ -212,10 +225,52 @@ export async function loadPublicKingdomIntelligence() {
   const workspace = record(payload.workspace);
   const activity = record(payload.activity_24h);
   const best = record(payload.best_next_action);
+  const healthEvidence = inspectIntelligenceHealthEvidence({
+    source,
+    health,
+    invariants: payload.invariants,
+    capturedAt: payload.generated_at,
+    receivedAt: snapshot.receivedAt,
+    nowMs: Date.now(),
+  });
+  const reportUsable = healthEvidence.observation.status === "SOURCE_REPORTED";
+  // This read-side has no trusted active release-controller SHA + real Next
+  // BUILD_ID receipt. A bridge report, even one saying CERTIFIED/exact, cannot
+  // authorize positive live-agent claims. Central owns the independent join.
+  const agentRuntimeAuthority: {
+    verified: boolean;
+    status: "UNVERIFIED" | "VERIFIED";
+    reason: string | null;
+  } = {
+    verified: false,
+    status: "UNVERIFIED",
+    reason: "independent-active-production-sha-and-next-build-id-unavailable",
+  };
+  const diagnostics = explainKingdomOperationalState({
+    available: true, observation: healthEvidence.observation, nowMs: Date.now(),
+  });
   const systemAgents = Array.isArray(payload.system_agents)
     ? payload.system_agents
         .map(safeSystemAgent)
         .filter((item): item is NonNullable<ReturnType<typeof safeSystemAgent>> => Boolean(item))
+        .map(item => {
+          if (reportUsable && agentRuntimeAuthority.verified) return item;
+          const reportedFailure = reportUsable && !item.activeProcess &&
+            REPORTABLE_AGENT_FAILURE_STATES.has(item.state.toUpperCase());
+          return {
+            ...item,
+            // Negative source observations can be shown with their provenance,
+            // but positive live process state needs independent runtime proof.
+            state: reportedFailure ? item.state : "UNKNOWN",
+            summary: reportedFailure
+              ? "Bridge-reported attention (not independently certified). " + item.summary
+              : reportUsable
+                ? "Live agent state unverified: no independent active release and Next BUILD_ID receipt."
+                : "Current agent status withheld: source evidence unavailable.",
+            activeProcess: false, activeSince: null, currentStep: null,
+            progressPercent: null, progressLabel: null, etaSeconds: null,
+          };
+        })
     : [];
   const recentSourceActivity = Array.isArray(payload.recent_source_activity)
     ? payload.recent_source_activity
@@ -248,6 +303,9 @@ export async function loadPublicKingdomIntelligence() {
   const invariants = Array.isArray(payload.invariants)
     ? payload.invariants
         .map(publicInvariant)
+        .map(item => item && item.status === "PASS" &&
+          (!reportUsable || item.key === "source-authority-exact" || item.key === "finish-closure-complete")
+          ? { ...item, status: "UNKNOWN" } : item)
         .filter(
           (
             item
@@ -278,18 +336,24 @@ export async function loadPublicKingdomIntelligence() {
     warDate: snapshot.warDate,
     stale,
     ageSeconds,
-    operatingState: snapshot.operatingState,
+    // The bridge may interpret events, but it cannot independently certify
+    // its own healthy operating state or release identity.
+    operatingState: !reportUsable || ["HEALTHY", "PASS", "CERTIFIED"].includes(snapshot.operatingState.toUpperCase())
+      ? "UNKNOWN" : snapshot.operatingState,
     source: {
-      exact: booleanValue(source.exact),
-      certificationStatus: stringValue(certification.status) ?? "UNKNOWN",
+      exact: false,
+      certificationStatus: "UNVERIFIED",
       productionRelease: shortSha(production.source_sha),
+      reportedExact: booleanValue(source.exact),
+      reportedCertificationStatus: stringValue(certification.status) ?? "UNKNOWN",
     },
     health: {
-      estate: stringValue(health.estate) ?? "UNKNOWN",
-      doctorScore: numberValue(health.doctor_score),
-      doctorStatus: stringValue(health.doctor_status) ?? "UNKNOWN",
-      p0: numberValue(health.p0) ?? 0,
-      p1: numberValue(health.p1) ?? 0,
+      estate: reportUsable ? stringValue(health.estate) ?? "UNKNOWN" : "UNKNOWN",
+      doctorScore: reportUsable ? numberValue(health.doctor_score) : null,
+      doctorStatus: reportUsable ? stringValue(health.doctor_status) ?? "UNKNOWN" : "UNKNOWN",
+      p0: healthEvidence.counts.p0,
+      p1: healthEvidence.counts.p1,
+      observation: healthEvidence.observation,
     },
     storage: {
       health: stringValue(storage.health) ?? "UNKNOWN",
@@ -304,7 +368,7 @@ export async function loadPublicKingdomIntelligence() {
       resultCoveragePercent,
       accountedPercent: numberValue(replay.accounted_percent),
       parserWorkCandidates: numberValue(replay.parser_work_candidates),
-      current: replay.matches_current_release === true,
+      current: reportUsable && replay.matches_current_release === true,
     },
     performance: {
       available: performance.available === true,
@@ -312,7 +376,7 @@ export async function loadPublicKingdomIntelligence() {
       routeCount: numberValue(performance.route_count),
       ttfbP50Ms: numberValue(baseline.ttfb_p50_ms),
       totalP50Ms: numberValue(baseline.total_p50_ms),
-      current: performance.matches_current_release === true,
+      current: reportUsable && performance.matches_current_release === true,
     },
     workspace: {
       canonicalDriftCount: numberValue(workspace.canonical_drift_count) ?? 0,
@@ -327,11 +391,13 @@ export async function loadPublicKingdomIntelligence() {
       certifiedFinishes: numberValue(activity.certified_finishes) ?? 0,
     },
     systemAgents,
+    agentRuntimeAuthority,
+    diagnostics,
     liveActivity,
     recentSourceActivity,
     memorySeals,
     invariants,
-    directive: stringValue(best.title)
+    directive: reportUsable && stringValue(best.title)
       ? {
           title: stringValue(best.title)!,
           level: stringValue(best.level) ?? "NEXT",

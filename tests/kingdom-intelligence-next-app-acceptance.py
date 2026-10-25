@@ -54,7 +54,10 @@ def classify_blocked_write(request, host_port):
         isinstance(fields, dict) and not unexpected and
         isinstance(fields.get("sample_id"), str) and
         re.fullmatch(r"SPD_[A-Za-z0-9_-]{8,100}", fields["sample_id"]) is not None and
-        fields.get("route") == ROUTE and
+        # This browser cohort also visits Workshop on the same loopback
+        # host. Classify only valid shared SpeedOS telemetry for these exact
+        # two routes; ALL writes still abort, and no payload is transmitted.
+        fields.get("route") in (ROUTE, "/workshop") and
         isinstance(fields.get("valid_for_aggregation"), bool) and
         isinstance(fields.get("visibility_tainted"), bool)
     )
@@ -348,6 +351,47 @@ async def case(browser, args, mode, width, output):
         check("no_mobile_horizontal_overflow", layout["scroll"] <= layout["view"] + 2)
         check("reduced_motion_media", await page.evaluate(
               "matchMedia('(prefers-reduced-motion: reduce)').matches"))
+
+        # Workshop was absent from the integrated browser cohort despite
+        # consuming the same sanitized Intelligence source. Visit its REAL
+        # Next SSR page at both desktop and mobile widths. The fixture has no
+        # certified active runtime and does not report both P0/P1 counters.
+        # Assert UNKNOWN, not a counterfeit measured zero or exact source.
+        if mode == "terminal":
+            workshop_response = await page.goto(
+                args.origin + "/workshop", wait_until="domcontentloaded", timeout=60000)
+            check("workshop_real_next_http_200",
+                  workshop_response is not None and workshop_response.status == 200)
+            panel = page.locator("section[data-workshop-brain-panel]")
+            await panel.wait_for(timeout=30000)
+            panel_text = await panel.inner_text()
+            check("workshop_one_sanitized_brain_panel", await panel.count() == 1)
+            check("workshop_missing_p0_p1_unknown_not_zero",
+                  "P0=UNKNOWN P1=UNKNOWN" in panel_text)
+            check("workshop_source_not_self_certified",
+                  "Source exactness not proven" in panel_text)
+            limitation = panel.get_by_role(
+                "status", name="Kingdom operating evidence limitation")
+            check("workshop_operator_limitation_explained",
+                  await limitation.count() == 1 and
+                  "Recheck" in await limitation.inner_text())
+            check("workshop_unknown_active_agent_totals",
+                  "UNKNOWN active" in panel_text)
+            work_layout = await page.evaluate(
+                "({view:innerWidth,scroll:document.documentElement.scrollWidth})")
+            result["workshop_layout"] = work_layout
+            check("workshop_mobile_no_horizontal_overflow",
+                  work_layout["scroll"] <= work_layout["view"] + 2)
+            intelligence_link = panel.get_by_role(
+                "link", name="Open Kingdom Intelligence")
+            await intelligence_link.focus()
+            check("workshop_keyboard_link_focus",
+                  await intelligence_link.evaluate(
+                      "e=>document.activeElement===e"))
+            await intelligence_link.press("Enter")
+            await page.wait_for_url("**/kingdom-intelligence", timeout=15000)
+            check("workshop_keyboard_link_navigates",
+                  urlparse(page.url).path == "/kingdom-intelligence")
         check("no_browser_exceptions", not errors)
 
         result["navigation_plus_assertions_ms"] = round((time.perf_counter() - t0) * 1000, 2)

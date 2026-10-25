@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-a/20261025-nine-path-docs-recert-product` at `88b21a6eb1a1284f6df2986c9c517226d4548909`
+Implementation baseline: `renaissance/tab-a-watcher-truth-20261025` at `559098fef28c868b553863c7368b760a779b4380`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

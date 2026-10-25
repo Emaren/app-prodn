@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d9daf7e57a2f85d2bd15e6da37b9ce59d03efb000e62c3af178f61cc4be1dea7",
+      "sha256": "45d518112adc0bdba5913bb3214ecb2780f85e916ca377a9f0e67f2fae768169",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-a/20261025-nine-path-docs-recert-product",
-    "commit": "88b21a6eb1a1284f6df2986c9c517226d4548909"
+    "branch": "renaissance/tab-a-watcher-truth-20261025",
+    "commit": "559098fef28c868b553863c7368b760a779b4380"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
