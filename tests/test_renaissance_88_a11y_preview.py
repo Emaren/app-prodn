@@ -18,7 +18,7 @@ class PreviewSourceIsolation(unittest.TestCase):
     def test_preview_one_tracked_generated_file_only(self):
         self.assertIn('[" M lib/pageChangeManifest.generated.ts"]',self.source)
         self.assertIn("changed!=",self.source)
-        self.assertIn("quarantined",self.preview.lower())
+        self.assertIn("unsealed a11y preview",self.preview.lower())
         self.assertIn("--preview-unsealed-generated-policy",self.preview)
         self.assertIn('"source_clean":clean',self.source)
         self.assertIn('"derived_policy_unsealed":not clean',self.source)
@@ -29,7 +29,7 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn("git diff --cached --quiet",self.guard)
         self.assertIn("first=",self.guard)
         self.assertIn("second=",self.guard)
-        self.assertIn("first\\" == \\"$second",self.guard)
+        self.assertIn('[[ "$first" == "$second" ]]',self.guard)
         self.assertIn("REN88_GENERATED_MANIFEST_SHA",self.guard)
         self.assertIn("INDEX_ADMISSION=HOLD_UNTIL_CENTRAL_SEAL",self.guard)
         self.assertIn("renaissance_88_preview_manifest_guard.sh verify",self.preview)
