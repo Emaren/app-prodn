@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "76ad18da11ee5a3bfd95b98b6713e9f0c986abc9dec12e971084fd91623a6c62",
+      "sha256": "c560dec68e60e038e87bfa8cb6ca76e2235d940207d7bf431c7e78a606ed9bfd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2307,7 +2307,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/20261025-solo-v3-durability-timer",
-    "commit": "f09eb46bc5b735b098e49e2a7fe38f18104961f9"
+    "commit": "e753fb0a0c22a6228ba5952943dfa638e1fcd1cf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
