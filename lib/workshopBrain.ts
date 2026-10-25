@@ -10,8 +10,8 @@ export type WorkshopBrainSnapshot = {
   productionRelease: string | null;
   doctorScore: number | null;
   doctorStatus: string;
-  p0: number;
-  p1: number;
+  p0: number | null;
+  p1: number | null;
   directiveTitle: string | null;
   invariantPassCount: number;
   invariantCount: number;
@@ -52,8 +52,8 @@ export function buildWorkshopBrainSnapshot(
       productionRelease: null,
       doctorScore: null,
       doctorStatus: "UNKNOWN",
-      p0: 0,
-      p1: 0,
+      p0: null,
+      p1: null,
       directiveTitle: null,
       invariantPassCount: 0,
       invariantCount: 0,
@@ -65,18 +65,32 @@ export function buildWorkshopBrainSnapshot(
   const state = (value: string | null | undefined) =>
     String(value || "UNKNOWN").toUpperCase();
 
+  // A responding bridge and its self-reported source.exact flag are not
+  // independently certified production authority. P0/P1 are usable only
+  // when the existing sanitized adapter has both genuinely observed counters
+  // in a current, internally consistent source report. Preserve real zeroes.
+  const severityObserved = !data.stale &&
+    data.health?.observation?.status === "SOURCE_REPORTED" &&
+    typeof data.health.p0 === "number" && Number.isSafeInteger(data.health.p0) && data.health.p0 >= 0 &&
+    typeof data.health.p1 === "number" && Number.isSafeInteger(data.health.p1) && data.health.p1 >= 0;
+  const stateReported = state(data.operatingState);
+  const operatingState = !severityObserved && ["HEALTHY", "PASS", "CERTIFIED"].includes(stateReported)
+    ? "UNKNOWN" : data.operatingState;
+
   return {
     available: true,
     stale: data.stale,
-    operatingState: data.operatingState,
+    operatingState,
     warDate: data.warDate,
-    sourceExact: data.source?.exact ?? false,
-    certificationStatus: data.source?.certificationStatus ?? "UNKNOWN",
+    // Workshop has no independent certified release SHA/BUILD_ID reader.
+    // Never promote the bridge's own assertion to an exact-source badge.
+    sourceExact: false,
+    certificationStatus: "UNVERIFIED",
     productionRelease: data.source?.productionRelease ?? null,
-    doctorScore: data.health?.doctorScore ?? null,
-    doctorStatus: data.health?.doctorStatus ?? "UNKNOWN",
-    p0: data.health?.p0 ?? 0,
-    p1: data.health?.p1 ?? 0,
+    doctorScore: severityObserved ? data.health?.doctorScore ?? null : null,
+    doctorStatus: severityObserved ? data.health?.doctorStatus ?? "UNKNOWN" : "UNKNOWN",
+    p0: severityObserved ? data.health?.p0 ?? null : null,
+    p1: severityObserved ? data.health?.p1 ?? null : null,
     directiveTitle: data.directive?.title ?? null,
     invariantPassCount: data.invariants.filter(
       (item) => state(item.status) === "PASS",
