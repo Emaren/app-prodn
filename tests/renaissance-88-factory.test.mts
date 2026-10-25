@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createRequire} from "node:module";
+const require=createRequire(import.meta.url);
+const {classifyCandidateRoute}=require("../scripts/renaissance_88_verdict.cjs");
 import {validateRouteReceipt} from "../scripts/renaissance_88_receipts.mjs";
 
 const sha="a".repeat(40),build="candidateBuild123";
@@ -44,4 +47,24 @@ test("raw malformed history and fabricated route identity rejected",()=>{
  assert.throws(()=>validateRouteReceipt(a,plan,expected),/mismatch/);
  const b=make();b.status="CERTIFIED";
  assert.throws(()=>validateRouteReceipt(b,plan,expected),/mismatch/);
+});
+
+test("blocked telemetry never turns a valid GET smoke into a navigation failure",()=>{
+ const view={http:200,sameOrigin:true,rendered:true,body_title:true,landmark:true,
+  keyboardFocus:true,uncaughtErrors:0,privacyMutationAttempts:4,browserStatus:"OBSERVED"};
+ assert.equal(classifyCandidateRoute({views:[view]},"UNAVAILABLE"),"PASS");
+});
+test("isolated missing PostgreSQL is UNKNOWN, but genuine browser error is FAIL",()=>{
+ const broken={http:200,sameOrigin:true,rendered:true,body_title:false,landmark:false,
+  keyboardFocus:false,uncaughtErrors:1,dependencyUnavailable:true,browserStatus:"OBSERVED"};
+ assert.equal(classifyCandidateRoute({views:[broken]},"UNAVAILABLE"),"UNKNOWN");
+ assert.equal(classifyCandidateRoute({views:[broken]},"REACHABLE"),"FAIL");
+ assert.equal(classifyCandidateRoute({views:[{...broken,dependencyUnavailable:false}]},"UNAVAILABLE"),"FAIL");
+});
+test("missing title/landmark, bad HTTP or no keyboard focus cannot be PASS",()=>{
+ const baseline={http:200,sameOrigin:true,rendered:true,body_title:true,landmark:true,
+  keyboardFocus:true,uncaughtErrors:0,browserStatus:"OBSERVED"};
+ for(const override of [{http:500},{landmark:false},{body_title:false},{keyboardFocus:false},{uncaughtErrors:1}]){
+  assert.equal(classifyCandidateRoute({views:[{...baseline,...override}]},"UNAVAILABLE"),"FAIL");
+ }
 });
