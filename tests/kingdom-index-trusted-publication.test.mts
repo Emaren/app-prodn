@@ -4,7 +4,7 @@ import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import rubric from "../config/kingdom-index-quality-rubric.json" with {type:"json"};
 import profiles from "../config/kingdom-index-assurance-profiles.json" with {type:"json"};
 import { requiredProofKindsForCriterion } from "../lib/kingdomIndexCriterionProofPolicy.mjs";
-import { PUBLICATION_SCHEMA, verifyKingdomIndexPublication } from "../lib/kingdomIndexTrustedPublication.mjs";
+import { PUBLICATION_SCHEMA, PROGRESS_SCHEMA, verifyKingdomIndexPublication } from "../lib/kingdomIndexTrustedPublication.mjs";
 import { loadCurrentKingdomIndexTrustedPublication } from "../lib/kingdomIndexTrustedPublicationRead.mjs";
 
 const SHA=(value:string)=>createHash("sha256").update(value).digest("hex");
@@ -73,6 +73,33 @@ test("verified 99 is a measured but noncertified provisional score",async()=>{
   assert.equal(v.status,"provisional");
   assert.equal(v.criteria.find(c=>c.id==="authoritative_data")?.earned,9);
   assert.equal(v.criteria.reduce((sum,c)=>sum+c.earned,0),99);
+});
+test("independently signed partial progress may approve one criterion without certifying the Index",async()=>{
+  const p=payload();p.schema=PROGRESS_SCHEMA;
+  p.criteria=p.criteria.slice(0,1);p.gates=[];
+  const verified=await verifyKingdomIndexPublication(seal(p),ctx());
+  assert.equal(verified.certified,false);
+  assert.equal(verified.score,null);
+  assert.equal(verified.authenticatedEarned,10);
+  assert.equal(verified.criteriaVerified,1);
+  assert.equal(verified.criteria.length,1);
+  assert.equal(verified.artifactsVerified,1);
+  assert.equal(verified.gates.length,0);
+});
+test("even all 100 points and three gates in progress schema cannot certify",async()=>{
+  const p=payload();p.schema=PROGRESS_SCHEMA;
+  const v=await verifyKingdomIndexPublication(seal(p),ctx());
+  assert.equal(v.authenticatedEarned,100);
+  assert.equal(v.score,null);
+  assert.equal(v.certified,false);
+});
+test("legacy full-publication schema still refuses partial criterion submissions",async()=>{
+  const p=payload();p.criteria.pop();
+  await assert.rejects(verifyKingdomIndexPublication(seal(p),ctx()),/Incomplete canonical evidence/);
+});
+test("progress envelope without any approved criterion refuses instead of showing fake zero",async()=>{
+  const p=payload();p.schema=PROGRESS_SCHEMA;p.criteria=[];
+  await assert.rejects(verifyKingdomIndexPublication(seal(p),ctx()),/Incomplete canonical evidence/);
 });
 test("missing one mandatory gate refuses the entire projection",async()=>{
   const p=payload();p.gates.pop();
