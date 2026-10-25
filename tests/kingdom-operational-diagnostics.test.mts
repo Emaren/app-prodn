@@ -95,6 +95,7 @@ test("contradictions, stale evidence, absent service and full identity conflicts
 test("incident output is capped and cannot reflect arbitrary private bridge paths or URLs", () => {
   const obs = {
     ...reported(),
+    status: "UNKNOWN",
     unknownReasons: ["/Users/operator/secrets", "/mnt/private/token", "http://private.invalid/token"],
     sourceGitSha: "/mnt/private/source", buildId: "../../private",
     producer: "/Users/operator/secrets", evidenceUri: null,
