@@ -42,7 +42,7 @@ def known_blocked_living_kingdom_v1(request, url, host_port, body):
     if (url.scheme != "http" or url.hostname != "127.0.0.1" or
             url.port != host_port or url.path != PRESENCE_MUTATION or url.query or
             request.headers.get("content-type", "").split(";")[0].strip() != "application/json" or
-            not isinstance(body, dict) or body.get("protocol") != 1):
+            not isinstance(body, dict) or type(body.get("protocol")) is not int or body["protocol"] != 1):
         return False
     tab = body.get("tabId")
     seq = body.get("seq")
@@ -133,6 +133,7 @@ def verify_blocked_mutation_classifier():
     assert verdict("POST", PRESENCE_MUTATION, state) == "shared_living_kingdom_v1_blocked"
     assert verdict("DELETE", PRESENCE_MUTATION, deletion) == "shared_living_kingdom_v1_blocked"
     assert verdict("POST", PRESENCE_MUTATION, {**state, "protocol": 2}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "protocol": True}) == "UNEXPECTED_WRITE_BLOCKED"
     assert verdict("POST", PRESENCE_MUTATION, {**state, "realmId": "staking"}) == "UNEXPECTED_WRITE_BLOCKED"
     assert verdict("POST", PRESENCE_MUTATION, {**state, "custody": "approve"}) == "UNEXPECTED_WRITE_BLOCKED"
     assert verdict("POST", PRESENCE_MUTATION, {**state, "seq": True}) == "UNEXPECTED_WRITE_BLOCKED"
