@@ -1,5 +1,5 @@
 import "server-only";
-import { open } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import catalog from "@/config/kingdom-index-routes.json";
@@ -13,6 +13,8 @@ import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, provision
 import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
 import { loadCurrentKingdomIndexTrustedPublication } from "@/lib/kingdomIndexTrustedPublicationRead.mjs";
 import { projectKingdomCriterionProgress } from "@/lib/kingdomIndexCriterionProgress.mjs";
+import { readKingdomRuntimeTelemetry } from "@/lib/kingdomIndexRuntimeTelemetry.mjs";
+import type { KingdomRuntimeTelemetry } from "@/lib/kingdomIndexRuntimeTelemetry.mjs";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
 export type PageAuditKind = "certified" | "agent" | "source-review";
@@ -103,6 +105,9 @@ export type KingdomIndexSnapshot = {
   certified: number;
   drifted: number;
   source: "file" | "review-baseline";
+  // Separate operator-reported telemetry never constitutes verified quality.
+  // A failed source/BUILD_ID/private-file check becomes UNKNOWN (null).
+  runtimeTelemetry: KingdomRuntimeTelemetry | null;
 };
 // Values are evidence-bound, not AI-guessed. 100 requires independent certification.
 const MAX_LEDGER_BYTES = 256_000;
@@ -179,6 +184,22 @@ async function observations(): Promise<{ rows: PageObservation[]; source: Kingdo
 export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
   const now=Date.now();
   const proof=await observations();
+  // A GET performs one bounded read of an already produced file; no scanning,
+  // shell, network, signing, database mutation, or cron work per visitor.
+  let runtimeTelemetry:KingdomRuntimeTelemetry|null=null;
+  const gitSha=process.env.KINGDOM_INDEX_DEPLOYED_GIT_SHA??"";
+  const declaredBuild=process.env.KINGDOM_INDEX_DEPLOYED_BUILD_ID??"";
+  const runtimePath=process.env.KINGDOM_INDEX_RUNTIME_SNAPSHOT_PATH;
+  if(runtimePath&&/^[a-f0-9]{40}$/.test(gitSha)&&declaredBuild){
+    try {
+      const actualBuild=(await readFile(path.join(process.cwd(),".next","BUILD_ID"),"utf8")).trim();
+      if(actualBuild===declaredBuild){
+        runtimeTelemetry=await readKingdomRuntimeTelemetry({
+          file:runtimePath,expectedGitSha:gitSha,expectedBuildId:actualBuild,nowMs:now,
+        });
+      }
+    }catch{} // Runtime telemetry may NEVER turn failure into fake zero/score.
+  }
   const byRoute=new Map(proof.rows.map(r=>[r.href,r]));
   // The operator feed may replace a current observation, but may not rewrite
   // or relabel the independent historical baseline. Keep both lineages.
@@ -323,5 +344,6 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     certified:pages.filter(p=>p.status==="current"&&p.kind==="certified").length,
     drifted:pages.filter(p=>p.status==="drifted"||p.status==="stale").length,
     source:proof.source,
+    runtimeTelemetry,
   };
 }
