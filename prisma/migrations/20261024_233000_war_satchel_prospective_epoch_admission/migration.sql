@@ -127,7 +127,48 @@ CREATE TRIGGER "tr_satchel_epoch_registry_no_truncate"
 CREATE TRIGGER "tr_satchel_epoch_receipts_no_truncate"
   BEFORE TRUNCATE ON "war_satchel_epoch_deposit_receipts"
   FOR EACH STATEMENT EXECUTE FUNCTION "satchel_epoch_immutable_v1"();
+-- Privilege hardening. This migration requires a privileged, separately
+-- approved FINANCIAL migrator (CREATEROLE/ownership transfer), never the
+-- website deployer or application runtime. Both authority roles have NO LOGIN.
+-- A mainnet registrar is enrolled separately after five-human independent
+-- authentication; there is no automatic registrar LOGIN or membership grant.
+DO $epoch_roles$
+DECLARE n text;
+BEGIN
+  FOREACH n IN ARRAY ARRAY['aoe2war_epoch_finance_owner','aoe2war_epoch_credit_writer'] LOOP
+    IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname=n) THEN
+      EXECUTE format('CREATE ROLE %I NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS',n);
+    END IF;
+    IF EXISTS(SELECT 1 FROM pg_roles
+      WHERE rolname=n AND (rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb
+      OR rolcreaterole OR rolreplication OR rolbypassrls)) THEN
+      RAISE EXCEPTION 'SATCHEL_EPOCH_UNSAFE_PRIVILEGED_ROLE: %',n USING ERRCODE='42501';
+    END IF;
+  END LOOP;
+  IF EXISTS(
+      SELECT 1 FROM pg_auth_members m
+      JOIN pg_roles pr ON pr.oid=m.roleid
+      WHERE pr.rolname='aoe2war_epoch_finance_owner'
+    ) THEN
+    -- Financial registration must not be implicitly enrolled by a migration.
+    -- An existing enrollment requires explicit pre-migration review.
+    RAISE EXCEPTION 'SATCHEL_EPOCH_FINANCE_ROLE_PREENROLLED' USING ERRCODE='42501';
+  END IF;
+END
+$epoch_roles$;
+
+-- Object ownership, not merely REVOKE FROM PUBLIC, is critical:
+-- a deployment/app role owning the table could INSERT approved epochs anyway.
+ALTER TABLE "war_satchel_prospective_epochs" OWNER TO aoe2war_epoch_finance_owner;
+ALTER TABLE "war_satchel_epoch_deposit_receipts" OWNER TO aoe2war_epoch_finance_owner;
+ALTER FUNCTION "satchel_epoch_cold_start_v1"() OWNER TO aoe2war_epoch_finance_owner;
+ALTER FUNCTION "satchel_epoch_receipt_guard_v1"() OWNER TO aoe2war_epoch_finance_owner;
+ALTER FUNCTION "satchel_epoch_immutable_v1"() OWNER TO aoe2war_epoch_finance_owner;
 REVOKE ALL ON "war_satchel_prospective_epochs", "war_satchel_epoch_deposit_receipts" FROM PUBLIC;
--- Application's finance role requires SELECT on epoch, INSERT on epoch receipts;
--- epoch INSERT/approval belongs exclusively to an independently governed operator.
--- Do not GRANT approval/registry writing to the application deployment role.
+GRANT SELECT ON "war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer;
+GRANT SELECT, INSERT ON "war_satchel_epoch_deposit_receipts" TO aoe2war_epoch_credit_writer;
+-- Runtime account membership in credit_writer (and denial of finance_owner)
+-- is provisioned out of band, then witnessed on the actual production role.
+-- A role holding finance_owner can register a held/approved epoch only after
+-- real custody, H*, solvency and signed five-human review. It must NEVER be
+-- the app login, owner of the website tables, or routine Prisma deploy role.

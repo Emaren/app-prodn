@@ -68,6 +68,35 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
     await sql.query("CREATE TABLE users(id int PRIMARY KEY,uid text,wallet_address text); CREATE TABLE bet_auto_presets(id int PRIMARY KEY); CREATE TABLE bet_auto_executions(id int PRIMARY KEY); CREATE TABLE pending_wolo_claims(id int PRIMARY KEY)");
     const migrations=["20261014_103500_war_satchel_noncrediting_foundation","20261014_133000_war_satchel_wallet_owner_challenges","20261014_150000_war_satchel_simulated_double_entry","20261014_164500_war_satchel_simulation_concurrency_guard","20261014_191500_war_satchel_simulation_single_owner","20261017_012000_war_satchel_funded_ledger_foundation","20261018_020000_war_satchel_physical_receipt_consumption","20261024_233000_war_satchel_prospective_epoch_admission"];
     for(const m of migrations)await sql.query(readFileSync(new URL("../prisma/migrations/"+m+"/migration.sql",import.meta.url),"utf8"));
+    await t.test("ordinary application DB identity cannot register or approve epochs",async()=>{
+      await sql!.query("CREATE ROLE satchel_epoch_app_fixture LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS");
+      await sql!.query("GRANT USAGE ON SCHEMA public TO satchel_epoch_app_fixture");
+      // Fixture grants only the intended runtime SELECT/receipt capability.
+      await sql!.query("GRANT SELECT ON war_satchel_prospective_epochs TO satchel_epoch_app_fixture");
+      await sql!.query("GRANT SELECT,INSERT ON war_satchel_epoch_deposit_receipts TO satchel_epoch_app_fixture");
+      const c=new pg.Client({host:socket,user:"satchel_epoch_app_fixture",database:"postgres"});
+      await c.connect();
+      try{
+        const rights=await c.query(`SELECT
+          current_user AS username,
+          has_table_privilege(current_user,'war_satchel_prospective_epochs','SELECT') AS can_read,
+          has_table_privilege(current_user,'war_satchel_prospective_epochs','INSERT') AS can_register,
+          has_table_privilege(current_user,'war_satchel_prospective_epochs','UPDATE') AS can_approve,
+          has_table_privilege(current_user,'war_satchel_epoch_deposit_receipts','INSERT') AS can_record,
+          pg_has_role(current_user,'aoe2war_epoch_finance_owner','MEMBER') AS controls_finance`);
+        assert.equal(rights.rows[0].username,"satchel_epoch_app_fixture");
+        assert.equal(rights.rows[0].can_read,true);
+        assert.equal(rights.rows[0].can_record,true);
+        assert.equal(rights.rows[0].can_register,false);
+        assert.equal(rights.rows[0].can_approve,false);
+        assert.equal(rights.rows[0].controls_finance,false);
+        await assert.rejects(c.query("INSERT INTO war_satchel_prospective_epochs DEFAULT VALUES"),{code:"42501"});
+        await assert.rejects(c.query("SET ROLE aoe2war_epoch_finance_owner"),{code:"42501"});
+      }finally{await c.end();}
+      const roles=await sql!.query("SELECT rolname,rolcanlogin,rolinherit FROM pg_roles WHERE rolname IN ('aoe2war_epoch_finance_owner','aoe2war_epoch_credit_writer') ORDER BY rolname");
+      assert.equal(roles.rowCount,2);
+      assert.ok(roles.rows.every(r=>r.rolcanlogin===false&&r.rolinherit===false));
+    });
     await sql.query("INSERT INTO users VALUES(1,$1,$2)",[i.OwnerID,i.Sender]);
     await sql.query("INSERT INTO war_satchel_deposit_intents(id,user_id,sender_address,vault_address,amount_uwolo,memo,nonce,created_at,expires_at) VALUES($1,1,$2,$3,$4,$5,'abcdefghijklmnop',$6,$7)",[expected.intentId,i.Sender,i.Vault,i.AmountUWolo,i.Memo,i.CreatedAt,i.ExpiresAt]);
     await sql.query("INSERT INTO war_satchel_proof_candidates(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at) VALUES($1,1,'wolo-1',$2,0,$3,$4,$5,$6,now())",[expected.intentId,o.TxHash,i.Sender,i.Vault,i.AmountUWolo,o.Height]);
