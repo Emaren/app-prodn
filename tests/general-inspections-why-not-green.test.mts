@@ -164,6 +164,26 @@ test("a replayed snapshot becomes STALE at request time without laundering old 1
   assert.equal(report.evidenceChecks[0].claimedReleaseSha, SHA);
 });
 
+test("live statfs and immutable certifications require original observation times", () => {
+  const snap = fixture();
+  const org = snap.categories.find((c) => c.id === "organization")!.checks[0];
+  org.id = "root-free";
+  org.evidenceAt = null;
+  const cert = snap.categories.find((c) => c.id === "release")!.checks[0];
+  cert.id = "certified";
+  cert.evidenceAt = null;
+  const report = buildWhyNotGreenReport(snap);
+  const statfs = report.evidenceChecks.find((c) => c.checkKey === "organization/root-free")!;
+  assert.equal(statfs.evidenceStatus, "UNKNOWN");
+  assert.equal(statfs.reason, "missing-observation-time");
+  assert.equal(statfs.ttlHours, 6);
+  const certified = report.evidenceChecks.find((c) => c.checkKey === "release/certified")!;
+  assert.equal(certified.evidenceStatus, "UNKNOWN");
+  assert.equal(certified.reason, "missing-observation-time");
+  assert.equal(certified.ttlHours, null);
+  assert.equal(report.observedOverallScore, 100); // zero score rewriting
+});
+
 test("request-clock skew and invalid times cannot promote cached snapshots to current proof", () => {
   const snap = fixture();
   const futureSkew = buildWhyNotGreenReport(snap, Date.parse(NOW) - 6 * 60_000);
