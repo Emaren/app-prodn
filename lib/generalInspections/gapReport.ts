@@ -50,10 +50,14 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
   // samples. Attribution must not silently promote that contradiction to PASS.
   // Malformed/empty ratios are not independent proof of a failure.
   const ratio = item.ratio;
-  if (ratio && Number.isInteger(ratio.passed) && Number.isInteger(ratio.total) &&
-      ratio.total > 0 && ratio.passed >= 0 && ratio.passed <= ratio.total &&
-      ratio.passed < ratio.total) {
-    return { status: "fail", reason: "observed-cohort-failure", ageHours: age, ttlHours: ttl };
+  if (ratio) {
+    if (!Number.isInteger(ratio.passed) || !Number.isInteger(ratio.total) ||
+        ratio.total <= 0 || ratio.passed < 0 || ratio.passed > ratio.total) {
+      return { status: "unknown", reason: "invalid-cohort-ratio", ageHours: age, ttlHours: ttl };
+    }
+    if (ratio.passed < ratio.total) {
+      return { status: "fail", reason: "observed-cohort-failure", ageHours: age, ttlHours: ttl };
+    }
   }
   const full = item.earned + 0.001 >= item.weight;
   if (full) {
