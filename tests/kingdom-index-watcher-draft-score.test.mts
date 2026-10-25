@@ -28,7 +28,10 @@ test("unreleased Watcher source-only triage display cannot assert installed cert
  assert.match(ui,/THIS IS NOT THE LIVE WATCHER QUALITY SCORE/);
  assert.match(ui,/No independently certified desktop quality score/);
  assert.doesNotMatch(ui,/<b aria-label="Approximately 58 out of 100/);
- assert.match(ui,/1\.6\.6 DRAFT · SOURCE REVIEW/);
+ assert.match(ui,/AI-assisted source estimate/);
+ assert.match(ui,/companion\.draftSourceReview/);
+ assert.match(server,/kingdom-index-watcher-166-source-review\.json/);
+ assert.doesNotMatch(ui,/import watcherDraftReview from/);
  assert.match(server,/status:"unmeasured" as const,score:null/);
  assert.doesNotMatch(ui,/COMPANION CERTIFIED.*watcherDraftReview/);
 });
