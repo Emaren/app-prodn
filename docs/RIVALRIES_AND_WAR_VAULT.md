@@ -232,13 +232,31 @@ is 2-0 when opposed; together they are 1-2. Game 23876 is excluded because the
 display string containing Zodiac belongs to the Brian/Trunks Steam account and
 the exact Zodiac Steam account is absent.
 
-## 2026-10-25 source-contract review (not production certification)
+## 2026-10-25 bounded source-contract review for website-only release
 
-This documentation review confirmed that the committed `lib/replaySides.ts`,
-`lib/publicMatchups.ts`, and the public Battle Archive, Rivalries,
-player/team matchup and Game Stats route sources still exist in the
-reviewed repository tree. It does not claim that the historical July
-production canary was repeated, that any present runtime is healthy, or
-that a new financial source/issuer was authorized. Historical site
-observations above remain dated evidence only. Financial custody
-authorization is governed separately by the held Satchel controller.
+**Review scope:** original public routing and aggregation contract in the
+unchanged product source at `21cd1493b182cb0968a6b6cf3f528d0578cfd797`.
+Inspected the existing source entry points `app/battle-archive/page.tsx`,
+`app/rivalries/page.tsx`, `app/game-stats/[id]/page.tsx`,
+`app/matchups/[left]/[right]/page.tsx`,
+`app/matchups/team/[left]/[right]/page.tsx`, `lib/replaySides.ts`,
+and `lib/publicMatchups.ts`. These route/module paths are present in the
+reviewed product tree and are **unchanged** by this release. The existing
+source contract above remains governing: exact SteamID64 identity and
+safe canonical teams, one replay/one archive record, no teammate-to-opponent
+invention, strict inferred-winner conditions and bounded public display.
+
+**Evidence limit:** this is an engineering **source-only** documentation
+review, not a fresh public HTTP canary, independent finance/bet settlement
+approval, proof of startup/SSR financial noninterference, or verified manual
+production test. Do not convert its new `reviewed_at` metadata into a
+reviewer's cryptographic attestation or a production release permit. The
+historical deployment verification in the prior section remains historical.
+The original Wolo source-drift P1 stays OPEN and funded/custody operations
+remain disabled for this independent website-only candidate.
+
+**Release impact:** this is a documentation-only product commit above the
+previous nine-path `main@21cd1493…`. The new exact product SHA must be
+source-qualified separately and accepted by independent release reviewers.
+No existing financial API, balance, Founder payout, withdrawal, settlement
+writer, Watcher binary or Prisma migration is modified by this review.
