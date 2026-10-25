@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "822f949082677100ec9ded121028f9d95690e6d3d053f6c4528c5bd426530f5f",
+      "sha256": "5cb8ecb87537fd7536480687301526369482d1dec5e2ddb887cc26081c9050d4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2307,7 +2307,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261025-solo-owner-oneshot-state-stability",
-    "commit": "becaae0ca6d59b4932df94c454adad803e2e8e5b"
+    "commit": "95e06f0f4f51c662d681752f57210ccaa509e4b3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
