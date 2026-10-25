@@ -59,6 +59,10 @@ export function safeDestination(raw: unknown): string {
   if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//")
       || raw.length > 160 || /[?#%\\\x00-\x1f\x7f]/.test(raw)) return HIDDEN;
   const normalized = raw.length > 1 ? raw.replace(/\/+$/, "") : raw;
+  // Exclude private actions and invoices completely, including legacy records.
+  if (/^\/(?:admin|api|auth|connect-wallet|contact-emaren|offline|pending-bets|profile|settings|submit|upload|uploads|wallet)(?:\/|$)/.test(normalized)
+      || /^\/market\/invoices(?:\/|$)/.test(normalized)
+      || /^\/bets\/broadcast-previews(?:\/|$)/.test(normalized)) return HIDDEN;
   if (ALLOWED.has(normalized)) return normalized;
   const pieces = normalized.split("/").slice(1);
   if (pieces.length >= 2 && PUBLIC_FAMILY.has(pieces[0]) &&
@@ -79,6 +83,7 @@ export function safeEvent(input: EventInput): SafeEvent | null {
   const session = typeof rawSession === "string" && /^[a-zA-Z0-9_-]{8,80}$/.test(rawSession)
     ? rawSession : null;
   const destination = safeDestination(input.path);
+  if (destination === HIDDEN) return null;
   return {
     id: input.id, type: input.type, destination, at: time.toISOString(),
     label: input.type === "page_view" ? "Viewed page" :
