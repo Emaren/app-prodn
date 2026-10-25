@@ -36,8 +36,8 @@ The Watcher is a separate desktop application, not a Next page.
 - \`scripts/renaissance_88_browser.cjs\` actually launches installed Chrome
   through pinned playwright-core 1.57, against ONLY
   \`http://127.0.0.1:3137\`. It visits each assigned route with desktop
-  1440x900 and mobile 390x844, real DOM navigation, real Tab key, basic
-  image-alt/landmark/heading/title signals, Chrome timings and available
+  1440x900 and mobile 390x844, real DOM navigation, real Tab key, pinned automated axe-core 4.10.3 WCAG A/AA observations,
+  bounded viewport JPEG screenshots, basic image-alt/landmark/title signals, Chrome timings and available
   JS heap estimate. Client API GETs receive synthetic local 503 error
   fixtures, external egress and all browser POST/PUT/DELETE mutations are
   blocked. These failures are *fixture responses*, not real API domain proof.
@@ -131,7 +131,7 @@ Two GitHub hosted Ubuntu jobs per event. Source job ceiling **15 minutes**.
 Chrome job ceiling **60 minutes**, including full Next build (hard-capped
 30m), browser run (27m), and artifact collection. Maximum reserved ~75
 runner-minutes per PR/nightly run; observed runtime is unknown until CI.
-The PR pilot tests ~11 routes × 2 viewports × 1 sample (~22 navigations).
+The PR candidate now tests 88 routes × 2 viewports × 1 sample (176 navigations) using one shared Next build.
 Nightly default tests 88 × 2 × 3 (~528 navigations). Browser target
 time budget max 25 minutes; routes with failures emit FAIL or incomplete
 UNKNOWN. All artifacts retained for 14 days, and each route receipt is
@@ -142,3 +142,20 @@ DocsV2 governed reseal, tests alternate API/replay/postgres failure
 conditions with separate domain owners, confirms actual browser artifacts
 and build identity, and requests scorer adapter only through Tab A.
 No automatic score admission or release authority is granted by this tool.
+
+## Validated pilot and 88-route expansion
+
+The initial PR-head local Chrome pilot generated 11 route receipts, 22 real
+navigation requests and actual Next BUILD_ID `ChvRNt_JI6u0xLOUor2nD` at
+commit `47dbf7d8c9528b8364489cab60f929a1e049f4d2`. Eight routes
+passed basic desktop/mobile navigation; `/kingdom`, `/players`, `/watch`
+were UNKNOWN after local PostgreSQL `P1001`, not verified production
+failures. The runner's verdict was corrected to distinguish blocked
+client telemetry POST attempts (not executed) from GET navigation, and to
+require the actual final route to match the requested path.
+
+Subsequent branch revision expands each PR to **all 88 routes**, one
+sample for each viewport, with bounded Chrome runs, screenshot evidence
+and real axe-core A/AA scans. Results remain UNKNOWN until that exact
+revised SHA has independently completed. An axe automated pass does not
+replace human screen-reader, domain-owner or authenticated acceptance.
