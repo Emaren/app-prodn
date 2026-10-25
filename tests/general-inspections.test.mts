@@ -59,3 +59,17 @@ test("ratio checks expose numerator and denominator", () => {
   assert.deepEqual(item.ratio, { passed: 329, total: 329 });
   assert.equal(item.state, "green");
 });
+
+
+test("a stale fully-passing cohort cannot display green after its earned points expire", () => {
+  const stale = check("edge", "Static edge cohort", 10, 0, "20/20 historically", {
+    ratio: { passed: 20, total: 20 },
+    evidenceAt: "2026-10-13T00:00:00Z",
+  });
+  assert.equal(stale.earned, 0);
+  assert.equal(stale.state, "red");
+  const partial = check("edge", "Static edge cohort", 10, 0.9, "9/10", {
+    ratio: { passed: 9, total: 10 },
+  });
+  assert.equal(partial.state, "amber");
+});
