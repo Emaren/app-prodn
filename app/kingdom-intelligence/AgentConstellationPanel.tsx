@@ -210,6 +210,9 @@ export default function AgentConstellationPanel({
                   </div>
                 ) : recoveryItem ? (
                   <div className="mt-2">
+                    <div role="status" className="mb-1 text-[9px] uppercase tracking-[0.14em] text-slate-500">
+                      Snapshot · historical status only; progress unverified
+                    </div>
                     <div className="relative h-1 overflow-hidden rounded-full bg-white/6">
                       {recoverySignal === "awaiting_sample" ? (
                         <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
