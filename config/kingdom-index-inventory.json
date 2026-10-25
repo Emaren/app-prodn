@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
-    "routeHandlerTemplates": 275,
-    "apiHandlerTemplates": 272,
+    "routeHandlerTemplates": 276,
+    "apiHandlerTemplates": 273,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1538,6 +1538,11 @@
     },
     {
       "entrypoint": "app/api/kingdom-forge/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-index/live/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

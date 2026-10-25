@@ -6,6 +6,7 @@ import { ArrowUpRight, Castle, ChevronDown, Clock3, Compass, Grid2X2, List, X } 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import type { District, KingdomIndexEntry, KingdomIndexSnapshot } from "@/lib/kingdomIndex";
 import { isLatestKingdomIndexRefresh } from "@/lib/kingdomIndexRefreshOrder";
+import {KingdomIndexLiveProgress,useKingdomIndexLiveFeed,liveRouteStatus} from "./KingdomIndexLiveProgress";
 import styles from "./KingdomIndex.module.css";
 
 const REGIONS: ReadonlyArray<{ id: District; name: string; numeral: string; subtitle: string }> = [
@@ -181,6 +182,7 @@ function DistrictSection({ region, pages, selected, focus }: {region:(typeof REG
 }
 export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
   const [snapshot,setSnapshot]=useState(initial);
+  const live=useKingdomIndexLiveFeed();
   const [mode,setMode]=useState<Mode>("ledger");
   const [selected,setSelected]=useState<string|null>(null);
   const [expanded,setExpanded]=useState<string|null>(null);
@@ -244,6 +246,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
           </div>
         </div>
       </header>
+      <KingdomIndexLiveProgress feed={live.feed} connectionLost={live.connectionLost}/>
       {mode==="realm"?<div className={styles.atlas} aria-label="Kingdom map">
         <div className={styles.contours} aria-hidden="true"/>
         <div className={styles.compassRose} aria-hidden="true"><Compass size={22}/><span>N</span></div>
@@ -256,7 +259,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
         {rows.map(item=><div key={item.href} className={styles.ledgerGroup}>
           <div className={styles.ledgerRow} data-status={item.status}>
             <div className={styles.ledgerName}><span className={styles.signal}/><div><Link href={item.href}>{item.label}<ArrowUpRight size={12}/></Link><span>{item.href}</span></div></div>
-            <div className={styles.ledgerApproval}><Score entry={item}/><span>{item.criterionProgress.approvedCriteria}/20 CRITERIA APPROVED</span></div>
+            <div className={styles.ledgerApproval}><Score entry={item}/><span>{item.criterionProgress.approvedCriteria}/20 CRITERIA APPROVED</span><span title="Read-only GitHub Actions browser candidate, NOT a quality score">{liveRouteStatus(live.feed,item.href,live.connectionLost)}</span></div>
             <Sparkline points={item.history} score={item.score} compact/>
             <div className={styles.ledgerTime} title={formatStamp(item.checkedAt)}><Clock3 size={12}/>{item.checkedAt?new Date(item.checkedAt).toISOString().slice(0,10):"—"}</div>
             <button className={styles.expandButton} type="button" aria-expanded={expanded===item.href} aria-label={`Details for ${item.label}`} onClick={event=>{detailTriggerRef.current=event.currentTarget;setExpanded(v=>v===item.href?null:item.href);}}><ChevronDown size={18}/></button>
