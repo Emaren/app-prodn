@@ -5,17 +5,17 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-e2b6acea1f7878e1cdc6",
+    version: "src-8ec949b86a01d1fa951c",
   },
   {
     href: "/oracle",
     label: "The Oracle",
-    version: "src-d681bee1e784380a94a7",
+    version: "src-69ea29d4555e697a3743",
   },
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-bb3b69a45665b9a6d0bf",
+    version: "src-7dbb698dc122403c797d",
   },
   {
     href: "/champions",
@@ -50,7 +50,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/academy",
     label: "Academy",
-    version: "src-4042b21366745d62d8df",
+    version: "src-efa95e74905e8f7c8401",
   },
   {
     href: "/market",
@@ -70,7 +70,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/forum",
     label: "Forum",
-    version: "src-033cb107876b6463d14c",
+    version: "src-a4385899d468bb5467fc",
   },
   {
     href: "/radio",
@@ -85,7 +85,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-5a8c497b6126eaf03fea",
+    version: "src-15c5a8c282eb8668acfe",
   },
   {
     href: "/game-stats",
@@ -100,7 +100,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-forge",
     label: "Kingdom Forge",
-    version: "src-5a82fecdfb0a41c79a7f",
+    version: "src-17a40befecc2e2b73161",
   },
   {
     href: "/round-chamber",
@@ -120,7 +120,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/speed",
     label: "Speed",
-    version: "src-1cee80cc8e6aff47c374",
+    version: "src-0e7cf93e3df8758e54ac",
   },
   {
     href: "/aoe2war-os",
