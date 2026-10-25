@@ -5,7 +5,7 @@ function classifyCandidateRoute(record,dbFixture){
  let unknown=false;
  for(const view of record.views){
   if(view.browserStatus==="FAIL" && !view.dependencyUnavailable)return "FAIL";
-  if(view.http!==200||view.sameOrigin!==true||view.final_path!==record.route)return "FAIL";
+  if(view.http!==200||view.sameOrigin!==true||view.final_path!==(record.redirect_to||record.route))return "FAIL";
   if(view.dependencyUnavailable){
    if(dbFixture==="UNAVAILABLE"){unknown=true;continue;}
    return "FAIL";
