@@ -480,7 +480,7 @@ function PodiumCard({
         </Link>
       </div>
 
-      <Link href={title.routeHref} className="block">
+      <Link href={title.routeHref} className="block" aria-label={`View ${title.displayName} championship details`}>
         <BeltAsset title={title} priority={isCenter} className={isCenter ? "h-[30rem] max-w-[30rem]" : "h-[24rem] max-w-[24rem]"} />
       </Link>
 
@@ -585,7 +585,7 @@ function NationalCard({ titleState }: { titleState: ChampionTitleState }) {
           {flagForCountry(title.country)}
         </div>
       </div>
-      <Link href={title.routeHref} className="block">
+      <Link href={title.routeHref} className="block" aria-label={`View ${title.displayName} championship details`}>
         <BeltAsset title={title} className="-mt-2 h-[18rem] max-w-[18rem]" />
       </Link>
       <div className="mt-3">
@@ -620,7 +620,7 @@ function EloCard({ titleState }: { titleState: ChampionTitleState }) {
           <h3 className="mt-1 font-serif text-2xl font-semibold text-amber-50">{title.displayName}</h3>
         </Link>
       </div>
-      <Link href={title.routeHref} className="block">
+      <Link href={title.routeHref} className="block" aria-label={`View ${title.displayName} championship details`}>
         <BeltAsset title={title} className="h-[19rem] max-w-[18rem]" />
       </Link>
       <div className="space-y-3">
@@ -639,7 +639,7 @@ function DesignationCard({ titleState }: { titleState: ChampionTitleState }) {
   const title = titleState;
   return (
     <article className="min-w-0 overflow-hidden rounded-[1.35rem] border border-amber-200/12 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.26))] p-4">
-      <Link href={title.routeHref} className="block">
+      <Link href={title.routeHref} className="block" aria-label={`View ${title.displayName} championship details`}>
         <BeltAsset title={title} className="aspect-square max-w-[9.5rem]" />
       </Link>
       <div className="mt-3">
