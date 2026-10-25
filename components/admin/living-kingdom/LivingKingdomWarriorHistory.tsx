@@ -45,7 +45,7 @@ export function LivingKingdomWarriorHistory({uid}:{uid:string}){
   .catch(e=>{if(!ctl.signal.aborted)setError(e instanceof Error?e.message:"History unavailable");})
   .finally(()=>{if(!ctl.signal.aborted)setBusy(false);});
   return ()=>ctl.abort();
- },[load,revision]);
+ },[load,revision,cursor]);
  function changeDays(value:7|30){setDays(value);setCursor(null);setEvents([]);}
  const grouped=new Map<string,Event[]>();
  for(const row of events){
@@ -124,7 +124,7 @@ export function LivingKingdomWarriorHistory({uid}:{uid:string}){
       </section>
       <section className={FRAME}>
        <p className="text-xs uppercase tracking-[.2em] text-amber-200/65"><Footprints className="mr-1 inline h-4 w-4"/>Presence ≠ navigation history</p>
-       <p className="mt-3 text-sm leading-6 text-slate-400">Living Kingdom's floating portraits are transient, coarse, and process-local. These durable records come only from signed-in activity events.</p>
+       <p className="mt-3 text-sm leading-6 text-slate-400">Living Kingdom&apos;s floating portraits are transient, coarse, and process-local. These durable records come only from signed-in activity events.</p>
       </section>
       <section className={FRAME}>
        <p className="text-xs uppercase tracking-[.2em] text-amber-200/65"><Waves className="mr-1 inline h-4 w-4"/>What cannot be recovered</p>
