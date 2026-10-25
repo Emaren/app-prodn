@@ -244,6 +244,36 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
           </div>
         </div>
       </header>
+      <section className={styles.runtimeSection} aria-label="Live Kingdom Index source-bound operational readings">
+        <header className={styles.runtimeHeader}>
+          <div><strong>LIVE EVIDENCE COUNTERS</strong><span>Operator reported only · refreshed from private source snapshots every 60 seconds · no score authority</span></div>
+          <span aria-live="polite">{connectionLost?"TRANSPORT UNAVAILABLE":snapshot.runtimeTelemetry?"SOURCE-MATCHED / UNVERIFIED":"NO VALID CURRENT SOURCE SNAPSHOT"}</span>
+        </header>
+        <div className={styles.runtimeGrid} role="list">
+          {([
+            ["navigation","Candidate navigation tested","/88"],
+            ["accessibility","Candidate accessibility affected","/88"],
+            ["doctor","Doctor producer report","/100"],
+            ["inspections","General Inspections producer report","/100"],
+            ["releaseParity","Reported website release parity","/1"]
+          ] as const).map(([id,label,suffix])=>{
+            const reading=snapshot.runtimeTelemetry?.readings.find(row=>row.id===id);
+            const current=reading?.status==="REPORTED_UNVERIFIED";
+            return <div role="listitem" className={styles.runtimeMetric} key={id} data-fresh={current}>
+              <span>{label}</span>
+              <strong>{reading?`${reading.numerator}${suffix}`:"UNKNOWN"}</strong>
+              <small>{!reading?"NO VALID SOURCE RECEIPT":current?"OPERATOR REPORTED · NOT CERTIFIED":"STALE · NOT CURRENT"}</small>
+              {reading&&<small title={reading.receiptSha256}>Observed {formatStamp(reading.observedAt)} · expires {formatStamp(reading.expiresAt)}</small>}
+            </div>;
+          })}
+          <div role="listitem" className={styles.runtimeMetric}>
+            <span>Independently authenticated criteria</span>
+            <strong>{snapshot.pages.reduce((sum,p)=>sum+p.criterionProgress.approvedCriteria,0)}/1760</strong>
+            <small>ONLY AUTHENTICATED SIGNED GRANTS</small>
+          </div>
+        </div>
+        <p className={styles.runtimeFoot}>Telemetry source: {snapshot.runtimeTelemetry?.sourceSha.slice(0,12)??"UNKNOWN"} · Next BUILD_ID: {snapshot.runtimeTelemetry?.buildId??"UNKNOWN"} · revision: {snapshot.runtimeTelemetry?.revisionSha256.slice(0,12)??"UNKNOWN"} · received by page: {formatStamp(snapshot.generatedAt)}. Candidate smoke and operator reports are never quality points.</p>
+      </section>
       {mode==="realm"?<div className={styles.atlas} aria-label="Kingdom map">
         <div className={styles.contours} aria-hidden="true"/>
         <div className={styles.compassRose} aria-hidden="true"><Compass size={22}/><span>N</span></div>
