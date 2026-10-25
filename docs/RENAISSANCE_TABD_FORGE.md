@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.renaissance-tabd-forge"
+title: "Renaissance Tab D — private census forge and Test Forge queue"
+type: "runbook"
+status: "draft"
+owner: "renaissance-tab-d"
+systems: ["app-prodn"]
+audience: ["developers","operators","auditors"]
+source_of_truth: "git"
+authority: "candidate-private-source-inventory"
+reviewed_at: "2026-10-25"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Renaissance Tab D — private census forge and Test Forge queue
 
 Status: draft; source evidence only; not a scorer, production sign-off or public API.
