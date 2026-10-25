@@ -11,6 +11,7 @@ import type {IsolatedSatchelSigner} from "../lib/warSatchelAutoBetExecutor.ts";
 import type {SatchelWagerSnapshot} from "../lib/warSatchelWagerAuthorization.ts";
 import type {SatchelWagerReservation} from "../lib/warSatchelWagerReservation.ts";
 import {startLifecycleDatabase,installLifecycleFinancialAdmission,seedLifecycleOwnerAndMarkets,seedLifecycleSession,lifecycleOwnerKey} from "./fixtures/satchel-lifecycle-db.mts";
+import {seedIsolatedProspectiveEpoch} from "./fixtures/satchel-prospective-epoch.mts";
 import type {Prisma} from "../lib/generated/prisma/index.js";
 import {controlledOriginalLiveRow} from "./fixtures/live-watcher-market-admission.mts";
 import {loadLiveSessionSnapshot} from "../lib/liveSessionSnapshot.ts";
@@ -200,6 +201,7 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
     const candidate=await db.prisma.warSatchelProofCandidate.create({data:{intentId,userId:seeded.owner.id,chainId:"wolo-1",txHash:tx,transferIndex:0,senderAddress:i.Sender,vaultAddress:vault,amountUwolo:100n*U,txHeight:BigInt(fixture.steps[0].observation.Height),verifiedAt:new Date()}});
     const authenticated=await deposit.authenticateOwnerDeposit({intentId,ownerUid:seeded.owner.uid,sender:i.Sender,vault,amountUwolo:"100000000",memo:i.Memo,createdAtUtc:new Date(i.CreatedAt).toISOString(),expiresAtUtc:new Date(i.ExpiresAt).toISOString(),txHash:tx});
     const creditInput={ownerUserId:seeded.owner.id,ownerUid:seeded.owner.uid,proofCandidateId:candidate.id,expectedTxHash:tx,authenticatedDeposit:authenticated,bank:await ledger.readIndependentSatchelBank()};
+    await seedIsolatedProspectiveEpoch(db.sql,{vault,txHeight:BigInt(fixture.steps[0].observation.Height),intentCreatedAt:new Date(i.CreatedAt)});
     await ledger.creditRecordedSatchelProof(db.prisma,creditInput);
     await t.test("real deposit has exactly one durable credit under concurrent replay",async()=>{
       await Promise.allSettled(Array.from({length:4},()=>ledger.creditRecordedSatchelProof(db.prisma,creditInput)));

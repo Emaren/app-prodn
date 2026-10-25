@@ -31,6 +31,7 @@ import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { warSatchelVaultDistinctFromKnownWallets } from "./warSatchelVaultBoundary.ts";
 import { resolveCommunityTreasuryAddressConfig } from "./woloCommunityTreasury.ts";
+import { requireDurableProspectiveDepositEpoch, bindDurableEpochReceipt } from "./warSatchelDurableEpoch.ts";
 
 const MAX_I64 = BigInt("9223372036854775807");
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
@@ -255,6 +256,15 @@ export async function creditRecordedSatchelProof(
         proof.intent.chainId !== "wolo-1") {
       stop("canonical_receipt_owner_or_intent_mismatch");
     }
+    // Future credits are admitted only under the durable approved H*.
+    // Neither an unallocated July claim nor an old proof can become
+    // prospective balance through an idempotent replay.
+    const epoch=await requireDurableProspectiveDepositEpoch(tx,{
+      ownerUserId:input.ownerUserId,ownerUid:input.ownerUid,
+      ownerWallet:actors[0].wallet_address,
+      intentCreatedAt:proof.intent.createdAt,
+      bank:input.bank,deposit:input.authenticatedDeposit,
+    });
     const previous = await tx.satchelFundedReceipt.findUnique({
       where: { proofCandidateId: proof.id },
     });
@@ -303,6 +313,11 @@ export async function creditRecordedSatchelProof(
       },
     });
     await requirePhysicalConsumption(tx,"deposit",receipt);
+    await bindDurableEpochReceipt(tx,{
+      epoch,receiptId:receipt.id,ownerUserId:input.ownerUserId,
+      txHash:proof.txHash,vault:proof.vaultAddress,
+      height:proof.txHeight,amountUwolo:proof.amountUwolo,
+    });
     const journalKey = "satchel:credit:wolo-1:" + proof.txHash + ":0";
     await tx.satchelFundedJournal.create({
       data: {

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-10-25"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -231,3 +231,14 @@ one 1v1 opponent game, one team-opponent game and three teammate games. Zodiac
 is 2-0 when opposed; together they are 1-2. Game 23876 is excluded because the
 display string containing Zodiac belongs to the Brian/Trunks Steam account and
 the exact Zodiac Steam account is absent.
+
+## 2026-10-25 source-contract review (not production certification)
+
+This documentation review confirmed that the committed `lib/replaySides.ts`,
+`lib/publicMatchups.ts`, and the public Battle Archive, Rivalries,
+player/team matchup and Game Stats route sources still exist in the
+reviewed repository tree. It does not claim that the historical July
+production canary was repeated, that any present runtime is healthy, or
+that a new financial source/issuer was authorized. Historical site
+observations above remain dated evidence only. Financial custody
+authorization is governed separately by the held Satchel controller.
