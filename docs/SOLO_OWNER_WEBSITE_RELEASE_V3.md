@@ -87,6 +87,37 @@ These are a new policy namespace; do not relabel old council keys/packets or
 reuse its nonce database. The private key is never installed in the trust
 store. No purported independent custodian is required or claimed.
 
+After reviewing the exported public key, install it without overwriting any
+previous enrollment (Mac only; each return code stays visible):
+
+```bash
+KEYDIR="$HOME/.local/share/aoe2war-owner-signing"
+if [ "$(uname -s)" = "Darwin" ] && [ "$(id -un)" = "tonyblum" ] &&
+   [ -f "$KEYDIR/owner.pem" ] && [ ! -L "$KEYDIR/owner.pem" ]; then
+  openssl pkey -pubin -in "$KEYDIR/owner.pem" -pubout -outform DER -out "$KEYDIR/owner-public.der"
+  printf 'PUBLIC_DER_EXPORT_RC=%s\n' "$?"
+  if [ -s "$KEYDIR/owner-public.der" ]; then
+    shasum -a 256 "$KEYDIR/owner-public.der"
+    printf 'OWNER_PUBLIC_FINGERPRINT_RC=%s\n' "$?"
+    sudo install -d -o root -g wheel -m 0755 /etc/aoe2war/website-owner-v3
+    printf 'OWNER_TRUST_DIRECTORY_RC=%s\n' "$?"
+    if [ ! -e /etc/aoe2war/website-owner-v3/owner.pem ] &&
+       [ ! -L /etc/aoe2war/website-owner-v3/owner.pem ]; then
+      sudo install -o root -g wheel -m 0644 "$KEYDIR/owner.pem" /etc/aoe2war/website-owner-v3/owner.pem
+      printf 'OWNER_PUBLIC_INSTALL_RC=%s\n' "$?"
+    else
+      printf 'HOLD: public key already enrolled; verify it, never silently rotate\n'
+    fi
+    if [ ! -e /var/lib/aoe2war-website-owner-v3 ] && [ ! -L /var/lib/aoe2war-website-owner-v3 ]; then
+      sudo install -d -o "$(id -un)" -g "$(id -gn)" -m 0700 /var/lib/aoe2war-website-owner-v3
+      printf 'OWNER_PRIVATE_NONCE_DIRECTORY_RC=%s\n' "$?"
+    fi
+  fi
+else
+  printf 'HOLD: expected local owner and exported public key required\n'
+fi
+```
+
 ## Exact owner phase flow
 
 Set `OP` to this reviewed policy checkout and `APP` to the clean product main.
