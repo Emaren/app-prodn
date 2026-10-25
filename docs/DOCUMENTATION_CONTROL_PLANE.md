@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261025-solo-owner-v3-clock-skew-bounded` at `c696419e51455df3b52bd965150ab047a1927727`
+Implementation baseline: `codex/website-owner-incident-reconcile` at `577dae56a653913d51aa5baa772a92323acde38e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **100**
+- Authoritative repository documents: **101**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 60
-- `runbook`: 20
+- `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 83
+- `active`: 84
 - `draft`: 1
 - `generated`: 1
 - `historical`: 12
@@ -142,6 +142,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Held Ten-Path Website Protected Operator Commands](WEBSITE_NINE_PATH_OPERATOR_COMMANDS.md) | `runbook` | `active` | `nonauthorizing-source-engineering` |
 | [Held Alternative Website-Only Release Quorum Proposal](WEBSITE_ONLY_ALTERNATIVE_QUORUM_PROPOSAL.md) | `explanation` | `draft` | `proposal-only-nonauthorizing` |
 | [Held Website-Only Release Authority V2](WEBSITE_ONLY_RELEASE_AUTHORITY_V2.md) | `runbook` | `active` | `nonauthorizing-source-engineering` |
+| [Website Owner Historical HOLD Reconciliation](WEBSITE_OWNER_HOLD_RECONCILIATION.md) | `runbook` | `active` | `release-engineering-contract` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |

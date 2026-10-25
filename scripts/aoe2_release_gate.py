@@ -299,6 +299,8 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_release.py",
         "scripts/aoe2_website_owner_release_v3.py",
         "scripts/aoe2_website_owner_observer_v3.py",
+        "scripts/aoe2_website_owner_evidence_v1.py",
+        "tests/test_aoe2_website_owner_evidence_v1.py",
         "tests/test_aoe2_website_owner_release_v3.py",
         "tests/test_aoe2_website_owner_observer_v3.py",
         "scripts/aoe2_release_gate.py",

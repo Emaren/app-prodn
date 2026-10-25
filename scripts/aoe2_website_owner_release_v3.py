@@ -431,15 +431,56 @@ def operation(mode, candidate_repo: Path, *, packet=None, stage_receipt=None, at
         validate_observation(latest)
         require(utc_time(p["issued_at"]) <= moment() < utc_time(p["expires_at"]),
                 "owner authorization expired during durable consumption")
-        result = protected_dispatch(data, candidate_repo, mode, stage_receipt)
-        after = observe(); validate_observation(after)
-        require(stable_financial_runtime_identity(before["immutable"]) == stable_financial_runtime_identity(after["immutable"]), "financial/Wolo boundary changed during release; recovery review required")
-        require(after["website"]["source_sha"] == (MAIN_SOURCE_SHA if mode == "activate" else PRODUCTION_SHA),
-                "post-operation website source incorrect")
-        if mode == "stage":
-            require(before["website"] == after["website"], "isolated stage changed active website")
-        else:
-            require(after["website"]["build_id"] == expected["build_id"], "active BUILD_ID differs from owner-approved artifact")
+        # Source-only future evidence extension: no authority or comparator
+        # tolerance changes. The original nonce still decides one-use execution.
+        from aoe2_website_owner_evidence_v1 import append_event, differences
+        def record(event, value):
+            return append_event(STATE_ROOT, p["attempt_id"], phase, event, value,
+                                source_sha=expected["controller_commit_sha"])
+        record("before-dispatch", {"observation": before, "latest_observation": latest,
+                                   "owner_packet_sha256": sha})
+        record("dispatch-starting", {"recorded_at": stamp(moment()), "mode": mode})
+        try:
+            # Evidence fsync is bounded local I/O too: it must not lend an
+            # expired observation or owner authorization to the dispatcher.
+            validate_observation(latest)
+            require(utc_time(p["issued_at"]) <= moment() < utc_time(p["expires_at"]),
+                    "owner authorization expired during durable evidence I/O")
+        except BaseException as exc:
+            record("dispatch-refused", {"error_type": type(exc).__name__, "redispatch_permitted": False})
+            raise
+        try:
+            result = protected_dispatch(data, candidate_repo, mode, stage_receipt)
+        except BaseException as exc:
+            # No result is proof of uncertainty, not permission to rerun.
+            record("dispatch-uncertain", {"error_type": type(exc).__name__, "redispatch_permitted": False})
+            raise
+        # Persist CERTIFIED/STAGED before a slow/failing final observer. An
+        # immutable protected engine receipt remains separate original evidence.
+        record("dispatch-returned", {"protected_release_result": result})
+        diff = None
+        try:
+            after = observe()
+            record("after-dispatch", {"observation": after})
+            # Retain raw differences even if the changed executable/source or
+            # malformed unit makes the strict observer reject this snapshot.
+            diff = differences(before["immutable"], after.get("immutable"))
+            validate_observation(after)
+            diff = differences(stable_financial_runtime_identity(before["immutable"]),
+                               stable_financial_runtime_identity(after["immutable"]))
+            require(not diff, "financial/Wolo boundary changed during release; recovery review required")
+            require(after["website"]["source_sha"] == (MAIN_SOURCE_SHA if mode == "activate" else PRODUCTION_SHA),
+                    "post-operation website source incorrect")
+            if mode == "stage":
+                require(before["website"] == after["website"], "isolated stage changed active website")
+            else:
+                require(after["website"]["build_id"] == expected["build_id"], "active BUILD_ID differs from owner-approved artifact")
+        except BaseException as exc:
+            record("verification-held", {"error_type": type(exc).__name__, "reason": str(exc),
+                                          "differences": diff, "original_nonce_state": "CONSUMED",
+                                          "redispatch_permitted": False})
+            raise
+        record("verification-passed", {"observation_sha256": digest(after)})
         finish_request(p["attempt_id"], phase, result, state_root=STATE_ROOT)
         return {"schema": 3, "policy": POLICY_ID, "status": "OWNER_WEBSITE_STAGE_VERIFIED" if mode == "stage" else "OWNER_WEBSITE_ACTIVATION_VERIFIED",
                 "owner_packet_sha256": sha, "protected_release_result": result,
