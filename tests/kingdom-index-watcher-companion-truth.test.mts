@@ -51,5 +51,5 @@ test("unpublished estimate is arithmetically consistent, separately identified a
   assert.match(ui, /review age/i);
   assert.match(ui, /candidate source/i);
   assert.match(ui, /companion\.gates\.map\(/);
-  assert.match(ui, /watcher.*refs|draft\.refs/);
+  assert.match(ui, /companion\.draftSourceReview\.refs/);
 });
