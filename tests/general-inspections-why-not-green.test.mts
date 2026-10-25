@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildWhyNotGreenReport } from "../lib/generalInspections/gapReport.ts";
+import { buildWhyNotGreenReport, expectedInspectionProducerChannel } from "../lib/generalInspections/gapReport.ts";
 import { INSPECTION_CATEGORY_WEIGHTS, category, check } from "../lib/generalInspections/scoring.ts";
 import type { GeneralInspectionsSnapshot } from "../lib/generalInspections/types.ts";
 
@@ -34,6 +34,30 @@ function rescore(snapshot: GeneralInspectionsSnapshot) {
   }
   snapshot.overallScore = Math.round(snapshot.categories.reduce((sum, row) => sum + row.score, 0) / 7);
 }
+
+test("all 66 real collector checks have scoped expected producer channels but no original proof identity", async () => {
+  const { readFileSync } = await import("node:fs");
+  const sources = ["bridgeSnapshot.ts", "serverSnapshot.ts"];
+  for (const source of sources) {
+    const src = readFileSync(new URL("../lib/generalInspections/" + source, import.meta.url), "utf8");
+    const realIds = [...src.matchAll(/\bcheck\(\s*["']([^"']+)["']/g)].map((match) => match[1]);
+    assert.equal(realIds.length, 66, source);
+    assert.equal(new Set(realIds).size, 66, source);
+    for (const id of realIds) {
+      const channels = IDS.map((categoryId) => expectedInspectionProducerChannel(categoryId, id))
+        .filter((channel) => channel !== "unattributed");
+      assert.equal(channels.length, 1, source + " " + id + " expected one channel");
+    }
+  }
+  assert.equal(expectedInspectionProducerChannel("organization", "volume-used", "92.0% used · live VPS"), "os/bounded-statfs");
+  assert.equal(expectedInspectionProducerChannel("organization", "volume-used", "92.0% used · operator bridge fallback"), "operator-bridge/host-capacity-fallback");
+  assert.equal(expectedInspectionProducerChannel("data", "not-a-canonical-check"), "unattributed");
+  const snapshot = fixture();
+  const report = buildWhyNotGreenReport(snapshot);
+  assert.ok(report.evidenceChecks.every((row) => row.originalProducer === null &&
+    row.originalProducerReceiptId === null && row.originalProducerReceiptDigest === null &&
+    row.producerAuthority === "UNVERIFIED_FROM_PUBLISHED_SNAPSHOT"));
+});
 
 test("preserves published score but flags an expired Test & Build gate as unknown", () => {
   const snap = fixture();
