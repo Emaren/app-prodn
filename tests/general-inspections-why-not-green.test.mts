@@ -35,14 +35,16 @@ function rescore(snapshot: GeneralInspectionsSnapshot) {
   snapshot.overallScore = Math.round(snapshot.categories.reduce((sum, row) => sum + row.score, 0) / 7);
 }
 
-test("preserves canonical weights, measured score and source/build-scoped Test & Build 100", () => {
+test("preserves published score but flags an expired Test & Build gate as unknown", () => {
   const snap = fixture();
   const tests = snap.categories.find((c) => c.id === "tests")!;
   tests.checks.forEach((item) => { item.evidenceAt = OLD; });
   const report = buildWhyNotGreenReport(snap);
   assert.equal(report.observedOverallScore, 100);
   assert.equal(report.totalMissingCategoryPoints, 0);
-  assert.equal(report.matrix.find((c) => c.id === "tests")?.status, "pass");
+  assert.equal(report.matrix.find((c) => c.id === "tests")?.status, "unknown");
+  assert.equal(report.gaps.find((g) => g.categoryId === "tests")?.reason, "stale-evidence");
+  assert.equal(report.gaps.find((g) => g.categoryId === "tests")?.ttlHours, 168);
   assert.equal(report.measuredHealthChanged, false);
 });
 
