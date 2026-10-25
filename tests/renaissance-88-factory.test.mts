@@ -15,7 +15,7 @@ function make(){
  {viewport:"mobile",sample:1,attempted:true,browserStatus:"OBSERVED",
   http:200,sameOrigin:true,rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0}
  ],criteria:{production:"UNKNOWN",financial_nonmutation:"UNKNOWN"},
- performance:{gate:"UNKNOWN"},missing_criteria:[{criterion:"production",state:"UNKNOWN"}]};
+ resource:{client_mutations_blocked:0},performance:{gate:"UNKNOWN"},missing_criteria:[{criterion:"production",state:"UNKNOWN"}]};
 }
 const expected={sourceSha:sha,buildId:build};
 test("valid candidate browser observations never award points",()=>{
@@ -67,4 +67,14 @@ test("missing title/landmark, bad HTTP or no keyboard focus cannot be PASS",()=>
  for(const override of [{http:500},{landmark:false},{body_title:false},{keyboardFocus:false},{uncaughtErrors:1}]){
   assert.equal(classifyCandidateRoute({views:[{...baseline,...override}]},"UNAVAILABLE"),"FAIL");
  }
+});
+
+test("blocked mutation attempts are visible but do not falsify a navigation PASS",()=>{
+ const sample=make();
+ sample.views[0].privacyMutationAttempts=2;
+ sample.resource.client_mutations_blocked=2;
+ sample.criteria.client_mutation_attempts="OBSERVED_AND_BLOCKED_NOT_CLEARED";
+ assert.equal(validateRouteReceipt(sample,plan,expected).status,"PASS");
+ sample.resource.client_mutations_blocked=0;
+ assert.throws(()=>validateRouteReceipt(sample,plan,expected),/Unreconciled/);
 });
