@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "650c859ad1e0ab73ced965f23870beb39939a980b572cba87cad58c9c36bed86",
+      "sha256": "bbb749705d686ff48b71838482a092dc6ac24c4d4e9b63048f5e39302a3200ce",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1677,9 +1677,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RIVALRIES_AND_WAR_VAULT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "0c4e0b30c3bd4dbbe87eb5b0fd33fe6dc43ee327cbef91197c6d0e7378448330",
+      "sha256": "80e6858fe0feeadcfb1bc21f7fd32c75dba4cad535c3ed3667ab27321477a7a9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2024,7 +2024,7 @@
       "review_interval_days": 1,
       "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "ac5d383aaaff1987d3e64d90ca675dd6a1f732a49bac3338192cf2bc742bce5d",
+      "sha256": "79afb6597d14925444bb44c3880317694a93919904485a877e024fdba75af94c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2261,7 +2261,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-a/20261024-website-nine-path-operational-finish",
-    "commit": "b4eda6f6f0dfdbe52c8454dd892e9f25b43ccd00"
+    "commit": "dadde07f568292fe76501555a0a03e896fcd2135"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
