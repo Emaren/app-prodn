@@ -15,6 +15,54 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 25, 2026 — Round Four replay-safe 66-check report
+
+The read-only `GET /api/general-inspections?report=why-not-green`
+still performs exactly **one** existing collector read. It now passes the
+**request-time clock** into the existing projection rather than deriving
+all freshness from an embedded `snapshot.generatedAt` alone.
+A previously legitimate 100/100 JSON snapshot replayed after six hours is
+**STALE**, not newly valid proof; a more-than-five-minute future-dated
+snapshot is **UNKNOWN**. The published historical category scores and
+original source/BUILD_ID claims are preserved, not recomputed or renewed.
+
+Each of the 66 `evidenceChecks` rows now labels the **claimed** source
+SHA/build version and explicitly reports
+`originalProducerReceiptId: null` and
+`originalProducerReceiptDigest: null` because the current sanitized
+`InspectionCheck` contract lacks independent per-check receipt identifiers.
+They **must not** be substituted by a stable `checkKey`, timestamp,
+browser URL or hash of reserialized report content. Native producer receipts
+remain the owner-owned requirement for promotion to independently verified
+PASS. Derived `evaluatedAt`, `snapshotAgeHours`,
+`snapshotEvidenceStatus` and per-check `evidenceStatus` are diagnosis
+fields only. Request-clock sampling is bounded, read-only and does not
+scan directories, run Doctor, or schedule any background task.
+
+**Post-merge authority gate:** The Operator Bridge owner must attach,
+for each original check receipt, a content-addressed producer receipt ID,
+original observation time, release SHA, actual BUILD_ID, environment/host,
+receipt-type, explicit finding codes, validated TTL and independent
+source identity. A hash of an unauthenticated bridge self-report cannot
+certify a release. Actual reinspection of host security/chain state needs
+a separate owner-approved safe collection path; no public API may start
+processes. Documentation P0/P1 closure still depends on the governed
+Central DocsV2 single writer, fresh context camera, and WoloChain ancestry;
+none can be closed from this projection.
+
+**Explicit limitations:** 66 rows identify 66 scoring contracts, **not**
+66 new original physical measurements. A full scored row may still carry
+UNKNOWN/STALE, requiring owner acceptance of new source-bound evidence.
+Source-only CI does not prove production host repair. Protected evidence
+volume was owner measured at 92% capacity; avoid heavy Mac inventory
+scripts and all unapproved cleanup. VPS Sentry
+[`#4`](https://github.com/Emaren/vps-sentry/issues/4) and
+[`#5`](https://github.com/Emaren/vps-sentry/issues/5)
+own namespace/delivery and historical RPC-monitor reconciliation; live
+`wolo-1` uses RPC `27657`, REST `1318`, not retired `26657/1317`.
+WheatAndStone auto-renewal intentionally remains shelved.
+
+
 ## October 25, 2026 — Renaissance Round Three: explicit source-versus-operation closure
 
 **Disposition: HOLD.** Latest independently supplied owner read-only Doctor at
