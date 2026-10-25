@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, readFileSync } from "node:fs/promises";
+import { mkdtemp, rm, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -173,10 +173,10 @@ test("missing, future, stale or contradictory bridge evidence cannot leave healt
 });
 
 test("consumer wiring is read-only and Brain policy remains source/freshness graph rather than another scanner", async () => {
-  const page = await readFileSync(new URL("../app/kingdom-intelligence/page.tsx", import.meta.url), "utf8");
-  const workshop = await readFileSync(new URL("../components/workshop/WorkshopBrainPanel.tsx", import.meta.url), "utf8");
-  const client = await readFileSync(new URL("../app/kingdom-brain/KingdomBrainClient.tsx", import.meta.url), "utf8");
-  const api = await readFileSync(new URL("../app/api/kingdom-intelligence/route.ts", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/kingdom-intelligence/page.tsx", import.meta.url), "utf8");
+  const workshop = await readFile(new URL("../components/workshop/WorkshopBrainPanel.tsx", import.meta.url), "utf8");
+  const client = await readFile(new URL("../app/kingdom-brain/KingdomBrainClient.tsx", import.meta.url), "utf8");
+  const api = await readFile(new URL("../app/api/kingdom-intelligence/route.ts", import.meta.url), "utf8");
   assert.match(page, /NO INDEPENDENT CERTIFICATE/);
   assert.match(workshop, /primaryIncident\.safeAction/);
   assert.match(workshop, /evidence\.ageSeconds/);
