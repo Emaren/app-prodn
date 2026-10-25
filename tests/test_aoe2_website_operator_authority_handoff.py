@@ -41,6 +41,15 @@ class OperatorAuthorityHandoffTests(unittest.TestCase):
         self.assertIn("financial_release_authorized=false", doc)
         self.assertIn("vps-source-drift", doc)
 
+    def test_runbook_requires_independent_reviewed_controller_sha_and_private_output(self):
+        doc = RUNBOOK.read_text()
+        self.assertIn("PASTE_EXACT_INDEPENDENTLY_APPROVED_CI_GREEN_CONTROLLER_SHA", doc)
+        self.assertIn('export APPROVED_CONTROLLER_SHA="$CONTROLLER"', doc)
+        self.assertNotIn("f58834ee9e600c244301bd44ba0439fb42105664", doc)
+        self.assertEqual(doc.count("(umask 077; cd \"$OP\""), 4)
+        self.assertIn('chmod 0700 "$EVIDENCE_DIR"', doc)
+        self.assertIn('[ ! -L "$EVIDENCE_DIR" ]', doc)
+
     def test_non_authorizing_three_human_proposal_is_isolated(self):
         proposal = PROPOSAL.read_text()
         self.assertIn("DISCUSSION ONLY", proposal)
