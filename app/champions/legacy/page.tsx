@@ -535,7 +535,7 @@ function TagTeamCard({ titleState }: { titleState: ChampionTitleState }) {
     <section className="relative overflow-hidden rounded-[1.8rem] border border-slate-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(226,232,240,0.15),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(251,191,36,0.12),transparent_28%),linear-gradient(135deg,rgba(8,13,22,0.98),rgba(3,7,13,0.99))] p-5 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-6">
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.78fr)] lg:items-stretch">
         <div className="min-w-0">
-          <Link href={title.routeHref} className="block">
+          <Link href={title.routeHref} className="block" aria-label={`View ${title.displayName} championship details`}>
             <TagTeamDuoAsset title={title} />
           </Link>
 
