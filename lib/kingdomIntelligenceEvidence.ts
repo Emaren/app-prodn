@@ -118,8 +118,10 @@ export function inspectIntelligenceHealthEvidence(input: {
     (counts.p0 !== null && counts.p0 > 0 && health.estate === "HEALTHY") ||
     (Array.isArray(input.invariants) && input.invariants.some(v => {
       const invariant = rec(v);
-      return invariant.key === "estate-p0-zero" && invariant.status === "PASS" &&
-        counts.p0 !== null && counts.p0 > 0;
+      return invariant.status === "PASS" && (
+        (invariant.key === "estate-p0-zero" && counts.p0 !== null && counts.p0 > 0) ||
+        (invariant.key === "estate-p1-zero" && counts.p1 !== null && counts.p1 > 0)
+      );
     }));
   if (reportContradiction) {
     status = "CONTRADICTORY";
