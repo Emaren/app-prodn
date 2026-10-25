@@ -157,6 +157,11 @@ export function LivingKingdomObservatory(){
      <Metric label="Safe clicks" value={data.aggregates.clicks} icon={<MousePointerClick/>} note="Stored events; click text hidden"/>
      <Metric label="Observed returns" value={data.aggregates.returningUsersObserved} icon={<Compass/>} note="At least two UTC activity dates"/>
     </div>
+    <Panel title="Live realm distribution" sub="Current process-local Living Kingdom hub rooms, aggregated into safe categories. Detail route IDs are withheld. Not a cluster-wide census.">
+     <Ranked rows={Object.entries(data.presence.realms).filter(([,count])=>count>0)
+      .map(([label,count])=>({label,count})).sort((a,b)=>b.count-a.count).slice(0,8)}/>
+     <p className="mt-4 text-xs text-slate-500">{data.presence.tabs} ephemeral tab leases · {data.presence.subscribers} subscribers · {Math.round(data.presence.caps.ttlMs/1000)}-second TTL</p>
+    </Panel>
     <div className="grid gap-5 xl:grid-cols-[1.3fr_1fr]">
      <Panel title="Warrior activity • daily" sub="Recorded events for this roster cohort, not anonymous visitors.">
       <TrendBars rows={data.aggregates.daily} label="Daily recorded journey activity"/>
