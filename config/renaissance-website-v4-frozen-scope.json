@@ -114,15 +114,15 @@
       "mode": "100644"
     },
     {
-      "path": "app/kingdom-intelligence/page.tsx",
-      "status": "M",
-      "blob_sha1": "dcf0b9c21727d99b3fac725526997eaea7455cf1",
-      "mode": "100644"
-    },
-    {
       "path": "app/kingdom-intelligence/WarPulsePanel.tsx",
       "status": "M",
       "blob_sha1": "d92b8ae57e6df9573193a7ae4876b115af4ff9c4",
+      "mode": "100644"
+    },
+    {
+      "path": "app/kingdom-intelligence/page.tsx",
+      "status": "M",
+      "blob_sha1": "dcf0b9c21727d99b3fac725526997eaea7455cf1",
       "mode": "100644"
     },
     {
@@ -288,12 +288,6 @@
       "mode": "100644"
     },
     {
-      "path": "docs/document-registry.json",
-      "status": "M",
-      "blob_sha1": "1c54c17c7e77cbbbce77e3e597f3254cf91a5054",
-      "mode": "100644"
-    },
-    {
       "path": "docs/DOCUMENTATION_CONTROL_PLANE.md",
       "status": "M",
       "blob_sha1": "7cfedda13047f984bbd3e0970e7d3faaff9d4c7d",
@@ -339,6 +333,12 @@
       "path": "docs/RENAISSANCE_TABD_FORGE.md",
       "status": "A",
       "blob_sha1": "568a30400370efb470efb944f0810250b3aee6ed",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/document-registry.json",
+      "status": "M",
+      "blob_sha1": "1c54c17c7e77cbbbce77e3e597f3254cf91a5054",
       "mode": "100644"
     },
     {
