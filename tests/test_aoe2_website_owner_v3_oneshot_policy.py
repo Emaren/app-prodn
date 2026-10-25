@@ -103,7 +103,11 @@ class SoloOwnerTimedServiceIdentityTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.after = copy.deepcopy(self.original)
                 mutate()
-                self.assertFalse(self.same(), label)
+                if label in {"oneshot_failed", "oneshot_inactive_but_pid_active"}:
+                    with self.assertRaises(RELEASE.Hold):
+                        self.same()
+                else:
+                    self.assertFalse(self.same(), label)
 
     def test_unreviewable_oneshot_shape_or_missing_service_fails_closed(self):
         service = OBS.TIMER_FAMILIES[0] + ".service"
