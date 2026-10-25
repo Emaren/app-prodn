@@ -211,10 +211,17 @@ export default async function KingdomIntelligencePage() {
       key: "run-" + (item.id ?? item.requestedAt),
       at: item.completedAt ?? item.requestedAt,
       system: item.system,
-      label: item.label,
-      status: item.status,
+      label: isActiveProcessState(item.status) && data?.agentRuntimeAuthority?.verified !== true
+        ? item.label + " · bridge-reported running, independently UNVERIFIED"
+        : item.label,
+      status: isActiveProcessState(item.status) && data?.agentRuntimeAuthority?.verified !== true
+        ? "UNKNOWN"
+        : item.status,
       proof: item.id,
-      current: isActiveProcessState(item.status),
+      // Active dashboard runs are still bridge reports, not protected active
+      // Next source/BUILD_ID evidence. A missing witness is never live.
+      current: data?.agentRuntimeAuthority?.verified === true &&
+        isActiveProcessState(item.status),
       progress: null as number | null,
       progressLabel: null as string | null,
       currentStep: null as string | null,
