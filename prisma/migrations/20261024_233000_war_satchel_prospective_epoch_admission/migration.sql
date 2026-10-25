@@ -2,7 +2,7 @@
 -- Nine original financial migrations? The prior EIGHT protected migration bodies are untouched.
 -- No legacy tables, balances, claims, receipts, transactions or ownership are reset.
 -- Separate FINANCIAL migration authority and verified independently controlled vault required.
-CREATE TABLE "war_satchel_prospective_epochs" (
+CREATE TABLE public."war_satchel_prospective_epochs" (
   "epoch_id" VARCHAR(80) PRIMARY KEY,
   "chain_id" VARCHAR(32) NOT NULL,
   "vault_address" VARCHAR(100) NOT NULL UNIQUE,
@@ -41,20 +41,20 @@ CREATE TABLE "war_satchel_prospective_epochs" (
 -- No two simultaneously approved prospective vaults; new epochs demand a
 -- separately reviewed financial transition, never an implicit fallback.
 CREATE UNIQUE INDEX "uq_satchel_single_approved_epoch"
-  ON "war_satchel_prospective_epochs" ((1)) WHERE state = 'approved';
+  ON public."war_satchel_prospective_epochs" ((1)) WHERE state = 'approved';
 
 -- A vault cannot be declared a clean prospective epoch while any old
 -- funded Satchel money state exists. This does NOT delete or discharge it.
-CREATE FUNCTION "satchel_epoch_cold_start_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+CREATE FUNCTION public."satchel_epoch_cold_start_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.state = 'approved' AND (
-     EXISTS(SELECT 1 FROM war_satchel_funded_balances)
-     OR EXISTS(SELECT 1 FROM war_satchel_funded_receipts)
-     OR EXISTS(SELECT 1 FROM war_satchel_funded_claim_returns)
-     OR EXISTS(SELECT 1 FROM war_satchel_funded_journal)
-     OR EXISTS(SELECT 1 FROM war_satchel_funded_reservations)
-     OR EXISTS(SELECT 1 FROM war_satchel_funded_withdrawals)
-     OR EXISTS(SELECT 1 FROM war_satchel_physical_receipt_consumptions)
+     EXISTS(SELECT 1 FROM public.war_satchel_funded_balances)
+     OR EXISTS(SELECT 1 FROM public.war_satchel_funded_receipts)
+     OR EXISTS(SELECT 1 FROM public.war_satchel_funded_claim_returns)
+     OR EXISTS(SELECT 1 FROM public.war_satchel_funded_journal)
+     OR EXISTS(SELECT 1 FROM public.war_satchel_funded_reservations)
+     OR EXISTS(SELECT 1 FROM public.war_satchel_funded_withdrawals)
+     OR EXISTS(SELECT 1 FROM public.war_satchel_physical_receipt_consumptions)
   ) THEN
     RAISE EXCEPTION 'SATCHEL_EPOCH_OLD_FUNDED_ESTATE_NOT_EMPTY' USING ERRCODE='23514';
   END IF;
@@ -62,10 +62,10 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER "tr_satchel_epoch_cold_start" BEFORE INSERT
- ON "war_satchel_prospective_epochs" FOR EACH ROW
- EXECUTE FUNCTION "satchel_epoch_cold_start_v1"();
+ ON public."war_satchel_prospective_epochs" FOR EACH ROW
+ EXECUTE FUNCTION public."satchel_epoch_cold_start_v1"();
 
-CREATE TABLE "war_satchel_epoch_deposit_receipts" (
+CREATE TABLE public."war_satchel_epoch_deposit_receipts" (
   "receipt_id" BIGINT PRIMARY KEY,
   "epoch_id" VARCHAR(80) NOT NULL,
   "chain_id" VARCHAR(32) NOT NULL,
@@ -77,11 +77,11 @@ CREATE TABLE "war_satchel_epoch_deposit_receipts" (
   "amount_uwolo" BIGINT NOT NULL,
   "recorded_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "fk_satchel_epoch_receipt"
-    FOREIGN KEY ("receipt_id") REFERENCES "war_satchel_funded_receipts"("id") ON DELETE RESTRICT,
+    FOREIGN KEY ("receipt_id") REFERENCES public."war_satchel_funded_receipts"("id") ON DELETE RESTRICT,
   CONSTRAINT "fk_satchel_epoch_registry"
-    FOREIGN KEY ("epoch_id") REFERENCES "war_satchel_prospective_epochs"("epoch_id") ON DELETE RESTRICT,
+    FOREIGN KEY ("epoch_id") REFERENCES public."war_satchel_prospective_epochs"("epoch_id") ON DELETE RESTRICT,
   CONSTRAINT "fk_satchel_epoch_owner"
-    FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE RESTRICT,
+    FOREIGN KEY ("owner_user_id") REFERENCES public."users"("id") ON DELETE RESTRICT,
   CONSTRAINT "uq_satchel_epoch_physical" UNIQUE ("chain_id","tx_hash","message_index"),
   CONSTRAINT "ck_satchel_epoch_deposit" CHECK (
     chain_id = 'wolo-1' AND message_index = 0
@@ -90,11 +90,11 @@ CREATE TABLE "war_satchel_epoch_deposit_receipts" (
   )
 );
 
-CREATE FUNCTION "satchel_epoch_receipt_guard_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+CREATE FUNCTION public."satchel_epoch_receipt_guard_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE r RECORD; e RECORD;
 BEGIN
-  SELECT * INTO r FROM war_satchel_funded_receipts WHERE id = NEW.receipt_id;
-  SELECT * INTO e FROM war_satchel_prospective_epochs WHERE epoch_id = NEW.epoch_id;
+  SELECT * INTO r FROM public.war_satchel_funded_receipts WHERE id = NEW.receipt_id;
+  SELECT * INTO e FROM public.war_satchel_prospective_epochs WHERE epoch_id = NEW.epoch_id;
   IF NOT FOUND OR e.epoch_id IS NULL OR e.state <> 'approved'
     OR NEW.canonical_height <= e.start_height
     OR NEW.vault_address <> e.vault_address
@@ -108,25 +108,25 @@ BEGIN
 END;
 $$;
 CREATE TRIGGER "tr_satchel_epoch_receipt_guard" BEFORE INSERT
-  ON "war_satchel_epoch_deposit_receipts" FOR EACH ROW EXECUTE FUNCTION "satchel_epoch_receipt_guard_v1"();
+  ON public."war_satchel_epoch_deposit_receipts" FOR EACH ROW EXECUTE FUNCTION public."satchel_epoch_receipt_guard_v1"();
 
-CREATE FUNCTION "satchel_epoch_immutable_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+CREATE FUNCTION public."satchel_epoch_immutable_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   RAISE EXCEPTION 'SATCHEL_EPOCH_IMMUTABLE' USING ERRCODE='23514';
 END;
 $$;
 CREATE TRIGGER "tr_satchel_epoch_registry_immutable"
-  BEFORE UPDATE OR DELETE ON "war_satchel_prospective_epochs"
-  FOR EACH ROW EXECUTE FUNCTION "satchel_epoch_immutable_v1"();
+  BEFORE UPDATE OR DELETE ON public."war_satchel_prospective_epochs"
+  FOR EACH ROW EXECUTE FUNCTION public."satchel_epoch_immutable_v1"();
 CREATE TRIGGER "tr_satchel_epoch_receipts_immutable"
-  BEFORE UPDATE OR DELETE ON "war_satchel_epoch_deposit_receipts"
-  FOR EACH ROW EXECUTE FUNCTION "satchel_epoch_immutable_v1"();
+  BEFORE UPDATE OR DELETE ON public."war_satchel_epoch_deposit_receipts"
+  FOR EACH ROW EXECUTE FUNCTION public."satchel_epoch_immutable_v1"();
 CREATE TRIGGER "tr_satchel_epoch_registry_no_truncate"
-  BEFORE TRUNCATE ON "war_satchel_prospective_epochs"
-  FOR EACH STATEMENT EXECUTE FUNCTION "satchel_epoch_immutable_v1"();
+  BEFORE TRUNCATE ON public."war_satchel_prospective_epochs"
+  FOR EACH STATEMENT EXECUTE FUNCTION public."satchel_epoch_immutable_v1"();
 CREATE TRIGGER "tr_satchel_epoch_receipts_no_truncate"
-  BEFORE TRUNCATE ON "war_satchel_epoch_deposit_receipts"
-  FOR EACH STATEMENT EXECUTE FUNCTION "satchel_epoch_immutable_v1"();
+  BEFORE TRUNCATE ON public."war_satchel_epoch_deposit_receipts"
+  FOR EACH STATEMENT EXECUTE FUNCTION public."satchel_epoch_immutable_v1"();
 -- Privilege hardening. This migration requires a privileged, separately
 -- approved FINANCIAL migrator (CREATEROLE/ownership transfer), never the
 -- website deployer or application runtime. Both authority roles have NO LOGIN.
@@ -159,14 +159,14 @@ $epoch_roles$;
 
 -- Object ownership, not merely REVOKE FROM PUBLIC, is critical:
 -- a deployment/app role owning the table could INSERT approved epochs anyway.
-ALTER TABLE "war_satchel_prospective_epochs" OWNER TO aoe2war_epoch_finance_owner;
-ALTER TABLE "war_satchel_epoch_deposit_receipts" OWNER TO aoe2war_epoch_finance_owner;
-ALTER FUNCTION "satchel_epoch_cold_start_v1"() OWNER TO aoe2war_epoch_finance_owner;
-ALTER FUNCTION "satchel_epoch_receipt_guard_v1"() OWNER TO aoe2war_epoch_finance_owner;
-ALTER FUNCTION "satchel_epoch_immutable_v1"() OWNER TO aoe2war_epoch_finance_owner;
-REVOKE ALL ON "war_satchel_prospective_epochs", "war_satchel_epoch_deposit_receipts" FROM PUBLIC;
-GRANT SELECT ON "war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer;
-GRANT SELECT, INSERT ON "war_satchel_epoch_deposit_receipts" TO aoe2war_epoch_credit_writer;
+ALTER TABLE public."war_satchel_prospective_epochs" OWNER TO aoe2war_epoch_finance_owner;
+ALTER TABLE public."war_satchel_epoch_deposit_receipts" OWNER TO aoe2war_epoch_finance_owner;
+ALTER FUNCTION public."satchel_epoch_cold_start_v1"() OWNER TO aoe2war_epoch_finance_owner;
+ALTER FUNCTION public."satchel_epoch_receipt_guard_v1"() OWNER TO aoe2war_epoch_finance_owner;
+ALTER FUNCTION public."satchel_epoch_immutable_v1"() OWNER TO aoe2war_epoch_finance_owner;
+REVOKE ALL ON public."war_satchel_prospective_epochs", public."war_satchel_epoch_deposit_receipts" FROM PUBLIC;
+GRANT SELECT ON public."war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer;
+GRANT SELECT, INSERT ON public."war_satchel_epoch_deposit_receipts" TO aoe2war_epoch_credit_writer;
 -- Runtime account membership in credit_writer (and denial of finance_owner)
 -- is provisioned out of band, then witnessed on the actual production role.
 -- A role holding finance_owner can register a held/approved epoch only after

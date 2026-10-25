@@ -80,7 +80,7 @@ export async function requireDurableProspectiveDepositEpoch(
  five_reviewer_approval_sha256 AS "fiveReviewerDigest",
  chain_anchor_witness_sha256 AS "chainAnchorWitnessDigest",
  state,approved_at AS "approvedAt",created_at AS "createdAt"
- FROM war_satchel_prospective_epochs WHERE state='approved'
+ FROM public.war_satchel_prospective_epochs WHERE state='approved'
  ORDER BY epoch_id LIMIT 2 FOR SHARE
  `);
  if(rows.length!==1)stop("one_operator_approved_epoch_required");
@@ -97,16 +97,16 @@ export async function requireDurableProspectiveDepositEpoch(
  // Older founder/pending claims remain untouched in their original estate.
  const boundary=await tx.$queryRaw<Array<{orphan:boolean;firstCredit:boolean;oldEstate:boolean}>>(Prisma.sql`
  SELECT
- EXISTS(SELECT 1 FROM war_satchel_funded_receipts r
-   LEFT JOIN war_satchel_epoch_deposit_receipts er ON er.receipt_id=r.id
+ EXISTS(SELECT 1 FROM public.war_satchel_funded_receipts r
+   LEFT JOIN public.war_satchel_epoch_deposit_receipts er ON er.receipt_id=r.id
    WHERE er.receipt_id IS NULL) AS orphan,
- NOT EXISTS(SELECT 1 FROM war_satchel_epoch_deposit_receipts) AS "firstCredit",
- (EXISTS(SELECT 1 FROM war_satchel_funded_balances)
-  OR EXISTS(SELECT 1 FROM war_satchel_funded_journal)
-  OR EXISTS(SELECT 1 FROM war_satchel_funded_claim_returns)
-  OR EXISTS(SELECT 1 FROM war_satchel_funded_reservations)
-  OR EXISTS(SELECT 1 FROM war_satchel_funded_withdrawals)
-  OR EXISTS(SELECT 1 FROM war_satchel_physical_receipt_consumptions)
+ NOT EXISTS(SELECT 1 FROM public.war_satchel_epoch_deposit_receipts) AS "firstCredit",
+ (EXISTS(SELECT 1 FROM public.war_satchel_funded_balances)
+  OR EXISTS(SELECT 1 FROM public.war_satchel_funded_journal)
+  OR EXISTS(SELECT 1 FROM public.war_satchel_funded_claim_returns)
+  OR EXISTS(SELECT 1 FROM public.war_satchel_funded_reservations)
+  OR EXISTS(SELECT 1 FROM public.war_satchel_funded_withdrawals)
+  OR EXISTS(SELECT 1 FROM public.war_satchel_physical_receipt_consumptions)
  ) AS "oldEstate"
  `);
  if(boundary.length!==1||boundary[0].orphan||
@@ -124,7 +124,7 @@ export async function bindDurableEpochReceipt(tx:Transaction,input:{
  if(e.state!=="approved"||input.height<=e.startHeight||input.vault!==e.vault)
    stop("epoch_receipt_scope_changed");
  const affected=await tx.$executeRaw(Prisma.sql`
- INSERT INTO war_satchel_epoch_deposit_receipts
+ INSERT INTO public.war_satchel_epoch_deposit_receipts
  (receipt_id,epoch_id,chain_id,tx_hash,message_index,owner_user_id,
   vault_address,canonical_height,amount_uwolo)
  VALUES (${input.receiptId},${e.epochId},'wolo-1',${input.txHash},0,${input.ownerUserId},

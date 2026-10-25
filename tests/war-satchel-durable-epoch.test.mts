@@ -60,12 +60,17 @@ test("all credit paths require inside-transaction epoch binding; original claims
  const sql=source("prisma/migrations/20261024_233000_war_satchel_prospective_epoch_admission/migration.sql");
  assert.match(sql,/UNIQUE \("chain_id","tx_hash","message_index"\)/);
  assert.match(sql,/SATCHEL_EPOCH_IMMUTABLE/);
+ assert.match(source("lib/warSatchelDurableEpoch.ts"),/FROM public\.war_satchel_prospective_epochs/);
+ assert.match(source("lib/warSatchelDurableEpoch.ts"),/INSERT INTO public\.war_satchel_epoch_deposit_receipts/);
+ assert.match(sql,/CREATE TABLE public\."war_satchel_prospective_epochs"/);
+ assert.match(sql,/CREATE TABLE public\."war_satchel_epoch_deposit_receipts"/);
+
  assert.match(sql,/OWNER TO aoe2war_epoch_finance_owner/);
- assert.match(sql,/GRANT SELECT ON "war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer/);
- assert.match(sql,/GRANT SELECT, INSERT ON "war_satchel_epoch_deposit_receipts" TO aoe2war_epoch_credit_writer/);
+ assert.match(sql,/GRANT SELECT ON public\."war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer/);
+ assert.match(sql,/GRANT SELECT, INSERT ON public\."war_satchel_epoch_deposit_receipts" TO aoe2war_epoch_credit_writer/);
  assert.match(sql,/SATCHEL_EPOCH_FINANCE_ROLE_PREENROLLED/);
  assert.match(sql,/NOLOGIN NOINHERIT NOSUPERUSER/);
- assert.doesNotMatch(sql,/GRANT (?:INSERT|ALL) ON "war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer/);
+ assert.doesNotMatch(sql,/GRANT (?:INSERT|ALL) ON public\."war_satchel_prospective_epochs" TO aoe2war_epoch_credit_writer/);
 
  assert.match(sql,/SATCHEL_EPOCH_OLD_FUNDED_ESTATE_NOT_EMPTY/);
  assert.match(sql,/satchel_epoch_cold_start_v1"\(\) RETURNS TRIGGER LANGUAGE plpgsql AS \$\$/);
