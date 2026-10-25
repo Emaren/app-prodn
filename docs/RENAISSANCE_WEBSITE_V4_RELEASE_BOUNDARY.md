@@ -13,7 +13,7 @@ review_interval_days: 1
 sensitivity: "internal"
 ---
 
-# Renaissance website release v4 — verified operator boundary
+# Renaissance Website Owner V4 Release Boundary
 
 **Status: HOLD — no protected stage/activate controller integrated; do NOT sign yet.**
 
