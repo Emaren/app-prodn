@@ -74,6 +74,32 @@ def parse_kv(text: str) -> dict[str, str]:
     return result
 
 
+def exact_unpublished_nine_path_watcher_draft(manifest: dict) -> bool:
+    """An immutable, one-commit Source+Finance-reviewed draft, NOT an updater."""
+    review_paths = {
+            "components/kingdom-index/KingdomIndex.tsx",
+            "config/kingdom-index-baseline.json",
+            "config/kingdom-index-provisional-source-reviews.json",
+            "config/kingdom-index-routes.json",
+            "config/kingdom-index-watcher-166-source-review.json",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md",
+        "docs/RIVALRIES_AND_WAR_VAULT.md",
+            "docs/document-registry.json",
+            "tests/kingdom-index-watcher-draft-score.test.mts",
+            "yarn.lock",
+        }
+
+    return bool(
+        manifest.get("release_sha") ==
+            "6be434c00469afa4acb0623715c3bcf724f927f4"
+        and manifest.get("previous_production_sha") ==
+            "a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
+        and set(manifest.get("changed_files") or []) == review_paths
+        and not manifest.get("migration_paths")
+        and manifest.get("risk_class") == "WATCHER"
+    )
+
+
 def watcher_distribution_version(manifest: dict) -> str:
     """Require certified vault proof for WATCHER risk or any version transition."""
     def version_at_commit(sha: str) -> str:
@@ -96,13 +122,21 @@ def watcher_distribution_version(manifest: dict) -> str:
 
     release_version = version_at_commit(str(manifest.get("release_sha") or ""))
     if manifest.get("risk_class") == "WATCHER":
+        # Preserve original strict rule for EVERY other WATCHER release.
+        # Only the exact ten-path review draft can skip an unmodified
+        # watcher binary vault, after comparing both source-bound versions.
+        if exact_unpublished_nine_path_watcher_draft(manifest):
+            previous_version = version_at_commit(
+                str(manifest.get("previous_production_sha") or "")
+            )
+            if previous_version == release_version:
+                return ""
         return release_version
 
     previous_version = version_at_commit(
         str(manifest.get("previous_production_sha") or "")
     )
     return release_version if release_version != previous_version else ""
-
 
 def remote_stage_script(
     *,
@@ -1041,7 +1075,24 @@ def validate_stage_result(
                 "dependency lock-change evidence does not match release manifest"
             )
 
-    if manifest.get("risk_class") == "WATCHER" or watcher_version:
+    # Keep original vault admission for ALL WATCHER releases except the
+    # exact no-version-change ten-path public draft. Recheck the two real
+    # Git versions here, not just a caller-provided empty watcher_version.
+    unchanged_draft = False
+    if (manifest.get("risk_class") == "WATCHER"
+            and not watcher_version
+            and exact_unpublished_nine_path_watcher_draft(manifest)):
+        try:
+            unchanged_draft = watcher_distribution_version(manifest) == ""
+        except StageError as exc:
+            errors.append("WATCHER draft source comparison failed: " + str(exc))
+    if unchanged_draft:
+        if (result.get("watcher_distribution_status") != "NOT_APPLICABLE"
+                or result.get("watcher_distribution_version") not in ("", None)
+                or result.get("watcher_distribution_checksum_sha256") not in ("", None)
+                or result.get("watcher_distribution_manifest_sha256") not in ("", None)):
+            errors.append("unchanged draft cannot claim a watcher binary distribution")
+    elif manifest.get("risk_class") == "WATCHER" or watcher_version:
         if result.get("watcher_distribution_status") != "PASS":
             errors.append("WATCHER distribution preflight did not report PASS")
         version = result.get("watcher_distribution_version") or ""

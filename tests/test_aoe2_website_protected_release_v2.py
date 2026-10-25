@@ -52,6 +52,7 @@ class ProtectedWebsiteControllerTests(unittest.TestCase):
                 "config/kingdom-index-routes.json",
                 "config/kingdom-index-watcher-166-source-review.json",
                 "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                "docs/RIVALRIES_AND_WAR_VAULT.md",
                 "docs/document-registry.json",
                 "tests/kingdom-index-watcher-draft-score.test.mts",
                 "yarn.lock",
@@ -210,6 +211,45 @@ class ProtectedWebsiteControllerTests(unittest.TestCase):
             CONTROL.evidence_bind(
                 packet, initial, changed, target=AUTH.MAIN_SOURCE_SHA,
                 trust_root=self.trust, now=self.now, allow_test_root=True)
+
+    def test_human_approval_witness_can_age_but_live_lease_witness_must_be_fresh(self):
+        initial=self.observation()
+        initial["payload"]["observed_at"]="2026-10-24T22:20:00Z"
+        initial["signature"]=self.sign("runtime_witness",initial["payload"])
+        live=self.observation()  # signed at 22:29:30, evaluated at 22:30
+        packet={"payload":{
+            "candidate_sha":AUTH.MAIN_SOURCE_SHA,
+            "wolo_prestate_sha256": CONTROL.digest(initial["payload"]),
+        }}
+        CONTROL.evidence_bind(packet,initial,live,target=AUTH.MAIN_SOURCE_SHA,
+            trust_root=self.trust,now=self.now,allow_test_root=True)
+        too_old=copy.deepcopy(initial)
+        too_old["payload"]["observed_at"]="2026-10-24T22:00:00Z"
+        too_old["signature"]=self.sign("runtime_witness",too_old["payload"])
+        packet["payload"]["wolo_prestate_sha256"]=CONTROL.digest(too_old["payload"])
+        with self.assertRaisesRegex(AUTH.Hold,"stale"):
+            CONTROL.evidence_bind(packet,too_old,live,target=AUTH.MAIN_SOURCE_SHA,
+                trust_root=self.trust,now=self.now,allow_test_root=True)
+        stale_live=copy.deepcopy(live)
+        stale_live["payload"]["observed_at"]="2026-10-24T22:27:00Z"
+        stale_live["signature"]=self.sign("runtime_witness",stale_live["payload"])
+        packet["payload"]["wolo_prestate_sha256"]=CONTROL.digest(initial["payload"])
+        with self.assertRaisesRegex(AUTH.Hold,"stale"):
+            CONTROL.evidence_bind(packet,initial,stale_live,target=AUTH.MAIN_SOURCE_SHA,
+                trust_root=self.trust,now=self.now,allow_test_root=True)
+
+    def test_signed_witness_website_build_change_refused(self):
+        before=self.observation()
+        after=copy.deepcopy(before)
+        after["payload"]["website"]["build_id"]="substituted-new-build-id"
+        after["signature"]=self.sign("runtime_witness",after["payload"])
+        packet={"payload":{
+            "candidate_sha":AUTH.MAIN_SOURCE_SHA,
+            "wolo_prestate_sha256":CONTROL.digest(before["payload"]),
+        }}
+        with self.assertRaisesRegex(AUTH.Hold,"website source/BUILD_ID changed"):
+            CONTROL.evidence_bind(packet,before,after,target=AUTH.MAIN_SOURCE_SHA,
+                trust_root=self.trust,now=self.now,allow_test_root=True)
 
     def test_exact_nine_candidate_postactivation_probes_are_passive(self):
         ship = (SCRIPTS / "aoe2_release_ship.py").read_text()
