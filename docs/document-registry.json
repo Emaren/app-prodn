@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c32e85942b8f02a3c189b8f5e596a3a355f5774e63bbc13d5e76eec9852758e6",
+      "sha256": "d9daf7e57a2f85d2bd15e6da37b9ce59d03efb000e62c3af178f61cc4be1dea7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1677,9 +1677,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RIVALRIES_AND_WAR_VAULT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "0c4e0b30c3bd4dbbe87eb5b0fd33fe6dc43ee327cbef91197c6d0e7378448330",
+      "sha256": "5edebd56c3113063e750d4351e7ab5391fe155c979de8a52c4c9dea640f4aa49",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261023-fast-uri-security-319",
-    "commit": "bb2c18e15ce8fe81a0a1dd745dae1bbc43430656"
+    "branch": "session-a/20261025-nine-path-docs-recert-product",
+    "commit": "88b21a6eb1a1284f6df2986c9c517226d4548909"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
