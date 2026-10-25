@@ -62,9 +62,18 @@ class SoloOwnerWebsiteReleaseTests(unittest.TestCase):
         self.owner.write_bytes(self.public["owner"].read_bytes())
         self.owner.chmod(0o600)
         self.now = datetime(2026, 10, 24, 23, 0, tzinfo=timezone.utc)
+        # The mocked observer is synthetic, but retain the complete timed
+        # one-shot service shape required by the explicit stable-identity guard.
+        # The real VPS observation itself is tested separately and fail-closed.
+        from aoe2_website_owner_observer_v3 import TIMER_FAMILIES
+        oneshots = {name + ".service": {
+            "LoadState": "loaded", "ActiveState": "inactive",
+            "SubState": "dead", "UnitFileState": "static", "MainPID": 0,
+        } for name in TIMER_FAMILIES}
         self.observation = {
             "observed_at": AUTH.stamp(self.now),
-            "immutable": {"test_only_runtime_digest": "9" * 64},
+            "immutable": {"test_only_runtime_digest": "9" * 64,
+                          "financial_units": oneshots},
             "website": {"source_sha": AUTH.PRODUCTION_SHA, "build_id": "rollback_BUILD_123"},
         }
         self.context = {
