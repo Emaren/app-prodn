@@ -3,7 +3,7 @@ import { avatarThumbUrlForName } from "@/lib/avatarAssets";
 import { buildJourneySummary } from "@/lib/adminJourneyIntelligence";
 import { livingKingdomHub } from "@/lib/livingKingdom/hub";
 import { livingKingdomFeatureMode } from "@/lib/livingKingdom/identity";
-import { aggregateCohort, publicEvent, safeEvent, summarizeUser, type SafeEvent, type EventInput } from "./projection";
+import { aggregateCohort, publicEvent, safeEvent, summarizeUser, sessionTimeline, type SafeEvent, type EventInput } from "./projection";
 
 export const COHORT_SIZE=20;
 export const PER_USER_LIMIT=120;
@@ -94,7 +94,7 @@ export async function loadWarriorHistory(prisma:PrismaClient,opts:{uid:string;da
    joinedAt:user.createdAt.toISOString(),accountLastSeenAt:user.lastSeen?.toISOString()??null,presence},
    days:opts.days,hasMore:rows.length>HISTORY_PAGE,
    nextCursor:rows.length>HISTORY_PAGE?sample.at(-1)?.id??null:null,
-   events:safe.map(publicEvent),slice:summarizeUser(safe,rows.length>HISTORY_PAGE||opts.cursor!==null),
+   events:safe.map(publicEvent),sessions:sessionTimeline(safe),slice:summarizeUser(safe,rows.length>HISTORY_PAGE||opts.cursor!==null),
    limitations:["Paginated window only; not an account lifetime census",
     "No historical scroll positions persisted",
     "Generic click labels and sanitized route groups only",
