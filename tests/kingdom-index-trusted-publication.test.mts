@@ -36,7 +36,8 @@ function payload(points=100){
   }));
   return {schema:PUBLICATION_SCHEMA,source:{...source},
     nonce:"unique-first-publication-nonce-1",
-    issuedAt:new Date(NOW-120000).toISOString(),
+    // Synthetic proofs were measured at NOW-60s. Sign only afterwards.
+    issuedAt:new Date(NOW-30000).toISOString(),
     expiresAt:new Date(NOW+3600000).toISOString(),
     criteria,gates};
 }
