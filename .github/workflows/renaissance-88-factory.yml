@@ -143,6 +143,14 @@ jobs:
             --cohort 0 --cohorts "$cohorts" --samples "$samples" --route-ms 18000 --deadline-ms "$deadline"
           browser_rc=$?
           set -e
+          # Stop the Next app before snapshot: no background GET callback may race
+          # the final DB/asset fingerprint.
+          kill "$next_pid" 2>/dev/null || true
+          wait "$next_pid" 2>/dev/null || true
+          trap - EXIT
+          blocked="$(grep -cF 'cannot execute INSERT in a read-only transaction' renaissance-88-chrome/next.log || true)"
+          printf 'SERVER_READONLY_DENIED_INSERT_OBSERVATIONS=%s\n' "$blocked" \
+            >> renaissance-88-chrome/identity.txt
           bash scripts/renaissance_88_pg_fixture.sh verify \
             > renaissance-88-chrome/fixture-after.txt
           find public .next/static -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum \
