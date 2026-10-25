@@ -68,8 +68,8 @@ test("a stale fully-passing cohort cannot display green after its earned points 
   });
   assert.equal(stale.earned, 0);
   assert.equal(stale.state, "red");
-  const partial = check("edge", "Static edge cohort", 10, 0.9, "9/10", {
-    ratio: { passed: 9, total: 10 },
+  const partial = check("edge", "Static edge cohort", 10, 0.8, "8/10", {
+    ratio: { passed: 8, total: 10 },
   });
   assert.equal(partial.state, "amber");
 });
