@@ -230,6 +230,23 @@ test("actual live capacity deficit is FAIL but aged bridge fallback is UNKNOWN",
   assert.equal(fallback.observedOverallScore, measured.observedOverallScore);
 });
 
+test("security root-resilience is measured FAIL, not a timeless or bridged fake event", () => {
+  const measured = fixture();
+  const root = measured.categories.find((c) => c.id === "security")!.checks[0];
+  root.id = "root-resilience";
+  root.earned = 0;
+  root.detail = "3.0 GiB free · live VPS";
+  rescore(measured);
+  const report = buildWhyNotGreenReport(measured);
+  assert.equal(report.evidenceChecks.find((x) => x.checkKey === "security/root-resilience")?.evidenceStatus, "FAIL");
+  assert.equal(report.gaps.find((x) => x.checkKey === "security/root-resilience")?.reason, "observed-invariant-gap");
+  root.detail = "3.0 GiB free · operator bridge fallback";
+  const bridge = buildWhyNotGreenReport(measured);
+  assert.equal(bridge.evidenceChecks.find((x) => x.checkKey === "security/root-resilience")?.evidenceStatus, "UNKNOWN");
+  assert.equal(bridge.evidenceChecks.find((x) => x.checkKey === "security/root-resilience")?.reason, "degraded-fallback-capacity-proof");
+  assert.equal(bridge.observedOverallScore, report.observedOverallScore);
+});
+
 test("request-clock skew and invalid times cannot promote cached snapshots to current proof", () => {
   const snap = fixture();
   const futureSkew = buildWhyNotGreenReport(snap, Date.parse(NOW) - 6 * 60_000);
