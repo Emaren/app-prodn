@@ -3,7 +3,7 @@ id: "aoe2war.app-prodn.renaissance-tabd-forge"
 title: "Renaissance Tab D — private census forge and Test Forge queue"
 type: "runbook"
 status: "draft"
-owner: "renaissance-tab-d"
+owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
