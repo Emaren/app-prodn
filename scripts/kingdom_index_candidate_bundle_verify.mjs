@@ -110,17 +110,36 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
     !Array.isArray(api.observed)||api.observed.length!==api.samples||
     api.consistent!==true||api.certified!==false||
     api.criterionPointsAwarded!==null)fail("Invalid bounded Next API cohort");
- const durations=[],sizes=new Set();
+ // An obsolete historical review legitimately yields "drifted" with no
+ // current certified score. Never permit an unexplained drift label: the
+ // candidate cohorts must expose the mismatching route census identities.
+ const STATUS_VERSION=/^src-[a-f0-9]{16}$/;
+ function indexLineage(row,status){
+  if(row.indexScore!==null||row.certified!==0||!STATUS_VERSION.test(row.indexSourceVersion))
+   fail("False score or missing current source version");
+  if(status==="unmeasured"){
+   if(row.indexMeasuredVersion!==null||row.indexObservationKind!==null)
+    fail("Unmeasured Index with contradictory historical observation");
+  }else if(status==="drifted"){
+   if(!STATUS_VERSION.test(row.indexMeasuredVersion)||
+      row.indexMeasuredVersion===row.indexSourceVersion||
+      !["source-review","agent","certified"].includes(row.indexObservationKind))
+    fail("Drifted Index without distinct historical source evidence");
+  }else fail("Unexpected current/provisional Index status in unapproved bundle");
+  return JSON.stringify([status,row.indexSourceVersion,row.indexMeasuredVersion,row.indexObservationKind]);
+ }
+ const durations=[],sizes=new Set(),apiLineages=new Set();
  for(let i=0;i<api.observed.length;i++){
   const row=api.observed[i];
   if(row.sequence!==i+1||typeof row.elapsedMs!=="number"||
      !Number.isFinite(row.elapsedMs)||row.elapsedMs<=0||
      !Number.isSafeInteger(row.responseBytes)||row.responseBytes<100||
-     row.responseBytes>524288||row.kingdomIndexStatus!=="unmeasured"||
-     row.indexScore!==null||row.certified!==0)
+     row.responseBytes>524288||row.indexScore!==null||row.certified!==0)
     fail("API response inconsistency or false score");
   durations.push(row.elapsedMs);sizes.add(row.responseBytes);
+  apiLineages.add(indexLineage(row,row.kingdomIndexStatus));
  }
+ if(apiLineages.size!==1)fail("API historical source lineage inconsistency");
  if(sizes.size!==1||!api.latencyMs||
     ["p50","p75","p95"].some((k,i)=>
       Math.abs(api.latencyMs[k]-percentile(durations,[.5,.75,.95][i]))>0.002))
@@ -135,17 +154,19 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
     burst.consistent!==true||!Number.isFinite(burst.wallMs)||burst.wallMs<=0||
     !Array.isArray(burst.observed)||burst.observed.length!==40)
     fail("Invalid or contradicted exact-head concurrent API smoke");
- const elapsed=[],burstRows=new Set();
+ const elapsed=[],burstRows=new Set(),burstLineages=new Set();
  for(let i=0;i<burst.observed.length;i++){
   const row=burst.observed[i];
   if(row.sequence!==i+1||!Number.isFinite(row.elapsedMs)||row.elapsedMs<=0||
      row.routeCount!==88||row.certified!==0||row.indexScore!==null||
-     row.indexStatus!=="unmeasured"||
      !Number.isInteger(row.responseBytes)||row.responseBytes<100||
      row.responseBytes>524288)
     fail("Concurrent API sample mismatch or false score");
   elapsed.push(row.elapsedMs);burstRows.add(row.responseBytes);
+  burstLineages.add(indexLineage(row,row.indexStatus));
  }
+ if(burstLineages.size!==1||[...burstLineages][0]!==[...apiLineages][0])
+  fail("Contradictory historical lineage between sequential and concurrent cohorts");
  if(burstRows.size!==1||[...burstRows][0]!==[...sizes][0]||
     ["p50","p75","p95"].some((k,i)=>
       Math.abs(burst.latencyMs?.[k]-percentile(elapsed,[.5,.75,.95][i]))>0.002))
@@ -170,7 +191,10 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
   sourceSha,buildId,collectorSha,headTreeSha:[...sourceTree][0],
   checkpoints,emitted:{files:emitted.files.length,bytes:observedBytes,
     receiptSha256:emitted.receiptSha256,missing:0,invalidTraces:0},
-  api:{sha256:api.sha256,samples:12,latencyMs:api.latencyMs},
+  api:{sha256:api.sha256,samples:12,latencyMs:api.latencyMs,
+   indexStatus:api.observed[0].kingdomIndexStatus,
+   sourceVersion:api.observed[0].indexSourceVersion,
+   historicalVersion:api.observed[0].indexMeasuredVersion},
   concurrent:{sha256:burst.sha256,requests:burst.requests,concurrency:burst.concurrency,latencyMs:burst.latencyMs},
   chrome,certified:false,criterionPointsAwarded:null,
   status:"SELF_CONSISTENT_CANDIDATE_EVIDENCE_ONLY",
