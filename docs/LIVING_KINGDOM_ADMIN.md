@@ -13,7 +13,9 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Living Kingdom Admin Observatory — #888
+# Living Kingdom Admin Observatory
+
+*Source review trail: issue/PR #888; this is admin-only, not public Index certification.*
 
 Admin-only pages: /admin/living-kingdom and /admin/living-kingdom/[uid].
 Admin JSON endpoints: /api/admin/living-kingdom and /api/admin/living-kingdom/[uid].
