@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {aggregateCohort,publicEvent,safeDestination,safeEvent,summarizeUser} from "../lib/adminLivingKingdom/projection.ts";
+import {aggregateCohort,publicEvent,safeDestination,safeEvent,summarizeUser,sessionTimeline} from "../lib/adminLivingKingdom/projection.ts";
 
 const instant=(m:number)=>new Date(Date.UTC(2026,9,25,12,m)).toISOString();
 function event(id:number,type:string,path:string|null,at:string,metadata:unknown=null,label:string|null="SECRET VALUE") {
@@ -79,4 +79,25 @@ test("missing, malformed and non-journey events do not fabricate history",()=>{
  const row=required(event(2,"page_view","/players/a",instant(0)));
  assert.equal(row.destination,"/players/[detail]");
  assert.equal(JSON.stringify(publicEvent(row)).includes("/players/a"),false);
+});
+
+test("no activity means UNKNOWN return and session timeline has no invented sessions",()=>{
+ const data=summarizeUser([],false);
+ assert.equal(data.returning,null);
+ assert.equal(data.estimatedActiveSeconds,null);
+ assert.deepEqual(sessionTimeline([]),[]);
+});
+test("session timeline exposes numbered slices without raw session identifiers",()=>{
+ const events=[
+  required(event(1,"page_view","/lobby",instant(0),{journeySessionId:"sessionA_123456"})),
+  required(event(2,"page_view","/leaderboard",instant(1),{journeySessionId:"sessionA_123456"})),
+  required(event(3,"click","/players",instant(2),{journeySessionId:"sessionB_123456"}))
+ ];
+ const sessions=sessionTimeline(events);
+ assert.equal(sessions.length,2);
+ assert.equal(sessions[1].views,2);
+ assert.equal(sessions[1].estimateSeconds,60);
+ const publicText=JSON.stringify(sessions);
+ assert.ok(!publicText.includes("sessionA_123456"));
+ assert.ok(!publicText.includes("sessionB_123456"));
 });
