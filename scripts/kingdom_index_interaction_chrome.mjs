@@ -45,6 +45,9 @@ export function inspectInteractionReceipt(doc,{sourceSha,buildId}){
      row.criterionCoverage.canonicalMaximum!==100||
      row.criterionCoverage.indexSpecializedGates!==3||
      row.criterionCoverage.sourceCensusRows!==88||
+     row.criterionCoverage.completePendingRoutes!==88||
+     row.criterionCoverage.profiledRoutes!==88||
+     row.criterionCoverage.sourceFingerprintedRoutes!==88||
      row.criterionCoverage.detailRows!==20||
      row.criterionCoverage.pendingDetailRows!==20||
      row.criterionCoverage.approvedDetailRows!==0||
@@ -182,6 +185,14 @@ async function capture(chrome,viewport,screenshotsDir){
     const idx=rows.find(row=>row.href==='/kingdom-index');
     return {
       apiRoutes:rows.length,sourceCensusRows:new Set(rows.map(row=>row.href)).size,
+      completePendingRoutes:rows.filter(row=>row.criterionProgress?.maximum===100&&
+        row.criterionProgress?.approvedCriteria===0&&
+        row.criterionProgress?.pendingCriteria===20&&
+        row.criterionProgress?.authenticatedEarned===null&&
+        Array.isArray(row.criterionProgress?.approvals)&&row.criterionProgress.approvals.length===0).length,
+      profiledRoutes:rows.filter(row=>typeof row.specializedAssurance?.profile==='string'&&
+        Array.isArray(row.specializedAssurance?.gates)).length,
+      sourceFingerprintedRoutes:rows.filter(row=>/^src-[a-f0-9]{16}$/.test(row.sourceVersion)).length,
       canonicalCriteria:rubric.length,
       canonicalMaximum:rubric.reduce((sum,row)=>sum+(Number(row.maximum)||0),0),
       indexSpecializedGates:idx?.specializedAssurance?.gates?.length??-1,
