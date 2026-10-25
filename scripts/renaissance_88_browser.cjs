@@ -12,6 +12,8 @@ const assert=require("node:assert/strict");
 const cp=require("node:child_process");
 const {createHash}=require("node:crypto");
 const ERROR_CODE=2;
+const {classifyCandidateRoute}=require("./renaissance_88_verdict.cjs");
+const net=require("node:net");
 function die(message){throw new Error("RENAISSANCE CHROME HOLD: "+message);}
 function argsOf(argv){
  const allowed=new Set(["plan","out","cohort","cohorts","samples","route-ms","deadline-ms"]);
@@ -52,14 +54,16 @@ function safeOutput(dir){
  fs.mkdirSync(dir,{recursive:true});
  if(fs.lstatSync(dir).isSymbolicLink())die("Output directory symlink");
 }
-function directChecks(result){
- if(result.timeout||result.browserError)return "FAIL";
- const checked=result.views.filter(v=>v.attempted);
- if(!checked.length)return "UNKNOWN";
- if(checked.some(v=>v.http!==200||v.sameOrigin!==true||v.rendered===false||
-     v.uncaughtErrors>0||v.keyboardFocus===false||v.privacyMutationAttempts>0))return "FAIL";
- if(checked.some(v=>v.browserStatus==="UNKNOWN"))return "UNKNOWN";
- return "PASS";
+async function localDatabaseFixture(){
+ return new Promise(resolve=>{
+  const socket=new net.Socket();let finished=false;
+  const finish=value=>{if(finished)return;finished=true;socket.destroy();resolve(value);};
+  socket.setTimeout(350);
+  socket.once("connect",()=>finish("REACHABLE"));
+  socket.once("error",()=>finish("UNAVAILABLE"));
+  socket.once("timeout",()=>finish("UNAVAILABLE"));
+  socket.connect(5432,"127.0.0.1");
+ });
 }
 async function run(){
  const opts=argsOf(process.argv.slice(2));
@@ -85,13 +89,14 @@ async function run(){
  if(!chrome||!fs.existsSync(chrome))die("Pinned real Chrome executable required");
  safeOutput(opts.out);
  const started=Date.now();
+ const databaseFixture=await localDatabaseFixture();
  const receipt={
   schema:"aoe2war.renaissance.public88.chrome.v1",
   source_sha:sha,build_id:buildId,manifest_sha256:plan.build.manifest_sha256,
   plan_sha256:createHash("sha256").update(fs.readFileSync(opts.plan)).digest("hex"),
   browser_name:"Google Chrome/Chromium via playwright-core 1.57.0",
   origin:base,cohort:opts.cohort,cohorts:opts.cohorts,samples:opts.samples,
-  isolated_loopback:true,production_certified:false,score:null,criterion_points_awarded:null,
+  isolated_loopback:true,database_fixture:databaseFixture,production_certified:false,score:null,criterion_points_awarded:null,
   anonymous_only:true,api_mode:"SYNTHETIC_503_LOCAL_ONLY",server_get_no_mutation:"UNPROVEN",
   notes:["Actual browser/document navigation; remote/live production never accessed",
     "API GET responses are deterministic synthetic 503 fixtures, NOT real API/domain tests",
@@ -110,12 +115,13 @@ async function run(){
   for(const route of selected){
    const record={route:route.route,phase:route.phase,profile:route.profile,
     source_sha:sha,build_id:buildId,plan_policy:route.overlay_source_policy,
-    views:[],status:"UNKNOWN",criteria:{
+    views:[],status:"UNKNOWN",database_fixture:databaseFixture,criteria:{
      navigation:"UNKNOWN",render:"UNKNOWN",keyboard:"UNKNOWN",
      accessibility:"UNKNOWN",api_real:"UNKNOWN",api_failure:"UNKNOWN",
      speed_readiness:"UNKNOWN",gray_notice:"UNKNOWN",living_presence:"UNKNOWN",
      seasonal_theme:"UNKNOWN",p75_p95:"UNKNOWN",heap:"UNKNOWN",
-     domain:"UNKNOWN",production:"UNKNOWN",financial_nonmutation:"UNKNOWN"},
+     domain:"UNKNOWN",production:"UNKNOWN",financial_nonmutation:"UNKNOWN",
+     client_mutation_attempts:"UNKNOWN"},
     resource:{total_requests:0,api_503:0,external_blocked:0,
               client_mutations_blocked:0},errors:[],missing_criteria:[]};
    const timings=[];
@@ -131,7 +137,7 @@ async function run(){
         keyboardFocus:null,uncaughtErrors:0,nav_ms:null,heap_mb:null,
         speed_chip:"UNKNOWN",speed_ready:"UNKNOWN",body_title:false,
         landmark:false,images_missing_alt:0,api_503:0,
-        privacyMutationAttempts:0,browserStatus:"UNKNOWN"};
+        privacyMutationAttempts:0,dependencyUnavailable:false,browserStatus:"UNKNOWN"};
      try{
       context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},
         reducedMotion:"reduce",serviceWorkers:"block",colorScheme:"dark"});
@@ -188,6 +194,7 @@ async function run(){
       view.nav_ms=observed.navMs;view.heap_mb=observed.heapMb;
       view.speed_chip=observed.speedChip;view.speed_ready=observed.speedReady;
       view.uncaughtErrors=errs.length;
+      view.dependencyUnavailable=errs.some(message=>/Server Components render/i.test(message));
       if(errs.length)record.errors.push(viewport.name+" uncaught: "+errs.join("; "));
       // Actual keyboard interaction, not a claimed screen-reader WCAG audit.
       await page.keyboard.press("Tab");
@@ -211,10 +218,13 @@ async function run(){
      }
     }
    }
-   record.status=directChecks(record);
+   record.status=classifyCandidateRoute(record,databaseFixture);
    record.criteria.navigation=record.views.every(v=>v.http===200&&v.sameOrigin)?"PASS":"FAIL";
-   record.criteria.render=record.views.every(v=>v.rendered&&v.landmark&&v.body_title)?"PASS":"FAIL";
-   record.criteria.keyboard=record.views.every(v=>v.keyboardFocus===true)?"PASS":"FAIL";
+   const dependencyGap=databaseFixture==="UNAVAILABLE"&&record.views.some(v=>v.dependencyUnavailable);
+   record.criteria.render=dependencyGap?"UNKNOWN":record.views.every(v=>v.rendered&&v.landmark&&v.body_title)?"PASS":"FAIL";
+   record.criteria.keyboard=dependencyGap?"UNKNOWN":record.views.every(v=>v.keyboardFocus===true)?"PASS":"FAIL";
+   record.criteria.client_mutation_attempts=record.resource.client_mutations_blocked>0?
+     "OBSERVED_AND_BLOCKED_NOT_CLEARED":"NONE_OBSERVED";
    record.criteria.accessibility=record.views.some(v=>v.images_missing_alt>0)?"FAIL":"UNKNOWN";
    record.criteria.api_failure=record.views.some(v=>v.api_503>0)?"OBSERVED_SYNTHETIC_503":"UNKNOWN";
    // A retained Speed reading does not qualify current-route explicit readiness.
