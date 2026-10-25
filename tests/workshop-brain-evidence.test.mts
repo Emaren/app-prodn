@@ -18,10 +18,13 @@ function source(input: {
   health?: boolean;
 } = {}): PublicKingdomIntelligence {
   const {
-    p0 = 0, p1 = 0, status = "SOURCE_REPORTED", stale = false,
+    status = "SOURCE_REPORTED", stale = false,
     operatingState = "ATTENTION", doctorScore = 59,
     reportedExact = true, health = true,
   } = input;
+  // An explicitly present undefined means a missing source field, NOT zero.
+  const p0 = Object.prototype.hasOwnProperty.call(input, "p0") ? input.p0 : 0;
+  const p1 = Object.prototype.hasOwnProperty.call(input, "p1") ? input.p1 : 0;
   return {
     available: true,
     stale,
