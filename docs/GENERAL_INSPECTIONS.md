@@ -72,6 +72,42 @@ coverage or unavailable host truth is **UNKNOWN**, not an observed failure.
 The new report does not change the persisted underlying score or independently
 certify a claimed positive reading; `measuredHealthChanged=false`.
 
+### Exact source-registry triage observed on October 25
+
+Read-only comparison: `Emaren/AoE2WAR-docs main` taxonomy blob
+`26e18f739e7585b41de0d260e914c9cc62b35b77` (225 entries);
+`Emaren/app-prodn main` source registry blob
+`f7c1af190ad1ae77e311189fee4a005e0afa5be5` (96 entries).
+These are GitHub **source registry** observations, not a contemporaneous VPS
+Doctor receipt. `reviewed_at + review_interval_days` with the governance SLO
+(date due still valid; overdue starting next day) identifies **eight central
+active entries overdue after 2026-10-24**:
+
+| Exact doc ID | Repository | Source path |
+| --- | --- | --- |
+| `aoe2war.arch.truth-planes` | AoE2WAR-docs | `docs/architecture/truth-planes.md` |
+| `aoe2war.gov.documentation-lifecycle` | AoE2WAR-docs | `docs/governance/documentation-lifecycle.md` |
+| `aoe2war.gov.metadata-contract` | AoE2WAR-docs | `docs/governance/metadata-contract.md` |
+| `aoe2war.gov.review-slos` | AoE2WAR-docs | `docs/governance/review-slos.md` |
+| `aoe2war.home` | AoE2WAR-docs | `docs/index.md` |
+| `aoe2war.start.ai-agent` | AoE2WAR-docs | `docs/start-here/ai-agent.md` |
+| `aoe2war.start.developer` | AoE2WAR-docs | `docs/start-here/developer.md` |
+| `aoe2war.app-prodn.docs-rivalries-and-war-vault` | app-prodn | `docs/RIVALRIES_AND_WAR_VAULT.md` |
+
+The **app-prodn source registry itself** has zero overdue active positive-
+interval entries. Treat `review_interval_days=0` historical, generated and
+superseded records as intentionally outside normal review expiry, not sixteen
+phantom failures.
+
+Three `app-prodn` paths have different source hashes in the central
+taxonomy versus the current local registry: `docs/DOCUMENTATION_CONTROL_PLANE.md`,
+`docs/RIVALRIES_AND_WAR_VAULT.md`, and `docs/PAGE_CHANGE_NOTICES.md`.
+That is **federated reference drift to investigate**, not automatic proof of
+corruption: central may be pinned to an intentionally older reviewed source.
+DocsV2 owner must review the changed content and policy, then produce a
+source-pinned, approved registry synchronization and strict-check receipt.
+No automatic source registry write is made by Tab C.
+
 Documentation aggregate scores are not an ID-level DocsV2 review registry.
 To close a Documentation 35 reading, obtain the **current detailed DocsV2
 review/expiry and reference-drift output** from the documentation owner,
