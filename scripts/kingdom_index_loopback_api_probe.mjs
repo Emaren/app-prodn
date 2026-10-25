@@ -91,7 +91,11 @@ export async function captureIndexLoopback({origin,samples=12,expectedBuildId,de
       stop("Observed public certificate build mismatches local emitted build");
    rows.push({sequence:i+1,elapsedMs:elapsed,responseBytes:byteCount,
      certified:state.certified,kingdomIndexStatus:self?.status??"unmeasured",
-     indexScore:self?.score??null});
+     indexScore:self?.score??null,
+     // Preserve actual historical source lineage; drifted is NOT certified.
+     indexSourceVersion:self?.sourceVersion??null,
+     indexMeasuredVersion:self?.measuredVersion??null,
+     indexObservationKind:self?.kind??null});
    states.push(JSON.stringify({certified:snapshot.certified,score:self?.score??null,status:self?.status}));
    if(delayMs&&i!==samples-1)await new Promise(r=>setTimeout(r,delayMs));
  }

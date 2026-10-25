@@ -47,7 +47,8 @@ async function fixture(){
   origin:"LOOPBACK_ONLY",route:"/api/kingdom-index",buildId,samples:12,
   latencyMs:{p50:percentile(times,.5),p75:percentile(times,.75),p95:percentile(times,.95)},
   observed:times.map((v,i)=>({sequence:i+1,elapsedMs:v,responseBytes:1024,certified:0,
-    kingdomIndexStatus:"unmeasured",indexScore:null})),
+    kingdomIndexStatus:"unmeasured",indexScore:null,
+    indexSourceVersion:"src-aaaaaaaaaaaaaaaa",indexMeasuredVersion:null,indexObservationKind:null})),
   consistent:true,certified:false,criterionPointsAwarded:null,note:"Uncertified synthetic fixture"},"sha256");
  await put("api-loopback.json",api);
  const burstTimes=Array.from({length:40},(_,i)=>22+i);
@@ -56,7 +57,8 @@ async function fixture(){
   concurrency:4,requests:40,wallMs:333,
   latencyMs:{p50:percentile(burstTimes,.5),p75:percentile(burstTimes,.75),p95:percentile(burstTimes,.95)},
   consistent:true,observed:burstTimes.map((elapsedMs,i)=>({sequence:i+1,elapsedMs,
-   responseBytes:1024,routeCount:88,certified:0,indexStatus:"unmeasured",indexScore:null})),
+   responseBytes:1024,routeCount:88,certified:0,indexStatus:"unmeasured",indexScore:null,
+   indexSourceVersion:"src-aaaaaaaaaaaaaaaa",indexMeasuredVersion:null,indexObservationKind:null})),
   errors:0,certified:false,criterionPointsAwarded:null,
   limitations:"Untrusted synthetic burst fixture"},"sha256");
  await put("concurrent-loopback.json",concurrent);
@@ -260,5 +262,35 @@ test("literal dot or parent components, absolute, UNC, drive, backslash, control
   });
   await assert.rejects(verifyIndexCandidateBundle(root,args),
    /Duplicated, unsafe or invalid emitted file/);
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+
+test("real-world drifted historical Index review is eligible only when source mismatch is evidenced",async()=>{
+ const root=await fixture();
+ const update=async(name:string,kind:"api"|"burst",source="src-aaaaaaaaaaaaaaaa",measured="src-bbbbbbbbbbbbbbbb")=>{
+  await mutate(root,name,doc=>{
+   const rows=doc.observed as Array<Record<string,unknown>>;
+   for(const row of rows){
+    if(kind==="api")row.kingdomIndexStatus="drifted";
+    else row.indexStatus="drifted";
+    row.indexSourceVersion=source;
+    row.indexMeasuredVersion=measured;
+    row.indexObservationKind="source-review";
+   }
+   const unsigned=Object.fromEntries(Object.entries(doc).filter(([k])=>k!=="sha256"));
+   doc.sha256=hash(JSON.stringify(unsigned));
+  });
+ };
+ try{
+  await update("api-loopback.json","api");
+  await update("concurrent-loopback.json","burst");
+  const result=await verifyIndexCandidateBundle(root,args);
+  assert.equal(result.certified,false);
+  assert.equal(result.criterionPointsAwarded,null);
+  assert.equal(result.api.indexStatus,"drifted");
+  // An attacker can recompute unsigned cohort hashes. Matching source values
+  // or contradictory two-cohort lineage must STILL be rejected.
+  await update("concurrent-loopback.json","burst","src-aaaaaaaaaaaaaaaa","src-aaaaaaaaaaaaaaaa");
+  await assert.rejects(verifyIndexCandidateBundle(root,args),/drift|historical|cohort|status|version/i);
  }finally{await rm(root,{recursive:true,force:true})}
 });
