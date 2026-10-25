@@ -164,6 +164,14 @@ protected stage/activation/rollback receipts before any new owner decision.
 Never reset/restore the nonce database to reuse a consumed challenge. Do not
 rerun a stage or activation automatically after ambiguity.
 
+The full before/after runtime snapshots preserve each configured service's actual
+state. Across the protected website stage, the policy comparison treats only
+transient MainPID/active/start/stop observations of six known timer-triggered
+financial one-shot services as volatile; a failed state is never accepted.
+Their unit/configuration hashes and enablement, the active timers, continuous
+Wolo settlement/consensus executable identity and original P1 remain pinned.
+This does NOT certify complete finance-writer enumeration or bank solvency.
+
 The nonce connection verifies its effective durability settings. SQLite's
 [documented EXTRA mode](https://www.sqlite.org/pragma.html#pragma_synchronous)
 also synchronizes the rollback-journal directory after deletion; plain FULL
