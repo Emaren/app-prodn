@@ -70,7 +70,7 @@ function ttlHours(categoryId: string, checkId: string): number | null {
   if (categoryId === "release" && ["doctor", "estate-findings", "build-parity", "service", "source-parity"].includes(checkId)) return 6;
   if (categoryId === "security" && ["vpssentry", "failed-units", "updates", "reboot", "maintenance", "security-fresh"].includes(checkId)) return 6;
   if (categoryId === "data" && ["wolo-8092", "wolo-8093", "wolo-estate", "watcher-release"].includes(checkId)) return 6;
-  if (categoryId === "organization" && ["root-free", "volume-used"].includes(checkId)) return null; // Local statfs taken during snapshot build.
+  if (categoryId === "organization" && ["root-free", "volume-used"].includes(checkId)) return 6; // Live bounded statfs or decayed bridge fallback; never timeless.
   return 168;
 }
 
@@ -98,7 +98,9 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
   }
   const full = item.earned + 0.001 >= item.weight;
   if (full) {
-    if (ttl !== null && at === null && !(categoryId === "organization" && ["root-free", "volume-used"].includes(item.id))) {
+    // Immutable release certification never expires merely by aging, but
+    // even an immutable receipt must have an original observation time.
+    if (at === null) {
       return { status: "unknown", reason: "missing-observation-time", ageHours: age, ttlHours: ttl };
     }
     return { status: "pass", reason: "scored-full-on-published-evidence", ageHours: age, ttlHours: ttl };
