@@ -217,7 +217,7 @@ test("consumer wiring is read-only and Brain policy remains source/freshness gra
   // A bridge-reported RUNNING dashboard action is not a verified live
   // process and must never light up War Pulse's "Live process" badge.
   assert.match(page, /bridge-reported running, independently UNVERIFIED/);
-  assert.match(page, /current:\\s*data\\?\\.agentRuntimeAuthority\\?\\.verified === true &&\\s*isActiveProcessState\\(item\\.status\\)/);
+  assert.match(page, /current:\s*data\?\.agentRuntimeAuthority\?\.verified === true &&\s*isActiveProcessState\(item\.status\)/);
   assert.match(workshop, /primaryIncident\.safeAction/);
   assert.match(workshop, /provenance\.ageSeconds/);
   assert.match(api, /loadPublicKingdomIntelligence\(\)/);
