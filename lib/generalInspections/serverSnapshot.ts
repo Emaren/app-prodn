@@ -496,8 +496,8 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
     "Organization & Storage",
     "Headroom, lean retention, download hygiene, staging discipline, and bounded local caches.",
     [
-      check("root-free", "VPS root headroom", 15, rootFraction, rootFs.freeGiB == null ? "Root filesystem unavailable" : rootFs.freeGiB.toFixed(2) + " GiB free"),
-      check("volume-used", "Evidence volume utilization", 15, volumeFraction, volumeFs.usedPercent == null ? "Volume filesystem unavailable" : volumeFs.usedPercent.toFixed(1) + "% used"),
+      check("root-free", "VPS root headroom", 15, rootFraction, rootFs.freeGiB == null ? "Root filesystem unavailable" : rootFs.freeGiB.toFixed(2) + " GiB free", { evidenceAt: new Date().toISOString() }),
+      check("volume-used", "Evidence volume utilization", 15, volumeFraction, volumeFs.usedPercent == null ? "Volume filesystem unavailable" : volumeFs.usedPercent.toFixed(1) + "% used", { evidenceAt: new Date().toISOString() }),
       check("mac-free", "Mac operator headroom", 10, thresholdFraction(macFreeGiB, 50, 35, "gte") * macFresh, macFreeGiB.toFixed(1) + " GiB at last capture · " + ageDetail(baseline.capturedAt), { evidenceAt: baseline.capturedAt }),
       check("hot-rollbacks", "Hot rollback window", 10, protectedHot === baseline.policy.hotRollbackCount ? 1 : protectedHot > 0 ? 0.75 : 0, protectedHot + "/" + baseline.policy.hotRollbackCount + " protected hot generations", { ratio: { passed: Math.min(protectedHot, baseline.policy.hotRollbackCount), total: baseline.policy.hotRollbackCount }, evidenceAt: fileTime(expiry.file) }),
       check("cold-checkpoints", "Cold checkpoint window", 10, protectedCold === baseline.policy.coldCheckpointCount ? 1 : protectedCold > 0 ? 0.75 : 0, protectedCold + "/" + baseline.policy.coldCheckpointCount + " protected cold checkpoints", { ratio: { passed: Math.min(protectedCold, baseline.policy.coldCheckpointCount), total: baseline.policy.coldCheckpointCount }, evidenceAt: fileTime(expiry.file) }),
