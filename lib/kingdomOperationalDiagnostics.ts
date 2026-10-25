@@ -15,7 +15,7 @@ export type KingdomOperationalIncident = {
   dependencyIds: readonly ("intelligence" | "release")[];
   affectedRoutes: readonly string[];
   explanation: string;
-  evidence: {
+  provenance: {
     producer: string | null;
     sourceGitSha: string | null;
     buildId: string | null;
@@ -104,7 +104,7 @@ function incident(
     dependencyIds: owner === "Release OS" ? ["release", "intelligence"] : ["intelligence"],
     affectedRoutes: routes,
     explanation,
-    evidence: {
+    provenance: {
       producer: observation?.producer === "kingdom-intelligence-brain" ? observation.producer : null,
       sourceGitSha: hex40(observation?.sourceGitSha) ? observation!.sourceGitSha : null,
       buildId: buildId(observation?.buildId) ? observation!.buildId : null,
