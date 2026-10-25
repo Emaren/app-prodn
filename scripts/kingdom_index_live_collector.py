@@ -100,14 +100,30 @@ def extract_coverage(archive):
         axe = None
         measured = set()
         affected = set()
+        original = coverage.get("route_digest_sha256")
+        if not isinstance(original, dict) or len(original) != coverage.get("routes_observed"):
+            stop("Original route digest index inconsistent")
+        observed_raw = set()
         for entry in entries:
             if not re.search(r"(^|/)route-[A-Za-z0-9_-]+\.json$", entry.filename):
                 continue
             if entry.file_size > 600000:
                 stop("Oversized route evidence receipt")
-            data = json.loads(z.read(entry))
+            bytes_row = z.read(entry)
+            data = json.loads(bytes_row)
             if not isinstance(data, dict) or not isinstance(data.get("route"), str):
                 stop("Unrecognized route evidence")
+            route = data["route"]
+            if route in observed_raw or route not in original or not SHA256.fullmatch(original[route]):
+                stop("Duplicate or unindexed original route receipt")
+            if (hashlib.sha256(bytes_row).hexdigest() != original[route] or
+                    data.get("source_sha") != coverage.get("source_sha") or
+                    data.get("build_id") != coverage.get("build_id") or
+                    data.get("certified") is True or data.get("quality_score") is not None):
+                stop("Route receipt SHA or source identity disagrees with manifest")
+            if data.get("status") != next((r.get("status") for r in coverage.get("routes", []) if r.get("route")==route), None):
+                stop("Route receipt status disagrees with coverage")
+            observed_raw.add(route)
             views = data.get("views")
             if not isinstance(views, list):
                 stop("Missing viewport evidence")
@@ -116,6 +132,8 @@ def extract_coverage(archive):
                 measured.add(data["route"])
                 if any(a.get("seriousOrCritical", 0) > 0 for a in scans):
                     affected.add(data["route"])
+        if observed_raw != set(original):
+            stop("Missing original route receipt, cannot trust aggregate")
         if measured:
             axe = {"scannedRoutes": len(measured), "affectedRoutes": len(affected)}
         return coverage, hashlib.sha256(raw).hexdigest(), axe
@@ -156,7 +174,7 @@ def normalize(coverage, run, archive_digest, coverage_digest, axe):
     stamp = run.get("updated_at")
     try:
         parsed = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
-        if parsed.utcoffset() is None or parsed > datetime.now(timezone.utc).replace(microsecond=999999):
+        if parsed.utcoffset() is None or (parsed - datetime.now(timezone.utc)).total_seconds() > 120:
             stop("Invalid or future CI completion time")
     except (TypeError, AttributeError, ValueError):
         stop("Missing reliable CI run completion timestamp")
