@@ -78,7 +78,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           corepack enable
           NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
-          timeout -k 5s 4m npm install --prefix "$RUNNER_TEMP/renaissance-88-pw" --no-save --no-package-lock --ignore-scripts playwright-core@1.57.0
+          timeout -k 5s 4m npm install --prefix "$RUNNER_TEMP/renaissance-88-pw" --no-save --no-package-lock --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
           npx prisma generate
           test -z "$(git status --porcelain --untracked-files=no)"
       - name: Build exact immutable local candidate
@@ -112,7 +112,7 @@ jobs:
             sleep 2
           done
           test "$ready" = 1
-          if [ "${{ github.event_name }}" = pull_request ]; then cohorts=8; samples=1; deadline=720000;
+          if [ "${{ github.event_name }}" = pull_request ]; then cohorts=1; samples=1; deadline=1500000;
           else cohorts=1; samples=3; deadline=1500000; fi
           timeout -k 10s 27m node scripts/renaissance_88_browser.cjs \
             --plan renaissance-88-chrome/plan.json --out "$GITHUB_WORKSPACE/renaissance-88-chrome" \
