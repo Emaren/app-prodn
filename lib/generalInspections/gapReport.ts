@@ -52,6 +52,100 @@ const REPAIR_BY_CHECK: Record<string, string> = {
   "data/watcher-release": "Verify the published signed Watcher version and real current download manifest; an unpublished candidate has no release-grade score.",
 };
 
+// Routing metadata for the existing producer channels, NOT original producer
+// authentication. The published InspectionCheck lacks signed origin/receipt IDs.
+// Unknown check IDs remain visibly unattributed rather than inheriting a green
+// signed-producer claim.
+const CHANNELS: Record<string, Record<string, string>> = {
+  speed: {
+    lcp50: "speedos/cold-browser", lcp95: "speedos/cold-browser",
+    ready50: "speedos/cold-browser", ready95: "speedos/cold-browser",
+    ttfb95: "speedos/cold-browser",
+    "static-edge": "speedos/edge-delivery",
+    "dynamic-edge": "speedos/edge-delivery",
+    "featured-edge": "speedos/edge-delivery",
+    "stable-lcp": "speedos/cold-browser",
+    "speed-fresh": "speedos/cold-browser",
+  },
+  documentation: {
+    "doctor-docs": "operator-bridge/estate-docs",
+    "docs-control": "docsv2/central-check",
+    taxonomy: "docsv2/central-taxonomy",
+    "strict-doc-build": "docsv2/strict-build",
+    "audit-taxonomy": "docsv2/central-taxonomy",
+    "source-docs": "docsv2/source-checkers",
+    "system-map": "operator-bridge/system-map",
+    "storage-map": "operator-bridge/storage-map",
+    "central-doc-repo": "docsv2/central-source-registry",
+    "docs-fresh": "docsv2/captured-observation",
+  },
+  organization: {
+    "root-free": "os/bounded-statfs",
+    "volume-used": "os/bounded-statfs",
+    "mac-free": "operator-bridge/mac-capture",
+    "hot-rollbacks": "storage-os/expiry-ledger",
+    "cold-checkpoints": "storage-os/expiry-ledger",
+    "expiry-debt": "storage-os/expiry-ledger",
+    "watcher-downloads": "watcher/download-vault-inventory",
+    staging: "storage-os/bounded-staging-inventory",
+    worktrees: "operator-bridge/workspace",
+    caches: "operator-bridge/workspace",
+  },
+  tests: {
+    "node-tests": "release-controller/gate-receipt",
+    "python-tests": "release-controller/gate-receipt",
+    typescript: "release-controller/gate-receipt",
+    eslint: "release-controller/gate-receipt",
+    "docs-gate": "release-controller/gate-receipt",
+    "secret-scan": "release-controller/gate-receipt",
+    dependency: "release-controller/gate-receipt",
+    prisma: "release-controller/gate-receipt",
+    "production-build": "release-controller/certification",
+  },
+  release: {
+    certified: "release-controller/certification",
+    doctor: "operator-bridge/doctor",
+    "estate-findings": "operator-bridge/estate-findings",
+    "build-parity": "operator-bridge/source-build",
+    service: "operator-bridge/host-services",
+    "source-parity": "operator-bridge/source-build",
+    receipt: "release-controller/activation-receipt",
+    finish: "operator-bridge/finish",
+  },
+  security: {
+    vpssentry: "operator-bridge/host-services",
+    "failed-units": "operator-bridge/systemd",
+    updates: "operator-bridge/host-updates",
+    reboot: "operator-bridge/host-reboot",
+    maintenance: "operator-bridge/maintenance",
+    secrets: "release-controller/gate-receipt",
+    recovery: "operator-bridge/recovery",
+    "root-resilience": "os/bounded-statfs",
+    "security-fresh": "operator-bridge/host-capture",
+  },
+  data: {
+    "wolo-8092": "operator-bridge/wolo-listeners",
+    "wolo-8093": "operator-bridge/wolo-listeners",
+    "wolo-estate": "operator-bridge/wolo-estate",
+    "parser-estate": "replay-os/replay-closure",
+    "recovery-data": "operator-bridge/recovery",
+    "watcher-release": "operator-bridge/watcher-version",
+    "db-mutation": "speedos/cold-browser-mutation-boundary",
+    "wolo-mutation": "speedos/cold-browser-mutation-boundary",
+    "data-fresh": "replay-os/replay-closure",
+    evidence: "operator-bridge/recovery",
+  },
+};
+
+export function expectedInspectionProducerChannel(categoryId: string, checkId: string, detail = ""): string {
+  const mapped = CHANNELS[categoryId]?.[checkId];
+  if (!mapped) return "unattributed";
+  if (mapped === "os/bounded-statfs" && /operator bridge fallback/i.test(detail)) {
+    return "operator-bridge/host-capacity-fallback";
+  }
+  return mapped;
+}
+
 function repairFor(categoryId: string, checkId: string) {
   return REPAIR_BY_CHECK[categoryId + "/" + checkId] ?? REPAIR[categoryId];
 }
@@ -194,7 +288,9 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot, eva
         ttlHours: result.ttlHours, nextDueAt: dueAt,
         earned: item.earned, weight: item.weight,
         claimedReleaseSha: snapshot.releaseSha, claimedBuildVersion: snapshot.buildVersion,
-        originalProducerReceiptId: null, originalProducerReceiptDigest: null,
+        originalProducer: null, originalProducerReceiptId: null, originalProducerReceiptDigest: null,
+        expectedProducerChannel: expectedInspectionProducerChannel(group.id, item.id, item.detail),
+        producerAuthority: "UNVERIFIED_FROM_PUBLISHED_SNAPSHOT" as const,
         detail: item.detail, owner: OWNER[group.id], repair: repairFor(group.id, item.id),
       });
       if (result.status !== "pass" || item.earned < item.weight) {
@@ -247,7 +343,8 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot, eva
       "Unknown/missing proof is not an observed operational failure.",
       "Document IDs are not present in the aggregate documentation check: a current DocsV2 registry/review-queue witness is required for exact expired IDs.",
       "checkKey identifies a check, not the original producer receipt ID. Source receipt IDs and original capture timestamps require producer evidence.",
-      "originalProducerReceiptId/digest are unknown in the published snapshot; claimed source/build identifiers are not independent producer attestations.",
+      "originalProducer/receiptId/digest are unknown in the published snapshot. expectedProducerChannel is a source-route hint only, not proof that channel ran or produced a valid receipt.",
+      "claimed source/build identifiers are not independent producer attestations.",
       "A replayed older-than-six-hour snapshot is STALE even when it previously reported 100; historical scores remain unchanged.",
       "nextDueAt is a projected TTL deadline, not proof a scheduler is enabled or a reinspection has run.",
       "No collection, recomputation or privileged action is performed by this report.",
