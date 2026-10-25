@@ -85,7 +85,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-15c5a8c282eb8668acfe",
+    version: "src-b40c6fd3e735b9c51f57",
   },
   {
     href: "/game-stats",
