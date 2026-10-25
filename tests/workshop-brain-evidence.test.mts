@@ -80,6 +80,9 @@ test("measured zero stays zero and severity count does not become a boolean", ()
   assert.equal(view.p0, 0);
   assert.equal(view.p1, 0);
   assert.equal(view.doctorScore, 59);
+  // Measured zero incidents does not establish zero live agents.
+  assert.equal(view.activeSystemCount, null);
+  assert.equal(view.attentionSystemCount, null);
 });
 
 test("known nonzero P0/P1 are displayed without threshold manipulation", () => {
