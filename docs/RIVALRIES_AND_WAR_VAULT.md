@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-10-25"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -231,3 +231,24 @@ one 1v1 opponent game, one team-opponent game and three teammate games. Zodiac
 is 2-0 when opposed; together they are 1-2. Game 23876 is excluded because the
 display string containing Zodiac belongs to the Brian/Trunks Steam account and
 the exact Zodiac Steam account is absent.
+
+## 2026-10-25 source-only documentation maintenance
+
+A source-bounded maintenance review on the **unchanged**
+`main@21cd1493b182cb0968a6b6cf3f528d0578cfd797` checked that
+the public page source files still exist for `/battle-archive`,
+`/rivalries`, `/game-stats/[id]`, both player/team matchup routes,
+`lib/replaySides.ts`, and `lib/publicMatchups.ts`. The documented
+SteamID64/replay-side safeguards and the original safety requirements
+remain the source-governed contract.
+
+This is **not** fresh human release authorization, a production HTTP
+canary, independent funding or settlement certification, nor an
+assertion that a real-money writer was exercised. The older production
+verification above remains historical. Revalidate runtime and financial
+noninterference separately before any website-only release.
+
+This note and review date refresh only the independently reviewed
+**operator-tooling branch's** governed documentation. They do NOT
+retroactively change the exact nine-path product commit or waive any
+release gate or historical Wolo source-drift P1.
