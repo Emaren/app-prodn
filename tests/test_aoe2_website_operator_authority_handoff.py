@@ -46,7 +46,7 @@ class OperatorAuthorityHandoffTests(unittest.TestCase):
         self.assertIn("DISCUSSION ONLY", proposal)
         self.assertIn("current", proposal.lower())
         self.assertIn("three DIFFERENT", proposal)
-        self.assertIn("NEW policy", proposal)
+        self.assertIn("separate policy implementation PR", proposal)
         self.assertIn("NO GO", proposal)
         self.assertIn("machine signer", proposal)
         self.assertIn("PRE_ACTIVATE", proposal)
