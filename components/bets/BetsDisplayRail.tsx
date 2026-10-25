@@ -105,7 +105,7 @@ export default function BetsDisplayRail({
       >
         <button
           type="button"
-          
+          aria-haspopup="menu"
           aria-expanded={viewMenuOpen}
           aria-label={`Choose Betting Hall view. Current ${value}`}
           title={`View ${value}`}
@@ -144,7 +144,7 @@ export default function BetsDisplayRail({
           `}
         >
           <div
-            role="group"
+            role="menu"
             aria-label="Betting Hall views"
             className="
               rounded-2xl
