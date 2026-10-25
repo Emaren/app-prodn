@@ -27,6 +27,23 @@ def sha(path:Path)->str:
     if not path.is_file() or path.is_symlink() or path.stat().st_size>4_000_000:
         raise ValueError("Missing or unsafe source policy input: "+str(path))
     return hashlib.sha256(path.read_bytes()).hexdigest()
+def literal_public_redirect(root:Path,entrypoint:str,public_routes:set[str])->str|None:
+    """An exact, source-declared Next redirect, not an alias guessed by Chrome."""
+    file=root/entrypoint
+    if file.is_symlink() or not file.is_file() or file.stat().st_size>200000:
+        raise ValueError("Unsafe public entrypoint for redirect classification")
+    body=file.read_text(encoding="utf8")
+    # Only trivial module-level redirect-only pages are accepted.
+    if not re.search(r'import\s*\{\s*redirect\s*\}\s*from\s*["\']next/navigation["\']',body):
+        return None
+    target=re.search(r'\bredirect\(\s*["\'](/[^"\']{1,160})["\']\s*\)',body)
+    if target is None:return None
+    url=target.group(1)
+    if any(x in url for x in ("?","%","\\","//")):return None
+    bare=url.split("#",1)[0]
+    if bare not in public_routes:raise ValueError("Redirect leaves canonical public Index: "+entrypoint)
+    return bare
+
 def speed_authority(root):
     file=root/"components/speed/SpeedProof.tsx"
     raw=file.read_text("utf8")
@@ -102,9 +119,11 @@ def make_plan(root:Path,build:Path|None=None,expected_sha:str|None=None,
         dependency=source_dependency(root,route,known,fast=not deep)
         excluded=any(route==prefix or route.startswith(prefix+"/") for prefix in THEME_EXCLUSIONS)
         live=(None if realm_error else realm)
+        alias_target=literal_public_redirect(root,pages[route],set(routes))
         documents.append({
             "route":route,"label":record["label"],"district":record["district"],
-            "category":"public_index_static","phase":phase_map[route],
+            "category":"public_alias_redirect" if alias_target else "public_index_static",
+            "redirect_to":alias_target,"phase":phase_map[route],
             "entrypoint":pages[route],"owner":"CENTRAL_DOMAIN_OWNER_UNASSIGNED",
             "profile":profile,"specialty_gates":profile_data[profile]["gates"],
             "dependency":dependency,"source_closure_complete":False,
