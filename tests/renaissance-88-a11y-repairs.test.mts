@@ -27,3 +27,14 @@ test("Kingdom hero gives keyboard control to a distinct named button",()=>{
  assert.doesNotMatch(s,/handleHeroKeyDown/);
  assert.match(s,/if \(target\.closest\("a,button"\)\) return;/);
 });
+
+test("unavailable replay gauges do not masquerade as measured zero",()=>{
+ const s=read("components/kingdom-instruments/KingdomInstruments.tsx");
+ assert.match(s,/role=\{valid \? "meter" : undefined\}/);
+ assert.match(s,/aria-valuenow=\{valid \? fraction : undefined\}/);
+ assert.match(s,/MEASUREMENT UNAVAILABLE/);
+});
+test("download installer commands are keyboard reachable",()=>{
+ const s=read("app/download/page.tsx");
+ assert.match(s,/<pre tabIndex=\{0\} aria-label="Watcher installation commands"/);
+});
