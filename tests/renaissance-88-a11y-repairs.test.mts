@@ -36,7 +36,7 @@ test("unavailable replay gauges do not masquerade as measured zero",()=>{
 });
 test("download installer commands are keyboard reachable",()=>{
  const s=read("app/download/page.tsx");
- assert.match(s,/<pre tabIndex=\{0\} aria-label="Watcher installation commands"/);
+ assert.match(s,/<pre role="region" tabIndex=\{0\} aria-label="Watcher installation commands"/);
 });
 
 test("Academy variant controls are separately keyboard operable, not nested in a button",()=>{
