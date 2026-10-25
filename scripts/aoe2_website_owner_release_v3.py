@@ -25,6 +25,8 @@ from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from aoe2_website_owner_observer_v3 import TIMER_FAMILIES
+
 from aoe2_website_release_v2 import (
     MAIN_SOURCE_SHA, PRODUCTION_SHA, Hold, canonical, git, read_json, require,
     source_scope as historical_scope, utc_time,
@@ -337,6 +339,42 @@ def protected_dispatch(data, candidate_repo, mode, stage_receipt=None):
     return result
 
 
+
+def stable_financial_runtime_identity(immutable: dict) -> dict:
+    """Compare protected Wolo/config/timer policy, not timer-fired one-shot PIDs.
+
+    A reconciliation service launched by its already-enabled timer is expected
+    to go active/running and then inactive/dead during a long isolated web build.
+    Its transient MainPID/ActiveState/SubState are OBSERVED in each full packet,
+    but not treated as immutable release authority. Unit presence/load/config,
+    enablement, and all timer states remain checked; continuous Wolo/consensus
+    writers retain exact PID/inode/exe identity.
+
+    Call only after validate_observation has admitted each complete snapshot.
+    """
+    require(type(immutable) is dict and type(immutable.get("financial_units")) is dict,
+            "invalid protected financial runtime observation")
+    units = immutable["financial_units"]
+    oneshots = {name + ".service" for name in TIMER_FAMILIES}
+    require(oneshots.issubset(units), "missing registered timed one-shot service")
+    stable = dict(immutable)
+    stable_units = {}
+    for name, row in units.items():
+        require(type(row) is dict, "invalid financial unit observation")
+        if name in oneshots:
+            require(set(row) == {"LoadState", "ActiveState", "SubState",
+                                 "UnitFileState", "MainPID"} and row["LoadState"] == "loaded",
+                    "incomplete timed one-shot unit observation")
+            stable_units[name] = {
+                "LoadState": row["LoadState"],
+                "UnitFileState": row["UnitFileState"],
+            }
+        else:
+            stable_units[name] = row
+    stable["financial_units"] = stable_units
+    return stable
+
+
 def operation(mode, candidate_repo: Path, *, packet=None, stage_receipt=None, attempt_id=None):
     # Set trusted candidate root BEFORE importing existing lease/release modules.
     require(not candidate_repo.is_symlink(), "linked candidate")
@@ -361,14 +399,14 @@ def operation(mode, candidate_repo: Path, *, packet=None, stage_receipt=None, at
         require(p.get("phase") == phase, "wrong signed phase")
         reference = expected.get("runtime_observation")
         validate_observation(reference, max_age_seconds=1200)
-        require(reference["immutable"] == before["immutable"] and reference["website"] == before["website"],
+        require(stable_financial_runtime_identity(reference["immutable"]) == stable_financial_runtime_identity(before["immutable"]) and reference["website"] == before["website"],
                 "runtime/config/finance/website changed since owner approval")
         actual = dict(context); actual["runtime_observation"] = reference
         require(actual == expected, "source/controller/manifest/rollback/artifact changed after owner review")
         # Context Git/manifest/file I/O may outlive freshness. Obtain a new
         # bounded observation after it and bind it to the owner's reference.
         latest = observe(); validate_observation(latest)
-        require(latest["immutable"] == before["immutable"] and latest["website"] == before["website"],
+        require(stable_financial_runtime_identity(latest["immutable"]) == stable_financial_runtime_identity(before["immutable"]) and latest["website"] == before["website"],
                 "runtime changed during lease-held authorization I/O")
         validate_observation(latest)
         # Consume durably before the ONE protected dispatch. Failure remains
@@ -376,7 +414,7 @@ def operation(mode, candidate_repo: Path, *, packet=None, stage_receipt=None, at
         sha = consume_request(packet, state_root=STATE_ROOT, public_key=PUBLIC_KEY)
         result = protected_dispatch(data, candidate_repo, mode, stage_receipt)
         after = observe(); validate_observation(after)
-        require(before["immutable"] == after["immutable"], "financial/Wolo boundary changed during release; recovery review required")
+        require(stable_financial_runtime_identity(before["immutable"]) == stable_financial_runtime_identity(after["immutable"]), "financial/Wolo boundary changed during release; recovery review required")
         require(after["website"]["source_sha"] == (MAIN_SOURCE_SHA if mode == "activate" else PRODUCTION_SHA),
                 "post-operation website source incorrect")
         if mode == "stage":
