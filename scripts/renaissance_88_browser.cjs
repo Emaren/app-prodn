@@ -14,6 +14,7 @@ const {createHash}=require("node:crypto");
 const ERROR_CODE=2;
 const {classifyCandidateRoute}=require("./renaissance_88_verdict.cjs");
 const net=require("node:net");
+const {REAL_READONLY,classifyApiFixtureRequest}=require("./renaissance_88_api_policy.cjs");
 function die(message){throw new Error("RENAISSANCE CHROME HOLD: "+message);}
 function argsOf(argv){
  const allowed=new Set(["plan","out","cohort","cohorts","samples","route-ms","deadline-ms"]);
@@ -55,6 +56,13 @@ function safeOutput(dir){
  if(fs.lstatSync(dir).isSymbolicLink())die("Output directory symlink");
 }
 async function localDatabaseFixture(){
+ const root=process.env.REN88_PG_ROOT;
+ const intended="postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88";
+ if(process.env.RENAISSANCE_88_FIXTURE_ALLOWED!=="1"||!root||
+    process.env.DATABASE_URL!==intended||!fs.existsSync(path.join(root,"before.sha256")))
+   return "UNAVAILABLE";
+ const hash=fs.readFileSync(path.join(root,"before.sha256"),"utf8").trim();
+ if(!/^[0-9a-f]{64}$/.test(hash))return "UNAVAILABLE";
  return new Promise(resolve=>{
   const socket=new net.Socket();let finished=false;
   const finish=value=>{if(finished)return;finished=true;socket.destroy();resolve(value);};
@@ -62,7 +70,7 @@ async function localDatabaseFixture(){
   socket.once("connect",()=>finish("REACHABLE"));
   socket.once("error",()=>finish("UNAVAILABLE"));
   socket.once("timeout",()=>finish("UNAVAILABLE"));
-  socket.connect(5432,"127.0.0.1");
+  socket.connect(55437,"127.0.0.1");
  });
 }
 async function run(){
@@ -98,7 +106,8 @@ async function run(){
   browser_name:"Google Chrome/Chromium via playwright-core 1.57.0",
   origin:base,cohort:opts.cohort,cohorts:opts.cohorts,samples:opts.samples,
   isolated_loopback:true,database_fixture:databaseFixture,production_certified:false,score:null,criterion_points_awarded:null,
-  anonymous_only:true,api_mode:"SYNTHETIC_503_LOCAL_ONLY",server_get_no_mutation:"UNPROVEN",
+  anonymous_only:true,api_mode:"AUDITED_REAL_LOCAL_GET_PLUS_SYNTHETIC_503",
+  server_get_no_mutation:"PENDING_POST_BROWSER_SNAPSHOT",
   notes:["Actual browser/document navigation; remote/live production never accessed",
     "API GET responses are deterministic synthetic 503 fixtures, NOT real API/domain tests",
     "No authenticated fixture, replay corpus, real database, real failure recovery or live release attestation",
@@ -123,8 +132,8 @@ async function run(){
      seasonal_theme:"UNKNOWN",p75_p95:"UNKNOWN",heap:"UNKNOWN",
      domain:"UNKNOWN",production:"UNKNOWN",financial_nonmutation:"UNKNOWN",
      client_mutation_attempts:"UNKNOWN"},
-    resource:{total_requests:0,api_503:0,external_blocked:0,
-              client_mutations_blocked:0},errors:[],missing_criteria:[]};
+    resource:{total_requests:0,api_503:0,api_real_requested:0,api_real_statuses:{},
+              external_blocked:0,client_mutations_blocked:0},errors:[],missing_criteria:[]};
    const timings=[];
    for(const viewport of [{name:"desktop",width:1440,height:900},{name:"mobile",width:390,height:844}]){
     for(let attempt=0;attempt<opts.samples;attempt++){
@@ -155,6 +164,11 @@ async function run(){
        }
        if(parsed.origin!==base){record.resource.external_blocked++;return intercepted.abort("blockedbyclient");}
        if(parsed.pathname.startsWith("/api/")){
+        const policy=classifyApiFixtureRequest(request.url(),method,base,databaseFixture);
+        if(policy==="LOCAL_AUDITED_READONLY"){
+          record.resource.api_real_requested++;
+          return intercepted.continue();
+        }
         record.resource.api_503++;view.api_503++;
         return intercepted.fulfill({status:503,contentType:"application/json",
           headers:{"Cache-Control":"no-store"},
@@ -163,6 +177,16 @@ async function run(){
        return intercepted.continue();
       });
       page=await context.newPage();
+      page.on("response",response=>{
+       try{
+        const url=new URL(response.url());
+        if(url.origin===base&&REAL_READONLY.has(url.pathname)&&
+           classifyApiFixtureRequest(response.url(),response.request().method(),base,databaseFixture)==="LOCAL_AUDITED_READONLY"){
+          const status=String(response.status());
+          record.resource.api_real_statuses[status]=(record.resource.api_real_statuses[status]??0)+1;
+        }
+       }catch{}
+      });
       const errs=[];
       page.on("pageerror",e=>{if(errs.length<12)errs.push(String(e.message).slice(0,160));});
       page.setDefaultTimeout(Math.min(6000,opts.routeMs));
@@ -196,7 +220,8 @@ async function run(){
       view.nav_ms=observed.navMs;view.heap_mb=observed.heapMb;
       view.speed_chip=observed.speedChip;view.speed_ready=observed.speedReady;
       view.uncaughtErrors=errs.length;
-      view.dependencyUnavailable=errs.some(message=>/Server Components render/i.test(message));
+      view.dependencyUnavailable=errs.some(message=>/Server Components render/i.test(message))&&
+        (databaseFixture==="UNAVAILABLE"||view.api_503>0||record.resource.external_blocked>0);
       if(errs.length)record.errors.push(viewport.name+" uncaught: "+errs.join("; "));
       // Actual keyboard interaction, not a claimed screen-reader WCAG audit.
       await page.keyboard.press("Tab");
@@ -254,6 +279,8 @@ async function run(){
      record.views.some(v=>v.images_missing_alt>0||v.accessibilityScan.seriousOrCritical>0)?"FAIL":
      measuredAxe.length===2?"OBSERVED_AXE_AUTOMATED_ONLY":"UNKNOWN";
    record.criteria.api_failure=record.views.some(v=>v.api_503>0)?"OBSERVED_SYNTHETIC_503":"UNKNOWN";
+   record.criteria.api_real=record.resource.api_real_requested>0?
+     "LOCAL_READONLY_GET_OBSERVED_NOT_DOMAIN_CERTIFIED":"UNKNOWN";
    // A retained Speed reading does not qualify current-route explicit readiness.
    record.criteria.speed_readiness=route.overlay_source_policy.speed_explicit_route?
       (record.views.some(v=>v.speed_ready==="EXPLICIT_CANDIDATE_CHIP")?
