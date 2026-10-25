@@ -1677,9 +1677,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RIVALRIES_AND_WAR_VAULT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "0c4e0b30c3bd4dbbe87eb5b0fd33fe6dc43ee327cbef91197c6d0e7378448330",
+      "sha256": "3d118fed172e8b01bd811668e6c7654d58e525dc466279e3439320904a196f2c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
