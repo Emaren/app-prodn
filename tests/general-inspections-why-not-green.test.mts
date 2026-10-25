@@ -146,6 +146,36 @@ test("missing DocsV2 proof stays UNKNOWN while a fresh observed P0 invariant fai
   assert.equal(report.totalMissingCategoryPoints, 30);
 });
 
+test("a replayed snapshot becomes STALE at request time without laundering old 100-point credit", () => {
+  const snap = fixture();
+  const time = Date.parse(NOW) + 7 * 3_600_000;
+  const report = buildWhyNotGreenReport(snap, time);
+  assert.equal(report.observedOverallScore, 100);
+  assert.equal(report.totalMissingCategoryPoints, 0);
+  assert.equal(report.snapshotEvidenceStatus, "STALE");
+  assert.equal(report.snapshotAgeHours, 7);
+  assert.equal(report.evaluatedAt, "2026-10-25T19:00:00.000Z");
+  assert.equal(report.evidenceChecks.length, Object.values(INSPECTION_CATEGORY_WEIGHTS).reduce((n, weights) => n + weights.length, 0));
+  assert.ok(report.evidenceChecks.every((row) => row.evidenceStatus === "STALE" && row.reason === "stale-snapshot"));
+  assert.ok(report.matrix.every((category) => category.evidenceStatus === "STALE"));
+  assert.equal(report.measuredHealthChanged, false);
+  assert.equal(report.evidenceChecks[0].originalProducerReceiptId, null);
+  assert.equal(report.evidenceChecks[0].originalProducerReceiptDigest, null);
+  assert.equal(report.evidenceChecks[0].claimedReleaseSha, SHA);
+});
+
+test("request-clock skew and invalid times cannot promote cached snapshots to current proof", () => {
+  const snap = fixture();
+  const futureSkew = buildWhyNotGreenReport(snap, Date.parse(NOW) - 6 * 60_000);
+  assert.equal(futureSkew.snapshotEvidenceStatus, "UNKNOWN");
+  assert.equal(futureSkew.evidenceChecks[0].reason, "future-dated-snapshot");
+  assert.throws(() => buildWhyNotGreenReport(snap, NaN), /Incomplete or unbound/);
+  assert.throws(() => buildWhyNotGreenReport(snap, Infinity), /Incomplete or unbound/);
+  const fresh = buildWhyNotGreenReport(snap, Date.parse(NOW) + 60_000);
+  assert.equal(fresh.snapshotEvidenceStatus, "PASS");
+  assert.equal(fresh.evidenceChecks[0].evidenceStatus, "PASS");
+});
+
 test("rejects corrupt scores, missing source, duplicate checks and altered weights", () => {
   const wrongRelease = fixture();
   wrongRelease.releaseSha = null;
@@ -166,5 +196,6 @@ test("public API report selects one collector snapshot, never a second scan", as
   const src = readFileSync(new URL("../app/api/general-inspections/route.ts", import.meta.url), "utf8");
   assert.match(src, /requestedReport === "why-not-green"/);
   assert.equal((src.match(/buildGeneralInspectionsSnapshot\(\)/g) || []).length, 1);
+  assert.match(src, /buildWhyNotGreenReport\\(snapshot, Date\\.now\\(\\)\\)/);
   assert.match(src, /Cache-Control/);
 });
