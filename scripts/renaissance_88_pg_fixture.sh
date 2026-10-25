@@ -60,11 +60,21 @@ SQL
    ;;
  snapshot|verify)
    [[ -d "$DATA" ]] || { echo "HOLD fixture cluster missing";exit 2; }
-   "$BIN/pg_dump" --dbname="$OWNER_URL" --data-only --no-owner --no-privileges \
-     --schema=public --inserts --column-inserts > "$REN88_PG_ROOT/current.sql"
+   # PostgreSQL plain dumps otherwise contain a randomized \\restrict key.
+   # A fixed key is safe here: this is ephemeral fingerprinting, NEVER restore.
+   # Preserve the complete tables + sequences; normalize no actual data bytes.
+   dump_fixture() {
+     "$BIN/pg_dump" --dbname="$OWNER_URL" --data-only --no-owner --no-privileges \
+       --restrict-key=Renaissance88FixtureDigest --schema=public \
+       --inserts --column-inserts > "$1"
+   }
+   dump_fixture "$REN88_PG_ROOT/current.sql"
    hash="$(sha256sum "$REN88_PG_ROOT/current.sql" | awk '{print $1}')"
    if [[ "$action" == snapshot ]]; then
      [[ ! -f "$REN88_PG_ROOT/before.sha256" ]] || { echo "HOLD duplicate snapshot";exit 2; }
+     dump_fixture "$REN88_PG_ROOT/immediate-repeat.sql"
+     cmp -s "$REN88_PG_ROOT/current.sql" "$REN88_PG_ROOT/immediate-repeat.sql" ||
+       { echo "HOLD fixture dump is nondeterministic before any browser access";exit 2; }
      printf '%s\n' "$hash" > "$REN88_PG_ROOT/before.sha256"
      echo "BEFORE_DATA_SHA256=$hash"
    else
