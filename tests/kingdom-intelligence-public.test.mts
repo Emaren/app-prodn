@@ -225,10 +225,13 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
     assert.equal(publicView.activity24h?.sourceCommits, 48);
     assert.equal(publicView.systemAgents.length, 2);
     assert.equal(publicView.systemAgents[0]?.label, "Recovery OS");
-    assert.equal(publicView.systemAgents[0]?.progressPercent, 84.6);
-    assert.equal(publicView.systemAgents[0]?.activeProcess, true);
-    assert.equal(publicView.systemAgents[0]?.currentStep, "raw replay archive");
-    assert.equal(publicView.systemAgents[0]?.etaSeconds, 1234);
+    assert.equal(publicView.systemAgents[0]?.state, "UNKNOWN");
+    assert.equal(publicView.agentRuntimeAuthority.verified, false);
+    assert.equal(publicView.agentRuntimeAuthority.status, "UNVERIFIED");
+    assert.equal(publicView.systemAgents[0]?.progressPercent, null);
+    assert.equal(publicView.systemAgents[0]?.activeProcess, false);
+    assert.equal(publicView.systemAgents[0]?.currentStep, null);
+    assert.equal(publicView.systemAgents[0]?.etaSeconds, null);
     assert.equal(publicView.systemAgents[0]?.sealedChunks, 21);
     assert.equal(publicView.systemAgents[0]?.observedBytes, 5800000000);
     assert.equal(publicView.systemAgents[0]?.expectedBytes, 21400000000);
@@ -250,7 +253,7 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
     assert.equal(workshopBrain.productionRelease, "aaaaaaaaaaaa");
     assert.equal(workshopBrain.doctorScore, 94);
     assert.equal(workshopBrain.p0, 0);
-    assert.equal(workshopBrain.activeSystemCount, 1);
+    assert.equal(workshopBrain.activeSystemCount, null);
     assert.equal(workshopBrain.attentionSystemCount, 1);
     assert.equal(workshopBrain.directiveTitle, "Return Storage OS to healthy band");
 
