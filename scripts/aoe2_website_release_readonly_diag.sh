@@ -7,7 +7,11 @@ TARGET_MAIN="21cd1493b182cb0968a6b6cf3f528d0578cfd797"
 CERT_PROD="a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
 CANDIDATE="${WEBSITE_MAIN_REPO:-$HOME/projects/AoE2HDBets/app-prodn}"
 CONTROLLER="${WEBSITE_CONTROLLER_REPO:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}"
+# A root diagnostic and canonical deploy principal are DIFFERENT identities.
+# Ship is pinned to tony's dedicated git remote and restricted sudo.
 HOST="${WEBSITE_SSH_TARGET:-root@hel1}"
+RELEASE_HOST="${AOE2_RELEASE_HOST:-tony@hel1}"
+GLOBAL_LOCK="/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock"
 KEYROOT="/etc/aoe2war/website-release-authority-v2"
 STATEDIR="/var/lib/aoe2war-website-authority-v2"
 
@@ -116,6 +120,65 @@ evidence_presence "PRE_ACTIVATE_FOUR_HUMANS" "${WEBSITE_PRE_ACTIVATE_PACKET:-}"
 evidence_presence "SIGNED_WOLO_PRESTATE" "${WEBSITE_SIGNED_WOLO_PRESTATE:-}"
 evidence_presence "SIGNED_WOLO_POSTSTAGE" "${WEBSITE_SIGNED_WOLO_POSTSTAGE:-}"
 evidence_presence "STAGE_RECEIPT_EXACT_PATH" "${WEBSITE_STAGE_RECEIPT:-}"
+
+sub "MAC SIDE: CANONICAL DEPLOY SSH IDENTITY"
+out "SSH_RELEASE_TARGET" "$RELEASE_HOST"
+ssh_config="$(ssh -G "$RELEASE_HOST" 2>/dev/null || true)"
+ssh_user="$(printf '%s\\n' "$ssh_config" | awk '$1=="user" {print $2;exit}')"
+ssh_host="$(printf '%s\\n' "$ssh_config" | awk '$1=="hostname" {print $2;exit}')"
+ssh_port="$(printf '%s\\n' "$ssh_config" | awk '$1=="port" {print $2;exit}')"
+out "MAC_SSH_G_USER" "${ssh_user:-UNRESOLVED}"
+out "MAC_SSH_G_HOST" "${ssh_host:-UNRESOLVED}"
+out "MAC_SSH_G_PORT" "${ssh_port:-UNRESOLVED}"
+if [ "$ssh_user" != "tony" ]; then
+  out "RELEASE_SSH_IDENTITY" "HOLD (canonical VPS deploy executor must be tony)"
+else
+  out "RELEASE_SSH_IDENTITY" "SSH_CONFIG_TONY (requires actual remote authentication)"
+fi
+ssh -T -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes "$RELEASE_HOST" 'bash -s' <<'REMOTE_DEPLOY_READONLY'
+set -uo pipefail
+out() { printf '%-39s %s\\n' "$1" "$2"; }
+out "RELEASE_REMOTE_USER" "$(id -un 2>/dev/null || echo UNKNOWN)"
+out "RELEASE_REMOTE_UID" "$(id -u 2>/dev/null || echo UNKNOWN)"
+LOCK="/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock"
+PARENT="$(dirname "$LOCK")"
+if [ -d "$PARENT" ] && [ -x "$PARENT" ]; then
+  out "GLOBAL_LEASE_PARENT_TRAVERSABLE" "YES"
+else
+  out "GLOBAL_LEASE_PARENT_TRAVERSABLE" "NO"
+fi
+if [ -f "$LOCK" ]; then
+  if [ -w "$LOCK" ]; then
+    out "GLOBAL_LEASE_LOCK_WRITABLE" "YES"
+  else
+    out "GLOBAL_LEASE_LOCK_WRITABLE" "NO"
+  fi
+else
+  out "GLOBAL_LEASE_LOCK_EXISTS" "NO (parent write access required)"
+  if [ -w "$PARENT" ]; then
+    out "GLOBAL_LEASE_PARENT_WRITABLE" "YES"
+  else
+    out "GLOBAL_LEASE_PARENT_WRITABLE" "NO"
+  fi
+fi
+WEB="/var/www/AoE2HDBets/app-prodn"
+if [ -d "$WEB" ]; then
+  out "TONY_WEB_SOURCE_HEAD" "$(git -C "$WEB" rev-parse --verify HEAD 2>/dev/null || echo UNAVAILABLE)"
+  if [ -w "$WEB/.git" ]; then
+    out "TONY_WEB_GIT_WRITABLE" "YES"
+  else
+    out "TONY_WEB_GIT_WRITABLE" "NO"
+  fi
+fi
+if sudo -n -l /usr/bin/systemctl stop aoe2hdbets-web.service >/dev/null 2>&1 &&
+   sudo -n -l /usr/bin/systemctl start aoe2hdbets-web.service >/dev/null 2>&1 &&
+   sudo -n -l /usr/bin/install >/dev/null 2>&1; then
+  out "RESTRICTED_SUDO_RELEASE_PREFLIGHT" "YES (policy query only)"
+else
+  out "RESTRICTED_SUDO_RELEASE_PREFLIGHT" "NO (source-bound Ship will block)"
+fi
+REMOTE_DEPLOY_READONLY
+out "RELEASE_REMOTE_SSH_RC" "$?"
 
 sub "VPS SNAPSHOT - READ ONLY SSH"
 out "SSH_TARGET" "$HOST"
