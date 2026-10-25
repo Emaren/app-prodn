@@ -197,7 +197,7 @@ function WinRateMeter({
 
   if (rate === null) {
     return (
-      <span className="text-slate-600">
+      <span className="text-slate-300">
         —
       </span>
     );
@@ -209,7 +209,7 @@ function WinRateMeter({
         <span className="text-amber-50">
           {rate.toFixed(1)}%
         </span>
-        <span className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+        <span className="text-[9px] uppercase tracking-[0.12em] text-slate-300">
           resolved
         </span>
       </div>
@@ -456,7 +456,7 @@ function ThirtyDayRecord({
         </span>
       </div>
 
-      <div className="mt-1 whitespace-nowrap text-[9px] tabular-nums text-slate-600">
+      <div className="mt-1 whitespace-nowrap text-[9px] tabular-nums text-slate-300">
         {entry.last30Games}g
         {entry.last30Unknowns > 0
           ? ` · ${entry.last30Unknowns}?`
@@ -525,7 +525,7 @@ function WarriorExpansion({
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-600">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-300">
             Rank
           </div>
           <div className="mt-1 text-xl font-black tabular-nums text-white">
@@ -534,7 +534,7 @@ function WarriorExpansion({
         </div>
 
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-600">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-300">
             Rating
           </div>
           <div className="mt-1 text-xl font-black tabular-nums text-amber-100">
@@ -543,14 +543,14 @@ function WarriorExpansion({
         </div>
 
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-600">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-300">
             Record
           </div>
           <div className="mt-1 text-xl font-black tabular-nums">
             <span className="text-emerald-300">
               {entry.wins}
             </span>
-            <span className="text-slate-600">
+            <span className="text-slate-300">
               {" "}–{" "}
             </span>
             <span className="text-orange-300">
@@ -560,7 +560,7 @@ function WarriorExpansion({
         </div>
 
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-600">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-300">
             Win rate
           </div>
           <div className="mt-1 text-xl font-black tabular-nums text-white">
@@ -571,7 +571,7 @@ function WarriorExpansion({
         </div>
 
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-600">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-300">
             Last battle
           </div>
           <div className="mt-1 text-sm font-semibold tabular-nums text-slate-200">
@@ -679,7 +679,7 @@ function DockedWarriorExpansion({
   return (
     <div className="grid min-h-12 grid-cols-[auto_auto_auto_minmax(0,1fr)_auto] items-center gap-x-5 border-l-2 border-cyan-300/35 bg-[linear-gradient(90deg,rgba(34,211,238,0.045),rgba(4,10,20,0.94)_22%,rgba(2,7,15,0.98))] px-5 py-2.5 text-[10px] shadow-[inset_0_1px_0_rgba(103,232,249,0.06)]">
       <div className="whitespace-nowrap">
-        <span className="font-black uppercase tracking-[0.17em] text-slate-600">
+        <span className="font-black uppercase tracking-[0.17em] text-slate-300">
           {identityLabel(entry)}
         </span>
       </div>
@@ -807,7 +807,7 @@ function DesktopWarriorInspector({
               {entry.currentName}
             </div>
 
-            <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+            <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-300">
               {identityLabel(entry)}
               {" · "}
               {
@@ -823,7 +823,7 @@ function DesktopWarriorInspector({
 
           <div className="grid shrink-0 grid-cols-5 gap-x-6">
             <div>
-              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-300">
                 Rating
               </div>
               <div className="mt-1 font-black tabular-nums text-white">
@@ -834,7 +834,7 @@ function DesktopWarriorInspector({
             </div>
 
             <div>
-              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-300">
                 30d
               </div>
               <div className="mt-1 whitespace-nowrap font-black tabular-nums">
@@ -851,7 +851,7 @@ function DesktopWarriorInspector({
             </div>
 
             <div>
-              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-300">
                 Record
               </div>
               <div className="mt-1 whitespace-nowrap font-black tabular-nums">
@@ -868,7 +868,7 @@ function DesktopWarriorInspector({
             </div>
 
             <div>
-              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-300">
                 Win %
               </div>
               <div className="mt-1 font-black tabular-nums text-white">
@@ -881,7 +881,7 @@ function DesktopWarriorInspector({
             </div>
 
             <div>
-              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-300">
                 Streak
               </div>
               <div
@@ -919,7 +919,7 @@ function DesktopWarriorInspector({
 
             {alternateNames.length >
             0 ? (
-              <div className="mt-1 truncate text-[9px] text-slate-600">
+              <div className="mt-1 truncate text-[9px] text-slate-300">
                 Also{" "}
                 <strong className="font-semibold text-slate-300">
                   {alternateNames.join(
@@ -1308,20 +1308,6 @@ export function LivingLeaderboardTable({
                         }
                       }}
                       tabIndex={0}
-                      aria-expanded={expanded}
-                      aria-controls={
-                        expanded
-                          ? drilldownMode ===
-                            1
-                            ? rowId(
-                                entry.key,
-                              )
-                            : drilldownMode ===
-                                2
-                              ? "living-warrior-dock"
-                              : "living-warrior-inspector"
-                          : undefined
-                      }
                       title={`Inspect ${entry.currentName}`}
                       className={`group cursor-pointer border-b border-white/[0.05] text-[0.95rem] outline-none transition-[background-color,box-shadow] duration-150 focus-visible:shadow-[inset_0_0_0_1px_rgba(103,232,249,0.28)] ${
                         index % 2 === 0
@@ -1437,7 +1423,7 @@ export function LivingLeaderboardTable({
                           ) : null}
                         </div>
 
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300">
                           <span>
                             {identityLabel(
                               entry,
@@ -1482,7 +1468,7 @@ export function LivingLeaderboardTable({
                         </div>
 
                         {entry.secondaryRatingLabel ? (
-                          <div className="mt-1 text-[9px] tabular-nums text-slate-600">
+                          <div className="mt-1 text-[9px] tabular-nums text-slate-300">
                             {
                               entry.secondaryRatingLabel
                             }
@@ -1564,7 +1550,7 @@ export function LivingLeaderboardTable({
                         {entry.unknowns >
                         0 ? (
                           <div
-                            className="mt-1 text-[9px] text-slate-600"
+                            className="mt-1 text-[9px] text-slate-300"
                             title={`${entry.unknowns} unresolved replay result${entry.unknowns === 1 ? "" : "s"}`}
                           >
                             {
@@ -1711,7 +1697,7 @@ export function LivingLeaderboardTable({
                     {entry.currentName}
                   </Link>
 
-                  <div className="mt-1 text-[9px] uppercase tracking-[0.16em] text-slate-600">
+                  <div className="mt-1 text-[9px] uppercase tracking-[0.16em] text-slate-300">
                     {identityLabel(
                       entry,
                     )}{" "}
@@ -1732,7 +1718,7 @@ export function LivingLeaderboardTable({
                   }}
                   aria-label={`Hide ${entry.currentName}`}
                   title="Hide warrior"
-                  className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.08] text-slate-600"
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.08] text-slate-300"
                 >
                   <EyeOff
                     className="h-4 w-4"
@@ -1752,7 +1738,7 @@ export function LivingLeaderboardTable({
                   className={`grid h-10 w-10 place-items-center rounded-full border ${
                     bookmarked
                       ? "border-amber-200/30 bg-amber-300/[0.10] text-amber-200"
-                      : "border-white/[0.08] text-slate-600"
+                      : "border-white/[0.08] text-slate-300"
                   }`}
                 >
                   <Star
@@ -1768,7 +1754,7 @@ export function LivingLeaderboardTable({
 
               <div className="mt-4 grid grid-cols-4 gap-2 border-t border-white/[0.07] pt-3 text-center">
                 <div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-300">
                     Rating
                   </div>
                   <div className="mt-1 font-black tabular-nums text-white">
@@ -1779,7 +1765,7 @@ export function LivingLeaderboardTable({
                 </div>
 
                 <div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-300">
                     24h
                   </div>
                   <div className="mt-1">
@@ -1790,7 +1776,7 @@ export function LivingLeaderboardTable({
                 </div>
 
                 <div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-300">
                     Record
                   </div>
                   <div className="mt-1 whitespace-nowrap font-black tabular-nums">
@@ -1807,7 +1793,7 @@ export function LivingLeaderboardTable({
                 </div>
 
                 <div>
-                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                  <div className="text-[9px] uppercase tracking-[0.12em] text-slate-300">
                     Streak
                   </div>
                   <div

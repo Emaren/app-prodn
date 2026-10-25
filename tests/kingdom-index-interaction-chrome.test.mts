@@ -11,6 +11,16 @@ function fixture(){
     documentStatus:200,reducedMotionEmulated:true,
     accessibility:{axNodeCount:300,namedButtons:25,unnamedButtons:0},
     keyboard:{ledgerActivated:true,mapRestored:true,detailOpened:true,detailClosed:true,focusRestored:true},
+    criterionCoverage:{
+      apiRoutes:88,sourceCensusRows:88,completePendingRoutes:88,
+      profiledRoutes:88,sourceFingerprintedRoutes:88,
+      canonicalCriteria:20,canonicalMaximum:100,
+      indexSpecializedGates:3,approvedRoutes:0,nullScoreRoutes:88,
+      indexOfficialScoreNull:true,indexAuthenticatedEarnedNull:true,
+      routeFingerprint:"src-3bcfa463b322f42f",
+      detailRows:20,pendingDetailRows:20,approvedDetailRows:0,
+      expandedByKeyboard:true
+    },
     diagnostics:{snapshots:["initial","after-ledger-enter","after-map-enter","after-inspect-enter","after-close-enter"].map(phase=>({
       phase,href:"http://127.0.0.1:3030/kingdom-index",
       focus:{tag:"BUTTON",name:phase==="after-map-enter"?"Kingdom map":"Inspect Kingdom Index",role:null},
@@ -89,4 +99,25 @@ test("detail focus loss remains a failed keyboard verdict even when close remove
  const report=inspectInteractionReceipt(d,expected);
  assert.equal(report.keyboardInteractionsObserved,false);
  assert.equal(report.certified,false);
+});
+
+test("exact emitted Chrome criterion coverage demands 88 distinct pages, 20 obligations and keyboard-visible pending evidence",()=>{
+ const doc=fixture();
+ assert.equal(inspectInteractionReceipt(doc,expected).valid,true);
+ const cases=[
+  {apiRoutes:87},{sourceCensusRows:87},{completePendingRoutes:87},
+  {profiledRoutes:87},{sourceFingerprintedRoutes:87},{canonicalCriteria:19},
+  {canonicalMaximum:99},{indexSpecializedGates:2},
+  {approvedRoutes:1},{nullScoreRoutes:87},{indexOfficialScoreNull:false},
+  {indexAuthenticatedEarnedNull:false},{routeFingerprint:"src-wrong"},
+  {detailRows:19},{pendingDetailRows:19},{approvedDetailRows:1},
+  {expandedByKeyboard:false}
+ ];
+ for(const delta of cases){
+   const corrupted=fixture();
+   Object.assign(corrupted.viewports[1].criterionCoverage,delta);
+   assert.throws(()=>inspectInteractionReceipt(corrupted,expected),
+     /Invalid keyboard, AX, viewport or Chrome warm cohort/,
+     "Refused false Chrome proof: "+JSON.stringify(delta));
+ }
 });

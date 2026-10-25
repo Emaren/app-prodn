@@ -109,6 +109,8 @@ async function main(){
  const summary={
   schema:"aoe2war.renaissance.public88.candidate-coverage.v1",
   source_sha:plan.source_sha,build_id:plan.build.build_id,
+  source_clean:plan.source_clean===true,derived_policy_unsealed:plan.derived_policy_unsealed===true,
+  source_admission:plan.source_admission||"UNSPECIFIED_HOLD",
   manifest_sha256:plan.build.manifest_sha256,
   plan_sha256:digest(planBytes),route_digest_sha256:evidenceDigests,
   routes_required:88,routes_observed:perRoute.size,

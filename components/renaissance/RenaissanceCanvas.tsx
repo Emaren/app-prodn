@@ -43,7 +43,7 @@ function nodeArc(i:number,total:number,rx:number,ry:number,cx:number,cy:number){
 function PhaseEngine({snapshot,mode}:{snapshot:RenaissanceSnapshot;mode:RenaissanceMode}){
  const total=snapshot.totalTemplates;
  const max=Math.max(...snapshot.phases.map(p=>p.total));
- return <div className="rx-engine" aria-label="Campaign route distribution by phase">
+ return <div className="rx-engine focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200" role="region" tabIndex={0} aria-label="Campaign route distribution by phase">
    <div className="rx-engine-glow" aria-hidden="true"/>
    <svg className="rx-engine-svg" viewBox="0 0 820 400" role="img" aria-label={"Seven priority phases containing "+total+" baseline source templates"}>
      <defs>

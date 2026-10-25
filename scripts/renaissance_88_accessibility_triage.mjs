@@ -82,6 +82,8 @@ export function makeAxeTriage(plan,records){
    .sort((a,b)=>b.routes.length-a.routes.length||a.rule.localeCompare(b.rule));
  return {schema:"aoe2war.renaissance88.axe-selector-triage.v1",
   source_sha:plan.source_sha,build_id:plan.build.build_id,
+  source_clean:plan.source_clean===true,derived_policy_unsealed:plan.derived_policy_unsealed===true,
+  source_admission:plan.source_admission||"UNSPECIFIED_HOLD",
   route_count:88,viewport_observations:176,affected_routes:new Set(findings.map(x=>x.route)).size,
   serious_or_critical_rule_observations:findings.length,unmeasured_scans:unknown,
   groups:byRule,findings,gates,score:null,certified:false,

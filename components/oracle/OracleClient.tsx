@@ -436,7 +436,7 @@ function OracleMarketFloor({
             <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="min-h-11 w-full appearance-none rounded-full border border-white/10 bg-[#080b16] px-4 pr-10 text-sm font-bold text-white outline-none transition focus:border-violet-200/35">
               {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" aria-hidden="true" />
           </label>
         </div>
 
@@ -460,7 +460,7 @@ function OracleMarketFloor({
           <div className="rounded-[2rem] border border-dashed border-white/12 bg-white/[0.025] p-8 text-center">
             <CircleGauge className="mx-auto h-8 w-8 text-violet-200/50" aria-hidden="true" />
             <h3 className="mt-3 text-xl font-semibold text-white">No markets in this lane yet.</h3>
-            <p className="mt-2 text-sm text-slate-500">Propose the first exact question for this part of the Kingdom.</p>
+            <p className="mt-2 text-sm text-slate-300">Propose the first exact question for this part of the Kingdom.</p>
           </div>
         )}
       </section>
@@ -522,7 +522,7 @@ function OracleMarketCard({ market, snapshot, busy, onPlace, onSignIn }: { marke
           <span className="rounded-full border border-violet-200/15 bg-violet-300/8 px-2.5 py-1 text-violet-100">{market.category}</span>
           <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-slate-400">{statusLabel(market.status)}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500"><CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> {dateLabel(market.closesAt)}</div>
+        <div className="flex items-center gap-1.5 text-xs text-slate-300"><CalendarClock className="h-3.5 w-3.5" aria-hidden="true" /> {dateLabel(market.closesAt)}</div>
       </div>
 
       <Link href={`/oracle/${encodeURIComponent(market.slug)}`} className="mt-5 block focus:outline-none focus:ring-2 focus:ring-violet-200/50">
@@ -537,7 +537,7 @@ function OracleMarketCard({ market, snapshot, busy, onPlace, onSignIn }: { marke
             <span className="rounded-full border border-white/12 bg-black/20 px-3 py-1 text-sm font-black text-white">{market.resultOutcome}</span>
           </div>
           <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">{market.resultEvidence}</p>
-          <div className="mt-2 text-[11px] text-slate-500">
+          <div className="mt-2 text-[11px] text-slate-300">
             {market.resolvedByUid ? `Resolved by ${market.resolvedByUid}` : "Resolver unavailable"}
             {market.resolvedAt ? ` · ${dateLabel(market.resolvedAt)}` : ""}
           </div>
@@ -568,14 +568,14 @@ function OracleMarketCard({ market, snapshot, busy, onPlace, onSignIn }: { marke
         <div className={`mt-4 rounded-[1.25rem] border p-3.5 ${side === "yes" ? "border-emerald-200/18 bg-emerald-300/[0.055]" : "border-rose-200/18 bg-rose-300/[0.055]"}`}>
           <div className="flex items-center justify-between gap-3">
             <span className={`text-xs font-black uppercase tracking-[0.2em] ${side === "yes" ? "text-emerald-200" : "text-rose-200"}`}>{side} forecast</span>
-            <button type="button" onClick={() => setSide(null)} className="text-xs text-slate-500 hover:text-white">Cancel</button>
+            <button type="button" onClick={() => setSide(null)} className="text-xs text-slate-300 hover:text-white">Cancel</button>
           </div>
           <div className="mt-3 flex gap-2">
             <label className="sr-only" htmlFor={`quick-${market.slug}`}>Oracle Marks</label>
             <input id={`quick-${market.slug}`} type="number" min={1} max={Math.max(1, max)} value={amount} onChange={(event) => setAmount(Number(event.target.value))} className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#050711] px-3 text-sm font-bold text-white outline-none focus:border-violet-200/35" />
             <button type="button" onClick={() => void place()} disabled={busy || !open || (Boolean(snapshot.viewer) && max < 1)} className={`min-h-11 rounded-xl px-4 text-sm font-black text-slate-950 transition disabled:opacity-45 ${side === "yes" ? "bg-emerald-300 hover:bg-emerald-200" : "bg-rose-300 hover:bg-rose-200"}`}>{snapshot.viewer ? "Commit" : "Sign in"}</button>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">{snapshot.viewer ? `${fmt(max)} Marks available for this market` : "Receive 1,000 non-transferable Marks after sign-in"}</p>
+          <p className="mt-2 text-[11px] text-slate-300">{snapshot.viewer ? `${fmt(max)} Marks available for this market` : "Receive 1,000 non-transferable Marks after sign-in"}</p>
         </div>
       ) : (
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -585,7 +585,7 @@ function OracleMarketCard({ market, snapshot, busy, onPlace, onSignIn }: { marke
       )}
 
       <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-4">
-        <div className="text-xs text-slate-500">Source: <span className="text-slate-300">{market.sourceLabel}</span></div>
+        <div className="text-xs text-slate-300">Source: <span className="text-slate-300">{market.sourceLabel}</span></div>
         <Link href={`/oracle/${encodeURIComponent(market.slug)}`} className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-200 transition hover:text-white">Rules & detail <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" /></Link>
       </div>
     </article>
@@ -611,7 +611,7 @@ function ProposalForm({ proposal, setProposal, busy, signedIn, onSubmit, onSignI
         <Field label="Exact void rule" wide><textarea required minLength={20} maxLength={4000} value={proposal.voidRule} onChange={(event) => field("voidRule", event.target.value)} placeholder="VOID if the authoritative source cannot…" className={`${inputClass} min-h-24 resize-y py-3`} /></Field>
       </div>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs leading-5 text-slate-500">Submitting records a 100 WOLO charter bond as <strong className="text-slate-300">not funded</strong>. No wallet or chain movement occurs.</p>
+        <p className="text-xs leading-5 text-slate-300">Submitting records a 100 WOLO charter bond as <strong className="text-slate-300">not funded</strong>. No wallet or chain movement occurs.</p>
         {signedIn ? (
           <button type="submit" disabled={busy} className="min-h-12 shrink-0 rounded-full bg-amber-200 px-6 text-sm font-black text-slate-950 transition hover:bg-white disabled:opacity-45">Submit exact market</button>
         ) : (
@@ -625,11 +625,11 @@ function ProposalForm({ proposal, setProposal, busy, signedIn, onSubmit, onSignI
 function ProposalSlate({ proposals, viewerIsAdmin, busy, reviewNotes, setReviewNotes, onReview }: { proposals: OracleProposalView[]; viewerIsAdmin: boolean; busy: boolean; reviewNotes: Record<string, string>; setReviewNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>; onReview: (proposal: OracleProposalView, decision: "approved" | "rejected") => Promise<void> }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Citizen slate</p><h3 className="mt-1 text-xl font-semibold text-white">Markets awaiting or carrying review.</h3></div><span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs font-bold text-slate-300">{proposals.length}</span></div>
+      <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-300">Citizen slate</p><h3 className="mt-1 text-xl font-semibold text-white">Markets awaiting or carrying review.</h3></div><span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-xs font-bold text-slate-300">{proposals.length}</span></div>
       <div className="max-h-[34rem] space-y-3 overflow-y-auto pr-1">
         {proposals.length ? proposals.map((item) => (
           <article key={item.publicId} className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em]"><span className="rounded-full border border-violet-200/14 bg-violet-300/8 px-2.5 py-1 text-violet-100">{item.category}</span><span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-slate-400">{statusLabel(item.status)}</span><span className="ml-auto text-slate-600">by {item.creatorLabel}</span></div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em]"><span className="rounded-full border border-violet-200/14 bg-violet-300/8 px-2.5 py-1 text-violet-100">{item.category}</span><span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-slate-400">{statusLabel(item.status)}</span><span className="ml-auto text-slate-300">by {item.creatorLabel}</span></div>
             <h4 className="mt-3 text-base font-semibold leading-6 text-white">{item.question}</h4>
             <div className="mt-3 grid gap-2 sm:grid-cols-2"><CardFact label="Source" value={item.sourceLabel} /><CardFact label="Closes" value={dateLabel(item.closesAt)} /></div>
             {item.reviewNote ? <p className="mt-3 rounded-xl border border-white/8 bg-white/[0.025] p-3 text-xs leading-5 text-slate-400"><strong className="text-slate-200">Review:</strong> {item.reviewNote}</p> : null}
@@ -637,17 +637,17 @@ function ProposalSlate({ proposals, viewerIsAdmin, busy, reviewNotes, setReviewN
               <div className="mt-3 border-t border-white/8 pt-3"><label className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200/60" htmlFor={`review-${item.publicId}`}>Keeper review note</label><textarea id={`review-${item.publicId}`} value={reviewNotes[item.publicId] ?? ""} onChange={(event) => setReviewNotes((current) => ({ ...current, [item.publicId]: event.target.value }))} placeholder="Required when rejecting; published to the Chronicle." className={`${inputClass} mt-2 min-h-20 resize-y py-3`} /><div className="mt-2 grid grid-cols-2 gap-2"><button type="button" disabled={busy} onClick={() => void onReview(item, "approved")} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-300 text-xs font-black text-slate-950 disabled:opacity-45"><CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />Approve & open</button><button type="button" disabled={busy} onClick={() => void onReview(item, "rejected")} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200/20 bg-rose-300/10 text-xs font-black text-rose-100 disabled:opacity-45"><XCircle className="h-3.5 w-3.5" aria-hidden="true" />Reject</button></div></div>
             ) : null}
           </article>
-        )) : <div className="rounded-[1.35rem] border border-dashed border-white/10 p-6 text-center text-sm text-slate-500">No citizen markets have entered review yet.</div>}
+        )) : <div className="rounded-[1.35rem] border border-dashed border-white/10 p-6 text-center text-sm text-slate-300">No citizen markets have entered review yet.</div>}
       </div>
     </div>
   );
 }
 
-const inputClass = "min-h-11 w-full rounded-xl border border-white/10 bg-[#060812] px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-200/35 focus:ring-2 focus:ring-violet-300/10 disabled:cursor-not-allowed";
+const inputClass = "min-h-11 w-full rounded-xl border border-white/10 bg-[#060812] px-3 text-sm text-white outline-none placeholder:text-slate-300 focus:border-violet-200/35 focus:ring-2 focus:ring-violet-300/10 disabled:cursor-not-allowed";
 
-function Field({ label, wide = false, children }: { label: string; wide?: boolean; children: React.ReactNode }) { return <label className={wide ? "sm:col-span-2" : ""}><span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.19em] text-slate-500">{label}</span>{children}</label>; }
-function HeroMini({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl border border-white/12 bg-black/48 p-3 backdrop-blur-md"><div className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">{label}</div><div className="mt-1 text-lg font-black text-white">{value}</div></div>; }
-function PulseTile({ icon: Icon, label, value, note }: { icon: typeof UsersRound; label: string; value: string; note: string }) { return <div className="rounded-[1.35rem] border border-white/10 bg-[#090c17] p-4"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.19em] text-slate-500"><Icon className="h-3.5 w-3.5 text-violet-200/60" aria-hidden="true" />{label}</div><div className="mt-2 text-xl font-black text-white">{value}</div><div className="mt-1 text-xs text-slate-600">{note}</div></div>; }
-function Step({ number, title, body }: { number: string; title: string; body: string }) { return <div className="rounded-[1.3rem] border border-white/8 bg-black/20 p-4"><div className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-200/55">{number}</div><div className="mt-2 text-sm font-bold text-white">{title}</div><p className="mt-1.5 text-xs leading-5 text-slate-500">{body}</p></div>; }
-function CardFact({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl border border-white/8 bg-white/[0.025] p-2.5"><div className="truncate text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">{label}</div><div className="mt-1 truncate text-xs font-bold text-slate-300" title={value}>{value}</div></div>; }
+function Field({ label, wide = false, children }: { label: string; wide?: boolean; children: React.ReactNode }) { return <label className={wide ? "sm:col-span-2" : ""}><span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.19em] text-slate-300">{label}</span>{children}</label>; }
+function HeroMini({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl border border-white/12 bg-black/48 p-3 backdrop-blur-md"><div className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-300">{label}</div><div className="mt-1 text-lg font-black text-white">{value}</div></div>; }
+function PulseTile({ icon: Icon, label, value, note }: { icon: typeof UsersRound; label: string; value: string; note: string }) { return <div className="rounded-[1.35rem] border border-white/10 bg-[#090c17] p-4"><div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.19em] text-slate-300"><Icon className="h-3.5 w-3.5 text-violet-200/60" aria-hidden="true" />{label}</div><div className="mt-2 text-xl font-black text-white">{value}</div><div className="mt-1 text-xs text-slate-300">{note}</div></div>; }
+function Step({ number, title, body }: { number: string; title: string; body: string }) { return <div className="rounded-[1.3rem] border border-white/8 bg-black/20 p-4"><div className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-200/55">{number}</div><div className="mt-2 text-sm font-bold text-white">{title}</div><p className="mt-1.5 text-xs leading-5 text-slate-300">{body}</p></div>; }
+function CardFact({ label, value }: { label: string; value: string }) { return <div className="min-w-0 rounded-xl border border-white/8 bg-white/[0.025] p-2.5"><div className="truncate text-[9px] font-black uppercase tracking-[0.15em] text-slate-300">{label}</div><div className="mt-1 truncate text-xs font-bold text-slate-300" title={value}>{value}</div></div>; }
 function DeskRule({ icon: Icon, copy }: { icon: typeof FileCheck2; copy: string }) { return <div className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/15 p-3 text-sm text-slate-300"><Icon className="h-4 w-4 shrink-0 text-amber-200/65" aria-hidden="true" />{copy}</div>; }

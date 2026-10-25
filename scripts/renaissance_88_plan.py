@@ -73,7 +73,8 @@ def realm_policy(root,routes):
     except (OSError,ValueError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as err:
         return [None]*len(routes),"CANONICAL_REALM_PREDICATE_UNAVAILABLE: "+type(err).__name__
 def make_plan(root:Path,build:Path|None=None,expected_sha:str|None=None,
-              expected_build_id:str|None=None,deep:bool=False):
+              expected_build_id:str|None=None,deep:bool=False,
+              preview_unsealed_generated_policy:bool=False):
     index=read_json(root/"config/kingdom-index-routes.json")
     inventory=read_json(root/"config/kingdom-index-inventory.json")
     phases=read_json(root/"config/renaissance-campaign.json")
@@ -97,8 +98,21 @@ def make_plan(root:Path,build:Path|None=None,expected_sha:str|None=None,
     pages,handlers=source_paths(root)
     if any(r not in pages for r in routes):raise ValueError("Uncompiled public entrypoint absent")
     head,clean=git_state(root)
-    if not head or not clean or (expected_sha and head!=expected_sha):
-        raise ValueError("Cannot bind census to clean exact Git head")
+    if not head or (expected_sha and head!=expected_sha):
+        raise ValueError("Cannot bind census to exact Git head")
+    if not clean:
+        if not preview_unsealed_generated_policy:
+            raise ValueError("Cannot bind census to clean exact Git head")
+        import subprocess
+        # Explicitly nonadmissible diagnostic only. Never relax normal plan.
+        changed=subprocess.run(
+            ["git","status","--porcelain","--untracked-files=no"],
+            cwd=root,capture_output=True,text=True,timeout=8,check=True).stdout.splitlines()
+        if changed!=[" M lib/pageChangeManifest.generated.ts"]:
+            raise ValueError("Preview forbidden: non-manifest tracked source drift")
+        if build is None or not expected_build_id:
+            raise ValueError("Unsealed preview requires exact built Next")
+
     build_data,emitted=build_paths(build,expected_build_id)
     if build is not None:
         if not expected_build_id:raise ValueError("Require independently passed expected BUILD_ID")
@@ -141,12 +155,16 @@ def make_plan(root:Path,build:Path|None=None,expected_sha:str|None=None,
               "accessibility":UNKNOWN,"api_read":UNKNOWN,"api_failure":UNKNOWN,
               "readiness":UNKNOWN,"p75_p95":UNKNOWN,"heap":UNKNOWN,
               "auth":UNKNOWN,"postgre_replay":UNKNOWN,"production":UNKNOWN},
-            "missing_criteria":["EXACT_BUILD_BROWSER","DOMAIN_ASSERTIONS","INDEPENDENT_LIVE_CERTIFICATION"],
+            "missing_criteria":["EXACT_BUILD_BROWSER","DOMAIN_ASSERTIONS","INDEPENDENT_LIVE_CERTIFICATION"]+(
+                ["GENERATED_POLICY_NOT_SEALED"] if not clean else []),
             "quality_score":None,"certified":False,
         })
     return {
       "schema":"aoe2war.renaissance.public88.factory-plan.v1",
-      "source_sha":head,"source_clean":True,"build":build_data,
+      "source_sha":head,"source_clean":clean,
+      "derived_policy_unsealed":not clean,
+      "source_admission":"HOLD_GENERATED_POLICY_RESEAL" if not clean else "SOURCE_CANDIDATE_ONLY",
+      "build":build_data,
       "candidate_only":True,"production_certified":False,"score":None,
       "planned_public":88,"actual_templates":len(pages),
       "actual_handlers":len(handlers),"historical_baseline":{"pages":144,"handlers":273},
@@ -159,6 +177,7 @@ def make_plan(root:Path,build:Path|None=None,expected_sha:str|None=None,
         "Dynamic import, generated Prisma, DB, runtime and API edges may be absent",
         "BUILD_ID is a local candidate artifact, not an authenticated deployed identity",
         "No browser verdict until Chrome receipts exist",
+         "Unsealed generated policy: only diagnostic Chrome evidence, never Index source admission",
         "No live production, independent signer, scorer point awards or custody operations"],
       "realm_policy_error":realm_error,"routes":documents
     }
@@ -197,11 +216,16 @@ def main():
     a.add_argument("--build-dir",type=Path)
     a.add_argument("--expected-build-id")
     a.add_argument("--deep",action="store_true")
+    a.add_argument("--preview-unsealed-generated-policy",action="store_true",
+        help="Only quarantined diagnostic browser plan; never scored/production")
     a.add_argument("--output",type=Path)
     a.add_argument("--root",type=Path,default=ROOT)
     o=a.parse_args()
     try:
-        plan=make_plan(o.root.resolve(),o.build_dir,o.expected_sha,o.expected_build_id,o.deep)
+        if o.preview_unsealed_generated_policy and (o.action!="plan" or o.build_dir is None):
+            raise ValueError("Quarantined unsealed plan requires an exact emitted build")
+        plan=make_plan(o.root.resolve(),o.build_dir,o.expected_sha,o.expected_build_id,o.deep,
+            o.preview_unsealed_generated_policy)
         if o.action=="impact":report=impact(plan,o.paths)
         elif o.action=="matrix":report={"source_sha":plan["source_sha"],
             "build":plan["build"],"routes":[{"route":r["route"],"phase":r["phase"],

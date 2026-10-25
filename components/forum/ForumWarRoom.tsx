@@ -383,13 +383,13 @@ function SearchField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search the War Room"
-        className="min-w-0 flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-500"
+        className="min-w-0 flex-1 bg-transparent text-slate-100 outline-none placeholder:text-slate-300"
       />
       {value ? (
         <button
           type="button"
           onClick={() => onChange("")}
-          className="rounded-full p-0.5 text-slate-500 hover:text-white"
+          className="rounded-full p-0.5 text-slate-300 hover:text-white"
           aria-label="Clear forum search"
         >
           <X className="h-3.5 w-3.5" />
@@ -451,7 +451,7 @@ function FeaturedThreadCard({
               {thread.excerpt}
             </p>
           ) : null}
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-300">
             <span className="text-slate-400">{thread.author.displayName}</span>
             <span>{formatForumDate(thread.createdAt)}</span>
           </div>
@@ -463,7 +463,7 @@ function FeaturedThreadCard({
             className={`rounded-full border p-2 transition ${
               thread.bookmarked
                 ? "border-amber-200/28 bg-amber-300/12 text-amber-100"
-                : "border-white/8 bg-white/[0.025] text-slate-500 hover:text-white"
+                : "border-white/8 bg-white/[0.025] text-slate-300 hover:text-white"
             }`}
             aria-label={thread.bookmarked ? "Remove bookmark" : "Bookmark thread"}
           >
@@ -471,7 +471,7 @@ function FeaturedThreadCard({
               className={`h-3.5 w-3.5 ${thread.bookmarked ? "fill-current" : ""}`}
             />
           </button>
-          <div className="hidden items-center gap-3 text-xs text-slate-500 sm:flex">
+          <div className="hidden items-center gap-3 text-xs text-slate-300 sm:flex">
             <span className="inline-flex items-center gap-1">
               <MessageSquare className="h-3.5 w-3.5" />
               {thread.replyCount}
@@ -522,13 +522,13 @@ function RecentThreadCard({
               {thread.excerpt}
             </p>
           ) : null}
-          <div className="mt-1.5 flex flex-wrap gap-2 text-[11px] text-slate-500">
+          <div className="mt-1.5 flex flex-wrap gap-2 text-[11px] text-slate-300">
             <span>{thread.author.displayName}</span>
             <span>{thread.tag}</span>
             <span>{formatForumDate(thread.updatedAt)}</span>
           </div>
         </button>
-        <div className="flex shrink-0 items-center gap-2 text-xs text-slate-500">
+        <div className="flex shrink-0 items-center gap-2 text-xs text-slate-300">
           <span className="hidden items-center gap-1 sm:inline-flex">
             <MessageSquare className="h-3.5 w-3.5" />
             {thread.replyCount}
@@ -537,7 +537,7 @@ function RecentThreadCard({
             type="button"
             onClick={onBookmark}
             className={`rounded-full p-1.5 transition hover:bg-white/[0.06] hover:text-white ${
-              thread.bookmarked ? "text-amber-200" : "text-slate-500"
+              thread.bookmarked ? "text-amber-200" : "text-slate-300"
             }`}
             aria-label={thread.bookmarked ? "Remove bookmark" : "Bookmark thread"}
           >
@@ -557,7 +557,7 @@ function StorySignals({ thread }: { thread: ForumThreadView }) {
     : null;
 
   return (
-    <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+    <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-slate-300">
       {authorHref ? (
         <Link
           href={authorHref}
@@ -632,7 +632,7 @@ function ExtremeStoryCard({
             className={`rounded-full border p-2 transition ${
               thread.bookmarked
                 ? "border-amber-200/24 bg-amber-300/10 text-amber-100"
-                : "border-white/8 bg-black/20 text-slate-500 hover:text-white"
+                : "border-white/8 bg-black/20 text-slate-300 hover:text-white"
             }`}
             aria-label={thread.bookmarked ? "Remove bookmark" : "Bookmark thread"}
           >
@@ -678,7 +678,7 @@ function ExtremeStoryCard({
         {variant === "lead" && thread.posts[0] ? (
           <blockquote className="mt-6 border-l-2 border-amber-200/35 pl-4 font-serif text-lg italic leading-7 text-amber-50/80">
             “{thread.posts[0].body}”
-            <footer className="mt-2 font-sans text-[9px] not-italic uppercase tracking-[0.22em] text-slate-500">
+            <footer className="mt-2 font-sans text-[9px] not-italic uppercase tracking-[0.22em] text-slate-300">
               {thread.posts[0].author.displayName} · From the long table
             </footer>
           </blockquote>
@@ -746,7 +746,7 @@ function ExtremeForumFrontPage({
     <main className="overflow-x-hidden py-1 text-white sm:py-2">
       <header className="overflow-hidden rounded-[1.3rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_-30%,rgba(251,191,36,0.18),transparent_40%),linear-gradient(145deg,#14100b,#08111d_55%,#04070d)]">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-          <div className="text-[9px] uppercase tracking-[0.3em] text-slate-500">
+          <div className="text-[9px] uppercase tracking-[0.3em] text-slate-300">
             Vol. III · Saturday Edition · July 4, 2026
           </div>
           <ForumModeToggle viewMode={viewMode} onChange={onViewModeChange} />
@@ -776,7 +776,7 @@ function ExtremeForumFrontPage({
           <h1 className="mt-2 font-serif text-5xl font-semibold uppercase leading-none tracking-[0.16em] text-amber-50 sm:text-7xl lg:text-8xl">
             The War Room
           </h1>
-          <div className="mx-auto mt-4 flex max-w-4xl items-center gap-4 text-[9px] uppercase tracking-[0.26em] text-slate-500">
+          <div className="mx-auto mt-4 flex max-w-4xl items-center gap-4 text-[9px] uppercase tracking-[0.26em] text-slate-300">
             <span className="h-px flex-1 bg-white/10" />
             Saturday · July 4, 2026 · American Championship Edition
             <span className="h-px flex-1 bg-white/10" />
@@ -825,7 +825,7 @@ function ExtremeForumFrontPage({
             className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] transition ${
               selectedChannel === channel.key
                 ? "border-sky-200/24 bg-sky-300/10 text-sky-100"
-                : "border-white/8 bg-black/20 text-slate-500 hover:text-slate-200"
+                : "border-white/8 bg-black/20 text-slate-300 hover:text-slate-200"
             }`}
           >
             {channel.shortLabel}
@@ -879,7 +879,7 @@ function ExtremeForumFrontPage({
 
           <aside className="grid gap-3 xl:col-span-4">
             <div className="flex items-center justify-between border-b border-white/10 px-1 pb-2">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-slate-300">
                 Dispatch Wire
               </div>
               <Radio className="h-4 w-4 text-amber-100/55" />
@@ -912,7 +912,7 @@ function ExtremeForumFrontPage({
           {panels.length > 0 ? (
             <section className="overflow-hidden rounded-[1rem] border border-white/10 bg-black/18 p-2 xl:col-span-12">
               <div className="flex items-center justify-between px-2 py-2">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                <div className="text-[10px] uppercase tracking-[0.3em] text-slate-300">
                   The Illustrated Middle
                 </div>
                 <div className="text-[9px] uppercase tracking-[0.22em] text-amber-100/50">
@@ -978,7 +978,7 @@ function ExtremeForumFrontPage({
             <Icon className="h-6 w-6 text-amber-100" />
             <div>
               <div className="text-sm font-semibold text-white">{label}</div>
-              <div className="mt-1 text-xs text-slate-500">{body}</div>
+              <div className="mt-1 text-xs text-slate-300">{body}</div>
             </div>
           </Link>
         ))}
@@ -990,7 +990,7 @@ function ExtremeForumFrontPage({
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[1rem] border border-white/8 bg-black/22 px-3 py-3">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-300">{label}</div>
       <div className="mt-1 text-sm font-semibold text-amber-100">{value}</div>
     </div>
   );
@@ -1099,7 +1099,7 @@ function ThreadReader({
             {thread.isPinned ? <Pin className="h-3.5 w-3.5" /> : null}
             {channel?.label || "War Room"}
           </div>
-          <div className="mt-1 truncate text-xs text-slate-500">
+          <div className="mt-1 truncate text-xs text-slate-300">
             {thread.tag} · {formatForumDate(thread.createdAt)}
           </div>
         </div>
@@ -1155,7 +1155,7 @@ function ThreadReader({
                 <div className="font-semibold text-white">{thread.author.displayName}</div>
               )}
               {!basic ? (
-                <div className="mt-0.5 text-xs text-slate-500">{thread.author.role}</div>
+                <div className="mt-0.5 text-xs text-slate-300">{thread.author.role}</div>
               ) : null}
             </div>
           </div>
@@ -1206,7 +1206,7 @@ function ThreadReader({
                 );
               })}
             </div>
-            <div className="flex items-center gap-4 text-xs text-slate-500">
+            <div className="flex items-center gap-4 text-xs text-slate-300">
               <span className="inline-flex items-center gap-1">
                 <Eye className="h-3.5 w-3.5" />
                 {formatCount(thread.viewCount)}
@@ -1229,7 +1229,7 @@ function ThreadReader({
           <div className="flex items-center justify-between gap-3">
             <div>
               {!basic ? (
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-300">
                   Campfire Replies
                 </div>
               ) : null}
@@ -1260,7 +1260,7 @@ function ThreadReader({
                       <span className="text-sm font-semibold text-white">
                         {post.author.displayName}
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-300">
                         {basic ? formatForumDate(post.createdAt) : `${post.author.role} · ${formatForumDate(post.createdAt)}`}
                       </span>
                     </div>
@@ -1290,7 +1290,7 @@ function ThreadReader({
                   </label>
                   <div className="mt-3 flex items-center justify-between gap-3">
                     {!basic ? (
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs text-slate-300">
                         Argue the build. Leave the villager intact.
                       </div>
                     ) : <span />}
@@ -1438,7 +1438,7 @@ function NewThreadDialog({
         ) : (
           <form onSubmit={submit} className="mt-6 grid gap-4">
             <label>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
                 Table
               </span>
               <select
@@ -1455,7 +1455,7 @@ function NewThreadDialog({
             </label>
 
             <label>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
                 Headline
               </span>
               <input
@@ -1468,7 +1468,7 @@ function NewThreadDialog({
             </label>
 
             <label>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
                 Field note
               </span>
               <input
@@ -1481,7 +1481,7 @@ function NewThreadDialog({
             </label>
 
             <label>
-              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
                 Dispatch
               </span>
               <textarea
@@ -1495,7 +1495,7 @@ function NewThreadDialog({
             </label>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-300">
                 Bring receipts. Respect the GG.
               </div>
               <button
@@ -1913,7 +1913,7 @@ export default function ForumWarRoom() {
             </section>
 
             <section className="rounded-[1.45rem] border border-white/10 bg-black/24 p-3">
-              <div className="px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-slate-500">
+              <div className="px-3 py-2 text-[10px] uppercase tracking-[0.25em] text-slate-300">
                 Channels
               </div>
               {snapshot.channels.map((channel) => {
@@ -1980,7 +1980,7 @@ export default function ForumWarRoom() {
                       {signal.eyebrow}
                     </div>
                     <div className="mt-1.5 text-sm font-semibold text-white">{signal.title}</div>
-                    <div className="mt-1 text-xs leading-5 text-slate-500">{signal.body}</div>
+                    <div className="mt-1 text-xs leading-5 text-slate-300">{signal.body}</div>
                   </button>
                 ))}
               </section>
@@ -2014,7 +2014,7 @@ export default function ForumWarRoom() {
             <section className="rounded-[1.65rem] border border-white/10 bg-black/24 p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-300">
                     <Star className="h-4 w-4 text-amber-100" />
                     {selectedChannelDetail ? selectedChannelDetail.label : "Featured Threads"}
                   </div>
@@ -2052,7 +2052,7 @@ export default function ForumWarRoom() {
               <section className="rounded-[1.65rem] border border-white/10 bg-black/24 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                    <div className="text-xs uppercase tracking-[0.3em] text-slate-300">
                       Latest Posts
                     </div>
                     <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -2108,11 +2108,11 @@ export default function ForumWarRoom() {
             </section>
 
             <section className="rounded-[1.65rem] border border-white/10 bg-black/24 p-5">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-300">
                 <Users className="h-4 w-4" />
                 Around the Fire
               </div>
-              <p className="mt-2 text-xs leading-5 text-slate-500">
+              <p className="mt-2 text-xs leading-5 text-slate-300">
                 Voices in these Chronicles—not a fake live-presence counter.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -2140,7 +2140,7 @@ export default function ForumWarRoom() {
 
             {advanced ? (
               <section className="rounded-[1.65rem] border border-white/10 bg-black/24 p-5">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-300">
                   <BookOpen className="h-4 w-4" />
                   Field Manual
                 </div>
@@ -2160,7 +2160,7 @@ export default function ForumWarRoom() {
                           <div className="text-sm font-semibold text-slate-100 group-hover:text-white">
                             {item.title}
                           </div>
-                          <div className="mt-1 text-xs leading-5 text-slate-500">
+                          <div className="mt-1 text-xs leading-5 text-slate-300">
                             {item.body}
                           </div>
                         </div>
@@ -2171,7 +2171,7 @@ export default function ForumWarRoom() {
               </section>
             ) : (
               <section className="rounded-[1.65rem] border border-white/10 bg-black/24 p-5">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-300">
                   <Trophy className="h-4 w-4" />
                   Top Contributors
                 </div>
@@ -2200,7 +2200,7 @@ export default function ForumWarRoom() {
             )}
 
             <section className="rounded-[1.65rem] border border-white/10 bg-black/24 p-5">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-500">
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-300">
                 <Sparkles className="h-4 w-4" />
                 Room Signals
               </div>

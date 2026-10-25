@@ -36,7 +36,7 @@ test("unavailable replay gauges do not masquerade as measured zero",()=>{
 });
 test("download installer commands are keyboard reachable",()=>{
  const s=read("app/download/page.tsx");
- assert.match(s,/<pre tabIndex=\{0\} aria-label="Watcher installation commands"/);
+ assert.match(s,/<pre role="region" tabIndex=\{0\} aria-label="Watcher installation commands"/);
 });
 
 test("Academy variant controls are separately keyboard operable, not nested in a button",()=>{
@@ -46,4 +46,17 @@ test("Academy variant controls are separately keyboard operable, not nested in a
  assert.doesNotMatch(s,/handleHeroKeyDown/);
  assert.match(s,/<nav className="clan-bae-toggle"/);
  assert.match(s,/aria-pressed=\{active\}/);
+});
+
+
+test("exact last three axe defects have source-based targeted repairs",()=>{
+ const forge=read("components/kingdom-forge/ForgeVisuals.tsx");
+ assert.doesNotMatch(forge,/tracking-\[0\.16em\] text-white\/35/);
+ assert.match(forge,/tracking-\[0\.16em\] text-white\/85/);
+ const pulse=read("app/kingdom-intelligence/WarPulsePanel.tsx");
+ assert.match(pulse,/max-w-md text-\[11px\] leading-5 text-slate-300/);
+ assert.doesNotMatch(pulse,/max-w-md text-\[11px\] leading-5 text-slate-700/);
+ const recorder=read("components/speed/SpeedObservatoryE2.tsx");
+ assert.match(recorder,/role="region" tabIndex=\{0\} aria-label="Scrollable flight recorder measurements"/);
+ assert.match(recorder,/focus-visible:outline/);
 });
