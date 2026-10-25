@@ -3,7 +3,7 @@ id: "aoe2war.app-prodn.living-kingdom-admin"
 title: "Living Kingdom Admin Observatory"
 type: "reference"
 status: "draft"
-owner: "renaissance-tab-d"
+owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers","operators","auditors"]
 source_of_truth: "git"
