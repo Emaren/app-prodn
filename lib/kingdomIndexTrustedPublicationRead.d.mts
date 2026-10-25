@@ -1,5 +1,6 @@
 export type VerifiedKingdomPublication = {
-  readonly score:number;
+  readonly score:number|null;
+  readonly authenticatedEarned:number;
   readonly certified:boolean;
   readonly status:"current"|"provisional";
   readonly issuedAt:string;
