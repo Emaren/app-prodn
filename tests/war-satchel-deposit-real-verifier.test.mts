@@ -110,6 +110,15 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
         }
         await assert.rejects(c.query("INSERT INTO public.war_satchel_prospective_epochs DEFAULT VALUES"),{code:"42501"});
         await assert.rejects(c.query("SET ROLE aoe2war_epoch_finance_owner"),{code:"42501"});
+        const census=execFileSync(path.join(bin,"psql"),[
+          "-X","-v","ON_ERROR_STOP=1","-h",socket,
+          "-U","satchel_epoch_app_fixture","-d","postgres",
+          "-f",path.join(process.cwd(),"scripts/satchel_epoch_db_permissions_readonly.sql"),
+        ],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
+        assert.match(census,/inspected_login/);
+        assert.match(census,/direct_or_transitive_finance_control/);
+        assert.match(census,/epoch_receipt_count/);
+        assert.match(census,/UNKNOWN_UNTIL_INDEPENDENTLY_PROVEN/);
       }finally{await c.end();}
       const roles=await sql!.query("SELECT rolname,rolcanlogin,rolinherit FROM pg_roles WHERE rolname IN ('aoe2war_epoch_finance_owner','aoe2war_epoch_credit_writer') ORDER BY rolname");
       assert.equal(roles.rowCount,2);

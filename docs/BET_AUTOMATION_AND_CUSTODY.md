@@ -2341,3 +2341,124 @@ deployment/rollback controller with financial producers held CLOSED; retain
 the already-installed financial schema and immutable receipts, never apply
 a DOWN/DELETE/TRUNCATE to reverse booked money. Unknown broadcast outcomes
 must stay UNKNOWN until independently authenticated reconciliation.
+
+## October 24 — final held privilege, bank inventory and rollout sequence
+
+**Source security correction:** the prospective epoch registry is owned by a
+separate non-login finance role; the ordinary credit writer has only
+`SELECT` registry access. PostgreSQL requires `UPDATE` privileges for
+`SELECT ... FOR SHARE`. That unnecessary lock is removed from the epoch
+lookup: the epoch row is immutable and the credit writer already holds the
+global serializable Satchel transaction lock. Never grant `UPDATE` on the
+registry to make a broken row-lock query succeed. The SQL trigger functions
+are now explicitly `SECURITY INVOKER` with a protected
+`search_path = pg_catalog, public`; all custody table references are
+explicitly schema-qualified. A genuinely limited test login is checked for
+successful registry `SELECT`, rejected `FOR SHARE`, denied registration
+and role escalation, malicious `pg_temp` shadowing, transitive role
+membership refusal, and durable exactly-once deposit under native SDK tests.
+
+### Safe operator inventory — no shell-global fail-fast switches
+
+The operator must independently recognize and verify the remote GitHub
+source. The following Mac terminal commands do **not** use `set -e`,
+`set -u`, or `pipefail` and cannot stop the interactive shell. They
+only read files and stream the checked source to the authorized VPS:
+
+```bash
+APP="$HOME/projects/AoE2HDBets/app-prodn"
+EXPECTED="REPLACE_WITH_FINAL_QUALIFIED_EPOCH_COMMIT"
+git -C "$APP" fetch origin session-b/held-prospective-epoch-credit-20261024
+ACTUAL="$(git -C "$APP" rev-parse origin/session-b/held-prospective-epoch-credit-20261024 2>/dev/null)"
+if [ "$ACTUAL" = "$EXPECTED" ]; then
+  git -C "$APP" show "$EXPECTED:scripts/satchel_epoch_inventory_readonly.sh" |
+    ssh -T -o BatchMode=yes -o ConnectTimeout=10 root@hel1 'bash -s'
+else
+  printf 'SOURCE_MISMATCH. Expected %s, received %s; no remote command run.\n' "$EXPECTED" "$ACTUAL"
+fi
+```
+
+The VPS readout includes **only** UTC, hashed hostname, mount/free-byte
+inventory, service/process **names** and restore tool availability. It does
+not prove writer exclusions by itself; independent named operators must
+witness all actual HD, DE, Wolo, auxiliary, cron, retries and payout paths,
+including the full 18-unit lease fence. The source-qualified query is not
+a protected financial deployment permit.
+
+The PostgreSQL permission census now works **before the ninth migration**:
+missing registry tables are marked `NINTH_MIGRATION_NOT_INSTALLED_AS_EXPECTED`
+rather than causing a false error or prompting an unsafe migration.
+It performs a transitive role-membership check and records three trigger
+functions' security mode, table permission **booleans** and at most epoch
+receipt **counts**, never wallet records or financial amounts. The owner
+must connect as the **actual app role** or label the alternate read-only
+inspection role; a superuser audit cannot certify app permission denial.
+
+```bash
+APP="$HOME/projects/AoE2HDBets/app-prodn"
+EXPECTED="REPLACE_WITH_FINAL_QUALIFIED_EPOCH_COMMIT"
+ACTUAL="$(git -C "$APP" rev-parse origin/session-b/held-prospective-epoch-credit-20261024 2>/dev/null)"
+if [ "$ACTUAL" = "$EXPECTED" ]; then
+  git -C "$APP" show "$EXPECTED:scripts/satchel_epoch_db_permissions_readonly.sql" |
+    PGSERVICE=REPLACE_WITH_EXISTING_READ_ONLY_PG_SERVICE psql -X -v ON_ERROR_STOP=1
+else
+  printf 'SOURCE_MISMATCH: no database inventory executed.\n'
+fi
+```
+
+**The `PGSERVICE` placeholder is deliberately not a working credential.**
+Only the owner can choose a pre-existing independently approved read-only
+service; never expose passwords, environment values or connection strings
+in a chat. If none exists, report `READ_ONLY_DB_ACCOUNT_NOT_AVAILABLE`
+and do not create it without separate authority. The `psql` script uses
+only `BEGIN TRANSACTION READ ONLY` and `SELECT` plus output formatting.
+
+### Nine finite, separately witnessed financial release gates (NOT RUN)
+
+1. **Bank anchoring:** an independent archive witness signs exact prospective
+   wolo-1 validator-set/header/commit/appHash at future `H*`; reject owner
+   RPC alone and any previously expired Osmosis IBC trust root.
+2. **Exclusive custody:** independently create/attest a genuinely new vault
+   with different signer/key control from legacy payout, LP, faucet,
+   HD/DE, and escrow. No old funds or unreconciled title are imported.
+3. **Clean economic opening:** record legacy receipt/claim digest, 2712/2760
+   UNALLOCATED collision, claims 889, 8477, 947 pending and independent
+   Osmosis 200,000-WOLO liquidity title. Certify new-epoch `A(H*)`,
+   distinct `L(H*)`, and reserves `R(H*)` including gas/unknown;
+   require `A-L-R >= 0` from independently authenticated same-height
+   custody and nonoverlapping liabilities. Do not treat UNKNOWN as zero.
+4. **Signers:** enroll five **distinct actual humans/authorities** and
+   their independently protected keys (owner, chain/custody, finance,
+   withdrawal, recovery), with off-host anti-replay nonce and exact
+   source/build/H*/vault/beneficiary/expiry binding.
+5. **All-writers fence:** certified HD+DE+Wolo/auxiliary producers,
+   12+ actual writer categories, 18-unit service fence, correct fresh
+   Wolo P1 under global release lease. User-facing GET routes remain
+   read-only, with original Watcher parent/child strict admission.
+6. **Real recovery:** full-size HD+DE+Wolo snapshots, WAL and sequences,
+   restore into truly isolated nonproduction environment witnessed
+   independently; replay/collision verification; validate no lost
+   physical receipt, pending withdrawal or unknown broadcast status.
+7. **Restricted DB roles/migration:** independent FINANCIAL-specific
+   permit for the ninth (and only prospective-only) migration and its
+   source SHA, with inspected app login proving `can_register_epoch=f`,
+   `can_change_epoch=f`, `direct_or_transitive_finance_control=f`,
+   and all trigger functions `is_security_definer=f`. No Session A
+   website release service may apply it.
+8. **Held stage and canary:** approved isolated stage migrates and tests
+   the exact pinned schema; deployment/rollback source and H* receipts
+   must match; separate signed FINANCIAL permit is needed before any
+   production schema action, writer unfreeze or first live credit.
+9. **Resume and rollback:** an independent recovery/withdrawal signer
+   approves a bounded user canary only after all prior proofs.
+   Emergency procedure fences the writers, preserves customer journals
+   and on-chain transfers, rolls back **only application code**, and
+   leaves ambiguous broadcast intents held until trusted reconciliation.
+   Never run a DOWN migration on financial receipts, perform a blind
+   retry or discharge a historical claim automatically.
+
+**No active deployment command or treasury-movement command is included
+in this held runbook.** Once all gates are independently certified, the
+authorized operators use a separate challenge-bound FINANCIAL deployment
+runbook referencing the exact qualified code, migration hash, vault and
+H*, not Session A's nine-path website controller.
