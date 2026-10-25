@@ -4,8 +4,8 @@
   "approval": "REVIEW_ONLY_NOT_RELEASE_AUTHORIZATION",
   "baseline_production_sha": "6be434c00469afa4acb0623715c3bcf724f927f4",
   "candidate_source_sha": "6d2a78224e5a5c647345d6b5ffc91bf94dc84b59",
-  "baseline_tree_sha1": "6be434c00469afa4acb0623715c3bcf724f927f4",
-  "candidate_tree_sha1": "6d2a78224e5a5c647345d6b5ffc91bf94dc84b59",
+  "baseline_tree_sha1": "d0568f80e290242898c8ddfb37ccb07b457e57ac",
+  "candidate_tree_sha1": "2b8232c950ec58a8f0d16ea0c625528948b6b206",
   "counts": {
     "paths": 128,
     "added": 63,
