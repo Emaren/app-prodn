@@ -40,12 +40,19 @@ export function check(
   options?: { ratio?: InspectionRatio; evidenceAt?: string | null },
 ): InspectionCheck {
   const earned = points(weight, fraction);
+  const creditState = stateForFraction(earned / weight);
+  const ratioEvidenceState = options?.ratio ? ratioState(options.ratio) : creditState;
+  const worstState = creditState === "red" || ratioEvidenceState === "red"
+    ? "red"
+    : creditState === "amber" || ratioEvidenceState === "amber" ? "amber" : "green";
   return {
     id,
     label,
     weight,
     earned,
-    state: options?.ratio ? ratioState(options.ratio) : stateForFraction(earned / weight),
+    // Never color expired 20/20 evidence green after its points were withheld;
+    // likewise do not mask a failing cohort behind a rounded point score.
+    state: worstState,
     detail,
     ratio: options?.ratio,
     evidenceAt: options?.evidenceAt,
@@ -83,6 +90,9 @@ export function freshnessFraction(
   if (!capturedAt) return 0;
   const stamp = Date.parse(capturedAt);
   if (!Number.isFinite(stamp)) return 0;
+  // Clock skew up to five minutes is tolerated; future-dated proof is not a
+  // fresh observation and must not mint inspection credit.
+  if (stamp - now > 5 * 60_000) return 0;
   const ageHours = Math.max(0, (now - stamp) / 3_600_000);
   if (ageHours <= freshHours) return 1;
   if (ageHours >= staleHours) return 0;
@@ -104,4 +114,31 @@ export function thresholdFraction(
   if (value >= greenAt) return 1;
   if (value >= amberAt) return 0.75;
   return Math.max(0, value / Math.max(1, amberAt) * 0.5);
+}
+
+
+/** Historic local-Finish fallback: bounded, source/build-identical receipt credit.
+ * This is prior operator audit provenance, NOT a fresh independent live host witness.
+ */
+export function legacyReceiptProof(input: {
+  receiptAt: string | null;
+  receiptReleaseSha: string | null;
+  activeSourceSha: string | null;
+  certifiedReleaseSha: string | null;
+  activeBuildId: string | null;
+  certifiedBuildId: string | null;
+  finishAt: string | null;
+  now?: number;
+}): number {
+  const sha = /^[0-9a-f]{40}$/;
+  if (!input.certifiedReleaseSha || !sha.test(input.certifiedReleaseSha) ||
+      input.receiptReleaseSha !== input.certifiedReleaseSha ||
+      input.activeSourceSha !== input.certifiedReleaseSha ||
+      !input.activeBuildId ||
+      input.activeBuildId !== input.certifiedBuildId) return 0;
+  const now = input.now ?? Date.now();
+  return Math.min(
+    freshnessFraction(input.receiptAt, 24, 168, now),
+    freshnessFraction(input.finishAt, 12, 72, now),
+  );
 }
