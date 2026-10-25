@@ -3,7 +3,7 @@ import { avatarThumbUrlForName } from "@/lib/avatarAssets";
 import { buildJourneySummary } from "@/lib/adminJourneyIntelligence";
 import { livingKingdomHub } from "@/lib/livingKingdom/hub";
 import { livingKingdomFeatureMode } from "@/lib/livingKingdom/identity";
-import { aggregateCohort, publicEvent, safeEvent, summarizeUser, sessionTimeline, type SafeEvent, type EventInput } from "./projection";
+import { aggregateCohort, publicEvent, safeEvent, safeDestination, summarizeUser, sessionTimeline, type SafeEvent, type EventInput } from "./projection";
 
 export const COHORT_SIZE=20;
 export const PER_USER_LIMIT=120;
@@ -29,9 +29,25 @@ function confidenceFor(rows:SafeEvent[]){
  return {label:value?.confidenceLabel??"Low",engagement:value?.engagementLabel??"Unknown",
          provenance:"HEURISTIC_BOUNDED_SAMPLE"};
 }
+/** Hide raw Living Kingdom detail keys, which can contain identifying paths. */
+function safeRealm(value:string):string {
+ const raw=value==="home"?"/":value==="community"?"/realm":
+   value.startsWith("page:")?value.slice(5):"/"+value;
+ const path=safeDestination(raw);
+ return path==="Protected / unclassified"?"Other public realm":path;
+}
+function publicPresenceStats(){
+ const stats=livingKingdomHub.stats();
+ const realms:Record<string,number>={};
+ for(const [raw,count] of Object.entries(stats.realms)){
+  const key=safeRealm(raw);
+  realms[key]=(realms[key]??0)+count;
+ }
+ return {...stats,realms};
+}
 function presenceFor(uid:string){
  const actor=livingKingdomHub.publicProjectionForUid(uid);
- return actor?{status:"present_this_process" as const,realm:actor.realmId,
+ return actor?{status:"present_this_process" as const,realm:safeRealm(actor.realmId),
   avatar:actor.avatarUrl,observedAt:new Date().toISOString()}:
   {status:"unobserved_this_process" as const,realm:null,avatar:null,observedAt:null};
 }
@@ -70,7 +86,7 @@ export async function loadObservatory(prisma:PrismaClient,opts:{days:WindowDays;
  return {generatedAt:now.toISOString(),days:opts.days,search:opts.search,cursor:opts.cursor,
   hasMore:users.length>COHORT_SIZE,nextCursor:users.length>COHORT_SIZE?selected.at(-1)?.id??null:null,
   cards,aggregates:aggregateCohort(cohorts,now,opts.days),
-  presence:{mode:livingKingdomFeatureMode(),...livingKingdomHub.stats(),
+  presence:{mode:livingKingdomFeatureMode(),...publicPresenceStats(),
    semantics:"PROCESS_LOCAL_EPHEMERAL_NOT_CLUSTER_WIDE"},
   scrollHistory:{status:"NOT_RECORDED",count:null},
   authority:{historical:"SIGNED_IN_USER_ACTIVITY_EVENT",live:"LOCAL_LIVING_KINGDOM_HUB",
