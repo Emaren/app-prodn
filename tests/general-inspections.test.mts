@@ -73,3 +73,10 @@ test("a stale fully-passing cohort cannot display green after its earned points 
   });
   assert.equal(partial.state, "amber");
 });
+
+
+test("far future observation timestamps cannot mint fresh inspection proof", () => {
+  const now = Date.parse("2026-10-25T12:00:00Z");
+  assert.equal(freshnessFraction("2026-10-26T12:00:00Z", 1, 6, now), 0);
+  assert.equal(freshnessFraction("2026-10-25T12:04:00Z", 1, 6, now), 1);
+});
