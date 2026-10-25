@@ -85,6 +85,7 @@ async function run(){
  const pwHome=process.env.PW_HOME;
  if(!pwHome||!path.isAbsolute(pwHome))die("Need pinned isolated playwright-core directory");
  const {chromium}=require(path.join(pwHome,"node_modules","playwright-core"));
+ const axe=require(path.join(pwHome,"node_modules","axe-core"));
  const chrome=process.env.CHROME_BIN;
  if(!chrome||!fs.existsSync(chrome))die("Pinned real Chrome executable required");
  safeOutput(opts.out);
@@ -137,7 +138,8 @@ async function run(){
         keyboardFocus:null,uncaughtErrors:0,nav_ms:null,heap_mb:null,
         speed_chip:"UNKNOWN",speed_ready:"UNKNOWN",body_title:false,
         landmark:false,images_missing_alt:0,api_503:0,
-        privacyMutationAttempts:0,dependencyUnavailable:false,browserStatus:"UNKNOWN"};
+        privacyMutationAttempts:0,dependencyUnavailable:false,browserStatus:"UNKNOWN",
+        accessibilityScan:{status:"NOT_RUN",violations:[],seriousOrCritical:0},screenshot:null};
      try{
       context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},
         reducedMotion:"reduce",serviceWorkers:"block",colorScheme:"dark"});
@@ -203,6 +205,27 @@ async function run(){
        return focus&&focus!==document.body&&focus!==document.documentElement;
       });
       view.keyboardFocus=keyboard;
+      if(attempt===0){
+       const safeName=route.route==="/"? "root":route.route.slice(1).replace(/[^A-Za-z0-9_-]/g,"_");
+       const screenshot="capture-"+safeName+"-"+viewport.name+".jpg";
+       await page.screenshot({path:path.join(opts.out,screenshot),type:"jpeg",quality:54,fullPage:false,animations:"disabled"});
+       view.screenshot=screenshot;
+       try{
+        await page.addScriptTag({content:axe.source});
+        const scan=await Promise.race([
+         page.evaluate(async()=>{
+          const output=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
+          return output.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.length}));
+         }),
+         new Promise((_,reject)=>setTimeout(()=>reject(new Error("Axe scan deadline")),10000))
+        ]);
+        view.accessibilityScan={status:"MEASURED",violations:scan.slice(0,25),
+         seriousOrCritical:scan.filter(x=>x.impact==="serious"||x.impact==="critical").length};
+       }catch(e){
+        view.accessibilityScan={status:"UNKNOWN_SCAN_FAILED",violations:[],seriousOrCritical:0};
+        record.errors.push(viewport.name+" axe scan not measured: "+String(e.message||e).slice(0,100));
+       }
+      }
       view.browserStatus=view.http===200&&view.sameOrigin&&view.rendered?
          "OBSERVED":"FAIL";
       if(Number.isFinite(view.nav_ms))timings.push(view.nav_ms);
@@ -225,7 +248,10 @@ async function run(){
    record.criteria.keyboard=dependencyGap?"UNKNOWN":record.views.every(v=>v.keyboardFocus===true)?"PASS":"FAIL";
    record.criteria.client_mutation_attempts=record.resource.client_mutations_blocked>0?
      "OBSERVED_AND_BLOCKED_NOT_CLEARED":"NONE_OBSERVED";
-   record.criteria.accessibility=record.views.some(v=>v.images_missing_alt>0)?"FAIL":"UNKNOWN";
+   const measuredAxe=record.views.filter(v=>v.accessibilityScan.status==="MEASURED");
+   record.criteria.accessibility=dependencyGap?"UNKNOWN":
+     record.views.some(v=>v.images_missing_alt>0||v.accessibilityScan.seriousOrCritical>0)?"FAIL":
+     measuredAxe.length===2?"OBSERVED_AXE_AUTOMATED_ONLY":"UNKNOWN";
    record.criteria.api_failure=record.views.some(v=>v.api_503>0)?"OBSERVED_SYNTHETIC_503":"UNKNOWN";
    // A retained Speed reading does not qualify current-route explicit readiness.
    record.criteria.speed_readiness=route.overlay_source_policy.speed_explicit_route?
@@ -243,8 +269,7 @@ async function run(){
    record.missing_criteria=Object.entries(record.criteria)
      .filter(([,value])=>!["PASS","NO_BY_POLICY"].includes(value))
      .map(([key,value])=>({criterion:key,state:value}));
-   const name=route.route==="/ "?"root":(route.route==="/"?"root":
-     route.route.slice(1).replace(/[^A-Za-z0-9_-]/g,"_"));
+   const name=route.route==="/"?"root":route.route.slice(1).replace(/[^A-Za-z0-9_-]/g,"_");
    write("route-"+name+".json",record);
    receipt.routes.push({route:record.route,status:record.status,
        passed:Object.entries(record.criteria).filter(([,v])=>v==="PASS").length,
