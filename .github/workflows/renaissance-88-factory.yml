@@ -1,7 +1,7 @@
 name: Renaissance 88 candidate Chrome factory
 on:
   pull_request:
-    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'app/**', 'components/**', 'lib/**', 'config/**']
+    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'app/**', 'components/**', 'lib/**', 'config/**']
   workflow_dispatch:
   schedule:
     - cron: '41 3 * * *'
@@ -33,7 +33,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test -z "$(git status --porcelain --untracked-files=no)"
           python3 -m unittest discover -s tests -p 'test_renaissance_88_factory.py' -v
-          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts
+          python3 -m unittest discover -s tests -p 'test_renaissance_88_fixture.py' -v
+          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts tests/renaissance-88-fixture.test.mts
           mkdir -p renaissance-88-source
           timeout -k 5s 8m python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --deep --output renaissance-88-source/public88.json
           python3 scripts/renaissance_88_plan.py impact app/layout.tsx --expected-sha "$SOURCE_SHA" --output renaissance-88-source/impact-global.json
@@ -56,7 +57,7 @@ jobs:
     timeout-minutes: 60
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
       SESSION_SECRET: isolated-ci-not-production
       NEXTAUTH_SECRET: isolated-ci-not-production
       NEXTAUTH_URL: http://127.0.0.1:3137
@@ -101,9 +102,20 @@ jobs:
           CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
           export CHROME_BIN
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT
+          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          trap 'bash scripts/renaissance_88_pg_fixture.sh stop || true' EXIT
+          bash scripts/renaissance_88_pg_fixture.sh start \
+            > renaissance-88-chrome/fixture-start.txt
+          bash scripts/renaissance_88_pg_fixture.sh snapshot \
+            > renaissance-88-chrome/fixture-before.txt
           node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > renaissance-88-chrome/next.log 2>&1 &
           next_pid=$!
-          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true; bash scripts/renaissance_88_pg_fixture.sh stop || true' EXIT
           ready=0
           for i in $(seq 1 80); do
             kill -0 "$next_pid" 2>/dev/null || { echo "::error::Next start failed"; exit 2; }
@@ -114,9 +126,17 @@ jobs:
           test "$ready" = 1
           if [ "${{ github.event_name }}" = pull_request ]; then cohorts=1; samples=1; deadline=1500000;
           else cohorts=1; samples=3; deadline=1500000; fi
+          set +e
           timeout -k 10s 27m node scripts/renaissance_88_browser.cjs \
             --plan renaissance-88-chrome/plan.json --out "$GITHUB_WORKSPACE/renaissance-88-chrome" \
             --cohort 0 --cohorts "$cohorts" --samples "$samples" --route-ms 18000 --deadline-ms "$deadline"
+          browser_rc=$?
+          set -e
+          bash scripts/renaissance_88_pg_fixture.sh verify \
+            > renaissance-88-chrome/fixture-after.txt
+          cat renaissance-88-chrome/fixture-after.txt >> "$GITHUB_STEP_SUMMARY"
+          echo "BROWSER_EXIT=$browser_rc" >> renaissance-88-chrome/identity.txt
+          exit "$browser_rc"
       - name: Assemble independent per-route statuses; preserve UNMEASURED
         if: always()
         run: |
