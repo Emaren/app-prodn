@@ -2279,3 +2279,65 @@ The private SDK CI fixtures can insert a clearly marked synthetic approved
 epoch solely into disposable Unix-socket PostgreSQL. Those signed SDK tests
 are useful for code/custody conservation but are **not** human, archival,
 solvency or production migration certificates.
+
+### October 24 — mandatory database-role segregation (held source hardening)
+
+The original prospective SQL only revoked table privileges from `PUBLIC`.
+That does **not** stop an application login that owns the table. The ninth
+FINANCIAL migration now creates/verifies two distinct NOLOGIN, NOINHERIT,
+non-superuser role identities:
+
+- `aoe2war_epoch_finance_owner`: exclusive owner of the epoch registry,
+  epoch-receipt table and their trigger functions. An ordinary application
+  database login MUST NOT hold or inherit this role. Zero role members are
+  allowed when applying the migration; any future role membership must follow
+  signed independent finance authorization, audited explicitly.
+- `aoe2war_epoch_credit_writer`: receives **SELECT-only** access to
+  the approved registry and **SELECT/INSERT-only** access to the epoch receipt
+  table. Its runtime login membership is provisioned separately by the
+  financial database owner. It cannot register, update or delete an epoch.
+
+A **dedicated privileged FINANCIAL migrator** is required for the ninth
+migration because it creates roles and transfers object ownership. It must
+NOT be run with Session A's website migrator or the routine application
+writer. A missing CREATEROLE/ownership-transfer permit must fail closed.
+Neither role is a finance-human signature: signed five-human approval, real
+vault ownership, authentic H*, solvency and full-size recovery remain
+external prerequisites. No runtime environment boolean can substitute.
+
+Inspect privileges with this committed SELECT-only script from an authorized
+operator session using an existing, independently scoped read-only DB
+connection; it does not create, approve or alter an epoch:
+
+```bash
+cd "$HOME/projects/AoE2HDBets/app-prodn"
+git fetch origin session-b/held-prospective-epoch-credit-20261024
+git show origin/session-b/held-prospective-epoch-credit-20261024:scripts/satchel_epoch_db_permissions_readonly.sql > /tmp/satchel_epoch_db_permissions_readonly.sql
+# Use ONLY a pre-authorized read-only PG service account/configuration.
+# The operator chooses its connection out of band; no passwords in commands.
+psql -X -v ON_ERROR_STOP=1 -f /tmp/satchel_epoch_db_permissions_readonly.sql
+```
+
+The application role's `can_register_epoch`, `can_approve_epoch`,
+`member_of_epoch_finance`, and `is_superuser` must all be **FALSE**;
+verify the application login separately from the read-only inspection login.
+If the epoch tables are not yet installed, `relation does not exist` is
+the correct PRE-MIGRATION result, **not a reason to migrate early**.
+Remove the temporary local SQL copy after reviewing its origin.
+
+For the eventual approved financial release, a separate finance operator
+must record signed H* chain root, vault key-control and beneficiary attestations,
+historical outstanding liabilities and reserves, fresh Wolo bank proofs at the
+same height, the exact #870 source/migration SHA, and witnessed full-size
+HD+DE isolated restoration **before** granting any registrar access. A finance
+permit must bind specific source+build+H*+vault+five-human signatures+nonce.
+Only then can an operator independently apply the approved ninth migration
+in isolated stage and perform a separately approved zero-value/read-only
+canary. Actual deposits and withdrawals are later, separately authorized
+actions. No optimistic replay or financial table rewind is permitted.
+
+**Code rollback:** revert the application build using the protected
+deployment/rollback controller with financial producers held CLOSED; retain
+the already-installed financial schema and immutable receipts, never apply
+a DOWN/DELETE/TRUNCATE to reverse booked money. Unknown broadcast outcomes
+must stay UNKNOWN until independently authenticated reconciliation.
