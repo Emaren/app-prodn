@@ -18,7 +18,7 @@ jobs:
           python3 scripts/docs_v2_check.py --write --refresh-baseline
           git diff --check
           changed="$(git diff --name-only)"
-          expected="$(printf '%s\\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
+          expected="$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
           test "$changed" = "$expected"
           printf '%s\n' "$GITHUB_SHA" > docs-proposal-source-sha.txt
           git diff -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json > docs-proposal.patch
