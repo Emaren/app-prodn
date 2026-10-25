@@ -25,6 +25,10 @@ KIND = "aoe2war-owner-runtime-observation-v3"
 MAX_OUTPUT = 1024 * 1024
 MAX_STDERR = 16 * 1024
 MAX_SECONDS = 45
+# A bounded allowance for authenticated hel1's UTC clock running slightly
+# ahead of the Mac. This does NOT extend the 90-second/1200-second stale limits.
+# A future timestamp >5s remains a hard HOLD; source/unit/PID fences unchanged.
+MAX_REMOTE_CLOCK_LEAD_SECONDS = 5
 WOLO_SOURCE = "78c25985420ee41a6678c42fab8ea8d6c3b1b519"
 REVIEWED_WOLO_SOURCE = "4ce11c4965da64e3d4dee6a8681b6198e1aba1eb"
 WOLO_SERVICES = {
@@ -358,7 +362,12 @@ def validate_observation(packet: dict, *, now=None, max_age_seconds=90) -> dict:
     observed = utc_time(packet.get("observed_at"))
     require(ended == observed and timedelta(0) <= ended - started <= timedelta(seconds=40),
             "invalid/overlong runtime capture")
-    require(timedelta(0) <= current - observed <= timedelta(seconds=max_age_seconds),
+    age = current - observed
+    # The observer's time is measured on hel1, but verified on the owner's Mac.
+    # NTP may leave 1-3s offset while both hosts retain correct UTC time.
+    # Refuse timestamps more than 5s ahead; NEVER forgive stale observations.
+    require(timedelta(seconds=-MAX_REMOTE_CLOCK_LEAD_SECONDS) <= age <=
+            timedelta(seconds=max_age_seconds),
             "stale/future runtime observation")
     immutable = packet.get("immutable")
     require(type(immutable) is dict and set(immutable) == {
