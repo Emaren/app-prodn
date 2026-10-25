@@ -46,6 +46,9 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
   const age = at === null ? null : Math.round(((now - at) / 3_600_000) * 10) / 10;
   if (at !== null && now - at < -5 * 60_000) return { status: "unknown", reason: "future-dated-evidence", ageHours: age, ttlHours: ttl };
   if (ttl !== null && at !== null && now - at > ttl * 3_600_000) return { status: "unknown", reason: "stale-evidence", ageHours: age, ttlHours: ttl };
+  // A ratio without its original observation timestamp is not an independently
+  // current failure (nor a PASS), even if some samples are marked failed.
+  if (ttl !== null && at === null) return { status: "unknown", reason: "missing-observation-time", ageHours: age, ttlHours: ttl };
   // A cohort may have a full weighted score but still explicitly report failed
   // samples. Attribution must not silently promote that contradiction to PASS.
   // Malformed/empty ratios are not independent proof of a failure.
@@ -127,7 +130,7 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
       // source receipt. A real receipt ID must come from its producer.
       const checkKey = group.id + "/" + item.id;
       evidenceChecks.push({
-        checkKey, categoryId: group.id, checkId: item.id,
+        checkKey, categoryId: group.id, checkId: item.id, label: item.label,
         evidenceStatus: operationalStatus, reason: result.reason,
         observedAt: item.evidenceAt ?? null, ageHours: result.ageHours,
         ttlHours: result.ttlHours, nextDueAt: dueAt,
@@ -176,7 +179,7 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
     totalMissingCategoryPoints: Math.round((700 - total) * 10) / 10,
     measuredHealthChanged: false,
     notes: [
-      "PASS/FAIL/UNKNOWN describes published check evidence, not Kingdom Index certification or Wolo financial safety.",
+      "PASS/FAIL/STALE/UNKNOWN describes published check evidence, not Kingdom Index certification or Wolo financial safety.",
       "Unknown/missing proof is not an observed operational failure.",
       "Document IDs are not present in the aggregate documentation check: a current DocsV2 registry/review-queue witness is required for exact expired IDs.",
       "checkKey identifies a check, not the original producer receipt ID. Source receipt IDs and original capture timestamps require producer evidence.",
