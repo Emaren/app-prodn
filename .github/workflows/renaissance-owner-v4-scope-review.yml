@@ -47,6 +47,14 @@ jobs:
           assert data["owner_signature_verified"] is False
           assert data["release_authorized"] is False
           assert data["financial_release_authorized"] is False
+          assert data["website_only_stage_eligible"] is False
+          assert data["requires_separately_reviewed_release_policy"] is True
+          assert data["financial_risk_paths"] == [
+              "app/wolomania/WolomaniaPageClient.tsx",
+              "components/bets/BetsDisplayRail.tsx",
+              "components/wolo/WoloHeroTile.tsx"]
+          assert len(data["watcher_risk_paths"]) == 4
+          assert len(data["replay_truth_risk_paths"]) == 1
           PY
           printf '%s\n' 'PASS: 128 source blobs matched exactly; STILL NOT SIGNED OR DEPLOYABLE' >> "$GITHUB_STEP_SUMMARY"
           printf '%s\n' 'NO OWNER KEY, NO SIGNATURE, NO REMOTE HOST, NO FINANCE, NO DEPLOYMENT' >> "$GITHUB_STEP_SUMMARY"
