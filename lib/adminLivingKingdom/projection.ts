@@ -113,6 +113,24 @@ function identitySessions(rows: SafeEvent[]) {
   }
   return result;
 }
+/** Bounded observed-session slices; raw session tokens never leave server memory. */
+export function sessionTimeline(rows: SafeEvent[]) {
+  return identitySessions(rows).reverse().map((slice,index)=>{
+    const pages=slice.filter(e=>e.type==="page_view");
+    return {
+      ordinal:index+1,
+      startedAt:slice[0]?.at??null,
+      endedAt:slice.at(-1)?.at??null,
+      events:slice.length,
+      views:pages.length,
+      clicks:slice.filter(e=>e.type==="click").length,
+      entry:pages[0]?.destination??null,
+      exit:pages.at(-1)?.destination??null,
+      estimateSeconds:summarizeUser(slice,false).estimatedActiveSeconds,
+      scope:"OBSERVED_SLICE_ONLY" as const
+    };
+  });
+}
 export function summarizeUser(rows: SafeEvent[], truncated: boolean): JourneyStats {
   const sorted = chronological(rows);
   const pages = sorted.filter(r => r.type === "page_view");
@@ -131,7 +149,7 @@ export function summarizeUser(rows: SafeEvent[], truncated: boolean): JourneySta
     clicks: sorted.filter(r => r.type === "click").length,
     sessions: sessions.length,
     visitDays: days.size,
-    returning: truncated ? (days.size >= 2 ? true : null) : days.size >= 2,
+    returning: days.size === 0 ? null : truncated ? (days.size >= 2 ? true : null) : days.size >= 2,
     estimatedActiveSeconds: observableGaps ? seconds : null,
     estimateConfidence: observableGaps ? "Limited" : "Unknown",
     lastPath: pages.at(-1)?.destination ?? null,
