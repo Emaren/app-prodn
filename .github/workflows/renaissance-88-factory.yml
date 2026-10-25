@@ -1,7 +1,7 @@
 name: Renaissance 88 candidate Chrome factory
 on:
   pull_request:
-    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'docs/RENAISSANCE_88_ROUND4.md', 'app/**', 'components/**', 'lib/**', 'config/**']
+    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/renaissance-88-axe-triage.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'docs/RENAISSANCE_88_ROUND4.md', 'app/**', 'components/**', 'lib/**', 'config/**']
   workflow_dispatch:
   schedule:
     - cron: '41 3 * * *'
@@ -34,7 +34,7 @@ jobs:
           test -z "$(git status --porcelain --untracked-files=no)"
           python3 -m unittest discover -s tests -p 'test_renaissance_88_factory.py' -v
           python3 -m unittest discover -s tests -p 'test_renaissance_88_fixture.py' -v
-          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts tests/renaissance-88-fixture.test.mts
+          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts tests/renaissance-88-fixture.test.mts tests/renaissance-88-axe-triage.test.mts
           mkdir -p renaissance-88-source
           timeout -k 5s 8m python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --deep --output renaissance-88-source/public88.json
           python3 scripts/renaissance_88_plan.py impact app/layout.tsx --expected-sha "$SOURCE_SHA" --output renaissance-88-source/impact-global.json
@@ -169,6 +169,12 @@ jobs:
             node scripts/renaissance_88_receipts.mjs --plan renaissance-88-chrome/plan.json \
               --directory renaissance-88-chrome --out renaissance-88-chrome/coverage.json \
               --allow-partial "${{ github.event_name == 'pull_request' && 'true' || 'false' }}"
+            if test -s renaissance-88-chrome/route-zodiac.json; then
+              node scripts/renaissance_88_accessibility_triage.mjs \
+                --plan renaissance-88-chrome/plan.json \
+                --directory renaissance-88-chrome \
+                --output renaissance-88-chrome/axe-triage.json
+            fi
             find renaissance-88-chrome -maxdepth 1 -type f ! -name '*.sha256' -print0 \
               | sort -z | xargs -0 -r sha256sum > renaissance-88-chrome/file-hashes.sha256
           fi
