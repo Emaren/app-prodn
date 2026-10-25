@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ee9aeb57e624da2fec047711f74a11d27425c7fba64849cb720bee653587c0b8",
+      "sha256": "53cc541efce2ad4032ee1e1a62c1a67d468dbb100a931e956d26c726704e07aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2284,7 +2284,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-a/20261024-website-nine-path-operational-finish",
-    "commit": "ddb8b38eaaf45065320747bc93b877e1614fa617"
+    "commit": "648b01dfb9a461b18b8772fd5a42647c3f17d005"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
