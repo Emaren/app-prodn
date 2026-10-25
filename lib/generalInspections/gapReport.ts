@@ -10,7 +10,7 @@ const CATEGORY_IDS = ["speed", "documentation", "organization", "tests", "releas
 const INVARIANT_CHECKS = new Set([
   "estate-findings", "failed-units", "maintenance", "service", "build-parity",
   "source-parity", "wolo-8092", "wolo-8093", "wolo-estate", "reboot",
-  "system-map", "storage-map", "root-free", "volume-used",
+  "system-map", "storage-map", "root-free", "volume-used", "root-resilience",
 ]);
 const REPAIR: Record<string, string> = {
   speed: "Collect bounded cold-phone and edge cohort receipts on the exact certified website build; record measured timestamps and source SHA.",
@@ -202,7 +202,8 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
   if (at === null) return { status: "unknown", reason: "missing-observation-time", ageHours: age, ttlHours: ttl };
   // A decaying Operator Bridge capacity fallback may have lost credit solely
   // from age. That is not proof the VPS filesystem crossed a hard threshold.
-  if (categoryId === "organization" && ["root-free", "volume-used"].includes(item.id) &&
+  if ((categoryId === "organization" && ["root-free", "volume-used"].includes(item.id) ||
+       categoryId === "security" && item.id === "root-resilience") &&
       /operator bridge fallback/i.test(item.detail)) {
     return { status: "unknown", reason: "degraded-fallback-capacity-proof", ageHours: age, ttlHours: ttl };
   }
