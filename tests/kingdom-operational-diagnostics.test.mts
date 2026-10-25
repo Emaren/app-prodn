@@ -93,10 +93,19 @@ test("contradictions, stale evidence, absent service and full identity conflicts
 });
 
 test("incident output is capped and cannot reflect arbitrary private bridge paths or URLs", () => {
-  const obs = { ...reported(), unknownReasons: [...Array.from({ length: 40 }, (_, i) => "sensitive-" + i)], evidenceUri: null };
+  const obs = {
+    ...reported(),
+    unknownReasons: ["/Users/operator/secrets", "/mnt/private/token", "http://private.invalid/token"],
+    sourceGitSha: "/mnt/private/source", buildId: "../../private",
+    producer: "/Users/operator/secrets", evidenceUri: null,
+  } as unknown as ReturnType<typeof reported>;
   const incidents = explainKingdomOperationalState({ available: true, observation: obs, nowMs: NOW });
   assert.ok(incidents.length <= 8);
+  assert.equal(incidents[0]?.code, "source-evidence-unclassified");
   assert.doesNotMatch(JSON.stringify(incidents), /\/Users\/|\/mnt\/private|http:\/\//);
+  assert.equal(incidents[0]?.evidence.buildId, null);
+  assert.equal(incidents[0]?.evidence.sourceGitSha, null);
+  assert.equal(incidents[0]?.evidence.producer, null);
   assert.ok(incidents.every(v => v.evidence.evidenceUri === null));
 });
 
