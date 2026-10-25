@@ -56,3 +56,43 @@ Release-build dependency closure, criterion-level independent evidence, current 
 ## Operations and incident memory
 
 Telemetry/event logs should become summarized, rate-limited, retained diagnostic **receipts** with explicit data owner, correlation identifier, source SHA, timestamp, severity, remediation and closure evidence. A recurring agent reads bounded new evidence and known unresolved failures, not raw ever-growing unfiltered logs. Secrets, PII, transactions and signing material are never copied into a public-facing dashboard. Alerts and known fixes should remain linked to the original underlying authority and reopen if the same objectively proven regression returns.
+
+
+## 2026-10-25 — Tab B authority and P0/P1 trust-boundary review (draft source, not deployed)
+
+### Actual source / consumer flow
+
+```mermaid
+flowchart LR
+  A["Operator CLI / deterministic Council (domain collector)"] --> B["OS bridge writeAoe2OsKingdomIntelligence (persisted report)"]
+  B --> C["readAoe2OsKingdomIntelligence (captured_at + receivedAt)"]
+  D["OS dashboard run ledger (persisted operator actions)"] --> E["loadPublicKingdomIntelligence (sanitizer)"]
+  C --> E
+  E --> F["inspectIntelligenceHealthEvidence (typed report contract)"]
+  F --> E
+  E --> G["GET /api/kingdom-intelligence (no-store)"]
+  E --> H["/kingdom-intelligence SSR + 20-second visible-only router refresh"]
+  G --> I["/workshop secondary Brain projection"]
+  J["Git/release/inspection independent authorities"] -. "NOT YET AUTHORIZED AS CERTIFIED SHA INPUT" .-> F
+  K["Kingdom Index GET"] --> N["KingdomBrainClient (four bounded GETs)"]
+  L["Kingdom Agents + Patrol GETs"] --> N
+  M["Deployed route-census GET"] --> N
+  N --> O["brainSignalPolicy: freshness / generation fence"]
+  P["config/kingdom-brain-authorities.json (policy graph)"] --> Q["/kingdom-brain structural nodes + edges"]
+  O --> Q
+```
+
+**Source-of-truth classification.** Git commit IDs prove committed source, not the active process. A certified production SHA and BUILD_ID require independent runtime/controller receipts; bridge `source.exact` and `source.certification.status` are assertions by the same report, not independent certification. The bridge's `generated_at` is the collection time; `receivedAt` is the later storage receipt, never a freshness reset. Public Intelligence and Workshop are projections, not collectors. The route census is a deployed build-manifest observation; the Index is a different rubric/route universe. The static Brain registry is policy; it does not prove live edges, running agents, financial availability or health. The browser makes four bounded read-only GETs, then uses purely local per-generation/cached presentation. It must not launch a heavy scan on refresh.
+
+**P0/P1 failure boundary.** Before this draft, `numberValue(health.p0) ?? 0` and `numberValue(health.p1) ?? 0` in `lib/kingdomIntelligencePublic.ts` silently turned missing, null or malformed counters into zero findings. A recent receive envelope could consequently display an apparently clean finding tally even with absent severity observations. The draft replaces this with a pure, separately tested bounded projection that requires BOTH nonnegative safe-integer counters, valid UTC capture and receipt timestamps, a fresh <=15-minute two-clock window (+30-second skew), a full source-reported production SHA, source-exact report and no contradictory P0/source invariant before rendering either count. Otherwise `p0/p1=null`, doctor score/status and estate become UNKNOWN. A measured zero survives when BOTH counters are present and the report is usable.
+
+**Versioned sanitized observation shape (draft V1).** `lib/kingdomIntelligenceEvidence.ts` emits `sourceGitSha`, optional reported `buildId`, `collectorAuthority`, `producer`, `observedAt`, `receivedAt`, `ttlSeconds`, `status`, `evidenceUri`, `limitations` and `unknownReasons`. `SOURCE_REPORTED` is explicitly NOT VERIFIED; no bridge field is allowed to fabricate an authenticated public receipt URI. Future consumers must obtain the independently certified production SHA and BUILD_ID via a source-owned, bounded and separately authorized adapter before claiming cross-domain certified health. A source mismatch is CONTRADICTORY, not an invitation to reconcile by recasting data. No independent attestation has been added by this draft.
+
+### Outstanding architecture actions / HOLD
+
+- **Workshop downstream trust defect:** `lib/workshopBrain.ts` still contains `p0: data.health?.p0 ?? 0` and `p1: data.health?.p1 ?? 0`, so the Workshop's *secondary* summary can turn this API's new nulls back into zero. It is OUTSIDE Tab B's exclusive write allocation. Request central assignment for a separate null-preserving Workshop consumer patch before claiming estate-wide P0/P1 closure.
+- **Independent live source verification:** Central inspection/release owners must provide an authenticated, cached, sanitized `certifiedProductionSha` / BUILD_ID (no new public GET heavy scanner). Never treat the bridge's own source flags as its own independent witness.
+- **PR coordination:** Existing #805 owns the Intelligence page-local Recovery hook, UI and browser tests; #808 owns Brain polling/client/brainSignalPolicy; #745/#821 own shared Instruments. They are not superseded. Latest-only generation, visibility/resume, timeout and multi-feed classification were already implemented on current main and reviewed in their separate source/browser lanes. Physical browser and actual deployed exact-SHA qualification still require central integration.
+- **Certification:** This draft is candidate source only. Verify adapter unit/integration tests, exact-head CI, next-build browser state, release source and specialized Index gates under the campaign; no production promotion or 100/100 follows from this patch.
+
+**Next design recommendation:** Keep the deterministic engine, bridge, sanitized adapter, graph policy and individual browser selectors separate. Prefer one trusted typed envelope per source plus explicit join rules at the consumer; avoid a giant shared Brain God object or one new scanner per public request.
