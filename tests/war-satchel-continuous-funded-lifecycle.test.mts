@@ -290,6 +290,30 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
             assert.equal(await db.prisma.satchelWagerBroadcast.count(),0);
           }finally{await db.prisma.betAutoPreset.update({where:{id:seeded.preset.id},data:{enabled:true}});}
         });
+        await t.test("market cutoff expiring during a real PostgreSQL wait rolls back the entire send fence",async()=>{
+          const original=await db.prisma.betMarket.findUniqueOrThrow({where:{id:s.market.id}});
+          await db.prisma.betMarket.update({where:{id:s.market.id},data:{closeAt:new Date(Date.now()+2000)}});
+          let waited=false;
+          const slow=db.prisma.$extends({query:{satchelFundedReservation:{async updateMany({args,query}){
+            await db.sql.query("SELECT pg_sleep(2.1)");waited=true;return query(args);
+          }}}});
+          // Even the failing-before implementation cannot commit a late fence
+          // in this test: a callback that returns is forced to roll back.
+          const probe=new Proxy(slow,{get(target,key,receiver){
+            if(key==="$transaction")return async(action:(tx:Prisma.TransactionClient)=>Promise<unknown>,options:Record<string,unknown>)=>
+              target.$transaction(async tx=>{await action(tx);throw Error("ISOLATED_EXPIRED_FENCE_RETURNED");},options);
+            return Reflect.get(target,key,receiver);
+          }});
+          try{
+            await assert.rejects(ledger.markSatchelSubmissionAttempt(probe as unknown as typeof db.prisma,{
+              executionId:execution.id,ownerUserId:seeded.owner.id,ticketRequestId:a.operationId,
+              reservation:approval}),/watcher_market_cutoff_reached/);
+            assert.equal(waited,true,"the exact existing deadline must expire during actual PostgreSQL I/O");
+            assert.equal((await db.prisma.satchelFundedReservation.findUniqueOrThrow({where:{executionId:execution.id}})).status,"reserved");
+            assert.equal((await db.prisma.betAutoExecution.findUniqueOrThrow({where:{id:execution.id}})).status,"funded_reserved");
+            assert.equal(senderCalls.get(a.operationId),undefined);
+          }finally{await db.prisma.betMarket.update({where:{id:s.market.id},data:{closeAt:original.closeAt}});}
+        });
       }
       await executor.executeFundedMechaTicketBatch(db.prisma,signer,[execution.id]);
       const committed=await db.prisma.betAutoExecution.findUniqueOrThrow({where:{id:execution.id}});

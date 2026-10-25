@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {normalizeReplayPlayers,resolveReplayTeams} from "../lib/teamResolution.ts";
-import {satchelWatcherConsumerIdentityIssue} from "../lib/warSatchelWatcherConsumerEvidence.ts";
+import {satchelWatcherConsumerIdentityIssue,satchelWatcherConsumerTimeIssue} from "../lib/warSatchelWatcherConsumerEvidence.ts";
 
 function fixture(){
  const players=normalizeReplayPlayers([{name:"Owner",steamId:"76561198000000001",teamId:0},
@@ -24,6 +24,20 @@ function fixture(){
 }
 test("current owner on exact canonical Steam side accepts original aliases and team zero",()=>{
  assert.equal(satchelWatcherConsumerIdentityIssue(fixture()),null);
+});
+test("original owner and both market deadlines remain strict after database waits",()=>{
+ const at=Date.parse("2026-10-25T12:00:00Z");
+ const market={status:"live",marketType:"winner",scheduledMatchId:null,linkedSessionKey:"watcher:original",
+  createdAt:new Date(at-500),closeAt:new Date(at+1000),phaseOpensAt:null,phaseClosesAt:null,
+  winnerSide:null,settledAt:null,voidedAt:null,refundStatus:null,settlementExecutedAt:null,
+  linkedGameStatsId:null,lateFinalGameStatsId:null};
+ const input={markets:[market],executionCreatedAt:new Date(at),signedAt:new Date(at-1000),
+  spendExpiresAt:new Date(at+5000),now:new Date(at)};
+ assert.equal(satchelWatcherConsumerTimeIssue(input),null);
+ assert.equal(satchelWatcherConsumerTimeIssue({...input,now:new Date(at+1000)}),"watcher_market_cutoff_reached");
+ assert.equal(satchelWatcherConsumerTimeIssue({...input,spendExpiresAt:new Date(at)}),"watcher_consumer_mandate_expired_during_transaction");
+ assert.equal(satchelWatcherConsumerTimeIssue({...input,spendExpiresAt:new Date(NaN)}),"watcher_consumer_mandate_expired_during_transaction");
+ assert.equal(satchelWatcherConsumerTimeIssue({...input,markets:[market,{...market,marketType:"desync",closeAt:new Date(at)}]}),"watcher_market_cutoff_reached");
 });
 test("stored admission flags cannot authorize a changed owner, game, roster or side",()=>{
  const mutations:Record<string,(x:ReturnType<typeof fixture>)=>void>={
