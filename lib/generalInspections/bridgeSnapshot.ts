@@ -440,8 +440,18 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const edgeAt = text(edge.generated_at);
   const coldFresh = freshnessFraction(coldAt, 24, 168, now);
   const edgeFresh = freshnessFraction(edgeAt, 24, 168, now);
-  const coldCurrent = cold.matches_current_release === true && text(cold.release_sha) === releaseSha;
-  const edgeCurrent = edge.matches_current_release === true && text(edge.release_sha) === releaseSha;
+  const bridgeProduction = record(record(payload.source).production);
+  const liveSourceMatches = text(bridgeProduction.source_sha) === releaseSha;
+  const liveBuildMatches =
+    text(bridgeProduction.active_build_id) != null &&
+    text(bridgeProduction.active_build_id) ===
+      text(activation.certification.active_build_id);
+  const coldCurrent = cold.matches_current_release === true &&
+    text(cold.release_sha) === releaseSha &&
+    liveSourceMatches && liveBuildMatches;
+  const edgeCurrent = edge.matches_current_release === true &&
+    text(edge.release_sha) === releaseSha &&
+    liveSourceMatches && liveBuildMatches;
   // Observation and source validity must apply to every metric, not only the
   // 10-point freshness category. Historic receipts remain visible in details.
   const coldProof = coldCurrent ? coldFresh : 0;
@@ -1318,7 +1328,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
     text(record(replay.freshness).generated_at);
   const replayFresh = freshnessFraction(replayAt, 24, 168, now);
   const replayCurrent = replay.matches_current_release === true &&
-    text(replay.production_source) === releaseSha;
+    text(replay.production_source) === releaseSha && liveSourceMatches;
   const replayProof = replayCurrent ? replayFresh : 0;
   const watcherVersion =
     text(documentation.watcher_version) ||
@@ -1464,6 +1474,9 @@ export function buildBridgeGeneralInspectionsSnapshot(
         extraVersions.join(", ") +
         ".",
     );
+  }
+  if (!liveSourceMatches || !liveBuildMatches) {
+    notes.push("Operator Bridge production source/build does not match the certified activation; current-release performance claims are withheld.");
   }
   if (!coldCurrent || !edgeCurrent) {
     notes.push(
