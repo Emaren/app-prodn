@@ -189,8 +189,22 @@ def verify_scope(repo: Path, inventory: dict, *, require_clean=True) -> dict:
         require((path not in before) if status == "A" else
                 (path in before and before[path] != after[path]),
                 "added/modified baseline mismatch: " + path)
+    # Preserve the existing protected release gate's conservative path risk.
+    # Even visual-only edits in a financial-named component require an owner-
+    # reviewed decision; never change gate.path_risk just to stage the site.
+    import aoe2_release_gate as gate
+    by_risk = {}
+    for path in sorted(expected):
+        risk = gate.path_risk(path)
+        by_risk.setdefault(risk, []).append(path)
     return {"schema": 1, "kind": "aoe2war.renaissance.v4.scope-verification",
             "status": "SOURCE_INVENTORY_MATCH_REVIEW_ONLY",
+            "protected_gate_path_risk_counts": {k: len(v) for k, v in sorted(by_risk.items())},
+            "financial_risk_paths": by_risk.get("FINANCIAL", []),
+            "watcher_risk_paths": by_risk.get("WATCHER", []),
+            "replay_truth_risk_paths": by_risk.get("REPLAY_TRUTH", []),
+            "website_only_stage_eligible": False,
+            "requires_separately_reviewed_release_policy": True,
             "candidate_sha": target, "candidate_tree_sha1": inventory["candidate_tree_sha1"],
             "base_sha": base, "paths": len(source),
             "owner_signature_verified": False, "release_authorized": False,
