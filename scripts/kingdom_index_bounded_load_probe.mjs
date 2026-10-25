@@ -57,8 +57,12 @@ export async function captureIndexConcurrentLoopback({
    const elapsed=Math.round((performance.now()-t)*1000)/1000;
    seen[index]={sequence:index+1,elapsedMs:elapsed,responseBytes:bytes,
     routeCount:verified.routes,certified:verified.certified,
-    indexStatus:self.status,indexScore:self.score};
-   states.add(JSON.stringify([verified.routes,verified.certified,self.status,self.score,bytes]));
+    indexStatus:self.status,indexScore:self.score,
+    indexSourceVersion:self.sourceVersion??null,
+    indexMeasuredVersion:self.measuredVersion??null,
+    indexObservationKind:self.kind??null};
+   states.add(JSON.stringify([verified.routes,verified.certified,self.status,self.score,
+    self.sourceVersion??null,self.measuredVersion??null,self.kind??null,bytes]));
   }
  }
  await Promise.all(Array.from({length:concurrency},(_,id)=>worker(id)));
