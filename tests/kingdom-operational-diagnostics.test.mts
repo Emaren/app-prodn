@@ -214,6 +214,10 @@ test("consumer wiring is read-only and Brain policy remains source/freshness gra
   const client = await readFile(new URL("../app/kingdom-brain/KingdomBrainClient.tsx", import.meta.url), "utf8");
   const api = await readFile(new URL("../app/api/kingdom-intelligence/route.ts", import.meta.url), "utf8");
   assert.match(page, /NO INDEPENDENT CERTIFICATE/);
+  // A bridge-reported RUNNING dashboard action is not a verified live
+  // process and must never light up War Pulse's "Live process" badge.
+  assert.match(page, /bridge-reported running, independently UNVERIFIED/);
+  assert.match(page, /current:\\s*data\\?\\.agentRuntimeAuthority\\?\\.verified === true &&\\s*isActiveProcessState\\(item\\.status\\)/);
   assert.match(workshop, /primaryIncident\.safeAction/);
   assert.match(workshop, /provenance\.ageSeconds/);
   assert.match(api, /loadPublicKingdomIntelligence\(\)/);
