@@ -1,0 +1,33 @@
+name: Renaissance website cut DocsV2 baseline proposal (review only)
+on:
+  push:
+    branches:
+      - release/renaissance-web-only-source-cut-20261025
+permissions:
+  contents: read
+jobs:
+  docs-proposal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate baseline proposal from exact source (not certification)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          changed="$(git diff --name-only)"
+          test "$changed" = "docs/document-registry.json"
+          printf '%s\n' "$GITHUB_SHA" > docs-proposal-source-sha.txt
+          git diff -- docs/document-registry.json > docs-proposal.patch
+          echo 'Generated only proposed DocsV2 registry baseline. Not owner-approved or deployed.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-website-cut-docs-proposal
+          path: |
+            docs/document-registry.json
+            docs-proposal-source-sha.txt
+            docs-proposal.patch
+          if-no-files-found: error
+          retention-days: 10
