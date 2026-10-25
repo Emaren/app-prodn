@@ -53,6 +53,95 @@ reachability. It never calls a wager/Founder GET, a DB, wallet/signer,
 `systemctl` mutations, `git fetch/pull/checkout`, direct `rsync` or a
 deployment.
 
+## Release transport and public-authority enrollment (nondeploying)
+
+**Two SSH principals were observed on the VPS, but neither is inferred as
+the Mac's actual release credential from a VPS-side `ssh -G`**. The
+protected Ship implementation requires the remote Git executor
+`tony`, its pre-enrolled deploy key and restrictive sudo permissions.
+`root@hel1` worked for the separate diagnostic but **must not replace
+`tony`** or silently bypass Ship's user/transport validation.
+
+Only from the owner **Mac terminal**, and never from inside a VPS shell:
+
+```bash
+set -euo pipefail
+APP="$HOME/projects/AoE2HDBets/app-prodn"
+OP="$HOME/projects/AoE2HDBets/app-prodn-website-controller"
+CONTROLLER_SHA="<FINAL_CI_GREEN_INDEPENDENTLY_ACCEPTED_OPERATOR_SHA>"
+export AOE2_RELEASE_HOST="tony@hel1"
+export WEBSITE_SSH_TARGET="root@hel1"   # prior diagnostic only, NOT Ship
+export WEBSITE_MAIN_REPO="$APP"
+export WEBSITE_CONTROLLER_REPO="$OP"
+export WEBSITE_APPROVED_CONTROLLER_SHA="$CONTROLLER_SHA"
+ssh -G "$AOE2_RELEASE_HOST" |
+  awk '$1=="user" || $1=="hostname" || $1=="port" { print $1, $2 }'
+bash "$OP/scripts/aoe2_website_release_readonly_diag.sh"
+python3 "$OP/scripts/aoe2_website_public_enrollment_verify.py"
+```
+
+This diagnostic now probes BOTH independently: the known root read-only
+inspection and the canonical `tony@hel1` restricted release channel
+without taking any lock or modifying service state. It prints only
+user, host, status, source and permissions. Require the actual remote
+username `tony`, the canonical repo source, writable global release
+lock (or writable protected lock parent if absent) and the named
+restricted `sudo -n -l` checks. Any failure is a release HOLD, not an
+invitation to `sudo`/run raw root Ship.
+
+The real **five independent human** roles are Owner (project owner);
+Chain/Custody reviewer; Finance reviewer; Release Operator; Source/Build
+reviewer. A separate, independently administered runtime witness
+signer is not a substitute for a human role. Enroll genuine unique
+public-key credentials **out of band** after identity, custodian
+and possession attestation. No artificial signing keys or trust in
+AI-signed approval are permitted.
+
+Provisioning involves ONLY trust-store directories and independent
+PUBLIC keys; it does not issue a release permit. As authorized Mac
+administrator, verify the requested paths and execute only the
+following, after source review and approval of this operator plane:
+
+```bash
+set -euo pipefail
+test "$(id -un)" = tonyblum
+sudo install -d -o root -g wheel -m 0755 /etc/aoe2war/website-release-authority-v2
+if [ ! -d /var/lib ]; then
+  sudo install -d -o root -g wheel -m 0755 /var/lib
+fi
+test "$(stat -f '%Su' /var/lib)" = root
+sudo install -d -o "$(id -un)" -g "$(id -gn)" -m 0700 \
+  /var/lib/aoe2war-website-authority-v2
+```
+
+For each individually verified **PUBLIC** reviewer key file only:
+
+```bash
+# Replace both values only with independently authenticated PUBLIC PEM sources.
+: "${REVIEWER_ROLE:?owner|chain_reviewer|finance_reviewer|release_operator|source_reviewer|runtime_witness}"
+: "${VERIFIED_PUBLIC_PEM:?existing externally verified .pem public key file}"
+case "$REVIEWER_ROLE" in
+  owner|chain_reviewer|finance_reviewer|release_operator|source_reviewer|runtime_witness) ;;
+  *) echo "INVALID_ROLE" >&2; exit 2 ;;
+esac
+grep -q -- 'BEGIN PUBLIC KEY' "$VERIFIED_PUBLIC_PEM"
+! grep -q -- 'PRIVATE KEY' "$VERIFIED_PUBLIC_PEM"
+sudo install -o root -g wheel -m 0644 "$VERIFIED_PUBLIC_PEM" \
+  "/etc/aoe2war/website-release-authority-v2/$REVIEWER_ROLE.pem"
+```
+
+Do not invent, create or import an independently signed witness merely
+because the public-key inspector reports six unique fingerprints.
+Separately authorized security/Chain custodians must install a
+root-owned, independently audited LOCAL executable at
+`/usr/local/libexec/aoe2war-website-witness-v2`. That executable
+must emit independently signed fresh **real** VPS process/config,
+original Wolo P1, financial writer HOLD and website source/BUILD_ID
+observations; no private signing material should be accessible to the
+release operator or checked into GitHub. Once provisioned, re-run the
+public trust inspector; `PUBLIC_TRUST_MATERIAL_PRESENT_NONAUTHORIZING`
+means public credentials exist, **not** that humans approved deployment.
+
 ## Phase B: AUTHORIZED STAGE — requires real external approval
 
 Root-administer the **public** role keys and independent observer out of band,
