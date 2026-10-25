@@ -15,6 +15,85 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 25, 2026 — Round Five release-health gate and producer lineage
+
+**Only a dated operational measurement can change Doctor/GI.** Owner evidence
+remains Doctor 59/100 UNSAFE (2 P0 / 4 P1), General Inspections 69/100.
+The Round Five source work neither changes a score nor runs a collector.
+
+**Source-side correction:** all 66 check rows now include
+`expectedProducerChannel` — a deterministic route *hint* for such
+producers as SpeedOS cold-browser/edge, Central DocsV2, certified release
+gate, bounded OS statfs, original Storage OS expiry ledger, Operator Bridge,
+Wolo listener observations and replay closure. `originalProducer`,
+`originalProducerReceiptId` and `originalProducerReceiptDigest`
+remain **null** because the current sanitized snapshot contains no signed
+per-check originals; `producerAuthority:
+UNVERIFIED_FROM_PUBLISHED_SNAPSHOT` means no delivery or certification
+has been established. Missing/unrecognized check IDs are
+`unattributed`, never silently mapped to a trusted producer. The two
+root-capacity *Security* and *Organization* origin paths now record actual
+bounded statfs capture time; bridge fallback keeps its original observation
+time. No additional directory traversal, host probe or polling was added.
+
+### Website-only release health versus separately held finance
+
+| Area | Current dated source/witness | Website-only release decision | Financial/mainnet decision |
+| --- | --- | --- | --- |
+| DocsV2 `docs-check` and `strict-build` **P0** | Central 8 overdue active docs; exact-head DocsV2 gate FAIL | **Blocking governed source acceptance** until substantive source review, lineage reconciliation and independent strict CI PASS | Passing docs never authorizes funded Wolo |
+| `central-source-snapshot-stale` and `central-federation-drift` **P1** | Central snapshot/history not yet reconciled with accepted release source | **Blocking a clean release source certificate** until Central signs exact accepted source/doc IDs; do not rewrite historical SHA pins | Financial source lineage/custody must independently qualify |
+| `archive-stale` **P1** | Context camera older than latest source; no subsequent verified fresh archive | **Operational recovery deficit**; site gate impact must follow certified controller's real policy, not be silently waived | Does not establish chain insolvency |
+| `vps-source-drift` **P1** | WoloChain VPS checkout differs from registered baseline | **Unresolved cross-service authority**; a site-only release requires independent source/route/financial noninterference admission, not an inference that Wolo RPC is down | **Financial activation HELD** until actual implementation and custody lineage independently verified |
+| Evidence volume 92%, ~26 GiB free | Owner `df`, protected archive filesystem, not an inventory of expendable bytes | **Capacity/rollback risk**; require protected checkpoint/retention plan, real statfs, verified margin to release policy. No blind cleanup | Preserve financial journals, unique evidence and recovery copies |
+| VPS Sentry namespace + notification delivery | Sentry #4 observed `226/NAMESPACE`, failing mail, invalid webhook/backoff | **Monitoring reliability deficit**; require actual successful alert delivery and post-repair failure-free host receipts before declaring OS GREEN | No restart of consensus, signer or settlement |
+| VPS Sentry Wolo status | #5 legacy 26657/1317 monitor disagrees with separate wolo-1 RPC 27657/REST 1318 witness | **Do not falsely mark production consensus down** from legacy monitoring | Actual RPC identity/liveness alone is not verified custody or settlement |
+
+**Release control separation:** The current source can pass TypeScript/Node/
+PostgreSQL/Next while DocsV2 remains blocked. Even after DocsV2 passes,
+a production release requires the actual original controller workflow,
+a signed owner/witness, the accepted source SHA versus emitted BUILD_ID,
+unchanged source/secret controls and real host/rollback/pre-post-check
+evidence. Those conditions are not satisfied by a GitHub-only draft.
+Never treat an internally reported `CERTIFIED` label as independent
+production authority. Website-only release admission does not authorize
+funded settlement, balance writes, signing or treasury operations.
+
+### Bounded owner-only reinspection and immutable evidence plan
+
+1. Central DocsV2 single writer substantively reviews all eight #30 items,
+   keeps per-item reviewer+source history, corrects actual discrepancies,
+   intentionally reseals the accepted combined tree and proves strict checks.
+2. Wolo owner reconciles the exact VPS checkout ancestry and certified baseline
+   (without touching the live chain); context owner captures and hashes a
+   source-complete new durable archive, retaining the previous generation.
+3. Storage owner reads only the already-indexed recovery/expiry records and
+   small `statfs` counters, verifying two protected hot and three cold
+   checkpoints. No broad Mac `du`, unbounded SSH hash walk, `--apply`
+   or deletion. If reclaim isn't provably safe, review volume expansion.
+4. VPS Sentry owner separately fixes namespace-instance lifecycle, verifies a
+   real end-to-end delivery receipt with independent sink acceptance,
+   and updates the mainnet monitoring registry to actual `wolo-1`
+   identity/authorized ports; no service restart in this branch.
+5. After legitimate owner-approved deployment, an operator (not a public GET)
+   runs the **original** `aoe2war doctor --json` and inspect producer
+   in a bounded maintenance window. Preserve command version, exact SHA,
+   actual BUILD_ID, `observedAt`, monotonic collection sequence,
+   immutable native receipt digest, original P0/P1 codes, and source-vs-host
+   capture clock. The existing bridge consumes only permitted published
+   receipts; API requests never run Doctor or mutate infrastructure.
+6. Confirm *each* canonical check's original source, producer age, TTL,
+   receipt acceptance, failure owner and actual measured weight. Only a fresh
+   66/66 PASS evidence census **and** Doctor's own independently sourced
+   100/HEALTHY proof permits claiming green. Reducing the score by rejecting
+   stale evidence is correct until actual repair.
+
+**Governance:** This is an acceptance plan, not proof that an automatic
+scheduler, systemd repair, archive, new Wolo receipt or release has occurred.
+See [central #773](https://github.com/Emaren/app-prodn/issues/773),
+[DocsV2 #30](https://github.com/Emaren/AoE2WAR-docs/issues/30),
+[VPS Sentry #4](https://github.com/Emaren/vps-sentry/issues/4)
+and [#5](https://github.com/Emaren/vps-sentry/issues/5).
+
 ## October 25, 2026 — Round Four replay-safe 66-check report
 
 The read-only `GET /api/general-inspections?report=why-not-green`
