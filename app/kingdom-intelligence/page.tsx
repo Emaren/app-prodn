@@ -227,7 +227,10 @@ export default async function KingdomIntelligencePage() {
       progressBasis: null as string | null,
     }));
     const activeAgentRows = systemAgents
-      .filter(isConcreteBackgroundProcess)
+      // Keep Recovery visible as a historical, NON-CURRENT observation even
+      // when independent runtime identity withholds ACTIVE/progress claims.
+      // Do not falsely present this retained row as a running worker.
+      .filter((item) => isConcreteBackgroundProcess(item) || item.key === "recovery")
       .map((item) => ({
         key: "agent-" + item.key,
         at:
@@ -236,10 +239,12 @@ export default async function KingdomIntelligencePage() {
           data?.generatedAt ??
           new Date(0).toISOString(),
         system: item.label,
-        label: item.summary,
+        label: item.key === "recovery" && !isConcreteBackgroundProcess(item)
+          ? "Recovery OS snapshot retained; current worker status unverified."
+          : item.summary,
         status: item.state,
         proof: null as string | null,
-        current: true,
+        current: isConcreteBackgroundProcess(item),
         progress: item.progressPercent,
         progressLabel: item.progressLabel,
         currentStep: item.currentStep,
