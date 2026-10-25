@@ -107,7 +107,7 @@ export default function WorkshopBrainPanel({
         <BrainMetric
           label="System Doctor"
           value={doctorValue}
-          detail={`${brain.doctorStatus} · P0=${brain.p0} P1=${brain.p1}`}
+          detail={`${brain.doctorStatus} · P0=${brain.p0 ?? "UNKNOWN"} P1=${brain.p1 ?? "UNKNOWN"} · source-reported, not independently certified`}
         />
         <BrainMetric
           label="Invariants"
