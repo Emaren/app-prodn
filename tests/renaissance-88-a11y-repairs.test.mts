@@ -47,3 +47,16 @@ test("Academy variant controls are separately keyboard operable, not nested in a
  assert.match(s,/<nav className="clan-bae-toggle"/);
  assert.match(s,/aria-pressed=\{active\}/);
 });
+
+
+test("exact last three axe defects have source-based targeted repairs",()=>{
+ const forge=read("components/kingdom-forge/ForgeVisuals.tsx");
+ assert.doesNotMatch(forge,/tracking-\[0\.16em\] text-white\/35/);
+ assert.match(forge,/tracking-\[0\.16em\] text-white\/85/);
+ const pulse=read("app/kingdom-intelligence/WarPulsePanel.tsx");
+ assert.match(pulse,/max-w-md text-\[11px\] leading-5 text-slate-300/);
+ assert.doesNotMatch(pulse,/max-w-md text-\[11px\] leading-5 text-slate-700/);
+ const recorder=read("components/speed/SpeedObservatoryE2.tsx");
+ assert.match(recorder,/role="region" tabIndex=\{0\} aria-label="Scrollable flight recorder measurements"/);
+ assert.match(recorder,/focus-visible:outline/);
+});
