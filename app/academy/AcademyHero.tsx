@@ -257,10 +257,6 @@ export default function AcademyHero() {
     tileViewPreferences.academy_hero,
   ]);
 
-  const currentVariant =
-    HERO_VARIANTS.find((variant) => variant.key === heroVariant) ??
-    HERO_VARIANTS[1];
-
   const heroStyle = useMemo(() => {
     if (heroVariant === "e") {
       return {
