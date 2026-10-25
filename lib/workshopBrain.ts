@@ -101,12 +101,12 @@ export function buildWorkshopBrainSnapshot(
       (item) => state(item.status) === "PASS",
     ).length : null,
     invariantCount: data.invariants.length,
-    activeSystemCount: severityObserved ? data.systemAgents.filter((item) =>
-      ACTIVE_STATES.has(state(item.state)),
-    ).length : null,
-    attentionSystemCount: severityObserved ? data.systemAgents.filter((item) =>
-      ATTENTION_STATES.has(state(item.state)),
-    ).length : null,
+    // Process counts, unlike observed incident counts, need an independent
+    // active-runtime release witness. Unknown is not zero running workers.
+    activeSystemCount: severityObserved && data.agentRuntimeAuthority?.verified === true
+      ? data.systemAgents.filter((item) => ACTIVE_STATES.has(state(item.state))).length : null,
+    attentionSystemCount: severityObserved && data.agentRuntimeAuthority?.verified === true
+      ? data.systemAgents.filter((item) => ATTENTION_STATES.has(state(item.state))).length : null,
     diagnostics: data.diagnostics ?? explainKingdomOperationalState({
       available: true,
       observation: data.health?.observation ?? null,

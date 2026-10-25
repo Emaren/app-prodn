@@ -53,6 +53,11 @@ function publicInvariant(value: unknown) {
   };
 }
 
+const REPORTABLE_AGENT_FAILURE_STATES = new Set([
+  "ATTENTION", "ATTENTION_REQUIRED", "WATCH", "BLOCKED",
+  "FAILED", "UNSAFE", "MAINTENANCE_DUE",
+]);
+
 const PUBLIC_SYSTEM_LABELS = new Set([
   "Release OS",
   "Documentation OS",
@@ -193,6 +198,11 @@ export async function loadPublicKingdomIntelligence() {
       workspace: null,
       activity24h: null,
       systemAgents: [],
+      agentRuntimeAuthority: {
+        verified: false,
+        status: "UNVERIFIED" as const,
+        reason: "bridge-unavailable",
+      },
       liveActivity: [],
       recentSourceActivity: [],
       memorySeals: [],
@@ -224,6 +234,18 @@ export async function loadPublicKingdomIntelligence() {
     nowMs: Date.now(),
   });
   const reportUsable = healthEvidence.observation.status === "SOURCE_REPORTED";
+  // This read-side has no trusted active release-controller SHA + real Next
+  // BUILD_ID receipt. A bridge report, even one saying CERTIFIED/exact, cannot
+  // authorize positive live-agent claims. Central owns the independent join.
+  const agentRuntimeAuthority: {
+    verified: boolean;
+    status: "UNVERIFIED" | "VERIFIED";
+    reason: string | null;
+  } = {
+    verified: false,
+    status: "UNVERIFIED",
+    reason: "independent-active-production-sha-and-next-build-id-unavailable",
+  };
   const diagnostics = explainKingdomOperationalState({
     available: true, observation: healthEvidence.observation, nowMs: Date.now(),
   });
@@ -231,10 +253,23 @@ export async function loadPublicKingdomIntelligence() {
     ? payload.system_agents
         .map(safeSystemAgent)
         .filter((item): item is NonNullable<ReturnType<typeof safeSystemAgent>> => Boolean(item))
-        .map(item => reportUsable ? item : {
-          ...item, state: "UNKNOWN", summary: "Current agent status withheld: source evidence unavailable.",
-          activeProcess: false, activeSince: null, currentStep: null,
-          progressPercent: null, progressLabel: null, etaSeconds: null,
+        .map(item => {
+          if (reportUsable && agentRuntimeAuthority.verified) return item;
+          const reportedFailure = reportUsable && !item.activeProcess &&
+            REPORTABLE_AGENT_FAILURE_STATES.has(item.state.toUpperCase());
+          return {
+            ...item,
+            // Negative source observations can be shown with their provenance,
+            // but positive live process state needs independent runtime proof.
+            state: reportedFailure ? item.state : "UNKNOWN",
+            summary: reportedFailure
+              ? "Bridge-reported attention (not independently certified). " + item.summary
+              : reportUsable
+                ? "Live agent state unverified: no independent active release and Next BUILD_ID receipt."
+                : "Current agent status withheld: source evidence unavailable.",
+            activeProcess: false, activeSince: null, currentStep: null,
+            progressPercent: null, progressLabel: null, etaSeconds: null,
+          };
         })
     : [];
   const recentSourceActivity = Array.isArray(payload.recent_source_activity)
@@ -356,6 +391,7 @@ export async function loadPublicKingdomIntelligence() {
       certifiedFinishes: numberValue(activity.certified_finishes) ?? 0,
     },
     systemAgents,
+    agentRuntimeAuthority,
     diagnostics,
     liveActivity,
     recentSourceActivity,

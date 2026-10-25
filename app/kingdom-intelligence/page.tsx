@@ -367,8 +367,8 @@ export default async function KingdomIntelligencePage() {
         />
         <Stat
           label="Working now"
-          value={data?.health?.observation?.status === "SOURCE_REPORTED" ? String(activeSystemCount) : "UNKNOWN"}
-          detail="Source-reported process observations · not independent agent certification"
+          value={data?.agentRuntimeAuthority?.verified === true && data?.health?.observation?.status === "SOURCE_REPORTED" ? String(activeSystemCount) : "UNKNOWN"}
+          detail="Live process count requires independently verified active source/build, not bridge self-attestation"
         />
         <Stat
           label="Reported finishes"
