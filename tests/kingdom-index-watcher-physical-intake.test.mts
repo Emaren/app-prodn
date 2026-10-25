@@ -51,6 +51,8 @@ test("missing independently referenced published binary, wrong source, draft can
  assert.throws(()=>run([{...x,releaseSourceSha:"0".repeat(40)}]),/artifact\/source/);
  assert.throws(()=>run([{...x,installedVersion:"1.6.6"}]),/artifact\/source/);
  assert.throws(()=>run([x,x]),/Conflicting\/duplicated/);
+ const reused={...make("replay-upload-integrity","linux","other"),proofSha256:x.proofSha256};
+ assert.throws(()=>run([x,reused]),/Same physical proof cannot close multiple gates/);
  assert.throws(()=>run([{...x,score:100}]),/self-awarding/);
 });
 test("stale, future, foreign gate and missing signature-of-truth cannot turn physical claims green",()=>{
