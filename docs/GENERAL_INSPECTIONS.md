@@ -138,6 +138,70 @@ restart consensus or settlement, run Finish, alter production journals or award
 Kingdom Index points.
 
 
+
+### October 25 Round Two — independent fallback, documentation and Doctor closure
+
+Tab C source review found a second stale-credit path in the local Finish
+fallback (`lib/generalInspections/serverSnapshot.ts`), not just the preferred
+Operator Bridge. Both producers now zero any expired Speed cohort receipt
+(24 hours full, zero by 168 hours) or mismatched release/build proof, rather
+than aging only the freshness weight while keeping metric points. The local
+fallback also gates its documentation checks to the certified Finish source,
+build and original Finish observation (full for 12 hours, zero by 72).
+The bridge requires a non-fallback original documentation capture plus fresh
+collection/delivery clocks and exact active release/build for **all ten** docs
+checks. A missing timestamp cannot borrow a new delivery timestamp.
+
+The `why-not-green` report treats gate source/build history as separate from
+live performance: a gate may have had a historic Test & Build score of 100 on
+its certified release, but an expired 168-hour gate observation is now
+`UNKNOWN` for *current* evidence in the diagnostic report, never a silently
+current PASS. This is report classification only; the canonical check weights,
+required-command policy and scored gate receipts do not change.
+
+The October 25 historical category-level repair ledger is:
+
+| Inspection | Historical / 100 | Missing | Actual read-only closure |
+| --- | ---: | ---: | --- |
+| Website Speed | 63 | 37 | Exact-source/build browser and edge receipts; audit p50/p95, cohort counts, capture TTL and mutation proof |
+| Documentation | 35 | 65 | All ten actual weighted docs check results, central strict gates, five source checkers, taxonomy, maps, repository parity and reviewed document IDs |
+| Organization/Storage | 76 | 24 | Root/volume read-only capacity, expiry/rollback protections, staging, download generations, operator worktree receipts |
+| Test & Build | 100 | 0 | Preserve certified declared-command gate; report its source/build/time authority separately from current runtime |
+| Release/Runtime | 64 | 36 | Runtime active source/build, certified activation, Doctor's exact failures, service and Finish closure |
+| Security | 75 | 25 | Current criticals, systemd units, host update/reboot posture, secret scan and recovery class receipts |
+| Data/Wolo/Replay | 73 | 27 | Wolo 8092/8093 counts, replay corpus/freshness, browser mutation boundary, recovery and Watcher contract |
+
+**Do not infer check-level earned points or precise Doctor fault IDs from
+these seven rounded category scores.** The Doctor publisher keeps its
+complete `findings` under `scripts/aoe2_doctor.py` and nested Estate
+`info.estate.findings`, but the Council/Brain public health adapter forwards
+only `doctor_score`, `doctor_status` and Estate `p0`/`p1` totals.
+For P0=2 and P1=4, the Estate aggregation itself deducts 20+8=28 Doctor
+points under today's policy. A Doctor 59 means total deduction 41 and thus
+**13 additional points deducted by independent Doctor checks**, with exact
+keys still UNKNOWN pending the original read-only Doctor receipt. Do not
+silently replace that missing evidence with guessed six IDs or treat
+a public 59 as evidence of a specific broken Wolo daemon.
+
+The independently owner-observed `wolo-1` mainnet RPC at 127.0.0.1:27657
+responded on October 25 (height 2,634,595, catching_up=false); legacy
+26657 is intentionally quiet. That fixes the **diagnostic interpretation**,
+not the estate P0/P1 list or financial settlement certification. The
+operational contract already specifies port 27657.
+
+To reproduce the closure: (1) Central's single DocsV2 owner intentionally
+refreshes the shared registry's implementation baseline and this Markdown's
+hash on the final source head, then runs the strict checker; (2) exact-head
+Node/TypeScript/Next/Python/PostgreSQL/source-census CI must succeed with
+no skipped mandatory checks; (3) owner reads `aoe2war doctor --json` and
+the no-store General Inspections JSON on the same live certified release,
+checking original capture and receipt delivery times; (4) reproduce exact
+P0/P1 keys and each 35/100 Documentation weighted deficit from those
+observations; (5) only then repair under the correct domain owner, recollect
+fresh evidence, and compare deltas. A source-only PR cannot independently
+claim that the live reported 69/59 has changed.
+
+
 ## October 18, 2026 — archival score lineage remains immutable under live agent updates
 
 The dated `/leaderboard` source review scored **64/100** and its rubric
