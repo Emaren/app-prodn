@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.renaissance-website-v4-release-boundary"
+title: "Renaissance Website Owner V4 Release Boundary"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "release-engineering-contract"
+reviewed_at: "2026-10-25"
+review_interval_days: 1
+sensitivity: "internal"
+---
+
 # Renaissance website release v4 — verified operator boundary
 
 **Status: HOLD — no protected stage/activate controller integrated; do NOT sign yet.**
