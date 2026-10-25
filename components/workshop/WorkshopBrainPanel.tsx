@@ -57,9 +57,10 @@ export default function WorkshopBrainPanel({
     : brain.certificationStatus;
   const doctorValue =
     brain.doctorScore === null ? "Awaiting evidence" : `${brain.doctorScore}/100`;
-  const invariantValue = brain.invariantCount
-    ? `${brain.invariantPassCount}/${brain.invariantCount} pass`
+  const invariantValue = brain.invariantPassCount !== null && brain.invariantCount
+    ? `${brain.invariantPassCount}/${brain.invariantCount} source-reported pass`
     : "Awaiting evidence";
+  const primaryIncident = brain.diagnostics[0] ?? null;
 
   return (
     <section
@@ -112,10 +113,20 @@ export default function WorkshopBrainPanel({
         <BrainMetric
           label="Invariants"
           value={invariantValue}
-          detail={`${brain.activeSystemCount} active · ${brain.attentionSystemCount} attention`}
+          detail={`${brain.activeSystemCount ?? "UNKNOWN"} active · ${brain.attentionSystemCount ?? "UNKNOWN"} attention · source-reported`}
         />
       </div>
 
+      {primaryIncident ? (
+        <div role="status" aria-label="Kingdom operating evidence limitation" className="mt-3 text-xs leading-5 text-slate-400">
+          <strong className="text-slate-200">{primaryIncident.status} · {primaryIncident.owner}</strong>
+          {" · " + primaryIncident.explanation}
+          {" · Evidence age " + (primaryIncident.evidence.ageSeconds === null ? "UNKNOWN" : primaryIncident.evidence.ageSeconds + "s")}
+          {" · TTL " + (primaryIncident.evidence.ttlSeconds === null ? "UNKNOWN" : primaryIncident.evidence.ttlSeconds + "s")}
+          {" · " + primaryIncident.safeAction}
+          {brain.diagnostics.length > 1 ? " · " + (brain.diagnostics.length - 1) + " more evidence limitation(s)" : ""}
+        </div>
+      ) : null}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
         <div className="flex min-w-0 items-center gap-2 text-xs text-slate-400">
           <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-200/80" />
