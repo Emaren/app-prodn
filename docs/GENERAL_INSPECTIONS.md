@@ -42,11 +42,30 @@ time. No additional directory traversal, host probe or polling was added.
 | --- | --- | --- | --- |
 | DocsV2 `docs-check` and `strict-build` **P0** | Central 8 overdue active docs; exact-head DocsV2 gate FAIL | **Blocking governed source acceptance** until substantive source review, lineage reconciliation and independent strict CI PASS | Passing docs never authorizes funded Wolo |
 | `central-source-snapshot-stale` and `central-federation-drift` **P1** | Central snapshot/history not yet reconciled with accepted release source | **Blocking a clean release source certificate** until Central signs exact accepted source/doc IDs; do not rewrite historical SHA pins | Financial source lineage/custody must independently qualify |
-| `archive-stale` **P1** | Context camera older than latest source; no subsequent verified fresh archive | **Operational recovery deficit**; site gate impact must follow certified controller's real policy, not be silently waived | Does not establish chain insolvency |
-| `vps-source-drift` **P1** | WoloChain VPS checkout differs from registered baseline | **Unresolved cross-service authority**; a site-only release requires independent source/route/financial noninterference admission, not an inference that Wolo RPC is down | **Financial activation HELD** until actual implementation and custody lineage independently verified |
-| Evidence volume 92%, ~26 GiB free | Owner `df`, protected archive filesystem, not an inventory of expendable bytes | **Capacity/rollback risk**; require protected checkpoint/retention plan, real statfs, verified margin to release policy. No blind cleanup | Preserve financial journals, unique evidence and recovery copies |
+| `archive-stale` **P1** | Context camera older than latest source; no subsequent verified fresh archive | **Estate P1 blocks final Finish audit** even though storage recovery and archive generation are owned outside the web release | Does not establish chain insolvency |
+| `vps-source-drift` **P1** | WoloChain VPS checkout differs from registered baseline | **Estate P1 blocks final Finish audit**; site-only release requires actual Wolo source ancestry reconciliation while funding remains a separately held authorization | **Financial activation HELD** until actual implementation and custody lineage independently verified |
+| Evidence volume 92%, ~26 GiB free | Owner `df`, protected archive filesystem, not an inventory of expendable bytes | **Doctor BLOCKER at the observed 92% capacity**; release preflight accepts only a narrowly proven, governed retention recovery or actual independently verified capacity repair. No blind cleanup | Preserve financial journals, unique evidence and recovery copies |
 | VPS Sentry namespace + notification delivery | Sentry #4 observed `226/NAMESPACE`, failing mail, invalid webhook/backoff | **Monitoring reliability deficit**; require actual successful alert delivery and post-repair failure-free host receipts before declaring OS GREEN | No restart of consensus, signer or settlement |
 | VPS Sentry Wolo status | #5 legacy 26657/1317 monitor disagrees with separate wolo-1 RPC 27657/REST 1318 witness | **Do not falsely mark production consensus down** from legacy monitoring | Actual RPC identity/liveness alone is not verified custody or settlement |
+
+**Verified current Finish gate, not merely a recommendation:** The
+canonical `scripts/aoe2_finish.py` at main inspects Doctor **BLOCKER**
+findings in dry-run and preflight, allowing only narrowly authorized
+provenance or policy-controlled protected capacity remedies
+(lines ~4266–4318, 4689–4726). Its final independent
+`./bin/aoe2war audit --json` **fails when either P0 or P1 is nonzero**
+(lines ~4963–4984), and its final Doctor blocks on every remaining
+`BLOCKER` (lines ~4988–5005). Consequently **all six currently observed
+Estate findings prevent normal Finish certification** until actually
+repaired or an explicitly approved, source-reviewable controller policy
+changes. A site's funding boundary does **not** exempt `vps-source-drift`
+from the final source/estate gate. The observed 92% evidence volume
+breaches the Doctor critical threshold; a hypothetical automatic retention
+forecast is not authorization to clean storage and cannot be assumed.
+Warnings alone do not necessarily trigger that final hard stop, but they
+still prevent declaring a 100/HEALTHY Doctor. This gate interpretation is
+a source reading of the present controller; it is not proof of the
+controller's actual deployment or an authorization to run Finish.
 
 **Release control separation:** The current source can pass TypeScript/Node/
 PostgreSQL/Next while DocsV2 remains blocked. Even after DocsV2 passes,
