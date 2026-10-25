@@ -39,7 +39,7 @@ export function prepareWatcherPhysicalIntake({
  if(!Array.isArray(receipts)||receipts.length>72||
    !(expectedArtifactDigests instanceof Map)||!Number.isSafeInteger(nowMs))
   stop("Unbounded physical evidence input");
- const byGate=new Map(),used=new Set();
+ const byGate=new Map(),used=new Set(),seenProofs=new Set();
  for(const item of receipts){
   exact(item,["gateId","platform","installedVersion","releaseSourceSha",
     "releaseArtifactSha256","installedBinarySha256","collectedAt","proofSha256","proofRef"]);
@@ -59,7 +59,8 @@ export function prepareWatcherPhysicalIntake({
   if(age<0||age>limit)stop("Future or stale physical-client evidence");
   const identity=item.gateId+":"+item.platform;
   if(used.has(identity))stop("Conflicting/duplicated platform gate receipt");
-  used.add(identity);
+  if(seenProofs.has(item.proofSha256))stop("Same physical proof cannot close multiple gates");
+  used.add(identity);seenProofs.add(item.proofSha256);
   if(!byGate.has(item.gateId))byGate.set(item.gateId,[]);
   byGate.get(item.gateId).push(Object.freeze({
    platform:item.platform,
