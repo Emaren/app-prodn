@@ -45,7 +45,11 @@ export function check(
     label,
     weight,
     earned,
-    state: options?.ratio ? ratioState(options.ratio) : stateForFraction(earned / weight),
+    // A historic 20/20 receipt can be numerically perfect but temporally invalid.
+    // Status cannot remain green when current credited points were withheld.
+    state: earned + 0.001 < weight
+      ? stateForFraction(earned / weight)
+      : options?.ratio ? ratioState(options.ratio) : "green",
     detail,
     ratio: options?.ratio,
     evidenceAt: options?.evidenceAt,
