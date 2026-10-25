@@ -24,6 +24,10 @@ KEYS = {"schema", "kind", "approval", "baseline_production_sha",
         "financial_release_authorized", "owner_signed", "scope_notes", "files"}
 FILE_KEYS = {"path", "status", "blob_sha1", "mode"}
 COUNTS = {"paths": 128, "added": 63, "modified": 65, "deleted": 0}
+FROZEN_BASE = "6be434c00469afa4acb0623715c3bcf724f927f4"
+FROZEN_TARGET = "6d2a78224e5a5c647345d6b5ffc91bf94dc84b59"
+FROZEN_BASE_TREE = "d0568f80e290242898c8ddfb37ccb07b457e57ac"
+FROZEN_TARGET_TREE = "2b8232c950ec58a8f0d16ea0c625528948b6b206"
 
 
 class Hold(ValueError):
@@ -60,8 +64,11 @@ def read_inventory(path: Path) -> dict:
                 "baseline_tree_sha1", "candidate_tree_sha1"):
         require(type(data[key]) is str and HEX40.fullmatch(data[key]) is not None,
                 "invalid Git identity: " + key)
-    require(data["baseline_production_sha"] != data["candidate_source_sha"],
-            "cannot pretend unchanged source is a release")
+    require(data["baseline_production_sha"] == FROZEN_BASE and
+            data["candidate_source_sha"] == FROZEN_TARGET and
+            data["baseline_tree_sha1"] == FROZEN_BASE_TREE and
+            data["candidate_tree_sha1"] == FROZEN_TARGET_TREE,
+            "unreviewed source/tree policy retagging")
     require(data["counts"] == COUNTS and
             type(data["counts"]) is dict, "unexpected inventory count")
     require(type(data["source_diff_method"]) is str and
@@ -156,8 +163,15 @@ def verify_scope(repo: Path, inventory: dict, *, require_clean=True) -> dict:
     require(text_git(repo, "merge-base", base, target) == base,
             "baseline is not the expected release ancestor")
     if require_clean:
-        require(not git(repo, "status", "--porcelain", "--untracked-files=normal"),
+        require(not git(repo, "status", "--porcelain", "--untracked-files=all",
+                        "--ignore-submodules=none"),
                 "candidate checkout is dirty")
+        # Hidden index flags can conceal worktree changes from porcelain.
+        flags = git(repo, "ls-files", "-v", "-z")
+        require(flags.endswith(b"\\x00"), "truncated Git index flag inventory")
+        for entry in flags[:-1].split(b"\\x00"):
+            require(len(entry) >= 3 and entry[:2] == b"H ",
+                    "candidate contains assume-unchanged/skip-worktree Git index flags")
     require(text_git(repo, "show", "-s", "--format=%T", base) ==
             inventory["baseline_tree_sha1"], "wrong baseline tree")
     require(text_git(repo, "show", "-s", "--format=%T", target) ==
