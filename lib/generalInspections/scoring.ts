@@ -90,7 +90,10 @@ export function freshnessFraction(
   if (!capturedAt) return 0;
   const stamp = Date.parse(capturedAt);
   if (!Number.isFinite(stamp)) return 0;
-  // Clock skew up to five minutes is tolerated; future-dated proof is not a\n  // fresh observation and must not mint inspection credit.\n  if (stamp - now > 5 * 60_000) return 0;\n  const ageHours = Math.max(0, (now - stamp) / 3_600_000);
+  // Clock skew up to five minutes is tolerated; future-dated proof is not a
+  // fresh observation and must not mint inspection credit.
+  if (stamp - now > 5 * 60_000) return 0;
+  const ageHours = Math.max(0, (now - stamp) / 3_600_000);
   if (ageHours <= freshHours) return 1;
   if (ageHours >= staleHours) return 0;
   return 1 - (ageHours - freshHours) / (staleHours - freshHours);
