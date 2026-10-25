@@ -110,7 +110,7 @@ export default function WarPulsePanel({
             />
           </div>
           <div>
-            <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/45">
+            <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/90">
               War Pulse · live chronicle
             </div>
             <h2 className="mt-1 font-serif text-2xl text-white">
@@ -120,7 +120,7 @@ export default function WarPulsePanel({
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-600">polls every 20s</span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-300">polls every 20s</span>
           <button type="button" onClick={cycleTheme}
             aria-label={`Change War Pulse display theme; current theme ${theme}`}
             className="rounded-lg border border-cyan-200/20 px-2 py-1 text-xs text-cyan-100 focus-visible:ring-2 focus-visible:ring-cyan-200">
@@ -129,7 +129,7 @@ export default function WarPulsePanel({
         </div>
       </div>
 
-      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5">
+      <div role="region" tabIndex={0} aria-label="Scrollable War Pulse telemetry" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5"\n          >
         {items.length ? (
           items.map((item) => {
             const expanded = expandedKey === item.key;
@@ -204,7 +204,7 @@ export default function WarPulsePanel({
                 className={
                   (item.current
                     ? "font-semibold text-cyan-100/70"
-                    : "text-slate-600") + " relative z-10"
+                    : "text-slate-300") + " relative z-10"
                 }
               >
                 <BrowserLocalTime value={item.at} />
@@ -261,7 +261,7 @@ export default function WarPulsePanel({
                         }}
                       />
                     </div>
-                    <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/45">
+                    <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/90">
                       <span>{effectiveProgressLabel ?? "process progress"}</span>
                       <span>
                         {effectiveProgress.toFixed(
@@ -332,7 +332,7 @@ export default function WarPulsePanel({
             );
           })
         ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-600">
+          <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-300">
             <Bot className="mb-3 h-7 w-7" />
             <div>No proven activity line is available yet.</div>
             <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-700">
