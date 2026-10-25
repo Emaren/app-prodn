@@ -53,6 +53,11 @@ function publicInvariant(value: unknown) {
   };
 }
 
+const REPORTABLE_AGENT_FAILURE_STATES = new Set([
+  "ATTENTION", "ATTENTION_REQUIRED", "WATCH", "BLOCKED",
+  "FAILED", "UNSAFE", "MAINTENANCE_DUE",
+]);
+
 const PUBLIC_SYSTEM_LABELS = new Set([
   "Release OS",
   "Documentation OS",
@@ -248,16 +253,23 @@ export async function loadPublicKingdomIntelligence() {
     ? payload.system_agents
         .map(safeSystemAgent)
         .filter((item): item is NonNullable<ReturnType<typeof safeSystemAgent>> => Boolean(item))
-        .map(item => reportUsable && agentRuntimeAuthority.verified ? item : {
-          ...item,
-          state: "UNKNOWN",
-          summary: reportUsable
-            ? "Live agent state unverified: no independent active release and Next BUILD_ID receipt."
-            : "Current agent status withheld: source evidence unavailable.",
-          // A bridge can report its observations, but active-process and
-          // progress badges need a separately verified active runtime.
-          activeProcess: false, activeSince: null, currentStep: null,
-          progressPercent: null, progressLabel: null, etaSeconds: null,
+        .map(item => {
+          if (reportUsable && agentRuntimeAuthority.verified) return item;
+          const reportedFailure = reportUsable && !item.activeProcess &&
+            REPORTABLE_AGENT_FAILURE_STATES.has(item.state.toUpperCase());
+          return {
+            ...item,
+            // Negative source observations can be shown with their provenance,
+            // but positive live process state needs independent runtime proof.
+            state: reportedFailure ? item.state : "UNKNOWN",
+            summary: reportedFailure
+              ? "Bridge-reported attention (not independently certified). " + item.summary
+              : reportUsable
+                ? "Live agent state unverified: no independent active release and Next BUILD_ID receipt."
+                : "Current agent status withheld: source evidence unavailable.",
+            activeProcess: false, activeSince: null, currentStep: null,
+            progressPercent: null, progressLabel: null, etaSeconds: null,
+          };
         })
     : [];
   const recentSourceActivity = Array.isArray(payload.recent_source_activity)
