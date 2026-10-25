@@ -168,8 +168,8 @@ def verify_scope(repo: Path, inventory: dict, *, require_clean=True) -> dict:
                 "candidate checkout is dirty")
         # Hidden index flags can conceal worktree changes from porcelain.
         flags = git(repo, "ls-files", "-v", "-z")
-        require(flags.endswith(b"\\x00"), "truncated Git index flag inventory")
-        for entry in flags[:-1].split(b"\\x00"):
+        require(flags.endswith(b"\x00"), "truncated Git index flag inventory")
+        for entry in flags[:-1].split(b"\x00"):
             require(len(entry) >= 3 and entry[:2] == b"H ",
                     "candidate contains assume-unchanged/skip-worktree Git index flags")
     require(text_git(repo, "show", "-s", "--format=%T", base) ==
