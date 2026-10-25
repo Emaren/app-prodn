@@ -458,7 +458,7 @@ export default function WolomaniaPageClient() {
                       <div key={key} className="flex gap-3 border-b border-white/10 pb-4">
                         <DetailIcon className="mt-0.5 h-5 w-5 text-amber-300" />
                         <div>
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-stone-300">
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-stone-500">
                             {label}
                           </div>
                           <div className="mt-1 font-black uppercase tracking-[0.08em] text-white">
@@ -470,7 +470,7 @@ export default function WolomaniaPageClient() {
                   })}
 
                   <div className="border-b border-white/10 pb-4">
-                    <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-stone-300">
+                    <div className="mb-2 text-[10px] uppercase tracking-[0.22em] text-stone-500">
                       Map pool
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -527,9 +527,9 @@ export default function WolomaniaPageClient() {
                   Arabia
                 </div>
                 <div className="mx-auto mt-4 h-28 w-28 rounded-2xl border border-amber-200/25 bg-[radial-gradient(circle,#2f7a43_0%,#2f7a43_35%,#8b7034_36%,#8b7034_52%,#1a2e45_53%,#1a2e45_100%)] shadow-[inset_0_0_30px_rgba(0,0,0,0.55)]" />
-                <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-stone-300">Game time</div>
+                <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-stone-500">Game time</div>
                 <div className="font-serif text-3xl font-black text-amber-100">18:42</div>
-                <div className="mt-4 text-[10px] uppercase tracking-[0.22em] text-stone-300">Viewers</div>
+                <div className="mt-4 text-[10px] uppercase tracking-[0.22em] text-stone-500">Viewers</div>
                 <div className="text-2xl font-black text-white">1,248</div>
                 <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full border border-red-400/30 bg-red-500/15 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-red-100">
                   <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_18px_rgba(248,113,113,0.9)]" />
@@ -600,7 +600,7 @@ export default function WolomaniaPageClient() {
                     <span className="font-bold text-amber-200">{user}:</span> {message}
                   </div>
                 ))}
-                <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-stone-300">
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-stone-500">
                   Say something...
                   <ChevronRight className="h-4 w-4 text-amber-200" />
                 </div>
@@ -686,7 +686,7 @@ export default function WolomaniaPageClient() {
                 <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                   <div className="mb-2 flex items-center gap-2 text-amber-200">
                     <Icon className="h-4 w-4" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-300">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-500">
                       {label}
                     </span>
                   </div>
@@ -702,7 +702,7 @@ export default function WolomaniaPageClient() {
             </Link>
           </div>
 
-          <footer className="mx-auto mt-7 flex max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-5 text-xs text-stone-300">
+          <footer className="mx-auto mt-7 flex max-w-7xl flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-5 text-xs text-stone-500">
             <div>
               <div className="font-serif text-2xl font-black text-amber-100">AoE2WAR</div>
               <div className="uppercase tracking-[0.24em] text-amber-300/55">Where legends are made</div>
