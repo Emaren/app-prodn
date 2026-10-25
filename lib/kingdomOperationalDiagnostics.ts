@@ -109,7 +109,9 @@ function incident(
       sourceGitSha: hex40(observation?.sourceGitSha) ? observation!.sourceGitSha : null,
       buildId: buildId(observation?.buildId) ? observation!.buildId : null,
       observedAt: ms !== null ? observation!.observedAt : null,
-      ageSeconds, ttlSeconds: observation?.ttlSeconds === 900 ? 900 : null,
+      ageSeconds, ttlSeconds: typeof observation?.ttlSeconds === "number" &&
+        Number.isSafeInteger(observation.ttlSeconds) && observation.ttlSeconds > 0 && observation.ttlSeconds <= 86400
+        ? observation.ttlSeconds : null,
       evidenceUri: null, // Never copy operator-local receipt paths or untrusted URLs.
     },
     nextAction,
