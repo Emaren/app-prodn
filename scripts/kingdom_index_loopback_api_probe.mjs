@@ -9,8 +9,20 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import inventory from "../config/kingdom-index-inventory.json" with {type:"json"};
 const MAX_BYTES=512*1024;
-const CHECKS=88;
+// The application exposes a bounded, public aggregate estate; the private
+// path inventory is used ONLY to verify those totals, never returned publicly.
+const ESTATE_COUNTS=inventory.counts;
+const CHECKS=ESTATE_COUNTS.publicIndexTemplates;
+const ESTATE_KEYS=Object.keys(ESTATE_COUNTS);
+if(inventory.schema!==1||CHECKS!==88||
+   ESTATE_COUNTS.pageTemplates!==ESTATE_COUNTS.adminTemplates+
+     ESTATE_COUNTS.dynamicTemplates+ESTATE_COUNTS.publicIndexTemplates+
+     ESTATE_COUNTS.excludedStaticTemplates||
+   ESTATE_COUNTS.routeHandlerTemplates!==ESTATE_COUNTS.apiHandlerTemplates+
+     ESTATE_COUNTS.nonApiHandlerTemplates)
+ throw Error("KINGDOM API PROBE STOP: Inconsistent canonical inventory");
 const stop=m=>{throw Error("KINGDOM API PROBE STOP: "+m)};
 const pct=(a,q)=>{
  const values=[...a].sort((x,y)=>x-y);const pos=(values.length-1)*q;
@@ -18,8 +30,7 @@ const pct=(a,q)=>{
 };
 export function validateIndexApiSnapshot(obj,headers){
  if(!obj||obj.schema!==1||!Array.isArray(obj.pages)||obj.pages.length!==CHECKS||
-   !obj.estate||obj.estate.pageTemplates!==144||
-   obj.estate.routeHandlerTemplates!==273||
+   !obj.estate||ESTATE_KEYS.some(key=>obj.estate[key]!==ESTATE_COUNTS[key])||
    typeof obj.certified!=="number"||typeof obj.generatedAt!=="string")
    stop("Untrusted/missing estate contract");
  const hrefs=new Set(),invalid=[];

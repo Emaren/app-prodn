@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { captureIndexLoopback,validateIndexApiSnapshot } from "../scripts/kingdom_index_loopback_api_probe.mjs";
+import inventory from "../config/kingdom-index-inventory.json" with {type:"json"};
 type Row={href:string;status:string;score:number|null;kind:string|null;authenticatedPublication:null|{buildId:string}};
 const mk=()=>{
  const pages:Row[]=Array.from({length:87},(_,i)=>({
@@ -9,7 +10,7 @@ const mk=()=>{
  }));
  pages.push({href:"/kingdom-index",status:"unmeasured",score:null,kind:null,authenticatedPublication:null});
  return {schema:1,generatedAt:"2026-10-22T18:00:00.000Z",
-   estate:{pageTemplates:144,routeHandlerTemplates:273},certified:0,pages};
+   estate:{...inventory.counts},certified:0,pages};
 };
 const headers=new Headers({"cache-control":"private, no-store, max-age=0"});
 test("valid finite loopback cohort returns measured local latency but never a certificate",async()=>{
@@ -48,8 +49,13 @@ test("denies invented 100 and unsupported cached current certificate",()=>{
 test("rejects duplicate inventory rows, invented counts and inconsistent certified totals",()=>{
  const x=mk();x.pages[0].href=x.pages[1].href;
  assert.throws(()=>validateIndexApiSnapshot(x,headers),/duplicate/);
- const y=mk();y.estate.pageTemplates=145;
+ const y=mk();y.estate.pageTemplates+=1;
  assert.throws(()=>validateIndexApiSnapshot(y,headers),/estate/);
+ const y2=mk();y2.estate.routeHandlerTemplates-=1;
+ assert.throws(()=>validateIndexApiSnapshot(y2,headers),/estate/);
+ const oldEstate=mk();oldEstate.estate.pageTemplates=144;
+ oldEstate.estate.routeHandlerTemplates=273;
+ assert.throws(()=>validateIndexApiSnapshot(oldEstate,headers),/estate/);
  const z=mk();z.certified=1;
  assert.throws(()=>validateIndexApiSnapshot(z,headers),/certified total mismatch/);
 });
