@@ -15,6 +15,123 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 25, 2026 — Renaissance Round Three: explicit source-versus-operation closure
+
+**Disposition: HOLD.** Latest independently supplied owner read-only Doctor at
+`2026-10-25T14:18:42.058942Z` was **59/100 UNSAFE** with Estate **P0=2,
+P1=4**; observed General Inspections was **69/100**, not remeasured after
+the source-only draft. The reported category scores are dated, not certified
+post-repair grades. CERTIFIED production source
+`6be434c00469afa4acb0623715c3bcf724f927f4` and BUILD_ID
+`xqX6Oi-zV5gSKH1kIC4zC` matched in that owner receipt. None of the
+following pending repairs allows reusing this October 25 receipt as fresh.
+
+### Estate Doctor's six exact audit producers and resolution dependencies
+
+| Severity, original `area/key` | Observed root/provenance | Source-side remedy / external proof required |
+| --- | --- | --- |
+| P0 `Documentation/docs-check` | Central strict check returned rc=2 on expired Developer guide and historical central Rivalries metadata; not evidence of a missing entire corpus | Central docs owner performs substantive review, reconciles canonical metadata and reruns `docs-check` on exact accepted source |
+| P0 `Documentation/strict-build` | Strict build blocked by same docs-generating error, rc=2 | Requires docs-check and its own successful strict build; never waive the build gate |
+| P1 `Documentation/central-source-snapshot-stale` | Central app snapshot `ad781a02aa5ffa6fd0053b817fcccf6ee0429f51` differs from actual production `6be434c00469afa4acb0623715c3bcf724f927f4` | Central verifies active vs source lineage and reviews/updates snapshot; preserve prior commit as historical |
+| P1 `Documentation/central-federation-drift` | Central `audit-taxonomy` rc=2 at same expired review blockers | Source/doc registry steward fixes real federation and reruns taxonomy audit; not equivalent to changed hash = healthy |
+| P1 `Context Durability/archive-stale` | AoE2HDBets 2026-10-23T20:03:51Z archive predates 2026-10-25T00:50:51Z latest source | VPSSentry context owner produces, hashes and verifies a newer source-complete camera without deleting the prior one |
+| P1 `WoloChain/vps-source-drift` | VPS checkout `78c25985420ee41a6678c42fab8ea8d6c3b1b519` vs registered implementation baseline `4ce11c4965da64e3d4dee6a8681b6198e1aba1eb` | WoloChain owner reviews actual code ancestry/dirty state and production contract, then governs any baseline adjustment; does **not** imply failed RPC |
+
+**Documentation details:** The original error cites
+`AoE2WAR-docs/docs/start-here/developer.md` (reviewed 2026-07-26)
+and `app-prodn/docs/RIVALRIES_AND_WAR_VAULT.md`. App-prodn **source AND
+local document registry** already recorded Rivalries `reviewed_at:
+2026-10-25`; **central taxonomy** still held `2026-07-26`. Do not
+blindly change app review timestamps. Eight central Oct 24 review deadlines,
+three central-to-app hash disagreements, and the central implementation
+baseline are separate review/federation work. All five original individual
+source-doc checker commands passed; central generation/strict checks failed.
+The source-only PR's strict DocsV2 baseline gate remains owned by Central's
+**single writer**; Tab C must not edit shared `docs/document-registry.json`,
+`scripts/aoe2_doctor.py`, or `scripts/aoe2_audit.py`.
+
+### Original Doctor 13 independent deduction points (not hidden by Estate totals)
+
+| Exact Doctor finding | Points | Owner-proven action and gate |
+| --- | ---: | --- |
+| `Disaster Recovery/volume-capacity-critical` | 8 | Mounted evidence volume 296G / 258G used / 26G available, 92% full (inode use 17%); Storage OS read-only retention/protected restore/cold-checkpoint census, independently authorize any verified transaction; use expansion if safe retention cannot free sufficient bytes |
+| `Host/failed-units` | 2 | Failed `certbot.service` (historical WheatAndStone-only NXDOMAIN, domain intentionally abandoned) and `vps-sentry-unit-event@started__ssh.service.service` (226/NAMESPACE); verify newly clean active Certbot cycle and VPS Sentry operator-event delivery, not reset-failed cosmetics |
+| `Toolchain/next-contract` | 1 | Installed Next 15.5.28 vs operations contract 15.5.27; toolchain owner decides/validates supported version and exact-source tests, updates contract only with reviewed evidence |
+| `Architecture/semantic-map-runtime-stale` — `SYSTEM_MAP.md` | 1 | VPSSentry map owner reviews and source-certifies runtime seal including active release identity; preserve dated historical seals |
+| `Architecture/semantic-map-runtime-stale` — `SERVER_STORAGE_MAP.md` | 1 | Same independent source-certified map refresh for storage map |
+
+**No user action needed for WheatAndStone:** Its specific Certbot renewal config was
+successfully **parked** by the operator under
+`/etc/letsencrypt/renewal-shelved/wheatandstone.ca.conf`; do not restore
+unowned DNS or remove other certificate renewals. Locally served
+`aoe2war.com` TLS was valid through 2026-12-19, but public-edge status
+and next Certbot success are independent tests. VPS Sentry issue
+`Emaren/vps-sentry#4` owns upstream event namespace/delivery repair:
+`vps-sentry.service` captured events but the email path failed without
+`/etc/postfix/main.cf`, and webhook reported invalid/backoff. A successful
+collector or publisher is **not** proof of alert delivery. Current deployed
+template already matches source `RuntimeDirectory=vps-sentry` and
+`ReadWritePaths=/var/lib/vps-sentry`; 226/NAMESPACE occurred during
+concurrent SSH stop/start event instances. Lifecycle race remains unproven.
+
+### Seven-category repair and evidence queue (66 canonical check contracts)
+
+The **dated** 69/100 snapshot implies 214 missing *category* points across
+seven categories (not 214 independently confirmed current failures). Each
+check's **PASS/FAIL/STALE/UNKNOWN** requires its original receipt from the
+current running build. The published category total cannot identify which
+checks were awarded points. Never allocate missing points to a check by guess.
+
+| Dated category | Missing of 100 | Canonical check IDs / source-bound next evidence |
+| --- | ---: | --- |
+| Speed 63 | 37 | `lcp50`, `lcp95`, `ready50`, `ready95`, `ttfb95`, `static-edge`, `dynamic-edge`, `featured-edge`, `stable-lcp`, `speed-fresh`: new exact-release browser/edge cohorts, bounded sampling, native capture times |
+| Documentation 35 | 65 | `doctor-docs`, `docs-control`, `taxonomy`, `strict-doc-build`, `audit-taxonomy`, `source-docs`, `system-map`, `storage-map`, `central-doc-repo`, `docs-fresh`: independent docs review and Central accepted metadata/federation receipts |
+| Organization 76 | 24 | `root-free`, `volume-used`, `mac-free`, `hot-rollbacks`, `cold-checkpoints`, `expiry-debt`, `watcher-downloads`, `staging`, `worktrees`, `caches`: current statfs and **read-only** Storage OS inventories, no unapproved deletion |
+| Test & Build 100 | 0 | `node-tests`, `python-tests`, `typescript`, `eslint`, `docs-gate`, `secret-scan`, `dependency`, `prisma`, `production-build`: preserve historical certified source/build scope, report aged gate `STALE` for current-readiness purposes rather than rescoring history |
+| Release 64 | 36 | `certified`, `doctor`, `estate-findings`, `build-parity`, `service`, `source-parity`, `receipt`, `finish`: observed build identity, certified history plus new read-only Doctor; do not run Finish/host release on GET |
+| Security 75 | 25 | `vpssentry`, `failed-units`, `updates`, `reboot`, `maintenance`, `secrets`, `recovery`, `root-resilience`, `security-fresh`: event-hook/notification roundtrip, patch evidence and actual recovery proof |
+| Data/Wolo/Replay 73 | 27 | `wolo-8092`, `wolo-8093`, `wolo-estate`, `parser-estate`, `recovery-data`, `watcher-release`, `db-mutation`, `wolo-mutation`, `data-fresh`, `evidence`: port 27657 chain `wolo-1` RPC independently observed alive/not-catching-up at block 2,634,595, but neither 8092/8093 listener nor RPC health proves custody/finality/financial solvency |
+
+### Sustainable evidence policy (source implemented vs owner-owned activation)
+
+This draft adds **additive** machine-readable `evidenceChecks` to existing
+`GET /api/general-inspections?report=why-not-green`. Each row exposes
+`checkKey=category/checkId` (a *check contract*, **not** a fabricated original
+receipt ID), raw capture time, original TTL, derived `nextDueAt`, current
+`evidenceStatus` **PASS, FAIL, STALE or UNKNOWN**, earned points,
+repair classification and detail. The legacy `gaps[].status`
+`pass/fail/unknown` field remains backward compatible. A full-weight
+check with a current, mathematically valid but failing sample ratio is
+reported **FAIL** without altering its awarded weight, and expired original
+evidence is **STALE** even when historical credit was 100. Invalid ratios,
+absent times and missing original producer receipt IDs remain UNKNOWN.
+
+**No independent reinspection scheduler is activated by this read-only source
+change.** Existing production Operator Bridge/Storage OS owners must schedule
+and certify bounded collection before the earliest `nextDueAt`, with a
+**6-hour-or-faster** window for rapidly changing release/security/Wolo
+receipts and original 72/168-hour producer TTLs for documentation and
+browser cohorts. A schedule alone is not a completed measurement; each run
+must append immutable, content-hashed original producer evidence with
+captured-at, received-at, exact source SHA, BUILD_ID, host identity,
+producer name, check ID, result and next deadline, then prove that the
+*deployed* reader consumes it. Never use a transport receive time as a
+new observation or a signed self-attestation as independent release truth.
+No competing Doctor, hidden background task, finance authority or host write
+may be added to the public report.
+
+**Finite operating queue:** (1) Central source-review/taxonomy fixes and
+DocsV2 single-writer accepted baseline; (2) Wolo ancestry and VPSSentry
+context camera; (3) protected volume-retention plan and capacity remedy;
+(4) VPS Sentry issue #4 namespace + notification delivery;
+(5) toolchain/map and other real Doctor warnings; (6) current source/build
+browser/edge/replay/host intake; (7) exact-head source CI and *separate*
+operator production verification; (8) same 66 checks independently prove
+full points and `evidenceStatus=PASS`, and Doctor independently proves
+100/HEALTHY without blockers or warnings. As of this draft, steps 1–8
+are **not complete**; overall 100 is not claimed.
+
+
 ## October 25, 2026 — Tab C evidence-bound operational gap projection (source-only draft)
 
 **Dated operator screen observations, not new measurements:** General Inspections 69/100:
