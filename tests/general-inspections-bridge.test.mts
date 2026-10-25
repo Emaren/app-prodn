@@ -305,6 +305,27 @@ function makeEstate(speedCurrent = true) {
   };
 }
 
+test("bounded statfs receipts carry live observation time; fallback preserves bridge capture time", () => {
+  for (const fallback of [false, true]) {
+    const estate = makeEstate(true);
+    try {
+      if (fallback) {
+        estate.options.filesystemEvidence = { rootFreeGiB: null, volumeUsedPercent: null };
+      }
+      const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+      assert.ok(snapshot);
+      const organization = snapshot.categories.find((row) => row.id === "organization")!;
+      for (const id of ["root-free", "volume-used"]) {
+        const row = organization.checks.find((item) => item.id === id)!;
+        assert.equal(row.evidenceAt, fallback ? "2026-09-19T03:09:00Z" : "2026-09-19T03:10:00.000Z");
+        assert.match(row.detail, fallback ? /operator bridge fallback/ : /live VPS/);
+      }
+    } finally {
+      rmSync(estate.root, { recursive: true, force: true });
+    }
+  }
+});
+
 test("live VPS capacity supersedes a contradictory older bridge storage snapshot", () => {
   const estate = makeEstate(true);
   try {
