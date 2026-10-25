@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import RequestsBoard from "@/components/requests/RequestsBoard";
+import RequestFragmentFocus from "@/components/requests/RequestFragmentFocus";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   ABOUT_PILLARS,
@@ -30,6 +31,7 @@ export default async function RequestsPage() {
 
   return (
     <main className="space-y-6 py-2 text-white sm:space-y-8 sm:py-3">
+      <RequestFragmentFocus />
       <section id="requests" className="space-y-4 sm:space-y-6">
         <RequestsBoard initialSnapshot={initialSnapshot} />
       </section>
@@ -63,7 +65,7 @@ export default async function RequestsPage() {
         </div>
       </section>
 
-      <section id="about" className="space-y-4">
+      <section id="about" tabIndex={-1} className="space-y-4">
         <div>
           <div className="text-[11px] uppercase tracking-[0.36em] text-sky-200/70">About</div>
           <h2 className="mt-2 text-3xl font-semibold text-white">What this product is trying to be.</h2>
@@ -112,7 +114,7 @@ export default async function RequestsPage() {
         </section>
       </section>
 
-      <section id="roadmap" className="space-y-4">
+      <section id="roadmap" tabIndex={-1} className="space-y-4">
         <div>
           <div className="text-[11px] uppercase tracking-[0.36em] text-amber-200/70">Roadmap</div>
           <h2 className="mt-2 text-3xl font-semibold text-white">Where the pressure goes next.</h2>
