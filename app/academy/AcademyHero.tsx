@@ -7,7 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { preload } from "react-dom";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 type AcademyHeroVariant = "a" | "b" | "e";
 
@@ -319,12 +319,6 @@ export default function AcademyHero() {
     persistHeroVariant(nextVariant, "hero-click");
   };
 
-  const handleHeroKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    cycleHeroVariant();
-  };
-
   const handleHeroClick = (event: MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement | null;
 
@@ -341,13 +335,9 @@ export default function AcademyHero() {
 
   return (
     <section
-      role="button"
-      tabIndex={0}
-      aria-label={`Academy hero visual test. Current version: ${currentVariant.name}. Click to cycle hero variants.`}
       className="group relative isolate min-h-[34rem] cursor-pointer overflow-hidden rounded-[2.2rem] border border-amber-100/16 bg-[#05070d] bg-cover shadow-[0_38px_120px_rgba(0,0,0,0.42)] outline-none transition duration-500 hover:border-amber-100/22 focus-visible:ring-2 focus-visible:ring-amber-200/40 sm:min-h-[40rem]"
       style={heroStyle}
       onClick={handleHeroClick}
-      onKeyDown={handleHeroKeyDown}
     >
       <SpeedReadyMarker
         route="/academy"
