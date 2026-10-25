@@ -1,7 +1,7 @@
 name: Renaissance 88 candidate Chrome factory
 on:
   pull_request:
-    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/renaissance-88-axe-triage.test.mts', 'tests/renaissance-88-a11y-repairs.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'docs/RENAISSANCE_88_ROUND4.md', 'app/**', 'components/**', 'lib/**', 'config/**']
+    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/renaissance-88-axe-triage.test.mts', 'tests/renaissance-88-a11y-repairs.test.mts', 'tests/renaissance-88-release-smoke.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'docs/RENAISSANCE_88_ROUND4.md', 'app/**', 'components/**', 'lib/**', 'config/**']
   workflow_dispatch:
   schedule:
     - cron: '41 3 * * *'
@@ -34,10 +34,11 @@ jobs:
           test -z "$(git status --porcelain --untracked-files=no)"
           python3 -m unittest discover -s tests -p 'test_renaissance_88_factory.py' -v
           python3 -m unittest discover -s tests -p 'test_renaissance_88_fixture.py' -v
-          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts tests/renaissance-88-fixture.test.mts tests/renaissance-88-axe-triage.test.mts tests/renaissance-88-a11y-repairs.test.mts
+          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts tests/renaissance-88-fixture.test.mts tests/renaissance-88-axe-triage.test.mts tests/renaissance-88-a11y-repairs.test.mts tests/renaissance-88-release-smoke.test.mts
           mkdir -p renaissance-88-source
           timeout -k 5s 8m python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --deep --output renaissance-88-source/public88.json
           python3 scripts/renaissance_88_plan.py impact app/layout.tsx --expected-sha "$SOURCE_SHA" --output renaissance-88-source/impact-global.json
+          node scripts/renaissance_88_release_regression.mjs --plan renaissance-88-source/public88.json --output renaissance-88-source/release-smoke-plan.json
           python3 scripts/renaissance_88_plan.py matrix --expected-sha "$SOURCE_SHA" --output renaissance-88-source/overlay-matrix.json
           sha256sum renaissance-88-source/*.json > renaissance-88-source/digests.sha256
           test -z "$(git status --porcelain --untracked-files=no)"
