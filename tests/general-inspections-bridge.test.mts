@@ -315,6 +315,10 @@ test("bounded statfs receipts carry live observation time; fallback preserves br
       const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
       assert.ok(snapshot);
       const organization = snapshot.categories.find((row) => row.id === "organization")!;
+      const rootResilience = snapshot.categories.find((row) => row.id === "security")!
+        .checks.find((row) => row.id === "root-resilience")!;
+      assert.equal(rootResilience.evidenceAt, fallback ? "2026-09-19T03:09:00Z" : "2026-09-19T03:10:00.000Z");
+      assert.match(rootResilience.detail, fallback ? /operator bridge fallback/ : /live VPS/);
       for (const id of ["root-free", "volume-used"]) {
         const row = organization.checks.find((item) => item.id === id)!;
         assert.equal(row.evidenceAt, fallback ? "2026-09-19T03:09:00Z" : "2026-09-19T03:10:00.000Z");
