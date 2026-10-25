@@ -363,7 +363,10 @@ def stable_financial_runtime_identity(immutable: dict) -> dict:
         require(type(row) is dict, "invalid financial unit observation")
         if name in oneshots:
             require(set(row) == {"LoadState", "ActiveState", "SubState",
-                                 "UnitFileState", "MainPID"} and row["LoadState"] == "loaded",
+                                 "UnitFileState", "MainPID"} and row["LoadState"] == "loaded" and
+                    type(row["MainPID"]) is int and row["MainPID"] >= 0 and
+                    all(type(row[k]) is str and 0 < len(row[k]) <= 64
+                        for k in ("ActiveState", "SubState", "UnitFileState")),
                     "incomplete timed one-shot unit observation")
             stable_units[name] = {
                 "LoadState": row["LoadState"],
