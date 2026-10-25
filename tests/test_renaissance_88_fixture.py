@@ -33,7 +33,9 @@ class DisposablePgContract(unittest.TestCase):
         self.assertIn("INSERT INTO users(uid,in_game_name,verified,is_admin,created_at)",self.shell)
         self.assertNotIn("INSERT INTO bets",self.shell.lower())
     def test_checksum_before_and_after_and_cleanup(self):
-        for word in ("pg_dump","sha256sum","before.sha256","snapshot|verify","stop)"):
+        for word in ("pg_dump","sha256sum","before.sha256","snapshot|verify","stop)",
+                     "--restrict-key=Renaissance88FixtureDigest",
+                     "immediate-repeat.sql","fixture dump is nondeterministic"):
             self.assertIn(word,self.shell)
         self.assertIn("bash scripts/renaissance_88_pg_fixture.sh verify",self.workflow)
         self.assertIn("bash scripts/renaissance_88_pg_fixture.sh stop",self.workflow)
