@@ -46,12 +46,12 @@ function SectionIndex({ number, title, marker }: {
   );
 }
 
-function Meter({ value, max, label, tone = "copper" }: {
-  value: number; max: number; label: string; tone?: "copper" | "ice" | "green" | "red";
+function Meter({ value, max, tone = "copper" }: {
+  value: number; max: number; tone?: "copper" | "ice" | "green" | "red";
 }) {
   const width = max > 0 ? Math.max(0, Math.min(100, value / max * 100)) : 0;
   return (
-    <div className="replay-meter" role="progressbar" aria-label={label} aria-valuenow={value}
+    <div className="replay-meter" role="progressbar" aria-valuenow={value}
       aria-valuemin={0} aria-valuemax={max || 1}>
       <span className={`replay-meter-fill replay-meter-${tone}`}
         style={{ width: `${width}%` }} />
@@ -118,7 +118,7 @@ function LineDistribution({
               {integer(row.count)}{total ? ` · ${(row.count / total * 100).toFixed(1)}%` : ""}
             </span>
           </div>
-          <Meter value={row.count} max={max} label={row.label} tone={tint} />
+          <Meter value={row.count} max={max} tone={tint} />
         </div>
       ))}
       {!rows.length && <div className="rounded-xl border border-dashed border-white/10 p-6 text-center text-xs text-stone-500">{empty}</div>}
@@ -336,25 +336,25 @@ export default function HdReplayEngine({ initial, phoenix }: {
               <div className="replay-stage-head"><Database size={18} /><span>01 / INTAKE</span></div>
               <strong>{counts ? integer(counts.final) : "—"}</strong>
               <p>Final game records received</p>
-              <Meter value={counts?.final ?? 0} max={counts?.final ?? 1} label="Final game record intake" />
+              <Meter value={counts?.final ?? 0} max={counts?.final ?? 1} />
             </div>
             <div className="replay-factory-stage">
               <div className="replay-stage-head"><Users size={18} /><span>02 / TEAMS</span></div>
               <strong>{counts ? integer(counts.teamsVerified) : "—"}</strong>
               <p>Player sides verified</p>
-              <Meter value={counts?.teamsVerified ?? 0} max={counts?.final ?? 1} label="Verified player sides" tone="ice" />
+              <Meter value={counts?.teamsVerified ?? 0} max={counts?.final ?? 1} tone="ice" />
             </div>
             <div className="replay-factory-stage">
               <div className="replay-stage-head"><Cpu size={18} /><span>03 / DECODER</span></div>
               <strong>{counts ? integer(counts.indexedParsed) : "—"}</strong>
               <p>Indexed artifacts decoded · separate file grain</p>
-              <Meter value={counts?.indexedParsed ?? 0} max={counts?.indexedArtifacts ?? 1} label="Decoded replay artifacts" tone="green" />
+              <Meter value={counts?.indexedParsed ?? 0} max={counts?.indexedArtifacts ?? 1} tone="green" />
             </div>
             <div className="replay-factory-stage">
               <div className="replay-stage-head"><Target size={18} /><span>04 / WINNER</span></div>
               <strong>{counts ? integer(counts.verifiedResult) : "—"}</strong>
               <p>Defensible final results</p>
-              <Meter value={counts?.verifiedResult ?? 0} max={counts?.final ?? 1} label="Verified final results" tone="copper" />
+              <Meter value={counts?.verifiedResult ?? 0} max={counts?.final ?? 1} tone="copper" />
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500">
@@ -397,7 +397,7 @@ export default function HdReplayEngine({ initial, phoenix }: {
               <div className="replay-subpanel"><span>Needs teams only</span><strong>{counts ? integer(counts.logicalNeedsRosterOnly) : "—"}</strong></div>
             </div>
             <div className="mt-5 flex justify-between font-mono text-xs text-stone-400"><span>Complete winner + roster</span><span>{counts ? percent(counts.logicalFullCoverageBps) : "—"}</span></div>
-            <div className="mt-2"><Meter value={counts?.logicalFullTruth ?? 0} max={counts?.uniqueLogicalBattles ?? 1} label="Fully proven logical battles" tone="green" /></div>
+            <div className="mt-2"><Meter value={counts?.logicalFullTruth ?? 0} max={counts?.uniqueLogicalBattles ?? 1} tone="green" /></div>
           </div>
         </section>
 
