@@ -150,12 +150,38 @@ test("real zero survives bridge -> sanitized API contract -> Workshop without so
   assert.equal(workshop.p1, 0);
   assert.equal(workshop.sourceExact, false);
   assert.equal(workshop.certificationStatus, "UNVERIFIED");
+  assert.equal(intelligence.agentRuntimeAuthority.verified, false);
+  assert.equal(intelligence.agentRuntimeAuthority.status, "UNVERIFIED");
+  assert.equal(intelligence.systemAgents[0]?.state, "UNKNOWN");
+  assert.equal(intelligence.systemAgents[0]?.activeProcess, false);
+  assert.equal(intelligence.systemAgents[0]?.progressPercent, null);
+  assert.equal(workshop.activeSystemCount, null);
+  assert.equal(workshop.attentionSystemCount, null);
   assert.equal(intelligence.source?.exact, false);
   assert.equal(intelligence.source?.reportedExact, true);
   assert.equal(intelligence.operatingState, "UNKNOWN");
   assert.equal(intelligence.invariants.find(x => x.key === "source-authority-exact")?.status, "UNKNOWN");
   assert.ok(intelligence.diagnostics.length > 0);
   assert.equal(workshop.diagnostics[0]?.code, "independent-runtime-verification-unavailable");
+});
+
+test("source-reported failure remains visible while positive process state stays UNKNOWN", async () => {
+  const { intelligence, workshop } = await observed(payload({
+    system_agents: [
+      { key: "doctor", label: "System Doctor", state: "ACTIVE", summary: "self-declared working", active_process: true, progress_percent: 95 },
+      { key: "storage", label: "Storage OS", state: "BLOCKED", summary: "source-reported stalled archive", active_process: false },
+    ],
+  }));
+  assert.equal(intelligence.health?.p0, 0);
+  assert.equal(intelligence.health?.p1, 0);
+  assert.equal(intelligence.agentRuntimeAuthority.verified, false);
+  assert.equal(intelligence.systemAgents[0]?.state, "UNKNOWN");
+  assert.equal(intelligence.systemAgents[0]?.activeProcess, false);
+  assert.equal(intelligence.systemAgents[0]?.progressPercent, null);
+  assert.equal(intelligence.systemAgents[1]?.state, "BLOCKED");
+  assert.match(intelligence.systemAgents[1]?.summary ?? "", /Bridge-reported attention/);
+  assert.equal(workshop.activeSystemCount, null);
+  assert.equal(workshop.attentionSystemCount, null);
 });
 
 test("missing, future, stale or contradictory bridge evidence cannot leave healthy process indicators or counts", async () => {
