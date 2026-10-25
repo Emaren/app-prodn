@@ -8,12 +8,48 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-24"
+reviewed_at: "2026-10-25"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## October 25 — epoch-bound committed credit recovery (HELD source)
+
+`readRecordedSatchelCredit` now requires the immutable epoch receipt and its
+approved registry entry in addition to the physical consumption, owner and
+deposit journal. It compares chain, transaction/message identity, owner,
+amount, vault and committed height with that registry's H*. A complete
+historical credit without this link is held as
+`recorded_deposit_epoch_missing_or_conflicting`; it is never relabelled as new
+prospective money. This read leaves historical balances and journal records
+untouched. A legitimate epoch-bound retry after a process restart still
+returns its existing credit without requesting a new proof or moving funds.
+
+The review-only epoch predicate also accepts the actual nonzero lowercase
+40-character Git source revision, matching the durable SQL contract. An
+arbitrary 64-character evidence digest cannot substitute for that revision.
+Native pinned-verifier/SDK and disposable PostgreSQL regressions demonstrate
+both rejection of the complete unbound historical credit and successful
+authenticated deposit, restart recovery, conservation and full unmatched
+return. These fixtures are not production financial evidence.
+
+All nine prospective finance migration bodies remain unchanged. The ninth
+(`20261024_233000_war_satchel_prospective_epoch_admission/migration.sql`)
+SHA-256 is `21d271617e91324de72586fc43a3224fdba1a7f80aa2d42c9520a75d475bb830`.
+No migration or runtime financial flag is authorized by this source correction.
+
+**Authority clarification:** there is one actual human owner. The existing
+five-role review-only protocol remains an unavailable, held policy; its
+synthetic test keys do not establish five human reviewers. The older runbook
+references below describe that unfulfilled policy, not enrolled people or
+approvals. Replacing it requires a separately identified and approved
+financial policy with a distinct domain/key/nonce/journal from the website
+policy, authentic chain and solvency evidence, and an explicit account of the
+missing independent human veto. This change does not bypass that requirement.
+`SATCHEL_FINANCIAL_BRIDGE_READY` and
+`PROSPECTIVE_EPOCH_MAINNET_AUTHORIZED` remain false.
 
 ## October 22 — build-bound HD financial admission (source only)
 

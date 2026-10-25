@@ -254,6 +254,24 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
       await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,intentId:partialId,txHash:partialHash}),/incomplete_recorded_deposit_credit/);
       assert.equal((await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances")).rows[0].available_uwolo,i.AmountUWolo);
     });
+    await t.test("complete historical credit without an epoch cannot masquerade as prospective restart recovery",async()=>{
+      const historicalHash="C".repeat(64);
+      const receipt=await sql!.query("SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=$1",[historicalHash]);
+      assert.equal(receipt.rowCount,1);
+      await sql!.query(`INSERT INTO war_satchel_funded_journal
+        (owner_user_id,source_key,event_kind,amount_uwolo,delta_available_uwolo,
+         delta_reserved_uwolo,delta_committed_uwolo,delta_withdrawal_pending_uwolo,receipt_id)
+        VALUES(1,$1,'deposit_credit',$2,$2,0,0,0,$3)`,[
+        "satchel:credit:wolo-1:"+historicalHash+":0",i.AmountUWolo,receipt.rows[0].id]);
+      await sql!.query("UPDATE war_satchel_funded_balances SET available_uwolo=available_uwolo+$1 WHERE owner_user_id=1",[i.AmountUWolo]);
+      const before=await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances WHERE owner_user_id=1");
+      await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,
+        intentId:"00000000-0000-4000-8000-000000000002",txHash:historicalHash}),
+        /recorded_deposit_epoch_missing_or_conflicting/);
+      assert.equal((await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances WHERE owner_user_id=1")).rows[0].available_uwolo,before.rows[0].available_uwolo,
+        "refused historical recovery must preserve historical liability");
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"1");
+    });
   }finally{
     if(db)await db.$disconnect();if(sql)await sql.end();
     if(started)execFileSync(path.join(bin,"pg_ctl"),["-D",data,"-m","immediate","-w","stop"],{stdio:"pipe"});

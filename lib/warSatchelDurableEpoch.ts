@@ -7,7 +7,6 @@
  * chain/custody/solvency. The immutable financial bridge HOLD remains separate.
  */
 import {Prisma} from "@/lib/generated/prisma";
-import type {PrismaClient} from "@/lib/generated/prisma";
 import type {AuthenticatedWarSatchelBank} from "./warSatchelAuthenticatedBank.ts";
 import type {AuthenticatedWarSatchelDeposit} from "./warSatchelAuthenticatedDeposit.ts";
 
@@ -56,6 +55,37 @@ export function prospectiveEpochDepositIssue(
  return null;
 }
 function stop(issue:string):never{throw Error("WAR_SATCHEL_EPOCH_ADMISSION_REFUSED:"+issue);}
+/** Recover only a deposit already committed inside the prospective estate.
+ * A historical receipt, physical consumption and matching journal are not an
+ * epoch admission. This read neither upgrades old money nor requires a fresh
+ * chain proof to replay an already committed result after a lost response.
+ */
+export async function requireRecordedProspectiveDepositEpoch(tx:Transaction,receipt:{
+ id:bigint;ownerUserId:number;txHash:string;amountUwolo:bigint;
+ vaultAddress:string;canonicalHeight:bigint;
+}):Promise<void>{
+ const rows=await tx.$queryRaw<Array<{
+  chainId:string;txHash:string;messageIndex:number;ownerUserId:number;
+  vault:string;height:bigint;amountUwolo:bigint;state:string;
+  epochChainId:string;epochVault:string;startHeight:bigint;
+ }>>(Prisma.sql`
+ SELECT r.chain_id AS "chainId",r.tx_hash AS "txHash",r.message_index AS "messageIndex",
+ r.owner_user_id AS "ownerUserId",r.vault_address AS vault,r.canonical_height AS height,
+ r.amount_uwolo AS "amountUwolo",e.state,e.chain_id AS "epochChainId",
+ e.vault_address AS "epochVault",e.start_height AS "startHeight"
+ FROM public.war_satchel_epoch_deposit_receipts r
+ JOIN public.war_satchel_prospective_epochs e ON e.epoch_id=r.epoch_id
+ WHERE r.receipt_id=${receipt.id} LIMIT 2
+ `);
+ const row=rows[0];
+ if(rows.length!==1||row.chainId!=="wolo-1"||row.epochChainId!=="wolo-1"||
+    row.messageIndex!==0||row.txHash!==receipt.txHash||
+    row.ownerUserId!==receipt.ownerUserId||row.amountUwolo!==receipt.amountUwolo||
+    row.vault!==receipt.vaultAddress||row.epochVault!==receipt.vaultAddress||
+    row.height!==receipt.canonicalHeight||row.state!=="approved"||
+    row.startHeight<=BigInt(0)||row.height<=row.startHeight)
+  stop("recorded_deposit_epoch_missing_or_conflicting");
+}
 export async function requireDurableProspectiveDepositEpoch(
  tx:Transaction,input:{
  ownerUserId:number;ownerUid:string;ownerWallet:string;intentCreatedAt:Date;

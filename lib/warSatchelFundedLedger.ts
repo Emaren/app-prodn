@@ -31,7 +31,7 @@ import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { warSatchelVaultDistinctFromKnownWallets } from "./warSatchelVaultBoundary.ts";
 import { resolveCommunityTreasuryAddressConfig } from "./woloCommunityTreasury.ts";
-import { requireDurableProspectiveDepositEpoch, bindDurableEpochReceipt } from "./warSatchelDurableEpoch.ts";
+import { requireDurableProspectiveDepositEpoch, bindDurableEpochReceipt, requireRecordedProspectiveDepositEpoch } from "./warSatchelDurableEpoch.ts";
 
 const MAX_I64 = BigInt("9223372036854775807");
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
@@ -144,7 +144,7 @@ async function requirePhysicalConsumption(
 }
 
 async function committedDepositResult(tx: Prisma.TransactionClient,
-  receipt: {id:bigint;ownerUserId:number;txHash:string;amountUwolo:bigint;vaultAddress:string},
+  receipt: {id:bigint;ownerUserId:number;txHash:string;amountUwolo:bigint;vaultAddress:string;canonicalHeight:bigint},
 ): Promise<FundedCreditResult> {
   await requirePhysicalConsumption(tx,"deposit",receipt);
   const journal = await tx.satchelFundedJournal.findUnique({
@@ -156,6 +156,7 @@ async function committedDepositResult(tx: Prisma.TransactionClient,
       journal.amountUwolo !== receipt.amountUwolo || journal.deltaAvailableUwolo !== receipt.amountUwolo ||
       journal.deltaReservedUwolo !== BigInt(0) || journal.deltaCommittedUwolo !== BigInt(0) ||
       journal.deltaWithdrawalPendingUwolo !== BigInt(0)) stop("incomplete_recorded_deposit_credit");
+  await requireRecordedProspectiveDepositEpoch(tx,receipt);
   return Object.freeze({status:"already_credited" as const,receiptId:String(receipt.id),availableUwolo:String(account.availableUwolo)});
 }
 
