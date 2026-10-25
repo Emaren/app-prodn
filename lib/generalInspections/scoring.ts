@@ -115,3 +115,30 @@ export function thresholdFraction(
   if (value >= amberAt) return 0.75;
   return Math.max(0, value / Math.max(1, amberAt) * 0.5);
 }
+
+
+/** Historic local-Finish fallback: bounded, source/build-identical receipt credit.
+ * This is prior operator audit provenance, NOT a fresh independent live host witness.
+ */
+export function legacyReceiptProof(input: {
+  receiptAt: string | null;
+  receiptReleaseSha: string | null;
+  activeSourceSha: string | null;
+  certifiedReleaseSha: string | null;
+  activeBuildId: string | null;
+  certifiedBuildId: string | null;
+  finishAt: string | null;
+  now?: number;
+}): number {
+  const sha = /^[0-9a-f]{40}$/;
+  if (!input.certifiedReleaseSha || !sha.test(input.certifiedReleaseSha) ||
+      input.receiptReleaseSha !== input.certifiedReleaseSha ||
+      input.activeSourceSha !== input.certifiedReleaseSha ||
+      !input.activeBuildId ||
+      input.activeBuildId !== input.certifiedBuildId) return 0;
+  const now = input.now ?? Date.now();
+  return Math.min(
+    freshnessFraction(input.receiptAt, 24, 168, now),
+    freshnessFraction(input.finishAt, 12, 72, now),
+  );
+}
