@@ -342,13 +342,19 @@ async def case(browser, args, mode, width, output):
             result["rendered_text_evidence"] = {
                 "agent_expected_visible": expected.casefold() in agent_text,
                 "war_expected_visible": expected.casefold() in war_text,
-                "agent_snapshot_visible": "snapshot ·" in agent_text,
-                "war_snapshot_visible": "snapshot ·" in war_text,
+                "agent_unapproved_snapshot_percent_absent": "42.1%" not in agent_text,
+                "war_unapproved_snapshot_percent_absent": "42.1%" not in war_text,
+                "retained_history_explained": "snapshot retained; current worker status unverified" in war_text,
             }
             check("truthful_status_both_panels", expected.casefold() in agent_text
                   and expected.casefold() in war_text)
-            check("historic_progress_labeled_snapshot", "snapshot ·" in agent_text
-                  and "snapshot ·" in war_text)
+            # The sanitized read-side deliberately withholds bridge-supplied
+            # historical 42.1% without active source/build or a vetted byte receipt.
+            # It is a security failure to force the panel to echo that number.
+            check("historic_unverified_progress_not_laundered",
+                  "42.1%" not in agent_text and "42.1%" not in war_text
+                  and "snapshot ·" not in agent_text and "snapshot ·" not in war_text
+                  and "snapshot retained; current worker status unverified" in war_text)
             check("no_false_syncing", "live signal syncing" not in agent_text
                   and "live signal syncing" not in war_text)
         else:
