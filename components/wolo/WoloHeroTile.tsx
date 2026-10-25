@@ -20,7 +20,6 @@ function WoloHeroWordmark() {
 
   return (
     <span
-      role="img"
       aria-label="WOLO"
       className="block w-[clamp(20rem,32vw,36rem)] max-w-full"
     >
@@ -245,7 +244,7 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-300">
+      <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-500">
         {eyebrow}
       </div>
       <div className="mt-2 text-[1.05rem] font-semibold leading-tight text-white">
@@ -296,7 +295,7 @@ function ValueRailCard({
 }) {
   return (
     <div className="rounded-[1.05rem] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(15,23,42,0.44),rgba(2,8,23,0.58))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-      <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-300">
+      <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-500">
         {eyebrow}
       </div>
       <div className="mt-2 text-[1.05rem] font-semibold leading-tight text-white">
@@ -358,7 +357,7 @@ function SectionPanel({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-300">
+          <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-500">
             {eyebrow}
           </div>
           <h3 className="mt-2 text-[1.02rem] font-semibold text-white">
@@ -574,7 +573,7 @@ export default function WoloHeroTile() {
             <ValueRailCard eyebrow="Base denom" value="uwolo" sublabel="Micro-denom" />
             <ValueRailCard eyebrow="Decimals" value="6" sublabel="Precision" />
             <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:col-span-2">
-              <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-300">
+              <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-500">
                 Supply model
               </div>
               <div className="mt-2 text-[1.05rem] font-semibold leading-tight text-white">
@@ -590,7 +589,7 @@ export default function WoloHeroTile() {
         <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(7,12,25,0.9),rgba(3,8,20,0.92))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="max-w-3xl">
-              <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-300">
+              <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-500">
                 Fee rail
               </div>
               <h3 className="mt-2 text-[1.02rem] font-semibold text-white">
@@ -612,7 +611,7 @@ export default function WoloHeroTile() {
         <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(7,12,25,0.9),rgba(3,8,20,0.92))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="max-w-3xl">
-              <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-300">
+              <div className="text-[0.56rem] uppercase tracking-[0.34em] text-slate-500">
                 Chain rail
               </div>
               <h3 className="mt-2 text-[1.02rem] font-semibold text-white">
