@@ -3,7 +3,7 @@ id: "aoe2war.app-prodn.renaissance-88-factory"
 title: "Renaissance 88 Public Route Evidence Factory"
 type: "runbook"
 status: "draft"
-owner: "renaissance-tab-d"
+owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["developers", "operators", "auditors"]
 source_of_truth: "git"
