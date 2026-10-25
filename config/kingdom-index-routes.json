@@ -15,7 +15,7 @@
     "href": "/academy",
     "label": "Academy",
     "district": "forge",
-    "sourceTree": "src-ed08f5f78ac23257"
+    "sourceTree": "src-54495b4cf00ee5e7"
   },
   {
     "href": "/ai",
@@ -45,7 +45,7 @@
     "href": "/bets",
     "label": "Bets",
     "district": "bazaar",
-    "sourceTree": "src-7d3c35d9c409ca86"
+    "sourceTree": "src-ac244c2dc0f21b95"
   },
   {
     "href": "/betting-mechanics",
@@ -117,13 +117,13 @@
     "href": "/download",
     "label": "Download",
     "district": "commons",
-    "sourceTree": "src-be8220ed09e67ee3"
+    "sourceTree": "src-d6ca06b43a7e7c15"
   },
   {
     "href": "/forum",
     "label": "Forum",
     "district": "commons",
-    "sourceTree": "src-6632b8968724dd29"
+    "sourceTree": "src-47b247b5a29147ee"
   },
   {
     "href": "/game-stats",
@@ -147,7 +147,7 @@
     "href": "/kingdom",
     "label": "Kingdom",
     "district": "citadel",
-    "sourceTree": "src-5582fd8e5772a60b"
+    "sourceTree": "src-81e76a8cd2289dc0"
   },
   {
     "href": "/kingdom-agents",
@@ -171,19 +171,19 @@
     "href": "/kingdom-forge",
     "label": "Kingdom Forge",
     "district": "citadel",
-    "sourceTree": "src-81f4df36942f50f1"
+    "sourceTree": "src-afae96355fded09d"
   },
   {
     "href": "/kingdom-index",
     "label": "Kingdom Index",
     "district": "citadel",
-    "sourceTree": "src-c5289c00d9aa59a9"
+    "sourceTree": "src-3151d35bd6c99ad2"
   },
   {
     "href": "/kingdom-intelligence",
     "label": "Kingdom Intelligence",
     "district": "citadel",
-    "sourceTree": "src-cad35642cf26fe13"
+    "sourceTree": "src-d7cad2cf8ab6093d"
   },
   {
     "href": "/kingdom-progress",
@@ -225,7 +225,7 @@
     "href": "/leaderboard",
     "label": "HD Leaderboard",
     "district": "arena",
-    "sourceTree": "src-acb102bb1e1a3216"
+    "sourceTree": "src-3a16569dff0aea84"
   },
   {
     "href": "/leaderboard/og",
@@ -285,7 +285,7 @@
     "href": "/oracle",
     "label": "Oracle",
     "district": "bazaar",
-    "sourceTree": "src-21740ca72c1f5354"
+    "sourceTree": "src-49d79849e7a1a5ac"
   },
   {
     "href": "/players",
@@ -309,7 +309,7 @@
     "href": "/renaissance",
     "label": "Renaissance OS",
     "district": "citadel",
-    "sourceTree": "src-88e2627c9f78bb05"
+    "sourceTree": "src-08bcf526f586bfbc"
   },
   {
     "href": "/renaissance/arbiter",
@@ -417,7 +417,7 @@
     "href": "/speed",
     "label": "Speed",
     "district": "citadel",
-    "sourceTree": "src-ca844fec07598e37"
+    "sourceTree": "src-56b4648f199c642c"
   },
   {
     "href": "/staking",
@@ -489,7 +489,7 @@
     "href": "/wolo",
     "label": "Wolo",
     "district": "bazaar",
-    "sourceTree": "src-12a52d4629a56471"
+    "sourceTree": "src-34939954295a1d8d"
   },
   {
     "href": "/wolo-1",
@@ -513,7 +513,7 @@
     "href": "/wolomania",
     "label": "Wolomania",
     "district": "bazaar",
-    "sourceTree": "src-90086c4d54e0e54e"
+    "sourceTree": "src-15097fea14d2039e"
   },
   {
     "href": "/workshop",
