@@ -69,7 +69,7 @@ set -euo pipefail
 APP="$HOME/projects/AoE2HDBets/app-prodn"
 OP="$HOME/projects/AoE2HDBets/app-prodn-website-controller"
 CONTROLLER_SHA="<FINAL_CI_GREEN_INDEPENDENTLY_ACCEPTED_OPERATOR_SHA>"
-export AOE2_RELEASE_HOST="tony@hel1"
+export AOE2_RELEASE_HOST="hel1"
 export WEBSITE_SSH_TARGET="root@hel1"   # prior diagnostic only, NOT Ship
 export WEBSITE_MAIN_REPO="$APP"
 export WEBSITE_CONTROLLER_REPO="$OP"
