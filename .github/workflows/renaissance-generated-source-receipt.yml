@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - integration/renaissance-central-live-index-telemetry-20261025
+      - fix/renaissance-central-recovery-history-status-20261025
   workflow_dispatch:
 permissions:
   contents: read
