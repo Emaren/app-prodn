@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261025-solo-v3-durability-timer` at `e753fb0a0c22a6228ba5952943dfa638e1fcd1cf`
+Implementation baseline: `fix/20261025-solo-owner-v3-clock-skew-bounded` at `c696419e51455df3b52bd965150ab047a1927727`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
