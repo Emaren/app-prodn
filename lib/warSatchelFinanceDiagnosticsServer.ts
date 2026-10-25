@@ -7,6 +7,8 @@ import { open,lstat,realpath } from "node:fs/promises";
 import path from "node:path";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 import { diagnoseSatchelFinance,type FinanceCensus,type FinanceEvidence } from "./warSatchelFinanceDiagnostics.ts";
+import {authenticateWarSatchelBank} from "./warSatchelAuthenticatedBank.ts";
+import {warSatchelVaultDistinctFromKnownWallets} from "./warSatchelVaultBoundary.ts";
 
 const MAX_JSON=1024*1024,MAX_READS=64;
 const RPC="http://127.0.0.1:27657/status";
@@ -155,6 +157,16 @@ export async function readFinanceChainHead(reader:typeof fetch=fetch,canceled?:A
 }
 
 let collectors=0;
+/** Configuration selects only the subject of a READ. It grants no proof or
+ * funding authority. Missing segregation or native trust evidence stays held. */
+export async function readConfiguredFinanceBank(reader:typeof fetch=fetch,canceled?:AbortSignal){
+ const vault=process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS?.trim()??"";
+ const excluded=[process.env.WOLO_BET_ESCROW_ADDRESS,process.env.WOLO_BET_PAYOUT_ADDRESS,
+  process.env.WOLO_STAKING_WALLET_ADDRESS,process.env.WOLO_COMMUNITY_TREASURY_ADDRESS].filter((x):x is string=>!!x);
+ if(!/^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/.test(vault)||new Set(excluded).size<2||
+  !warSatchelVaultDistinctFromKnownWallets(vault,excluded))fail();
+ return authenticateWarSatchelBank(vault,reader,canceled);
+}
 export async function collectSatchelFinanceDiagnostics(options:{
  storeRoot?:string;database?:FinanceCensusDatabase;reader?:typeof fetch;now?:()=>number;
  canceled?:AbortSignal;
@@ -175,7 +187,8 @@ export async function collectSatchelFinanceDiagnostics(options:{
   });
  const census=options.database?readSatchelFinanceCensus(options.database):Promise.resolve(undefined);
  const chain=readFinanceChainHead(options.reader??fetch,canceled,now);
- const work=Promise.allSettled([ops,census,chain]);
+ const bank=readConfiguredFinanceBank(options.reader??fetch,canceled);
+ const work=Promise.allSettled([ops,census,chain,bank]);
  // Keep the resource slot until underlying reads really end, even if a broken
  // test/future adapter ignores cancellation. No timeout permits unbounded work.
  void work.then(()=>{collectors--;});
@@ -188,5 +201,6 @@ export async function collectSatchelFinanceDiagnostics(options:{
  return diagnoseSatchelFinance({nowMs:now(),collectionStartedAtMs:started,
   evidence:o?.evidence,publisherConflict:o?.publisherConflict,
   census:result[1].status==="fulfilled"?result[1].value:undefined,
-  chain:result[2].status==="fulfilled"?result[2].value:undefined});
+  chain:result[2].status==="fulfilled"?result[2].value:undefined,
+  bank:result[3].status==="fulfilled"?result[3].value:undefined});
 }

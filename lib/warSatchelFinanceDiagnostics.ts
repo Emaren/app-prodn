@@ -3,12 +3,13 @@
  * Native proof capabilities and the source financial HOLD remain authoritative.
  */
 import type { InspectionCheck } from "./generalInspections/types.ts";
+import {authenticatedWarSatchelBankFreshAt} from "./warSatchelAuthenticatedBank.ts";
 
 export type FinanceDiagnosticState="OBSERVED"|"UNKNOWN"|"STALE"|"DRIFT"|"BLOCKED";
 export type FinanceDiagnosticFinding=Readonly<{
  id:string;state:FinanceDiagnosticState;severity:"INFO"|"P1"|"P0";
  reason:string;detail:string;source:string;observedAt:string|null;ttlSeconds:number;
- authority:"OPERATOR_OBSERVATION"|"DATABASE_READ_ONLY"|"UNAUTHENTICATED_RPC"|"UNAVAILABLE";
+ authority:"OPERATOR_OBSERVATION"|"DATABASE_READ_ONLY"|"UNAUTHENTICATED_RPC"|"NATIVE_AUTHENTICATED_CHAIN"|"UNAVAILABLE";
  confidence:"SCOPED_OBSERVATION"|"UNPROVEN";
  owner:string;reproducer:string;automaticAction:"READ_ONLY";
 }>;
@@ -16,6 +17,7 @@ export type FinanceDiagnostics=Readonly<{
  schema:"aoe2war.satchel-finance-observations.v1";generatedAt:string;
  status:"HOLD";financialAuthorized:false;custodyAuthorized:false;
  completeGlobalWriterCensus:false;globalSolvency:"UNKNOWN";
+ scopedBankComparison:Readonly<{state:"UNKNOWN"|"COVERS_SCOPED_BUCKETS"|"BELOW_SCOPED_BUCKETS";commonAuthenticatedHeight:false}>;
  findings:readonly FinanceDiagnosticFinding[];
 }>;
 export type FinanceCensus=Readonly<{
@@ -35,7 +37,7 @@ export type FinanceEvidence=Readonly<{
 }>;
 export type FinanceObservationInput=Readonly<{
  nowMs:number;collectionStartedAtMs:number;evidence?:unknown;census?:unknown;
- chain?:unknown;publisherConflict?:boolean;sourceError?:boolean;
+ chain?:unknown;bank?:unknown;publisherConflict?:boolean;sourceError?:boolean;
  failureCode?:"COLLECTION_DEADLINE"|"COLLECTOR_CAPACITY_HELD"|"CANCELED";
 }>;
 
@@ -99,6 +101,7 @@ export function diagnoseSatchelFinance(input:FinanceObservationInput):FinanceDia
   if(f!=="fresh")set(id,f==="stale"?"STALE":"UNKNOWN",f==="stale"?"EVIDENCE_EXPIRED":"INVALID_OR_FUTURE_TIMESTAMP",source,value.observedAt,authority);
   return f==="fresh";
  }
+ let bankComparison:"UNKNOWN"|"COVERS_SCOPED_BUCKETS"|"BELOW_SCOPED_BUCKETS"="UNKNOWN";
  if(timeValid){
   const c=row(input.chain);
   if(Object.keys(c).length&&admit("chain-age",c,"canonical-rpc27657","UNAUTHENTICATED_RPC")){
@@ -166,10 +169,25 @@ export function diagnoseSatchelFinance(input:FinanceObservationInput):FinanceDia
     set(id,n>0?"BLOCKED":"OBSERVED",n>0?"PENDING_OR_AGED_OPERATIONS_REQUIRE_REVIEW":"NONE_IN_SCOPED_CENSUS","read-only-satchel-census",ledger.observedAt,"DATABASE_READ_ONLY");
    }
   }
+  // Only the existing native verifier's in-process capability can establish
+  // this observation. JSON flags, copied objects and archived proof data fail.
+  if(authenticatedWarSatchelBankFreshAt(input.bank,now)){
+   const bank=input.bank,observedAt=new Date(bank.observedAtMs).toISOString();
+   set("chain-trust","OBSERVED","NATIVE_BANK_PROOF_NOT_CUSTODY_AUTHORITY","pinned-native-bank-verifier",observedAt,"NATIVE_AUTHENTICATED_CHAIN");
+   const values=[ledger.availableUwolo,ledger.reservedUwolo,ledger.withdrawalPendingUwolo].map(amount);
+   if(freshness(ledger.observedAt,now,30)==="fresh"&&values.every(x=>x!==null)){
+    const liabilities=values.reduce<bigint>((sum,n)=>sum+n!,BigInt(0));
+    bankComparison=bank.balanceUwolo<liabilities?"BELOW_SCOPED_BUCKETS":"COVERS_SCOPED_BUCKETS";
+    set("bank-coverage",bank.balanceUwolo<liabilities?"BLOCKED":"UNKNOWN",bank.balanceUwolo<liabilities?
+     "BANK_BELOW_OBSERVED_BUCKETS_REQUIRES_RECONCILIATION":"AUTHENTICATED_BANK_LEDGER_HEIGHT_UNBOUND",
+     "native-bank-and-read-only-census",observedAt,"NATIVE_AUTHENTICATED_CHAIN");
+   }
+  }
  }
  return Object.freeze({schema:"aoe2war.satchel-finance-observations.v1",generatedAt:new Date(now).toISOString(),
   status:"HOLD",financialAuthorized:false,custodyAuthorized:false,completeGlobalWriterCensus:false,
-  globalSolvency:"UNKNOWN",findings:Object.freeze(findings.map(x=>Object.freeze(x)))});
+  globalSolvency:"UNKNOWN",scopedBankComparison:Object.freeze({state:bankComparison,commonAuthenticatedHeight:false}),
+  findings:Object.freeze(findings.map(x=>Object.freeze(x)))});
 }
 
 /** These adapters feed existing observability contracts without altering their
