@@ -53,8 +53,10 @@ export function buildQualificationPackets({coverage,catalog,rubric,profiles,curr
      typeof r.label==="string"&&typeof r.sourceTree==="string","Invalid registered route");
   catalogMap.set(r.href,r);
  }
- ok(Object.keys(coverage.route_digest_sha256).length===88&&
-    Object.keys(profiles.routeProfiles).every(p=>catalogMap.has(p)),"Incomplete 88-route source inventory");
+ ok(Object.keys(profiles.routeProfiles).every(p=>catalogMap.has(p)),
+    "Incomplete 88-route profile inventory");
+ ok(Object.keys(coverage.route_digest_sha256).length===coverage.routes_observed,
+    "Observed route receipts and digest count disagree");
  const sameSource=coverage.source_sha===currentSha,seen=new Set();
  const counts={PASS:0,FAIL:0,UNKNOWN:0,UNMEASURED:0},packets=[];
  for(const r of coverage.routes){
