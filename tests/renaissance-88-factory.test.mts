@@ -14,7 +14,7 @@ function make(){
   http:200,sameOrigin:true,rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0},
  {viewport:"mobile",sample:1,attempted:true,browserStatus:"OBSERVED",
   http:200,sameOrigin:true,rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0}
- ],criteria:{production:"UNKNOWN",financial_nonmutation:"UNKNOWN"},
+ ],criteria:{production:"UNKNOWN",financial_nonmutation:"UNKNOWN",client_mutation_attempts:"NONE_OBSERVED"},
  resource:{client_mutations_blocked:0},performance:{gate:"UNKNOWN"},missing_criteria:[{criterion:"production",state:"UNKNOWN"}]};
 }
 const expected={sourceSha:sha,buildId:build};
