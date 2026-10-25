@@ -17,6 +17,12 @@ class DisposablePgContract(unittest.TestCase):
         self.assertIn('pg_isready',self.shell)
         self.assertIn('127.0.0.1',self.shell)
         self.assertNotIn("--auth-host=reject",self.shell) # explicit isolated loopback
+    def test_only_documented_custom_sequence_is_bootstrapped(self):
+        schema=(ROOT/"prisma/schema.prisma").read_text()
+        self.assertEqual(schema.count("dbgenerated(\"nextval("),1)
+        self.assertIn("battle_public_number_seq",schema)
+        self.assertIn("CREATE SEQUENCE public.battle_public_number_seq",self.shell)
+        self.assertIn("brand-new test database",self.shell)
     def test_readonly_role_and_denied_write_probe(self):
         self.assertIn("renaissance_reader",self.shell)
         self.assertIn("default_transaction_read_only=on",self.shell)
