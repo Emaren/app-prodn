@@ -45,7 +45,7 @@ CREATE UNIQUE INDEX "uq_satchel_single_approved_epoch"
 
 -- A vault cannot be declared a clean prospective epoch while any old
 -- funded Satchel money state exists. This does NOT delete or discharge it.
-CREATE FUNCTION public."satchel_epoch_cold_start_v1"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $
+CREATE FUNCTION public."satchel_epoch_cold_start_v1"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
 BEGIN
   IF NEW.state = 'approved' AND (
      EXISTS(SELECT 1 FROM public.war_satchel_funded_balances)
@@ -90,7 +90,7 @@ CREATE TABLE public."war_satchel_epoch_deposit_receipts" (
   )
 );
 
-CREATE FUNCTION public."satchel_epoch_receipt_guard_v1"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $
+CREATE FUNCTION public."satchel_epoch_receipt_guard_v1"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
 DECLARE r RECORD; e RECORD;
 BEGIN
   SELECT * INTO r FROM public.war_satchel_funded_receipts WHERE id = NEW.receipt_id;
@@ -110,7 +110,7 @@ $$;
 CREATE TRIGGER "tr_satchel_epoch_receipt_guard" BEFORE INSERT
   ON public."war_satchel_epoch_deposit_receipts" FOR EACH ROW EXECUTE FUNCTION public."satchel_epoch_receipt_guard_v1"();
 
-CREATE FUNCTION public."satchel_epoch_immutable_v1"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $
+CREATE FUNCTION public."satchel_epoch_immutable_v1"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
 BEGIN
   RAISE EXCEPTION 'SATCHEL_EPOCH_IMMUTABLE' USING ERRCODE='23514';
 END;

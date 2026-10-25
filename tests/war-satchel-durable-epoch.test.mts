@@ -62,7 +62,7 @@ test("all credit paths require inside-transaction epoch binding; original claims
  assert.match(sql,/UNIQUE \("chain_id","tx_hash","message_index"\)/);
  assert.match(sql,/SATCHEL_EPOCH_IMMUTABLE/);
  for(const fn of ["satchel_epoch_cold_start_v1","satchel_epoch_receipt_guard_v1","satchel_epoch_immutable_v1"]){
-   assert.ok(sql.includes('CREATE FUNCTION public."'+fn+'"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS'));
+   assert.ok(sql.includes('CREATE FUNCTION public."'+fn+'"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS '+String.fromCharCode(36,36)));
  }
  assert.doesNotMatch(sql,/SECURITY DEFINER/);
  assert.match(source("lib/warSatchelDurableEpoch.ts"),/FROM public\.war_satchel_prospective_epochs/);
