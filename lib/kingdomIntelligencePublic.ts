@@ -193,6 +193,11 @@ export async function loadPublicKingdomIntelligence() {
       workspace: null,
       activity24h: null,
       systemAgents: [],
+      agentRuntimeAuthority: {
+        verified: false,
+        status: "UNVERIFIED" as const,
+        reason: "bridge-unavailable",
+      },
       liveActivity: [],
       recentSourceActivity: [],
       memorySeals: [],
@@ -224,6 +229,18 @@ export async function loadPublicKingdomIntelligence() {
     nowMs: Date.now(),
   });
   const reportUsable = healthEvidence.observation.status === "SOURCE_REPORTED";
+  // This read-side has no trusted active release-controller SHA + real Next
+  // BUILD_ID receipt. A bridge report, even one saying CERTIFIED/exact, cannot
+  // authorize positive live-agent claims. Central owns the independent join.
+  const agentRuntimeAuthority: {
+    verified: boolean;
+    status: "UNVERIFIED" | "VERIFIED";
+    reason: string | null;
+  } = {
+    verified: false,
+    status: "UNVERIFIED",
+    reason: "independent-active-production-sha-and-next-build-id-unavailable",
+  };
   const diagnostics = explainKingdomOperationalState({
     available: true, observation: healthEvidence.observation, nowMs: Date.now(),
   });
@@ -231,8 +248,14 @@ export async function loadPublicKingdomIntelligence() {
     ? payload.system_agents
         .map(safeSystemAgent)
         .filter((item): item is NonNullable<ReturnType<typeof safeSystemAgent>> => Boolean(item))
-        .map(item => reportUsable ? item : {
-          ...item, state: "UNKNOWN", summary: "Current agent status withheld: source evidence unavailable.",
+        .map(item => reportUsable && agentRuntimeAuthority.verified ? item : {
+          ...item,
+          state: "UNKNOWN",
+          summary: reportUsable
+            ? "Live agent state unverified: no independent active release and Next BUILD_ID receipt."
+            : "Current agent status withheld: source evidence unavailable.",
+          // A bridge can report its observations, but active-process and
+          // progress badges need a separately verified active runtime.
           activeProcess: false, activeSince: null, currentStep: null,
           progressPercent: null, progressLabel: null, etaSeconds: null,
         })
@@ -356,6 +379,7 @@ export async function loadPublicKingdomIntelligence() {
       certifiedFinishes: numberValue(activity.certified_finishes) ?? 0,
     },
     systemAgents,
+    agentRuntimeAuthority,
     diagnostics,
     liveActivity,
     recentSourceActivity,
