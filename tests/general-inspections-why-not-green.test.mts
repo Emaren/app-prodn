@@ -79,7 +79,7 @@ test("complete check ledger distinguishes STALE, UNKNOWN, FAIL and PASS with exa
   speed[1].evidenceAt = null;
   speed[2].ratio = { passed: 0, total: 4, label: "replayed images" };
   const report = buildWhyNotGreenReport(snap);
-  assert.equal(report.evidenceChecks.length, 7 * 10 - 1);
+  assert.equal(report.evidenceChecks.length, Object.values(INSPECTION_CATEGORY_WEIGHTS).reduce((n, weights) => n + weights.length, 0));
   const first = report.evidenceChecks.find((c) => c.checkKey === "speed/check-0")!;
   assert.equal(first.evidenceStatus, "STALE");
   assert.equal(first.nextDueAt, "2026-10-20T12:00:00.000Z");
