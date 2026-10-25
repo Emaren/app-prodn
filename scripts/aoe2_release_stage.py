@@ -83,6 +83,7 @@ def exact_unpublished_nine_path_watcher_draft(manifest: dict) -> bool:
             "config/kingdom-index-routes.json",
             "config/kingdom-index-watcher-166-source-review.json",
             "docs/DOCUMENTATION_CONTROL_PLANE.md",
+        "docs/RIVALRIES_AND_WAR_VAULT.md",
             "docs/document-registry.json",
             "tests/kingdom-index-watcher-draft-score.test.mts",
             "yarn.lock",
@@ -90,7 +91,7 @@ def exact_unpublished_nine_path_watcher_draft(manifest: dict) -> bool:
 
     return bool(
         manifest.get("release_sha") ==
-            "21cd1493b182cb0968a6b6cf3f528d0578cfd797"
+            "6be434c00469afa4acb0623715c3bcf724f927f4"
         and manifest.get("previous_production_sha") ==
             "a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
         and set(manifest.get("changed_files") or []) == review_paths
@@ -122,7 +123,7 @@ def watcher_distribution_version(manifest: dict) -> str:
     release_version = version_at_commit(str(manifest.get("release_sha") or ""))
     if manifest.get("risk_class") == "WATCHER":
         # Preserve original strict rule for EVERY other WATCHER release.
-        # Only the exact nine-path review draft can skip an unmodified
+        # Only the exact ten-path review draft can skip an unmodified
         # watcher binary vault, after comparing both source-bound versions.
         if exact_unpublished_nine_path_watcher_draft(manifest):
             previous_version = version_at_commit(
@@ -1075,7 +1076,7 @@ def validate_stage_result(
             )
 
     # Keep original vault admission for ALL WATCHER releases except the
-    # exact no-version-change nine-path public draft. Recheck the two real
+    # exact no-version-change ten-path public draft. Recheck the two real
     # Git versions here, not just a caller-provided empty watcher_version.
     unchanged_draft = False
     if (manifest.get("risk_class") == "WATCHER"
