@@ -1,4 +1,5 @@
 import { loadAoe2OsDashboard, readAoe2OsKingdomIntelligence } from "@/lib/aoe2Os";
+import { inspectIntelligenceHealthEvidence } from "@/lib/kingdomIntelligenceEvidence";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -212,6 +213,15 @@ export async function loadPublicKingdomIntelligence() {
   const workspace = record(payload.workspace);
   const activity = record(payload.activity_24h);
   const best = record(payload.best_next_action);
+  const healthEvidence = inspectIntelligenceHealthEvidence({
+    source,
+    health,
+    invariants: payload.invariants,
+    capturedAt: payload.generated_at,
+    receivedAt: snapshot.receivedAt,
+    nowMs: Date.now(),
+  });
+  const reportUsable = healthEvidence.observation.status === "SOURCE_REPORTED";
   const systemAgents = Array.isArray(payload.system_agents)
     ? payload.system_agents
         .map(safeSystemAgent)
@@ -285,11 +295,12 @@ export async function loadPublicKingdomIntelligence() {
       productionRelease: shortSha(production.source_sha),
     },
     health: {
-      estate: stringValue(health.estate) ?? "UNKNOWN",
-      doctorScore: numberValue(health.doctor_score),
-      doctorStatus: stringValue(health.doctor_status) ?? "UNKNOWN",
-      p0: numberValue(health.p0) ?? 0,
-      p1: numberValue(health.p1) ?? 0,
+      estate: reportUsable ? stringValue(health.estate) ?? "UNKNOWN" : "UNKNOWN",
+      doctorScore: reportUsable ? numberValue(health.doctor_score) : null,
+      doctorStatus: reportUsable ? stringValue(health.doctor_status) ?? "UNKNOWN" : "UNKNOWN",
+      p0: healthEvidence.counts.p0,
+      p1: healthEvidence.counts.p1,
+      observation: healthEvidence.observation,
     },
     storage: {
       health: stringValue(storage.health) ?? "UNKNOWN",
