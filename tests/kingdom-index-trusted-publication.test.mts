@@ -43,7 +43,7 @@ function payload(points=100){
 }
 function seal(data:ReturnType<typeof payload>){
   const bytes=Buffer.from(JSON.stringify(data));
-  return {schema:PUBLICATION_SCHEMA,payloadBase64:bytes.toString("base64"),
+  return {schema:data.schema,payloadBase64:bytes.toString("base64"),
     signatures:keys.map((key,i)=>({
       keyId:i===0?"release":"reviewer",
       signatureBase64:sign(null,bytes,key.privateKey).toString("base64"),
