@@ -57,6 +57,52 @@ test("expired speed receipt stays UNKNOWN even when an upstream producer awarded
   assert.equal(report.gaps.find((c) => c.categoryId === "speed")?.missingPoints, 0);
 });
 
+test("full-credit but failing cohort ratio is explicitly FAIL, without changing score", () => {
+  const snap = fixture();
+  const cohort = snap.categories.find((c) => c.id === "speed")!.checks[0];
+  cohort.ratio = { passed: 19, total: 20, label: "cold-browser cohort" };
+  const report = buildWhyNotGreenReport(snap);
+  assert.equal(report.observedOverallScore, 100);
+  assert.equal(report.measuredHealthChanged, false);
+  const row = report.evidenceChecks.find((c) => c.checkKey === "speed/check-0")!;
+  assert.equal(row.evidenceStatus, "FAIL");
+  assert.equal(row.reason, "observed-cohort-failure");
+  assert.equal(row.earned, row.weight);
+  assert.equal(report.gaps.find((g) => g.checkKey === row.checkKey)?.missingPoints, 0);
+  assert.equal(report.matrix.find((c) => c.id === "speed")?.status, "fail");
+});
+
+test("complete check ledger distinguishes STALE, UNKNOWN, FAIL and PASS with exact TTL due date", () => {
+  const snap = fixture();
+  const speed = snap.categories.find((c) => c.id === "speed")!.checks;
+  speed[0].evidenceAt = OLD; // 12 days expired
+  speed[1].evidenceAt = null;
+  speed[2].ratio = { passed: 0, total: 4, label: "replayed images" };
+  const report = buildWhyNotGreenReport(snap);
+  assert.equal(report.evidenceChecks.length, 7 * 10 - 1);
+  const first = report.evidenceChecks.find((c) => c.checkKey === "speed/check-0")!;
+  assert.equal(first.evidenceStatus, "STALE");
+  assert.equal(first.nextDueAt, "2026-10-20T12:00:00.000Z");
+  assert.equal(report.gaps.find((c) => c.checkKey === first.checkKey)?.status, "unknown"); // v1 compatibility
+  assert.equal(report.evidenceChecks.find((c) => c.checkKey === "speed/check-1")?.evidenceStatus, "UNKNOWN");
+  assert.equal(report.evidenceChecks.find((c) => c.checkKey === "speed/check-2")?.evidenceStatus, "FAIL");
+  assert.equal(report.evidenceChecks.find((c) => c.checkKey === "speed/check-3")?.evidenceStatus, "PASS");
+  assert.equal(report.matrix.find((c) => c.id === "speed")?.staleChecks, 1);
+  assert.equal(report.matrix.find((c) => c.id === "speed")?.failedChecks, 1);
+  assert.equal(report.matrix.find((c) => c.id === "speed")?.unknownChecks, 1);
+});
+
+test("malformed cohort ratios are never accepted as observed FAIL", () => {
+  const snap = fixture();
+  const speed = snap.categories.find((c) => c.id === "speed")!.checks[0];
+  speed.earned = 0;
+  speed.ratio = { passed: 100, total: 1 };
+  rescore(snap);
+  const report = buildWhyNotGreenReport(snap);
+  assert.equal(report.evidenceChecks.find((c) => c.checkKey === "speed/check-0")?.evidenceStatus, "UNKNOWN");
+  assert.equal(report.gaps.find((c) => c.checkKey === "speed/check-0")?.reason, "incomplete-or-unverified-proof");
+});
+
 test("missing DocsV2 proof stays UNKNOWN while a fresh observed P0 invariant fails", () => {
   const snap = fixture();
   const doc = snap.categories.find((c) => c.id === "documentation")!;
