@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {mkdtemp,writeFile,symlink,rm,chmod} from "node:fs/promises";
+import {mkdtemp,writeFile,symlink,rm,chmod,rename} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {parseKingdomRuntimeTelemetry,readKingdomRuntimeTelemetry,RUNTIME_SCHEMA} from "../lib/kingdomIndexRuntimeTelemetry.mjs";
@@ -87,5 +87,26 @@ test("private 0700/0600 owned snapshot reads, symlink, permissive directory and 
   await chmod(dir,0o700);
   await writeFile(file,JSON.stringify({broken:true}),{mode:0o600});
   assert.equal(await readKingdomRuntimeTelemetry({file,...identity}),null);
+ }finally{await rm(dir,{recursive:true,force:true})}
+});
+
+test("a new private atomic producer snapshot changes numerators on the same source and BUILD_ID without code deploy",async()=>{
+ const dir=await mkdtemp(join(tmpdir(),"kingdom-runtime-refresh-"));
+ const live=join(dir,"latest.json"),staging=join(dir,".candidate");
+ try{
+  await writeFile(live,snapshot(),{mode:0o600});
+  const previous=await readKingdomRuntimeTelemetry({file:live,...identity});
+  assert.equal(previous?.readings[0]?.numerator,88);
+  const row=JSON.parse(snapshot()).readings[0];
+  row.numerator=87;row.receiptSha256=hash("a-new-original-runtime-test-fixture");
+  await writeFile(staging,snapshot([row]),{mode:0o600});
+  await rename(staging,live);
+  const changed=await readKingdomRuntimeTelemetry({file:live,...identity});
+  assert.equal(changed?.readings[0]?.numerator,87);
+  assert.equal(changed?.sourceSha,previous?.sourceSha);
+  assert.equal(changed?.buildId,previous?.buildId);
+  assert.notEqual(changed?.revisionSha256,previous?.revisionSha256);
+  assert.equal(changed?.readings[0]?.status,"REPORTED_UNVERIFIED");
+  assert.equal(Object.hasOwn(changed??{},"certified"),false);
  }finally{await rm(dir,{recursive:true,force:true})}
 });
