@@ -403,8 +403,6 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   const areas = record(estate.areas);
 
   const finishFresh = freshnessFraction(finishAt, 12, 72);
-  const performanceFresh = freshnessFraction(coldAt, 24, 168);
-  const edgeFresh = freshnessFraction(featuredAt, 24, 168);
   const gateFresh = freshnessFraction(gateAt, 24, 168);
   const macFresh = freshnessFraction(baseline.capturedAt, 48, 336);
   // This fallback is built from the historic local Finish receipt, not a new
