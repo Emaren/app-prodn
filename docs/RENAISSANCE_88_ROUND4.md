@@ -13,7 +13,9 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Tab D Round Four — #899
+# Round Four: Disposable Browser Dependencies and A11y Triage
+
+*Historical Tab D provenance: #899; these are candidate observations, not production certification.*
 
 ## Scope and lineage
 
