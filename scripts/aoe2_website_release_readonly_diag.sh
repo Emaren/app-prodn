@@ -3,7 +3,7 @@
 # signing, SSH secrets, private key material, DB access, wallet or balances.
 set -uo pipefail
 
-TARGET_MAIN="21cd1493b182cb0968a6b6cf3f528d0578cfd797"
+TARGET_MAIN="6be434c00469afa4acb0623715c3bcf724f927f4"
 CERT_PROD="a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
 CANDIDATE="${WEBSITE_MAIN_REPO:-$HOME/projects/AoE2HDBets/app-prodn}"
 CONTROLLER="${WEBSITE_CONTROLLER_REPO:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)}"
@@ -36,7 +36,7 @@ describe_checkout() {
   if [ "$label" = "PRODUCT" ]; then
     [ "$head" = "$TARGET_MAIN" ] && out "PRODUCT_SHA_POLICY" "PASS" || out "PRODUCT_SHA_POLICY" "HOLD"
     count="$(git -C "$root" diff --name-only "$CERT_PROD..$TARGET_MAIN" 2>/dev/null | wc -l | tr -d ' ')"
-    out "CERTIFIED_TO_PRODUCT_CHANGED_PATHS" "${count:-UNKNOWN} (expected 9)"
+    out "CERTIFIED_TO_PRODUCT_CHANGED_PATHS" "${count:-UNKNOWN} (expected 10)"
     if [ -f "$root/.aoe2war-release/stage-receipts" ]; then
       out "STAGE_RECEIPTS" "UNEXPECTED_NON_DIRECTORY"
     elif [ -d "$root/.aoe2war-release/stage-receipts" ]; then
