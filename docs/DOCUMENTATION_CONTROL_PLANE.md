@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-a/20261024-website-nine-path-operational-finish` at `01f844bc1ae8503cf56f32fce15be505d8dc5aab`
+Implementation baseline: `session-a/20261024-website-nine-path-operational-finish` at `ddb8b38eaaf45065320747bc93b877e1614fa617`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,13 +27,13 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **98**
+- Authoritative repository documents: **99**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
 ### Types
 
-- `explanation`: 5
+- `explanation`: 6
 - `generated`: 1
 - `historical`: 12
 - `reference`: 60
@@ -43,6 +43,7 @@ This page is generated from the validated front matter in this repository. Cross
 ### Lifecycle
 
 - `active`: 82
+- `draft`: 1
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -138,6 +139,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [Held Ten-Path Website Protected Operator Commands](WEBSITE_NINE_PATH_OPERATOR_COMMANDS.md) | `runbook` | `active` | `nonauthorizing-source-engineering` |
+| [Held Alternative Website-Only Release Quorum Proposal](WEBSITE_ONLY_ALTERNATIVE_QUORUM_PROPOSAL.md) | `explanation` | `draft` | `proposal-only-nonauthorizing` |
 | [Held Website-Only Release Authority V2](WEBSITE_ONLY_RELEASE_AUTHORITY_V2.md) | `runbook` | `active` | `nonauthorizing-source-engineering` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |

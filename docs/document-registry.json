@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0766a18f5cc0106a0ce5ff1e22d39a1e5de5a43e8455ddbc77cdade8f34be859",
+      "sha256": "ee9aeb57e624da2fec047711f74a11d27425c7fba64849cb720bee653587c0b8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2022,9 +2022,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WEBSITE_NINE_PATH_OPERATOR_COMMANDS.md",
       "review_interval_days": 1,
-      "reviewed_at": "2026-10-24",
+      "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "88c20e33917bc57f00f45b603fce0d4a0cb239fa18898a67f03a0fc35a2d53a3",
+      "sha256": "f6d432722d8669e28a09679eb11e13865db415d65a41a768bcdbae38db599bc1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2033,6 +2033,29 @@
       ],
       "title": "Held Ten-Path Website Protected Operator Commands",
       "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "proposal-only-nonauthorizing",
+      "id": "aoe2war.app-prodn.website-only-alternative-quorum-proposal",
+      "owner": "aoe2war-web",
+      "path": "docs/WEBSITE_ONLY_ALTERNATIVE_QUORUM_PROPOSAL.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "9ff4749a4c676bbd770b1beefdbc28bbce6ed48bce195a9b58295eb7ad6350e9",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Held Alternative Website-Only Release Quorum Proposal",
+      "type": "explanation"
     },
     {
       "audience": [
@@ -2261,7 +2284,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-a/20261024-website-nine-path-operational-finish",
-    "commit": "01f844bc1ae8503cf56f32fce15be505d8dc5aab"
+    "commit": "ddb8b38eaaf45065320747bc93b877e1614fa617"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
