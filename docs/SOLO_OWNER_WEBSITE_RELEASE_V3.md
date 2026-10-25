@@ -49,6 +49,13 @@ SSH observations, NOT independent attestations, complete writer exclusion,
 consensus finality or solvency. Raw environment values never enter receipts.
 Missing/changed/oversized/stale/unstable evidence holds. Configuration continuity
 does not certify actual signer custody or undiscovered external writers.
+The authenticated hel1 observer stamps observations in VPS UTC and the owner
+controller validates them against Mac UTC. A narrowly bounded 5-second VPS
+clock lead is permitted to absorb small NTP offsets (observed ~1.6 seconds),
+without extending 90-second fresh or 1200-second signed-reference stale limits.
+A timestamp more than 5 seconds in the future, a stale capture, overlong remote
+collection or any altered financial/runtime identity still HOLDS. Never change
+the live Cosmos server time or loosen Wolo safety fences to satisfy this check.
 
 ## One owner credential, outside Git
 
