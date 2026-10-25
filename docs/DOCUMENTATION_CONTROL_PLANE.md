@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261025-solo-owner-v3-clock-skew-bounded` at `c696419e51455df3b52bd965150ab047a1927727`
+Implementation baseline: `review/20261025-owner-v3-consumed-activation-reconcile` at `85f95ede017f0c1510467a194ed3db915f39a4f1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
