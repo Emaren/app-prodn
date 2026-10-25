@@ -1,0 +1,47 @@
+name: Central Renaissance generated-source receipt (review-only)
+on:
+  push:
+    branches:
+      - integration/renaissance-central-live-index-telemetry-20261025
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generated-source-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run canonical generators and inspect the exact changed paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/generate_page_change_manifest.py
+          node scripts/kingdom_index_source_audit.mjs --write
+          git diff --check
+          echo '=== ACTUAL GENERATED SOURCE DELTA ==='
+          git diff --stat
+          if git diff --name-only | grep -v -E '^(config/kingdom-index-routes.json|lib/pageChangeManifest.generated.ts)$'; then
+            echo 'STOP: generator changed source outside the two governed outputs' >&2
+            exit 2
+          fi
+          git status --short
+          printf '%s\n' "$GITHUB_SHA" > generator-exact-head.txt
+          sha256sum config/kingdom-index-routes.json lib/pageChangeManifest.generated.ts > generated-sha256.txt
+          # The artifact is a proposal. Never push to main or reseal DocsV2 here.
+      - name: Upload auditable exact-source output (no commit)
+        uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-generated-proposal-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 10
+          path: |
+            generator-exact-head.txt
+            generated-sha256.txt
+            config/kingdom-index-routes.json
+            lib/pageChangeManifest.generated.ts
