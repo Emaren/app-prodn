@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/solo-owner-website-release-v3` at `46c1af1f09d46dc58a2c7f371596bf039c5dafee`
+Implementation baseline: `codex/solo-owner-website-release-v3` at `6cd31e3fdb34a0c0e8987e03204ccdabf7fec576`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
