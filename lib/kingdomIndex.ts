@@ -255,16 +255,18 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       entry.specializedAssurance.gates=entry.specializedAssurance.gates.map(g=>({
         ...g,status:(gateMap.get(g.id)==="pass"?"verified":"unverified") as "verified" | "unverified",
       }));
-      if(publication.certified||publication.score<100){
-        entry.score=publication.score;
-        entry.provisionalReviewScore=null;
-        entry.provisionalReviewRefs=[];
-        entry.kind="certified";
-        entry.status=publication.certified?"current":"provisional";
-        entry.checkedAt=publication.issuedAt;
-        entry.measuredVersion=entry.sourceVersion;
-        entry.dimensions={...publication.dimensions};
-      }
+      // A fully approved but incomplete score remains visible ONLY in
+      // criterionProgress.authenticatedEarned. The official .score stays null
+      // unless 100/100 AND all three mandatory gates are independently passed.
+      // Authenticated real-zero criterion awards are not confused with UNKNOWN.
+      entry.score=publication.certified?100:null;
+      entry.provisionalReviewScore=null;
+      entry.provisionalReviewRefs=[];
+      entry.kind=publication.certified?"certified":"agent";
+      entry.status=publication.certified?"current":"provisional";
+      entry.checkedAt=publication.issuedAt;
+      entry.measuredVersion=entry.sourceVersion;
+      entry.dimensions={...publication.dimensions};
       // Credit comes only from the independently enrolled dual-signature,
       // exact deployed-build, raw artifact, and committed-nonce reader.
       entry.criterionProgress=projectKingdomCriterionProgress(qualityRubric,publication.criteria);
