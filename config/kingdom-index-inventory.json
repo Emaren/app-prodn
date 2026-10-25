@@ -1460,12 +1460,12 @@
       "ownership": "unassigned"
     },
     {
-      "entrypoint": "app/api/game_stats/route.ts",
+      "entrypoint": "app/api/game-stats/live/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
     {
-      "entrypoint": "app/api/game-stats/live/route.ts",
+      "entrypoint": "app/api/game_stats/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
