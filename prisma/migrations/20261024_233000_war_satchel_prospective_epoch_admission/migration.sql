@@ -45,7 +45,7 @@ CREATE UNIQUE INDEX "uq_satchel_single_approved_epoch"
 
 -- A vault cannot be declared a clean prospective epoch while any old
 -- funded Satchel money state exists. This does NOT delete or discharge it.
-CREATE FUNCTION "satchel_epoch_cold_start_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $
+CREATE FUNCTION "satchel_epoch_cold_start_v1"() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   IF NEW.state = 'approved' AND (
      EXISTS(SELECT 1 FROM war_satchel_funded_balances)
@@ -60,7 +60,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 CREATE TRIGGER "tr_satchel_epoch_cold_start" BEFORE INSERT
  ON "war_satchel_prospective_epochs" FOR EACH ROW
  EXECUTE FUNCTION "satchel_epoch_cold_start_v1"();

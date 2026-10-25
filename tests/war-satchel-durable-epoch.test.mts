@@ -61,6 +61,8 @@ test("all credit paths require inside-transaction epoch binding; original claims
  assert.match(sql,/UNIQUE \("chain_id","tx_hash","message_index"\)/);
  assert.match(sql,/SATCHEL_EPOCH_IMMUTABLE/);
  assert.match(sql,/SATCHEL_EPOCH_OLD_FUNDED_ESTATE_NOT_EMPTY/);
+ assert.match(sql,/satchel_epoch_cold_start_v1"\(\) RETURNS TRIGGER LANGUAGE plpgsql AS \$\$/);
+ assert.match(sql,/END;\s*\$\$;\s*CREATE TRIGGER "tr_satchel_epoch_cold_start"/);
  assert.match(source("lib/warSatchelDurableEpoch.ts"),/legacy_funded_estate_requires_segregation/);
  assert.match(sql,/canonical_height <= e.start_height/);
  assert.doesNotMatch(sql,/DELETE FROM pending_wolo_claims|UPDATE pending_wolo_claims|TRUNCATE pending_wolo_claims/);
