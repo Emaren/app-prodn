@@ -154,7 +154,7 @@ BEGIN
     -- An existing enrollment requires explicit pre-migration review.
     RAISE EXCEPTION 'SATCHEL_EPOCH_FINANCE_ROLE_PREENROLLED' USING ERRCODE='42501';
   END IF;
-END
+END;
 $epoch_roles$;
 
 -- Object ownership, not merely REVOKE FROM PUBLIC, is critical:
