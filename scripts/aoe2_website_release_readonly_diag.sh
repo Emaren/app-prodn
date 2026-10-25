@@ -10,7 +10,7 @@ CONTROLLER="${WEBSITE_CONTROLLER_REPO:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}"
 # A root diagnostic and canonical deploy principal are DIFFERENT identities.
 # Ship is pinned to tony's dedicated git remote and restricted sudo.
 HOST="${WEBSITE_SSH_TARGET:-root@hel1}"
-RELEASE_HOST="${AOE2_RELEASE_HOST:-tony@hel1}"
+RELEASE_HOST="${AOE2_RELEASE_HOST:-hel1}"
 GLOBAL_LOCK="/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock"
 KEYROOT="/etc/aoe2war/website-release-authority-v2"
 STATEDIR="/var/lib/aoe2war-website-authority-v2"
