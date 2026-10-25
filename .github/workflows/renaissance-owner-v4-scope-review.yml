@@ -1,0 +1,53 @@
+name: Website v4 Frozen Source REVIEW ONLY
+
+on:
+  pull_request:
+    paths:
+      - "config/renaissance-website-v4-frozen-scope.json"
+      - "scripts/aoe2_renaissance_v4_scope.py"
+      - "tests/test_aoe2_renaissance_v4_scope.py"
+      - ".github/workflows/renaissance-owner-v4-scope-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scope-review:
+    name: Exact 128-path source review — never a release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout reviewer source (not candidate)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Offline adversarial verifier tests
+        run: |
+          python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_scope.py -v
+      - name: Verify exact 128-path candidate Git objects, no build and no deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha=6d2a78224e5a5c647345d6b5ffc91bf94dc84b59
+          base_sha=6be434c00469afa4acb0623715c3bcf724f927f4
+          git fetch --no-tags origin +refs/pull/922/head:refs/remotes/origin/renaissance-v4-exact-candidate
+          actual="$(git rev-parse refs/remotes/origin/renaissance-v4-exact-candidate)"
+          test "$actual" = "$source_sha"
+          git cat-file -e "$base_sha^{commit}"
+          worktree="$RUNNER_TEMP/renaissance-v4-readonly-candidate"
+          git worktree add --detach "$worktree" "$source_sha"
+          python3 scripts/aoe2_renaissance_v4_scope.py --candidate-repo "$worktree" \
+            | tee "$RUNNER_TEMP/renaissance-v4-inventory-receipt.json"
+          python3 - "$RUNNER_TEMP/renaissance-v4-inventory-receipt.json" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert data["status"]=="SOURCE_INVENTORY_MATCH_REVIEW_ONLY"
+          assert data["paths"]==128
+          assert data["owner_signature_verified"] is False
+          assert data["release_authorized"] is False
+          assert data["financial_release_authorized"] is False
+          PY
+          printf '%s\n' 'PASS: 128 source blobs matched exactly; STILL NOT SIGNED OR DEPLOYABLE' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'NO OWNER KEY, NO SIGNATURE, NO REMOTE HOST, NO FINANCE, NO DEPLOYMENT' >> "$GITHUB_STEP_SUMMARY"
