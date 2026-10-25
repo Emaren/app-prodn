@@ -11,7 +11,7 @@ function make(){
  return {source_sha:sha,build_id:build,route:"/kingdom",phase:"I",
  profile:"general",status:"PASS",views:[
  {viewport:"desktop",sample:1,attempted:true,browserStatus:"OBSERVED",
-  http:200,sameOrigin:true,rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0},
+  http:200,sameOrigin:true,final_path:"/kingdom",rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0},
  {viewport:"mobile",sample:1,attempted:true,browserStatus:"OBSERVED",
   http:200,sameOrigin:true,rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0}
  ],criteria:{production:"UNKNOWN",financial_nonmutation:"UNKNOWN",client_mutation_attempts:"NONE_OBSERVED"},
@@ -50,22 +50,22 @@ test("raw malformed history and fabricated route identity rejected",()=>{
 });
 
 test("blocked telemetry never turns a valid GET smoke into a navigation failure",()=>{
- const view={http:200,sameOrigin:true,rendered:true,body_title:true,landmark:true,
+ const view={http:200,sameOrigin:true,final_path:"/kingdom",rendered:true,body_title:true,landmark:true,
   keyboardFocus:true,uncaughtErrors:0,privacyMutationAttempts:4,browserStatus:"OBSERVED"};
- assert.equal(classifyCandidateRoute({views:[view]},"UNAVAILABLE"),"PASS");
+ assert.equal(classifyCandidateRoute({route:"/kingdom",views:[view]},"UNAVAILABLE"),"PASS");
 });
 test("isolated missing PostgreSQL is UNKNOWN, but genuine browser error is FAIL",()=>{
- const broken={http:200,sameOrigin:true,rendered:true,body_title:false,landmark:false,
+ const broken={http:200,sameOrigin:true,final_path:"/kingdom",rendered:true,body_title:false,landmark:false,
   keyboardFocus:false,uncaughtErrors:1,dependencyUnavailable:true,browserStatus:"OBSERVED"};
- assert.equal(classifyCandidateRoute({views:[broken]},"UNAVAILABLE"),"UNKNOWN");
+ assert.equal(classifyCandidateRoute({route:"/kingdom",views:[broken]},"UNAVAILABLE"),"UNKNOWN");
  assert.equal(classifyCandidateRoute({views:[broken]},"REACHABLE"),"FAIL");
- assert.equal(classifyCandidateRoute({views:[{...broken,dependencyUnavailable:false}]},"UNAVAILABLE"),"FAIL");
+ assert.equal(classifyCandidateRoute({route:"/kingdom",views:[{...broken,dependencyUnavailable:false}]},"UNAVAILABLE"),"FAIL");
 });
 test("missing title/landmark, bad HTTP or no keyboard focus cannot be PASS",()=>{
- const baseline={http:200,sameOrigin:true,rendered:true,body_title:true,landmark:true,
+ const baseline={http:200,sameOrigin:true,final_path:"/kingdom",rendered:true,body_title:true,landmark:true,
   keyboardFocus:true,uncaughtErrors:0,browserStatus:"OBSERVED"};
  for(const override of [{http:500},{landmark:false},{body_title:false},{keyboardFocus:false},{uncaughtErrors:1}]){
-  assert.equal(classifyCandidateRoute({views:[{...baseline,...override}]},"UNAVAILABLE"),"FAIL");
+  assert.equal(classifyCandidateRoute({route:"/kingdom",views:[{...baseline,...override}]},"UNAVAILABLE"),"FAIL");
  }
 });
 
@@ -78,3 +78,5 @@ test("blocked mutation attempts are visible but do not falsify a navigation PASS
  sample.resource.client_mutations_blocked=0;
  assert.throws(()=>validateRouteReceipt(sample,plan,expected),/Unreconciled/);
 });
+
+test("route redirects and wrong final destinations fail even with HTTP 200",()=>{const x=make();x.views[0].final_path="/";assert.throws(()=>validateRouteReceipt(x,plan,expected),/False successful/);});
