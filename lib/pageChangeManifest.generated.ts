@@ -5,7 +5,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-2c3e461b0b3629528a09",
+    version: "src-e2b6acea1f7878e1cdc6",
   },
   {
     href: "/oracle",
@@ -20,7 +20,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-1edc7c0c78fb51d2df0d",
+    version: "src-e698288d0f3bea61e43a",
   },
   {
     href: "/chaosium",
@@ -50,7 +50,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/academy",
     label: "Academy",
-    version: "src-45fb820d2c2f02053f97",
+    version: "src-4042b21366745d62d8df",
   },
   {
     href: "/market",
@@ -80,12 +80,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-94f92bcd64f172889edd",
+    version: "src-4d8a2ced48423c604c09",
   },
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-6fe54aae07d8834334fe",
+    version: "src-5a8c497b6126eaf03fea",
   },
   {
     href: "/game-stats",
