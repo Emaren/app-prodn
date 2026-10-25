@@ -4,6 +4,7 @@ on:
     branches:
       - integration/renaissance-central-live-index-telemetry-20261025
       - integration/renaissance-central-recovery-truth-20261025
+      - release/renaissance-web-only-source-cut-20261025
   workflow_dispatch:
 permissions:
   contents: read
