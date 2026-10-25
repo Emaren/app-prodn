@@ -115,6 +115,32 @@ def classify_blocked_write(request, host_port):
         "sensitive_payload_values_logged": False,
         "transmitted": False,
     }
+def verify_blocked_mutation_classifier():
+    """Adversarial local-only contract cases; a recognized write is STILL aborted."""
+    class Request:
+        def __init__(self, method, path, payload):
+            self.method = method
+            self.url = "http://127.0.0.1:3138" + path
+            self.headers = {"content-type": "application/json"}
+            self.post_data = json.dumps(payload)
+
+    state = {"protocol": 1, "kind": "state", "tabId": "browserTabABC",
+             "seq": 2, "realmId": "workshop", "depthBand": 0,
+             "motion": "idle", "visibility": "visible", "renewOnly": False}
+    deletion = {"protocol": 1, "tabId": "browserTabABC", "seq": 3}
+    def verdict(method, path, payload):
+        return classify_blocked_write(Request(method, path, payload), 3138)["classification"]
+    assert verdict("POST", PRESENCE_MUTATION, state) == "shared_living_kingdom_v1_blocked"
+    assert verdict("DELETE", PRESENCE_MUTATION, deletion) == "shared_living_kingdom_v1_blocked"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "protocol": 2}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "realmId": "staking"}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "custody": "approve"}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "seq": True}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", "/api/bets/wallet-errors", state) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("DELETE", PRESENCE_MUTATION, {**deletion, "extra": 1}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("PUT", PRESENCE_MUTATION, state) == "UNEXPECTED_WRITE_BLOCKED"
+
+
 SOURCES = (
     "app/kingdom-intelligence/WarPulsePanel.tsx",
     "app/kingdom-intelligence/AgentConstellationPanel.tsx",
@@ -525,6 +551,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     result = {"status": "ERROR", "source_sha": args.sha, "production_attested": False}
     try:
+        verify_blocked_mutation_classifier()
         repo, build, source_blobs = preflight(args)
         (out / "BUILD_ID").write_text(build + "\n")
         result = asyncio.run(execute(args, build, source_blobs, out))
