@@ -35,7 +35,7 @@ export function validateRouteReceipt(receipt,plan,expected){
  if(!observed.has("desktop/1")||!observed.has("mobile/1"))fail("Both viewport baselines required");
  if(receipt.status==="PASS"&&receipt.views.some(v=>
     v.http!==200||v.sameOrigin!==true||v.rendered!==true||
-    v.uncaughtErrors!==0||v.keyboardFocus!==true))
+    v.uncaughtErrors!==0||v.keyboardFocus!==true||v.final_path!==plan.route))
   fail("False successful browser verdict");
  const blocked=receipt.views.reduce((sum,view)=>sum+view.privacyMutationAttempts,0);
  if(!receipt.resource||receipt.resource.client_mutations_blocked!==blocked)
