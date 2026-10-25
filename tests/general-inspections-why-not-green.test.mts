@@ -92,6 +92,19 @@ test("complete check ledger distinguishes STALE, UNKNOWN, FAIL and PASS with exa
   assert.equal(report.matrix.find((c) => c.id === "speed")?.unknownChecks, 1);
 });
 
+test("missing-time failing ratio remains UNKNOWN, never asserted as current FAIL", () => {
+  const snap = fixture();
+  const cohort = snap.categories.find((c) => c.id === "speed")!.checks[0];
+  cohort.evidenceAt = null;
+  cohort.ratio = { passed: 1, total: 3 };
+  const report = buildWhyNotGreenReport(snap);
+  const row = report.evidenceChecks.find((c) => c.checkKey === "speed/check-0")!;
+  assert.equal(row.evidenceStatus, "UNKNOWN");
+  assert.equal(row.reason, "missing-observation-time");
+  assert.equal(row.nextDueAt, null);
+  assert.equal(report.matrix.find((c) => c.id === "speed")?.failedChecks, 0);
+});
+
 test("malformed cohort ratios are never accepted as observed FAIL", () => {
   const snap = fixture();
   const speed = snap.categories.find((c) => c.id === "speed")!.checks[0];
