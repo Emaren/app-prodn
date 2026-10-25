@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "feb32106a79bca32df3c850c56e5c0e0f1b20cecd3965bda5687520061e6845e",
+      "sha256": "bf76d6e7dd9fcad5c1bbd50a1c32ac99fc5cc97a3766b646c2ee89dd0d20e895",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "011c4ea43feb1ee5574deff1fbcbfa00c9e632d8df76fd7d13dd1d2c11bc26b6",
+      "sha256": "fce989a1b677688193ad66603fd897c116c4b516fe068706d1faea1d155df8d9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/held-prospective-epoch-credit-20261024",
-    "commit": "96db691ef87d9f8ab5161903e449992352ea143f"
+    "commit": "83d1a8554fd9f1fb63d728980277dd0add2d6444"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
