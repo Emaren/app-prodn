@@ -111,7 +111,7 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
 }
 
 function evidenceStatus(status: GapStatus, reason: string): EvidenceStatus {
-  return reason === "stale-evidence" ? "STALE" : status.toUpperCase() as EvidenceStatus;
+  return reason === "stale-evidence" || reason === "stale-snapshot" ? "STALE" : status.toUpperCase() as EvidenceStatus;
 }
 
 function nextDueAt(observedAt: string | null | undefined, ttl: number | null): string | null {
@@ -123,13 +123,26 @@ function nextDueAt(observedAt: string | null | undefined, ttl: number | null): s
     : null;
 }
 
-/** Pure projection of one sanitized inspection snapshot. Never reads host evidence again. */
-export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
+/** Pure projection of one sanitized inspection snapshot. Never reads host evidence again.
+ * evaluationTimeMs is the independently supplied read time, NOT a regenerated
+ * producer timestamp. The public API supplies Date.now(); tests can pin time.
+ */
+export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot, evaluationTimeMs?: number) {
   const generatedAt = timestamp(snapshot.generatedAt);
-  if (!generatedAt || !SHA.test(snapshot.releaseSha || "") || snapshot.schema !== 1 ||
+  const evaluatedAt = evaluationTimeMs ?? generatedAt;
+  if (!generatedAt || !Number.isFinite(evaluatedAt) ||
+      evaluatedAt === null || Math.abs(evaluatedAt) > 8_640_000_000_000_000 ||
+      !SHA.test(snapshot.releaseSha || "") || snapshot.schema !== 1 ||
       !Array.isArray(snapshot.categories) || snapshot.categories.length !== CATEGORY_IDS.length) {
     throw new Error("Incomplete or unbound General Inspections snapshot");
   }
+  // A previously published snapshot must never stay green when re-read hours
+  // later. A six-hour bound matches the fastest existing host evidence TTL;
+  // immutable certification history remains intact but the live report is STALE.
+  const snapshotAgeMs = evaluatedAt - generatedAt;
+  const snapshotProblem = snapshotAgeMs < -5 * 60_000
+    ? "future-dated-snapshot"
+    : snapshotAgeMs > 6 * 3_600_000 ? "stale-snapshot" : null;
   const seen = new Set<string>();
   const categoryMatrix = [];
   const gaps = [];
@@ -154,7 +167,10 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
       }
       checkIds.add(item.id);
       earned += item.earned;
-      const result = checkStatus(group.id, item, generatedAt);
+      const checked = checkStatus(group.id, item, evaluatedAt);
+      const result = snapshotProblem
+        ? { ...checked, status: "unknown" as const, reason: snapshotProblem }
+        : checked;
       const operationalStatus = evidenceStatus(result.status, result.reason);
       const dueAt = nextDueAt(item.evidenceAt, result.ttlHours);
       if (operationalStatus === "FAIL") failures++;
@@ -169,6 +185,8 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
         observedAt: item.evidenceAt ?? null, ageHours: result.ageHours,
         ttlHours: result.ttlHours, nextDueAt: dueAt,
         earned: item.earned, weight: item.weight,
+        claimedReleaseSha: snapshot.releaseSha, claimedBuildVersion: snapshot.buildVersion,
+        originalProducerReceiptId: null, originalProducerReceiptDigest: null,
         detail: item.detail, owner: OWNER[group.id], repair: repairFor(group.id, item.id),
       });
       if (result.status !== "pass" || item.earned < item.weight) {
@@ -201,6 +219,10 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
   return {
     schema: "aoe2war.general-inspections.why-not-green.v1",
     generatedAt: snapshot.generatedAt,
+    evaluatedAt: new Date(evaluatedAt).toISOString(),
+    snapshotAgeHours: Math.round(snapshotAgeMs / 3_600_000 * 10) / 10,
+    snapshotEvidenceStatus: snapshotProblem
+      ? evidenceStatus("unknown", snapshotProblem) : "PASS" as EvidenceStatus,
     claimedCertifiedReleaseSha: snapshot.releaseSha,
     buildVersion: snapshot.buildVersion,
     observedOverallScore: snapshot.overallScore,
@@ -217,6 +239,8 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
       "Unknown/missing proof is not an observed operational failure.",
       "Document IDs are not present in the aggregate documentation check: a current DocsV2 registry/review-queue witness is required for exact expired IDs.",
       "checkKey identifies a check, not the original producer receipt ID. Source receipt IDs and original capture timestamps require producer evidence.",
+      "originalProducerReceiptId/digest are unknown in the published snapshot; claimed source/build identifiers are not independent producer attestations.",
+      "A replayed older-than-six-hour snapshot is STALE even when it previously reported 100; historical scores remain unchanged.",
       "nextDueAt is a projected TTL deadline, not proof a scheduler is enabled or a reinspection has run.",
       "No collection, recomputation or privileged action is performed by this report.",
     ],
