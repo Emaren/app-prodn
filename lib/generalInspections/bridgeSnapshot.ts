@@ -800,6 +800,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
           ? "Root capacity unavailable"
           : rootFreeGiB.toFixed(2) + " GiB free" +
               (liveRootFreeGiB == null ? " · operator bridge fallback" : " · live VPS"),
+        { evidenceAt: liveRootFreeGiB == null ? bridgeAt : new Date(now).toISOString() },
       ),
       check(
         "volume-used",
@@ -810,6 +811,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
           ? "Volume capacity unavailable"
           : volumeUsed.toFixed(1) + "% used" +
               (liveVolumeUsed == null ? " · operator bridge fallback" : " · live VPS"),
+        { evidenceAt: liveVolumeUsed == null ? bridgeAt : new Date(now).toISOString() },
       ),
       check(
         "mac-free",
