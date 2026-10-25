@@ -23,7 +23,7 @@ a production deployment or override the original WoloChain `vps-source-drift` P1
 
 - Certified production: `a2b941f154fdc31ec4d6c4ece6d0e49036c48abd`
 - Target **product** source: canonical application main
-  `21cd1493b182cb0968a6b6cf3f528d0578cfd797`.
+  `6be434c00469afa4acb0623715c3bcf724f927f4`.
 - Changed paths from certified production: **nine**, including Kingdom Index's
   clearly labelled **UNPUBLISHED Watcher 1.6.6 draft** and security-patched
   `fast-uri@3.1.9`. Source review metadata is NOT engineering certification.
@@ -75,7 +75,7 @@ environment to GitHub, chat, or workflow logs.
    machine/ledger may be admitted without cross-host single-instance proof.
 5. Reviewer-signed source-finance boundary document:
    `aoe2war-website-source-finance-boundary-v2` includes exact
-   production `base_sha`, nine changed paths, scope digest, source review
+   production `base_sha`, ten changed paths, scope digest, source review
    time (fresh within 60 minutes), `fast-uri@3.1.9` transitive inventory,
    SSR and layout, server actions, financial GET queue behavior, scheduled
    systemd/workers, web service restart impact, environment/feature flags,
@@ -137,7 +137,7 @@ environment to GitHub, chat, or workflow logs.
    --stage-receipt <exact-operator-stage-receipt>`.
    The controller revalidates under the lease and consumes activation nonce
    before one protected `ship --activate` dispatch.
-6. The nine-path legacy product candidate uses identity-only internal/public
+6. The ten-path legacy product candidate uses identity-only internal/public
    `/api/deployment-version` probes and bounded soak, never finance-scheduling
    `/api/bets`, `/api/lobby`, workshop or unproven prewarm as passive probes.
    Other reviewed source releases retain their separate full smoke contract.
@@ -154,7 +154,7 @@ incident/rollback decision; absence of a signed result is not a successful GO.
 
 ## October 24 independent controller correction — exact operator tree and one lease
 
-The governed operator/controller checkout is **different from** the nine-path
+The governed operator/controller checkout is **different from** the ten-path
 product checkout. Each four-role, candidate-bound PRE_STAGE and PRE_ACTIVATE
 signature packet must additionally contain:
 
@@ -202,19 +202,19 @@ Funded/Wolo financial mainnet remains separately on HOLD. Original Wolo
 `vps-source-drift` P1 stays OPEN and visible after any website-only
 release; neither approval nor this code resolves it.
 
-## Exact nine-path WATCHER classification with no Watcher distribution
+## Exact ten-path WATCHER classification with no Watcher distribution
 
-The nine-path main release remains **risk_class WATCHER** in the existing
+The ten-path main release remains **risk_class WATCHER** in the existing
 conservative path classifier because draft-review filenames include
 "watcher". It does **not** publish or install Watcher 1.6.6, which remains
 explicitly UNPUBLISHED. The protected controller therefore permits WATCHER
 risk only when the signed candidate remains the **exact** main SHA, its
-manifest enumerates the exact nine paths, migrations are empty and the
+manifest enumerates the exact ten paths, migrations are empty and the
 Source and Finance reviewers affirm no hidden transitive financial changes.
 
 The stage function checks `lib/watcherRelease.ts` at both exact Git
 commits. It omits a *new* Watcher distribution-vault receipt **only when
-the two versions are equal and every exact nine-path/source/migration
+the two versions are equal and every exact ten-path/source/migration
 condition holds**. Every real Watcher executable/version change and every
 other WATCHER candidate still requires the original vault certificate.
 Neither policy relaxes the existing Wolo P1, financial review or signer
@@ -251,3 +251,15 @@ will make a lease-held stage/activation call.
 Run `bash scripts/aoe2_website_release_readonly_diag.sh` from this
 controller worktree BEFORE any mutating action. Review every HOLD and its
 actual sources; this diagnostic never issues a permit.
+
+## October 25 legitimate ten-path product requalification
+
+Source-only review in `docs/RIVALRIES_AND_WAR_VAULT.md` was completed
+against the unchanged former main `21cd1493b182cb0968a6b6cf3f528d0578cfd797` and governed DocsV2 registry
+was regenerated. The reviewed product source is `6be434c00469afa4acb0623715c3bcf724f927f4`.
+This is **ten** certified-production changed paths, not the former nine.
+Do not infer any human financial/custody authorization from a DocsV2
+metadata update. The new candidate must be independently admitted to
+protected main at the SAME SHA, then a real source-bound PASS gate and
+manifest must be obtained. No release state from the old FAIL gate may
+be reclassified into PASS. Original Wolo source P1 remains OPEN.
