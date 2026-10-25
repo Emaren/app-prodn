@@ -15,6 +15,129 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 25, 2026 — Tab C evidence-bound operational gap projection (source-only draft)
+
+**Dated operator screen observations, not new measurements:** General Inspections 69/100:
+Speed 63, Documentation 35, Organization/Storage 76, Test & Build 100,
+Release & Runtime 64, Security 75, Data/Wolo/Replay 73. Kingdom Intelligence
+Doctor 59/100 UNSAFE (P0=2, P1=4) was observed separately. These screen
+readings are not independently authenticated host observations and must not
+supersede current source-bound receipts or newer trusted measurements.
+
+### Proof origin, TTL and authority
+
+- The **preferred bridge reader** accepts an Operator Bridge
+  `kingdom-intelligence.json` envelope and searches existing VPS activation,
+  gate, stage and certification files; the **fallback reader** reads local
+  `.aoe2war-release` Finish/gate/speed/edge receipts if the bridge is unavailable.
+  A valid certified activation binds stage/gate/certification release SHA. A
+  transport `receivedAt` is not a new `payload.generated_at` measurement.
+- SpeedOS cold-browser LCP/ready/TTFB and Cloudflare edge cohorts require both
+  explicit **exact certified release SHA** and current-release assertion.
+  Metrics lose live points as their native receipt ages from 24 hours fresh
+  to zero at 168 hours, or immediately on a source mismatch. A stale October
+  13 measurement cannot grant current live speed points on October 25.
+  This also applies to per-browser mutation-boundary credit.
+- Replay-corpus accounting requires a matching
+  `replay_truth.production_source`, current-release assertion and fresh replay
+  receipt (24 hours fresh, zero at 168 hours). Replay history remains useful,
+  but must not count as verified current-release operational success.
+- The source/build-scoped **Test & Build Integrity** score remains tied to the
+  certified gate's declared `required_commands`, validated return codes and
+  certification. A successful historic gate is not proof of current Doctor,
+  Wolo economics or browser behavior. A validator not required by the
+  certified gate scope stays explicitly marked not required.
+- Bridge-backed Doctor, systemd, Wolo listener and security observations
+  decay with capture/receipt delivery (one hour fresh, zero after six).
+  Root/volume capacity prefers live read-only VPS statfs; older bridge capacity
+  is a decaying fallback. Immutable certification proof does not expire solely
+  because the last host heartbeat is old.
+- The seven inspection categories use their own pre-existing canonical
+  100-point weights; these are **not** the Kingdom Index 30/25/20/15/10
+  page-quality certification criteria.
+
+### Machine-readable why-not-green
+
+`GET /api/general-inspections?report=why-not-green` projects **one already
+collected, sanitized** `GeneralInspectionsSnapshot` into a source-attributed
+seven-category PASS / FAIL / UNKNOWN matrix and an exact-weight repair queue.
+The response includes each check ID, awarded/max/missing points, timestamp,
+TTL, uncertainty reason and owner-evidence repair. The default API response
+and website visual layout remain unchanged; no additional host scan, operator
+command, database write, service restart, signing or financial operation occurs.
+
+A **FAIL** is assigned only to fresh explicit measured operational/source
+invariant mismatches. A missing timestamp, expired receipt, partial checker
+coverage or unavailable host truth is **UNKNOWN**, not an observed failure.
+The new report does not change the persisted underlying score or independently
+certify a claimed positive reading; `measuredHealthChanged=false`.
+
+### Exact source-registry triage observed on October 25
+
+Read-only comparison: `Emaren/AoE2WAR-docs main` taxonomy blob
+`26e18f739e7585b41de0d260e914c9cc62b35b77` (225 entries);
+`Emaren/app-prodn main` source registry blob
+`f7c1af190ad1ae77e311189fee4a005e0afa5be5` (96 entries).
+These are GitHub **source registry** observations, not a contemporaneous VPS
+Doctor receipt. `reviewed_at + review_interval_days` with the governance SLO
+(date due still valid; overdue starting next day) identifies **eight central
+active entries overdue after 2026-10-24**:
+
+| Exact doc ID | Repository | Source path |
+| --- | --- | --- |
+| `aoe2war.arch.truth-planes` | AoE2WAR-docs | `docs/architecture/truth-planes.md` |
+| `aoe2war.gov.documentation-lifecycle` | AoE2WAR-docs | `docs/governance/documentation-lifecycle.md` |
+| `aoe2war.gov.metadata-contract` | AoE2WAR-docs | `docs/governance/metadata-contract.md` |
+| `aoe2war.gov.review-slos` | AoE2WAR-docs | `docs/governance/review-slos.md` |
+| `aoe2war.home` | AoE2WAR-docs | `docs/index.md` |
+| `aoe2war.start.ai-agent` | AoE2WAR-docs | `docs/start-here/ai-agent.md` |
+| `aoe2war.start.developer` | AoE2WAR-docs | `docs/start-here/developer.md` |
+| `aoe2war.app-prodn.docs-rivalries-and-war-vault` | app-prodn | `docs/RIVALRIES_AND_WAR_VAULT.md` |
+
+The **app-prodn source registry itself** has zero overdue active positive-
+interval entries. Treat `review_interval_days=0` historical, generated and
+superseded records as intentionally outside normal review expiry, not sixteen
+phantom failures.
+
+Three `app-prodn` paths have different source hashes in the central
+taxonomy versus the current local registry: `docs/DOCUMENTATION_CONTROL_PLANE.md`,
+`docs/RIVALRIES_AND_WAR_VAULT.md`, and `docs/PAGE_CHANGE_NOTICES.md`.
+That is **federated reference drift to investigate**, not automatic proof of
+corruption: central may be pinned to an intentionally older reviewed source.
+DocsV2 owner must review the changed content and policy, then produce a
+source-pinned, approved registry synchronization and strict-check receipt.
+No automatic source registry write is made by Tab C.
+
+Documentation aggregate scores are not an ID-level DocsV2 review registry.
+To close a Documentation 35 reading, obtain the **current detailed DocsV2
+review/expiry and reference-drift output** from the documentation owner,
+record each exact document ID and policy deadline, reconcile missing
+registry/index entries and renew legitimate source reviews. Do not delete
+failing documents, change the scoring threshold, relabel an expired review
+as current or invent overdue IDs from aggregate ratios. Source correction
+is distinct from the later authorized host proof.
+
+### Read-only repair queue and acceptance
+
+1. **Source-fixable:** refuse stale/cross-release Speed and replay credit;
+   fail safely under a deleted/corrupt receipt; preserve scoped gate semantics;
+   validate canonical weighted arithmetic and diagnostic report generation.
+2. **Documentation owner:** resolve exact expired DocsV2 IDs, bad references and
+   registry drift using a dated, source-bound strict DocsV2 receipt. The
+   source score alone cannot identify those IDs.
+3. **Host owner:** capture current read-only Doctor P0/P1 details, active
+   release/build/source identity, VPS services and capacity, speed cohorts
+   and replay/Wolo safety receipts on the actual certified production build.
+   Listener availability does **not** prove wallet custody or settlement.
+4. **Central certification:** verify exact-head CI and independently required
+   production/browser evidence before claiming **next measured operational
+   health**. A complete gap-report tool is only **health tooling completeness**.
+
+This draft is not a release request and grants no permission to mutate finance,
+restart consensus or settlement, run Finish, alter production journals or award
+Kingdom Index points.
+
+
 ## October 18, 2026 — archival score lineage remains immutable under live agent updates
 
 The dated `/leaderboard` source review scored **64/100** and its rubric
