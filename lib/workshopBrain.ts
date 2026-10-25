@@ -1,4 +1,5 @@
 import type { PublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
+import { explainKingdomOperationalState, type KingdomOperationalIncident } from "@/lib/kingdomOperationalDiagnostics";
 
 export type WorkshopBrainSnapshot = {
   available: boolean;
@@ -13,10 +14,11 @@ export type WorkshopBrainSnapshot = {
   p0: number | null;
   p1: number | null;
   directiveTitle: string | null;
-  invariantPassCount: number;
+  invariantPassCount: number | null;
   invariantCount: number;
-  activeSystemCount: number;
-  attentionSystemCount: number;
+  activeSystemCount: number | null;
+  attentionSystemCount: number | null;
+  diagnostics: KingdomOperationalIncident[];
 };
 
 const ACTIVE_STATES = new Set([
@@ -55,10 +57,11 @@ export function buildWorkshopBrainSnapshot(
       p0: null,
       p1: null,
       directiveTitle: null,
-      invariantPassCount: 0,
+      invariantPassCount: null,
       invariantCount: 0,
-      activeSystemCount: 0,
-      attentionSystemCount: 0,
+      activeSystemCount: null,
+      attentionSystemCount: null,
+      diagnostics: explainKingdomOperationalState({ available: false, observation: null, nowMs: Date.now() }),
     };
   }
 
@@ -94,15 +97,20 @@ export function buildWorkshopBrainSnapshot(
     p0: severityObserved ? data.health?.p0 ?? null : null,
     p1: severityObserved ? data.health?.p1 ?? null : null,
     directiveTitle: data.directive?.title ?? null,
-    invariantPassCount: data.invariants.filter(
+    invariantPassCount: severityObserved ? data.invariants.filter(
       (item) => state(item.status) === "PASS",
-    ).length,
+    ).length : null,
     invariantCount: data.invariants.length,
-    activeSystemCount: data.systemAgents.filter((item) =>
+    activeSystemCount: severityObserved ? data.systemAgents.filter((item) =>
       ACTIVE_STATES.has(state(item.state)),
-    ).length,
-    attentionSystemCount: data.systemAgents.filter((item) =>
+    ).length : null,
+    attentionSystemCount: severityObserved ? data.systemAgents.filter((item) =>
       ATTENTION_STATES.has(state(item.state)),
-    ).length,
+    ).length : null,
+    diagnostics: data.diagnostics ?? explainKingdomOperationalState({
+      available: true,
+      observation: data.health?.observation ?? null,
+      nowMs: Date.now(),
+    }),
   };
 }
