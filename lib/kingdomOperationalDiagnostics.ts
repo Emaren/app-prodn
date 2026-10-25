@@ -97,18 +97,19 @@ function incident(
   explanation: string,
 ): KingdomOperationalIncident {
   const ms = atMs(observation?.observedAt);
-  const ageSeconds = ms !== null && Number.isFinite(nowMs) ? Math.floor((nowMs - ms) / 1000) : null;
+  const ageSeconds = ms !== null && Number.isFinite(nowMs) && ms <= nowMs + 30_000
+    ? Math.floor((nowMs - ms) / 1000) : null;
   return {
     schema: 1, code, status, owner,
     dependencyIds: owner === "Release OS" ? ["release", "intelligence"] : ["intelligence"],
     affectedRoutes: routes,
     explanation,
     evidence: {
-      producer: observation?.producer ?? null,
-      sourceGitSha: observation?.sourceGitSha ?? null,
-      buildId: observation?.buildId ?? null,
-      observedAt: observation?.observedAt ?? null,
-      ageSeconds, ttlSeconds: observation?.ttlSeconds ?? null,
+      producer: observation?.producer === "kingdom-intelligence-brain" ? observation.producer : null,
+      sourceGitSha: hex40(observation?.sourceGitSha) ? observation!.sourceGitSha : null,
+      buildId: buildId(observation?.buildId) ? observation!.buildId : null,
+      observedAt: ms !== null ? observation!.observedAt : null,
+      ageSeconds, ttlSeconds: observation?.ttlSeconds === 900 ? 900 : null,
       evidenceUri: null, // Never copy operator-local receipt paths or untrusted URLs.
     },
     nextAction,
@@ -135,12 +136,21 @@ export function explainKingdomOperationalState(input: {
       "RECHECK_BRIDGE_READ_ONLY", "No current sanitized bridge report is available."),
   ];
   const incidents: KingdomOperationalIncident[] = [];
-  for (const code of [...new Set(observation.unknownReasons)].slice(0, 6)) {
+  // Only stable audited reason codes may cross the public boundary.
+  // Never echo arbitrary source/log text supplied as a future reason.
+  const knownReasons = [...new Set(observation.unknownReasons.filter(code =>
+    Object.prototype.hasOwnProperty.call(explanations, code)))].slice(0, 6);
+  for (const code of knownReasons) {
     const status = observation.status === "STALE" ? "STALE"
       : observation.status === "CONTRADICTORY" ? "CONTRADICTORY" : "UNKNOWN";
     incidents.push(incident(code, status, observation, nowMs, "Kingdom Intelligence",
       status === "CONTRADICTORY" ? "REVIEW_REPORT_CONFLICT" : "RECHECK_BRIDGE_READ_ONLY",
       explanations[code] ?? "The bridge reported an unclassified evidence limitation."));
+  }
+  if (knownReasons.length === 0 && observation.status !== "SOURCE_REPORTED") {
+    incidents.push(incident("source-evidence-unclassified", "UNKNOWN", observation, nowMs,
+      "Kingdom Intelligence", "RECHECK_BRIDGE_READ_ONLY",
+      "An unrecognized source limitation prevents reliable operational health."));
   }
   if (identityComparison === "SOURCE_MISMATCH" || identityComparison === "BUILD_MISMATCH") {
     incidents.push(incident("certified-runtime-" + identityComparison.toLowerCase().replace("_", "-"),
