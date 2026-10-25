@@ -22,6 +22,40 @@ const REPAIR: Record<string, string> = {
   data: "Collect separate current read-only Wolo listener, replay-closure and mutation-boundary receipts; listener counts do not certify custody or financial solvency.",
 };
 
+const OWNER: Record<string, string> = {
+  speed: "SpeedOS/browser-and-edge-operator",
+  documentation: "Central/DocsV2-single-writer",
+  organization: "StorageOS-and-estate-operator",
+  tests: "Certified-build-gate-owner",
+  release: "Release-controller-and-host-operator",
+  security: "VPSSentry-and-host-security-owner",
+  data: "Replay-and-WoloChain-readonly-owner",
+};
+
+// The published check itself does not contain a cryptographically bound
+// producer-receipt ID. These are repair routing hints, not auth decisions.
+const REPAIR_BY_CHECK: Record<string, string> = {
+  "documentation/docs-control": "Reconcile active central taxonomy and local source metadata, substantively review expired documents, then rerun strict DocsV2; preserve historical hashes.",
+  "documentation/strict-doc-build": "After the original docs-review errors are resolved, rerun the independent strict documentation build and preserve its exact-source receipt.",
+  "documentation/audit-taxonomy": "Rerun the central taxonomy audit after reconciled review metadata; one failed upstream generation may block multiple downstream gates.",
+  "documentation/central-doc-repo": "Review the central app source snapshot and source-registry hash differences with the DocsV2 single writer; retain old commit history.",
+  "organization/volume-used": "Evidence volume measured 92% used: inspect protected hot/cold checkpoints and authorized reclaim inventory before any deletion; measure same-filesystem headroom afterwards.",
+  "organization/expiry-debt": "Use the existing Storage OS read-only expiry inventory and verify receipt/references for every candidate; no deletion from a public GET.",
+  "release/doctor": "Collect fresh original Doctor findings from the owner machine with current production SHA/BUILD_ID; do not infer individual P0 IDs from aggregate health.",
+  "release/estate-findings": "Repair the actual upstream Estate audit P0/P1 keys, rerun the original producer, and publish a source-bound observation; never suppress a severity.",
+  "security/vpssentry": "Coordinate vps-sentry issue #4: reproduce overlapping runtime-directory instances and prove actual operator alert delivery in an authenticated receipt.",
+  "security/failed-units": "Distinguish historical Certbot failure from VPS Sentry 226/NAMESPACE; only a new clean service result and unit health observation can clear this check.",
+  "security/updates": "Classify actionable host security updates separately from intentionally phased Ubuntu rollout; do not install or reboot from an inspection reader.",
+  "data/wolo-estate": "Reconcile WoloChain VPS checkout with certified implementation baseline and independently verify wolo-1 RPC on 27657; preserve protected custody.",
+  "data/wolo-8092": "Observe actual protected 8092 listener identity and liveness; listener presence alone is not settlement/custody proof.",
+  "data/wolo-8093": "Observe actual protected 8093 listener identity and liveness; do not touch settlement or founder-reward operation.",
+  "data/watcher-release": "Verify the published signed Watcher version and real current download manifest; an unpublished candidate has no release-grade score.",
+};
+
+function repairFor(categoryId: string, checkId: string) {
+  return REPAIR_BY_CHECK[categoryId + "/" + checkId] ?? REPAIR[categoryId];
+}
+
 function timestamp(value: string | null | undefined): number | null {
   if (!value || !/^\d{4}-\d\d-\d\dT/.test(value)) return null;
   const parsed = Date.parse(value);
@@ -135,7 +169,7 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
         observedAt: item.evidenceAt ?? null, ageHours: result.ageHours,
         ttlHours: result.ttlHours, nextDueAt: dueAt,
         earned: item.earned, weight: item.weight,
-        detail: item.detail, repair: REPAIR[group.id],
+        detail: item.detail, owner: OWNER[group.id], repair: repairFor(group.id, item.id),
       });
       if (result.status !== "pass" || item.earned < item.weight) {
         gaps.push({
@@ -145,7 +179,7 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
           missingPoints: Math.round((item.weight - item.earned) * 10) / 10,
           observedAt: item.evidenceAt ?? null, ageHours: result.ageHours,
           ttlHours: result.ttlHours, nextDueAt: dueAt, detail: item.detail,
-          repair: REPAIR[group.id],
+          owner: OWNER[group.id], repair: repairFor(group.id, item.id),
         });
       }
     }
