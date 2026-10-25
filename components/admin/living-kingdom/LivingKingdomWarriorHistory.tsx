@@ -9,6 +9,7 @@ type History={
  user:{uid:string;name:string;avatar:string;joinedAt:string;accountLastSeenAt:string|null;
   presence:{status:string;realm:string|null;observedAt:string|null}};
  days:7|30;hasMore:boolean;nextCursor:number|null;events:Event[];
+ sessions:Array<{ordinal:number;startedAt:string|null;endedAt:string|null;events:number;views:number;clicks:number;entry:string|null;exit:string|null;estimateSeconds:number|null;scope:string}>;
  slice:{views:number;clicks:number;sessions:number;visitDays:number;returning:boolean|null;
   estimatedActiveSeconds:number|null;estimateConfidence:string;lastPath:string|null;
   previousPath:string|null;lastEventAt:string|null;truncated:boolean;eventsObserved:number};
@@ -130,6 +131,16 @@ export function LivingKingdomWarriorHistory({uid}:{uid:string}){
        <p className="text-xs uppercase tracking-[.2em] text-amber-200/65"><Waves className="mr-1 inline h-4 w-4"/>What cannot be recovered</p>
        <p className="mt-3 text-sm leading-6 text-slate-400">Historical scroll paths and positions were not recorded. Click contents, wallet actions, chat messages, form text and sensitive URLs are never displayed.</p>
        <ul className="mt-4 space-y-2 text-xs leading-5 text-slate-500">{data.limitations.map(note=><li key={note}>• {note}</li>)}</ul>
+      </section>
+      <section className={FRAME}>
+       <h2 className="text-lg font-semibold text-white">Observed session slices</h2>
+       <p className="mt-1 text-xs leading-5 text-slate-500">Grouped only within the latest 40-record page; no raw session keys are exposed.</p>
+       <ol className="mt-4 space-y-3">{data.sessions.length?data.sessions.map(session=>
+        <li key={session.ordinal} className="rounded-xl border border-white/10 bg-white/[.035] p-3">
+         <p className="text-xs font-semibold text-amber-100">Slice {session.ordinal} · {session.views} views · {session.clicks} clicks</p>
+         <p className="mt-1 text-xs text-slate-400">{session.entry??"Unmeasured"} → {session.exit??"Unmeasured"}</p>
+         <p className="mt-2 text-[11px] text-slate-500"><Stamp value={session.startedAt}/> · {session.estimateSeconds===null?"Dwell unknown":Math.round(session.estimateSeconds/60)+" min estimated"}</p>
+        </li>):<li className="text-xs text-slate-500">No observed session slice</li>}</ol>
       </section>
      </aside>
     </div>
