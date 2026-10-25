@@ -16,6 +16,7 @@ import {
   category,
   check,
   freshnessFraction,
+  legacyReceiptProof,
   stateForFraction,
   thresholdFraction,
 } from "./scoring.ts";
@@ -406,22 +407,51 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   const edgeFresh = freshnessFraction(featuredAt, 24, 168);
   const gateFresh = freshnessFraction(gateAt, 24, 168);
   const macFresh = freshnessFraction(baseline.capturedAt, 48, 336);
+  // This fallback is built from the historic local Finish receipt, not a new
+  // authenticated host observation. Require its release SHA and active build
+  // identity to agree before awarding ANY receipt-derived proof.
+  const legacyCert = record(release.release.certification);
+  const identityBound =
+    legacyCert.status === "CERTIFIED" &&
+    Boolean(releaseSha && /^[0-9a-f]{40}$/.test(releaseSha)) &&
+    text(release.release.production_source) === releaseSha &&
+    text(legacyCert.release_sha) === releaseSha &&
+    Boolean(text(release.release.active_build_id)) &&
+    text(release.release.active_build_id) === text(legacyCert.active_build_id);
+  const legacyReceiptBase = {
+    activeSourceSha: text(release.release.production_source),
+    certifiedReleaseSha: text(legacyCert.release_sha),
+    activeBuildId: text(release.release.active_build_id),
+    certifiedBuildId: text(legacyCert.active_build_id),
+    finishAt,
+  };
+  const coldProof = identityBound ? legacyReceiptProof({
+    ...legacyReceiptBase,
+    receiptAt: coldAt,
+    receiptReleaseSha: text(cold?.releaseSha),
+  }) : 0;
+  const edgeProof = identityBound ? legacyReceiptProof({
+    ...legacyReceiptBase,
+    receiptAt: featuredAt,
+    receiptReleaseSha: text(record(featured?.avatar_plan).release_sha),
+  }) : 0;
+  const docsProof = identityBound ? finishFresh : 0;
 
   const speed = category(
     "speed",
     "Website Speed",
     "Cold-browser visual speed, readiness, edge delivery, and measurement validity.",
     [
-      check("lcp50", "Cold phone LCP p50", 12, thresholdFraction(lcp.p50, 800, 1100, "lte"), lcp.p50 == null ? "No current cold-phone evidence" : Math.round(lcp.p50) + " ms", { evidenceAt: coldAt }),
-      check("lcp95", "Cold phone LCP p95", 15, thresholdFraction(lcp.p95, 1000, 1400, "lte"), lcp.p95 == null ? "No current cold-phone evidence" : Math.round(lcp.p95) + " ms", { evidenceAt: coldAt }),
-      check("ready50", "Ready p50", 10, thresholdFraction(ready.p50, 1000, 1300, "lte"), ready.p50 == null ? "No current readiness evidence" : Math.round(ready.p50) + " ms", { evidenceAt: coldAt }),
-      check("ready95", "Ready p95", 10, thresholdFraction(ready.p95, 1500, 1900, "lte"), ready.p95 == null ? "No current readiness evidence" : Math.round(ready.p95) + " ms", { evidenceAt: coldAt }),
-      check("ttfb95", "Document TTFB p95", 10, thresholdFraction(ttfb.p95, 650, 900, "lte"), ttfb.p95 == null ? "No current document timing evidence" : Math.round(ttfb.p95) + " ms", { evidenceAt: coldAt }),
-      check("static-edge", "Static edge cohort", 10, staticRatio.total ? staticRatio.passed / staticRatio.total : 0, staticRatio.total ? staticRatio.passed + "/" + staticRatio.total + " HIT" : "No current edge receipt", { ratio: staticRatio, evidenceAt: featuredAt }),
-      check("dynamic-edge", "Dynamic edge cohort", 8, dynamicRatio.total ? dynamicRatio.passed / dynamicRatio.total : 0, dynamicRatio.total ? dynamicRatio.passed + "/" + dynamicRatio.total + " HIT" : "No current dynamic-edge receipt", { ratio: dynamicRatio, evidenceAt: featuredAt }),
-      check("featured-edge", "Featured avatar edge", 8, featuredRatio.total ? featuredRatio.passed / featuredRatio.total : 0, featuredRatio.total ? featuredRatio.passed + "/" + featuredRatio.total + " HIT" : "No current avatar-edge receipt", { ratio: featuredRatio, evidenceAt: featuredAt }),
-      check("stable-lcp", "Stable LCP target", 7, coldSamples ? topTarget / coldSamples : 0, coldSamples ? topTarget + "/" + coldSamples + " launches share one LCP target" : "No current LCP target census", { ratio: { passed: topTarget, total: coldSamples }, evidenceAt: coldAt }),
-      check("speed-fresh", "Performance evidence freshness", 10, Math.min(performanceFresh, edgeFresh), ageDetail(coldAt), { evidenceAt: coldAt }),
+      check("lcp50", "Cold phone LCP p50", 12, thresholdFraction(lcp.p50, 800, 1100, "lte") * coldProof, lcp.p50 == null ? "No current cold-phone evidence" : Math.round(lcp.p50) + " ms", { evidenceAt: coldAt }),
+      check("lcp95", "Cold phone LCP p95", 15, thresholdFraction(lcp.p95, 1000, 1400, "lte") * coldProof, lcp.p95 == null ? "No current cold-phone evidence" : Math.round(lcp.p95) + " ms", { evidenceAt: coldAt }),
+      check("ready50", "Ready p50", 10, thresholdFraction(ready.p50, 1000, 1300, "lte") * coldProof, ready.p50 == null ? "No current readiness evidence" : Math.round(ready.p50) + " ms", { evidenceAt: coldAt }),
+      check("ready95", "Ready p95", 10, thresholdFraction(ready.p95, 1500, 1900, "lte") * coldProof, ready.p95 == null ? "No current readiness evidence" : Math.round(ready.p95) + " ms", { evidenceAt: coldAt }),
+      check("ttfb95", "Document TTFB p95", 10, thresholdFraction(ttfb.p95, 650, 900, "lte") * coldProof, ttfb.p95 == null ? "No current document timing evidence" : Math.round(ttfb.p95) + " ms", { evidenceAt: coldAt }),
+      check("static-edge", "Static edge cohort", 10, (staticRatio.total ? staticRatio.passed / staticRatio.total : 0) * edgeProof, staticRatio.total ? staticRatio.passed + "/" + staticRatio.total + " HIT" : "No current edge receipt", { ratio: staticRatio, evidenceAt: featuredAt }),
+      check("dynamic-edge", "Dynamic edge cohort", 8, (dynamicRatio.total ? dynamicRatio.passed / dynamicRatio.total : 0) * edgeProof, dynamicRatio.total ? dynamicRatio.passed + "/" + dynamicRatio.total + " HIT" : "No current dynamic-edge receipt", { ratio: dynamicRatio, evidenceAt: featuredAt }),
+      check("featured-edge", "Featured avatar edge", 8, (featuredRatio.total ? featuredRatio.passed / featuredRatio.total : 0) * edgeProof, featuredRatio.total ? featuredRatio.passed + "/" + featuredRatio.total + " HIT" : "No current avatar-edge receipt", { ratio: featuredRatio, evidenceAt: featuredAt }),
+      check("stable-lcp", "Stable LCP target", 7, (coldSamples ? topTarget / coldSamples : 0) * coldProof, coldSamples ? topTarget + "/" + coldSamples + " launches share one LCP target" : "No current LCP target census", { ratio: { passed: topTarget, total: coldSamples }, evidenceAt: coldAt }),
+      check("speed-fresh", "Performance evidence freshness", 10, Math.min(coldProof, edgeProof), ageDetail(coldAt), { evidenceAt: coldAt }),
     ],
   );
 
@@ -443,16 +473,16 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
     "Documentation",
     "Living maps, source registries, taxonomy, strict docs builds, and source-bound context.",
     [
-      check("doctor-docs", "Estate documentation gate", 10, areas.Documentation === "PASS" ? 1 : 0, String(areas.Documentation || "No current estate evidence"), { evidenceAt: finishAt }),
-      check("docs-control", "Central documentation control", 15, integer(docsCheck.rc) === 0 ? 1 : 0, integer(docsCheck.rc) === 0 ? "PASS" : "Not proven", { evidenceAt: finishAt }),
-      check("taxonomy", "Semantic documentation index", 10, indexTarget ? indexedTotal / indexTarget : 0, indexTarget ? indexedTotal + "/" + indexTarget + " required docs indexed" : "No taxonomy evidence", { ratio: { passed: indexedTotal, total: indexTarget }, evidenceAt: finishAt }),
-      check("strict-doc-build", "Strict documentation build", 10, integer(strictBuild.rc) === 0 ? 1 : 0, integer(strictBuild.rc) === 0 ? "PASS" : "Not proven", { evidenceAt: finishAt }),
-      check("audit-taxonomy", "Navigation / taxonomy audit", 10, integer(taxonomyGate.rc) === 0 ? 1 : 0, integer(taxonomyGate.rc) === 0 ? "PASS" : "Not proven", { evidenceAt: finishAt }),
-      check("source-docs", "Source documentation checkers", 15, docsCheckerRows.length ? docsCheckerPassed / docsCheckerRows.length : 0, docsCheckerRows.length ? docsCheckerPassed + "/" + docsCheckerRows.length + " repositories" : "No source checker evidence", { ratio: { passed: docsCheckerPassed, total: docsCheckerRows.length }, evidenceAt: finishAt }),
-      check("system-map", "SYSTEM_MAP source binding", 10, releaseSha && text(systemMap.current_source_sha) === releaseSha ? 1 : 0, text(systemMap.current_source_sha) === releaseSha ? "Bound to current source" : "Map is behind current source", { evidenceAt: finishAt }),
-      check("storage-map", "SERVER_STORAGE_MAP source binding", 10, releaseSha && text(storageMap.current_source_sha) === releaseSha ? 1 : 0, text(storageMap.current_source_sha) === releaseSha ? "Bound to current source" : "Map is behind current source", { evidenceAt: finishAt }),
-      check("central-doc-repo", "Central docs repository parity", 5, centralSynced ? 1 : 0, centralSynced ? "main = remote, clean at last audit" : "Central docs parity not proven", { evidenceAt: finishAt }),
-      check("docs-fresh", "Documentation evidence freshness", 5, finishFresh, ageDetail(finishAt), { evidenceAt: finishAt }),
+      check("doctor-docs", "Estate documentation gate", 10, areas.Documentation === "PASS" ? docsProof : 0, String(areas.Documentation || "No current estate evidence"), { evidenceAt: finishAt }),
+      check("docs-control", "Central documentation control", 15, integer(docsCheck.rc) === 0 ? docsProof : 0, integer(docsCheck.rc) === 0 ? "PASS" : "Not proven", { evidenceAt: finishAt }),
+      check("taxonomy", "Semantic documentation index", 10, (indexTarget ? indexedTotal / indexTarget : 0) * docsProof, indexTarget ? indexedTotal + "/" + indexTarget + " required docs indexed" : "No taxonomy evidence", { ratio: { passed: indexedTotal, total: indexTarget }, evidenceAt: finishAt }),
+      check("strict-doc-build", "Strict documentation build", 10, integer(strictBuild.rc) === 0 ? docsProof : 0, integer(strictBuild.rc) === 0 ? "PASS" : "Not proven", { evidenceAt: finishAt }),
+      check("audit-taxonomy", "Navigation / taxonomy audit", 10, integer(taxonomyGate.rc) === 0 ? docsProof : 0, integer(taxonomyGate.rc) === 0 ? "PASS" : "Not proven", { evidenceAt: finishAt }),
+      check("source-docs", "Source documentation checkers", 15, (docsCheckerRows.length ? docsCheckerPassed / docsCheckerRows.length : 0) * docsProof, docsCheckerRows.length ? docsCheckerPassed + "/" + docsCheckerRows.length + " repositories" : "No source checker evidence", { ratio: { passed: docsCheckerPassed, total: docsCheckerRows.length }, evidenceAt: finishAt }),
+      check("system-map", "SYSTEM_MAP source binding", 10, releaseSha && text(systemMap.current_source_sha) === releaseSha ? docsProof : 0, text(systemMap.current_source_sha) === releaseSha ? "Bound to current source" : "Map is behind current source", { evidenceAt: finishAt }),
+      check("storage-map", "SERVER_STORAGE_MAP source binding", 10, releaseSha && text(storageMap.current_source_sha) === releaseSha ? docsProof : 0, text(storageMap.current_source_sha) === releaseSha ? "Bound to current source" : "Map is behind current source", { evidenceAt: finishAt }),
+      check("central-doc-repo", "Central docs repository parity", 5, centralSynced ? docsProof : 0, centralSynced ? "main = remote, clean at last audit" : "Central docs parity not proven", { evidenceAt: finishAt }),
+      check("docs-fresh", "Documentation evidence freshness", 5, docsProof, ageDetail(finishAt), { evidenceAt: finishAt }),
     ],
   );
 
