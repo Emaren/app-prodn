@@ -100,7 +100,13 @@ test("malformed cohort ratios are never accepted as observed FAIL", () => {
   rescore(snap);
   const report = buildWhyNotGreenReport(snap);
   assert.equal(report.evidenceChecks.find((c) => c.checkKey === "speed/check-0")?.evidenceStatus, "UNKNOWN");
-  assert.equal(report.gaps.find((c) => c.checkKey === "speed/check-0")?.reason, "incomplete-or-unverified-proof");
+  assert.equal(report.gaps.find((c) => c.checkKey === "speed/check-0")?.reason, "invalid-cohort-ratio");
+  const fullScore = fixture();
+  fullScore.categories.find((c) => c.id === "speed")!.checks[0].ratio = { passed: 10, total: 0 };
+  const fullReport = buildWhyNotGreenReport(fullScore);
+  assert.equal(fullReport.observedOverallScore, 100);
+  assert.equal(fullReport.evidenceChecks.find((c) => c.checkKey === "speed/check-0")?.evidenceStatus, "UNKNOWN");
+  assert.equal(fullReport.gaps.find((c) => c.checkKey === "speed/check-0")?.missingPoints, 0);
 });
 
 test("missing DocsV2 proof stays UNKNOWN while a fresh observed P0 invariant fails", () => {
