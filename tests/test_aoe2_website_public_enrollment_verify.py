@@ -74,7 +74,7 @@ class PublicReleaseEnrollmentTests(unittest.TestCase):
 
     def test_remote_deploy_diagnostic_does_not_conflate_tony_and_root(self):
         script=(HERE.parent/"aoe2_website_release_readonly_diag.sh").read_text()
-        self.assertIn('RELEASE_HOST="${AOE2_RELEASE_HOST:-tony@hel1}"',script)
+        self.assertIn('RELEASE_HOST="${AOE2_RELEASE_HOST:-hel1}"',script)
         self.assertIn('ssh -G "$RELEASE_HOST"',script)
         self.assertIn('"RELEASE_REMOTE_USER"',script)
         self.assertIn('"GLOBAL_LEASE_LOCK_WRITABLE"',script)
