@@ -12,7 +12,9 @@ function fixture(){
     accessibility:{axNodeCount:300,namedButtons:25,unnamedButtons:0},
     keyboard:{ledgerActivated:true,mapRestored:true,detailOpened:true,detailClosed:true,focusRestored:true},
     criterionCoverage:{
-      apiRoutes:88,sourceCensusRows:88,canonicalCriteria:20,canonicalMaximum:100,
+      apiRoutes:88,sourceCensusRows:88,completePendingRoutes:88,
+      profiledRoutes:88,sourceFingerprintedRoutes:88,
+      canonicalCriteria:20,canonicalMaximum:100,
       indexSpecializedGates:3,approvedRoutes:0,nullScoreRoutes:88,
       indexOfficialScoreNull:true,indexAuthenticatedEarnedNull:true,
       routeFingerprint:"src-3bcfa463b322f42f",
@@ -103,7 +105,8 @@ test("exact emitted Chrome criterion coverage demands 88 distinct pages, 20 obli
  const doc=fixture();
  assert.equal(inspectInteractionReceipt(doc,expected).valid,true);
  const cases=[
-  {apiRoutes:87},{sourceCensusRows:87},{canonicalCriteria:19},
+  {apiRoutes:87},{sourceCensusRows:87},{completePendingRoutes:87},
+  {profiledRoutes:87},{sourceFingerprintedRoutes:87},{canonicalCriteria:19},
   {canonicalMaximum:99},{indexSpecializedGates:2},
   {approvedRoutes:1},{nullScoreRoutes:87},{indexOfficialScoreNull:false},
   {indexAuthenticatedEarnedNull:false},{routeFingerprint:"src-wrong"},
