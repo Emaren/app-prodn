@@ -582,7 +582,8 @@ export default function LibraryActivityBoard() {
           </div>
           <div
             ref={scrollRef}
-            role="feed"
+            role="region"
+            tabIndex={0}
             aria-label="Chronological game intake ledger"
             aria-busy={loadingOlder}
             onScroll={(event) => {
