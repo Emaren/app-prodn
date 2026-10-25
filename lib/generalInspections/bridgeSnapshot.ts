@@ -583,8 +583,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const intentionallyUnindexed =
     numberValue(taxonomy.intentionally_unindexed) || 0;
   const indexTarget = Math.max(0, corpusTotal - intentionallyUnindexed);
-  const docCapturedAt = text(documentation.captured_at) || bridgeAt;
-  const docsFresh = freshnessFraction(docCapturedAt, 12, 72, now);
+  const docCapturedAt = text(documentation.captured_at);
+  // DocsV2 gates and maps are a single source/time-bound evidence family.
+  // A fresh transport envelope must not renew an old or absent original review.
+  const docsFresh = Math.min(
+    freshnessFraction(docCapturedAt, 12, 72, now),
+    bridgeFresh,
+  );
+  const docsProof = liveSourceMatches && liveBuildMatches ? docsFresh : 0;
   const sourceDocsPassed =
     numberValue(documentation.source_checkers_passed) || 0;
   const sourceDocsTotal =
@@ -599,7 +605,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "doctor-docs",
         "Estate documentation gate",
         10,
-        statusFraction(documentation.estate_gate),
+        statusFraction(documentation.estate_gate) * docsProof,
         String(documentation.estate_gate || "No bridged documentation gate"),
         { evidenceAt: docCapturedAt },
       ),
@@ -607,7 +613,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "docs-control",
         "Central documentation control",
         15,
-        documentation.docs_control_pass === true ? 1 : 0,
+        documentation.docs_control_pass === true ? docsProof : 0,
         documentation.docs_control_pass === true ? "PASS" : "Not proven",
         { evidenceAt: docCapturedAt },
       ),
@@ -615,7 +621,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "taxonomy",
         "Semantic documentation index",
         10,
-        indexTarget ? indexedTotal / indexTarget : 0,
+        (indexTarget ? indexedTotal / indexTarget : 0) * docsProof,
         indexTarget
           ? indexedTotal + "/" + indexTarget + " required docs indexed"
           : "No taxonomy evidence",
@@ -628,7 +634,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "strict-doc-build",
         "Strict documentation build",
         10,
-        documentation.strict_build_pass === true ? 1 : 0,
+        documentation.strict_build_pass === true ? docsProof : 0,
         documentation.strict_build_pass === true ? "PASS" : "Not proven",
         { evidenceAt: docCapturedAt },
       ),
@@ -636,7 +642,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "audit-taxonomy",
         "Navigation / taxonomy audit",
         10,
-        documentation.taxonomy_audit_pass === true ? 1 : 0,
+        documentation.taxonomy_audit_pass === true ? docsProof : 0,
         documentation.taxonomy_audit_pass === true ? "PASS" : "Needs refresh",
         { evidenceAt: docCapturedAt },
       ),
@@ -644,7 +650,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "source-docs",
         "Source documentation checkers",
         15,
-        sourceDocsTotal ? sourceDocsPassed / sourceDocsTotal : 0,
+        (sourceDocsTotal ? sourceDocsPassed / sourceDocsTotal : 0) * docsProof,
         sourceDocsTotal
           ? sourceDocsPassed + "/" + sourceDocsTotal + " repositories"
           : "No source checker evidence",
@@ -657,7 +663,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "system-map",
         "SYSTEM_MAP source binding",
         10,
-        text(documentation.system_map_source_sha) === releaseSha ? 1 : 0,
+        text(documentation.system_map_source_sha) === releaseSha ? docsProof : 0,
         text(documentation.system_map_source_sha) === releaseSha
           ? "Bound to active release"
           : "Map is behind active release",
@@ -667,7 +673,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "storage-map",
         "SERVER_STORAGE_MAP source binding",
         10,
-        text(documentation.storage_map_source_sha) === releaseSha ? 1 : 0,
+        text(documentation.storage_map_source_sha) === releaseSha ? docsProof : 0,
         text(documentation.storage_map_source_sha) === releaseSha
           ? "Bound to active release"
           : "Map is behind active release",
@@ -677,7 +683,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "central-doc-repo",
         "Central docs repository parity",
         5,
-        documentation.central_docs_synced === true ? 1 : 0,
+        documentation.central_docs_synced === true ? docsProof : 0,
         documentation.central_docs_synced === true
           ? "Clean and synced"
           : "Parity not proven",
@@ -687,7 +693,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "docs-fresh",
         "Documentation evidence freshness",
         5,
-        docsFresh,
+        docsProof,
         ageDetail(docCapturedAt, now),
         { evidenceAt: docCapturedAt },
       ),
