@@ -95,8 +95,10 @@ KEYDIR="$HOME/.local/share/aoe2war-owner-signing"
 if [ "$(uname -s)" = "Darwin" ] && [ "$(id -un)" = "tonyblum" ] &&
    [ -f "$KEYDIR/owner.pem" ] && [ ! -L "$KEYDIR/owner.pem" ]; then
   openssl pkey -pubin -in "$KEYDIR/owner.pem" -pubout -outform DER -out "$KEYDIR/owner-public.der"
-  printf 'PUBLIC_DER_EXPORT_RC=%s\n' "$?"
-  if [ -s "$KEYDIR/owner-public.der" ]; then
+  OWNER_DER_RC=$?
+  printf 'PUBLIC_DER_EXPORT_RC=%s\n' "$OWNER_DER_RC"
+  if [ "$OWNER_DER_RC" = 0 ] && [ -s "$KEYDIR/owner-public.der" ] &&
+     [ ! -L /etc/aoe2war/website-owner-v3 ]; then
     shasum -a 256 "$KEYDIR/owner-public.der"
     printf 'OWNER_PUBLIC_FINGERPRINT_RC=%s\n' "$?"
     sudo install -d -o root -g wheel -m 0755 /etc/aoe2war/website-owner-v3

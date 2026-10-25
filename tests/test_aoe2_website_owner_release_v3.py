@@ -125,6 +125,12 @@ class SoloOwnerWebsiteReleaseTests(unittest.TestCase):
         self.finish(payload)
         return payload
 
+    def test_owner_trust_directory_symlink_refused(self):
+        redirected = self.root / "redirected-trust"
+        redirected.symlink_to(self.trust, target_is_directory=True)
+        with self.assertRaises(AUTH.Hold):
+            AUTH.load_owner_key(redirected / "owner.pem", allow_test_root=True)
+
     def test_owner_rsa_key_identity_uses_der_not_pem_wrapping(self):
         der = subprocess.run(["openssl", "pkey", "-pubin", "-in", str(self.owner),
                               "-pubout", "-outform", "DER"],

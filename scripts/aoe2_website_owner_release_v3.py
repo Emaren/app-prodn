@@ -71,7 +71,8 @@ def stamp(now):
 
 
 def load_owner_key(path: Path, *, allow_test_root=False) -> str:
-    require(path.is_absolute() and path.is_file() and not path.is_symlink(), "owner public key unavailable/linked")
+    require(path.is_absolute() and path.is_file() and not path.is_symlink() and
+            not path.parent.is_symlink(), "owner public key unavailable/linked")
     for entry in (path.parent, path):
         mode = entry.stat()
         require(not mode.st_mode & 0o022, "owner public trust writable by another user")
