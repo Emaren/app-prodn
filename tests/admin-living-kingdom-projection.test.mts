@@ -19,12 +19,14 @@ test("private, wallet, API, encoded, query and external paths cannot leak",()=>{
  assert.equal(safeDestination("/"),"/");
 });
 test("historical raw click targets, metadata and session keys are stripped",()=>{
- const row=required(event(1,"click","/admin/wallet","2026-10-25T12:00:00Z",{
+ const row=required(event(1,"click","/lobby","2026-10-25T12:00:00Z",{
   journeySessionId:"sessionTEST_12345678",targetTag:"button",targetLabel:"password 123",
   href:"/wallet?privateKey=real",secret:"top-secret"
  },"Typed a sensitive secret"));
  assert.equal(row.label,"Button click");
- assert.equal(row.destination,"Protected / unclassified");
+ assert.equal(row.destination,"/lobby");
+ assert.equal(event(8,"click","/admin/wallet",instant(0)),null);
+ assert.equal(event(9,"page_view","/market/invoices/private",instant(0)),null);
  const published=JSON.stringify(publicEvent(row));
  for(const secret of ["sessionTEST","password","privateKey","top-secret","Typed a sensitive secret"])
   assert.ok(!published.includes(secret));
