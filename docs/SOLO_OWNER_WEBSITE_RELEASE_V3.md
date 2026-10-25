@@ -156,12 +156,19 @@ command's immediate return code. No global fail-fast shell flags are needed.
 
 The owner-reference observation may be up to20minutes old only while a NEW
 <=90-second live observation proves unchanged identity under the lease. No
-packet extends its controller-issued expiry. SQLite FULL durability + atomic
+packet extends its controller-issued expiry. SQLite EXTRA/DELETE durability,
+Mac fullfsync and atomic
 consumption makes duplicates/concurrency/restarts nonretryable. An exception,
 transport loss or missing result after consumption stays UNCERTAIN; inspect
 protected stage/activation/rollback receipts before any new owner decision.
 Never reset/restore the nonce database to reuse a consumed challenge. Do not
 rerun a stage or activation automatically after ambiguity.
+
+The nonce connection verifies its effective durability settings. SQLite's
+[documented EXTRA mode](https://www.sqlite.org/pragma.html#pragma_synchronous)
+also synchronizes the rollback-journal directory after deletion; plain FULL
+does not guarantee that last commit across power loss. Process-crash tests
+do not constitute a physical power-loss certification of the owner's disk.
 
 ## Separate Wolo and funded frontier
 

@@ -263,6 +263,36 @@ class SoloOwnerWebsiteReleaseTests(unittest.TestCase):
             self.verify(self.packet(changed), changed)
         self.consume(packet, now=self.now + timedelta(minutes=19, seconds=59))
 
+    def test_real_crypto_io_expiry_refuses_verification_and_preserves_unconsumed_nonce(self):
+        real_run = subprocess.run
+        for target in ("verify", "consume"):
+            with self.subTest(target=target):
+                payload = self.issue()
+                packet = self.packet(payload)
+                clock = [self.now]
+                verified_crypto = []
+                def delayed_crypto(args, **kwargs):
+                    result = real_run(args, **kwargs)
+                    if args[:2] == ["openssl", "dgst"] and "-verify" in args:
+                        self.assertEqual(0, result.returncode)
+                        verified_crypto.append("genuine RSA verification completed")
+                        clock[0] += timedelta(minutes=20)
+                    return result
+                with patch.object(AUTH, "moment", side_effect=lambda now=None: now if now is not None else clock[0]), \
+                     patch.object(AUTH.subprocess, "run", side_effect=delayed_crypto):
+                    with self.assertRaisesRegex(AUTH.Hold, "expired during signature verification"):
+                        if target == "verify":
+                            AUTH.verify_packet(packet, public_key=self.owner, issued_payload=payload,
+                                               allow_test_root=True)
+                        else:
+                            AUTH.consume_request(packet, state_root=self.state, public_key=self.owner,
+                                                 allow_test_root=True)
+                self.assertEqual(["genuine RSA verification completed"], verified_crypto)
+                with closing(sqlite3.connect(self.state / "owner-v3.sqlite3")) as cx:
+                    row = cx.execute("SELECT state,packet_sha,result FROM requests_v3 WHERE attempt_id=? AND phase=?",
+                                     (payload["attempt_id"], payload["phase"])).fetchone()
+                self.assertEqual(("ISSUED", None, None), row)
+
     def test_unknown_context_phase_source_digest_and_prestage_artifact_fail_closed(self):
         variants = [dict(self.context, extra="unreviewed"),
                     {key: value for key, value in self.context.items() if key != "gate_sha256"},
@@ -424,6 +454,7 @@ os._exit(23)  # dispatch result/transport is lost; no COMPLETE receipt is manufa
         }
         with patch.dict(sys.modules, modules), patch.dict(os.environ), \
              patch.object(AUTH, "PUBLIC_KEY", self.owner), patch.object(AUTH, "STATE_ROOT", self.state), \
+             patch.object(AUTH, "moment", side_effect=lambda now=None: self.now if now is None else now), \
              patch.object(AUTH, "release_context", return_value=copy.deepcopy(self.context)), \
              patch.object(AUTH, "protected_dispatch", side_effect=dispatch), \
              patch.object(AUTH, "load_owner_key", side_effect=lambda path, **_kw: real_key(path, allow_test_root=True)), \
@@ -435,6 +466,49 @@ os._exit(23)  # dispatch result/transport is lost; no COMPLETE receipt is manufa
                 AUTH.operation("stage", self.root, packet=packet)
         self.assertEqual(["one protected dispatch"], calls)
         self.assertFalse(locked)
+
+    def test_expiry_inside_durable_consumption_prevents_dispatch_but_retains_consumed_nonce(self):
+        for boundary in ("runtime-observation", "owner-authorization"):
+            with self.subTest(boundary=boundary):
+                payload = self.issue()
+                packet = self.packet(payload)
+                clock = [self.now if boundary == "runtime-observation" else self.now + timedelta(minutes=19, seconds=59)]
+                @contextmanager
+                def lease():
+                    yield
+                def observe():
+                    return dict(copy.deepcopy(self.observation), observed_at=AUTH.stamp(clock[0]))
+                def validate(value, *, max_age_seconds=90, **_kwargs):
+                    AUTH.require(clock[0] - AUTH.utc_time(value["observed_at"]) <= timedelta(seconds=max_age_seconds),
+                                 "synthetic runtime observation expired during durable consumption")
+                real_key, real_consume = AUTH.load_owner_key, AUTH.consume_request
+                def delayed_consume(packet, **_kwargs):
+                    # Persist the genuine one-use decision before simulating
+                    # the remaining SQLite/fsync/return I/O delay.
+                    sha = real_consume(packet, state_root=self.state, public_key=self.owner,
+                                       now=clock[0], allow_test_root=True)
+                    clock[0] += timedelta(seconds=91 if boundary == "runtime-observation" else 2)
+                    return sha
+                modules = {
+                    "aoe2_release": types.SimpleNamespace(deployment_lock=lease, collect=lambda: {"test_only": "preflight"}),
+                    "aoe2_website_owner_observer_v3": types.SimpleNamespace(observe=observe, validate_observation=validate),
+                }
+                with patch.dict(sys.modules, modules), patch.dict(os.environ), \
+                     patch.object(AUTH, "PUBLIC_KEY", self.owner), patch.object(AUTH, "STATE_ROOT", self.state), \
+                     patch.object(AUTH, "moment", side_effect=lambda now=None: clock[0] if now is None else now), \
+                     patch.object(AUTH, "release_context", return_value=copy.deepcopy(self.context)), \
+                     patch.object(AUTH, "load_owner_key", side_effect=lambda path, **_kw: real_key(path, allow_test_root=True)), \
+                     patch.object(AUTH, "consume_request", side_effect=delayed_consume), \
+                     patch.object(AUTH, "protected_dispatch") as dispatch:
+                    with self.assertRaisesRegex(AUTH.Hold, "expired during durable consumption"):
+                        AUTH.operation("stage", self.root, packet=packet)
+                    dispatch.assert_not_called()
+                with closing(sqlite3.connect(self.state / "owner-v3.sqlite3")) as cx:
+                    row = cx.execute("SELECT state,packet_sha,result FROM requests_v3 WHERE attempt_id=? AND phase=?",
+                                     (payload["attempt_id"], payload["phase"])).fetchone()
+                self.assertEqual(("CONSUMED", AUTH.digest(packet), None), row)
+                with self.assertRaisesRegex(AUTH.Hold, "consumed"):
+                    self.consume(packet)
 
     def test_stale_final_observation_after_context_io_blocks_dispatch_and_preserves_nonce(self):
         payload = self.issue()
@@ -470,6 +544,7 @@ os._exit(23)  # dispatch result/transport is lost; no COMPLETE receipt is manufa
         }
         with patch.dict(sys.modules, modules), patch.dict(os.environ), \
              patch.object(AUTH, "PUBLIC_KEY", self.owner), patch.object(AUTH, "STATE_ROOT", self.state), \
+             patch.object(AUTH, "moment", side_effect=lambda now=None: clock[0] if now is None else now), \
              patch.object(AUTH, "release_context", side_effect=context_io), \
              patch.object(AUTH, "protected_dispatch", side_effect=dispatch), \
              patch.object(AUTH, "load_owner_key", side_effect=lambda path, **_kw: real_key(path, allow_test_root=True)), \
@@ -558,6 +633,7 @@ os._exit(23)  # dispatch result/transport is lost; no COMPLETE receipt is manufa
         }
         with patch.dict(sys.modules, modules), patch.dict(os.environ), \
              patch.object(AUTH, "PUBLIC_KEY", self.owner), patch.object(AUTH, "STATE_ROOT", self.state), \
+             patch.object(AUTH, "moment", side_effect=lambda now=None: clock[0] if now is None else now), \
              patch.object(AUTH, "release_context", side_effect=context), \
              patch.object(AUTH, "protected_dispatch", side_effect=dispatch), \
              patch.object(AUTH, "load_owner_key", side_effect=lambda path, **_kw: real_key(path, allow_test_root=True)), \

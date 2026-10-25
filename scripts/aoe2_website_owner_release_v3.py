@@ -108,8 +108,15 @@ def _connection(root: Path, *, allow_test_root=False):
             "nonce database must be private regular operator-owned 0600")
     cx = sqlite3.connect(str(db), timeout=5, isolation_level=None)
     try:
-        cx.execute("PRAGMA synchronous=FULL")
-        cx.execute("PRAGMA journal_mode=DELETE")
+        require(cx.execute("PRAGMA journal_mode=DELETE").fetchone()[0].lower() == "delete",
+                "nonce ledger did not enter rollback journal mode")
+        # EXTRA also synchronizes the directory after journal deletion; FULL
+        # alone can lose the last committed consumption after a power loss.
+        cx.execute("PRAGMA synchronous=EXTRA")
+        cx.execute("PRAGMA fullfsync=ON")
+        require(cx.execute("PRAGMA synchronous").fetchone()[0] == 3 and
+                cx.execute("PRAGMA fullfsync").fetchone()[0] == 1,
+                "nonce ledger durability settings unavailable")
         cx.execute("""CREATE TABLE IF NOT EXISTS requests_v3(
             attempt_id TEXT NOT NULL, phase TEXT NOT NULL, nonce TEXT NOT NULL UNIQUE,
             payload TEXT NOT NULL, state TEXT NOT NULL, packet_sha TEXT, result TEXT,
@@ -213,6 +220,7 @@ def verify_packet(packet: dict, *, public_key: Path, issued_payload: dict,
         v = subprocess.run(["openssl", "dgst", "-sha256", "-verify", str(public_key),
                             "-signature", str(sig), str(msg)], capture_output=True, timeout=10, check=False)
     require(v.returncode == 0, "owner signature invalid")
+    require(issued <= moment(now) < expiry, "owner authorization expired during signature verification")
     return p
 
 
@@ -374,6 +382,12 @@ def operation(mode, candidate_repo: Path, *, packet=None, stage_receipt=None, at
         # Consume durably before the ONE protected dispatch. Failure remains
         # CONSUMED and cannot automatically rerun after crash/transport loss.
         sha = consume_request(packet, state_root=STATE_ROOT, public_key=PUBLIC_KEY)
+        # SQLite lock/fsync and cryptographic verification are I/O too. If
+        # either consumes the remaining validity, retain CONSUMED but refuse
+        # dispatch; never reset that nonce to make a retry possible.
+        validate_observation(latest)
+        require(utc_time(p["issued_at"]) <= moment() < utc_time(p["expires_at"]),
+                "owner authorization expired during durable consumption")
         result = protected_dispatch(data, candidate_repo, mode, stage_receipt)
         after = observe(); validate_observation(after)
         require(before["immutable"] == after["immutable"], "financial/Wolo boundary changed during release; recovery review required")
