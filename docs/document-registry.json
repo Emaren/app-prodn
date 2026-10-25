@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "974a866b8d75fe129c18db8ffbfc22ddce621c105682367233319de62deda15b",
+      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -222,7 +222,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "dcae4631bb8edcdac15e7ba08c4c8d97c6f2ee3432bde2c453c6b80180416c9e",
+      "sha256": "aa31669d2f3ce6065afe0004a181379182beed5fd298d374e6833f6e8c77a9cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "7660f3120278c9c7fd9b3c539c2b2dfaa046b31a5d183ca49316223e3ab494f2",
+      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7c144049cd2a1c3388a32b8a5d59ffa2fb8a4fd8c73f36bed6ae28ebedeeacc2",
+      "sha256": "d9daf7e57a2f85d2bd15e6da37b9ce59d03efb000e62c3af178f61cc4be1dea7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "59edc879be75496f095b4883f1123ea6eed5e52b4bfe09e7aca8e8b60698f560",
+      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "e393a4982bec66b4aa59091086ae9e42208d655ca3215bd384709a05153be685",
+      "sha256": "ead67e4cbf0ef503e19b2b9ee1f23faf05cc8b58dda3d1ea42dec0602b707b71",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1196,7 +1196,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-23",
       "sensitivity": "internal",
-      "sha256": "223917acd87500ad5b4f6803992d496f0b3402828c10e53c687686874d36e17f",
+      "sha256": "b3b0da47350ae5152b0d18a083c5115e0131e9c83f77b62135d99eed9b030489",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1515,7 +1515,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "55edf5d44a0b6be28286c2538a0f1af0df7203cf309524ac1d4db00da020aba9",
+      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1679,7 +1679,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "3d118fed172e8b01bd811668e6c7654d58e525dc466279e3439320904a196f2c",
+      "sha256": "5edebd56c3113063e750d4351e7ab5391fe155c979de8a52c4c9dea640f4aa49",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2069,7 +2069,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "3be74c74dd73e234526d24839d3ec9cfc332cdcaacd0eb069ef7e6829686bf97",
+      "sha256": "8e79666b17dbedfed13670eb1fc06c8984031f178b804b615193972da93782a2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/closure-funded-lifecycle",
-    "commit": "0457edc7e5be1ce8182c6c2aeb542d01eaf37b1e"
+    "branch": "session-a/20261025-nine-path-docs-recert-product",
+    "commit": "88b21a6eb1a1284f6df2986c9c517226d4548909"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
