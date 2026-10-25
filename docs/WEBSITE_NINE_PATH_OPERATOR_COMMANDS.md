@@ -18,8 +18,7 @@ sensitivity: "internal"
 **RELEASE HOLD — source-qualified is not signer-authorized.** This is the
 single Mac-operator runbook for canonical product
 `6be434c00469afa4acb0623715c3bcf724f927f4` (certified production
-`a2b941f154fdc31ec4d6c4ece6d0e49036c48abd`), controller
-`f58834ee9e600c244301bd44ba0439fb42105664`, and ten accepted
+`a2b941f154fdc31ec4d6c4ece6d0e49036c48abd`), controller with exact SHA independently accepted from held PR #871, and ten accepted
 changed paths. Original Wolo `vps-source-drift` P1 remains **BLOCKED**,
 and all finance/custody/Founder/writer/bridge permissions stay **false**.
 
@@ -47,7 +46,8 @@ The remote `tony@hel1` SSH identity is separate from local `tonyblum`.
 APP="$HOME/projects/AoE2HDBets/app-prodn"
 OP="$HOME/projects/AoE2HDBets/app-prodn-website-controller"
 PRODUCT="6be434c00469afa4acb0623715c3bcf724f927f4"
-CONTROLLER="f58834ee9e600c244301bd44ba0439fb42105664"
+CONTROLLER="PASTE_EXACT_INDEPENDENTLY_APPROVED_CI_GREEN_CONTROLLER_SHA"
+export APPROVED_CONTROLLER_SHA="$CONTROLLER"
 export AOE2_RELEASE_HOST="hel1"
 export AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP"
 if [ "$(git -C "$APP" rev-parse HEAD 2>/dev/null)" = "$PRODUCT" ] &&
@@ -228,11 +228,16 @@ ledger write and global lease use but **does not stage/activate**:
 APP="$HOME/projects/AoE2HDBets/app-prodn"
 OP="$HOME/projects/AoE2HDBets/app-prodn-website-controller"
 EVIDENCE_DIR="$HOME/.local/share/aoe2war-release-private"
-mkdir -p -m 0700 "$EVIDENCE_DIR"
-if [ -d "$EVIDENCE_DIR" ] &&
+if [ ! -L "$EVIDENCE_DIR" ]; then
+  mkdir -p -m 0700 "$EVIDENCE_DIR"
+  chmod 0700 "$EVIDENCE_DIR"
+else
+  echo "HOLD: evidence directory cannot be a symlink"
+fi
+if [ -d "$EVIDENCE_DIR" ] && [ ! -L "$EVIDENCE_DIR" ] &&
    [ "$(git -C "$APP" rev-parse HEAD 2>/dev/null)" = "6be434c00469afa4acb0623715c3bcf724f927f4" ] &&
-   [ "$(git -C "$OP" rev-parse HEAD 2>/dev/null)" = "f58834ee9e600c244301bd44ba0439fb42105664" ]; then
-  (cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py issue-stage --candidate-repo "$APP") > "$EVIDENCE_DIR/issue-stage.json"
+   [ "$(git -C "$OP" rev-parse HEAD 2>/dev/null)" = "$APPROVED_CONTROLLER_SHA" ]; then
+  (umask 077; cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py issue-stage --candidate-repo "$APP" > "$EVIDENCE_DIR/issue-stage.json")
   echo "ISSUE_STAGE_RC=$?"
 else
   echo "HOLD: no correct source or private evidence directory"
@@ -260,7 +265,7 @@ SIGNED_SOURCE_FINANCE="/absolute/private/path/independent-source-finance.json"
 SIGNED_WOLO_PRESTAGE="/absolute/private/path/real-signed-Wolo-PRE_STAGE.json"
 if [ -f "$PRE_STAGE_PACKET" ] && [ -f "$SIGNED_SOURCE_FINANCE" ] &&
    [ -f "$SIGNED_WOLO_PRESTAGE" ] && [ -d "$EVIDENCE_DIR" ]; then
-  (cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py stage --candidate-repo "$APP" --packet "$PRE_STAGE_PACKET" --signed-noninterference "$SIGNED_SOURCE_FINANCE" --signed-wolo-prestate "$SIGNED_WOLO_PRESTAGE") > "$EVIDENCE_DIR/stage-result.json"
+  (umask 077; cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py stage --candidate-repo "$APP" --packet "$PRE_STAGE_PACKET" --signed-noninterference "$SIGNED_SOURCE_FINANCE" --signed-wolo-prestate "$SIGNED_WOLO_PRESTAGE" > "$EVIDENCE_DIR/stage-result.json")
   echo "PROTECTED_STAGE_RC=$?"
 else
   echo "HOLD: actual signed stage/source/Wolo evidence absent"
@@ -313,7 +318,7 @@ approved deployment host. Then the controller may issue:
 if [ -f "$STAGE_RECEIPT" ] &&
    [ "${#STAGE_APPROVAL_SHA}" -eq 64 ] &&
    [ -n "$STAGE_ATTEMPT_ID" ]; then
-  (cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py issue-activation --candidate-repo "$APP" --attempt-id "$STAGE_ATTEMPT_ID" --previous-stage-approval-sha256 "$STAGE_APPROVAL_SHA" --stage-receipt "$STAGE_RECEIPT") > "$EVIDENCE_DIR/issue-activation.json"
+  (umask 077; cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py issue-activation --candidate-repo "$APP" --attempt-id "$STAGE_ATTEMPT_ID" --previous-stage-approval-sha256 "$STAGE_APPROVAL_SHA" --stage-receipt "$STAGE_RECEIPT" > "$EVIDENCE_DIR/issue-activation.json")
   echo "ISSUE_ACTIVATION_RC=$?"
 else
   echo "HOLD: actual staged artifact/approval link missing"
@@ -332,7 +337,7 @@ PRE_ACTIVATE_PACKET="/absolute/private/path/genuine-PRE_ACTIVATE.json"
 SIGNED_WOLO_POSTSTAGE="/absolute/private/path/real-signed-Wolo-PRE_ACTIVATE.json"
 if [ -f "$PRE_ACTIVATE_PACKET" ] && [ -f "$SIGNED_WOLO_POSTSTAGE" ] &&
    [ -f "$SIGNED_SOURCE_FINANCE" ] && [ -f "$STAGE_RECEIPT" ]; then
-  (cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py activate --candidate-repo "$APP" --packet "$PRE_ACTIVATE_PACKET" --signed-noninterference "$SIGNED_SOURCE_FINANCE" --signed-wolo-prestate "$SIGNED_WOLO_POSTSTAGE" --stage-receipt "$STAGE_RECEIPT") > "$EVIDENCE_DIR/activation-result.json"
+  (umask 077; cd "$OP" && AOE2_RELEASE_HOST="hel1" AOE2WAR_WEBSITE_CANDIDATE_ROOT="$APP" python3 scripts/aoe2_website_protected_release_v2.py activate --candidate-repo "$APP" --packet "$PRE_ACTIVATE_PACKET" --signed-noninterference "$SIGNED_SOURCE_FINANCE" --signed-wolo-prestate "$SIGNED_WOLO_POSTSTAGE" --stage-receipt "$STAGE_RECEIPT" > "$EVIDENCE_DIR/activation-result.json")
   echo "PROTECTED_ACTIVATE_RC=$?"
 else
   echo "HOLD: genuine fresh PRE_ACTIVATE authority absent"
