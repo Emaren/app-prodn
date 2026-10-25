@@ -142,3 +142,18 @@ test("even independently signed arbitrary browser bytes cannot earn browser crit
    "Missing independent SpeedOS collector enrollment must refuse");
  });
 });
+
+test("a signed operator approval cannot pre-approve evidence not yet measured",()=>{
+ const {pem,manifest,signManifest}=setup();
+ const p=proof(Buffer.from("fixture known after approval"));
+ // Operator manifest claims issuance at 20:00, while the proof claims a
+ // measurement at 20:03; the signature cannot retroactively establish review.
+ p.measuredAt="2026-10-21T20:03:00.000Z";
+ const approval=signManifest(manifest(p));
+ assert.throws(
+  ()=>createApprovedCriterionArtifactVerifier({
+   root:"/nonexistent",operatorPublicKeyPem:pem,envelope:approval,nowMs,
+  }),
+  /Proof postdates operator approval issuance/,
+ );
+});
