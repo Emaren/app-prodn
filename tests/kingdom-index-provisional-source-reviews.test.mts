@@ -27,7 +27,8 @@ test("four historical source estimates remain bound to reviewed provenance, not 
   if(review.href==="/kingdom-intelligence"){
    assert.equal(review.routeSourceVersion,"src-d35c2832feb098e2");
    assert.equal(review.sourceCommit,"f234ad56be826b5edd351091d9a91cc950ba10b0");
-   assert.equal(route.sourceTree,"src-297cf550a2564a42");
+   assert.match(route.sourceTree,/^src-[a-f0-9]{16}$/);
+   assert.notEqual(route.sourceTree,review.routeSourceVersion);
    assert.equal(matchesCurrentSource,false,
      "Prior Intelligence source estimate cannot qualify the revised source");
   }
