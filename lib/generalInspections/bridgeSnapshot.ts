@@ -1314,6 +1314,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
           ? "Root capacity unavailable"
           : rootFreeGiB.toFixed(2) + " GiB free" +
               (liveRootFreeGiB == null ? " · operator bridge fallback" : " · live VPS"),
+        { evidenceAt: liveRootFreeGiB == null ? bridgeAt : new Date(now).toISOString() },
       ),
       check(
         "security-fresh",
