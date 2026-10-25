@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Source-bound, non-scoring, bounded Chrome axe evidence aggregation. */
 import {readFile,writeFile} from "node:fs/promises";
-import {join} from "node:path";
+import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
 const OWNER_HINTS={
@@ -107,5 +107,5 @@ export async function main(args){
  console.log("AXE EXACT SOURCE "+triage.source_sha+" BUILD "+triage.build_id+
    " affected_routes="+triage.affected_routes+" scans_unmeasured="+triage.unmeasured_scans.length);
 }
-if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1])
+if(process.argv[1]&&fileURLToPath(import.meta.url)===resolve(process.argv[1]))
  main(process.argv.slice(2)).catch(e=>{console.error(String(e));process.exitCode=2;});
