@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 PRODUCTION_SHA = "a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
-MAIN_SOURCE_SHA = "21cd1493b182cb0968a6b6cf3f528d0578cfd797"
+MAIN_SOURCE_SHA = "6be434c00469afa4acb0623715c3bcf724f927f4"
 FAST_URI_PATCH_BLOB_SHA = "27f0271065998f9025f530580a5a0732a4141e15"
 TRUST_ROOT = Path("/etc/aoe2war/website-release-authority-v2")
 ROLES = ("owner", "chain_reviewer", "finance_reviewer", "release_operator")
@@ -35,6 +35,7 @@ ALLOWED_DELTA = frozenset({
     "config/kingdom-index-routes.json",
     "config/kingdom-index-watcher-166-source-review.json",
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/RIVALRIES_AND_WAR_VAULT.md",
     "docs/document-registry.json",
     "tests/kingdom-index-watcher-draft-score.test.mts",
     "yarn.lock",
