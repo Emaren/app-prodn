@@ -101,14 +101,14 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
       <div><span>PAYLOAD</span><b>{item.bytes!==null?`${(item.bytes/1024).toFixed(1)} KB`:"—"}</b></div>
       <div><span>ROUTE SOURCE</span><b title={item.sourceVersion??""}>{item.sourceVersion?item.sourceVersion.slice(0,19):"—"}</b></div>
     </div>
-    {item.dimensions&&<div className={styles.bars} aria-label={item.score===null?"Historical review dimensions, not current certification":"Observed engineering dimensions"}>
+    {item.dimensions&&<div className={styles.bars} aria-label={item.authenticatedPublication?"Authenticated measured dimension progress, certified only when all gates pass":item.score===null?"Historical review dimensions, not current certification":"Observed engineering dimensions"}>
       {Object.entries(item.dimensions).map(([name,value])=>{
         const denominator:Record<string,number>={correctness:30,functionality:25,performance:20,maintainability:15,tests:10};
         const max=denominator[name]??100;
         return <div key={name} className={styles.barRow}><span>{name}</span><div><i style={{width:`${Math.min(100,Math.max(0,value/max*100))}%`}}/></div><b>{value}/{max}</b></div>;
       })}
     </div>}
-    {item.dimensions&&item.score===null&&<p className={styles.evidenceNote}>The dimension bars above belong to the historical review, not a current, verified audit.</p>}
+    {item.dimensions&&item.score===null&&<p className={styles.evidenceNote}>{item.authenticatedPublication?"These independently authenticated dimension earnings are not an official certified score because full 100/100 and every mandatory gate have not both passed.":"The dimension bars above belong to the historical review, not a current, verified audit."}</p>}
     {item.notes&&<p className={styles.evidenceNote}>{item.notes}</p>}
     <section className={styles.criterionPanel} aria-label={`${item.label} twenty-criterion source-bound progress`}>
       <div className={styles.criterionSummary}>
