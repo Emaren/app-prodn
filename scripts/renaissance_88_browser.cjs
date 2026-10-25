@@ -114,7 +114,7 @@ async function run(){
  const browser=await chromium.launch({headless:true,executablePath:chrome,args:["--no-sandbox","--disable-dev-shm-usage"]});
  try{
   for(const route of selected){
-   const record={route:route.route,phase:route.phase,profile:route.profile,
+   const record={route:route.route,redirect_to:route.redirect_to??null,phase:route.phase,profile:route.profile,
     source_sha:sha,build_id:buildId,plan_policy:route.overlay_source_policy,
     views:[],status:"UNKNOWN",database_fixture:databaseFixture,criteria:{
      navigation:"UNKNOWN",render:"UNKNOWN",keyboard:"UNKNOWN",
@@ -242,7 +242,8 @@ async function run(){
     }
    }
    record.status=classifyCandidateRoute(record,databaseFixture);
-   record.criteria.navigation=record.views.every(v=>v.http===200&&v.sameOrigin)?"PASS":"FAIL";
+   record.criteria.navigation=record.views.every(v=>v.http===200&&v.sameOrigin&&
+     v.final_path===(route.redirect_to||route.route))?"PASS":"FAIL";
    const dependencyGap=databaseFixture==="UNAVAILABLE"&&record.views.some(v=>v.dependencyUnavailable);
    record.criteria.render=dependencyGap?"UNKNOWN":record.views.every(v=>v.rendered&&v.landmark&&v.body_title)?"PASS":"FAIL";
    record.criteria.keyboard=dependencyGap?"UNKNOWN":record.views.every(v=>v.keyboardFocus===true)?"PASS":"FAIL";
