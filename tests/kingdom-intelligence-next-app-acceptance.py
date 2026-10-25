@@ -54,7 +54,10 @@ def classify_blocked_write(request, host_port):
         isinstance(fields, dict) and not unexpected and
         isinstance(fields.get("sample_id"), str) and
         re.fullmatch(r"SPD_[A-Za-z0-9_-]{8,100}", fields["sample_id"]) is not None and
-        fields.get("route") == ROUTE and
+        # This browser cohort also visits Workshop on the same loopback
+        # host. Classify only valid shared SpeedOS telemetry for these exact
+        # two routes; ALL writes still abort, and no payload is transmitted.
+        fields.get("route") in (ROUTE, "/workshop") and
         isinstance(fields.get("valid_for_aggregation"), bool) and
         isinstance(fields.get("visibility_tainted"), bool)
     )
