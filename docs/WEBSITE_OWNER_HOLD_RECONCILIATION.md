@@ -13,7 +13,7 @@ review_interval_days: 1
 sensitivity: "internal"
 ---
 
-# Website owner historical HOLD reconciliation
+# Website Owner Historical HOLD Reconciliation
 
 **WEBSITE ALREADY LIVE. Do not activate it again.** This dossier records a
 protected engine success followed by an outer verification failure. It grants
