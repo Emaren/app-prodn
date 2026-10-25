@@ -23,10 +23,22 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(p["phase_order"]),7)
         self.assertIn(p["actual_templates"],(144,146))
         self.assertIn(p["actual_handlers"],(273,275))
-        self.assertTrue(all(x["category"]=="public_index_static" for x in p["routes"]))
+        self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
         self.assertIsNone(p["score"])
+    def test_canonical_redirects_are_determined_from_source_not_guessed(self):
+        rows={x["route"]:x for x in self.plan["routes"]}
+        expected={"/about":"/requests","/belts":"/champions",
+                  "/nations":"/national-champions","/realm":"/kingdom",
+                  "/roadmap":"/requests","/users":"/players",
+                  "/wolo-1":"/wolo"}
+        for alias,target in expected.items():
+            self.assertEqual(rows[alias]["category"],"public_alias_redirect")
+            self.assertEqual(rows[alias]["redirect_to"],target)
+        self.assertIsNone(rows["/"]["redirect_to"])
+        self.assertEqual(sum(r["category"]=="public_alias_redirect"
+                             for r in self.plan["routes"]),7)
     def test_all_specialized_profiles_exist_without_scored_criteria(self):
         for row in self.plan["routes"]:
             self.assertIsInstance(row["specialty_gates"],list)
