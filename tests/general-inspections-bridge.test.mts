@@ -165,6 +165,7 @@ function bridgePayload(speedCurrent = true) {
       },
       replay_truth: {
         available: true,
+        production_source: RELEASE,
         accounted_percent: 100,
         unclassified: 0,
         matches_current_release: true,
@@ -662,7 +663,7 @@ test("contradictory receipt SHAs cannot earn current-source Speed or replay proo
     envelope.payload.performance.cold_lcp.release_sha = "b".repeat(40);
     envelope.payload.performance.edge_delivery.release_sha = "b".repeat(40);
     envelope.payload.replay_truth.matches_current_release = true;
-    (envelope.payload.replay_truth as { release_sha?: string }).release_sha = "b".repeat(40);
+    envelope.payload.replay_truth.production_source = "b".repeat(40);
     writeJson(estate.options.bridgePath, envelope);
 
     const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
