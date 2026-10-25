@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const snapshot = buildGeneralInspectionsSnapshot();
     const response = NextResponse.json(
       requestedReport === "why-not-green"
-        ? buildWhyNotGreenReport(snapshot)
+        ? buildWhyNotGreenReport(snapshot, Date.now())
         : snapshot,
     );
     response.headers.set("Cache-Control", "no-store, max-age=0, must-revalidate");
