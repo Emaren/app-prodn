@@ -102,6 +102,8 @@ async function run(){
  const receipt={
   schema:"aoe2war.renaissance.public88.chrome.v1",
   source_sha:sha,build_id:buildId,manifest_sha256:plan.build.manifest_sha256,
+  source_clean:plan.source_clean===true,derived_policy_unsealed:plan.derived_policy_unsealed===true,
+  source_admission:plan.source_admission||"UNSPECIFIED_HOLD",
   plan_sha256:createHash("sha256").update(fs.readFileSync(opts.plan)).digest("hex"),
   browser_name:"Google Chrome/Chromium via playwright-core 1.57.0",
   origin:base,cohort:opts.cohort,cohorts:opts.cohorts,samples:opts.samples,
