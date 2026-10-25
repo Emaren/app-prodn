@@ -254,7 +254,7 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
     assert.equal(workshopBrain.doctorScore, 94);
     assert.equal(workshopBrain.p0, 0);
     assert.equal(workshopBrain.activeSystemCount, null);
-    assert.equal(workshopBrain.attentionSystemCount, 1);
+    assert.equal(workshopBrain.attentionSystemCount, null);
     assert.equal(workshopBrain.directiveTitle, "Return Storage OS to healthy band");
 
     assert.deepEqual(publicView.invariants, [
