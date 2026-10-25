@@ -180,3 +180,22 @@ test("duplicate gate and replay refusal are independent of valid signatures",asy
   await assert.rejects(verifyKingdomIndexPublication(seal(duplicate),ctx()),/Missing or repeated gate/);
   await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({isCommitted:async()=>false})),/Missing independent durable ingestion receipt/);
 });
+
+test("a duly signed publication cannot pre-approve proof collected after its issuance",async()=>{
+ const p=payload();
+ // Signed publication issued at NOW-120s, but claimed browser evidence appears
+ // NOW-1s: already observed at verification time, not available when signed.
+ p.criteria.find(c=>c.id==="critical_journeys")!.evidence[0].measuredAt=
+   new Date(NOW-1000).toISOString();
+ await assert.rejects(
+   verifyKingdomIndexPublication(seal(p),ctx()),
+   /Measurement postdates signed publication issuance/,
+ );
+ const gate=payload();
+ gate.gates.find(g=>g.id==="source-closure")!.evidence[0].measuredAt=
+   new Date(NOW-1000).toISOString();
+ await assert.rejects(
+   verifyKingdomIndexPublication(seal(gate),ctx()),
+   /Measurement postdates signed publication issuance/,
+ );
+});
