@@ -47,7 +47,8 @@ async function fixture(){
   origin:"LOOPBACK_ONLY",route:"/api/kingdom-index",buildId,samples:12,
   latencyMs:{p50:percentile(times,.5),p75:percentile(times,.75),p95:percentile(times,.95)},
   observed:times.map((v,i)=>({sequence:i+1,elapsedMs:v,responseBytes:1024,certified:0,
-    kingdomIndexStatus:"unmeasured",indexScore:null})),
+    kingdomIndexStatus:"unmeasured",indexScore:null,
+    indexSourceVersion:"src-aaaaaaaaaaaaaaaa",indexMeasuredVersion:null,indexObservationKind:null})),
   consistent:true,certified:false,criterionPointsAwarded:null,note:"Uncertified synthetic fixture"},"sha256");
  await put("api-loopback.json",api);
  const burstTimes=Array.from({length:40},(_,i)=>22+i);
@@ -56,7 +57,8 @@ async function fixture(){
   concurrency:4,requests:40,wallMs:333,
   latencyMs:{p50:percentile(burstTimes,.5),p75:percentile(burstTimes,.75),p95:percentile(burstTimes,.95)},
   consistent:true,observed:burstTimes.map((elapsedMs,i)=>({sequence:i+1,elapsedMs,
-   responseBytes:1024,routeCount:88,certified:0,indexStatus:"unmeasured",indexScore:null})),
+   responseBytes:1024,routeCount:88,certified:0,indexStatus:"unmeasured",indexScore:null,
+   indexSourceVersion:"src-aaaaaaaaaaaaaaaa",indexMeasuredVersion:null,indexObservationKind:null})),
   errors:0,certified:false,criterionPointsAwarded:null,
   limitations:"Untrusted synthetic burst fixture"},"sha256");
  await put("concurrent-loopback.json",concurrent);
