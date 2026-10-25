@@ -13,7 +13,7 @@ review_interval_days: 1
 sensitivity: "internal"
 ---
 
-# Solo-owner website release v3
+# Solo-owner Website Release Policy V3
 
 The owner explicitly corrected the former multi-human project assumption.
 `aoe2war.solo-owner.website.v3` authenticates ONE real owner. It preserves
