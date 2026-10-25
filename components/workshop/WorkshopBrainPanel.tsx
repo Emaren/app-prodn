@@ -121,8 +121,8 @@ export default function WorkshopBrainPanel({
         <div role="status" aria-label="Kingdom operating evidence limitation" className="mt-3 text-xs leading-5 text-slate-400">
           <strong className="text-slate-200">{primaryIncident.status} · {primaryIncident.owner}</strong>
           {" · " + primaryIncident.explanation}
-          {" · Evidence age " + (primaryIncident.evidence.ageSeconds === null ? "UNKNOWN" : primaryIncident.evidence.ageSeconds + "s")}
-          {" · TTL " + (primaryIncident.evidence.ttlSeconds === null ? "UNKNOWN" : primaryIncident.evidence.ttlSeconds + "s")}
+          {" · Evidence age " + (primaryIncident.provenance.ageSeconds === null ? "UNKNOWN" : primaryIncident.provenance.ageSeconds + "s")}
+          {" · TTL " + (primaryIncident.provenance.ttlSeconds === null ? "UNKNOWN" : primaryIncident.provenance.ttlSeconds + "s")}
           {" · " + primaryIncident.safeAction}
           {brain.diagnostics.length > 1 ? " · " + (brain.diagnostics.length - 1) + " more evidence limitation(s)" : ""}
         </div>
