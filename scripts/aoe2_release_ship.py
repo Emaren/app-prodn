@@ -1473,8 +1473,8 @@ test ! -e "$ROLLBACK/next/cache"
 test "$(cat "$ROLLBACK/source-sha")" = "$PREVIOUS"
 test "$(cat "$ROLLBACK/build-version")" = "$LIVE_VERSION"
 
-if [ "$RELEASE" = "21cd1493b182cb0968a6b6cf3f528d0578cfd797" ]; then
-  # Original nine-path main retains money-moving legacy GET side effects.
+if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then
+  # Original ten-path main retains money-moving legacy GET side effects.
   critical_get http://127.0.0.1:3030/api/deployment-version
   critical_get "$PUBLIC/api/deployment-version"
 else
@@ -1489,10 +1489,10 @@ else
 fi
 
 # ------------------------------------------------------------
-# Avoid finance-capable legacy prewarms on the nine-path main candidate.
+# Avoid finance-capable legacy prewarms on the ten-path main candidate.
 # Other releases retain their already-existing smoke/performance contract.
 # ------------------------------------------------------------
-if [ "$RELEASE" = "21cd1493b182cb0968a6b6cf3f528d0578cfd797" ]; then
+if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then
   STATISTICS_PREWARM="SKIPPED_NONINTERFERENCE"
   STATISTICS_WARM_SECONDS=""
   LEADERBOARD_PREWARM="SKIPPED_NONINTERFERENCE"
@@ -1645,7 +1645,7 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   test "$soak_wolo8092" = "$before_wolo8092"
   test "$soak_wolo8093" = "$before_wolo8093"
 
-  if [ "$RELEASE" = "21cd1493b182cb0968a6b6cf3f528d0578cfd797" ]; then
+  if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then
     critical_get http://127.0.0.1:3030/api/deployment-version
     critical_get "$PUBLIC/api/deployment-version"
   else
