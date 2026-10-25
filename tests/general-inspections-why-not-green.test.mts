@@ -238,6 +238,6 @@ test("public API report selects one collector snapshot, never a second scan", as
   const src = readFileSync(new URL("../app/api/general-inspections/route.ts", import.meta.url), "utf8");
   assert.match(src, /requestedReport === "why-not-green"/);
   assert.equal((src.match(/buildGeneralInspectionsSnapshot\(\)/g) || []).length, 1);
-  assert.match(src, /buildWhyNotGreenReport\\(snapshot, Date\\.now\\(\\)\\)/);
+  assert.match(src, /buildWhyNotGreenReport\(snapshot, Date\.now\(\)\)/);
   assert.match(src, /Cache-Control/);
 });
