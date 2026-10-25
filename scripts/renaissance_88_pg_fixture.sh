@@ -26,6 +26,11 @@ case "$action" in
      -o "-c listen_addresses=127.0.0.1 -c port=55437 -c unix_socket_directories=$REN88_PG_ROOT" \
      -w start >/dev/null
    createdb -h 127.0.0.1 -p 55437 -U renaissance_owner renaissance88
+   # The canonical BattleIdentity.publicNumber default references a sequence
+   # defined by production migrations, not auto-created by Prisma db push.
+   # Create ONLY this required schema object in this brand-new test database.
+   psql "$OWNER_URL" -v ON_ERROR_STOP=1 -q -c \
+     "CREATE SEQUENCE public.battle_public_number_seq AS integer START WITH 1 INCREMENT BY 1"
    # Prisma schema push is isolated to the newly created scratch database.
    DATABASE_URL="$OWNER_URL" timeout -k 10s 8m npx prisma db push --accept-data-loss \
      > "$REN88_PG_ROOT/schema-push.log" 2>&1 || {
