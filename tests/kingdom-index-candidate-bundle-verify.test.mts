@@ -262,3 +262,33 @@ test("literal dot or parent components, absolute, UNC, drive, backslash, control
    /Duplicated, unsafe or invalid emitted file/);
  }finally{await rm(root,{recursive:true,force:true})}
 });
+
+test("real-world drifted historical Index review is eligible only when source mismatch is evidenced",async()=>{
+ const root=await fixture();
+ const update=async(name:string,kind:"api"|"burst",source="src-aaaaaaaaaaaaaaaa",measured="src-bbbbbbbbbbbbbbbb")=>{
+  await mutate(root,name,doc=>{
+   const rows=doc.observed as Array<Record<string,unknown>>;
+   for(const row of rows){
+    if(kind==="api")row.kingdomIndexStatus="drifted";
+    else row.indexStatus="drifted";
+    row.indexSourceVersion=source;
+    row.indexMeasuredVersion=measured;
+    row.indexObservationKind="source-review";
+   }
+   const unsigned=Object.fromEntries(Object.entries(doc).filter(([k])=>k!=="sha256"));
+   doc.sha256=hash(JSON.stringify(unsigned));
+  });
+ };
+ try{
+  await update("api-loopback.json","api");
+  await update("concurrent-loopback.json","burst");
+  const result=await verifyIndexCandidateBundle(root,args);
+  assert.equal(result.certified,false);
+  assert.equal(result.criterionPointsAwarded,null);
+  assert.equal(result.api.indexStatus,"drifted");
+  // An attacker can recompute unsigned cohort hashes. Matching source values
+  // or contradictory two-cohort lineage must STILL be rejected.
+  await update("concurrent-loopback.json","burst","src-aaaaaaaaaaaaaaaa","src-aaaaaaaaaaaaaaaa");
+  await assert.rejects(verifyIndexCandidateBundle(root,args),/drift|historical|cohort|status|version/i);
+ }finally{await rm(root,{recursive:true,force:true})}
+});
