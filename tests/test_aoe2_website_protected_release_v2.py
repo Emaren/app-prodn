@@ -52,6 +52,7 @@ class ProtectedWebsiteControllerTests(unittest.TestCase):
                 "config/kingdom-index-routes.json",
                 "config/kingdom-index-watcher-166-source-review.json",
                 "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                "docs/RIVALRIES_AND_WAR_VAULT.md",
                 "docs/document-registry.json",
                 "tests/kingdom-index-watcher-draft-score.test.mts",
                 "yarn.lock",
