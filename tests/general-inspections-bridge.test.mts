@@ -633,3 +633,46 @@ test("governed host deferrals, review worktrees, and verified recovery staging s
     rmSync(estate.root, { recursive: true, force: true });
   }
 });
+
+
+test("expired October 13 browser and replay evidence cannot earn live points on October 25", () => {
+  const estate = makeEstate(true);
+  try {
+    const snapshot = buildBridgeGeneralInspectionsSnapshot({
+      ...estate.options,
+      now: Date.parse("2026-10-25T12:00:00Z"),
+    });
+    assert.ok(snapshot);
+    const speed = snapshot.categories.find((item) => item.id === "speed");
+    const data = snapshot.categories.find((item) => item.id === "data");
+    assert.equal(speed?.checks.find((item) => item.id === "lcp50")?.earned, 0);
+    assert.equal(speed?.checks.find((item) => item.id === "static-edge")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "parser-estate")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "db-mutation")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "wolo-mutation")?.earned, 0);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("contradictory receipt SHAs cannot earn current-source Speed or replay proof", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    envelope.payload.performance.cold_lcp.release_sha = "b".repeat(40);
+    envelope.payload.performance.edge_delivery.release_sha = "b".repeat(40);
+    envelope.payload.replay_truth.matches_current_release = true;
+    (envelope.payload.replay_truth as { release_sha?: string }).release_sha = "b".repeat(40);
+    writeJson(estate.options.bridgePath, envelope);
+
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const speed = snapshot.categories.find((item) => item.id === "speed");
+    const data = snapshot.categories.find((item) => item.id === "data");
+    assert.equal(speed?.checks.find((item) => item.id === "lcp50")?.earned, 0);
+    assert.equal(speed?.checks.find((item) => item.id === "static-edge")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "parser-estate")?.earned, 0);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
