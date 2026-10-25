@@ -66,7 +66,7 @@ test("source spoof, duplicate route, private route, and self-awarded score refus
  const c=input();
  assert.throws(()=>inspect([c],new Map()),/Missing independent source/);
  assert.throws(()=>inspect([c,c]),/repeated candidate/);
- assert.throws(()=>inspect([input("/admin/users")]),/Private, unknown/);
+ assert.throws(()=>inspect([{...input(),href:"/admin/users"}]),/Private, unknown/);
  assert.throws(()=>inspect([{...c,score:100}]),/Invalid candidate fields/);
  assert.throws(()=>inspect([{...c,source:{...c.source,gitSha:"f".repeat(40)}}]),/independent source mismatch/);
  assert.throws(()=>inspect([{...c,source:{...c.source,sourceTree:"src-0000000000000000"}}]),/route-local source/);
