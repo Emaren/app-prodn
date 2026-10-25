@@ -44,9 +44,21 @@ test("presentation projection preserves real authenticated zero separately from 
  assert.equal(p.criteria.find(x=>x.id==="authoritative_data").status,"APPROVED");
  assert.equal(projectKingdomCriterionProgress(rubric).criteria.find(x=>x.id==="authoritative_data").earned,null);
 });
+test("one independently approved criterion leaves nineteen UNKNOWN rather than zero",()=>{
+ const only=independentlyVerifiedFixture().slice(0,1);
+ const p=projectKingdomCriterionProgress(rubric,only);
+ assert.equal(p.approvedCriteria,1);
+ assert.equal(p.pendingCriteria,19);
+ assert.equal(p.authenticatedEarned,10);
+ assert.equal(p.criteria[0].earned,10);
+ assert.equal(p.criteria[1].earned,null);
+ assert.equal(p.criteria[1].status,"PENDING_INDEPENDENT_EVIDENCE");
+ assert.equal(p.criteria[1].evidenceDigests.length,0);
+});
 test("fake scoring fields, omitted criteria, altered weights and repeated receipt digests refuse",()=>{
  const base=independentlyVerifiedFixture();
- assert.throws(()=>projectKingdomCriterionProgress(rubric,base.slice(0,19)),/Incomplete/);
+ assert.equal(projectKingdomCriterionProgress(rubric,base.slice(0,19)).pendingCriteria,1);
+ assert.throws(()=>projectKingdomCriterionProgress(rubric,[]),/Incomplete/);
  assert.throws(()=>projectKingdomCriterionProgress(rubric,[...base.slice(0,19),base[0]]),/Malformed/);
  const altered=structuredClone(rubric);altered.dimensions.correctness.criteria[0].max=11;
  assert.throws(()=>projectKingdomCriterionProgress(altered),/Canonical criteria drift|Invalid|Proof policy/);
