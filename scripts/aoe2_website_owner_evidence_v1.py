@@ -133,7 +133,9 @@ def reconcile(packet: dict, receipt_path: Path | None, receipt_sha256: str | Non
     """
     import aoe2_website_owner_release_v3 as auth
     from aoe2_website_owner_observer_v3 import validate_observation
-    p = packet.get("payload", {})
+    require(type(packet) is dict and type(packet.get("payload")) is dict and type(current) is dict,
+            "malformed reconciliation packet/observation")
+    p = packet["payload"]
     require(p.get("phase") == "PRE_ACTIVATE", "reconciliation requires the historical activation packet")
     db = state_root / "owner-v3.sqlite3"
     require(db.is_absolute() and not db.is_symlink() and not state_root.is_symlink(), "linked nonce ledger")

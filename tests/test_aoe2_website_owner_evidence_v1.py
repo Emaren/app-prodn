@@ -110,6 +110,11 @@ class OwnerEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(A.Hold,'consumed'):
             A.consume_request(self.packet,state_root=self.state,public_key=self.public,now=later,allow_test_root=True)
 
+    def test_malformed_json_shapes_return_hold_before_opening_the_journal(self):
+        for packet in ([],None,{"payload":None},{"payload":[]}):
+            with self.subTest(packet=packet), self.assertRaisesRegex(A.Hold,'malformed'):
+                E.reconcile(packet,None,None,self.current,state_root=self.state,public_key=self.public,now=NOW)
+
     def test_missing_engine_receipt_is_uncertain_never_confirmed(self):
         value=E.reconcile(self.packet,None,None,self.current,state_root=self.state,
                           public_key=self.public,now=NOW,allow_test_root=True)
