@@ -1,7 +1,7 @@
 ---
 id: "aoe2war.app-prodn.website-only-alternative-quorum-proposal"
 title: "Held Alternative Website-Only Release Quorum Proposal"
-type: "design"
+type: "explanation"
 status: "draft"
 owner: "aoe2war-web"
 systems: ["app-prodn","wolochain"]
