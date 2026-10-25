@@ -81,7 +81,7 @@ export async function requireDurableProspectiveDepositEpoch(
  chain_anchor_witness_sha256 AS "chainAnchorWitnessDigest",
  state,approved_at AS "approvedAt",created_at AS "createdAt"
  FROM public.war_satchel_prospective_epochs WHERE state='approved'
- ORDER BY epoch_id LIMIT 2 FOR SHARE
+ ORDER BY epoch_id LIMIT 2
  `);
  if(rows.length!==1)stop("one_operator_approved_epoch_required");
  const e=rows[0];

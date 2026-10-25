@@ -56,10 +56,15 @@ test("all credit paths require inside-transaction epoch binding; original claims
  assert.ok(credit.indexOf("requireDurableProspectiveDepositEpoch")<credit.indexOf("satchelFundedReceipt.create"));
  assert.ok(credit.indexOf("bindDurableEpochReceipt")<credit.indexOf("satchelFundedJournal.create"));
  assert.match(source("lib/warSatchelDurableEpoch.ts"),/WHERE state='approved'/);
- assert.match(source("lib/warSatchelDurableEpoch.ts"),/LIMIT 2 FOR SHARE/);
+ assert.match(source("lib/warSatchelDurableEpoch.ts"),/ORDER BY epoch_id LIMIT 2/);
+ assert.doesNotMatch(source("lib/warSatchelDurableEpoch.ts"),/FOR SHARE|FOR UPDATE|FOR KEY SHARE/);
  const sql=source("prisma/migrations/20261024_233000_war_satchel_prospective_epoch_admission/migration.sql");
  assert.match(sql,/UNIQUE \("chain_id","tx_hash","message_index"\)/);
  assert.match(sql,/SATCHEL_EPOCH_IMMUTABLE/);
+ for(const fn of ["satchel_epoch_cold_start_v1","satchel_epoch_receipt_guard_v1","satchel_epoch_immutable_v1"]){
+   assert.ok(sql.includes('CREATE FUNCTION public."'+fn+'"() RETURNS TRIGGER LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS'));
+ }
+ assert.doesNotMatch(sql,/SECURITY DEFINER/);
  assert.match(source("lib/warSatchelDurableEpoch.ts"),/FROM public\.war_satchel_prospective_epochs/);
  assert.match(source("lib/warSatchelDurableEpoch.ts"),/INSERT INTO public\.war_satchel_epoch_deposit_receipts/);
  assert.match(sql,/CREATE TABLE public\."war_satchel_prospective_epochs"/);

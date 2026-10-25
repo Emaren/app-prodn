@@ -90,12 +90,43 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
         assert.equal(rights.rows[0].can_register,false);
         assert.equal(rights.rows[0].can_approve,false);
         assert.equal(rights.rows[0].controls_finance,false);
-        await assert.rejects(c.query("INSERT INTO war_satchel_prospective_epochs DEFAULT VALUES"),{code:"42501"});
+        // SELECT-only really works: PostgreSQL FOR SHARE requires UPDATE and
+        // therefore MUST NOT be used by the runtime's immutable epoch lookup.
+        assert.equal((await c.query("SELECT epoch_id FROM public.war_satchel_prospective_epochs WHERE state='approved' ORDER BY epoch_id LIMIT 2")).rowCount,0);
+        await assert.rejects(c.query("SELECT epoch_id FROM public.war_satchel_prospective_epochs FOR SHARE"),{code:"42501"});
+        // A session-local temp shadow must not replace the authentic epoch.
+        await c.query("CREATE TEMP TABLE war_satchel_prospective_epochs(epoch_id text,state text)");
+        await c.query("INSERT INTO pg_temp.war_satchel_prospective_epochs VALUES('fake_approved_epoch','approved')");
+        await c.query("SET search_path TO pg_temp, public");
+        assert.equal((await c.query("SELECT count(*) AS count FROM public.war_satchel_prospective_epochs WHERE state='approved'")).rows[0].count,"0");
+        const fnRows=await c.query(`SELECT p.proname,p.prosecdef,p.proconfig
+          FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace ns ON ns.oid=p.pronamespace
+          WHERE ns.nspname='public' AND p.proname=ANY($1::text[])
+          ORDER BY p.proname`,[["satchel_epoch_cold_start_v1","satchel_epoch_receipt_guard_v1","satchel_epoch_immutable_v1"]]);
+        assert.equal(fnRows.rowCount,3);
+        for(const f of fnRows.rows){
+          assert.equal(f.prosecdef,false,"epoch triggers must NEVER escalate privilege");
+          assert.ok(f.proconfig?.some((s:string)=>s==="search_path=pg_catalog, public"));
+        }
+        await assert.rejects(c.query("INSERT INTO public.war_satchel_prospective_epochs DEFAULT VALUES"),{code:"42501"});
         await assert.rejects(c.query("SET ROLE aoe2war_epoch_finance_owner"),{code:"42501"});
       }finally{await c.end();}
       const roles=await sql!.query("SELECT rolname,rolcanlogin,rolinherit FROM pg_roles WHERE rolname IN ('aoe2war_epoch_finance_owner','aoe2war_epoch_credit_writer') ORDER BY rolname");
       assert.equal(roles.rowCount,2);
       assert.ok(roles.rows.every(r=>r.rolcanlogin===false&&r.rolinherit===false));
+      await sql!.query("BEGIN");
+      try{
+        await sql!.query("CREATE ROLE satchel_epoch_indirect_fence NOLOGIN NOINHERIT");
+        await sql!.query("GRANT aoe2war_epoch_finance_owner TO satchel_epoch_indirect_fence");
+        await sql!.query("GRANT satchel_epoch_indirect_fence TO satchel_epoch_app_fixture");
+        const indirect=await sql!.query("SELECT pg_has_role('satchel_epoch_app_fixture','aoe2war_epoch_finance_owner','MEMBER') AS escalates");
+        assert.equal(indirect.rows[0].escalates,true,"transitive owner membership must be observable");
+        const ddl=readFileSync(new URL("../prisma/migrations/20261024_233000_war_satchel_prospective_epoch_admission/migration.sql",import.meta.url),"utf8");
+        const guard=ddl.match(/DO \$epoch_roles\$[\s\S]*?\$epoch_roles\$;/)?.[0];
+        assert.ok(guard,"production migration must contain its enrollment gate");
+        await assert.rejects(sql!.query(guard),{code:"42501"});
+      }finally{await sql!.query("ROLLBACK");}
+      assert.equal((await sql!.query("SELECT pg_has_role('satchel_epoch_app_fixture','aoe2war_epoch_finance_owner','MEMBER') AS escalates")).rows[0].escalates,false);
     });
     await sql.query("INSERT INTO users VALUES(1,$1,$2)",[i.OwnerID,i.Sender]);
     await sql.query("INSERT INTO war_satchel_deposit_intents(id,user_id,sender_address,vault_address,amount_uwolo,memo,nonce,created_at,expires_at) VALUES($1,1,$2,$3,$4,$5,'abcdefghijklmnop',$6,$7)",[expected.intentId,i.Sender,i.Vault,i.AmountUWolo,i.Memo,i.CreatedAt,i.ExpiresAt]);
