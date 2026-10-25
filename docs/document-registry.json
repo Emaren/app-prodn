@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "efaa0401b31b97a406415f38533d788e17e0a025d5280c26b4164c967e5a3f5b",
+      "sha256": "108b76340fdc34680805b9118645d6bbf27ce2f10d1384849f56062f5d1b32ca",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2215,7 +2215,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/held-prospective-epoch-credit-20261024",
-    "commit": "ca98c44ea1cebc2eb5c5c368d60e9255d197b38f"
+    "commit": "f38a71bc67f61cf9d1116718eab21ef4a7e13fe1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

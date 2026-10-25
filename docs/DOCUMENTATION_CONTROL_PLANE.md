@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/held-prospective-epoch-credit-20261024` at `ca98c44ea1cebc2eb5c5c368d60e9255d197b38f`
+Implementation baseline: `session-b/held-prospective-epoch-credit-20261024` at `f38a71bc67f61cf9d1116718eab21ef4a7e13fe1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
