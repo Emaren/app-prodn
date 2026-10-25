@@ -1478,9 +1478,9 @@ export function buildBridgeGeneralInspectionsSnapshot(
   if (!liveSourceMatches || !liveBuildMatches) {
     notes.push("Operator Bridge production source/build does not match the certified activation; current-release performance claims are withheld.");
   }
-  if (!coldCurrent || !edgeCurrent) {
+  if (!coldCurrent || !edgeCurrent || coldProof < 1 || edgeProof < 1) {
     notes.push(
-      "SpeedOS browser/edge proof is missing, stale, or not bound to this certified production release; collect new bounded performance evidence.",
+      "SpeedOS browser/edge proof may belong to the previous production release, be stale, or lack exact source/build binding; collect bounded current-release evidence.",
     );
   }
   if (preservedDirty || preservedUnmerged) {
