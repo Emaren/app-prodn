@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/closure-funded-lifecycle` at `0457edc7e5be1ce8182c6c2aeb542d01eaf37b1e`
+Implementation baseline: `session-a/20261025-nine-path-docs-recert-product` at `88b21a6eb1a1284f6df2986c9c517226d4548909`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
