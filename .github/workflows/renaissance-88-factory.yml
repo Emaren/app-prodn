@@ -113,6 +113,8 @@ jobs:
             > renaissance-88-chrome/fixture-start.txt
           bash scripts/renaissance_88_pg_fixture.sh snapshot \
             > renaissance-88-chrome/fixture-before.txt
+          find public .next/static -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum \
+            > renaissance-88-chrome/assets-before.sha256
           node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > renaissance-88-chrome/next.log 2>&1 &
           next_pid=$!
           trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true; bash scripts/renaissance_88_pg_fixture.sh stop || true' EXIT
@@ -134,6 +136,11 @@ jobs:
           set -e
           bash scripts/renaissance_88_pg_fixture.sh verify \
             > renaissance-88-chrome/fixture-after.txt
+          find public .next/static -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum \
+            > renaissance-88-chrome/assets-after.sha256
+          cmp renaissance-88-chrome/assets-before.sha256 renaissance-88-chrome/assets-after.sha256 || \
+            { echo "::error::Public or built static assets changed during browser GET sweep"; exit 2; }
+          test -z "$(git status --porcelain --untracked-files=no)"
           cat renaissance-88-chrome/fixture-after.txt >> "$GITHUB_STEP_SUMMARY"
           echo "BROWSER_EXIT=$browser_rc" >> renaissance-88-chrome/identity.txt
           exit "$browser_rc"
