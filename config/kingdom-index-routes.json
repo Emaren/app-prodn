@@ -15,7 +15,7 @@
     "href": "/academy",
     "label": "Academy",
     "district": "forge",
-    "sourceTree": "src-c4599ac67cbf46b6"
+    "sourceTree": "src-ed08f5f78ac23257"
   },
   {
     "href": "/ai",
@@ -69,7 +69,7 @@
     "href": "/champions",
     "label": "Champions",
     "district": "arena",
-    "sourceTree": "src-758ab8bfeb89f265"
+    "sourceTree": "src-7fff2098903f8766"
   },
   {
     "href": "/champions/e2",
@@ -99,7 +99,7 @@
     "href": "/champions/legacy",
     "label": "Champions · Legacy",
     "district": "arena",
-    "sourceTree": "src-43f96288520be260"
+    "sourceTree": "src-2caf6e642ac1dead"
   },
   {
     "href": "/chaosium",
@@ -117,7 +117,7 @@
     "href": "/download",
     "label": "Download",
     "district": "commons",
-    "sourceTree": "src-e4e5ef49df71ca0d"
+    "sourceTree": "src-be8220ed09e67ee3"
   },
   {
     "href": "/forum",
@@ -147,7 +147,7 @@
     "href": "/kingdom",
     "label": "Kingdom",
     "district": "citadel",
-    "sourceTree": "src-3d14f0c60b59f8de"
+    "sourceTree": "src-5582fd8e5772a60b"
   },
   {
     "href": "/kingdom-agents",
@@ -177,13 +177,13 @@
     "href": "/kingdom-index",
     "label": "Kingdom Index",
     "district": "citadel",
-    "sourceTree": "src-5f39cd7bf91a196b"
+    "sourceTree": "src-c5289c00d9aa59a9"
   },
   {
     "href": "/kingdom-intelligence",
     "label": "Kingdom Intelligence",
     "district": "citadel",
-    "sourceTree": "src-d35c2832feb098e2"
+    "sourceTree": "src-cad35642cf26fe13"
   },
   {
     "href": "/kingdom-progress",
@@ -195,25 +195,25 @@
     "href": "/kingdom-recovery",
     "label": "Kingdom Recovery",
     "district": "citadel",
-    "sourceTree": "src-14a12faa8980fe0d"
+    "sourceTree": "src-428b1ae04b63b873"
   },
   {
     "href": "/kingdom-sensors",
     "label": "Kingdom Sensors",
     "district": "citadel",
-    "sourceTree": "src-f41039f18c3a2ded"
+    "sourceTree": "src-5c7a11b8d030b353"
   },
   {
     "href": "/kingdom-systems",
     "label": "Kingdom Systems",
     "district": "citadel",
-    "sourceTree": "src-e47eeec0ea6a324c"
+    "sourceTree": "src-19f28da39b081482"
   },
   {
     "href": "/kingdom-tests",
     "label": "Kingdom Tests",
     "district": "citadel",
-    "sourceTree": "src-3718f23fe8567b9a"
+    "sourceTree": "src-357cd85325be1780"
   },
   {
     "href": "/kingdom-treasury",
@@ -243,7 +243,7 @@
     "href": "/library",
     "label": "Library",
     "district": "forge",
-    "sourceTree": "src-0eea289dede83f81"
+    "sourceTree": "src-d3af3d457bd43bfe"
   },
   {
     "href": "/live-games",
@@ -381,7 +381,7 @@
     "href": "/replay-laboratory",
     "label": "Replay Laboratory",
     "district": "forge",
-    "sourceTree": "src-3da8f050a933c69c"
+    "sourceTree": "src-3324c2aa70b6bd52"
   },
   {
     "href": "/replay-parser",
@@ -501,7 +501,7 @@
     "href": "/wolo-machine",
     "label": "Wolo Machine",
     "district": "forge",
-    "sourceTree": "src-1e391e30f8dd0584"
+    "sourceTree": "src-8120f7476528659a"
   },
   {
     "href": "/wolochain",
@@ -519,7 +519,7 @@
     "href": "/workshop",
     "label": "Workshop",
     "district": "forge",
-    "sourceTree": "src-348732576fe2d0e4"
+    "sourceTree": "src-5704ff4ac7499eed"
   },
   {
     "href": "/zodiac",
