@@ -336,7 +336,7 @@ export default function WarPulsePanel({
           <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-300">
             <Bot className="mb-3 h-7 w-7" />
             <div>No proven activity line is available yet.</div>
-            <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-700">
+            <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-300">
               Kingdom Intelligence does not invent an agent heartbeat. Registered
               work, OS receipts and sealed source events appear here when
               evidence exists.
