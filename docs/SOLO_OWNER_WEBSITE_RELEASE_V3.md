@@ -195,3 +195,56 @@ branch/ninth migration is included. The owner can later authorize a separately
 versioned financial cutover only after the objective journal/transaction,
 solvency, writer-containment and recovery checks actually pass. Council absence
 is no blockchain defect. Actual financial evidence gaps still matter.
+
+## Consumed activation with protected CERTIFIED receipt: reconciliation, not re-dispatch
+
+**Actual October 25, 2026 case.** One authentic PRE_STAGE attempt
+`J7L33p5QGHSmEBgafge913eqVIB1XCREYo9U5sbaiFc` reached COMPLETE.
+Owner signed PRE_ACTIVATE over ten-path product `6be434c...` and exact
+BUILD_ID `xqX6Oi-zV5gSKH1kIC4zC`. Protected engine wrote CERTIFIED
+activation receipt with six soak samples and `wolo_mutated=false`.
+Outer solo-owner wrapper returned HOLD **after** its protected dispatch:
+`financial/Wolo boundary changed during release; recovery review required`.
+The PRE_ACTIVATE record remains CONSUMED and must never be reset or replayed.
+Later owner-authorized read-only observation and a separate authenticated VPS
+check showed the exact product SHA and build active, protected Wolo services
+running, and zero current comparison differences versus the signed reference.
+These facts establish **live website + protected-engine certification**, NOT
+the historical cause of the outer HOLD or independent proof of financial nonmutation.
+
+The read-only tool `scripts/aoe2_website_owner_reconcile_v3.py` records:
+cryptographic owner signature validity even after the original expiry,
+exact PRE_STAGE COMPLETE and PRE_ACTIVATE CONSUMED journal lineage,
+the durable consumed packet SHA-256, protected STAGED and CERTIFIED
+artifact/BUILD_ID/manifest/gate/rollback/receipt lineage, and an authenticated
+fresh runtime observer policy comparison. It opens the owner SQLite journal
+with `mode=ro`; never invokes any signing, release, receipt publication,
+nonce consumption, actor registration, chain client or mutation method.
+An acceptable result has status
+`LIVE_PROTECTED_CERTIFIED_OUTER_OWNER_HOLD_PRESERVED`, NOT
+`OWNER_WEBSITE_ACTIVATION_VERIFIED`, and explicitly declares
+`historical_postactivation_drift_explained=false`.
+
+Owner runs from the exact separate reviewed controller branch checkout,
+never from a modified product main checkout:
+
+```bash
+OP="$HOME/.codex/worktrees/solo-owner-website-release-v3/app-prodn"
+APP="$HOME/projects/AoE2HDBets/app-prodn"
+PRIVATE="$HOME/.local/share/aoe2war-release-private"
+python3 "$OP/scripts/aoe2_website_owner_reconcile_v3.py" \
+  --candidate-repo "$APP" \
+  --packet "$PRIVATE/preactivate-signed-20261025T081448Z-22816.json" \
+  --stage-receipt "$APP/.aoe2war-release/stage-receipts/6be434c00469afa4acb0623715c3bcf724f927f4-daa06aa48aa8.json" \
+  --activation-receipt "$APP/.aoe2war-release/activation-receipts/6be434c00469afa4acb0623715c3bcf724f927f4-daa06aa48aa8.json"
+```
+
+This command applies only after exact-head CI and the operator has reviewed
+the diagnostic branch; its result is a separate forensic evidence artifact.
+**Do not change the historical CONSUMED row to COMPLETE, assert the old
+boundary mismatch was a benign one-shot without dated journal evidence, replay
+activation, discard the receipt, change Wolo service state, or certify funded
+Satchel/custody/solvency based on the website result.** Run journal/time-specific
+read-only investigation to distinguish transient already-enabled one-shots
+from actual financial writer changes. Source fixes, if any, require their own
+new tests, exact-head CI, review and separate future release authority.
