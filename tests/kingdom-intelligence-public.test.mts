@@ -334,3 +334,60 @@ test("Workshop carries one bounded Brain panel in every presentation variant", a
   assert.doesNotMatch(panel, /chain_of_thought|private_prompt|secret_receipt_path|log_path|private_operator_path/);
   assert.doesNotMatch(snapshot, /chain_of_thought|private_prompt|secret_receipt_path|log_path|private_operator_path/);
 });
+
+
+test("missing P0/P1 in a fresh bridge payload never renders zero findings", async () => {
+  await withStore(async () => {
+    await writeAoe2OsKingdomIntelligence({
+      bridgeId: "missing-severity",
+      sourceAction: "brain",
+      payload: {
+        kind: "aoe2war-kingdom-intelligence",
+        generated_at: new Date().toISOString(),
+        operating_state: "HEALTHY",
+        source: { exact: true, production: { source_sha: "a".repeat(40) } },
+        health: { estate: "HEALTHY", doctor_status: "HEALTHY", doctor_score: 100 },
+      },
+    });
+    const view = await loadPublicKingdomIntelligence();
+    assert.equal(view.available, true);
+    assert.equal(view.health?.p0, null);
+    assert.equal(view.health?.p1, null);
+    assert.equal(view.health?.doctorScore, null);
+    assert.equal(view.health?.doctorStatus, "UNKNOWN");
+    assert.equal(view.health?.observation.status, "UNKNOWN");
+    assert.ok(view.health?.observation.unknownReasons.includes("p0-p1-missing-or-invalid"));
+  });
+});
+
+test("contradictory or future bridge health cannot publish healthy incident counts", async () => {
+  for (const payload of [
+    {
+      generated_at: new Date(Date.now() + 60_000).toISOString(),
+      source: { exact: true, production: { source_sha: "a".repeat(40) } },
+      health: { estate: "HEALTHY", p0: 0, p1: 0 },
+    },
+    {
+      generated_at: new Date().toISOString(),
+      source: {
+        exact: true,
+        production: { source_sha: "a".repeat(40) },
+        certification: { source_sha: "b".repeat(40) },
+      },
+      health: { estate: "HEALTHY", p0: 0, p1: 0 },
+    },
+  ]) {
+    await withStore(async () => {
+      await writeAoe2OsKingdomIntelligence({
+        bridgeId: "disagreeing-severity",
+        sourceAction: "brain",
+        payload: { kind: "aoe2war-kingdom-intelligence", operating_state: "HEALTHY", ...payload },
+      });
+      const view = await loadPublicKingdomIntelligence();
+      assert.equal(view.available, true);
+      assert.equal(view.health?.p0, null);
+      assert.equal(view.health?.p1, null);
+      assert.notEqual(view.health?.observation.status, "SOURCE_REPORTED");
+    });
+  }
+});
