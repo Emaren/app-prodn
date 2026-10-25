@@ -13,7 +13,9 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Renaissance 88-route factory — NOT a scorer
+# Renaissance 88 Public Route Evidence Factory
+
+*Candidate diagnostics only — this factory does not award a quality score.*
 
 This Forge-owned round-three implementation is stacked on Test Forge PR #886,
 NOT the Living Kingdom admin UI PR #891 or Central's census child #892.
