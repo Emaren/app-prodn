@@ -68,9 +68,20 @@ test("rubric tampering cannot mint excess points",()=>{
 });
 test("a missing digest, sample or route is not a PASS",()=>{
  const a=make();delete a.route_digest_sha256[a.routes[0].route];
- assert.throws(()=>run(a),/route digest/);
+ assert.throws(()=>run(a),/digest/);
  const b=make();b.routes[0].browser_samples=0;
  assert.throws(()=>run(b),/sample count/);
  const c=make();c.routes.pop();
  assert.throws(()=>run(c),/88 routes/);
+});
+
+test("partial browser cohorts remain UNKNOWN without generating missing evidence",()=>{
+ const c=make(),p=c.routes[0];
+ p.status="UNMEASURED";p.browser_samples=0;
+ delete c.route_digest_sha256[p.route];c.statuses.PASS=87;c.statuses.UNMEASURED=1;
+ c.routes_observed=87;
+ const report=run(c);
+ assert.equal(report.candidate_navigation.UNMEASURED,1);
+ assert.equal(report.navigation_checkpoint,"CANDIDATE_NAVIGATION_NOT_ALL_PASS");
+ assert.equal(report.packets.find(x=>x.href===p.route)?.measured_score,null);
 });
