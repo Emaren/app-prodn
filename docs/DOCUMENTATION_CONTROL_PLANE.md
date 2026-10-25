@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/website-owner-incident-reconcile` at `9f9363c38731f1b85d78878ae4a4365fa48530d6`
+Implementation baseline: `codex/website-owner-incident-reconcile` at `577dae56a653913d51aa5baa772a92323acde38e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

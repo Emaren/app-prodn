@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a49ae3478fb1ee0ee543040918ffb2e23006a096aa5a7f2b9052a3fc52e3829a",
+      "sha256": "8e5e0c4259c0b5efba10438820f7d33988a7f418ef243b4bb5d5c7cf27af57ba",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2330,7 +2330,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/website-owner-incident-reconcile",
-    "commit": "9f9363c38731f1b85d78878ae4a4365fa48530d6"
+    "commit": "577dae56a653913d51aa5baa772a92323acde38e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
