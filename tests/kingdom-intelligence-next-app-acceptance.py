@@ -25,6 +25,7 @@ from playwright.async_api import async_playwright
 ROUTE = "/kingdom-intelligence"
 API = "/api/kingdom-intelligence/live-recovery"
 SPEED_POST = "/api/speed/sample"
+PRESENCE_MUTATION = "/api/kingdom-presence/anonymous-state"
 # The shared SpeedOS SpeedSample TS contract. Never accept arbitrary POST fields.
 SPEED_FIELDS = frozenset("""
 sample_id occurred_at route traffic_visitor_id traffic_session_id
@@ -35,6 +36,43 @@ long_task_count long_task_max_ms long_task_total_ms viewport_width viewport_heig
 effective_connection_type connection_rtt_ms downlink_mbps save_data
 valid_for_aggregation invalid_reason visibility_tainted details
 """.split())
+
+def known_blocked_living_kingdom_v1(request, url, host_port, body):
+    """Only identify the existing public-shell v1 shape; NEVER forward writes."""
+    if (url.scheme != "http" or url.hostname != "127.0.0.1" or
+            url.port != host_port or url.path != PRESENCE_MUTATION or url.query or
+            request.headers.get("content-type", "").split(";")[0].strip() != "application/json" or
+            not isinstance(body, dict) or type(body.get("protocol")) is not int or body["protocol"] != 1):
+        return False
+    tab = body.get("tabId")
+    seq = body.get("seq")
+    if (not isinstance(tab, str) or re.fullmatch(r"[A-Za-z0-9_-]{8,64}", tab) is None or
+            type(seq) is not int or seq < 0 or seq > 2**53 - 1):
+        return False
+    if request.method == "DELETE":
+        return set(body) == {"protocol", "tabId", "seq"}
+    if request.method != "POST":
+        return False
+    if body.get("realmId") not in ("kingdom", "workshop"):
+        return False
+    if body.get("kind") == "state":
+        required = {"protocol", "kind", "tabId", "seq", "realmId",
+                    "depthBand", "motion", "visibility"}
+        keys = set(body)
+        if keys != required and keys != required | {"renewOnly"}:
+            return False
+        depth = body.get("depthBand")
+        return (type(depth) is int and 0 <= depth < 21 and
+                body.get("motion") in ("up", "down", "idle") and
+                body.get("visibility") in ("visible", "hidden") and
+                ("renewOnly" not in body or type(body["renewOnly"]) is bool))
+    if body.get("kind") == "door":
+        return (set(body) == {"protocol", "kind", "tabId", "seq", "realmId",
+                              "destinationRealmId"} and
+                body.get("destinationRealmId") in ("kingdom", "workshop") and
+                body["destinationRealmId"] != body["realmId"])
+    return False
+
 
 def classify_blocked_write(request, host_port):
     """Conservatively classify an attempt. ALL writes remain aborted by the guard."""
@@ -54,14 +92,21 @@ def classify_blocked_write(request, host_port):
         isinstance(fields, dict) and not unexpected and
         isinstance(fields.get("sample_id"), str) and
         re.fullmatch(r"SPD_[A-Za-z0-9_-]{8,100}", fields["sample_id"]) is not None and
-        fields.get("route") == ROUTE and
+        # This browser cohort also visits Workshop on the same loopback
+        # host. Classify only valid shared SpeedOS telemetry for these exact
+        # two routes; ALL writes still abort, and no payload is transmitted.
+        fields.get("route") in (ROUTE, "/workshop") and
         isinstance(fields.get("valid_for_aggregation"), bool) and
         isinstance(fields.get("visibility_tainted"), bool)
     )
+    known_presence = known_blocked_living_kingdom_v1(request, u, host_port, fields)
+    classification = ("shared_speedos_blocked" if speed_contract else
+                      "shared_living_kingdom_v1_blocked" if known_presence else
+                      "UNEXPECTED_WRITE_BLOCKED")
     return {
         "method": request.method, "path": u.path[:180],
-        "classification": "shared_speedos_blocked" if speed_contract else "UNEXPECTED_WRITE_BLOCKED",
-        "unexpected_field_names": unexpected,
+        "classification": classification,
+        "unexpected_field_names": [] if known_presence else unexpected,
         "submitted_field_names": sorted(keys),  # Names only, NO identifier values.
         "pseudonymous_id_fields_present": sorted(keys.intersection({
             "traffic_visitor_id", "traffic_session_id", "journey_session_id"
@@ -70,6 +115,33 @@ def classify_blocked_write(request, host_port):
         "sensitive_payload_values_logged": False,
         "transmitted": False,
     }
+def verify_blocked_mutation_classifier():
+    """Adversarial local-only contract cases; a recognized write is STILL aborted."""
+    class Request:
+        def __init__(self, method, path, payload):
+            self.method = method
+            self.url = "http://127.0.0.1:3138" + path
+            self.headers = {"content-type": "application/json"}
+            self.post_data = json.dumps(payload)
+
+    state = {"protocol": 1, "kind": "state", "tabId": "browserTabABC",
+             "seq": 2, "realmId": "workshop", "depthBand": 0,
+             "motion": "idle", "visibility": "visible", "renewOnly": False}
+    deletion = {"protocol": 1, "tabId": "browserTabABC", "seq": 3}
+    def verdict(method, path, payload):
+        return classify_blocked_write(Request(method, path, payload), 3138)["classification"]
+    assert verdict("POST", PRESENCE_MUTATION, state) == "shared_living_kingdom_v1_blocked"
+    assert verdict("DELETE", PRESENCE_MUTATION, deletion) == "shared_living_kingdom_v1_blocked"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "protocol": 2}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "protocol": True}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "realmId": "staking"}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "custody": "approve"}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", PRESENCE_MUTATION, {**state, "seq": True}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("POST", "/api/bets/wallet-errors", state) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("DELETE", PRESENCE_MUTATION, {**deletion, "extra": 1}) == "UNEXPECTED_WRITE_BLOCKED"
+    assert verdict("PUT", PRESENCE_MUTATION, state) == "UNEXPECTED_WRITE_BLOCKED"
+
+
 SOURCES = (
     "app/kingdom-intelligence/WarPulsePanel.tsx",
     "app/kingdom-intelligence/AgentConstellationPanel.tsx",
@@ -174,7 +246,8 @@ async def case(browser, args, mode, width, output):
                                     reduced_motion="reduce")
     page = await ctx.new_page()
     counts = {"recovery": 0, "blocked_external": 0, "blocked_write": 0,
-              "classified_shared_speedos": 0, "unexpected_writes": 0,
+              "classified_shared_speedos": 0, "classified_shared_presence": 0,
+              "unexpected_writes": 0,
               "times": [], "blocked_nonread_paths": [], "blocked_external_paths": []}
     errors, checks = [], {}
     page.on("pageerror", lambda e: errors.append(str(e)[:240]))
@@ -188,6 +261,8 @@ async def case(browser, args, mode, width, output):
             counts["blocked_nonread_paths"].append(attempt)
             if attempt["classification"] == "shared_speedos_blocked":
                 counts["classified_shared_speedos"] += 1
+            elif attempt["classification"] == "shared_living_kingdom_v1_blocked":
+                counts["classified_shared_presence"] += 1
             else:
                 counts["unexpected_writes"] += 1
             return await route.abort()  # Never fulfill or forward even a classified SpeedOS POST.
@@ -348,6 +423,47 @@ async def case(browser, args, mode, width, output):
         check("no_mobile_horizontal_overflow", layout["scroll"] <= layout["view"] + 2)
         check("reduced_motion_media", await page.evaluate(
               "matchMedia('(prefers-reduced-motion: reduce)').matches"))
+
+        # Workshop was absent from the integrated browser cohort despite
+        # consuming the same sanitized Intelligence source. Visit its REAL
+        # Next SSR page at both desktop and mobile widths. The fixture has no
+        # certified active runtime and does not report both P0/P1 counters.
+        # Assert UNKNOWN, not a counterfeit measured zero or exact source.
+        if mode == "terminal":
+            workshop_response = await page.goto(
+                args.origin + "/workshop", wait_until="domcontentloaded", timeout=60000)
+            check("workshop_real_next_http_200",
+                  workshop_response is not None and workshop_response.status == 200)
+            panel = page.locator("section[data-workshop-brain-panel]")
+            await panel.wait_for(timeout=30000)
+            panel_text = await panel.inner_text()
+            check("workshop_one_sanitized_brain_panel", await panel.count() == 1)
+            check("workshop_missing_p0_p1_unknown_not_zero",
+                  "P0=UNKNOWN P1=UNKNOWN" in panel_text)
+            check("workshop_source_not_self_certified",
+                  "Source exactness not proven" in panel_text)
+            limitation = panel.get_by_role(
+                "status", name="Kingdom operating evidence limitation")
+            check("workshop_operator_limitation_explained",
+                  await limitation.count() == 1 and
+                  "Recheck" in await limitation.inner_text())
+            check("workshop_unknown_active_agent_totals",
+                  "UNKNOWN active" in panel_text)
+            work_layout = await page.evaluate(
+                "({view:innerWidth,scroll:document.documentElement.scrollWidth})")
+            result["workshop_layout"] = work_layout
+            check("workshop_mobile_no_horizontal_overflow",
+                  work_layout["scroll"] <= work_layout["view"] + 2)
+            intelligence_link = panel.get_by_role(
+                "link", name="Open Kingdom Intelligence")
+            await intelligence_link.focus()
+            check("workshop_keyboard_link_focus",
+                  await intelligence_link.evaluate(
+                      "e=>document.activeElement===e"))
+            await intelligence_link.press("Enter")
+            await page.wait_for_url("**/kingdom-intelligence", timeout=15000)
+            check("workshop_keyboard_link_navigates",
+                  urlparse(page.url).path == "/kingdom-intelligence")
         check("no_browser_exceptions", not errors)
 
         result["navigation_plus_assertions_ms"] = round((time.perf_counter() - t0) * 1000, 2)
@@ -362,16 +478,18 @@ async def case(browser, args, mode, width, output):
         result["write_guard_evidence"] = {
             "no_attempted_write_requests": counts["blocked_write"] == 0,
             "all_attempts_blocked_from_transmission": True,
-            "classification_scope": "POST /api/speed/sample with strict SpeedSample schema and route only",
+            "classification_scope": "strict loopback SpeedSample and Living Kingdom v1 protocol only; all writes aborted",
             "shared_speedos_attempts": counts["classified_shared_speedos"],
+            "shared_living_kingdom_attempts": counts["classified_shared_presence"],
             "unexpected_attempts": counts["unexpected_writes"],
             "written_to_backend": 0,
             "safety_contract": "ZERO_UNEXPECTED_ATTEMPTS; ALL_ATTEMPTS_ABORTED",
         }
         check("no_unexpected_or_intelligence_owned_write_attempts",
               counts["unexpected_writes"] == 0)
-        check("shared_speedos_attempts_explicitly_accounted",
-              counts["classified_shared_speedos"] + counts["unexpected_writes"] == counts["blocked_write"])
+        check("shared_readside_write_attempts_explicitly_accounted",
+              counts["classified_shared_speedos"] + counts["classified_shared_presence"] +
+              counts["unexpected_writes"] == counts["blocked_write"])
         result["requests"] = counts
         result["pass"] = bool(checks) and all(checks.values()) and "error" not in result
         if not result["pass"]:
@@ -434,6 +552,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     result = {"status": "ERROR", "source_sha": args.sha, "production_attested": False}
     try:
+        verify_blocked_mutation_classifier()
         repo, build, source_blobs = preflight(args)
         (out / "BUILD_ID").write_text(build + "\n")
         result = asyncio.run(execute(args, build, source_blobs, out))
