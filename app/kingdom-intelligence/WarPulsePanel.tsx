@@ -134,8 +134,10 @@ export default function WarPulsePanel({
         {items.length ? (
           items.map((item) => {
             const expanded = expandedKey === item.key;
-            const recoveryItem =
-              item.current && item.system === "Recovery OS";
+            // A retained Recovery row must still render API availability/paused
+            // truth even when active-worker verification is intentionally false.
+            // This does NOT set item.current or authorize a live-process badge.
+            const recoveryItem = item.system === "Recovery OS";
             const recoveryLive =
               recoveryItem && liveRecovery?.available === true;
             const trustworthyLiveProgress =
@@ -248,7 +250,7 @@ export default function WarPulsePanel({
                   {item.label}
                 </div>
 
-                {item.current && effectiveProgress !== null ? (
+                {(item.current || recoveryItem) && effectiveProgress !== null ? (
                   <div className="mt-2">
                     <div className="h-1 overflow-hidden rounded-full bg-white/8">
                       <div
@@ -277,7 +279,7 @@ export default function WarPulsePanel({
                       </div>
                     ) : null}
                   </div>
-                ) : item.current && recoveryItem ? (
+                ) : recoveryItem ? (
                   <div className="mt-2">
                     <div className="relative h-1 overflow-hidden rounded-full bg-white/8">
                       {recoverySignal === "awaiting_sample" ? (
