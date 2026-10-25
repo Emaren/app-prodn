@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bbb749705d686ff48b71838482a092dc6ac24c4d4e9b63048f5e39302a3200ce",
+      "sha256": "0766a18f5cc0106a0ce5ff1e22d39a1e5de5a43e8455ddbc77cdade8f34be859",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2018,20 +2018,20 @@
         "ai-agents"
       ],
       "authority": "nonauthorizing-source-engineering",
-      "id": "aoe2war.app-prodn.website-nine-path-operator-commands",
+      "id": "aoe2war.app-prodn.website-ten-path-operator-commands",
       "owner": "aoe2war-web",
       "path": "docs/WEBSITE_NINE_PATH_OPERATOR_COMMANDS.md",
       "review_interval_days": 1,
       "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "79afb6597d14925444bb44c3880317694a93919904485a877e024fdba75af94c",
+      "sha256": "88c20e33917bc57f00f45b603fce0d4a0cb239fa18898a67f03a0fc35a2d53a3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
-      "title": "Held Nine-Path Website Protected Operator Commands",
+      "title": "Held Ten-Path Website Protected Operator Commands",
       "type": "runbook"
     },
     {
@@ -2047,7 +2047,7 @@
       "review_interval_days": 1,
       "reviewed_at": "2026-10-24",
       "sensitivity": "internal",
-      "sha256": "63b149941f796a96c44cf90c0ca2b442cd2d14f2267321c4f93d7c80c2858759",
+      "sha256": "fc75b76ee03dbde168cde53b3562a65bdc1eb34560e2defae485d121012dfa60",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2261,7 +2261,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-a/20261024-website-nine-path-operational-finish",
-    "commit": "dadde07f568292fe76501555a0a03e896fcd2135"
+    "commit": "01f844bc1ae8503cf56f32fce15be505d8dc5aab"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
