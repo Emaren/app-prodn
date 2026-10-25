@@ -77,13 +77,37 @@ class OwnerObserverTests(unittest.TestCase):
     def test_stale_future_and_expired_during_io_are_refused(self):
         value = fixture()
         with self.assertRaises(O.Hold): O.validate_observation(value, now=NOW+timedelta(seconds=91))
-        with self.assertRaises(O.Hold): O.validate_observation(value, now=NOW-timedelta(seconds=1))
+        # A small authenticated VPS clock lead must not block a fresh owner
+        # observation: the operator measured ~1.6s ahead, not 90s stale.
+        for lead in (timedelta(milliseconds=1), timedelta(seconds=1),
+                     timedelta(seconds=3), timedelta(seconds=5)):
+            with self.subTest(lead=lead):
+                self.assertIs(O.validate_observation(value, now=NOW-lead), value)
+        # The tolerance is deliberately bounded. Larger future stamps are
+        # untrusted; aged packets never receive a matching grace extension.
+        for lead in (timedelta(seconds=5, microseconds=1),
+                     timedelta(seconds=6), timedelta(minutes=1)):
+            with self.subTest(rejected_future=lead), self.assertRaises(O.Hold):
+                O.validate_observation(value, now=NOW-lead)
+        self.assertIs(O.validate_observation(value, now=NOW+timedelta(seconds=90)), value)
+        with self.assertRaises(O.Hold):
+            O.validate_observation(value, now=NOW+timedelta(seconds=90, microseconds=1))
         value["collection_started_at"] = "2026-10-25T02:59:19Z"
         with self.assertRaises(O.Hold): O.validate_observation(value, now=NOW)
         value=fixture(); value["collection_finished_at"]="2026-10-25T02:59:59Z"
         with self.assertRaises(O.Hold): O.validate_observation(value, now=NOW)
         # observe validates using current time AFTER the bounded SSH I/O returns.
         with patch.object(O, "_bounded_ssh", return_value=O.canonical(fixture())), patch.object(O, "datetime") as clock:
+            clock.now.return_value=NOW+timedelta(seconds=91)
+            with self.assertRaises(O.Hold): O.observe()
+
+    def test_live_observe_respects_bounded_remote_clock_lead_and_old_packet_expiry(self):
+        fresh=fixture()
+        with patch.object(O, "_bounded_ssh", return_value=O.canonical(fresh)), patch.object(O, "datetime") as clock:
+            clock.now.return_value=NOW-timedelta(seconds=3)
+            self.assertEqual(O.observe()["observed_at"], fresh["observed_at"])
+            clock.now.return_value=NOW-timedelta(seconds=6)
+            with self.assertRaises(O.Hold): O.observe()
             clock.now.return_value=NOW+timedelta(seconds=91)
             with self.assertRaises(O.Hold): O.observe()
 
