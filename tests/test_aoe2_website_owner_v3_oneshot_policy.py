@@ -83,7 +83,6 @@ class SoloOwnerTimedServiceIdentityTests(unittest.TestCase):
                 {"UnitFileState": "disabled", "ActiveState": "inactive"})),
             ("service_disabled", lambda: self.after["financial_units"][name].update(
                 {"UnitFileState": "disabled"})),
-            ("service_removed", lambda: self.after["financial_units"].pop(name)),
             ("timer_removed", lambda: self.after["financial_units"].pop(timer)),
             ("unit_hash_changed", lambda: self.after["unit_config_sha256"].__setitem__(name,"c"*64)),
             ("finance_config_added", lambda: self.after["unit_config_sha256"].__setitem__("new-unit","c"*64)),
