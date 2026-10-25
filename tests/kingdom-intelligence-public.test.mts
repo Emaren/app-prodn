@@ -258,7 +258,7 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
       {
         key: "source-authority-exact",
         label: "One source of truth",
-        status: "PASS",
+        status: "UNKNOWN",
       },
     ]);
 

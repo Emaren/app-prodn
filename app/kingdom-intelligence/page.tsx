@@ -367,18 +367,18 @@ export default async function KingdomIntelligencePage() {
         />
         <Stat
           label="Working now"
-          value={String(activeSystemCount)}
-          detail={attentionSystemCount + " system(s) waiting or under attention"}
+          value={data?.health?.observation?.status === "SOURCE_REPORTED" ? String(activeSystemCount) : "UNKNOWN"}
+          detail="Source-reported process observations · not independent agent certification"
         />
         <Stat
-          label="Certified finishes"
+          label="Reported finishes"
           value={numberLabel(data?.activity24h?.certifiedFinishes)}
-          detail={numberLabel(data?.activity24h?.finishRuns) + " Finish run(s) observed"}
+          detail={numberLabel(data?.activity24h?.finishRuns) + " bridge-reported Finish run(s) · not independent release certification"}
         />
         <Stat
           label="System doctor"
           value={data?.health?.doctorScore === null || data?.health?.doctorScore === undefined ? "—" : data.health.doctorScore + "/100"}
-          detail={(data?.health?.doctorStatus ?? "UNKNOWN") + " · P0 " + (data?.health?.p0 ?? "—") + " · P1 " + (data?.health?.p1 ?? "—")}
+          detail={(data?.health?.doctorStatus ?? "UNKNOWN") + " · P0 " + (data?.health?.p0 ?? "UNKNOWN") + " · P1 " + (data?.health?.p1 ?? "UNKNOWN") + " · BRIDGE REPORTED / NO INDEPENDENT CERTIFICATE"}
         />
       </section>
 
@@ -538,11 +538,11 @@ export default async function KingdomIntelligencePage() {
             icon={GitBranch}
             eyebrow="Release OS"
             title="Source Authority"
-            status={data?.source?.exact ? "PASS" : "ATTENTION"}
+            status={data?.source?.exact ? "PASS" : "UNKNOWN"}
             detail={
               data?.source
-                ? "Production " + (data.source.productionRelease ?? "—") + " · " + data.source.certificationStatus + ". Git, runtime and certification must agree."
-                : "Awaiting the next certified source observation."
+                ? "Bridge-reported production " + (data.source.productionRelease ?? "UNKNOWN") + " · independently " + data.source.certificationStatus + ". " + (data.diagnostics[0]?.explanation ?? "Awaiting authenticated active source and actual Next BUILD_ID.")
+                : "Awaiting independent release evidence."
             }
           />
           <ModuleCard

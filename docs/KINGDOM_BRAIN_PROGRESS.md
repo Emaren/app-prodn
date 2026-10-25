@@ -115,3 +115,46 @@ flowchart LR
 **Workshop-only implementation now reviewed separately:** `lib/workshopBrain.ts` and the existing Workshop panel preserve `p0/p1=null` when unavailable, stale, structurally invalid or contradictory, and show `UNKNOWN` rather than literal `null` or numerical zero. A valid *source-reported* measured zero remains zero. Workshop no longer treats the bridge self-asserted `source.exact`, `CERTIFIED` or positive global health as independently proved release success. The three Workshop views share this one SSR projection. This makes the consumer fail closed, but does **not** independently certify production.
 
 **Ownership / continued HOLD:** An authorized central integration owner must implement the shared source/build receipt read-side interface, integrate it with Agents and public health claims (without changing `lib/generalInspections/**` or `lib/kingdomIndex*` in Tab B), regenerate DocsV2 intentionally on exact reviewed integration ancestry, re-run source-bound CI and real Chromium on the final combined candidate, then separately qualify live runtime. These are not implied by a successful standalone Workshop PR.
+
+
+## 2026-10-25 — Renaissance Round Three: one bounded operational evidence/incident interface (DRAFT)
+
+**New source-owned pure contract:** `lib/kingdomOperationalDiagnostics.ts`. It is a *selector*, not a collector, database, health scorer, signatory, alert daemon or a new Brain. The existing `lib/kingdomIntelligenceEvidence.ts` remains the bridge observation parser. The new selector consumes the **sanitized** observation and emits at most eight typed `KingdomOperationalIncident` entries with source reason code, status (UNKNOWN/STALE/CONTRADICTORY/UNAVAILABLE/SOURCE_MISMATCH/BUILD_MISMATCH), owning dependency (`intelligence` or `release`, per `config/kingdom-brain-authorities.json`), affected routes, producing authority, SHA, optional actual-build claim, collection timestamp, evidence age, TTL, sanitized receipt URI (always `null` until separate authenticated public URI contract), precise failure explanation and an *informational* safe read-only next action. No browser-controlled command execution, network I/O, new filesystem scan, release mutation or financial action.
+
+**Pure source/build comparator:** `compareReportedToCertifiedRuntime(bridgeReport, externallySuppliedCertifiedRuntimeClaim, now)` requires valid **full** 40-hex production SHAs, actual (not `NEXT_PUBLIC_AOE2WAR_BUILD_VERSION`) Next BUILD_IDs, valid bounded timestamps and TTLs. It refuses absent/HELD certificates, malformed build IDs, future/expired samples and SHA/build disagreement. Even agreement returns `MATCH_REPORTED`, **never VERIFIED**, because equal user-supplied fields are not independently authenticated proof. Input `certified` must eventually come from a verified, bounded *existing protected release-controller active-runtime receipt*, not from the bridge or a public GET argument. That source and the independent artifact/runtime BUILD_ID proof remain a Central-owned integration requirement.
+
+**Operational data and route-flow:**
+
+```mermaid
+flowchart LR
+  CLI[Council / OS deterministic collector] --> BR[aoe2Os persisted bridge envelope]
+  BR --> I[kingdomIntelligenceEvidence pure sanitizer + TTL]
+  I --> D[kingdomOperationalDiagnostics source-owned incidents]
+  D --> API[/api/kingdom-intelligence public projection]
+  I --> API
+  API --> W[Workshop three view modes via workshopBrain]
+  API --> KI[Kingdom Intelligence SSR read-side]
+  Release[Protected release controller / real BUILD_ID] -. "not yet wired: independent receipt" .-> Join[Pure source/build comparator]
+  I --> Join
+  Join -. "source comparison only, never attestation" .-> D
+  Index[Kingdom Index scorer and certification] -. "separate / read only" .-> B[Kingdom Brain dependency atlas]
+  Inspections[General Inspections snapshots] -. "existing Agents join; no duplicate GET scan" .-> B
+  API -. "read-only status observations" .-> B
+  Graph[Authority registry nodes and edges / policy only] --> B
+```
+
+**Fail-closed changes in this draft:**
+- The public Intelligence adapter keeps `health.p0/p1=null` when source evidence is missing/stale/future/contradictory. True recorded 0 remains **0** and P1>0 against a P1-zero PASS invariant is now a contradiction.
+- `source.reportedExact` and `source.reportedCertificationStatus` retain bridge claims explicitly as *reports*, while `source.exact=false` and `source.certificationStatus=UNVERIFIED` until an independently authenticated active runtime witness exists. Source-authority and Finish-closure PASS invariants do not self-certify through the bridge.
+- Without usable health evidence, the public adapter cannot present a positive operating state, positive agent-running state/progress, current Replay/Speed status or Council directive. A source-reported clean observation can supply measured counters, but is **not** a release certificate.
+- `/kingdom-intelligence` labels process/doctor/Finish statistics as reported and refuses an independent Source Authority PASS; Workshop preserves `UNKNOWN` instead of zero for absent incidents, active-agent and invariant counts and displays an incident's owner, age/TTL, explanation and next safe read-only action.
+- A receiving-server envelope refresh cannot make an older producer capture healthy. Hidden-tab polling and client race controls remain with existing specialist #805 and #808; this change adds no polling.
+
+**Exact Central-owned integration blockers, kept intact:**
+1. **Index route provenance:** This candidate modifies the `/kingdom-intelligence` page, public Intelligence adapter transitive dependencies, `/workshop` panel and `lib/workshopBrain.ts`; the source registry must be recomputed for both routes and any other consumer reached via dependency closure on the **final accepted implementation tree**, not a hardcoded guessed fingerprint. The existing #890 drift of `/workshop` is real. **Tab B does not edit `config/kingdom-index-routes.json` or scoring.**
+2. **DocsV2:** Central owns intentional `python3 scripts/docs_v2_check.py --write --refresh-baseline` after accepting the exact combined implementation, reviewing any generated DocsV2 index/registry/catalog diff and committing only the authenticated results. Re-run the guard on the final docs-only head; do not bypass it or claim a docs-only commit is release certification.
+3. **Independent active production identity:** Central release/General Inspections owner must expose validated, already collected 40-hex active source, *actual* Next BUILD_ID, timestamp, TTL and authenticated receipt status via a bounded server-side adapter. An arbitrary `GeneralInspectionsSnapshot.releaseSha` and `buildVersion` by themselves are not enough to prove active runtime/build. Bind freshness/receipt authentication and reuse already materialized reads; no additional heavy public GET scan.
+4. **Cross-domain join:** Central owner of `lib/kingdomAgentsPublic.ts` must require `intelligence.health.observation.status === "SOURCE_REPORTED"` **and independent runtime identity** before publishing positive system-process/current health status; existing 40-hex vs 12-hex SHA prefix arbitration is valuable but only partial. Brain client #808 may project public incident summaries from the existing Intelligence API *after its writer completes*; its current live index/agents/patrol/census classification is preserved here. No new worker and no authenticated system/financial mutation.
+5. **Certification and runtime:** exact-head Node, PostgreSQL, TypeScript/lint, Next and DocsV2 guards, bounded real Chrome (native tab hide/resume vs simulated visibility clearly distinguished), and independent deployed source/BUILD_ID/runtime proof plus specialty Index gates are still required. `MATCH_REPORTED` is not 100/100 and does not authorize deployment.
+
+**Other known legacy projection defaults left for separately reviewed ownership:** Workspace and storage-campaign fields elsewhere in `lib/kingdomIntelligencePublic.ts` still coerce some missing **non-P0/P1** values to zero; they must not be used as cross-domain positive assurance or certified source identity. These are not silently counted as verified in this draft. No giant refactor, scorer rewrite or hidden automatic operations.
