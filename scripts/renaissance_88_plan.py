@@ -28,17 +28,17 @@ def sha(path:Path)->str:
         raise ValueError("Missing or unsafe source policy input: "+str(path))
     return hashlib.sha256(path.read_bytes()).hexdigest()
 def literal_public_redirect(root:Path,entrypoint:str,public_routes:set[str])->str|None:
-    """An exact, source-declared Next redirect, not an alias guessed by Chrome."""
+    """Qualify redirect-only page modules, never conditionally executed redirects."""
     file=root/entrypoint
     if file.is_symlink() or not file.is_file() or file.stat().st_size>2_000_000:
         raise ValueError("Unsafe public entrypoint for redirect classification: "+entrypoint)
     body=file.read_text(encoding="utf8")
-    # Only trivial module-level redirect-only pages are accepted.
-    if not re.search(r'import\s*\{\s*redirect\s*\}\s*from\s*["\']next/navigation["\']',body):
-        return None
-    target=re.search(r'\bredirect\(\s*["\'](/[^"\']{1,160})["\']\s*\)',body)
-    if target is None:return None
-    url=target.group(1)
+    pattern=(r'\s*import\s+\{\s*redirect\s*\}\s+from\s+["\']next/navigation["\'];\s*'
+             r'export\s+default\s+function\s+[A-Za-z_]\w*\s*\(\s*\)\s*\{\s*'
+             r'redirect\(\s*["\'](?P<destination>/[^"\']{1,160})["\']\s*\);\s*\}\s*')
+    match=re.fullmatch(pattern,body)
+    if match is None:return None
+    url=match.group("destination")
     if any(x in url for x in ("?","%","\\","//")):return None
     bare=url.split("#",1)[0]
     if bare not in public_routes:raise ValueError("Redirect leaves canonical public Index: "+entrypoint)
