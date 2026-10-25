@@ -183,7 +183,7 @@
     "href": "/kingdom-intelligence",
     "label": "Kingdom Intelligence",
     "district": "citadel",
-    "sourceTree": "src-d35c2832feb098e2"
+    "sourceTree": "src-297cf550a2564a42"
   },
   {
     "href": "/kingdom-progress",
@@ -519,7 +519,7 @@
     "href": "/workshop",
     "label": "Workshop",
     "district": "forge",
-    "sourceTree": "src-348732576fe2d0e4"
+    "sourceTree": "src-3b1ae2e17c418e7d"
   },
   {
     "href": "/zodiac",
