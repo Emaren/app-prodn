@@ -12,7 +12,7 @@ const vault="wolo1"+"q".repeat(38);
 const base:ProspectiveEpochManifest={
  schema:"aoe2war.satchel.prospective-epoch.v1",chain_id:"wolo-1",
  epoch_id:"isolated_future_epoch",start_height:"3000000",
- start_app_hash:hash("future-root"),vault_address:vault,source_commit:hash("source"),
+ start_app_hash:hash("future-root"),vault_address:vault,source_commit:"c".repeat(40),
  legacy_claims_digest:hash("immutable"),legacy_liability_containment_digest:hash("held"),
  custody_segregation_digest:hash("new-vault"),hd_de_snapshot_digest:hash("snapshots"),
  created_at_utc:"2026-10-24T21:00:00.000Z",expires_at_utc:"2026-10-24T21:01:00.000Z",
@@ -54,4 +54,13 @@ test("reject changed chain root, signing scope, vault, timestamp and duplicate s
  assert.throws(()=>go(base,f.make(),duplicate),/duplicate_or_untrusted_review_key|signature/);
  assert.throws(()=>go({...base,extra:true},f.make()),/noncanonical_fields/);
  assert.throws(()=>go(base,[]),/five_distinct_reviews/);
+});
+test("Git source identity is an exact nonzero SHA-1, never an arbitrary evidence digest",()=>{
+ const f=fixture();
+ for(const source_commit of [hash("not a Git revision"),"0".repeat(40),"C".repeat(40),"c".repeat(39)]){
+  const manifest={...base,source_commit};
+  assert.throws(()=>reviewProspectiveEpoch({manifest,signatures:f.make(manifest),
+   trustedReviewerPublicKeys:f.keys,expectedSourceCommit:source_commit,
+   expectedVault:vault,nowMs:now}),/untrusted_epoch/);
+ }
 });

@@ -9,6 +9,7 @@
 import {createPublicKey, verify} from "node:crypto";
 
 const HEX64=/^[a-f0-9]{64}$/;
+const GIT_SHA=/^[a-f0-9]{40}$/;
 const HEXSIG=/^[a-f0-9]{128}$/;
 const HEIGHT=/^[1-9][0-9]{0,18}$/;
 const WOLO_ADDRESS=/^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
@@ -60,7 +61,8 @@ export function reviewProspectiveEpoch(input:{
  if(x.schema!=="aoe2war.satchel.prospective-epoch.v1"||x.chain_id!=="wolo-1" ||
   !/^[a-zA-Z0-9_-]{12,80}$/.test(x.epoch_id) || !HEIGHT.test(x.start_height) ||
   !WOLO_ADDRESS.test(x.vault_address) ||
-  ![x.start_app_hash,x.source_commit,x.legacy_claims_digest,
+  !GIT_SHA.test(x.source_commit) || x.source_commit==="0".repeat(40) ||
+  ![x.start_app_hash,x.legacy_claims_digest,
     x.legacy_liability_containment_digest,x.custody_segregation_digest,
     x.hd_de_snapshot_digest].every(v=>typeof v==="string"&&HEX64.test(v)) ||
   x.source_commit!==input.expectedSourceCommit ||

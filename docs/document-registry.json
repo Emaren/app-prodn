@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-24",
+      "reviewed_at": "2026-10-25",
       "sensitivity": "internal",
-      "sha256": "bf76d6e7dd9fcad5c1bbd50a1c32ac99fc5cc97a3766b646c2ee89dd0d20e895",
+      "sha256": "7660f3120278c9c7fd9b3c539c2b2dfaa046b31a5d183ca49316223e3ab494f2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 — presentation and release contract",
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "108b76340fdc34680805b9118645d6bbf27ce2f10d1384849f56062f5d1b32ca",
+      "sha256": "7c144049cd2a1c3388a32b8a5d59ffa2fb8a4fd8c73f36bed6ae28ebedeeacc2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1316,7 +1316,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1338,7 +1338,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1406,7 +1406,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1453,7 +1453,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1545,7 +1545,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1640,7 +1640,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1961,7 +1961,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2186,7 +2186,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2214,8 +2214,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/held-prospective-epoch-credit-20261024",
-    "commit": "f38a71bc67f61cf9d1116718eab21ef4a7e13fe1"
+    "branch": "codex/closure-funded-lifecycle",
+    "commit": "0457edc7e5be1ce8182c6c2aeb542d01eaf37b1e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
