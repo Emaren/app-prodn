@@ -247,6 +247,12 @@ export default function WarPulsePanel({
                 >
                   {item.label}
                 </div>
+                {item.system === "Recovery OS" && !item.current ? (
+                  <div role="status" className="mt-2 text-[9px] uppercase tracking-[0.14em] text-cyan-100/60">
+                    <span>Snapshot · historical status only; progress unverified</span>
+                    <span className="block">{recoveryNotice}</span>
+                  </div>
+                ) : null}
 
                 {item.current && effectiveProgress !== null ? (
                   <div className="mt-2">
