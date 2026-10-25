@@ -40,16 +40,19 @@ export function check(
   options?: { ratio?: InspectionRatio; evidenceAt?: string | null },
 ): InspectionCheck {
   const earned = points(weight, fraction);
+  const creditState = stateForFraction(earned / weight);
+  const ratioEvidenceState = options?.ratio ? ratioState(options.ratio) : creditState;
+  const worstState = creditState === "red" || ratioEvidenceState === "red"
+    ? "red"
+    : creditState === "amber" || ratioEvidenceState === "amber" ? "amber" : "green";
   return {
     id,
     label,
     weight,
     earned,
-    // A historic 20/20 receipt can be numerically perfect but temporally invalid.
-    // Status cannot remain green when current credited points were withheld.
-    state: earned + 0.001 < weight
-      ? stateForFraction(earned / weight)
-      : options?.ratio ? ratioState(options.ratio) : "green",
+    // Never color expired 20/20 evidence green after its points were withheld;
+    // likewise do not mask a failing cohort behind a rounded point score.
+    state: worstState,
     detail,
     ratio: options?.ratio,
     evidenceAt: options?.evidenceAt,
