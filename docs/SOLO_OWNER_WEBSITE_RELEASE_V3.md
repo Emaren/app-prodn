@@ -195,3 +195,39 @@ branch/ninth migration is included. The owner can later authorize a separately
 versioned financial cutover only after the objective journal/transaction,
 solvency, writer-containment and recovery checks actually pass. Council absence
 is no blockchain defect. Actual financial evidence gaps still matter.
+
+## October 25 live release and historical outer HOLD
+
+Product `6be434c00469afa4acb0623715c3bcf724f927f4` is already live with
+BUILD_ID `xqX6Oi-zV5gSKH1kIC4zC`. The owner genuinely signed and consumed both
+phases through controller `74047f8b5e2a87b495ac3466eb17b447a44d4cb5`.
+The inner activation receipt is CERTIFIED; the outer PRE_ACTIVATE journal
+remains CONSUMED with NULL result after final observer/comparator failure.
+Never replay, reset or force-complete this authorization. See
+[the incident dossier](WEBSITE_OWNER_HOLD_RECONCILIATION.md).
+
+Future source adds private, immutable evidence under the existing private state
+root's `evidence-v1/<attempt>/<phase>/` directory. Before dispatch it records
+both preflight observations; immediately after return it records the protected
+result, before attempting the final observer. Each complete event is fsynced,
+atomically linked without replacement, and its directory fsynced. Final raw
+observations and structured JSON-pointer differences are retained before HOLD.
+Incomplete temporary files after an abrupt crash are evidence, not permission
+to rerun. Evidence I/O failure prevents dispatch; failure after dispatch leaves
+the nonce CONSUMED. Freshness and owner expiry are checked again after evidence
+fsync. Existing Wolo/timer/config comparison rules are unchanged.
+
+`scripts/aoe2_website_owner_evidence_v1.py` is a separate **read-only** assessment:
+it opens SQLite with `mode=ro`/`query_only`, verifies the original packet against
+the consumed journal and public owner signature, checks the exact protected
+receipt checksum and artifact/source/build/stage lineage, and obtains current
+server-owned SSH observations. Archival signature verification at signed issue
+time does not renew its expiry or create any execution authority. This command
+never dispatches, signs, consumes, completes or repairs a request. Its JSON
+separates protected certification, historical owner HOLD, current same-owner
+boundary match, and financial nonauthorization. Missing engine receipt, unknown
+runtime, rollback, stale evidence or drift cannot imply successful completion.
+A checksum verifies preserved bytes, not independent chain/finance authority.
+
+An owner may retain its JSON as a *new* restricted reconciliation receipt. Do
+not overwrite original owner packets, journal, snapshots or engine receipts.

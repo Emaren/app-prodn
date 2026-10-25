@@ -475,6 +475,47 @@ os._exit(23)  # dispatch result/transport is lost; no COMPLETE receipt is manufa
         self.assertEqual(["one protected dispatch"], calls)
         self.assertFalse(locked)
 
+    def test_certified_dispatch_then_boundary_hold_preserves_result_and_both_observations(self):
+        stage = self.completed_stage()
+        context = self.activation_context()
+        payload = self.issue("PRE_ACTIVATE", context=context, attempt_id=stage["attempt_id"])
+        protected_result = {"status": "CERTIFIED", "release_sha": AUTH.MAIN_SOURCE_SHA, "wolo_mutated": False}
+        packet = self.packet(payload)
+        after = copy.deepcopy(self.observation)
+        after["immutable"]["test_only_runtime_digest"] = "0" * 64
+        after["website"].update(source_sha=AUTH.MAIN_SOURCE_SHA, build_id=context["build_id"])
+        observations = iter([self.observation, self.observation, after])
+        @contextmanager
+        def lease():
+            yield
+        real_key, real_consume = AUTH.load_owner_key, AUTH.consume_request
+        modules = {
+            "aoe2_release": types.SimpleNamespace(deployment_lock=lease, collect=lambda: {}),
+            "aoe2_website_owner_observer_v3": types.SimpleNamespace(
+                observe=lambda: copy.deepcopy(next(observations)), validate_observation=lambda *_a, **_kw: None),
+        }
+        with patch.dict(sys.modules, modules), patch.dict(os.environ), \
+             patch.object(AUTH, "PUBLIC_KEY", self.owner), patch.object(AUTH, "STATE_ROOT", self.state), \
+             patch.object(AUTH, "moment", side_effect=lambda now=None: self.now if now is None else now), \
+             patch.object(AUTH, "release_context", return_value=copy.deepcopy(context)), \
+             patch.object(AUTH, "protected_dispatch", return_value=protected_result) as dispatcher, \
+             patch.object(AUTH, "load_owner_key", side_effect=lambda path, **_kw: real_key(path, allow_test_root=True)), \
+             patch.object(AUTH, "consume_request", side_effect=lambda packet, **_kw: real_consume(
+                 packet, state_root=self.state, public_key=self.owner, now=self.now, allow_test_root=True)):
+            with self.assertRaisesRegex(AUTH.Hold, "financial/Wolo boundary changed"):
+                AUTH.operation("activate", self.root, packet=packet, stage_receipt=self.root / "offline-stage.json")
+            dispatcher.assert_called_once()
+        events = [json.loads(p.read_bytes()) for p in self.state.rglob("event-*.json")]
+        by_kind = {e["event"]: e["data"] for e in events}
+        self.assertEqual(protected_result, by_kind["dispatch-returned"]["protected_release_result"])
+        self.assertEqual(self.observation, by_kind["before-dispatch"]["observation"])
+        self.assertEqual(after, by_kind["after-dispatch"]["observation"])
+        self.assertEqual("/test_only_runtime_digest", by_kind["verification-held"]["differences"][0]["path"])
+        with closing(sqlite3.connect(self.state / "owner-v3.sqlite3")) as cx:
+            self.assertEqual(("CONSUMED", None), cx.execute(
+                "SELECT state,result FROM requests_v3 WHERE attempt_id=? AND phase=?",
+                (payload["attempt_id"], payload["phase"])).fetchone())
+
     def test_expiry_inside_durable_consumption_prevents_dispatch_but_retains_consumed_nonce(self):
         for boundary in ("runtime-observation", "owner-authorization"):
             with self.subTest(boundary=boundary):
@@ -517,6 +558,45 @@ os._exit(23)  # dispatch result/transport is lost; no COMPLETE receipt is manufa
                 self.assertEqual(("CONSUMED", AUTH.digest(packet), None), row)
                 with self.assertRaisesRegex(AUTH.Hold, "consumed"):
                     self.consume(packet)
+
+    def test_evidence_fsync_cannot_lend_expired_proof_to_dispatch(self):
+        from aoe2_website_owner_evidence_v1 import append_event
+        payload = self.issue()
+        packet = self.packet(payload)
+        clock = [self.now]
+        @contextmanager
+        def lease():
+            yield
+        def validate(value, *, max_age_seconds=90, **_kwargs):
+            AUTH.require(clock[0] - AUTH.utc_time(value["observed_at"]) <= timedelta(seconds=max_age_seconds),
+                         "runtime observation expired during evidence fsync")
+        def delayed_event(*args, **kwargs):
+            result = append_event(*args, **kwargs)
+            if args[3] == "dispatch-starting":
+                clock[0] += timedelta(seconds=91)
+            return result
+        modules = {
+            "aoe2_release": types.SimpleNamespace(deployment_lock=lease, collect=lambda: {}),
+            "aoe2_website_owner_observer_v3": types.SimpleNamespace(
+                observe=lambda: copy.deepcopy(self.observation), validate_observation=validate),
+        }
+        real_key, real_consume = AUTH.load_owner_key, AUTH.consume_request
+        with patch.dict(sys.modules, modules), patch.dict(os.environ), \
+             patch.object(AUTH, "PUBLIC_KEY", self.owner), patch.object(AUTH, "STATE_ROOT", self.state), \
+             patch.object(AUTH, "moment", side_effect=lambda now=None: clock[0] if now is None else now), \
+             patch.object(AUTH, "release_context", return_value=copy.deepcopy(self.context)), \
+             patch.object(AUTH, "protected_dispatch") as dispatch, \
+             patch("aoe2_website_owner_evidence_v1.append_event", side_effect=delayed_event), \
+             patch.object(AUTH, "load_owner_key", side_effect=lambda path, **_kw: real_key(path, allow_test_root=True)), \
+             patch.object(AUTH, "consume_request", side_effect=lambda packet, **_kw: real_consume(
+                 packet, state_root=self.state, public_key=self.owner, now=clock[0], allow_test_root=True)):
+            with self.assertRaisesRegex(AUTH.Hold, "expired during evidence fsync"):
+                AUTH.operation("stage", self.root, packet=packet)
+            dispatch.assert_not_called()
+        with closing(sqlite3.connect(self.state / "owner-v3.sqlite3")) as cx:
+            self.assertEqual(("CONSUMED", None), cx.execute(
+                "SELECT state,result FROM requests_v3 WHERE attempt_id=? AND phase=?",
+                (payload["attempt_id"], payload["phase"])).fetchone())
 
     def test_stale_final_observation_after_context_io_blocks_dispatch_and_preserves_nonce(self):
         payload = self.issue()
