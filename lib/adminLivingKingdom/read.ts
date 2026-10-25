@@ -51,7 +51,7 @@ export async function loadObservatory(prisma:PrismaClient,opts:{days:WindowDays;
  const selected=users.slice(0,COHORT_SIZE);
  // No global newest-N cap: each user receives an equally bounded indexed query.
  const rows=await Promise.all(selected.map(user=>prisma.userActivityEvent.findMany({
-  where:{userId:user.id,createdAt:{gte:since},type:{in:["page_view","click"]}},
+  where:{userId:user.id,createdAt:{gte:since,lte:now},type:{in:["page_view","click"]}},
   orderBy:[{createdAt:"desc"},{id:"desc"}],take:PER_USER_LIMIT+1,
   select:{id:true,type:true,path:true,label:true,metadata:true,createdAt:true}
  })));
@@ -81,7 +81,7 @@ export async function loadWarriorHistory(prisma:PrismaClient,opts:{uid:string;da
   select:{id:true,uid:true,inGameName:true,steamPersonaName:true,lastSeen:true,createdAt:true}});
  if(!user)return null;
  const rows=await prisma.userActivityEvent.findMany({
-  where:{userId:user.id,createdAt:{gte:sinceFor(opts.days,opts.now??new Date())},
+  where:{userId:user.id,createdAt:{gte:sinceFor(opts.days,opts.now??new Date()),lte:opts.now??new Date()},
    type:{in:["page_view","click"]},...(opts.cursor?{id:{lt:opts.cursor}}:{})},
   orderBy:[{createdAt:"desc"},{id:"desc"}],take:HISTORY_PAGE+1,
   select:{id:true,type:true,path:true,label:true,metadata:true,createdAt:true}
