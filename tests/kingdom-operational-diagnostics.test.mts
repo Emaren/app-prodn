@@ -189,7 +189,7 @@ test("consumer wiring is read-only and Brain policy remains source/freshness gra
   const api = await readFile(new URL("../app/api/kingdom-intelligence/route.ts", import.meta.url), "utf8");
   assert.match(page, /NO INDEPENDENT CERTIFICATE/);
   assert.match(workshop, /primaryIncident\.safeAction/);
-  assert.match(workshop, /evidence\.ageSeconds/);
+  assert.match(workshop, /provenance\.ageSeconds/);
   assert.match(api, /loadPublicKingdomIntelligence\(\)/);
   assert.match(client, /brainSignalPolicy/);
   assert.doesNotMatch(client, /fetch\([^\n]*method:\s*["']POST/);
