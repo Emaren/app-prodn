@@ -19,6 +19,7 @@ import { createHash } from "node:crypto";
 import {withdrawalReservationDigest,withdrawalOwnerMandateDigest,verifyIndependentWithdrawalApproval,readWithdrawalReviewerKey,
  type WithdrawalOwnerMandate,type IndependentWithdrawalApproval,type DurableWithdrawalEconomics} from "./warSatchelWithdrawalReview.ts";
 import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
+import {satchelWatcherConsumerIdentityIssue} from "./warSatchelWatcherConsumerEvidence.ts";
 /**
  * War Satchel C4: database-atomic, source-idempotent financial posting.
  *
@@ -469,6 +470,9 @@ export async function reserveForWatcherExecution(
       select: {
         id: true, status: true, marketType: true, bookPhase: true,
         integrityStatus: true, propositionHash: true,
+        sourceRosterHash: true, sourceParseIteration: true,
+        teamResolutionStatus: true, teamConfidence: true,
+        leftRosterSnapshot: true, rightRosterSnapshot: true,
         scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
         closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
         winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
@@ -481,6 +485,10 @@ export async function reserveForWatcherExecution(
         market.propositionHash !== exec.propositionHash) {
       stop("canonical_watcher_market_not_live");
     }
+    const identityIssue=satchelWatcherConsumerIdentityIssue({
+      execution:exec,owner:exec.preset.user,market,
+    });
+    if(identityIssue)stop(identityIssue);
     const windowIssue = satchelWatcherSpendWindowIssue({ market,
       executionCreatedAt: exec.createdAt, signedAt: mandate.signedAt, now: new Date() });
     if (windowIssue) stop(windowIssue);
@@ -496,6 +504,7 @@ export async function reserveForWatcherExecution(
       });
       if (!desync || desync.bookPhase !== "funded" ||
           desync.status !== "live" || desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
+          desync.linkedSessionKey !== market.linkedSessionKey ||
           desync.propositionHash !== market.propositionHash ||
           desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");
@@ -733,23 +742,31 @@ export async function markSatchelSubmissionAttempt(
     if(permit.id!==a.snapshot.consentId || permit.originalMandate?.challengeText!==a.snapshot.challengeText)stop("wager_review_consent_changed_before_attempt");
     const market = await tx.betMarket.findUnique({
       where: { id: execution.winnerMarketId },
-      select: { status: true, integrityStatus: true, propositionHash: true,
+      select: { id: true, status: true, integrityStatus: true, propositionHash: true,
+        sourceRosterHash: true, sourceParseIteration: true,
+        teamResolutionStatus: true, teamConfidence: true,
+        leftRosterSnapshot: true, rightRosterSnapshot: true,
         marketType: true, bookPhase: true, scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
         closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
         winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
         settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
     });
-    if (!market || market.bookPhase !== "funded" || market.status !== "live" ||
+    if (!market || market.bookPhase !== "funded" || market.status !== "live" || market.marketType !== "winner" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== execution.propositionHash) {
       stop("watcher_proposition_not_live_before_broadcast");
     }
+    const identityIssue=satchelWatcherConsumerIdentityIssue({
+      execution,owner:execution.preset.user,market,
+    });
+    if(identityIssue)stop(identityIssue);
     const windowIssue = satchelWatcherSpendWindowIssue({ market,
       executionCreatedAt: execution.createdAt, signedAt: permit.signedAt!, now });
     if (windowIssue) stop(windowIssue);
     if (execution.desyncMarketId !== null) {
       const desync = await tx.betMarket.findUnique({ where: { id: execution.desyncMarketId } });
       if (!desync || desync.bookPhase !== "funded" ||
+          desync.marketType !== "desync" || desync.linkedSessionKey !== market.linkedSessionKey ||
           desync.parentMarketId !== execution.winnerMarketId ||
           desync.propositionHash !== execution.propositionHash || desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");

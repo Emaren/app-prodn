@@ -244,6 +244,34 @@ test("100-WOLO funded application lifecycle across twelve canonical Watcher tick
       }
       await ledger.attachIndependentSatchelWagerReview(db.prisma,{operationId:a.operationId,ownerUserId:seeded.owner.id,approval});
       if(n===1){
+        for(const changed of ["owner_steam","session","owner_side"] as const){
+          await t.test("reviewed wager rejects current "+changed+" drift before first send",async()=>{
+            const original=await db.prisma.betMarket.findUniqueOrThrow({where:{id:s.market.id}});
+            if(changed==="owner_steam")await db.prisma.user.update({where:{id:seeded.owner.id},data:{steamId:"76561198000000009"}});
+            if(changed==="session")await db.prisma.betMarket.update({where:{id:s.market.id},data:{linkedSessionKey:"watcher:another-game"}});
+            if(changed==="owner_side")await db.prisma.betMarket.update({where:{id:s.market.id},data:{
+              leftRosterSnapshot:original.rightRosterSnapshot as Prisma.InputJsonValue,
+              rightRosterSnapshot:original.leftRosterSnapshot as Prisma.InputJsonValue,
+            }});
+            // Fail the disposable transaction if it reaches the durable fence;
+            // rollback preserves the original reservation even on the old bug.
+            const probe=db.prisma.$extends({query:{satchelFundedReservation:{async updateMany(){
+              throw Error("ISOLATED_UNSAFE_SUBMISSION_FENCE_REACHED");
+            }}}});
+            try{
+              await assert.rejects(ledger.markSatchelSubmissionAttempt(probe as unknown as typeof db.prisma,{
+                executionId:execution.id,ownerUserId:seeded.owner.id,
+                ticketRequestId:a.operationId,reservation:approval}),/watcher_consumer_/);
+              assert.equal(senderCalls.get(a.operationId),undefined);
+              assert.equal((await db.prisma.satchelFundedReservation.findUniqueOrThrow({where:{executionId:execution.id}})).status,"reserved");
+            }finally{
+              await db.prisma.user.update({where:{id:seeded.owner.id},data:{steamId:seeded.owner.steamId}});
+              await db.prisma.betMarket.update({where:{id:s.market.id},data:{linkedSessionKey:original.linkedSessionKey,
+                leftRosterSnapshot:original.leftRosterSnapshot as Prisma.InputJsonValue,
+                rightRosterSnapshot:original.rightRosterSnapshot as Prisma.InputJsonValue}});
+            }
+          });
+        }
         await t.test("equal-value canonical leg substitution is refused before the durable send fence",async()=>{
           const leg=a.snapshot.legs[0];
           await db.prisma.betStakeLeg.update({where:{id:leg.id},data:{side:leg.side==="left"?"right":"left"}});
