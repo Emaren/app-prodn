@@ -10,6 +10,7 @@ import {authenticateOwnerDeposit,isAuthenticatedWarSatchelDeposit,authenticatedW
 import {authenticateWarSatchelBank,authenticatedWarSatchelBankFreshAt} from "../lib/warSatchelAuthenticatedBank.ts";
 import {creditRecordedSatchelProof,readRecordedSatchelCredit} from "../lib/warSatchelFundedLedger.ts";
 import {createHash} from "node:crypto";
+import {requireDurableProspectiveFundingEpoch} from "../lib/warSatchelDurableEpoch.ts";
 import {seedIsolatedProspectiveEpoch} from "./fixtures/satchel-prospective-epoch.mts";
 
 test("real signed SDK deposit authenticates then credits the linked HD owner exactly once", {skip:process.env.RUN_SATCHEL_REAL_CREDIT_TESTS!=="1"},async t=>{
@@ -153,6 +154,12 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
     assert.equal(authenticatedWarSatchelBankFreshAt(bank),true);
     assert.equal(authenticatedWarSatchelBankFreshAt({...bank}),false);
     const input={ownerUserId:1,ownerUid:i.OwnerID,proofCandidateId:BigInt(1),expectedTxHash:o.TxHash,authenticatedDeposit:authenticated,bank};
+    await t.test("no approved epoch cannot offer a fundable deposit quote",async()=>{
+      await assert.rejects(db!.$transaction(tx=>requireDurableProspectiveFundingEpoch(tx,{
+        vault:i.Vault,intentCreatedAt:new Date(i.CreatedAt),bank,
+      })),/one_operator_approved_epoch_required/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_balances")).rows[0].count,"0");
+    });
     await t.test("no approved future epoch refuses credit without touching balances",async()=>{
       await assert.rejects(creditRecordedSatchelProof(db!,input),/one_operator_approved_epoch_required/);
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
@@ -168,9 +175,24 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
       }
     });
     await seedIsolatedProspectiveEpoch(sql!,{vault:i.Vault,txHeight:BigInt(o.Height),intentCreatedAt:new Date(i.CreatedAt)});
+    await t.test("matching future epoch permits a noncrediting quote while mismatches refuse",async()=>{
+      await db!.$transaction(tx=>requireDurableProspectiveFundingEpoch(tx,{
+        vault:i.Vault,intentCreatedAt:new Date(i.CreatedAt),bank,
+      }));
+      await assert.rejects(db!.$transaction(tx=>requireDurableProspectiveFundingEpoch(tx,{
+        vault:i.Sender,intentCreatedAt:new Date(i.CreatedAt),bank,
+      })),/funding_epoch_missing_or_conflicting/);
+      await assert.rejects(db!.$transaction(tx=>requireDurableProspectiveFundingEpoch(tx,{
+        vault:i.Vault,intentCreatedAt:new Date(0),bank,
+      })),/funding_epoch_missing_or_conflicting/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+    });
     await t.test("historical funded balance, even zero-valued, forbids a clean new-money credit",async()=>{
       await sql!.query("INSERT INTO war_satchel_funded_balances(owner_user_id,available_uwolo) VALUES(1,0)");
       try{
+        await assert.rejects(db!.$transaction(tx=>requireDurableProspectiveFundingEpoch(tx,{
+          vault:i.Vault,intentCreatedAt:new Date(i.CreatedAt),bank,
+        })),/legacy_funded_estate_requires_segregation/);
         await assert.rejects(creditRecordedSatchelProof(db!,input),/legacy_funded_estate_requires_segregation/);
         assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"0");
       }finally{
