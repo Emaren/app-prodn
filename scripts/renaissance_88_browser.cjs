@@ -240,7 +240,21 @@ async function run(){
         const scan=await Promise.race([
          page.evaluate(async()=>{
           const output=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
-          return output.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.length}));
+          return output.violations.map(v=>({
+           id:v.id,impact:v.impact,nodes:v.nodes.length,
+           // Anonymous synthetic candidate only. Bounded machine-readable
+           // selectors; no innerText, cookies, user IDs or unrestricted HTML.
+           selectors:v.nodes.slice(0,30).map(node=>({
+             target:(Array.isArray(node.target)?node.target:[])
+               .filter(x=>typeof x==="string").slice(0,3).map(x=>x.slice(0,240)),
+             failureSummary:typeof node.failureSummary==="string"?
+               node.failureSummary.slice(0,300):"",
+             related:(node.any||[]).slice(0,2).flatMap(check=>
+               (check.relatedNodes||[]).slice(0,2).flatMap(n=>
+                 (Array.isArray(n.target)?n.target:[]).filter(x=>typeof x==="string").slice(0,1).map(x=>x.slice(0,160))
+               )).slice(0,4)
+           }))
+          }));
          }),
          new Promise((_,reject)=>setTimeout(()=>reject(new Error("Axe scan deadline")),10000))
         ]);
