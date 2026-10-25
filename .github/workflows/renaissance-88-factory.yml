@@ -1,0 +1,138 @@
+name: Renaissance 88 candidate Chrome factory
+on:
+  pull_request:
+    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'app/**', 'components/**', 'lib/**', 'config/**']
+  workflow_dispatch:
+  schedule:
+    - cron: '41 3 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: renaissance-88-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Run fail-closed 88-route/overlay/receipt tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          python3 -m unittest discover -s tests -p 'test_renaissance_88_factory.py' -v
+          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts
+          mkdir -p renaissance-88-source
+          timeout -k 5s 8m python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --deep --output renaissance-88-source/public88.json
+          python3 scripts/renaissance_88_plan.py impact app/layout.tsx --expected-sha "$SOURCE_SHA" --output renaissance-88-source/impact-global.json
+          python3 scripts/renaissance_88_plan.py matrix --expected-sha "$SOURCE_SHA" --output renaissance-88-source/overlay-matrix.json
+          sha256sum renaissance-88-source/*.json > renaissance-88-source/digests.sha256
+          test -z "$(git status --porcelain --untracked-files=no)"
+          printf 'source=%s\nbuild=UNMEASURED\ncertified=false\n' "$SOURCE_SHA" > renaissance-88-source/identity.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-88-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: renaissance-88-source/
+          if-no-files-found: warn
+          retention-days: 14
+
+  chrome:
+    needs: source
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: isolated-ci-not-production
+      NEXTAUTH_SECRET: isolated-ci-not-production
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      BROWSER_BASE_URL: http://127.0.0.1:3137
+      AOE2WAR_PROD_DB_PREVIEW: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0', cache: yarn }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Pin dependencies and isolated playwright-core
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          timeout -k 5s 4m npm install --prefix "$RUNNER_TEMP/renaissance-88-pw" --no-save --no-package-lock --ignore-scripts playwright-core@1.57.0
+          npx prisma generate
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Build exact immutable local candidate
+        run: |
+          set -euo pipefail
+          timeout -k 10s 30m yarn build
+          test -s .next/BUILD_ID
+          test -s .next/server/app-paths-manifest.json
+          test -z "$(git status --porcelain --untracked-files=no)"
+          mkdir -p renaissance-88-chrome
+          cp .next/BUILD_ID renaissance-88-chrome/BUILD_ID
+          cp .next/server/app-paths-manifest.json renaissance-88-chrome/app-paths-manifest.json
+          python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" --output renaissance-88-chrome/plan.json
+          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > renaissance-88-chrome/identity.txt
+      - name: Actual Chrome desktop/mobile; bounded PR pilot or full scheduled census
+        env:
+          PW_HOME: ${{ runner.temp }}/renaissance-88-pw
+        run: |
+          set -euo pipefail
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
+          export CHROME_BIN
+          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > renaissance-88-chrome/next.log 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 80); do
+            kill -0 "$next_pid" 2>/dev/null || { echo "::error::Next start failed"; exit 2; }
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:3137/ || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          if [ "${{ github.event_name }}" = pull_request ]; then cohorts=8; samples=1; deadline=720000;
+          else cohorts=1; samples=3; deadline=1500000; fi
+          timeout -k 10s 27m node scripts/renaissance_88_browser.cjs \
+            --plan renaissance-88-chrome/plan.json --out "$GITHUB_WORKSPACE/renaissance-88-chrome" \
+            --cohort 0 --cohorts "$cohorts" --samples "$samples" --route-ms 18000 --deadline-ms "$deadline"
+      - name: Assemble independent per-route statuses; preserve UNMEASURED
+        if: always()
+        run: |
+          set -euo pipefail
+          if test -s renaissance-88-chrome/plan.json; then
+            node scripts/renaissance_88_receipts.mjs --plan renaissance-88-chrome/plan.json \
+              --directory renaissance-88-chrome --out renaissance-88-chrome/coverage.json \
+              --allow-partial "${{ github.event_name == 'pull_request' && 'true' || 'false' }}"
+            find renaissance-88-chrome -maxdepth 1 -type f ! -name '*.sha256' -print0 \
+              | sort -z | xargs -0 -r sha256sum > renaissance-88-chrome/file-hashes.sha256
+          fi
+          echo "Candidate-only Chrome/BUILD_ID artifacts; no production score or authority." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-88-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: renaissance-88-chrome/
+          retention-days: 14
+          if-no-files-found: warn
