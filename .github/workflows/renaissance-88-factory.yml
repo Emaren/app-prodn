@@ -82,6 +82,23 @@ jobs:
           timeout -k 5s 4m npm install --prefix "$RUNNER_TEMP/renaissance-88-pw" --no-save --no-package-lock --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
           npx prisma generate
           test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Initialize disposable PostgreSQL fixture before expensive Next build
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT
+          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          printf '%s\n' "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" "REN88_PG_ROOT=$REN88_PG_ROOT" "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
+          mkdir -p renaissance-88-chrome
+          if ! bash scripts/renaissance_88_pg_fixture.sh start > renaissance-88-chrome/fixture-start.txt; then
+            cp "$REN88_PG_ROOT/schema-push.log" renaissance-88-chrome/fixture-schema.log 2>/dev/null || true
+            echo "::error::Isolated schema, seed, or read-only role gate failed"
+            exit 2
+          fi
+          bash scripts/renaissance_88_pg_fixture.sh snapshot > renaissance-88-chrome/fixture-before.txt
       - name: Build exact immutable local candidate
         run: |
           set -euo pipefail
@@ -102,22 +119,14 @@ jobs:
           CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
           test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
           export CHROME_BIN
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
-          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
-          export REN88_PG_ROOT
-          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-XXXXXX")"
-          export RENAISSANCE_88_FIXTURE_ALLOWED=1
-          trap 'bash scripts/renaissance_88_pg_fixture.sh stop || true' EXIT
-          bash scripts/renaissance_88_pg_fixture.sh start \
-            > renaissance-88-chrome/fixture-start.txt
-          bash scripts/renaissance_88_pg_fixture.sh snapshot \
-            > renaissance-88-chrome/fixture-before.txt
+          test -s renaissance-88-chrome/fixture-before.txt
+          /usr/lib/postgresql/16/bin/pg_isready -h 127.0.0.1 -p 55437 -q ||
+            { echo "::error::Disposable PostgreSQL fixture exited";exit 2; }
           find public .next/static -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum \
             > renaissance-88-chrome/assets-before.sha256
           node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > renaissance-88-chrome/next.log 2>&1 &
           next_pid=$!
-          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true; bash scripts/renaissance_88_pg_fixture.sh stop || true' EXIT
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
           ready=0
           for i in $(seq 1 80); do
             kill -0 "$next_pid" 2>/dev/null || { echo "::error::Next start failed"; exit 2; }
@@ -156,6 +165,12 @@ jobs:
               | sort -z | xargs -0 -r sha256sum > renaissance-88-chrome/file-hashes.sha256
           fi
           echo "Candidate-only Chrome/BUILD_ID artifacts; no production score or authority." >> "$GITHUB_STEP_SUMMARY"
+      - name: Stop disposable PostgreSQL daemon
+        if: always()
+        run: |
+          if [ -n "${REN88_PG_ROOT:-}" ]; then
+            bash scripts/renaissance_88_pg_fixture.sh stop || true
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
