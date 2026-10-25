@@ -28,8 +28,11 @@ case "$action" in
    createdb -h 127.0.0.1 -p 55437 -U renaissance_owner renaissance88
    # Prisma schema push is isolated to the newly created scratch database.
    DATABASE_URL="$OWNER_URL" timeout -k 10s 8m npx prisma db push --accept-data-loss \
-     > "$REN88_PG_ROOT/schema-push.log" 2>&1 ||
-     { echo "HOLD isolated schema initialization failed"; exit 2; }
+     > "$REN88_PG_ROOT/schema-push.log" 2>&1 || {
+       echo "HOLD isolated schema initialization failed" >&2
+       tail -n 55 "$REN88_PG_ROOT/schema-push.log" >&2
+       exit 2
+     }
    psql "$OWNER_URL" -v ON_ERROR_STOP=1 -q <<'SQL'
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 INSERT INTO users(uid,in_game_name,verified,is_admin,created_at) VALUES
