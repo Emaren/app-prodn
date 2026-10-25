@@ -1,4 +1,4 @@
-"""Fail closed on actual watcher artifact releases; admit only exact unpublished nine-path draft."""
+"""Fail closed on actual watcher artifact releases; admit only exact unpublished ten-path draft."""
 from __future__ import annotations
 import subprocess
 import sys
@@ -14,13 +14,14 @@ from aoe2_release_gate import classify_risk
 import aoe2_website_protected_release_v2 as ctrl
 from aoe2_website_release_v2 import MAIN_SOURCE_SHA, PRODUCTION_SHA
 
-NINE=(
+TEN=(
     "components/kingdom-index/KingdomIndex.tsx",
     "config/kingdom-index-baseline.json",
     "config/kingdom-index-provisional-source-reviews.json",
     "config/kingdom-index-routes.json",
     "config/kingdom-index-watcher-166-source-review.json",
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/RIVALRIES_AND_WAR_VAULT.md",
     "docs/document-registry.json",
     "tests/kingdom-index-watcher-draft-score.test.mts",
     "yarn.lock",
@@ -32,7 +33,7 @@ class ExactMainDraftWatcherVaultTests(unittest.TestCase):
             "release_sha": MAIN_SOURCE_SHA,
             "previous_production_sha": PRODUCTION_SHA,
             "risk_class": "WATCHER",
-            "changed_files": list(NINE),
+            "changed_files": list(TEN),
             "migration_paths": [],
             **overrides,
         }
@@ -47,12 +48,12 @@ class ExactMainDraftWatcherVaultTests(unittest.TestCase):
         return mock.patch.object(stage,"run",side_effect=fake_git)
 
     def test_exact_draft_remains_watcher_classified_but_never_releases_binary(self):
-        self.assertEqual("WATCHER",classify_risk(list(NINE)))
+        self.assertEqual("WATCHER",classify_risk(list(TEN)))
         with self.mock_git_versions():
             self.assertEqual("",stage.watcher_distribution_version(self.manifest()))
 
     def test_non_draft_watcher_still_must_certify_distribution(self):
-        altered=self.manifest(changed_files=list(NINE)+["lib/watcherRelease.ts"])
+        altered=self.manifest(changed_files=list(TEN)+["lib/watcherRelease.ts"])
         with self.mock_git_versions():
             self.assertEqual("1.6.5",stage.watcher_distribution_version(altered))
 
