@@ -6,7 +6,6 @@ import { ArrowUpRight, Castle, ChevronDown, Clock3, Compass, Grid2X2, List, X } 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import type { District, KingdomIndexEntry, KingdomIndexSnapshot } from "@/lib/kingdomIndex";
 import { isLatestKingdomIndexRefresh } from "@/lib/kingdomIndexRefreshOrder";
-import watcherDraftReview from "@/config/kingdom-index-watcher-166-source-review.json";
 import styles from "./KingdomIndex.module.css";
 
 const REGIONS: ReadonlyArray<{ id: District; name: string; numeral: string; subtitle: string }> = [
@@ -32,6 +31,14 @@ function statusTitle(entry: KingdomIndexEntry) {
     case "drifted": return "SOURCE DRIFT";
     default: return "NOT YET ASSESSED";
   }
+}
+function reviewAgeDays(evaluatedAt: string, generatedAt: string): number | null {
+  // The source review declares calendar-day precision, not an exact measurement hour.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(evaluatedAt)) return null;
+  const reviewed = Date.parse(evaluatedAt + "T00:00:00Z");
+  const observed = Date.parse(generatedAt);
+  return Number.isFinite(reviewed) && Number.isFinite(observed) && observed >= reviewed
+    ? Math.floor((observed - reviewed) / 86_400_000) : null;
 }
 function formatStamp(input: string | null) {
   if (!input) return "—";
@@ -235,25 +242,26 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
             <div><span className={styles.eyebrow}>DESKTOP · RELEASE {companion.version}</span><h3>{companion.label}</h3>
               <p>Replay ingestion · capture · telemetry · cross-platform update lifecycle</p></div>
             <div className={styles.companionGrade}>
-              {companion.id===watcherDraftReview.companionId&&companion.version===watcherDraftReview.publishedReleaseStill
-                ? <><b aria-label="Approximately 58 out of 100, unpublished Watcher 1.6.6 AI-assisted source-review estimate, not certified">~{watcherDraftReview.score}<small>/100</small></b><span>1.6.6 DRAFT · SOURCE REVIEW</span></>
-                : <><b aria-label="No independently certified desktop quality score">—<small>/100</small></b><span>UNMEASURED</span></>}
-             </div>
+              <b aria-label="No independently certified desktop quality score">—<small>/100</small></b>
+              <span>UNMEASURED · PUBLISHED {companion.version}</span>
+            </div>
           </div>
           <p className={styles.companionNote}>Desktop quality shares the Kingdom&apos;s 100-point rubric, but needs its own installed-client, source-drift, resource and replay integrity receipts. The release SHA is a baseline, not proof that a user&apos;s installed version or live runtime is current.</p>
-           {companion.id===watcherDraftReview.companionId&&<section className={styles.companionNote} aria-label="Unpublished Watcher candidate score disclosure">
-             <strong>UNPUBLISHED {watcherDraftReview.candidateVersion} CANDIDATE — THIS IS NOT THE LIVE WATCHER QUALITY SCORE.</strong>
-             <p>{watcherDraftReview.notes}</p>
-             <p>Current public download: v{companion.version} · source candidate: {watcherDraftReview.sourceSha.slice(0,12)} · source review {watcherDraftReview.evaluatedAt}</p>
-             <details><summary>20 estimated criteria · not independently certified</summary>
-               <ol>{watcherDraftReview.criteria.map(c=><li key={c.id}>{c.id}: ~{c.estimated}/{c.max} · source estimate</li>)}</ol>
-               {watcherDraftReview.refs.map(url=><p key={url}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></p>)}
-             </details>
-           </section>}
+          {companion.draftSourceReview&&<section className={styles.companionNote} aria-label="Unpublished Watcher AI-assisted source estimate, not a release grade">
+            <strong>UNPUBLISHED {companion.draftSourceReview.version} CANDIDATE — NOT RELEASED OR CERTIFIED.</strong>
+            <p>AI-assisted source estimate: ~{companion.draftSourceReview.estimatedScore}/100. THIS IS NOT THE LIVE WATCHER QUALITY SCORE. Published v{companion.version} remains UNMEASURED.</p>
+            <p>Candidate source: <a href={`${companion.repositoryUrl}/commit/${companion.draftSourceReview.sourceSha}`} target="_blank" rel="noopener noreferrer">{companion.draftSourceReview.sourceSha.slice(0,12)}</a> · review date: {companion.draftSourceReview.evaluatedAt} · review age: {reviewAgeDays(companion.draftSourceReview.evaluatedAt,snapshot.generatedAt)??"unknown"} calendar days at snapshot</p>
+            <p>Independent evidence: 0/{companion.gates.length} mandatory desktop gates verified; no authenticated published score. Source-review links are leads for verification, not signed proof.</p>
+            <p>{companion.draftSourceReview.notes}</p>
+            <details><summary>20 estimated criteria · source triage only · proof links</summary>
+              <ol>{companion.draftSourceReview.criteria.map(c=><li key={c.id}>{c.id}: ~{c.estimated}/{c.max} · estimated, not independently measured</li>)}</ol>
+              {companion.draftSourceReview.refs.map(url=><p key={url}><a href={url} target="_blank" rel="noopener noreferrer">{url}</a></p>)}
+            </details>
+          </section>}
           <div className={styles.companionLinks}>
             <Link href={companion.downloadHref}>DOWNLOAD &amp; RELEASE <ArrowUpRight size={13}/></Link>
             <a href={companion.repositoryUrl} target="_blank" rel="noopener noreferrer">SOURCE REPOSITORY <ArrowUpRight size={13}/></a>
-            <code title={companion.sourceSha}>RELEASE SOURCE {companion.sourceSha.slice(0,12)}</code>
+            <a href={`${companion.repositoryUrl}/commit/${companion.sourceSha}`} target="_blank" rel="noopener noreferrer" title={companion.sourceSha}>RELEASE SOURCE {companion.sourceSha.slice(0,12)} <ArrowUpRight size={13}/></a>
           </div>
           <details className={styles.companionChecks}>
             <summary>INSPECTION GATES · {companion.gates.length} UNVERIFIED <ChevronDown size={15}/></summary>
