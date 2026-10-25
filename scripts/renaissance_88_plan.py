@@ -30,8 +30,8 @@ def sha(path:Path)->str:
 def literal_public_redirect(root:Path,entrypoint:str,public_routes:set[str])->str|None:
     """An exact, source-declared Next redirect, not an alias guessed by Chrome."""
     file=root/entrypoint
-    if file.is_symlink() or not file.is_file() or file.stat().st_size>200000:
-        raise ValueError("Unsafe public entrypoint for redirect classification")
+    if file.is_symlink() or not file.is_file() or file.stat().st_size>2_000_000:
+        raise ValueError("Unsafe public entrypoint for redirect classification: "+entrypoint)
     body=file.read_text(encoding="utf8")
     # Only trivial module-level redirect-only pages are accepted.
     if not re.search(r'import\s*\{\s*redirect\s*\}\s*from\s*["\']next/navigation["\']',body):
