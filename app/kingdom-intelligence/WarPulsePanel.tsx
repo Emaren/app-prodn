@@ -129,7 +129,8 @@ export default function WarPulsePanel({
         </div>
       </div>
 
-      <div role="region" tabIndex={0} aria-label="Scrollable War Pulse telemetry" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5"\n          >
+      <div role="region" tabIndex={0} aria-label="Scrollable War Pulse telemetry" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
+      >
         {items.length ? (
           items.map((item) => {
             const expanded = expandedKey === item.key;
