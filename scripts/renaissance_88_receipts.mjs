@@ -77,7 +77,8 @@ async function main(){
  const allowedRoutes=new Set(plan.routes.map(r=>r.route));
  if(allowedRoutes.size!==88)fail("Duplicate Index route plan");
  const dirList=await (await import("node:fs/promises")).readdir(directory);
- if(dirList.length>210)fail("Unbounded evidence directory");
+ // 88 per-route JSONs + 176 bounded desktop/mobile JPEG captures + control receipts.
+ if(dirList.length>300)fail("Unbounded evidence directory");
  const perRoute=new Map();
  const evidenceDigests={};
  for(const file of dirList.filter(f=>/^route-[A-Za-z0-9_-]{1,130}\.json$/.test(f))){
