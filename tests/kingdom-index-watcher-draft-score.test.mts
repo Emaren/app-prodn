@@ -24,7 +24,10 @@ test("unreleased Watcher source-only triage display cannot assert installed cert
  assert.ok(review.refs.length>=2 && review.refs.every(url=>url.startsWith("https://github.com/Emaren/")));
  const ui=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");
  const server=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
- assert.match(ui,/UNPUBLISHED .* CANDIDATE — THIS IS NOT THE LIVE WATCHER QUALITY SCORE/);
+ assert.match(ui,/UNPUBLISHED .* CANDIDATE — NOT RELEASED OR CERTIFIED/);
+ assert.match(ui,/THIS IS NOT THE LIVE WATCHER QUALITY SCORE/);
+ assert.match(ui,/No independently certified desktop quality score/);
+ assert.doesNotMatch(ui,/<b aria-label="Approximately 58 out of 100/);
  assert.match(ui,/1\.6\.6 DRAFT · SOURCE REVIEW/);
  assert.match(server,/status:"unmeasured" as const,score:null/);
  assert.doesNotMatch(ui,/COMPANION CERTIFIED.*watcherDraftReview/);
