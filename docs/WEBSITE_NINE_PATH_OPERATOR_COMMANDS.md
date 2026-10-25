@@ -1,6 +1,6 @@
 ---
-id: "aoe2war.app-prodn.website-nine-path-operator-commands"
-title: "Held Nine-Path Website Protected Operator Commands"
+id: "aoe2war.app-prodn.website-ten-path-operator-commands"
+title: "Held Ten-Path Website Protected Operator Commands"
 type: "runbook"
 status: "active"
 owner: "aoe2war-web"
@@ -13,7 +13,7 @@ review_interval_days: 1
 sensitivity: "internal"
 ---
 
-# Held Nine-Path Website Protected Operator Commands
+# Held Ten-Path Website Protected Operator Commands
 
 **HOLD until independent source/security acceptance and six trusted public
 keys, a real signed runtime observer, independent verified source/finance
@@ -32,7 +32,7 @@ mistake controller/source branch for the published product:
 set -euo pipefail
 export APP="$HOME/projects/AoE2HDBets/app-prodn"
 export OP="$HOME/projects/AoE2HDBets/app-prodn-website-controller"
-export PRODUCT_SHA="21cd1493b182cb0968a6b6cf3f528d0578cfd797"
+export PRODUCT_SHA="6be434c00469afa4acb0623715c3bcf724f927f4"
 export CERTIFIED_PROD="a2b941f154fdc31ec4d6c4ece6d0e49036c48abd"
 export APPROVED_CONTROLLER_SHA="<EXACT_CI_GREEN_INDEPENDENTLY_ACCEPTED_CONTROLLER_SHA>"
 export WEBSITE_MAIN_REPO="$APP"
@@ -322,3 +322,21 @@ If independent role identity, signer private-key custody, independent
 runtime observer, signed Source+Finance approval, site restart financial
 noninterference or operational SSH trust is missing, production **NO-GO**,
 even when all code tests pass.
+
+## October 25 product DocsV2 gate correction — mandatory main promotion
+
+A genuine source-only Rivalries review fixes the expired 2026-10-24
+DocsV2 review. The separately source-sealed product candidate is
+`6be434c00469afa4acb0623715c3bcf724f927f4`, descending from the previous original nine-path main
+`21cd1493b182cb0968a6b6cf3f528d0578cfd797`. Against certified production, the final ten-path candidate
+adds **only** `docs/RIVALRIES_AND_WAR_VAULT.md` to the earlier nine.
+It does not change any financial app code or Watcher binary.
+
+The current release gate **requires the exact candidate to equal real
+GitHub main**. Central Command must independently accept the product PR
+and coordinate a fast-forward promotion such that protected main equals
+`6be434c00469afa4acb0623715c3bcf724f927f4`. A squash/rebase/merge-generated different SHA requires new
+source-bound controller requalification; do not forge local main or
+rewrite GitHub receipts to bypass that requirement. Once main equals
+the candidate, obtain a fresh `PASS` gate and sealed manifest from the
+clean product checkout. Previous `FAIL` receipts never authorize stage.
