@@ -73,7 +73,7 @@ function Score({ entry, small=false }: {entry:KingdomIndexEntry;small?:boolean})
     {provisional&&!small&&<span className={styles.denom}> REVIEW</span>}
   </span>;
 }
-function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
+function PageDetail({ item, close, criterionRubric }: {item:KingdomIndexEntry;close:()=>void;criterionRubric:KingdomIndexSnapshot["criterionRubric"]}) {
   return <section className={styles.detail} aria-label={`${item.label} engineering evidence`}>
     <div className={styles.detailHead}>
       <div><span className={styles.eyebrow}>{statusTitle(item)}</span><h2>{item.label}</h2></div>
@@ -120,16 +120,19 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
       <details className={styles.criterionDetails}>
         <summary>20 CANONICAL CRITERIA · {item.criterionProgress.pendingCriteria} PENDING <ChevronDown size={15}/></summary>
         <div className={styles.criterionRows}>
-          {item.criterionProgress.criteria.map(criterion=><article key={criterion.id} className={styles.criterionRow} data-verified={criterion.status==="APPROVED"}>
-            <div className={styles.criterionRowHead}>
-              <strong>{criterion.id.replace(/_/g," ")}</strong>
-              <span>{criterion.earned===null?"—":criterion.earned}/{criterion.maximum} · {criterion.status==="APPROVED"?"APPROVED":"PENDING"}</span>
-            </div>
-            <p>{criterion.requirement}</p>
-            <p>REQUIRED PROOF: {criterion.requiredProofKinds.join(" / ")}</p>
-            <p>NEXT: {criterion.nextAction}</p>
-            {criterion.evidenceDigests.length>0&&<p>INDEPENDENTLY VERIFIED ARTIFACT SHA-256: {criterion.evidenceDigests.map(x=><code key={x}>{x} </code>)}</p>}
-          </article>)}
+          {criterionRubric.map(criterion=>{
+            const approved=item.criterionProgress.approvals.find(x=>x.id===criterion.id);
+            return <article key={criterion.id} className={styles.criterionRow} data-verified={!!approved}>
+              <div className={styles.criterionRowHead}>
+                <strong>{criterion.id.replace(/_/g," ")}</strong>
+                <span>{approved?approved.earned:"—"}/{criterion.maximum} · {approved?"APPROVED":"PENDING"}</span>
+              </div>
+              <p>{criterion.requirement}</p>
+              <p>REQUIRED PROOF: {criterion.requiredProofKinds.join(" / ")}</p>
+              <p>NEXT: {approved?"Renew independently reviewed proof when source/build or approval freshness changes":criterion.nextAction}</p>
+              {approved&&approved.evidenceDigests.length>0&&<p>INDEPENDENTLY VERIFIED ARTIFACT SHA-256: {approved.evidenceDigests.map(x=><code key={x}>{x} </code>)}</p>}
+            </article>;
+          })}
         </div>
       </details>
       <p className={styles.evidenceNote}>Source census: <code>{item.sourceVersion??"UNKNOWN"}</code> · independently authenticated Git SHA: <code>{item.authenticatedPublication?.gitSha??"UNKNOWN"}</code> · BUILD_ID: <code>{item.authenticatedPublication?.buildId??"UNKNOWN"}</code> · approval freshness: {item.authenticatedPublication?`through ${formatStamp(item.authenticatedPublication.expiresAt)}`:"UNKNOWN / NOT APPROVED"}</p>
@@ -190,7 +193,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
       const response=await fetch("/api/kingdom-index",{cache:"no-store",signal});
       if(!response.ok)throw new Error("no measurement feed");
       const next=await response.json() as KingdomIndexSnapshot;
-      if(next.schema!==1||!Array.isArray(next.pages))throw new Error("bad evidence");
+      if(next.schema!==1||!Array.isArray(next.pages)||!Array.isArray(next.criterionRubric)||next.criterionRubric.length!==20)throw new Error("bad evidence");
       if(!signal?.aborted&&isLatestKingdomIndexRefresh(requestId,latestRefreshId.current)){
         setSnapshot(next);setConnectionLost(false);
       }
@@ -258,10 +261,10 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
             <div className={styles.ledgerTime} title={formatStamp(item.checkedAt)}><Clock3 size={12}/>{item.checkedAt?new Date(item.checkedAt).toISOString().slice(0,10):"—"}</div>
             <button className={styles.expandButton} type="button" aria-expanded={expanded===item.href} aria-label={`Details for ${item.label}`} onClick={event=>{detailTriggerRef.current=event.currentTarget;setExpanded(v=>v===item.href?null:item.href);}}><ChevronDown size={18}/></button>
           </div>
-          {expanded===item.href&&<PageDetail item={item} close={closeDetail}/>}
+          {expanded===item.href&&<PageDetail item={item} close={closeDetail} criterionRubric={snapshot.criterionRubric}/>}
         </div>)}
       </section>}
-      {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={closeDetail}/></div>}
+      {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={closeDetail} criterionRubric={snapshot.criterionRubric}/></div>}
       <section className={styles.companionSection} aria-label="Companion applications engineering index">
         <header className={styles.companionHeader}>
           <div><span className={styles.eyebrow}>EXTERNAL SYSTEMS / DESKTOP</span><h2>COMPANION APPLICATIONS</h2></div>
