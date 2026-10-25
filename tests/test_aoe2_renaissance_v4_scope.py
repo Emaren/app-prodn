@@ -127,6 +127,19 @@ class FrozenScopeTests(unittest.TestCase):
         with self.assertRaises(scope.Hold):
             scope.verify_scope(self.repo, self.inventory)
 
+    def test_hidden_index_flags_hold_even_when_porcelain_appears_clean(self):
+        for flag, clear in (("--assume-unchanged", "--no-assume-unchanged"),
+                            ("--skip-worktree", "--no-skip-worktree")):
+            with self.subTest(flag=flag):
+                run(self.repo, "update-index", flag, "README.md")
+                try:
+                    with self.assertRaises(scope.Hold):
+                        scope.verify_scope(self.repo, self.inventory)
+                finally:
+                    run(self.repo, "update-index", clear, "README.md")
+        self.assertEqual("SOURCE_INVENTORY_MATCH_REVIEW_ONLY",
+                         scope.verify_scope(self.repo, self.inventory)["status"])
+
     def test_wrong_path_status_or_git_blob_hold(self):
         variants = (
             [dict(self.inventory["files"][0], status="A"), self.inventory["files"][1]],
