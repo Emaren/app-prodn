@@ -25,6 +25,7 @@ from playwright.async_api import async_playwright
 ROUTE = "/kingdom-intelligence"
 API = "/api/kingdom-intelligence/live-recovery"
 SPEED_POST = "/api/speed/sample"
+PRESENCE_MUTATION = "/api/kingdom-presence/anonymous-state"
 # The shared SpeedOS SpeedSample TS contract. Never accept arbitrary POST fields.
 SPEED_FIELDS = frozenset("""
 sample_id occurred_at route traffic_visitor_id traffic_session_id
@@ -35,6 +36,43 @@ long_task_count long_task_max_ms long_task_total_ms viewport_width viewport_heig
 effective_connection_type connection_rtt_ms downlink_mbps save_data
 valid_for_aggregation invalid_reason visibility_tainted details
 """.split())
+
+def known_blocked_living_kingdom_v1(request, url, host_port, body):
+    """Only identify the existing public-shell v1 shape; NEVER forward writes."""
+    if (url.scheme != "http" or url.hostname != "127.0.0.1" or
+            url.port != host_port or url.path != PRESENCE_MUTATION or url.query or
+            request.headers.get("content-type", "").split(";")[0].strip() != "application/json" or
+            not isinstance(body, dict) or body.get("protocol") != 1):
+        return False
+    tab = body.get("tabId")
+    seq = body.get("seq")
+    if (not isinstance(tab, str) or re.fullmatch(r"[A-Za-z0-9_-]{8,64}", tab) is None or
+            type(seq) is not int or seq < 0 or seq > 2**53 - 1):
+        return False
+    if request.method == "DELETE":
+        return set(body) == {"protocol", "tabId", "seq"}
+    if request.method != "POST":
+        return False
+    if body.get("realmId") not in ("kingdom", "workshop"):
+        return False
+    if body.get("kind") == "state":
+        required = {"protocol", "kind", "tabId", "seq", "realmId",
+                    "depthBand", "motion", "visibility"}
+        keys = set(body)
+        if keys != required and keys != required | {"renewOnly"}:
+            return False
+        depth = body.get("depthBand")
+        return (type(depth) is int and 0 <= depth < 21 and
+                body.get("motion") in ("up", "down", "idle") and
+                body.get("visibility") in ("visible", "hidden") and
+                ("renewOnly" not in body or type(body["renewOnly"]) is bool))
+    if body.get("kind") == "door":
+        return (set(body) == {"protocol", "kind", "tabId", "seq", "realmId",
+                              "destinationRealmId"} and
+                body.get("destinationRealmId") in ("kingdom", "workshop") and
+                body["destinationRealmId"] != body["realmId"])
+    return False
+
 
 def classify_blocked_write(request, host_port):
     """Conservatively classify an attempt. ALL writes remain aborted by the guard."""
@@ -61,10 +99,14 @@ def classify_blocked_write(request, host_port):
         isinstance(fields.get("valid_for_aggregation"), bool) and
         isinstance(fields.get("visibility_tainted"), bool)
     )
+    known_presence = known_blocked_living_kingdom_v1(request, u, host_port, fields)
+    classification = ("shared_speedos_blocked" if speed_contract else
+                      "shared_living_kingdom_v1_blocked" if known_presence else
+                      "UNEXPECTED_WRITE_BLOCKED")
     return {
         "method": request.method, "path": u.path[:180],
-        "classification": "shared_speedos_blocked" if speed_contract else "UNEXPECTED_WRITE_BLOCKED",
-        "unexpected_field_names": unexpected,
+        "classification": classification,
+        "unexpected_field_names": [] if known_presence else unexpected,
         "submitted_field_names": sorted(keys),  # Names only, NO identifier values.
         "pseudonymous_id_fields_present": sorted(keys.intersection({
             "traffic_visitor_id", "traffic_session_id", "journey_session_id"
@@ -177,7 +219,8 @@ async def case(browser, args, mode, width, output):
                                     reduced_motion="reduce")
     page = await ctx.new_page()
     counts = {"recovery": 0, "blocked_external": 0, "blocked_write": 0,
-              "classified_shared_speedos": 0, "unexpected_writes": 0,
+              "classified_shared_speedos": 0, "classified_shared_presence": 0,
+              "unexpected_writes": 0,
               "times": [], "blocked_nonread_paths": [], "blocked_external_paths": []}
     errors, checks = [], {}
     page.on("pageerror", lambda e: errors.append(str(e)[:240]))
@@ -191,6 +234,8 @@ async def case(browser, args, mode, width, output):
             counts["blocked_nonread_paths"].append(attempt)
             if attempt["classification"] == "shared_speedos_blocked":
                 counts["classified_shared_speedos"] += 1
+            elif attempt["classification"] == "shared_living_kingdom_v1_blocked":
+                counts["classified_shared_presence"] += 1
             else:
                 counts["unexpected_writes"] += 1
             return await route.abort()  # Never fulfill or forward even a classified SpeedOS POST.
@@ -406,16 +451,18 @@ async def case(browser, args, mode, width, output):
         result["write_guard_evidence"] = {
             "no_attempted_write_requests": counts["blocked_write"] == 0,
             "all_attempts_blocked_from_transmission": True,
-            "classification_scope": "POST /api/speed/sample with strict SpeedSample schema and route only",
+            "classification_scope": "strict loopback SpeedSample and Living Kingdom v1 protocol only; all writes aborted",
             "shared_speedos_attempts": counts["classified_shared_speedos"],
+            "shared_living_kingdom_attempts": counts["classified_shared_presence"],
             "unexpected_attempts": counts["unexpected_writes"],
             "written_to_backend": 0,
             "safety_contract": "ZERO_UNEXPECTED_ATTEMPTS; ALL_ATTEMPTS_ABORTED",
         }
         check("no_unexpected_or_intelligence_owned_write_attempts",
               counts["unexpected_writes"] == 0)
-        check("shared_speedos_attempts_explicitly_accounted",
-              counts["classified_shared_speedos"] + counts["unexpected_writes"] == counts["blocked_write"])
+        check("shared_readside_write_attempts_explicitly_accounted",
+              counts["classified_shared_speedos"] + counts["classified_shared_presence"] +
+              counts["unexpected_writes"] == counts["blocked_write"])
         result["requests"] = counts
         result["pass"] = bool(checks) and all(checks.values()) and "error" not in result
         if not result["pass"]:
