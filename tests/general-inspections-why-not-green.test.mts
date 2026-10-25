@@ -70,6 +70,8 @@ test("full-credit but failing cohort ratio is explicitly FAIL, without changing 
   assert.equal(row.earned, row.weight);
   assert.equal(report.gaps.find((g) => g.checkKey === row.checkKey)?.missingPoints, 0);
   assert.equal(report.matrix.find((c) => c.id === "speed")?.status, "fail");
+  assert.match(row.owner, /SpeedOS/);
+  assert.match(row.repair, /cold-phone/);
 });
 
 test("complete check ledger distinguishes STALE, UNKNOWN, FAIL and PASS with exact TTL due date", () => {
@@ -138,6 +140,7 @@ test("missing DocsV2 proof stays UNKNOWN while a fresh observed P0 invariant fai
   assert.equal(docsGap.status, "unknown");
   assert.equal(docsGap.reason, "missing-observation-time");
   assert.match(docsGap.repair, /DocsV2 registry\/review queue/);
+  assert.equal(docsGap.owner, "Central/DocsV2-single-writer");
   assert.equal(report.matrix.find((c) => c.id === "release")?.status, "fail");
   assert.equal(report.gaps.find((g) => g.checkId === "estate-findings")?.reason, "observed-invariant-gap");
   assert.equal(report.totalMissingCategoryPoints, 30);
