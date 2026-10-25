@@ -140,3 +140,25 @@
 .companionChecks summary::-webkit-details-marker{display:none}
 .companionChecks[open] summary svg{transform:rotate(180deg)}
 @media(max-width:570px){.companionSection{padding:15px}.companionSummary h3{font-size:20px}.companionLinks{gap:14px}}
+
+/* Evidence-first 88-route progress; never style pending as an earned score. */
+.nodeProgress{display:block;margin-top:7px;font:8px Arial,sans-serif;letter-spacing:.09em;color:#88a3a5}
+.ledgerApproval{display:flex;flex-direction:column;align-items:start;gap:5px;min-width:0}
+.ledgerApproval>span{font-size:8px;letter-spacing:.07em;color:#8eaaa9}
+.criterionPanel{margin-top:19px;padding:15px;border:1px solid rgba(188,206,196,.19);border-radius:12px;background:rgba(7,14,19,.65)}
+.criterionSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.criterionSummary>div{min-width:0;display:flex;flex-direction:column;gap:6px}
+.criterionSummary span{color:#87a09f;font-size:8px;letter-spacing:.12em}
+.criterionSummary strong{color:#e0d6ba;font-weight:600;font-size:11px;overflow-wrap:anywhere}
+.criterionDetails{margin-top:14px}
+.criterionDetails summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:7px;color:#dfcfaa;font-size:10px;letter-spacing:.07em}
+.criterionRows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:13px}
+.criterionRow{padding:12px;border:1px solid rgba(177,204,198,.11);border-radius:10px;background:rgba(8,17,24,.7);min-width:0}
+.criterionRow[data-verified="true"]{border-color:rgba(130,196,157,.42)}
+.criterionRowHead{display:flex;gap:10px;justify-content:space-between;align-items:start}
+.criterionRowHead strong{font-size:11px;text-transform:capitalize;color:#e2e5d7}
+.criterionRowHead span{font-size:9px;color:#d6a98b;white-space:nowrap}
+.criterionRow[data-verified="true"] .criterionRowHead span{color:#98d0ac}
+.criterionRow p{margin:9px 0 0;color:#94aaa8;font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.criterionRow code,.criterionPanel code{overflow-wrap:anywhere;white-space:normal}
+@media(max-width:570px){.criterionRows{grid-template-columns:1fr}.criterionSummary{grid-template-columns:repeat(2,minmax(0,1fr))}.ledgerApproval>span{font-size:7px}}

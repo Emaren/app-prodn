@@ -73,7 +73,7 @@ function Score({ entry, small=false }: {entry:KingdomIndexEntry;small?:boolean})
     {provisional&&!small&&<span className={styles.denom}> REVIEW</span>}
   </span>;
 }
-function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
+function PageDetail({ item, close, criterionRubric }: {item:KingdomIndexEntry;close:()=>void;criterionRubric:KingdomIndexSnapshot["criterionRubric"]}) {
   return <section className={styles.detail} aria-label={`${item.label} engineering evidence`}>
     <div className={styles.detailHead}>
       <div><span className={styles.eyebrow}>{statusTitle(item)}</span><h2>{item.label}</h2></div>
@@ -101,15 +101,47 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
       <div><span>PAYLOAD</span><b>{item.bytes!==null?`${(item.bytes/1024).toFixed(1)} KB`:"—"}</b></div>
       <div><span>ROUTE SOURCE</span><b title={item.sourceVersion??""}>{item.sourceVersion?item.sourceVersion.slice(0,19):"—"}</b></div>
     </div>
-    {item.dimensions&&<div className={styles.bars} aria-label={item.score===null?"Historical review dimensions, not current certification":"Observed engineering dimensions"}>
+    {item.dimensions&&<div className={styles.bars} aria-label={item.authenticatedPublication?"Authenticated measured dimension progress, certified only when all gates pass":item.score===null?"Historical review dimensions, not current certification":"Observed engineering dimensions"}>
       {Object.entries(item.dimensions).map(([name,value])=>{
         const denominator:Record<string,number>={correctness:30,functionality:25,performance:20,maintainability:15,tests:10};
         const max=denominator[name]??100;
         return <div key={name} className={styles.barRow}><span>{name}</span><div><i style={{width:`${Math.min(100,Math.max(0,value/max*100))}%`}}/></div><b>{value}/{max}</b></div>;
       })}
     </div>}
-    {item.dimensions&&item.score===null&&<p className={styles.evidenceNote}>The dimension bars above belong to the historical review, not a current, verified audit.</p>}
+    {item.dimensions&&item.score===null&&<p className={styles.evidenceNote}>{item.authenticatedPublication?"These independently authenticated dimension earnings are not an official certified score because full 100/100 and every mandatory gate have not both passed.":"The dimension bars above belong to the historical review, not a current, verified audit."}</p>}
     {item.notes&&<p className={styles.evidenceNote}>{item.notes}</p>}
+    <section className={styles.criterionPanel} aria-label={`${item.label} twenty-criterion source-bound progress`}>
+      <div className={styles.criterionSummary}>
+        <div><span>INDEPENDENTLY APPROVED</span><strong>{item.criterionProgress.approvedCriteria}/20 CRITERIA</strong></div>
+        <div><span>AUTHENTICATED EARNED</span><strong>{item.criterionProgress.authenticatedEarned===null?"UNKNOWN":`${item.criterionProgress.authenticatedEarned}/100`}</strong></div>
+        <div><span>EXACT DEPLOYED BUILD</span><strong>{item.authenticatedPublication?.buildId??"NOT ATTESTED"}</strong></div>
+      </div>
+      <p className={styles.evidenceNote}>Approval is separate from testing and historical source review. Missing evidence is UNKNOWN, not measured zero. No points are earned by CI status, links or unapproved browser traces alone.</p>
+      <details className={styles.criterionDetails}>
+        <summary>20 CANONICAL CRITERIA · {item.criterionProgress.pendingCriteria} PENDING <ChevronDown size={15}/></summary>
+        <div className={styles.criterionRows}>
+          {criterionRubric.map(criterion=>{
+            const approved=item.criterionProgress.approvals.find(x=>x.id===criterion.id);
+            return <article key={criterion.id} className={styles.criterionRow} data-verified={!!approved}>
+              <div className={styles.criterionRowHead}>
+                <strong>{criterion.id.replace(/_/g," ")}</strong>
+                <span>{approved?approved.earned:"—"}/{criterion.maximum} · {approved?"APPROVED":"PENDING"}</span>
+              </div>
+              <p>{criterion.requirement}</p>
+              <p>REQUIRED PROOF: {criterion.requiredProofKinds.join(" / ")}</p>
+              <p>NEXT: {approved?"Renew independently reviewed proof when source/build or approval freshness changes":criterion.nextAction}</p>
+              {approved&&approved.evidenceDigests.length>0&&<p>INDEPENDENTLY VERIFIED ARTIFACT SHA-256: {approved.evidenceDigests.map(x=><code key={x}>{x} </code>)}</p>}
+            </article>;
+          })}
+        </div>
+      </details>
+      <p className={styles.evidenceNote}>Source census: <code>{item.sourceVersion??"UNKNOWN"}</code> · independently authenticated Git SHA: <code>{item.authenticatedPublication?.gitSha??"UNKNOWN"}</code> · BUILD_ID: <code>{item.authenticatedPublication?.buildId??"UNKNOWN"}</code> · approval freshness: {item.authenticatedPublication?`through ${formatStamp(item.authenticatedPublication.expiresAt)}`:"UNKNOWN / NOT APPROVED"}</p>
+    </section>
+    {item.browserCandidate&&<section className={styles.evidenceNote} aria-label="Historical browser-tested coverage, not current certified proof">
+      <strong>HISTORICAL CANDIDATE BROWSER COVERAGE · NO POINTS AWARDED</strong>
+      <p>Earlier source-bound candidate <code>{item.browserCandidate.gitSha}</code> · Next BUILD_ID <code>{item.browserCandidate.buildId}</code> · route fingerprint <code>{item.browserCandidate.sourceTree}</code>.</p>
+      <p>{item.browserCandidate.sequentialRequests} sequential and {item.browserCandidate.concurrentRequests} concurrent loopback API observations with Chrome screenshots were reported in the prior <a href={item.browserCandidate.workflowUrl} target="_blank" rel="noopener noreferrer">candidate workflow</a>. This is not a current deployed-build receipt or an independent criterion approval.</p>
+    </section>}
     {item.specializedAssurance.gates.length>0&&<section className={styles.assurancePanel} aria-label={`${item.label} specialized engineering proof obligations`}>
       <h3>MANDATORY PROOF GATES <span>{item.specializedAssurance.profile.toUpperCase()}</span></h3>
       <div className={styles.assuranceList} role="list">
@@ -128,6 +160,7 @@ function PageNode({ item, onFocus, active }: {item:KingdomIndexEntry;onFocus:(hr
     <div className={styles.nodeTop}><span className={styles.signal} aria-hidden="true"/><span className={styles.nodeStatus} title={statusTitle(item)}>{item.status==="current"?"●":item.status==="provisional"?"◒":item.status==="drifted"||item.status==="stale"?"◇":"·"}</span></div>
     <button type="button" className={styles.nodeFocus} onClick={event=>onFocus(item.href,event.currentTarget)} aria-label={`Inspect ${item.label}`}>
       <Score entry={item} small/>
+      <span className={styles.nodeProgress}>{item.criterionProgress.approvedCriteria}/20 APPROVED</span>
     </button>
     <Link href={item.href} className={styles.nodeName} title={item.label}>{item.label}<ArrowUpRight size={12}/></Link>
     <span className={styles.nodePath} title={item.href}>{item.href}</span>
@@ -160,7 +193,7 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
       const response=await fetch("/api/kingdom-index",{cache:"no-store",signal});
       if(!response.ok)throw new Error("no measurement feed");
       const next=await response.json() as KingdomIndexSnapshot;
-      if(next.schema!==1||!Array.isArray(next.pages))throw new Error("bad evidence");
+      if(next.schema!==1||!Array.isArray(next.pages)||!Array.isArray(next.criterionRubric)||next.criterionRubric.length!==20)throw new Error("bad evidence");
       if(!signal?.aborted&&isLatestKingdomIndexRefresh(requestId,latestRefreshId.current)){
         setSnapshot(next);setConnectionLost(false);
       }
@@ -223,15 +256,15 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
         {rows.map(item=><div key={item.href} className={styles.ledgerGroup}>
           <div className={styles.ledgerRow} data-status={item.status}>
             <div className={styles.ledgerName}><span className={styles.signal}/><div><Link href={item.href}>{item.label}<ArrowUpRight size={12}/></Link><span>{item.href}</span></div></div>
-            <Score entry={item}/>
+            <div className={styles.ledgerApproval}><Score entry={item}/><span>{item.criterionProgress.approvedCriteria}/20 CRITERIA APPROVED</span></div>
             <Sparkline points={item.history} score={item.score} compact/>
             <div className={styles.ledgerTime} title={formatStamp(item.checkedAt)}><Clock3 size={12}/>{item.checkedAt?new Date(item.checkedAt).toISOString().slice(0,10):"—"}</div>
             <button className={styles.expandButton} type="button" aria-expanded={expanded===item.href} aria-label={`Details for ${item.label}`} onClick={event=>{detailTriggerRef.current=event.currentTarget;setExpanded(v=>v===item.href?null:item.href);}}><ChevronDown size={18}/></button>
           </div>
-          {expanded===item.href&&<PageDetail item={item} close={closeDetail}/>}
+          {expanded===item.href&&<PageDetail item={item} close={closeDetail} criterionRubric={snapshot.criterionRubric}/>}
         </div>)}
       </section>}
-      {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={closeDetail}/></div>}
+      {mode==="realm"&&focused&&<div className={styles.floatingEvidence}><PageDetail item={focused} close={closeDetail} criterionRubric={snapshot.criterionRubric}/></div>}
       <section className={styles.companionSection} aria-label="Companion applications engineering index">
         <header className={styles.companionHeader}>
           <div><span className={styles.eyebrow}>EXTERNAL SYSTEMS / DESKTOP</span><h2>COMPANION APPLICATIONS</h2></div>
