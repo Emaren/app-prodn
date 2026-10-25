@@ -1,0 +1,13 @@
+[Unit]
+Description=Poll War Satchel Mecha DRY-RUN readiness (financial activation prohibited)
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=30s
+AccuracySec=5s
+RandomizedDelaySec=2s
+Persistent=false
+Unit=aoe2hdbets-war-satchel-mecha-preview.service
+
+# No [Install] section by design: this timer cannot be enabled by
+# ordinary "systemctl enable" without a separate reviewed unit install.

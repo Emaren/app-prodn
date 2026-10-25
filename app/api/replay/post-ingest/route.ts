@@ -3,7 +3,6 @@ import { materializeSpontaneousChampionshipEncounters, reconcileChampionshipEvid
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import {
   classifyReplayIngestReceipt,
   coordinateReplayPostIngest,
@@ -77,14 +76,6 @@ export async function POST(request: NextRequest) {
     await materializeSpontaneousChampionshipEncounters(prisma,{gameStatsIds:[championshipGameId]}).catch(error=>console.error("Spontaneous championship encounter remains queued:",error));
   }
   await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
-  // Live and final replay commits are the event that should make market
-  // discovery run; public GET traffic is only a fallback trigger.
-  if (
-    !report.financial.markets.requested ||
-    report.financial.markets.succeeded === false
-  ) {
-    queueBetMarketEnsure(prisma, 0);
-  }
 
   const postIngestSucceeded =
     replayPostIngestReportSucceeded(
@@ -96,6 +87,7 @@ export async function POST(request: NextRequest) {
       ok: postIngestSucceeded,
       gameStatsId: receipt.gameId,
       idempotencyKey: report.idempotencyKey,
+      admission: report.admission,
       automatic: report.automatic,
       financial: report.financial,
     },

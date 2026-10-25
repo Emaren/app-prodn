@@ -14,7 +14,7 @@ function response({status=200,score=null,cache="no-store",wrongRows=false}:{stat
  if(wrongRows)pages.pop();
  const body=JSON.stringify({schema:1,pages,certified:0,
   generatedAt:"2026-10-22T21:20:00.000Z",
-  estate:{pageTemplates:144,routeHandlerTemplates:273}});
+  estate:{pageTemplates:144,routeHandlerTemplates:279}});
  return new Response(body,{status,headers:{"cache-control":cache,"content-length":String(Buffer.byteLength(body))}});
 }
 test("40 bounded concurrent real-shaped GET samples never imply sustainable load or a score",async()=>{

@@ -103,7 +103,9 @@ function responsePayload(input: {
       executionReady: automationRuntime.executionReady,
       detail: storedIssue
         ? "The stored plan no longer passes financial integrity checks. Review and save a new plan before automation can evaluate it. No WOLO has been moved."
-        : "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
+        : automationRuntime.mode === "live" && automationRuntime.executionReady
+          ? "Funded Mecha execution is configured. Each wager still requires the original LIVE Watcher, a valid owner mandate, available Satchel funds, independently certified signer health and authenticated chain evidence."
+          : "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
     },
     preset: serializePreset(input.preset),
     effectiveEnabled:
@@ -217,6 +219,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const saved = await resolved.prisma.$transaction(async (tx) => {
+      if (process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED === "true" &&
+          process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true") {
+        // A profile pause/edit must serialize with the funded worker's
+        // FINAL owner-consent check before it can submit an on-chain wager.
+        // Preview-only plans retain their existing lightweight path.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(724176, 47)`;
+      }
       const current = await tx.betAutoPreset.findUnique({
         where: { userId: resolved.user.id },
         select: { id: true, version: true },

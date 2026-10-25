@@ -497,5 +497,29 @@ class ReleaseRollbackTests(unittest.TestCase):
         self.assertFalse(raw.endswith(b"\\n"))
 
 
+
+class LegacyRollbackHealthProbeBoundaryTests(unittest.TestCase):
+    def test_rollback_dry_run_and_post_rollback_never_wake_legacy_bets(self):
+        plan = ReleaseRollbackTests().plan()
+        for dry_run in (True, False):
+            with self.subTest(dry_run=dry_run):
+                script = MODULE.remote_rollback_script(
+                    plan,
+                    dry_run=dry_run,
+                    receipt_dir="/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/rollback-test",
+                )
+                self.assertIn(
+                    "critical_get http://127.0.0.1:3030/api/deployment-version",
+                    script,
+                )
+                self.assertIn(
+                    'critical_get "$PUBLIC/api/deployment-version"',
+                    script,
+                )
+                for path in ("/api/bets", "/api/lobby"):
+                    self.assertNotIn("critical_get http://127.0.0.1:3030" + path, script)
+                    self.assertNotIn('critical_get "$PUBLIC' + path + '"', script)
+
+
 if __name__ == "__main__":
     unittest.main()

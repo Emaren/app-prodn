@@ -110,13 +110,20 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
     !Array.isArray(api.observed)||api.observed.length!==api.samples||
     api.consistent!==true||api.certified!==false||
     api.criterionPointsAwarded!==null)fail("Invalid bounded Next API cohort");
+ // Source-only provisional reviews are not certified engineering scores.
+ // Bind both read-only API cohorts to one noncertifying Index status;
+ // never infer authorization from the public label.
+ const allowedStatuses=new Set(["unmeasured","provisional"]);
+ const indexStatus=api.observed[0]?.kingdomIndexStatus;
+ if(!allowedStatuses.has(indexStatus))
+   fail("API response inconsistency or false score");
  const durations=[],sizes=new Set();
  for(let i=0;i<api.observed.length;i++){
   const row=api.observed[i];
   if(row.sequence!==i+1||typeof row.elapsedMs!=="number"||
      !Number.isFinite(row.elapsedMs)||row.elapsedMs<=0||
      !Number.isSafeInteger(row.responseBytes)||row.responseBytes<100||
-     row.responseBytes>524288||row.kingdomIndexStatus!=="unmeasured"||
+     row.responseBytes>524288||row.kingdomIndexStatus!==indexStatus||
      row.indexScore!==null||row.certified!==0)
     fail("API response inconsistency or false score");
   durations.push(row.elapsedMs);sizes.add(row.responseBytes);
@@ -135,12 +142,14 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
     burst.consistent!==true||!Number.isFinite(burst.wallMs)||burst.wallMs<=0||
     !Array.isArray(burst.observed)||burst.observed.length!==40)
     fail("Invalid or contradicted exact-head concurrent API smoke");
+ if(burst.observed[0]?.indexStatus!==indexStatus)
+   fail("Concurrent API status differs from serial cohort");
  const elapsed=[],burstRows=new Set();
  for(let i=0;i<burst.observed.length;i++){
   const row=burst.observed[i];
   if(row.sequence!==i+1||!Number.isFinite(row.elapsedMs)||row.elapsedMs<=0||
      row.routeCount!==88||row.certified!==0||row.indexScore!==null||
-     row.indexStatus!=="unmeasured"||
+     row.indexStatus!==indexStatus||
      !Number.isInteger(row.responseBytes)||row.responseBytes<100||
      row.responseBytes>524288)
     fail("Concurrent API sample mismatch or false score");

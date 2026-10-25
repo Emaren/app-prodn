@@ -932,3 +932,42 @@ Never hard-code a fixed-supply display to conceal a missing address. The
 `wolo1m943tq5tuqf7ejucmac9knpls04jtmh3apzlrg` as the Workshop sponsorship
 recipient, funded by two confirmed 100 WOLO transfers. It is separate from the
 already-listed Emaren #2 player wallet, which independently holds 200 WOLO.
+
+## War Satchel withdrawal operator adapter — source hold remains active
+
+The private, off-by-default `scripts/war-satchel-withdrawal-operator.mts`
+entrypoint connects three existing, independently guarded application functions.
+It is **not** a production activation, shared key, payout-retry mechanism, or
+replacement for the WoloChain 8094 exclusive signer.
+
+- `--inspect WITHDRAWAL_UUID`: owner-bound durable status, attempt/review
+  existence, and amount; no signing, ledger mutation or chain transfer.
+  When the compiled source hold is active, prints
+  `bridge_unverified_hold` **without querying an uninstalled schema**.
+- `--record-review /absolute/private/review.json`: only for a root-run
+  authorized operator using a root:root 0600, single-link regular JSON
+  file with exactly `withdrawalId` and the externally generated
+  `approval`. Requires the separately certified reviewer key and signer-
+  independent signature verification against durable owner Keplr consent and
+  reserved money. No signing/broadcast on this path.
+- `--execute WITHDRAWAL_UUID`: exactly one selected *durable* withdrawal.
+  Requires the source-level bridge, financial operator approval, custody
+  controls, live signer and the reviewed durable approval. After the first
+  database-committed `UNKNOWN` fence, all subsequent calls reconcile only.
+  Uncertain outcome exits 3 and **does not retry payment broadcast**.
+
+All modes are exact-argument and fail closed. The operator command does not
+schedule itself or publish a public API. The real-money bridge flag in
+`lib/warSatchelFinancialBridgeHold.ts` remains a compile-time false. **Never
+flip it or issue any operator approval based solely on passing CI.** A
+production decision requires a proven exclusive vault and withdrawals,
+source-pinned Comet financial proofs, complete HD/DE writer isolation, accepted
+tx and claim #889 reconciliation, reserve/solvency proof, fresh backup, live
+rollback rehearsal, 11-migration *production-equivalent* rehearsal and
+explicit operator sign-off. With the source hold in place every mutating
+operator invocation refuses before reading the review file or database.
+
+The 11-migration isolated PostgreSQL 16 shadow CI proof demonstrates SQL
+installation and rollback properties, **not** authorization to run Prisma
+migrations against the live HD database. Do not use an isolated green test
+to bypass the protected `./bin/aoe2war finish` control plane.

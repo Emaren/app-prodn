@@ -8,10 +8,10 @@ function source(path: string) {
   return readFileSync(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("AoE2WAR OS model atlas enumerates exactly 193 distinct real schema models", () => {
+test("AoE2WAR OS model atlas enumerates exactly 213 distinct real schema models", () => {
   const schema = source("prisma/schema.prisma");
   const names = [...schema.matchAll(/^model\s+([A-Za-z]\w*)\s*\{/gm)].map(match => match[1]);
-  assert.equal(names.length, 193);
+  assert.equal(names.length, 213);
   assert.deepEqual(models.models, names);
   assert.equal(new Set(models.models).size, models.models.length);
   assert.ok(models.models.includes("WarSatchelLedgerJournal"));
@@ -80,8 +80,10 @@ test("AoE2WAR OS change-notice version hashes exactly the three route source fil
   const digest = createHash("sha256");
   for (const path of files) {
     digest.update(path);
+    // Match the canonical Python generator's actual NUL-byte separator.
     digest.update(Buffer.from([0]));
     digest.update(readFileSync(new URL("../" + path, import.meta.url)));
+    // Match the canonical Python generator's actual NUL-byte separator.
     digest.update(Buffer.from([0]));
   }
   const edition = "src-" + digest.digest("hex").slice(0, 20);

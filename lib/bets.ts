@@ -1,3 +1,8 @@
+import {requireSatchelFinancialBridge} from "./warSatchelFinancialBridgeHold.ts";
+import {readWagerReviewerKey} from "./warSatchelWagerReviewerKey.ts";
+import {verifyIndependentFundedWatcherOrigin,fundedWatcherBookNames,type SignedFundedWatcherOrigin}
+  from "./warSatchelFundedWatcherOrigin.ts";
+import {committedLiveWatcherAdmissionIssue,liveSessionMatchesCommittedWatcher,LIVE_WATCHER_ADMISSION_MAX_AGE_MS,type CommittedLiveWatcherRow} from "./liveWatcherMarketAdmission.ts";
 import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -9,6 +14,8 @@ import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import {
   canonicalBattleIdentityKey,
   ensurePublicBattleIdentities,
+  ensurePublicBattleIdentitiesInTransaction,
+  type BattleIdentityCandidate,
   platformMatchIdFromBattleSession,
 } from "@/lib/battleIdentity";
 import {
@@ -3942,6 +3949,8 @@ async function resolveAutomatedWatcherIntegrityIncident(
 async function settleResolvedMarketWagers(prisma: PrismaClient) {
   const markets = await prisma.betMarket.findMany({
     where: {
+      // A display-only LIVE battle must never enter the original signer path.
+      bookPhase: { not: "preview_only" },
       status: { in: ["settled", "voided"] },
       wagers: {
         some: buildCountableActiveWagerWhere(),
@@ -4221,8 +4230,43 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
      */
 
     const claimPlanList = [...claimPlans.values()];
+    // Satchel-funded WOLO originated from the dedicated vault, NOT the
+    // player's personal Keplr account. Automatic legacy settlement must
+    // NEVER pay such a claim directly to Keplr; the claim remains pending
+    // until a verified escrow→vault transfer is allocated back to the
+    // exact owner's funded ledger. Preserve ordinary manual-wallet payouts.
+    //
+    // On a failed/truncated census, fail CLOSED for ALL auto payouts in this
+    // market while retaining the unpaid claim records for reconciliation.
+    const pooledOwnerIds = new Set<number>();
+    let pooledCensusComplete = false;
+    try {
+      const pooledWagers = await prisma.betWager.findMany({
+        where: {
+          marketId: market.id,
+          stakeLeg: {
+            is: {
+              ticket: {
+                is: { source: "auto", walletProvider: "satchel-vault" },
+              },
+            },
+          },
+        },
+        select: { userId: true },
+        take: 1001,
+      });
+      if (pooledWagers.length <= 1000) {
+        for (const wager of pooledWagers) pooledOwnerIds.add(wager.userId);
+        pooledCensusComplete = true;
+      }
+    } catch {
+      // No guesswork about custody on database errors.
+      pooledCensusComplete = false;
+    }
     const autoClaimPlans = claimPlanList.filter(
       (plan) =>
+        pooledCensusComplete &&
+        !pooledOwnerIds.has(plan.claimedByUserId ?? -1) &&
         Boolean(plan.walletAddress && plan.claimedByUserId) &&
         hasWoloEscrowSettlementExecutionConfigured()
     );
@@ -4535,7 +4579,7 @@ async function reconcilePendingCoreBetClaims(
   }
 }
 
-async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
+export async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
   const retryCutoff = new Date(Date.now() - 5 * 60_000);
   const candidates = await prisma.betMarketFinancialAdjustment.findMany({
     where: {
@@ -4546,8 +4590,9 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
         { adjustmentStatus: "corrective_refund_processing", updatedAt: { lt: retryCutoff } },
       ],
       incident: {
-        market: { status: "voided" },
+        market: { status: "voided", bookPhase: { not: "preview_only" } },
       },
+      wager: { market: { bookPhase: { not: "preview_only" } } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     include: {
@@ -4556,13 +4601,20 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
           market: true,
         },
       },
+      wager: { select: { marketId: true, userId: true } },
     },
   });
 
   for (const adjustment of candidates) {
+    if (adjustment.incident.market.bookPhase === "preview_only" ||
+        adjustment.wager.marketId !== adjustment.incident.marketId ||
+        adjustment.wager.userId !== adjustment.userId) continue;
     const acquired = await prisma.betMarketFinancialAdjustment.updateMany({
       where: {
         id: adjustment.id,
+        incident: { market: { status: "voided", bookPhase: { not: "preview_only" } } },
+        wager: { marketId: adjustment.incident.marketId, userId: adjustment.userId,
+          market: { bookPhase: { not: "preview_only" } } },
         amountStillOwedWolo: { gt: 0 },
         OR: [
           { adjustmentStatus: "corrective_refund_pending" },
@@ -8025,32 +8077,73 @@ async function reconcileAuthorizedReplayVerdictMarkets(
   }
 }
 
-async function runBetMarketEnsure(prisma: PrismaClient) {
-  await archiveLowConfidenceZeroPotMarkets(prisma);
-  const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
-  const {
-    seeds,
-    reconciledSessionKeys,
-    activeSessions,
-  } = await buildOpenMarketSeeds(prisma);
-  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
-  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+/** Shared canonical seed writer. Advisory locks and terminal/roster latches
+ * apply equally to routine reconciliation and authenticated live admission. */
+const LIVE_ADMISSION_SOURCE_SELECT = {id:true,is_final:true,parse_source:true,
+  parse_iteration:true,replayHash:true,game_version:true,game_type:true,createdAt:true,played_on:true,winner:true,
+  players:true,key_events:true,user:{select:{uid:true,steamId:true}}} as const;
 
-  await Promise.all(
-    seeds.map(async (seed) => {
-      await prisma.$transaction(async (tx) => {
+async function persistBetMarketSeeds(prisma:PrismaClient,seeds:readonly MarketSeed[],liveSources?:readonly CommittedLiveWatcherRow[],liveIdentityCandidates:BattleIdentityCandidate[]=[]){
+  const liveOnly = liveSources !== undefined;
+  const liveAuthorityBySlug=new Map<string,readonly CommittedLiveWatcherRow[]>();
+  // LIVE winner and desync markets must share one bounded SQL transaction.
+  // The former Promise.all could report lock failure while the sibling
+  // transaction committed afterward, leaving a partial canonical book.
+  const writeSeed = async (tx: Prisma.TransactionClient, seed: MarketSeed) => {
         const seedLockKey =
           canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)) ??
           `bet-market-seed:${seed.slug}`;
         await tx.$executeRaw(
           Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${seedLockKey}, 0))`
         );
+        let liveAuthorityRows: readonly CommittedLiveWatcherRow[] | undefined;
+        if (liveSources) {
+          // Serialize the final snapshot/write with ALL GameStats insert/update
+          // paths, including new final-artifact rows that a row lock cannot see.
+          // No parser, network call or GameStats write occurs under this brief
+          // SHARE lock. Busy source writers cause bounded fail-closed retry.
+          await tx.$executeRaw`LOCK TABLE game_stats IN SHARE MODE`;
+          const sourceIds = liveSources.map(row=>row.id);
+          await tx.$queryRaw(Prisma.sql`SELECT id FROM game_stats WHERE id IN (${Prisma.join(sourceIds)}) ORDER BY id FOR SHARE`);
+          const currentRows = await tx.gameStats.findMany({where:{id:{in:sourceIds}},select:LIVE_ADMISSION_SOURCE_SELECT});
+          const currentSnapshot = await loadLiveSessionSnapshot(tx);
+          const currentSession = currentSnapshot.activeSessions.find(session=>
+            session.sessionKey===seed.linkedSessionKey && session.teamResolution.propositionHash===seed.propositionHash &&
+            currentRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null && liveSessionMatchesCommittedWatcher(row,session)));
+          if (!currentSession) return {created:false,admitted:false};
+          liveAuthorityRows=currentRows.filter(row=>liveSessionMatchesCommittedWatcher(row,currentSession));
+          liveAuthorityBySlug.set(seed.slug,liveAuthorityRows);
+        }
+        if (liveOnly) {
+          // A terminal writer need not take this seed's advisory lock. Lock
+          // the existing row before reading its terminal latch, so UPSERT
+          // cannot later overwrite a committed void/close with stale LIVE data.
+          await tx.$queryRaw(Prisma.sql`SELECT id FROM bet_markets WHERE slug=${seed.slug} FOR UPDATE`);
+        }
         const existing = await tx.betMarket.findUnique({
           where: { slug: seed.slug },
           select: {
             id: true,
             slug: true,
+            marketType: true,
+            scheduledMatchId: true,
+            linkedSessionKey: true,
+            battleId: true,
             status: true,
+            bookPhase: true,
+            seedLeftWolo: true,
+            seedRightWolo: true,
+            settlementRunId: true,
+            settlementStatus: true,
+            settlementAttemptedAt: true,
+            settlementExecutedAt: true,
+            voidedAt: true,
+            refundStatus: true,
+            _count: { select: {
+              wagers: true, stakeIntents: true, stakeTicketLegs: true,
+              walletLocks: true, founderBonuses: true,
+              integrityIncidents: true,
+            } },
             settledAt: true,
             winnerSide: true,
             title: true,
@@ -8069,12 +8162,44 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             createdAt: true,
           },
         });
+        if (liveOnly && existing && (
+          existing.bookPhase !== "preview_only" ||
+          existing.firstStakeAcceptedAt !== null ||
+          existing.seedLeftWolo !== 0 || existing.seedRightWolo !== 0 ||
+          existing.settlementRunId !== null || existing.settlementStatus !== null ||
+          existing.settlementAttemptedAt !== null || existing.settlementExecutedAt !== null ||
+          existing.voidedAt !== null || existing.refundStatus !== null ||
+          Object.values(existing._count).some(count => count !== 0) ||
+          existing.marketType !== seed.marketType || existing.scheduledMatchId !== null ||
+          existing.linkedSessionKey !== seed.linkedSessionKey ||
+          !["open","live"].includes(existing.status) || existing.settledAt || existing.winnerSide ||
+          existing.closeAt && existing.closeAt.getTime() <= Date.now()
+        )) return {created:false,admitted:false};
+        if (liveOnly && existing) {
+          // This extracted path may acknowledge compatible metadata, but must
+          // never rewrite an existing book, roster latch or financial history.
+          const linkedClaimCount=await tx.pendingWoloClaim.count({
+            where:{sourceMarketId:existing.id},
+          });
+          return {created:false,admitted:linkedClaimCount===0 &&
+            existing.propositionHash === seed.propositionHash &&
+            Boolean(liveAuthorityRows?.some(row=>committedLiveWatcherAdmissionIssue(row)===null))};
+        }
         const rosterChangedAfterStake = Boolean(
           existing?.firstStakeAcceptedAt &&
           existing.propositionHash &&
           seed.propositionHash !== existing.propositionHash
         );
-        const persisted = await tx.betMarket.upsert({
+        if (liveAuthorityRows&&!liveAuthorityRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null))
+          return {created:false,admitted:false};
+        // A creator that does not share our advisory lock must cause a unique
+        // conflict/rollback, never turn stale absence into an update of its book.
+        const persisted = liveOnly ? await tx.betMarket.create({data:{
+          ...marketSeedCreateData(seed),
+          // Durable, main-schema discriminator. Never invite legacy WOLO
+          // stakes or recovery intents into an unapproved preview book.
+          bookPhase:"preview_only",
+        }}) : await tx.betMarket.upsert({
           where: { slug: seed.slug },
           create: marketSeedCreateData(seed),
           update: marketSeedUpdateData(seed, existing),
@@ -8107,9 +8232,150 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             },
           });
         }
-      });
-    })
-  );
+        if (liveAuthorityRows&&!liveAuthorityRows.some(row=>committedLiveWatcherAdmissionIssue(row)===null))
+          throw Error("LIVE_MARKET_ADMISSION_AUTHORITY_EXPIRED_BEFORE_COMMIT");
+        return {created:!existing,admitted:persisted.status === "live" || persisted.status === "open"};
+  };
+
+  if (liveOnly) {
+    if (!seeds.length) return [];
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
+      await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
+      // Alias promotion can move real wagers, claims and custody attribution.
+      // Preview admission only observes aliases and refuses occupied families.
+      // Use the existing promotion writer's full sorted lock set so a concurrent
+      // alias writer cannot appear between the check and canonical creation.
+      const families=watcherMarketPromotionSeedFamilies([...seeds]);
+      const keys=[...new Set([
+        ...seeds.map(seed=>canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)))
+          .filter((key):key is string=>Boolean(key)),
+        ...families.flatMap(family=>watcherPromotionIdentityKeys(family.canonicalSessionKey,family.aliases)),
+      ])].sort((left,right)=>left.localeCompare(right));
+      for (const key of keys) {
+        await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
+      }
+      const blocked=new Set<string>();
+      // Inspect the complete canonical pair before writing either seed. A
+      // terminal/unrelated parent with an absent child must not create a new
+      // live child or preview. Keep source/row lock order equal to writeSeed.
+      await tx.$executeRaw`LOCK TABLE game_stats IN SHARE MODE`;
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM bet_markets WHERE slug IN
+        (${Prisma.join(seeds.map(seed=>seed.slug))}) ORDER BY id FOR UPDATE`);
+      const existingRows=await tx.betMarket.findMany({where:{slug:{in:seeds.map(seed=>seed.slug)}},select:{
+        id:true,slug:true,marketType:true,scheduledMatchId:true,linkedSessionKey:true,battleId:true,parentMarketId:true,
+        status:true,settledAt:true,winnerSide:true,closeAt:true,propositionHash:true,
+        bookPhase:true,firstStakeAcceptedAt:true,seedLeftWolo:true,seedRightWolo:true,
+        settlementRunId:true,settlementStatus:true,settlementAttemptedAt:true,
+        settlementExecutedAt:true,voidedAt:true,refundStatus:true,
+        _count:{select:{wagers:true,stakeIntents:true,stakeTicketLegs:true,
+          walletLocks:true,founderBonuses:true,integrityIncidents:true}},
+      }});
+      const linkedClaimOwners=new Set(
+        (existingRows.length?await tx.pendingWoloClaim.findMany({
+          where:{sourceMarketId:{in:existingRows.map(row=>row.id)}},
+          select:{sourceMarketId:true},
+        }):[]).map(claim=>claim.sourceMarketId)
+      );
+      for (const seed of seeds) {
+        const existing=existingRows.find(row=>row.slug===seed.slug);
+        if (existing && (linkedClaimOwners.has(existing.id) ||
+          existing.bookPhase!=="preview_only" ||
+          existing.firstStakeAcceptedAt!==null ||
+          existing.seedLeftWolo!==0 || existing.seedRightWolo!==0 ||
+          existing.settlementRunId!==null || existing.settlementStatus!==null ||
+          existing.settlementAttemptedAt!==null || existing.settlementExecutedAt!==null ||
+          existing.voidedAt!==null || existing.refundStatus!==null ||
+          Object.values(existing._count).some(count=>count!==0) ||
+          existing.marketType!==seed.marketType || existing.scheduledMatchId!==null ||
+          existing.linkedSessionKey!==seed.linkedSessionKey ||
+          existing.propositionHash!==seed.propositionHash || !["open","live"].includes(existing.status) ||
+          existing.settledAt || existing.winnerSide || existing.closeAt && existing.closeAt.getTime()<=Date.now()))
+          blocked.add(normalizeName(seed.linkedSessionKey));
+        // Refuse preexisting malformed canonical parent/child families outright.
+        if (existing && seed.marketType===WINNER_MARKET_TYPE && existing.parentMarketId!==null)
+          blocked.add(normalizeName(seed.linkedSessionKey));
+        if (existing && seed.marketType===DESYNC_SIDE_MARKET_TYPE) {
+          const parent=existingRows.find(row=>row.marketType===WINNER_MARKET_TYPE &&
+            row.linkedSessionKey===seed.linkedSessionKey);
+          if (!parent || existing.parentMarketId!==parent.id)
+            blocked.add(normalizeName(seed.linkedSessionKey));
+        }
+      }
+      for (const family of families) {
+        const aliasSlugs=family.aliases.map(buildWatcherMarketSlugForSessionKey);
+        const occupied=await tx.betMarket.findFirst({where:{
+          marketType:{in:[WINNER_MARKET_TYPE,DESYNC_SIDE_MARKET_TYPE]},
+          OR:[{scheduledMatchId:null,linkedSessionKey:{in:family.aliases}},
+            {slug:{in:[...aliasSlugs,...aliasSlugs.map(buildDesyncSideMarketSlug)]}}],
+        },select:{id:true}});
+        if (occupied) blocked.add(family.canonicalSessionKey);
+      }
+      const results: Awaited<ReturnType<typeof writeSeed>>[] = [];
+      for (const seed of seeds) results.push(blocked.has(normalizeName(seed.linkedSessionKey))
+        ? {created:false,admitted:false} : await writeSeed(tx, seed));
+      for (const sessionKey of new Set(seeds.map(seed=>seed.linkedSessionKey))) {
+        const family=results.filter((_result,index)=>seeds[index].linkedSessionKey===sessionKey);
+        if (family.some(result=>result.admitted) && family.some(result=>!result.admitted))
+          throw Error("LIVE_MARKET_ADMISSION_FAMILY_NOT_ADMITTED");
+      }
+      for (const parent of seeds.filter(seed=>seed.marketType===WINNER_MARKET_TYPE)) {
+        const parentIndex=seeds.findIndex(seed=>seed.slug===parent.slug);
+        const child=buildDesyncSideMarketSeed(parent);
+        const childIndex=child?seeds.findIndex(seed=>seed.slug===child.slug):-1;
+        if (!child || childIndex<0 || !results[childIndex]?.created || !results[parentIndex]?.admitted) continue;
+        const winner=await tx.betMarket.findUnique({where:{slug:parent.slug},select:{id:true}});
+        if (winner) await tx.betMarket.updateMany({where:{slug:child.slug,marketType:DESYNC_SIDE_MARKET_TYPE},
+          data:{parentMarketId:winner.id}});
+      }
+      // Only newly created, fully admitted preview families receive public
+      // battle identities. The identity allocator and the new market rows share
+      // the SAME transaction: any later expiry/error rolls both back.
+      const createdKeys = new Set(seeds.filter((_seed,index)=>results[index]?.created)
+        .map(seed=>canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey)))
+        .filter((key):key is string=>Boolean(key)));
+      if (createdKeys.size) {
+        const identities=await ensurePublicBattleIdentitiesInTransaction(tx,
+          liveIdentityCandidates.filter(candidate=>createdKeys.has(
+            canonicalBattleIdentityKey(candidate.sessionKey)??"")));
+        for (const [index,seed] of seeds.entries()) {
+          if (!results[index]?.created) continue;
+          const key=canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey));
+          const identity=key?identities.get(key):null;
+          if (!identity) throw Error("LIVE_PREVIEW_BATTLE_IDENTITY_MISSING");
+          await tx.betMarket.updateMany({where:{slug:seed.slug,bookPhase:"preview_only",battleId:null},
+            data:{battleId:identity.id}});
+        }
+      }
+      // Recheck AFTER identity writes and final parent-link I/O, immediately before commit.
+      if (existingRows.some(row=>row.closeAt && row.closeAt.getTime()<=Date.now() &&
+        results[seeds.findIndex(seed=>seed.slug===row.slug)]?.admitted))
+        throw Error("LIVE_MARKET_ADMISSION_EXISTING_BOOK_CLOSED_BEFORE_COMMIT");
+      if (seeds.some((seed,index)=>results[index]?.admitted &&
+        !liveAuthorityBySlug.get(seed.slug)?.some(row=>committedLiveWatcherAdmissionIssue(row)===null)))
+        throw Error("LIVE_MARKET_ADMISSION_AUTHORITY_EXPIRED_BEFORE_COMMIT");
+      return results;
+    }, {maxWait:5000,timeout:9000});
+  }
+
+  // Keep the established per-seed concurrency for ordinary reconciliation.
+  return Promise.all(seeds.map((seed) =>
+    prisma.$transaction((tx) => writeSeed(tx, seed))
+  ));
+}
+
+async function runBetMarketEnsure(prisma: PrismaClient) {
+  await archiveLowConfidenceZeroPotMarkets(prisma);
+  const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
+  const {
+    seeds,
+    reconciledSessionKeys,
+    activeSessions,
+  } = await buildOpenMarketSeeds(prisma);
+  const slugs = [...new Set(seeds.map((seed) => seed.slug))];
+  const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
+
+  await persistBetMarketSeeds(prisma,seeds);
 
   try {
     await materializeBetPhaseBookShadows(prisma, seeds);
@@ -8278,6 +8544,194 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   } catch (error) {
     console.warn("Auto Bet shadow evaluation failed after market reconciliation:", error);
   }
+}
+
+/** Awaited private post-commit admission. Receipt IDs only select durable rows;
+ * they never supply game, owner, platform, roster, clock or financial authority.
+ * No page visit, timer, WOLO transfer, claim retry or settlement is called here. */
+export async function admitCommittedLiveWatcherMarkets(prisma:PrismaClient,gameStatsIds:readonly (string|number|null|undefined)[]){
+  if(process.env.AOE2WAR_PROD_DB_PREVIEW === "true")throw Error("LIVE_MARKET_ADMISSION_READ_ONLY_PREVIEW");
+  const ids=[...new Set(gameStatsIds.map(id=>typeof id === "number"?id:typeof id === "string"&&/^[1-9][0-9]{0,9}$/.test(id)?Number(id):0))];
+  if(ids.length>64||ids.some(id=>!Number.isSafeInteger(id)||id<=0))throw Error("LIVE_MARKET_ADMISSION_INVALID_COMMITTED_IDS");
+  if(!ids.length)return {createdCount:0,existingCount:0,skippedCount:0};
+  const rows=await prisma.gameStats.findMany({where:{id:{in:ids}},select:LIVE_ADMISSION_SOURCE_SELECT});
+  const eligible=rows.filter(row=>committedLiveWatcherAdmissionIssue(row)===null);
+  if(!eligible.length)return {createdCount:0,existingCount:0,skippedCount:ids.length};
+  const snapshot=await loadLiveSessionSnapshot(prisma);
+  const sessions=snapshot.activeSessions.filter(session=>eligible.some(row=>liveSessionMatchesCommittedWatcher(row,session)));
+  const seeds=sessions.flatMap((session,index)=>{
+    const winner=buildSessionMarketSeed(session,-300+index,false);
+    if(!winner||winner.status!=="live")return [];
+    const desync=buildDesyncSideMarketSeed(winner);
+    return desync?[winner,desync]:[winner];
+  });
+  const startIndex=buildWatcherBattleStartIndex(sessions);
+  const identityCandidates:BattleIdentityCandidate[]=seeds.filter(seed=>seed.marketType===WINNER_MARKET_TYPE)
+    .map(seed=>({sessionKey:normalizeName(seed.linkedSessionKey),state:"live" as const,
+      startedAt:resolveWatcherBattleStartedAt(startIndex,seed.linkedSessionKey),
+      completedAt:null,allowCreate:true}));
+  const results=await persistBetMarketSeeds(prisma,seeds,eligible,identityCandidates);
+  const admittedSessions=sessions.filter(session=>seeds.some((seed,index)=>
+    seed.marketType===WINNER_MARKET_TYPE&&seed.linkedSessionKey===session.sessionKey&&results[index]?.admitted));
+  await runBetAutoShadowWorker(prisma,{activeSessions:admittedSessions});
+  return {createdCount:results.filter(r=>r?.admitted&&r.created).length,
+    existingCount:results.filter(r=>r?.admitted&&!r.created).length,
+    skippedCount:Math.max(0,ids.length-sessions.length)+results.filter(r=>!r?.admitted).length};
+}
+
+/** Recover a commit whose process died before the best-effort API notifier.
+ * Reuse the existing private recovery scheduler, durable GameStats and canonical
+ * admission. No new queue, parser dispatch, financial ensure or public trigger.
+ * Rotate at most 64 distinct authenticated streams through the 12-minute lane;
+ * the report exposes backlog/cadence instead of asserting timely live delivery.
+ */
+/** Future funded admission: a signed, role-separated authority creates NEW
+ * market IDs. No original LIVE preview book is updated or financially inherited.
+ * Mainnet remains unreachable while SATCHEL_FINANCIAL_BRIDGE_READY is false.
+ * This function is never called by public GET/SSR or the original LIVE importer.
+ */
+export async function admitReviewedFundedWatcherBooks(prisma:PrismaClient,input:{
+  sourceGameStatsId:number;signedOrigin:SignedFundedWatcherOrigin;
+}):Promise<{created:boolean;winnerMarketId:number;desyncMarketId:number}>{
+  requireSatchelFinancialBridge();
+  if(!Number.isSafeInteger(input.sourceGameStatsId)||input.sourceGameStatsId<=0)
+    throw Error("FUNDED_WATCHER_INVALID_COMMITTED_SOURCE");
+  const reviewerKey=await readWagerReviewerKey();
+  // An operator signature has no authority to invent Watcher propositions.
+  const row=await prisma.gameStats.findUnique({
+    where:{id:input.sourceGameStatsId},select:LIVE_ADMISSION_SOURCE_SELECT,
+  });
+  if(!row||committedLiveWatcherAdmissionIssue(row)!==null)
+    throw Error("FUNDED_WATCHER_COMMITTED_SOURCE_UNVERIFIED");
+  const snap=await loadLiveSessionSnapshot(prisma);
+  const active=snap.activeSessions.find(session=>
+    liveSessionMatchesCommittedWatcher(row,session)&&
+    session.teamResolution.status==="resolved"&&
+    session.teamResolution.confidence==="high");
+  if(!active)throw Error("FUNDED_WATCHER_CANONICAL_GAME_UNVERIFIED");
+  const verified=verifyIndependentFundedWatcherOrigin({
+    signed:input.signedOrigin,publicKeyHex:reviewerKey,nowMs:Date.now(),
+    expected:{sessionKey:active.sessionKey,
+      propositionHash:active.teamResolution.propositionHash||"",
+      rosterHash:active.teamResolution.rosterHash||"",
+      sourceGameStatsId:input.sourceGameStatsId},
+  });
+  const names=fundedWatcherBookNames(verified);
+  // PostgreSQL transaction timeout is 9 seconds. A signed approval must have
+  // more than that entire window PLUS commit/scheduling margin remaining at
+  // the last mutation boundary. A signature valid only at request entry is
+  // insufficient; no approval-time TTL extension is granted here.
+  const originCommitSafetyMs=15000;
+  const requireFreshOriginAtCommitBoundary=()=>{
+    const now=Date.now();
+    if(verified.expires_at*1000-now<=originCommitSafetyMs)
+      throw Error("FUNDED_WATCHER_ORIGIN_TOO_CLOSE_TO_EXPIRY");
+    verifyIndependentFundedWatcherOrigin({
+      signed:input.signedOrigin,publicKeyHex:reviewerKey,nowMs:now,
+      expected:{sessionKey:verified.session_key,propositionHash:verified.proposition_hash,
+        rosterHash:verified.roster_hash,sourceGameStatsId:input.sourceGameStatsId},
+    });
+  };
+  return prisma.$transaction(async tx=>{
+    await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`;
+    await tx.$executeRaw`SET LOCAL statement_timeout = '8000ms'`;
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${"funded-book:"+verified.originKey}, 0))`);
+    // Source writers share this lock protocol. No new terminal GameStats row
+    // may slip between final Watcher verification and both create-only inserts.
+    await tx.$executeRaw`LOCK TABLE game_stats IN SHARE MODE`;
+    const current=await tx.gameStats.findUnique({
+      where:{id:input.sourceGameStatsId},select:LIVE_ADMISSION_SOURCE_SELECT,
+    });
+    const latest=await loadLiveSessionSnapshot(tx);
+    const live=current&&latest.activeSessions.find(session=>
+      session.sessionKey===verified.session_key&&
+      session.teamResolution.propositionHash===verified.proposition_hash&&
+      session.teamResolution.rosterHash===verified.roster_hash&&
+      liveSessionMatchesCommittedWatcher(current,session));
+    if(!current||committedLiveWatcherAdmissionIssue(current)!==null||!live)
+      throw Error("FUNDED_WATCHER_SOURCE_CHANGED_UNDER_LOCK");
+    // The original seed provides only canonical teams/roster, NEVER a financial
+    // market ID, pending claim, escrow allocation, stake or settlement record.
+    const winnerSeed=buildSessionMarketSeed(live,-300,false);
+    if(!winnerSeed||winnerSeed.status!=="live"||
+       winnerSeed.propositionHash!==verified.proposition_hash)
+      throw Error("FUNDED_WATCHER_SEED_UNVERIFIED");
+    const desyncSeed=buildDesyncSideMarketSeed(winnerSeed);
+    if(!desyncSeed)throw Error("FUNDED_WATCHER_DESYNC_UNVERIFIED");
+    const preexisting=await tx.betMarket.findMany({
+      where:{linkedSessionKey:verified.session_key},
+      select:{id:true,slug:true,bookPhase:true,phaseBookKey:true,
+        marketType:true,propositionHash:true,scheduledMatchId:true,
+        parentMarketId:true,seedLeftWolo:true,seedRightWolo:true},
+    });
+    // A pre-existing original LIVE book is always read-only preview. Reject
+    // any legacy/funded collision; do not promote by upsert or marketId reuse.
+    if(preexisting.some(book=>book.bookPhase!=="preview_only"&&
+       !(book.bookPhase==="funded"&&
+         [names.winnerPhaseKey,names.desyncPhaseKey].includes(book.phaseBookKey||""))))
+       throw Error("FUNDED_WATCHER_UNRELATED_FINANCIAL_BOOK_COLLISION");
+    const first=preexisting.find(b=>b.phaseBookKey===names.winnerPhaseKey);
+    const second=preexisting.find(b=>b.phaseBookKey===names.desyncPhaseKey);
+    if(Boolean(first)!==Boolean(second))
+      throw Error("FUNDED_WATCHER_PARTIAL_ORIGIN_REQUIRES_REVIEW");
+    if(first&&second){
+      if(first.bookPhase!=="funded"||second.bookPhase!=="funded"||
+         first.marketType!=="winner"||second.marketType!=="desync"||
+         second.parentMarketId!==first.id||
+         first.propositionHash!==verified.proposition_hash||
+         second.propositionHash!==verified.proposition_hash||
+         first.seedLeftWolo!==0||first.seedRightWolo!==0||
+         second.seedLeftWolo!==0||second.seedRightWolo!==0)
+        throw Error("FUNDED_WATCHER_REPLAY_CONFLICT");
+      return {created:false,winnerMarketId:first.id,desyncMarketId:second.id};
+    }
+    if(preexisting.some(book=>book.slug===names.winnerSlug||book.slug===names.desyncSlug))
+       throw Error("FUNDED_WATCHER_SLUG_REUSE_REFUSED");
+    // Under lock, require enough approval lifetime for the complete 9s PG
+    // transaction and commit. Near-expiry approval writes must not even start.
+    requireFreshOriginAtCommitBoundary();
+    const winner=await tx.betMarket.create({data:{
+      ...marketSeedCreateData(winnerSeed),slug:names.winnerSlug,
+      bookPhase:"funded",phaseBookKey:names.winnerPhaseKey,
+      seedLeftWolo:0,seedRightWolo:0,
+    },select:{id:true}});
+    const desync=await tx.betMarket.create({data:{
+      ...marketSeedCreateData(desyncSeed),slug:names.desyncSlug,
+      bookPhase:"funded",phaseBookKey:names.desyncPhaseKey,
+      parentMarketId:winner.id,seedLeftWolo:0,seedRightWolo:0,
+    },select:{id:true}});
+    // Validate AFTER both inserts and final parent linkage, immediately
+    // before returning to Prisma for COMMIT. Any failure rolls back both.
+    requireFreshOriginAtCommitBoundary();
+    return {created:true,winnerMarketId:winner.id,desyncMarketId:desync.id};
+  },{maxWait:5000,timeout:9000});
+}
+
+export async function recoverCommittedLiveWatcherMarkets(prisma:PrismaClient,options:{dryRun:boolean;targetGameStatsId?:number|null}){
+  const now=new Date(),cutoff=new Date(now.getTime()-LIVE_WATCHER_ADMISSION_MAX_AGE_MS),minuteBucket=Math.floor(now.getTime()/60_000);
+  const rows=await prisma.$queryRaw<Array<{id:number;total:number}>>`
+    WITH heads AS (
+      SELECT DISTINCT ON (game.user_uid,game.key_events #>> '{watcher_upload,watcher_session_id}',game.key_events #>> '{watcher_upload,replay_fingerprint}')
+        game.id
+      FROM game_stats AS game
+      WHERE game.is_final=FALSE AND game.parse_source='watcher_live' AND game.parse_iteration>0
+        AND lower(game.game_version) IN ('hd','version.hd')
+        AND game.created_at BETWEEN ${cutoff} AND ${now} AND game.played_on BETWEEN ${cutoff} AND ${now}
+        AND game.key_events #>> '{watcher_upload,ingestion_provenance}'='live_monitor'
+        AND game.key_events #>> '{watcher_upload,provenance_signature_verified}'='true'
+        AND game.key_events #>> '{watcher_upload,client_sha256_verified}'='true'
+        AND (${options.targetGameStatsId??null}::integer IS NULL OR game.id=${options.targetGameStatsId??null}::integer)
+      ORDER BY game.user_uid,game.key_events #>> '{watcher_upload,watcher_session_id}',game.key_events #>> '{watcher_upload,replay_fingerprint}',game.created_at DESC,game.id DESC
+    ), numbered AS (
+      SELECT id,row_number() OVER (ORDER BY id) AS ordinal,count(*) OVER ()::integer AS total FROM heads
+    ) SELECT id,total FROM numbered
+      WHERE mod(ordinal-1+${minuteBucket}::bigint*64,total)<64 ORDER BY ordinal LIMIT 64
+  `;
+  const candidateIds=rows.map(row=>row.id),candidateCount=rows[0]?.total??0;
+  return {mode:"metadata-and-preview-only" as const,dryRun:options.dryRun,candidateIds,candidateCount,
+    selectedCount:candidateIds.length,truncated:candidateCount>64,
+    freshnessHorizonMs:LIVE_WATCHER_ADMISSION_MAX_AGE_MS,rotationBucket:minuteBucket,
+    admission:options.dryRun?null:await admitCommittedLiveWatcherMarkets(prisma,candidateIds)};
 }
 
 // Several public/admin/replay routes can request the same reconciliation pass.
@@ -9621,9 +10075,8 @@ export async function loadBetBoardSnapshot(
   viewerUid?: string | null,
   options: LoadBetBoardSnapshotOptions = {}
 ): Promise<BetBoardSnapshot> {
-  if (options.ensureMarkets !== false) {
-    await ensureBetMarkets(prisma);
-  }
+  // A board projection never triggers market/financial reconciliation.
+  // Authenticated private producers explicitly call ensureBetMarkets.
   const escrowRuntime = getWoloBetEscrowRuntime();
 
   const viewer = viewerUid

@@ -1,0 +1,280 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {execFileSync} from "node:child_process";
+import {readFileSync,writeFileSync,mkdtempSync,mkdirSync,rmSync,realpathSync} from "node:fs";
+import path from "node:path";
+import pg from "pg";
+import {PrismaPg} from "@prisma/adapter-pg";
+import {PrismaClient} from "@/lib/generated/prisma";
+import {authenticateOwnerDeposit,isAuthenticatedWarSatchelDeposit,authenticatedWarSatchelDepositFreshAt} from "../lib/warSatchelAuthenticatedDeposit.ts";
+import {authenticateWarSatchelBank,authenticatedWarSatchelBankFreshAt} from "../lib/warSatchelAuthenticatedBank.ts";
+import {creditRecordedSatchelProof,readRecordedSatchelCredit} from "../lib/warSatchelFundedLedger.ts";
+import {createHash} from "node:crypto";
+import {seedIsolatedProspectiveEpoch} from "./fixtures/satchel-prospective-epoch.mts";
+
+test("real signed SDK deposit authenticates then credits the linked HD owner exactly once", {skip:process.env.RUN_SATCHEL_REAL_CREDIT_TESTS!=="1"},async t=>{
+  const binary=process.env.SATCHEL_TEST_BINARY!;
+  const fixturePath=process.env.SATCHEL_CREDIT_DEPOSIT_FIXTURE!;
+  assert.ok(path.isAbsolute(fixturePath),"one genuine SDK chain must supply both transfer and current bank proof");
+  const fixture=JSON.parse(readFileSync(fixturePath,"utf8"));
+  assert.equal(fixture.fixture_only,true);assert.equal(fixture.mainnet_authority,false);
+  const step=fixture.steps.find((s:{name:string})=>s.name==="deposit");assert.ok(step);
+  const i=step.deposit_intent,o=step.observation;
+  // V1 acceptance amount: actual signed SDK MsgSend of 100 WOLO.
+  assert.equal(i.AmountUWolo, "100000000");
+  // HD persists JavaScript millisecond ISO strings, including a .000 suffix.
+  // Go RFC3339Nano may omit it; reconstruct the actual durable HD context.
+  i.CreatedAt=new Date(i.CreatedAt).toISOString();i.ExpiresAt=new Date(i.ExpiresAt).toISOString();
+  const root=realpathSync(mkdtempSync("/tmp/hd-credit-postgres-"));
+  const socket=path.join(root,"socket"),data=path.join(root,"data");mkdirSync(socket,{mode:0o700});
+  const authority=path.join(root,"authority.json");
+  const publicFixture=JSON.parse(readFileSync(new URL("fixtures/satchel-financial-bridge-v1.json",import.meta.url),"utf8"));
+  writeFileSync(authority,JSON.stringify({trust_anchor:fixture.anchor,vault:i.Vault,betting_escrow:fixture.roles.escrow,approval_public_key_hex:publicFixture.approval_public_key_hex}),{mode:0o600});
+  const context={protocol:1,kind:"deposit",owner_id:i.OwnerID,sender:i.Sender,recipient:i.Vault,amount_uwolo:i.AmountUWolo,memo:i.Memo,tx_hash:o.TxHash,created_at:i.CreatedAt,expires_at:i.ExpiresAt};
+  const envelope={protocol:1,chain_id:"wolo-1",denom:"uwolo",context,context_digest:createHash("sha256").update(JSON.stringify(context)).digest("hex"),tx_hash:o.TxHash,receipt_id:`wolo-1:${o.TxHash}:0`,transfer_index:0,message_index:0,height:o.Height,block_hash:o.BlockHash,consensus_authenticated:true,credit_authorized:false,proof:step.deposit_proof};
+  const expected={intentId:"00000000-0000-4000-8000-000000000001",ownerUid:i.OwnerID,sender:i.Sender,vault:i.Vault,amountUwolo:i.AmountUWolo,memo:i.Memo,createdAtUtc:i.CreatedAt,expiresAtUtc:i.ExpiresAt,txHash:o.TxHash};
+  Object.assign(process.env,{WAR_SATCHEL_PROOF_VERIFIER_ENABLED:"true",WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED:"true",WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS:i.Vault,WAR_SATCHEL_SIGNER_AUTH_TOKEN:"t".repeat(64),WAR_SATCHEL_VERIFIER_BINARY:binary,WAR_SATCHEL_VERIFIER_AUTHORITY_FILE:authority,WAR_SATCHEL_VERIFIER_SHA256:process.env.SATCHEL_TEST_BINARY_SHA256,WAR_SATCHEL_FUNDED_LEDGER_ENABLED:"true",WOLO_BET_ESCROW_ADDRESS:fixture.roles.escrow,WOLO_BET_PAYOUT_ADDRESS:i.Sender});
+  const reader=(body:unknown)=>(async(url,options)=>{
+    assert.equal(url,"http://127.0.0.1:8094/satchel/v1/proofs/deposit");assert.equal(options?.method,"POST");
+    return new Response(JSON.stringify(body),{status:200});
+  }) as typeof fetch;
+  const authenticated=await authenticateOwnerDeposit(expected,reader(envelope));
+  assert.equal(isAuthenticatedWarSatchelDeposit(authenticated),true);
+  assert.equal(authenticatedWarSatchelDepositFreshAt(authenticated,authenticated.verifiedAtMs),true);
+  assert.equal(authenticatedWarSatchelDepositFreshAt(authenticated,authenticated.authenticatedHeadExpiresAtMs),false,"CLI success must not reset the original signed head expiry");
+  assert.equal(isAuthenticatedWarSatchelDeposit({...authenticated}),false,"copying the private symbol is insufficient");
+  assert.equal(isAuthenticatedWarSatchelDeposit(JSON.parse(JSON.stringify(envelope))),false);
+  await t.test("forged chain, denom, success, ownership, amount and finality fail independent verification",async()=>{
+    for(const mode of ["chain","denom","result","hash","amount","owner","vault","pending","REST"]){
+      const bad=structuredClone(envelope),want={...expected};
+      if(mode==="chain")bad.chain_id="not-wolo";
+      if(mode==="denom")bad.denom="stake";
+      if(mode==="hash")want.txHash="A".repeat(64);
+      if(mode==="amount")want.amountUwolo="1";
+      if(mode==="owner"){want.ownerUid="another-owner";want.memo="aoe2war/satchel/v1/another-owner/abcdefghijklmnop";}
+      if(mode==="vault"){want.vault=i.Sender;}
+      if(mode==="result")for(const r of bad.proof.responses)if(r.path==="/tx")r.body.result.tx_result.code=7;
+      if(mode==="pending")for(const r of bad.proof.responses)if(r.path==="/status")r.body.result.sync_info.latest_block_height="100";
+      if(mode==="REST")bad.proof.responses=bad.proof.responses.filter((r:{source:string})=>r.source==="rest");
+      await assert.rejects(authenticateOwnerDeposit(want,reader(bad)),undefined,mode);
+    }
+  });
+  const bin=process.env.AOE2WAR_TEST_PG_BIN||"/opt/homebrew/opt/postgresql@16/bin";
+  let started=false;let sql:pg.Client|undefined;let db:PrismaClient|undefined;
+  try{
+    execFileSync(path.join(bin,"initdb"),["-D",data,"-U","credit_fixture","--auth-local=trust","--auth-host=reject"],{stdio:"pipe"});
+    execFileSync(path.join(bin,"pg_ctl"),["-D",data,"-l",path.join(root,"server.log"),"-o",`-h '' -k ${socket} -c timezone=UTC`,"-w","start"],{stdio:"pipe"});started=true;
+    sql=new pg.Client({host:socket,user:"credit_fixture",database:"postgres"});await sql.connect();
+    await sql.query("CREATE TABLE users(id int PRIMARY KEY,uid text,wallet_address text); CREATE TABLE bet_auto_presets(id int PRIMARY KEY); CREATE TABLE bet_auto_executions(id int PRIMARY KEY); CREATE TABLE pending_wolo_claims(id int PRIMARY KEY)");
+    const migrations=["20261014_103500_war_satchel_noncrediting_foundation","20261014_133000_war_satchel_wallet_owner_challenges","20261014_150000_war_satchel_simulated_double_entry","20261014_164500_war_satchel_simulation_concurrency_guard","20261014_191500_war_satchel_simulation_single_owner","20261017_012000_war_satchel_funded_ledger_foundation","20261018_020000_war_satchel_physical_receipt_consumption","20261024_233000_war_satchel_prospective_epoch_admission"];
+    for(const m of migrations)await sql.query(readFileSync(new URL("../prisma/migrations/"+m+"/migration.sql",import.meta.url),"utf8"));
+    await t.test("ordinary application DB identity cannot register or approve epochs",async()=>{
+      await sql!.query("CREATE ROLE satchel_epoch_app_fixture LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS");
+      await sql!.query("GRANT USAGE ON SCHEMA public TO satchel_epoch_app_fixture");
+      // Fixture grants only the intended runtime SELECT/receipt capability.
+      await sql!.query("GRANT SELECT ON war_satchel_prospective_epochs TO satchel_epoch_app_fixture");
+      await sql!.query("GRANT SELECT,INSERT ON war_satchel_epoch_deposit_receipts TO satchel_epoch_app_fixture");
+      const c=new pg.Client({host:socket,user:"satchel_epoch_app_fixture",database:"postgres"});
+      await c.connect();
+      try{
+        const rights=await c.query(`SELECT
+          current_user AS username,
+          has_table_privilege(current_user,'war_satchel_prospective_epochs','SELECT') AS can_read,
+          has_table_privilege(current_user,'war_satchel_prospective_epochs','INSERT') AS can_register,
+          has_table_privilege(current_user,'war_satchel_prospective_epochs','UPDATE') AS can_approve,
+          has_table_privilege(current_user,'war_satchel_epoch_deposit_receipts','INSERT') AS can_record,
+          pg_has_role(current_user,'aoe2war_epoch_finance_owner','MEMBER') AS controls_finance`);
+        assert.equal(rights.rows[0].username,"satchel_epoch_app_fixture");
+        assert.equal(rights.rows[0].can_read,true);
+        assert.equal(rights.rows[0].can_record,true);
+        assert.equal(rights.rows[0].can_register,false);
+        assert.equal(rights.rows[0].can_approve,false);
+        assert.equal(rights.rows[0].controls_finance,false);
+        // SELECT-only really works: PostgreSQL FOR SHARE requires UPDATE and
+        // therefore MUST NOT be used by the runtime's immutable epoch lookup.
+        assert.equal((await c.query("SELECT epoch_id FROM public.war_satchel_prospective_epochs WHERE state='approved' ORDER BY epoch_id LIMIT 2")).rowCount,0);
+        await assert.rejects(c.query("SELECT epoch_id FROM public.war_satchel_prospective_epochs FOR SHARE"),{code:"42501"});
+        // A session-local temp shadow must not replace the authentic epoch.
+        await c.query("CREATE TEMP TABLE war_satchel_prospective_epochs(epoch_id text,state text)");
+        await c.query("INSERT INTO pg_temp.war_satchel_prospective_epochs VALUES('fake_approved_epoch','approved')");
+        await c.query("SET search_path TO pg_temp, public");
+        assert.equal((await c.query("SELECT count(*) AS count FROM public.war_satchel_prospective_epochs WHERE state='approved'")).rows[0].count,"0");
+        const fnRows=await c.query(`SELECT p.proname,p.prosecdef,p.proconfig
+          FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace ns ON ns.oid=p.pronamespace
+          WHERE ns.nspname='public' AND p.proname=ANY($1::text[])
+          ORDER BY p.proname`,[["satchel_epoch_cold_start_v1","satchel_epoch_receipt_guard_v1","satchel_epoch_immutable_v1"]]);
+        assert.equal(fnRows.rowCount,3);
+        for(const f of fnRows.rows){
+          assert.equal(f.prosecdef,false,"epoch triggers must NEVER escalate privilege");
+          assert.ok(f.proconfig?.some((s:string)=>s==="search_path=pg_catalog, public"));
+        }
+        await assert.rejects(c.query("INSERT INTO public.war_satchel_prospective_epochs DEFAULT VALUES"),{code:"42501"});
+        await assert.rejects(c.query("SET ROLE aoe2war_epoch_finance_owner"),{code:"42501"});
+        const census=execFileSync(path.join(bin,"psql"),[
+          "-X","-v","ON_ERROR_STOP=1","-h",socket,
+          "-U","satchel_epoch_app_fixture","-d","postgres",
+          "-f",path.join(process.cwd(),"scripts/satchel_epoch_db_permissions_readonly.sql"),
+        ],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
+        assert.match(census,/inspected_login/);
+        assert.match(census,/direct_or_transitive_finance_control/);
+        assert.match(census,/epoch_receipt_count/);
+        assert.match(census,/UNKNOWN_UNTIL_INDEPENDENTLY_PROVEN/);
+      }finally{await c.end();}
+      const roles=await sql!.query("SELECT rolname,rolcanlogin,rolinherit FROM pg_roles WHERE rolname IN ('aoe2war_epoch_finance_owner','aoe2war_epoch_credit_writer') ORDER BY rolname");
+      assert.equal(roles.rowCount,2);
+      assert.ok(roles.rows.every(r=>r.rolcanlogin===false&&r.rolinherit===false));
+      await sql!.query("BEGIN");
+      try{
+        await sql!.query("CREATE ROLE satchel_epoch_indirect_fence NOLOGIN NOINHERIT");
+        await sql!.query("GRANT aoe2war_epoch_finance_owner TO satchel_epoch_indirect_fence");
+        await sql!.query("GRANT satchel_epoch_indirect_fence TO satchel_epoch_app_fixture");
+        const indirect=await sql!.query("SELECT pg_has_role('satchel_epoch_app_fixture','aoe2war_epoch_finance_owner','MEMBER') AS escalates");
+        assert.equal(indirect.rows[0].escalates,true,"transitive owner membership must be observable");
+        const ddl=readFileSync(new URL("../prisma/migrations/20261024_233000_war_satchel_prospective_epoch_admission/migration.sql",import.meta.url),"utf8");
+        const guard=ddl.match(/DO \$epoch_roles\$[\s\S]*?\$epoch_roles\$;/)?.[0];
+        assert.ok(guard,"production migration must contain its enrollment gate");
+        await assert.rejects(sql!.query(guard),{code:"42501"});
+      }finally{await sql!.query("ROLLBACK");}
+      assert.equal((await sql!.query("SELECT pg_has_role('satchel_epoch_app_fixture','aoe2war_epoch_finance_owner','MEMBER') AS escalates")).rows[0].escalates,false);
+    });
+    await sql.query("INSERT INTO users VALUES(1,$1,$2)",[i.OwnerID,i.Sender]);
+    await sql.query("INSERT INTO war_satchel_deposit_intents(id,user_id,sender_address,vault_address,amount_uwolo,memo,nonce,created_at,expires_at) VALUES($1,1,$2,$3,$4,$5,'abcdefghijklmnop',$6,$7)",[expected.intentId,i.Sender,i.Vault,i.AmountUWolo,i.Memo,i.CreatedAt,i.ExpiresAt]);
+    await sql.query("INSERT INTO war_satchel_proof_candidates(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at) VALUES($1,1,'wolo-1',$2,0,$3,$4,$5,$6,now())",[expected.intentId,o.TxHash,i.Sender,i.Vault,i.AmountUWolo,o.Height]);
+    const adapter=()=>new PrismaPg({host:socket,user:"credit_fixture",database:"postgres"});
+    db=new PrismaClient({adapter:adapter()});
+    const bankReader=(async(url,options)=>{
+      assert.equal(url,"http://127.0.0.1:8094/satchel/v1/proofs/bank");
+      assert.equal(options?.method,"POST");assert.deepEqual(JSON.parse(String(options?.body)),{protocol:1});
+      return Response.json(step.vault_bank_proof);
+    }) as typeof fetch;
+    const bank=await authenticateWarSatchelBank(i.Vault,bankReader);
+    assert.equal(bank.balanceUwolo,BigInt(step.vault_balance_uwolo));
+    assert.equal(bank.height+1n,bank.commitHeight);assert.equal(Object.isFrozen(bank),true);
+    assert.equal(authenticatedWarSatchelBankFreshAt(bank),true);
+    assert.equal(authenticatedWarSatchelBankFreshAt({...bank}),false);
+    const input={ownerUserId:1,ownerUid:i.OwnerID,proofCandidateId:BigInt(1),expectedTxHash:o.TxHash,authenticatedDeposit:authenticated,bank};
+    await t.test("no approved future epoch refuses credit without touching balances",async()=>{
+      await assert.rejects(creditRecordedSatchelProof(db!,input),/one_operator_approved_epoch_required/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+    });
+    await t.test("database refuses epoch approval against any existing legacy-funded estate",async()=>{
+      await sql!.query("INSERT INTO war_satchel_funded_balances(owner_user_id,available_uwolo) VALUES(1,0)");
+      try{
+        await assert.rejects(seedIsolatedProspectiveEpoch(sql!,{
+          vault:i.Vault,txHeight:BigInt(o.Height),intentCreatedAt:new Date(i.CreatedAt),
+        }),/SATCHEL_EPOCH_OLD_FUNDED_ESTATE_NOT_EMPTY/);
+      }finally{
+        await sql!.query("DELETE FROM war_satchel_funded_balances WHERE owner_user_id=1");
+      }
+    });
+    await seedIsolatedProspectiveEpoch(sql!,{vault:i.Vault,txHeight:BigInt(o.Height),intentCreatedAt:new Date(i.CreatedAt)});
+    await t.test("historical funded balance, even zero-valued, forbids a clean new-money credit",async()=>{
+      await sql!.query("INSERT INTO war_satchel_funded_balances(owner_user_id,available_uwolo) VALUES(1,0)");
+      try{
+        await assert.rejects(creditRecordedSatchelProof(db!,input),/legacy_funded_estate_requires_segregation/);
+        assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"0");
+      }finally{
+        await sql!.query("DELETE FROM war_satchel_funded_balances WHERE owner_user_id=1");
+      }
+    });
+    await t.test("a copied genuine bank receipt cannot authorize a financial write",async()=>{
+      await assert.rejects(creditRecordedSatchelProof(db!,{...input,bank:{...bank}}),/bank_observation_not_fresh_or_canonical/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+    });
+    await t.test("an expired genuine proof cannot enter the financial transaction",async inner=>{
+      inner.mock.method(Date,"now",()=>authenticated.authenticatedHeadExpiresAtMs);
+      try { await assert.rejects(creditRecordedSatchelProof(db!,input),/authenticated_comet_deposit_required/); }
+      finally { inner.mock.restoreAll(); }
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+    });
+    await t.test("a failure after receipt insertion rolls back consumption, journal and balance",async()=>{
+      await sql!.query("CREATE FUNCTION fixture_journal_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'isolated crash after receipt'; END $$; CREATE TRIGGER fixture_crash BEFORE INSERT ON war_satchel_funded_journal FOR EACH ROW EXECUTE FUNCTION fixture_journal_failure()");
+      await assert.rejects(creditRecordedSatchelProof(db!,input),/isolated crash after receipt/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_physical_receipt_consumptions")).rows[0].count,"0");
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+      await sql!.query("DROP TRIGGER fixture_crash ON war_satchel_funded_journal");
+    });
+    await t.test("bank trust-root expiry during an actual PostgreSQL wait cannot mint a deposit credit",async()=>{
+      const originalAuthority=readFileSync(authority,"utf8"),shortAuthority=JSON.parse(originalAuthority);
+      shortAuthority.trust_anchor.period_seconds=60;
+      let shortBank:Awaited<ReturnType<typeof authenticateWarSatchelBank>>;
+      try{
+        // Shorten only this isolated public trust root. Both capabilities
+        // still require the real pinned verifier and exact signed SDK chain.
+        writeFileSync(authority,JSON.stringify(shortAuthority),{mode:0o600});
+        shortBank=await authenticateWarSatchelBank(i.Vault,bankReader);
+      }finally{writeFileSync(authority,originalAuthority,{mode:0o600});}
+      assert.ok(shortBank.authenticatedHeadExpiresAtMs<authenticated.authenticatedHeadExpiresAtMs-1000,
+        "fixture must exercise earlier bank-root expiry, not an already expired deposit proof");
+      let delayed=false;
+      const waiting=db!.$extends({query:{satchelFundedBalance:{async aggregate({args,query}){
+        const aggregate=await query(args);
+        const seconds=Math.max(0,(shortBank.authenticatedHeadExpiresAtMs-Date.now()+25)/1000);
+        assert.ok(seconds<15,"isolated expiry wait must remain bounded");
+        await sql!.query("SELECT pg_sleep($1::double precision)",[seconds]);
+        delayed=true;return aggregate;
+      }}}});
+      await assert.rejects(creditRecordedSatchelProof(waiting as unknown as PrismaClient,{...input,bank:shortBank}),/bank_observation_not_fresh_or_canonical/);
+      assert.equal(delayed,true);assert.equal(authenticatedWarSatchelDepositFreshAt(authenticated),true);
+      assert.equal(authenticatedWarSatchelBankFreshAt(shortBank),false);
+      for(const table of ["war_satchel_funded_receipts","war_satchel_epoch_deposit_receipts","war_satchel_physical_receipt_consumptions","war_satchel_funded_journal","war_satchel_funded_balances"])
+        assert.equal((await sql!.query("SELECT count(*) FROM "+table)).rows[0].count,"0","expired bank evidence must roll back "+table);
+    });
+    await t.test("legitimate owner credit succeeds and concurrent retries cannot increment it twice",async()=>{
+      const first=await creditRecordedSatchelProof(db!,input);assert.equal(first.status,"credited");assert.equal(first.availableUwolo,i.AmountUWolo);
+      const results=await Promise.allSettled(Array.from({length:6},()=>creditRecordedSatchelProof(db!,input)));
+      assert.ok(results.some(r=>r.status==="fulfilled"&&r.value.status==="already_credited"));
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"1");
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_journal")).rows[0].count,"1");
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"1");
+      assert.equal((await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances")).rows[0].available_uwolo,i.AmountUWolo);
+    });
+    await t.test("epoch and physical linkage are append-only and cannot masquerade as old estate",async()=>{
+      const row=await sql!.query("SELECT epoch_id,receipt_id,canonical_height FROM war_satchel_epoch_deposit_receipts");
+      assert.equal(row.rows.length,1);
+      const epochId=row.rows[0].epoch_id;
+      await assert.rejects(sql!.query("UPDATE war_satchel_prospective_epochs SET start_height=1 WHERE epoch_id=$1",[epochId]),/SATCHEL_EPOCH_IMMUTABLE/);
+      await assert.rejects(sql!.query("DELETE FROM war_satchel_prospective_epochs WHERE epoch_id=$1",[epochId]),/SATCHEL_EPOCH_IMMUTABLE/);
+      await assert.rejects(sql!.query("UPDATE war_satchel_epoch_deposit_receipts SET canonical_height=1 WHERE receipt_id=$1",[row.rows[0].receipt_id]),/SATCHEL_EPOCH_IMMUTABLE/);
+      await assert.rejects(sql!.query("INSERT INTO war_satchel_epoch_deposit_receipts SELECT * FROM war_satchel_epoch_deposit_receipts"),/duplicate key|SATCHEL_EPOCH_RECEIPT_REFUSED/);
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"1");
+    });
+    await db.$disconnect();db=new PrismaClient({adapter:adapter()});
+    await t.test("restart returns durable credit without re-verifying or resending expired evidence",async()=>{
+      const retry=await readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,intentId:expected.intentId,txHash:o.TxHash});
+      assert.equal(retry?.status,"already_credited");assert.equal(retry?.availableUwolo,i.AmountUWolo);
+      await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:"another-owner",intentId:expected.intentId,txHash:o.TxHash}));
+      await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,intentId:expected.intentId,txHash:"B".repeat(64)}));
+    });
+    await t.test("partial historical receipt cannot masquerade as a committed credit",async()=>{
+      const partialId="00000000-0000-4000-8000-000000000002",partialHash="C".repeat(64);
+      await sql!.query("INSERT INTO war_satchel_deposit_intents(id,user_id,sender_address,vault_address,amount_uwolo,memo,nonce,created_at,expires_at) VALUES($1,1,$2,$3,$4,$5,'incomplete_receipt_nonce_1234',$6,$7)",[partialId,i.Sender,i.Vault,i.AmountUWolo,i.Memo+"/incomplete",i.CreatedAt,i.ExpiresAt]);
+      const partial=await sql!.query("INSERT INTO war_satchel_proof_candidates(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at) VALUES($1,1,'wolo-1',$2,0,$3,$4,$5,$6,now()) RETURNING id",[partialId,partialHash,i.Sender,i.Vault,i.AmountUWolo,o.Height]);
+      await sql!.query("INSERT INTO war_satchel_funded_receipts(owner_user_id,proof_candidate_id,chain_id,tx_hash,transfer_index,amount_uwolo,vault_address,canonical_height) VALUES(1,$1,'wolo-1',$2,0,$3,$4,$5)",[partial.rows[0].id,partialHash,i.AmountUWolo,i.Vault,o.Height]);
+      await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,intentId:partialId,txHash:partialHash}),/incomplete_recorded_deposit_credit/);
+      assert.equal((await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances")).rows[0].available_uwolo,i.AmountUWolo);
+    });
+    await t.test("complete historical credit without an epoch cannot masquerade as prospective restart recovery",async()=>{
+      const historicalHash="C".repeat(64);
+      const receipt=await sql!.query("SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=$1",[historicalHash]);
+      assert.equal(receipt.rowCount,1);
+      await sql!.query(`INSERT INTO war_satchel_funded_journal
+        (owner_user_id,source_key,event_kind,amount_uwolo,delta_available_uwolo,
+         delta_reserved_uwolo,delta_committed_uwolo,delta_withdrawal_pending_uwolo,receipt_id)
+        VALUES(1,$1,'deposit_credit',$2,$2,0,0,0,$3)`,[
+        "satchel:credit:wolo-1:"+historicalHash+":0",i.AmountUWolo,receipt.rows[0].id]);
+      await sql!.query("UPDATE war_satchel_funded_balances SET available_uwolo=available_uwolo+$1 WHERE owner_user_id=1",[i.AmountUWolo]);
+      const before=await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances WHERE owner_user_id=1");
+      await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,
+        intentId:"00000000-0000-4000-8000-000000000002",txHash:historicalHash}),
+        /recorded_deposit_epoch_missing_or_conflicting/);
+      assert.equal((await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances WHERE owner_user_id=1")).rows[0].available_uwolo,before.rows[0].available_uwolo,
+        "refused historical recovery must preserve historical liability");
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_epoch_deposit_receipts")).rows[0].count,"1");
+    });
+  }finally{
+    if(db)await db.$disconnect();if(sql)await sql.end();
+    if(started)execFileSync(path.join(bin,"pg_ctl"),["-D",data,"-m","immediate","-w","stop"],{stdio:"pipe"});
+    rmSync(root,{recursive:true,force:true});
+  }
+});

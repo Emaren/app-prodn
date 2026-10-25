@@ -65,6 +65,10 @@ function versionOf(href) {
 const next=current.map(row=>({...row,sourceTree:versionOf(row.href)}));
 const drift=next.filter((row,index)=>row.sourceTree!==current[index].sourceTree).map(row=>row.href);
 const report={schema:1,commit:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),pages:next.length,drift,checkedAt:new Date().toISOString(),scoreAuthority:"none",note:"Route-local census plus explicitly bounded shared instrument imports; NOT full dependency closure, an engineering score, or production certification"};
+if(drift.length) console.error("KINGDOM_INDEX_SOURCE_TREE_DRIFT_DETAILS",
+  JSON.stringify(next.filter((row,index)=>row.sourceTree!==current[index].sourceTree)
+    .map(row=>({href:row.href,expectedSourceTree:row.sourceTree}))));
+
 if(process.argv.includes("--write")){
  writeFileSync(target,JSON.stringify(next,null,2)+"\n");
  console.log(JSON.stringify(report,null,2));

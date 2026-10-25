@@ -1,11 +1,12 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { assertNoUnroutedSatchelSettlementClaim } from "./warSatchelClaimSettlementGuard.ts";
 
 import {
   resolveFounderClaimTargetUser,
   syncFounderBonusStatus,
   withFounderPayoutTargetLock,
 } from "@/lib/betFounderBonuses";
-import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
+import { buildFounderEconomicLockKey, buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
 import {
   buildBetStakeMemo,
   buildBetStakeTicketMemo,
@@ -69,7 +70,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt" | "preview_only_market" | "source_attribution_conflict";
       detail?: string;
     }
   | {
@@ -98,6 +99,11 @@ function compactDbDetail(value: string | null | undefined) {
 }
 
 const MARKET_SETTLEMENT_CLAIM_KINDS = new Set(["bet_payout", "bet_refund", "winner_bounty", "founders_bonus"]);
+// Historical Founder wins and corrective refunds require economic origins,
+// but MUST NOT join the existing market-escrow payout routing.
+const ORIGIN_REQUIRED_CLAIM_KINDS = new Set([
+  ...MARKET_SETTLEMENT_CLAIM_KINDS, "founders_win", "bet_corrective_refund",
+]);
 
 function isMarketSettlementClaim(claim: {
   sourceMarketId: number | null;
@@ -823,6 +829,50 @@ export async function retryPendingClaimSettlement(
     return { outcome: "skipped", claimId: claim.id, reason: "not_pending" };
   }
 
+  // The original nonfunded LIVE website uses bookPhase=preview_only.
+  // Never let a missing SetNull historical origin or a display-only market
+  // become signer authority, even during legacy claim cleanup.
+  if (claim.sourceMarketId === null &&
+      claim.sourceFounderBonusId === null &&
+      ORIGIN_REQUIRED_CLAIM_KINDS.has((claim.claimKind || "").trim())) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "source_attribution_conflict",
+      detail: "Market-linked claim has no surviving economic origin; independent entitlement review required.",
+    };
+  }
+  const directOrigin = claim.sourceMarketId !== null
+    ? await prisma.betMarket.findUnique({
+        where: { id: claim.sourceMarketId }, select: { id: true, bookPhase: true },
+      })
+    : null;
+  const founderOrigin = claim.sourceFounderBonusId !== null
+    ? await prisma.betMarketFounderBonus.findUnique({
+        where: { id: claim.sourceFounderBonusId },
+        select: { marketId: true, market: { select: { bookPhase: true } } },
+      })
+    : null;
+  if ((claim.sourceMarketId !== null && !directOrigin) ||
+      (claim.sourceFounderBonusId !== null && !founderOrigin) ||
+      (directOrigin && founderOrigin && directOrigin.id !== founderOrigin.marketId)) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "source_attribution_conflict",
+      detail: "Direct-market and Founder Bonus origins conflict; independent entitlement review required.",
+    };
+  }
+  if (directOrigin?.bookPhase === "preview_only" ||
+      founderOrigin?.market.bookPhase === "preview_only") {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "preview_only_market",
+      detail: "Preview-only LIVE battles cannot generate WOLO payout or claim retries.",
+    };
+  }
+
   if (hasAmbiguousPriorWoloPayoutAttempt(claim)) {
     return {
       outcome: "skipped",
@@ -890,6 +940,16 @@ export async function retryPendingClaimSettlement(
     };
   }
 
+  // A custody-funded wager belongs to the player's Satchel ledger, NOT
+  // to the legacy direct-Keplr claim settlement lane. Never broadcast such
+  // a claim until exact escrow return attribution is implemented.
+  await assertNoUnroutedSatchelSettlementClaim(prisma, {
+    claimId: claim.id,
+    claimKind: claim.claimKind,
+    marketId: claim.sourceMarketId,
+    ownerUserId: matchedUser.id,
+  });
+
   const market =
     typeof claim.sourceMarketId === "number"
       ? await prisma.betMarket.findUnique({
@@ -936,11 +996,17 @@ export async function retryPendingClaimSettlement(
   if (useFounderSettlement && claim.sourceFounderBonusId) {
     const founderBonusId = claim.sourceFounderBonusId;
     const payoutAddress = matchedUser.walletAddress;
-    const payoutIdentity = buildFounderPayoutIdentity({
-      founderBonusId,
-      claimGroupKey: claim.claimGroupKey,
-      claimKind: claim.claimKind,
-    });
+    const payoutIdentity = {
+      ...buildFounderPayoutIdentity({
+        founderBonusId,
+        claimGroupKey: claim.claimGroupKey,
+        claimKind: claim.claimKind,
+      }),
+      economicLockKey: buildFounderEconomicLockKey({
+        founderBonusId,
+        normalizedPlayerName: claim.normalizedPlayerName,
+      }),
+    };
 
     try {
       return await withFounderPayoutTargetLock(
@@ -953,6 +1019,8 @@ export async function retryPendingClaimSettlement(
               status: true,
               payoutTxHash: true,
               payoutAttemptedAt: true,
+              sourceMarketId: true,
+              sourceFounderBonusId: true,
             },
           });
           if (!currentClaim || currentClaim.status !== "pending") {
@@ -960,6 +1028,16 @@ export async function retryPendingClaimSettlement(
               outcome: "skipped" as const,
               claimId: claim.id,
               reason: currentClaim ? "not_pending" as const : "not_found" as const,
+            };
+          }
+          // Origin may change while waiting for the economic payout lock.
+          if (currentClaim.sourceMarketId !== claim.sourceMarketId ||
+              currentClaim.sourceFounderBonusId !== claim.sourceFounderBonusId) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "source_attribution_conflict" as const,
+              detail: "Claim origin changed while waiting for payout authority.",
             };
           }
           // Revalidate INSIDE founder idempotency lock: a concurrent prior
@@ -970,6 +1048,39 @@ export async function retryPendingClaimSettlement(
               claimId: claim.id,
               reason: "ambiguous_prior_attempt" as const,
               detail: "Previous payout attempt has no chain proof; no retry or broadcast permitted.",
+            };
+          }
+
+          // Distinct June/July keys for one economic participant MUST NOT
+          // independently authorize two chain sends. Under the common
+          // advisory lock, inspect all keys for the same economic entitlement.
+          // Even two hashless pending keys are ambiguous; sign neither.
+          const conflictingEconomicClaim = await tx.pendingWoloClaim.findFirst({
+            where: {
+              normalizedPlayerName: claim.normalizedPlayerName,
+              claimKind: claim.claimKind,
+              OR: [
+                {
+                  sourceFounderBonusId: founderBonusId,
+                  claimGroupKey: { not: claim.claimGroupKey },
+                },
+                {
+                  // A legacy FK may be NULL even while its original bonus id
+                  // survives in founder:<id>:...; do not let missing FK
+                  // silently erase historical attempted/claimed provenance.
+                  sourceFounderBonusId: null,
+                  claimGroupKey: { startsWith: `founder:${founderBonusId}:` },
+                },
+              ],
+            },
+            select: { id: true },
+          });
+          if (conflictingEconomicClaim) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "ambiguous_prior_attempt" as const,
+              detail: "Another claim key exists for the same Founder Bonus recipient, even if still pending. Resolve economic entitlement and historical payment proof independently before any broadcast.",
             };
           }
 

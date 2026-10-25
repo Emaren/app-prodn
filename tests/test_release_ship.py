@@ -2359,5 +2359,28 @@ class ShipTests(unittest.TestCase):
         self.assertFalse(raw.endswith(b"\\n"))
         self.assertEqual(json.loads(raw.decode("utf-8")), payload)
 
+
+class LegacyHealthProbeBoundaryTests(unittest.TestCase):
+    def test_preactivation_probe_does_not_wake_legacy_financial_gets(self):
+        script = render_activation_script()
+        start = script.index('candidate_content_sha="$(content_hash .next-release)"')
+        end = script.index('if [ "$MODE" = "DRY_RUN" ];', start)
+        preflight = script[start:end]
+        self.assertIn(
+            "critical_get http://127.0.0.1:3030/api/deployment-version",
+            preflight,
+        )
+        self.assertIn(
+            'critical_get "$PUBLIC/api/deployment-version"',
+            preflight,
+        )
+        for path in ("/api/bets", "/api/lobby"):
+            self.assertNotIn("critical_get http://127.0.0.1:3030" + path, preflight)
+            self.assertNotIn('critical_get "$PUBLIC' + path + '"', preflight)
+        # Do not silently weaken the new candidate's post-activation checks.
+        self.assertIn("critical_get http://127.0.0.1:3030/api/bets", script[end:])
+        self.assertIn('critical_get "$PUBLIC/api/lobby"', script[end:])
+
+
 if __name__ == "__main__":
     unittest.main()
