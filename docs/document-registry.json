@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7a4f4d7d9907719433100b57a112c6b2483fe5d4a06f2e68e44c0909fbd27ecd",
+      "sha256": "f6a584a0a8d2d75a4bd107bbca0b478d8523be9b42192b54f9b42805196eb493",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1759,6 +1759,29 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "release-engineering-contract",
+      "id": "aoe2war.app-prodn.solo-owner-website-release-v3",
+      "owner": "aoe2war-web",
+      "path": "docs/SOLO_OWNER_WEBSITE_RELEASE_V3.md",
+      "review_interval_days": 1,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "11774607498588d50b0964710849ad253bf613dd023534f84496489c855d14dd",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Solo-owner Website Release Policy V3",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "operators",
         "ai-agents"
       ],
@@ -2283,8 +2306,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-a/20261024-website-nine-path-operational-finish",
-    "commit": "c3236d37cf250c5998885d5d12be3f55fde480c2"
+    "branch": "codex/solo-owner-website-release-v3",
+    "commit": "1cca6afa79966c12a5f5860f484ba4dde881ef51"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
