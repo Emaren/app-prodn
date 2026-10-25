@@ -54,9 +54,9 @@ export type KingdomIndexEntry = {
   criterionProgress: {
     maximum: number; authenticatedEarned: number | null; approvedCriteria: number; pendingCriteria: number;
     scoreAuthority: string;
-    criteria: { id:string;dimension:string;maximum:number;requirement:string;earned:number|null;
-      status:"APPROVED"|"PENDING_INDEPENDENT_EVIDENCE";requiredProofKinds:string[];
-      evidenceDigests:string[];missingEvidence:string[];nextAction:string }[];
+    // Only separately approved grants are sent per route; withheld criteria are
+    // joined client-side against the single canonical rubric in the snapshot.
+    approvals: {id:string;earned:number;evidenceDigests:string[]}[];
   };
   // Source-scoped *historical* browser trial, NOT the deployed build or an approved criterion.
   browserCandidate: null | { gitSha:string;buildId:string;sourceTree:string;workflowUrl:string;
@@ -96,6 +96,8 @@ export type KingdomIndexSnapshot = {
     publicIndexTemplates:number; excludedStaticTemplates:number;
     routeHandlerTemplates:number; apiHandlerTemplates:number; nonApiHandlerTemplates:number };
   pages: KingdomIndexEntry[];
+  criterionRubric: {id:string;dimension:string;maximum:number;requirement:string;
+    requiredProofKinds:string[];nextAction:string}[];
   companions: KingdomCompanion[];
   observed: number;
   certified: number;
@@ -193,6 +195,19 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     rubric:qualityRubric,profile:assuranceProfiles.profiles.index,nowMs:now,
   });
   const pendingProgress=projectKingdomCriterionProgress(qualityRubric);
+  const criterionRubric=pendingProgress.criteria.map(row=>({
+    id:row.id,dimension:row.dimension,maximum:row.maximum,requirement:row.requirement,
+    requiredProofKinds:row.requiredProofKinds,nextAction:row.nextAction,
+  }));
+  const compactProgress=(p:typeof pendingProgress):KingdomIndexEntry["criterionProgress"]=>({
+    maximum:p.maximum,authenticatedEarned:p.authenticatedEarned,
+    approvedCriteria:p.approvedCriteria,pendingCriteria:p.pendingCriteria,
+    scoreAuthority:p.scoreAuthority,
+    approvals:p.criteria.filter(row=>row.status==="APPROVED").map(row=>({
+      id:row.id,earned:row.earned as number,evidenceDigests:row.evidenceDigests,
+    })),
+  });
+  const pendingRouteProgress=compactProgress(pendingProgress);
   const pages: KingdomIndexEntry[]=catalog.map(route=>{
     // All 88 public routes use the same CI-regenerated source census. The older
     // PAGE_CHANGE_MANIFEST uses a separate algorithm and only covers a subset;
@@ -234,7 +249,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       bytes:null,
       dimensions:lineage.dimensions,
       notes:typeof obs?.notes==="string"?obs.notes.slice(0,500):null,
-      criterionProgress:pendingProgress,
+      criterionProgress:pendingRouteProgress,
       browserCandidate:route.href==="/kingdom-index"?{
         gitSha:"4a5cb0ecd7636d6c87486f9101806e58f3e0b76e",
         buildId:"mmiqn6W30Y4EF78chMWV9",
@@ -269,7 +284,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       entry.dimensions={...publication.dimensions};
       // Credit comes only from the independently enrolled dual-signature,
       // exact deployed-build, raw artifact, and committed-nonce reader.
-      entry.criterionProgress=projectKingdomCriterionProgress(qualityRubric,publication.criteria);
+      entry.criterionProgress=compactProgress(projectKingdomCriterionProgress(qualityRubric,publication.criteria));
       entry.authenticatedPublication={
         evidenceSha256:publication.evidenceSha256,gitSha:publication.source.gitSha,
         buildId:publication.source.buildId,releaseSha256:publication.source.releaseSha256,
@@ -278,7 +293,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     }
   }
   return {
-    schema:1,generatedAt:new Date(now).toISOString(),estate:inventory.counts,pages,
+    schema:1,generatedAt:new Date(now).toISOString(),estate:inventory.counts,pages,criterionRubric,
     // Desktop companions are not web routes: a Git release SHA is source
     // provenance, NOT an installed binary, field benchmark, or certified score.
     companions: companionCatalog.companions.map(companion=>({
