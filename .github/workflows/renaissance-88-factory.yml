@@ -1,7 +1,7 @@
 name: Renaissance 88 candidate Chrome factory
 on:
   pull_request:
-    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'app/**', 'components/**', 'lib/**', 'config/**']
+    paths: ['scripts/renaissance_88_*', 'tests/test_renaissance_88_factory.py', 'tests/renaissance-88-factory.test.mts', 'tests/renaissance-88-fixture.test.mts', 'tests/test_renaissance_88_fixture.py', '.github/workflows/renaissance-88-factory.yml', 'docs/RENAISSANCE_88_FACTORY.md', 'docs/RENAISSANCE_88_ROUND4.md', 'app/**', 'components/**', 'lib/**', 'config/**']
   workflow_dispatch:
   schedule:
     - cron: '41 3 * * *'
