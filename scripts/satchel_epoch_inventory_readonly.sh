@@ -15,7 +15,18 @@ if mountpoint -q /mnt/HC_Volume_105319120; then echo YES; else echo NO; fi
 for path in / /var/lib /mnt/HC_Volume_105319120; do
   if [ -d "$path" ]; then
     stat -c 'STORAGE_PATH=%n UID=%u GID=%g MODE=%a' "$path"
-    df -PB1 --output=avail "$path" 2>/dev/null | tail -n 1 | awk -v p="$path" '{print "AVAILABLE_BYTES[" p "]=" $1}'
+    # -P and --output are mutually exclusive on GNU df: the old probe
+    # stopped under pipefail immediately after STORAGE_PATH=/.
+    # Use portable fixed one-line POSIX output with explicit byte units.
+    if available="$(df -PB1 "$path" 2>/dev/null | awk 'NR==2 {print $4}')"; then
+      if [[ "$available" =~ ^[0-9]+$ ]]; then
+        printf 'AVAILABLE_BYTES[%s]=%s\n' "$path" "$available"
+      else
+        printf 'AVAILABLE_BYTES[%s]=UNKNOWN_NO_DATA\n' "$path"
+      fi
+    else
+      printf 'AVAILABLE_BYTES[%s]=UNKNOWN_DF_ERROR\n' "$path"
+    fi
   fi
 done
 printf '%s\n' 'SERVICE_NAMES_ONLY_BEGIN'
