@@ -725,7 +725,7 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
       check("maintenance", "Maintenance safety rail", 10, maintenanceProblems === 0 ? finishFresh : 0, maintenanceProblems === 0 ? "No maintenance-safety problems" : maintenanceProblems + " problem(s)", { evidenceAt: finishAt }),
       check("secrets", "Tracked secret scan", 10, secretPass ? gateFresh : 0, secretPass ? "PASS" : "Not proven", { ratio: { passed: secretPass ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
       check("recovery", "Recovery classes proven", 15, recoveryRequired ? recoveryProven / recoveryRequired * finishFresh : 0, recoveryRequired ? recoveryProven + "/" + recoveryRequired + " recovery classes" : "No recovery proof", { ratio: { passed: recoveryProven, total: recoveryRequired }, evidenceAt: finishAt }),
-      check("root-resilience", "Root capacity resilience", 10, rootFraction, rootFs.freeGiB == null ? "Root filesystem unavailable" : rootFs.freeGiB.toFixed(2) + " GiB free"),
+      check("root-resilience", "Root capacity resilience", 10, rootFraction, rootFs.freeGiB == null ? "Root filesystem unavailable" : rootFs.freeGiB.toFixed(2) + " GiB free", { evidenceAt: new Date().toISOString() }),
       check("security-fresh", "Security evidence freshness", 10, finishFresh, ageDetail(finishAt), { evidenceAt: finishAt }),
     ],
   );
