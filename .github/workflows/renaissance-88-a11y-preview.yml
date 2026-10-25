@@ -112,7 +112,7 @@ jobs:
           printf 'REN88_GENERATED_MANIFEST_SHA=%s\n' "$REN88_GENERATED_MANIFEST_SHA" >> "$GITHUB_ENV"
           cp .next/BUILD_ID renaissance-88-chrome/BUILD_ID
           cp .next/server/app-paths-manifest.json renaissance-88-chrome/app-paths-manifest.json
-          python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" --output renaissance-88-chrome/plan.json
+          python3 scripts/renaissance_88_plan.py plan --preview-unsealed-generated-policy --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" --output renaissance-88-chrome/plan.json
           printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > renaissance-88-chrome/identity.txt
       - name: Actual Chrome desktop/mobile; bounded PR pilot or full scheduled census
         env:
