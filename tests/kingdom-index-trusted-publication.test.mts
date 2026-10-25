@@ -59,11 +59,20 @@ test("independent release + reviewer approval and inspected 20/20 + 3/3 may publ
   assert.equal(v.status,"current");assert.equal(v.criteriaVerified,20);
   assert.equal(v.artifactsVerified,23);assert.equal(v.gates.length,3);
   assert.equal(v.source.buildId,source.buildId);
+  // Only the fully verified detached endorsements + raw artifact bytes + nonce
+  // authorize individual earned points. Synthetic fixtures grant NO real points.
+  assert.equal(v.criteria.length,20);
+  assert.equal(v.criteria.reduce((sum,c)=>sum+c.earned,0),100);
+  assert.ok(Object.isFrozen(v.criteria));
+  assert.ok(v.criteria.every(c=>c.proofDigests.length===1&&c.proofKinds.length===1));
+  assert.equal(v.criteria.find(c=>c.id==="authoritative_data")?.earned,10);
 });
 test("verified 99 is a measured but noncertified provisional score",async()=>{
   const v=await verifyKingdomIndexPublication(seal(payload(99)),ctx());
   assert.equal(v.score,99);assert.equal(v.certified,false);
   assert.equal(v.status,"provisional");
+  assert.equal(v.criteria.find(c=>c.id==="authoritative_data")?.earned,9);
+  assert.equal(v.criteria.reduce((sum,c)=>sum+c.earned,0),99);
 });
 test("missing one mandatory gate refuses the entire projection",async()=>{
   const p=payload();p.gates.pop();
