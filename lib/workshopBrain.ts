@@ -74,7 +74,9 @@ export function buildWorkshopBrainSnapshot(
     typeof data.health.p0 === "number" && Number.isSafeInteger(data.health.p0) && data.health.p0 >= 0 &&
     typeof data.health.p1 === "number" && Number.isSafeInteger(data.health.p1) && data.health.p1 >= 0;
   const stateReported = state(data.operatingState);
-  const operatingState = !severityObserved && ["HEALTHY", "PASS", "CERTIFIED"].includes(stateReported)
+  // Even a complete reported zero is not independently release-certified;
+  // positive global health labels cannot be promoted by this Workshop-only read.
+  const operatingState = ["HEALTHY", "PASS", "CERTIFIED"].includes(stateReported)
     ? "UNKNOWN" : data.operatingState;
 
   return {
