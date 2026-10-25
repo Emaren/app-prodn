@@ -22,7 +22,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: false
       - name: Offline adversarial verifier tests
         run: |
           python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_scope.py -v
