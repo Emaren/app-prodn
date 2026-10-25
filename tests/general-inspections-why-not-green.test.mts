@@ -184,6 +184,28 @@ test("live statfs and immutable certifications require original observation time
   assert.equal(report.observedOverallScore, 100); // zero score rewriting
 });
 
+test("actual live capacity deficit is FAIL but aged bridge fallback is UNKNOWN", () => {
+  const snap = fixture();
+  const organization = snap.categories.find((c) => c.id === "organization")!;
+  const root = organization.checks[0];
+  root.id = "root-free";
+  root.earned = 0;
+  root.detail = "3.00 GiB free";
+  const volume = organization.checks[1];
+  volume.id = "volume-used";
+  volume.earned = 0;
+  volume.detail = "92.0% used · live VPS";
+  rescore(snap);
+  const measured = buildWhyNotGreenReport(snap);
+  assert.equal(measured.evidenceChecks.find((x) => x.checkKey === "organization/root-free")?.evidenceStatus, "FAIL");
+  assert.equal(measured.evidenceChecks.find((x) => x.checkKey === "organization/volume-used")?.evidenceStatus, "FAIL");
+  volume.detail = "92.0% used · operator bridge fallback";
+  const fallback = buildWhyNotGreenReport(snap);
+  assert.equal(fallback.evidenceChecks.find((x) => x.checkKey === "organization/volume-used")?.evidenceStatus, "UNKNOWN");
+  assert.equal(fallback.evidenceChecks.find((x) => x.checkKey === "organization/volume-used")?.reason, "degraded-fallback-capacity-proof");
+  assert.equal(fallback.observedOverallScore, measured.observedOverallScore);
+});
+
 test("request-clock skew and invalid times cannot promote cached snapshots to current proof", () => {
   const snap = fixture();
   const futureSkew = buildWhyNotGreenReport(snap, Date.parse(NOW) - 6 * 60_000);
