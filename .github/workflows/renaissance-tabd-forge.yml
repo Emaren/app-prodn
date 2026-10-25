@@ -37,6 +37,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           python3 -m unittest discover -s tests -p test_renaissance_tabd_forge.py -v
           python3 scripts/renaissance_tabd_forge.py inventory --fast --expected-sha "$EXPECTED_SHA" > tabd-inventory.json
+          timeout -k 5s 8m python3 scripts/renaissance_tabd_forge.py inventory --expected-sha "$EXPECTED_SHA" > tabd-full-dependencies.json
           python3 scripts/renaissance_tabd_forge.py verify --fast --expected-sha "$EXPECTED_SHA" > tabd-verify.json
           python3 scripts/renaissance_tabd_forge.py matrix --fast --expected-sha "$EXPECTED_SHA" > tabd-matrix.json
           test -z "$(git status --porcelain --untracked-files=no)"
