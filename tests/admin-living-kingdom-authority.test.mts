@@ -43,6 +43,9 @@ test("the fair selector never takes newest events globally before assigning user
 test("only authorized, safe current presence joins: never a guessed offline label",()=>{
  assert.match(reader,/livingKingdomHub\.publicProjectionForUid\(uid\)/);
  assert.match(reader,/livingKingdomHub\.stats\(\)/);
+ assert.match(reader,/realm:safeRealm\(actor\.realmId\)/);
+ assert.match(reader,/return \{\.\.\.stats,realms\}/);
+ assert.doesNotMatch(reader,/realm:actor\.realmId/);
  assert.match(reader,/buildJourneySummary\(scrubbed\)/);
  assert.doesNotMatch(reader,/prisma\.userActivityEvent\.(create|update|upsert|delete)/);
 });
