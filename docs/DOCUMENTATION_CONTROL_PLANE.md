@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `renaissance/tab-a-watcher-truth-20261025` at `559098fef28c868b553863c7368b760a779b4380`
+Implementation baseline: `integration/renaissance-central-recovery-truth-20261025` at `99200aa275bd958fb1c9ea02b7a7073fa7b1e8d7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **96**
+- Authoritative repository documents: **101**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 60
-- `runbook`: 17
+- `reference`: 61
+- `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 80
+- `draft`: 5
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -97,6 +98,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
+| [Living Kingdom Admin Observatory](LIVING_KINGDOM_ADMIN.md) | `reference` | `draft` | `admin-journey-read-projection` |
 | [Local Development](LOCAL_DEVELOPMENT.md) | `runbook` | `active` | `operator-contract` |
 | [Marketplace Business V1](MARKETPLACE_BUSINESS.md) | `reference` | `active` | `financial-domain-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
@@ -118,7 +120,11 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
 | [AoE2WAR Certified Release Engineering Seal — 2026-08-10](RELEASE_ENGINEERING_SEAL_2026-08-10.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Release Recovery OS](RELEASE_RECOVERY_OS.md) | `reference` | `active` | `release-recovery-contract` |
+| [Renaissance 88 Public Route Evidence Factory](RENAISSANCE_88_FACTORY.md) | `runbook` | `draft` | `candidate-browser-diagnostics` |
+| [Round Four: Disposable Browser Dependencies and A11y Triage](RENAISSANCE_88_ROUND4.md) | `runbook` | `draft` | `candidate-fixture-observation` |
 | [Renaissance OS](RENAISSANCE_OS.md) | `reference` | `active` | `renaissance-campaign-integration-contract` |
+| [Renaissance 88 — Repeatable page qualification protocol](RENAISSANCE_PAGE_QUALIFICATION_PROTOCOL.md) | `runbook` | `draft` | `candidate-browser-and-criterion-worklist-not-certification` |
+| [Renaissance Tab D — private census forge and Test Forge queue](RENAISSANCE_TABD_FORGE.md) | `runbook` | `draft` | `candidate-private-source-inventory` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Replay Truth OS](REPLAY_TRUTH_OS.md) | `runbook` | `active` | `operational-procedure` |
