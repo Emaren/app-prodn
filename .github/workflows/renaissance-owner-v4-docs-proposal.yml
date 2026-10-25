@@ -1,0 +1,40 @@
+name: Owner v4 DocsV2 baseline proposal (review only)
+on:
+  push:
+    branches:
+      - release/renaissance-v4-frozen-source-review-20261025
+permissions:
+  contents: read
+jobs:
+  docs-proposal:
+    name: Propose DocsV2 generated index and registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate and inspect source-bound DocsV2 proposal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          paths=subprocess.check_output(["git","diff","--name-only"],text=True).splitlines()
+          expected=["docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"]
+          if paths != expected:
+              raise SystemExit(f"HOLD: unexpected documentation output: {paths!r}")
+          PY
+          printf '%s\n' "$GITHUB_SHA" > docs-v4-exact-source-sha.txt
+          sha256sum docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json > docs-v4-generated-sha256.txt
+          echo "Proposal only. This job does not push, approve, sign, stage or deploy." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website-v4-docsv2-proposal
+          path: |
+            docs/DOCUMENTATION_CONTROL_PLANE.md
+            docs/document-registry.json
+            docs-v4-exact-source-sha.txt
+            docs-v4-generated-sha256.txt
+          if-no-files-found: error
+          retention-days: 10
