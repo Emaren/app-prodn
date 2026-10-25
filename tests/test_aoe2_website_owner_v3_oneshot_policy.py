@@ -81,6 +81,10 @@ class SoloOwnerTimedServiceIdentityTests(unittest.TestCase):
         cases = [
             ("timer_disabled", lambda: self.after["financial_units"][timer].update(
                 {"UnitFileState": "disabled", "ActiveState": "inactive"})),
+            ("oneshot_failed", lambda: self.after["financial_units"][name].update(
+                {"ActiveState": "failed", "SubState": "failed", "MainPID": 0})),
+            ("oneshot_inactive_but_pid_active", lambda: self.after["financial_units"][name].update(
+                {"ActiveState": "inactive", "SubState": "dead", "MainPID": 44})),
             ("service_disabled", lambda: self.after["financial_units"][name].update(
                 {"UnitFileState": "disabled"})),
             ("timer_removed", lambda: self.after["financial_units"].pop(timer)),
