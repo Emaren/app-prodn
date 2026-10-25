@@ -2,6 +2,9 @@ import type { GeneralInspectionsSnapshot, InspectionCheck } from "./types.ts";
 import { INSPECTION_CATEGORY_WEIGHTS } from "./scoring.ts";
 
 export type GapStatus = "pass" | "fail" | "unknown";
+// An additive operational evidence state. Keep legacy GapStatus and scoring
+// unchanged so existing report clients do not mistake STALE for an outage.
+export type EvidenceStatus = "PASS" | "FAIL" | "STALE" | "UNKNOWN";
 const SHA = /^[0-9a-f]{40}$/;
 const CATEGORY_IDS = ["speed", "documentation", "organization", "tests", "release", "security", "data"] as const;
 const INVARIANT_CHECKS = new Set([
@@ -43,6 +46,15 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
   const age = at === null ? null : Math.round(((now - at) / 3_600_000) * 10) / 10;
   if (at !== null && now - at < -5 * 60_000) return { status: "unknown", reason: "future-dated-evidence", ageHours: age, ttlHours: ttl };
   if (ttl !== null && at !== null && now - at > ttl * 3_600_000) return { status: "unknown", reason: "stale-evidence", ageHours: age, ttlHours: ttl };
+  // A cohort may have a full weighted score but still explicitly report failed
+  // samples. Attribution must not silently promote that contradiction to PASS.
+  // Malformed/empty ratios are not independent proof of a failure.
+  const ratio = item.ratio;
+  if (ratio && Number.isInteger(ratio.passed) && Number.isInteger(ratio.total) &&
+      ratio.total > 0 && ratio.passed >= 0 && ratio.passed <= ratio.total &&
+      ratio.passed < ratio.total) {
+    return { status: "fail", reason: "observed-cohort-failure", ageHours: age, ttlHours: ttl };
+  }
   const full = item.earned + 0.001 >= item.weight;
   if (full) {
     if (ttl !== null && at === null && !(categoryId === "organization" && ["root-free", "volume-used"].includes(item.id))) {
@@ -57,6 +69,19 @@ function checkStatus(categoryId: string, item: InspectionCheck, now: number): { 
   return { status: "unknown", reason: "incomplete-or-unverified-proof", ageHours: age, ttlHours: ttl };
 }
 
+function evidenceStatus(status: GapStatus, reason: string): EvidenceStatus {
+  return reason === "stale-evidence" ? "STALE" : status.toUpperCase() as EvidenceStatus;
+}
+
+function nextDueAt(observedAt: string | null | undefined, ttl: number | null): string | null {
+  const at = timestamp(observedAt);
+  if (at === null || ttl === null) return null;
+  const due = at + ttl * 3_600_000;
+  return Number.isFinite(due) && due <= 8_640_000_000_000_000
+    ? new Date(due).toISOString()
+    : null;
+}
+
 /** Pure projection of one sanitized inspection snapshot. Never reads host evidence again. */
 export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
   const generatedAt = timestamp(snapshot.generatedAt);
@@ -67,6 +92,7 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
   const seen = new Set<string>();
   const categoryMatrix = [];
   const gaps = [];
+  const evidenceChecks = [];
   let total = 0;
   for (const group of snapshot.categories) {
     const weights = INSPECTION_CATEGORY_WEIGHTS[group.id as keyof typeof INSPECTION_CATEGORY_WEIGHTS] as readonly number[] | undefined;
@@ -78,6 +104,7 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
     let earned = 0;
     let failures = 0;
     let unknowns = 0;
+    let stales = 0;
     const checkIds = new Set<string>();
     for (const [i, item] of group.checks.entries()) {
       if (checkIds.has(item.id) || item.weight !== weights[i] ||
@@ -87,16 +114,30 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
       checkIds.add(item.id);
       earned += item.earned;
       const result = checkStatus(group.id, item, generatedAt);
-      if (result.status === "fail") failures++;
-      if (result.status === "unknown") unknowns++;
+      const operationalStatus = evidenceStatus(result.status, result.reason);
+      const dueAt = nextDueAt(item.evidenceAt, result.ttlHours);
+      if (operationalStatus === "FAIL") failures++;
+      if (operationalStatus === "UNKNOWN") unknowns++;
+      if (operationalStatus === "STALE") stales++;
+      // Stable checkKey identifies the published *check contract*, not a
+      // source receipt. A real receipt ID must come from its producer.
+      const checkKey = group.id + "/" + item.id;
+      evidenceChecks.push({
+        checkKey, categoryId: group.id, checkId: item.id,
+        evidenceStatus: operationalStatus, reason: result.reason,
+        observedAt: item.evidenceAt ?? null, ageHours: result.ageHours,
+        ttlHours: result.ttlHours, nextDueAt: dueAt,
+        earned: item.earned, weight: item.weight,
+        detail: item.detail, repair: REPAIR[group.id],
+      });
       if (result.status !== "pass" || item.earned < item.weight) {
         gaps.push({
-          categoryId: group.id, checkId: item.id, label: item.label,
-          status: result.status, reason: result.reason,
+          categoryId: group.id, checkId: item.id, checkKey, label: item.label,
+          status: result.status, evidenceStatus: operationalStatus, reason: result.reason,
           earned: item.earned, weight: item.weight,
           missingPoints: Math.round((item.weight - item.earned) * 10) / 10,
           observedAt: item.evidenceAt ?? null, ageHours: result.ageHours,
-          ttlHours: result.ttlHours, detail: item.detail,
+          ttlHours: result.ttlHours, nextDueAt: dueAt, detail: item.detail,
           repair: REPAIR[group.id],
         });
       }
@@ -105,8 +146,9 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
     total += group.score;
     categoryMatrix.push({
       id: group.id, title: group.title, observedScore: group.score,
-      status: failures ? "fail" : unknowns ? "unknown" : "pass",
-      failedChecks: failures, unknownChecks: unknowns,
+      status: failures ? "fail" : unknowns || stales ? "unknown" : "pass",
+      evidenceStatus: failures ? "FAIL" : stales ? "STALE" : unknowns ? "UNKNOWN" : "PASS",
+      failedChecks: failures, staleChecks: stales, unknownChecks: unknowns,
       repair: REPAIR[group.id],
     });
   }
@@ -123,6 +165,9 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
     observedOverallScore: snapshot.overallScore,
     certainty: "projection-of-published-inspection-receipts-not-independent-host-certification",
     matrix: categoryMatrix,
+    // All checks, including full-credit ones: omission cannot hide stale proof.
+    // These rows are projections only, NOT separately authenticated receipts.
+    evidenceChecks,
     gaps,
     totalMissingCategoryPoints: Math.round((700 - total) * 10) / 10,
     measuredHealthChanged: false,
@@ -130,6 +175,8 @@ export function buildWhyNotGreenReport(snapshot: GeneralInspectionsSnapshot) {
       "PASS/FAIL/UNKNOWN describes published check evidence, not Kingdom Index certification or Wolo financial safety.",
       "Unknown/missing proof is not an observed operational failure.",
       "Document IDs are not present in the aggregate documentation check: a current DocsV2 registry/review-queue witness is required for exact expired IDs.",
+      "checkKey identifies a check, not the original producer receipt ID. Source receipt IDs and original capture timestamps require producer evidence.",
+      "nextDueAt is a projected TTL deadline, not proof a scheduler is enabled or a reinspection has run.",
       "No collection, recomputation or privileged action is performed by this report.",
     ],
   };
