@@ -8,7 +8,7 @@ import {validateRouteReceipt} from "../scripts/renaissance_88_receipts.mjs";
 const sha="a".repeat(40),build="candidateBuild123";
 const plan={route:"/kingdom",profile:"general",phase:"I"};
 function make(){
- return {source_sha:sha,build_id:build,route:"/kingdom",phase:"I",
+ return {source_sha:sha,build_id:build,route:"/kingdom",redirect_to:null,phase:"I",
  profile:"general",status:"PASS",views:[
  {viewport:"desktop",sample:1,attempted:true,browserStatus:"OBSERVED",
   http:200,sameOrigin:true,final_path:"/kingdom",rendered:true,uncaughtErrors:0,keyboardFocus:true,privacyMutationAttempts:0},
@@ -80,3 +80,14 @@ test("blocked mutation attempts are visible but do not falsify a navigation PASS
 });
 
 test("route redirects and wrong final destinations fail even with HTTP 200",()=>{const x=make();x.views[0].final_path="/";assert.throws(()=>validateRouteReceipt(x,plan,expected),/False successful/);});
+
+test("declared public redirect target counts, undeclared redirect stays FAIL",()=>{
+ const alias=make();alias.route="/about";alias.redirect_to="/requests";
+ for(const v of alias.views)v.final_path="/requests";
+ const aliasPlan={route:"/about",redirect_to:"/requests",profile:"general",phase:"I"};
+ assert.equal(validateRouteReceipt(alias,aliasPlan,expected).status,"PASS");
+ assert.equal(classifyCandidateRoute({route:"/about",redirect_to:"/requests",views:[
+  {...alias.views[0],body_title:true,landmark:true}]},"UNAVAILABLE"),"PASS");
+ const bogus=make();bogus.route="/about";bogus.redirect_to="/requests";
+ assert.throws(()=>validateRouteReceipt(bogus,{route:"/about",profile:"general",phase:"I"},expected),/mismatch/);
+});
