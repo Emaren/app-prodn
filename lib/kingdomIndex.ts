@@ -8,6 +8,7 @@ import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
 import companionCatalog from "@/config/kingdom-index-companions.json";
+import watcherDraftReview from "@/config/kingdom-index-watcher-166-source-review.json";
 import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, provisionalOperatorReviewScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
 import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
 import { loadCurrentKingdomIndexTrustedPublication } from "@/lib/kingdomIndexTrustedPublicationRead.mjs";
@@ -61,6 +62,18 @@ export type KingdomCompanion = {
   downloadHref: string;
   status: "unmeasured";
   score: null;
+  // Public source-review metadata is NOT a release grade or a certificate.
+  draftSourceReview: null | {
+    version: string;
+    state: "DRAFT_UNRELEASED";
+    sourceSha: string;
+    evaluatedAt: string;
+    estimatedScore: number;
+    authority: "AI_ASSISTED_SOURCE_TRIAGE_UNCERTIFIED";
+    notes: string;
+    criteria: { id: string; estimated: number; max: number }[];
+    refs: string[];
+  };
   gates: { id: string; dimension: string; requirement: string; status: "unverified" }[];
 };
 export type KingdomIndexSnapshot = {
@@ -247,6 +260,22 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       sourceSha:companion.releaseSourceSha,sourceAuthority:"published-release-source" as const,
       repositoryUrl:companion.repositoryUrl,downloadHref:companion.downloadHref,
       status:"unmeasured" as const,score:null,
+      draftSourceReview:(
+        companion.id===watcherDraftReview.companionId &&
+        companion.version===watcherDraftReview.publishedReleaseStill &&
+        watcherDraftReview.candidateState==="DRAFT_UNRELEASED" &&
+        watcherDraftReview.scoreAuthority==="AI_ASSISTED_SOURCE_TRIAGE_UNCERTIFIED"
+      ) ? {
+        version:watcherDraftReview.candidateVersion,
+        state:"DRAFT_UNRELEASED" as const,
+        sourceSha:watcherDraftReview.sourceSha,
+        evaluatedAt:watcherDraftReview.evaluatedAt,
+        estimatedScore:watcherDraftReview.score,
+        authority:"AI_ASSISTED_SOURCE_TRIAGE_UNCERTIFIED" as const,
+        notes:watcherDraftReview.notes,
+        criteria:watcherDraftReview.criteria.map(row=>({id:row.id,estimated:row.estimated,max:row.max})),
+        refs:[...watcherDraftReview.refs],
+      } : null,
       gates:companion.gates.map(gate=>({...gate,status:"unverified" as const})),
     })),
     observed:pages.filter(p=>p.kind!==null).length,
