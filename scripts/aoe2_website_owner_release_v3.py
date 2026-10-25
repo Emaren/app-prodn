@@ -373,8 +373,11 @@ def stable_financial_runtime_identity(immutable: dict) -> dict:
                                  "UnitFileState", "MainPID"} and row["LoadState"] == "loaded" and
                     type(row["MainPID"]) is int and row["MainPID"] >= 0 and
                     all(type(row[k]) is str and 0 < len(row[k]) <= 64
-                        for k in ("ActiveState", "SubState", "UnitFileState")),
-                    "incomplete timed one-shot unit observation")
+                        for k in ("ActiveState", "SubState", "UnitFileState")) and
+                    row["ActiveState"] in {"inactive", "activating", "active", "deactivating"} and
+                    (row["ActiveState"] != "inactive" or
+                     (row["SubState"] == "dead" and row["MainPID"] == 0)),
+                    "unacceptable timed one-shot unit state")
             stable_units[name] = {
                 "LoadState": row["LoadState"],
                 "UnitFileState": row["UnitFileState"],
