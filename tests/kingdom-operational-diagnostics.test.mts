@@ -69,9 +69,9 @@ test("bounded typed incident explains source owner, affected pages, age, TTL, st
   assert.deepEqual(incidents[0].dependencyIds, ["intelligence"]);
   assert.ok(incidents[0].affectedRoutes.includes("/workshop"));
   assert.ok(incidents[0].affectedRoutes.includes("/kingdom-brain"));
-  assert.equal(incidents[0].evidence.ageSeconds, 10);
-  assert.equal(incidents[0].evidence.ttlSeconds, 900);
-  assert.equal(incidents[0].evidence.evidenceUri, null);
+  assert.equal(incidents[0].provenance.ageSeconds, 10);
+  assert.equal(incidents[0].provenance.ttlSeconds, 900);
+  assert.equal(incidents[0].provenance.evidenceUri, null);
   assert.equal(incidents[0].nextAction, "RECHECK_BRIDGE_READ_ONLY");
   assert.equal(incidents.at(-1)?.owner, "Release OS");
   assert.match(incidents.at(-1)?.safeAction ?? "", /protected release control/);
@@ -104,10 +104,10 @@ test("incident output is capped and cannot reflect arbitrary private bridge path
   assert.ok(incidents.length <= 8);
   assert.equal(incidents[0]?.code, "source-evidence-unclassified");
   assert.doesNotMatch(JSON.stringify(incidents), /\/Users\/|\/mnt\/private|http:\/\//);
-  assert.equal(incidents[0]?.evidence.buildId, null);
-  assert.equal(incidents[0]?.evidence.sourceGitSha, null);
-  assert.equal(incidents[0]?.evidence.producer, null);
-  assert.ok(incidents.every(v => v.evidence.evidenceUri === null));
+  assert.equal(incidents[0]?.provenance.buildId, null);
+  assert.equal(incidents[0]?.provenance.sourceGitSha, null);
+  assert.equal(incidents[0]?.provenance.producer, null);
+  assert.ok(incidents.every(v => v.provenance.evidenceUri === null));
 });
 
 async function store<T>(fn: () => Promise<T>): Promise<T> {
