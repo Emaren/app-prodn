@@ -28,7 +28,7 @@ function timestamp(value: string | null | undefined): number | null {
 function ttlHours(categoryId: string, checkId: string): number | null {
   if (categoryId === "speed") return 168;
   if (categoryId === "documentation") return 72;
-  if (categoryId === "tests") return null; // Certified source/build proof, not a live-host heartbeat.
+  if (categoryId === "tests") return 168; // Source/build-scoped certified gate proof expires after 168h; not a live-host heartbeat.
   if (categoryId === "release" && ["certified", "receipt"].includes(checkId)) return null;
   if (categoryId === "release" && ["doctor", "estate-findings", "build-parity", "service", "source-parity"].includes(checkId)) return 6;
   if (categoryId === "security" && ["vpssentry", "failed-units", "updates", "reboot", "maintenance", "security-fresh"].includes(checkId)) return 6;
