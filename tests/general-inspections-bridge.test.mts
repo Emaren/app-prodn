@@ -724,3 +724,32 @@ test("corrupt certified gate receipt is rejected rather than awarding proof", ()
     rmSync(estate.root, { recursive: true, force: true });
   }
 });
+
+
+test("documentation gate, taxonomy and maps require fresh source-bound receipts", () => {
+  for (const drift of ["expired-docs", "missing-doc-time", "live-build"]) {
+    const estate = makeEstate(true);
+    try {
+      const envelope = bridgePayload(true);
+      if (drift === "expired-docs") {
+        envelope.payload.documentation.captured_at = "2026-09-12T03:09:00Z";
+      } else if (drift === "missing-doc-time") {
+        delete (envelope.payload.documentation as { captured_at?: string }).captured_at;
+      } else {
+        envelope.payload.source.production.active_build_id = "unmatched-live-build";
+      }
+      writeJson(estate.options.bridgePath, envelope);
+      const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+      assert.ok(snapshot);
+      const docs = snapshot.categories.find((item) => item.id === "documentation");
+      assert.ok(docs);
+      assert.equal(docs.score, 0, drift);
+      for (const item of docs.checks) {
+        assert.equal(item.earned, 0, `${drift}: ${item.id}`);
+      }
+      assert.equal(snapshot.categories.find((item) => item.id === "tests")?.score, 100);
+    } finally {
+      rmSync(estate.root, { recursive: true, force: true });
+    }
+  }
+});
