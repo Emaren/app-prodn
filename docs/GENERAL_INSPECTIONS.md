@@ -50,6 +50,17 @@ processes. Documentation P0/P1 closure still depends on the governed
 Central DocsV2 single writer, fresh context camera, and WoloChain ancestry;
 none can be closed from this projection.
 
+**Bounded capacity evidence:** Existing `statfs` reads are individually
+timestamped from the real host observation time; older bridge-backed
+fallback capacity carries the original bridge `generated_at` rather than
+being silently rebranded as a new local sample. Both have a six-hour
+reporting TTL, while a true filesystem read uses no recursive storage walk.
+A timestamp-less or expired capacity check is UNKNOWN/STALE; a *fresh
+local measured* threshold deficit is FAIL. A partially credited aging
+bridge fallback is UNKNOWN, **not** proof of a new capacity incident.
+Immutable certification proofs also need an original observation timestamp
+even though their certification validity does not automatically expire.
+
 **Explicit limitations:** 66 rows identify 66 scoring contracts, **not**
 66 new original physical measurements. A full scored row may still carry
 UNKNOWN/STALE, requiring owner acceptance of new source-bound evidence.
