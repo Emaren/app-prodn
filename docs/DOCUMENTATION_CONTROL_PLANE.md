@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-a/20261024-website-nine-path-operational-finish` at `c3236d37cf250c5998885d5d12be3f55fde480c2`
+Implementation baseline: `fix/20261025-solo-owner-v3-clock-skew-bounded` at `c696419e51455df3b52bd965150ab047a1927727`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **99**
+- Authoritative repository documents: **100**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 60
-- `runbook`: 19
+- `runbook`: 20
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 82
+- `active`: 83
 - `draft`: 1
 - `generated`: 1
 - `historical`: 12
@@ -127,6 +127,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
+| [Solo-owner Website Release Policy V3](SOLO_OWNER_WEBSITE_RELEASE_V3.md) | `runbook` | `active` | `release-engineering-contract` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |
