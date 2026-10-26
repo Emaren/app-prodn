@@ -71,7 +71,7 @@ function Score({ entry, small=false }: {entry:KingdomIndexEntry;small?:boolean})
     provisional?`Approximately ${visible} out of 100, unverified source review, not certified`:
     historical?`Historical, unverified source review: approximately ${visible} out of 100; not a current deployed-build score`:
     `Unrated: ${statusTitle(entry)}`;
-  const label=provisional?"PROVISIONAL SOURCE REVIEW · NOT CERTIFIED":
+  const label=provisional?"PROVISIONAL SOURCE REVIEW · NOT INDEPENDENTLY CERTIFIED":
     historical?"HISTORICAL SOURCE REVIEW · NOT CURRENT OR CERTIFIED":statusTitle(entry);
   return <span className={small?styles.scoreSmall:styles.score} data-status={entry.status}
     data-authority={historical?"historical":provisional?"provisional":measured?"measured":"unrated"}
