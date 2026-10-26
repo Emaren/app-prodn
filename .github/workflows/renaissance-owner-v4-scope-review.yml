@@ -105,7 +105,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch release/renaissance-v4-frozen-source-review-20261025 --head "$(git rev-parse HEAD)"
           git diff --check
           python3 - <<'PY'
           import subprocess
