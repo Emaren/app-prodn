@@ -59,7 +59,8 @@ async function main(){
  let renamed=false;
  try{
   await fh.writeFile(sourceBytes);await fh.sync();await fh.close();
-  const checked=await readKingdomRuntimeTelemetry({file:tmp,...options});
+  // Check the staged file itself: options contains file:input, so staged path must be last.
+  const checked=await readKingdomRuntimeTelemetry({...options,file:tmp});
   if(!checked||checked.revisionSha256!==tested.revisionSha256)stop("Staged bytes invalid");
   await rename(tmp,output);renamed=true;
   const dh=await open(outputDir,constants.O_RDONLY);
