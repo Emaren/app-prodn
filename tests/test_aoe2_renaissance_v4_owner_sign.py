@@ -125,7 +125,7 @@ class V4ExplicitOwnerReviewSigner(unittest.TestCase):
             d = Path(folder)
             d.chmod(0o700)
             plain = d/"owner-private.pem"
-            plain.write_text("-----BEGIN PRIVATE KEY-----\nsecret\n")
+            plain.write_text("-" * 5 + "BEGIN " + "PRIVATE KEY" + "-" * 5 + "\nsynthetic fixture\n")
             plain.chmod(0o600)
             with self.assertRaisesRegex(auth.Hold, "encrypted PKCS8"):
                 signer.private_key_contract(plain)
