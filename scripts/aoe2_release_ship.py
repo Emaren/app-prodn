@@ -884,7 +884,11 @@ def remote_activation_script(
     dry_run: bool,
     receipt_dir: str,
     rollback_dir: str,
+    website_policy: str | None = None,
 ) -> str:
+    if website_policy is not None:
+        if website_policy != "aoe2war.renaissance.website.v4.release.v1" or receipt.get("release_sha") != "6d2a78224e5a5c647345d6b5ffc91bf94dc84b59" or receipt.get("previous_production_sha") != "6be434c00469afa4acb0623715c3bcf724f927f4":
+            raise ShipError("unreviewed passive website policy/source")
     q = shlex.quote
     mode = "DRY_RUN" if dry_run else "ACTIVATE"
     return f"""
@@ -893,6 +897,7 @@ trap 'rc=$?; failed_command=$BASH_COMMAND; printf "ACTIVATION_ASSERTION_FAILED l
 cd {q(PROD_REPO)}
 
 MODE={q(mode)}
+V4_PASSIVE_ONLY={q("1" if website_policy else "0")}
 SERVICE={q(SERVICE)}
 PUBLIC={q(PUBLIC)}
 RELEASE={q(receipt['release_sha'])}
@@ -919,6 +924,10 @@ SOAK_SECONDS={ACTIVATION_SOAK_SECONDS}
 SOAK_INTERVAL={ACTIVATION_SOAK_INTERVAL_SECONDS}
 FAST_ROLLBACK_KEEP={FAST_ROLLBACK_KEEP}
 
+passive_website_policy() {{
+  if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then return 0; fi
+  [ "$V4_PASSIVE_ONLY" = "1" ]
+}}
 wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
 build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
 artifact_hash() {{
@@ -1473,7 +1482,7 @@ test ! -e "$ROLLBACK/next/cache"
 test "$(cat "$ROLLBACK/source-sha")" = "$PREVIOUS"
 test "$(cat "$ROLLBACK/build-version")" = "$LIVE_VERSION"
 
-if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then
+if passive_website_policy; then
   # Original ten-path main retains money-moving legacy GET side effects.
   critical_get http://127.0.0.1:3030/api/deployment-version
   critical_get "$PUBLIC/api/deployment-version"
@@ -1492,7 +1501,7 @@ fi
 # Avoid finance-capable legacy prewarms on the ten-path main candidate.
 # Other releases retain their already-existing smoke/performance contract.
 # ------------------------------------------------------------
-if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then
+if passive_website_policy; then
   STATISTICS_PREWARM="SKIPPED_NONINTERFERENCE"
   STATISTICS_WARM_SECONDS=""
   LEADERBOARD_PREWARM="SKIPPED_NONINTERFERENCE"
@@ -1645,7 +1654,7 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   test "$soak_wolo8092" = "$before_wolo8092"
   test "$soak_wolo8093" = "$before_wolo8093"
 
-  if [ "$RELEASE" = "6be434c00469afa4acb0623715c3bcf724f927f4" ]; then
+  if passive_website_policy; then
     critical_get http://127.0.0.1:3030/api/deployment-version
     critical_get "$PUBLIC/api/deployment-version"
   else
@@ -2695,6 +2704,8 @@ def activate_release(
     stage_receipt: str,
     dry_run: bool,
     json_output: bool = False,
+    remote_runner=None,
+    website_policy: str | None = None,
 ) -> int:
     try:
         (
@@ -2760,21 +2771,15 @@ def activate_release(
         dry_run=dry_run,
         receipt_dir=receipt_dir,
         rollback_dir=rollback_dir,
+        website_policy=website_policy,
     )
     transport_recovered_after_timeout = False
     activation_started_at = utc_now()
     activation_started_monotonic = time.monotonic()
     try:
-        p = run(
-            [
-                "ssh",
-                "-o", "BatchMode=yes",
-                "-o", "ConnectTimeout=8",
-                PROD_HOST,
-                f"bash -lc {shlex.quote(script)}",
-            ],
-            timeout=180 if dry_run else 900,
-        )
+        p = remote_runner(script, timeout=180 if dry_run else 900) if remote_runner else run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", PROD_HOST,
+             f"bash -lc {shlex.quote(script)}"], timeout=180 if dry_run else 900)
     except subprocess.TimeoutExpired as exc:
         if dry_run:
             message = f"activation dry-run transport timed out: {exc}"

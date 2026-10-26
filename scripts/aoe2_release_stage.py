@@ -148,8 +148,13 @@ def remote_stage_script(
     manifest_text: str = "",
     gate_text: str = "",
     watcher_version: str = "",
+    lease_guard: bool = False,
 ) -> str:
     q = shlex.quote
+    guardian = ""
+    if lease_guard:
+        from aoe2_renaissance_v4_transport import STAGE_GUARD
+        guardian = "python3 -c " + q(STAGE_GUARD) + ' "$$" "$build_instance" > "$RECEIPT/lease-guardian.pid"'
     build_unit_sha = sha256_file(BUILD_SANDBOX_UNIT_SOURCE)
     deps_unit_sha = sha256_file(DEPS_SANDBOX_UNIT_SOURCE)
     return f"""
@@ -201,6 +206,8 @@ mutation_started=0
 build_parent=""
 build_worktree=""
 build_cache=""
+deps_unit=""
+build_unit=""
 
 # Runtime bundles are deployment state, not source state. This filtering must
 # work even while production is still checked out at a commit whose .gitignore
@@ -217,7 +224,24 @@ source_status() {{
     ':(exclude).node_modules-rollback*/**'
 }}
 
+wait_stage_units() {{
+  # Never remove a filesystem still being used by a systemd-owned process.
+  # No service mutation is added. Failed inspection preserves the worktree.
+  for stage_unit in "$deps_unit" "$build_unit"; do
+    [ -n "$stage_unit" ] || continue
+    for ((poll=0; poll<1800; poll++)); do
+      state="$(systemctl show "$stage_unit" -p ActiveState --value)" || return 1
+      main_pid="$(systemctl show "$stage_unit" -p MainPID --value)" || return 1
+      control_pid="$(systemctl show "$stage_unit" -p ControlPID --value)" || return 1
+      if {{ [ "$state" = inactive ] || [ "$state" = failed ]; }} && [ "$main_pid" = 0 ] && [ "$control_pid" = 0 ]; then break; fi
+      sleep 1
+    done
+    [ "$poll" -lt 1800 ] || return 1
+  done
+}}
+
 cleanup_build_worktree() {{
+  wait_stage_units || return 1
   if [ -n "$build_worktree" ] && [ -d "$build_worktree" ]; then
     git worktree remove --force "$build_worktree" >/dev/null 2>&1 || true
     if [ -e "$build_worktree" ]; then
@@ -242,7 +266,10 @@ cleanup_build_worktree() {{
 
 restore_stage_failure() {{
   rc="$?"
-  cleanup_build_worktree
+  if ! cleanup_build_worktree; then
+    printf 'recovery\tHOLD_UNITS_NOT_QUIESCENT\n'
+    exit 74
+  fi
   if [ "$rc" -ne 0 ]; then
     if [ "$mutation_started" = "1" ]; then
       rm -rf .next-release .node_modules-release
@@ -257,6 +284,7 @@ restore_stage_failure() {{
   exit "$rc"
 }}
 trap restore_stage_failure EXIT
+trap 'exit 143' TERM HUP INT
 
 sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$RECEIPT"
 : > "$TIMING_FILE" 2>/dev/null || true
@@ -590,6 +618,7 @@ install -d -m 0700 \
 
 deps_unit="aoe2war-deps@${{build_instance}}.service"
 build_unit="aoe2war-build@${{build_instance}}.service"
+{guardian}
 
 # Authorization probes only; execution is performed by the separate calls below.
 sudo -n -l /usr/bin/systemctl start --wait "$deps_unit" >/dev/null
@@ -1221,6 +1250,7 @@ def stage_release(
     data: dict,
     *,
     json_output: bool = False,
+    remote_runner=None,
 ) -> int:
     release_sha = data["local"].get("head")
     if not release_sha:
@@ -1277,6 +1307,7 @@ def stage_release(
         manifest_text=manifest_path.read_text(encoding="utf-8"),
         gate_text=gate_path.read_text(encoding="utf-8"),
         watcher_version=watcher_version,
+        **({"lease_guard": True} if remote_runner is not None else {}),
     )
 
     if not json_output:
@@ -1294,18 +1325,12 @@ def stage_release(
 
     stage_started_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     stage_started_monotonic = time.monotonic()
-    p = run(
-        [
-            "ssh",
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=8",
-            PROD_HOST,
-            f"bash -lc {shlex.quote(script)}",
-        ],
-        timeout=1800,
-    )
+    if remote_runner is not None:
+        p = remote_runner(script, timeout=1800)
+    else:
+        p = run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", PROD_HOST,
+             f"bash -lc {shlex.quote(script)}"], timeout=1800)
     stage_completed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     stage_duration_seconds = round(
         time.monotonic() - stage_started_monotonic,

@@ -181,8 +181,10 @@ rm -f {shlex.quote(metadata)}
 
 
 @contextmanager
-def global_release_lease(path: Path = GLOBAL_RELEASE_LOCK):
+def global_release_lease(path: Path = GLOBAL_RELEASE_LOCK, *, command_channel=False):
     if inherited_global_lease():
+        if command_channel:
+            raise DeployLockBusy("v4 refuses inherited/environment-only release leases")
         yield
         return
 
@@ -200,16 +202,19 @@ def global_release_lease(path: Path = GLOBAL_RELEASE_LOCK):
     prior_token = os.environ.get(GLOBAL_LEASE_ENV)
     prior_owner = os.environ.get(GLOBAL_LEASE_OWNER_ENV)
     local_production = ROOT.resolve() == Path(PROD_REPO).resolve()
-    lease = (
-        local_global_release_lease(path, holder)
-        if local_production
-        else remote_global_release_lease(path, holder)
-    )
-    with lease:
+    if command_channel:
+        if local_production:
+            raise DeployLockBusy("v4 command dispatcher requires the separate Mac operator checkout")
+        from aoe2_renaissance_v4_transport import command_lease
+        lease = command_lease(path, holder, host=PROD_HOST)
+    else:
+        lease = (local_global_release_lease(path, holder) if local_production
+                 else remote_global_release_lease(path, holder))
+    with lease as runner:
         os.environ[GLOBAL_LEASE_ENV] = token
         os.environ[GLOBAL_LEASE_OWNER_ENV] = str(os.getpid())
         try:
-            yield
+            yield runner
         finally:
             if prior_token is None:
                 os.environ.pop(GLOBAL_LEASE_ENV, None)
@@ -222,7 +227,7 @@ def global_release_lease(path: Path = GLOBAL_RELEASE_LOCK):
 
 
 @contextmanager
-def deployment_lock(path: Path = DEPLOY_LOCK):
+def deployment_lock(path: Path = DEPLOY_LOCK, *, command_channel=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+", encoding="utf-8") as handle:
         try:
@@ -240,10 +245,10 @@ def deployment_lock(path: Path = DEPLOY_LOCK):
         handle.write(f"pid={os.getpid()}\n")
         handle.write("command=" + shlex.join(sys.argv) + "\n")
         handle.flush()
-        lease = global_release_lease() if path == DEPLOY_LOCK else nullcontext()
+        lease = (global_release_lease(command_channel=True) if command_channel else global_release_lease()) if path == DEPLOY_LOCK else nullcontext()
         try:
-            with lease:
-                yield
+            with lease as runner:
+                yield runner
         finally:
             handle.seek(0)
             handle.truncate()
