@@ -159,3 +159,27 @@ exact published main/remote-main; original protected source/transport/storage/
 rollback checks; separate physical owner signatures. Any unknown remains HOLD.
 No website permit enables custody, SQL migrations, financial transfers, Wolo
 binary changes, settlement restarts or consensus changes.
+
+## October 26 source/host qualification receipt
+
+Read-only HEL1 v4 capture SHA-256
+`74d92e1e967298844ecb9ebaea8fad02030671925849311a84f9ee9a44c1e6ac`
+verified expected 8092/8093 socket ownership and original website source/build.
+Both `wargraph_runtime_disabled` and `restart_runtime_disabled` were **false**.
+Thus actual restart noninterference is **WEB_RELEASE_HOLD**. This is a measured
+operational boundary, not a controller test failure. No flag was changed.
+The private full observation is retained outside Git with owner-only mode.
+
+Read-only publication plan digest:
+`ce1f590bec1d0d700a9298978ea0b37df5d8cb0cfbb360e49f1cea245512fcf5`.
+GitHub main was unprotected with no matching rules and remained the rollback
+SHA, as did production origin main. A non-force fast-forward is possible after
+explicit acceptance; no push to main occurred. Recompute the plan if rules or
+main change. Mac public trust and journal roots were absent. Existing HEL1
+public enrollment does not provision the Mac and must not be overwritten.
+
+The next owner decision is whether to authorize a separately reviewed plan for
+this existing startup worker boundary. The current dispatcher will not silently
+resume with active financial startup writers or alter their configuration.
+Controller source review, exact CI and public-only Mac provisioning are also
+required before any genuine challenge. No PRE_STAGE/PRE_ACTIVATE was issued.

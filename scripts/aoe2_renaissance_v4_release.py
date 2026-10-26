@@ -604,7 +604,9 @@ def reconcile(packet,receipt_path,receipt_sha,candidate):
  except(Hold,ValueError,KeyError)as exc:reason=str(exc)
  return {'schema':1,'policy':POLICY,'status':'READ_ONLY_RECONCILIATION_NOT_AUTHORIZATION',
   'attempt_id':p['attempt_id'],'original_nonce_state':row['state'],'protected_status':receipt['status'],
-  'protected_receipt_sha256':receipt_sha,'current_same_owner_boundary':comparison,'current_website':site,
+  'protected_receipt_sha256':receipt_sha,'receipt_matches_completed_journal':bool(row['result']and
+    (row['result'].get('local_receipt_sha256')==receipt_sha)),
+  'receipt_authority':'ADVISORY_MATCHING_LINEAGE_ONLY_UNLESS_COMPLETED_JOURNAL_MATCH','current_same_owner_boundary':comparison,'current_website':site,
   'observation_error':reason,'observed_at':raw.get('observed_at'),'current_observation_sha256':digest(raw),
   'redispatch_permitted':False,'journal_updated':False,'financial_release_authorized':False}
 
@@ -628,7 +630,19 @@ def inspect(candidate):
  if enrollment['mac_public_present']:
   try:enrollment['parity']=public_parity()
   except(Hold,OSError,ValueError)as exc:enrollment['hold']=str(exc)
- return {'status':'READ_ONLY_PREFLIGHT','policy':POLICY,'candidate_sha':FROZEN_TARGET,
+ holds=[];runtime_sha=None;runtime_flags=None
+ if not enrollment['mac_public_present']or not enrollment['mac_state_present']:holds.append('Mac root public enrollment/private journal provisioning incomplete')
+ if enrollment.get('hold'):holds.append(enrollment['hold'])
+ if data['github']['main_sha']!=FROZEN_TARGET or transport.get('remote_main')!=FROZEN_TARGET:holds.append('exact source publication requires accepted plan and controller')
+ if error:holds.append('original production Git transport: '+error)
+ try:
+  from aoe2_renaissance_v4_observer import validate_observation
+  raw=observe_runtime();runtime_sha=digest(raw)
+  runtime_flags={k:raw['v4_runtime']['web_process'][k]for k in('wargraph_runtime_disabled','restart_runtime_disabled')}
+  validate_observation(raw)
+ except(ValueError,OSError,subprocess.SubprocessError)as exc:holds.append(str(exc))
+ return {'status':'WEB_RELEASE_HOLD'if holds else'PREFLIGHT_VERIFIED_OWNER_SIGNATURES_REQUIRED','policy':POLICY,'candidate_sha':FROZEN_TARGET,
+  'holds':holds,'runtime_observation_sha256':runtime_sha,'startup_worker_flags':runtime_flags,
   'source_paths':source['count'],'risk_class':'FINANCIAL','zero_migrations':True,'documentation_baseline':baseline,
   'github_main':data['github']['main_sha'],'production_origin_main':transport.get('remote_main'),
   'production_source':data['production']['source_sha'],'active_build_id':data['production']['active_build_id'],

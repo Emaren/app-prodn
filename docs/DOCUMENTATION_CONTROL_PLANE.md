@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/owner-v4-protected-dispatch` at `affdcb8b4f0f8c1fd84b7ddd31e03229d4c35267`
+Implementation baseline: `codex/owner-v4-protected-dispatch` at `6e44f86e8f44b69342916db432b99aa3437027df`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
