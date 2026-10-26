@@ -12,7 +12,26 @@ export type KingdomScoreDimensions = {
 export type KingdomScoreEvidence = {
   score: number;
   dimensions?: KingdomScoreDimensions;
+  checkedAt?: string;
+  sourceVersion?: string;
+  evidenceRefs?: string[];
 };
+export type KingdomHistoricalReview = {
+  checkedAt: string | null;
+  sourceVersion: string | null;
+  evidenceRefs: string[];
+};
+
+export function displayedKingdomReviewAt(entry: {
+  score: number | null;
+  provisionalReviewScore: number | null;
+  lastReviewScore: number | null;
+  checkedAt: string | null;
+  historicalReview: KingdomHistoricalReview | null;
+}): string | null {
+  return entry.score === null && entry.provisionalReviewScore === null && entry.lastReviewScore !== null
+    ? entry.historicalReview?.checkedAt ?? null : entry.checkedAt;
+}
 
 export function selectKingdomScoreLineage(
   review: KingdomScoreEvidence | null,
@@ -20,10 +39,18 @@ export function selectKingdomScoreLineage(
   liveScore: number | null,
 ): {
   lastReviewScore: number | null;
+  historicalReview: KingdomHistoricalReview | null;
   dimensions: KingdomScoreDimensions | null;
 } {
   return {
     lastReviewScore: review?.score ?? null,
+    // Never borrow provenance from a newer operator observation. Missing
+    // historical metadata remains unknown even when a current feed exists.
+    historicalReview: review ? {
+      checkedAt: review.checkedAt ?? null,
+      sourceVersion: review.sourceVersion ?? null,
+      evidenceRefs: [...(review.evidenceRefs ?? [])],
+    } : null,
     dimensions: liveScore !== null
       ? (observation?.dimensions ?? null)
       : (review?.dimensions ?? null),

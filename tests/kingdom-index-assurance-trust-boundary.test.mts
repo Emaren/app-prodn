@@ -4,7 +4,8 @@ import profiles from "../config/kingdom-index-assurance-profiles.json" with { ty
 import catalog from "../config/kingdom-index-routes.json" with { type: "json" };
 import { classifyPublicKingdomAuditStatus as status, publicObservedKingdomScore, provisionalOperatorReviewScore, isKingdomObservationStale } from "../lib/kingdomIndexAuditStatus.ts";
 import { readFileSync } from "node:fs";
-import { selectKingdomScoreLineage } from "../lib/kingdomIndexScoreLineage.ts";
+import { displayedKingdomReviewAt, selectKingdomScoreLineage } from "../lib/kingdomIndexScoreLineage.ts";
+import { formatKingdomStamp, kingdomStampDay } from "../lib/kingdomIndexDisplayTime.ts";
 
 
 test("all public routes have an explicit, existing assurance profile",()=>{
@@ -116,13 +117,13 @@ test("fresh agent observations cannot overwrite historical review lineage",()=>{
  const review={score:64,dimensions:dims(24)};
  const agent={score:72,dimensions:dims(29)};
  assert.deepEqual(selectKingdomScoreLineage(review,agent,72),{
-  lastReviewScore:64,dimensions:agent.dimensions
+  lastReviewScore:64,historicalReview:{checkedAt:null,sourceVersion:null,evidenceRefs:[]},dimensions:agent.dimensions
  });
  assert.deepEqual(selectKingdomScoreLineage(review,agent,null),{
-  lastReviewScore:64,dimensions:review.dimensions
+  lastReviewScore:64,historicalReview:{checkedAt:null,sourceVersion:null,evidenceRefs:[]},dimensions:review.dimensions
  });
  assert.deepEqual(selectKingdomScoreLineage(null,agent,null),{
-  lastReviewScore:null,dimensions:null
+  lastReviewScore:null,historicalReview:null,dimensions:null
  });
  const source=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
  assert.match(source,/r\.kind==="source-review"/);
@@ -157,4 +158,39 @@ test("bounded, current source-review numbers can appear only as visibly provisio
  assert.match(server,/entry\.provisionalReviewRefs=\[\]/);
  assert.match(code,/Unverified review references/);
  assert.match(server,/score: liveScore/);
+});
+
+
+test("historical review date and source stay bound to the baseline after a newer feed observation",()=>{
+ const review={score:64,checkedAt:"2026-10-18",sourceVersion:"src-92adf8e684a9a7c49785",evidenceRefs:["https://github.com/Emaren/app-prodn/pull/930"]};
+ const current={score:99,checkedAt:"2026-10-26T14:00:00Z",sourceVersion:"src-1234567890abcdef",evidenceRefs:["https://github.com/Emaren/app-prodn/pull/999"]};
+ for(const liveScore of [null,72]){
+  const result=selectKingdomScoreLineage(review,current,liveScore);
+  assert.equal(result.lastReviewScore,64);
+  assert.deepEqual(result.historicalReview,{checkedAt:review.checkedAt,sourceVersion:review.sourceVersion,evidenceRefs:review.evidenceRefs});
+  assert.notEqual(result.historicalReview?.evidenceRefs,review.evidenceRefs,"the public snapshot must not mutate the original review references");
+ }
+ assert.equal(selectKingdomScoreLineage(null,current,null).historicalReview,null,"a newer feed must never supply missing historical provenance");
+ const entry={...selectKingdomScoreLineage(review,current,null),score:null,provisionalReviewScore:null,checkedAt:current.checkedAt};
+ assert.equal(displayedKingdomReviewAt(entry),review.checkedAt);
+ assert.equal(displayedKingdomReviewAt({...entry,historicalReview:null}),null,"missing review date must not borrow observation date");
+ assert.equal(displayedKingdomReviewAt({...entry,provisionalReviewScore:72}),current.checkedAt);
+ assert.equal(displayedKingdomReviewAt({...entry,score:72}),current.checkedAt);
+ const source=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+ const ui=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");
+ assert.match(source,/historicalReview:lineage\.historicalReview/);
+ assert.match(ui,/Historical review provenance/);
+ assert.match(ui,/reviewed source/);
+ assert.match(ui,/kingdomStampDay\(displayedReviewAt\(item\)\)/);
+});
+
+test("review display preserves calendar-day precision and refuses malformed dates",()=>{
+ assert.equal(formatKingdomStamp("2026-10-18"),"2026-10-18 · DATE ONLY");
+ assert.equal(formatKingdomStamp("2026-10-26T14:15:16.123Z"),"2026-10-26 14:15 UTC");
+ assert.equal(formatKingdomStamp("2026-10-26T16:15:16+02:00"),"2026-10-26 14:15 UTC");
+ assert.equal(kingdomStampDay("2026-10-18"),"2026-10-18");
+ for(const malformed of [null,"","2026-02-30","2026-02-30T12:00:00Z","2026-10-26T14:15:16","not-a-date"]){
+  assert.equal(formatKingdomStamp(malformed),"—",String(malformed));
+  assert.equal(kingdomStampDay(malformed),"—",String(malformed));
+ }
 });

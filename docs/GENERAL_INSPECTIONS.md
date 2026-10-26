@@ -15,6 +15,23 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 26, 2026 — historical Index numbers retain their original date and source
+
+The website-only Kingdom Index candidate preserves PR #930's `HIST.` score
+fallback. Its `historicalReview` metadata now comes from the same immutable
+baseline record as `lastReviewScore`, including the original review date,
+source fingerprint and review references. A newer operator observation
+cannot replace those fields or lend its timestamp to an older estimate.
+Missing historical provenance stays unknown. The ledger's **REVIEW DATE**
+and detail drawer follow the displayed score's lineage; calendar-day reviews
+remain `DATE ONLY` rather than implying an observation at midnight UTC.
+
+Historical estimates and provisional source reviews remain unauthenticated.
+They do not populate the current `score`, grant criterion approvals or certify
+the deployed build. The existing signed, source/build-bound publisher and
+expiry/replay checks remain required for actual current certification. This
+change adds no score issuer, financial authority, migration or release permit.
+
 ## October 25, 2026 — Round Five release-health gate and producer lineage
 
 **Only a dated operational measurement can change Doctor/GI.** Owner evidence

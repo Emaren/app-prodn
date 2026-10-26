@@ -6,6 +6,8 @@ import { ArrowUpRight, Castle, ChevronDown, Clock3, Compass, Grid2X2, List, X } 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import type { District, KingdomIndexEntry, KingdomIndexSnapshot } from "@/lib/kingdomIndex";
 import { isLatestKingdomIndexRefresh } from "@/lib/kingdomIndexRefreshOrder";
+import { formatKingdomStamp as formatStamp, kingdomStampDay } from "@/lib/kingdomIndexDisplayTime";
+import { displayedKingdomReviewAt as displayedReviewAt } from "@/lib/kingdomIndexScoreLineage";
 import styles from "./KingdomIndex.module.css";
 
 const REGIONS: ReadonlyArray<{ id: District; name: string; numeral: string; subtitle: string }> = [
@@ -40,12 +42,6 @@ function reviewAgeDays(evaluatedAt: string, generatedAt: string): number | null 
   return Number.isFinite(reviewed) && Number.isFinite(observed) && observed >= reviewed
     ? Math.floor((observed - reviewed) / 86_400_000) : null;
 }
-function formatStamp(input: string | null) {
-  if (!input) return "—";
-  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(input)) return input+" · DATE ONLY";
-  const d=new Date(input);
-  return Number.isFinite(d.getTime()) ? d.toISOString().slice(0,16).replace("T"," ")+" UTC" : "—";
-}
 function Sparkline({ points, score, compact=false }: {points: KingdomIndexEntry["history"]; score:number|null; compact?:boolean}) {
   const valid=points.filter(point=>Number.isFinite(point.score)&&point.score>=0&&point.score<=100).slice(-36);
   if(valid.length<2) return <span className={styles.emptySpark} aria-label="No comparable historical scores">—</span>;
@@ -69,13 +65,13 @@ function Score({ entry, small=false }: {entry:KingdomIndexEntry;small?:boolean})
   const visible=measured?entry.score:(provisional?entry.provisionalReviewScore:(historical?entry.lastReviewScore:null));
   const accessible=measured?`${visible} out of 100, ${statusTitle(entry)}`:
     provisional?`Approximately ${visible} out of 100, unverified source review, not certified`:
-    historical?`Historical, unverified source review: approximately ${visible} out of 100; not a current deployed-build score`:
+    historical?`Historical, unverified source review: approximately ${visible} out of 100; ${formatStamp(entry.historicalReview?.checkedAt??null)}; source ${entry.historicalReview?.sourceVersion??"UNKNOWN"}; not a current deployed-build score`:
     `Unrated: ${statusTitle(entry)}`;
   const label=provisional?"PROVISIONAL SOURCE REVIEW · NOT INDEPENDENTLY CERTIFIED":
     historical?"HISTORICAL SOURCE REVIEW · NOT CURRENT OR CERTIFIED":statusTitle(entry);
   return <span className={small?styles.scoreSmall:styles.score} data-status={entry.status}
     data-authority={historical?"historical":provisional?"provisional":measured?"measured":"unrated"}
-    aria-label={accessible} title={label}>
+    aria-label={accessible} title={historical?accessible:label}>
     {(provisional||historical)&&<span aria-hidden="true">~</span>}{scoreString(visible)}
     {validScore(visible)&&<span className={styles.denom}>/100</span>}
     {historical&&<span className={styles.historicalLabel}>HIST.</span>}
@@ -94,7 +90,10 @@ function PageDetail({ item, close, criterionRubric }: {item:KingdomIndexEntry;cl
       <p>Review references (claims only):</p>
       <ul>{item.provisionalReviewRefs.map(ref=><li key={ref}><a href={ref} target="_blank" rel="noopener noreferrer">{ref}</a></li>)}</ul>
     </section>}
-    {item.lastReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>HISTORICAL REVIEW: {item.lastReviewScore}/100. No current source-aligned engineering score is independently established.</p>}
+    {item.lastReviewScore!==null&&item.score===null&&<section className={styles.evidenceNote} aria-label="Historical review provenance">
+      <p>HISTORICAL REVIEW: {item.lastReviewScore}/100 · {formatStamp(item.historicalReview?.checkedAt??null)} · reviewed source <code>{item.historicalReview?.sourceVersion??"UNKNOWN"}</code>. No current source-aligned engineering score is independently established.</p>
+      {!!item.historicalReview?.evidenceRefs.length&&<ul>{item.historicalReview.evidenceRefs.map(ref=><li key={ref}><a href={ref} target="_blank" rel="noopener noreferrer">{ref}</a> · historical review reference, not current certification</li>)}</ul>}
+    </section>}
     <p className={styles.evidenceNote}>Route source fingerprint is a local Git census only; transitive dependencies and deployed runtime still require independent proof.</p>
     {item.authenticatedPublication&&<section className={styles.evidenceNote} aria-label="Authenticated certification provenance">
       <strong>INDEPENDENTLY SIGNED PUBLICATION</strong>
@@ -105,7 +104,7 @@ function PageDetail({ item, close, criterionRubric }: {item:KingdomIndexEntry;cl
       <p>Issued: {formatStamp(item.authenticatedPublication.issuedAt)} · Expires: {formatStamp(item.authenticatedPublication.expiresAt)}</p>
     </section>}
     <div className={styles.detailMetrics}>
-      <div><span>LAST REVIEW</span><b>{formatStamp(item.checkedAt)}</b></div>
+      <div><span>DISPLAYED REVIEW</span><b>{formatStamp(displayedReviewAt(item))}</b></div>
       <div><span>PAGE LOAD</span><b>{item.loadMs!==null?`${Math.round(item.loadMs)} ms`:"—"}</b></div>
       <div><span>PAYLOAD</span><b>{item.bytes!==null?`${(item.bytes/1024).toFixed(1)} KB`:"—"}</b></div>
       <div><span>ROUTE SOURCE</span><b title={item.sourceVersion??""}>{item.sourceVersion?item.sourceVersion.slice(0,19):"—"}</b></div>
@@ -291,13 +290,13 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
           {REGIONS.map(region=><DistrictSection key={region.id} region={region} pages={byRegion.get(region.id)??[]} selected={selected} focus={focus}/>)}
         </div>
       </div>:<section className={styles.ledger} aria-label="Engineering ledger">
-        <header className={styles.ledgerHead}><span>REALM / ROUTE</span><span title="A score is published only after independent evidence; a ~score is an unverified, provisional source review.">QUALITY / REVIEW</span><span>HISTORY</span><span>OBSERVED</span><span/></header>
+        <header className={styles.ledgerHead}><span>REALM / ROUTE</span><span title="A score is published only after independent evidence; a ~score is an unverified, provisional source review.">QUALITY / REVIEW</span><span>HISTORY</span><span>REVIEW DATE</span><span/></header>
         {rows.map(item=><div key={item.href} className={styles.ledgerGroup}>
           <div className={styles.ledgerRow} data-status={item.status}>
             <div className={styles.ledgerName}><span className={styles.signal}/><div><Link href={item.href}>{item.label}<ArrowUpRight size={12}/></Link><span>{item.href}</span></div></div>
             <div className={styles.ledgerApproval}><Score entry={item}/><span>{item.criterionProgress.approvedCriteria}/20 CRITERIA APPROVED</span></div>
             <Sparkline points={item.history} score={item.score} compact/>
-            <div className={styles.ledgerTime} title={formatStamp(item.checkedAt)}><Clock3 size={12}/>{item.checkedAt?new Date(item.checkedAt).toISOString().slice(0,10):"—"}</div>
+            <div className={styles.ledgerTime} title={formatStamp(displayedReviewAt(item))}><Clock3 size={12}/>{kingdomStampDay(displayedReviewAt(item))}</div>
             <button className={styles.expandButton} type="button" aria-expanded={expanded===item.href} aria-label={`Details for ${item.label}`} onClick={event=>{detailTriggerRef.current=event.currentTarget;setExpanded(v=>v===item.href?null:item.href);}}><ChevronDown size={18}/></button>
           </div>
           {expanded===item.href&&<PageDetail item={item} close={closeDetail} criterionRubric={snapshot.criterionRubric}/>}

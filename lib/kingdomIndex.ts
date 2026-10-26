@@ -11,6 +11,7 @@ import companionCatalog from "@/config/kingdom-index-companions.json";
 import watcherDraftReview from "@/config/kingdom-index-watcher-166-source-review.json";
 import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, provisionalOperatorReviewScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
 import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
+import type { KingdomHistoricalReview } from "@/lib/kingdomIndexScoreLineage";
 import { loadCurrentKingdomIndexTrustedPublication } from "@/lib/kingdomIndexTrustedPublicationRead.mjs";
 import { projectKingdomCriterionProgress } from "@/lib/kingdomIndexCriterionProgress.mjs";
 import { readKingdomRuntimeTelemetry } from "@/lib/kingdomIndexRuntimeTelemetry.mjs";
@@ -44,6 +45,7 @@ export type KingdomIndexEntry = {
   // Review links are public provenance claims, not independently authenticated proof.
   provisionalReviewRefs: string[];
   lastReviewScore: number | null;
+  historicalReview: KingdomHistoricalReview | null;
   checkedAt: string | null;
   kind: PageAuditKind | null;
   status: "unmeasured" | "current" | "drifted" | "stale" | "provisional";
@@ -260,7 +262,8 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       // Keep a historical score visible only with an explicit noncurrent state.
       score: liveScore,provisionalReviewScore,
       provisionalReviewRefs:provisionalReviewScore!==null?obs?.evidenceRefs??[]:[],
-      lastReviewScore:lineage.lastReviewScore, checkedAt:obs?.checkedAt??null,
+      lastReviewScore:lineage.lastReviewScore, historicalReview:lineage.historicalReview,
+      checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
       // Signed-JSON ingress does not itself verify benchmark artifacts or
       // historical measurements. Keep all readout metrics unknown until a
