@@ -26,6 +26,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # On PRs, use the actual reviewed controller HEAD, not an ephemeral
+          # GitHub merge-commit as the DocsV2 implementation baseline.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Offline adversarial verifier tests
         run: |
           python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_scope.py -v
@@ -96,5 +99,33 @@ jobs:
             ${{ runner.temp }}/renaissance-v4-source-digest-review.json
             ${{ runner.temp }}/renaissance-v4-source-digest-verification.json
             ${{ runner.temp }}/renaissance-v4-source-digest-review.sha256
+          if-no-files-found: error
+          retention-days: 10
+      - name: Prepare exact-head DocsV2 baseline as an UNSIGNED governance proposal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(["git","diff","--name-only"],text=True).splitlines()
+          expected=["docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"]
+          if names!=expected:
+              raise SystemExit(f"HOLD: unexpected generated doc changes {names!r}")
+          PY
+          python3 scripts/docs_v2_check.py
+          printf '%s\n' "$(git rev-parse HEAD)" > "$RUNNER_TEMP/v4-docsv2-proposal-implementation-sha.txt"
+          sha256sum docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json > "$RUNNER_TEMP/v4-docsv2-proposal-sha256.txt"
+          echo "DOCSV2 REVIEW PROPOSAL: generator output passes locally, NOT APPROVED" >> "$GITHUB_STEP_SUMMARY"
+          git diff --stat >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-v4-docsv2-exact-head-proposal-not-approved
+          path: |
+            docs/DOCUMENTATION_CONTROL_PLANE.md
+            docs/document-registry.json
+            ${{ runner.temp }}/v4-docsv2-proposal-implementation-sha.txt
+            ${{ runner.temp }}/v4-docsv2-proposal-sha256.txt
           if-no-files-found: error
           retention-days: 10
