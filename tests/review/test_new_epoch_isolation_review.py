@@ -35,7 +35,8 @@ def clean():
              escrow_bank_spendable_uwolo="10000", escrow_unique_liabilities_uwolo="200",
              escrow_max_uncertain_liabilities_uwolo="800",
              escrow_gas_reserve_uwolo="50", escrow_operating_floor_uwolo="100",
-             escrow_proposed_debit_uwolo="1", escrow_uncertainty_complete=True)
+             escrow_proposed_debit_uwolo="1", escrow_uncertainty_complete=True,
+             escrow_state_height=2345, escrow_commit_height=2346)
     p["escrow_authority"] = dict(
         epoch_id=p["epoch_id"], address=ESCROW, signer_pubkey_sha256="d"*64,
         signer_keyring_lineage_sha256="e"*64, credential_boundary_sha256="f"*64,
@@ -132,6 +133,14 @@ class Review(unittest.TestCase):
         self.assertHold(lambda p:p.update(escrow_max_uncertain_liabilities_uwolo=None),"escrow_amount_invalid:escrow_max_uncertain_liabilities_uwolo")
     def test_escrow_coverage_unknown(self):
         self.assertHold(lambda p:p.update(escrow_uncertainty_complete=False),"escrow_uncertain_upper_bound_missing")
+    def test_escrow_bank_proof_missing(self):
+        self.assertHold(lambda p:p.pop("escrow_native_bank_proof_sha256"),"bounded_evidence_digest_missing")
+    def test_escrow_checkpoint_missing(self):
+        self.assertHold(lambda p:p.update(escrow_independent_checkpoint_sha256="0"*64),"bounded_evidence_digest_missing")
+    def test_escrow_bank_height_stale(self):
+        self.assertHold(lambda p:p.update(escrow_state_height=2344),"escrow_authenticated_height_not_synchronized")
+    def test_escrow_commit_height_bad(self):
+        self.assertHold(lambda p:p.update(escrow_commit_height=2345),"escrow_authenticated_height_not_synchronized")
     def test_wrong_epoch_policy(self):
         self.assertHold(lambda p:p["escrow_authority"].update(epoch_id="another_20261026_new"),"escrow_policy_scope_mismatch")
     def test_scope_drift(self):
