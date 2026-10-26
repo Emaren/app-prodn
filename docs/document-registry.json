@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e7f2232c3a8226005e781e2e765a2bb72be61451f3e17130811626e1909af302",
+      "sha256": "3cacaf914525fdf81d4dcec450118f0e9f7291f8403ed32c375e5d7f35404aab",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2330,7 +2330,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "release/renaissance-v4-frozen-source-review-20261025",
-    "commit": "1116a605a96221b43d44f982989f17d6dff7eb5b"
+    "commit": "19e808baf3415d9eb89745fdb41366003fc07ea6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
