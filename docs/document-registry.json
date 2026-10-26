@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7749db30112bd5b93e3038ee7d526ad5f7956a101c602c381ba1410277feebdd",
+      "sha256": "acc7419007626257dcb4fcc40fe4dd088e0d32d5084d460ef1f45099cc1cd8e6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/kingdom-runtime-mac-tmpdir-test-portability-20261026",
-    "commit": "c7fd5309714b2409e683a76de5b0de4ae3923cfe"
+    "commit": "b6a1cf7bec58201f2f679d8ff5e93ea7185d2046"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
