@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4f9826fd51685d76600ff622fc8b7d95bf0b6f535dd4d39d8cb2d402cee47562",
+      "sha256": "fee315e15040ddffccd72d1a1ae4fcd554bd47ff3d95c7bd4f3a9f9821050ae0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/renaissance-central-recovery-truth-20261025",
-    "commit": "99200aa275bd958fb1c9ea02b7a7073fa7b1e8d7"
+    "branch": "fix/kingdom-index-publisher-stage-read-20261026",
+    "commit": "914e795f1f113454a7fe65cae0632c7458bf6d4d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
