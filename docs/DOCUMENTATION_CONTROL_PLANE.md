@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261025-solo-owner-v3-clock-skew-bounded` at `c696419e51455df3b52bd965150ab047a1927727`
+Implementation baseline: `release/renaissance-v4-frozen-source-review-20261025` at `19e808baf3415d9eb89745fdb41366003fc07ea6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **100**
+- Authoritative repository documents: **101**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 60
-- `runbook`: 20
+- `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 83
+- `active`: 84
 - `draft`: 1
 - `generated`: 1
 - `historical`: 12
@@ -120,6 +120,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Certified Release Engineering Seal — 2026-08-10](RELEASE_ENGINEERING_SEAL_2026-08-10.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Release Recovery OS](RELEASE_RECOVERY_OS.md) | `reference` | `active` | `release-recovery-contract` |
 | [Renaissance OS](RENAISSANCE_OS.md) | `reference` | `active` | `renaissance-campaign-integration-contract` |
+| [Renaissance Website Owner V4 Release Boundary](RENAISSANCE_WEBSITE_V4_RELEASE_BOUNDARY.md) | `runbook` | `active` | `release-engineering-contract` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Replay Truth OS](REPLAY_TRUTH_OS.md) | `runbook` | `active` | `operational-procedure` |

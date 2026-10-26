@@ -1,0 +1,134 @@
+name: Website v4 Frozen Source REVIEW ONLY
+
+on:
+  pull_request:
+    paths:
+      - "config/renaissance-website-v4-frozen-scope.json"
+      - "scripts/aoe2_renaissance_v4_scope.py"
+      - "tests/test_aoe2_renaissance_v4_scope.py"
+      - "scripts/aoe2_renaissance_v4_release_manifest.py"
+      - "tests/test_aoe2_renaissance_v4_release_manifest.py"
+      - "scripts/aoe2_renaissance_v4_owner_sign.py"
+      - "tests/test_aoe2_renaissance_v4_owner_sign.py"
+      - ".github/workflows/renaissance-owner-v4-scope-review.yml"
+      - "scripts/aoe2_renaissance_owner_authority_v4.py"
+      - "tests/test_aoe2_renaissance_owner_authority_v4.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scope-review:
+    name: Exact 128-path source review — never a release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout reviewer source (not candidate)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # On PRs, use the actual reviewed controller HEAD, not an ephemeral
+          # GitHub merge-commit as the DocsV2 implementation baseline.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Offline adversarial verifier tests
+        run: |
+          python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_scope.py -v
+          python3 -m unittest discover -s tests -p test_aoe2_renaissance_owner_authority_v4.py -v
+          python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_release_manifest.py -v
+          python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_owner_sign.py -v
+      - name: Verify exact 128-path candidate Git objects, no build and no deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_sha=6d2a78224e5a5c647345d6b5ffc91bf94dc84b59
+          base_sha=6be434c00469afa4acb0623715c3bcf724f927f4
+          git fetch --no-tags origin +refs/pull/922/head:refs/remotes/origin/renaissance-v4-exact-candidate
+          actual="$(git rev-parse refs/remotes/origin/renaissance-v4-exact-candidate)"
+          test "$actual" = "$source_sha"
+          git cat-file -e "$base_sha^{commit}"
+          worktree="$RUNNER_TEMP/renaissance-v4-readonly-candidate"
+          git worktree add --detach "$worktree" "$source_sha"
+          python3 scripts/aoe2_renaissance_v4_scope.py --candidate-repo "$worktree" \
+            | tee "$RUNNER_TEMP/renaissance-v4-inventory-receipt.json"
+          python3 - "$RUNNER_TEMP/renaissance-v4-inventory-receipt.json" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert data["status"]=="SOURCE_INVENTORY_MATCH_REVIEW_ONLY"
+          assert data["paths"]==128
+          assert data["owner_signature_verified"] is False
+          assert data["release_authorized"] is False
+          assert data["financial_release_authorized"] is False
+          assert data["website_only_stage_eligible"] is False
+          assert data["requires_separately_reviewed_release_policy"] is True
+          assert data["financial_risk_paths"] == [
+              "app/wolomania/WolomaniaPageClient.tsx",
+              "components/bets/BetsDisplayRail.tsx",
+              "components/wolo/WoloHeroTile.tsx"]
+          assert len(data["watcher_risk_paths"]) == 4
+          assert len(data["replay_truth_risk_paths"]) == 1
+          PY
+          printf '%s\n' 'PASS: 128 source blobs matched exactly; STILL NOT SIGNED OR DEPLOYABLE' >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' 'NO OWNER KEY, NO SIGNATURE, NO REMOTE HOST, NO FINANCE, NO DEPLOYMENT' >> "$GITHUB_STEP_SUMMARY"
+      - name: Independently hash all 128 candidate Git blobs into UNSIGNED SHA-256 review artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          worktree="$RUNNER_TEMP/renaissance-v4-readonly-candidate"
+          python3 scripts/aoe2_renaissance_v4_release_manifest.py --candidate-repo "$worktree" > "$RUNNER_TEMP/renaissance-v4-source-digest-review.json"
+          python3 scripts/aoe2_renaissance_v4_release_manifest.py --candidate-repo "$worktree" --verify-review-json "$RUNNER_TEMP/renaissance-v4-source-digest-review.json" > "$RUNNER_TEMP/renaissance-v4-source-digest-verification.json"
+          python3 - "$RUNNER_TEMP/renaissance-v4-source-digest-review.json" "$RUNNER_TEMP/renaissance-v4-source-digest-verification.json" <<'PY'
+          import json,sys
+          manifest=json.load(open(sys.argv[1],encoding="utf-8"))
+          verify=json.load(open(sys.argv[2],encoding="utf-8"))
+          assert manifest["status"]=="EXACT_SOURCE_SHA256_REVIEW_ONLY"
+          assert manifest["count"]==128 and len(manifest["files"])==128
+          assert manifest["high_risk_review_status"]=="OWNER_AND_INDEPENDENT_REVIEW_REQUIRED"
+          assert manifest["zero_migrations_verified"] is True
+          assert manifest["website_stage_authorized"] is False
+          assert manifest["website_activation_authorized"] is False
+          assert manifest["financial_release_authorized"] is False
+          assert manifest["signed_release_manifest"] is False
+          assert verify["status"]=="SOURCE_REVIEW_SHA256_MATCH_NOT_AUTHORIZED"
+          assert verify["paths"]==128 and verify["stage_authorized"] is False
+          PY
+          sha256sum "$RUNNER_TEMP/renaissance-v4-source-digest-review.json" > "$RUNNER_TEMP/renaissance-v4-source-digest-review.sha256"
+          echo "PASS: source SHA-256 digests of all 128 real Git blobs; UNSIGNED REVIEW ONLY" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/renaissance-v4-source-digest-review.sha256" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-v4-source-sha256-review-not-authorized
+          path: |
+            ${{ runner.temp }}/renaissance-v4-source-digest-review.json
+            ${{ runner.temp }}/renaissance-v4-source-digest-verification.json
+            ${{ runner.temp }}/renaissance-v4-source-digest-review.sha256
+          if-no-files-found: error
+          retention-days: 10
+      - name: Prepare exact-head DocsV2 baseline as an UNSIGNED governance proposal
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch release/renaissance-v4-frozen-source-review-20261025 --head "$(git rev-parse HEAD)"
+          git diff --check
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(["git","diff","--name-only"],text=True).splitlines()
+          expected=["docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"]
+          if names!=expected:
+              raise SystemExit(f"HOLD: unexpected generated doc changes {names!r}")
+          PY
+          python3 scripts/docs_v2_check.py
+          printf '%s\n' "$(git rev-parse HEAD)" > "$RUNNER_TEMP/v4-docsv2-proposal-implementation-sha.txt"
+          sha256sum docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json > "$RUNNER_TEMP/v4-docsv2-proposal-sha256.txt"
+          echo "DOCSV2 REVIEW PROPOSAL: generator output passes locally, NOT APPROVED" >> "$GITHUB_STEP_SUMMARY"
+          git diff --stat >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renaissance-v4-docsv2-exact-head-proposal-not-approved
+          path: |
+            docs/DOCUMENTATION_CONTROL_PLANE.md
+            docs/document-registry.json
+            ${{ runner.temp }}/v4-docsv2-proposal-implementation-sha.txt
+            ${{ runner.temp }}/v4-docsv2-proposal-sha256.txt
+          if-no-files-found: error
+          retention-days: 10

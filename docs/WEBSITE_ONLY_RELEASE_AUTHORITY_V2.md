@@ -8,12 +8,48 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "nonauthorizing-source-engineering"
-reviewed_at: "2026-10-24"
+reviewed_at: "2026-10-26"
 review_interval_days: 1
 sensitivity: "internal"
 ---
 
 # Held Website-Only Release Authority V2
+
+## October 26 UTC source review — still unprovisioned, not a Renaissance authority
+
+This active runbook is retained for the **existing v2 multi-party protected
+controller** (`scripts/aoe2_website_protected_release_v2.py`), not for
+the independently versioned solo-owner v4 release. The reviewer re-read
+that existing v2 controller's declared independent witness,
+`IMMUTABLE_KEYS`, detached RSA verification, five-human verification
+boundary and fail-closed code, as well as the v3 controller's reuse of
+protected v2 stage/activation libraries. This is a substantive
+**source/authority reconciliation**, not a signer enrollment, owner
+signature, live host observation or clearance of `vps-source-drift`.
+
+The v2 document's `a2b941f... → 6be434c...` source pair is a
+**historical ten-path release target**. At the latest owner observation,
+`6be434c00469afa4acb0623715c3bcf724f927f4` itself was already
+running on HEL1 with BUILD_ID `xqX6Oi-zV5gSKH1kIC4zC`. It must not be
+mistaken for the new **128-path Renaissance candidate**
+`6d2a78224e5a5c647345d6b5ffc91bf94dc84b59` at
+[PR #922](https://github.com/Emaren/app-prodn/pull/922).
+The v2 document's independent five-human signatures plus signed witness
+remain its *original mandatory contract*, **not actual provisioned facts**.
+The [owner-v4 controller draft](https://github.com/Emaren/app-prodn/pull/924)
+uses a separate one-owner policy, public trust path, v4 nonce journal and
+two artifact-bound signatures, and currently **rejects** protected stage
+and activation. Never carry v2 or v3 signing nonce, manifest SHA, key
+enrollment, observer receipt or historical release seal into v4.
+
+**Acceptance outcome of this review:** Source references and historical
+release identities are reconciled; the existing v2 five-human flow
+remains UNPROVISIONED/HELD and the Renaissance v4 flow separately HELD.
+The one-day review cadence remains intentionally strict because authority
+and production source can change quickly. This technical document review
+does **not** certify a physical owner, independent finance reviewer,
+signed runtime witness, website deployment or real WOLO movement.
+
 
 **Status: NOT AUTHORIZED.** This document defines independently reviewable engineering
 and exact production operator prerequisites. It does not provide permission to run

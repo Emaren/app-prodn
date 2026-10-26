@@ -1,0 +1,795 @@
+{
+  "schema": 1,
+  "kind": "aoe2war.renaissance.website-source-inventory.v4",
+  "approval": "REVIEW_ONLY_NOT_RELEASE_AUTHORIZATION",
+  "baseline_production_sha": "6be434c00469afa4acb0623715c3bcf724f927f4",
+  "candidate_source_sha": "6d2a78224e5a5c647345d6b5ffc91bf94dc84b59",
+  "baseline_tree_sha1": "d0568f80e290242898c8ddfb37ccb07b457e57ac",
+  "candidate_tree_sha1": "2b8232c950ec58a8f0d16ea0c625528948b6b206",
+  "counts": {
+    "paths": 128,
+    "added": 63,
+    "modified": 65,
+    "deleted": 0
+  },
+  "source_diff_method": "git diff --no-renames --name-status -z BASE TARGET; Git blob SHA-1 and exact source tree",
+  "release_authorized": false,
+  "financial_release_authorized": false,
+  "owner_signed": false,
+  "scope_notes": [
+    "Git object inventory only, not SHA-256 signed release manifest.",
+    "No server stage, wallet, financial transaction, service restart, or production write approved.",
+    "A separately qualified release controller v4, reviewed final manifest, nonce-journal v4 and fresh owner PRE_STAGE and PRE_ACTIVATE signatures are still required.",
+    "DocsV2 and remote runtime receipt checks remain separate release gates."
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/renaissance-88-a11y-preview.yml",
+      "status": "A",
+      "blob_sha1": "1f4ac25cefaaa6449d51b61399f9c2640fca78b8",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/renaissance-88-factory.yml",
+      "status": "A",
+      "blob_sha1": "815c99434629e6279e76a6084a5c69054fd193aa",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/renaissance-central-final-integration-chrome.yml",
+      "status": "A",
+      "blob_sha1": "3e2e45f511e872dfd699ea6cb1d9bd2159c038b9",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/renaissance-generated-source-receipt.yml",
+      "status": "A",
+      "blob_sha1": "85b2f62902666230f22df9dad5b0b6c78a8e6355",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/renaissance-tabd-forge.yml",
+      "status": "A",
+      "blob_sha1": "72dbe60853123c5d5b25a6fb006a859ee8201405",
+      "mode": "100644"
+    },
+    {
+      "path": "app/academy/AcademyHero.tsx",
+      "status": "M",
+      "blob_sha1": "9f85197ee901638e5e03a0a432f245e2f370f759",
+      "mode": "100644"
+    },
+    {
+      "path": "app/admin/living-kingdom/[uid]/page.tsx",
+      "status": "A",
+      "blob_sha1": "3bddcfe0220a311e4f37e7043556a562cbd582e5",
+      "mode": "100644"
+    },
+    {
+      "path": "app/admin/living-kingdom/page.tsx",
+      "status": "A",
+      "blob_sha1": "4450acbb991ae978e87b05b485342998ed7a078e",
+      "mode": "100644"
+    },
+    {
+      "path": "app/admin/page.tsx",
+      "status": "M",
+      "blob_sha1": "4f67493aa0860c555ef3f799d58689b12546d525",
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/admin/living-kingdom/[uid]/route.ts",
+      "status": "A",
+      "blob_sha1": "831a7cdef4d3456acc543e6d29ed5c15ced79e15",
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/admin/living-kingdom/route.ts",
+      "status": "A",
+      "blob_sha1": "90fd6ca5d077f3702b75b8d9f7d391ddc1b850c9",
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/general-inspections/route.ts",
+      "status": "M",
+      "blob_sha1": "3cbe19ae43df3a0784011bf52eda2eaf473fed46",
+      "mode": "100644"
+    },
+    {
+      "path": "app/champions/legacy/page.tsx",
+      "status": "M",
+      "blob_sha1": "97a506dd4820cea380a5e55c7dddde268ea01c85",
+      "mode": "100644"
+    },
+    {
+      "path": "app/download/page.tsx",
+      "status": "M",
+      "blob_sha1": "ffb014fc73ee662033ea47c06da7758b60f01c54",
+      "mode": "100644"
+    },
+    {
+      "path": "app/kingdom-intelligence/AgentConstellationPanel.tsx",
+      "status": "M",
+      "blob_sha1": "a4e9e3ec094a77ff8ea813181b7b9827d6030410",
+      "mode": "100644"
+    },
+    {
+      "path": "app/kingdom-intelligence/WarPulsePanel.tsx",
+      "status": "M",
+      "blob_sha1": "d92b8ae57e6df9573193a7ae4876b115af4ff9c4",
+      "mode": "100644"
+    },
+    {
+      "path": "app/kingdom-intelligence/page.tsx",
+      "status": "M",
+      "blob_sha1": "dcf0b9c21727d99b3fac725526997eaea7455cf1",
+      "mode": "100644"
+    },
+    {
+      "path": "app/kingdom/KingdomChroniclesClient.tsx",
+      "status": "M",
+      "blob_sha1": "3b1925dea3d356629ef486f06336650e1df05a25",
+      "mode": "100644"
+    },
+    {
+      "path": "app/kingdom/KingdomHero.tsx",
+      "status": "M",
+      "blob_sha1": "daa11d94fde244d1ceac621892cdea3c86d9255c",
+      "mode": "100644"
+    },
+    {
+      "path": "app/requests/page.tsx",
+      "status": "M",
+      "blob_sha1": "3e805bb72481da3c6d1a96209ed421803d2e4e12",
+      "mode": "100644"
+    },
+    {
+      "path": "app/wolomania/WolomaniaPageClient.tsx",
+      "status": "M",
+      "blob_sha1": "fca25c5b8a86c3a1751f0eef3f7385a87305169d",
+      "mode": "100644"
+    },
+    {
+      "path": "app/workshop/page.tsx",
+      "status": "M",
+      "blob_sha1": "3a643e6ed7d1a8d8356d9ff9940fbd4b9efae3af",
+      "mode": "100644"
+    },
+    {
+      "path": "components/admin/living-kingdom/LivingKingdomObservatory.tsx",
+      "status": "A",
+      "blob_sha1": "55243b7f86d71e649b2e68d623e66388e2268753",
+      "mode": "100644"
+    },
+    {
+      "path": "components/admin/living-kingdom/LivingKingdomWarriorHistory.tsx",
+      "status": "A",
+      "blob_sha1": "bc1663a766ebacc0b53203e652317235bdb3f919",
+      "mode": "100644"
+    },
+    {
+      "path": "components/bets/BetsDisplayRail.tsx",
+      "status": "M",
+      "blob_sha1": "c606ee378231c9fdaded360b2712a048e6b18dca",
+      "mode": "100644"
+    },
+    {
+      "path": "components/forum/ForumWarRoom.tsx",
+      "status": "M",
+      "blob_sha1": "99b21e63027e8c7b91093b9471f865091f40fbef",
+      "mode": "100644"
+    },
+    {
+      "path": "components/kingdom-forge/ForgeVisuals.tsx",
+      "status": "M",
+      "blob_sha1": "9dba054f06c4c9396a1a2da482065855521c60bf",
+      "mode": "100644"
+    },
+    {
+      "path": "components/kingdom-forge/KingdomForgeClient.tsx",
+      "status": "M",
+      "blob_sha1": "33e24229f06ffa32ed9fcf420fe401538b958a4a",
+      "mode": "100644"
+    },
+    {
+      "path": "components/kingdom-index/KingdomIndex.module.css",
+      "status": "M",
+      "blob_sha1": "74a2dc8a2193fd8739a35cd0c72b10e55507f97c",
+      "mode": "100644"
+    },
+    {
+      "path": "components/kingdom-index/KingdomIndex.tsx",
+      "status": "M",
+      "blob_sha1": "75811e81a24a2a521f9d62c5a76bff830e5c11e7",
+      "mode": "100644"
+    },
+    {
+      "path": "components/kingdom-instruments/KingdomInstruments.tsx",
+      "status": "M",
+      "blob_sha1": "2baafcae92c5800e68e96759885004c995928491",
+      "mode": "100644"
+    },
+    {
+      "path": "components/leaderboard/LivingLeaderboardTable.tsx",
+      "status": "M",
+      "blob_sha1": "61b648d6952ea8d6c4c89377293258789ac5f1a7",
+      "mode": "100644"
+    },
+    {
+      "path": "components/library/LibraryActivityBoard.tsx",
+      "status": "M",
+      "blob_sha1": "9874ef566c2c6de0a2c0a0495a3c7d4212590bc6",
+      "mode": "100644"
+    },
+    {
+      "path": "components/oracle/OracleClient.tsx",
+      "status": "M",
+      "blob_sha1": "affac39098c31ac11053026149abfb46e904d941",
+      "mode": "100644"
+    },
+    {
+      "path": "components/renaissance/RenaissanceCanvas.tsx",
+      "status": "M",
+      "blob_sha1": "98c17ba6b3b0e5b7158a0f33ebdbef6bdff72399",
+      "mode": "100644"
+    },
+    {
+      "path": "components/replay-engine/HdReplayEngine.tsx",
+      "status": "M",
+      "blob_sha1": "b4c233f2704c0906f6c8fe85595310a4030221ac",
+      "mode": "100644"
+    },
+    {
+      "path": "components/requests/RequestFragmentFocus.tsx",
+      "status": "A",
+      "blob_sha1": "aff1fbc65472246d853eff590f81b4727c5ea3c2",
+      "mode": "100644"
+    },
+    {
+      "path": "components/speed/SpeedObservatory.tsx",
+      "status": "M",
+      "blob_sha1": "4875a7ac97864b2b7f2100d04a4bf99a846f8f47",
+      "mode": "100644"
+    },
+    {
+      "path": "components/speed/SpeedObservatoryE2.tsx",
+      "status": "M",
+      "blob_sha1": "804cd10a41a90b6cd96bf15bb80dbfb7ca096d6f",
+      "mode": "100644"
+    },
+    {
+      "path": "components/wolo/WoloHeroTile.tsx",
+      "status": "M",
+      "blob_sha1": "797e78e6898bb4c6139856d52f408c2339b3271b",
+      "mode": "100644"
+    },
+    {
+      "path": "components/workshop/WorkshopBrainPanel.tsx",
+      "status": "M",
+      "blob_sha1": "d5331264d6aa3c587b01eedb94f2123c287fa467",
+      "mode": "100644"
+    },
+    {
+      "path": "config/kingdom-index-inventory.json",
+      "status": "M",
+      "blob_sha1": "59164600ae06f14b6952f2e37d5d4ce4e53bcd52",
+      "mode": "100644"
+    },
+    {
+      "path": "config/kingdom-index-routes.json",
+      "status": "M",
+      "blob_sha1": "bfcf939112cca2fa55f697d9055ebc5cc81d6fc4",
+      "mode": "100644"
+    },
+    {
+      "path": "config/renaissance-campaign.json",
+      "status": "M",
+      "blob_sha1": "2eac0b8c705649d3df2c20e6a0b3319f16058e51",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/DOCUMENTATION_CONTROL_PLANE.md",
+      "status": "M",
+      "blob_sha1": "7cfedda13047f984bbd3e0970e7d3faaff9d4c7d",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/GENERAL_INSPECTIONS.md",
+      "status": "M",
+      "blob_sha1": "f03ee2fb36fbc77378a70ad83ea5f9c76edb4d8b",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/KINGDOM_BRAIN_PROGRESS.md",
+      "status": "M",
+      "blob_sha1": "8ddaa6fc2d0639c9a09a965ff99b50ea5c021b30",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/LIVING_KINGDOM_ADMIN.md",
+      "status": "A",
+      "blob_sha1": "558aea3e200fc735ca3e6e4dbaab41b8e5be7f02",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/RENAISSANCE_88_FACTORY.md",
+      "status": "A",
+      "blob_sha1": "b7162c0937ff07ea0b842158c03871197c3c50cc",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/RENAISSANCE_88_ROUND4.md",
+      "status": "A",
+      "blob_sha1": "c30dd8d75efe33f8d6158cbc8c3d001a9905e40a",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/RENAISSANCE_PAGE_QUALIFICATION_PROTOCOL.md",
+      "status": "A",
+      "blob_sha1": "6b50a05cf51871fc25d16583d7a32d1e09bf32b9",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/RENAISSANCE_TABD_FORGE.md",
+      "status": "A",
+      "blob_sha1": "568a30400370efb470efb944f0810250b3aee6ed",
+      "mode": "100644"
+    },
+    {
+      "path": "docs/document-registry.json",
+      "status": "M",
+      "blob_sha1": "1c54c17c7e77cbbbce77e3e597f3254cf91a5054",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/adminLivingKingdom/projection.ts",
+      "status": "A",
+      "blob_sha1": "6e4b093d0276d44bcd4b279d2998b1680458afd8",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/adminLivingKingdom/read.ts",
+      "status": "A",
+      "blob_sha1": "609ed856869d1d0b475c6b435ac31d6f3d0ae661",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/generalInspections/bridgeSnapshot.ts",
+      "status": "M",
+      "blob_sha1": "728ccd52270957711db9748ec7cd1da352f82b17",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/generalInspections/gapReport.ts",
+      "status": "A",
+      "blob_sha1": "f300a425a333031d17e8f4e743bcbf8ddd3205b2",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/generalInspections/scoring.ts",
+      "status": "M",
+      "blob_sha1": "debdfef89cff041e82d50f896cbb56c1dbf6feb1",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/generalInspections/serverSnapshot.ts",
+      "status": "M",
+      "blob_sha1": "a001e2fb97b400a68854bed983c3098545b437bf",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndex.ts",
+      "status": "M",
+      "blob_sha1": "1699ab7cebdc8ec53d8975da6d56946c99436bc7",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexCriterionArtifactVerifier.mjs",
+      "status": "M",
+      "blob_sha1": "e1b54c94c08392a7c77ca7bd87edfd3c5d8cfddd",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexCriterionProgress.d.mts",
+      "status": "A",
+      "blob_sha1": "7ae63600e1da98f5fa096ac3145993a585d66e4e",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexCriterionProgress.mjs",
+      "status": "A",
+      "blob_sha1": "655c73704155daf97ae92bfa0c825fc3cfaf3e4d",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexRuntimeTelemetry.d.mts",
+      "status": "A",
+      "blob_sha1": "9c18b2938514c07caa883d742250b0045576c35f",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexRuntimeTelemetry.mjs",
+      "status": "A",
+      "blob_sha1": "9cf2550424aa0be01b7abf90ae285c5cd2c0e3ca",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexTrustedPublication.mjs",
+      "status": "M",
+      "blob_sha1": "6270f371befee7348f1a865570676307bb941bc2",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIndexTrustedPublicationRead.d.mts",
+      "status": "M",
+      "blob_sha1": "efdbf2c8e6cf579abac7bdf31f3d17af8e3035f9",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIntelligenceEvidence.ts",
+      "status": "A",
+      "blob_sha1": "1601a5ba88eac25c27941348198bbd69f125c48f",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomIntelligencePublic.ts",
+      "status": "M",
+      "blob_sha1": "f52e43b583845365555562d5db977c98088a72f0",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/kingdomOperationalDiagnostics.ts",
+      "status": "A",
+      "blob_sha1": "297672442400a1ef28e5d385af962e2997635425",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/pageChangeManifest.generated.ts",
+      "status": "M",
+      "blob_sha1": "d78efa5341c7d999dc5e39967938a7c376a916b9",
+      "mode": "100644"
+    },
+    {
+      "path": "lib/workshopBrain.ts",
+      "status": "M",
+      "blob_sha1": "ce1d31b41e590e08885a74c181acb61cf14d5081",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_bounded_load_probe.mjs",
+      "status": "M",
+      "blob_sha1": "f37beea61c536a72b04b038ec3da5ad1679d6a54",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_candidate_bundle_verify.mjs",
+      "status": "M",
+      "blob_sha1": "0d54e2a99d1cadd858cc3a962b6c98e56dc26925",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_interaction_chrome.mjs",
+      "status": "M",
+      "blob_sha1": "c24516908281247ddf99ec1ad4b23ab780777fcf",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_loopback_api_probe.mjs",
+      "status": "M",
+      "blob_sha1": "5e6197525f12b2517c2f24e596d1168af52914f9",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_publish_runtime.mjs",
+      "status": "A",
+      "blob_sha1": "70200e60f17d57fe08b5832d5386c333146bcc63",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_route_intake.mjs",
+      "status": "A",
+      "blob_sha1": "0b861a900cc935d0d2d93196de3340adbfa6d171",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/kingdom_index_watcher_physical_intake.mjs",
+      "status": "A",
+      "blob_sha1": "dec54ff35b3136cefcd0a6660067d0d2fc504deb",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_accessibility_triage.mjs",
+      "status": "A",
+      "blob_sha1": "47d3f4ff59b612c770a549164295cec539adb9a7",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_api_policy.cjs",
+      "status": "A",
+      "blob_sha1": "4f033ce0ad35bd7b8605051ffb1bd707bb8db39c",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_browser.cjs",
+      "status": "A",
+      "blob_sha1": "b2f731348c3867588ff3b0be495bb95b417fde37",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_pg_fixture.sh",
+      "status": "A",
+      "blob_sha1": "2a5d7c85d51891913a934b85c67800669ea8c4eb",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_plan.py",
+      "status": "A",
+      "blob_sha1": "23f73f401cbba8eceac70f43bbc13f6fac880663",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_preview_manifest_guard.sh",
+      "status": "A",
+      "blob_sha1": "fefc289283f79aeecc8ac40b76e96ee46f820488",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_receipts.mjs",
+      "status": "A",
+      "blob_sha1": "47bbbbf48d7051f984d3e4a74962421aace1a1fb",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_release_regression.mjs",
+      "status": "A",
+      "blob_sha1": "0a1010d945207b6c38b616c6403d0180fa06de45",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_88_verdict.cjs",
+      "status": "A",
+      "blob_sha1": "a82e0b560e9b1c6a9e11c0f313fd78e30c2db66c",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_page_qualification.mjs",
+      "status": "A",
+      "blob_sha1": "7a7a19c4655c3d5c3ff23141819e7224a1510006",
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/renaissance_tabd_forge.py",
+      "status": "A",
+      "blob_sha1": "9564ea08845d368a6ab7838619dd83e274eec4d9",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/admin-living-kingdom-authority.test.mts",
+      "status": "A",
+      "blob_sha1": "7645d611e3dfce8bc3972c32e0240a79b0d06184",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/admin-living-kingdom-projection.test.mts",
+      "status": "A",
+      "blob_sha1": "33826d8f662bce2ce500ee521929ae1e2675eff2",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/general-inspections-bridge.test.mts",
+      "status": "M",
+      "blob_sha1": "2f3a59c82535f2cafa4e0501d7a9a138aa6229d9",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/general-inspections-why-not-green.test.mts",
+      "status": "A",
+      "blob_sha1": "3d35ee62859e4d02907105af612f04fa671292d4",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/general-inspections.test.mts",
+      "status": "M",
+      "blob_sha1": "c5e0b3b2118213d96500ef8a0fdf1c88b8af99c5",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-bounded-load-probe.test.mts",
+      "status": "M",
+      "blob_sha1": "fee5f893afab2f1d2247e687d3f033425e3410ce",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-candidate-bundle-verify.test.mts",
+      "status": "M",
+      "blob_sha1": "db6072a1c2089782eebdbeb9af7136ab53771067",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-criterion-artifact-verifier.test.mts",
+      "status": "M",
+      "blob_sha1": "a6e0908cd7c4c4486fec35b5576ebe536ce1586e",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-criterion-progress.test.mts",
+      "status": "A",
+      "blob_sha1": "c8fc042cc4ad317065710e4e17206691b962b1c2",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-interaction-chrome.test.mts",
+      "status": "M",
+      "blob_sha1": "082ebb68dac8929e057d6d62582f57fa8d2bb6b1",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-inventory.test.mts",
+      "status": "M",
+      "blob_sha1": "ae58b970f3f5e8b887f6c33c7a33c858156c3507",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-loopback-api-probe.test.mts",
+      "status": "M",
+      "blob_sha1": "bd19507dffb6d1c07bb92bab8da825d70db78bf5",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-provisional-source-reviews.test.mts",
+      "status": "M",
+      "blob_sha1": "735a22a3ab538b0e3e0ed5db567072b63783eaac",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-route-intake.test.mts",
+      "status": "A",
+      "blob_sha1": "a53d520bd5089fc3fa3634f9ad340114897cdaeb",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-runtime-telemetry.test.mts",
+      "status": "A",
+      "blob_sha1": "b0a2b3b6464d2eca1b40b033fd763c6f6d5b147b",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-trusted-publication.test.mts",
+      "status": "M",
+      "blob_sha1": "437b92fae7e77536dc9afcf0297f668810db9911",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-watcher-companion-truth.test.mts",
+      "status": "A",
+      "blob_sha1": "16a5cd1c71d9817dc1e8fa82336865917e714352",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-watcher-draft-score.test.mts",
+      "status": "M",
+      "blob_sha1": "9bb8f67777d2c5d870b14d67fe3e4124c794598e",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-index-watcher-physical-intake.test.mts",
+      "status": "A",
+      "blob_sha1": "474d633b13bdc74e03803c669622fcaa8d347364",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-intelligence-evidence.test.mts",
+      "status": "A",
+      "blob_sha1": "e380f6d5478ecdf677df81873b3389d5475983e8",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-intelligence-next-app-acceptance.py",
+      "status": "M",
+      "blob_sha1": "5d7212ea5dbe4af145085a5d16d4d38de6b34c58",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-intelligence-public.test.mts",
+      "status": "M",
+      "blob_sha1": "5d95929f498733df2191743b0f9d0bbbe1c0b6b6",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/kingdom-operational-diagnostics.test.mts",
+      "status": "A",
+      "blob_sha1": "4811345d4a734fddcc41c8396bd2e135560850b5",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/living-kingdom-admin-navigation.test.mts",
+      "status": "A",
+      "blob_sha1": "44dd04412008fbd85c734e2da048f17cd927a3bd",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-88-a11y-repairs.test.mts",
+      "status": "A",
+      "blob_sha1": "ec363681b51d8b83897b52c3731032b7177f02d6",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-88-axe-triage.test.mts",
+      "status": "A",
+      "blob_sha1": "e394a8b2918ec3395331e9118f9e5c8a3468431b",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-88-factory.test.mts",
+      "status": "A",
+      "blob_sha1": "cd1dba41cabbc67aefa3908588fe69fd8004153a",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-88-fixture.test.mts",
+      "status": "A",
+      "blob_sha1": "2b949b2a2420d6bafac53345ce7a80a27f7732e1",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-88-release-smoke.test.mts",
+      "status": "A",
+      "blob_sha1": "fde3554a058c7c0e4e9a1de8129c26198a6d9cef",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-campaign.test.mts",
+      "status": "M",
+      "blob_sha1": "f725958e33a029acc34cebc1a79238144b466f77",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/renaissance-page-qualification.test.mts",
+      "status": "A",
+      "blob_sha1": "efa03532d27997e71259c5d1763f73292f156b1a",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/requests-fragment-focus.test.mts",
+      "status": "A",
+      "blob_sha1": "7d3556ab499778ab21e34088f981a75a71f7278c",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_renaissance_88_a11y_preview.py",
+      "status": "A",
+      "blob_sha1": "5a24d4a036c069220c95140af87689eb6793d106",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_renaissance_88_factory.py",
+      "status": "A",
+      "blob_sha1": "70885f253e2ddbc66efb8aa844987f2319ce855f",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_renaissance_88_fixture.py",
+      "status": "A",
+      "blob_sha1": "b26058a6c729f8fa538246435febb3c3fdca435d",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_renaissance_source.py",
+      "status": "M",
+      "blob_sha1": "346bc5e7dfa8a4b1e997f1f9261781cad4cd933f",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_renaissance_tabd_forge.py",
+      "status": "A",
+      "blob_sha1": "d2fc16fd7fe6d4408f5fcf97b348a58dd7330db4",
+      "mode": "100644"
+    },
+    {
+      "path": "tests/workshop-brain-evidence.test.mts",
+      "status": "A",
+      "blob_sha1": "72ee88a6ec1679a0e647903c6f66c048f7ec95ba",
+      "mode": "100644"
+    }
+  ]
+}
