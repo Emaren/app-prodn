@@ -30,7 +30,9 @@ FINANCIAL. Candidate Chrome coverage (88 routes) and Intelligence (246
 assertions) are authenticated from original GitHub ZIP digests and raw receipt
 hashes, never from a green job alone. Full CI used synthetic merge
 `494e7a405532261b079134e5ccb6717045d99068`, whose tree equals the frozen tree;
-the other candidate workflows executed the exact source.
+the other candidate workflows executed the exact source. Evidence fetches the
+reviewed attempt 1 explicitly; a later rerun cannot silently replace its
+checkout identity or job outcomes.
 
 Changed admin closures use authenticated reads; changed Kingdom/Intelligence
 closures use bounded file reads, process-local state and pure projections.

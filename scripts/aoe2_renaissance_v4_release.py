@@ -262,10 +262,10 @@ def ci_evidence(candidate):
  from aoe2_renaissance_v4_scope import text_git,FROZEN_TARGET_TREE
  rows=[]
  for run_id,workflow in CI_RUNS.items():
-  run=gh_json(f'repos/Emaren/app-prodn/actions/runs/{run_id}')
-  require(run['head_sha']==FROZEN_TARGET and run['workflow_id']==workflow and run['status']=='completed'and
+  run=gh_json(f'repos/Emaren/app-prodn/actions/runs/{run_id}/attempts/1')
+  require(run['run_attempt']==1 and run['head_sha']==FROZEN_TARGET and run['workflow_id']==workflow and run['status']=='completed'and
    run['conclusion']=='success'and run['repository']['full_name']=='Emaren/app-prodn','candidate CI identity/outcome mismatch')
-  jobs=gh_json(f'repos/Emaren/app-prodn/actions/runs/{run_id}/jobs?per_page=100')
+  jobs=gh_json(f'repos/Emaren/app-prodn/actions/runs/{run_id}/attempts/1/jobs?per_page=100')
   require(jobs['total_count']==len(jobs['jobs'])and len(jobs['jobs'])==(2 if run_id==40236315501 else 3)and
    all(j['status']=='completed'and j['conclusion']=='success'for j in jobs['jobs']),'missing/failed candidate CI jobs')
   rows.append({'run_id':run_id,'workflow_id':workflow,'head_sha':run['head_sha'],'attempt':run['run_attempt'],

@@ -345,6 +345,14 @@ class ArtifactAdmission(unittest.TestCase):
   raw=buff.getvalue();sha=hashlib.sha256(raw).hexdigest();meta['digest']='sha256:'+sha
   with patch.dict(release.ARTIFACTS,{ident:(run,sha,{'digest.json':'f'*64})}),patch.object(release,'gh_json',return_value=meta),patch.object(release,'github_bytes',return_value=raw):
    with self.assertRaisesRegex(release.Hold,'raw receipt'):release.artifact_evidence(ident)
+ def test_later_candidate_rerun_cannot_replace_the_reviewed_checkout_attempt(self):
+  called=[]
+  def github(route):
+   called.append(route)
+   return {'run_attempt':2,'head_sha':release.FROZEN_TARGET,'workflow_id':331565018,
+    'status':'completed','conclusion':'success','repository':{'full_name':'Emaren/app-prodn'}}
+  with patch.object(release,'gh_json',side_effect=github),self.assertRaises(release.Hold):release.ci_evidence(Path('/not-used'))
+  self.assertEqual(['repos/Emaren/app-prodn/actions/runs/40236315430/attempts/1'],called)
  def test_expired_wrong_source_run_or_digest_metadata_cannot_be_admitted(self):
   ident=12615696420;run,sha,_=release.ARTIFACTS[ident]
   base={'id':ident,'expired':False,'workflow_run':{'id':run,'head_sha':release.FROZEN_TARGET},'digest':'sha256:'+sha,'size_in_bytes':100}
