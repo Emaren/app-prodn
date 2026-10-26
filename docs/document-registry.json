@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b6b442285a9fb7864df2eaabaadf392c73174c87f0ec3a9f6d173bc0585319e4",
+      "sha256": "1ac230f92d56ff1831d8dd0cf6f4cdf77bb555f3f621aa991454f8238d5c8d55",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/hd-funded-renaissance-closure",
-    "commit": "7857bac6eeddb6394b99d72eda798cf4b39fa715"
+    "commit": "d6e2d717e9742700aadbfbd1cf0ecce3bf1f0585"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
