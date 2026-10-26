@@ -25,6 +25,8 @@ test("agents reuse already observed evidence when provided but keep standalone b
   assert.match(agents, /const \[inspectionResult, intelligenceResult\] = await Promise\.allSettled\(\[/);
   assert.match(agents, /const inspection = inspectionResult\.status === "fulfilled" \? inspectionResult\.value : null/);
   assert.match(agents, /readinessScore: inspection\?\.overallScore \?\? null/);
+  assert.match(agents, /agents\.push\(\.\.\.projectInspectionWatchposts\(inspection, Date\.now\(\)\)\)/);
+  assert.doesNotMatch(agents, /state: inspectionAgentState\(check\.state, fraction\)/);
 });
 
 test("shared inspection failure keeps public score unknown; no synthetic success or retry", () => {
