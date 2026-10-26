@@ -125,7 +125,11 @@ export async function verifyIndexCandidateBundle(root,{sourceSha,buildId,collect
       row.indexMeasuredVersion===row.indexSourceVersion||
       !["source-review","agent","certified"].includes(row.indexObservationKind))
     fail("Drifted Index without distinct historical source evidence");
-  }else fail("Unexpected current/provisional Index status in unapproved bundle");
+  }else if(status==="provisional"){
+   if(row.indexMeasuredVersion!==row.indexSourceVersion||
+      !["source-review","agent","certified"].includes(row.indexObservationKind))
+    fail("Provisional Index without aligned noncertifying source lineage");
+  }else fail("Unexpected current Index status in unapproved bundle");
   return JSON.stringify([status,row.indexSourceVersion,row.indexMeasuredVersion,row.indexObservationKind]);
  }
  const durations=[],sizes=new Set(),apiLineages=new Set();

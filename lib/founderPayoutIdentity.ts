@@ -39,3 +39,24 @@ export function buildFounderPayoutIdentity(input: {
     lockKey: `aoe2hdbets:founder-payout:${requestId}`,
   };
 }
+
+
+/**
+ * Serialize all group-key generations for ONE Founder Bonus recipient.
+ * This supplements (does not replace) the per-requestId memo/chain lock.
+ * Callers must supply the stored normalizedPlayerName representation.
+ * Economic identity deliberately excludes claimGroupKey because historical
+ * July 4 rewrites changed that key without changing recipient entitlement.
+ */
+export function buildFounderEconomicLockKey(input: {
+  founderBonusId: number;
+  normalizedPlayerName: string;
+}) {
+  const bonusId = input.founderBonusId;
+  const player = input.normalizedPlayerName.trim();
+  if (!Number.isSafeInteger(bonusId) || bonusId < 1 ||
+      !player || player.length > 64 || player !== player.toLowerCase()) {
+    throw new Error("Unsafe Founder Bonus economic identity; payout refused.");
+  }
+  return `aoe2hdbets:founder-economic:${bonusId}:${player}`;
+}

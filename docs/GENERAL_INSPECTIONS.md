@@ -476,6 +476,27 @@ fresh evidence, and compare deltas. A source-only PR cannot independently
 claim that the live reported 69/59 has changed.
 
 
+## October 18 — high-confidence commit-history security census for oversized PRs
+
+GitGuardian skipped the War Satchel integration draft because of its
+large PR size. The existing tracked-file scan already checks the current
+checkout. The CI release/documentation lane now additionally checks
+**added text in each reviewed commit**, including merge resolutions,
+using the repository's existing high-confidence credential patterns.
+The scanner requires an exact Git base SHA, bounded commit count/patch
+size, and available Git ancestry; ambiguous analysis fails the job.
+Reports show only commit, path and finding class—never credential bytes.
+Deleted credentials in intermediate revisions are therefore still visible
+as audit findings. Tests cover added versus removed lines and sensitive
+paths. An unchanged current checkout cannot erase earlier findings.
+
+**Security evidence limitation:** this is a targeted first-party
+high-confidence/history scan, NOT a replacement for full GitGuardian
+coverage, entropy/credential-verification detection, binary scans,
+independent key provenance or a security review. A green result is
+neither a finance release permit nor proof of vault isolation. A real
+secret exposure requires credential rotation and dedicated investigation.
+
 ## October 18, 2026 — archival score lineage remains immutable under live agent updates
 
 The dated `/leaderboard` source review scored **64/100** and its rubric

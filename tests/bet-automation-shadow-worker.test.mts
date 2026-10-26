@@ -113,13 +113,13 @@ function evaluate(
 
 test("legacy presets over the combined Mecha limit cannot enter the shadow worker", () => {
   const oversized = evaluate({
-    preset: { winnerStakeWolo: 1_001, gamesRemaining: 1 },
+    preset: { winnerStakeWolo: 10_001, gamesRemaining: 1 },
   });
   assert.deepEqual(oversized, { eligible: false, reason: "auto_stake_cap_exceeded" });
 
   const combined = evaluate({
     preset: {
-      winnerStakeWolo: 999,
+      winnerStakeWolo: 9_999,
       desyncSide: "yes",
       desyncStakeWolo: 2,
       gamesRemaining: 1,
@@ -134,6 +134,7 @@ test("shadow admission selects the exact Steam roster side for the exact uploade
   assert.equal(left.eligible, true);
   if (!left.eligible) return;
   assert.equal(left.selectedSide, "left");
+  assert.equal(left.winnerMarketId, 41);
   assert.equal(left.gameIdentityKey, "platform:exact-match");
   assert.equal(left.sessionKey, "platform:exact-match");
   assert.equal(left.desyncMarketId, null);
@@ -153,6 +154,16 @@ test("shadow admission selects the exact Steam roster side for the exact uploade
   assert.equal(right.eligible, true);
   if (!right.eligible) return;
   assert.equal(right.selectedSide, "right");
+  assert.equal(right.winnerMarketId, 41);
+});
+
+test("shadow origin refuses invalid winner market identities", () => {
+  for (const id of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.deepEqual(evaluate({ market: { id } }), {
+      eligible: false,
+      reason: "market_identity_missing",
+    });
+  }
 });
 
 test("a proven session alias resolves to the canonical game identity", () => {
@@ -301,9 +312,9 @@ test("finite plans must still have capacity, while Until Out remains preview-eli
   assert.equal(untilOut.eligible, true);
 });
 
-test("stored Mecha presets cannot bypass the 10k plan budget or fabricate Desync choices", () => {
+test("stored Mecha presets cannot bypass the 50k plan budget or fabricate Desync choices", () => {
   assert.deepEqual(
-    evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 21 } }),
+    evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 101 } }),
     { eligible: false, reason: "auto_stake_cap_exceeded" },
   );
   assert.deepEqual(
@@ -319,10 +330,10 @@ test("stored Mecha presets cannot bypass the 10k plan budget or fabricate Desync
     { eligible: false, reason: "stored_preset_invalid" },
   );
   assert.deepEqual(
-    evaluate({ preset: { winnerStakeWolo: 1_001 } }),
+    evaluate({ preset: { winnerStakeWolo: 10_001 } }),
     { eligible: false, reason: "auto_stake_cap_exceeded" },
   );
-  assert.equal(evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 20 } }).eligible, true);
+  assert.equal(evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 100 } }).eligible, true);
 });
 
 test("malformed stored Desync value never creates a shadow outbox row", async () => {

@@ -1,5 +1,6 @@
 import { internalApiKeyMatches } from "@/lib/internalApiKeyAuth";
 import "server-only";
+import {recoverCommittedLiveWatcherMarkets} from "@/lib/bets";
 
 import {
   extname,
@@ -335,6 +336,10 @@ export async function POST(
   const prisma =
     getPrisma();
 
+  // A committed LIVE upload may outlive the API process that should notify us.
+  // Run this bounded metadata lane before any slower final-parser recovery.
+  const liveAdmission = await recoverCommittedLiveWatcherMarkets(prisma,{dryRun,targetGameStatsId});
+
   const candidates =
     await prisma.$queryRaw<
       ReplayAutoRecoveryCandidate[]
@@ -579,6 +584,7 @@ export async function POST(
       dryRun:
         true,
 
+      liveAdmission,
       targetGameStatsId,
 
       since:
@@ -928,6 +934,7 @@ export async function POST(
     dryRun:
       false,
 
+    liveAdmission,
     targetGameStatsId,
 
     since:

@@ -100,6 +100,53 @@ test("complete synthetic exact-bound bundle is internally consistent but never c
   assert.equal(r.criterionPointsAwarded,null);
  }finally{await rm(root,{recursive:true,force:true})}
 });
+test("truthful provisional Index remains a noncertifying candidate observation",async()=>{
+  const root=await fixture();
+  const relabel=async(filename:string,field:"kingdomIndexStatus"|"indexStatus",value:string)=>{
+    await mutate(root,filename,d=>{
+      for(const row of d.observed as Array<Record<string,unknown>>){
+        row[field]=value;
+        if(value==="provisional"){
+          row.indexMeasuredVersion=row.indexSourceVersion;
+          row.indexObservationKind="source-review";
+        }else if(value==="unmeasured"){
+          row.indexMeasuredVersion=null;
+          row.indexObservationKind=null;
+        }
+      }
+      d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
+    });
+  };
+  try{
+    await relabel("api-loopback.json","kingdomIndexStatus","provisional");
+    await relabel("concurrent-loopback.json","indexStatus","provisional");
+    const accepted=await verifyIndexCandidateBundle(root,args);
+    assert.equal(accepted.status,"SELF_CONSISTENT_CANDIDATE_EVIDENCE_ONLY");
+    assert.equal(accepted.certified,false);
+    assert.equal(accepted.criterionPointsAwarded,null);
+    await relabel("concurrent-loopback.json","indexStatus","unmeasured");
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/Contradictory historical lineage/);
+    await relabel("concurrent-loopback.json","indexStatus","provisional");
+    await relabel("api-loopback.json","kingdomIndexStatus","current");
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/Unexpected current Index status/);
+    await relabel("api-loopback.json","kingdomIndexStatus","provisional");
+    await mutate(root,"api-loopback.json",d=>{
+      (d.observed as Array<Record<string,unknown>>)[0].indexScore=100;
+      d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
+    });
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/API response inconsistency or false score/);
+  }finally{await rm(root,{recursive:true,force:true})}
+});
+test("mixed provisional and unmeasured samples are rejected even with valid checksums",async()=>{
+  const root=await fixture();
+  try{
+    await mutate(root,"api-loopback.json",d=>{
+      (d.observed as Array<Record<string,unknown>>)[1].kingdomIndexStatus="provisional";
+      d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
+    });
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/Provisional Index without aligned/);
+  }finally{await rm(root,{recursive:true,force:true})}
+});
 test("wrong expected source, build, collector and cross-route receipts are rejected",async()=>{
  const root=await fixture();
  try{

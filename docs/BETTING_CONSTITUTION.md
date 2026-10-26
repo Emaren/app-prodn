@@ -18,6 +18,24 @@ sensitivity: "internal"
 
 Reviewed the live/current `#JimsRule` versus proposed Phase Books distinction, matched-only 2% betting fee, one-for-one funded opponent ceiling, unmatched-principal protection, zero-fee void refunds, and grandfathered historical settlements. The observed-browser Traffic-country presentation work neither changes nor authorizes financial matching, fees, chain custody, phase-book activation, claims or payouts. WoloChain remains the chain-money authority and its independent financial release HOLD is unchanged. No new constitution amendment or financial certification is implied.
 
+## October 22 UTC — audited source contract, not a funded authorization
+
+Review scope: verified the current `lib/betWagerSettlement.ts` implementation
+retains one-for-one matched exposure, proportional within-side matching, whole
+unmatched principal return on BOTH sides, fee-free voids, and the 2% fee on
+**matched two-sided** volume only. The historical September 9, 2026 Jim audit
+remains a *dated* reconciliation, not proof of October balances or complete
+global liabilities. This document does not retroactively rerun or settle any
+old claims.
+
+New Mecha Auto Bets, War Satchel vault deposits, AI/house counterliquidity
+and phase-book market admission are distinct, held implementation boundaries.
+House liquidity must be real independently funded matching exposure, never
+an invented display seed. No consent flag, preview, scheduled market or source
+test authorizes money movement. Historical accepted escrow transaction and
+founder #889 remain WoloChain issue #5 financial HOLD; native chain proof,
+owner-bounded custody and complete solvency evidence are required before
+funded activation. DE feature development remains out of scope.
 
 ## Status and authority
 
