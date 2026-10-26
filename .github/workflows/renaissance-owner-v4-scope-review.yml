@@ -8,6 +8,8 @@ on:
       - "tests/test_aoe2_renaissance_v4_scope.py"
       - "scripts/aoe2_renaissance_v4_release_manifest.py"
       - "tests/test_aoe2_renaissance_v4_release_manifest.py"
+      - "scripts/aoe2_renaissance_v4_owner_sign.py"
+      - "tests/test_aoe2_renaissance_v4_owner_sign.py"
       - ".github/workflows/renaissance-owner-v4-scope-review.yml"
       - "scripts/aoe2_renaissance_owner_authority_v4.py"
       - "tests/test_aoe2_renaissance_owner_authority_v4.py"
@@ -34,6 +36,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_scope.py -v
           python3 -m unittest discover -s tests -p test_aoe2_renaissance_owner_authority_v4.py -v
           python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_release_manifest.py -v
+          python3 -m unittest discover -s tests -p test_aoe2_renaissance_v4_owner_sign.py -v
       - name: Verify exact 128-path candidate Git objects, no build and no deployment
         shell: bash
         run: |
