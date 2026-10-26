@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f556f184ea4cc0d3d40ef31a4a0e4f14557598190b3286bc24678ca99d2051a5",
+      "sha256": "b54cbde2a538ac4faaa7149ce5f093532f0ec585d859c1d6dc2957c3fdf05c6d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "578eee491a498307c26caf1ee7bfdeaaeccdad42cef77fdc84304d576ddabc1e",
+      "sha256": "907b49d7ce2512702b6f2d30ccf830e662c6ef9158dbf3b555c290a4aeb15de7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/kingdom-index-historical-review-visibility-20261026",
-    "commit": "3dd1cef8232d0ebf4b38c4c1a9f5187b383dd806"
+    "branch": "codex/central-kingdom-index",
+    "commit": "09e28aec00386f184aaa1481b94cae150c459621"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

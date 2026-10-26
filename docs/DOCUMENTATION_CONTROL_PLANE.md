@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/kingdom-index-historical-review-visibility-20261026` at `3dd1cef8232d0ebf4b38c4c1a9f5187b383dd806`
+Implementation baseline: `codex/central-kingdom-index` at `09e28aec00386f184aaa1481b94cae150c459621`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
