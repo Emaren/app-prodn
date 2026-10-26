@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8a2a9896bd2a282aeb509afa9e2b355c067393bbcf45c637cd9574d9a016bca7",
+      "sha256": "0244719027dfbff545a1ae570b57df8a76c221f9c5ea9cac4fcda71e6633f488",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1608,7 +1608,7 @@
       "review_interval_days": 1,
       "reviewed_at": "2026-10-26",
       "sensitivity": "internal",
-      "sha256": "a81504d1a790c234c51f38b0c7e57c72a9728dace24ae1871d27354f14fc7cc7",
+      "sha256": "5f3213928ce2d8745040998f364a846e501590514a68a4ce9374acaedb018626",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2352,8 +2352,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/owner-v4-protected-dispatch",
-    "commit": "35fe1fcfaab4eec157c6b9e363cc52d61a4709e4"
+    "branch": "fix/v4-active-wargraph-continuity-20261026",
+    "commit": "d7f693b298b15de3b391d35cc8d1743832e9c7d2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
