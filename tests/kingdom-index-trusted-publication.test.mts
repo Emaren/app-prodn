@@ -4,7 +4,7 @@ import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import rubric from "../config/kingdom-index-quality-rubric.json" with {type:"json"};
 import profiles from "../config/kingdom-index-assurance-profiles.json" with {type:"json"};
 import { requiredProofKindsForCriterion } from "../lib/kingdomIndexCriterionProofPolicy.mjs";
-import { PUBLICATION_SCHEMA, verifyKingdomIndexPublication } from "../lib/kingdomIndexTrustedPublication.mjs";
+import { PUBLICATION_SCHEMA, PROGRESS_SCHEMA, verifyKingdomIndexPublication } from "../lib/kingdomIndexTrustedPublication.mjs";
 import { loadCurrentKingdomIndexTrustedPublication } from "../lib/kingdomIndexTrustedPublicationRead.mjs";
 
 const SHA=(value:string)=>createHash("sha256").update(value).digest("hex");
@@ -36,13 +36,14 @@ function payload(points=100){
   }));
   return {schema:PUBLICATION_SCHEMA,source:{...source},
     nonce:"unique-first-publication-nonce-1",
-    issuedAt:new Date(NOW-120000).toISOString(),
+    // Synthetic proofs were measured at NOW-60s. Sign only afterwards.
+    issuedAt:new Date(NOW-30000).toISOString(),
     expiresAt:new Date(NOW+3600000).toISOString(),
     criteria,gates};
 }
 function seal(data:ReturnType<typeof payload>){
   const bytes=Buffer.from(JSON.stringify(data));
-  return {schema:PUBLICATION_SCHEMA,payloadBase64:bytes.toString("base64"),
+  return {schema:data.schema,payloadBase64:bytes.toString("base64"),
     signatures:keys.map((key,i)=>({
       keyId:i===0?"release":"reviewer",
       signatureBase64:sign(null,bytes,key.privateKey).toString("base64"),
@@ -58,11 +59,47 @@ test("independent release + reviewer approval and inspected 20/20 + 3/3 may publ
   assert.equal(v.status,"current");assert.equal(v.criteriaVerified,20);
   assert.equal(v.artifactsVerified,23);assert.equal(v.gates.length,3);
   assert.equal(v.source.buildId,source.buildId);
+  // Only the fully verified detached endorsements + raw artifact bytes + nonce
+  // authorize individual earned points. Synthetic fixtures grant NO real points.
+  assert.equal(v.criteria.length,20);
+  assert.equal(v.criteria.reduce((sum,c)=>sum+c.earned,0),100);
+  assert.ok(Object.isFrozen(v.criteria));
+  assert.ok(v.criteria.every(c=>c.proofDigests.length===1&&c.proofKinds.length===1));
+  assert.equal(v.criteria.find(c=>c.id==="authoritative_data")?.earned,10);
 });
 test("verified 99 is a measured but noncertified provisional score",async()=>{
   const v=await verifyKingdomIndexPublication(seal(payload(99)),ctx());
   assert.equal(v.score,99);assert.equal(v.certified,false);
   assert.equal(v.status,"provisional");
+  assert.equal(v.criteria.find(c=>c.id==="authoritative_data")?.earned,9);
+  assert.equal(v.criteria.reduce((sum,c)=>sum+c.earned,0),99);
+});
+test("independently signed partial progress may approve one criterion without certifying the Index",async()=>{
+  const p=payload();p.schema=PROGRESS_SCHEMA;
+  p.criteria=p.criteria.slice(0,1);p.gates=[];
+  const verified=await verifyKingdomIndexPublication(seal(p),ctx());
+  assert.equal(verified.certified,false);
+  assert.equal(verified.score,null);
+  assert.equal(verified.authenticatedEarned,10);
+  assert.equal(verified.criteriaVerified,1);
+  assert.equal(verified.criteria.length,1);
+  assert.equal(verified.artifactsVerified,1);
+  assert.equal(verified.gates.length,0);
+});
+test("even all 100 points and three gates in progress schema cannot certify",async()=>{
+  const p=payload();p.schema=PROGRESS_SCHEMA;
+  const v=await verifyKingdomIndexPublication(seal(p),ctx());
+  assert.equal(v.authenticatedEarned,100);
+  assert.equal(v.score,null);
+  assert.equal(v.certified,false);
+});
+test("legacy full-publication schema still refuses partial criterion submissions",async()=>{
+  const p=payload();p.criteria.pop();
+  await assert.rejects(verifyKingdomIndexPublication(seal(p),ctx()),/Incomplete canonical evidence/);
+});
+test("progress envelope without any approved criterion refuses instead of showing fake zero",async()=>{
+  const p=payload();p.schema=PROGRESS_SCHEMA;p.criteria=[];
+  await assert.rejects(verifyKingdomIndexPublication(seal(p),ctx()),/Incomplete canonical evidence/);
 });
 test("missing one mandatory gate refuses the entire projection",async()=>{
   const p=payload();p.gates.pop();
@@ -179,4 +216,23 @@ test("duplicate gate and replay refusal are independent of valid signatures",asy
   duplicate.gates[1].id=duplicate.gates[0].id;
   await assert.rejects(verifyKingdomIndexPublication(seal(duplicate),ctx()),/Missing or repeated gate/);
   await assert.rejects(verifyKingdomIndexPublication(seal(payload()),ctx({isCommitted:async()=>false})),/Missing independent durable ingestion receipt/);
+});
+
+test("a duly signed publication cannot pre-approve proof collected after its issuance",async()=>{
+ const p=payload();
+ // Signed publication issued at NOW-120s, but claimed browser evidence appears
+ // NOW-1s: already observed at verification time, not available when signed.
+ p.criteria.find(c=>c.id==="critical_journeys")!.evidence[0].measuredAt=
+   new Date(NOW-1000).toISOString();
+ await assert.rejects(
+   verifyKingdomIndexPublication(seal(p),ctx()),
+   /Measurement postdates signed publication issuance/,
+ );
+ const gate=payload();
+ gate.gates.find(g=>g.id==="source-closure")!.evidence[0].measuredAt=
+   new Date(NOW-1000).toISOString();
+ await assert.rejects(
+   verifyKingdomIndexPublication(seal(gate),ctx()),
+   /Measurement postdates signed publication issuance/,
+ );
 });

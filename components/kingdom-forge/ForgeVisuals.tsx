@@ -469,7 +469,7 @@ export function ForgeWorldPanels() {
           </h2>
         </div>
 
-        <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/35">
+        <div className="text-xs font-bold uppercase tracking-[0.16em] text-white/85">
           Capital · Labour · Ownership · Legacy
         </div>
       </div>

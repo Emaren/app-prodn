@@ -387,7 +387,7 @@ function FlightRecorder({ samples }: { samples: SpeedSample[] }) {
   return (
     <div className={`${styles.panel} rounded-[24px] p-4 sm:p-5 lg:col-span-8`}>
       <PanelTitle icon={ScanLine} title="Flight Recorder" right={`${samples.length} in tab`} accent="blue" />
-      <div className="mt-3 overflow-x-auto">
+      <div role="region" tabIndex={0} aria-label="Scrollable flight recorder measurements" className="mt-3 overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200">
         <table className="w-full min-w-[760px] font-mono text-[10px]">
           <thead className="border-b border-blue-300/10 text-left uppercase tracking-[0.17em] text-slate-600">
             <tr>

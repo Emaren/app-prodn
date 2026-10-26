@@ -78,7 +78,7 @@ function Stat({ label, value, detail }: { label: string; value: string; detail: 
 
 function DeedMosaic() {
   return (
-    <div className="grid grid-cols-10 gap-1" aria-label="10,000 deed charter shown as 100 blocks of 100 deeds">
+    <div className="grid grid-cols-10 gap-1" role="group" aria-label="10,000 deed charter shown as 100 blocks of 100 deeds">
       {Array.from({ length: 100 }, (_, index) => {
         const tone =
           index < 70
@@ -286,7 +286,7 @@ export default function KingdomForgeClient() {
                       <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/8 blur-3xl" />
                       <div className="relative">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-500"><Pickaxe className="h-4 w-4 text-orange-300" /> {project.category}</div>
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-300"><Pickaxe className="h-4 w-4 text-orange-300" /> {project.category}</div>
                           <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${STATUS_TONES[project.status] || STATUS_TONES.gathering}`}>{project.status}</span>
                         </div>
                         <h3 className="mt-5 text-3xl font-black tracking-tight text-[#fff5d6]">{project.title}</h3>
@@ -322,15 +322,15 @@ export default function KingdomForgeClient() {
 
                         <div className="mt-3 grid grid-cols-3 gap-px border border-white/10 bg-white/10">
                           <div className="bg-black/45 p-3">
-                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/35">Mandate Target</div>
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/80">Mandate Target</div>
                             <div className="mt-1 text-xs font-black text-white">{formatWolo(project.targetWolo, true)}</div>
                           </div>
                           <div className="bg-black/45 p-3">
-                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/35">Patrons</div>
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/80">Patrons</div>
                             <div className="mt-1 text-xs font-black text-white">{project.patrons}</div>
                           </div>
                           <div className="bg-black/45 p-3">
-                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/35">Target Date</div>
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/80">Target Date</div>
                             <div className="mt-1 text-xs font-black text-white">{formatDate(project.targetDate)}</div>
                           </div>
                         </div>
@@ -338,7 +338,7 @@ export default function KingdomForgeClient() {
                         <div className="mt-6 grid gap-2 sm:grid-cols-4">
                           {project.milestones.map((milestone) => (
                             <div key={milestone.id} className={`rounded-xl border p-3 ${milestone.status === "proven" ? "border-emerald-300/20 bg-emerald-300/8" : milestone.status === "building" ? "border-orange-300/20 bg-orange-300/8" : "border-white/8 bg-white/[0.025]"}`}>
-                              <div className="flex items-center justify-between"><span className="text-[9px] font-black text-slate-500">0{milestone.sequence}</span>{milestone.status === "proven" ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <LockKeyhole className="h-3.5 w-3.5 text-slate-600" />}</div>
+                              <div className="flex items-center justify-between"><span className="text-[9px] font-black text-slate-300">0{milestone.sequence}</span>{milestone.status === "proven" ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <LockKeyhole className="h-3.5 w-3.5 text-slate-600" />}</div>
                               <div className="mt-2 text-xs font-bold text-slate-200">{milestone.title}</div>
                             </div>
                           ))}
@@ -357,7 +357,7 @@ export default function KingdomForgeClient() {
                           ) : (
                             <div className="mt-4"><SteamLoginButton className="rounded-full bg-amber-300 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-200" /></div>
                           )}
-                          <div className="mt-3 text-[10px] leading-5 text-slate-500">Forge Power pledge only — reversible and no WOLO moves. Build Fuel begins only after explicit Ignition into verified project escrow.</div>
+                          <div className="mt-3 text-[10px] leading-5 text-slate-300">Forge Power pledge only — reversible and no WOLO moves. Build Fuel begins only after explicit Ignition into verified project escrow.</div>
                         </div>
                       </div>
                     </article>
@@ -419,7 +419,7 @@ export default function KingdomForgeClient() {
             <div className="mt-6 grid gap-5 xl:grid-cols-2">
               <div className="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
                 <div className="text-xs font-black uppercase tracking-[0.22em] text-amber-100/65">Project and milestone lifecycle</div>
-                <label className="mt-4 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                <label className="mt-4 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">
                   Project
                   <select value={selectedOperatorProject?.slug ?? ""} onChange={(event) => { setOperatorProjectSlug(event.target.value); setOperatorMilestoneId(""); }} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm font-bold text-white outline-none focus:border-amber-200/35">
                     {projects.map((project) => <option key={project.slug} value={project.slug}>{project.title}</option>)}
@@ -435,7 +435,7 @@ export default function KingdomForgeClient() {
                 </div>
 
                 <div className="mt-5 border-t border-white/8 pt-5">
-                  <label className="block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                  <label className="block text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">
                     Milestone
                     <select value={operatorMilestoneId} onChange={(event) => setOperatorMilestoneId(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm text-white outline-none focus:border-amber-200/35">
                       <option value="">Choose milestone</option>
@@ -456,12 +456,12 @@ export default function KingdomForgeClient() {
               <div className="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
                 <div className="text-xs font-black uppercase tracking-[0.22em] text-cyan-100/65">Feature Deed grant</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Recipient UID<input value={deedRecipientUid} onChange={(event) => setDeedRecipientUid(event.target.value)} placeholder="AoE2WAR user UID" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/30" /></label>
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Deed class<select value={deedClass} onChange={(event) => setDeedClass(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none focus:border-cyan-200/30"><option value="patron">Patron · 7,000</option><option value="builder">Builder · 2,000</option><option value="kingdom">Kingdom · 1,000</option></select></label>
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Quantity<input type="number" min={1} max={10000} step={1} value={deedQuantity} onChange={(event) => setDeedQuantity(event.target.value)} placeholder="100" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/30" /></label>
-                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Project<select value={selectedOperatorProject?.slug ?? ""} onChange={(event) => setOperatorProjectSlug(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none focus:border-cyan-200/30">{projects.map((project) => <option key={project.slug} value={project.slug}>{project.title}</option>)}</select></label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Recipient UID<input value={deedRecipientUid} onChange={(event) => setDeedRecipientUid(event.target.value)} placeholder="AoE2WAR user UID" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/30" /></label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Deed class<select value={deedClass} onChange={(event) => setDeedClass(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none focus:border-cyan-200/30"><option value="patron">Patron · 7,000</option><option value="builder">Builder · 2,000</option><option value="kingdom">Kingdom · 1,000</option></select></label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Quantity<input type="number" min={1} max={10000} step={1} value={deedQuantity} onChange={(event) => setDeedQuantity(event.target.value)} placeholder="100" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/30" /></label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Project<select value={selectedOperatorProject?.slug ?? ""} onChange={(event) => setOperatorProjectSlug(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none focus:border-cyan-200/30">{projects.map((project) => <option key={project.slug} value={project.slug}>{project.title}</option>)}</select></label>
                 </div>
-                <label className="mt-3 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Idempotent source reference<input value={deedSourceRef} onChange={(event) => setDeedSourceRef(event.target.value)} placeholder="forge:project:grant:v1" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/30" /></label>
+                <label className="mt-3 block text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Idempotent source reference<input value={deedSourceRef} onChange={(event) => setDeedSourceRef(event.target.value)} placeholder="forge:project:grant:v1" className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#080a0f] px-3 text-sm normal-case tracking-normal text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/30" /></label>
                 <button type="button" disabled={Boolean(sending) || !selectedOperatorProject || !deedRecipientUid.trim() || !Number.isInteger(Number(deedQuantity)) || Number(deedQuantity) <= 0 || !deedSourceRef.trim()} onClick={async () => { if (selectedOperatorProject && await act("grant_deeds", { projectSlug: selectedOperatorProject.slug, recipientUid: deedRecipientUid, deedClass, quantity: Number(deedQuantity), sourceRef: deedSourceRef }, "operator-deeds")) { setDeedQuantity(""); setDeedSourceRef(""); } }} className="mt-4 min-h-12 w-full rounded-xl bg-cyan-200 px-5 text-sm font-black text-slate-950 transition hover:bg-white disabled:opacity-40">Grant finite deeds</button>
               </div>
             </div>
@@ -469,7 +469,7 @@ export default function KingdomForgeClient() {
         ) : null}
 
         <section className="rounded-[2rem] border border-white/10 bg-black/35 p-6 sm:p-8">
-          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Forge Chronicle</div><h2 className="mt-2 text-3xl font-black">Every strike leaves a mark.</h2></div><div className="text-xs text-slate-500">Append-only project trail</div></div>
+          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Forge Chronicle</div><h2 className="mt-2 text-3xl font-black">Every strike leaves a mark.</h2></div><div className="text-xs text-slate-300">Append-only project trail</div></div>
           <div className="mt-6 grid gap-3 lg:grid-cols-2">
             {(snapshot?.events ?? []).slice(0, 12).map((event) => (
               <div key={event.id} className="flex gap-4 rounded-[1.2rem] border border-white/8 bg-white/[0.025] p-4"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-orange-200/15 bg-orange-300/8 text-orange-100"><Hammer className="h-4 w-4" /></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2 text-xs"><span className="font-black text-white">{event.project?.title || "Kingdom Forge"}</span>{event.amountWolo ? <span className="text-amber-200">{formatWolo(event.amountWolo, true)}</span> : null}</div><p className="mt-1 text-xs leading-5 text-slate-400">{event.detail}</p><div className="mt-2 text-[10px] text-slate-600">{new Date(event.createdAt).toLocaleString()}</div></div></div>

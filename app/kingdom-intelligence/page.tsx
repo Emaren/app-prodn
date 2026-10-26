@@ -211,10 +211,17 @@ export default async function KingdomIntelligencePage() {
       key: "run-" + (item.id ?? item.requestedAt),
       at: item.completedAt ?? item.requestedAt,
       system: item.system,
-      label: item.label,
-      status: item.status,
+      label: isActiveProcessState(item.status) && data?.agentRuntimeAuthority?.verified !== true
+        ? item.label + " · bridge-reported running, independently UNVERIFIED"
+        : item.label,
+      status: isActiveProcessState(item.status) && data?.agentRuntimeAuthority?.verified !== true
+        ? "UNKNOWN"
+        : item.status,
       proof: item.id,
-      current: isActiveProcessState(item.status),
+      // Active dashboard runs are still bridge reports, not protected active
+      // Next source/BUILD_ID evidence. A missing witness is never live.
+      current: data?.agentRuntimeAuthority?.verified === true &&
+        isActiveProcessState(item.status),
       progress: null as number | null,
       progressLabel: null as string | null,
       currentStep: null as string | null,
@@ -227,7 +234,10 @@ export default async function KingdomIntelligencePage() {
       progressBasis: null as string | null,
     }));
     const activeAgentRows = systemAgents
-      .filter(isConcreteBackgroundProcess)
+      // Keep Recovery visible as a historical, NON-CURRENT observation even
+      // when independent runtime identity withholds ACTIVE/progress claims.
+      // Do not falsely present this retained row as a running worker.
+      .filter((item) => isConcreteBackgroundProcess(item) || item.key === "recovery")
       .map((item) => ({
         key: "agent-" + item.key,
         at:
@@ -236,10 +246,12 @@ export default async function KingdomIntelligencePage() {
           data?.generatedAt ??
           new Date(0).toISOString(),
         system: item.label,
-        label: item.summary,
+        label: item.key === "recovery" && !isConcreteBackgroundProcess(item)
+          ? "Recovery OS snapshot retained; current worker status unverified."
+          : item.summary,
         status: item.state,
         proof: null as string | null,
-        current: true,
+        current: isConcreteBackgroundProcess(item),
         progress: item.progressPercent,
         progressLabel: item.progressLabel,
         currentStep: item.currentStep,
@@ -367,18 +379,18 @@ export default async function KingdomIntelligencePage() {
         />
         <Stat
           label="Working now"
-          value={String(activeSystemCount)}
-          detail={attentionSystemCount + " system(s) waiting or under attention"}
+          value={data?.agentRuntimeAuthority?.verified === true && data?.health?.observation?.status === "SOURCE_REPORTED" ? String(activeSystemCount) : "UNKNOWN"}
+          detail="Live process count requires independently verified active source/build, not bridge self-attestation"
         />
         <Stat
-          label="Certified finishes"
+          label="Reported finishes"
           value={numberLabel(data?.activity24h?.certifiedFinishes)}
-          detail={numberLabel(data?.activity24h?.finishRuns) + " Finish run(s) observed"}
+          detail={numberLabel(data?.activity24h?.finishRuns) + " bridge-reported Finish run(s) · not independent release certification"}
         />
         <Stat
           label="System doctor"
           value={data?.health?.doctorScore === null || data?.health?.doctorScore === undefined ? "—" : data.health.doctorScore + "/100"}
-          detail={(data?.health?.doctorStatus ?? "UNKNOWN") + " · P0 " + (data?.health?.p0 ?? "—") + " · P1 " + (data?.health?.p1 ?? "—")}
+          detail={(data?.health?.doctorStatus ?? "UNKNOWN") + " · P0 " + (data?.health?.p0 ?? "UNKNOWN") + " · P1 " + (data?.health?.p1 ?? "UNKNOWN") + " · BRIDGE REPORTED / NO INDEPENDENT CERTIFICATE"}
         />
       </section>
 
@@ -538,11 +550,11 @@ export default async function KingdomIntelligencePage() {
             icon={GitBranch}
             eyebrow="Release OS"
             title="Source Authority"
-            status={data?.source?.exact ? "PASS" : "ATTENTION"}
+            status={data?.source?.exact ? "PASS" : "UNKNOWN"}
             detail={
               data?.source
-                ? "Production " + (data.source.productionRelease ?? "—") + " · " + data.source.certificationStatus + ". Git, runtime and certification must agree."
-                : "Awaiting the next certified source observation."
+                ? "Bridge-reported production " + (data.source.productionRelease ?? "UNKNOWN") + " · independently " + data.source.certificationStatus + ". " + (data.diagnostics[0]?.explanation ?? "Awaiting authenticated active source and actual Next BUILD_ID.")
+                : "Awaiting independent release evidence."
             }
           />
           <ModuleCard

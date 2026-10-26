@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import WorkshopBrainPanel from "@/components/workshop/WorkshopBrainPanel";
 
 import WorkshopExperience, {
   type WorkshopDiagnostics,
@@ -30,12 +31,29 @@ const DEFERRED_CHRONICLE = {
 
 export default async function WorkshopPage() {
   const [data, observatory, kingdomIntelligence] = await Promise.all([
-    loadCachedPublicWorkshop(),
-    loadPublicParserObservatory(),
+    loadCachedPublicWorkshop().catch(() => null),
+    loadPublicParserObservatory().catch(() => null),
     loadPublicKingdomIntelligence().catch(() => null),
   ]);
 
   const brain = buildWorkshopBrainSnapshot(kingdomIntelligence);
+
+  // The Chronicle and observatory require a readable database. When that
+  // dependency is temporarily unavailable, keep the public read-side usable:
+  // show only sanitized Brain evidence and a truthful unavailable message,
+  // never a synthetic empty corpus or apparent zero activity.
+  if (!data || !observatory) {
+    return (
+      <main aria-label="Workshop operational fallback" className="mx-auto w-full max-w-6xl space-y-5 px-4 py-8 sm:px-6">
+        <WorkshopBrainPanel brain={brain} />
+        <p role="status" className="rounded-2xl border border-amber-200/20 bg-amber-200/[0.06] p-5 text-sm text-amber-100">
+          Workshop archive and parser diagnostics are temporarily unavailable.
+          Historical activity counts and current processes cannot be verified.
+          No maintenance or financial operation has been started.
+        </p>
+      </main>
+    );
+  }
 
   // Chronicle history is intentionally not awaited here. The public timeline
   // is below the initial viewport and hydrates itself only as the reader nears it.

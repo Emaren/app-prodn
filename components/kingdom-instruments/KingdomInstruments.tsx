@@ -45,7 +45,7 @@ function GaugePanel({ label, value, total, tone = "cyan" }: { label:string; valu
   const fraction = valid ? Math.min(100, 100 * (value / total)) : 0;
   return <div className={styles.gaugeBox}>
     <div className={styles.gaugeTop}><span>{label}</span><strong>{valid ? fraction.toFixed(1)+"%" : "—"}</strong></div>
-    <div className={styles.gaugeTrack} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={valid ? fraction : undefined}>
+    <div className={styles.gaugeTrack} role={valid ? "meter" : undefined} aria-label={valid ? label : undefined} aria-valuemin={valid ? 0 : undefined} aria-valuemax={valid ? 100 : undefined} aria-valuenow={valid ? fraction : undefined}>
       {valid && <span className={styles.gaugeFill} style={{width:fraction+"%"}} data-tone={tone}/>}
     </div>
     <span className={styles.gaugeFoot}>{valid ? fmt(value)+" / "+fmt(total) : "MEASUREMENT UNAVAILABLE"}</span>

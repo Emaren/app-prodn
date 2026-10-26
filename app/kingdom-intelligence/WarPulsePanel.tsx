@@ -110,7 +110,7 @@ export default function WarPulsePanel({
             />
           </div>
           <div>
-            <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/45">
+            <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/90">
               War Pulse · live chronicle
             </div>
             <h2 className="mt-1 font-serif text-2xl text-white">
@@ -120,7 +120,7 @@ export default function WarPulsePanel({
         </div>
 
         <div className="flex flex-col items-end gap-2">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-600">polls every 20s</span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-300">polls every 20s</span>
           <button type="button" onClick={cycleTheme}
             aria-label={`Change War Pulse display theme; current theme ${theme}`}
             className="rounded-lg border border-cyan-200/20 px-2 py-1 text-xs text-cyan-100 focus-visible:ring-2 focus-visible:ring-cyan-200">
@@ -129,12 +129,15 @@ export default function WarPulsePanel({
         </div>
       </div>
 
-      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5">
+      <div role="region" tabIndex={0} aria-label="Scrollable War Pulse telemetry" className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"
+      >
         {items.length ? (
           items.map((item) => {
             const expanded = expandedKey === item.key;
-            const recoveryItem =
-              item.current && item.system === "Recovery OS";
+            // A retained Recovery row must still render API availability/paused
+            // truth even when active-worker verification is intentionally false.
+            // This does NOT set item.current or authorize a live-process badge.
+            const recoveryItem = item.system === "Recovery OS";
             const recoveryLive =
               recoveryItem && liveRecovery?.available === true;
             const trustworthyLiveProgress =
@@ -204,7 +207,7 @@ export default function WarPulsePanel({
                 className={
                   (item.current
                     ? "font-semibold text-cyan-100/70"
-                    : "text-slate-600") + " relative z-10"
+                    : "text-slate-300") + " relative z-10"
                 }
               >
                 <BrowserLocalTime value={item.at} />
@@ -247,7 +250,7 @@ export default function WarPulsePanel({
                   {item.label}
                 </div>
 
-                {item.current && effectiveProgress !== null ? (
+                {(item.current || recoveryItem) && effectiveProgress !== null ? (
                   <div className="mt-2">
                     <div className="h-1 overflow-hidden rounded-full bg-white/8">
                       <div
@@ -261,7 +264,7 @@ export default function WarPulsePanel({
                         }}
                       />
                     </div>
-                    <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/45">
+                    <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/90">
                       <span>{effectiveProgressLabel ?? "process progress"}</span>
                       <span>
                         {effectiveProgress.toFixed(
@@ -276,7 +279,7 @@ export default function WarPulsePanel({
                       </div>
                     ) : null}
                   </div>
-                ) : item.current && recoveryItem ? (
+                ) : recoveryItem ? (
                   <div className="mt-2">
                     <div className="relative h-1 overflow-hidden rounded-full bg-white/8">
                       {recoverySignal === "awaiting_sample" ? (
@@ -332,10 +335,10 @@ export default function WarPulsePanel({
             );
           })
         ) : (
-          <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-600">
+          <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-300">
             <Bot className="mb-3 h-7 w-7" />
             <div>No proven activity line is available yet.</div>
-            <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-700">
+            <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-300">
               Kingdom Intelligence does not invent an agent heartbeat. Registered
               work, OS receipts and sealed source events appear here when
               evidence exists.

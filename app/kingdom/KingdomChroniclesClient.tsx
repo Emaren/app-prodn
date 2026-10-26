@@ -691,17 +691,8 @@ export default function KingdomChroniclesClient({
       <div className="relative xl:border-l xl:border-amber-100/12 xl:pl-10">
         <div
           className="relative mb-5 cursor-pointer overflow-hidden rounded-[1.85rem] border border-amber-100/20 bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_88%_14%,rgba(59,130,246,0.12),transparent_34%),linear-gradient(145deg,rgba(20,25,38,0.96),rgba(3,7,18,0.86))] p-5 shadow-[0_24px_72px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.04] sm:p-6"
-          role="button"
-          tabIndex={0}
-          aria-pressed={showChronicleAvatars}
           onClick={(event) => {
             if ((event.target as HTMLElement).closest("button,a")) return;
-            toggleChronicleAvatars();
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            if ((event.target as HTMLElement).closest("button,a")) return;
-            event.preventDefault();
             toggleChronicleAvatars();
           }}
         >
@@ -711,7 +702,8 @@ export default function KingdomChroniclesClient({
 
           <div
             className="absolute right-4 top-4 z-20 inline-flex rounded-full border border-white/12 bg-slate-950/70 p-1 shadow-[0_12px_34px_rgba(0,0,0,0.38)] backdrop-blur-md"
-            aria-label="Kingdom chronicle view"
+            role="group"
+          aria-label="Kingdom chronicle view"
           >
             {kingdomBaeViews.map((option) => (
               <button
@@ -729,6 +721,12 @@ export default function KingdomChroniclesClient({
                 {option.label}
               </button>
             ))}
+            <button type="button" onClick={toggleChronicleAvatars}
+              aria-label={showChronicleAvatars ? "Hide chronicle avatars" : "Show chronicle avatars"}
+              aria-pressed={showChronicleAvatars}
+              className="min-h-7 rounded-full border border-white/15 px-2 text-[10px] font-bold text-amber-100 transition hover:border-amber-100/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-200">
+              Avatars
+            </button>
           </div>
 
           <div className="relative z-10">

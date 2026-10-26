@@ -440,8 +440,22 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const edgeAt = text(edge.generated_at);
   const coldFresh = freshnessFraction(coldAt, 24, 168, now);
   const edgeFresh = freshnessFraction(edgeAt, 24, 168, now);
-  const coldCurrent = cold.matches_current_release === true;
-  const edgeCurrent = edge.matches_current_release === true;
+  const bridgeProduction = record(record(payload.source).production);
+  const liveSourceMatches = text(bridgeProduction.source_sha) === releaseSha;
+  const liveBuildMatches =
+    text(bridgeProduction.active_build_id) != null &&
+    text(bridgeProduction.active_build_id) ===
+      text(activation.certification.active_build_id);
+  const coldCurrent = cold.matches_current_release === true &&
+    text(cold.release_sha) === releaseSha &&
+    liveSourceMatches && liveBuildMatches;
+  const edgeCurrent = edge.matches_current_release === true &&
+    text(edge.release_sha) === releaseSha &&
+    liveSourceMatches && liveBuildMatches;
+  // Observation and source validity must apply to every metric, not only the
+  // 10-point freshness category. Historic receipts remain visible in details.
+  const coldProof = coldCurrent ? coldFresh : 0;
+  const edgeProof = edgeCurrent ? edgeFresh : 0;
 
   const metrics = record(cold.metrics);
   const lcp = record(metrics.lcp_ms);
@@ -462,7 +476,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "lcp50",
         "Cold phone LCP p50",
         12,
-        thresholdFraction(numberValue(lcp.p50), 800, 1100, "lte"),
+        thresholdFraction(numberValue(lcp.p50), 800, 1100, "lte") * coldProof,
         numberValue(lcp.p50) == null
           ? "No bridged cold-phone evidence"
           : Math.round(numberValue(lcp.p50) as number) + " ms",
@@ -472,7 +486,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "lcp95",
         "Cold phone LCP p95",
         15,
-        thresholdFraction(numberValue(lcp.p95), 1000, 1400, "lte"),
+        thresholdFraction(numberValue(lcp.p95), 1000, 1400, "lte") * coldProof,
         numberValue(lcp.p95) == null
           ? "No bridged cold-phone evidence"
           : Math.round(numberValue(lcp.p95) as number) + " ms",
@@ -482,7 +496,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "ready50",
         "Ready p50",
         10,
-        thresholdFraction(numberValue(ready.p50), 1000, 1300, "lte"),
+        thresholdFraction(numberValue(ready.p50), 1000, 1300, "lte") * coldProof,
         numberValue(ready.p50) == null
           ? "No bridged readiness evidence"
           : Math.round(numberValue(ready.p50) as number) + " ms",
@@ -492,7 +506,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "ready95",
         "Ready p95",
         10,
-        thresholdFraction(numberValue(ready.p95), 1500, 1900, "lte"),
+        thresholdFraction(numberValue(ready.p95), 1500, 1900, "lte") * coldProof,
         numberValue(ready.p95) == null
           ? "No bridged readiness evidence"
           : Math.round(numberValue(ready.p95) as number) + " ms",
@@ -502,7 +516,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "ttfb95",
         "Document TTFB p95",
         10,
-        thresholdFraction(numberValue(ttfb.p95), 650, 900, "lte"),
+        thresholdFraction(numberValue(ttfb.p95), 650, 900, "lte") * coldProof,
         numberValue(ttfb.p95) == null
           ? "No bridged document timing evidence"
           : Math.round(numberValue(ttfb.p95) as number) + " ms",
@@ -512,7 +526,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "static-edge",
         "Static edge cohort",
         10,
-        ratioFraction(staticRatio),
+        ratioFraction(staticRatio) * edgeProof,
         staticRatio.total
           ? staticRatio.passed + "/" + staticRatio.total + " HIT"
           : "No bridged edge proof",
@@ -522,7 +536,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "dynamic-edge",
         "Dynamic edge cohort",
         8,
-        ratioFraction(dynamicRatio),
+        ratioFraction(dynamicRatio) * edgeProof,
         dynamicRatio.total
           ? dynamicRatio.passed + "/" + dynamicRatio.total + " HIT"
           : "No bridged dynamic-edge proof",
@@ -532,7 +546,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "featured-edge",
         "Featured avatar edge",
         8,
-        ratioFraction(featuredRatio),
+        ratioFraction(featuredRatio) * edgeProof,
         featuredRatio.total
           ? featuredRatio.passed + "/" + featuredRatio.total + " HIT"
           : "No bridged avatar-edge proof",
@@ -542,7 +556,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "stable-lcp",
         "Stable LCP target",
         7,
-        samples ? topTarget / samples : 0,
+        (samples ? topTarget / samples : 0) * coldProof,
         samples
           ? topTarget + "/" + samples + " launches share one LCP target"
           : "No bridged LCP target census",
@@ -555,11 +569,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "speed-fresh",
         "Current-release performance proof",
         10,
-        Math.min(
-          coldFresh,
-          edgeFresh,
-          coldCurrent && edgeCurrent ? 1 : 0.5,
-        ),
+        Math.min(coldProof, edgeProof),
         (coldCurrent && edgeCurrent ? "Current release · " : "Previous release · ") +
           ageDetail(coldAt, now),
         { evidenceAt: coldAt },
@@ -573,8 +583,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const intentionallyUnindexed =
     numberValue(taxonomy.intentionally_unindexed) || 0;
   const indexTarget = Math.max(0, corpusTotal - intentionallyUnindexed);
-  const docCapturedAt = text(documentation.captured_at) || bridgeAt;
-  const docsFresh = freshnessFraction(docCapturedAt, 12, 72, now);
+  const docCapturedAt = text(documentation.captured_at);
+  // DocsV2 gates and maps are a single source/time-bound evidence family.
+  // A fresh transport envelope must not renew an old or absent original review.
+  const docsFresh = Math.min(
+    freshnessFraction(docCapturedAt, 12, 72, now),
+    bridgeFresh,
+  );
+  const docsProof = liveSourceMatches && liveBuildMatches ? docsFresh : 0;
   const sourceDocsPassed =
     numberValue(documentation.source_checkers_passed) || 0;
   const sourceDocsTotal =
@@ -589,7 +605,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "doctor-docs",
         "Estate documentation gate",
         10,
-        statusFraction(documentation.estate_gate),
+        statusFraction(documentation.estate_gate) * docsProof,
         String(documentation.estate_gate || "No bridged documentation gate"),
         { evidenceAt: docCapturedAt },
       ),
@@ -597,7 +613,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "docs-control",
         "Central documentation control",
         15,
-        documentation.docs_control_pass === true ? 1 : 0,
+        documentation.docs_control_pass === true ? docsProof : 0,
         documentation.docs_control_pass === true ? "PASS" : "Not proven",
         { evidenceAt: docCapturedAt },
       ),
@@ -605,7 +621,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "taxonomy",
         "Semantic documentation index",
         10,
-        indexTarget ? indexedTotal / indexTarget : 0,
+        (indexTarget ? indexedTotal / indexTarget : 0) * docsProof,
         indexTarget
           ? indexedTotal + "/" + indexTarget + " required docs indexed"
           : "No taxonomy evidence",
@@ -618,7 +634,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "strict-doc-build",
         "Strict documentation build",
         10,
-        documentation.strict_build_pass === true ? 1 : 0,
+        documentation.strict_build_pass === true ? docsProof : 0,
         documentation.strict_build_pass === true ? "PASS" : "Not proven",
         { evidenceAt: docCapturedAt },
       ),
@@ -626,7 +642,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "audit-taxonomy",
         "Navigation / taxonomy audit",
         10,
-        documentation.taxonomy_audit_pass === true ? 1 : 0,
+        documentation.taxonomy_audit_pass === true ? docsProof : 0,
         documentation.taxonomy_audit_pass === true ? "PASS" : "Needs refresh",
         { evidenceAt: docCapturedAt },
       ),
@@ -634,7 +650,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "source-docs",
         "Source documentation checkers",
         15,
-        sourceDocsTotal ? sourceDocsPassed / sourceDocsTotal : 0,
+        (sourceDocsTotal ? sourceDocsPassed / sourceDocsTotal : 0) * docsProof,
         sourceDocsTotal
           ? sourceDocsPassed + "/" + sourceDocsTotal + " repositories"
           : "No source checker evidence",
@@ -647,7 +663,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "system-map",
         "SYSTEM_MAP source binding",
         10,
-        text(documentation.system_map_source_sha) === releaseSha ? 1 : 0,
+        text(documentation.system_map_source_sha) === releaseSha ? docsProof : 0,
         text(documentation.system_map_source_sha) === releaseSha
           ? "Bound to active release"
           : "Map is behind active release",
@@ -657,7 +673,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "storage-map",
         "SERVER_STORAGE_MAP source binding",
         10,
-        text(documentation.storage_map_source_sha) === releaseSha ? 1 : 0,
+        text(documentation.storage_map_source_sha) === releaseSha ? docsProof : 0,
         text(documentation.storage_map_source_sha) === releaseSha
           ? "Bound to active release"
           : "Map is behind active release",
@@ -667,7 +683,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "central-doc-repo",
         "Central docs repository parity",
         5,
-        documentation.central_docs_synced === true ? 1 : 0,
+        documentation.central_docs_synced === true ? docsProof : 0,
         documentation.central_docs_synced === true
           ? "Clean and synced"
           : "Parity not proven",
@@ -677,7 +693,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "docs-fresh",
         "Documentation evidence freshness",
         5,
-        docsFresh,
+        docsProof,
         ageDetail(docCapturedAt, now),
         { evidenceAt: docCapturedAt },
       ),
@@ -784,6 +800,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
           ? "Root capacity unavailable"
           : rootFreeGiB.toFixed(2) + " GiB free" +
               (liveRootFreeGiB == null ? " · operator bridge fallback" : " · live VPS"),
+        { evidenceAt: liveRootFreeGiB == null ? bridgeAt : new Date(now).toISOString() },
       ),
       check(
         "volume-used",
@@ -794,6 +811,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
           ? "Volume capacity unavailable"
           : volumeUsed.toFixed(1) + "% used" +
               (liveVolumeUsed == null ? " · operator bridge fallback" : " · live VPS"),
+        { evidenceAt: liveVolumeUsed == null ? bridgeAt : new Date(now).toISOString() },
       ),
       check(
         "mac-free",
@@ -1296,6 +1314,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
           ? "Root capacity unavailable"
           : rootFreeGiB.toFixed(2) + " GiB free" +
               (liveRootFreeGiB == null ? " · operator bridge fallback" : " · live VPS"),
+        { evidenceAt: liveRootFreeGiB == null ? bridgeAt : new Date(now).toISOString() },
       ),
       check(
         "security-fresh",
@@ -1317,7 +1336,9 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const replayAt =
     text(record(replay.freshness).generated_at);
   const replayFresh = freshnessFraction(replayAt, 24, 168, now);
-  const replayCurrent = replay.matches_current_release === true;
+  const replayCurrent = replay.matches_current_release === true &&
+    text(replay.production_source) === releaseSha && liveSourceMatches;
+  const replayProof = replayCurrent ? replayFresh : 0;
   const watcherVersion =
     text(documentation.watcher_version) ||
     (versions.includes(WATCHER_RELEASE.version)
@@ -1358,8 +1379,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "Replay corpus accounting",
         10,
         (replayAccounted / 100) *
-          (replayUnclassified === 0 ? 1 : 0.5) *
-          (replayCurrent ? 1 : 0.75),
+          (replayUnclassified === 0 ? 1 : 0.5) * replayProof,
         replayAccounted.toFixed(1) +
           "% accounted · unclassified " +
           String(replayUnclassified ?? "?"),
@@ -1396,7 +1416,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "db-mutation",
         "Browser proof database boundary",
         10,
-        mutation.database_mutated === false ? coldFresh : 0,
+        mutation.database_mutated === false ? coldProof : 0,
         mutation.database_mutated === false ? "No database mutation" : "Not proven",
         { evidenceAt: coldAt },
       ),
@@ -1404,7 +1424,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "wolo-mutation",
         "Browser proof Wolo boundary",
         10,
-        mutation.wolo_mutated === false ? coldFresh : 0,
+        mutation.wolo_mutated === false ? coldProof : 0,
         mutation.wolo_mutated === false ? "No Wolo mutation" : "Not proven",
         { evidenceAt: coldAt },
       ),
@@ -1412,7 +1432,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "data-fresh",
         "Replay truth freshness",
         5,
-        replayFresh,
+        replayProof,
         ageDetail(replayAt, now),
         { evidenceAt: replayAt },
       ),
@@ -1464,9 +1484,12 @@ export function buildBridgeGeneralInspectionsSnapshot(
         ".",
     );
   }
-  if (!coldCurrent || !edgeCurrent) {
+  if (!liveSourceMatches || !liveBuildMatches) {
+    notes.push("Operator Bridge production source/build does not match the certified activation; current-release performance claims are withheld.");
+  }
+  if (!coldCurrent || !edgeCurrent || coldProof < 1 || edgeProof < 1) {
     notes.push(
-      "Fresh SpeedOS browser/edge proof is from the previous production release; rerun the bounded speed proof after deployment.",
+      "SpeedOS browser/edge proof may belong to the previous production release, be stale, or lack exact source/build binding; collect bounded current-release evidence.",
     );
   }
   if (preservedDirty || preservedUnmerged) {

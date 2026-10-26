@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "974a866b8d75fe129c18db8ffbfc22ddce621c105682367233319de62deda15b",
+      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -222,7 +222,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "dcae4631bb8edcdac15e7ba08c4c8d97c6f2ee3432bde2c453c6b80180416c9e",
+      "sha256": "aa31669d2f3ce6065afe0004a181379182beed5fd298d374e6833f6e8c77a9cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-25",
+      "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "7660f3120278c9c7fd9b3c539c2b2dfaa046b31a5d183ca49316223e3ab494f2",
+      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 — presentation and release contract",
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3f8880602a2075173d4243d92d5e313949850336053dc213c8f6ba587f1e4c6d",
+      "sha256": "4f9826fd51685d76600ff622fc8b7d95bf0b6f535dd4d39d8cb2d402cee47562",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "59edc879be75496f095b4883f1123ea6eed5e52b4bfe09e7aca8e8b60698f560",
+      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "e393a4982bec66b4aa59091086ae9e42208d655ca3215bd384709a05153be685",
+      "sha256": "578eee491a498307c26caf1ee7bfdeaaeccdad42cef77fdc84304d576ddabc1e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -917,7 +917,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-19",
       "sensitivity": "internal",
-      "sha256": "38b92d5a0beaf10a51d18b504c092d7bc4bb4c20f0be881c608d061fd49323ba",
+      "sha256": "d402ce3eef6162b80094be8ad864bcbef535f34f20e48b407904aab7fbc9e787",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1094,6 +1094,28 @@
       "audience": [
         "developers",
         "operators",
+        "auditors"
+      ],
+      "authority": "admin-journey-read-projection",
+      "id": "aoe2war.app-prodn.living-kingdom-admin",
+      "owner": "aoe2war-web",
+      "path": "docs/LIVING_KINGDOM_ADMIN.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "58d300b9640136940e8526dfd0c48e17edc8458fe798103a97b5cbd9c41f33b7",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Living Kingdom Admin Observatory",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
         "ai-agents"
       ],
       "authority": "operator-contract",
@@ -1196,7 +1218,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-23",
       "sensitivity": "internal",
-      "sha256": "223917acd87500ad5b4f6803992d496f0b3402828c10e53c687686874d36e17f",
+      "sha256": "b3b0da47350ae5152b0d18a083c5115e0131e9c83f77b62135d99eed9b030489",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1316,7 +1338,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1338,7 +1360,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1406,7 +1428,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1453,7 +1475,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1515,7 +1537,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "55edf5d44a0b6be28286c2538a0f1af0df7203cf309524ac1d4db00da020aba9",
+      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1545,7 +1567,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1574,6 +1596,50 @@
       "audience": [
         "developers",
         "operators",
+        "auditors"
+      ],
+      "authority": "candidate-browser-diagnostics",
+      "id": "aoe2war.app-prodn.renaissance-88-factory",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_88_FACTORY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "b4c89389b477b50bcac4aece4de0f3657642c968863feb56a161714706fe439e",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Renaissance 88 Public Route Evidence Factory",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "engineers",
+        "auditors",
+        "operators"
+      ],
+      "authority": "candidate-fixture-observation",
+      "id": "aoe2war.app-prodn.renaissance-88-round4",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_88_ROUND4.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "5983de95f9cab776bfd51d8c838d172560bd3e115a45ea4d8a1c13c42ea9919c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Round Four: Disposable Browser Dependencies and A11y Triage",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
         "ai-agents"
       ],
       "authority": "renaissance-campaign-integration-contract",
@@ -1594,6 +1660,50 @@
       ],
       "title": "Renaissance OS",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "auditors"
+      ],
+      "authority": "candidate-browser-and-criterion-worklist-not-certification",
+      "id": "aoe2war.app-prodn.renaissance-page-qualification",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_PAGE_QUALIFICATION_PROTOCOL.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "ec382f2354cd43ffd540faf7c7dc7ddb1659f76a114c7eed648838c7e826ee2b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Renaissance 88 \u2014 Repeatable page qualification protocol",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "auditors"
+      ],
+      "authority": "candidate-private-source-inventory",
+      "id": "aoe2war.app-prodn.renaissance-tabd-forge",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_TABD_FORGE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-25",
+      "sensitivity": "internal",
+      "sha256": "83bd648ee82fb7127d5acc822960ddcd9f066ae63a20eb33ca837b48e4c9ddba",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Renaissance Tab D \u2014 private census forge and Test Forge queue",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -1640,7 +1750,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1961,7 +2071,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2069,7 +2179,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "3be74c74dd73e234526d24839d3ec9cfc332cdcaacd0eb069ef7e6829686bf97",
+      "sha256": "8e79666b17dbedfed13670eb1fc06c8984031f178b804b615193972da93782a2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2186,7 +2296,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2214,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/hd-funded-integrated-source-20261025",
-    "commit": "1c87469262086a67b31aa725a1bb46ceb6d99a67"
+    "branch": "integration/renaissance-central-recovery-truth-20261025",
+    "commit": "99200aa275bd958fb1c9ea02b7a7073fa7b1e8d7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

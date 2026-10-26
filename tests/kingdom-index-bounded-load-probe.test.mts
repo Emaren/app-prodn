@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {captureIndexConcurrentLoopback} from "../scripts/kingdom_index_bounded_load_probe.mjs";
+import inventory from "../config/kingdom-index-inventory.json" with {type:"json"};
 const sourceSha="a".repeat(40),buildId="next-build-exact-123";
 const opts={origin:"http://127.0.0.1:3030/",expectedBuildId:buildId,sourceSha};
 function response({status=200,score=null,cache="no-store",wrongRows=false}:{status?:number;score?:number|null;cache?:string;wrongRows?:boolean}={}){
@@ -14,7 +15,7 @@ function response({status=200,score=null,cache="no-store",wrongRows=false}:{stat
  if(wrongRows)pages.pop();
  const body=JSON.stringify({schema:1,pages,certified:0,
   generatedAt:"2026-10-22T21:20:00.000Z",
-  estate:{pageTemplates:144,routeHandlerTemplates:279}});
+  estate:{...inventory.counts}});
  return new Response(body,{status,headers:{"cache-control":cache,"content-length":String(Buffer.byteLength(body))}});
 }
 test("40 bounded concurrent real-shaped GET samples never imply sustainable load or a score",async()=>{
@@ -52,4 +53,18 @@ test("bounded declared body ceiling rejects without accumulating large bytes",as
   fetchImpl:async()=>new Response("{}",{status:200,headers:{
    "cache-control":"no-store","content-length":"99999999"
   }})}));
+});
+
+test("stale or forged bounded-load estate counts are never accepted",async()=>{
+ const previous=inventory.counts.pageTemplates;
+ assert.ok(Number.isSafeInteger(previous) && previous>=88);
+ const malformed=response();
+ const payload=await malformed.json();
+ payload.estate.routeHandlerTemplates=inventory.counts.routeHandlerTemplates-1;
+ const bad=async()=>new Response(JSON.stringify(payload),{
+  status:200,headers:{"cache-control":"no-store"}
+ });
+ await assert.rejects(captureIndexConcurrentLoopback({
+  ...opts,requests:20,fetchImpl:bad
+ }),/Untrusted\/missing estate contract/);
 });
