@@ -151,3 +151,20 @@ jobs:
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
             --test tests/current-watcher-rating-postgres.test.mts
+
+  kingdom-runtime-macos:
+    name: macOS Kingdom telemetry private-file boundary
+    runs-on: macos-15
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+      - name: Observe the macOS temporary path and its canonical target
+        run: |
+          node -e 'const fs=require("node:fs"),os=require("node:os");console.log(JSON.stringify({tmpdir:os.tmpdir(),canonical:fs.realpathSync(os.tmpdir())}))'
+      - name: Guard Mac private snapshot reads and symlink-ancestor exclusion
+        run: node --experimental-strip-types --test tests/kingdom-index-runtime-telemetry.test.mts
