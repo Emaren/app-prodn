@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "38a7efc203f1b7be660c495ffb5fa1e28e72dc7ff3c3f8a0630de0fd852e0e9b",
+      "sha256": "f556f184ea4cc0d3d40ef31a4a0e4f14557598190b3286bc24678ca99d2051a5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/kingdom-index-historical-review-visibility-20261026",
-    "commit": "7e239988aa300a1610cfd3ad65f0c36bb5a05f80"
+    "commit": "3dd1cef8232d0ebf4b38c4c1a9f5187b383dd806"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
