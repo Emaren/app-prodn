@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261026-phase2-new-epoch-isolation` at `5f5be4fffffb2f186d1031b6c88f7cb5c4cf6d79`
+Implementation baseline: `review/20261026-phase2-new-epoch-isolation` at `8588c2d0c2d1b4d8ad5c0906b4d1e941ae8fcc7f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
