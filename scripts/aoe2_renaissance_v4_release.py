@@ -182,7 +182,10 @@ def same_boundary(a,b):
  from aoe2_website_owner_release_v3 import stable_financial_runtime_identity
  return(stable_financial_runtime_identity(a['immutable'])==stable_financial_runtime_identity(b['immutable'])and
   all(a['v4_runtime']['listeners'][p]==b['v4_runtime']['listeners'][p]for p in('8092','8093'))and
-  a['v4_runtime']['web_process']['wargraph_runtime_disabled']is b['v4_runtime']['web_process']['wargraph_runtime_disabled']is True)
+  all(a['v4_runtime']['web_process'][k] is b['v4_runtime']['web_process'][k] is False
+   for k in ('wargraph_runtime_disabled','restart_runtime_disabled'))and
+  a['v4_runtime']['web_process']['node_production'] is b['v4_runtime']['web_process']['node_production'] is True and
+  a['v4_runtime']['web_process']['wargraph_queue']==b['v4_runtime']['web_process']['wargraph_queue'])
 
 def engines(candidate):
  require(candidate.is_absolute()and not candidate.is_symlink(),'unsafe candidate checkout')
@@ -308,7 +311,7 @@ def semantic_boundary(source):
   'scope':'deployment-induced and newly introduced financial writes only',
   'changed_admin_reads':'authenticated read-only queries and pure projections',
   'changed_public_reads':'bounded telemetry file reads and in-memory projections',
-  'startup_imports':'unchanged; effective WARGRAPH_RUNTIME_DISABLED=true mandatory',
+  'startup_imports':'unchanged; ACTIVE_WEB_WARGRAPH_CONTINUITY requires exact production Node owner, no disabled overrides, and fresh read-only empty due/leased/deadline census',
   'activation_probes':'passive deployment-version only; original rollback and soak retained',
   'global_financial_nonmutation_proven':False,'financial_source_risk':'FINANCIAL',
   'source_p1_resolved':False,'financial_authorization':False}
@@ -641,7 +644,7 @@ def inspect(candidate):
  try:
   from aoe2_renaissance_v4_observer import validate_observation
   raw=observe_runtime();runtime_sha=digest(raw)
-  runtime_flags={k:raw['v4_runtime']['web_process'][k]for k in('wargraph_runtime_disabled','restart_runtime_disabled')}
+  runtime_flags={k:raw['v4_runtime']['web_process'][k]for k in('wargraph_runtime_disabled','restart_runtime_disabled','node_production','wargraph_queue')}
   validate_observation(raw)
  except(ValueError,OSError,subprocess.SubprocessError)as exc:holds.append(str(exc))
  return {'status':'WEB_RELEASE_HOLD'if holds else'PREFLIGHT_VERIFIED_OWNER_SIGNATURES_REQUIRED','policy':POLICY,'candidate_sha':FROZEN_TARGET,
