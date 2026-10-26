@@ -8,12 +8,22 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-10-26"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Release Engineering
+
+## October 26, 2026 — exact Renaissance owner-v4 dispatcher
+
+The separately versioned [owner-v4 protocol](RENAISSANCE_OWNER_V4_DISPATCH.md)
+adds real two-phase dispatch to the existing protected engines and original
+release lease. Old review-only packets remain inert; financial source P1 and
+issue #5 remain HOLD. Exact publication, persisted startup-writer exclusion,
+public trust parity and two actual owner signatures are prerequisites. No live
+release or main publication is inferred from CI. The existing generic release
+and rollback guards continue to apply.
 
 ## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
 

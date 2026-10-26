@@ -24,6 +24,7 @@ from datetime import timedelta, timezone
 from pathlib import Path
 
 import aoe2_renaissance_owner_authority_v4 as auth
+import aoe2_renaissance_v4_release as release
 
 MAX_REQUEST_BYTES = 32768
 SHA40 = re.compile(r"[a-f0-9]{40}\Z")
@@ -39,7 +40,7 @@ def load_request(path: Path):
         request = json.load(fd, object_pairs_hook=_unique_pairs)
     auth.require(type(request) is dict and set(request) == {"schema", "policy", "payload"} and
                  type(request["schema"]) is int and request["schema"] == auth.SCHEMA and
-                 request["policy"] == auth.POLICY, "wrong v4 owner challenge envelope")
+                 request["policy"] in (auth.POLICY, release.POLICY), "wrong v4 owner challenge envelope")
     return request
 
 
@@ -52,19 +53,24 @@ def _unique_pairs(rows):
 
 
 def validate_challenge(request, *, phase, candidate, controller, manifest, nonce,
-                       accept_review_only=False, now=None):
+                       accept_review_only=False, accept_release=False, now=None):
     auth.require(type(request) is dict and
                  set(request) == {"schema", "policy", "payload"} and
                  request["schema"] == auth.SCHEMA and
-                 request["policy"] == auth.POLICY, "wrong owner v4 envelope")
+                 request["policy"] in (auth.POLICY, release.POLICY), "wrong owner v4 envelope")
     p = request["payload"]
-    auth.require(type(p) is dict and p.get("kind") == auth.POLICY, "wrong owner challenge")
+    auth.require(type(p) is dict and p.get("kind") == request["policy"], "wrong owner challenge")
     auth.require(p.get("phase") == phase and phase in ("PRE_STAGE", "PRE_ACTIVATE"),
                  "owner approved a different phase")
     auth.require(p.get("nonce") == nonce and type(nonce) is str and
                  auth.NONCE.fullmatch(nonce) is not None,
                  "owner approved a different one-time nonce")
-    auth.check_context(p.get("context"), phase)
+    if request["policy"] == release.POLICY:
+        release.check_release_payload(p)
+        auth.require(accept_release and not accept_review_only, "explicit actual-release signature acceptance required")
+        auth.require(p["owner_pubkey_der_sha256"] == release.OWNER_FP, "untrusted release owner public identity")
+    else:
+        auth.check_context(p.get("context"), phase)
     ctx = p["context"]
     auth.require(ctx["candidate_sha"] == candidate == auth.FROZEN_TARGET and
                  ctx["controller_commit_sha"] == controller and SHA40.fullmatch(controller) and
@@ -90,8 +96,9 @@ def validate_challenge(request, *, phase, candidate, controller, manifest, nonce
                  p.get("wolo_source_p1_open") is True,
                  "v4 website signing cannot activate finance")
     is_review = p.get("source_scope_review_only") is True and p.get("dispatch_enabled") is False
-    auth.require(is_review and accept_review_only,
-                 "v4 protected dispatcher is not wired: no release signing yet")
+    auth.require((request["policy"] == auth.POLICY and is_review and accept_review_only and not accept_release) or
+                 (request["policy"] == release.POLICY and accept_release and not is_review),
+                 "protected dispatcher requires separate actual release approval; review-only is inert")
     return p
 
 
@@ -129,7 +136,7 @@ def sign_review(p, private):
                                 stdout=subprocess.PIPE, timeout=120, check=False)
     auth.require(result.returncode == 0 and
                  32 <= len(result.stdout) <= 8192, "interactive owner signing failed")
-    return {"schema": auth.SCHEMA, "policy": auth.POLICY,
+    return {"schema": auth.SCHEMA, "policy": p["kind"],
             "payload": p, "signature": base64.b64encode(result.stdout).decode("ascii")}
 
 
@@ -144,16 +151,18 @@ def main():
     parser.add_argument("--approve-nonce", required=True)
     parser.add_argument("--review-only", action="store_true",
                         help="Explicitly sign an inert review-only packet, never a deployment authority")
+    parser.add_argument("--release", action="store_true", help="Explicitly sign the NEW actual website release policy, never an old review")
     args = parser.parse_args()
     try:
         challenge = load_request(args.request)
         p = validate_challenge(
             challenge, phase=args.approve_phase, candidate=args.approve_candidate,
             controller=args.approve_controller, manifest=args.approve_manifest,
-            nonce=args.approve_nonce, accept_review_only=args.review_only)
+            nonce=args.approve_nonce, accept_review_only=args.review_only, accept_release=args.release)
         output = sign_review(p, args.private_key)
+        if args.release: release.check_time(p)
         print(auth.canonical(output).decode("ascii"))
-        print("SIGNED REVIEW ONLY: protected stage/activation still unavailable",
+        print("SIGNED WEBSITE RELEASE PHASE: financial authority forbidden" if args.release else "SIGNED REVIEW ONLY: no deployment authority",
               file=sys.stderr)
         return 0
     except (auth.Hold, OSError, ValueError, subprocess.SubprocessError) as exc:

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3cacaf914525fdf81d4dcec450118f0e9f7291f8403ed32c375e5d7f35404aab",
+      "sha256": "8a2a9896bd2a282aeb509afa9e2b355c067393bbcf45c637cd9574d9a016bca7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1513,9 +1513,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-10-26",
       "sensitivity": "internal",
-      "sha256": "cdea936f0988835c4cb402da605383a00402a80ea81fe76b122beed5e61feee8",
+      "sha256": "1219e0185a2f108c8d4393402a5237ae230a7fb11cdbec813c59628716d972f7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1594,6 +1594,29 @@
       ],
       "title": "Renaissance OS",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.renaissance-owner-v4-dispatch",
+      "owner": "aoe2war-web",
+      "path": "docs/RENAISSANCE_OWNER_V4_DISPATCH.md",
+      "review_interval_days": 1,
+      "reviewed_at": "2026-10-26",
+      "sensitivity": "internal",
+      "sha256": "a81504d1a790c234c51f38b0c7e57c72a9728dace24ae1871d27354f14fc7cc7",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Renaissance owner-v4 protected dispatcher",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -2329,8 +2352,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/renaissance-v4-frozen-source-review-20261025",
-    "commit": "19e808baf3415d9eb89745fdb41366003fc07ea6"
+    "branch": "codex/owner-v4-protected-dispatch",
+    "commit": "35fe1fcfaab4eec157c6b9e363cc52d61a4709e4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
