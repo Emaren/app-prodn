@@ -102,6 +102,27 @@ git -C "$APP" status --short
    actual 88-route smoke, relevant APIs, full financial service identity and
    rollback. Keep immutable source-bound receipts.
 
+## Independent Round Five source-risk review, not finance approval
+
+Reviewed exact `6be434c00469afa4acb0623715c3bcf724f927f4...6d2a78224e5a5c647345d6b5ffc91bf94dc84b59` GitHub comparison (128 paths; original 128 SHA-1 blobs and 128 *actual-content SHA-256 digests* independently cross-checked by [v4 source CI](https://github.com/Emaren/app-prodn/actions/runs/40247829762)). The generated JSON SHA-256 is a **review artifact**, not a signed manifest. Source inventory Git SHA-1 and SHA-256 measurements are distinct identifiers.
+
+The existing `aoe2_release_gate.path_risk` remains unchanged. The following source deltas explain, but **do not downgrade**, the eight elevated classifications:
+
+| Original risk | Exact path | Diff-specific independent observation | Admission status |
+| --- | --- | --- | --- |
+| FINANCIAL | `app/wolomania/WolomaniaPageClient.tsx` | Seven `text-stone-500` to `text-stone-300` contrast changes; no newly added event handler or network call in the patch | Presentation-only changed lines verified; full transitive runtime still requires separate gate |
+| FINANCIAL | `components/bets/BetsDisplayRail.tsx` | Removed one menu ARIA popup claim and changed one `role=menu` to `role=group`; original view-selection component retained | Accessibility patch; no new wager-write code in diff; financial classifier preserved |
+| FINANCIAL | `components/wolo/WoloHeroTile.tsx` | Added `role=img`, and six text contrast changes; existing read-side `/api/wolo/osmosis-pulse` and `/api/wolo/moved24h` client fetches are not newly introduced | External GET and Prisma `$queryRaw` read-side sources inspected; no network/DB writer added in this diff; not custody certification |
+| WATCHER | `scripts/kingdom_index_watcher_physical_intake.mjs` | New bounded, in-memory receipt-shape validator; fixed published 1.6.5 versus draft 1.6.6, never a binary installer or signed grade | Read-only source preflight, still lacks physical client assessor receipt |
+| WATCHER | `tests/kingdom-index-watcher-companion-truth.test.mts` | Added negative assertions preserving `UNMEASURED` and unpublished source estimates | Test-only, not physical release |
+| WATCHER | `tests/kingdom-index-watcher-draft-score.test.mts` | Existing draft-score checks tightened against fabricated installed grade | Test-only; preserve the original release authority |
+| WATCHER | `tests/kingdom-index-watcher-physical-intake.test.mts` | Added adversarial synthetic receipt tests; never provides true installed binary measurements | Test-only, source-qualified but not physical-certified |
+| REPLAY_TRUTH | `components/replay-engine/HdReplayEngine.tsx` | Required accessible label on `Meter` and all callers (ARIA progressbar); no changed parser, fetch method or replay database write | Presentation-only diff; original `GET /api/hd-replay-engine` source inspected, transitive data/SSR truth still an independent release gate |
+
+**Independently observed read-side endpoint detail:** `/api/wolo/moved24h` implements GET and a `SELECT` against `wolo_indexed_transfers` via Prisma `$queryRaw`; `/api/wolo/osmosis-pulse` implements GET; `/api/hd-replay-engine` implements GET through the existing parser observatory projection. This is *source inspection*, not proof of no transaction in every transitive module or start-up hook. The website release must not publish or update desktop Watcher binaries, mutate War Satchel/settlement/treasury rows, activate a financial feature or alter WoloChain.
+
+**Admission decision:** exact 128-path *content* is now source-verified, and the eight elevated **diffs** have evidence-backed narrow descriptions. The original FINANCIAL/WATCHER/REPLAY risks remain classified and **NOT AUTOMATICALLY APPROVED**. Separate audited full transitive data-flow, source-matched original gate, strict DocsV2, accepted release manifest, protected controller/Wolo runtime receipts and real human owner v4 signatures remain mandatory before staging/activation. Any source change to #922 invalidates the frozen candidate and its qualifications.
+
 ## No deployment actions have occurred
 
 CI, document generation, source/candidate branch commits and offline crypto
