@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-kingdom-index` at `85f0ee41596cc7ee6c16b5be5d168bf3e3357188`
+Implementation baseline: `review/20261026-phase2-new-epoch-isolation` at `42d96e2a68f45360ec8f19b04a825a9fd9503032`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
