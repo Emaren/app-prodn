@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {mkdtemp,writeFile,symlink,rm,chmod,rename} from "node:fs/promises";
+import {mkdtemp,writeFile,symlink,rm,chmod,rename,realpath,mkdir} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {parseKingdomRuntimeTelemetry,readKingdomRuntimeTelemetry,RUNTIME_SCHEMA} from "../lib/kingdomIndexRuntimeTelemetry.mjs";
@@ -10,6 +10,9 @@ const source={gitSha:"a".repeat(40),buildId:"exact-next-build-runtime-123"};
 const identity={expectedGitSha:source.gitSha,expectedBuildId:source.buildId,nowMs:NOW};
 const hash=s=>createHash("sha256").update(s).digest("hex");
 const time=(min=0)=>new Date(NOW+min*60000).toISOString();
+// macOS os.tmpdir() can use /var/folders while /var is a symlink to /private/var.
+// Canonicalize only the *test fixture directory*, never the private reader input.
+const canonicalTmpdir=()=>realpath(tmpdir());
 function snapshot(readings=[{
  id:"navigation",producer:"chromium-collector",numerator:88,denominator:88,
  observedAt:time(-2),expiresAt:time(10),receiptSha256:hash("raw-actual-producer-proof-bytes")
@@ -73,7 +76,7 @@ test("each field has fixed producer, denominator and range, no live quality grad
  assert.throws(()=>parseKingdomRuntimeTelemetry(snapshot([...rows,{...rows[0],id:"fake"}]),identity),/Source\/schema/);
 });
 test("private 0700/0600 owned snapshot reads, symlink, permissive directory and untrusted source refuse",async()=>{
- const dir=await mkdtemp(join(tmpdir(),"kingdom-index-runtime-"));
+ const dir=await mkdtemp(join(await canonicalTmpdir(),"kingdom-index-runtime-"));
  const file=join(dir,"latest.json"),link=join(dir,"redirect.json");
  try{
   await writeFile(file,snapshot(),{mode:0o600});
@@ -90,8 +93,21 @@ test("private 0700/0600 owned snapshot reads, symlink, permissive directory and 
  }finally{await rm(dir,{recursive:true,force:true})}
 });
 
+test("reader refuses a symlinked parent even when the private fixture is valid",async()=>{
+ const dir=await mkdtemp(join(await canonicalTmpdir(),"kingdom-runtime-parent-"));
+ const physical=join(dir,"physical"),redirect=join(dir,"redirect");
+ try{
+  await mkdir(physical,{mode:0o700});
+  await writeFile(join(physical,"latest.json"),snapshot(),{mode:0o600});
+  const original=await readKingdomRuntimeTelemetry({file:join(physical,"latest.json"),...identity});
+  assert.equal(original?.readings[0]?.numerator,88);
+  await symlink(physical,redirect);
+  assert.equal(await readKingdomRuntimeTelemetry({file:join(redirect,"latest.json"),...identity}),null);
+ }finally{await rm(dir,{recursive:true,force:true})}
+});
+
 test("a new private atomic producer snapshot changes numerators on the same source and BUILD_ID without code deploy",async()=>{
- const dir=await mkdtemp(join(tmpdir(),"kingdom-runtime-refresh-"));
+ const dir=await mkdtemp(join(await canonicalTmpdir(),"kingdom-runtime-refresh-"));
  const live=join(dir,"latest.json"),staging=join(dir,".candidate");
  try{
   await writeFile(live,snapshot(),{mode:0o600});
