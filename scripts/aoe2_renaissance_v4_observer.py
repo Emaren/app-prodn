@@ -41,11 +41,36 @@ def web_binding(pid,build_id,web_source):
  with open('/proc/'+str(pid)+'/environ','rb')as f:env=f.read(524289)
  if len(env)>524288:fail('oversized process environment')
  rows=[x for x in env.split(b'\0')if x.startswith(b'WARGRAPH_RUNTIME_DISABLED=')]
+ if len(rows)>1:fail('duplicate WarGraph process override')
  disabled=len(rows)==1 and rows[0]==b'WARGRAPH_RUNTIME_DISABLED=true'
+ node_rows=[x for x in env.split(b'\0')if x.startswith(b'NODE_ENV=')]
+ node_production=node_rows==[b'NODE_ENV=production']
+ if not node_production or disabled:fail('in-process production WarGraph owner not proved')
  import shlex
  effective=shlex.split(command(['systemctl','show',SETTINGS['web_unit'],'-p','Environment','--value']))
  flags=[x for x in effective if x.startswith('WARGRAPH_RUNTIME_DISABLED=')]
+ if len(flags)>1:fail('duplicate effective systemd worker override')
  restart_disabled=flags==['WARGRAPH_RUNTIME_DISABLED=true']
+ if restart_disabled:fail('restart would disable sole production WarGraph owner')
+ # Fixed SQL, local peer-authenticated read-only transaction. No job payload,
+ # wallet or user rows. A ten-minute clearance is required for scheduled jobs;
+ # durable dead historical jobs are NOT automatically retried or hidden.
+ sql="""BEGIN TRANSACTION READ ONLY;
+ SET LOCAL statement_timeout = '2500ms';
+ SELECT
+   (SELECT COUNT(*) FROM public.war_graph_jobs WHERE status='queued' AND available_at<=NOW()),
+   (SELECT COUNT(*) FROM public.war_graph_jobs WHERE status='running'),
+   (SELECT COUNT(*) FROM public.war_graph_defense_obligations WHERE status='pending'),
+   (SELECT COUNT(*) FROM public.war_graph_advance_requests WHERE status='open'),
+   (SELECT COUNT(*) FROM public.war_graph_jobs WHERE status='queued' AND available_at<=NOW()+interval '10 minutes');
+ COMMIT;"""
+ observed=command(['runuser','-u','postgres','--','psql','-X','-q','-A','-t',
+   '-F','|','-v','ON_ERROR_STOP=1','-d','aoe2hd_db','-c',sql])
+ cells=observed.split('|')
+ if len(cells)!=5 or any(not x.isdigit() for x in cells):fail('bounded WarGraph census unavailable')
+ due,running,defense,advance,soon=(int(x) for x in cells)
+ if any((due,running,defense,advance,soon)):fail('WarGraph queue/lease/deadline not idle for controlled cutover')
+ queue={'due':due,'running':running,'pending_defense':defense,'open_advance':advance,'due_within_ten_minutes':soon}
  # This one static, passive endpoint never imports financial workers.
  with urllib.request.urlopen('http://127.0.0.1:3030/api/deployment-version',timeout=3)as response:
   if response.status!=200:fail('passive version unavailable')
@@ -56,7 +81,8 @@ def web_binding(pid,build_id,web_source):
  if version!=expected or not re.fullmatch('[A-Za-z0-9_.-]{8,128}',version):fail('compiled running version differs')
  return {'pid':pid,'cwd':root,'start_ticks':ticks,'start_epoch_ns':start_ns,
   'build_id':build_id,'build_id_inode':st.st_ino,'build_id_mtime_ns':st.st_mtime_ns,
-  'compiled_version':version,'wargraph_runtime_disabled':disabled,'restart_runtime_disabled':restart_disabled}
+  'compiled_version':version,'wargraph_runtime_disabled':disabled,'restart_runtime_disabled':restart_disabled,
+  'node_production':node_production,'wargraph_queue':queue}
 
 def collect():
  packet=_original_collect()
@@ -81,9 +107,13 @@ def validate_observation(packet,*,now=None,max_age_seconds=90):
  for port,label in(('8092','wolo8092'),('8093','wolo8093'),('3030',None)):
   pid=packet['immutable'][label]['pid']if label else website['pid']
   require(listeners[port]=={'port':int(port),'pid':pid,'loopback':True},'protected socket PID mismatch')
- require(type(web)is dict and set(web)=={'pid','cwd','start_ticks','start_epoch_ns','build_id','build_id_inode','build_id_mtime_ns','compiled_version','wargraph_runtime_disabled','restart_runtime_disabled'},'incomplete running build binding')
+ require(type(web)is dict and set(web)=={'pid','cwd','start_ticks','start_epoch_ns','build_id','build_id_inode','build_id_mtime_ns','compiled_version','wargraph_runtime_disabled','restart_runtime_disabled','node_production','wargraph_queue'},'incomplete running build binding')
  require(web['pid']==website['pid']and web['build_id']==website['build_id']and
   web['cwd']=='/var/www/AoE2HDBets/app-prodn'and all(type(web[k])is int and web[k]>0 for k in('start_ticks','start_epoch_ns','build_id_inode','build_id_mtime_ns'))and
   web['build_id_mtime_ns']<=web['start_epoch_ns']and type(web['compiled_version'])is str and v3.re.fullmatch('[A-Za-z0-9_.-]{8,128}',web['compiled_version'])is not None,'running process/build/source mismatch')
- require(web['wargraph_runtime_disabled']is True and web['restart_runtime_disabled']is True,'startup-finance-writer-active: existing WARGRAPH_RUNTIME_DISABLED=true not proven; no configuration mutation authorized')
+ require(web['node_production'] is True and web['wargraph_runtime_disabled'] is False and
+  web['restart_runtime_disabled'] is False,'active website-owned WarGraph worker continuity not proved')
+ require(type(web['wargraph_queue'])is dict and
+  set(web['wargraph_queue'])=={'due','running','pending_defense','open_advance','due_within_ten_minutes'} and
+  all(type(v)is int and v==0 for v in web['wargraph_queue'].values()),'due or leased WarGraph jobs/deadlines; fail closed')
  return packet

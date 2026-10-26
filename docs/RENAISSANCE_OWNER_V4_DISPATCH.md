@@ -37,10 +37,18 @@ checkout identity or job outcomes.
 Changed admin closures use authenticated reads; changed Kingdom/Intelligence
 closures use bounded file reads, process-local state and pure projections.
 Unchanged startup bytes alone are insufficient: production instrumentation
-starts WarGraph workers immediately. The dispatcher requires both current
-process and explicit effective systemd `WARGRAPH_RUNTIME_DISABLED=true`, plus
-unchanged protected configuration digests. Absence/false/unknown means
-`WEB_RELEASE_HOLD`; this controller never toggles the flag. The narrow source
+starts WarGraph workers immediately. This follow-up implements the explicit
+`ACTIVE_WEB_WARGRAPH_CONTINUITY` policy without disabling the website's only
+observed worker owner. The dispatcher requires a production Node process,
+no effective `WARGRAPH_RUNTIME_DISABLED=true` process/restart override,
+the exact original source and protected unit digests, and a fresh, bounded,
+read-only local PostgreSQL census with **zero due jobs, zero running leases,
+zero pending defense obligations, zero open advances and no queued work due
+within ten minutes**. Ambiguous/overdue/leased work or unknown runtime state
+means `WEB_RELEASE_HOLD`. No money, SQL rows, flags or services are changed.
+This is an approved-source candidate **only**; current production release
+authority still requires new exact-head CI, owner acceptance, source
+publication, PRE_STAGE and artifact-bound PRE_ACTIVATE signatures. The narrow source
 review covers newly introduced/deployment-induced financial writes, not all
 live SQL: external users and existing timer/services continue independently.
 Activation probes use only the passive version endpoint; `/api/lobby` and
@@ -157,10 +165,11 @@ repair nonce history, invent COMPLETE, retry activation or assert authorization.
 ## Genuine remaining prerequisites
 
 Owner accepts exact reviewed controller and publication strategy; genuine Mac
-root public-only enrollment/private journal provisioning (HEL1 enrollment must
-be remeasured, never overwritten); effective disabled startup-writer evidence;
-exact published main/remote-main; original protected source/transport/storage/
-rollback checks; separate physical owner signatures. Any unknown remains HOLD.
+root public-only trust/private journal parity (owner verified enrollment Oct 26,
+but the CLI remeasures this); fresh source-bound active WarGraph owner and
+read-only idle-job/deadline evidence immediately before phases; exact published
+main/remote-main; original protected source/transport/storage/rollback checks;
+separate physical owner signatures. Any unknown remains HOLD.
 No website permit enables custody, SQL migrations, financial transfers, Wolo
 binary changes, settlement restarts or consensus changes.
 
@@ -169,9 +178,14 @@ binary changes, settlement restarts or consensus changes.
 Read-only HEL1 v4 capture SHA-256
 `74d92e1e967298844ecb9ebaea8fad02030671925849311a84f9ee9a44c1e6ac`
 verified expected 8092/8093 socket ownership and original website source/build.
-Both `wargraph_runtime_disabled` and `restart_runtime_disabled` were **false**.
-Thus actual restart noninterference is **WEB_RELEASE_HOLD**. This is a measured
-operational boundary, not a controller test failure. No flag was changed.
+Both `wargraph_runtime_disabled` and `restart_runtime_disabled` were **false**
+at the original October 26 review; the **original strict-disabled controller**
+correctly returned WEB_RELEASE_HOLD. Later read-only HEL1 evidence at 07:55 UTC
+showed no active or due jobs and no pending deadlines, 232 historical dead
+correlation jobs, and one fossilization job due at 23:00 UTC. This is a
+historical checkpoint, **not** a live authorization or a guarantee that future
+jobs stay idle. The new active-owner gate rechecks every protected phase and
+must fail closed on fresh changes. No flag or production service was changed.
 The private full observation is retained outside Git with owner-only mode.
 
 Read-only publication plan digest:
@@ -182,8 +196,13 @@ explicit acceptance; no push to main occurred. Recompute the plan if rules or
 main change. Mac public trust and journal roots were absent. Existing HEL1
 public enrollment does not provision the Mac and must not be overwritten.
 
-The next owner decision is whether to authorize a separately reviewed plan for
-this existing startup worker boundary. The current dispatcher will not silently
-resume with active financial startup writers or alter their configuration.
-Controller source review, exact CI and public-only Mac provisioning are also
-required before any genuine challenge. No PRE_STAGE/PRE_ACTIVATE was issued.
+The next owner decision is whether to accept the new **single website process
+owner**, its short controlled-restart risk, and the complete source/publication
+plan after independent full CI. The controller cannot claim that an idle census
+proves arbitrary Node process-memory execution; it binds exact startup source,
+process and compiled BUILD_ID, read-only database idle predicates, unchanged
+external Wolo writer identity, physical release lease and normal rollback.
+If activation introduces due work, deadlines, ambiguous service ownership or
+restarts outside the accepted cutover, hold and preserve original receipts.
+No stage, activation, live financial transaction or owner release signature has
+been issued by this patch. No PRE_STAGE/PRE_ACTIVATE was issued.
