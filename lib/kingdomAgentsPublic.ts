@@ -3,7 +3,8 @@ import "server-only";
 import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/serverSnapshot";
 import type { GeneralInspectionsSnapshot } from "@/lib/generalInspections/types.ts";
 import { loadPublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
-import { inspectionAgentState, systemAgentState, type KingdomAgentState } from "@/lib/kingdomAgentPolicy";
+import { projectInspectionWatchposts, systemAgentState, type KingdomAgentState } from "@/lib/kingdomAgentPolicy";
+import type { EvidenceStatus } from "@/lib/generalInspections/gapReport";
 import { reconcileKingdomReleaseEvidence, type KingdomReleaseAlignment } from "@/lib/kingdomReleaseEvidence";
 
 export type KingdomAgentKind = "system" | "inspection";
@@ -18,6 +19,8 @@ export type KingdomAgentPublic = {
   signal: string;
   evidenceAt: string | null;
   source: "Kingdom Intelligence" | "General Inspections";
+  evidenceStatus?: EvidenceStatus;
+  evidenceReason?: string;
 };
 
 export type KingdomAgentPublicSnapshot = {
@@ -81,24 +84,7 @@ export async function buildKingdomAgentsPublicSnapshot(
   }
 
   if (inspection) {
-    for (const group of inspection.categories) {
-      for (const check of group.checks) {
-        const fraction = check.weight > 0 ? check.earned / check.weight : 0;
-        agents.push({
-          id: "inspection/" + group.id + "/" + check.id,
-          name: check.label.slice(0, 110),
-          lane: group.title,
-          kind: "inspection",
-          state: inspectionAgentState(check.state, fraction),
-          task: group.description.slice(0, 140),
-          signal: check.ratio
-            ? check.ratio.passed + "/" + check.ratio.total + " checks"
-            : String(check.earned) + "/" + check.weight + " points",
-          evidenceAt: safeDate(check.evidenceAt),
-          source: "General Inspections",
-        });
-      }
-    }
+    agents.push(...projectInspectionWatchposts(inspection, Date.now()));
   }
 
   const activity = intelligenceCurrent

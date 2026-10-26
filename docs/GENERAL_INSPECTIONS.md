@@ -15,6 +15,37 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 26, 2026 — Agent watchposts honor evidence freshness
+
+`/api/kingdom-agents` and the shared AoE2WAR OS roster now project the same
+`buildWhyNotGreenReport` contract as the existing diagnostic API, evaluated
+after source I/O using the read clock. Previously, the roster could label a
+full-credit check `healthy` even when the report classified its original
+observation as STALE or UNKNOWN. An observed failing cohort could likewise
+remain healthy behind a contradictory full score.
+
+Inspection watchposts expose additive `evidenceStatus` and `evidenceReason`
+fields. STALE/UNKNOWN observations become `unknown`; observed FAIL becomes
+`blocked`; PASS continues through the existing score/state policy. An invalid
+or source-unbound snapshot cannot produce healthy watchposts. The signal
+retains the original points or cohort counts, and the original observation
+time is never renewed. Published scores, category weights, collection count,
+source channels and producer-authentication limitations remain unchanged.
+These are public evidence projections, not independently authenticated
+producer receipts, host certification or financial release permission.
+
+PR #884's nine changed paths were already byte-identical in certified main
+`6d2a78224e5a5c647345d6b5ffc91bf94dc84b59`; no source port was required.
+Its historical failed control-plane job (run `40222167120`, job
+`121256197398`) rejected a stale DocsV2 implementation baseline. Main's
+subsequent documentation seal resolved that source-publication defect;
+it did not certify current host health.
+
+Regression coverage in `kingdom-agent-policy.test.mts` exercises real roster
+projection for expired snapshot and check clocks, missing/future timestamps,
+failing cohorts, missing source binding and corrupt weights/scores. The
+shared-source contract ensures one collector read is still reused.
+
 ## October 25, 2026 — Round Five release-health gate and producer lineage
 
 **Only a dated operational measurement can change Doctor/GI.** Owner evidence

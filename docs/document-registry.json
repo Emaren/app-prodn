@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4f9826fd51685d76600ff622fc8b7d95bf0b6f535dd4d39d8cb2d402cee47562",
+      "sha256": "772eb9cc63ca8b8c143a164127c205e7bf875b9bab41a8a9d639d53eb6dcc792",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "578eee491a498307c26caf1ee7bfdeaaeccdad42cef77fdc84304d576ddabc1e",
+      "sha256": "e502977997727b795a7a11cf73d9ccc5f105cd69da3d6d04223b0b5b20620b2f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/renaissance-central-recovery-truth-20261025",
-    "commit": "99200aa275bd958fb1c9ea02b7a7073fa7b1e8d7"
+    "branch": "codex/central-inspections-health",
+    "commit": "88be2aef2afd3fda4da008cc7e678b5ae8b5e15b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
