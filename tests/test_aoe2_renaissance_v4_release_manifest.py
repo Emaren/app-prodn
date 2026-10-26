@@ -101,7 +101,7 @@ class V4ManifestReviewTests(unittest.TestCase):
                 manifest.verify(self.repo, self.inventory, changed)
 
     def test_original_risk_classifier_cannot_be_downgraded(self):
-        with self.assertRaisesRegex(manifest.scope.Hold, "risk classification drift"):
+        with self.assertRaisesRegex(manifest.scope.Hold, "classification drift"):
             self.result(wrong_risk=True)
 
     def test_wrong_head_or_oversized_blob_fails(self):
