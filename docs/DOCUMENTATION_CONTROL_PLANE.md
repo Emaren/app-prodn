@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/renaissance-central-recovery-truth-20261025` at `99200aa275bd958fb1c9ea02b7a7073fa7b1e8d7`
+Implementation baseline: `codex/central-inspections-health` at `88be2aef2afd3fda4da008cc7e678b5ae8b5e15b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
