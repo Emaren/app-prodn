@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 
-SCHEMA = "aoe2war.new-epoch-isolation-review.v1"
+SCHEMA = "aoe2war.new-epoch-isolation-review.v2"
 ROLES = frozenset({
     "hd_web", "hd_api", "de_web", "de_api", "legacy_primary_8092",
     "legacy_founder_8093", "staking_faucet", "replay_callbacks",
@@ -21,6 +21,7 @@ ROLES = frozenset({
 SHA = re.compile(r"[a-f0-9]{64}\Z")
 WALLET = re.compile(r"wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}\Z")
 INT = re.compile(r"(?:0|[1-9][0-9]*)\Z")
+EPOCH = re.compile(r"[A-Za-z0-9_-]{12,80}\Z")
 MAX = (1 << 128) - 1
 DIGESTS = (
     "trusted_header_checkpoint_sha256", "native_bank_proof_sha256",
@@ -29,7 +30,121 @@ DIGESTS = (
     "signer_lease_receipt_sha256", "durable_offhost_nonce_receipt_sha256",
     "epoch_manifest_sha256", "quiesced_restore_witness_sha256",
     "gas_model_witness_sha256", "escrow_scope_witness_sha256",
+    "escrow_address_pubkey_proof_sha256", "escrow_policy_witness_sha256",
+    "escrow_ledger_replay_exclusion_sha256", "escrow_keyring_acl_witness_sha256",
 )
+
+
+
+# A v2 review demands separate *claimed* escrow signer and policy identities.
+# Digests and boolean witness fields are NOT evidence authentication or custody grants.
+ESCROW_AUTHORITY_FIELDS = frozenset({
+    "epoch_id", "address", "signer_pubkey_sha256", "signer_keyring_lineage_sha256",
+    "credential_boundary_sha256", "signer_policy_sha256", "runtime_policy_sha256",
+    "policy_version", "return_executor_sha256", "settlement_executor_sha256",
+    "return_approval_key_sha256", "settlement_approval_key_sha256",
+    "return_sender", "return_recipient", "settlement_sender", "operations",
+    "legacy_writer_dependency", "external_authority_complete",
+    "return_claims_new_epoch_only", "settlement_entitlements_new_epoch_only",
+    "one_shot_replay_fenced",
+})
+ESCROW_DIGESTS = (
+    "signer_pubkey_sha256", "signer_keyring_lineage_sha256",
+    "credential_boundary_sha256", "signer_policy_sha256", "runtime_policy_sha256",
+    "return_executor_sha256", "settlement_executor_sha256",
+    "return_approval_key_sha256", "settlement_approval_key_sha256",
+)
+LEGACY_IDENTITY_FAMILIES = (
+    "legacy_signer_fingerprints_sha256", "legacy_keyring_lineages_sha256",
+    "legacy_signing_policies_sha256", "legacy_executor_fingerprints_sha256",
+    "legacy_approval_keys_sha256", "legacy_credential_boundaries_sha256",
+)
+
+
+def escrow_authority_issues(p, reject):
+    """Structural cross-domain conflicts; actual cryptographic witness still required."""
+    epoch = p.get("epoch_id")
+    if not isinstance(epoch, str) or not EPOCH.fullmatch(epoch):
+        reject("epoch_id_missing_or_invalid")
+    old_epochs = p.get("historical_epoch_ids")
+    if not isinstance(old_epochs, list) or any(
+        not isinstance(x, str) or not EPOCH.fullmatch(x) for x in old_epochs
+    ) or len(old_epochs) != len(set(old_epochs)) or not old_epochs:
+        reject("historical_epoch_inventory_missing")
+    elif epoch in old_epochs:
+        reject("epoch_id_replayed")
+    ids = {}
+    for family in LEGACY_IDENTITY_FAMILIES:
+        values = p.get(family)
+        if not isinstance(values, list) or not values or any(
+                not isinstance(v, str) or not SHA.fullmatch(v) or v == "0"*64 for v in values
+        ) or len(values) != len(set(values)):
+            reject("legacy_authority_inventory_missing:" + family)
+            continue
+        ids[family] = set(values)
+    a = p.get("escrow_authority")
+    if type(a) is not dict or set(a) != ESCROW_AUTHORITY_FIELDS:
+        reject("escrow_policy_identity_missing_or_extra")
+        return
+    if a.get("address") != p.get("escrow") or a.get("epoch_id") != epoch:
+        reject("escrow_policy_scope_mismatch")
+    for field in ESCROW_DIGESTS:
+        value = a.get(field)
+        if not isinstance(value, str) or not SHA.fullmatch(value) or value == "0"*64:
+            reject("escrow_authority_digest_missing:" + field)
+    vault_lineage = p.get("vault_keyring_lineage_sha256")
+    vault_credential = p.get("vault_credential_boundary_sha256")
+    for name, v in (("vault_keyring_lineage_sha256", vault_lineage),
+                    ("vault_credential_boundary_sha256", vault_credential)):
+        if not isinstance(v, str) or not SHA.fullmatch(v) or v == "0"*64:
+            reject("vault_boundary_identity_missing:" + name)
+    distinct = [
+        a.get("signer_pubkey_sha256"), a.get("signer_keyring_lineage_sha256"),
+        a.get("credential_boundary_sha256"), a.get("signer_policy_sha256"),
+        a.get("return_executor_sha256"), a.get("settlement_executor_sha256"),
+        a.get("return_approval_key_sha256"), a.get("settlement_approval_key_sha256"),
+    ]
+    if all(isinstance(v, str) and SHA.fullmatch(v) for v in distinct):
+        if len(set(distinct)) != len(distinct):
+            reject("escrow_separation_of_duties_missing")
+    for value in [a.get("signer_pubkey_sha256"), a.get("return_approval_key_sha256"),
+                  a.get("settlement_approval_key_sha256")]:
+        if isinstance(value, str) and (value in ids.get("legacy_signer_fingerprints_sha256", set())
+            or value in ids.get("legacy_approval_keys_sha256", set())
+            or value == p.get("vault_signer_fingerprint_sha256")):
+            reject("escrow_signing_key_reuses_legacy_or_vault")
+    for field, family, vault_identity, code in [
+        ("signer_keyring_lineage_sha256", "legacy_keyring_lineages_sha256", vault_lineage,
+         "escrow_keyring_reuses_legacy_or_vault"),
+        ("credential_boundary_sha256", "legacy_credential_boundaries_sha256", vault_credential,
+         "escrow_credential_boundary_shared"),
+        ("signer_policy_sha256", "legacy_signing_policies_sha256", None,
+         "escrow_signing_policy_inherited"),
+        ("return_executor_sha256", "legacy_executor_fingerprints_sha256", None,
+         "escrow_executor_inherited"),
+        ("settlement_executor_sha256", "legacy_executor_fingerprints_sha256", None,
+         "escrow_executor_inherited"),
+    ]:
+        value = a.get(field)
+        if isinstance(value, str) and (value in ids.get(family, set())
+                                      or (vault_identity is not None and value == vault_identity)):
+            reject(code)
+    if a.get("runtime_policy_sha256") != a.get("signer_policy_sha256") or a.get("policy_version") != "aoe2war.new-escrow-policy.v1":
+        reject("escrow_policy_drift_or_version")
+    if a.get("operations") != ["epoch_return", "epoch_settlement"]:
+        reject("escrow_operation_scope_incomplete")
+    if a.get("return_sender") != p.get("escrow") or a.get("settlement_sender") != p.get("escrow"):
+        reject("escrow_sender_inherited_or_mismatched")
+    if a.get("return_recipient") != p.get("vault"):
+        reject("escrow_return_wrong_destination")
+    if a.get("legacy_writer_dependency") is not False:
+        reject("escrow_return_depends_on_legacy_writer")
+    if a.get("external_authority_complete") is not True:
+        reject("unknown_escrow_external_authority")
+    if a.get("return_claims_new_epoch_only") is not True or a.get("settlement_entitlements_new_epoch_only") is not True:
+        reject("cross_epoch_entitlement_possible")
+    if a.get("one_shot_replay_fenced") is not True:
+        reject("cross_epoch_escrow_replay_possible")
 
 
 def no_duplicate_keys(pairs):
@@ -83,6 +198,7 @@ def examine(p):
         reject("vault_signer_identity_missing")
     elif isinstance(fingerprints, list) and vault_fp in fingerprints:
         reject("vault_signer_key_reused")
+    escrow_authority_issues(p, reject)
     if any(not isinstance(p.get(k), str) or not SHA.fullmatch(p[k]) or p[k] == "0"*64 for k in DIGESTS):
         reject("bounded_evidence_digest_missing")
     observations = p.get("writer_coverage")
@@ -121,6 +237,23 @@ def examine(p):
         needed = sum(vals[k] for k in vals if k != "bank_spendable_uwolo")
         if needed > vals["bank_spendable_uwolo"]:
             reject("insufficient_spendable_assets")
+    # An escrow is a separate financial reserve domain: NEVER net vault surplus
+    # against unverified escrow deficits, or count one account's assets twice.
+    escrow_vals = {}
+    for k in ("escrow_bank_spendable_uwolo", "escrow_unique_liabilities_uwolo",
+              "escrow_max_uncertain_liabilities_uwolo", "escrow_gas_reserve_uwolo",
+              "escrow_operating_floor_uwolo", "escrow_proposed_debit_uwolo"):
+        try:
+            escrow_vals[k] = number(p.get(k))
+        except (ValueError, TypeError):
+            reject("escrow_amount_invalid:" + k)
+    if len(escrow_vals) == 6:
+        if escrow_vals["escrow_gas_reserve_uwolo"] <= 0 or escrow_vals["escrow_operating_floor_uwolo"] <= 0:
+            reject("escrow_gas_or_floor_missing")
+        if sum(v for k, v in escrow_vals.items() if k != "escrow_bank_spendable_uwolo") > escrow_vals["escrow_bank_spendable_uwolo"]:
+            reject("escrow_reserve_deficit")
+    if p.get("escrow_uncertainty_complete") is not True:
+        reject("escrow_uncertain_upper_bound_missing")
     if not problems:
         # Structural checks DO NOT authenticate supplied booleans, digests or chain data.
         return {"status": "REVIEW_ONLY_NONAUTHORIZING", "authority": "NONE", "reasons": ["independent_authentication_required"]}
