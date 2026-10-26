@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4f9826fd51685d76600ff622fc8b7d95bf0b6f535dd4d39d8cb2d402cee47562",
+      "sha256": "b899de8ce533a34bc2a7121e43abd183457a1794351ca07d8c6d595e05fa6c5d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "578eee491a498307c26caf1ee7bfdeaaeccdad42cef77fdc84304d576ddabc1e",
+      "sha256": "907b49d7ce2512702b6f2d30ccf830e662c6ef9158dbf3b555c290a4aeb15de7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/renaissance-central-recovery-truth-20261025",
-    "commit": "99200aa275bd958fb1c9ea02b7a7073fa7b1e8d7"
+    "branch": "codex/central-kingdom-index",
+    "commit": "85f0ee41596cc7ee6c16b5be5d168bf3e3357188"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

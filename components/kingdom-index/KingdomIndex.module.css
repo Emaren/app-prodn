@@ -60,6 +60,9 @@
 .score[data-status="current"],.scoreSmall[data-status="current"]{color:#b6e1c8}
 .score[data-status="provisional"],.scoreSmall[data-status="provisional"]{color:#dbc58f}
 .score[data-status="drifted"],.score[data-status="stale"],.scoreSmall[data-status="drifted"],.scoreSmall[data-status="stale"]{color:#daa49a}
+/* Dated subjective source reviews are visible, but never styled as certified scores. */
+.score[data-authority="historical"],.scoreSmall[data-authority="historical"]{color:#9eabb0}
+.historicalLabel{font:600 8px Arial,sans-serif;letter-spacing:.07em;color:#9eabb0;margin-left:5px;vertical-align:baseline}
 .denom{font:10px Arial,sans-serif;letter-spacing:0;color:#829297;margin-left:4px}
 .nodeName{display:flex;align-items:center;gap:3px;color:#e5e3d7;text-decoration:none;font-weight:600;font-size:12px;line-height:1.4;max-width:100%;overflow-wrap:anywhere}
 .nodeName svg{flex:none;opacity:0;transition:opacity .15s}
@@ -96,7 +99,7 @@
 .barRow>div{height:3px;background:rgba(177,195,188,.15);border-radius:10px;overflow:hidden}
 .barRow i{display:block;height:100%;background:#bfaa7d}
 .barRow b{font-size:10px;color:#bcc9c6;font-weight:500;text-align:right}
-.evidenceNote{font-size:11px;color:#8fa1a0;line-height:1.6;margin:17px 0 0}
+.evidenceNote{font-size:11px;color:#8fa1a0;line-height:1.6;margin:17px 0 0;overflow-wrap:anywhere}
 .detailLink{display:flex;gap:8px;align-items:center;justify-content:space-between;color:#ddc799;font-size:10px;font-weight:600;letter-spacing:.2em;text-decoration:none;margin-top:20px}
 .floatingEvidence{position:fixed;z-index:60;right:clamp(14px,4vw,65px);bottom:28px;width:min(405px,calc(100vw - 28px));max-height:min(75vh,720px);overflow:auto;animation:appear .23s ease-out}
 @keyframes appear{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}

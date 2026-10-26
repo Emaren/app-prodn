@@ -49,6 +49,18 @@ test("Ledger is the first default mode and stale scores are historical only",()=
  assert.doesNotMatch(api,/stale-while-revalidate|s-maxage/);
 });
 
+test("Index historical ratings are displayed as dated reviews, never promoted to current certification",()=>{
+ const ui=readFileSync(join(root,"components/kingdom-index/KingdomIndex.tsx"),"utf8");
+ const server=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
+ assert.match(ui,/historical=!measured && !provisional && validScore\(entry\.lastReviewScore\)/);
+ assert.match(ui,/HISTORICAL SOURCE REVIEW · NOT CURRENT OR CERTIFIED/);
+ assert.match(ui,/data-authority=\{historical\?"historical"/);
+ assert.match(ui,/Unrated:/);
+ assert.match(server,/score: liveScore/);
+ assert.match(server,/lastReviewScore:lineage\.lastReviewScore/);
+ assert.match(server,/entry\.score=publication\.certified\?100:null/);
+});
+
 test("all 68 Index route identities use the canonical CI route census, not stale partial manifest",()=>{
  const source=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
  const legacy=readFileSync(join(root,"lib/pageChangeManifest.generated.ts"),"utf8");
