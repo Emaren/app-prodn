@@ -41,9 +41,11 @@ test("failed Chrome startup reports a bounded cause without echoing stderr or pu
     await assert.rejects(promisify(execFile)(process.execPath, [collector.pathname,
       "--chrome", executable, "--url", "http://127.0.0.1:3030/kingdom-index",
       "--samples", "1", "--sample-attempts", "1", "--out-dir", out],
-      { timeout: 15000, maxBuffer: 65536 }), (error: any) => {
-        assert.match(error.stderr, /SANDBOX_UNAVAILABLE/);
-        assert.doesNotMatch(error.stderr, /DO_NOT_ECHO_STARTUP_BYTES/);
+      { timeout: 15000, maxBuffer: 65536 }), (error: unknown) => {
+        assert.ok(error instanceof Error && "stderr" in error && "killed" in error);
+        assert.equal(typeof error.stderr, "string");
+        assert.match(String(error.stderr), /SANDBOX_UNAVAILABLE/);
+        assert.doesNotMatch(String(error.stderr), /DO_NOT_ECHO_STARTUP_BYTES/);
         assert.equal(error.killed, false);
         return true;
       });

@@ -94,13 +94,26 @@ def isolated_max_auto_recipe(source: str) -> str:
     return source
 
 
+def checkout_exact_source(origin, source):
+    # Match the reviewed artifact's fetch-depth=1, tag-free source checkout.
+    # Go 1.24 embeds a module version derived from reachable semantic tags;
+    # a full history clone can change bytes despite an identical VCS revision.
+    # Do not change the independently verified checksum to hide that drift.
+    run(["git", "init", "--quiet", str(source)])
+    run(["git", "-c", "core.hooksPath=/dev/null", "fetch", "--quiet", "--no-tags",
+         "--depth=1", origin, SOURCE], cwd=source)
+    run(["git", "-c", "core.hooksPath=/dev/null", "checkout", "--quiet", "--detach", "FETCH_HEAD"], cwd=source)
+    assert subprocess.check_output(["git","rev-parse","HEAD"],cwd=source,text=True).strip() == SOURCE
+    assert subprocess.check_output(["git","rev-parse","--is-shallow-repository"],cwd=source,text=True).strip() == "true"
+    assert not subprocess.check_output(["git","tag","--list"],cwd=source)
+    assert not subprocess.check_output(["git","status","--porcelain","--untracked-files=all","--ignored=matching"],cwd=source)
+
+
 with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     root = Path(tmp).resolve()
     source = root / "wolo"
     local = os.environ.get("SATCHEL_TEST_WOLO_SOURCE")
-    run(["git", "clone", "--quiet", "--no-checkout", local or "https://github.com/Emaren/wolochain.git", str(source)])
-    run(["git", "checkout", "--quiet", "--detach", SOURCE], cwd=source)
-    assert not subprocess.check_output(["git","status","--porcelain"],cwd=source)
+    checkout_exact_source(local or "https://github.com/Emaren/wolochain.git", source)
     env = os.environ.copy()
     env.update({"GOTOOLCHAIN":"local","GOENV":"off","GOWORK":"off","GOFLAGS":"","CGO_ENABLED":"0","GOAMD64":"v1","GOEXPERIMENT":"","GOFIPS140":"off","GIT_NO_REPLACE_OBJECTS":"1","TZ":"UTC"})
     for key in ["DATABASE_URL","DIRECT_URL","PGHOST","PGPORT","PGUSER","PGPASSWORD","PGDATABASE","GODEBUG","GOOS","GOARCH"]:
@@ -111,6 +124,10 @@ with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     assert "vcs.revision="+SOURCE in metadata and "vcs.modified=false" in metadata and "go1.24.6" in metadata
     binary_sha256 = hashlib.sha256(binary.read_bytes()).hexdigest()
     if "GOOS=linux" in metadata and "GOARCH=amd64" in metadata:
+        if binary_sha256 != LINUX_AMD64_SHA256:
+            print(json.dumps({"status":"VERIFIER_BUILD_REFUSED", "source":SOURCE,
+                "actual_binary_sha256":binary_sha256, "expected_binary_sha256":LINUX_AMD64_SHA256,
+                "module_metadata":[line.strip() for line in metadata.splitlines() if line.startswith("\tmod\t")]}), flush=True)
         assert binary_sha256 == LINUX_AMD64_SHA256, "reviewed Linux verifier checksum mismatch"
     # Import a disposable *test-only* source for four genuine sequential
     # Cosmos SDK signed sends in a single ephemeral application/chain.
