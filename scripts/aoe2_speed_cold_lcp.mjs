@@ -32,6 +32,9 @@ const postLoadMs = Math.max(500, Number(args["post-load-ms"] || 2500));
 const loadTimeoutMs = Math.max(5000, Number(args["load-timeout-ms"] || 20000));
 const commandTimeoutMs = Math.max(5000, Number(args["command-timeout-ms"] || 15000));
 const sampleAttempts = Math.max(1, Math.min(3, Number(args["sample-attempts"] || 2)));
+const chromeStartupMs = Number(args["chrome-startup-ms"] || 20000);
+if (!Number.isSafeInteger(chromeStartupMs) || chromeStartupMs < 1000 || chromeStartupMs > 30000)
+  throw new Error("--chrome-startup-ms must be an integer from 1000 to 30000");
 if (!outDir) throw new Error("--out-dir is required");
 await mkdir(outDir, { recursive: true });
 
@@ -334,6 +337,25 @@ const SNAPSHOT_EXPR = String.raw`(() => {
   };
 })()`;
 
+async function stopChrome(child) {
+  if (!child?.pid) return;
+  const signal = name => {
+    try {
+      if (process.platform === "win32") child.kill(name);
+      else process.kill(-child.pid, name); // Only this detached fresh-profile process group.
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error;
+    }
+  };
+  const exited = child.exitCode !== null || child.signalCode !== null
+    ? Promise.resolve() : new Promise(resolve => child.once("exit", resolve));
+  signal("SIGTERM");
+  await Promise.race([exited, sleep(1500)]);
+  // Include descendants if the browser wrapper exited before its children.
+  signal("SIGKILL");
+  await Promise.race([exited, sleep(500)]);
+}
+
 async function connectChrome(profileDir) {
   const chromeArgs = [
     "--headless=new",
@@ -344,76 +366,86 @@ async function connectChrome(profileDir) {
     "--hide-scrollbars",
     "about:blank",
   ];
-  const child = spawn(chrome, chromeArgs, { stdio: ["ignore", "ignore", "pipe"] });
+  const child = spawn(chrome, chromeArgs, { stdio: ["ignore", "ignore", "pipe"], detached: process.platform !== "win32" });
   let startupStderr = "", spawnFailed = false;
   child.stderr.on("data", chunk => {
     startupStderr = (startupStderr + chunk.toString("utf8")).slice(-8192);
   });
   child.once("error", () => { spawnFailed = true; });
-  let port = null;
-  for (let attempt = 0; attempt < 160; attempt += 1) {
-    if (spawnFailed || child.exitCode !== null || child.signalCode !== null) break;
-    try {
-      const active = await readFile(path.join(profileDir, "DevToolsActivePort"), "utf8");
-      port = Number(active.split("\n")[0]);
-      if (Number.isFinite(port) && port > 0) break;
-    } catch {}
-    await sleep(50);
-  }
-  if (!port) {
-    child.kill("SIGTERM");
-    // Diagnose process admission without logging arbitrary browser stderr,
-    // command arguments, private profile paths or a potentially sensitive URL.
-    const reason = spawnFailed ? "EXECUTABLE_UNAVAILABLE"
-      : /No usable sandbox|namespace_sandbox|Failed to move to new namespace|AppArmor/i.test(startupStderr) ? "SANDBOX_UNAVAILABLE"
-      : /error while loading shared libraries/i.test(startupStderr) ? "RUNTIME_DEPENDENCY_MISSING"
-      : /No space left on device|shared memory/i.test(startupStderr) ? "STORAGE_UNAVAILABLE"
-      : child.exitCode !== null ? "EARLY_EXIT_" + child.exitCode : "STARTUP_TIMEOUT";
-    throw new Error("Chrome DevTools port did not become available: " + reason);
-  }
-  const tab = await fetch(
-    `http://127.0.0.1:${port}/json/new?about:blank`,
-    { method: "PUT" }
-  ).then((r) => r.json());
-  const ws = new WebSocket(tab.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => {
-    ws.onopen = resolve;
-    ws.onerror = reject;
-  });
-
-  let nextId = 0;
-  const pending = new Map();
-  const events = [];
-  ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.id && pending.has(message.id)) {
-      const { resolve, reject, timer } = pending.get(message.id);
-      pending.delete(message.id);
-      clearTimeout(timer);
-      if (message.error) reject(new Error(message.error.message));
-      else resolve(message.result);
-    } else {
-      events.push(message);
-    }
-  };
-  const command = (method, params = {}) =>
-    new Promise((resolve, reject) => {
-      const id = ++nextId;
-      const timer = setTimeout(() => {
-        pending.delete(id);
-        reject(new Error("CDP command timed out after " + commandTimeoutMs + "ms: " + method));
-      }, commandTimeoutMs);
-      pending.set(id, { resolve, reject, timer });
+  try {
+    let port = null;
+    const startupDeadline = performance.now() + chromeStartupMs;
+    while (performance.now() < startupDeadline) {
+      if (spawnFailed || child.exitCode !== null || child.signalCode !== null) break;
       try {
-        ws.send(JSON.stringify({ id, method, params }));
-      } catch (error) {
-        clearTimeout(timer);
-        pending.delete(id);
-        reject(error);
-      }
+        const active = await readFile(path.join(profileDir, "DevToolsActivePort"), "utf8");
+        port = Number(active.split("\n")[0]);
+        if (Number.isSafeInteger(port) && port > 0 && port <= 65535) break;
+        port = null;
+      } catch {}
+      await sleep(50);
+    }
+    if (!port) {
+      // Diagnose process admission without logging arbitrary browser stderr,
+      // command arguments, private profile paths or a potentially sensitive URL.
+      const reason = spawnFailed ? "EXECUTABLE_UNAVAILABLE"
+        : /No usable sandbox|namespace_sandbox|Failed to move to new namespace|AppArmor/i.test(startupStderr) ? "SANDBOX_UNAVAILABLE"
+        : /error while loading shared libraries/i.test(startupStderr) ? "RUNTIME_DEPENDENCY_MISSING"
+        : /No space left on device|shared memory/i.test(startupStderr) ? "STORAGE_UNAVAILABLE"
+        : child.exitCode !== null ? "EARLY_EXIT_" + child.exitCode : "STARTUP_TIMEOUT";
+      throw new Error("Chrome DevTools port did not become available: " + reason);
+    }
+    const tab = await fetch(
+      `http://127.0.0.1:${port}/json/new?about:blank`,
+      { method: "PUT", signal: AbortSignal.timeout(commandTimeoutMs) }
+    ).then((r) => r.json());
+    const ws = new WebSocket(tab.webSocketDebuggerUrl);
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch {}
+        reject(new Error("Chrome DevTools connection timeout"));
+      }, commandTimeoutMs);
+      ws.onopen = () => { clearTimeout(timer); resolve(); };
+      ws.onerror = () => { clearTimeout(timer); reject(new Error("Chrome DevTools connection refused")); };
     });
 
-  return { child, ws, events, command };
+    let nextId = 0;
+    const pending = new Map();
+    const events = [];
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      if (message.id && pending.has(message.id)) {
+        const { resolve, reject, timer } = pending.get(message.id);
+        pending.delete(message.id);
+        clearTimeout(timer);
+        if (message.error) reject(new Error(message.error.message));
+        else resolve(message.result);
+      } else {
+        events.push(message);
+      }
+    };
+    const command = (method, params = {}) =>
+      new Promise((resolve, reject) => {
+        const id = ++nextId;
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          reject(new Error("CDP command timed out after " + commandTimeoutMs + "ms: " + method));
+        }, commandTimeoutMs);
+        pending.set(id, { resolve, reject, timer });
+        try {
+          ws.send(JSON.stringify({ id, method, params }));
+        } catch (error) {
+          clearTimeout(timer);
+          pending.delete(id);
+          reject(error);
+        }
+      });
+
+    return { child, ws, events, command };
+  } catch (error) {
+    await stopChrome(child);
+    throw error;
+  }
 }
 
 async function waitForLoad(events, startIndex) {
@@ -497,19 +529,7 @@ async function runOne(index) {
     };
   } finally {
     try { session?.ws.close(); } catch {}
-    const child = session?.child;
-    if (child && child.exitCode === null && child.signalCode === null) {
-      const exited = new Promise((resolve) => child.once("exit", resolve));
-      try { child.kill("SIGTERM"); } catch {}
-      await Promise.race([exited, sleep(1500)]);
-      if (child.exitCode === null && child.signalCode === null) {
-        try { child.kill("SIGKILL"); } catch {}
-        await Promise.race([
-          new Promise((resolve) => child.once("exit", resolve)),
-          sleep(500),
-        ]);
-      }
-    }
+    await stopChrome(session?.child);
     await rm(profileDir, {
       recursive: true,
       force: true,
