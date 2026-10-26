@@ -17,10 +17,10 @@ const invoke = promisify(execFile);
 const MARK = Symbol("authenticated-wolo-comet-financial-proof");
 const issued = new WeakSet<object>();
 let active = 0;
-// Reviewed Wolo source 72a3bca5f66aff51e1c6577b914d64403785d635,
+// Reviewed Wolo source 88c63356b81e19dbda0dbcf7c2135ac607878ca4,
 // exact binary SHA-256 established by scripts/check-satchel-authenticated-credit.py
 // (Go1.24.6 Linux/amd64). Source/archive/CI proof is NOT mainnet custody authority.
-const PINNED_VERIFIER_SHA256 = "37e2c13b68a6d14b3019ad7a9dc12d38360c63b42094daac14e881e3626898ef";
+const PINNED_VERIFIER_SHA256 = "7aca304327460a2535f1fc87eef6a5f79426e7d73773eedfb81d8d2313430e65";
 const ENDPOINT = "http://127.0.0.1:8094";
 const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
