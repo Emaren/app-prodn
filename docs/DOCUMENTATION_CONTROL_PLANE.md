@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/renaissance-v4-frozen-source-review-20261025` at `1fc66dcb52840e3f9f0eda0357922479481d967b`
+Implementation baseline: `release/renaissance-v4-frozen-source-review-20261025` at `1116a605a96221b43d44f982989f17d6dff7eb5b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
