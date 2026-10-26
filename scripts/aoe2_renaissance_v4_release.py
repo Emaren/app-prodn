@@ -352,9 +352,12 @@ def prepare(candidate):
   'financial_release_authorized':False}
 
 def assert_environment():
- for key in('AOE2WAR_GLOBAL_LEASE_HELD','AOE2WAR_GLOBAL_LEASE_OWNER_PID','AOE2_RELEASE_GLOBAL_LOCK',
-  'AOE2_RELEASE_HOST','AOE2_RELEASE_PROD_REPO','AOE2_RELEASE_SERVICE','AOE2_RELEASE_PUBLIC_BASE'):
-  require(not os.environ.get(key),'v4 refuses inherited authority or transport override: '+key)
+ # The generic engines expose tuning for other release lanes. This signed
+ # policy must retain canonical state/lease paths and the original soak and
+ # recovery bounds; do not inherit an unsigned release-engine override.
+ for key,value in os.environ.items():
+  if key.startswith('AOE2_RELEASE_')or key in('AOE2WAR_GLOBAL_LEASE_HELD','AOE2WAR_GLOBAL_LEASE_OWNER_PID'):
+   require(not value,'v4 refuses inherited authority or release-engine override: '+key)
 
 def public_parity(public_key=TRUST_PUBLIC):
  fp=review.public_fingerprint(public_key)

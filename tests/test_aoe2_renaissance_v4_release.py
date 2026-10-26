@@ -180,7 +180,7 @@ class ReleaseAuthority(unittest.TestCase):
   with self.assertRaises(OSError):self.run_operation(p,event_effect=full_disk)
   self.assertEqual(('CONSUMED',None),self.row(p['payload']))
  def test_inherited_lease_or_transport_environment_cannot_bypass_the_original_lock(self):
-  for key in('AOE2WAR_GLOBAL_LEASE_HELD','AOE2WAR_GLOBAL_LEASE_OWNER_PID','AOE2_RELEASE_HOST','AOE2_RELEASE_GLOBAL_LOCK'):
+  for key in('AOE2WAR_GLOBAL_LEASE_HELD','AOE2WAR_GLOBAL_LEASE_OWNER_PID','AOE2_RELEASE_HOST','AOE2_RELEASE_GLOBAL_LOCK','AOE2_RELEASE_STATE_ROOT','AOE2_RELEASE_SOAK_SECONDS','AOE2_RELEASE_SOAK_INTERVAL_SECONDS','AOE2_RELEASE_FAST_ROLLBACK_KEEP'):
    with self.subTest(key=key),patch.dict(os.environ,{key:'forged'}),self.assertRaises(release.Hold):release.assert_environment()
  def test_immutable_evidence_refuses_overwrite_and_symlink(self):
   p=self.root/'evidence.json';release.write_immutable(p,{'a':1});self.assertEqual(release.digest({'a':1}),release.write_immutable(p,{'a':1}))
