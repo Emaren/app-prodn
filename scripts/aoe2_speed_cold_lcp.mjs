@@ -344,9 +344,15 @@ async function connectChrome(profileDir) {
     "--hide-scrollbars",
     "about:blank",
   ];
-  const child = spawn(chrome, chromeArgs, { stdio: "ignore" });
+  const child = spawn(chrome, chromeArgs, { stdio: ["ignore", "ignore", "pipe"] });
+  let startupStderr = "", spawnFailed = false;
+  child.stderr.on("data", chunk => {
+    startupStderr = (startupStderr + chunk.toString("utf8")).slice(-8192);
+  });
+  child.once("error", () => { spawnFailed = true; });
   let port = null;
   for (let attempt = 0; attempt < 160; attempt += 1) {
+    if (spawnFailed || child.exitCode !== null || child.signalCode !== null) break;
     try {
       const active = await readFile(path.join(profileDir, "DevToolsActivePort"), "utf8");
       port = Number(active.split("\n")[0]);
@@ -356,7 +362,14 @@ async function connectChrome(profileDir) {
   }
   if (!port) {
     child.kill("SIGTERM");
-    throw new Error("Chrome DevTools port did not become available");
+    // Diagnose process admission without logging arbitrary browser stderr,
+    // command arguments, private profile paths or a potentially sensitive URL.
+    const reason = spawnFailed ? "EXECUTABLE_UNAVAILABLE"
+      : /No usable sandbox|namespace_sandbox|Failed to move to new namespace|AppArmor/i.test(startupStderr) ? "SANDBOX_UNAVAILABLE"
+      : /error while loading shared libraries/i.test(startupStderr) ? "RUNTIME_DEPENDENCY_MISSING"
+      : /No space left on device|shared memory/i.test(startupStderr) ? "STORAGE_UNAVAILABLE"
+      : child.exitCode !== null ? "EARLY_EXIT_" + child.exitCode : "STARTUP_TIMEOUT";
+    throw new Error("Chrome DevTools port did not become available: " + reason);
   }
   const tab = await fetch(
     `http://127.0.0.1:${port}/json/new?about:blank`,
