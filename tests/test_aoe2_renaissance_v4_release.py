@@ -43,7 +43,8 @@ class ReleaseAuthority(unittest.TestCase):
    [('8092',self.before['immutable']['wolo8092']['pid']),('8093',self.before['immutable']['wolo8093']['pid']),('3030',self.before['website']['pid'])]},
    'web_process':{'pid':self.before['website']['pid'],'cwd':'/var/www/AoE2HDBets/app-prodn','start_ticks':10,
     'start_epoch_ns':20,'build_id':release.ROLLBACK_BUILD,'build_id_inode':1,'build_id_mtime_ns':10,
-    'compiled_version':'TEST_'+release.FROZEN_BASE[:7],'wargraph_runtime_disabled':True,'restart_runtime_disabled':True}}
+    'compiled_version':'TEST_'+release.FROZEN_BASE[:7],'wargraph_runtime_disabled':False,'restart_runtime_disabled':False,
+    'node_production':True,'wargraph_queue':{'due':0,'running':0,'pending_defense':0,'open_advance':0,'due_within_ten_minutes':0}}}
   self.ctx={k:'1'*64 for k in release.CONTEXT_KEYS}
   self.ctx.update(candidate_sha=release.FROZEN_TARGET,previous_production_sha=release.FROZEN_BASE,
    rollback_source_sha=release.FROZEN_BASE,rollback_build_id=release.ROLLBACK_BUILD,
@@ -299,13 +300,20 @@ class V4AdditionalNegatives(unittest.TestCase):
    answer=real_event(*a,**kw);self.now+=timedelta(minutes=21);return answer
   with self.assertRaises(ValueError):self.run_operation(p,event_effect=delayed)
   self.assertEqual(('CONSUMED',None),self.row(p['payload']))
- def test_missing_or_wrong_listener_and_active_startup_writer_hold(self):
+ def test_missing_listener_or_unproven_active_web_wargraph_owner_holds(self):
   from aoe2_renaissance_v4_observer import validate_observation
   for mutate in (lambda x:x.pop('v4_runtime'),
    lambda x:x['v4_runtime']['listeners'].pop('8093'),
    lambda x:x['v4_runtime']['listeners']['8092'].update(pid=999),
-   lambda x:x['v4_runtime']['web_process'].update(wargraph_runtime_disabled=False),
-   lambda x:x['v4_runtime']['web_process'].update(restart_runtime_disabled=False),
+   lambda x:x['v4_runtime']['web_process'].update(wargraph_runtime_disabled=True),
+   lambda x:x['v4_runtime']['web_process'].update(restart_runtime_disabled=True),
+   lambda x:x['v4_runtime']['web_process'].update(node_production=False),
+   lambda x:x['v4_runtime']['web_process']['wargraph_queue'].update(due=1),
+   lambda x:x['v4_runtime']['web_process']['wargraph_queue'].update(running=1),
+   lambda x:x['v4_runtime']['web_process']['wargraph_queue'].update(pending_defense=1),
+   lambda x:x['v4_runtime']['web_process']['wargraph_queue'].update(open_advance=1),
+   lambda x:x['v4_runtime']['web_process']['wargraph_queue'].update(due_within_ten_minutes=1),
+   lambda x:x['v4_runtime']['web_process'].pop('wargraph_queue'),
    lambda x:x['v4_runtime']['web_process'].update(build_id_mtime_ns=999),
    lambda x:x['v4_runtime']['web_process'].update(compiled_version='invalid version with spaces')):
    bad=copy.deepcopy(self.before);mutate(bad)
