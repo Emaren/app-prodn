@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b54cbde2a538ac4faaa7149ce5f093532f0ec585d859c1d6dc2957c3fdf05c6d",
+      "sha256": "b899de8ce533a34bc2a7121e43abd183457a1794351ca07d8c6d595e05fa6c5d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/central-kingdom-index",
-    "commit": "09e28aec00386f184aaa1481b94cae150c459621"
+    "commit": "85f0ee41596cc7ee6c16b5be5d168bf3e3357188"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
