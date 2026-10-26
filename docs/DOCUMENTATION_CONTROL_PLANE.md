@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/kingdom-runtime-mac-tmpdir-test-portability-20261026` at `c7fd5309714b2409e683a76de5b0de4ae3923cfe`
+Implementation baseline: `fix/kingdom-runtime-mac-tmpdir-test-portability-20261026` at `b6a1cf7bec58201f2f679d8ff5e93ea7185d2046`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
