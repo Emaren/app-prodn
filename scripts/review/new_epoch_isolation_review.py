@@ -32,6 +32,7 @@ DIGESTS = (
     "gas_model_witness_sha256", "escrow_scope_witness_sha256",
     "escrow_address_pubkey_proof_sha256", "escrow_policy_witness_sha256",
     "escrow_ledger_replay_exclusion_sha256", "escrow_keyring_acl_witness_sha256",
+    "escrow_native_bank_proof_sha256", "escrow_independent_checkpoint_sha256",
 )
 
 
@@ -254,6 +255,10 @@ def examine(p):
             reject("escrow_reserve_deficit")
     if p.get("escrow_uncertainty_complete") is not True:
         reject("escrow_uncertain_upper_bound_missing")
+    escrow_h = p.get("escrow_state_height")
+    escrow_commit = p.get("escrow_commit_height")
+    if type(escrow_h) is not int or type(escrow_commit) is not int or type(h) is not int or type(ch) is not int or escrow_h != h or escrow_commit != ch or escrow_commit != escrow_h + 1:
+        reject("escrow_authenticated_height_not_synchronized")
     if not problems:
         # Structural checks DO NOT authenticate supplied booleans, digests or chain data.
         return {"status": "REVIEW_ONLY_NONAUTHORIZING", "authority": "NONE", "reasons": ["independent_authentication_required"]}
