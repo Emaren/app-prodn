@@ -63,13 +63,22 @@ function Sparkline({ points, score, compact=false }: {points: KingdomIndexEntry[
 function Score({ entry, small=false }: {entry:KingdomIndexEntry;small?:boolean}) {
   const measured=validScore(entry.score);
   const provisional=!measured && validScore(entry.provisionalReviewScore);
-  const visible=measured?entry.score:(provisional?entry.provisionalReviewScore:null);
+  // A dated source review is still worth displaying as historical context.
+  // Never put it into entry.score or present it as source-aligned certification.
+  const historical=!measured && !provisional && validScore(entry.lastReviewScore);
+  const visible=measured?entry.score:(provisional?entry.provisionalReviewScore:(historical?entry.lastReviewScore:null));
   const accessible=measured?`${visible} out of 100, ${statusTitle(entry)}`:
-    provisional?`Approximately ${visible} out of 100, unverified operator source review; NOT a certified quality score`:statusTitle(entry);
-  return <span className={small?styles.scoreSmall:styles.score} data-status={entry.status} aria-label={accessible}
-    title={provisional?"PROVISIONAL SOURCE REVIEW · NOT INDEPENDENTLY CERTIFIED":statusTitle(entry)}>
-    {provisional&&<span aria-hidden="true">~</span>}{scoreString(visible)}
+    provisional?`Approximately ${visible} out of 100, unverified source review, not certified`:
+    historical?`Historical, unverified source review: approximately ${visible} out of 100; not a current deployed-build score`:
+    `Unrated: ${statusTitle(entry)}`;
+  const label=provisional?"PROVISIONAL SOURCE REVIEW · NOT CERTIFIED":
+    historical?"HISTORICAL SOURCE REVIEW · NOT CURRENT OR CERTIFIED":statusTitle(entry);
+  return <span className={small?styles.scoreSmall:styles.score} data-status={entry.status}
+    data-authority={historical?"historical":provisional?"provisional":measured?"measured":"unrated"}
+    aria-label={accessible} title={label}>
+    {(provisional||historical)&&<span aria-hidden="true">~</span>}{scoreString(visible)}
     {validScore(visible)&&<span className={styles.denom}>/100</span>}
+    {historical&&<span className={styles.historicalLabel}>HIST.</span>}
     {provisional&&!small&&<span className={styles.denom}> REVIEW</span>}
   </span>;
 }
