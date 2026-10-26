@@ -2718,6 +2718,12 @@ def activate_release(
             gate_path,
             gate_sha,
         ) = load_stage_receipt(stage_receipt)
+        if "owner_v4" in manifest and (
+            remote_runner is None or
+            website_policy != "aoe2war.renaissance.website.v4.release.v1" or
+            manifest["owner_v4"].get("policy") != website_policy
+        ):
+            raise ShipError("owner-v4 manifest requires the one-use signed dispatcher; generic activation is forbidden")
     except ShipError as exc:
         if json_output:
             print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))

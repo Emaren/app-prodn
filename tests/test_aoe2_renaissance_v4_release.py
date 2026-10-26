@@ -386,3 +386,24 @@ class SystemdLeaseSurvival(unittest.TestCase):
      except BlockingIOError:time.sleep(.05)
     else:self.fail('guardian did not release after exact units were quiescent')
    finally:os.close(fd)
+
+
+class GenericEngineExclusion(unittest.TestCase):
+ def test_generic_stage_cannot_use_the_v4_manifest_without_signed_dispatch(self):
+  import aoe2_release_stage as stage
+  import io
+  from contextlib import redirect_stdout
+  with patch.object(stage,'load_manifest',return_value=(Path('/TEST'),{'owner_v4':{'policy':release.POLICY}},'a'*64)), \
+   patch.object(stage,'gate_integrity')as gate,patch.object(stage,'production_transport')as transport,redirect_stdout(io.StringIO())as out:
+   self.assertEqual(2,stage.stage_release({'local':{'head':release.FROZEN_TARGET}},json_output=True))
+  self.assertIn('one-use signed dispatcher',out.getvalue());gate.assert_not_called();transport.assert_not_called()
+ def test_generic_activation_and_foreign_policy_cannot_use_a_v4_manifest(self):
+  import aoe2_release_ship as ship
+  import io
+  from contextlib import redirect_stdout
+  loaded=(Path('/TEST/receipt'),{},'a'*64,Path('/TEST/manifest'),{'owner_v4':{'policy':release.POLICY}},'b'*64,Path('/TEST/gate'),'c'*64)
+  for runner,policy in((None,None),(None,release.POLICY),(lambda *_a,**_kw:None,'foreign')):
+   with patch.object(ship,'load_stage_receipt',return_value=loaded),patch.object(ship,'verify_production_migration_receipt')as verify, \
+    patch.object(ship,'production_transport')as transport,redirect_stdout(io.StringIO())as out:
+    self.assertEqual(2,ship.activate_release({},stage_receipt='/TEST',dry_run=False,json_output=True,remote_runner=runner,website_policy=policy))
+   self.assertIn('one-use signed dispatcher',out.getvalue());verify.assert_not_called();transport.assert_not_called()

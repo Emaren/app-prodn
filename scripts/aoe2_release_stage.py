@@ -1259,6 +1259,11 @@ def stage_release(
 
     try:
         manifest_path, manifest, manifest_sha = load_manifest(release_sha)
+        if "owner_v4" in manifest and (
+            remote_runner is None or
+            manifest["owner_v4"].get("policy") != "aoe2war.renaissance.website.v4.release.v1"
+        ):
+            raise StageError("owner-v4 manifest requires the one-use signed dispatcher; generic stage is forbidden")
         gate_path, gate_sha = gate_integrity(manifest)
         watcher_version = watcher_distribution_version(manifest)
     except Exception as exc:

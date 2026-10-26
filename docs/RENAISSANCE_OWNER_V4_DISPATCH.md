@@ -125,7 +125,9 @@ python3 scripts/aoe2_renaissance_v4_release.py stage --packet /ABS/private/PRE_S
 
 OpenSSL prompts the owner in their terminal. Do not pass a password in argv,
 environment, chat or JSON. Every explicit value must be visually checked from
-the real challenge. No signatures are issued by automation. Challenge validity
+the real challenge. No signatures are issued by automation. Generic stage/activation entrypoints
+reject an owner-v4 manifest without the signed dispatcher command channel;
+ordinary `finish` cannot consume this sealed manifest as a shortcut. Challenge validity
 is twenty minutes and is rechecked after I/O and immediately before dispatch.
 
 Phase 2 starts only after verified STAGED and the actual on-disk stage receipt:
