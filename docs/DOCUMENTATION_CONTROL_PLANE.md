@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/hd-funded-renaissance-closure` at `3f9a8b7f0c2fafedde5c7891c406799e72175a3c`
+Implementation baseline: `codex/hd-funded-renaissance-closure` at `199aa244eff251a238a6cc8029db58fc7122689c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
