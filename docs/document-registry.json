@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b899de8ce533a34bc2a7121e43abd183457a1794351ca07d8c6d595e05fa6c5d",
+      "sha256": "438347ad0366473815fe5aeeee12bd83da5874b72d39af70a6f69331b42d49e3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/central-kingdom-index",
-    "commit": "85f0ee41596cc7ee6c16b5be5d168bf3e3357188"
+    "branch": "review/20261026-phase2-new-epoch-isolation",
+    "commit": "8588c2d0c2d1b4d8ad5c0906b4d1e941ae8fcc7f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
