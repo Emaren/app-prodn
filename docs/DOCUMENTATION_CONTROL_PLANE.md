@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-kingdom-index` at `85f0ee41596cc7ee6c16b5be5d168bf3e3357188`
+Implementation baseline: `feature/20261027-storage-atlas-kingdom-systems` at `45db440edcc23cb8723ed5129f5250f0ae59b692`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
