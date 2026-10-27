@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "35435d4c4aa83f6f3d8d2ccbe6db1e1a6540c7c1d8e7a84021443f22b7d6359d",
+      "sha256": "7e40787451760364c284ed5e2c3b19f49ed80f22388505c6f3673c987ca355bd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261027-staged-kingdom-adoption-boundary",
-    "commit": "daa07709c3b802a1206649aad7f8bceb5abb290c"
+    "commit": "a0b1c9ebe4870a4803ca7a449841eb073b781895"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
