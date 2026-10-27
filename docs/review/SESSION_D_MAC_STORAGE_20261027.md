@@ -325,6 +325,15 @@ The user's exact same interactive zsh shell ran `builtin whence -va df` → **`d
 
 **Changes/authority:** user executed read-only shell diagnosis, no real Watcher artifact, signed download URL, worktree, protected media, Codex, financial, APFS snapshots or build output altered; **0 B actual new reclaimed**. Prior native mtime-divergent disposable APFS fixture PASS remains; actual six legacy hyphen aliases have no owner authorization to change. Full revised source and Atlas fields [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
 
+
+## zsh shell PATH incident CLOSED by new login shell (2026-10-27)
+
+The operator ran `exec /bin/zsh -l` and confirmed native arm64, active pyenv 3.13.5 and loaded project direnv `.envrc`. `builtin whence -va df` returned **`df is /bin/df`**, and `/bin/df -k /System/Volumes/Data` ran successfully. This independently closes the earlier `PATH` clobber caused by assistant's unsuitable `for path in ...` zsh loop. No evidence of Mac disk permission trouble or system binary damage; no filesystem or developer workspace mutation occurred.
+
+Latest Data `df` reported total `482797652` KiB, used **`431010500` KiB**, available **`8309948` KiB = ~7.924984 GiB**, displayed 99% used, mount `/dev/disk3s5`. Compared to immediately previous `/bin/df`: used `431011556`, available `8308892` KiB. Thus available increased **1056 KiB (~1.031 MiB)** and used decreased by same small amount, effectively stable for consecutive reads. Earlier larger free-space fluctuations remain **unattributed**; other APFS volumes, swap/purgeable accounting and active writers need read-only comparison, not speculative deletion.
+
+**Gate transitions:** `PASS_ZSH_LOGIN_RESTORED`, `PASS_DF_COMMAND_LOOKUP`, `PASS_DIRECT_DATA_DF`, `HOLD_APFS_FREE_FLUCTUATION_CAUSALITY`. APFS mtime-divergence fixture already PASS only on disposable files. **No real Watcher clone, replacement, unlink, symlink change, worktree cleanup or cache apply approved or executed. Actual Phase10 reclaimed 0 B.** [Phase10 detailed evidence and telemetry](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
