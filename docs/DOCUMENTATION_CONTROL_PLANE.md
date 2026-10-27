@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261027-staged-kingdom-adoption-boundary` at `daa07709c3b802a1206649aad7f8bceb5abb290c`
+Implementation baseline: `review/20261027-staged-kingdom-adoption-boundary` at `a0b1c9ebe4870a4803ca7a449841eb073b781895`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
