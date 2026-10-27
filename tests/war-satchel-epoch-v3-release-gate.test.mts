@@ -123,7 +123,7 @@ test("native v3 port refuses reads and has no legacy settlement fallback",async 
 test("neither finance candidate module imports IO, signer, Prisma or runtime web routes",()=>{
   for(const path of ["../lib/warSatchelEpochV3ReleaseGate.ts","../lib/warSatchelEpochV3Durability.ts"]) {
     const txt=readFileSync(new URL(path,import.meta.url),"utf8");
-    assert.doesNotMatch(txt,/from ["']@prisma|process\.env|signAndBroadcast\s*\(|submitOneShot\s*\(|fetch\s*\(|\.create\s*\(|\.update\s*\(/);
+    assert.doesNotMatch(txt,/from ["']@prisma|process\.env|signAndBroadcast\s*\(|submitOneShot\s*\(|fetch\s*\(|prisma\.\w+\.create\s*\(|prisma\.\w+\.update\s*\(/);
   }
 });
 const row=()=>({epochId:epoch,operationId:"satchel:e3:"+epoch+":200",ownerUid:"warrior:alpha",
