@@ -66,7 +66,7 @@
     "legacy_8092_fallback": false,
     "money_go": false,
     "wire_version": 1,
-    "contract_path": "scripts/review/epoch_v3_phase8_go_hd_contract_and_integration_map.md",
+    "contract_path": "scripts/review/epoch_v3_phase8_go_hd_contract_and_integration_map.txt",
     "native_verifier_cli": "--verify-epoch-v3-portable-proof --json-stdin",
     "status": "DISABLED_CANNOT_ATTEST_NATIVE",
     "enrolled_native_issuer_login": false,
