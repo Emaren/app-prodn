@@ -483,6 +483,15 @@ Ten attached `node_modules` UNKNOWN entries each classified `HOLD_MISSING_OR_SYM
 
 **Veredict:** `PASS_371_RETURNED_CERTIFIED_NEGATIVE_FOR_DOCS`, `PASS_TWO_DOCS_PRODUCTION_FIELD_DIFFERENCES`, `HOLD_CURRENT_CERTIFIED_FIELD`, `HOLD_E5_BUILD_TYPE`, `HOLD_REMOTE_HISTORICAL_ROLLBACK`, `HOLD_EXTERNAL_RESTORE_OR_REBUILD`, `HOLD_SINGLE_PATH_OWNER_CLEANUP_APPROVAL`. Both financial worktrees, all Codex, recordings, recovery, `.aoe2war-release` and signed Watcher installers PROTECTED. No deletion, APFS swap touch, runtime termination, build or deployment. Phase11 actually reclaimed 0 B. Full dated table / next read-only test: [Phase11](SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md).
 
+
+## Phase11 E5 source/root drift and 7 missing/3 symlink node_modules (owner Mac read-only, 2026-10-27)
+
+Owner's follow-up report: DOCS `ANCESTOR_OF_LOCAL_MAIN` with HEAD still `99c406f57d759b672fd9fe91d3c3355c4d527705`. E5 returned `HOLD_SOURCE_CHANGED` (could mean changed HEAD or inability to access/git-resolve worktree; **no new HEAD printed**) and `HOLD_E5_NEXT_ROOT` (candidate no longer an ordinary directory at exact path; could be missing, symlink or stat error). Previous E5 1,272,664-KiB `.next` sample does **not** imply it was deleted, nor that APFS actually recovered 1.214 GiB. Require current direct `lstat`, attached-worktree registry and fresh APFS Data/VM usage to classify; HOLD any cleanup/restore on E5 until worktree owner/concurrent session state known. Do not `git prune`, reset or follow its symlinks.
+
+Of 10 previous unmeasured `node_modules` entries, direct `lstat` now returned **7 MISSING** (all seven financial/Codex branch names: authenticated-satchel-deposit, hd-durable-finance-fence, hd-live-admission-qualification, hd-live-market-admission, satchel-complete-financial-paths, satchel-live-authority-integration, satchel-product-money-limits), **3 SYMLINK_PROTECTED** (fix-replay-result-authority-inputs-20261011, phoenix-recovery-dashboard-20261014, update-independent-docs-context-20261015). No symlink targets inspected/unlinked; absent `node_modules` does NOT imply missing protected source.
+
+**Verdict:** `PASS_DOCS_GIT_ANCESTOR_LOCAL_MAIN`; `HOLD_E5_PATH_AND_SOURCE_DRIFT`; `PASS_NODE_MODULES_7_MISSING_3_PROTECTED_SYMLINK`; `HOLD_APFS_GAIN_UNMEASURED`; `HOLD_ALL_FILE_MUTATION`. The latest user probe was read-only. Remaining release/rollback/source history of docs unaffected by this new observation. Actual Session D Phase11 recovered remains **0 B verified**. Detailed scope and safe lstat plan: [Phase11 ledger](SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
