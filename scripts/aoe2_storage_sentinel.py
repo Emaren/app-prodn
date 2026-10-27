@@ -164,7 +164,8 @@ def heartbeat(db,t=None):
    else:
     for (ident,) in existing:db.execute("UPDATE events SET active=0,last_seen=? WHERE id=?",(stamp(t),ident))
   # Once/day reminder for unresolved + unacknowledged only, never a new event.
-  for ident,body in db.execute("SELECT id,body FROM events WHERE active=1 AND ack_at IS NULL"):
+  eligible=stamp(t-dt.timedelta(hours=24))
+  for ident,body in db.execute("SELECT id,body FROM events WHERE active=1 AND ack_at IS NULL AND first_seen<=?",(eligible,)):
    day=t.strftime("%Y%m%d")
    reminder=ident+":daily:"+day
    db.execute("INSERT OR IGNORE INTO outbox (id,event_id,body,status) VALUES (?,?,?,'pending')",
