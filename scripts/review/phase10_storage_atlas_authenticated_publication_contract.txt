@@ -1,0 +1,100 @@
+PHASE 10 — AUTHENTICATED STORAGE ATLAS PROVENANCE, ADOPTION AND REVIEW
+Status: SOURCE-ONLY, DRAFT, NOT A LIVE PRODUCTION DATA SERVICE.
+Integration topology: app-prodn #943 UI first-parent, #944 Storage OS second-parent
+(two-parent source commit). Integration review branch is based on #943; it
+CONTAINS #944's exact non-documentation source blobs. Never merge or deploy this
+integration before both #943 and #944 are independently accepted. The original
+two PR branches are not changed and #940 is financially held/unmodified.
+
+Producer: Local-only 'bin/aoe2war storage atlas-probe --plane ...' from
+Session D (Mac), Session C (HEL1 root and evidence volume). Single-plane
+statvfs/diskutil/findmnt output is PARTIAL, unsigned and never independently
+authenticated merely because source prints a Git SHA. A separately pinned
+host-local signing agent is REQUIRED; this review does NOT install one or
+generate/issue collector signing keys.
+Consumer: lib/aoe2StorageAtlasAuth.ts parses
+ aoe2war.storage-atlas.signed-receipts.v1
+ {schema,receipts:[{plane,payload_base64,signature_base64}...]},
+one receipt per Mac/HEL1-root/HEL1-volume-105319120. Each receipt signature
+is Ed25519 over the exact bytes:
+ utf8("aoe2war/storage-atlas/receipt-v1\0") || signed_utf8_JSON_payload.
+The signing input is exactly the raw UTF8 JSON bytes in the canonical
+base64 payload: DO NOT reserialize it before verifying. A collector's
+public-key PEM must be provisioned independently by Central Command,
+NOT from the signed receipt or any HTTP input. Require three distinct keys,
+each bound to one plane and source full Git SHA.
+Payload includes plane, collector_id, monotonic receipt sequence,
+previous_receipt_sha256, source {collector,source_sha}, issued_at UTC,
+observed_at UTC, TTL <=300 seconds, fs_type/uuid/mount_source/mountpoint,
+statvfs total/free_blocks/ordinary_free bytes, coverage, census_complete,
+mount_verified, exact private consumers with class/probe_ok and provenance.
+Signed payload data can be up to 128 KiB per plane, total external bundle
+<=512 KiB. Unauthorized/unsigned, replay/skip sequence, wrong previous
+witness digest, mismatched source SHA, wrong UUID/mount, swapped signatures,
+unrecognized classes, impossible block arithmetic, disputed clocks,
+staleness >TTL and incomplete census falsely claiming complete => HOLD.
+Volume identity MUST bind to ext4 UUID
+a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42, target
+/mnt/HC_Volume_105319120, actual /dev block source.
+Signing keys must remain separate from Wolo escrow, recovery and finance
+keys, live website runtime and Git repositories. No signer present here.
+
+PIN/WITNESS: trusted policy externally provisioned via private
+STORAGE_ATLAS_COLLECTOR_TRUST_JSON. Per plane pin:
+ collector_id, public_key_pem, filesystem_uuid, mount_source, mountpoint,
+ source_sha, minimum_sequence, previous_receipt_sha256.
+This MUST be sourced from a separately authenticated monotonic high-water
+witness, verified and updated under an exclusive operator-side publisher
+lock; never accept witness updates from an untrusted signed bundle, request,
+HTML route, or client-provided JSON. If no independent durable replay witness
+is available, leave publication DISABLED/HOLD. A signed receipt may still be
+physically/reliably stale or cover only part of a volume.
+
+Private ingest file: STORAGE_ATLAS_SIGNED_BUNDLE_FILE, absolute operator-
+provisioned path; read ONLY from lib/aoe2StorageAtlasServer.ts
+(server-only). O_RDONLY|O_NOFOLLOW, no symlink ancestors, no world-writable
+directory, regular single-linked file, owned by the service runtime with
+owner-only permissions, <=512KiB. No public upload/POST, no host shell,
+no Docker/API prune, no filesystem walk or remote probe in public requests.
+The server only verifies bytes and projects safe aggregate categories:
+ aoe2war.storage-atlas.authenticated-public.v1
+ {provenance,admission:"HOLD",live:false,verified_at,receipt_sequences,snapshot}.
+The existing #944 public projection computes age/TTL and reveals only
+anonymous plane IDs, usage %, ordinary free, ranked consumer CLASSES,
+coverage, severity and age. No exact paths, owners, usernames, UUIDs,
+backup receipts, financial identifiers, signatures, raw proof or collector ID.
+It NEVER upgrades source-only evidence to production capacity GO or even
+reports a new measured-reclamation number from unverified JSON.
+
+DEPLOYMENT GATES:
+1. Source review and tests of pinned #943 + #944 + Phase10 integration,
+   including DocsV2 and Next production application.
+2. Independent D/C publisher signing key enrollment, off-host source SHA
+   and filesystem mount-pinning, IAM owner and key rotation review; G
+   validates chain-of-custody, revocation and cross-host independence.
+3. Operator-only unsigned local probe followed by independent COMPLETE or
+   explicitly PARTIAL named consumer census. Do not claim 100% from partial.
+4. Independent durable high-water anti-replay witness, concurrent producer
+   arbitration, signed current receipt and crash-safe atomic publication.
+   THIS REVIEW DOES NOT INSTALL ANY PUBLISHER OR DURABLE WITNESS.
+5. Protected recovery, recordings, 40-GiB financial loop4, and backups are
+   never deletion-eligible, regardless of TTL or signs of disk pressure.
+6. E qualifies HEL1 volume backup/restore and <=88% snapshot/resize admission.
+   Production observation/ownership and website release require separate
+   Central authorization. G independently verifies public redaction and
+   separately permitted operator drilldowns (NO operator drilldown feature
+   exists here).
+7. Leave all runtime environment variables UNSET until signed operator
+   publication controls are provisioned. No real measurements are installed
+   by this PR. Missing/stale signatures show "NO AUTHENTICATED COLLECTOR
+   SNAPSHOT INSTALLED / UNKNOWN / HOLD", with dated October 27 static
+   measurements distinctly labeled historical.
+
+TEST/CLAIM LIMITS:
+Synthetic test keys generated locally to validate actual Ed25519 verification
+and tampering defenses; they are NOT production keys or signed HEL1/Mac data.
+Independent real producer signing / durable atomic witness / restart,
+lost-writer, concurrent publication / real mounted-volume identity / live
+retention are NOT certified. Authentication software passing CI is not a
+production-ready telemetry service. Keep #943/#944/#940 draft held, no merge,
+live DB mutation, server installation or financial activation.
