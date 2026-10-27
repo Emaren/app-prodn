@@ -128,7 +128,14 @@ def receive(db,pins,envelope,t=None):
    if p["coverage"]!="complete":notice("scan_incomplete","census-"+p["coverage"],"HOLD")
    if p["backup_status"]=="failed":notice("backup_failed","backup-attested-fail","HOLD")
    if p["expired_generations"] is not None and p["expired_generations"]>0:notice("build_generation_expired","expired-reviewed","WATCH")
-   if p["reviewed_generations"]>0:notice("cleanup_candidate_review","generated-reviewed","WATCH")
+   if p.get("candidate_inventory") is not None:
+    from scripts.aoe2_storage_artifacts import review_inventory,ArtifactHold
+    try:
+     candidate_plan=review_inventory(p["candidate_inventory"])
+    except (ArtifactHold,KeyError,TypeError) as e:raise Hold("ARTIFACT_REVIEW_FAILED") from e
+    if any(row["candidate_quality"]=="REVIEWABLE" for row in candidate_plan["items"]):
+     notice("cleanup_candidate_review","qualified-review-only","WATCH")
+
    if prior[4] and free<prior[5] and prior[5]-free>=2*GIB and (observed-parse(prior[4])).total_seconds()<=86400:notice("storage_regression","loss-over-2GiB","WATCH")
    # Close superseded conditions, but never silently clear unacknowledged history.
    active=db.execute("SELECT id FROM events WHERE plane=? AND active=1",(plane,)).fetchall()
