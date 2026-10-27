@@ -81,6 +81,9 @@ if [ -f "$ROOT/scripts/aoe2_storage.py" ]; then
   df -k /System/Volumes/Data > "$RECEIPTS/apfs-data-after.txt"
   (cd "$RECEIPTS" && shasum -a 256 *.json *.txt > SHA256SUMS.txt)
   printf 'READ_ONLY_RECEIPTS=%s/%s\n' "$PWD" "$RECEIPTS"
+  else
+    echo "HOLD: CANNOT_ENTER_CANONICAL_ROOT"
+  fi
 else
   echo "HOLD: CANONICAL_STORAGE_OS_SOURCE_MISSING"
 fi
