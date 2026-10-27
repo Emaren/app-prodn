@@ -197,6 +197,8 @@ module.exports = {
 
   async rewrites() {
     return [
+      // Source-owned OS subview: URL alias, not an extra page template or source-census bypass.
+      { source: "/aoe2war-os/storage-atlas", destination: "/aoe2war-os?view=storage-atlas" },
       { source: "/api/chain-id", destination: `${UPSTREAM_API}/api/chain-id` },
       { source: "/api/parse_replay", destination: `${UPSTREAM_API}/api/parse_replay` },
       { source: "/api/health", destination: `${UPSTREAM_API}/api/health` },
