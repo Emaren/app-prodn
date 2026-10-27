@@ -84,7 +84,7 @@ const operations = [
 export default async function StorageAtlasView() {
   const telemetry = await readAuthenticatedStorageAtlas();
   const authenticated = telemetry?.snapshot.planes ?? [];
-  const titles = {"mac":"Development Mac","hel1-root":"HEL1 Root","hel1-volume-105319120":"HEL1 Evidence Volume"} as const;
+  const titles = ["Development Mac", "HEL1 Root", "HEL1 Evidence Volume"] as const;
   const displayGiB = (n:number|null)=>n===null?"UNAVAILABLE":(n/(1024**3)).toFixed(2)+" GiB";
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050b15] text-slate-100">
@@ -134,8 +134,8 @@ export default async function StorageAtlasView() {
           </div> : <div className="mt-6">
             <p className="text-xs text-slate-400">Verified receipt envelope at {telemetry.verified_at}; provenance {telemetry.provenance}. This does not certify census completeness, financial solvency or deployment readiness.</p>
             <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {authenticated.map(plane => <article key={plane.plane} className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                <div className="flex items-center justify-between gap-3 text-sm font-semibold text-white"><span>{titles[plane.plane]}</span><span className="text-xs text-amber-200">{plane.severity}</span></div>
+              {authenticated.map((plane, index) => <article key={plane.plane} className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                <div className="flex items-center justify-between gap-3 text-sm font-semibold text-white"><span>{titles[index] ?? "Storage drive"}</span><span className="text-xs text-amber-200">{plane.severity}</span></div>
                 <div className="mt-4 text-2xl font-bold tabular-nums text-cyan-100">{plane.effective_used_percent===null?"UNKNOWN":plane.effective_used_percent.toFixed(2)+"%"} <span className="text-xs font-normal text-slate-400">effective used</span></div>
                 <div className="mt-2 text-sm text-slate-300">Ordinary available: {displayGiB(plane.ordinary_free_bytes)}</div>
                 <div className="mt-3 text-xs text-slate-400">Coverage: {plane.coverage.toUpperCase()} · {plane.stale?"STALE / HOLD":"within signed TTL"} · Age: {plane.age_seconds===null?"UNKNOWN":plane.age_seconds+"s"}</div>
