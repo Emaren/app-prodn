@@ -316,6 +316,15 @@ Three targeted candidate directories are **unchanged** vs preceding scan: protec
 
 **Decision:** `PASS_MAC_APFS_CONTAINER_DF_RECONCILIATION`; `PASS_3_TARGET_BUILD_SIZES_UNCHANGED`; `HOLD_CAPACITY_CAUSALITY`; `HOLD_FINAL_DF_SHELL_ERROR`; `PASS_DISPOSABLE_APFS_MTIME_FIXTURE_ONLY`; `HOLD_WATCHER_REAL_CHANGE`. Phase10 newly reclaimed **0 B**, historical two isolated `.next` outputs +2.606 GiB. Full telemetry and context [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md). Frozen finance, staged website, Codex and actual release files remain untouched.
 
+
+## Phase10 direct /bin/df follow-up — zsh `path` special variable overwrote `PATH`, newest free 7.924 GiB (2026-10-27)
+
+The user's exact same interactive zsh shell ran `builtin whence -va df` → **`df not found`**, but `/bin/ls -l /bin/df` showed a valid executable `-rwxr-xr-x 1 root wheel 119152`, and `/bin/df -k /System/Volumes/Data` immediately succeeded. The earlier **assistant-authored** `for path in ...` shell loop assigned to zsh's **special tied `path` array**, thereby clobbering command search environment `PATH` with the loop's final `~/Library/Caches/go-build` directory. **This is a diagnostic shell-script defect, not a filesystem permission or corrupt system command condition.** Avoid using `path` as an interactive zsh loop variable; use `candidate_dir`. A normal login-shell restart `exec /bin/zsh -l` restores startup setup but resets existing shell-local state. No chmod, OS command edits or permissions repair indicated.
+
+**Later owner read-only Data `df`:** total 482,797,652 KiB, used **431,011,556 KiB**, available **8,308,892 KiB = 7.923977 GiB**, displayed 99% used, mount `/dev/disk3s5`. Compared with immediately prior successful Data `df` `used=431002972` KiB / `available=9366596` KiB (8.932682 GiB), used **increased 8,584 KiB**, available **decreased 1,057,704 KiB = 1.008705 GiB**. Neither shell failure nor three unchanged output candidates explains this free variation. The prior `diskutil` shared container/free exact reconciliation was time-scoped to that earlier `df`; no subsequent `diskutil` container receipt was supplied in this operator batch. No proof of deletion, snapshot causality, new Docker/cache output or specific VM/preboot writer. Mac storage activity and APFS shared-pool interpretation still **HOLD**.
+
+**Changes/authority:** user executed read-only shell diagnosis, no real Watcher artifact, signed download URL, worktree, protected media, Codex, financial, APFS snapshots or build output altered; **0 B actual new reclaimed**. Prior native mtime-divergent disposable APFS fixture PASS remains; actual six legacy hyphen aliases have no owner authorization to change. Full revised source and Atlas fields [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
