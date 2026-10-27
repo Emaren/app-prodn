@@ -63,3 +63,14 @@ Tests required before any source promotion: symlinked ancestor HOLD, active/stag
 ## Exit
 
 Current Phase11 source and scoped release authority review: PASS for negative active/staged/last 25 matches, HOLD on certified field/complete rollback reference and independent restore or build. **Actual new bytes reclaimed 0.** No Mac changes, no production release, no financial action and no protected worktree or signed installer modification.
+
+
+## Phase 11 ranked batch camera in the draft review branch (added, not installed)
+
+Source path: docs/review/fixtures/session_d_phase11_readonly_inventory.py; Git blob 8f769a2e356623dea4a7f369861c63ffa8784889, initially authored at commit 118614927519ecd33ea8a5f51307c560772f8915. This is a **review-only fixture**, not a Mac maintenance apply tool, scheduled monitor or runtime action. The user has not yet executed this exact new variant on the owner Mac, so no fabricated live output or test PASS is claimed.
+
+It reads registered app/API Git worktrees through git worktree list --porcelain; inspects only direct .next/node_modules/.turbo generated directories, active app/API and Watcher named outputs, plus exactly four currently allowlisted cache paths; uses a **single bounded lsof capture** and bounded per-directory du -sk rather than repeated per-candidate manual FD surveys. For each source it reads HEAD/branch/scoped Git porcelain, bounded SHA of existing package lockfiles and BUILD_ID file, release sibling existence and directory mtime age. It prints a sorted review ledger and an **advisory** old/large Next alert if >=1,048,576 KiB and >=7 days by directory mtime. No reading release receipt bodies, no rm, no source or symlink edits, no process termination, no network calls from the Python fixture, no --apply, no receipt writes.
+
+Known limits: this is NOT proof of complete build consumers, process visibility, source reproducibility, certified release authority or APFS reclaim. An incomplete lsof or measurement is HOLD; cache allowlist entries are preview only; worktree status excludes ignored files; age is the directory mtime, not a reliable build-completion timestamp. Source review/CI and owner-Mac syntax + fixture execution are pending. Future upstream Storage OS integration requires its own tested read-only code change and merge; **retention alerts are not automatically deployed**. The supplementary standalone prototype fixture in the current ChatGPT runtime is a different local test and its success must not be attributed to the GitHub branch variant.
+
+**Safe operator verification:** fetch the immutable commit-pinned raw path; verify with git hash-object against blob 8f769a2e356623dea4a7f369861c63ffa8784889; run python3 -m py_compile; only if both pass execute Python with no deletion arguments and report its table. Existing source-authoritative storage local-maintain --json remains a PREVIEW; do NOT invoke its --apply.
