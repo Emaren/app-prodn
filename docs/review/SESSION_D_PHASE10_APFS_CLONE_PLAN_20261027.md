@@ -332,6 +332,24 @@ No actual filesystem modifications and no `.next`, `.aoe2war-release`, sources, 
 
 **Storage Atlas current scoped candidate fields**: `mac_next_candidate_path=projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next`, `mac_next_allocated_kib=1328688`, `mac_next_build_id_file_sha256=3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`, `mac_next_worktree_head=99c406f57d759b672fd9fe91d3c3355c4d527705`, `mac_next_worktree_git_porcelain_empty=true`, `mac_adjacent_release_state_exists=true`, `mac_next_runtime_consumers_verified_absent=false`, `mac_next_deletion_authorized=false`, `mac_next_reclaimed_bytes=0`; operator exact observation UTC not provided.
 
+## Second isolated .next probe: exact attached worktree and release categories, no cwd reader observed (owner Mac, 2026-10-27)
+
+Owner's read-only follow-up on `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015` identified the exact **attached** Git worktree entry:
+```
+worktree /Users/tonyblum/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015
+HEAD 99c406f57d759b672fd9fe91d3c3355c4d527705
+branch refs/heads/fix/update-independent-docs-context-20261015
+```
+No Git source modifications were reported in prior `status --porcelain` but an attached clean branch must **not** be retired without explicit Git ancestry/merger/owner authority. Its `.next` remains **1,328,688 KiB** with `BUILD_ID` file SHA256 `3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`.
+
+Adjacent `.aoe2war-release` reports **`du -sk=0` KiB**; it is **not empty**, as `ls -la` showed exactly three top-level directories: `federation-validation`, `recovery-campaigns`, `storage-handoffs`. Their file contents, receipts, locks, symlink targets and caller relationships were NOT inspected. Zero allocated blocks on this APFS tree is not deletion qualification or proof that receipts can be ignored. Preserve **all** these directories and any nested recovery/rollback data independent of byte size.
+
+Read-only `lsof -nP -d cwd -Fpn` + exact worktree-prefix filter returned **`NO_MATCH_OBSERVED_POINT_IN_TIME`**. This narrows one runtime-consumer type (observable **cwd** paths) and does **not** prove no open-file handles under `.next`, no Next.js process referring to it, no detached runtime or future build/rollback consumer. No actual `.next` delete or source/worktree mutation occurred.
+
+**Transition:** `PASS_ATTACHED_WORKTREE_BRANCH_IDENTITY`, `PASS_3_PROTECTED_RELEASE_TOPLEVEL_CATEGORIES`, `PASS_NO_MATCH_OBSERVED_CWD_AT_SAMPLE`; `HOLD_NONCWD_FILE_HANDLES_AND_RELEASE_CONSUMERS`, `HOLD_NEXT_RETENTION_AUTHORITY`. `candidate_generated_next_allocated_kib=1328688`, `release_root_du_kib=0`, `release_top_level_directory_names=["federation-validation","recovery-campaigns","storage-handoffs"]`, `attached_worktree_branch=refs/heads/fix/update-independent-docs-context-20261015`, `cwd_match_count_observed=0`, `unqualified_next_reclaim_bytes=0`, `actual_next_reclaimed_bytes=0`. These are observation fields, not instructions to mutate the local machine.
+
+**Next bounded read-only check (not a deletion recipe)**: all observable open FD *names* filtered to the exact `.next/` subtree, printing **only matching PID numbers/count**, plus count-only receipt categories for the three protected subtrees (never dump potential secret JSON/text payloads). For process visibility consider `lsof` permission limits. No recursive `lsof +D` walk through 1.267GiB, no grep exposing sensitive receipt contents, no `--apply`, no worktree prune or production action. Any nonzero FD consumer immediately holds cleanup; a zero FD sample alone does **not** certify no rollback/use.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
