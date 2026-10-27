@@ -58,7 +58,7 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
   await run(a,roles);
   await t.test("native proof certificate and both same-root bank domains are mandatory",async()=>{
    await run(a!,"INSERT INTO epoch_v3.receipts (tx_hash,message_index,epoch_id,owner_uid,kind,sender,recipient,memo,amount_uwolo,chain_height,native_proof_sha256,proof_verified_at,chain_time) VALUES($1,0,$2,'imposter','deposit','wallet:imposter',$3,'test',1000000,1500,$4,clock_timestamp(),'2026-10-27T12:00:00Z')",[hash(901),E,V,sha]);
-   await assert.rejects(()=>atomic(a!,()=>run(a!,"SELECT epoch_v3.credit_deposit($1,'imposter',$2,0,1000000,'wallet:imposter',$3)",[E,hash(901),V])),/no rows in result set|native_proof/i);
+   await assert.rejects(()=>atomic(a!,()=>run(a!,"SELECT epoch_v3.credit_deposit($1,'imposter',$2,0,1000000,'wallet:imposter',$3)",[E,hash(901),V])),/query returned no rows|no rows in result set|native_proof/i);
    // A source fixture that supplies a single account's current bank proof is
    // also insufficient; both distinct domains are mandatory.
    await proof(a!,"deposit","isolated",1,902,"wallet:isolated",V,"deposit/isolated");
