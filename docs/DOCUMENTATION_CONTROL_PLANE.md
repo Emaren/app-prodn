@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/session-b-phase4-hd-new-epoch-integration` at `3f6f5d91ed293d34c7dd9517054e2c2cb6098915`
+Implementation baseline: `review/session-b-phase4-hd-new-epoch-integration` at `a57bcb8f00de3d00817ed9771de16b5fe8a7bde9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
