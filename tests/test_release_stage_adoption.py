@@ -181,6 +181,7 @@ class StageProductLoaderPathTests(unittest.TestCase):
                 "status": "STAGED", "release_sha": product,
                 "artifact_sha256": artifact,
                 "previous_production_sha": previous,
+                "risk_class": "APPLICATION",
                 "source_sha": previous,
                 "live_runtime_mutated": False, "wolo_mutated": False,
                 "active_build_id": "previous-build",
