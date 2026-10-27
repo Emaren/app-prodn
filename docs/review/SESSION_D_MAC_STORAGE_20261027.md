@@ -67,7 +67,7 @@ Run on **the actual Mac** from its clean canonical checkout. Interactive shell c
 ```bash
 ROOT="$HOME/projects/AoE2HDBets/app-prodn"
 if [ -f "$ROOT/scripts/aoe2_storage.py" ]; then
-  cd "$ROOT" || exit 1
+  if cd "$ROOT"; then
   NOW="$(date -u +%Y%m%dT%H%M%SZ)"
   RECEIPTS=".aoe2war-release/storage-local-receipts/session-d-$NOW"
   mkdir -p "$RECEIPTS"
