@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/session-b-phase10-authenticated-storage-atlas` at `ffda715a3c7a9be32bf6113768caee50f63c53b1`
+Implementation baseline: `release/phase11-website-atlas-finance-safe` at `99123c0e08b96328d2ccdbfb512a668313c977e0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
