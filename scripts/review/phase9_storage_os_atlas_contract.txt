@@ -18,6 +18,12 @@ OWNERSHIP AND LEGACY OPERATING ENTRYPOINTS
   admission and HEL1 DynamicUser observer authority; no duplicated collector.
   Existing callers include Finish, triage / Kingdom Intelligence, operator CLI,
   archive worker, storage campaign and release gates.
+- New: aoe2war storage atlas-probe --plane mac|hel1-root|hel1-volume-105319120.
+  scripts/aoe2_storage_probe.py is a SINGLE-host read-only statvfs and native
+  mount-UUID collector (macOS diskutil, Linux findmnt). It never installs a
+  watcher, sends an SSH request, scans all consumers or executes cleanup.
+  Every local sample has census_complete=false and coverage=partial until
+  C/D/E independently attest a full consumer scan and raw collector origin.
 - New: aoe2war storage atlas-snapshot --inputs PRIVATE_JSON [--public].
   scripts/aoe2_storage_atlas.py normalizes independently obtained operator
   snapshots; DOES NOT SSH, deploy, run rm, mutate a host or claim authentic
