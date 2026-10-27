@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261027-phase12-storage-sentinel` at `381f3b039a25897d96ea7bc72e692bd8558c0164`
+Implementation baseline: `review/20261027-phase12-storage-sentinel` at `09b8fd2ae709748d88d28a1103433baeaf885a6f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
