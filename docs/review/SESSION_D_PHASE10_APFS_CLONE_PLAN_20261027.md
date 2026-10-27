@@ -125,11 +125,44 @@ The operator independently ran full SHA-256, lstat, ACL and xattr read-only chec
 
 **Real pair decision:** `PASS_CONTENT_AND_NON_TIME_METADATA / HOLD_MTIME_AND_INODE_IDENTITY`. Do **not** weaken the real metadata gate to silently overlook the difference. For the proposed separately authorized transaction, if other outstanding URL/owner/snapshot gates are satisfied, preserve alias `mtime_ns` by invoking `os.utime(staged_fixture_clone, ns=(original_alias_atime_ns, original_alias_mtime_ns))` on the **staged clone only**, before verifying alias-equivalent metadata and any atomic replacement. This is an implementation candidate, **not** authority to run it on real Watcher content. It cannot preserve birthtime, ctime or inode of a staged replacement; revert can recover original inode only while the private original-inode hardlink backup is retained.
 
-**Additional disposable fixture version built but Mac result PENDING:** immutable source commit `8f8e5f9c004fab054478f5d97337af5346db7a55`, Git blob `1706a45c9229c501d9bf91d6024dc2a81262aa57`, starts two 4-MiB test files with deliberately different mtimes (one-second divergence), proves all non-time metadata and hashes match, clones only the disposable canonical file, restores the disposable alias's own atime+mtime on the staged clone, verifies exact alias-equivalent fields after swap, tests website dummy symlink and rollback to the original fixture inode. **Do not count the previous three-run `PASS_APFS_FIXTURE_ONLY` as verification of this NEW variant until the operator actually executes it.** No actual Watcher writes are possible from this source.
+**Fourth Mac fixture run: PASS with mtime divergence.** Immutable source commit `8f8e5f9c004fab054478f5d97337af5346db7a55`, Git blob `1706a45c9229c501d9bf91d6024dc2a81262aa57`, constructs independently written 4-MiB canonical+alias files with deliberately different mtimes (one-second divergence), clones the disposable canonical file, restores the disposable alias's original atime+mtime to the temporary clone, and tests alias-equivalent metadata after swap, URL continuity and exact-original-inode rollback. This variant was actually executed on the Mac: its receipt is immediately below. **Still no actual Watcher edits.**
 
 **Fresh capacity reading:** owner `df -k /System/Volumes/Data` reports **7,262,984 KiB** available = **6.926521 GiB**, **99%** displayed used; earlier at 2026-10-27T15:04Z **11,402,824 KiB** = 10.87458 GiB. Observed availability decline **4,139,840 KiB = 3.94806 GiB**, **cause unknown**. The earlier fixture same-device `statvfs` reported 7,440,388,096 B ~6.9294 GiB, directionally corroborating current Data headroom but not a post-commit space reclaim. Neither Watcher alias duplication nor the fixture explains the observed decrease. Inspect APFS snapshot inventory **read-only**, active build/cache growth and release-retention referenced directories; do not delete snapshots, worktrees, caches, binaries, personal files or financial evidence on these observations.
 
 **Telemetry additions for Session B Storage Atlas (owner read-only, subsequent to 15:04Z):** `apfs_data_free_kib_latest=7262984`, `apfs_data_free_gib_latest=6.9265213`, `apfs_data_available_decline_kib=4139840`, `apfs_data_capacity_display=99%`, `first_alias_pair_real_hash_match=true`, `first_alias_pair_st_dev=16777234`, `first_alias_metadata_gate=HOLD_MTIME_ONLY`, `first_alias_mtime_difference_ns=1077170113`, `first_alias_permissions_owner_acl_xattr_equal=true`, `first_alias_orig_btime_preservable_by_clone=false`, `new_real_reclaimed_bytes=0`, `snapshot_causality=UNPROVEN`. Do not treat original 15:04Z timestamp as this newer reading's time; exact operator acquisition time of the newer `df` was not supplied.
+
+## Fourth Mac run: distinct-mtime APFS fixture PASS; Data free-space rebound (owner terminal, 2026-10-27)
+
+The operator fetched the immutable review-branch source commit `8f8e5f9c004fab054478f5d97337af5346db7a55`, verified Git blob `1706a45c9229c501d9bf91d6024dc2a81262aa57` and Python syntax, then executed the **disposable fixture-only** script. Terminal output `PASS: MTIME_FIXTURE_SOURCE_VERIFIED`; JSON status `PASS_APFS_FIXTURE_ONLY`. Exact fields:
+
+| Probe field | Result |
+|---|---|
+| `clonefile_syscall` | `SUCCESS_NO_FALLBACK` |
+| `copy_on_write_write_isolation` | `PASS` |
+| `different_initial_mtimes` | `PASS_ONE_SECOND_DIVERGENCE` |
+| `staged_alias_original_mtime_restored` | `PASS` |
+| `metadata_mode_owner_flags_mtime_xattr` | `PASS` |
+| `regular_file_and_separate_inode` | `PASS` |
+| `download_symlink_continuity_before_after` | `PASS` |
+| `temporary_original_hardlink_rollback` | `PASS_ORIGINAL_INODE` |
+| `fixture_size_bytes_each` | `4194304` B (4 MiB), disposable test files only |
+| `free_bytes_before_test` and `free_bytes_after_test_before_temp_cleanup` | `9581416448` B (same value, delta 0) |
+| `fixture_cleaned_on_normal_exit` | `true` (script's expected context-manager cleanup; not separately inventoried post-exit) |
+| `actual_watcher_files_touched` | `0` |
+| `actual_watcher_reclaimed_bytes` | `0` |
+
+**Acceptance change:** `PASS_MTIME_DIVERGENCE_APFS_FIXTURE`. The prior real-pair metadata HOLD is understood as an **alias-specific mtime compatibility requirement** and the proposed staged-clone timestamp restoration is now **demonstrated on separate disposable files**. The original real alias and canonical still have different birthtimes and inodes. Their unchanged status has not been reconfirmed by post-test lstat, though this fixture contains no real-file write code. A real swap would change inode/birthtime/ctime and cannot be called a strict original-file-identity preservation. This PASS is **not** consent to clone, replace, move, unlink or rename any genuine Watcher artifact. No user-approved actual transaction occurred.
+
+**APFS capacity and snapshot observations** (same operator block, read-only):
+- Latest `df -k /System/Volumes/Data`: total **482,797,652 KiB**, used **431,003,520 KiB**, available **9,365,044 KiB = 8.931202 GiB**, displayed capacity **98%**.
+- Previous direct Data `df`: used **431,006,732 KiB**, available **7,262,984 KiB = 6.926521 GiB**. Available increased **2,102,060 KiB = 2.004681 GiB**, while reported used declined only **3,212 KiB**. Thus this was **not** a verified ~2-GiB file deletion: shared APFS container and free-space accounting, snapshots/purgeable allocation, other consumers or unrelated activity remain possible explanations; none proven.
+- Against the older `11,402,824 KiB` (~10.875 GiB) census, the latest available is **2,037,780 KiB (1.943378 GiB) lower**, cause still unknown.
+- Fixture-local statvfs available **9,581,416,448 B = 8.923389 GiB**, zero within-fixture delta. The next direct Data `df` observation is higher by **8,388,608 B (8 MiB)**, but readings were not simultaneous; no need to force artificial reconciliation.
+- `tmutil listlocalsnapshots /`: **three `com.apple.os.update-...`** snapshot records reported for the volume group containing `/`; they are OS-update named and should remain untouched. `diskutil apfs listSnapshots /System/Volumes/Data` explicitly returned **`No snapshots for disk3s5`**. This rules out *currently listed snapshots on the Data volume* as a directly observed pinning explanation; it does **not** prove no other APFS volume, pending update or shared-container accounting effects.
+
+**Decision and next checks:** no additional APFS fixture runs are required unless reviewed transaction code changes. Before any real alias stage, separately verify exact path aliases/canonical SHA, process/FD/HTTP/history download consumers, real ACL/xattr/flags and access timestamps, source SHA, symlink continuity and owner acceptance of changed birthtime/inode/ctime, and ensure a private rollback hardlink is kept through a manually approved test period. Do **not** execute an actual swap without explicit separate permission; **do not** delete the backup without a second approval. For build headroom, prioritize read-only **APFS whole-container/other-volume free/purgeable accounting and protected build-output growth attribution** over more repeated clone-fixture tests. No cache purge, system update snapshot thinning, worktree retirement, production change or financial release action is authorized.
+
+**Storage Atlas fresh sample**: `apfs_data_free_kib=9365044`, `apfs_data_free_gib=8.9312019348`, `apfs_data_used_kib=431003520`, `apfs_data_capacity_display=98%`, `apfs_data_available_increase_from_prior_kib=2102060`, `apfs_data_used_decline_from_prior_kib=3212`, `data_apfs_snapshot_count=0`, `system_update_snapshot_count_reported=3`, `mtime_divergence_fixture=PASS_APFS_FIXTURE_ONLY`, `mtime_restoration_pass=true`, `clonefile_success_no_fallback=true`, `actual_watcher_files_touched=0`, `phase10_new_reclaimed_bytes=0`. The exact new observation timestamp was not supplied: do not silently attach the older `2026-10-27T15:04:27Z` timestamp.
 
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
@@ -194,7 +227,18 @@ Source `Mac_Owner_20261027T1504Z`, observed and scope-tagged, **NOT** host-updat
   "watcher_aliases_logical_one_copy_bytes": 742422002,
   "manifest_or_updater_alias_refs_observed": 0,
   "open_alias_fd_count_observed": 0,
-  "apfs_fixture_status": "PASS_APFS_FIXTURE_ONLY_THIRD_RUN",
+  "apfs_fixture_status": "PASS_MTIME_DIVERGENCE_APFS_FIXTURE_FOURTH_RUN",
+  "mtime_divergence_fixture_source_commit": "8f8e5f9c004fab054478f5d97337af5346db7a55",
+  "mtime_divergence_fixture_blob_sha1": "1706a45c9229c501d9bf91d6024dc2a81262aa57",
+  "mtime_divergence_fixture": "PASS_ONE_SECOND_DIVERGENCE",
+  "staged_alias_original_mtime_restored": "PASS",
+  "apfs_data_free_kib_latest": 9365044,
+  "apfs_data_used_kib_latest": 431003520,
+  "apfs_data_capacity_display_latest": "98%",
+  "apfs_data_snapshots_current": 0,
+  "root_volume_group_os_update_snapshots_reported": 3,
+  "apfs_data_free_increase_from_prior_kib": 2102060,
+  "apfs_free_delta_is_verified_cleanup": false,
   "fixture_source_commit": "316815be0d1ce13db27aa2164770f7b3cbd7955a",
   "fixture_blob_sha1": "da0f5c21812829fe8b770bbacc585aba2b2dbfaa",
   "fixture_apfs_data_and_tmp_device_gates": "PASS_THIRD_ATTEMPT",
