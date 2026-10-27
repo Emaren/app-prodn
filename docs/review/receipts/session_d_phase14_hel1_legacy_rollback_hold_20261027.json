@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "session-d-phase14-owner-hel1-legacy-rollback-latest",
+  "date": "2026-10-27",
+  "source": "Owner-executed bounded, read-only HEL1 legacy/cold metadata classification script pasted to chat; no archive body reads",
+  "archive_other_classes": {
+    "other_regular": 168
+  },
+  "archive_other_size_bands": {
+    "1_to_100MiB": 168
+  },
+  "archive_bodies_read": false,
+  "legacy_review": {
+    "directories_examined": 64,
+    "source_fields_read": 0,
+    "build_id_fields_read": 22,
+    "matching_build_generations": 0,
+    "matching_source_generations": 0,
+    "missing_or_unknown_source": 64,
+    "missing_or_unknown_build_id": 42
+  },
+  "status": "BOUNDED_METADATA_CLASSIFICATION",
+  "candidate_docs_context_next": {
+    "source_head": "99c406f57d759b672fd9fe91d3c3355c4d527705",
+    "allocated_kib_last_owner_sample": 1328688,
+    "delete_authorized": false
+  },
+  "read_only": true,
+  "mutation_allowed": false,
+  "assessment": "22 readable build ID fields nonmatching does not clear 42 missing/unknown build ID fields, all 64 absent source fields, 168 unexamined regular files, or future consumers/independent restore",
+  "phase14_action": "Switch to existing four allowlisted Mac cache controller; exact docs-context .next remains HOLD",
+  "mac_last_owner_available_kib": 9956888,
+  "new_deleted_paths": [],
+  "new_reclaimed_bytes": 0
+}
