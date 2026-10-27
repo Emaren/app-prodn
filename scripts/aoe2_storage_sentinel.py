@@ -189,10 +189,29 @@ def projection(db,t=None):
  rows=db.execute("SELECT plane,rule,severity,observed,coverage,reason FROM events WHERE active=1 ORDER BY severity,plane LIMIT 32").fetchall()
  return {"schema":"aoe2war.storage-sentinel.private-projection.v1","last_ingested_at":last,
    "live":False,"admission":"HOLD","unresolved":[dict(zip(("plane","rule","severity","observed_at","coverage","reason"),r)) for r in rows]}
+def publish_projection(db,path):
+ """Optional operator-only private file publisher. Never emits a LIVE claim."""
+ if not path.is_absolute() or path.is_symlink():raise Hold("INVALID_OUTPUT_PATH")
+ if path.parent.stat().st_mode&0o077 or path.parent.is_symlink():raise Hold("OUTPUT_DIRECTORY_NOT_PRIVATE")
+ if path.exists():private(path,64*1024)
+ output=json.dumps(projection(db),sort_keys=True,separators=(",",":")).encode()
+ if len(output)>32768:raise Hold("OUTPUT_TOO_LARGE")
+ import tempfile
+ fd,tmp=tempfile.mkstemp(prefix=".sentinel-",dir=str(path.parent))
+ try:
+  os.fchmod(fd,0o600)
+  with os.fdopen(fd,"wb") as f:
+   f.write(output);f.flush();os.fsync(f.fileno())
+  os.replace(tmp,path)
+  directory=os.open(str(path.parent),os.O_RDONLY)
+  try:os.fsync(directory)
+  finally:os.close(directory)
+ finally:
+  if os.path.exists(tmp):os.unlink(tmp)
 def main():
  a=argparse.ArgumentParser();a.add_argument("action",choices=("enroll","ingest","tick","deliver","ack","status"))
  a.add_argument("--state",required=True,type=Path);a.add_argument("--trust",type=Path);a.add_argument("--signed",type=Path)
- a.add_argument("--actor");a.add_argument("--id");args=a.parse_args()
+ a.add_argument("--actor");a.add_argument("--id");a.add_argument("--output",type=Path);args=a.parse_args()
  try:
   db=open_db(args.state)
   if args.action in ("enroll","ingest"):
@@ -205,7 +224,9 @@ def main():
   elif args.action=="tick":heartbeat(db)
   elif args.action=="deliver":deliver(db)
   elif args.action=="ack":ack(db,args.id,args.actor)
-  elif args.action=="status":print(json.dumps(projection(db),sort_keys=True))
+  elif args.action=="status":
+   if args.output:publish_projection(db,args.output)
+   else:print(json.dumps(projection(db),sort_keys=True))
   if args.action!="status":print(json.dumps({"status":"PASS","action":args.action}))
   return 0
  except (Hold,OSError,ValueError,sqlite3.Error,subprocess.TimeoutExpired) as e:
