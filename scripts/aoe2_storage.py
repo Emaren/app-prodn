@@ -1506,9 +1506,12 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("db-snapshots")
     q.add_argument("db_snapshot_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("atlas-snapshot")
-    q.add_argument("atlas_args", nargs=argparse.REMAINDER)
+    q.add_argument("--inputs", type=Path, required=True)
+    q.add_argument("--previous", type=Path)
+    q.add_argument("--public", action="store_true")
     q = sub.add_parser("artifacts")
-    q.add_argument("artifact_args", nargs=argparse.REMAINDER)
+    q.add_argument("--inventory", type=Path, required=True)
+    q.add_argument("--apply", action="store_true")
     return p
 
 
@@ -1578,9 +1581,17 @@ def main() -> int:
         ]
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "atlas-snapshot":
-        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_atlas.py"), *args.atlas_args], cwd=ROOT, check=False).returncode
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_atlas.py"), "--inputs", str(args.inputs)]
+        if args.previous is not None:
+            cmd.extend(["--previous", str(args.previous)])
+        if args.public:
+            cmd.append("--public")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "artifacts":
-        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_artifacts.py"), *args.artifact_args], cwd=ROOT, check=False).returncode
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_artifacts.py"), "--inventory", str(args.inventory)]
+        if args.apply:
+            cmd.append("--apply")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
 
 
