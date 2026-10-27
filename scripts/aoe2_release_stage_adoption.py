@@ -116,9 +116,9 @@ def trusted_checkout(root: Path, *, exact: str | None = None,
         capture_output=True, timeout=15, check=False,
         env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
     )
-    require(index.returncode == 0 and index.stdout.endswith(b"\\0"),
+    require(index.returncode == 0 and index.stdout.endswith(b"\0"),
             "GIT_INDEX_NOT_INSPECTABLE")
-    for entry in index.stdout[:-1].split(b"\\0"):
+    for entry in index.stdout[:-1].split(b"\0"):
         require(len(entry) >= 3 and entry[:2] == b"H ",
                 "HIDDEN_GIT_INDEX_STATE")
     return head
@@ -203,7 +203,7 @@ def public_fingerprint(key: Path, *, test_root=False) -> str:
         ["openssl", "rsa", "-pubin", "-in", str(key), "-text", "-noout"],
         capture_output=True, timeout=10, check=False,
     )
-    n = re.search(rb"\\((\\d+) bit\\)", strength.stdout)
+    n = re.search(rb"\((\d+) bit\)", strength.stdout)
     require(pub.returncode == 0 and strength.returncode == 0
             and pub.stdout and n is not None and int(n[1]) >= 2048,
             "OWNER_V4_KEY_INVALID")
