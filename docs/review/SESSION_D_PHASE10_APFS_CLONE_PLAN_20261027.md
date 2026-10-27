@@ -53,8 +53,8 @@ Official references: Apple XNU [clonefile(2)](https://github.com/apple-oss-distr
 On the **actual Mac**, fetch the fixture directly from the **immutable review commit** and verify the exact Git blob digest **before execution**. The command does **not** change interactive shell exit settings, and the Python fixture cannot be pointed at an actual Watcher file:
 ```bash
 FIXTURE="$(mktemp -t aoe2war-phase10-fixture)"
-URL="https://raw.githubusercontent.com/Emaren/app-prodn/8cc634410babc899af0bf4f8fb2e501e8be5a386/docs/review/fixtures/session_d_apfs_clone_fixture.py"
-EXPECTED_BLOB="d33a87067225e6a19b9bf4cfab78aea08c3ba75c"
+URL="https://raw.githubusercontent.com/Emaren/app-prodn/316815be0d1ce13db27aa2164770f7b3cbd7955a/docs/review/fixtures/session_d_apfs_clone_fixture.py"
+EXPECTED_BLOB="da0f5c21812829fe8b770bbacc585aba2b2dbfaa"
 if [ -n "$FIXTURE" ] &&
    curl -fL --max-time 45 --output "$FIXTURE" "$URL" &&
    [ "$(git hash-object "$FIXTURE")" = "$EXPECTED_BLOB" ] &&
@@ -74,6 +74,20 @@ The owner executed the immutable original fixture at commit `d10104ea128138cc077
 **Root cause is in OUR fixture precondition**, not a demonstrated non-APFS Mac: Darwin `stat -f %T` outputs a **file type**, not a filesystem type. It cannot equal literal `apfs` for a directory. This invalid check was not supported by Mac `stat(1)`; current correction replaces it with `/usr/sbin/diskutil info -plist /System/Volumes/Data` using Python `plistlib`, requiring `FilesystemType=apfs`, exact `st_dev` matching between Data volume and Watcher `dist`, and a temporary test directory with the same `st_dev`. Any query, volume or XML-plist failure remains a hard HOLD; **no bypass/no fallback**. The corrected fixture source is immutable at `app-prodn@8cc634410babc899af0bf4f8fb2e501e8be5a386`, Git blob `d33a87067225e6a19b9bf4cfab78aea08c3ba75c`.
 
 **Operator rerun required using the updated pinned command below.** The first run did not create disposable fixtures and cannot count as a fixture PASS. Never act on the real Watcher binaries until this clean rerun reports `PASS_APFS_FIXTURE_ONLY`, and all separately required manual transaction approvals are met.
+
+## Second Mac attempt — Darwin xattr Python platform error; corrected (2026-10-27)
+
+The owner ran the **first corrected APFS guard** fixture at immutable source commit `8cc634410babc899af0bf4f8fb2e501e8be5a386`, matching pinned Git blob `d33a87067225e6a19b9bf4cfab78aea08c3ba75c`. `curl`, Git blob and `python3 -m py_compile` PASS. Execution progressed **past** the APFS Data, target-device and TMPDIR-device admission checks (the earlier invalid `stat -f %T` gate was resolved). It entered the temporary fixture setup but hit:
+
+```text
+AttributeError: module 'os' has no attribute 'setxattr'
+```
+
+**Root cause:** Python's `os.setxattr`, `os.getxattr` and `os.listxattr` are Linux-only in CPython, not macOS interfaces. The code erroneously used all three. The crash occurred on disposable fixture files **before any `clonefile(2)` call**, so the clone/COW, download-symlink continuation and inode rollback **are not yet tested**. `TemporaryDirectory` context automatically handles temporary fixture cleanup on exception, but no separate Mac postflight checked TMPDIR remnants or APFS `df`. Absolutely **no actual Watcher file clone/write/rename/unlink**, no changed HTTP URL and **0 B newly reclaimed**. The traceback was not a structured fixture PASS receipt.
+
+**Fix:** source commit `316815be0d1ce13db27aa2164770f7b3cbd7955a`, blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa`, uses macOS built-in `/usr/bin/xattr` (strict exit-status checks) to write the known marker to *disposable fixtures only*, list every fixture attribute and use `xattr -p -x` to hash exact attribute bytes. It fails closed if the marker is absent, bytes differ, or the command fails. No real Watcher file is used as a write target; the preexisting APFS filesystem/device guards remain unchanged.
+
+**Third Mac fixture run required**, using the updated immutable URL/blob-pinned command in this document. Status remains `HOLD_NO_COW_PROOF` pending actual Mac JSON. A successful fixture does **not** confer permission for actual alias replacement or release metadata changes.
 
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
@@ -138,7 +152,9 @@ Source `Mac_Owner_20261027T1504Z`, observed and scope-tagged, **NOT** host-updat
   "watcher_aliases_logical_one_copy_bytes": 742422002,
   "manifest_or_updater_alias_refs_observed": 0,
   "open_alias_fd_count_observed": 0,
-  "apfs_fixture_status": "HOLD_NOT_EXECUTED_ON_MAC",
+  "apfs_fixture_status": "HOLD_XATTR_PYTHON_API_CRASH_BEFORE_CLONE",
+  "fixture_apfs_data_and_tmp_device_gates": "PASS_SECOND_ATTEMPT",
+  "fixture_clonefile_invoked": false,
   "candidate_authority": "HOLD_OWNER_APPROVAL_AND_URL_COMPATIBILITY",
   "workspace_scope": "app-prodn+api-prodn",
   "workspace_clean_merged": 6,
