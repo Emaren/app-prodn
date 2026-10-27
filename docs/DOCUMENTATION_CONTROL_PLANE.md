@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/session-d-mac-storage-20261027` at `6c0ce01c99930c1957dd4c757ea8f4598ce9ef27`
+Implementation baseline: `review/session-d-mac-storage-20261027` at `381905341b6b0e96f235bcbf622623877a0e5e16`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
