@@ -1128,7 +1128,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   React.useEffect(() => {
-    if (pathname === "/bets" || betsIdleWarmRef.current) {
+    // Storage Atlas / OS must not initiate a speculative finance GET. Release
+    // identity probes and nonfinancial operator pages stay read-only.
+    if (pathname === "/bets" || pathname?.startsWith("/aoe2war-os") || betsIdleWarmRef.current) {
       return;
     }
 
