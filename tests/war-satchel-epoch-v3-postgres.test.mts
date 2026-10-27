@@ -46,7 +46,7 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
   await run(a,migration);
   await run(a,"INSERT INTO epoch_v3.epochs(epoch_id,h_star,vault_address,escrow_address,signer_policy_sha256) VALUES($1,1000,$2,$3,$4)",[E,V,S,sha]);
   await t.test("schema ACLs default deny; physical unique and history immutable",async()=>{
-   assert.equal((await run(a!,"SELECT has_schema_privilege('public','epoch_v3','USAGE') pub")).rows[0].pub,false);
+   assert.equal((await run(a!,"SELECT coalesce(exists(select 1 from aclexplode(nspacl) where grantee=0 and privilege_type='USAGE'),false) pub FROM pg_namespace WHERE nspname='epoch_v3'")).rows[0].pub,false);
    await proof(a!,"deposit","alpha",1,90,"wallet:alpha",V,"test");
    await assert.rejects(()=>run(a!,"UPDATE epoch_v3.receipts SET amount_uwolo=3 WHERE tx_hash=$1",[hash(90)]),/IMMUTABLE_FINANCIAL_HISTORY/);
    await assert.rejects(()=>proof(a!,"deposit","beta",1,90,"wallet:beta",V,"test"),/duplicate key/);
