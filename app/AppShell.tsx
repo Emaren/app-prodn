@@ -975,12 +975,6 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [footerReady, setFooterReady] = React.useState(false);
   const footerWarmupRef = React.useRef<HTMLDivElement | null>(null);
   const leaderboardIdleWarmRef = React.useRef(false);
-  const betsIdleWarmRef = React.useRef(false);
-
-  React.useEffect(() => {
-    betsIdleWarmRef.current = false;
-  }, [uid]);
-
   React.useEffect(() => {
     try {
       const stored = Number.parseInt(
@@ -1127,51 +1121,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
-  React.useEffect(() => {
-    // Storage Atlas / OS must not initiate a speculative finance GET. Release
-    // identity probes and nonfinancial operator pages stay read-only.
-    if (pathname === "/bets" || pathname?.startsWith("/aoe2war-os") || betsIdleWarmRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-    let betsRouteTimer: number | null = null;
-    const connection = (
-      navigator as Navigator & {
-        connection?: { saveData?: boolean; effectiveType?: string };
-      }
-    ).connection;
-
-    const warmBetsNavigation = () => {
-      if (
-        cancelled ||
-        betsIdleWarmRef.current ||
-        document.visibilityState !== "visible" ||
-        connection?.saveData ||
-        /(^|-)2g$/.test(connection?.effectiveType ?? "")
-      ) {
-        return;
-      }
-
-      betsIdleWarmRef.current = true;
-      router.prefetch("/bets");
-      queueMicrotask(() => {
-        if (cancelled || document.visibilityState !== "visible") return;
-        void warmBetsBoard(uid);
-      });
-    };
-
-    // Give the tiny Player Registry prefetch the uncontested first half-second.
-    // Betting Hall begins only after that protected handoff window so its board
-    // fetch and RSC prefetch cannot steal the fast /players path during startup.
-    router.prefetch("/players");
-    betsRouteTimer = window.setTimeout(warmBetsNavigation, 500);
-
-    return () => {
-      cancelled = true;
-      if (betsRouteTimer !== null) window.clearTimeout(betsRouteTimer);
-    };
-  }, [pathname, router, uid]);
+  // Betting data is intentionally warmed only by explicit user interaction
+  // with the Bets navigation link, never by mounting unrelated site pages.
 
   const isExtremePlayerProfileSurface =
     isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";
