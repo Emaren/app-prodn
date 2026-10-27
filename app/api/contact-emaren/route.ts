@@ -35,6 +35,7 @@ const VIEWER_SELECT = {
   id: true,
   uid: true,
   isAdmin: true,
+  verificationMethod: true,
   inGameName: true,
   steamPersonaName: true,
 } as const;
@@ -226,6 +227,11 @@ export async function POST(request: NextRequest) {
 
     if (!viewer) {
       return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
+    }
+
+    // System principals are not browser chat actors, even with a leaked session.
+    if (viewer.verificationMethod === "system") {
+      return NextResponse.json({ detail: "System identity cannot send browser messages." }, { status: 403 });
     }
 
     const payload = await readMessageInput(request);
