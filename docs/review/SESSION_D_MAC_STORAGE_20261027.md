@@ -152,6 +152,39 @@ The owner ran a second targeted **read-only** Python survey of `~/projects/AoE2H
 - App `docs/STORAGE_OS.md` Git blob `258178f934a0d2212fcd0091386cdb2b90bcbf7d` says to retain current Watcher release plus one previous compatibility release and associated manifest/checksum evidence. App `scripts/sync-watcher-release.mjs` blob `afbda64385b71fd994fa3a19ab99aef4f2fbd95a` explicitly validates release filenames, SHA256/manifests and updater metadata before publication. That authoritative contract, not presence of ignored directory, determines safe retention.
 
 **Next safe read-only qualification:** enumerate `dist` *immediate children* and corresponding per-child allocated sizes/types and manifest presence; compare currently published release and required previous-release artifacts to their independently retained **byte hashes**, signatures and source, check app `public/downloads` symlinks/refs, launchd processes and exact open FDs, then separately consider one uniquely named obsolete **sub-artifact** (not entire `dist`). The other `.next` needs adjacent release provenance before any removal. No remote Mac access or local mutation occurred through this GitHub documentation step.
+
+## Watcher `dist` immediate-child identity and website symlink — owner Mac read-only receipt (2026-10-27)
+
+The owner ran an **immediate-children-only** `du -sk`/`lstat` metadata survey (small files SHA-256 only). The exact `~/projects/AoE2HDBets/aoe2-watcher/dist` footprint is **3,434,896 KiB = 3.275772 GiB**, subdivided into **46 children (44 files, two directories)**; direct-child allocated sizes sum to the same `du` total. This was **read-only** and did not verify any large package's SHA-256 or equivalence.
+
+**P0 cleanup-disqualification proof:** `~/projects/AoE2HDBets/app-prodn/public/downloads` is a symbolic link whose `samefile()` is **TRUE** against the actual Watcher `dist` directory. Any local removal from `dist` would also remove what that exact local website download link resolves to. This is **LOCAL source and build/download identity, NOT a claim that HEL1 production's public downloads are symlinked, currently incomplete, or broken**. No watcher or website release mutation permitted.
+
+| Children group | Presence / bytes observed | Evidence decision |
+|---|---|---|
+| `AoE2HDBets Watcher Direct/` | directory **297,480 KiB** | **PROTECT**: manual ZIP builder's payload directory; contents and current `.app` version not inventoried |
+| `mac-arm64/` | directory **297,476 KiB** | **PROTECT**: electron-builder packaged arm64 `.app` path consumed by manual ZIP builder; contents unverified |
+| Watcher v1.6.5 top-level version-named artifacts | **NONE** in the enumerated 46 children | Current app `lib/watcherRelease.ts` at canonical `main@14ce7104` declares v1.6.5/previous v1.6.4. This local directory does not represent a complete 1.6.5 bundle. Does **NOT** refute previously GitHub-published v1.6.5, nor prove live website failure. |
+| Watcher v1.6.4 | **four** named top-level files: arm64 DMG, arm64 Mac updater ZIP and two blockmaps, **254,536 KiB (~0.243 GiB)** | **PROTECT** as documented previous version, even though its top-level full-platform manifest/checksum set is absent |
+| v1.6.3 | **10** named children, **830,436 KiB (~0.792 GiB)** | **HOLD:** signed Windows, Linux and macOS artifacts, repeated alternate filename forms; full per-file hashes not measured |
+| v1.6.0 | **10** named children, **830,412 KiB (~0.792 GiB)** | **HOLD:** same old package inventory and repeated filename issue |
+| v1.5.12 and v1.5.13 | **seven** named children for each (~0.381 GiB each) | **HOLD:** full prior retention/reference obligations unknown; manifest and SHA256SUMS remain protected |
+| `aoe2hdbets-watcher-direct.zip` | **126,328 KiB (~0.120 GiB)** | **HOLD:** unversioned filename, may be advertised by app; its actual embedded package version / checksum not checked |
+| `latest.yml`, `latest-mac.yml`, `latest-linux.yml`, release manifests, SHA256SUMS and `builder-*.yml` | small files, SHA hashes captured in operator's attached terminal output | **PRESERVE:** updater/signature/reference/identity authority; no inference from filenames alone |
+
+**Specific apparent version-duplicate pairs**, all equal exact `st_size` within each pair but **content SHA-256 not compared**:
+- v1.6.3 Linux AppImage `AoE2HDBets Watcher-1.6.3.AppImage` vs `AoE2HDBets-Watcher-1.6.3.AppImage`, each 134,026,161 B.
+- v1.6.3 Mac DMG `AoE2HDBets Watcher-1.6.3-arm64.dmg` vs `AoE2HDBets-Watcher-1.6.3-arm64.dmg`, each 129,146,083 B.
+- v1.6.3 Windows installer `AoE2HDBets Watcher Setup 1.6.3.exe` vs `AoE2HDBets-Watcher-Setup-1.6.3.exe`, each 108,044,240 B.
+- v1.6.0 Linux AppImage two space/hyphen naming forms, each 134,013,759 B.
+- v1.6.0 Mac DMG two space/hyphen naming forms, each 129,156,599 B.
+- v1.6.0 Windows installer two space/hyphen naming forms, each 108,035,160 B.
+
+Identical byte lengths **are not a content digest**, evidence of independent backup, or proof of newly available APFS capacity. Even byte-identical APFS clones may share physical extents; freeing one pathname can reclaim less than `du` allocation suggests. Never delete a signed package on length/name evidence. Small SHA-256 hashes belong in the operator's private read-only terminal output; publishing them is optional, not an authority upgrade.
+
+**Revised triage:** `dist` is **`LOCAL_WEBSITE_DOWNLOAD_TARGET_AND_SIGNED_RELEASE_ARCHIVE_HOLD`**, not a routine build cache. Its 3.276 GiB may include removable expired versions **only after** verification of source-owned current+previous retention, independently durable byte-identical artifacts in GitHub release/website, historical compatibility callers, no active consumers/open FDs, local symlink web serving implications and a single-target owner-approved rollback procedure. Do **not** delete, move, rename or replace the symlink itself. The adjacent-release docs worktree `.next` **1.267 GiB** still HOLD.
+
+**Net new reclaim: 0 B.** Previous operator-confirmed 2.606 GiB from two other historical `.next` outputs remains the only performed removal. No source, financial, media or production change.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
