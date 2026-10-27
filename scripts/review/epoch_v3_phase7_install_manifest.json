@@ -39,7 +39,7 @@
     {
       "order": 2,
       "path": "prisma/migrations/20261027040000_epoch_v3_native_proof_provenance/migration.sql",
-      "sha256": "7c353ca1734f5430a76c008b20f5b56226b2fe63e67deb185073b6256ccf88a1",
+      "sha256": "e98e9fe48cd320f80fc4da0650baad7bb306ac3ae045efeb1364d24336733849",
       "applied_production": false
     }
   ],
@@ -107,5 +107,8 @@
     "git -C \"$HOME/projects/AoE2HDBets/app-prodn\" status --short",
     "git -C \"$HOME/projects/AoE2HDBets/app-prodn\" rev-parse HEAD",
     "node scripts/review/epoch_v3_readonly_production_preflight.mjs"
-  ]
+  ],
+  "source_proof_status": "ISOLATED_POSTGRES15_PASS_NATIVE_SDK_HOLD",
+  "epoch_v3_native_release_gate": "BANK_PROOF_STALE_WOLO_NATIVE_40437340642",
+  "versioned_pins_only": true
 }
