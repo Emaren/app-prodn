@@ -1,5 +1,5 @@
 {
-  "schema": "aoe2war.epoch-v3.phase7-production-install-v1",
+  "schema": "aoe2war.epoch-v3.phase8-held-financial-install-v1",
   "status": "HELD_NO_AUTHORITY",
   "stack": [
     {
@@ -64,7 +64,16 @@
     "inspector": "scripts/review/epoch_v3_readonly_production_preflight.mjs",
     "http_success_is_financial_proof": false,
     "legacy_8092_fallback": false,
-    "money_go": false
+    "money_go": false,
+    "wire_version": 1,
+    "contract_path": "scripts/review/epoch_v3_phase8_go_hd_contract_and_integration_map.md",
+    "native_verifier_cli": "--verify-epoch-v3-portable-proof --json-stdin",
+    "status": "DISABLED_CANNOT_ATTEST_NATIVE",
+    "enrolled_native_issuer_login": false,
+    "native_sdk_go_hd_golden_pass": false,
+    "role_delegation": "NOLOGIN group; privileged operator binds independent restricted LOGIN; SET LOCAL ROLE inside SERIALIZABLE",
+    "candidate_provenance": "never native SDK authenticated; no real money GO",
+    "expected_native_output": "wire_version 1 source pinned, exact original sender/recipient/amount/memo/owner/tx/msg0, same-root H/H+1 two accounts, payload digest, independently verified chain"
   },
   "essential_dependencies": [
     {
@@ -110,5 +119,16 @@
   ],
   "source_proof_status": "ISOLATED_POSTGRES15_PASS_NATIVE_SDK_HOLD",
   "epoch_v3_native_release_gate": "BANK_PROOF_STALE_WOLO_NATIVE_40437340642",
-  "versioned_pins_only": true
+  "versioned_pins_only": true,
+  "required_live_evidence": {
+    "hd_liability_census": "UNKNOWN",
+    "de_liability_census": "UNKNOWN",
+    "historical_uncertainties": "NOT_CLEARED",
+    "external_writers": "NOT_FENCED",
+    "vault_native_bank": "UNKNOWN",
+    "escrow_native_bank": "UNKNOWN",
+    "full_backup_restore": "NOT_CERTIFIED",
+    "owner_bound_canary": "NOT_AUTHORIZED"
+  },
+  "held_original_migrations_unchanged": true
 }
