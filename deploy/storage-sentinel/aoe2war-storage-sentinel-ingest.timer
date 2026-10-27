@@ -1,0 +1,10 @@
+[Unit]
+Description=AoE2WAR Storage Sentinel consume ONLY independently signed, current receipts
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+RandomizedDelaySec=10s
+Persistent=true
+Unit=aoe2war-storage-sentinel-ingest.service
+[Install]
+WantedBy=timers.target
