@@ -59,7 +59,7 @@ class ExactNextAuthorityProbeTests(unittest.TestCase):
             "release_status", "remote_hot_rollback_refs",
         )
         patches = [
-            mock.patch.object(MODULE, name, side_effect=lambda g, r: g.update(
+            mock.patch.object(MODULE, name, side_effect=lambda *args, **kwargs: args[0].update(
                 {"local_evidence_readonly": True}
             )) for name in mocked_checks
         ]
