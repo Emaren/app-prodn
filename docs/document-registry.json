@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5989217183c3509f4a783c512f48b2c8d1163138cb9d29f4538037a92a01a5ac",
+      "sha256": "612d9e2d43f3d5464d8d4de70cb5ed8609380cad8dd9d6ec69786ac2dc931865",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261027-release-identity-only-probes",
-    "commit": "b7fb034a517f1ec8cd35f72b31726c47f9475643"
+    "commit": "7c76ff6f78b854f1078dd7f489d9073b3afd3583"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
