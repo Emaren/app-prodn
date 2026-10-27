@@ -30,6 +30,7 @@ class TestSentinel(unittest.TestCase):
   self.path=Path(self.temp.name)/"private";self.path.mkdir(mode=0o700)
   self.db=s.open_db(self.path/"journal.sqlite3")
   self.keys=pins();s.enroll(self.db,self.keys,"test-operator")
+  self.db.execute("UPDATE enrollment SET val=? WHERE key='created'",(s.stamp(NOW),))
  def fake(self,seq=1,**kw):
   return patch.object(s.subprocess,"run",return_value=SimpleNamespace(
    returncode=0,stdout=json.dumps(receipt(seq,**kw)),stderr=""))
@@ -63,6 +64,23 @@ class TestSentinel(unittest.TestCase):
   s.heartbeat(self.db,NOW+dt.timedelta(seconds=20*60),)
   self.assertEqual(self.db.execute("SELECT count(*) FROM events WHERE rule='collector_stale'").fetchone()[0],3)
   self.assertEqual(self.db.execute("SELECT count(*) FROM witness WHERE seq!=0").fetchone()[0],0)
+ def test_unreviewed_generated_data_is_not_verified_reclaim(self):
+  with self.fake():s.receive(self.db,self.keys,{},NOW)
+  self.assertEqual(self.db.execute("SELECT count(*) FROM events WHERE rule='cleanup_candidate_review'").fetchone()[0],0)
+ def test_protected_candidate_rejected_by_existing_storage_os_policy(self):
+  signed=receipt()
+  signed["planes"][0]["candidate_inventory"]={
+   "kind":"aoe2war-storage-artifact-inventory",
+   "items":[{"class":"next_build","path":"/Users/test/aoe2war-recovery/.next",
+    "allocated_bytes":s.GIB,"coverage":"complete","source_authenticated":True,
+    "symlink_or_mount":False,"dirty_or_untracked":False,
+    "active_reference":False,"release_reference":False,"rebuild_verified":True,
+    "restore_verified":True,"worktree_proven":True,"git_tracked":False,
+    "tracked_dependency_lockfile":"yarn.lock","generation_rank":4,
+    "snapshot_restore_dependencies_cleared":True,"owner_approved_scope":True}]}
+  with patch.object(s.subprocess,"run",return_value=SimpleNamespace(
+    returncode=0,stdout=json.dumps(signed),stderr="")):s.receive(self.db,self.keys,{},NOW)
+  self.assertEqual(self.db.execute("SELECT count(*) FROM events WHERE rule='cleanup_candidate_review'").fetchone()[0],0)
  def test_ack_and_crash_safe_retry(self):
   with self.fake():s.receive(self.db,self.keys,{},NOW)
   ident=self.db.execute("SELECT id FROM events LIMIT 1").fetchone()[0]
