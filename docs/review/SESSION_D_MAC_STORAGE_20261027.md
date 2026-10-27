@@ -272,6 +272,15 @@ Owner fetched verified immutable corrected fixture `8cc634410babc899af0bf4f8fb2e
 
 Updated fixture pinned at source `316815be0d1ce13db27aa2164770f7b3cbd7955a`, blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa`, substitutes strict macOS `/usr/bin/xattr -w` and `xattr -p -x` system commands for fixtures only; validates marker, lists and hashes exact extended attributes. Re-run required, with `PASS_APFS_FIXTURE_ONLY` still **HOLD** pending owner output. Details, precise pinned command and updated Storage Atlas status in [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md). Actual Watcher files, historical download names and source/worktree evidence remain protected.
 
+
+## Phase 10 third Mac fixture receipt — Native APFS PASS, real Watcher still HOLD (2026-10-27)
+
+The Mac owner ran the reviewed fixture at source `316815be0d1ce13db27aa2164770f7b3cbd7955a`, Git blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa` and passed source hash and syntax verification. Native `clonefile(2)` now **PASS with no fallback**, write-isolation **PASS**, separate fixture inode **PASS**, mode/uid/gid/flags/mtime/all fixture xattr matching **PASS**, simulated website downloads symlink continuity **PASS**, original temporary inode rollback **PASS**. JSON `status=PASS_APFS_FIXTURE_ONLY`, 4-MiB fixture each; `actual_watcher_files_touched=0`, `actual_watcher_reclaimed_bytes=0`, `fixture_cleaned_on_normal_exit=true`. The fixture tests temporary files, NOT the real release binaries or their ACLs, historic URL access, release signatures/metadata, file handles, or real-app source. No real transaction authorized.
+
+Fixture-local `os.statvfs` available **7,440,388,096 bytes (~6.929 GiB)** before/after the test, `delta=0`. Older direct APFS Data `df` available ~10.875 GiB (15:04Z). **No fresh direct Data df after the fixture or cause-of-decrease proof**. Re-measure APFS Data and snapshots read-only; don't interpret one filesystem free observation as newly reclaimed space or as the reason for the decline. The exact outcome, Atlas telemetry and next one-pair real-file metadata admission are in [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
+**Current decision:** `PASS_APFS_FIXTURE_ONLY / HOLD_ACTUAL_ALIAS_MUTATION`, separate owner transaction authorization missing; six SHA-proven aliases still intact; previous +2.606 GiB historical `.next` cleanup only, Phase10 newly reclaimed **0 B**.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
