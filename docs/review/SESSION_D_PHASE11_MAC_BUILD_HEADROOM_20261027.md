@@ -74,3 +74,36 @@ It reads registered app/API Git worktrees through git worktree list --porcelain;
 Known limits: this is NOT proof of complete build consumers, process visibility, source reproducibility, certified release authority or APFS reclaim. An incomplete lsof or measurement is HOLD; cache allowlist entries are preview only; worktree status excludes ignored files; age is the directory mtime, not a reliable build-completion timestamp. Source review/CI and owner-Mac syntax + fixture execution are pending. Future upstream Storage OS integration requires its own tested read-only code change and merge; **retention alerts are not automatically deployed**. The supplementary standalone prototype fixture in the current ChatGPT runtime is a different local test and its success must not be attributed to the GitHub branch variant.
 
 **Safe operator verification:** fetch the immutable commit-pinned raw path; verify with git hash-object against blob 8f769a2e356623dea4a7f369861c63ffa8784889; run python3 -m py_compile; only if both pass execute Python with no deletion arguments and report its table. Existing source-authoritative storage local-maintain --json remains a PREVIEW; do NOT invoke its --apply.
+
+## Owner Mac immutable Phase11 camera executed — grouped ranked allocation receipt (2026-10-27)
+
+**New fixture itself PASS on operator Mac:** downloaded 8,915 B from pinned `118614927519ecd33ea8a5f51307c560772f8915` raw path, `git hash-object` matched exact source blob `8f769a2e356623dea4a7f369861c63ffa8784889`, `ast.parse` PASS, executed `python3 -B` under selected project Python 3.13.5. Output `PASS: PHASE11_SOURCE_AND_SYNTAX_VERIFIED`, worktree probe `{'app-prodn':'PASS','api-prodn':'PASS'}`, all observable FD census `PASS_POINT_IN_TIME`, old/large Next alert count **4**, `NO_MUTATION / NEW_RECLAIMED=0`. The 8,915 B reported by curl is transport size, while the Git blob checksum is the authoritative exact script-byte identity. This was a live READ-ONLY inventory success, **not** a native Next rebuild or retention approval.
+
+**New exact sampled rounded allocations from plaintext (GiB; all directory `du` results rounded by the fixture to 3 decimals; do not treat these as exact physical byte counts):**
+
+| Worktree / generated output | Rounded allocated GiB | Classification / action |
+|---|---:|---|
+| `app-prodn/codex-authenticated-satchel-deposit/.next` | **1.393** | `HOLD_RELEASE_ADJACENT`; **FINANCIAL WORKTREE PROTECTED** |
+| `app-prodn/codex-satchel-complete-financial-paths/.next` | **1.298** | `HOLD_RELEASE_ADJACENT`; **FINANCIAL WORKTREE PROTECTED** |
+| `app-prodn/update-independent-docs-context-20261015/.next` | **1.267** | `HOLD_RELEASE_ADJACENT`; previously individually qualified, **TOP REVIEW** |
+| `app-prodn/app-prodn-e5-seal/.next` | **1.214** | `HOLD_UNKNOWN_RUNTIME`; **SECOND REVIEW**, identity/rollback/FD/production BUILD_ID not yet proven |
+| `app-prodn/app-prodn-e5-seal/node_modules` | **0.832** | `HOLD_UNKNOWN_RUNTIME`; not authorized |
+| `app/node_modules` | **0.830** | `HOLD_RELEASE_ADJACENT`; canonical active project dependency |
+| `app-prodn/codex-final-satchel-qualification/node_modules` | **0.830** | `HOLD_UNKNOWN_RUNTIME`; financial Codex source **PROTECTED** |
+| `app-prodn/app-prodn-renaissance-phase1-20261020/node_modules` | **0.830** | `HOLD_RELEASE_ADJACENT`; source/release branch PROTECTED |
+| `watcher/node_modules` | **0.103** | `HOLD_ACTIVE_PROJECT` |
+| `watcher/dist` | **3.276** | `HOLD_SIGNED_DISTRIBUTION`; entire published release tree PROTECTED |
+| `app/.next` | **0.000** (rounded) | `HOLD_RELEASE_ADJACENT`; **not evidence of absent or zero bytes** |
+| `yarn_cache` | **0.000** (rounded) | All-four-cache `local-maintain` review-only; no selective `--apply` |
+| 11 other listed attached `node_modules` entries | **UNKNOWN** | **HOLD**, may be symlink, `du` error, inaccessible or timed out; the plaintext omits exact per-row reason. Never interpret UNKNOWN as zero. |
+
+The four historical Next output rows sum to **5.172 GiB of individually rounded `du` allocations**; two financial Codex `.next` sum **2.691 GiB protected**, leaving **2.481 GiB of two generated build trees available for further retention qualification** (docs 1.267 + E5 1.214). **These are NOT approved-to-delete bytes**, and APFS CoW/clones/hardlinks/VM accounting means ordinary-free headroom cannot be predicted as their naive total. Four individually measured `node_modules` rows ~**3.322 GiB** logical allocated; most are attached worktrees/financial or canonical active and protected. Do not add `watcher/dist` to alias contents separately. There is no independent free-space before/after data in this probe, so Phase11 actual reclaimed **0 B**.
+
+**Alert interpretation:** 4 `ALERT_LARGE_STALE_NEXT_COUNT` means the simplistic threshold `>=1 GiB` and directory `mtime>=7d` matched **all four** large Next builds, **including both protected financial Codex worktrees**. This must be treated as **four READ-ONLY review alerts, not four cleanup candidates**. A prevention policy must suppress or label protected/active/rollback-linked outputs before action and never automatically delete based on age. The script printed status `PASS_POINT_IN_TIME` for the `lsof` tool invocation, but did **not print per-candidate open-FD counts or source HEAD/branch/lockfile identifiers in plaintext**; these fields exist in `--json` output and remain UNVERIFIED for newly discovered E5/codex builds until a scoped sanitized JSON sample. The earlier independent point-in-time checks on docs worktree remain separate.
+
+**Worktree and runtime evidence limitations:** `app-prodn` and `api-prodn` worktree registries enumerated successfully. The fixture does not enumerate all arbitrarily named nested caches or every third-party app, and `du` may fail or time out; only direct registered worktree `.next`, `node_modules`, `.turbo`, selected active outputs and four allowlist caches are included. `UNKNOWN` preserves missing measurements. The current headroom story remains 7.916 GiB at the last separate `df` measurement, not a new free-space measurement from this camera.
+
+**Next ranked step:** collect bounded/sanitized `--json` from this now Mac-verified exact fixture, showing for **only** four `.next` rows: identifier, SHA, branch, age, BUILD_ID-file checksum, `observable_open_fd_count`, `fd_status`, `git_clean_normal_scope`, `release_sibling_protected`, and exact allocated KiB; for `node_modules UNKNOWN` rows, show just id + `allocated_status` to distinguish symlinks from `du` failures. Preserve all evidence; do not dump protected receipt contents. Then perform production current/staged and certified history comparisons for E5 (not yet proven), and complete older rollback/reference / independent restore proof for docs. Require separately authorized one-path transaction for any removal.
+
+**Status after new receipt:** `PASS_MAC_BATCH_CAMERA_SOURCE_SYNTAX_RUNTIME`; `PASS_APP_API_WORKTREE_CENSUS`; `PASS_FOUR_LARGE_NEXT_OBSERVED`; `HOLD_TWO_FINANCIAL_NEXT`; `HOLD_E5_BUILD_RELEASE_REFERENCES`; `HOLD_DOCS_OLDER_ROLLBACK_AND_RESTORE`; `HOLD_NODE_MODULES_UNKNOWN_REASONS`; `HOLD_ALL_MUTATION`. New reclaimed **0 B**.
+
