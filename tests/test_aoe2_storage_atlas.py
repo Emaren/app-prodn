@@ -157,7 +157,8 @@ class ArtifactPolicyTests(unittest.TestCase):
     def test_recovery_financial_steam_and_rollback_untouchable(self):
         for path in ("/Users/test/aoe2war-recovery/.next","/var/lib/wolo-financial-restore/file",
                      "/Users/test/Steam/recordings/.next","/mnt/HC_Volume_105319120/aoe2war/.next",
-                     "/Users/test/.aoe2war-release/.next"):
+                     "/Users/test/.aoe2war-release/.next",
+                     "/Volumes/Backup/MobileSync/Device/.next"):
             with self.subTest(path=path):
                 a=artifact();a["path"]=path
                 self.assertEqual(artifacts.reviewed_candidate(a)["retention_class"],"protected")
