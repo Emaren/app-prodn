@@ -96,6 +96,8 @@ def normalize_plane(raw: dict[str, Any], *, at: dt.datetime) -> dict[str, Any]:
         raise AtlasHold("mac APFS identity mismatch")
     if pid != "mac" and fs not in ("ext4", "unknown"):
         raise AtlasHold("HEL1 filesystem identity mismatch")
+    if fs == "unknown" or not isinstance(ident, str) or ident.lower() in ("unknown", "unverified", "none"):
+        coverage = "partial" if coverage != "inaccessible" else coverage
     figures = raw.get("capacity")
     capacity = None
     if isinstance(figures, dict):
@@ -183,7 +185,7 @@ def build_snapshot(inputs: list[dict[str, Any]], *, now: dt.datetime | None = No
     previous_planes = {x["plane"]: x for x in previous.get("planes", [])} if isinstance(previous, dict) else {}
     for name, row in found.items():
         old = previous_planes.get(name)
-        if old and old.get("filesystem", {}).get("uuid") == row["filesystem"].get("uuid"):
+        if old and isinstance(row.get("filesystem", {}).get("uuid"), str) and row["filesystem"]["uuid"].lower() not in ("unknown", "none", "unverified") and old.get("filesystem", {}).get("uuid") == row["filesystem"].get("uuid"):
             try:
                 elapsed = (instant(row["observed_at"]) - instant(old["observed_at"])).total_seconds()
                 if elapsed > 0 and row["capacity"] and old.get("capacity"):
