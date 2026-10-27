@@ -233,6 +233,28 @@ This combines with the previous 6/6 full SHA-256 equality proof to establish tha
 
 **Decision:** safe to continue to active-consumer and rollback review. **No immediate delete. No bytes reclaimed in this phase.**
 
+
+## Open-FD and updater names check — owner terminal (2026-10-27, latest)
+
+The owner ran a final **read-only** `lsof -nP -Fpn <exact alias path>` probe for each of the six **hyphen-named** v1.6.0/v1.6.3 legacy watcher aliases, plus a bounded full-text check for each of those aliases in each of `dist/latest.yml`, `dist/latest-mac.yml` and `dist/latest-linux.yml`. All six exact files existed as regular nonsymlinked files at probe time.
+
+| Version | Alias | Open-FD result |
+|---|---|---|
+| 1.6.0 | `AoE2HDBets-Watcher-1.6.0.AppImage` | `NO_OPEN_HANDLE_OBSERVED` |
+| 1.6.0 | `AoE2HDBets-Watcher-1.6.0-arm64.dmg` | `NO_OPEN_HANDLE_OBSERVED` |
+| 1.6.0 | `AoE2HDBets-Watcher-Setup-1.6.0.exe` | `NO_OPEN_HANDLE_OBSERVED` |
+| 1.6.3 | `AoE2HDBets-Watcher-1.6.3.AppImage` | `NO_OPEN_HANDLE_OBSERVED` |
+| 1.6.3 | `AoE2HDBets-Watcher-1.6.3-arm64.dmg` | `NO_OPEN_HANDLE_OBSERVED` |
+| 1.6.3 | `AoE2HDBets-Watcher-Setup-1.6.3.exe` | `NO_OPEN_HANDLE_OBSERVED` |
+
+All three updater manifests returned empty matching alias arrays: `latest.yml: []`, `latest-mac.yml: []`, `latest-linux.yml: []`. These values do **not** authenticate the updater metadata as current or valid, and do not prove historical consumers absent. Individual `lsof` zero-PID sightings are timing/permission-limited, not a perpetual no-consumer assertion.
+
+**Cumulative evidence:** all six hyphen aliases SHA256-match respective canonical space names (742,422,002 B one-copy logical total), have different inodes, are excluded from all four v1.6.0/v1.6.3 local SHA256SUMS/manifest files, have no exact-name checked-in source references in two repos, have no alias reference in the three latest updater YAML files, and show no open file handles **at this observation**. The `app-prodn/public/downloads` symlink still resolves to this same Mac-local `dist` tree.
+
+**Remaining eligibility and safety boundary:** historical/out-of-tree HTTP URLs, other untracked config/processes, upstream GitHub durable-release checksum parity, signature retention, same-filesystem APFS clone/snapshot allocation, and a **URL-preserving reversible single-file procedure** remain unproven. The canonical installer names and all updater/release manifests must remain immutable. Do not run HEL1 `watcher-downloads --apply` against this Mac path. A zero-handle observation plus duplicate SHA is **not automatic approval to unlink**. No cleanup executed. **0 B incremental verified reclaim**, earlier +2.606 GiB historical reclaim unchanged.
+
+**Potential safer direction for an independently approved future transaction**: first qualify an exact alias-preserving, regular-file-preserving APFS copy-on-write deduplication candidate (with current hashes, allocated-block checks, atomic replacement, ability to restore independent bytes from the verified canonical file) rather than removing an HTTP-facing historical path. Such a transaction may reclaim **less than 742,422,002 B** due to APFS shared extents and snapshots, and needs separate per-file owner authorization, tested rollback, bounded scope, and a postflight `df -k /System/Volumes/Data` receipt. Do not treat this paragraph as a cleanup instruction or as evidence that the Mac supports a particular dedup operation.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
