@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "kind": "aoe2war-session-d-phase12-docs-next-native-p0-probe-result",
+  "date": "2026-10-27",
+  "source": "owner-executed immutable GitHub script and owner terminal text; review observation only, not a deletion receipt",
+  "probe": {
+    "source_commit": "ab36a93a19aa85942f636e7ca0d15d829e962a64",
+    "git_blob": "7ff7947be882f2aa41d935fb93e12a167d50a048",
+    "verified_source_and_ast": true,
+    "execute_read_only": true,
+    "deletion_authorized": false
+  },
+  "worktree": {
+    "source_sha": "99c406f57d759b672fd9fe91d3c3355c4d527705",
+    "allocated_kib": 1328688,
+    "git_clean_normal_scope": true,
+    "exact_attached": true,
+    "build_id_file_pinned": true,
+    "yarn_lock_pinned": true,
+    "release_protected": true,
+    "release_subtree_types_counts_verified": true,
+    "sampled_open_fd_consumer_count": 0
+  },
+  "release": {
+    "production_reachable": true,
+    "active_and_staged_build_ids_different": true,
+    "certification_status": "legacy-unmanifested",
+    "certification_valid": false,
+    "local_certified_receipts": 371,
+    "candidate_matches": 0,
+    "production_rollback_count": 1,
+    "remote_hot_build_id_files_checked": 3,
+    "remote_hot_exact_build_id_matches": 0,
+    "remote_hot_unknown_entries": 0,
+    "cold_or_noncertified_authority": false,
+    "independent_off_data_restore_or_native_rebuild": false,
+    "future_controller_user_refs": false
+  },
+  "capacity": {
+    "prev_available_kib": 10008964,
+    "new_available_kib": 9956888,
+    "change_available_kib": -52076,
+    "available_gib": 9.495628356933594,
+    "prev_data_used_kib": 430360616,
+    "new_data_used_kib": 428314120,
+    "change_data_used_kib": -2046496,
+    "mac_apfs_concurrent_census": false,
+    "attributable_cleanup_new_bytes": 0
+  },
+  "decision": {
+    "delete": false,
+    "reason": [
+      "LEGACY_UNMANIFESTED_CURRENT_CERTIFICATION",
+      "COLD_AND_NONCERTIFIED_ARCHIVE_REFERENCES_UNPROVEN",
+      "INDEPENDENT_EXTERNAL_RESTORE_OR_EQUIVALENT_NATIVE_BUILD_UNPROVEN",
+      "LOCAL_FUTURE_CONTROLLER_CONSUMERS_UNPROVEN",
+      "NO_EXISTING_ONE_PATH_AUTHORIZED_REMOVAL_CONTROLLER"
+    ],
+    "protected": [
+      "attached source worktree and .git",
+      ".aoe2war-release directories and symlinks",
+      "financial/Codex",
+      "recovery archives",
+      "Steam recordings",
+      "MobileSync",
+      "signed Watcher downloads",
+      "macOS VM and snapshots"
+    ]
+  },
+  "executed_deletion_paths": [],
+  "mac_source_modified": false
+}

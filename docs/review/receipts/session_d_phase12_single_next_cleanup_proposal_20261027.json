@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "kind": "session-d-p0-single-next-review-and-deletion-gate",
+  "date": "2026-10-27",
+  "current_state": "HOLD_NOT_EXECUTABLE",
+  "central": "https://github.com/Emaren/app-prodn/issues/934",
+  "review_pr": 942,
+  "target": {
+    "exact": "~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next",
+    "source_head": "99c406f57d759b672fd9fe91d3c3355c4d527705",
+    "allocated_kib": 1328688,
+    "build_id_file_sha256": "3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522",
+    "package_json_blob": "11697e7c28b9eabd65da7c3e21f6ea253d3d5011",
+    "yarn_lock_blob": "13dfb80133e3caa887ceb5ba08354dd4f62e4f60",
+    "node": "22.22.0",
+    "yarn": "1.22.22",
+    "exact_source_ci": 38782415036,
+    "exact_source_ci_result": "PASS_LINUX_NEXT_BUILD_NOT_NATIVE_MAC_RESTORE"
+  },
+  "gates": {
+    "source_head_branch_and_clean": "LAST_SAMPLED_PASS_REFRESH",
+    "worktree_attached": "LAST_SAMPLED_PASS_REFRESH",
+    "symlink_free_target_ancestors": "NEEDS_FRESH_CHECK",
+    "protected_release_sibling": "KEEP_AND_REATTEST",
+    "open_fd_and_cwd_users": "LAST_SAMPLED_ZERO_REFRESH",
+    "active_staged": "LAST_SAMPLED_DIFFERENT_REFRESH",
+    "local_certified_history": "371_INSPECTED_0_MATCH_LAST_SAMPLE",
+    "current_certified": "HOLD_UNKNOWN_OR_ABSENT",
+    "remote_hot_rollback": "HOLD_NOT_FULLY_ENUMERATED",
+    "remote_cold_archives": "HOLD_UNPROVEN",
+    "native_rebuild_or_offdata_restore": "HOLD_UNPROVEN",
+    "future_runtime_or_release_controller_refs": "HOLD_UNPROVEN",
+    "existing_exact_target_delete_controller": "NONE_FOUND",
+    "safe_machine_junk_owner_consent": "GRANTED_SUBJECT_TO_TECHNICAL_GATES",
+    "delete_authorized": false
+  },
+  "probe": {
+    "repo_path": "docs/review/fixtures/session_d_phase12_exact_next_authority_probe.py",
+    "blob": "7ff7947be882f2aa41d935fb93e12a167d50a048",
+    "mode": "READ_ONLY_ALWAYS_HOLD_COLD_AND_RESTORE_UNTIL_INDEPENDENTLY_ATTESTED",
+    "owner_mac_run": "NOT_RUN",
+    "mac_agent": "OFFLINE"
+  },
+  "transaction_when_qualified": [
+    "Recheck exact worktree HEAD/branch/status, lock and BUILD_ID digests; every candidate ancestor is a nonsymlink directory.",
+    "Recheck source-owned active/staged/certified and remote hot/cold rollback with no ambiguous readers; complete future consumers proof.",
+    "Preserve and verify adjacent .aoe2war-release subtree, three federation symlinks, two receipt files without dereference or mutation.",
+    "Require an independent off-Data restore-tested copy or separately accepted isolated native pinned rebuild; Linux historical CI is supporting, not identical bytes.",
+    "Use a source-reviewed Storage OS exact-one-directory removal mechanism; no blanket rm -rf, worktree prune, or four-cache local-maintain apply.",
+    "Measure df -k ordinary Data free and diskutil APFS Data/VM allocations before/after; attribute physical gain only when proven.",
+    "Verify exact old target absent and all source/release neighbors unchanged; seal SHA256 receipt and post to Central #934."
+  ],
+  "machine_candidate_review": [
+    {
+      "rank": 1,
+      "scope": "Renaissance-phase1-20261020/node_modules",
+      "sample_gib": 0.83,
+      "state": "HOLD_RELEASE_ADJACENT",
+      "needed": "native deps, runtime readers, lockfile/frozen install, release authority"
+    },
+    {
+      "rank": 2,
+      "scope": "individual named cache roots within ~/.cache",
+      "parent_sample_gib": 5.111,
+      "state": "HOLD_FRESH_CHILD_MEASUREMENTS",
+      "needed": "identify regenerable cache format and active users; no generic cache purge"
+    },
+    {
+      "rank": 3,
+      "scope": "Rust/Go/Python/watcher build cache roots",
+      "sample_gib": null,
+      "state": "HOLD_UNKNOWN_ALLOCATION",
+      "needed": "exact child paths, sizes, builders, source pins, runtime readers"
+    }
+  ],
+  "human_only_review": [
+    {
+      "rank": 1,
+      "scope": "Docker image layers and persistent named volumes",
+      "historical_gib": 5.233,
+      "state": "HOLD_VOLUME_PERSISTENCE"
+    },
+    {
+      "rank": 2,
+      "scope": "iOS MobileSync backups",
+      "historical_gib": null,
+      "state": "HARD_PROTECTED"
+    },
+    {
+      "rank": 3,
+      "scope": "encrypted recovery and Steam recordings",
+      "historical_gib": {
+        "recovery": 38.12,
+        "steam": 26.11
+      },
+      "state": "HARD_PROTECTED_VERIFIED_EXTERNAL_OFFLOAD_ONLY"
+    },
+    {
+      "rank": 4,
+      "scope": "signed Watcher installers/download aliases",
+      "logical_duplicate_bytes": 742422002,
+      "state": "HARD_PROTECTED_HISTORICAL_URLS"
+    }
+  ],
+  "latest_owner_available_kib": 10008964,
+  "new_deleted_paths": [],
+  "new_reclaimed_bytes": 0,
+  "no_mutation": true
+}

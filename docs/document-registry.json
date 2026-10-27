@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b899de8ce533a34bc2a7121e43abd183457a1794351ca07d8c6d595e05fa6c5d",
+      "sha256": "d422e6225aa5d32210e546bb7825aef39e3f0ae572a0e7eeb9c0c3ddc301ee13",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2305,6 +2305,72 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "mac-storage-independent-review-evidence",
+      "id": "aoe2war.app-prodn.session-d-mac-storage-20261027",
+      "owner": "aoe2war-web",
+      "path": "docs/review/SESSION_D_MAC_STORAGE_20261027.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-27",
+      "sensitivity": "internal",
+      "sha256": "a30cbe792451372365226d684349dc6ef8c6718d50dea2b2f6d27645b935d560",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session D \u2014 Mac Storage OS recovery and verified-cleanup register (2026-10-27)",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "mac-storage-retention-review-plan",
+      "id": "aoe2war.app-prodn.session-d-phase10-apfs-clone-plan-20261027",
+      "owner": "aoe2war-web",
+      "path": "docs/review/SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-27",
+      "sensitivity": "internal",
+      "sha256": "8526d5bda81e878d334770c4774bc24b27b5e8156d927fa7a7e89a5d7f56fa4b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "SESSION D \u2014 Phase 10 Mac APFS Watcher retention and single-alias trial plan",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "mac-generated-build-review-and-approval-plan",
+      "id": "aoe2war.app-prodn.session-d-phase11-mac-build-headroom-20261027",
+      "owner": "aoe2war-web",
+      "path": "docs/review/SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-27",
+      "sensitivity": "internal",
+      "sha256": "c8b85af2512c05971ef428cd963bbadada2502a00ee8442438bf223ff8aa24e8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session D \u2014 Phase 11 Mac emergency build headroom (2026-10-27)",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -2324,8 +2390,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/central-kingdom-index",
-    "commit": "85f0ee41596cc7ee6c16b5be5d168bf3e3357188"
+    "branch": "review/session-d-mac-storage-20261027",
+    "commit": "01d585f9e33049bc5324ec5a69df746b2e6d6a31"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

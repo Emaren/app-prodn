@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "kind": "session-d-phase12-mac-capacity-evidence",
+  "captured_date": "2026-10-27",
+  "central_issue": "https://github.com/Emaren/app-prodn/issues/934",
+  "source": "Owner-provided Mac terminal observations and GitHub connector review; not a direct live Mac cleanup",
+  "last_observed": {
+    "apfs_data_available_kib": 10008964,
+    "apfs_data_available_gib": 9.545291900634766,
+    "apfs_data_used_kib": 430360616,
+    "apfs_data_capacity_display": "98%",
+    "baseline_phase11_available_kib": 8300728,
+    "observed_free_increase_kib": 1708236,
+    "observed_free_increase_gib": 1.6291007995605469,
+    "attributable_phase12_deleted_bytes": 0,
+    "actual_phase12_deleted_paths": []
+  },
+  "reviewed_candidates": [
+    {
+      "id": "docs-context-next",
+      "relative_to_project": ".aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next",
+      "last_allocated_kib": 1328688,
+      "source_head": "99c406f57d759b672fd9fe91d3c3355c4d527705",
+      "build_id_file_sha256": "3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522",
+      "release_evidence_adjacent": true,
+      "active_build_match": false,
+      "staged_build_match": false,
+      "local_certified_history_records_examined": 371,
+      "local_history_matches": 0,
+      "certified_current": "UNKNOWN_OR_ABSENT",
+      "rollback_older_and_other_archives": "HOLD",
+      "isolated_rebuild_or_off_data_restorable_copy": "HOLD",
+      "cleanup_authority": "NO_EXISTING_SINGLE_TARGET_CONTROLLER",
+      "status": "HOLD_NO_DELETE"
+    },
+    {
+      "id": "old-e5-next",
+      "relative_to_project": ".aoe2war-workspaces/app-prodn/app-prodn-e5-seal/.next",
+      "last_allocated_kib": 1272664,
+      "current_path_state": "MISSING",
+      "registered_worktree": false,
+      "old_commit_preserved_locally": true,
+      "old_local_branch_exists": true,
+      "feature_source_merged_via_pr": 485,
+      "status": "HOLD_NO_CURRENT_PATH_OR_RETIREMENT_RECEIPT"
+    },
+    {
+      "id": "financial-codex-generated",
+      "last_two_next_allocated_kib": 2822316,
+      "status": "HARD_PROTECTED"
+    },
+    {
+      "id": "mac-four-cache-allowlist",
+      "source_owned_command": "aoe2war storage local-maintain",
+      "legacy_go_cache_kib": 627104,
+      "latest_go_cache_path_reported": false,
+      "status": "PREVIEW_ONLY_HISTORICAL_RECLAIM_NOT_CURRENT"
+    },
+    {
+      "id": "generic-home-cache",
+      "last_observed_gib": 5.111,
+      "observation_scope": "historical unverified current",
+      "status": "REVIEW_ONLY"
+    },
+    {
+      "id": "docker-data",
+      "last_observed_gib": 5.233,
+      "observation_scope": "historical; named volumes and images unclassified",
+      "status": "HOLD_PERSISTENT_VOLUMES"
+    },
+    {
+      "id": "watcher-release-aliases",
+      "logical_duplicate_bytes": 742422002,
+      "physical_gain": "UNKNOWN_APFS_COW",
+      "status": "HOLD_SIGNED_URLS_AND_OWNER_APPROVAL"
+    },
+    {
+      "id": "watcher-dist",
+      "last_allocated_kib": 3434896,
+      "status": "HARD_PROTECTED"
+    },
+    {
+      "id": "recovery-vault",
+      "last_observed_gib": 38.12,
+      "status": "HARD_PROTECTED"
+    },
+    {
+      "id": "steam-recordings",
+      "last_observed_gib": 26.11,
+      "status": "HARD_PROTECTED"
+    }
+  ],
+  "protection_rules": [
+    "NEVER delete source worktrees, .git, .aoe2war-release, unique untracked materials, receipts or protected symlink targets",
+    "Codex dirty/financial, wallet, custody, recovery, personal MobileSync, videos and Steam recordings excluded",
+    "Watcher signed installers and historic download URLs excluded absent separate evidence/approval",
+    "Never touch APFS VM, macOS swapfiles or snapshots",
+    "No Trash emptying, broad rm -rf, worktree prune, Docker prune or Downloads purge",
+    "Retention alerts in read-only Storage OS do not authorize cleanup",
+    "Verify exact sha-bound restore/rebuild and complete release authority; use one exact path with measured APFS before/after and immutable output receipt only when safe"
+  ],
+  "execution_access": "remote Tonys-Laptop.local OFFLINE, owner can execute guarded source-on-Mac commands",
+  "owner_authorization": "safe machine-classified only; never supersedes failed technical safety gates",
+  "target_gib_free_min": 20,
+  "target_gib_free_preferred": 25,
+  "qualified_now_to_delete_bytes": 0,
+  "status": "HOLD_TECHNICAL_GATES_AND_REMOTE_EXECUTION",
+  "no_mutation": true
+}

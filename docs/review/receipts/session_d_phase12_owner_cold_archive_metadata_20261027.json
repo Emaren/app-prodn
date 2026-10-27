@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "session-d-phase12-owner-hel1-cold-archive-metadata-observation",
+  "date": "2026-10-27",
+  "provenance": "owner-executed bounded read-only SSH script, provided terminal output; no archive or Mac mutation",
+  "candidate": {
+    "worktree": "update-independent-docs-context-20261015",
+    "generated_child": ".next",
+    "source_sha": "99c406f57d759b672fd9fe91d3c3355c4d527705",
+    "build_id_file_sha256": "3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522",
+    "local_build_id_source_hash_verified": true
+  },
+  "hel1_archive_root": "/mnt/HC_Volume_105319120/aoe2war/rollback-archives",
+  "read_only_result": {
+    "archive_files": 3,
+    "verified_metadata_pairs": 3,
+    "build_id_matches": 0,
+    "source_sha_matches": 0,
+    "unclassified": 168,
+    "body_hashes_reverified": false,
+    "metadata_scan": "HOLD_UNCLASSIFIED_ARCHIVES"
+  },
+  "interpretation": {
+    "archive_entries_total_in_enumeration": 171,
+    "enumerated_tar_zst_pairs_nonmatching": 3,
+    "non_tar_zst_entries_unclassified_by_provided_probe": 168,
+    "requires_type_and_naming_classification": true,
+    "source_owned_inventory_contract": "scripts/aoe2_storage_expire.py inspect_inventory() iterates ARCH.glob('*.tar.zst') and protects unknown generations; other directory entries are not automatically runtime archives",
+    "cannot_infer": "168 additional compressed archive files, corrupted archives, or verified absence of all noncertified cold release references",
+    "remote_archive_cold_authority": "HOLD",
+    "deletion_authorized": false
+  },
+  "protected": [
+    "rollback archives and receipts",
+    "other metadata and legacy rollbacks",
+    "Mac source worktree and adjacent .aoe2war-release",
+    "wallet, financial, recovery and other protected material"
+  ],
+  "physical_gain_bytes": 0,
+  "deleted_paths": [],
+  "command_effect": "READ_ONLY"
+}

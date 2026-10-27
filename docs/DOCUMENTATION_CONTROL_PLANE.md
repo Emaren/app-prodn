@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-kingdom-index` at `85f0ee41596cc7ee6c16b5be5d168bf3e3357188`
+Implementation baseline: `review/session-d-mac-storage-20261027` at `01d585f9e33049bc5324ec5a69df746b2e6d6a31`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **101**
+- Authoritative repository documents: **104**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 61
 - `runbook`: 21
-- `working`: 1
+- `working`: 4
 
 ### Lifecycle
 
 - `active`: 80
-- `draft`: 5
+- `draft`: 8
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -151,6 +151,9 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [Session D — Mac Storage OS recovery and verified-cleanup register (2026-10-27)](review/SESSION_D_MAC_STORAGE_20261027.md) | `working` | `draft` | `mac-storage-independent-review-evidence` |
+| [SESSION D — Phase 10 Mac APFS Watcher retention and single-alias trial plan](review/SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md) | `working` | `draft` | `mac-storage-retention-review-plan` |
+| [Session D — Phase 11 Mac emergency build headroom (2026-10-27)](review/SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md) | `working` | `draft` | `mac-generated-build-review-and-approval-plan` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands
