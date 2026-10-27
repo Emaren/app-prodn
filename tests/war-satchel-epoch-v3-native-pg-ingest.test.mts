@@ -7,7 +7,7 @@ import {ingestNativeVerifiedV3Receipt,EPOCH_V3_NATIVE_PG_FINANCIAL_ENABLED,
 
 test("Phase7 held native-Comet verifier refuses ALL inputs before any PG query or legacy fallback",async()=>{
  let calls=0;
- const pg={query:async(_q:string,_v?:unknown[])=>{calls++;throw Error("UNEXPECTED_POSTGRES_OR_PAYMENT_OPERATION")}};
+ const pg={query:async(...args:unknown[])=>{calls+=args.length;throw Error("UNEXPECTED_POSTGRES_OR_PAYMENT_OPERATION")}};
  const cfg={binaryPath:"/tmp/fake-woloescrowd",binarySha256:"a".repeat(64),
    trustAnchorSha256:"b".repeat(64),observedWoloSource:EPOCH_V3_NATIVE_SOURCE_PIN,
    expectedEpoch:"epoch_20261027_funding",expectedOwnerUid:"warrior:alpha",
@@ -78,7 +78,7 @@ test("Phase8 Go wire v1 is structurally pinned to one native MsgSend and both ba
   vault_bank:bank("vault","wolo1vault"),escrow_bank:bank("escrow","wolo1escrow")
  };
  assert.equal(validateNativeV3WireShape(good,cfg,"c".repeat(64)).v.tx_hash,cfg.expectedTxHash);
- const mutations:Array<[string,(x:any)=>void]>=[
+ const mutations:Array<[string,(x:typeof good)=>void]>=[
   ["chain",x=>x.chain_id="cosmoshub-4"],["ordinal",x=>x.message_index=1],
   ["receipt",x=>x.tx_hash="B".repeat(64)],["owner",x=>x.owner_uid="another"],
   ["economic",x=>x.economic_key="ticket:56"],["purpose",x=>x.purpose="deposit"],
