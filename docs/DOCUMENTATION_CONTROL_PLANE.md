@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/20261027-storage-atlas-kingdom-systems` at `45db440edcc23cb8723ed5129f5250f0ae59b692`
+Implementation baseline: `feature/20261027-storage-atlas-kingdom-systems` at `8e2b86c6461a487577d26f8b481c7e53cfc0c681`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
