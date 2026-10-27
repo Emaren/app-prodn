@@ -343,6 +343,19 @@ Operator compared new full `diskutil apfs list` on `disk3`, `sysctl vm.swapusage
 
 **Decision:** `PASS_RECENT_CONTAINER_DELTA_VM_98_9_PERCENT_DATA_1_1_PERCENT` / `HOLD_INDIVIDUAL_PROCESS_CAUSALITY_AND_OLDER_SWINGS`; no actual Watcher edits, installer URL removal, workspace retirement or newly reclaimed storage. Previous disposable clone+timestamp restoration+rollback PASS; genuine first 1.6.0 AppImage alias still requires active-reader/historical URL, metadata and two-stage explicit owner permission. Complete exact byte evidence and Storage Atlas fields: [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
 
+
+## Phase 10 owner process-memory receipt — Chrome is main *observed* RSS cohort, process causality HOLD (2026-10-27)
+
+Read-only actual Mac `vm_stat`, `sysctl vm.swapusage`, top-20 `ps` sorted by resident `rss`, and direct Data `df` show memory demand and modestly declining swap-used in this specific sample, **not** new evidence of file cleanup. `vm_stat` reports 16 KiB pages, 14,478 free, 287,344 active, 281,890 inactive, 115,490 wired, 304,192 compressor-occupied and 945,399 pages stored in compressor. Compression/pagein/pageout/swap-in/swap-out counters have no baseline and are cumulative; cannot deduce recent rates from this alone. Mac swap `total=5120.00M used=3872.19M free=1247.81M`, used **40.00 MiB lower** than previous `3912.19M` sample.
+
+In the **top-20 PID list**, **13 Chrome processes** total **5,696,256 KiB summed RSS (~5.432 GiB)**, and **4 ChatGPT/Codex processes** total **684,512 KiB (~0.653 GiB) summed RSS**. RSS across processes is **not additive unique resident memory** and should not be interpreted as a Chrome swap accounting receipt; process attribution to previous APFS VM allocation growth is **not proven**. The two largest Chrome helpers alone had RSS `1,011,872 KiB` (PID 970) and `846,080 KiB` (PID 18590). Chrome is the most visible *candidate* for owner-directed optional tab/process optimization only after preservation of unsaved work. No kill/restart command provided or executed.
+
+Current `df -k /System/Volumes/Data`: total 482,797,652 KiB, used **431,013,652 KiB**, available **8,306,796 KiB = 7.921978 GiB** (99% displayed used). From previous full-container sample used 431,014,388 KiB and available 8,306,060 KiB, delta ±736 KiB, so near-term free is **stable**. Earlier container growth location was 98.9% VM and 1.1% Data, but no causal Chrome history or fresh VM-size sample accompanies this ps list. Phase10 newly reclaimed still **0 B**.
+
+**New independent runtime warning:** Starship timed out on `~/.pyenv/shims/python`; prompt switched from Python 3.13.5 to **3.14.7** after the command. This is a configuration/selection drift signal, not proof of changed canonical build interpreter. Require read-only `command -v python`, `python --version`, `pyenv version`, relevant `.python-version`/direnv policy and optional `memory_pressure -Q` before any development/build/release action. Do **not** switch/install Python or alter starship/direnv solely on prompt signal. Detailed Atlas telemetry and safe next command: [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
+**HOLD** actual Watcher alias transaction, signed downloads URLs, protected Codex/wallet/recordings/financial/system swap, APFS snapshot cleanup, source worktree retirement and automatic process shutdown. Disposable APFS clone+differing-mtime rollback test remains PASS, owner transaction authority still absent.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
