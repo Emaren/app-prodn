@@ -1,0 +1,23 @@
+[Unit]
+Description=AoE2WAR Storage Sentinel private stale-heartbeat/digest evaluation (no host probe)
+After=local-fs.target
+ConditionPathExists=/var/lib/aoe2war-storage-sentinel/state.sqlite3
+
+[Service]
+Type=oneshot
+User=aoe2war-sentinel
+Group=aoe2war-sentinel
+WorkingDirectory=/var/www/AoE2HDBets/app-prodn
+ExecStart=/usr/bin/python3 /var/www/AoE2HDBets/app-prodn/scripts/aoe2_storage_sentinel.py tick --state /var/lib/aoe2war-storage-sentinel/state.sqlite3
+NoNewPrivileges=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/aoe2war-storage-sentinel
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=192M
+RuntimeMaxSec=45
