@@ -1,0 +1,104 @@
+PHASE 11 — STORAGE ATLAS ATOMIC PUBLISHER / ANTI-REPLAY REVIEW
+Status: PROTOCOL PROPOSAL ONLY. No publisher, replay store, daemon,
+signed host receipt or live web feed installed or tested.
+Depends on #945@94c303349c28829331e7ef2bde2b3be63786fed4.
+NOT a dependency of website release: historical/UNKNOWN mode works with
+STORAGE_ATLAS_SIGNED_BUNDLE_FILE and STORAGE_ATLAS_COLLECTOR_TRUST_JSON UNSET.
+
+A. FROZEN PUBLIC CONTRACT (source #945, unchanged)
+- /aoe2war-os/storage-atlas is a rewrite into the existing page template,
+  not a new privileged API, producer, upload, write, cleanup or remote probe.
+- Private envelope schema aoe2war.storage-atlas.signed-receipts.v1: exactly
+  three {plane,payload_base64,signature_base64} entries. Ed25519 signature
+  verifies the original (not reserialized) UTF8 JSON with domain
+  UTF8("aoe2war/storage-atlas/receipt-v1") || 0x00; signature 64 bytes.
+  <=128KiB decoded bytes/plane, <=512KiB private envelope file.
+- Three independently enrolled, distinct SPKI Ed25519 keys and pins per
+  plane: collector_id, public_key_pem, filesystem_uuid, mount_source,
+  mountpoint, full 40-hex source_sha, minimum_sequence, previous_receipt_sha256.
+- All public authenticated output remains admission:HOLD, live:false and
+  excludes private paths, UUIDs, owner identity, source SHA, signatures and
+  backup/finance/recovery details. The historic Oct 27 blocks retain their
+  timestamps. Missing/invalid proof displays UNKNOWN/HOLD.
+- Existing file reader checks final O_NOFOLLOW, nlink=1, service-uid owned
+  owner-only file mode, <=512KiB, no symlink/world-writable ancestor.
+  Future enrollment MUST additionally reject group-writable ancestors and
+  paths under ANY public asset/upload/.next/web-served tree. The current
+  source DOES NOT enforce these stronger path requirements; G must review.
+
+B. DURABLE RECEIPT DIGEST AND HIGH WATER — proposed, not implemented
+- Freeze proposed digest: SHA256 of EXACT BYTES
+  UTF8("aoe2war/storage-atlas/receipt-v1") || 0x00 ||
+  signed_payload_bytes || 64-byte_ed25519_signature, lower-case hex.
+  #945 only compares external previous_receipt_sha256 to external pinned
+  hex, and DOES NOT compute this digest or persist anything. Cross-language
+  signed fixtures/test vectors must qualify the algorithm before activation.
+- One append-only durable journal tracks per-plane key epoch, strict
+  increasing safe-integer sequence, last receipt digest, approved full
+  source SHA and mount identity; journal is controlled separately from
+  incoming receipts and the Next application.
+- Initial sequence 1 with predecessor 64 zeros ONLY on an independently
+  approved genesis enrollment. Never reset sequence on key rotation.
+  Revoke old keys out of band. Require authorized operator/reviewer evidence
+  for new fingerprints; no TOFU, no key or high-water from HTTP input.
+- Candidate sequence must equal committed+1 and predecessor must equal
+  journal digest, source/UUID/mount/collector must match pins, signature
+  must verify, TTL 1..300s, |issued-observed|<=30s and not stale/future.
+  #945 verifier checks issued_at future +30s, issued-observed difference
+  and age; it does not independently reject observed_at >now+30s.
+  Future publisher MUST enforce observed_at <=now+30s and test that case.
+- Source #945 requires measured_reclaimed_bytes NULL or missing; avoid
+  reporting reclaimed capacity from estimates, even when key is valid.
+
+C. ATOMIC PUBLISHER — to be implemented in a distinct reviewed change
+- A dedicated nonweb service account receives only approved host-local
+  signed receipts through bounded operator-only ingress, with no public
+  listener, remote command execution, cleanup or finance permissions.
+- Under an exclusive publisher lock, read independent high-water and
+  three immutable trust pins; verify three signatures, source/device/time,
+  sequence and coverage; commit full original bytes + new journal high
+  water as one durable transaction (for example SQLite synchronous=FULL).
+- Materialize that committed generation to a non-web-served private dir:
+  O_EXCL new file, fsync file, atomic rename on same filesystem, fsync
+  directory. File cannot be symlink or hard-linked; reject writable
+  ancestors and all public asset roots. On power loss reconcile from
+  committed durable journal, not from a user-provided envelope.
+- IMPORTANT CURRENT LIMIT: #945 Next server reads pins from STATIC
+  process.env STORAGE_ATLAS_COLLECTOR_TRUST_JSON but reads bundle bytes
+  per request. A changing bundle + static pins are NOT a coherently
+  atomic live stream, and updating separate files under a lock alone
+  cannot fix this. A separately reviewed coherent-generation reader
+  OR a single explicitly approved immutable one-generation deployment
+  with pins/bundle stage+restart must exist before any live opt-in.
+  Restarting the website every 300 seconds is NOT an acceptable default.
+- On lock contention, interrupted journal commit, lost signer, stale
+  consumer pins, crash during rename, missing volume, clock dispute or
+  malformed candidate: fail closed, keep previous evidence HISTORICAL,
+  show UNKNOWN/HOLD and NEVER fail website deployment or block Index.
+- Test hot-path read cost/maximums and avoid unlimited polling. No
+  public request may trigger statvfs, diskutil, findmnt, shell, remote
+  SSH, financial reconciliation, privileged signing or telemetry write.
+
+D. SEPARATELY REVIEWABLE ADVERSE TEST MATRIX / RESPONSIBILITY
+- Cryptographic: altered bytes, wrong/revoked Ed25519 key, reused key on
+  two planes, wrong plane, swapped signature, duplicate JSON fields,
+  signature-byte digest collision regression, key rotation.
+- Identity: volume UUID or mount drift, wrong HEL1 OS/device, Mac Data
+  volume swap, wrong full source SHA, two HEL1 agents on same compromised
+  host, ephemeral /dev enumeration changes.
+- Sequence: duplicate/replay/skip/overflow, old envelope after restart,
+  two simultaneous publishers, lost high-water, crash at each journal /
+  file fsync/rename boundary, retained old env after new publication.
+- Freshness/census: stale/disputed/future +31..60s, partial or failed
+  census labeled complete, 129 consumers, oversized payload, unverified
+  reclaim, reserved-vs-ordinary ext4 free arithmetic.
+- Public: exact private path/UUID/source/key/financial redaction, no
+  public write endpoints, no scan/cleanup/probe on any GET/POST route,
+  missing-config UNKNOWN/HOLD, optional collector disabled with
+  healthy independent website-only release.
+- D Mac producer evidence, C HEL1 root evidence, C/E volume & backup
+  proof, F tool registry, G independent adversarial review, Central
+  separate release permit. Synthetic signature CI is not host evidence.
+
+FINAL STATUS: #945 historical site path SOURCE-QUALIFIED; real signing
+and continuous publisher ADOPTION HOLD. Do not deploy/activate anything.
