@@ -1,0 +1,111 @@
+{
+  "schema": "aoe2war.epoch-v3.phase7-production-install-v1",
+  "status": "HELD_NO_AUTHORITY",
+  "stack": [
+    {
+      "pr": 937,
+      "head": "bde1a40808b661b4fbd257353d71b4700d52ed81"
+    },
+    {
+      "pr": 938,
+      "head": "ab3c653512f5d5b6c3bc39fe46f199144d2061c8"
+    },
+    {
+      "pr": 940,
+      "head": "CHECK_LIVE_DRAFT_HEAD_BEFORE_APPROVAL"
+    }
+  ],
+  "website": {
+    "main": "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6",
+    "staged_build_id": "u842UVpDjLRLz-paxPv2U",
+    "session_b_untouched": true
+  },
+  "wolo": {
+    "pr": 115,
+    "head": "ae9f0277b58f2288e7b1fc25b03eef2a30271577",
+    "native_ci": 40437340642,
+    "native_ci_result": "FAIL_BANK_PROOF_STALE",
+    "native_verifier_executable": "NOT_EXPORTED",
+    "new_escrow_signer": "NOT_INSTALLED",
+    "go_hd_golden_sdk_vector": "MISSING"
+  },
+  "migrations": [
+    {
+      "order": 1,
+      "path": "prisma/migrations/20261027023000_epoch_v3_held_financial_ledger/migration.sql",
+      "sha256": "633583bb9cdb4d0731bdd05adf3200f66fb9a7b9d8eabb0dfad62302b9dd36db",
+      "applied_production": false
+    },
+    {
+      "order": 2,
+      "path": "prisma/migrations/20261027040000_epoch_v3_native_proof_provenance/migration.sql",
+      "sha256": "7c353ca1734f5430a76c008b20f5b56226b2fe63e67deb185073b6256ccf88a1",
+      "applied_production": false
+    }
+  ],
+  "production_roles": {
+    "installation_source": "scripts/review/epoch_v3_roles_install_held.sql",
+    "sha256": "8fbb0f314687e0cd3c64b776c78051f4f5b5423dd530b9ee091c1137e02908cb",
+    "grants": "NOLOGIN_ONLY",
+    "login_credentials_provisioned": false,
+    "roles": [
+      "epoch_v3_migration_owner",
+      "epoch_v3_proof_writer",
+      "epoch_v3_app_reader",
+      "epoch_v3_credit_consumer",
+      "epoch_v3_settlement_worker",
+      "epoch_v3_auditor"
+    ]
+  },
+  "source_runtime": {
+    "native_proof_ingestion": "compile_time_disabled",
+    "native_bridge": "lib/warSatchelEpochV3NativePgIngest.ts",
+    "native_both_bank_roots": "required",
+    "inspector": "scripts/review/epoch_v3_readonly_production_preflight.mjs",
+    "http_success_is_financial_proof": false,
+    "legacy_8092_fallback": false,
+    "money_go": false
+  },
+  "essential_dependencies": [
+    {
+      "owner": "Codex",
+      "requirement": "repair genuine SDK BANK_PROOF_STALE without lowering H/H+1 and source-trust freshness"
+    },
+    {
+      "owner": "Codex",
+      "requirement": "genuine native Go proof-verifier CLI, independent new-escrow signing, offhost nonce and native Go-produced golden ticket+fee vector"
+    },
+    {
+      "owner": "HD",
+      "requirement": "independently certify CLI source/binary hash, root-held service process, real proof-writer credential and same-root native proof-to-Postgres canary"
+    },
+    {
+      "owner": "Operator",
+      "requirement": "HD+DE historic complete unfiltered finance census, all old/external writer exclusion, full DB backup and independent restore"
+    },
+    {
+      "owner": "Central",
+      "requirement": "specific signed installation approval and independently bounded transaction-by-transaction canary permit"
+    }
+  ],
+  "chronology": [
+    "READONLY: verify PR heads and exact migration source hashes; all nine protected financial migration IDs remain intact",
+    "READONLY: qualify full HD+DE historical liabilities and all uncertain historical claims, do not net against prospective balances",
+    "READONLY: verify all HD/DE/cron/containers/CLI/legacy signers excluded, Wolo source signer independent and both bank roots fresh",
+    "OFFLINE: complete full HD+DE backup and independent restore under operator",
+    "OFFLINE: native Codex SDK golden proof, Go/HD byte parity and race/crash proof pass",
+    "APPROVAL: transaction-specific human owner and offhost nonce and Central command signed release authority",
+    "INSTALL ONLY AFTER APPROVAL: apply SHA-pinned additive epoch_v3 SQL migrations in order under isolated migration owner",
+    "INSTALL ONLY AFTER APPROVAL: run review-bound 6-NOLOGIN-role privilege installer, bind external verifier OS principal separately",
+    "READONLY: run epoch_v3_readonly_production_preflight.mjs under confirmed SELECT-only auditor Unix-socket login",
+    "CANARY ONLY AFTER APPROVAL: source-bounded signed owner permit, confirmed both-account solvency and exact return observations",
+    "POST-CANARY: independently reconcile physical MsgSend, account-local bank, receipt consumption and no-replay decision journal",
+    "ACTIVATE ONLY ON SEPARATE RELEASE: no unchecked authorizing environment variable or fallback legacy 8092"
+  ],
+  "rollback_policy": "BEFORE first real funding: hold/uninstall isolated runtime, preserve history. AFTER any ambiguous payment: FENCE/UNKNOWN_NO_REPLAY, no blind retry, never delete financial journal or drop schema with real rows.",
+  "safe_commands": [
+    "git -C \"$HOME/projects/AoE2HDBets/app-prodn\" status --short",
+    "git -C \"$HOME/projects/AoE2HDBets/app-prodn\" rev-parse HEAD",
+    "node scripts/review/epoch_v3_readonly_production_preflight.mjs"
+  ]
+}
