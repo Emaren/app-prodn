@@ -163,14 +163,31 @@ def run() -> dict:
                 out.flush()
                 os.fsync(out.fileno())
             os.chmod(target, 0o600)
-            os.utime(target, ns=(1700000000000000000, 1700000000000000000))
+            # Reproduce actual Watcher case: same bytes and metadata except mtime.
+            timestamp_ns = 1700000000000000000 + (
+                1_000_000_000 if target == alias else 0
+            )
+            os.utime(target, ns=(timestamp_ns, timestamp_ns))
             xattr_cli(["-w", XATTR_NAME, "phase10-marker", str(target)])
 
         if src.stat().st_ino == alias.stat().st_ino:
             raise Hold("FIXTURE_FILES_ARE_HARDLINKS")
-        assert_identity(src, alias)
+        canonical_metadata = metadata(src)
+        alias_metadata = metadata(alias)
+        canonical_without_mtime = {
+            k: v for k, v in canonical_metadata.items() if k != "mtime_ns"
+        }
+        alias_without_mtime = {
+            k: v for k, v in alias_metadata.items() if k != "mtime_ns"
+        }
+        if canonical_without_mtime != alias_without_mtime:
+            raise Hold("FIXTURE_UNEXPECTED_METADATA_DIFFERENCE")
+        if alias_metadata["mtime_ns"] - canonical_metadata["mtime_ns"] != 1_000_000_000:
+            raise Hold("FIXTURE_MTIME_DIVERGENCE_NOT_ESTABLISHED")
         initial_inode = alias.stat().st_ino
         initial_hash = sha256(src)
+        if sha256(alias) != initial_hash:
+            raise Hold("FIXTURE_INITIAL_BYTES_NOT_IDENTICAL")
         before_free = free_bytes(root)
         clone_candidate = dist / ".clone-stage"
         private_backup_dir = root / "private-backup"
@@ -192,7 +209,16 @@ def run() -> dict:
         cow_probe.unlink()
 
         clonefile(src, clone_candidate)
+        # The real legacy alias differs from its canonical peer by mtime only.
+        # Apply the original alias timestamps to the DISPOSABLE staged clone.
+        original_alias_stat = alias.lstat()
+        os.utime(
+            clone_candidate,
+            ns=(original_alias_stat.st_atime_ns, original_alias_stat.st_mtime_ns),
+        )
         assert_identity(alias, clone_candidate)
+        if sha256(src) != initial_hash or metadata(src) != canonical_metadata:
+            raise Hold("FIXTURE_CANONICAL_CHANGED_DURING_MTIME_ADJUSTMENT")
         fsync_file(clone_candidate)
         os.link(alias, original_backup)
         if original_backup.stat().st_ino != initial_inode:
@@ -201,7 +227,8 @@ def run() -> dict:
         try:
             os.replace(clone_candidate, alias)
             replaced = True
-            assert_identity(src, alias)
+            if sha256(alias) != initial_hash or metadata(alias) != alias_metadata:
+                raise Hold("FIXTURE_ALIAS_MTIME_OR_METADATA_NOT_PRESERVED_AFTER_SWAP")
             if not link.samefile(dist) or sha256(link / alias.name) != initial_hash:
                 raise Hold("WEBSITE_ALIAS_CONTINUITY_FAILED")
             if alias.stat().st_ino == initial_inode:
@@ -213,7 +240,10 @@ def run() -> dict:
 
         if alias.stat().st_ino != initial_inode:
             raise Hold("ROLLBACK_INODE_RESTORE_FAILED")
-        assert_identity(src, alias)
+        if sha256(alias) != initial_hash or metadata(alias) != alias_metadata:
+            raise Hold("FIXTURE_ORIGINAL_MTIME_OR_METADATA_NOT_RESTORED")
+        if sha256(src) != initial_hash or metadata(src) != canonical_metadata:
+            raise Hold("FIXTURE_CANONICAL_CHANGED_AFTER_ROLLBACK")
         if not link.samefile(dist) or sha256(link / alias.name) != initial_hash:
             raise Hold("ROLLBACK_DOWNLOAD_ALIAS_FAIL")
         if original_backup.exists() or clone_candidate.exists():
@@ -225,6 +255,8 @@ def run() -> dict:
             "clonefile_syscall": "SUCCESS_NO_FALLBACK",
             "copy_on_write_write_isolation": "PASS",
             "metadata_mode_owner_flags_mtime_xattr": "PASS",
+            "different_initial_mtimes": "PASS_ONE_SECOND_DIVERGENCE",
+            "staged_alias_original_mtime_restored": "PASS",
             "regular_file_and_separate_inode": "PASS",
             "download_symlink_continuity_before_after": "PASS",
             "temporary_original_hardlink_rollback": "PASS_ORIGINAL_INODE",
