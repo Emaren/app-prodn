@@ -1,7 +1,7 @@
-"""Regression contract: nonfinancial OS pages never prewarm finance-capable GETs.
+"""Release regression: unrelated page mounts cannot initiate betting GETs.
 
-Source guard is intentionally limited to the AppShell side effect. It does not
-claim /api/bets is intrinsically read-only or grant release activation.
+Bets header hover/focus/pointer intent retains its deliberate warmup. The
+/api/bets GET itself is potentially mutating and is never a release probe.
 """
 from pathlib import Path
 import unittest
@@ -10,17 +10,30 @@ ROOT = Path(__file__).resolve().parents[1]
 SHELL = ROOT / "app" / "AppShell.tsx"
 BETS_WARMUP = ROOT / "lib" / "betsNavigationWarmup.ts"
 
-
-class StorageAtlasFinanceWarmupFenceTests(unittest.TestCase):
-    def test_os_route_exits_before_automatic_bets_warmup(self) -> None:
+class WebsiteFinanceNoninterferenceTests(unittest.TestCase):
+    def test_global_shell_does_not_speculatively_warm_bets(self) -> None:
         shell = SHELL.read_text(encoding="utf-8")
-        effect = shell.split("if (pathname === \"/bets\" || pathname?.startsWith(\"/aoe2war-os\")", 1)
-        self.assertEqual(len(effect), 2, "Missing explicit AoE2WAR OS early exit")
-        self.assertTrue(effect[1].lstrip().startswith("|| betsIdleWarmRef.current) {\n      return;"))
-        warmup = shell.index('router.prefetch("/bets");', shell.index('const warmBetsNavigation ='))
-        guard = shell.index('pathname?.startsWith("/aoe2war-os")')
-        self.assertLess(guard, warmup)
-        self.assertTrue('/api/bets' in BETS_WARMUP.read_text(encoding="utf-8"))
+        self.assertNotIn("betsIdleWarmRef", shell)
+        self.assertNotIn("warmBetsNavigation", shell)
+        self.assertNotIn('router.prefetch("/bets")', shell)
+        self.assertNotIn('setTimeout(warmBetsNavigation', shell)
+        # Only the 3 intent-triggered header handlers warm the Bets board.
+        self.assertEqual(shell.count("void warmBetsBoard(uid);"), 3)
+        for trigger in ("onMouseEnter", "onFocus", "onPointerDown"):
+            start = shell.index(trigger + "={() => {")
+            guard = shell.index('if (href === "/bets")', start)
+            action = shell.index("void warmBetsBoard(uid);", guard)
+            self.assertLess(action - guard, 240)
+        self.assertIn('"/api/bets"', BETS_WARMUP.read_text(encoding="utf-8"))
+
+    def test_nonfinancial_routes_share_bets_idle_free_shell(self) -> None:
+        # /, /players, /live-games, /kingdom-systems and /aoe2war-os
+        # use AppShell; ensure absence of unconditional finance warmup.
+        shell = SHELL.read_text(encoding="utf-8")
+        self.assertIn("function AppShell", shell)
+        self.assertNotIn('fetch("/api/bets"', shell)
+        self.assertNotIn('router.prefetch("/bets")', shell)
+        self.assertNotIn("betsRouteTimer", shell)
 
     def test_release_probes_are_identity_only(self) -> None:
         for path in (
@@ -28,11 +41,10 @@ class StorageAtlasFinanceWarmupFenceTests(unittest.TestCase):
             ROOT / "scripts" / "aoe2_release_rollback.py",
             ROOT / "scripts" / "aoe2_release_ship.py",
         ):
-            src = path.read_text(encoding="utf-8")
-            self.assertIn("/api/deployment-version", src)
-            self.assertNotIn("http://127.0.0.1:3030/api/bets", src)
-            self.assertNotIn("http://127.0.0.1:3030/api/lobby", src)
-
+            source = path.read_text(encoding="utf-8")
+            self.assertIn("/api/deployment-version", source)
+            self.assertNotIn("http://127.0.0.1:3030/api/bets", source)
+            self.assertNotIn("http://127.0.0.1:3030/api/lobby", source)
 
 if __name__ == "__main__":
     unittest.main()
