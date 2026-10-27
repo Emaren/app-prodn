@@ -255,6 +255,11 @@ All three updater manifests returned empty matching alias arrays: `latest.yml: [
 
 **Potential safer direction for an independently approved future transaction**: first qualify an exact alias-preserving, regular-file-preserving APFS copy-on-write deduplication candidate (with current hashes, allocated-block checks, atomic replacement, ability to restore independent bytes from the verified canonical file) rather than removing an HTTP-facing historical path. Such a transaction may reclaim **less than 742,422,002 B** due to APFS shared extents and snapshots, and needs separate per-file owner authorization, tested rollback, bounded scope, and a postflight `df -k /System/Volumes/Data` receipt. Do not treat this paragraph as a cleanup instruction or as evidence that the Mac supports a particular dedup operation.
 
+
+## Phase 10 owner task — APFS proof and URL-preserving retention (2026-10-27)
+
+**Current reviewed extension:** [Phase 10 APFS clone/retention/Storage Atlas handoff](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md) with [strict disposable macOS/APFS fixture-only Python probe](fixtures/session_d_apfs_clone_fixture.py). Independent GitHub release v1.6.0/v1.6.3 SHA-256 assets match all six prior Mac full-file duplicate digests; these are published immutable binary content references, **not guarantees about historical local web download URLs**. The offline Mac connector **cannot execute APFS fixtures in this session**; `PASS_APFS_FIXTURE_ONLY` remains pending Mac operator run. This review continues on isolated PR #942, not frozen finance, staged site or Codex branches. **No actual Watcher file was cloned, replaced, deleted, moved or relinked. Newly reclaimed 0 B.**
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
