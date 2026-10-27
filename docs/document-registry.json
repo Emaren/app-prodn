@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f48496a6a0ae6531612915e30a5b2a85208c0f021150c1f70e0c807a1b4b426a",
+      "sha256": "697cc11c8993e3f434ba5065dcde7ebd3b7f10bc3c0c83a42444444d4a917a85",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/20261027-storage-atlas-kingdom-systems",
-    "commit": "8e2b86c6461a487577d26f8b481c7e53cfc0c681"
+    "branch": "review/session-b-phase10-authenticated-storage-atlas",
+    "commit": "7fd1046e7e9944b0d6632c6bdb8898190d5d516d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
