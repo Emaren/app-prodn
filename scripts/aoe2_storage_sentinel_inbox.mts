@@ -11,7 +11,7 @@ async function main(){
  if(raw.length>4096)throw Error("PRIVATE_DELIVERY_LIMIT");
  const input=JSON.parse(raw.toString("utf8"));
  const id=input.delivery_id,body=input.body;
- if(typeof id!=="string"||!(/^[a-f0-9]{64}(?::daily:\d{8}|:reopen:\d{1,15})?$/).test(id) ||
+ if(typeof id!=="string"||!(/^[a-f0-9]{64}(?::daily:\d{8}|:reopen:\d{1,15}|:ack:\d{1,15})?$/).test(id) ||
     typeof body!=="string"||body.length>1700||
     !body.startsWith("STORAGE SENTINEL ")||
     !body.includes("/aoe2war-os/storage-atlas"))throw Error("INVALID_OUTBOX_MESSAGE");
