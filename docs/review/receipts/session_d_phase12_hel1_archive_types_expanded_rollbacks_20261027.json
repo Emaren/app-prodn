@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "kind": "session-d-p0-hel1-expanded-rollback-classification",
+  "date": "2026-10-27",
+  "provenance": "Owner-executed read-only Mac SSH check to HEL1; terminal stdout, no deletion or archive body reads",
+  "candidate": {
+    "attached_worktree": "update-independent-docs-context-20261015",
+    "candidate_child": ".next",
+    "source_head": "99c406f57d759b672fd9fe91d3c3355c4d527705",
+    "build_id_file_sha256": "3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522",
+    "owner_local_build_file_digest_guard_passed": true
+  },
+  "hel1_archives": {
+    "total_direct_entries": 171,
+    "canonical_tar_zst": 3,
+    "other_regular_files": 168,
+    "inventory_status": "CLASSIFIED_NAMES_AND_TYPES_ONLY",
+    "archive_bodies_read": false,
+    "canonical_verified_pairs_from_prior_probe": 3,
+    "canonical_metadata_build_id_matches_from_prior_probe": 0,
+    "canonical_metadata_source_sha_matches_from_prior_probe": 0,
+    "other_regular_files_references_checked": false
+  },
+  "hel1_expanded_rollbacks": {
+    "canonical_generations": 49,
+    "build_id_matches": 0,
+    "source_matches": 0,
+    "incomplete_generations": 13,
+    "legacy_directories": 51,
+    "non_directory_entries": 0,
+    "inventory_status": "CLASSIFIED_CANONICAL_AND_LEGACY",
+    "incomplete_and_legacy_reference_scope": "NOT_CHECKED",
+    "full_tree_contents_read": false
+  },
+  "interpretation": {
+    "canonical_negative_scope": "3 cold archived verified metadata pairs from prior sample plus 49 current readable complete expanded generations; no matching candidate BUILD_ID/SHA in those scoped records",
+    "outstanding_scopes": [
+      "168 other regular files need type/size and whitelisted text metadata classification before reference clearance",
+      "13 incomplete expanded generations may contain unreadable, absent, different-layout or symlinked reference files",
+      "51 legacy rollback directories require protected, per-class bounded reference assessment",
+      "current legacy-unmanifested certification, future local release consumers, independent restorable copy or accepted native pinned rebuild remain HOLD"
+    ],
+    "not_a_claim": "Canonical results are not exhaustive HEL1, off-host, future consumers or byte-restorable backup certification",
+    "deletion_authorized": false
+  },
+  "last_owner_mac_ordinary_free_kib": 9956888,
+  "actual_new_cleanup_deleted_paths": [],
+  "actual_new_reclaimed_bytes": 0,
+  "protected": [
+    "all HEL1 rollback and archive bodies",
+    "all Mac worktrees and .git",
+    ".aoe2war-release and federation symlinks",
+    "financial/Codex",
+    "watcher signed artifacts",
+    "archives, videos, wallets, iOS backups, APFS VM"
+  ]
+}
