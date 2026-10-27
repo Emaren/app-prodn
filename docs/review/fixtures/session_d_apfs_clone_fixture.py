@@ -10,6 +10,7 @@ from __future__ import annotations
 import ctypes
 import hashlib
 import json
+import plistlib
 import os
 from pathlib import Path
 import platform
@@ -88,14 +89,28 @@ def run() -> dict:
     if not WATCHER_DIST.is_dir() or WATCHER_DIST.is_symlink():
         raise Hold("WATCHER_DIST_NOT_A_REAL_DIRECTORY: no fixture attempted")
 
-    filesystem = subprocess.run(
-        ["/usr/bin/stat", "-f", "%T", str(WATCHER_DIST)],
-        capture_output=True, text=True, check=False, timeout=15,
-    )
-    if filesystem.returncode != 0 or filesystem.stdout.strip() != "apfs":
-        raise Hold("WATCHER_TARGET_NOT_APFS: no fixture attempted")
-
+    # Darwin stat -f %T is the FILE TYPE, not the filesystem type.
+    # Identify the known Data mount through diskutil's structured volume report
+    # and require the Watcher directory to reside on that exact device.
+    data_mount = Path("/System/Volumes/Data")
+    if not data_mount.is_dir() or data_mount.is_symlink():
+        raise Hold("DATA_MOUNT_UNAVAILABLE: no fixture attempted")
     target_dev = WATCHER_DIST.stat().st_dev
+    if data_mount.stat().st_dev != target_dev:
+        raise Hold("WATCHER_NOT_ON_APFS_DATA_VOLUME: no fixture attempted")
+    filesystem = subprocess.run(
+        ["/usr/sbin/diskutil", "info", "-plist", str(data_mount)],
+        capture_output=True, check=False, timeout=15,
+    )
+    if filesystem.returncode != 0:
+        raise Hold("DISKUTIL_DATA_VOLUME_QUERY_FAILED: no fixture attempted")
+    try:
+        info = plistlib.loads(filesystem.stdout)
+    except (ValueError, TypeError, plistlib.InvalidFileException) as exc:
+        raise Hold("DISKUTIL_INVALID_VOLUME_PLIST: no fixture attempted") from exc
+    if not isinstance(info, dict) or str(info.get("FilesystemType", "")).lower() != "apfs":
+        raise Hold("DATA_VOLUME_NOT_CONFIRMED_APFS: no fixture attempted")
+
     temp_base = Path(tempfile.gettempdir())
     if temp_base.stat().st_dev != target_dev:
         raise Hold("TMPDIR_NOT_SAME_DEVICE: no fixture attempted")
