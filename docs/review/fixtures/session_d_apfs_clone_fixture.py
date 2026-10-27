@@ -131,7 +131,9 @@ def run() -> dict:
         initial_hash = sha256(src)
         before_free = free_bytes(root)
         clone_candidate = dist / ".clone-stage"
-        original_backup = dist / ".original-hardlink-backup"
+        private_backup_dir = root / "private-backup"
+        private_backup_dir.mkdir(mode=0o700)
+        original_backup = private_backup_dir / "alias-original"
         cow_probe = dist / ".cow-probe"
 
         clonefile(src, cow_probe)
