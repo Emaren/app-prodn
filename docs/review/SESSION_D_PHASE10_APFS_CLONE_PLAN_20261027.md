@@ -203,6 +203,19 @@ After the earlier `for path in ...` command, the owner obtained:
 
 **Decision:** `PASS_DF_COMMAND_RESOLUTION_DIAGNOSIS` / `PASS_ABSOLUTE_DF_ON_DATA` / `HOLD_SHARED_APFS_FREE_CHANGE_CAUSALITY` / `HOLD_REAL_WATCHER_ALIAS_OWNER_APPROVAL`; prior `PASS_MTIME_DIVERGENCE_APFS_FIXTURE` unchanged.
 
+## Verified zsh login-shell recovery and stable direct Data free reading (operator, 2026-10-27)
+
+The owner executed `exec /bin/zsh -l` **in the same operator terminal**. New login-shell output confirmed native arm64, pyenv **3.13.5** and the permitted project `.envrc` loaded through direnv. The following read-only checks then passed:
+- `builtin whence -va df` → **`df is /bin/df`** (the earlier assistant-authored `for path in ...` loop had clobbered special zsh `path`/`PATH` lookup).
+- `/bin/df -k /System/Volumes/Data` → `/dev/disk3s5`, `1024-blocks=482797652`, `Used=431010500`, `Available=8309948` KiB, `Capacity=99%`, mounted at `/System/Volumes/Data`.
+- Versus immediately preceding direct `/bin/df`: `Used=431011556` and `Available=8308892` KiB, the latest used fell and available rose by exactly **1,056 KiB = 1.03125 MiB**. Latest available **8,309,948 KiB = 7.924984 GiB** (do not confuse with historical snapshots of 8.932682/6.926521/10.87458 GiB).
+
+**Status transition:** `PASS_ZSH_PATH_REPAIRED_BY_FRESH_LOGIN`; `PASS_DF_RESOLUTION`; `PASS_DIRECT_APFS_DATA_DF`. The earlier shell-command failure is **CLOSED** without chmod, OS repairs, disk cleaning or Homebrew changes. The APFS shared-container free fluctuations are **still not causally explained** and cannot be attributed to the temporary APFS fixture or the three already-stable build roots. The first AppImage real-file metadata and public URL consumer/owner-approval gates remain HOLD; no actual Watcher file or historic download path was altered. **Phase10 newly reclaimed=0 bytes**; earlier verified unrelated two-`.next` cleanup +2.606 GiB.
+
+**Additional Storage Atlas sample** (later owner terminal; exact UTC acquisition time not provided): `mac_apfs_data_available_kib=8309948`, `mac_apfs_data_used_kib=431010500`, `mac_apfs_data_available_gib=7.924984`, `mac_capacity_display=99%`, `mac_delta_available_from_previous_kib=1056`, `mac_delta_used_from_previous_kib=-1056`, `zsh_login_shell_restart=PASS`, `zsh_df_resolution=PASS_BIN_DF`, `pyenv=3.13.5`, `direnv_project_env=LOADED`, `phase10_actual_reclaimed_bytes=0`.
+
+**Next read-only investigation:** compare `diskutil apfs list` per-volume consumption of VM/Preboot/System/Recovery with the older pinned `disk3` sample to determine whether other volumes explain the shared unallocated-space change. `sysctl vm.swapusage` is informative but not a deletion target. No VM file, APFS snapshot, production release or workspace-retirement mutation authorized.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
