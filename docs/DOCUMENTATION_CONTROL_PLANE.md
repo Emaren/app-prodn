@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-kingdom-index` at `85f0ee41596cc7ee6c16b5be5d168bf3e3357188`
+Implementation baseline: `review/20261027-release-identity-only-probes` at `b7fb034a517f1ec8cd35f72b31726c47f9475643`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
