@@ -208,6 +208,31 @@ Every row compares exactly `AoE2HDBets Watcher-<version>.AppImage` versus `AoE2H
 **Pre-deletion follow-up:** inspect the two *local* `dist/watcher-release-manifest-{1.6.0,1.6.3}.json` and `dist/SHA256SUMS-{1.6.0,1.6.3}.txt` for exact naming; bound `git grep` references for the 12 literal filenames across tracked app and Watcher source; verify any client/API/history URL needs and actual processes/open FDs; require separately durable original signed package copies/role witness and exact-path owner permit if ever proposing a name removal. Default **HOLD** for all 12 files. No newly machine-cleanable bytes in Session D; all verified checks are read-only.
 
 
+
+## Legacy Watcher alias retirement proof — manifest and tracked-code reference audit (owner terminal, 2026-10-27)
+
+The owner performed a new **READ_ONLY** survey of four current-Mac local inventory files plus `git grep -n -F` of twelve literal asset names against the **tracked checkout sources** of canonical `app-prodn` and `aoe2-watcher`. The scan reported no errors and **zero tracked-source exact-name matches** in either repo. It did not examine Git history, untracked source/config, external URLs, developer machines, web server access logs, running tasks or open FDs.
+
+| Inventory file in local `aoe2-watcher/dist` | Space-named references found | Hyphen-named aliases referenced |
+|---|---|---|
+| `watcher-release-manifest-1.6.0.json` | Canonical 1.6.0 AppImage, DMG and Windows Setup | **0** |
+| `SHA256SUMS-1.6.0.txt` | Canonical 1.6.0 AppImage, DMG and Windows Setup | **0** |
+| `watcher-release-manifest-1.6.3.json` | Canonical 1.6.3 AppImage, DMG and Windows Setup | **0** |
+| `SHA256SUMS-1.6.3.txt` | Canonical 1.6.3 AppImage, DMG and Windows Setup | **0** |
+
+This combines with the previous 6/6 full SHA-256 equality proof to establish that **the six hyphen-named aliases are not required by the four scanned release manifests/checksums and are not named literally in either scanned Git checkout**. Their corresponding space-named canonical files remain byte-identical signed/published artifacts and would be retained.
+
+**Classification advanced only to** `PROVEN_CONTENT_DUPLICATE_UNREFERENCED_IN_CHECKED_IN_SOURCE_PENDING_EXTERNAL_AND_RUNTIME_CONSUMERS`, not automatic cleanup authority. Exactly six alias paths are conditional candidates, logical one-copy total **742,422,002 B (0.6914 GiB)**. They are **not** tracked source, and no actions have been authorized on the Mac's `app-prodn/public/downloads -> watcher/dist` alias. The HEL1 `watcher-downloads` deletion/receipt controller has unrelated authority over the production volume and must not be reused on these Mac aliases.
+
+**Remaining gates before guarded one-path retirement:**
+- Inspect exact 12 filenames in local active web/npm configuration, untracked scripts, HTTP deep links/redirects, launch agents, updater metadata and historic release compatibility policy. A zero `git grep` exact-match is not a full consumer graph.
+- Reinspect both live file identities and hashes, source SHA, owner, path confinement, symlink ancestors, `lsof`/process readers, hardlinks/clones if ascertainable, and Mac-local website availability.
+- Independently preserve and verify the original signed bytes and manifests of at least one canonical filename, and record a deterministic rollback recipe that restores any required legacy URL. Because the site symlink lands at `dist`, deleting an alias removes that precise local download URL.
+- Secure explicit owner approval for each exact changed path on an isolated Storage OS review lane. Do not automatically route a test snippet through the HEL1 release controller; never touch signed evidence, installer manifests, wallets, game recordings or Codex work.
+- Produce before/after **APFS Data** free bytes, verified source/worktree unchanged, and locally durable Storage OS receipt; if unproven, `HOLD`, `newly_reclaimed=0`.
+
+**Decision:** safe to continue to active-consumer and rollback review. **No immediate delete. No bytes reclaimed in this phase.**
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
