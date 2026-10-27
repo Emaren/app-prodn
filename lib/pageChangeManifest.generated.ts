@@ -125,6 +125,6 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/aoe2war-os",
     label: "AoE2WAR OS",
-    version: "src-054f10439ad6055edb97",
+    version: "src-ea125df5f35625d1a67d",
   },
 ] as const;
