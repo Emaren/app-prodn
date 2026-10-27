@@ -17,8 +17,8 @@ const EPOCH = /^[a-z][a-z0-9_-]{11,63}$/;
 const UID = /^[a-zA-Z0-9_.:-]{1,100}$/;
 const NAT = /^(?:0|[1-9][0-9]*)$/;
 const HASH = /^[A-F0-9]{64}$/;
-const UW = 1_000_000n;
-const BET_CAP = 10_000n * UW;
+const UW = BigInt(1000000);
+const BET_CAP = BigInt(10000) * UW;
 
 function refuse(why: string): never {
   throw new Error("NEW_EPOCH_HD_V3_HELD:" + why);
