@@ -17,7 +17,7 @@ BEGIN
    EXECUTE format('CREATE ROLE %I NOLOGIN NOINHERIT',name);
   ELSE
    IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname=name AND
-     (rolcanlogin OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls))
+     (rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls))
    THEN RAISE EXCEPTION 'EPOCH_V3_ROLE_NOT_ISOLATED:%',name; END IF;
   END IF;
  END LOOP;
@@ -54,6 +54,16 @@ GRANT EXECUTE ON FUNCTION
  epoch_v3.reconcile_return(text,text,character,integer,numeric,text,text,text),
  epoch_v3.transition_operation(text,text,integer,text,text)
  TO epoch_v3_settlement_worker;
+
+-- Auditor needs ONLY migration identity/checksum/finished state in Prisma's
+-- migration chronology. GRANT column-level SELECT, not full-schema access.
+DO $prisma_audit$
+BEGIN
+ IF to_regclass('public._prisma_migrations') IS NOT NULL THEN
+  GRANT SELECT (migration_name,checksum,finished_at,rolled_back_at)
+  ON public._prisma_migrations TO epoch_v3_auditor;
+ END IF;
+END $prisma_audit$;
 
 -- No GRANT on consume_receipt nor assert_native_proof_for_receipt: these
 -- are internal SECURITY DEFINER functions; direct outsiders cannot run them.
