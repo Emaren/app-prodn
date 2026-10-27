@@ -129,7 +129,10 @@ def receive(db,pins,envelope,t=None):
    if p["backup_status"]=="failed":notice("backup_failed","backup-attested-fail","HOLD")
    if p["expired_generations"] is not None and p["expired_generations"]>0:notice("build_generation_expired","expired-reviewed","WATCH")
    if p.get("candidate_inventory") is not None:
-    from scripts.aoe2_storage_artifacts import review_inventory,ArtifactHold
+    try:
+     from scripts.aoe2_storage_artifacts import review_inventory,ArtifactHold
+    except ModuleNotFoundError:
+     from aoe2_storage_artifacts import review_inventory,ArtifactHold
     try:
      candidate_plan=review_inventory(p["candidate_inventory"])
     except (ArtifactHold,KeyError,TypeError) as e:raise Hold("ARTIFACT_REVIEW_FAILED") from e
