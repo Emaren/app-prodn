@@ -3,13 +3,12 @@
 No network calls, host disk scans, financial writes or deployment side effects.
 """
 from pathlib import Path
-import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SHELL = ROOT / "app/AppShell.tsx"
 SYSTEMS = ROOT / "app/kingdom-systems/page.tsx"
-ATLAS = ROOT / "app/aoe2war-os/storage-atlas/page.tsx"
+ATLAS = ROOT / "components/aoe2war-os/StorageAtlasView.tsx"
 
 
 class StorageAtlasShellTests(unittest.TestCase):
@@ -20,8 +19,8 @@ class StorageAtlasShellTests(unittest.TestCase):
         cls.atlas = ATLAS.read_text(encoding="utf-8")
 
     def test_storage_atlas_is_a_real_os_child_route(self):
-        self.assertIn('canonical: "/aoe2war-os/storage-atlas"', self.atlas)
-        self.assertIn('title: "Storage Atlas · AoE2WAR OS"', self.atlas)
+        self.assertIn('destination: "/aoe2war-os?view=storage-atlas"', (ROOT / "next.config.js").read_text(encoding="utf-8"))
+        self.assertIn('title: "Storage Atlas · AoE2WAR OS"', (ROOT / "app/aoe2war-os/page.tsx").read_text(encoding="utf-8"))
         self.assertIn('href="/aoe2war-os"', self.atlas)
 
     def test_castle_menu_has_one_systems_gateway_not_subroutes(self):
@@ -66,6 +65,13 @@ class StorageAtlasShellTests(unittest.TestCase):
         index = self.shell.index('prefix: "/aoe2war-os/storage-atlas"')
         parent = self.shell.index('prefix: "/aoe2war-os"')
         self.assertLess(index, parent)
+
+    def test_os_route_is_an_explicit_existing_template_alias(self):
+        page = (ROOT / "app/aoe2war-os/page.tsx").read_text(encoding="utf-8")
+        config = (ROOT / "next.config.js").read_text(encoding="utf-8")
+        self.assertIn('if (view === "storage-atlas") return <StorageAtlasView />', page)
+        self.assertIn('source: "/aoe2war-os/storage-atlas"', config)
+        self.assertFalse((ROOT / "app/aoe2war-os/storage-atlas/page.tsx").exists())
 
 
 if __name__ == "__main__":
