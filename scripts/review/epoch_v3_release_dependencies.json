@@ -4,15 +4,17 @@
   "source": {
     "hd": {
       "repo": "Emaren/app-prodn",
-      "branch": "review/session-b-phase5-hd-v3-release-proof",
-      "base": "review/session-b-phase4-hd-new-epoch-integration",
+      "branch": "review/session-b-phase6-epoch-ledger-postgres",
+      "base": "review/session-b-phase5-hd-v3-release-proof",
       "source_files": [
         "lib/warSatchelNewEpochFinancialContracts.ts",
         "lib/warSatchelEpochV3ReleaseGate.ts",
         "lib/warSatchelEpochV3Durability.ts",
         "lib/warSatchelEpochV3NativeObserver.ts",
         "lib/warSatchelEpochV3TicketFunding.ts",
-        "lib/warSatchelEpochV3GoWire.ts"
+        "lib/warSatchelEpochV3GoWire.ts",
+        "prisma/migrations/20261027023000_epoch_v3_held_financial_ledger/migration.sql",
+        "scripts/review/epoch_v3_financial_preflight.py"
       ],
       "production_mounted": false
     },
@@ -23,7 +25,7 @@
       "v3_new_escrow_executor_observed": false,
       "old_8092_return_dependency": "internal/satchelservice/returns.go: PrepareReturnRun returns legacy /settlement/v1/runs",
       "held_epoch_escrow_pr": 115,
-      "epoch_v3_source_head": "dd45bc95579ed9468e25144c33f4120a08fe3c89",
+      "epoch_v3_source_head": "ae9f0277b58f2288e7b1fc25b03eef2a30271577",
       "epoch_v3_held_source": {
         "policy": "internal/epochescrow/policy.go",
         "native": "internal/epochescrow/evidence.go",
@@ -32,7 +34,12 @@
         "daemon": "cmd/woloescrowd/main.go"
       },
       "native_v3_policy_and_proof_source_observed": true,
-      "production_enabled": false
+      "production_enabled": false,
+      "epoch_v3_native_workflow": {
+        "id": 40437340642,
+        "status": "FAILED",
+        "reason": "BANK_PROOF_STALE at native_fixture_test.go:114"
+      }
     },
     "site": {
       "source_sha": "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6",
@@ -178,5 +185,60 @@
     },
     "native_wolo_115_tests": "SOURCE_CI_PENDING_NO_EXECUTOR_AND_NO_LIVE_PROOF",
     "cross_language_test_vector": "NOT_YET_EXPORTED_BY_CODEX"
+  },
+  "phase6": {
+    "schema": "aoe2war.epoch-v3.postgres-held.v1",
+    "migration": {
+      "path": "prisma/migrations/20261027023000_epoch_v3_held_financial_ledger/migration.sql",
+      "sha256": "633583bb9cdb4d0731bdd05adf3200f66fb9a7b9d8eabb0dfad62302b9dd36db",
+      "applied_production": false,
+      "rollback": "DROP SCHEMA epoch_v3 CASCADE ONLY in confirmed disposable isolated database before any funded rows; NEVER rollback by deleting real finance history"
+    },
+    "protected_migrations_untouched": true,
+    "stored_tables": [
+      "epochs",
+      "receipts",
+      "receipt_consumptions",
+      "positions",
+      "daily_reservations",
+      "operations",
+      "operation_transitions",
+      "tickets",
+      "allocations",
+      "market_plans",
+      "entitlements",
+      "return_effects",
+      "balance_events"
+    ],
+    "source_functions": [
+      "credit_deposit",
+      "admit_ticket",
+      "transition_operation",
+      "settle_market",
+      "reconcile_return"
+    ],
+    "source_qualification": "NEW_MIGRATION_ISOLATED_PG_CI_PENDING",
+    "native_proof_qualification": "NOT_AUTHENTICATED_BY_SQL",
+    "production_role_grants": "NONE",
+    "global_receipt_registry_scope": "EPOCH_V3_ONLY",
+    "legacy_cross_estate_exclusion": "UNKNOWN_AND_HOLD",
+    "current_Wolo_115_native_fee_paying_fixture": "BANK_PROOF_STALE_FAILURE",
+    "native_go_HD_wire_bytes": "CODEX_EXPORT_REQUIRED",
+    "test_paths": [
+      "tests/war-satchel-epoch-v3-postgres.test.mts",
+      "tests/war-satchel-epoch-v3-wolo-fixture.test.mts",
+      "tests/fixtures/epoch-v3-conserved-ticket-wolo-candidate.json"
+    ],
+    "dependency_status": {
+      "native_executor": "NONEXECUTING_SIGNER_ABSENT",
+      "original_funding_ticket_partition": "CODEX_BLOCKED",
+      "native_H_Hplus1": "BANK_PROOF_STALE_ON_GENUINE_SDK_FIXTURE",
+      "historical_HD_DE_ledger": "SOURCE_COMPLETE_CENSUS_UNKNOWN",
+      "writer_fence": "UNKNOWN",
+      "owner_permit": "ABSENT",
+      "full_restore": "UNVERIFIED"
+    },
+    "website_staged_source": "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6",
+    "website_staged_build_id": "u842UVpDjLRLz-paxPv2U"
   }
 }

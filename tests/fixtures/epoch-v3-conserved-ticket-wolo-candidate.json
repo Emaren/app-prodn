@@ -1,0 +1,88 @@
+{
+  "schema": "aoe2war.epoch-v3.ticket-allocation-parity.candidate.v1",
+  "qualification": "SOURCE_ONLY_NOT_NATIVE_COMET_GOLDEN",
+  "expected_wolo_source": "ae9f0277b58f2288e7b1fc25b03eef2a30271577",
+  "fixture_only": true,
+  "mainnet_authority": false,
+  "native_go_request_message_bytes": "CODEX_EXPORT_REQUIRED",
+  "funding": {
+    "chain_id": "wolo-1",
+    "epoch_id": "epoch_20261027_funding",
+    "ticket_id": 200,
+    "owner_uid": "alpha",
+    "operation_id": "satchel:e3:epoch_20261027_funding:200",
+    "funding_tx_hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "message_index": 0,
+    "amount_uwolo": "100000000",
+    "sender_role": "new_vault",
+    "recipient_role": "new_escrow",
+    "memo": "aoe2war/satchel/epoch-v3/epoch_20261027_funding/ticket/200",
+    "physical_receipt_key": "wolo-1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:0"
+  },
+  "allocations": [
+    {
+      "market_id": 77,
+      "ticket_id": 200,
+      "leg_id": 11,
+      "wager_id": 1,
+      "owner_uid": "alpha",
+      "side": "left",
+      "amount_uwolo": "40000000",
+      "original_funding_receipt": "wolo-1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:0"
+    },
+    {
+      "market_id": 78,
+      "ticket_id": 200,
+      "leg_id": 12,
+      "wager_id": 2,
+      "owner_uid": "alpha",
+      "side": "left",
+      "amount_uwolo": "60000000",
+      "original_funding_receipt": "wolo-1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:0"
+    }
+  ],
+  "opponent": {
+    "market_id": 77,
+    "ticket_id": 300,
+    "leg_id": 21,
+    "wager_id": 3,
+    "owner_uid": "beta",
+    "side": "right",
+    "amount_uwolo": "40000000",
+    "funding_tx_hash": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "message_index": 0
+  },
+  "market_77_resolution": {
+    "winning_side": "left",
+    "matched_total_uwolo": "80000000",
+    "matched_fee_basis_points": 200,
+    "fee_uwolo": "2000000",
+    "return_uwolo": "78000000",
+    "entitlements": [
+      {
+        "id": "satchel:e3:epoch_20261027_funding:entitlement:77:200:11",
+        "owner_uid": "alpha",
+        "kind": "matched_payout",
+        "amount_uwolo": "78000000",
+        "fee_uwolo": "2000000",
+        "return_operation_id": "satchel:e3:epoch_20261027_funding:entitlement:77:200:11:return"
+      },
+      {
+        "id": "satchel:e3:epoch_20261027_funding:entitlement:77:300:21",
+        "owner_uid": "beta",
+        "kind": "lost",
+        "amount_uwolo": "0",
+        "fee_uwolo": "0",
+        "return_operation_id": null
+      }
+    ]
+  },
+  "market_78_status": "UNRESOLVED_RESERVED_60000000",
+  "strict_physical_uniqueness": "(chain_id,uppercase_tx_hash,message_index) exactly once; legs are separate economic references",
+  "assertions": {
+    "sum_original_ticket_legs_uwolo": "100000000",
+    "single_original_funding_receipt": true,
+    "owner_day_cap_uwolo": "50000000000",
+    "ticket_cap_uwolo": "10000000000"
+  }
+}
