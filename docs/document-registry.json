@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9d82d45897e6de0202195446e204a9d53c402d6b0a2eb797e1ad4385ef6d11aa",
+      "sha256": "786239cb3703d383618fe51917c6f8ca316435a3487238c3e85e782c6914f815",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2390,8 +2390,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/central-kingdom-index",
-    "commit": "85f0ee41596cc7ee6c16b5be5d168bf3e3357188"
+    "branch": "review/session-d-mac-storage-20261027",
+    "commit": "5360f4f746ad05b905f060f1b7fe5296094293a4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
