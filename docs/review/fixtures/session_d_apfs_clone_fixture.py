@@ -38,6 +38,36 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def xattr_cli(args: list[str]) -> bytes:
+    """Use macOS's system xattr utility: Python os.*xattr is Linux-only."""
+    p = subprocess.run(
+        ["/usr/bin/xattr", *args],
+        capture_output=True, timeout=15, check=False,
+    )
+    if p.returncode != 0:
+        raise Hold("MACOS_XATTR_COMMAND_FAILED: fixture only")
+    return p.stdout
+
+
+def fixture_xattrs_sha256(path: Path) -> dict[str, str]:
+    """All xattr names and exact bytes, not xattr -l's formatted text."""
+    listed = xattr_cli([str(path)])
+    names = listed.decode("utf-8", "surrogateescape").splitlines()
+    if XATTR_NAME not in names or len(names) != len(set(names)):
+        raise Hold("FIXTURE_XATTR_MARKER_MISSING_OR_DUPLICATE")
+    result = {}
+    for name in sorted(names):
+        try:
+            hexadecimal = xattr_cli(["-p", "-x", name, str(path)])
+            value = bytes.fromhex(hexadecimal.decode("ascii"))
+        except (ValueError, UnicodeError) as exc:
+            raise Hold("FIXTURE_XATTR_HEX_DECODE_FAILED") from exc
+        result[name] = hashlib.sha256(value).hexdigest()
+    if result[XATTR_NAME] != hashlib.sha256(b"phase10-marker").hexdigest():
+        raise Hold("FIXTURE_XATTR_MARKER_BYTES_MISMATCH")
+    return result
+
+
 def metadata(path: Path) -> dict:
     s = path.lstat()
     if not stat.S_ISREG(s.st_mode):
@@ -45,10 +75,7 @@ def metadata(path: Path) -> dict:
     return {
         "mode": stat.S_IMODE(s.st_mode), "uid": s.st_uid, "gid": s.st_gid,
         "flags": getattr(s, "st_flags", 0), "mtime_ns": s.st_mtime_ns,
-        "xattrs_sha256": {
-            n: hashlib.sha256(os.getxattr(path, n)).hexdigest()
-            for n in sorted(os.listxattr(path))
-        },
+        "xattrs_sha256": fixture_xattrs_sha256(path),
     }
 
 
@@ -137,7 +164,7 @@ def run() -> dict:
                 os.fsync(out.fileno())
             os.chmod(target, 0o600)
             os.utime(target, ns=(1700000000000000000, 1700000000000000000))
-            os.setxattr(target, XATTR_NAME, b"phase10-marker")
+            xattr_cli(["-w", XATTR_NAME, "phase10-marker", str(target)])
 
         if src.stat().st_ino == alias.stat().st_ino:
             raise Hold("FIXTURE_FILES_ARE_HARDLINKS")
