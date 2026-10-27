@@ -236,6 +236,14 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    // Reserved operator events are never authored by public chat POST.
+    // Real Sentinel posts originate from the reviewed host-local system sender.
+    if (/^(?:SENTINEL-ID:|STORAGE SENTINEL\b)/i.test(payload.body.trim())) {
+      return NextResponse.json(
+        { detail: "System notifications cannot be authored from public chat." },
+        { status: 403 }
+      );
+    }
     if (isChallengeInboxNoticeBody(payload.body)) {
       return NextResponse.json(
         { detail: "Challenge record formatting is reserved for verified match events." },
