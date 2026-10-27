@@ -350,6 +350,26 @@ Read-only `lsof -nP -d cwd -Fpn` + exact worktree-prefix filter returned **`NO_M
 
 **Next bounded read-only check (not a deletion recipe)**: all observable open FD *names* filtered to the exact `.next/` subtree, printing **only matching PID numbers/count**, plus count-only receipt categories for the three protected subtrees (never dump potential secret JSON/text payloads). For process visibility consider `lsof` permission limits. No recursive `lsof +D` walk through 1.267GiB, no grep exposing sensitive receipt contents, no `--apply`, no worktree prune or production action. Any nonzero FD consumer immediately holds cleanup; a zero FD sample alone does **not** certify no rollback/use.
 
+## Third isolated `.next` probe — all observable open FDs zero; protected release symlink topology unresolved (owner Mac, 2026-10-27)
+
+The owner ran a bounded **read-only** Python probe using `/usr/sbin/lsof -nP -Fpn` without recursive `lsof +D`, no `sudo`, no process termination and no filesystem mutation. Its `returncode` and `stderr` gates accepted the tool execution (otherwise the output would have marked HOLD). It matched full `n` file paths against the **exact** `.next` directory and the separator-bounded `.next/` prefix and reported `OBSERVED_OPEN_FD_PID_COUNT: 0`, `OBSERVED_OPEN_FD_PIDS: []`, `POINT_IN_TIME_ONLY: true`. Together with the prior `lsof -d cwd` no-match, no currently observable open FD or process cwd was found under this build at the sampled moments. This **cannot** certify lack of deployment, recovery or future users, nor compensate for any process visibility restriction.
+
+It then used `os.walk(..., followlinks=False)` on the three **protected** adjacent `.aoe2war-release` category directories and printed metadata-only counts:
+
+| Relative subtree | Nested subdirectories | Files | Symlinks |
+|---|---:|---:|---:|
+| `federation-validation` | 1 | 0 | **3** |
+| `recovery-campaigns` | 1 | **1** | 0 |
+| `storage-handoffs` | 0 | **1** | 0 |
+
+**Critically, this is not an empty release-state tree** despite the prior `du -sk=0 KiB` allocation report: 3 symlink pointers and 2 regular file entries were found, potentially unique recovery/provenance sources. No filenames, link targets, receipt contents or `BUILD_ID` inside these subtrees were read. All artifacts are **PROTECTED**; there must be no symlink following or cleanup of the parent/siblings. In particular, do not infer the federation symlinks do not point to the candidate `.next` until exact target-relationship checks are performed.
+
+**Gate transition:** `PASS_BOUND_OPEN_FD_PROBE_ZERO_AT_SAMPLE`, `PASS_RELEASE_TOPOLOGY_COUNT_ONLY`; `HOLD_THREE_SYMLINK_TARGET_RELATIONSHIPS`, `HOLD_RELEASE_ROLLBACK_REFERENCES`, `HOLD_FUTURE_BUILD_CONSUMERS`, `HOLD_REAL_NEXT_CLEANUP_AUTHORITY`. Candidate logical disk allocation is still **1,328,688 KiB (~1.267 GiB) from preceding scan**, not freshly remeasured in this probe; newly qualified reclaim **0 B** and newly actual reclaimed **0 B**. Worktree attached and clean at previous receipt with HEAD `99c406f57d759b672fd9fe91d3c3355c4d527705`; adjacent protected release tree retained.
+
+**Next bounded read-only inspection:** list each link's file type, whether target exists and whether its **resolved target is inside the exact current `.next` tree**, within same worktree but outside `.next`, or outside worktree. Print only labels/booleans and hashed link path/name identifiers, **never actual symlink targets** or receipt contents. Inspect the 2 regular receipt files **for exact BUILD_ID textual relationship only with capped bytes and boolean output**, without printing content, only after affirming they're non-symlinks and text-safe. A positive reference means HOLD, and a negative reference remains only a limited scan: true release-controller authority must be independently confirmed before a human-approved change. Existing Storage/Workspace OS source remains authoritative; no new delete path or controller.
+
+**Storage Atlas fields:** `next_open_fd_observed_pid_count=0`, `next_open_fd_tool_result=PASS_ZERO_AT_SAMPLE`, `next_cwd_observed_pid_count=0` (prior separate receipt), `release_protected_federation_nested_dirs=1`, `release_protected_federation_symlinks=3`, `release_protected_recovery_nested_dirs=1`, `release_protected_recovery_files=1`, `release_protected_handoffs_files=1`, `release_links_target_relationship=HOLD_UNINSPECTED`, `release_receipt_contents=NOT_READ`, `next_candidate_delete_authorized=false`, `phase10_new_reclaimed_bytes=0`.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
