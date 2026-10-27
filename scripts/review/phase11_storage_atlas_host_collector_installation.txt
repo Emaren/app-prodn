@@ -1,0 +1,110 @@
+PHASE 11 — STORAGE ATLAS HOST COLLECTOR ADOPTION: INSTALLATION REVIEW
+Authority: operator-only source review; NOT an installation permit.
+Source dependency: app-prodn #945 @94c303349c28829331e7ef2bde2b3be63786fed4.
+This is separate from the website release and must never gate historical/UNKNOWN Atlas mode.
+No binaries, systemd units, launchd jobs, key material, host files or credentials are
+installed, created, activated, uploaded or changed by this procedure.
+
+1. OWNERSHIP / INDEPENDENCE (G + C + D must confirm)
+- Mac plane: D owns a distinct Ed25519 private key, in a non-synced,
+  non-web-readable Mac root/operator-controlled signer account. Mac user-level
+  access to app files does not itself authorize signing.
+- HEL1 root plane: C owns a distinct Ed25519 key and dedicated constrained
+  service identity. It may measure only the mounted root filesystem.
+- HEL1 evidence-volume plane: C/E own a THIRD key and separate permission
+  boundary, confined to Volume 105319120. Both HEL1 agents are on the SAME
+  PHYSICAL HOST: distinct keys are not independent host compromise domains.
+  G must record this correlated-failure limitation.
+- No collector signing key or unlock token is shared with Wolo custody,
+  escrow, finance, database, SSH, owner-v4 website release or recovery.
+- Public Ed25519 SPKI PEMs and SHA-256 DER/SPKI fingerprints are enrolled by
+  independently authenticated operator approval. The private keys are not
+  placed in Git, Next public/, uploads, .next, website runtime env, logs,
+  backups lacking an approved encryption/restore policy, or ChatGPT.
+- Three distinct collector IDs and key fingerprints must be explicitly bound
+  to the exact plane and a reviewed full 40-character collector source SHA.
+  Set owner/permissions of signer directories to 0700 and key files to 0600
+  or stronger platform-native nonexportable hardware custody where possible.
+  Do not infer a producer's authenticity from its self-reported Git SHA.
+- Before enrollment, document host steward, OS account, key custodian,
+  rotation/revocation authority, backup/restoration decision, event log
+  retention and whether the web host can reach signer IPC (target: NO).
+- Pin identity out of band. A signature from any newly seen key must FAIL
+  until its independently authorized enrollment is committed.
+
+2. REAL HOST / DEVICE PRECONDITIONS (read-only checks by D/C)
+- Mac: run source-owned 'bin/aoe2war storage atlas-probe --plane mac'
+  LOCALLY under D supervision. Compare actual APFS Data VolumeUUID, device,
+  mountpoint and diskutil -plist with D's independent diskutil output.
+  Do not assume a Mac volume UUID, /dev/diskXsY, or mounted path from a
+  screenshot. Require observed source SHA and executable digest to match
+  the approved local checkout. The probe currently yields PARTIAL, unsigned.
+- HEL1 root: run '--plane hel1-root' LOCALLY on the qualified HEL1 machine.
+  Confirm findmnt -J -T / -o TARGET,SOURCE,FSTYPE,UUID is exact /, ext4,
+  correct observed /dev/sda1 or independently confirmed resolved block source,
+  with actual UUID captured privately and source SHA authenticated separately.
+- HEL1 volume: run '--plane hel1-volume-105319120' LOCALLY on HEL1.
+  Confirm target /mnt/HC_Volume_105319120, fs ext4, UUID
+  a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42, resolved /dev block source,
+  persistent /dev/disk/by-id/scsi-0HC_Volume_105319120 and mount ownership.
+  Never confuse /dev/loop4's protected 40-GiB financial-restore domain.
+- The collector must reject mount disappeared/remounted, device ID drift,
+  wrong machine/OS, symlinks and unexpected bind mounts. A plausible
+  statvfs number alone does not authenticate the inspected filesystem.
+- For each plane preserve total_bytes, free_blocks_bytes, ordinary_free_bytes
+  from one coherent statvfs sample; ext4 reserved blocks are NOT ordinary free.
+  No cleanup, recursive filesystem scan or financial read is part of this probe.
+- Named consumer census must be independently gathered by approved bounded
+  exact paths with provenance, excludes and explicit partial/inaccessible
+  failures. No full-coverage assertion solely from an empty/partial probe.
+  128 consumers maximum; each path and probe_ok stays PRIVATE. Preserve
+  recovery vault, recordings, Codex worktrees, MobileSync, financial state,
+  backups and rollbacks as protected classes, not deletion candidates.
+- Record collector binary/script digest, unmodified SHA, machine identity
+  out of band, source control parity, mounted UUID and UTC observation time.
+  C/D/E/G sign off separately. A source test/mock is not a host witness.
+
+3. PRODUCER / SIGNER INTERFACE CONTRACT (not yet implemented)
+- Signer is an operator-only host-local agent, with no incoming public HTTP
+  and no remote command execution. It accepts only the approved LOCAL sample
+  and reviewed bounded census, never a web payload.
+- Signed UTF-8 JSON must include plane, collector_id, sequence, previous
+  receipt digest, source{collector,source_sha}, issued_at, observed_at,
+  ttl_seconds, mount_verified, filesystem identity, coherent capacity,
+  coverage, census_complete and bounded consumers; never claim measured
+  reclaimed bytes from directory estimates. The current #945 verifier
+  requires measured_reclaimed_bytes absent/null.
+- The exact signed message is UTF8("aoe2war/storage-atlas/receipt-v1\\0")
+  with an ACTUAL NUL byte (not backslash text) followed by original
+  UTF-8 JSON payload bytes, Ed25519 signature exactly 64 bytes.
+  JSON canonicalization for producers and duplicate-field rejection require
+  independent implementation and negative tests. The verifier authenticates
+  ORIGINAL bytes, not reserialized JSON.
+- Issue/observe gap <=30 s, TTL 1..300 s, issued no more than +30 s in
+  verifier clock. For independent publisher admission also reject future
+  observed_at >publisher_now+30 s; #945 verifier currently checks issued
+  future and issued/observation gap but does not directly bound observed_at.
+- Sequence is a monotonic nonnegative safe integer per plane, one step per
+  publication. A separately durable external witness is mandatory.
+- Preserve exact signed bytes, signer key fingerprint, public source SHA,
+  host/mount attestation, duration and negative diagnostics in private
+  operator evidence. Public page uses redacted aggregate classes only.
+
+4. HOST INSTALLATION REVIEW / REVERSAL, SEPARATE CHANGE PER HOST
+- D proposes Mac launchd/sandbox/key location; C proposes HEL1 root
+  systemd hardening; C/E separately propose evidence-volume unit/namespace.
+  All three are future PRs or owner-reviewed manifests, not installed here.
+- Each install change states affected paths, service user, permissions,
+  read-only mount scope, host-only IPC, network denial, key access, rate
+  bounds, log redaction, resource budgets, timer cadence, disable/rollback,
+  and exact immutable unit hash. No collector can invoke storage maintain,
+  --apply, shell cleanup, finance reconciliation, telemetry POST or signer
+  for another plane.
+- Test stop/disable/uninstall in isolation. An inaccessible collector means
+  UNKNOWN/HOLD, never last-known-good upgraded to live or 100/HEALTHY.
+- Install separately with explicit owner approval only after independent
+  G/C/D/E review. Source #945 alone grants no install authority.
+
+ACCEPTANCE: three genuine local private signed receipts from authentic mounted
+hosts with independently enrolled fingerprints and host evidence, adverse
+host tests, and operator sign-off. Until then: COLLECTOR ADOPTION HOLD.
