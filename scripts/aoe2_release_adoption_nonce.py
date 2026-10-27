@@ -97,18 +97,20 @@ def issue_review_only(payload: dict, *, state_root: Path = PRODUCTION_ROOT,
     # The issued packet must be identical to what the owner will sign.
     # A later verified signature cannot rewrite any payload field.
     encoded = adoption.canonical(payload).decode("ascii")
-    with _connect(state_root, test_root=test_root) as cx:
-        try:
-            cx.execute("BEGIN IMMEDIATE")
-            cx.execute(
-                "INSERT INTO adoption_reviews(nonce,payload_json,state)"
-                " VALUES(?,?,'ISSUED')",
-                (payload["nonce"], encoded),
-            )
-            cx.commit()
-        except BaseException:
-            cx.rollback()
-            raise
+    cx = _connect(state_root, test_root=test_root)
+    try:
+        cx.execute("BEGIN IMMEDIATE")
+        cx.execute(
+            "INSERT INTO adoption_reviews(nonce,payload_json,state)"
+            " VALUES(?,?,'ISSUED')",
+            (payload["nonce"], encoded),
+        )
+        cx.commit()
+    except BaseException:
+        cx.rollback()
+        raise
+    finally:
+        cx.close()
     return {"status": "OWNER_REVIEW_ISSUED_NOT_AUTHORIZED",
             "nonce": payload["nonce"], "release_authorized": False,
             "dispatch_enabled": False, "website_activated": False}
