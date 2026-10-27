@@ -53,8 +53,8 @@ test("mutating signed payload, forged proof, wrong key and source drift all HOLD
  x.data[0].source.source_sha="b".repeat(40);
  rejected(()=>authenticateStorageAtlas(x.envelope(),x.pins,time),"source drift");
  x.data[0].source.source_sha="a".repeat(40);
- const y=sample();y.pins.mac.public_key_pem=y.pins["hel1-root"].public_key_pem;
- rejected(()=>authenticateStorageAtlas(y.envelope(),y.pins,time),"duplicated signer keys");
+ const y=sample();const duplicateKeys={...y.pins,mac:{...y.pins.mac,public_key_pem:y.pins["hel1-root"].public_key_pem}};
+ rejected(()=>authenticateStorageAtlas(y.envelope(),duplicateKeys,time),"duplicated signer keys");
 });
 test("replay sequence, swapped receipt ordinal and previous digest drift all HOLD",()=>{
  const x=sample();
