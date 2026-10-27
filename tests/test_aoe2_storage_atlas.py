@@ -11,6 +11,8 @@ from pathlib import Path
 from scripts import aoe2_storage_atlas as atlas
 from scripts import aoe2_storage_artifacts as artifacts
 from scripts import aoe2_storage
+from scripts import aoe2_storage_probe as probe
+from types import SimpleNamespace
 
 NOW = dt.datetime(2026, 10, 27, 14, 0, tzinfo=dt.timezone.utc)
 SHA = "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6"
@@ -184,6 +186,48 @@ class ArtifactPolicyTests(unittest.TestCase):
             self.assertEqual(parser.parse_args([name]).command,name)
         self.assertEqual(parser.parse_args(["artifacts","--inventory","/tmp/x"]).command,"artifacts")
         self.assertEqual(parser.parse_args(["atlas-snapshot","--inputs","/tmp/y"]).command,"atlas-snapshot")
+        self.assertEqual(parser.parse_args(["atlas-probe","--plane","mac"]).command,"atlas-probe")
+
+
+class NativeReadOnlyProbeTests(unittest.TestCase):
+    def test_ext4_statvfs_reserved_blocks_preserved_even_when_scan_partial(self):
+        counters=SimpleNamespace(f_frsize=4096,f_bsize=4096,f_blocks=100,
+                                  f_bfree=20,f_bavail=13)
+        identity={"fs_type":"ext4","uuid":probe.VOLUME_UUID,"mount_source":"/dev/sdb",
+                  "mountpoint":probe.VOLUME}
+        row=probe.collect_local("hel1-volume-105319120",st=counters,identity=identity,source_sha=SHA)
+        self.assertEqual(row["capacity"]["total_bytes"],409600)
+        self.assertEqual(row["capacity"]["free_blocks_bytes"],81920)
+        self.assertEqual(row["capacity"]["ordinary_free_bytes"],53248)
+        self.assertEqual(row["coverage"],"partial")
+        self.assertFalse(row["census_complete"])
+        self.assertEqual(atlas.build_snapshot([row],now=dt.datetime.now(dt.timezone.utc))["planes"][2]["coverage"],"partial")
+
+    def test_untrusted_ambiguous_source_sha_and_bad_statvfs_hold(self):
+        counters=SimpleNamespace(f_frsize=4096,f_bsize=4096,f_blocks=100,
+                                  f_bfree=20,f_bavail=21)
+        ident={"fs_type":"ext4","uuid":"x","mount_source":"/dev/sda1","mountpoint":"/"}
+        with self.assertRaises(atlas.AtlasHold):
+            probe.collect_local("hel1-root",st=counters,identity=ident,source_sha=SHA)
+        counters.f_bavail=13
+        with self.assertRaises(atlas.AtlasHold):
+            probe.collect_local("hel1-root",st=counters,identity=ident,source_sha="unknown")
+
+    def test_volume_id_mismatch_refuses_lookalike_mount(self):
+        from unittest.mock import patch
+        import json
+        mismatch={"filesystems":[{"fstype":"ext4","uuid":"WRONG",
+                                  "source":"/dev/sdb","target":probe.VOLUME}]}
+        with patch.object(probe.sys,"platform","linux"):
+            with patch.object(probe,"command",return_value=json.dumps(mismatch).encode()):
+                with self.assertRaises(atlas.AtlasHold):
+                    probe.read_identity("hel1-volume-105319120",Path(probe.VOLUME))
+
+    def test_mac_collector_cannot_impersonate_ext4(self):
+        from unittest.mock import patch
+        with patch.object(probe.sys,"platform","linux"):
+            with self.assertRaises(atlas.AtlasHold):
+                probe.read_identity("mac",Path.home())
 
 if __name__ == "__main__":
     unittest.main()
