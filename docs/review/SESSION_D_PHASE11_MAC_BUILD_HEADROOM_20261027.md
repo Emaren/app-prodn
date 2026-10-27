@@ -134,3 +134,24 @@ The four historical Next output rows sum to **5.172 GiB of individually rounded 
 
 **Next high-value bounded evidence, one operator script:** `lstat` E5 `.next/BUILD_ID` and known Next output markers `cache`, `server`, `static`, `build-manifest.json`, `prerender-manifest.json`, `required-server-files.json` (types only, no file contents); check source SHA/clean status + branch ancestry for docs/E5; and for each of ten UNKNOWN `node_modules`, `lstat` distinguishes missing vs symlink without following. Reconcile source-owned release state/rollback receipts and external restoration plan separately; no additional repeated full `lsof` required until just before a specific approved transaction. The current `storage local-maintain --apply` is all-four-cache, not an exact historical `.next` operation and remains unauthorised.
 
+
+## Owner Mac E5 drift / seven absent dependency roots — HOLD ownership before any cleanup (2026-10-27)
+
+A new operator **read-only** script did an exact source/ancestry and filesystem `lstat` check rather than repeating the deep size/FD scan. Results, transcribed without assuming causes:
+
+| Check | Observed | Implication |
+|---|---|---|
+| Docs-context worktree `HEAD` | Matched expected `99c406f57d759b672fd9fe91d3c3355c4d527705` | PASS at this moment |
+| Docs commit vs local `main` | **`ANCESTOR_OF_LOCAL_MAIN`** | Source commit reachable via local main; **not** a build rollback or generated-output restoration certificate |
+| E5 HEAD guard | **`HOLD_SOURCE_CHANGED`** | Could indicate HEAD changed **or** `git rev-parse` failed (missing/relocated worktree, bad git metadata, permissions); **no new SHA was printed** |
+| E5 `.next` `lstat` guard | **`HOLD_E5_NEXT_ROOT`** | Path no longer classified `DIRECTORY`; can be missing, symlink, regular file, other inode or stat failure; exact type **not printed** |
+| Unknown `node_modules` from previous batch | **7 `MISSING`; 3 `SYMLINK_PROTECTED`** | All ten previous `HOLD_MISSING_OR_SYMLINK` statuses now split by direct `lstat`, no link traversal |
+
+The three protected **symlink** dependency entries are attached worktrees `fix-replay-result-authority-inputs-20261011`, `phoenix-recovery-dashboard-20261014`, and `update-independent-docs-context-20261015`. The seven **missing** entries are `codex-authenticated-satchel-deposit`, `codex-hd-durable-finance-fence`, `codex-hd-live-admission-qualification`, `codex-hd-live-market-admission`, `codex-satchel-complete-financial-paths`, `codex-satchel-live-authority-integration`, and `codex-satchel-product-money-limits`. **No symlinks were dereferenced or altered**; missing directory names do not imply disappearance of protected tracked financial sources or data.
+
+**Critical cross-sample distinction:** earlier immutable owner Mac camera measured E5 `.next` **1,272,664 KiB (~1.214 GiB)** at source `b3b6240f94b8521378372dbee16fefc44c7570e6`; this newer check found neither expected source identity nor `.next` ordinary directory. **We do not know whether any bytes have actually been freed**, which process/user acted, whether the path was moved/replaced, or whether the storage pool changed. This is **state drift**, not an authorized recovery receipt. E5 is **HOLD_EXTERNAL_CONCURRENT_OWNER/WORKTREE_STATE**, cannot be added to an immediate cleanup plan or claimed as recovered. **DO NOT** attempt worktree restore, symlink unlink, branch reset, `.next` deletion or `git worktree prune` to resolve the observation.
+
+**Next bounded safe probe**: take fresh `/bin/df -k /System/Volumes/Data` and `/usr/sbin/diskutil apfs list` (to separate VM-volume swings from freed Data bytes), then `lstat`-only type/owner/device/inode for exact E5 worktree, `.git`, `.next`; a single registry `git worktree list --porcelain` exact-match for attached E5, and only if still an ordinary worktree, `git rev-parse HEAD` plus `status --porcelain` without mutation. Print exact HEAD if it changed, without dumping private files. Do **not** follow symlinks or call `du` recursively until classification is sound. If another agent/shell is modifying this checkout, coordinate owner/source authority before further action.
+
+**Current snapshot verdict:** `PASS_DOCS_SOURCE_ANCESTOR_OF_LOCAL_MAIN`, `HOLD_E5_CHANGED_OR_INACCESSIBLE`, `PASS_7_ABSENT_3_PROTECTED_SYMLINK_NODE_MODULES`, `HOLD_FRESH_APFS_FREE_AND_E5_PHYSICAL_ALLOCATION`, `HOLD_ALL_MUTATION`. Docs exact historical `.next` still qualifies for review only; its current active/staged BUILD_ID mismatch and 371 locally returned certified-history misses remain true as earlier receipts, with older remote rollback/independent restore **HOLD**. **Session D Phase11 actual newly recovered = 0 B verified**. No new `df` measurement in the latest probe.
+
