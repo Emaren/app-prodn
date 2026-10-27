@@ -49,6 +49,14 @@ AUTHORITY / SOURCE
 * Public chat POST explicitly rejects reserved Sentinel notation. Operator
   acknowledgement is the offline CLI 'ack --id ... --actor ...', distinct
   from a Nav Chat READ receipt. A read receipt cannot authorize an action.
+  The offline ACK accepts ONLY the actor registered during initial private
+  trust enrollment; rejects other actor labels. It queues a single private
+  SENTINEL-ID:<event>:ack:<sequence> confirmation using the same crash-safe
+  inbox bridge. An ACK records awareness, never successful remediation.
+  Operator-local 'status --state ...' reports incident notification
+  DELIVERED/PENDING, acknowledgement time, and separate ACK delivery
+  DELIVERED/PENDING/NOT_QUEUED. These are distinct from collector freshness
+  and do not make a website view LIVE or assert a real host receipt.
 
 SCHEDULER REVIEW (NOT INSTALLED)
 D: deploy/storage-sentinel/org.aoe2war.storage-sentinel-mac.plist,
@@ -113,3 +121,25 @@ ADVERSE ACCEPTANCE
 RELEASE DECISION: SOURCE PR != INSTALLED SENTINEL. Existing website #949
 historical/UNKNOWN can ship without Sentinel. Installation and private
 notifications require new owner acceptance; no real user is messaged here.
+
+
+PHASE 12 FINAL SOURCE-ACCEPTANCE BOUNDARY
+- The existing page-change manifest must be regenerated from the four
+  AoE2WAR OS-specific source files whenever StorageAtlasView changes;
+  neither a stale page edition nor a passing Kingdom Index replaces it.
+- Mac WATCH (<15 GiB ordinary free) and CRITICAL (<8 GiB) must have distinct
+  stable severity-band identities so escalation sends exactly one new
+  notification rather than suppressing an urgent event.
+- The private system Direct Inbox sender belongs ONLY to the independently
+  authenticated admin owner thread. Its ID is pinned; no public chat POST,
+  player-facing directory listing, or session impersonation may insert
+  privileged Sentinel messages. Existing Direct Inbox membership checks
+  are reused and remain independently reviewable.
+- Source tests asserting DELIVERED and ACK message transitions use
+  synthetic stubbed provider results, not live inbox delivery receipts.
+  Before activation: C/D/E provide genuine host-signed receipts, Central
+  independently enrolls system sender and admin recipient, and G proves
+  actual database recipient isolation, crash replay and visual inbox ACK.
+- Freeze the exact Git SHA after the source version manifest and Python
+  contract regressions pass. #949 WEBSITE HISTORICAL/UNKNOWN SHIP REMAINS
+  INDEPENDENT; no Sentinel source review may silently alter or hold #949.
