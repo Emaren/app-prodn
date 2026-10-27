@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.session-d-phase10-apfs-clone-plan-20261027"
+title: "SESSION D — Phase 10 Mac APFS Watcher retention and single-alias trial plan"
+type: "working"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "mac-storage-retention-review-plan"
+reviewed_at: "2026-10-27"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # SESSION D — Phase 10 Mac APFS Watcher retention and single-alias trial plan
 
 **2026-10-27, source-only review.** Central Command: [app-prodn #934](https://github.com/Emaren/app-prodn/issues/934). Existing review register: [SESSION_D_MAC_STORAGE_20261027.md](SESSION_D_MAC_STORAGE_20261027.md). This plan is **not** owner approval to change Watcher files, local website downloads, financial systems, held branches or HEL1 production.
