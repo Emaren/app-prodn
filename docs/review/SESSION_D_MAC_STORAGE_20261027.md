@@ -365,6 +365,22 @@ Swap `total=5120.00M`, `used=3760.19M`, `free=1359.81M`, encrypted. Swap used **
 
 **Current gates:** `PASS_PROJECT_PYTHON_3_13_5`, `PASS_MEMORY_PRESSURE_SNAPSHOT_51PCT_FREE`, `PASS_SWAP_USAGE_DECLINING`, `HOLD_PAST_VM_PROCESS_CAUSALITY`, `HOLD_WATCHER_REAL_ALIAS_AUTHORIZATION`. No Chrome/Codex process terminated, signed installer file or historical URL changed, APFS snapshots/VM files touched, or storage deletion executed. **Phase10 recovered 0 B**. Move to exact **read-only** worktree `.next` BUILD_ID/rollback consumer qualification, protected source/adjacent release-state preservation and existing Storage/Workspace OS previews. Detailed [Phase10 plan and Storage Atlas](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
 
+
+## Exact docs-context worktree .next identity and adjacent release-state gate (owner Mac, 2026-10-27)
+
+Operator ran **read-only** inspection of exact candidate `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next`, without using the special zsh `path` loop variable:
+- `du -sk` reports **1,328,688 KiB = 1.267 GiB** allocated, **unchanged** from prior Mac census.
+- `ls -ld` shows `.next` directory `drwxr-xr-x`, mtime `Oct 15 12:01`, and adjacent **protected** `.aoe2war-release` directory `drwxr-xr-x`, mtime `Oct 15 12:03`; both owned by local user/staff. These directory times do not establish that no other process currently reads a file within.
+- `.next/BUILD_ID` exists; SHA256 **`3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`**. This is the **hash of the BUILD_ID file**, not the build-ID string, a checksum of the entire `.next` tree, a package/build receipt or proof the deployed website currently serves that build.
+- `git -C <exact-worktree> rev-parse HEAD` → **`99c406f57d759b672fd9fe91d3c3355c4d527705`**.
+- `git --no-optional-locks -C <exact-worktree> status --porcelain=v1 --untracked-files=normal` returned **no lines**, i.e. no Git tracked/untracked changes in this defined scope at observation. It **does not** enumerate Git-ignored build/release artifacts, test active processes, determine whether the worktree is still attached/merged, or prove release authority.
+
+**Existing source-context corroboration:** tracked `scripts/aoe2_release.py` and `scripts/aoe2_speed_build.py` explicitly use `.aoe2war-release` receipt/state directories and inspect `.next/BUILD_ID` as release/build authority signals (source search on canonical `app-prodn/main@14ce7104`). Their presence is reason to **protect** the adjacent release evidence, not declare this historical worktree's `.next` active or disposable. No source transaction was executed.
+
+**Classification:** `PASS_EXACT_GENERATED_BUILD_IDENTITY_SHA` / `PASS_WORKTREE_GIT_STATUS_EMPTY` / `PASS_RELEASE_ADJACENT_DIRECTORY_PRESENT` / `HOLD_NEXT_BUILD_RUNTIME_AND_ROLLBACK_CONSUMERS` / `HOLD_DELETE_OR_REPLACE`. Conditional upper-bound historical allocation of this **one** `.next` directory ≈**1.267 GiB**, but **0 B newly qualified for cleanup** and **0 B reclaimed**. No worktree removal, no source changes, no `.next` deletion, no `.aoe2war-release` modification.
+
+**Next read-only proof:** `du -sk` and bounded **file names/types only** within `.aoe2war-release` (never dump secret/token-bearing receipt contents), verify exact `BUILD_ID` consumer-match status without exposing sensitive fields, ensure no process with open FDs/cwd/executable or Next.js server working against the exact `.next`/worktree, inspect worktree attachment/branch and active release lock/rollback provenance. A scan finding no open FDs is only point-in-time evidence and cannot prove no future consumer. Do not use `lsof +D` recursively over an enormous tree by default. Respect canonical Storage/Workspace OS preview-only commands and separate human authorization.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
