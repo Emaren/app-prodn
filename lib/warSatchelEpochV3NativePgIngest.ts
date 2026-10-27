@@ -119,7 +119,7 @@ export async function ingestNativeVerifiedV3Receipt(
  const rawSha=createHash("sha256").update(portableProofRawUtf8,"utf8").digest("hex");
  const proc=spawnSync(cfg.binaryPath,["--verify-epoch-v3-portable-proof","--json-stdin"],{
   input:portableProofRawUtf8,encoding:"utf8",timeout:5000,maxBuffer:256*1024,
-  cwd:"/",env:{PATH:"/usr/bin:/bin",HOME:"/nonexistent"}
+  cwd:"/",env:{PATH:"/usr/bin:/bin",HOME:"/nonexistent",NODE_ENV:"production"}
  });
  if(proc.error||proc.status!==0||!proc.stdout||!proc.stdout.trim())
  hold("native_go_verifier_rejected_proofs");
