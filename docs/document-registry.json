@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4728ba21335f1b1d08fe8744282efe44749fc06c9779f5b8d6bc1ec8c2fcfdcf",
+      "sha256": "e2bd956e351824f63fe082f0f466db22b10a276165bd30bc880a141af0bf31b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/20261027-phase12-storage-sentinel",
-    "commit": "1c6d909a8c3d4ac74d8e926156f8eb2825198e4f"
+    "commit": "b171aa4a84a391a48e8b1690e7564cf9750f3733"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
