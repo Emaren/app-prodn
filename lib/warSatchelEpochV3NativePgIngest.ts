@@ -12,7 +12,6 @@ import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {lstatSync,readFileSync} from "node:fs";
 import path from "node:path";
-import type pg from "pg";
 
 export const EPOCH_V3_NATIVE_PG_FINANCIAL_ENABLED = false as const;
 export const EPOCH_V3_NATIVE_SOURCE_PIN="ae9f0277b58f2288e7b1fc25b03eef2a30271577" as const;
@@ -62,7 +61,8 @@ function validateVerifiedOutput(o:unknown,cfg:NativeVerifierInstall,rawSha:strin
  v.raw_proof_bundle_sha256!==rawSha||v.owner_mandate_authenticated!==true)
  hold("native_evidence_identity_or_owner_not_verified");
  const h=v.bank_state_height,commit=v.bank_commit_height;
- if(!Number.isSafeInteger(h)||!Number.isSafeInteger(commit)||
+ if(typeof h!=="number"||typeof commit!=="number"||
+ !Number.isSafeInteger(h)||!Number.isSafeInteger(commit)||
  Number(commit)!==Number(h)+1||!Number.isSafeInteger(v.funding_height)||
  Number(h)<Number(v.funding_height)+2||
  typeof v.block_sha256!=="string"||!TX.test(v.block_sha256)||
@@ -78,7 +78,7 @@ function validateVerifiedOutput(o:unknown,cfg:NativeVerifierInstall,rawSha:strin
  !/^[1-9][0-9]{0,37}$/.test(String(v.amount_uwolo))||
  !HEX64.test(String(v.proof_sha256))||
  !HEX64.test(String(v.verification_record_sha256))||
- !Number.isSafeInteger(v.funding_height)||Number(v.funding_height)<=0)
+ (typeof v.funding_height!=="number"||!Number.isSafeInteger(v.funding_height))||Number(v.funding_height)<=0)
  hold("invalid_native_transfer_identity");
  const vault=account(v.vault_bank,"vault",h as number,String(v.block_sha256),String(v.app_sha256));
  const escrow=account(v.escrow_bank,"escrow",h as number,String(v.block_sha256),String(v.app_sha256));
