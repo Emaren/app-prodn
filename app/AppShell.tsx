@@ -961,6 +961,17 @@ function PlayerProfileViewModeSync({
   return null;
 }
 
+/** Inspection routes must not inherit global speculative finance prewarming.
+ * The explicit rewrite and direct view= alias must both be covered.
+ * This affects only speculative navigation; user-initiated /bets is unchanged.
+ */
+function isStorageAtlasInspectionPath(pathname: string): boolean {
+  return pathname === "/aoe2war-os/storage-atlas" ||
+    (pathname === "/aoe2war-os" &&
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("view") === "storage-atlas");
+}
+
 function InnerShell({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Shell");
   const { uid, playerName, isAdmin } = useUserAuth();
@@ -1064,7 +1075,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    if (pathname === "/leaderboard" || leaderboardIdleWarmRef.current) {
+    if (isStorageAtlasInspectionPath(pathname) || pathname === "/leaderboard" || leaderboardIdleWarmRef.current) {
       return;
     }
 
@@ -1128,7 +1139,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   }, [pathname, router]);
 
   React.useEffect(() => {
-    if (pathname === "/bets" || betsIdleWarmRef.current) {
+    if (isStorageAtlasInspectionPath(pathname) || pathname === "/bets" || betsIdleWarmRef.current) {
       return;
     }
 

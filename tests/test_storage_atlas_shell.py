@@ -66,6 +66,22 @@ class StorageAtlasShellTests(unittest.TestCase):
         parent = self.shell.index('prefix: "/aoe2war-os"')
         self.assertLess(index, parent)
 
+    def test_atlas_inspection_disables_shared_speculative_bet_and_leaderboard_warmup(self):
+        # Without this guard, navigating to Atlas automatically triggers
+        # AppShell warmBetsBoard(uid) -> GET /api/bets ->
+        # queueBetMarketEnsure(prisma, 0), even though Atlas is read-only.
+        self.assertIn('pathname === "/aoe2war-os/storage-atlas"', self.shell)
+        self.assertIn('new URLSearchParams(window.location.search).get("view") === "storage-atlas"', self.shell)
+        for branch in ('"/leaderboard"', '"/bets"'):
+            self.assertIn("isStorageAtlasInspectionPath(pathname) || pathname === " + branch, self.shell)
+        gate = self.shell.index('isStorageAtlasInspectionPath(pathname) || pathname === "/bets"')
+        prefetch = self.shell.index('router.prefetch("/bets");', gate)
+        warm = self.shell.index('void warmBetsBoard(uid);', prefetch)
+        self.assertLess(gate, prefetch)
+        self.assertLess(gate, warm)
+        # User-initiated navigation remains available elsewhere.
+        self.assertIn('{ href: "/bets", label: "Bets" }', self.shell)
+
     def test_os_route_is_an_explicit_existing_template_alias(self):
         page = (ROOT / "app/aoe2war-os/page.tsx").read_text(encoding="utf-8")
         config = (ROOT / "next.config.js").read_text(encoding="utf-8")
