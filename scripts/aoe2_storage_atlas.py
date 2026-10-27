@@ -161,8 +161,9 @@ def normalize_plane(raw: dict[str, Any], *, at: dt.datetime) -> dict[str, Any]:
         "ttl_seconds": ttl, "stale": expired, "coverage": coverage, "census_complete": coverage == "complete",
         "capacity": capacity, "consumers": valid_rows, "severity": severity,
         "proposed_reclaim_bytes": number(raw.get("proposed_reclaim_bytes", 0), "proposed reclaim"),
-        "measured_reclaimed_bytes": number(raw.get("measured_reclaimed_bytes", 0), "measured reclaimed")
-             if isinstance(raw.get("post_cleanup_receipt"), dict) and raw["post_cleanup_receipt"].get("verified") is True else None,
+        # Unauthenticated JSON can never set an actual-reclaim metric. Only a
+        # separately verified before/after OS capacity receipt can promote it.
+        "measured_reclaimed_bytes": None,
         "post_cleanup_receipt": raw.get("post_cleanup_receipt") if isinstance(raw.get("post_cleanup_receipt"), dict) else None,
         "cleanup_authorized": False, "issues": raw.get("issues") if isinstance(raw.get("issues"), list) else [],
         "growth_bytes_per_day": None,
