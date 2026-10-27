@@ -9,7 +9,8 @@
       "source_files": [
         "lib/warSatchelNewEpochFinancialContracts.ts",
         "lib/warSatchelEpochV3ReleaseGate.ts",
-        "lib/warSatchelEpochV3Durability.ts"
+        "lib/warSatchelEpochV3Durability.ts",
+        "lib/warSatchelEpochV3NativeObserver.ts"
       ],
       "production_mounted": false
     },
@@ -40,6 +41,12 @@
       "owner": "Codex/Wolo",
       "state": "MISSING",
       "requirement": "Native new-epoch escrow signer, return+fee executor and tested v3 private wire; separate keyring, journal and nonce from 8092/8093"
+    },
+    {
+      "id": "new_native_read_port",
+      "owner": "Codex/Wolo + HD Finance",
+      "state": "NOT_IMPLEMENTED_ON_WOLO",
+      "requirement": "Dedicated new-escrow v3 GET-only operation and bank observations on separately reviewed private loopback port (candidate 8095, not deployed); independent Comet/ICS23 verifier must authenticate chain effects, never rely on HTTP sender text"
     },
     {
       "id": "custody",
@@ -131,6 +138,12 @@
       "stale H/H+1 or divergent trust root",
       "missing full restore proof"
     ],
-    "arbitration": "Central Command #934 only after independent owner release authority; no automatic merge, migration, restart or canary"
+    "arbitration": "Central Command #934 only after independent owner release authority; no automatic merge, migration, restart or canary",
+    "hd_v3_read_port": {
+      "candidate_loopback": "http://127.0.0.1:8095",
+      "native_endpoint_observed": false,
+      "http_200_is_bank_authentication": false,
+      "legacy_8092_fallback": false
+    }
   }
 }
