@@ -52,7 +52,8 @@ AUTHORITY / SOURCE
 
 SCHEDULER REVIEW (NOT INSTALLED)
 D: deploy/storage-sentinel/org.aoe2war.storage-sentinel-mac.plist,
-  15 minute awake-only source-owned local Mac PARTIAL probe. D must bind
+  2 minute awake-only source-owned local Mac PARTIAL probe (<=300s TTL).
+  D must bind
   placeholders to absolute vetted interpreter/repo/0700 log directory,
   check diskutil APFS identity and independently enrolled signers.
   Mac asleep/offline means STALE/UNKNOWN; no false local availability.
@@ -60,8 +61,13 @@ C: Existing VPSSentry aoe2war-estate-observe.timer owns HEL1 monitoring.
   DO NOT replace or duplicate it; C separately qualifies real source
   observer+signer receipts for root and evidence volume 105319120 UUID
   a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42. Keep /dev/loop4 protected.
-C/Central: proposed HEL1 Sentinel tick timer every 5m (private-network
-  access, 45s max, least privilege); separate deliver timer (private
+C/Central: proposed HEL1 signed-bundle ingest timer every 2m using only
+  operator-published three-receipts.json, independently enrolled 0600
+  trust.json and durable witness database (no host crawl); publisher/signers
+  are NOT installed by this source, and VPSSentry's actual HEL1 observation
+  cadence must be proven sufficient for the 300s maximum TTL before admission.
+  Separate Sentinel tick timer every 5m (private-network access, 45s max,
+  least privilege); separate deliver timer (private
   DATABASE_URL & owner enrollment, 60s max). No unit is installed now.
   Source location, accounts, ACLs, restart recovery, hostnames and separate
   finance namespace must be independently reconciled before install.
