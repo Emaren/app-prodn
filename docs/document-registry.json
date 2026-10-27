@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6e1e8a7b1c141e2997289efbc9a73555e3b099b5b5407dd48126add207f146be",
+      "sha256": "f235b16fbca336b158f8e8bb02e51f70be57616cbae92b3be6162c5a71ed9fb3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/session-b-phase9-storage-atlas-engine",
-    "commit": "03467e5f9053986adb810444f29d8b25b881b34b"
+    "commit": "79a895392294c3c389f91b52151fc751efe2cfe8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
