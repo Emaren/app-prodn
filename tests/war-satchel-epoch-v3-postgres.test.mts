@@ -108,7 +108,11 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
      const bank=await run(native,"SELECT bank_balance_uwolo::text AS balance FROM epoch_v3.native_account_reserve_evidence WHERE epoch_id=$1 AND account_role=$2 AND bank_state_height=1502",[E,"vault"]);
      assert.equal(bank.rows.length,1);
      assert.equal(bank.rows[0].balance,"1000000000000");
+     // A PostgreSQL permission error aborts its transaction. Roll back to an
+     // explicit savepoint before checking the second independent privilege.
+     await run(native,"SAVEPOINT bank_update_denial");
      await assert.rejects(()=>run(native,"UPDATE epoch_v3.native_account_reserve_evidence SET bank_balance_uwolo=0"),/permission denied/);
+     await run(native,"ROLLBACK TO SAVEPOINT bank_update_denial");
      await assert.rejects(()=>run(native,"UPDATE epoch_v3.positions SET available_uwolo=999"),/permission denied/);
     }finally{await run(native,"ROLLBACK")}
     assert.equal((await run(native,"SELECT current_user AS role")).rows[0].role,"epoch_fixture_native_login");
