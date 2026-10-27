@@ -173,9 +173,11 @@ export async function ingestNativeVerifiedV3Receipt(
   await writer.query("INSERT INTO epoch_v3.native_proof_certificates (chain_id,tx_hash,message_index,epoch_id,owner_uid,purpose,denom,sender,recipient,memo,amount_uwolo,funding_height,bank_state_height,bank_commit_height,root_app_sha256,root_block_sha256,vault_account,escrow_account,vault_bank_balance_uwolo,escrow_bank_balance_uwolo,proof_sha256,native_verifier_source,native_verifier_binary_sha256,trust_anchor_sha256,verification_record_sha256,observed_at,expires_at,issuer_provenance) VALUES ('wolo-1',$1,0,$2,$3,$4,'uwolo',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)",
    [v.tx_hash,cfg.expectedEpoch,v.owner_uid,v.purpose,v.sender,v.recipient,v.memo,v.amount_uwolo,v.funding_height,v.bank_state_height,v.bank_commit_height,v.app_sha256,v.block_sha256,v.vault_address,v.escrow_address,vault.bank_balance_uwolo,escrow.bank_balance_uwolo,v.proof_sha256,cfg.observedWoloSource,cfg.binarySha256,cfg.trustAnchorSha256,v.verification_record_sha256,v.observed_at,v.expires_at,"root-owned-native-go-verifier"]);
   for(const b of [vault,escrow]){
-   // Same-root evidence can be reused across distinct receipts only with
-   // byte-identical bank proof commitments and identical liability inventories.
-   const old=await writer.query("SELECT account_role,bank_state_height,bank_commit_height,block_sha256,app_sha256,bank_balance_uwolo::text,liabilities_uwolo::text,maximum_unknown_outflow_uwolo::text,gas_uwolo::text,operating_floor_uwolo::text,inventory_sha256,nonoverlap_sha256,proof_sha256 FROM epoch_v3.native_account_reserve_evidence WHERE epoch_id=$1 AND account_role=$2 AND bank_state_height=$3 FOR KEY SHARE",[cfg.expectedEpoch,b.account_role,b.bank_state_height]);
+   // Rows are immutable: a plain SERIALIZABLE SELECT is sufficient and
+   // does not demand UPDATE privileges from the restricted proof writer.
+   // Concurrent first inserts race on the primary key and fail closed.
+   // Same-root reuse requires complete evidence/commitment equality.
+   const old=await writer.query("SELECT account_role,bank_state_height,bank_commit_height,block_sha256,app_sha256,bank_balance_uwolo::text,liabilities_uwolo::text,maximum_unknown_outflow_uwolo::text,gas_uwolo::text,operating_floor_uwolo::text,inventory_sha256,nonoverlap_sha256,proof_sha256 FROM epoch_v3.native_account_reserve_evidence WHERE epoch_id=$1 AND account_role=$2 AND bank_state_height=$3",[cfg.expectedEpoch,b.account_role,b.bank_state_height]);
    if(old.rows.length){
     const expected={
      account_role:b.account_role,bank_state_height:b.bank_state_height,
