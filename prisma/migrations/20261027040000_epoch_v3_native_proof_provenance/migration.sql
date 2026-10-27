@@ -71,7 +71,7 @@ CREATE TRIGGER reserve_evidence_immutable BEFORE UPDATE OR DELETE ON epoch_v3.na
 CREATE FUNCTION epoch_v3.assert_native_proof_for_receipt(
  p_epoch text,p_owner text,p_kind text,p_hash char(64),p_index integer
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER
- SET search_path=pg_catalog,epoch_v3 AS $$
+ SET search_path=pg_catalog,epoch_v3 AS $native$
 DECLARE c epoch_v3.native_proof_certificates%ROWTYPE; r epoch_v3.receipts%ROWTYPE;
  e epoch_v3.epochs%ROWTYPE; qualified_count integer;
 BEGIN
@@ -107,7 +107,7 @@ BEGIN
  IF qualified_count<>2 THEN
    RAISE EXCEPTION 'BANK_PROOF_STALE_OR_ACCOUNT_RESERVE_DEFICIT';
  END IF;
-END $;
+END $native$;
 
 -- Every physical consumption path, old or future, passes one strengthened
 -- security boundary. Existing source-only PG fixture must install matching
