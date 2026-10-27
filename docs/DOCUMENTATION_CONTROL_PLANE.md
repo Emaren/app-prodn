@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261027-release-identity-only-probes` at `7c76ff6f78b854f1078dd7f489d9073b3afd3583`
+Implementation baseline: `review/20261027-staged-kingdom-adoption-boundary` at `3f3c3f4a667385e71f807dc7eb0b3a3bd89af4aa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
