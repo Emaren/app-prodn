@@ -334,6 +334,15 @@ Latest Data `df` reported total `482797652` KiB, used **`431010500` KiB**, avail
 
 **Gate transitions:** `PASS_ZSH_LOGIN_RESTORED`, `PASS_DF_COMMAND_LOOKUP`, `PASS_DIRECT_DATA_DF`, `HOLD_APFS_FREE_FLUCTUATION_CAUSALITY`. APFS mtime-divergence fixture already PASS only on disposable files. **No real Watcher clone, replacement, unlink, symlink change, worktree cleanup or cache apply approved or executed. Actual Phase10 reclaimed 0 B.** [Phase10 detailed evidence and telemetry](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
 
+
+## Phase10 source of the latest 1-GiB free-space loss: APFS VM allocation increased (read-only, 2026-10-27)
+
+Operator compared new full `diskutil apfs list` on `disk3`, `sysctl vm.swapusage`, `df -k /System/Volumes/Data` with the prior full `diskutil` receipt. Same container UUID `DF99D6D6-A364-41E4-B992-12ED76BB8353`, total 494,384,795,648 B unchanged. Container allocated grew **1,085,988,864 B (1035.68 MiB)** and unallocated fell by exact same bytes, from 9,591,394,304 to **8,505,405,440 B**. VM `disk3s6` consumed grew from 5,371,052,032 to **6,445,350,912 B** (**+1,074,298,880 B = 1024.531 MiB**, **98.9236%** of entire allocated delta); Data `disk3s5` consumed grew from 441,347,043,328 to **441,358,733,312 B** (**+11,689,984 B = 11.148 MiB**, 1.0764%). System/Preboot/Recovery consumed **unchanged**. Exact sum of VM + Data growth = entire container allocated growth. Latest Data `df` used **431,014,388 KiB** equals Data consumed, and available **8,306,060 KiB = 8,505,405,440 B ≈ 7.9213 GiB** equals container free exactly. This resolves **which APFS volume** accounts for the latest approximately 1-GiB free-space loss; older greater fluctuations are still partly unexplained.
+
+`sysctl vm.swapusage` showed encrypted swap **total 5120.00M**, **used 3912.19M**, **free 1207.81M**. Active swap is substantial, but only a **single snapshot**: no proof what program drove growth or that VM-volume consumed is numerically equal to currently used swap. **Never remove files under `/System/Volumes/VM` or manipulate swap manually**. OS-manages VM, System/Preboot/Recovery and update snapshots remain protected; none of this qualifies an automatic cache purge. Process-memory/pressure sampling and compare later exact container readouts **read-only**, protect unsaved work and Codex.
+
+**Decision:** `PASS_RECENT_CONTAINER_DELTA_VM_98_9_PERCENT_DATA_1_1_PERCENT` / `HOLD_INDIVIDUAL_PROCESS_CAUSALITY_AND_OLDER_SWINGS`; no actual Watcher edits, installer URL removal, workspace retirement or newly reclaimed storage. Previous disposable clone+timestamp restoration+rollback PASS; genuine first 1.6.0 AppImage alias still requires active-reader/historical URL, metadata and two-stage explicit owner permission. Complete exact byte evidence and Storage Atlas fields: [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
