@@ -81,6 +81,24 @@ class TestSentinel(unittest.TestCase):
   with patch.object(s.subprocess,"run",return_value=SimpleNamespace(
     returncode=0,stdout=json.dumps(signed),stderr="")):s.receive(self.db,self.keys,{},NOW)
   self.assertEqual(self.db.execute("SELECT count(*) FROM events WHERE rule='cleanup_candidate_review'").fetchone()[0],0)
+ def test_cleared_then_recurrent_condition_reopens_after_ack(self):
+  with self.fake():s.receive(self.db,self.keys,{},NOW)
+  ident=self.db.execute("SELECT id FROM events WHERE plane='mac' AND rule='storage_pressure'").fetchone()[0]
+  s.ack(self.db,ident,"operator",NOW)
+  resolved=receipt(2,obs="2026-10-27T20:00:30Z",coverage="complete")
+  for p in resolved["planes"]:
+   p["backup_status"]="ok";p["expired_generations"]=0;p["reviewed_generations"]=0
+   p["capacity"]["ordinary_free_bytes"]=25*s.GIB
+   p["capacity"]["effective_used_percent"]=55
+  with patch.object(s.subprocess,"run",return_value=SimpleNamespace(
+    returncode=0,stdout=json.dumps(resolved),stderr="")):
+   s.receive(self.db,self.keys,{},NOW+dt.timedelta(seconds=100))
+  self.assertEqual(self.db.execute("SELECT active FROM events WHERE id=?",(ident,)).fetchone()[0],0)
+  with self.fake(3,obs="2026-10-27T20:01:30Z"):
+   s.receive(self.db,self.keys,{},NOW+dt.timedelta(seconds=180))
+  active,acked=self.db.execute("SELECT active,ack_at FROM events WHERE id=?",(ident,)).fetchone()
+  self.assertEqual(active,1);self.assertIsNone(acked)
+  self.assertEqual(self.db.execute("SELECT count(*) FROM outbox WHERE id LIKE ?",(ident+":reopen:%",)).fetchone()[0],1)
  def test_ack_and_crash_safe_retry(self):
   with self.fake():s.receive(self.db,self.keys,{},NOW)
   ident=self.db.execute("SELECT id FROM events LIMIT 1").fetchone()[0]
