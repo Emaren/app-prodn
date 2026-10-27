@@ -387,6 +387,26 @@ The same probe validated a nonempty `.next/BUILD_ID` **file** (source hash recor
 
 **Next owner-Mac read-only decision gate:** record symlink destination **types and broad root categories only**, with no target strings, and identify whether existing canonical release-controller stage/current/rollback status uses the candidate `.next/BUILD_ID`. A zero-consumer finding only qualifies this as a **candidate** for an explicit owner-approved, bounded and reversible plan, not deletion. No cleanup, signed Watcher files, recovery/financial evidence or worktree changes authorized.
 
+## Fifth isolated `.next` review — two external links inside AoE2WAR project and tracked Git source lacks literal BUILD_ID (owner Mac, 2026-10-27)
+
+The owner executed a further **read-only** target-classification and tracked-source search against the same exact historical docs-context worktree:
+
+| Protected federation link | Resolved target category | Target kind | Direct target into candidate `.next` |
+|---|---|---|---|
+| #1 | `OTHER_AOE2WAR_PROJECT_PATH` | `DIRECTORY` | `false` |
+| #2 | `OTHER_AOE2WAR_PROJECT_PATH` | `DIRECTORY` | `false` |
+| #3 | `SAME_WORKTREE` | `DIRECTORY` | `false` |
+
+All three `Path.resolve(strict=True)` and `stat` calls succeeded, so the pointers are currently real and not dangling. The **two out-of-worktree links resolve somewhere else within the AoE2WAR project tree**, not unspecified external personal space; the third points to another directory inside the same worktree outside `.next`. Actual symlink names and destination strings were not printed. These remain **operational references to protected source/receipts**, not cleanup candidates; the links' roles and downstream use remain unknown.
+
+The script bounded `.next/BUILD_ID` to a nonempty regular file at most 512 B, decoded its value as ASCII without printing it, then ran `git -C <exact worktree> grep -q -F -e <build ID>`, which returned `TRACKED_SOURCE_BUILD_ID_REFERENCE: NONE_OBSERVED`. This indicates no **literal current build identifier** appeared in the Git-tracked source indexed by the checked worktree at the observation moment. It does **not** search ignored `.next`, other project worktrees, private receipt files, production deployments, any literal `.next` references in source, or encoded/indirect pointers. Previous bounded scans of the two protected regular release files also found 0 literal BUILD_ID/`.next` tokens with 0 skips, and previous `lsof` cwd/all-observable-FD prefix checks both had 0 sampled matches. Candidate allocated 1,328,688 KiB (~1.267 GiB), attached clean source HEAD `99c406f57d759b672fd9fe91d3c3355c4d527705`. No new operation, cleanup or reclaim.
+
+**Gate verdict:** `PASS_LINK_TARGETS_NOT_NEXT_AND_INSIDE_AOE2WAR` / `PASS_TRACKED_SOURCE_NO_EXACT_BUILD_ID` / `HOLD_RELEASE_CONTROLLER_CURRENT_STAGE_ROLLBACK_REF` / `HOLD_OTHER_WORKTREE_REFERENCE` / `HOLD_HUMAN_CLEANUP_AUTHORIZATION`. Preserve the entire adjacent `.aoe2war-release`, all three federation symlinks and existing linked directories, two recovery/handoff files, signed Watcher artifacts and historical aliases, Codex and unmerged source branches. **Qualified deletion 0 B, actual new reclaimed 0 B**.
+
+**Next release authority step:** use the **existing** source-owned CLI, not a new release controller. The tracked `bin/aoe2war` usage supports `aoe2war status [--json]`, `aoe2war releases [--limit N] [--json]`, `aoe2war workspace status`; however, status may probe network or report production fields. Before selecting a local command, inspect that exact checkout's underlying `scripts/aoe2_release.py` `status` implementation for side effects and data disclosure. Compare **only yes/no** whether the candidate local BUILD_ID is a current/staged/rollback value in safely accessible release status; uninspected remote authority remains HOLD. Never infer production state from clean Git or literal BUILD_ID scan alone; separate exact-tree authorization required for even a reversible filesystem stage.
+
+**Storage Atlas new fields:** `symlink_target_other_aoe2war_project_directory_count=2`, `symlink_target_same_worktree_other_directory_count=1`, `symlink_target_into_candidate_next_count=0`, `symlink_resolution_errors=0`, `git_tracked_exact_build_id_match=false`, `git_grep_return_code=1`, `current_release_build_authority_checked=false`, `candidate_next_bytes_newly_qualified=0`, `phase10_actual_reclaimed_bytes=0`. Exact owner local timestamp beyond date not guaranteed.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
