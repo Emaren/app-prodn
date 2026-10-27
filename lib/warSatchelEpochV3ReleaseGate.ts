@@ -12,6 +12,7 @@ import { NEW_EPOCH_HD_MAINNET_ENABLED } from "./warSatchelNewEpochFinancialContr
 export const EPOCH_V3_EXECUTION_ENABLED = false as const;
 export const EPOCH_V3_WITNESS_DOMAIN = "aoe2war/new-epoch-v3/witness/1" as const;
 const H = /^[a-f0-9]{64}$/;
+const COMMIT = /^[a-f0-9]{40}$/;
 const NAT = /^(0|[1-9][0-9]{0,38})$/;
 const ROLES = [
   "native_chain", "bank_vault", "bank_escrow", "custody_vault", "custody_escrow",
@@ -70,7 +71,7 @@ function verifyWitness(w: EpochWitness, key: EpochPinnedWitnessKey, sourceCommit
   epochId:string, now:number): boolean {
   if (!w || w.role !== key.role || w.domain !== EPOCH_V3_WITNESS_DOMAIN ||
     w.chainId !== "wolo-1" || w.epochId !== epochId || w.sourceCommit !== sourceCommit ||
-    !positiveDigest(sourceCommit) || !asObject(w.evidence) ||
+    !COMMIT.test(sourceCommit) || !asObject(w.evidence) ||
     !Number.isSafeInteger(w.observedAtMs) || !Number.isSafeInteger(w.expiresAtMs) ||
     w.observedAtMs > now || now - w.observedAtMs > 120_000 ||
     w.expiresAtMs <= now || w.expiresAtMs - w.observedAtMs > 120_000 ||
@@ -102,7 +103,7 @@ export function evaluateHeldEpochV3Release(input: Readonly<{
   if (!input || !Number.isSafeInteger(input.nowMs) || !input.bundle ||
     input.bundle.epochId !== input.expectedEpochId || !/^[a-z][a-z0-9_-]{11,63}$/.test(input.expectedEpochId) ||
     input.bundle.sourceCommit !== input.expectedSourceCommit ||
-    !positiveDigest(input.expectedSourceCommit)) add("INVALID_EPOCH","INVALID");
+    !COMMIT.test(input.expectedSourceCommit)) add("INVALID_EPOCH","INVALID");
   const keys = new Map<EpochWitnessRole,EpochPinnedWitnessKey>();
   const claimed = new Map<EpochWitnessRole,EpochWitness>();
   for (const k of input.pinnedKeys || []) if (k && ROLES.includes(k.role) && !keys.has(k.role)) keys.set(k.role,k);
