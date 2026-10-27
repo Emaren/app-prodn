@@ -124,6 +124,19 @@ class TestSentinel(unittest.TestCase):
   self.assertEqual(len(rows),1)
   self.assertIn("STORAGE SENTINEL ACK",rows[0][1])
   self.assertIn("ACK is awareness, NOT repair",rows[0][1])
+  status=s.operator_status(self.db,NOW)
+  self.assertEqual(status["schema"],"aoe2war.storage-sentinel.operator-status.v1")
+  entry=next(x for x in status["incidents"] if x["event_id"]==ident)
+  self.assertIsNotNone(entry["acknowledged_at"])
+  self.assertEqual(entry["ack_delivery_status"],"PENDING")
+  with patch.object(s.subprocess,"run",return_value=SimpleNamespace(
+    returncode=0,stdout="DELIVERED_OR_ALREADY_PRESENT\\n",stderr="")):
+   with patch.object(s,"now",return_value=NOW):
+    s.deliver(self.db,10)
+  after=s.operator_status(self.db,NOW)
+  entry=next(x for x in after["incidents"] if x["event_id"]==ident)
+  self.assertEqual(entry["delivery_status"],"DELIVERED")
+  self.assertEqual(entry["ack_delivery_status"],"DELIVERED")
  def test_ack_and_crash_safe_retry(self):
   with self.fake():s.receive(self.db,self.keys,{},NOW)
   ident=self.db.execute("SELECT id FROM events LIMIT 1").fetchone()[0]
