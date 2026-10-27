@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "697cc11c8993e3f434ba5065dcde7ebd3b7f10bc3c0c83a42444444d4a917a85",
+      "sha256": "9103cbfef219db35fa68d8b3f6a2d55d899a0edba8afd2a6e24180d73b13015d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/session-b-phase10-authenticated-storage-atlas",
-    "commit": "7fd1046e7e9944b0d6632c6bdb8898190d5d516d"
+    "commit": "ffda715a3c7a9be32bf6113768caee50f63c53b1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
