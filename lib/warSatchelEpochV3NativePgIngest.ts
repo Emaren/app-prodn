@@ -30,6 +30,8 @@ export type NativeVerifierInstall=Readonly<{
  expectedVaultAddress:string; expectedEscrowAddress:string;
  expectedPurpose:"deposit"|"wager_funding"|"escrow_return"|"fee"|"withdrawal";
  expectedEconomicKey:string;
+ expectedAmountUWolo:string; expectedSender:string; expectedRecipient:string;
+ expectedMemo:string;
 }>;
 type NativeVerdict=Record<string,unknown>;
 function account(a:unknown,role:string,h:number,block:string,app:string){
@@ -64,6 +66,9 @@ export function validateNativeV3WireShape(o:unknown,cfg:NativeVerifierInstall,ra
  v.chain_id!=="wolo-1"||v.denom!=="uwolo"||
  v.epoch_id!==cfg.expectedEpoch||v.owner_uid!==cfg.expectedOwnerUid||
  v.purpose!==cfg.expectedPurpose||v.economic_key!==cfg.expectedEconomicKey||
+ v.amount_uwolo!==cfg.expectedAmountUWolo||
+ v.sender!==cfg.expectedSender||v.recipient!==cfg.expectedRecipient||
+ v.memo!==cfg.expectedMemo||
  v.tx_hash!==cfg.expectedTxHash||v.message_index!==0||
  v.native_verifier_source!==cfg.observedWoloSource||
  v.native_verifier_binary_sha256!==cfg.binarySha256||
@@ -120,6 +125,8 @@ function assertPinnedVerifier(cfg:NativeVerifierInstall){
  !HEX64.test(cfg.trustAnchorSha256)||!TX.test(cfg.expectedTxHash)||
  !UID.test(cfg.expectedOwnerUid)||cfg.expectedMessageIndex!==0||
  !cfg.expectedEconomicKey||!cfg.expectedVaultAddress||!cfg.expectedEscrowAddress||
+ !/^[1-9][0-9]{0,37}$/.test(cfg.expectedAmountUWolo)||
+ !cfg.expectedSender||!cfg.expectedRecipient||!cfg.expectedMemo||
  cfg.expectedVaultAddress===cfg.expectedEscrowAddress)
  hold("unqualified_native_verifier_config");
  let st;
