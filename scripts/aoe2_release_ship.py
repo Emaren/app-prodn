@@ -556,7 +556,7 @@ def build_plan(
         },
         {
             "phase": "prove",
-            "action": "Prove service active; BUILD_ID/build-version identity; internal /, /api/lobby, /api/bets, /api/deployment-version; corresponding public routes; and protected WOLO listener continuity.",
+            "action": "Prove service active; BUILD_ID/build-version identity; internal/public /api/deployment-version, active service, exact BUILD_ID and protected WOLO listener continuity; dynamic routes are excluded from release probes.",
         },
         {
             "phase": "soak",
