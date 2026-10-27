@@ -310,6 +310,28 @@ pyenv version
 
 **Next engineering priority** is not repeated memory sampling or fixture reruns. Qualify the **1,328,688 KiB** isolated docs-context worktree `.next` for active BUILD_ID/reference consumers, adjacent `.aoe2war-release` rollback evidence and attached-worktree status **read-only**, via the existing Workspace/Storage OS preview and exact path checks. Retention/deletion remains HOLD until the owner separately approves a bounded, reversible plan. For the Watcher alias: historical URL consumers and explicit inode/birthtime tradeoff/second-stage finalization approval remain HOLD.
 
+## Owner first exact docs-worktree Next.js build identity receipt — generated output remains HOLD (2026-10-27)
+
+**Source/worktree and release-adjacent evidence from Mac read-only terminal:**
+
+| Check | Value | Interpretation |
+|---|---|---|
+| Exact candidate | `~/.aoe2war-workspaces`? **NO** — full actual path is `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next` | Do not infer path from abbreviated names; exact location must be preserved |
+| `du -sk` | **1,328,688 KiB ≈ 1.267 GiB** | Unchanged allocation, **not** verified recoverable |
+| `.next` `ls -ld` | directory `drwxr-xr-x`, owner local user/staff, dated Oct 15 12:01 | Historical directory metadata only |
+| `.aoe2war-release` `ls -ld` | directory `drwxr-xr-x`, owner local user/staff, dated Oct 15 12:03 | **Protected adjacent release/rollback receipts**, not a cleanup candidate |
+| `.next/BUILD_ID` | exists, **file SHA256 `3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`** | BUILD_ID **file hash**, not the literal build ID, not `.next` full-tree hash, and not a current production-build match |
+| Worktree Git commit | `99c406f57d759b672fd9fe91d3c3355c4d527705` | Historical checkout identity bound |
+| Git status | `git --no-optional-locks status --porcelain=v1 --untracked-files=normal` printed **nothing** | Clean under this Git scope; ignored output, nested release state, active references, worktree attachment/merge not settled |
+
+No actual filesystem modifications and no `.next`, `.aoe2war-release`, sources, recorders, Codex, signed Watcher artifacts or developer workspace deleted. This **narrows identification only**: `PASS_CANDIDATE_SOURCE_BUILD_IDENTITY` / `HOLD_BUILD_ACTIVE_RUNTIME_AND_RELEASE_ROLLBACK_CONSUMERS` / `HOLD_RECLAIM_AUTHORIZATION`. Conditional allocation **1,328,688 KiB**, qualified deletion allocation **0**, actual new reclaimed bytes **0**.
+
+**Tracked app-prodn source guidance:** `scripts/aoe2_release.py` uses `.aoe2war-release` authority and tests `.next/BUILD_ID` when checking release state; `scripts/aoe2_speed_build.py` writes build-performance receipts into `.aoe2war-release`. These are historical source consumers and **do not by themselves prove this particular worktree is currently used**. The canonical `app-prodn/main@14ce7104` docs and release controllers must be consulted before any classification change; do not create a new deletion controller or infer that absence of Git edits certifies rollback disposability.
+
+**Next read-only operator check:** capture only directory-level contents/categories of adjacent protected `.aoe2war-release` (filenames/metadata and bounded counts, **no sensitive JSON values**), assess any real BUILD_ID reference by booleans/digests without exposing secrets, exact worktree attachment/branch/merge and release locks, and bound runtime consumers by specific worktree path/process or FD. Protect ignored files and app release state. Avoid recursive `lsof +D` over 1.267 GiB tree as a default. Even an empty point-in-time process probe is not proof the artifact is no longer required. No `--apply`, no `rm` or `git worktree prune`.
+
+**Storage Atlas current scoped candidate fields**: `mac_next_candidate_path=projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next`, `mac_next_allocated_kib=1328688`, `mac_next_build_id_file_sha256=3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`, `mac_next_worktree_head=99c406f57d759b672fd9fe91d3c3355c4d527705`, `mac_next_worktree_git_porcelain_empty=true`, `mac_adjacent_release_state_exists=true`, `mac_next_runtime_consumers_verified_absent=false`, `mac_next_deletion_authorized=false`, `mac_next_reclaimed_bytes=0`; operator exact observation UTC not provided.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
