@@ -16,7 +16,7 @@ async function atomic(c:Client,f:()=>Promise<unknown>){
  try{const x=await f();await run(c,"COMMIT");return x;}catch(e){await run(c,"ROLLBACK");throw e;}
 }
 async function proof(c:Client,kind:string,owner:string,amount:number,n:number,from:string,to:string,memo:string){
- return run(c,"INSERT INTO epoch_v3.receipts(tx_hash,message_index,epoch_id,owner_uid,kind,sender,recipient,memo,amount_uwolo,chain_height,native_proof_sha256,proof_verified_at) VALUES($1,0,$2,$3,$4,$5,$6,$7,$8,1500,$9,clock_timestamp())",
+ return run(c,"INSERT INTO epoch_v3.receipts(tx_hash,message_index,epoch_id,owner_uid,kind,sender,recipient,memo,amount_uwolo,chain_height,native_proof_sha256,proof_verified_at,chain_time) VALUES($1,0,$2,$3,$4,$5,$6,$7,$8,1500,$9,clock_timestamp(),'2026-10-27T12:00:00Z')",
  [hash(n),E,owner,kind,from,to,memo,uw(amount),sha]);
 }
 async function credit(c:Client,owner:string,amount:number,n:number){
@@ -89,6 +89,7 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
    const doReturn=()=>run(a!,"SELECT epoch_v3.reconcile_return($1,$2,$3,0,$4,$5,$6,$7)",[E,ent,hash(106),uw(78),S,V,ent+":return"]);
    await atomic(a!,doReturn);
    assert.deepEqual(await pos(a!,"alpha"),{a:uw(318),r:uw(120),p:"0"});
+   assert.equal((await run(a!,"SELECT exact FROM epoch_v3.position_reconciliation WHERE epoch_id=$1 AND owner_uid='alpha'",[E])).rows[0].exact,true);
    await assert.rejects(()=>atomic(a!,doReturn),/PHYSICAL_RECEIPT_ALREADY_CONSUMED/);
   });
   await t.test("CAS durable before-sign fence, stale version and UNKNOWN_NO_REPLAY irreversible",async()=>{
