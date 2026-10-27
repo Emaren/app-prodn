@@ -50,7 +50,7 @@ def reviewed_candidate(candidate: dict[str, Any], *, keep_generations: int = 3) 
         raise ArtifactHold("nonexact artifact path")
     reason = []
     low = path.lower()
-    if any(x in low + "/" for x in PROTECTED_FRAGMENTS):
+    if any(x.lower() in low + "/" for x in PROTECTED_FRAGMENTS):
         reason.append("PROTECTED_EVIDENCE_OR_RUNTIME_TREE")
     if spec["basename"] and Path(path).name != spec["basename"]:
         reason.append("CLASS_PATH_MISMATCH")
