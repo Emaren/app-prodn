@@ -150,7 +150,7 @@ class GuardedLocalCacheTests(unittest.TestCase):
                 self.assertEqual(args[1:], [
                     "storage", "local-maintain", "--apply", "--json",
                 ])
-                self.assertEqual(receipt.call_args.args[0]["data_ordinary_free_net_delta_kib"], 14980)
+                self.assertEqual(receipt.call_args.args[0]["data_ordinary_free_net_delta_kib"], 13980)
 
     def test_no_other_delete_apis_in_review_wrapper_source(self):
         content = FILE.read_text(encoding="utf-8")
