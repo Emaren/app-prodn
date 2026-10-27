@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "786239cb3703d383618fe51917c6f8ca316435a3487238c3e85e782c6914f815",
+      "sha256": "c5eb773be992f3097a35a84f283f76538a82df585640c470ad045682e53a8e1c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2391,7 +2391,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/session-d-mac-storage-20261027",
-    "commit": "5360f4f746ad05b905f060f1b7fe5296094293a4"
+    "commit": "7b52c044ec728c60ce2b5c61cfb8ac0c68679bb9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
