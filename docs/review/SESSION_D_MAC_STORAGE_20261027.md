@@ -135,6 +135,23 @@ Remaining 34 `ACTIVE_UNMERGED` plus six `PRESERVE_DIRTY_REVIEW` are strongly pro
 
 **Change decision at this receipt:** the existing `local-maintain` 0.598 GiB option is not yet owner-authorized or rollback-proven and does not solve build headroom; prioritize a bounded current per-target process, content/size and active-stage/FD census for other compiled outputs. **Newly reclaimed bytes 0; no deletes executed.**
 
+
+## Exact generated-output probe — owner terminal observation (2026-10-27; after 15:04Z Storage OS census)
+
+The owner ran a second targeted **read-only** Python survey of `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/*/.next` plus `~/projects/AoE2HDBets/aoe2-watcher/dist`. Only **two** directories existed at the named targets. It supplied paths, `du -sk`, source HEAD, Git tracked/ignored state, lockfile SHA256 and adjacency flags. It did **not** hash generated artifact contents, inspect actual build consumers/open file descriptors, confirm signatures, or authorize disposal.
+
+| Exact directory (relative to home) | `du -sk` allocated | SHA-bound source and rebuild hints | Classification |
+|---|---:|---|---|
+| `projects/AoE2HDBets/aoe2-watcher/dist` | **3,434,896 KiB = 3.276 GiB** | Clean Git checkout `fa93bcea67ca8786f54102aafe7b47f7345aec03`, `package-lock.json` SHA256 `da37a73104be92b6eb7a2d40ede3d694499789241328f54b0475e9574ccfd802`; ignored, no tracked `dist` files, no adjacent `.aoe2war-release`. **HOLD RELEASE_ARTIFACT_UNVERIFIED**. | `BUILD_DISTRIBUTION_AND_SIGNED_RELEASE_REVIEW`; verify exact files and retained public-released bytes before changing any subpath. |
+| `projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next` | **1,328,688 KiB = 1.267 GiB** | Clean `99c406f57d759b672fd9fe91d3c3355c4d527705`; `yarn.lock` SHA256 `4e7b5b9c47f73315435439519d6fb7b0623502cb14c89d51d7ef4089b074e53b`; ignored/not tracked. Adjacent `.aoe2war-release` **PRESENT**. | `PROTECTED_RELEASE_ADJACENT_OUTPUT`; no deletion until release authority/BUILD_ID/source manifest and process/fd proven absent. |
+| **Total conditional candidates** | **4,763,584 KiB ≈ 4.543 GiB** | Both clean and Git-ignored; runtime usage unknown. | **0 B newly qualified for removal; 0 B reclaimed in this probe.** |
+
+**Additional independently reviewed source contracts (exact GitHub source):**
+- Watcher at `fa93bcea67ca8786f54102aafe7b47f7345aec03`: `package.json` Git blob `021359fb1811005ad0988ff099653afa7dfde30c` defines `npm run build` → `electron-builder`, `npm run dist:mac` → DMG+ZIP arm64, `npm run dist:win` → NSIS + portable, `npm run dist:linux` → AppImage, `npm run dist:release` → win+mac+manual ZIP+linux. Source does **not** prove an existing signed installer reproducible byte-identically. `scripts/build-manual-zip.mjs` blob `3de5c0a13fe4c21afcbac49391ffbdb86ee60625` consumes `dist/mac-arm64/AoE2HDBets Watcher.app` and emits `dist/aoe2hdbets-watcher-direct.zip`. Deleting `dist` wholesale can destroy both prerequisites and finished release products.
+- Watcher `README.md` blob `0f2e734191e3ca4f4239e4107bbc1bbab12d74fd` states published `v1.6.5` uses Windows Azure-signed timestamped artifacts and intentionally unsigned Mac/Linux artifacts, with public release source `b49f31bb69fea629378072faa22220cdfcc2f1ef`. Local `fa93bcea...` build checkout is not the documented release source; **do not assert `dist` is duplicated by published GitHub bytes until per-file hashes and coverage are independently checked**.
+- App `docs/STORAGE_OS.md` Git blob `258178f934a0d2212fcd0091386cdb2b90bcbf7d` says to retain current Watcher release plus one previous compatibility release and associated manifest/checksum evidence. App `scripts/sync-watcher-release.mjs` blob `afbda64385b71fd994fa3a19ab99aef4f2fbd95a` explicitly validates release filenames, SHA256/manifests and updater metadata before publication. That authoritative contract, not presence of ignored directory, determines safe retention.
+
+**Next safe read-only qualification:** enumerate `dist` *immediate children* and corresponding per-child allocated sizes/types and manifest presence; compare currently published release and required previous-release artifacts to their independently retained **byte hashes**, signatures and source, check app `public/downloads` symlinks/refs, launchd processes and exact open FDs, then separately consider one uniquely named obsolete **sub-artifact** (not entire `dist`). The other `.next` needs adjacent release provenance before any removal. No remote Mac access or local mutation occurred through this GitHub documentation step.
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
