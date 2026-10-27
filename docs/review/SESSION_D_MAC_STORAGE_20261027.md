@@ -381,6 +381,19 @@ Operator ran **read-only** inspection of exact candidate `~/projects/AoE2HDBets/
 
 **Next read-only proof:** `du -sk` and bounded **file names/types only** within `.aoe2war-release` (never dump secret/token-bearing receipt contents), verify exact `BUILD_ID` consumer-match status without exposing sensitive fields, ensure no process with open FDs/cwd/executable or Next.js server working against the exact `.next`/worktree, inspect worktree attachment/branch and active release lock/rollback provenance. A scan finding no open FDs is only point-in-time evidence and cannot prove no future consumer. Do not use `lsof +D` recursively over an enormous tree by default. Respect canonical Storage/Workspace OS preview-only commands and separate human authorization.
 
+## Attached docs-context worktree, protected release category directories and cwd probe (owner Mac, 2026-10-27)
+
+The owner performed another bounded **read-only** check of exact worktree `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015`:
+- The adjacent `.aoe2war-release` **exists** and `du -sk` reports **0 KiB allocated**. **This does not mean it is empty, redundant or a valid cleanup candidate**. `ls -la` shows three directories: `federation-validation` (Oct 15 12:03), `recovery-campaigns` (Oct 15 11:58), `storage-handoffs` (Oct 15 11:59). Only top-level names/metadata were observed, not contents. All three and the parent remain **PROTECTED_RELEASE_EVIDENCE** even if allocated usage rounds to 0 KiB.
+- `git -C "$WT" worktree list --porcelain` matched the exact existing **attached worktree** and reports `HEAD=99c406f57d759b672fd9fe91d3c3355c4d527705`, `branch=refs/heads/fix/update-independent-docs-context-20261015`. Earlier Git status was empty but **this branch's merge/release authority and ignored build content remain unqualified**. **Never prune/remove this attached worktree**.
+- `lsof -nP -d cwd -Fpn` filtered to path-prefix under the worktree returned `NO_MATCH_OBSERVED_POINT_IN_TIME`. This is **negative evidence for observable current working directories only**. It does **not** rule out open file descriptors under `.next`, executable paths, detached services referencing BUILD_ID, future readers, or processes omitted by permission/security restrictions.
+- `.next` remains the exact **1,328,688 KiB (~1.267 GiB)** generated build at historical HEAD. SHA-256 of `.next/BUILD_ID` file is `3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522` from preceding bounded probe; **not** a full tree digest or active release-state binding.
+- **No file operations performed**: no movement, unlink, clone or retained-state inspection beyond metadata; no recertification of the actual web deployment.
+
+**Gate state:** `PASS_ATTACHED_WORKTREE_IDENTIFIED`, `PASS_RELEASE_ROOT_TOPLEVEL_CATEGORIES_IDENTIFIED`, `PASS_NO_MATCH_OBSERVED_WORKTREE_CWD_AT_POINT_IN_TIME`; `HOLD_FILE_FD_RUNTIME_AND_RELEASE_CONSUMERS`, `HOLD_BRANCH_RELEASE_AUTHORITY`, `HOLD_DELETE_NEXT`. Conditional historical generated-output allocation 1.267 GiB; **currently qualified cleanup=0 B; newly reclaimed=0 B**. Protected sibling evidence is never a conditional cleanup target.
+
+**Next safe inspection:** bounded all-FD pathname check against this one exact `.next` tree without using recursive `lsof +D`, read-only category/file-count census of three `.aoe2war-release` subtrees without dumping possibly sensitive receipt payloads, and existing Workspace/Storage OS preview-only diagnostics. FDs or cwd absent on one snapshot do **not** alone prove future release/rollback non-use. Separate owner cleanup approval and preservation/rebuild/rollback receipts still required.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
