@@ -29,8 +29,8 @@ function need(ok: unknown, why: string): asserts ok {
 function natural(s: unknown, name: string, positive = true): bigint {
   need(typeof s === "string" && NAT.test(s) && s.length <= 39, "invalid_" + name);
   const value = BigInt(s);
-  need(!positive || value > 0n, "zero_" + name);
-  need(value <= 2n ** 127n - 1n, "unbounded_" + name);
+  need(!positive || value > BigInt(0), "zero_" + name);
+  need(value <= BigInt(2) ** BigInt(127) - BigInt(1), "unbounded_" + name);
   return value;
 }
 function fingerprint(v: unknown): v is string {
@@ -100,7 +100,7 @@ export function inspectNewEpochWagerAdmission(r: EpochWagerRequest) {
   need(Number.isSafeInteger(r.ticketId) && r.ticketId > 0 && UID.test(r.ownerUid),
     "ticket_or_owner");
   const amount = natural(r.amountUwolo, "principal");
-  need(amount <= BET_CAP && amount % UW === 0n, "wager_principal_or_units");
+  need(amount <= BET_CAP && amount % UW === BigInt(0), "wager_principal_or_units");
   need(natural(r.firstEligibleHeight, "wager_height") > natural(r.authority.hStar, "epoch_root"),
     "before_new_epoch");
   const operationId = "satchel:e3:" + scope.epochId + ":" + r.ticketId;
@@ -133,7 +133,7 @@ export function planNewEpochMarketSettlement(input: Readonly<{
   need(input.winningSide === null || input.winningSide === "left" ||
     input.winningSide === "right", "winner_side");
   const operations = new Set<string>(), physical = new Set<string>(), legs = new Set<string>();
-  let principal = 0n;
+  let principal = BigInt(0);
   for (const w of input.wagers) {
     need(Number.isSafeInteger(w.wagerId) && w.wagerId > 0 &&
       Number.isSafeInteger(w.ticketId) && w.ticketId > 0 &&
@@ -178,8 +178,8 @@ export function planNewEpochMarketSettlement(input: Readonly<{
       status: "ECONOMIC_PLAN_ONLY" as const,
     });
   });
-  const paid = entitlements.reduce((n, e) => n + BigInt(e.payoutUwolo), 0n);
-  const fees = entitlements.reduce((n, e) => n + BigInt(e.feeUwolo), 0n);
+  const paid = entitlements.reduce((n, e) => n + BigInt(e.payoutUwolo), BigInt(0));
+  const fees = entitlements.reduce((n, e) => n + BigInt(e.feeUwolo), BigInt(0));
   need(paid + fees === principal * UW, "principal_not_conserved");
   return Object.freeze({
     epochId: input.epochId, marketId: input.marketId,
@@ -218,14 +218,14 @@ export function inspectNewEpochReturnCandidate(input: Readonly<{
     c.originalOperationId === e.originalOperationId &&
     c.originalFundingReceipt === e.originalFundingReceipt &&
     c.amountUwolo === e.payoutUwolo &&
-    natural(c.amountUwolo, "return_principal") > 0n, "cross_epoch_or_owner_claim");
+    natural(c.amountUwolo, "return_principal") > BigInt(0), "cross_epoch_or_owner_claim");
   need(c.returnSender === scope.escrow && c.returnRecipient === scope.vault,
     "return_uses_wrong_custody");
   need(HASH.test(c.txHash) && c.messageIndex === 0 &&
     natural(c.txHeight, "tx_height") > natural(input.authority.hStar, "epoch_root"),
     "invalid_physical_receipt");
-  need(natural(c.verifiedBankHeight, "bank_height") >= natural(c.txHeight, "tx_height") + 2n &&
-    natural(c.bankCommitHeight, "bank_commit") === natural(c.verifiedBankHeight, "bank_height") + 1n,
+  need(natural(c.verifiedBankHeight, "bank_height") >= natural(c.txHeight, "tx_height") + BigInt(2) &&
+    natural(c.bankCommitHeight, "bank_commit") === natural(c.verifiedBankHeight, "bank_height") + BigInt(1),
     "return_not_final_at_authenticated_height");
   need(c.memo === "aoe2war/satchel/epoch-v3/" + c.epochId + "/return/" + c.entitlementId,
     "return_memo_wrong_epoch");
