@@ -271,16 +271,20 @@ def production_transport() -> tuple[dict[str, str], str | None]:
     return parse_kv(p.stdout or ""), None
 
 
-def load_manifest(release_sha: str) -> tuple[Path, dict, str]:
-    path = MANIFEST_DIR / f"{release_sha}.json"
+def load_manifest(
+    release_sha: str, *, source_root: Path | None = None,
+) -> tuple[Path, dict, str]:
+    bound_root = ROOT if source_root is None else Path(source_root).resolve()
+    path = (bound_root / ".aoe2war-release" / "manifests"
+            / f"{release_sha}.json")
     digest_path = path.with_suffix(".json.sha256")
     if not path.is_file():
         raise ShipError(
-            f"Release manifest is missing: {path.relative_to(ROOT)}"
+            f"Release manifest is missing: {path.relative_to(bound_root)}"
         )
     if not digest_path.is_file():
         raise ShipError(
-            f"Manifest SHA-256 file is missing: {digest_path.relative_to(ROOT)}"
+            f"Manifest SHA-256 file is missing: {digest_path.relative_to(bound_root)}"
         )
 
     try:
@@ -298,16 +302,19 @@ def load_manifest(release_sha: str) -> tuple[Path, dict, str]:
     return path, payload, actual
 
 
-def gate_integrity(manifest: dict) -> tuple[Path, str]:
+def gate_integrity(
+    manifest: dict, *, source_root: Path | None = None,
+) -> tuple[Path, str]:
+    bound_root = ROOT if source_root is None else Path(source_root).resolve()
     gate = manifest.get("gate") or {}
     rel = gate.get("receipt_path")
     expected = gate.get("receipt_sha256")
     if not rel or not expected:
         raise ShipError("Manifest does not bind a gate receipt.")
 
-    path = (ROOT / rel).resolve()
+    path = (bound_root / rel).resolve()
     try:
-        path.relative_to(ROOT.resolve())
+        path.relative_to(bound_root.resolve())
     except ValueError as exc:
         raise ShipError("Manifest gate receipt escapes repository state.") from exc
 
@@ -624,11 +631,14 @@ def _is_hex(value: object, length: int) -> bool:
 
 
 def load_stage_receipt(
-    stage_receipt: str,
+    stage_receipt: str, *, source_root: Path | None = None,
 ) -> tuple[Path, dict, str, Path, dict, str, Path, str]:
+    # The product's sealed stage state and reviewed operator-controller code
+    # may legitimately live in DIFFERENT Git worktrees.
+    bound_root = ROOT if source_root is None else Path(source_root).resolve()
     raw = Path(stage_receipt)
-    path = (raw if raw.is_absolute() else ROOT / raw).resolve()
-    allowed = STAGE_RECEIPT_DIR.resolve()
+    path = (raw if raw.is_absolute() else bound_root / raw).resolve()
+    allowed = (bound_root / ".aoe2war-release" / "stage-receipts").resolve()
     try:
         path.relative_to(allowed)
     except ValueError as exc:
@@ -749,13 +759,13 @@ def load_stage_receipt(
     if not remote_receipt.startswith(f"{REMOTE_RECEIPT_ROOT}/stage-"):
         raise ShipError("Remote stage receipt is outside the canonical receipt root.")
 
-    manifest_path, manifest, manifest_sha = load_manifest(release_sha)
-    gate_path, gate_sha = gate_integrity(manifest)
-    if str(manifest_path.relative_to(ROOT)) != receipt["manifest_path"]:
+    manifest_path, manifest, manifest_sha = load_manifest(release_sha, source_root=bound_root)
+    gate_path, gate_sha = gate_integrity(manifest, source_root=bound_root)
+    if str(manifest_path.relative_to(bound_root)) != receipt["manifest_path"]:
         raise ShipError("Stage receipt manifest path does not match release manifest.")
     if manifest_sha != receipt["manifest_sha256"]:
         raise ShipError("Stage receipt manifest SHA-256 does not match release manifest.")
-    if str(gate_path.relative_to(ROOT)) != receipt["gate_path"]:
+    if str(gate_path.relative_to(bound_root)) != receipt["gate_path"]:
         raise ShipError("Stage receipt gate path does not match bound gate receipt.")
     if gate_sha != receipt["gate_sha256"]:
         raise ShipError("Stage receipt gate SHA-256 does not match bound gate receipt.")

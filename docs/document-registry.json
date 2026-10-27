@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "612d9e2d43f3d5464d8d4de70cb5ed8609380cad8dd9d6ec69786ac2dc931865",
+      "sha256": "7e40787451760364c284ed5e2c3b19f49ed80f22388505c6f3673c987ca355bd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/20261027-release-identity-only-probes",
-    "commit": "7c76ff6f78b854f1078dd7f489d9073b3afd3583"
+    "branch": "review/20261027-staged-kingdom-adoption-boundary",
+    "commit": "a0b1c9ebe4870a4803ca7a449841eb073b781895"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
