@@ -503,6 +503,17 @@ GitHub independent source proof: [E5 PR #485](https://github.com/Emaren/app-prod
 
 **Priority revised:** docs-context `.next` is now the only presently known still-present nonfinancial historical generated build candidate and requires fresh size/type check, full rollback references and independently verified off-Data restore or rebuild. Financial Codex worktrees/source, Watcher signed installers, media, recovery vault, financial evidence, snapshots/VM remain protected. No bulk cleanup or Mac file mutation by Session D. See [Phase11 detailed ledger](SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md).
 
+
+## Phase11 E5 local source refs confirmed and docs worktree stable at 9.545 GiB Mac free (2026-10-27)
+
+Actual owner Mac, read-only: `git cat-file -e b3b6240f94b8521378372dbee16fefc44c7570e6^{commit}` **PASS E5_COMMIT_PRESENT_LOCALLY**; `git show-ref --verify --quiet refs/heads/champions-e5-seal-20261011` **PASS E5_BRANCH_EXISTS**. Branch ref target SHA was not printed, so exact tip identity still unverified; do not create/delete/reset branch. Earlier independently verified [PR #485](https://github.com/Emaren/app-prodn/pull/485) squash-merged original head into GitHub main on Oct 11. Missing E5 worktree is a local working-tree/ignored artifact provenance issue, not proven loss of committed feature source. Its former `.aoe2war-release` ignored data has no verified preservation receipt.
+
+Existing docs-context attached worktree `.next` still allocated **1,328,688 KiB (~1.267136 GiB)** and non-symlink dir, `BUILD_ID` file SHA256 **`3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`**, source HEAD **`99c406f57d759b672fd9fe91d3c3355c4d527705`**; all match earlier sampled state. No exact generated-tree/restorable image and full older rollback-state proof yet; keep `.aoe2war-release` and worktree protected. Last active/staged release mismatch and 371 locally returned certified-history misses stand as earlier separate evidence.
+
+Latest `df -k /System/Volumes/Data`: **available `10,008,964 KiB = 9.545292 GiB`**, `used 430,360,616 KiB`, displayed **98%**. Prior available `9,997,124 KiB`, delta **+11,840 KiB = +11.5625 MiB** with same Data used decrease. Original Phase11 pre-improvement ordinary free `8,300,728 KiB`, total observed increase **+1,708,236 KiB = +1.629101 GiB**. Includes unattributed environmental activity and earlier macOS VM-volume shrinkage; **Session D Phase11 attributed authorized cleanup reclaimed 0 B**, no separate delete command executed. Last full APFS allocation census predates this last `df`, so no contemporaneous VM delta known for this latest ~11.56 MiB.
+
+**Gates:** `PASS_E5_LOCAL_COMMIT_AND_REF_EXIST`, `PASS_DOCS_HEAD_BUILD_ID_SIZE_STABLE`, `PASS_APFS_FREE_9_545_GIB`; `HOLD_E5_BRANCH_REF_CURRENT_TIP_AND_IGNORED_DATA_RETIREMENT`, `HOLD_DOCS_RESTORE_AND_REMOTE_HISTORIC_ROLLBACK`, `HOLD_OWNER_APPROVED_EXACT_NEXT_TRANSACTION`. No source/worktree/caches/process/VM/Watcher/financial/recovery changes by this audit. [Phase11 full ledger](SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
