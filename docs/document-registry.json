@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bd94ae3b4705ab69865b6b8a7e0b73b6411acb9e16b1bc8aeaa977e51f70a130",
+      "sha256": "d25ef2b4cd815c04ec4189be7541220bc1727be8a04182bd38882beb0b5ff110",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,7 +2348,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/session-b-phase4-hd-new-epoch-integration",
-    "commit": "986e171acd822d359b6a2199d2a887d55e63edf3"
+    "commit": "c1ef71f3ab32809adcb6e33b6a9516fc633f8be9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
