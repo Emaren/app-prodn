@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2bb90cfd5d0e2f8b9cbece2e52c1689dea50b764d27dd227e5d076a649c5e46",
+      "sha256": "f48496a6a0ae6531612915e30a5b2a85208c0f021150c1f70e0c807a1b4b426a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/20261027-storage-atlas-kingdom-systems",
-    "commit": "45db440edcc23cb8723ed5129f5250f0ae59b692"
+    "commit": "8e2b86c6461a487577d26f8b481c7e53cfc0c681"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
