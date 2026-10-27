@@ -216,6 +216,41 @@ The owner executed `exec /bin/zsh -l` **in the same operator terminal**. New log
 
 **Next read-only investigation:** compare `diskutil apfs list` per-volume consumption of VM/Preboot/System/Recovery with the older pinned `disk3` sample to determine whether other volumes explain the shared unallocated-space change. `sysctl vm.swapusage` is informative but not a deletion target. No VM file, APFS snapshot, production release or workspace-retirement mutation authorized.
 
+## Consecutive disk3 full-container comparison isolates VM growth (latest owner read-only, 2026-10-27)
+
+The operator supplied a second complete `/usr/sbin/diskutil apfs list`, contemporaneous `/usr/sbin/sysctl vm.swapusage` and direct `/bin/df -k /System/Volumes/Data`. This can be compared **like-for-like** with the earlier complete `diskutil` container census. UUID remains `DF99D6D6-A364-41E4-B992-12ED76BB8353`, container `disk3`, total physical ceiling 494,384,795,648 B unchanged. Here are **exact decimal bytes** (no inference from rounding):
+
+| APFS item | Previous disk3 bytes | New disk3 bytes | New minus previous (B) | Delta MiB |
+|---|---:|---:|---:|---:|
+| Container allocated | 484,793,401,344 | 485,879,390,208 | **+1,085,988,864** | **+1,035.680** |
+| Container unallocated | 9,591,394,304 | 8,505,405,440 | **−1,085,988,864** | **−1,035.680** |
+| Data `disk3s5` consumed | 441,347,043,328 | 441,358,733,312 | **+11,689,984** | +11.148 |
+| VM `disk3s6` consumed | 5,371,052,032 | 6,445,350,912 | **+1,074,298,880** | **+1,024.531** |
+| System `disk3s1` consumed | 18,507,264,000 | 18,507,264,000 | 0 | 0 |
+| Preboot `disk3s2` consumed | 16,201,957,376 | 16,201,957,376 | 0 | 0 |
+| Recovery `disk3s3` consumed | 2,414,116,864 | 2,414,116,864 | 0 | 0 |
+
+**Exact reconciliation:** `1,074,298,880 (VM growth) + 11,689,984 (Data growth) = 1,085,988,864 B`, **100%** of the net container allocation increase between these receipts. **98.9236% of the change is VM volume allocation**, 1.0764% Data. System/Preboot/Recovery volume consumption unchanged. `df -k` Data `used=431014388` KiB `*1024=441358733312` B **equals** current diskutil Data consumed, and Data `available=8306060` KiB `*1024=8505405440` B **equals** current container unallocated. This positively identifies which APFS volume accounts for the recent approximately **1 GiB** change in shared available capacity. It **does not establish what created the VM volume growth or explain every earlier multi-GiB variation**.
+
+**Swap snapshot:** `vm.swapusage: total = 5120.00M used = 3912.19M free = 1207.81M (encrypted)`; at reporting convention 1024 M per GiB, about **5.0 GiB swap capacity** and **3.8205 GiB used**. This is evidence of substantial swap use at the instant observed, making macOS VM/swap activity a plausible proximate driver. However, there is **no earlier swap-usage baseline** in Session D to prove that active swap use rose by exactly the VM volume delta, or which process caused it. VM volume consumed (6,445,350,912 B) is **not equivalent to** `sysctl vm.swapusage` used; do not equate or subtract these as identical counters. Page-file growth, OS VM management, other VM files and purgeable/shared container dynamics require targeted read-only observation.
+
+**Safety decisions:** `PASS_ALLOCATED_CAPACITY_DELTA_RECONCILED_TO_VM_98_9_PERCENT_AND_DATA_1_1_PERCENT`; `HOLD_PROCESS_CAUSALITY_AND_GENERAL_HISTORICAL_CAPACITY_SWINGS`. **Never** `rm` or truncate `/System/Volumes/VM/swapfile*`, perform system update snapshot operations, disable swap or reboot solely as a cleanup tactic. MacOS should manage VM automatically; any decision to close a workload must be operationally conscious, with unsaved work/protected active Codex and builds preserved. **No new recovered bytes** and **no approved real Watcher clone/replacement/unlink/backup discard**.
+
+**Next bounded read-only diagnostic**, once the operator's current shell is healthy:
+```bash
+echo "=== SWAP / MEMORY STATE ==="
+/usr/sbin/sysctl vm.swapusage
+/usr/bin/memory_pressure -Q
+echo "=== HIGHEST RESIDENT MEMORY PROCESSES ==="
+/bin/ps -axo pid=,comm=,rss= -r | /usr/bin/head -n 20
+echo "=== DATA / CONTAINER FREE NOW ==="
+/bin/df -k /System/Volumes/Data
+/usr/sbin/diskutil apfs list
+```
+`ps` lists executable command names and approximate **RSS KiB**, not allocations on the VM volume; its output is read-only and is **not** a process-termination list. Capture process snapshots at successive times, compare growth and swaps if warranted. If `memory_pressure -Q` is unavailable or returns no value on this macOS version, record `HOLD_TOOL_UNAVAILABLE` without changes.
+
+**Storage Atlas fresh sample** (owner latest, exact UTC sample timestamp unspecified): `disk3_allocated_bytes=485879390208`, `disk3_unallocated_bytes=8505405440`, `data_consumed_bytes=441358733312`, `vm_consumed_bytes=6445350912`, `vm_growth_since_previous_diskutil_bytes=1074298880`, `data_growth_since_previous_diskutil_bytes=11689984`, `disk3_growth_since_previous_diskutil_bytes=1085988864`, `vm_fraction_of_container_growth=0.9892356318`, `swap_total_reported_MiB=5120`, `swap_used_reported_MiB=3912.19`, `df_data_available_kib=8306060`, `df_data_used_kib=431014388`, `df_container_free_exact_parity=true`, `attribution=VM_VOLUME_GROWTH_NOT_PROCESS_CAUSE`, `phase10_actual_reclaimed_bytes=0`. Do not overwrite earlier timestamped Atlas observations with these later values without preserving source and observation order.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
