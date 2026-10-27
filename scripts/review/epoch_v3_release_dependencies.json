@@ -1,0 +1,182 @@
+{
+  "schema": "aoe2war.hd-new-epoch-v3-release-dependency-manifest.v1",
+  "status": "HELD_SOURCE_CANDIDATE_NOT_FINANCIAL_AUTHORITY",
+  "source": {
+    "hd": {
+      "repo": "Emaren/app-prodn",
+      "branch": "review/session-b-phase5-hd-v3-release-proof",
+      "base": "review/session-b-phase4-hd-new-epoch-integration",
+      "source_files": [
+        "lib/warSatchelNewEpochFinancialContracts.ts",
+        "lib/warSatchelEpochV3ReleaseGate.ts",
+        "lib/warSatchelEpochV3Durability.ts",
+        "lib/warSatchelEpochV3NativeObserver.ts",
+        "lib/warSatchelEpochV3TicketFunding.ts",
+        "lib/warSatchelEpochV3GoWire.ts"
+      ],
+      "production_mounted": false
+    },
+    "wolo": {
+      "repo": "Emaren/wolochain",
+      "held_pr": 111,
+      "observed_sha": "e547f24446be1318060c8f48123786f396c4e841",
+      "v3_new_escrow_executor_observed": false,
+      "old_8092_return_dependency": "internal/satchelservice/returns.go: PrepareReturnRun returns legacy /settlement/v1/runs",
+      "held_epoch_escrow_pr": 115,
+      "epoch_v3_source_head": "dd45bc95579ed9468e25144c33f4120a08fe3c89",
+      "epoch_v3_held_source": {
+        "policy": "internal/epochescrow/policy.go",
+        "native": "internal/epochescrow/evidence.go",
+        "journal": "internal/epochescrow/journal.go",
+        "economics": "internal/epochescrow/economics.go",
+        "daemon": "cmd/woloescrowd/main.go"
+      },
+      "native_v3_policy_and_proof_source_observed": true,
+      "production_enabled": false
+    },
+    "site": {
+      "source_sha": "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6",
+      "staged_build_id": "u842UVpDjLRLz-paxPv2U",
+      "deployment_owner": "Central Command",
+      "do_not_touch": true
+    }
+  },
+  "execution_flags": {
+    "new_epoch_mainnet_enabled": false,
+    "epoch_v3_execution_enabled": false,
+    "durable_writer_installed": false,
+    "legacy_8092_fallback_permitted": false,
+    "automatic_rebroadcast_permitted": false
+  },
+  "required_proof_domains": [
+    {
+      "id": "executor",
+      "owner": "Codex/Wolo",
+      "state": "PARTIAL_NATIVE_SOURCE_ONLY_SIGNER_ABSENT",
+      "requirement": "Native new-epoch escrow signer, return+fee executor and tested v3 private wire; separate keyring, journal and nonce from 8092/8093"
+    },
+    {
+      "id": "new_native_read_port",
+      "owner": "Codex/Wolo + HD Finance",
+      "state": "NOT_IMPLEMENTED_ON_WOLO",
+      "requirement": "Dedicated new-escrow v3 GET-only operation and bank observations on separately reviewed private loopback port (candidate 8095, not deployed); independent Comet/ICS23 verifier must authenticate chain effects, never rely on HTTP sender text"
+    },
+    {
+      "id": "hd_go_request_message",
+      "owner": "HD Finance + Codex/Wolo",
+      "state": "HELD_SOURCE_CANDIDATE",
+      "requirement": "HD canonical Go epochescrow.RequestMessage order and Fingerprint from Wolo #115; independently test bytes with Codex exported Go fixture; owner secp256k1 and reviewer Ed25519 remain unsigned and unprovided"
+    },
+    {
+      "id": "split_ticket_cross_source_contract",
+      "owner": "Codex/Wolo + HD Finance",
+      "state": "BLOCKED_NATIVE_115",
+      "requirement": "Wolo PR#115 VerifyPreparation funding proof map length equals wager count, distinct one proof per wager; a ticket with several market legs sharing one physical original MsgSend cannot currently pass, require conserved ticket-level partition and source proof uniqueness before Wolo/HD v3 admission"
+    },
+    {
+      "id": "ticket_multileg_funding",
+      "owner": "HD Finance+Codex/Wolo",
+      "state": "SOURCE_REVIEW_ONLY",
+      "requirement": "One authenticated MsgSend funds one owner ticket, multiple market-leg allocations sum exactly once to original total, one physical consumption per ticket, independent entitlement refs per leg; SERIALIZABLE global uniqueness still missing"
+    },
+    {
+      "id": "custody",
+      "owner": "Owner/HEL1",
+      "state": "UNKNOWN",
+      "requirement": "Signed derivation of both Bech32 addresses from native public keys, process principal/keyring OS ACL and exclusion of all old direct/external signers"
+    },
+    {
+      "id": "solvency",
+      "owner": "Codex/Wolo+HD/DE Finance",
+      "state": "UNKNOWN",
+      "requirement": "Trusted independently pinned Comet H/H+1 and native ICS23 bank proof for both accounts; separate balance >= exact provable liabilities + finite max possible/unknown + gas + floor + debit"
+    },
+    {
+      "id": "finance",
+      "owner": "HD/DE Finance",
+      "state": "UNKNOWN",
+      "requirement": "HD+DE full unfiltered SELECT-only census, grouped physical settlement evidence, deduplicated legacy overlapping references, strict segregated new epoch ownership"
+    },
+    {
+      "id": "writer_fence",
+      "owner": "Owner/Session C",
+      "state": "UNKNOWN",
+      "requirement": "18 specified units plus cron, containers, user services, direct CLI and outside grants, all excluded from new vault/escrow"
+    },
+    {
+      "id": "owner_permit",
+      "owner": "Owner+Central Command",
+      "state": "ABSENT",
+      "requirement": "Real person transaction-scoped signed permit with expiry, source/epoch/value/recipient and offhost globally durable monotonic nonce; no fictional human quorum"
+    },
+    {
+      "id": "db_schema",
+      "owner": "HD Finance",
+      "state": "NOT_IMPLEMENTED",
+      "requirement": "Held reviewed schema for epoch/wallet custody registry; immutable deposit, funded owner liability, CAS attempt journal, entitlement, settlement fee and unique cross-consumer chain_id+tx_hash+message_index; no migrations yet"
+    },
+    {
+      "id": "database_roles",
+      "owner": "HD Finance",
+      "state": "UNKNOWN",
+      "requirement": "PostgreSQL finance owner NOLOGIN and constrained transaction writer; SELECT-only evidence readers; separate HD/DE history, no inherited app/superuser"
+    },
+    {
+      "id": "backup_restore",
+      "owner": "Central Command+Codex",
+      "state": "UNKNOWN",
+      "requirement": "Quiesced 18-unit+external source fence, complete HD+DE restoration, signed maintenance ledger and rollback to certified prior version"
+    },
+    {
+      "id": "native_tests",
+      "owner": "Codex/Wolo",
+      "state": "MISSING",
+      "requirement": "Cosmos SDK/CometBFT native signer, ICS23, H/H+1, crash between pre-sign and WAL append, no-replay and escrow role/exclusion adversarial suite"
+    },
+    {
+      "id": "hd_pg_tests",
+      "owner": "HD Finance",
+      "state": "NOT_IMPLEMENTED",
+      "requirement": "Isolated Postgres concurrent reserve/deposit/return/withdrawal duplicate race tests, 10k each and 50k daily limits, unique physical row and safe rollback"
+    }
+  ],
+  "liability_source_classification": {
+    "classes": [
+      "PROVEN_UNPAID",
+      "POSSIBLE_UNPAID_BOUNDED",
+      "CHAIN_SETTLED_VERIFIED",
+      "HISTORIC_UNRESOLVED_UNBOUNDED"
+    ],
+    "rules": [
+      "Never sum grouped reused payout hashes as independent chain physical payments",
+      "Deduplicate economic entitlements by original operation and physical (chain,txhash,message_index)",
+      "Keep 889 founder, 8477 refund, accepted 100 WOLO and 61 reused hashes/137 refs quarantined without inventing finality",
+      "Do not net old escrow, DE or unrelated legacy balances into fresh escrow and vault; if old signer can access new account, fail writer exclusion"
+    ]
+  },
+  "release_decision": {
+    "source_tests": "CANDIDATE_CI_PENDING",
+    "native_chain_tests": "NOT_RUN_ON_REAL_EXECUTOR",
+    "native_custody_verified": false,
+    "real_money_permitted": false,
+    "hold_conditions": [
+      "any unknown legacy access to new account",
+      "insufficient either account's bank balance",
+      "policy/source drift",
+      "missing native bank proof",
+      "unresolved operation after signer fence",
+      "missing owner permit",
+      "stale H/H+1 or divergent trust root",
+      "missing full restore proof"
+    ],
+    "arbitration": "Central Command #934 only after independent owner release authority; no automatic merge, migration, restart or canary",
+    "hd_v3_read_port": {
+      "candidate_loopback": "http://127.0.0.1:8095",
+      "native_endpoint_observed": false,
+      "http_200_is_bank_authentication": false,
+      "legacy_8092_fallback": false
+    },
+    "native_wolo_115_tests": "SOURCE_CI_PENDING_NO_EXECUTOR_AND_NO_LIVE_PROOF",
+    "cross_language_test_vector": "NOT_YET_EXPORTED_BY_CODEX"
+  }
+}
