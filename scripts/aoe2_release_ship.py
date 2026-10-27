@@ -1151,12 +1151,6 @@ test -n "$candidate_dependency_identity"
 
 candidate_content_sha="$(content_hash .next-release)"
 test -n "$candidate_content_sha"
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
 
 if [ "$MODE" = "DRY_RUN" ]; then
   printf 'status\\tPREPARED\\n'
@@ -1475,126 +1469,24 @@ test ! -e "$ROLLBACK/next/cache"
 test "$(cat "$ROLLBACK/source-sha")" = "$PREVIOUS"
 test "$(cat "$ROLLBACK/build-version")" = "$LIVE_VERSION"
 
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
 critical_get http://127.0.0.1:3030/api/deployment-version
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
 critical_get "$PUBLIC/api/deployment-version"
 
 # ------------------------------------------------------------
-# POST-ACTIVATION PERFORMANCE PREWARM
+# RELEASE OBSERVATIONS ARE IDENTITY-ONLY.
 #
-# Statistics has a deliberately expensive first computation and
-# a process-local SWR cache thereafter. Pay the cold calculation
-# here while rollback remains armed so a human visitor does not
-# become the first caller after a successful activation.
-#
-# This is performance evidence, not a release-critical truth
-# route, so warmup failure is recorded but does not independently
-# roll back an otherwise healthy release.
+# Public GET routes may queue bet-market reconciliation, write databases,
+# or submit settlement operations. No dynamic route/leaderboard/statistics/
+# Workshop prewarm may be part of a protected release or its rollback.
+# Performance prewarm belongs to a separately authorized, post-certification
+# task with an independently reviewed read-only route contract.
 # ------------------------------------------------------------
-STATISTICS_PREWARM="FAIL"
+STATISTICS_PREWARM="DEFERRED_IDENTITY_ONLY"
 STATISTICS_WARM_SECONDS=""
-
-if curl -fsS \
-  --connect-timeout 3 \
-  --max-time 20 \
-  -o /dev/null \
-  http://127.0.0.1:3030/api/statistics
-then
-  STATISTICS_WARM_SECONDS="$(
-    curl -fsS \
-      --connect-timeout 3 \
-      --max-time 12 \
-      -o /dev/null \
-      -w '%{{time_total}}' \
-      http://127.0.0.1:3030/api/statistics \
-      || true
-  )"
-
-  if [ -n "$STATISTICS_WARM_SECONDS" ]; then
-    STATISTICS_PREWARM="PASS"
-  fi
-fi
-
-LEADERBOARD_PREWARM="PASS"
+LEADERBOARD_PREWARM="DEFERRED_IDENTITY_ONLY"
 LEADERBOARD_WARM_SECONDS=""
-
-for spec in \
-  "rm all" \
-  "rm claimed" \
-  "dm all" \
-  "dm claimed"
-do
-  set -- $spec
-  lane="$1"
-  scope="$2"
-
-  leaderboard_url="http://127.0.0.1:3030/api/lobby/leaderboard?lane=$lane&scope=$scope&offset=0&limit=50"
-
-  if ! curl -fsS \
-    --connect-timeout 3 \
-    --max-time 20 \
-    -o /dev/null \
-    "$leaderboard_url"
-  then
-    LEADERBOARD_PREWARM="FAIL"
-    continue
-  fi
-
-  warm_seconds="$(
-    curl -fsS \
-      --connect-timeout 3 \
-      --max-time 12 \
-      -o /dev/null \
-      -w '%{{time_total}}' \
-      "$leaderboard_url" \
-      || true
-  )"
-
-  if [ -z "$warm_seconds" ]; then
-    LEADERBOARD_PREWARM="FAIL"
-    continue
-  fi
-
-  if [ -n "$LEADERBOARD_WARM_SECONDS" ]; then
-    LEADERBOARD_WARM_SECONDS="$LEADERBOARD_WARM_SECONDS,"
-  fi
-
-  LEADERBOARD_WARM_SECONDS="$LEADERBOARD_WARM_SECONDS$lane:$scope:$warm_seconds"
-done
-
-# Workshop carries a deliberately rich public diagnostics projection. The
-# first process-local request can pay the parser-observatory cache fill, so
-# warm it while rollback is still armed instead of making a human visitor the
-# first caller after activation. Like Statistics, this is non-critical
-# performance evidence and never weakens release health gates.
-WORKSHOP_PREWARM="FAIL"
+WORKSHOP_PREWARM="DEFERRED_IDENTITY_ONLY"
 WORKSHOP_WARM_SECONDS=""
-
-if curl -fsS \
-  --connect-timeout 3 \
-  --max-time 25 \
-  -o /dev/null \
-  http://127.0.0.1:3030/workshop
-then
-  WORKSHOP_WARM_SECONDS="$(
-    curl -fsS \
-      --connect-timeout 3 \
-      --max-time 12 \
-      -o /dev/null \
-      -w '%{{time_total}}' \
-      http://127.0.0.1:3030/workshop \
-      || true
-  )"
-
-  if [ -n "$WORKSHOP_WARM_SECONDS" ]; then
-    WORKSHOP_PREWARM="PASS"
-  fi
-fi
 
 # ------------------------------------------------------------
 # BOUNDED POST-ACTIVATION HEALTH SOAK
@@ -1628,13 +1520,7 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   test "$soak_wolo8092" = "$before_wolo8092"
   test "$soak_wolo8093" = "$before_wolo8093"
 
-  critical_get http://127.0.0.1:3030/
-  critical_get http://127.0.0.1:3030/api/lobby
-  critical_get http://127.0.0.1:3030/api/bets
   critical_get http://127.0.0.1:3030/api/deployment-version
-  critical_get "$PUBLIC/"
-  critical_get "$PUBLIC/api/lobby"
-  critical_get "$PUBLIC/api/bets"
   critical_get "$PUBLIC/api/deployment-version"
 
   SOAK_SAMPLES=$((SOAK_SAMPLES + 1))
