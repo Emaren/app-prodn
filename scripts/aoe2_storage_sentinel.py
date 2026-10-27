@@ -201,10 +201,10 @@ def ack(db,ident,actor,t=None):
    db.execute("UPDATE events SET ack_at=?,ack_actor=? WHERE id=?",(stamp(t),actor,ident))
    _,plane,rule,seq,receipt=item
    delivery_id=ident+":ack:"+str(seq)
-   message=(f"STORAGE SENTINEL ACK [{ident[:16]}]\\n"
-      f"{plane}: {rule} acknowledged by enrolled operator.\\n"
-      f"Signed sequence {seq} · receipt {receipt[:16]}\\n"
-      f"ACK is awareness, NOT repair or deletion permission.\\n{HREF}")
+   message=(f"STORAGE SENTINEL ACK [{ident[:16]}]\n"
+      f"{plane}: {rule} acknowledged by enrolled operator.\n"
+      f"Signed sequence {seq} · receipt {receipt[:16]}\n"
+      f"ACK is awareness, NOT repair or deletion permission.\n{HREF}")
    db.execute("INSERT OR IGNORE INTO outbox (id,event_id,body,status) VALUES (?,?,?,'pending')",
        (delivery_id,ident,message))
   db.execute("COMMIT")
