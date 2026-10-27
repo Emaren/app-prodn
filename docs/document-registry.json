@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fd19dba52a3c70713c5eef3c8ab514b5abe413364097675ad85b8d231924c384",
+      "sha256": "cdc09ea3e07a590b29e1e496440a78adb7e56b967881b423590950f954ea8389",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "release/phase11-website-atlas-finance-safe",
-    "commit": "2c987a725559f17d30c4a8901451224f2466aa34"
+    "commit": "465976d53bc7462a881a3b4ccee48801c2d6e194"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
