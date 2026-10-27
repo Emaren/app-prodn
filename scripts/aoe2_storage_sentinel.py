@@ -87,13 +87,14 @@ def emit(db,plane,rule,band,severity,observed,coverage,source,seq,receipt,t):
   if previous[0]==0:
    # Distinct recurrence of a previously resolved/acknowledged condition.
    # Reopen under same stable identity but allocate a new bounded delivery.
-   db.execute("UPDATE events SET active=1,ack_at=NULL,ack_actor=NULL,last_seen=?,observed=?,seq=?,receipt=? WHERE id=?",
-              (stamp(t),observed,seq,receipt,ident))
+   db.execute("UPDATE events SET active=1,ack_at=NULL,ack_actor=NULL,last_seen=?,observed=?,seq=?,receipt=?,body=? WHERE id=?",
+              (stamp(t),observed,seq,receipt,msg,ident))
    recurrence=ident+":reopen:"+str(seq)
    db.execute("INSERT OR IGNORE INTO outbox (id,event_id,body,status) VALUES (?,?,?,'pending')",
               (recurrence,ident,msg+"\nRecurring after recorded recovery."))
   else:
-   db.execute("UPDATE events SET active=1,last_seen=? WHERE id=?",(stamp(t),ident))
+   db.execute("UPDATE events SET active=1,last_seen=?,observed=?,seq=?,receipt=?,body=? WHERE id=?",
+              (stamp(t),observed,seq,receipt,msg,ident))
  else:
   db.execute("INSERT INTO events VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,NULL)",
     (ident,plane,rule,band,severity,reason,msg,observed,coverage,source,seq,receipt,1,stamp(t),stamp(t)))
