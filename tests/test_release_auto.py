@@ -493,7 +493,7 @@ class AutoShipTests(unittest.TestCase):
             if args and args[0] == "curl"
         ]
 
-        self.assertEqual(len(public_calls), 4)
+        self.assertEqual(len(public_calls), 1)
 
         for args in public_calls:
             self.assertIn("-fsS", args)
@@ -504,6 +504,13 @@ class AutoShipTests(unittest.TestCase):
         self.assertTrue(
             any(args[0] == "ssh" for args in calls)
         )
+        # Release readiness must never enqueue market/settlement writers.
+        self.assertTrue(public_calls[0][-1].endswith("/api/deployment-version"))
+        remote_calls = [args for args in calls if args and args[0] == "ssh"]
+        self.assertEqual(len(remote_calls), 1)
+        self.assertIn("for p in /api/deployment-version; do", remote_calls[0][-1])
+        self.assertNotIn("/api/bets", remote_calls[0][-1])
+        self.assertNotIn("/api/lobby", remote_calls[0][-1])
 
     def test_route_proof_fails_closed_on_public_curl_failure(self):
         failed = subprocess.CompletedProcess(
@@ -655,7 +662,7 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
         )
         self.assertIn('original-stage-status.txt', script)
         self.assertIn('RETIREMENT_SHA256', script)
-        self.assertIn('http://127.0.0.1:3030/api/bets', script)
+        self.assertIn('http://127.0.0.1:3030/api/deployment-version', script)
         self.assertIn(':8092', script)
         self.assertIn(':8093', script)
 
