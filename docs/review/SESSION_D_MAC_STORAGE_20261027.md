@@ -356,6 +356,15 @@ Current `df -k /System/Volumes/Data`: total 482,797,652 KiB, used **431,013,652 
 
 **HOLD** actual Watcher alias transaction, signed downloads URLs, protected Codex/wallet/recordings/financial/system swap, APFS snapshot cleanup, source worktree retirement and automatic process shutdown. Disposable APFS clone+differing-mtime rollback test remains PASS, owner transaction authority still absent.
 
+
+## Phase 10 verified pyenv 3.13.5, memory pressure 51% free and declining swap (owner terminal, 2026-10-27)
+
+Mac owner ran read-only `/usr/bin/memory_pressure -Q`, `python --version`, `pyenv version`, `sysctl vm.swapusage` and `/bin/df -k /System/Volumes/Data`. **System-wide memory free percentage 51%** (16 GiB installed, 16 KiB pages). This isolated reading does not establish acute memory pressure. **Actual Python `3.13.5`**, `/Users/tonyblum/.pyenv/shims/python`; `pyenv version=3.13.5` selected by `app-prodn/.python-version`. The prompt's intermittent `3.14.7` display/Starship Python-shim timeout did **not** reflect verified selected interpreter drift. Python environment HOLD **CLOSED** without changing toolchains.
+
+Swap `total=5120.00M`, `used=3760.19M`, `free=1359.81M`, encrypted. Swap used **−112 MiB** from immediately previous 3872.19M and −152 MiB from older 3912.19M. Swap use change does not establish current VM volume physical allocated shrinkage; a fresh diskutil after this sample was not provided. Data `df` `Used=431019720`, `Available=8300728 KiB ≈ 7.9162 GiB`, displayed 99%, used +6068 KiB and available −6068 KiB (~5.926 MiB) from prior direct `df`. Larger historic capacity fluctuations remain only partially localized to VM growth between two earlier container samples, not to individual Chrome processes.
+
+**Current gates:** `PASS_PROJECT_PYTHON_3_13_5`, `PASS_MEMORY_PRESSURE_SNAPSHOT_51PCT_FREE`, `PASS_SWAP_USAGE_DECLINING`, `HOLD_PAST_VM_PROCESS_CAUSALITY`, `HOLD_WATCHER_REAL_ALIAS_AUTHORIZATION`. No Chrome/Codex process terminated, signed installer file or historical URL changed, APFS snapshots/VM files touched, or storage deletion executed. **Phase10 recovered 0 B**. Move to exact **read-only** worktree `.next` BUILD_ID/rollback consumer qualification, protected source/adjacent release-state preservation and existing Storage/Workspace OS previews. Detailed [Phase10 plan and Storage Atlas](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
