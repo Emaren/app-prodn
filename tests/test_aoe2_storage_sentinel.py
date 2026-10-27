@@ -84,7 +84,7 @@ class TestSentinel(unittest.TestCase):
  def test_cleared_then_recurrent_condition_reopens_after_ack(self):
   with self.fake():s.receive(self.db,self.keys,{},NOW)
   ident=self.db.execute("SELECT id FROM events WHERE plane='mac' AND rule='storage_pressure'").fetchone()[0]
-  s.ack(self.db,ident,"operator",NOW)
+  s.ack(self.db,ident,"test-operator",NOW)
   resolved=receipt(2,obs="2026-10-27T20:00:30Z",coverage="complete")
   for p in resolved["planes"]:
    p["backup_status"]="ok";p["expired_generations"]=0;p["reviewed_generations"]=0
@@ -99,10 +99,35 @@ class TestSentinel(unittest.TestCase):
   active,acked=self.db.execute("SELECT active,ack_at FROM events WHERE id=?",(ident,)).fetchone()
   self.assertEqual(active,1);self.assertIsNone(acked)
   self.assertEqual(self.db.execute("SELECT count(*) FROM outbox WHERE id LIKE ?",(ident+":reopen:%",)).fetchone()[0],1)
+ def test_watch_to_critical_creates_one_new_escalation(self):
+  moderate=receipt()
+  moderate["planes"][0]["capacity"]["ordinary_free_bytes"]=12*s.GIB
+  with patch.object(s.subprocess,"run",return_value=SimpleNamespace(
+    returncode=0,stdout=json.dumps(moderate),stderr="")):
+   s.receive(self.db,self.keys,{},NOW)
+  first=self.db.execute("SELECT id,severity FROM events WHERE plane='mac' AND rule='storage_pressure' AND active=1").fetchone()
+  self.assertEqual(first[1],"WATCH")
+  with self.fake(2,obs="2026-10-27T20:00:30Z"):
+   s.receive(self.db,self.keys,{},NOW+dt.timedelta(seconds=90))
+  active=self.db.execute("SELECT id,severity FROM events WHERE plane='mac' AND rule='storage_pressure' AND active=1").fetchone()
+  self.assertEqual(active[1],"CRITICAL")
+  self.assertNotEqual(first[0],active[0])
+  self.assertEqual(self.db.execute("SELECT count(*) FROM outbox WHERE event_id=?",(active[0],)).fetchone()[0],1)
+ def test_ack_requires_enrolled_operator_and_queues_one_private_confirmation(self):
+  with self.fake():s.receive(self.db,self.keys,{},NOW)
+  ident=self.db.execute("SELECT id FROM events WHERE plane='mac' AND rule='storage_pressure'").fetchone()[0]
+  with self.assertRaises(s.Hold):s.ack(self.db,ident,"unapproved-operator",NOW)
+  self.assertIsNone(self.db.execute("SELECT ack_at FROM events WHERE id=?",(ident,)).fetchone()[0])
+  s.ack(self.db,ident,"test-operator",NOW)
+  s.ack(self.db,ident,"test-operator",NOW)
+  rows=self.db.execute("SELECT id,body FROM outbox WHERE id LIKE ?",(ident+":ack:%",)).fetchall()
+  self.assertEqual(len(rows),1)
+  self.assertIn("STORAGE SENTINEL ACK",rows[0][1])
+  self.assertIn("ACK is awareness, NOT repair",rows[0][1])
  def test_ack_and_crash_safe_retry(self):
   with self.fake():s.receive(self.db,self.keys,{},NOW)
   ident=self.db.execute("SELECT id FROM events LIMIT 1").fetchone()[0]
-  s.ack(self.db,ident,"operator-reviewed",NOW)
+  s.ack(self.db,ident,"test-operator",NOW)
   self.assertIsNotNone(self.db.execute("SELECT ack_at FROM events WHERE id=?",(ident,)).fetchone()[0])
   with patch.object(s.subprocess,"run",return_value=SimpleNamespace(returncode=2,stdout="",stderr="down")):
    with patch.object(s,"now",return_value=NOW):s.deliver(self.db,1)
