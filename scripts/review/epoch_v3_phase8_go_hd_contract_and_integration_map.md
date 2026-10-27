@@ -1,6 +1,6 @@
 ---
 id: "aoe2war.app-prodn.epoch-v3-go-hd-integration-map"
-title: "Held Epoch V3 Native Wolo to PostgreSQL Source Integration Map"
+title: "Epoch-v3 native financial interface / canonical production integration map"
 type: "reference"
 status: "draft"
 owner: "aoe2war-web"
