@@ -50,13 +50,22 @@ Official references: Apple XNU [clonefile(2)](https://github.com/apple-oss-distr
 
 [Fixture-only Python probe](fixtures/session_d_apfs_clone_fixture.py) creates `canonical.AppImage` and `legacy-alias.AppImage` **only inside an automatically created private macOS TMPDIR directory** on the **same APFS st_dev as actual Watcher `dist`**, checks source contents, metadata and separate inodes, calls Darwin `clonefile(2)` directly (zero fallback), writes a different byte to a separate clone to prove COW isolation, builds a dummy website `public/downloads` symlink, stages a cloned candidate, temporarily hardlinks the original alias to a private fixture backup, atomic-replaces and verifies URL/hash/regular-file/metadata continuity, and **rolls back the exact original fixture inode** with `os.replace`. The temp directory is removed afterward. It **does not accept a real Watcher target argument** and never writes anything in `dist`.
 
-Run on the **actual Mac** using the isolated review-branch script after inspecting its source and exact SHA; command does not set interactive shell `errexit`:
+On the **actual Mac**, fetch the fixture directly from the **immutable review commit** and verify the exact Git blob digest **before execution**. The command does **not** change interactive shell exit settings, and the Python fixture cannot be pointed at an actual Watcher file:
 ```bash
-cd "$HOME/projects/AoE2HDBets/app-prodn"
-git show review/session-d-mac-storage-20261027:docs/review/fixtures/session_d_apfs_clone_fixture.py > "$HOME/Downloads/aoe2war-phase10-fixture.py"
-python3 "$HOME/Downloads/aoe2war-phase10-fixture.py"
+FIXTURE="$(mktemp -t aoe2war-phase10-fixture)"
+URL="https://raw.githubusercontent.com/Emaren/app-prodn/ec2181841243d31ae9d788555ad967ad2f678d0e/docs/review/fixtures/session_d_apfs_clone_fixture.py"
+EXPECTED_BLOB="d1272bfe0647285c2e1d25497c9c339902714bfc"
+if [ -n "$FIXTURE" ] &&
+   curl -fL --max-time 45 --output "$FIXTURE" "$URL" &&
+   [ "$(git hash-object "$FIXTURE")" = "$EXPECTED_BLOB" ] &&
+   python3 -m py_compile "$FIXTURE"; then
+  echo "PASS: IMMUTABLE_FIXTURE_SOURCE_VERIFIED"
+  python3 "$FIXTURE"
+else
+  echo "HOLD: FIXTURE_FETCH_HASH_OR_PYTHON_SYNTAX_FAILED"
+fi
 ```
-The `git show` command requires the review branch ref to be present locally; a branch in GitHub does not automatically exist on the Mac. If absent, **HOLD** and retrieve/read the reviewed file from PR #942; do not download/run unverified substitute code. A positive `PASS_APFS_FIXTURE_ONLY` JSON from the Mac is required before considering the real-file trial. Source review or Linux execution is **NOT** this proof. A successful fixture is not real-file authorization.
+A positive `PASS_APFS_FIXTURE_ONLY` JSON from the Mac is required before considering the real-file trial. Source review or Linux execution is **NOT** this proof. Keep the returned JSON as a time-stamped Mac receipt; no filesystem cleanup is authorized by fixture success. A successful fixture is not real-file authorization.
 
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
