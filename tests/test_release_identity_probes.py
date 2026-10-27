@@ -54,6 +54,19 @@ class ReleaseIdentityOnlyContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, source)
 
+    def test_release_receipts_must_not_claim_dynamic_route_proof(self):
+        source = (ROOT / CONTROLLERS[0]).read_text(encoding="utf-8")
+        self.assertIn(
+            "INFRASTRUCTURE_exact_runtime_identity_and_identity_only_bounded_health_soak",
+            source,
+        )
+        self.assertIn(
+            "internal/public deployment-version probes",
+            source,
+        )
+        self.assertNotIn("critical_routes_and_bounded_health_soak", source)
+        self.assertNotIn("internal/public critical-route proof", source)
+
     def test_activation_source_marks_dynamic_prewarm_deferred(self):
         source = (ROOT / CONTROLLERS[0]).read_text(encoding="utf-8")
         for metric in ("STATISTICS", "LEADERBOARD", "WORKSHOP"):
