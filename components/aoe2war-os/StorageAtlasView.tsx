@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {readAuthenticatedStorageAtlas} from "@/lib/aoe2StorageAtlasServer";
+import {readStorageSentinelSummary} from "@/lib/aoe2StorageSentinelServer";
 import {
   Activity, ArrowUpRight, Clock3, Database, FolderSearch,
   HardDrive, Laptop, LockKeyhole, Server, ShieldCheck, Wrench,
@@ -83,6 +84,7 @@ const operations = [
 
 export default async function StorageAtlasView() {
   const telemetry = await readAuthenticatedStorageAtlas();
+  const sentinel = telemetry ? await readStorageSentinelSummary() : null;
   const authenticated = telemetry?.snapshot.planes ?? [];
   const titles = ["Development Mac", "HEL1 Root", "HEL1 Evidence Volume"] as const;
   const displayGiB = (n:number|null)=>n===null?"UNAVAILABLE":(n/(1024**3)).toFixed(2)+" GiB";
@@ -144,6 +146,24 @@ export default async function StorageAtlasView() {
               </article>)}
             </div>
           </div>}
+        </section>
+
+        <section className="mt-8 rounded-3xl border border-amber-200/20 bg-amber-200/[.035] p-6" aria-label="Storage Sentinel status">
+          <h2 className="text-xl font-bold text-white">Storage Sentinel · operator advisory</h2>
+          <p className="mt-2 text-sm text-slate-300">No public command or acknowledgement controls. These are redacted historical event summaries, not a live scan, signing authority or cleanup permit.</p>
+          {!sentinel ? <p className="mt-4 text-amber-200" role="status">SENTINEL NOT INSTALLED · UNKNOWN / HOLD</p> :
+            <div className="mt-4">
+              <p className="text-xs text-amber-200">Admission: HOLD · Live: NO · Last signed receipt ingestion: {sentinel.last_ingested_at ?? "UNKNOWN"}</p>
+              {sentinel.unresolved.length === 0 ?
+                <p className="mt-3 text-sm text-slate-300">No reported unresolved events. This does not prove all three hosts healthy.</p> :
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {sentinel.unresolved.map((e,i)=><article key={e.plane+e.rule+i} className="rounded-xl border border-white/10 p-4">
+                    <p className="text-xs font-semibold text-amber-200">{e.severity} · {e.plane} · {e.rule}</p>
+                    <p className="mt-1 text-sm text-slate-200">{e.reason.replaceAll("_"," ")} · {e.coverage.toUpperCase()}</p>
+                    <p className="mt-1 text-xs text-slate-400">Observed {e.observed_at} · {e.age_seconds}s old · Operator review required</p>
+                  </article>)}
+                </div>}
+            </div>}
         </section>
 
         <section className="mt-12" aria-labelledby="drive-heading">
