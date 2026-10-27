@@ -23,11 +23,11 @@ export default function KingdomSystemsPage() {
       <nav aria-label="Kingdom Systems instruments" className="border-b border-white/10 bg-[#07101b] px-4 py-8 text-white sm:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.22em] text-cyan-200/80">
-            <Activity className="h-4 w-4" /> The Kingdom's operating systems
+            <Activity className="h-4 w-4" /> The Kingdom&apos;s operating systems
           </div>
           <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Kingdom Systems</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-            One gateway for the Kingdom's tests, sensors, recovery and storage intelligence.
+            One gateway for the Kingdom&apos;s tests, sensors, recovery and storage intelligence.
             These instruments remain reachable without crowding the castle menu.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
