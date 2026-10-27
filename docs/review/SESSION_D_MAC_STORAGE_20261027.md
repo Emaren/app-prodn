@@ -415,6 +415,22 @@ All three subtree paths existed as directories and were not symlinks at the root
 
 **Next read-only gate:** resolve *only* the three federation-validation symlink target **types and relationships** (whether the link points at this exact `.next` or protected subtrees, within/outside attached worktree, exists/missing); expose no secret receipt payloads or potentially sensitive absolute target paths. Separately record `.next` BUILD_ID equality as a boolean in known release-state references, not arbitrary grep output. Review release authority (production build, rollback and campaign controller) via canonical read-only Storage/Workspace OS commands and require separate explicit per-path owner approval before a reversible bounded action. Do **not** recursively follow the symlinks or use destructive cleanup.
 
+
+## Historical docs .next: federation symlink target relation and bounded build references — scoped PASS (owner Mac 2026-10-27)
+
+Owner ran a **read-only** Python symlink relation and release-file byte-scan against only the previously identified three protected `.aoe2war-release` subtrees in worktree `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015`. Actual symlink names/destinations and receipt bodies were NOT printed or modified.
+
+- `federation-validation` has precisely **three** symbolic links; `Path.resolve(strict=False)` determined: **2 `OUTSIDE_WORKTREE`**, **1 `SAME_WORKTREE`**, **0 `POINTS_INTO_NEXT`**, **0 `WITHIN_PROTECTED_RELEASE`**, **0 `HOLD_UNRESOLVED`**. All three reported `target_exists=true`. `SAME_WORKTREE` here means within the attached worktree but **outside the candidate `.next` and `.aoe2war-release`** due to classification ordering. `OUTSIDE_WORKTREE` does not establish whether targets are external source worktrees, mounted evidence, other runtime authority or financial paths: exact target types/roles remain uninspected and protected.
+- The candidate `.next/BUILD_ID` was readable and nonempty per probe (no `HOLD_BUILD_ID_UNREADABLE` printed); previous SHA-256 **of the BUILD_ID file**, not the build tree, remains `3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`.
+- `recovery-campaigns`: `files_scanned=1`, `files_skipped=0`, `build_id_matches=0`, `next_mentions=0`.
+- `storage-handoffs`: `files_scanned=1`, `files_skipped=0`, `build_id_matches=0`, `next_mentions=0`.
+- The scan was limited to regular, non-symlink files at most **1 MiB** in these two subtrees; it found **one inspected file per subtree**, no skipped files, no exact build-ID byte sequence and no `b".next"` literal sequence. This does **not** search arbitrary release/manifests, Git source, external symlink target contents, differently encoded references or active production authority. No whole-build hash, owner approval or future-consumer proof is established.
+- From earlier separate samples, `.next` is **1,328,688 KiB (~1.267 GiB)**, worktree HEAD `99c406f57d759b672fd9fe91d3c3355c4d527705`, Git clean/attached at branch `fix/update-independent-docs-context-20261015`, `lsof` CWD and observable open-FD match counts both zero **at their observation moments only**.
+
+**Scoped decision:** `PASS_THREE_SYMLINK_RESOLUTION_EXISTS` / `PASS_ZERO_LINKS_INTO_CANDIDATE_NEXT` / `PASS_TWO_BOUNDED_RECEIPTS_NO_LITERAL_BUILD_REFERENCES` / **`HOLD_EXTERNAL_SYMLINK_OWNER_AND_RELEASE_CONTROLLER_DEPENDENCIES`** / `HOLD_NEXT_DELETE_AUTHORITY`. The existing `.aoe2war-release` subtrees and symlinks remain **protected even when `du -sk=0` KiB**; zero reference counts do NOT authorize removal. Qualified recoverable 0 B, actual new recovered 0 B.
+
+**Next safe gate:** classify only the three resolved links' *target kinds and broad root relationships* without disclosing target strings or following files; verify the **actual release-controller** (stage, current/rollback build) does not consume this specific `.next/BUILD_ID` by a documented and non-sensitive read-only status workflow. Review `.aoe2war-release` campaign metadata **without exposing or modifying payloads**. No `rm`, `git worktree prune`, symlink unlink, blanket cache purge, or Watcher artifact changes. Any release authority ambiguity stays HOLD.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
