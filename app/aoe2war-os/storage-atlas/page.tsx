@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Activity, Archive, ArrowUpRight, Clock3, Database, FolderSearch,
+  Activity, ArrowUpRight, Clock3, Database, FolderSearch,
   HardDrive, Laptop, LockKeyhole, Server, ShieldCheck, Wrench,
 } from "lucide-react";
 
