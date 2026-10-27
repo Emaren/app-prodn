@@ -11,7 +11,8 @@
         "lib/warSatchelEpochV3ReleaseGate.ts",
         "lib/warSatchelEpochV3Durability.ts",
         "lib/warSatchelEpochV3NativeObserver.ts",
-        "lib/warSatchelEpochV3TicketFunding.ts"
+        "lib/warSatchelEpochV3TicketFunding.ts",
+        "lib/warSatchelEpochV3GoWire.ts"
       ],
       "production_mounted": false
     },
@@ -20,7 +21,18 @@
       "held_pr": 111,
       "observed_sha": "e547f24446be1318060c8f48123786f396c4e841",
       "v3_new_escrow_executor_observed": false,
-      "old_8092_return_dependency": "internal/satchelservice/returns.go: PrepareReturnRun returns legacy /settlement/v1/runs"
+      "old_8092_return_dependency": "internal/satchelservice/returns.go: PrepareReturnRun returns legacy /settlement/v1/runs",
+      "held_epoch_escrow_pr": 115,
+      "epoch_v3_source_head": "dd45bc95579ed9468e25144c33f4120a08fe3c89",
+      "epoch_v3_held_source": {
+        "policy": "internal/epochescrow/policy.go",
+        "native": "internal/epochescrow/evidence.go",
+        "journal": "internal/epochescrow/journal.go",
+        "economics": "internal/epochescrow/economics.go",
+        "daemon": "cmd/woloescrowd/main.go"
+      },
+      "native_v3_policy_and_proof_source_observed": true,
+      "production_enabled": false
     },
     "site": {
       "source_sha": "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6",
@@ -40,7 +52,7 @@
     {
       "id": "executor",
       "owner": "Codex/Wolo",
-      "state": "MISSING",
+      "state": "PARTIAL_NATIVE_SOURCE_ONLY_SIGNER_ABSENT",
       "requirement": "Native new-epoch escrow signer, return+fee executor and tested v3 private wire; separate keyring, journal and nonce from 8092/8093"
     },
     {
@@ -48,6 +60,18 @@
       "owner": "Codex/Wolo + HD Finance",
       "state": "NOT_IMPLEMENTED_ON_WOLO",
       "requirement": "Dedicated new-escrow v3 GET-only operation and bank observations on separately reviewed private loopback port (candidate 8095, not deployed); independent Comet/ICS23 verifier must authenticate chain effects, never rely on HTTP sender text"
+    },
+    {
+      "id": "hd_go_request_message",
+      "owner": "HD Finance + Codex/Wolo",
+      "state": "HELD_SOURCE_CANDIDATE",
+      "requirement": "HD canonical Go epochescrow.RequestMessage order and Fingerprint from Wolo #115; independently test bytes with Codex exported Go fixture; owner secp256k1 and reviewer Ed25519 remain unsigned and unprovided"
+    },
+    {
+      "id": "split_ticket_cross_source_contract",
+      "owner": "Codex/Wolo + HD Finance",
+      "state": "BLOCKED_NATIVE_115",
+      "requirement": "Wolo PR#115 VerifyPreparation funding proof map length equals wager count, distinct one proof per wager; a ticket with several market legs sharing one physical original MsgSend cannot currently pass, require conserved ticket-level partition and source proof uniqueness before Wolo/HD v3 admission"
     },
     {
       "id": "ticket_multileg_funding",
@@ -151,6 +175,8 @@
       "native_endpoint_observed": false,
       "http_200_is_bank_authentication": false,
       "legacy_8092_fallback": false
-    }
+    },
+    "native_wolo_115_tests": "SOURCE_CI_PENDING_NO_EXECUTOR_AND_NO_LIVE_PROOF",
+    "cross_language_test_vector": "NOT_YET_EXPORTED_BY_CODEX"
   }
 }
