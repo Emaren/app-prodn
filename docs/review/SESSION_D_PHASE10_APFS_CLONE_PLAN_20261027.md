@@ -48,13 +48,13 @@ Official references: Apple XNU [clonefile(2)](https://github.com/apple-oss-distr
 
 ## Fixture-only acceptance — safe before real files
 
-[Fixture-only Python probe](fixtures/session_d_apfs_clone_fixture.py) creates `canonical.AppImage` and `legacy-alias.AppImage` **only inside an automatically created private macOS TMPDIR directory** on the **same APFS st_dev as actual Watcher `dist`**, checks source contents, metadata and separate inodes, calls Darwin `clonefile(2)` directly (zero fallback), writes a different byte to a separate clone to prove COW isolation, builds a dummy website `public/downloads` symlink, stages a cloned candidate, temporarily hardlinks the original alias to a private fixture backup, atomic-replaces and verifies URL/hash/regular-file/metadata continuity, and **rolls back the exact original fixture inode** with `os.replace`. The temp directory is removed afterward. It **does not accept a real Watcher target argument** and never writes anything in `dist`.
+[Fixture-only Python probe](fixtures/session_d_apfs_clone_fixture.py) creates `canonical.AppImage` and `legacy-alias.AppImage` **only inside an automatically created private macOS TMPDIR directory** on the **same APFS st_dev as actual Watcher `dist`**, checks source contents, metadata and separate inodes, calls Darwin `clonefile(2)` directly (zero fallback), writes a different byte to a separate clone to prove COW isolation, builds a dummy website `public/downloads` symlink, stages a cloned candidate, temporarily hardlinks the original alias into a separate 0700 fixture-private directory outside the simulated public download tree, atomic-replaces and verifies URL/hash/regular-file/metadata continuity, and **rolls back the exact original fixture inode** with `os.replace`. The temp directory is removed afterward. It **does not accept a real Watcher target argument** and never writes anything in `dist`.
 
 On the **actual Mac**, fetch the fixture directly from the **immutable review commit** and verify the exact Git blob digest **before execution**. The command does **not** change interactive shell exit settings, and the Python fixture cannot be pointed at an actual Watcher file:
 ```bash
 FIXTURE="$(mktemp -t aoe2war-phase10-fixture)"
-URL="https://raw.githubusercontent.com/Emaren/app-prodn/ec2181841243d31ae9d788555ad967ad2f678d0e/docs/review/fixtures/session_d_apfs_clone_fixture.py"
-EXPECTED_BLOB="d1272bfe0647285c2e1d25497c9c339902714bfc"
+URL="https://raw.githubusercontent.com/Emaren/app-prodn/d10104ea128138cc0772af03b50187c386230c06/docs/review/fixtures/session_d_apfs_clone_fixture.py"
+EXPECTED_BLOB="d19287651aa28ef39d7cf7c073601f34dc477124"
 if [ -n "$FIXTURE" ] &&
    curl -fL --max-time 45 --output "$FIXTURE" "$URL" &&
    [ "$(git hash-object "$FIXTURE")" = "$EXPECTED_BLOB" ] &&
