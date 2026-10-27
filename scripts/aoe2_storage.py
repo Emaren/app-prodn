@@ -1514,6 +1514,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--apply", action="store_true")
     q = sub.add_parser("atlas-probe")
     q.add_argument("--plane", required=True, choices=("mac", "hel1-root", "hel1-volume-105319120"))
+    q = sub.add_parser("sentinel")
+    q.add_argument("sentinel_args", nargs=argparse.REMAINDER)
     return p
 
 
@@ -1596,6 +1598,9 @@ def main() -> int:
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "atlas-probe":
         return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_probe.py"), "--plane", args.plane], cwd=ROOT, check=False).returncode
+    if args.command == "sentinel":
+        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_sentinel.py"),
+            *args.sentinel_args], cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
 
 
