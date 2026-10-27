@@ -185,6 +185,29 @@ Identical byte lengths **are not a content digest**, evidence of independent bac
 
 **Net new reclaim: 0 B.** Previous operator-confirmed 2.606 GiB from two other historical `.next` outputs remains the only performed removal. No source, financial, media or production change.
 
+
+## SHA-256 duplicate pairs — owner Mac full-content read-only receipt (2026-10-27; subsequent to direct-child scan)
+
+The operator ran full-file SHA-256 hashing on exactly **six space-vs-hyphen filename pairs (12 files)** under `aoe2-watcher/dist`. All six pairs have equal `st_size`, equal *complete SHA-256*, **different inodes**, and `content_equal=true`. All results remained `deletion_allowed=false`; **no cleanup occurred**.
+
+| Version | Artifact | Exact bytes of each copy | Same SHA-256 for both names |
+|---|---|---:|---|
+| 1.6.0 | AppImage | 134,013,759 | `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266` |
+| 1.6.0 | arm64 DMG | 129,156,599 | `e128424ca6cecc5ebcf82c57d643e0774380b786780fd8b141190562a50380e3` |
+| 1.6.0 | Windows Setup EXE | 108,035,160 | `b6fa8b3ed934bb98dfbb5008148fb739575ca138b3dfc74084dd4a2b7d650f89` |
+| 1.6.3 | AppImage | 134,026,161 | `c1d1d149dac0e49dc8ad1361e07acc85ceea61ab8d3782b6a8e54b1790d155d0` |
+| 1.6.3 | arm64 DMG | 129,146,083 | `04c04738b23eefdb5c9c6e29c7cc1de77d28c728a34ab72d1fa48c24b354a9ff` |
+| 1.6.3 | Windows Setup EXE | 108,044,240 | `54cae410e9808e363efe0c1f1eed26648563be7fc09fa70dd9567a1eb7916e77` |
+
+Every row compares exactly `AoE2HDBets Watcher-<version>.AppImage` versus `AoE2HDBets-Watcher-<version>.AppImage`, or `AoE2HDBets Watcher-<version>-arm64.dmg` versus `AoE2HDBets-Watcher-<version>-arm64.dmg`, or `AoE2HDBets Watcher Setup <version>.exe` versus `AoE2HDBets-Watcher-Setup-<version>.exe`.
+
+**Logical redundant bytes of one copy per pair: 742,422,002 B ≈ 0.69143 GiB** (approx. 725,032 KiB allocated in earlier `du`). This is NOT guaranteed APFS free-space recovery: distinct inodes do not prove independent physical extents; cloned data, snapshots and hard-to-observe consumers may keep blocks live. No `df` delta was observed because nothing was removed.
+
+**Existing governed code and gap**: `app-prodn/scripts/aoe2_watcher_downloads.py` on `main@14ce7104`, `STRICT_PATTERNS`, explicitly recognizes only **space-named** Watcher binaries (plus checksum/manifest); the six **hyphen-named aliases are not matches**. The existing `aoe2war watcher-downloads` controller acts against **HEL1 canonical `/mnt/HC_Volume_105319120/aoe2-downloads`**, requiring independently proven public GitHub release digests, exact live BUILD_ID/service/source/Wolo boundary and a protected root-scoped apply. **It is NOT a Mac duplicate deletion tool.** Reusing it on the Mac or extending its regex to auto-delete aliases would violate that authority boundary.
+
+**Pre-deletion follow-up:** inspect the two *local* `dist/watcher-release-manifest-{1.6.0,1.6.3}.json` and `dist/SHA256SUMS-{1.6.0,1.6.3}.txt` for exact naming; bound `git grep` references for the 12 literal filenames across tracked app and Watcher source; verify any client/API/history URL needs and actual processes/open FDs; require separately durable original signed package copies/role witness and exact-path owner permit if ever proposing a name removal. Default **HOLD** for all 12 files. No newly machine-cleanable bytes in Session D; all verified checks are read-only.
+
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
