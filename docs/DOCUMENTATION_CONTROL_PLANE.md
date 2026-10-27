@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-kingdom-index` at `85f0ee41596cc7ee6c16b5be5d168bf3e3357188`
+Implementation baseline: `review/session-b-phase4-hd-new-epoch-integration` at `986e171acd822d359b6a2199d2a887d55e63edf3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **101**
+- Authoritative repository documents: **102**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 61
+- `reference`: 62
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 80
-- `draft`: 5
+- `draft`: 6
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -82,6 +82,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Documentation OS](DOCUMENTATION_OS.md) | `reference` | `active` | `documentation-operations-contract` |
 | [AoE2WAR Engineering Memory and Learned Invariants](ENGINEERING_MEMORY.md) | `reference` | `active` | `repository-entrypoint` |
 | [AoE2WAR Evidence Vault](EVIDENCE_VAULT.md) | `runbook` | `active` | `disaster-recovery-contract` |
+| [New-Epoch HD-Wolo v3 Financial Interface (Held)](FINANCIAL_EPOCH_V3_WOLO_EXECUTOR_INTERFACE.md) | `reference` | `draft` | `review-only-nonactivating-contract-candidate` |
 | [AoE2WAR General Inspections](GENERAL_INSPECTIONS.md) | `reference` | `active` | `inspection-scoring-contract` |
 | [Hall Scribe, Identity and KKR Release - 2026-08-17](HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md) | `reference` | `active` | `release-evidence` |
 | [AoE2WAR Hall Scribe Prompt Stack](HALL_SCRIBE_PROMPT.md) | `reference` | `active` | `product-contract` |
