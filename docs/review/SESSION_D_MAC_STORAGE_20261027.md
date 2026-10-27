@@ -303,6 +303,19 @@ Owner fetched immutable source commit `8f8e5f9c004fab054478f5d97337af5346db7a55`
 
 **Updated classification:** `PASS_DISPOSABLE_APFS_MTIME_FIXTURE_ONLY / HOLD_REAL_ALIAS_METADATA_URL_CONSUMERS_HUMAN_APPROVAL`. Before real alias stage recheck owners/ACLs/xattrs/flags/mtime, actual HTTP URL consumers and active FDs and require explicit original inode/birthtime/ctime tradeoff approval; separately authorize original-backup release after a verification period. Existing `aoe2war watcher-downloads` only governs HEL1 production and does **not** authorize Mac aliases. Phase10 actual reclaim still **0 B**; previous historical unrelated `.next` recovery **+2.606 GiB**. Full acceptance and Storage Atlas telemetry: [Phase10 APFS plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
 
+
+## APFS disk3 container and Data df exact reconciliation; build directories stable (2026-10-27)
+
+Owner performed **read-only** `df -k /System/Volumes/Data`, full `diskutil apfs list`, and exact `du -sk` on Docs-context `.next`, Watcher `dist` and Go cache. `diskutil` APFS `disk3` (UUID `DF99D6D6-A364-41E4-B992-12ED76BB8353`) reports container capacity **494,384,795,648 B**, used **484,793,401,344 B (98.1%)**, unallocated **9,591,394,304 B**. Data volume `disk3s5` consumes **441,347,043,328 B**. First Data `df`: total `482797652` KiB, used `431002972` KiB, available **`9366596` KiB = 8.932682 GiB**, 98% displayed used. **Exact accounting check:** `431002972*1024=441347043328` B equals Data consumed, and `9366596*1024=9591394304` B equals the APFS container's shared unallocated capacity. No duplicate space-counting.
+
+Other APFS volumes: System `disk3s1` **18,507,264,000 B** (reports `Sealed: Broken` on the update-mounted volume while **mounted root snapshot is sealed**; does not establish broken running OS); Preboot `disk3s2` **16,201,957,376 B**, Recovery `disk3s3` **2,414,116,864 B**, VM `disk3s6` **5,371,052,032 B**. All OS-managed and explicitly excluded from operator cleanup; none is a reclaim authorization. Prior read-only Data snapshot inventory: `No snapshots for disk3s5`, three `com.apple.os.update-...` listed for root volume group.
+
+Three targeted candidate directories are **unchanged** vs preceding scan: protected docs-context `.next` **1,328,688 KiB**, Watcher `dist` **3,434,896 KiB** (same target as local website `public/downloads` symlink), Go build cache **627,104 KiB** = 642,154,496 B. All HOLD; none explains earlier 2–4 GiB fluctuations. Latest available is **1,552 KiB more** than previous `9,365,044 KiB` Data `df`, so stable at roughly **8.93 GiB** over the two most recent direct checks; unknown change source.
+
+**One shell error:** final `df` after the loop returned `zsh: permission denied: df` (despite first `df` PASS in same command batch). Thus **no closing Data df sample**; cause unverified; check `whence -va df`, `/bin/ls -l /bin/df`, and invoke `/bin/df -k /System/Volumes/Data` read-only. Do not infer filesystem permission breakage or trigger repair from that message.
+
+**Decision:** `PASS_MAC_APFS_CONTAINER_DF_RECONCILIATION`; `PASS_3_TARGET_BUILD_SIZES_UNCHANGED`; `HOLD_CAPACITY_CAUSALITY`; `HOLD_FINAL_DF_SHELL_ERROR`; `PASS_DISPOSABLE_APFS_MTIME_FIXTURE_ONLY`; `HOLD_WATCHER_REAL_CHANGE`. Phase10 newly reclaimed **0 B**, historical two isolated `.next` outputs +2.606 GiB. Full telemetry and context [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md). Frozen finance, staged website, Codex and actual release files remain untouched.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
