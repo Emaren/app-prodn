@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.session-d-phase11-mac-build-headroom-20261027"
+title: "Session D — Phase 11 Mac emergency build headroom (2026-10-27)"
+type: "working"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "mac-generated-build-review-and-approval-plan"
+reviewed_at: "2026-10-27"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Session D — Phase 11 Mac emergency build headroom (2026-10-27)
 
 Authority: Central Command issue #934. Existing Session D review PR #942. **REVIEW ONLY: no cleanup authorization or file mutation.** Latest operator Data APFS available 8,300,728 KiB (about 7.916 GiB), with 99% capacity reported. Earlier two precisely authorized historical .next removals yielded +2.606 GiB verified; **Phase 11 new recovered: 0 B**.
