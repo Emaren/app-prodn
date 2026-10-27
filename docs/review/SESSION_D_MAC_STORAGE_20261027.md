@@ -265,6 +265,13 @@ All three updater manifests returned empty matching alias arrays: `latest.yml: [
 
 Mac owner executed pinned original fixture with verified Git blob and Python syntax; result **`HOLD_APFS_FIXTURE_NOT_VERIFIED / WATCHER_TARGET_NOT_APFS: no fixture attempted`**. **Our fixture used `/usr/bin/stat -f %T` incorrectly as a filesystem-type detector; on Darwin `%T` is the file type**. No actual APFS COW test executed, no Watcher binaries modified, no space reclaimed. This is not proof Watcher is not on APFS. Corrected same review-branch fixture source at `8cc634410babc899af0bf4f8fb2e501e8be5a386` (blob `d33a87067225e6a19b9bf4cfab78aea08c3ba75c`) uses `diskutil info -plist /System/Volumes/Data` plus exact device identity and fail-closed temp device check. The operator rerun is still pending, and even `PASS_APFS_FIXTURE_ONLY` cannot authorize real file mutation. Detailed correction and new pinned rerun are in [Phase 10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
 
+
+## Phase10 second Mac fixture execution — Python xattr platform error (2026-10-27)
+
+Owner fetched verified immutable corrected fixture `8cc634410babc899af0bf4f8fb2e501e8be5a386`, blob `d33a87067225e6a19b9bf4cfab78aea08c3ba75c`: fetch, blob SHA and Python compile **PASS**. The corrected macOS APFS and same-device checks therefore passed far enough to enter temporary fixture creation, but test crashed on `os.setxattr` because CPython `os.setxattr/getxattr/listxattr` are **Linux-only**. This is **our test portability defect**, not evidence of an APFS failure. `clonefile` was **not attempted**, no URL/rollback fixture acceptance obtained. The only write attempts were in disposable `TemporaryDirectory`, not actual Watcher. Context manager normally removes test files on exception but no independent postflight receipt was generated. **No actual Mac production/path modifications or newly reclaimed bytes.**
+
+Updated fixture pinned at source `316815be0d1ce13db27aa2164770f7b3cbd7955a`, blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa`, substitutes strict macOS `/usr/bin/xattr -w` and `xattr -p -x` system commands for fixtures only; validates marker, lists and hashes exact extended attributes. Re-run required, with `PASS_APFS_FIXTURE_ONLY` still **HOLD** pending owner output. Details, precise pinned command and updated Storage Atlas status in [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md). Actual Watcher files, historical download names and source/worktree evidence remain protected.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
