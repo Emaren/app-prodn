@@ -101,19 +101,26 @@ class ReviewJournalTests(unittest.TestCase):
         def worker():
             start.wait()
             try:
-                result = self.consume_with_stub()
+                result = journal.consume_signed_review_once(
+                    self.packet, {}, state_root=self.root, test_root=True
+                )
                 outcome = result["status"]
             except adoption.Hold as exc:
                 outcome = str(exc)
             with lock:
                 observations.append(outcome)
-        a = threading.Thread(target=worker)
-        b = threading.Thread(target=worker)
-        a.start()
-        b.start()
-        start.wait()
-        a.join(timeout=8)
-        b.join(timeout=8)
+        with mock.patch.object(
+            adoption, "verify_signed_adoption_review",
+            return_value={"signed_packet_sha256": "b" * 64},
+        ) as crypto:
+            a = threading.Thread(target=worker)
+            b = threading.Thread(target=worker)
+            a.start()
+            b.start()
+            start.wait()
+            a.join(timeout=8)
+            b.join(timeout=8)
+            self.assertEqual(crypto.call_count, 1)
         self.assertFalse(a.is_alive() or b.is_alive())
         self.assertEqual(
             observations.count("OWNER_REVIEW_CONSUMED_NO_DISPATCH"), 1
