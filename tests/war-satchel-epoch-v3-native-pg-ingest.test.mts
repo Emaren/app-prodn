@@ -13,7 +13,9 @@ test("Phase7 held native-Comet verifier refuses ALL inputs before any PG query o
    expectedEpoch:"epoch_20261027_funding",expectedOwnerUid:"warrior:alpha",
    expectedTxHash:"C".repeat(64),expectedMessageIndex:0 as const,
    expectedPurpose:"wager_funding" as const,expectedEconomicKey:"ticket:55",
-   expectedVaultAddress:"wolo1vault",expectedEscrowAddress:"wolo1escrow"};
+   expectedVaultAddress:"wolo1vault",expectedEscrowAddress:"wolo1escrow",expectedAmountUWolo:"100000000",
+   expectedSender:"wolo1vault",expectedRecipient:"wolo1escrow",
+   expectedMemo:"aoe2war/satchel/epoch-v3/epoch_20261027_funding/ticket/55"};
  assert.equal(EPOCH_V3_NATIVE_PG_FINANCIAL_ENABLED,false);
  await assert.rejects(
   ()=>ingestNativeVerifiedV3Receipt(cfg,JSON.stringify({native_verdict:"COMET_ICS23_NATIVE_VERIFIED",
@@ -43,7 +45,9 @@ test("Phase8 Go wire v1 is structurally pinned to one native MsgSend and both ba
    expectedEpoch:"epoch_20261027_funding",expectedOwnerUid:"warrior:alpha",
    expectedTxHash:"C".repeat(64),expectedMessageIndex:0 as const,
    expectedPurpose:"wager_funding" as const,expectedEconomicKey:"ticket:55",
-   expectedVaultAddress:"wolo1vault",expectedEscrowAddress:"wolo1escrow"};
+   expectedVaultAddress:"wolo1vault",expectedEscrowAddress:"wolo1escrow",expectedAmountUWolo:"100000000",
+   expectedSender:"wolo1vault",expectedRecipient:"wolo1escrow",
+   expectedMemo:"aoe2war/satchel/epoch-v3/epoch_20261027_funding/ticket/55"};
  const now=Date.now(),observed=new Date(now-5000).toISOString(),
   expires=new Date(now+50000).toISOString();
  const bank=(role:string,account:string)=>({
@@ -85,6 +89,9 @@ test("Phase8 Go wire v1 is structurally pinned to one native MsgSend and both ba
   ["sdk_flag",x=>x.native_consensus_authenticated=false],
   ["anchor",x=>x.trust_anchor_sha256="0".repeat(64)],
   ["recipient",x=>x.recipient="wolo1attacker"],
+  ["sender",x=>x.sender="wolo1attacker"],
+  ["memo",x=>x.memo="ticket/99"],
+  ["amount",x=>x.amount_uwolo="200000000"],
   ["freshness",x=>x.expires_at=new Date(now-1000).toISOString()],
   ["wire_version",x=>x.wire_version=2]
  ];
