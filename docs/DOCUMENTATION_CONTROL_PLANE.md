@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/session-b-phase9-storage-atlas-engine` at `b8070a89bf10b115743e81fb119109f35969cd3b`
+Implementation baseline: `review/session-b-phase9-storage-atlas-engine` at `03467e5f9053986adb810444f29d8b25b881b34b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
