@@ -1,0 +1,109 @@
+PHASE 12 — STORAGE SENTINEL SOURCE/INSTALLATION AND ACCEPTANCE
+Status: DRAFT SOURCE ONLY / NO HOST INSTALL / NO REAL NOTIFICATION
+Original review source: #945@94c303349c28829331e7ef2bde2b3be63786fed4
+Do not edit or adopt frozen website release #949@769a0228eb3ebdfca5935416c561b853515a8408.
+
+PURPOSE
+Observe -> attest -> diagnose -> private inbox -> acknowledge via one bounded
+source-owned operator pipeline. Not a second scanner, maintenance controller,
+release controller, finance writer, API transport or public notification endpoint.
+
+AUTHORITY / SOURCE
+* scripts/aoe2_storage_probe.py and VPSSentry#38 remain ACTUAL local
+  observing owners. This review does not schedule, run or sign them.
+* scripts/aoe2_storage_sentinel_verify.mts REUSES existing
+  lib/aoe2StorageAtlasAuth.ts Ed25519 three-plane verifier. Three complete
+  SIGNED receipts are required for ingest. Each current signed bundle is
+  independently bound to real key enrollment, exact source SHA, pinned
+  mount source/UUID, 300s TTL and separately durable witness. Source-only
+  tests use SYNTHETIC signatures; no authentic Mac/HEL1 receipts exist here.
+* scripts/aoe2_storage_sentinel.py holds exclusive SQLite BEGIN IMMEDIATE
+  state under a 0700 directory, 0600 database, WAL, synchronous=FULL:
+  per-plane sequence/digest witness, stable event id, outbox, operator ACK,
+  bounded exponential retry. Same-generation duplicate/replay is rejected;
+  repeated condition does not create more than one primary message.
+  Restore must preserve witness AND old outbox. Never restore an earlier
+  journal and replay a receipt; monotonic rollback is a security incident.
+* Signing keys, collector agents, replay policies, external witnesses and
+  atomic producer have an independent #947 operator adoption HOLD.
+* Event vocabulary is typed in lib/aoe2StorageSentinelEvents.ts:
+  pressure, regression, snapshot_hold, stale, failed_backup,
+  incomplete_scan, reviewed_generated, expired_build. All emitted
+  evidence is allowlist reason strings and a read-only Atlas link.
+  No plaintext paths, private keys, UUIDs, financial or backup contents
+  go in inbox messages or public projection. Private source SHA/receipt
+  seq/digest are retained in the SQLite audit journal, not published.
+* No safe-now deletion claims, no verified reclaimed bytes from estimates.
+  Existing scripts/aoe2_storage_artifacts.py REVIEW_ONLY_HOLD and four
+  allowlisted local-maintain methods remain the exclusive authority.
+  No action from the inbox, no admin command route and no web POST handler.
+* Node bridge scripts/aoe2_storage_sentinel_inbox.mts is an OPERATOR ONLY
+  direct-DB writer, gated by STORAGE_SENTINEL_DELIVERY_ENABLED=1 and a
+  separately operator-enrolled STORAGE_SENTINEL_OWNER_UID. It requires
+  pre-existing sender UID aoe2war-storage-sentinel with verificationMethod
+  system, isAdmin=false; requires existing isAdmin=true OWNER record.
+  It will NEVER auto-create identities or select arbitrary recipients.
+  PostgreSQL advisory transaction lock + exact SENTINEL-ID dedup handles
+  failure after DB commit before SQLite acknowledgement. Connection credentials
+  supplied only to this dedicated OS principal; no public endpoint.
+* Public chat POST explicitly rejects reserved Sentinel notation. Operator
+  acknowledgement is the offline CLI 'ack --id ... --actor ...', distinct
+  from a Nav Chat READ receipt. A read receipt cannot authorize an action.
+
+SCHEDULER REVIEW (NOT INSTALLED)
+D: deploy/storage-sentinel/org.aoe2war.storage-sentinel-mac.plist,
+  15 minute awake-only source-owned local Mac PARTIAL probe. D must bind
+  placeholders to absolute vetted interpreter/repo/0700 log directory,
+  check diskutil APFS identity and independently enrolled signers.
+  Mac asleep/offline means STALE/UNKNOWN; no false local availability.
+C: Existing VPSSentry aoe2war-estate-observe.timer owns HEL1 monitoring.
+  DO NOT replace or duplicate it; C separately qualifies real source
+  observer+signer receipts for root and evidence volume 105319120 UUID
+  a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42. Keep /dev/loop4 protected.
+C/Central: proposed HEL1 Sentinel tick timer every 5m (private-network
+  access, 45s max, least privilege); separate deliver timer (private
+  DATABASE_URL & owner enrollment, 60s max). No unit is installed now.
+  Source location, accounts, ACLs, restart recovery, hostnames and separate
+  finance namespace must be independently reconciled before install.
+  Timers must survive restart WITHOUT rolling back the SQLite witness.
+
+REVIEWED OPERATOR PROCEDURE (NONDESTRUCTIVE)
+1. G verifies exact head, tests, no web route/GET writes, source SHA map.
+2. D/C/E prove each actual host mount, source digest, bounded consumer census,
+   signed production key enrollment and crash-safe publisher per #947.
+3. Install under distinct service accounts ONLY after C/D/Central owner
+   explicit permission. Review directory modes, SELinux/AppArmor/sandbox,
+   systemd unit hashes and launchd fully expanded absolute paths.
+4. Use 'enroll --state /operator/private/state.sqlite3
+   --trust /operator/private/independently-pinned-trust.json
+   --actor ENROLLED_OWNER' ONCE only with authenticated pins. Keep journal backup
+   with append-only backup discipline and signer revocation policy.
+5. Offline 'ingest --signed /operator/private/three-receipts.json
+   --trust ... --state ...' (enforces all three signatures & sequence).
+6. Offline 'tick --state ...' diagnoses missing collectors and queues digest.
+   Offline 'deliver --state ...' posts only when private owner flags and
+   credentials are supplied. Never run on a web request.
+7. Use private inbox and read-only Atlas for inspection. ACK separately with
+   'ack --id FULL_64_HEX_EVENT_ID --actor ENROLLED_OWNER --state ...'.
+   Inspect pending/outbox, failure retry and source audit before closing.
+8. Separate 'status --output /operator/private/summary.json --state ...'
+   materializes a bounded private HISTORICAL/HOLD summary. Atlas may use
+   STORAGE_SENTINEL_PRIVATE_PROJECTION_FILE only from private 0600
+   service-owned file and only if Atlas signed bundle already verified.
+   No path can promote LIVE, GO or verified cleanup permissions.
+
+ADVERSE ACCEPTANCE
+* tamper, missing plane, swapped signer, mount drift, past/future TTL,
+  replay/restart, two publishers, missing host heartbeat, inaccessible mount;
+* partial scan never healthy; backup failure only on signed attestation;
+  verified artifact cleanup review is not actual reclaim;
+* event idempotence, sequence escalation, ACK vs unread, negative delivery
+  with outbox retry, power-loss after DB commit before outbox acknowledgement;
+* private message only visible to enrolled owner; public chat cannot spoof;
+* never write into Wolo custody, financial / replay / recovery artifacts;
+* two real host schedules observed twice, signed receipts and actual
+  owner inbox delivery independently witnessed before runtime GO.
+
+RELEASE DECISION: SOURCE PR != INSTALLED SENTINEL. Existing website #949
+historical/UNKNOWN can ship without Sentinel. Installation and private
+notifications require new owner acceptance; no real user is messaged here.
