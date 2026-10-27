@@ -26,7 +26,7 @@ def receipt(seq=1,obs="2026-10-27T19:59:00Z",coverage="partial",future=False):
  for name in s.PLANES])
 class TestSentinel(unittest.TestCase):
  def setUp(self):
-  self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+  self.temp=tempfile.TemporaryDirectory(dir=Path.home());self.addCleanup(self.temp.cleanup)
   self.path=Path(self.temp.name)/"private";self.path.mkdir(mode=0o700)
   self.db=s.open_db(self.path/"journal.sqlite3")
   self.keys=pins();s.enroll(self.db,self.keys,"test-operator")
