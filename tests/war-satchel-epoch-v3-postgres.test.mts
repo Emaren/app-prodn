@@ -91,6 +91,25 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
     await assert.rejects(()=>run(a!,"SELECT epoch_v3.consume_receipt($1,'none','deposit',$2,0,1000000,'from','to','key')",[E,hash(952)]),/permission denied/);
    }finally{await run(a!,"RESET ROLE")}
   });
+  await t.test("dedicated login can SET LOCAL ROLE proof writer; public login cannot",async()=>{
+   await run(a!,"CREATE ROLE epoch_fixture_native_login LOGIN NOINHERIT");
+   await run(a!,"GRANT epoch_v3_proof_writer TO epoch_fixture_native_login");
+   await run(a!,"CREATE ROLE epoch_fixture_web_login LOGIN NOINHERIT");
+   const native=new pg.Client({host:sock,user:"epoch_fixture_native_login",database:"postgres"});
+   const web=new pg.Client({host:sock,user:"epoch_fixture_web_login",database:"postgres"});
+   await Promise.all([native.connect(),web.connect()]);
+   try{
+    await assert.rejects(()=>run(native,"INSERT INTO epoch_v3.receipts(tx_hash) VALUES($1)",[hash(980)]),/permission denied/);
+    await assert.rejects(()=>run(web,"SET ROLE epoch_v3_proof_writer"),/permission denied/);
+    await run(native,"BEGIN");
+    try{
+     await run(native,"SET LOCAL ROLE epoch_v3_proof_writer");
+     assert.equal((await run(native,"SELECT current_user AS role")).rows[0].role,"epoch_v3_proof_writer");
+     await assert.rejects(()=>run(native,"UPDATE epoch_v3.positions SET available_uwolo=999"),/permission denied/);
+    }finally{await run(native,"ROLLBACK")}
+    assert.equal((await run(native,"SELECT current_user AS role")).rows[0].role,"epoch_fixture_native_login");
+   }finally{await Promise.allSettled([native.end(),web.end()])}
+  });
   await t.test("a signed-looking receipt at a DIFFERENT native bank root cannot credit",async()=>{
    await proof(a!,"deposit","wrong_root",3,971,"wallet:wrong_root",V,"deposit/wrong_root","D".repeat(64));
    await assert.rejects(()=>atomic(a!,()=>run(a!,
