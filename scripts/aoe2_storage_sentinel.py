@@ -131,7 +131,9 @@ def receive(db,pins,envelope,t=None):
    current=set()
    def notice(rule,band,sev):
     current.add(emit(db,plane,rule,band,sev,p["observed_at"],p["coverage"],p["source_sha"],p["sequence"],p["receipt_sha256"],t))
-   if plane=="mac" and free<15*GIB:notice("storage_pressure","mac-below-15GiB","CRITICAL" if free<8*GIB else "WATCH")
+   if plane=="mac" and free<15*GIB:
+    notice("storage_pressure","mac-below-8GiB" if free<8*GIB else "mac-below-15GiB",
+           "CRITICAL" if free<8*GIB else "WATCH")
    elif used>=97:notice("storage_pressure","used-97","CRITICAL")
    elif used>=90:notice("storage_pressure","used-90","WATCH")
    if plane=="hel1-volume-105319120" and used>88:notice("snapshot_admission_hold","snapshot-above-88","CRITICAL")
@@ -183,12 +185,28 @@ def heartbeat(db,t=None):
   db.execute("COMMIT")
  except:db.execute("ROLLBACK");raise
 def ack(db,ident,actor,t=None):
+ """Offline ACK by a previously enrolled local operator, never a web/chat action."""
  t=t or now()
- if not actor or len(actor)>80:raise Hold("OPERATOR_ID_REQUIRED")
+ if not isinstance(actor,str) or not __import__("re").fullmatch(r"[A-Za-z0-9_.-]{1,80}",actor):
+  raise Hold("INVALID_OPERATOR_ACTOR")
+ if not isinstance(ident,str) or not __import__("re").fullmatch(r"[a-f0-9]{64}",ident):
+  raise Hold("INVALID_EVENT_ID")
  db.execute("BEGIN IMMEDIATE")
  try:
-  if not db.execute("SELECT 1 FROM events WHERE id=?",(ident,)).fetchone():raise Hold("UNKNOWN_EVENT")
-  db.execute("UPDATE events SET ack_at=?,ack_actor=? WHERE id=?",(stamp(t),actor,ident))
+  enrolled=db.execute("SELECT val FROM enrollment WHERE key='actor'").fetchone()
+  if not enrolled or actor!=enrolled[0]:raise Hold("OPERATOR_NOT_ENROLLED")
+  item=db.execute("SELECT ack_at,plane,rule,seq,receipt FROM events WHERE id=?",(ident,)).fetchone()
+  if item is None:raise Hold("UNKNOWN_EVENT")
+  if item[0] is None:
+   db.execute("UPDATE events SET ack_at=?,ack_actor=? WHERE id=?",(stamp(t),actor,ident))
+   _,plane,rule,seq,receipt=item
+   delivery_id=ident+":ack:"+str(seq)
+   message=(f"STORAGE SENTINEL ACK [{ident[:16]}]\\n"
+      f"{plane}: {rule} acknowledged by enrolled operator.\\n"
+      f"Signed sequence {seq} · receipt {receipt[:16]}\\n"
+      f"ACK is awareness, NOT repair or deletion permission.\\n{HREF}")
+   db.execute("INSERT OR IGNORE INTO outbox (id,event_id,body,status) VALUES (?,?,?,'pending')",
+       (delivery_id,ident,message))
   db.execute("COMMIT")
  except:db.execute("ROLLBACK");raise
 def deliver(db,limit=10):
