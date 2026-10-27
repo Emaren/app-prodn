@@ -12,7 +12,7 @@
 | Updater alias filenames and observed open FDs | **PASS within scope** | Three latest YAML have no aliases, six paths reported no observed handles; lsof is point-in-time and permission-bound |
 | Published independent binary digest/size proof | **PASS — GitHub release metadata** | Both non-draft/non-prerelease v1.6.0 (2026-09-21) and v1.6.3 (2026-10-02) release assets have SHA256 digests equal to the six local pair digests. Release asset names use GitHub's dot-normalized names, **not identical to Mac URL path names**. Binary identities match, URLs do not. |
 | Historical URL/referrer access-log compatibility | **HOLD** | Local `app-prodn/public/downloads` is an exact symlink to Watcher `dist`; URL clients, external sites and historical scripts were not exhaustively tested. Preserve all filenames |
-| Actual owner-Mac APFS clonefile fixture execution | **HOLD — not run** | Remote Desktop Commander lists Mac offline. Fixture-only source exists at `docs/review/fixtures/session_d_apfs_clone_fixture.py`; does not write to Watcher and must run on same APFS volume for evidence |
+| Actual owner-Mac APFS clonefile fixture execution | **PASS — owner Mac terminal, third execution** | Immutable source commit `316815be0d1ce13db27aa2164770f7b3cbd7955a`, blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa` verified; fixture JSON `PASS_APFS_FIXTURE_ONLY`. Strict Darwin `clonefile` succeeded with no fallback, COW isolation, metadata, test URL, original-inode rollback; no Watcher edits or reclaimed bytes |
 | Alias metadata/ACL/file flags and snapshot influence | **HOLD** | Full per-file xattr/ACL/flags/current stat proof missing; APFS extent sharing/clones and local snapshots may make recovered bytes lower than logical duplication |
 | Human-approved actual single-alias transaction | **NOT AUTHORIZED** | No real file replacement, clone, rename, unlink or symlink change; newly reclaimed **0 B** |
 
@@ -87,7 +87,33 @@ AttributeError: module 'os' has no attribute 'setxattr'
 
 **Fix:** source commit `316815be0d1ce13db27aa2164770f7b3cbd7955a`, blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa`, uses macOS built-in `/usr/bin/xattr` (strict exit-status checks) to write the known marker to *disposable fixtures only*, list every fixture attribute and use `xattr -p -x` to hash exact attribute bytes. It fails closed if the marker is absent, bytes differ, or the command fails. No real Watcher file is used as a write target; the preexisting APFS filesystem/device guards remain unchanged.
 
-**Third Mac fixture run required**, using the updated immutable URL/blob-pinned command in this document. Status remains `HOLD_NO_COW_PROOF` pending actual Mac JSON. A successful fixture does **not** confer permission for actual alias replacement or release metadata changes.
+**Historical at second attempt:** a third run was required. **The third Mac run has subsequently passed**, as documented immediately below. That success does **not** confer permission for actual alias replacement or release metadata changes.
+
+## Third Mac attempt — PASS_APFS_FIXTURE_ONLY, native APFS CoW and rollback (2026-10-27)
+
+Owner fetched and verified immutable fixture source commit `316815be0d1ce13db27aa2164770f7b3cbd7955a`, Git blob `da0f5c21812829fe8b770bbacc585aba2b2dbfaa`. The command printed `PASS: MACOS_XATTR_FIXTURE_SOURCE_VERIFIED`, followed by the test's structured `status: PASS_APFS_FIXTURE_ONLY` receipt:
+
+| Fixture result field | Observed value |
+|---|---|
+| `clonefile_syscall` | `SUCCESS_NO_FALLBACK` |
+| `copy_on_write_write_isolation` | `PASS` |
+| `regular_file_and_separate_inode` | `PASS` |
+| `metadata_mode_owner_flags_mtime_xattr` | `PASS` |
+| `download_symlink_continuity_before_after` | `PASS` |
+| `temporary_original_hardlink_rollback` | `PASS_ORIGINAL_INODE` |
+| `fixture_size_bytes_each` | `4194304` (4 MiB) |
+| `free_bytes_before_test` | `7440388096` |
+| `free_bytes_after_test_before_temp_cleanup` | `7440388096` |
+| `free_delta_bytes_not_reclaim_evidence` | `0` |
+| `fixture_cleaned_on_normal_exit` | `true` (script's expected `TemporaryDirectory` behavior; no separate post-exit fixture directory census supplied) |
+| `actual_watcher_files_touched` | `0` |
+| `actual_watcher_reclaimed_bytes` | `0` |
+
+**Independent interpretation:** APFS/Data and TMPDIR device admission checks passed, native Darwin `clonefile(2)` actually executed, copy-on-write of a separate test clone did not mutate its source, metadata checks passed for basic mode/owner/flags/mtime/**all fixture xattrs**, the **simulated** local public-download symlink stayed valid, and the **temporary original** hardlinked inode was restored after an atomic test swap. This is first successful native APFS mechanism proof and closes `HOLD_NO_COW_PROOF` **only for the disposable fixture**. It does **not** test real release ACLs, signatures, metadata differences, concurrent readers, HTTP access-log obligations or real artifact transaction. It does **not** authorize changing the genuine Watcher `dist` or any historical filename.
+
+**New capacity signal but not source attribution:** `7440388096 B = 6.929 GiB` available from `os.statvfs` during this 4-MiB disposable fixture. It is lower than the 15:04Z earlier `df -k /System/Volumes/Data` value of ~10.875 GiB; because there was **no new post-exit Data `df` measurement**, do not attribute the decline to fixture execution, watcher builds, snapshots or any single writer. Refresh `df -k /System/Volumes/Data` separately and inspect snapshots **read-only** before planning a real capacity transaction. No experiment with or deletion of APFS snapshots authorized.
+
+**Next admission gate:** read-only **actual** first-pair ACL/mode/flags/xattr/size/device and download symlink identity, plus fresh local capacity and snapshot state. Favor reviewing the already-documented owner-approved one-alias plan without new cleanup controller. No automated apply step was introduced or executed.
 
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
@@ -152,9 +178,19 @@ Source `Mac_Owner_20261027T1504Z`, observed and scope-tagged, **NOT** host-updat
   "watcher_aliases_logical_one_copy_bytes": 742422002,
   "manifest_or_updater_alias_refs_observed": 0,
   "open_alias_fd_count_observed": 0,
-  "apfs_fixture_status": "HOLD_XATTR_PYTHON_API_CRASH_BEFORE_CLONE",
-  "fixture_apfs_data_and_tmp_device_gates": "PASS_SECOND_ATTEMPT",
-  "fixture_clonefile_invoked": false,
+  "apfs_fixture_status": "PASS_APFS_FIXTURE_ONLY_THIRD_RUN",
+  "fixture_source_commit": "316815be0d1ce13db27aa2164770f7b3cbd7955a",
+  "fixture_blob_sha1": "da0f5c21812829fe8b770bbacc585aba2b2dbfaa",
+  "fixture_apfs_data_and_tmp_device_gates": "PASS_THIRD_ATTEMPT",
+  "fixture_clonefile": "SUCCESS_NO_FALLBACK",
+  "fixture_cow_write_isolation": "PASS",
+  "fixture_regular_separate_inode": "PASS",
+  "fixture_metadata_mode_owner_flags_mtime_xattr": "PASS",
+  "fixture_download_symlink_continuity": "PASS",
+  "fixture_original_inode_rollback": "PASS",
+  "fixture_cleanup_on_normal_exit": true,
+  "fixture_statvfs_free_bytes_during_test": 7440388096,
+  "fixture_statvfs_delta_bytes_during_test": 0,
   "candidate_authority": "HOLD_OWNER_APPROVAL_AND_URL_COMPATIBILITY",
   "workspace_scope": "app-prodn+api-prodn",
   "workspace_clean_merged": 6,
@@ -171,4 +207,4 @@ For Atlas, do not merge Mac root capacity with HEL1 root/evidence volume: HEL1 r
 
 Review must independently verify (a) published v1.6.0/v1.6.3 GitHub release digests, (b) 6 original-canonical pairs and 4 local manifests, (c) current alias-to-website path & historical URLs, (d) fixture-only PASS on owner Mac and its cleanup, (e) manual metadata/ACL comparison for first alias and same-device identity, (f) staged rollback to original inode, (g) separate finalization approval and post-commit measured APFS free delta, and (h) unchanged source/worktree/recordings/wallets/finances.
 
-**Phase10 present verdict: `HOLD_NO_APPROVAL_FOR_ACTUAL_WATCHER_MUTATION`**. Draft, not merged. Physical APFS fixture test is pending because authorized remote Mac agent was OFFLINE. No actual Watcher clone, replacement, unlink, rename or cleanup occurred. No snapshot deletion. No new bytes reclaimed.
+**Phase10 present verdict: `PASS_DISPOSABLE_APFS_FIXTURE / HOLD_NO_APPROVAL_FOR_ACTUAL_WATCHER_MUTATION`**. Draft, not merged. The Mac owner provided a verified native APFS fixture PASS directly in terminal; remote Mac connector availability was not needed. No actual Watcher clone, replacement, unlink, rename or cleanup occurred. No snapshot deletion. No new bytes reclaimed.
