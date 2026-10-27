@@ -159,7 +159,7 @@ class StageProductLoaderPathTests(unittest.TestCase):
             gate.write_text(json.dumps({
                 "status": "PASS", "target_sha": product,
                 "scope_sha256": "test-scope",
-            }) + "\\n")
+            }) + "\n")
             hash_gate = hashlib.sha256(gate.read_bytes()).hexdigest()
             manifest = {
                 "release_sha": product,
@@ -173,9 +173,9 @@ class StageProductLoaderPathTests(unittest.TestCase):
                 },
             }
             m = manifests / (product + ".json")
-            m.write_text(json.dumps(manifest) + "\\n")
+            m.write_text(json.dumps(manifest) + "\n")
             hash_manifest = hashlib.sha256(m.read_bytes()).hexdigest()
-            m.with_suffix(".json.sha256").write_text(hash_manifest + "\\n")
+            m.with_suffix(".json.sha256").write_text(hash_manifest + "\n")
             receipt = {
                 "schema": 1, "kind": "aoe2war-stage-result",
                 "status": "STAGED", "release_sha": product,
@@ -216,7 +216,7 @@ class StageProductLoaderPathTests(unittest.TestCase):
             ):
                 receipt[name] = False
             stage_file = stage / (product + "-" + artifact[:12] + ".json")
-            stage_file.write_text(json.dumps(receipt) + "\\n")
+            stage_file.write_text(json.dumps(receipt) + "\n")
             result = ship.load_stage_receipt(str(stage_file), source_root=root)
             self.assertEqual(result[1]["release_sha"], product)
             self.assertEqual(result[5], hash_manifest)
