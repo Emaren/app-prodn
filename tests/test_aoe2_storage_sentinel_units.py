@@ -6,7 +6,7 @@ DEPLOY=ROOT/"deploy/storage-sentinel"
 class TestSentinelSchedules(unittest.TestCase):
  def test_mac_launchd_is_local_partial_read_only_and_not_prearmed(self):
   p=plistlib.loads((DEPLOY/"org.aoe2war.storage-sentinel-mac.plist").read_bytes())
-  self.assertEqual(p["StartInterval"],900)
+  self.assertEqual(p["StartInterval"],120)
   self.assertFalse(p["RunAtLoad"])
   args=p["ProgramArguments"]
   self.assertIn("aoe2_storage_probe.py",args[1])
@@ -21,6 +21,15 @@ class TestSentinelSchedules(unittest.TestCase):
     self.assertIn(required,unit)
    for dangerous in ("--apply","systemctl start","chmod 777","sudo ","rm -rf","/dev/loop4"):
     self.assertNotIn(dangerous,unit)
+  ingest=(DEPLOY/"aoe2war-storage-sentinel-ingest.service").read_text()
+  self.assertIn("aoe2_storage_sentinel.py ingest",ingest)
+  self.assertIn("--trust /var/lib/aoe2war-storage-sentinel/trust.json",ingest)
+  self.assertIn("--signed /var/lib/aoe2war-storage-sentinel/three-receipts.json",ingest)
+  self.assertIn("PrivateNetwork=yes",ingest)
+  for forbidden in ("--apply","sudo ","rm -rf","ssh ","curl ","/dev/loop4"):
+   self.assertNotIn(forbidden,ingest)
+  ingest_timer=(DEPLOY/"aoe2war-storage-sentinel-ingest.timer").read_text()
+  self.assertIn("OnUnitActiveSec=2min",ingest_timer)
   self.assertIn("PrivateNetwork=yes",tick)
   self.assertIn("EnvironmentFile=/etc/aoe2war/storage-sentinel-private.env",deliver)
   self.assertIn(" aoe2_storage_sentinel.py tick ",tick.replace("/scripts/aoe2_storage_sentinel.py"," aoe2_storage_sentinel.py"))
