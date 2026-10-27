@@ -29,7 +29,14 @@ try{
      Number.isSafeInteger(expiration.expired_generations)&&
      expiration.expired_generations>=0&&expiration.expired_generations<=1000&&
      expiration.reviewed===true?expiration.expired_generations:null;
+   // Optional bounded, SIGNED candidate inventory is still review-only.
+   // Existing Python Storage OS policy must independently classify every row.
+   const artifacts=v.candidate_inventory;
+   if(artifacts!==undefined &&
+      (!artifacts||typeof artifacts!=="object"||artifacts.kind!=="aoe2war-storage-artifact-inventory"||
+       !Array.isArray(artifacts.items)||artifacts.items.length>16))stop("ARTIFACT_BOUNDS");
    result.push({
+     candidate_inventory:artifacts??null,
      plane:signed.plane,collector_id:v.collector_id,
      source_sha:v.source.source_sha,sequence:v.sequence,
      observed_at:v.observed_at,issued_at:v.issued_at,
@@ -38,7 +45,8 @@ try{
        total_bytes:total,free_blocks_bytes:free},
      backup_status,expired_generations:expired,
      // Attested class counts are descriptive, NOT deletion authority.
-     reviewed_generations:v.consumers.filter(c=>c.class==="generated_rebuildable"&&c.probe_ok===true).length,
+     // Observed generated builds are not themselves independently reviewable.
+     generated_observed:v.consumers.filter(c=>c.class==="generated_rebuildable"&&c.probe_ok===true).length,
      receipt_sha256:createHash("sha256").update(DOMAIN).update(data).update(sig).digest("hex")
    });
  }
