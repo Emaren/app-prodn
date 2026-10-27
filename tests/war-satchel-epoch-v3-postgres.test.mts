@@ -15,13 +15,13 @@ async function atomic(c:Client,f:()=>Promise<unknown>){
  await run(c,"BEGIN ISOLATION LEVEL SERIALIZABLE");
  try{const x=await f();await run(c,"COMMIT");return x;}catch(e){await run(c,"ROLLBACK");throw e;}
 }
-async function proof(c:Client,kind:string,owner:string,amount:number,n:number,from:string,to:string,memo:string){
+async function proof(c:Client,kind:string,owner:string,amount:number,n:number,from:string,to:string,memo:string,appRoot="B".repeat(64)){
  // Disposable fixture owner writes synthetic candidate native facts. This is
  // NOT an actual SDK/Comet verification or production proof-authority grant.
  await run(c,"INSERT INTO epoch_v3.receipts(tx_hash,message_index,epoch_id,owner_uid,kind,sender,recipient,memo,amount_uwolo,chain_height,native_proof_sha256,proof_verified_at,chain_time) VALUES($1,0,$2,$3,$4,$5,$6,$7,$8,1500,$9,clock_timestamp(),'2026-10-27T12:00:00Z')",
  [hash(n),E,owner,kind,from,to,memo,uw(amount),sha]);
  await run(c,"INSERT INTO epoch_v3.native_proof_certificates (tx_hash,message_index,epoch_id,owner_uid,purpose,denom,sender,recipient,memo,amount_uwolo,funding_height,bank_state_height,bank_commit_height,root_app_sha256,root_block_sha256,vault_account,escrow_account,vault_bank_balance_uwolo,escrow_bank_balance_uwolo,proof_sha256,native_verifier_source,native_verifier_binary_sha256,trust_anchor_sha256,verification_record_sha256,observed_at,expires_at,issuer_provenance) VALUES($1,0,$2,$3,$4,'uwolo',$5,$6,$7,$8,1500,1502,1503,$9,$10,$11,$12,1000000000000,1000000000000,$13,$14,$13,$13,$15,clock_timestamp(),clock_timestamp()+interval '90 seconds','disposable-synthetic-not-native')",
- [hash(n),E,owner,kind,from,to,memo,uw(amount),"B".repeat(64),"C".repeat(64),V,S,sha,"ae9f0277b58f2288e7b1fc25b03eef2a30271577",hash(n).toLowerCase()]);
+ [hash(n),E,owner,kind,from,to,memo,uw(amount),appRoot,"C".repeat(64),V,S,sha,"ae9f0277b58f2288e7b1fc25b03eef2a30271577",hash(n).toLowerCase()]);
 }
 async function credit(c:Client,owner:string,amount:number,n:number){
  await proof(c,"deposit",owner,amount,n,"wallet:"+owner,V,"deposit/"+owner);
@@ -90,6 +90,13 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
     await assert.rejects(()=>run(a!,"SELECT * FROM epoch_v3.receipts"),/permission denied/);
     await assert.rejects(()=>run(a!,"SELECT epoch_v3.consume_receipt($1,'none','deposit',$2,0,1000000,'from','to','key')",[E,hash(952)]),/permission denied/);
    }finally{await run(a!,"RESET ROLE")}
+  });
+  await t.test("a signed-looking receipt at a DIFFERENT native bank root cannot credit",async()=>{
+   await proof(a!,"deposit","wrong_root",3,971,"wallet:wrong_root",V,"deposit/wrong_root","D".repeat(64));
+   await assert.rejects(()=>atomic(a!,()=>run(a!,
+     "SELECT epoch_v3.credit_deposit($1,$2,$3,0,$4,$5,$6)",
+     [E,"wrong_root",hash(971),uw(3),"wallet:wrong_root",V])),/BANK_PROOF_STALE_OR_ACCOUNT_RESERVE_DEFICIT/);
+   assert.equal((await run(a!,"SELECT count(*)::int n FROM epoch_v3.receipt_consumptions WHERE tx_hash=$1",[hash(971)])).rows[0].n,0);
   });
   await t.test("limited finance consumer can credit ONLY through definer stored function",async()=>{
    await proof(a!,"deposit","role_only",9,960,"wallet:role_only",V,"deposit/role_only");
