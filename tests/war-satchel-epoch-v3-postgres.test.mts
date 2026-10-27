@@ -101,6 +101,22 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
    await assert.rejects(()=>atomic(a!,()=>run(a!,"SELECT epoch_v3.transition_operation($1,$2,3,'UNKNOWN_NO_REPLAY','ATTEMPT_FENCED')",[E,op])),/UNKNOWN_NO_REPLAY/);
    assert.equal((await run(a!,"SELECT count(*)::int n FROM epoch_v3.operation_transitions WHERE operation_id=$1",[op])).rows[0].n,3);
   });
+  await t.test("bound chain UTC time cannot be shifted to a different daily quota",async()=>{
+   await fund(a!,"alpha",1,700,700);
+   await assert.rejects(()=>atomic(a!,()=>run(a!,"SELECT epoch_v3.admit_ticket($1,$2,$3,$4,0,$5,$6,$7::jsonb)",[E,"alpha",700,hash(700),"2026-10-28",sha,JSON.stringify([leg(170,1,170,"left",1)])])),/WRONG_OR_UNFUNDED_TICKET/);
+  });
+  await t.test("two distinct tickets race across same owner/day cap; exactly one can take final 10k",async()=>{
+   await atomic(a!,()=>credit(a!,"delta",50000,600));
+   for(let i=0;i<4;i++){await fund(a!,"delta",10000,610+i,610+i);await atomic(a!,()=>admit(a!,"delta",610+i,610+i,[leg(310+i,1,310+i,"left",10000)]));}
+   await fund(a!,"delta",10000,620,620);await fund(a!,"delta",10000,621,621);
+   const results=await Promise.allSettled([
+    atomic(a!,()=>admit(a!,"delta",620,620,[leg(420,1,420,"left",10000)])),
+    atomic(b!,()=>admit(b!,"delta",621,621,[leg(421,1,421,"left",10000)]))
+   ]);
+   assert.equal(results.filter(r=>r.status==="fulfilled").length,1);
+   assert.equal((await run(a!,"SELECT used_uwolo::text n FROM epoch_v3.daily_reservations WHERE epoch_id=$1 AND owner_uid='delta'",[E])).rows[0].n,uw(50000));
+   assert.equal((await run(a!,"SELECT count(*)::int n FROM epoch_v3.tickets WHERE epoch_id=$1 AND owner_uid='delta'",[E])).rows[0].n,5);
+  });
   await t.test("10k ticket and 50k owner-day are real guarded DB constraints",async()=>{
    await atomic(a!,()=>credit(a!,"gamma",51000,300));
    for(let i=1;i<=5;i++){await fund(a!,"gamma",10000,400+i,310+i);await atomic(a!,()=>admit(a!,"gamma",400+i,310+i,[leg(100+i,1,200+i,"left",10000)]));}
