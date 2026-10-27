@@ -1505,6 +1505,10 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("handoff_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("db-snapshots")
     q.add_argument("db_snapshot_args", nargs=argparse.REMAINDER)
+    q = sub.add_parser("atlas-snapshot")
+    q.add_argument("atlas_args", nargs=argparse.REMAINDER)
+    q = sub.add_parser("artifacts")
+    q.add_argument("artifact_args", nargs=argparse.REMAINDER)
     return p
 
 
@@ -1573,6 +1577,10 @@ def main() -> int:
             *args.db_snapshot_args,
         ]
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "atlas-snapshot":
+        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_atlas.py"), *args.atlas_args], cwd=ROOT, check=False).returncode
+    if args.command == "artifacts":
+        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_artifacts.py"), *args.artifact_args], cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
 
 
