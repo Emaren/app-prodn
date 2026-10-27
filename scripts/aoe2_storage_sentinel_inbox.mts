@@ -20,7 +20,7 @@ async function main(){
  try{
   await db.$transaction(async tx=>{
    // Prevent two CLI publishers from racing around the find-then-create.
-   await tx.$executeRaw`SELECT pg_advisory_xact_lock(282712946)`;
+   await tx.$queryRaw`SELECT pg_advisory_xact_lock(282712946)`;
    const [sender,owner]=await Promise.all([
     tx.user.findUnique({where:{uid:SENDER_UID},select:{id:true,isAdmin:true,verificationMethod:true}}),
     tx.user.findUnique({where:{uid:ownerUid},select:{id:true,isAdmin:true,verificationMethod:true}})
