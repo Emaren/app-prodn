@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9103cbfef219db35fa68d8b3f6a2d55d899a0edba8afd2a6e24180d73b13015d",
+      "sha256": "460c8b399b3eeb8ac719f1700ed21fbca272c30c27570e7545495242a75ceca4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/session-b-phase10-authenticated-storage-atlas",
-    "commit": "ffda715a3c7a9be32bf6113768caee50f63c53b1"
+    "branch": "review/20261027-storage-atlas-no-global-bets-warmup",
+    "commit": "f291b7d901f3ebb591c6ca02e5473d65eb9c57e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
