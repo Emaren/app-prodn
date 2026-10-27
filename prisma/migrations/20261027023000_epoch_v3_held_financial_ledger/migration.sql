@@ -28,6 +28,7 @@ CREATE TABLE epoch_v3.receipts (
   chain_height bigint NOT NULL CHECK(chain_height>0),
   native_proof_sha256 text NOT NULL CHECK(native_proof_sha256 ~ '^[a-f0-9]{64}$'),
   proof_verified_at timestamptz NOT NULL,
+  chain_time timestamptz NOT NULL,
   PRIMARY KEY (chain_id,tx_hash,message_index)
 );
 -- Physical global uniqueness is enforced across ALL *new-v3* credit paths
@@ -191,6 +192,10 @@ BEGIN
     OR r.amount_uwolo<>p_amount OR r.sender<>p_sender OR r.recipient<>p_recipient THEN
     RAISE EXCEPTION 'EPOCH_V3_PHYSICAL_OR_OWNER_MISMATCH';
   END IF;
+  IF p_kind='escrow_return' AND
+    r.memo<>('aoe2war/satchel/epoch-v3/'||p_epoch||'/return/'||p_economic_key) THEN
+    RAISE EXCEPTION 'EPOCH_V3_RETURN_MEMO_MISMATCH';
+  END IF;
   INSERT INTO epoch_v3.receipt_consumptions
     (chain_id,tx_hash,message_index,epoch_id,owner_uid,consumer_kind,economic_key)
     VALUES ('wolo-1',p_hash,p_index,p_epoch,p_owner,
@@ -236,6 +241,7 @@ BEGIN
   IF v.kind<>'wager_funding' OR v.epoch_id<>p_epoch OR v.owner_uid<>p_owner
     OR v.sender<>en.vault_address OR v.recipient<>en.escrow_address
     OR v.chain_height<=en.h_star OR v.amount_uwolo>10000000000
+    OR p_day<>(v.chain_time AT TIME ZONE 'UTC')::date
     OR mod(v.amount_uwolo,1000000)<>0 OR p_index<>0
     OR v.memo<>('aoe2war/satchel/epoch-v3/'||p_epoch||'/ticket/'||p_ticket) THEN
     RAISE EXCEPTION 'EPOCH_V3_WRONG_OR_UNFUNDED_TICKET';
@@ -326,7 +332,7 @@ BEGIN
   FOR x IN SELECT * FROM jsonb_to_recordset(p_outcomes)
     AS r(ticket_id bigint,leg_id bigint,wager_id bigint,owner_uid text,amount_uwolo numeric,
          fee_uwolo numeric,kind text) LOOP
-    SELECT a.principal_uwolo,a.wager_id,t.owner_uid,t.operation_id
+    SELECT a.principal_uwolo,a.wager_id,a.side,t.owner_uid,t.operation_id
       INTO STRICT v FROM epoch_v3.allocations a
       JOIN epoch_v3.tickets t ON t.epoch_id=a.epoch_id AND t.ticket_id=a.ticket_id
       WHERE a.epoch_id=p_epoch AND a.market_id=p_market AND a.ticket_id=x.ticket_id
@@ -334,6 +340,10 @@ BEGIN
     IF x.wager_id<>v.wager_id OR x.owner_uid<>v.owner_uid
       OR x.amount_uwolo<0 OR x.fee_uwolo<0
       OR x.kind NOT IN ('matched_payout','unmatched_refund','void_refund','lost')
+      OR (x.kind='lost' AND (x.amount_uwolo<>0 OR x.fee_uwolo<>0))
+      OR (x.kind='unmatched_refund' AND (x.amount_uwolo>v.principal_uwolo OR x.fee_uwolo<>0))
+      OR (x.kind='matched_payout' AND (p_winner<>v.side OR x.amount_uwolo<=0))
+      OR (x.kind='void_refund' AND p_winner<>'void')
       OR (p_winner='void' AND (x.kind<>'void_refund' OR x.amount_uwolo<>v.principal_uwolo OR x.fee_uwolo<>0))
     THEN RAISE EXCEPTION 'EPOCH_V3_SETTLEMENT_OWNERSHIP_OR_ECONOMICS'; END IF;
     paid:=paid+x.amount_uwolo;fees:=fees+x.fee_uwolo;n:=n+1;
@@ -401,6 +411,26 @@ BEGIN
     VALUES(p_epoch,'return',p_entitlement,e.owner_uid,p_amount,-p_amount);
 END $fn$;
 
+-- Auditable independent reconciliation of all materialized owner positions.
+-- Historical, DE and external accounts must be separately proven before release.
+CREATE VIEW epoch_v3.position_reconciliation AS
+ SELECT p.epoch_id,p.owner_uid,p.available_uwolo,p.reserved_uwolo,p.pending_uwolo,
+   COALESCE(sum(e.available_delta),0) AS event_available_uwolo,
+   COALESCE(sum(e.reserved_delta),0) AS event_reserved_uwolo,
+   COALESCE(sum(e.pending_delta),0) AS event_pending_uwolo,
+   (p.available_uwolo=COALESCE(sum(e.available_delta),0) AND
+    p.reserved_uwolo=COALESCE(sum(e.reserved_delta),0) AND
+    p.pending_uwolo=COALESCE(sum(e.pending_delta),0)) AS exact
+ FROM epoch_v3.positions p LEFT JOIN epoch_v3.balance_events e
+ ON e.epoch_id=p.epoch_id AND e.owner_uid=p.owner_uid
+ GROUP BY p.epoch_id,p.owner_uid,p.available_uwolo,p.reserved_uwolo,p.pending_uwolo;
+CREATE VIEW epoch_v3.account_liability_inventory AS
+ SELECT epoch_id,
+   sum(available_uwolo) AS owner_available_uwolo,
+   sum(reserved_uwolo) AS outstanding_stake_uwolo,
+   sum(pending_uwolo) AS escrow_return_due_uwolo,
+   sum(available_uwolo+reserved_uwolo+pending_uwolo) AS total_new_epoch_liability_uwolo
+ FROM epoch_v3.positions GROUP BY epoch_id;
 -- Strict default-deny until source-specific roles, native verifier binary,
 -- financial writer exclusion and owner permits are installed and independently
 -- certified. Even an app superuser must not be promoted to release authority.
