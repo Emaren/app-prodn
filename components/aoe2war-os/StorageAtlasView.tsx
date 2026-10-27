@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {readAuthenticatedStorageAtlas} from "@/lib/aoe2StorageAtlasServer";
 import {
   Activity, ArrowUpRight, Clock3, Database, FolderSearch,
   HardDrive, Laptop, LockKeyhole, Server, ShieldCheck, Wrench,
@@ -80,7 +81,11 @@ const operations = [
   { href: "/kingdom-recovery", title: "Kingdom Recovery", detail: "Inspect restoration and rollback boundaries" },
 ];
 
-export default function StorageAtlasView() {
+export default async function StorageAtlasView() {
+  const telemetry = await readAuthenticatedStorageAtlas();
+  const authenticated = telemetry?.snapshot.planes ?? [];
+  const titles = {"mac":"Development Mac","hel1-root":"HEL1 Root","hel1-volume-105319120":"HEL1 Evidence Volume"} as const;
+  const displayGiB = (n:number|null)=>n===null?"UNAVAILABLE":(n/(1024**3)).toFixed(2)+" GiB";
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050b15] text-slate-100">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,rgba(34,211,238,.13),transparent_40%),radial-gradient(ellipse_at_90%_25%,rgba(245,158,11,.09),transparent_40%)]" />
@@ -113,6 +118,33 @@ export default function StorageAtlasView() {
             </p>
           </aside>
         </header>
+
+        <section className="mt-10 rounded-3xl border border-cyan-200/15 bg-cyan-100/[.035] p-6 sm:p-8" aria-labelledby="signed-telemetry-heading">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[.2em] text-cyan-200">SIGNED COLLECTOR TELEMETRY / NOT A LIVE SCAN</p>
+              <h2 id="signed-telemetry-heading" className="mt-2 text-2xl font-bold text-white">Three-drive authenticated receipts</h2>
+              <p className="mt-2 max-w-3xl text-sm text-slate-300">Local Mac and HEL1 collector signatures, identity pins and receipt sequence must verify independently. Stale, inaccessible and partial consumer censuses remain HOLD. No cleanup action is exposed.</p>
+            </div>
+            <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-200">ADMISSION HOLD</span>
+          </div>
+          {!telemetry ? <div className="mt-6 rounded-2xl border border-amber-200/20 bg-amber-200/[.05] p-5 text-sm text-amber-100" role="status">
+            NO AUTHENTICATED COLLECTOR SNAPSHOT INSTALLED · UNKNOWN / HOLD
+            <p className="mt-2 text-xs text-slate-300">The dated observations below remain historical. A missing private bundle, key pin, sequence witness or fresh signature does not become a real-time reading.</p>
+          </div> : <div className="mt-6">
+            <p className="text-xs text-slate-400">Verified receipt envelope at {telemetry.verified_at}; provenance {telemetry.provenance}. This does not certify census completeness, financial solvency or deployment readiness.</p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {authenticated.map(plane => <article key={plane.plane} className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                <div className="flex items-center justify-between gap-3 text-sm font-semibold text-white"><span>{titles[plane.plane]}</span><span className="text-xs text-amber-200">{plane.severity}</span></div>
+                <div className="mt-4 text-2xl font-bold tabular-nums text-cyan-100">{plane.effective_used_percent===null?"UNKNOWN":plane.effective_used_percent.toFixed(2)+"%"} <span className="text-xs font-normal text-slate-400">effective used</span></div>
+                <div className="mt-2 text-sm text-slate-300">Ordinary available: {displayGiB(plane.ordinary_free_bytes)}</div>
+                <div className="mt-3 text-xs text-slate-400">Coverage: {plane.coverage.toUpperCase()} · {plane.stale?"STALE / HOLD":"within signed TTL"} · Age: {plane.age_seconds===null?"UNKNOWN":plane.age_seconds+"s"}</div>
+                <p className="mt-2 text-xs text-slate-400">Measured reclaim: {plane.measured_reclaimed_bytes===null?"NOT VERIFIED":displayGiB(plane.measured_reclaimed_bytes)}</p>
+                <p className="mt-2 text-xs text-slate-400">Ranked consumer classes: {plane.top_consumer_classes.length?plane.top_consumer_classes.join(" · "):"NOT CENSUSED"}</p>
+              </article>)}
+            </div>
+          </div>}
+        </section>
 
         <section className="mt-12" aria-labelledby="drive-heading">
           <div className="flex flex-wrap items-end justify-between gap-4">
