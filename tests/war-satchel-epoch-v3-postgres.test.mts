@@ -91,6 +91,17 @@ test("epoch-v3 persisted isolated SQL financial ledger and parallel consumption"
     await assert.rejects(()=>run(a!,"SELECT epoch_v3.consume_receipt($1,'none','deposit',$2,0,1000000,'from','to','key')",[E,hash(952)]),/permission denied/);
    }finally{await run(a!,"RESET ROLE")}
   });
+  await t.test("limited finance consumer can credit ONLY through definer stored function",async()=>{
+   await proof(a!,"deposit","role_only",9,960,"wallet:role_only",V,"deposit/role_only");
+   await run(a!,"SET ROLE epoch_v3_credit_consumer");
+   try{
+    await run(a!,"SELECT epoch_v3.credit_deposit($1,$2,$3,0,$4,$5,$6)",
+      [E,"role_only",hash(960),uw(9),"wallet:role_only",V]);
+    await assert.rejects(()=>run(a!,"UPDATE epoch_v3.positions SET available_uwolo=999"),/permission denied/);
+   }finally{await run(a!,"RESET ROLE")}
+   assert.equal((await pos(a!,"role_only")).a,uw(9));
+   assert.equal((await run(a!,"SELECT count(*)::int n FROM epoch_v3.receipt_consumptions WHERE tx_hash=$1",[hash(960)])).rows[0].n,1);
+  });
   await t.test("schema ACLs default deny; physical unique and history immutable",async()=>{
    assert.equal((await run(a!,"SELECT coalesce(exists(select 1 from aclexplode(nspacl) where grantee=0 and privilege_type='USAGE'),false) pub FROM pg_namespace WHERE nspname='epoch_v3'")).rows[0].pub,false);
    await proof(a!,"deposit","alpha",1,90,"wallet:alpha",V,"test");
