@@ -431,6 +431,21 @@ Owner ran a **read-only** Python symlink relation and release-file byte-scan aga
 
 **Next safe gate:** classify only the three resolved links' *target kinds and broad root relationships* without disclosing target strings or following files; verify the **actual release-controller** (stage, current/rollback build) does not consume this specific `.next/BUILD_ID` by a documented and non-sensitive read-only status workflow. Review `.aoe2war-release` campaign metadata **without exposing or modifying payloads**. No `rm`, `git worktree prune`, symlink unlink, blanket cache purge, or Watcher artifact changes. Any release authority ambiguity stays HOLD.
 
+
+## Federation link owner classification + tracked-source BUILD_ID negative match (Mac owner read-only, 2026-10-27)
+
+Another narrowly bounded Python probe classified the **same three symlinks** inside the protected `.aoe2war-release/federation-validation` subtree of attached worktree `~/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015`:
+- Link 1 resolves to a **DIRECTORY** categorized as `OTHER_AOE2WAR_PROJECT_PATH`; `points_into_next=false`.
+- Link 2 resolves to a **DIRECTORY** categorized as `OTHER_AOE2WAR_PROJECT_PATH`; `points_into_next=false`.
+- Link 3 resolves to a **DIRECTORY** categorized as `SAME_WORKTREE` (outside `.next`); `points_into_next=false`.
+- `resolve(strict=True)` and `stat` succeeded for each. **0 dangling/unresolved links, 0 direct symlinks into candidate generated output.** The two external link destinations remain within the **AoE2WAR project root** but outside this particular attached worktree. Their purpose, internal contents and downstream consumers were **not inspected**; names and actual targets were deliberately not disclosed. All remain protected pointers to existing directories.
+- The candidate `.next/BUILD_ID` was read as a bounded (max 512 B) regular nonempty ASCII file; `git -C <worktree> grep -q -F -e <exact BUILD_ID bytes>` returned **1** and the owner tool printed `TRACKED_SOURCE_BUILD_ID_REFERENCE: NONE_OBSERVED`. This is a **tracked-source literal-reference test**, not a search of Git-ignored runtime artifacts, release controller state, other repos, build lock owners, remote production, or hashed/indirect references.
+- From previous receipts, exactly two bounded release-state regular file scans also found 0 literal candidate BUILD_ID or `.next` markers, observed FD/cwd matches were 0 at their instants, `.next` allocated **1,328,688 KiB ≈ 1.267 GiB**, HEAD `99c406f57d759b672fd9fe91d3c3355c4d527705`, clean tracked status, attached branch `refs/heads/fix/update-independent-docs-context-20261015`.
+
+**Gate advanced:** `PASS_THREE_SYMLINK_TARGETS_AOE2WAR_DIRS_OUTSIDE_NEXT`, `PASS_EXACT_BUILD_ID_NO_LITERAL_GIT_TRACKED_SOURCE_REFERENCE`; **`HOLD_RELEASE_CONTROLLER_CURRENT_STAGE_ROLLBACK_AUTHORITY`**, `HOLD_EXTERNAL_LINK_OPERATIONAL_ROLE`, `HOLD_OWNER_APPROVAL_FOR_NEXT_MUTATION`. Zero newly qualified or reclaimed bytes. All sibling release evidence, attached source checkout, signed Watcher downloads, recovery material and financial/recordings/Codex material remain untouched.
+
+**Next meaningful release-controller proof**, not another generic source crawl: identify the **current/active, staged and rollback** build authority values using existing authorized **read-only** `./bin/aoe2war status --json`/release status semantics and local pointers, comparing only equality booleans to the candidate BUILD_ID (never dump credentials, production env, private access or full receipt files). Check that the local CLI's status path is read-only and scoped before invoking against live infrastructure. Separately inspect whether the candidate worktree branch retains an intentional release/stage function; if any stage/rollback consumer is unknown, `HOLD` persists. No general `rm -rf`, worktree prune or cache cleanup.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
