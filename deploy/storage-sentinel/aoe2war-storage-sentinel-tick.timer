@@ -1,0 +1,10 @@
+[Unit]
+Description=AoE2WAR Storage Sentinel read-only heartbeat checks every 5 minutes
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=aoe2war-storage-sentinel-tick.service
+[Install]
+WantedBy=timers.target

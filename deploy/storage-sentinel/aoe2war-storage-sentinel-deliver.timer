@@ -1,0 +1,10 @@
+[Unit]
+Description=AoE2WAR Storage Sentinel private inbox retry every 5 minutes
+[Timer]
+OnBootSec=6min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=aoe2war-storage-sentinel-deliver.service
+[Install]
+WantedBy=timers.target

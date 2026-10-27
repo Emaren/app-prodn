@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>Label</key><string>org.aoe2war.storage-sentinel-mac</string>
+<key>ProgramArguments</key><array>
+<string>__MAC_PYTHON__</string><string>__APP_ROOT__/scripts/aoe2_storage_probe.py</string>
+<string>--plane</string><string>mac</string>
+</array>
+<key>StartInterval</key><integer>120</integer>
+<key>RunAtLoad</key><false/>
+<key>StandardOutPath</key><string>__OPERATOR_PRIVATE_DIR__/mac-probe-partial.log</string>
+<key>StandardErrorPath</key><string>__OPERATOR_PRIVATE_DIR__/mac-probe-error.log</string>
+</dict></plist>

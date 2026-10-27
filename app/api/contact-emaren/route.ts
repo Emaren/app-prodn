@@ -35,6 +35,7 @@ const VIEWER_SELECT = {
   id: true,
   uid: true,
   isAdmin: true,
+  verificationMethod: true,
   inGameName: true,
   steamPersonaName: true,
 } as const;
@@ -228,12 +229,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
     }
 
+    // System principals are not browser chat actors, even with a leaked session.
+    if (viewer.verificationMethod === "system") {
+      return NextResponse.json({ detail: "System identity cannot send browser messages." }, { status: 403 });
+    }
+
     const payload = await readMessageInput(request);
 
     if (payload.body.length < 1 && !payload.attachment) {
       return NextResponse.json(
         { detail: "Message cannot be empty unless you attach a screenshot or voice note." },
         { status: 400 }
+      );
+    }
+    // Reserved operator events are never authored by public chat POST.
+    // Real Sentinel posts originate from the reviewed host-local system sender.
+    if (/^(?:SENTINEL-ID:|STORAGE SENTINEL\b)/i.test(payload.body.trim())) {
+      return NextResponse.json(
+        { detail: "System notifications cannot be authored from public chat." },
+        { status: 403 }
       );
     }
     if (isChallengeInboxNoticeBody(payload.body)) {
