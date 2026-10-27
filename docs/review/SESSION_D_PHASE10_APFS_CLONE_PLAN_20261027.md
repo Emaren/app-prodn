@@ -370,6 +370,23 @@ It then used `os.walk(..., followlinks=False)` on the three **protected** adjace
 
 **Storage Atlas fields:** `next_open_fd_observed_pid_count=0`, `next_open_fd_tool_result=PASS_ZERO_AT_SAMPLE`, `next_cwd_observed_pid_count=0` (prior separate receipt), `release_protected_federation_nested_dirs=1`, `release_protected_federation_symlinks=3`, `release_protected_recovery_nested_dirs=1`, `release_protected_recovery_files=1`, `release_protected_handoffs_files=1`, `release_links_target_relationship=HOLD_UNINSPECTED`, `release_receipt_contents=NOT_READ`, `next_candidate_delete_authorized=false`, `phase10_new_reclaimed_bytes=0`.
 
+## Fourth isolated `.next` review — three symlink relationships & two protected receipt files no literal references (owner Mac 2026-10-27)
+
+Owner's latest **read-only** Python inspection did not follow or mutate release-state symlinks or publish their names/destinations. Three link entries from `.aoe2war-release/federation-validation`:
+- link #1: `OUTSIDE_WORKTREE`, `target_exists=true`
+- link #2: `OUTSIDE_WORKTREE`, `target_exists=true`
+- link #3: `SAME_WORKTREE`, `target_exists=true`
+
+Since the relation check prioritized `POINTS_INTO_NEXT` and `WITHIN_PROTECTED_RELEASE`, none of these three links resolves into the exact current `.next` subtree or back into protected release-state. The third resolves elsewhere within the attached worktree. The two outside-worktree links are known **existing** targets, but their identities, broad owners/roles, sensitivity and potential downstream dependencies have NOT been classified. Preserve all three, including external targets; link reference absence does not prove there are no symbolic or programmatic release dependencies.
+
+The same probe validated a nonempty `.next/BUILD_ID` **file** (source hash recorded earlier, not literal identifier displayed) and scanned **two existing regular release receipt files**, one each in `recovery-campaigns` and `storage-handoffs`, with a strict 1 MiB-per-file bound, no skipped files. Each returned `files_scanned=1`, `files_skipped=0`, `build_id_matches=0`, `next_mentions=0`. This means **neither receipt contains the literal current BUILD_ID bytes nor literal `.next` bytes** in the one bounded pass. It does **not** certify no hashed/encoded/path-inferred relations, no other manifest or caller references, and no active release rollback dependencies.
+
+**Evidence progression for this one 1,328,688 KiB historical generated build:** exact worktree source `HEAD=99c406f57d759b672fd9fe91d3c3355c4d527705`, attached branch, empty Git porcelain at earlier point-in-time, BUILD_ID **file SHA-256** `3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522`, adjacent release categories/protected files, no current `cwd` and non-recursive `lsof` FD matches previously observed, no direct symlink into `.next`, no literal BUILD_ID/.next in two bounded receipt files. **Do not mistake a collection of negative samples for proof that a live/stage/rollback controller never uses this generated output.**
+
+**Classification:** `PASS_FEDERATION_LINK_RELATIONS_0_DIRECT_NEXT_TARGETS`, `PASS_TWO_BOUNDED_RECEIPT_SCANS_ZERO_LITERAL_MATCH`, `HOLD_OUTSIDE_LINK_ROLE_AND_RELEASE_CONTROLLER_AUTHORITY`, `HOLD_NEXT_CLEANUP_APPROVAL`. `three_federation_symlinks_present=true`, `three_federation_symlink_targets_exist=true`, `symlink_outside_worktree_count=2`, `symlink_inside_same_worktree_outside_next_count=1`, `symlink_target_into_next_count=0`, `receipt_files_scanned=2`, `receipt_files_skipped=0`, `receipt_build_id_literal_match_count=0`, `receipt_next_literal_match_count=0`, `next_candidate_allocated_kib=1328688`, `next_cleanup_authorized=false`, `actual_reclaimed_bytes=0`.
+
+**Next owner-Mac read-only decision gate:** record symlink destination **types and broad root categories only**, with no target strings, and identify whether existing canonical release-controller stage/current/rollback status uses the candidate `.next/BUILD_ID`. A zero-consumer finding only qualifies this as a **candidate** for an explicit owner-approved, bounded and reversible plan, not deletion. No cleanup, signed Watcher files, recovery/financial evidence or worktree changes authorized.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
