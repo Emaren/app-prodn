@@ -43,8 +43,9 @@ function iso(value:unknown):number{
  return n;
 }
 function bytes64(input:unknown,limit:number):Buffer{
- const x=str(input);
- if(x.length>Math.ceil(limit/3)*4+4||!B64.test(x))return reject("noncanonical_base64");
+ if(typeof input!=="string"||!input||input.length>Math.ceil(limit/3)*4+4||!B64.test(input))
+  return reject("noncanonical_base64");
+ const x=input;
  const b=Buffer.from(x,"base64");
  if(b.length===0||b.length>limit||b.toString("base64")!==x)return reject("noncanonical_base64");
  return b;
