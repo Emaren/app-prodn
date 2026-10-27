@@ -228,6 +228,25 @@ def projection(db,t=None):
  rows=db.execute("SELECT plane,rule,severity,observed,coverage,reason FROM events WHERE active=1 ORDER BY severity,plane LIMIT 32").fetchall()
  return {"schema":"aoe2war.storage-sentinel.private-projection.v1","last_ingested_at":last,
    "live":False,"admission":"HOLD","unresolved":[dict(zip(("plane","rule","severity","observed_at","coverage","reason"),r)) for r in rows]}
+def operator_status(db,t=None):
+ """Offline owner-only delivery/ACK evidence; NEVER served by the website."""
+ t=t or now()
+ counts=dict(db.execute("SELECT status,count(*) FROM outbox GROUP BY status").fetchall())
+ recent=db.execute("""SELECT id,plane,rule,severity,observed,active,ack_at,seq
+   FROM events ORDER BY last_seen DESC LIMIT 32""").fetchall()
+ incidents=[]
+ for ident,plane,rule,severity,observed,active,ack_at,seq in recent:
+  notices=db.execute("SELECT id,status,delivered_at FROM outbox WHERE event_id=? ORDER BY rowid DESC LIMIT 8",(ident,)).fetchall()
+  incidents.append({"event_id":ident,"plane":plane,"rule":rule,"severity":severity,
+    "observed_at":observed,"active":bool(active),"acknowledged_at":ack_at,
+    "delivery_status":"DELIVERED" if any(x[1]=="delivered" and ":ack:" not in x[0] for x in notices)
+       else "PENDING_OR_UNAVAILABLE",
+    "ack_delivery_status":"DELIVERED" if any(":ack:" in x[0] and x[1]=="delivered" for x in notices)
+       else ("PENDING" if any(":ack:" in x[0] for x in notices) else "NOT_QUEUED")})
+ return {"schema":"aoe2war.storage-sentinel.operator-status.v1",
+   "runtime_installation":"UNVERIFIED","signed_live":"NOT_CLAIMED",
+   "observations":projection(db,t),"outbox":{"pending":counts.get("pending",0),
+     "delivered":counts.get("delivered",0)},"incidents":incidents}
 def publish_projection(db,path):
  """Optional operator-only private file publisher. Never emits a LIVE claim."""
  if not path.is_absolute() or path.is_symlink():raise Hold("INVALID_OUTPUT_PATH")
@@ -265,7 +284,7 @@ def main():
   elif args.action=="ack":ack(db,args.id,args.actor)
   elif args.action=="status":
    if args.output:publish_projection(db,args.output)
-   else:print(json.dumps(projection(db),sort_keys=True))
+   else:print(json.dumps(operator_status(db),sort_keys=True))
   if args.action!="status":print(json.dumps({"status":"PASS","action":args.action}))
   return 0
  except (Hold,OSError,ValueError,sqlite3.Error,subprocess.TimeoutExpired) as e:
