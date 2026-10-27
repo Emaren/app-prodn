@@ -71,11 +71,12 @@ test("OS telemetry is bounded, user-visibility gated and fails closed on source 
   assert.match(deck, /controller\.abort\(\)/);
 });
 
-test("AoE2WAR OS change-notice version hashes exactly the three route source files", () => {
+test("AoE2WAR OS change-notice includes the Storage Atlas component in its source version", () => {
   const files = [
     "app/aoe2war-os/Aoe2warOsDeck.module.css",
     "app/aoe2war-os/Aoe2warOsDeck.tsx",
     "app/aoe2war-os/page.tsx",
+    "components/aoe2war-os/StorageAtlasView.tsx",
   ];
   const digest = createHash("sha256");
   for (const path of files) {
