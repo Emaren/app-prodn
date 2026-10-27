@@ -281,6 +281,17 @@ Fixture-local `os.statvfs` available **7,440,388,096 bytes (~6.929 GiB)** before
 
 **Current decision:** `PASS_APFS_FIXTURE_ONLY / HOLD_ACTUAL_ALIAS_MUTATION`, separate owner transaction authorization missing; six SHA-proven aliases still intact; previous +2.606 GiB historical `.next` cleanup only, Phase10 newly reclaimed **0 B**.
 
+
+## Phase 10 first real-file metadata gate — mtime-only mismatch, APFS free 6.9265 GiB (owner read-only; 2026-10-27)
+
+The operator ran exact SHA-bound and ACL/xattr metadata comparison of two real 1.6.0 Linux AppImages in Watcher `dist`. Both 134,013,759 B, SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, `st_dev=16777234`, `st_nlink=1`, separate inodes `175834577` (space-named canonical) and `175834590` (hyphen-named alias), `mode=0755` (493 decimal), `uid:gid=501:20`, `flags=0`, 261752 allocated 512-B blocks each, **empty ACLs and xattrs**. Local app `public/downloads` symlink unchanged and `samefile(dist)=true`.
+
+**The strict metadata gate correctly reported `HOLD_METADATA_OR_IDENTITY_MISMATCH`, because `mtime_ns` differs by 1,077,170,113 ns:** canonical `1790014547600303259`, alias `1790014548677473372`. Separate `birthtime` values observed too: canonical `1790014547.4174945`, alias `1790014547.6003032`, inherently not preservable as identical to the original alias after replacing its inode. All other compared regular-file metadata and digests matched. This is a **specific fixable-on-staged-fixture timestamp compatibility issue**, not deletion permission or reason to ignore metadata.
+
+**Mac APFS Data latest exact `df -k`:** total 482,797,652 KiB, used 431,006,732 KiB, available **7,262,984 KiB = 6.926521 GiB**, displayed capacity **99%**. Earlier available **11,402,824 KiB ~10.87458 GiB** at 15:04Z; drop **4,139,840 KiB = 3.94806 GiB**. Compare `df` available directly, never total-minus-used under shared APFS accounting. **Cause remains UNPROVEN**. A prior fixture `statvfs` about 6.9294 GiB free is directionally consistent, but 0 bytes new reclaim occurred. Snapshot inventory/read-only `df` and build-output growth attribution now high priority; never delete snapshots automatically to restore reported free capacity.
+
+**New isolated doc-only fixture variant** at source commit `8f8e5f9c004fab054478f5d97337af5346db7a55` (Git blob `1706a45c9229c501d9bf91d6024dc2a81262aa57`) stages a clone with **alias-specific original mtime** and tests divergent-mtime fixtures/URL/rollback. **NOT YET RUN BY MAC OWNER**, unlike previous successfully tested equal-mtime disposable case. All actual Watcher files still protected and unmodified. Detailed identity, Storage Atlas telemetry and new acceptance gates in [Phase10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md). `actual_reclaimed=0`.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
