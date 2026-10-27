@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.session-d-mac-storage-20261027"
+title: "Session D — Mac Storage OS recovery and verified-cleanup register (2026-10-27)"
+type: "working"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "mac-storage-independent-review-evidence"
+reviewed_at: "2026-10-27"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Session D — Mac Storage OS recovery and verified-cleanup register (2026-10-27)
 
 **Authority:** evidence-scoped review of Mac observations already posted under [Central Command #934](https://github.com/Emaren/app-prodn/issues/934). This is **not** a fresh operator-host census, a deletion permit, a release approval, or a financial certificate.
