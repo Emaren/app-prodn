@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 from pathlib import Path
 import stat
 import subprocess
@@ -233,6 +234,95 @@ def release_status(gates: dict, results: dict) -> None:
     )
 
 
+
+def remote_hot_rollback_refs(gates: dict, results: dict) -> None:
+    """Read only named hot rollback BUILD_ID files on the source-owned host.
+
+    Does NOT enumerate volume cold archives or private activation receipts.
+    No remote paths, BUILD_ID values, credentials or receipt bodies printed.
+    """
+    if not gates.get("pinned_next_build_id_file"):
+        return
+    host = os.environ.get("AOE2_RELEASE_HOST", "hel1")
+    prod_root = os.environ.get(
+        "AOE2_RELEASE_PROD_REPO", "/var/www/AoE2HDBets/app-prodn"
+    )
+    if not host or not prod_root.startswith("/") or "\n" in prod_root:
+        return
+    remote_code = """
+import hashlib, json, pathlib, stat, sys
+root = pathlib.Path(sys.argv[1])
+expected = sys.argv[2]
+roots = [root / ".next", root / ".next-release"]
+try:
+    roots.extend(sorted(root.glob(".next-rollback*")))
+except OSError:
+    print(json.dumps({"status":"HOLD_GLOB"}))
+    raise SystemExit(0)
+if len(roots) > 104:
+    print(json.dumps({"status":"HOLD_TOO_MANY_GENERATIONS"}))
+    raise SystemExit(0)
+checked = 0
+matches = 0
+unknown = 0
+for folder in roots:
+    try:
+        mode = folder.lstat().st_mode
+        if not stat.S_ISDIR(mode):
+            unknown += 1
+            continue
+        f = folder / "BUILD_ID"
+        mode = f.lstat().st_mode
+        if not stat.S_ISREG(mode) or f.stat().st_size > 512:
+            unknown += 1
+            continue
+        with f.open("rb") as handle:
+            raw = handle.read(513)
+        checked += 1
+        matches += hashlib.sha256(raw).hexdigest() == expected
+    except FileNotFoundError:
+        if folder.exists() or folder.is_symlink():
+            unknown += 1
+    except OSError:
+        unknown += 1
+print(json.dumps({
+  "status":"PASS" if unknown == 0 else "HOLD_UNKNOWN_READERS",
+  "entries_checked":checked, "exact_build_file_sha_matches":matches,
+  "unclassified_entries":unknown
+},sort_keys=True))
+"""
+    command = "python3 -c " + shlex.quote(remote_code) + " " + (
+        shlex.quote(prod_root) + " " + shlex.quote(BUILD_ID_FILE_SHA256)
+    )
+    p = run([
+        "/usr/bin/ssh", "-o", "BatchMode=yes",
+        "-o", "ConnectTimeout=8", host, command,
+    ], 40)
+    try:
+        report = json.loads(p.stdout) if p and p.returncode == 0 else None
+    except (ValueError, TypeError):
+        report = None
+    if not isinstance(report, dict):
+        gates["remote_hot_rollback_scan_complete"] = False
+        return
+    gates["remote_hot_rollback_scan_complete"] = (
+        report.get("status") == "PASS"
+    )
+    results["remote_hot_rollback_build_id_files_checked"] = (
+        report.get("entries_checked")
+    )
+    results["remote_hot_rollback_matches"] = (
+        report.get("exact_build_file_sha_matches")
+    )
+    results["remote_hot_rollback_unknown"] = (
+        report.get("unclassified_entries")
+    )
+    gates["remote_hot_rollback_no_exact_build_id_match"] = (
+        gates["remote_hot_rollback_scan_complete"]
+        and report.get("exact_build_file_sha_matches") == 0
+    )
+
+
 def main() -> int:
     gates: dict[str, bool] = {}
     results: dict = {
@@ -247,6 +337,7 @@ def main() -> int:
     readers_and_size(gates, results)
     release_evidence(gates, results)
     release_status(gates, results)
+    remote_hot_rollback_refs(gates, results)
     # Separate records are necessary for cold rollback, off-Data restore, and
     # current/previous build users. Neither CI success nor empty FD scans prove
     # these domains, so ALWAYS HOLD these gates until independently audited.
