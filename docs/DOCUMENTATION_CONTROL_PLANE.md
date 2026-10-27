@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/phase11-website-atlas-finance-safe` at `99123c0e08b96328d2ccdbfb512a668313c977e0`
+Implementation baseline: `release/phase11-website-atlas-finance-safe` at `2c987a725559f17d30c4a8901451224f2466aa34`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
