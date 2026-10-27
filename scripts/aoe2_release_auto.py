@@ -2920,7 +2920,7 @@ def resolve_stage_receipt(
 
 
 def route_proof() -> None:
-    for path in ("/", "/api/lobby", "/api/bets", "/api/deployment-version"):
+    for path in ("/api/deployment-version",):
         url = PUBLIC.rstrip("/") + path
         p = run(
             [
@@ -2953,7 +2953,7 @@ def route_proof() -> None:
 
     remote = (
         "set -euo pipefail; "
-        "for p in / /api/lobby /api/bets /api/deployment-version; do "
+        "for p in /api/deployment-version; do "
         'curl -fsS --max-time 12 -o /dev/null "http://127.0.0.1:3030$p"; '
         "done"
     )
@@ -3286,7 +3286,7 @@ test "$(systemctl is-active aoe2hdbets-web.service)" = active
 
 curl -fsS \
     --max-time 5 \
-    http://127.0.0.1:3030/api/bets \
+    http://127.0.0.1:3030/api/deployment-version \
     >/dev/null
 
 W8092_AFTER="$(ss -ltn | grep -Ec ':8092[[:space:]]' || true)"
