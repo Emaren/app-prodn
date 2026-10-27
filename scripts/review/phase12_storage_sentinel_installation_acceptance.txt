@@ -143,3 +143,8 @@ PHASE 12 FINAL SOURCE-ACCEPTANCE BOUNDARY
 - Freeze the exact Git SHA after the source version manifest and Python
   contract regressions pass. #949 WEBSITE HISTORICAL/UNKNOWN SHIP REMAINS
   INDEPENDENT; no Sentinel source review may silently alter or hold #949.
+
+- Offline exact-source acceptance includes a three-plane synthetic Ed25519
+  subprocess round-trip through the EXISTING #945 verifier, plus negative
+  altered-signature, missing-plane and replay tests. Ephemeral CI keys and
+  signatures remain SYNTHETIC and never substitute authentic C/D/E receipts.
