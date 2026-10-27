@@ -4,7 +4,7 @@
  */
 import {createHash, createPublicKey, verify as verifySignature} from "node:crypto";
 import {toStorageAtlasPublicSnapshot, type StorageAtlasPublicSnapshot}
- from "./aoe2StorageAtlasPublicContract";
+ from "./aoe2StorageAtlasPublicContract.ts";
 
 const DOMAIN=Buffer.from("aoe2war/storage-atlas/receipt-v1\0","utf8");
 const HEX40=/^[a-f0-9]{40}$/;
@@ -50,7 +50,7 @@ function bytes64(input:unknown,limit:number):Buffer{
  if(b.length===0||b.length>limit||b.toString("base64")!==x)return reject("noncanonical_base64");
  return b;
 }
-const sha=(x:Buffer)=>createHash("sha256").update(x).digest("hex");
+
 /** Three independently pinned collectors; replay pin is a TRUSTED external
  * high-water mark, not supplied by the signed evidence under inspection.
  */
