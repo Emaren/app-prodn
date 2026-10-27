@@ -251,6 +251,39 @@ echo "=== DATA / CONTAINER FREE NOW ==="
 
 **Storage Atlas fresh sample** (owner latest, exact UTC sample timestamp unspecified): `disk3_allocated_bytes=485879390208`, `disk3_unallocated_bytes=8505405440`, `data_consumed_bytes=441358733312`, `vm_consumed_bytes=6445350912`, `vm_growth_since_previous_diskutil_bytes=1074298880`, `data_growth_since_previous_diskutil_bytes=11689984`, `disk3_growth_since_previous_diskutil_bytes=1085988864`, `vm_fraction_of_container_growth=0.9892356318`, `swap_total_reported_MiB=5120`, `swap_used_reported_MiB=3912.19`, `df_data_available_kib=8306060`, `df_data_used_kib=431014388`, `df_container_free_exact_parity=true`, `attribution=VM_VOLUME_GROWTH_NOT_PROCESS_CAUSE`, `phase10_actual_reclaimed_bytes=0`. Do not overwrite earlier timestamped Atlas observations with these later values without preserving source and observation order.
 
+## Owner Mac vm_stat and process RSS snapshot — Chrome largest visible consumer (2026-10-27)
+
+**Bounded read-only process/memory observation** from actual Mac (no Activity Monitor actions, no process termination). Commands run: `/usr/bin/vm_stat`, `/usr/sbin/sysctl vm.swapusage`, `/bin/ps -axo pid=,rss=,comm= | /usr/bin/sort -k2,2nr | /usr/bin/head -n 20`, and `/bin/df -k /System/Volumes/Data`.
+
+- `vm_stat` pages are **16,384 B**, `Pages free=14,478` (~226.22 MiB), active `287,344`, inactive `281,890`, wired `115,490`, purgeable `2,360`; compressor occupied `304,192` pages (~4.642 GiB **physical page equivalent**), stored in compressor `945,399` pages (~14.426 GiB logical page equivalent). Reported `Swapins=437,983`, `Swapouts=738,510`, `Compressions=85,721,953`, `Decompressions=76,736,410`, `Pageouts=76,887`. Most vm_stat event counts are cumulative and cannot be equated with **recent rates** from this single observation. Low free-page count by itself does **not** prove acute current pressure; inactive/file-backed pages and reclaimability matter. The command did not include `memory_pressure -Q`.
+- `vm.swapusage: total=5120.00M used=3872.19M free=1247.81M (encrypted)`, i.e. swap **used~3.7814 GiB** assuming M≈MiB. Previous `vm.swapusage used=3912.19M` so used is **40.00 MiB lower**, not growing at this second reading. Current swap usage is not the same metric as `diskutil` VM volume allocation; no new `diskutil` sibling-volume consumption was provided in this batch.
+- Among **top 20 individual PID RSS observations**, **13 are Google Chrome main/helper processes**, summing **5,696,256 KiB (~5.432 GiB) *raw RSS***; four ChatGPT/Codex-related entries sum **684,512 KiB (~0.653 GiB) raw RSS**; remaining entries include iTerm, Mail and WindowServer. The two largest Chrome helpers: PID `970` RSS `1,011,872 KiB`, PID `18590` RSS `846,080 KiB`. **Do not treat summed RSS as unique physical memory** because shared page mapping and other Chrome processes outside top 20 mean it is neither full ownership nor proportional swap causation. It makes Chrome the leading **observed** memory optimization candidate, not a proved historical VM growth origin.
+- Latest Data `df`: total `482,797,652 KiB`, used **`431,013,652 KiB`**, available **`8,306,796 KiB = 7.921978 GiB`**, displayed **99%**. Versus immediately preceding full-container receipt's Data `df` used `431,014,388 KiB`, available `8,306,060 KiB`: used **−736 KiB**, available **+736 KiB**. Space essentially stable at the ~7.922 GiB level. The preceding `diskutil` proved the recent ~1GiB allocation increase occurred **98.9% in VM volume** and **1.1% in Data**; this **does not prove** which application produced it.
+- After the commands, `starship` emitted: `Executing command "/Users/tonyblum/.pyenv/shims/python" timed out`, and the shell prompt displayed Python **3.14.7**, whereas previous operator shell initialization/prompt had displayed **3.13.5**. This is a **development-environment drift signal** with unclear cause; a prompt theme/version display is not authoritative proof of the currently selected pyenv interpreter. **HOLD any release/build migration** until `pyenv version`, `python --version`, `/bin/zsh` PATH resolution and `.python-version` / direnv context are verified read-only; never install or switch Python solely to quiet Starship.
+
+**Decision:** `PASS_MEMORY_PROCESS_SNAPSHOT_RECEIPT`; `PROBABLE_BROWSER_MEMORY_PRESSURE_CONTRIBUTOR_CHROME` (not proven as VM expansion cause); `PASS_SWAP_USED_DOWN_40_MIB`; `PASS_DATA_FREE_STABLE_TO_WITHIN_736_KIB`; `HOLD_HISTORICAL_VM_PROCESS_CAUSALITY`; `HOLD_PYENV_ACTIVE_RUNTIME_IDENTITY`; `HOLD_WATCHER_REAL_ALIAS_TRANSACTION`.
+
+**Safer next action**, not automated: review the actual Chrome tab/process mapping through Chrome Task Manager or macOS Activity Monitor, save any unsaved app/ChatGPT/Codex work, then **manually** reduce genuinely unneeded heavy browser tabs **only by owner choice**; compare swap and `/bin/df` before/after a deliberate observation interval. Do not kill Chrome, `codex`, attached worktree processes, or macOS VM; no commands in this plan terminate or change processes. A measured decrease is useful but not conclusive process attribution without temporal baselines.
+
+**Next minimal read-only Mac commands**, no special `path` zsh variables:
+```bash
+echo "=== PYTHON RUNTIME IDENTITY ==="
+command -v python
+python --version
+command -v pyenv
+pyenv version
+echo "=== VERSION POLICY SOURCE ==="
+/bin/ls -la .python-version "$HOME/.python-version" 2>/dev/null
+echo "=== MEMORY PRESSURE INSTANTANEOUS ==="
+/usr/bin/memory_pressure -Q
+echo "=== SWAP + DATA FREE ==="
+/usr/sbin/sysctl vm.swapusage
+/bin/df -k /System/Volumes/Data
+```
+If `memory_pressure -Q` or a pyenv command fails, mark that subcheck HOLD; do not switch interpreters, clean caches, reinstall packages or restart processes.
+
+**Storage Atlas observation fields** (exact acquisition time not supplied, do not assign an invented UTC timestamp): `vmstat_page_size_bytes=16384`, `vmstat_pages_free=14478`, `vmstat_pages_inactive=281890`, `vmstat_pages_compressor_occupied=304192`, `vmstat_pages_stored_in_compressor=945399`, `swap_used_reported_MiB=3872.19`, `swap_used_delta_reported_MiB=-40`, `chrome_processes_in_top_20=13`, `chrome_top20_rss_kib_sum=5696256`, `chatgpt_codex_processes_in_top20=4`, `chatgpt_codex_top20_rss_kib_sum=684512`, `data_available_kib=8306796`, `data_used_kib=431013652`, `data_free_delta_previous_kib=736`, `starship_python_shim_timeout_observed=true`, `python_prompt_display=3.14.7`, `python_active_runtime_verified=false`, `phase10_actual_reclaimed_bytes=0`.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
