@@ -394,6 +394,27 @@ The owner performed another bounded **read-only** check of exact worktree `~/pro
 
 **Next safe inspection:** bounded all-FD pathname check against this one exact `.next` tree without using recursive `lsof +D`, read-only category/file-count census of three `.aoe2war-release` subtrees without dumping possibly sensitive receipt payloads, and existing Workspace/Storage OS preview-only diagnostics. FDs or cwd absent on one snapshot do **not** alone prove future release/rollback non-use. Separate owner cleanup approval and preservation/rebuild/rollback receipts still required.
 
+
+## Full observable FD census excludes current .next users; three protected federation symlinks confirmed (owner Mac 2026-10-27)
+
+The operator executed a dedicated, read-only Python probe under project pyenv 3.13.5, confirming that the exact worktree target exists as a non-symlink directory. It invoked `/usr/sbin/lsof -nP -Fpn` with `capture_output`, check for nonzero status or stderr, 60-second timeout, then filtered every observable `n` (FD pathname) by equality with the exact `.next` path or its descendant prefix. **Observed `OBSERVED_OPEN_FD_PID_COUNT: 0` and `OBSERVED_OPEN_FD_PIDS: []`**, `POINT_IN_TIME_ONLY: true`. This augments the earlier `lsof -d cwd` no-match receipt, but absence of observed current open handles **does not** establish no future release/rollback, build or stage consumers, nor any lsof process-visibility completeness guarantee.
+
+A bounded, non-following `os.walk(followlinks=False)` inventory of **protected** adjacent `.aoe2war-release` returned these counts:
+
+| Protected relative subtree | Nested directories | Ordinary files observed | Symlinks observed |
+|---|---:|---:|---:|
+| `federation-validation` | **1** | 0 | **3** |
+| `recovery-campaigns` | **1** | **1** | 0 |
+| `storage-handoffs` | 0 | **1** | 0 |
+
+All three subtree paths existed as directories and were not symlinks at the root category gate. **No symlink targets, file names, receipt contents, secrets, BUILD_ID references, or consumer authority were inspected.** Three symlinks in federation validation are potentially crucial **external or internal pointers**. The two files may contain unique provenance; protect even if `du -sk` for the parent earlier rounded to zero. Never follow/move/dereference/remove these symbolic links as a cleanup convenience.
+
+**Candidate:** the same `1,328,688 KiB (~1.267 GiB)` `.next`, worktree HEAD `99c406f57d759b672fd9fe91d3c3355c4d527705`, attached branch `refs/heads/fix/update-independent-docs-context-20261015`, empty ordinary Git porcelain, `.next/BUILD_ID` **file** SHA256 `3c93c1857e4ac0cadcb594e9914113ce2bd36c659be1576e5ae2e2c6da92a522` from preceding inspections. **No candidate size change or full generated-tree hash was measured on this latest probe.**
+
+**Classification:** `PASS_LSOF_ALL_OBSERVABLE_PATHS_NO_MATCH_AT_SAMPLE`, `PASS_3_PROTECTED_RELEASE_SUBTREE_TYPE_COUNTS`, `HOLD_FEDERATION_SYMLINK_TARGET_IDENTITY`, `HOLD_RELEASE_REF_BUILD_ID_AND_FUTURE_RUNTIME_CONSUMERS`, `HOLD_DELETE_NEXT`. Qualified reclaim 0 B and actual Phase10 newly reclaimed 0 B. Source/worktree and `.aoe2war-release` remain immutable under this review.
+
+**Next read-only gate:** resolve *only* the three federation-validation symlink target **types and relationships** (whether the link points at this exact `.next` or protected subtrees, within/outside attached worktree, exists/missing); expose no secret receipt payloads or potentially sensitive absolute target paths. Separately record `.next` BUILD_ID equality as a boolean in known release-state references, not arbitrary grep output. Review release authority (production build, rollback and campaign controller) via canonical read-only Storage/Workspace OS commands and require separate explicit per-path owner approval before a reversible bounded action. Do **not** recursively follow the symlinks or use destructive cleanup.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
