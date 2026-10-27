@@ -260,6 +260,11 @@ All three updater manifests returned empty matching alias arrays: `latest.yml: [
 
 **Current reviewed extension:** [Phase 10 APFS clone/retention/Storage Atlas handoff](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md) with [strict disposable macOS/APFS fixture-only Python probe](fixtures/session_d_apfs_clone_fixture.py). Independent GitHub release v1.6.0/v1.6.3 SHA-256 assets match all six prior Mac full-file duplicate digests; these are published immutable binary content references, **not guarantees about historical local web download URLs**. The offline Mac connector **cannot execute APFS fixtures in this session**; `PASS_APFS_FIXTURE_ONLY` remains pending Mac operator run. This review continues on isolated PR #942, not frozen finance, staged site or Codex branches. **No actual Watcher file was cloned, replaced, deleted, moved or relinked. Newly reclaimed 0 B.**
 
+
+## Phase 10 disposable APFS fixture first-run HOLD and correction (2026-10-27)
+
+Mac owner executed pinned original fixture with verified Git blob and Python syntax; result **`HOLD_APFS_FIXTURE_NOT_VERIFIED / WATCHER_TARGET_NOT_APFS: no fixture attempted`**. **Our fixture used `/usr/bin/stat -f %T` incorrectly as a filesystem-type detector; on Darwin `%T` is the file type**. No actual APFS COW test executed, no Watcher binaries modified, no space reclaimed. This is not proof Watcher is not on APFS. Corrected same review-branch fixture source at `8cc634410babc899af0bf4f8fb2e501e8be5a386` (blob `d33a87067225e6a19b9bf4cfab78aea08c3ba75c`) uses `diskutil info -plist /System/Volumes/Data` plus exact device identity and fail-closed temp device check. The operator rerun is still pending, and even `PASS_APFS_FIXTURE_ONLY` cannot authorize real file mutation. Detailed correction and new pinned rerun are in [Phase 10 plan](SESSION_D_PHASE10_APFS_CLONE_PLAN_20261027.md).
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
