@@ -1,0 +1,109 @@
+AOE2WAR STORAGE OS — PHASE 9 CANONICAL THREE-PLANE SOURCE / OPERATOR CONTRACT
+Source base: app-prodn/main@14ce71045150fcad4a25f0e3c3858c1c3cc7aab6
+Status: HELD FOR REVIEW, never a production cleanup or website telemetry feed.
+
+OWNERSHIP AND LEGACY OPERATING ENTRYPOINTS
+- bin/aoe2war storage -> scripts/aoe2_storage.py is the ONLY primary Storage OS CLI.
+  status, estate --measure, deep-census, triage --json:
+  existing read-only named classes and Mac/root/evidence-volume pressure.
+  local-maintain --apply: sole original four-cache Mac mutator; do not broaden.
+  plan, maintain, verify: existing bounded rollback archival decisions and proof.
+  scripts/aoe2_storage_retention.py: cache-only held archive policy; no durable financial data deletion.
+  scripts/aoe2_storage_expire.py: explicit sealed generation ledger and rollback
+  archive expiry; never call from broad artifact scanner.
+  scripts/aoe2_storage_campaign.py: lock-controlled archive campaign lifecycle.
+  scripts/aoe2_storage_handoff.py: lock-controlled archive V1/V2 controller handoff.
+  scripts/aoe2_db_snapshot_retention.py: own database snapshot policy, out of scope.
+  scripts/aoe2_doctor.py and VPSSentry storage-doctor: independent capacity
+  admission and HEL1 DynamicUser observer authority; no duplicated collector.
+  Existing callers include Finish, triage / Kingdom Intelligence, operator CLI,
+  archive worker, storage campaign and release gates.
+- New: aoe2war storage atlas-snapshot --inputs PRIVATE_JSON [--public].
+  scripts/aoe2_storage_atlas.py normalizes independently obtained operator
+  snapshots; DOES NOT SSH, deploy, run rm, mutate a host or claim authentic
+  measurements. Input provenance is UNVERIFIED until independent operator
+  verification. Missing planes, partial probes and stale TTL are held.
+- New: aoe2war storage artifacts --inventory PRIVATE_JSON.
+  scripts/aoe2_storage_artifacts.py reviews 8 generable classes but never
+  deletes them. Even a fully qualified REVEWABLE row does not imply deletion
+  authority; --apply returns HOLD. Existing local-maintain and expiry are the
+  only mutation controllers. No generic path, mount or daemon prune.
+- New: lib/aoe2StorageAtlasPublicContract.ts public projection is a pure
+  deterministic redaction, NOT an ingestion API or live disk probe. Central
+  owns UI #943, sources and release. This branch touches no Next.js route,
+  Kingdom Index, production API, public network or release controller.
+
+PRIVATE CONTRACT aoe2war.storage-atlas.private.v1
+- plane exactly mac, hel1-root, hel1-volume-105319120; duplicates invalid.
+- filesystem {fs_type, uuid, mount_source, mountpoint}; actual target
+  UUID/mount identity must originate from Mac read-only diskutil and HEL1
+  findmnt/lsblk/fstab observation, not auto-filled from a page or old map.
+- source {collector, source_sha}; observed_at UTC, bounded ttl_seconds.
+- capacity {total_bytes, free_blocks_bytes, ordinary_free_bytes}; from real
+  statvfs f_blocks, f_bfree, f_bavail and block size, not df Size-Avail
+  subtraction. reserved_bytes = f_bfree-f_bavail; used = total-f_bfree;
+  effective = used+ordinary_free; effective_percent=used/effective.
+  Never treat ext4 reserved blocks as money or ordinary writer capacity.
+  APFS snapshots and reclaimable purgeables are NOT a promised reclaimed gain.
+- coverage complete/partial/inaccessible; census_complete must be proven by
+  all named source probes, partial scan never counted as entire device.
+- consumers: exact private paths, measured allocated bytes when known,
+  owner and retention classification, rebuild/redundancy/no-live-reference
+  evidence and restore dependencies. Each consumer has cleanup_authorized=false.
+- proposed_reclaim_bytes is an estimate, independently scoped to same FS;
+  measured_reclaimed_bytes remains NULL until a separately authenticated
+  pre/post same-device receipt has been validated. A JSON field claiming
+  verified=true cannot mint an actual gain.
+- growth comparison joins SAME actual filesystem UUID and increasing
+  observation time only; unusual >5GiB/day means investigation, not deletion.
+- public projection schema aoe2war.storage-atlas.public.v1 exposes only
+  anonymous plane, coverage, stale/age, rounded pressure/free bytes, top
+  retention classes and severity. It NEVER exports path/owner/UUID/mount,
+  source digests, receipt IDs, Wolo settlement data or private credentials.
+- if any source inaccessible, stale, unauthenticated, UNKNOWN or partial,
+  global admission remains HOLD; browser must never pretend to scan disks.
+
+EVIDENCE FOR COORDINATION (dated observations, NOT new Session B measurements)
+- Mac session D #942, historical owner receipt #934/#6444200364:
+  11.560GiB -> 14.165GiB APFS Data free; 2.606GiB measured net reclaimed
+  by owner on exactly two historical .next output dirs. 0 source worktrees.
+  11 dirty worktrees, 38.12GiB protected recovery, 26.11GiB Steam
+  recordings are always protected. Distinct Mac device means HEL1 unaffected.
+- HEL1 root: distinct /dev/sda1 ext4, effective used ~53.4%, ~67GiB
+  ordinary free (dated operator observations). No deletion needed.
+- HEL1 evidence volume: Hetzner ID 105319120, /dev/sdb, UUID
+  a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42, 300GiB /mnt/HC_Volume_105319120,
+  ~91.8% effective used, snapshot <=88% FAIL; ~10.83GiB net relief
+  or independently qualified provider capacity change required. The
+  protected 40GiB /dev/loop4 financial restore is completely out-of-scope.
+  Observer session C is genuine DynamicUser on HEL1 with storage HOLD.
+- E owns independent live backup/resize/restore proof, not this source.
+  F owns central operations registry/docs harmonization.
+  G owns independent cross-system acceptance, not source tests.
+
+RETENTION ENGINE SAFETY
+Classes: Next.js .next, node_modules, Go build cache, Python __pycache__,
+venv, Rust target, Docker build layers, archived dev outputs.
+All candidates require exact absolute path, same-filesystem verified, no
+symlink, no mounted subtree, no dirty/untracked source, no live process/fd,
+no release/rollback refs, tracked rebuild dependency lockfile, source SHA,
+bounded measured allocation, independent restore & redundancy evidence,
+owner review, and retention of newest 1–3 eligible DEV generations (default 3).
+Never apply that preference to signed chain, legal, financial, database, replay,
+backups, deployments, emergency restore, Codex sessions or creative recordings.
+Docker build-layer service references and mounted volumes require their own
+governed daemon controller, NOT recursive path deletion.
+An inventory failing ANY test holds and estimates reclaim as zero; even
+passing candidates stay review-only until owner and existing controller scope
+are independently approved. Never claim reclaimed bytes until both real
+pre/post capacity observations are verified on same FS with receipts.
+
+PRODUCTION / WEBSITE ACCEPTANCE
+No public POST or cleanup endpoints. The Storage Atlas page in held PR #943
+must not treat these future source contracts as a live feed or grade. Central
+must independently design auth, rate limiting, source signatures, confidentiality
+and rotation for a PRIVATE ingestion service. C/D/E source observations must be
+validated and signed before public aggregate publication. TTL expiry must
+visibly display STALE. Owner must give exact bounded canary/cleanup approval;
+never remotely invoke from a web request. No change to staged Kingdom Index or
+held financial #940.
