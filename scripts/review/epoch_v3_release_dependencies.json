@@ -10,7 +10,8 @@
         "lib/warSatchelNewEpochFinancialContracts.ts",
         "lib/warSatchelEpochV3ReleaseGate.ts",
         "lib/warSatchelEpochV3Durability.ts",
-        "lib/warSatchelEpochV3NativeObserver.ts"
+        "lib/warSatchelEpochV3NativeObserver.ts",
+        "lib/warSatchelEpochV3TicketFunding.ts"
       ],
       "production_mounted": false
     },
@@ -47,6 +48,12 @@
       "owner": "Codex/Wolo + HD Finance",
       "state": "NOT_IMPLEMENTED_ON_WOLO",
       "requirement": "Dedicated new-escrow v3 GET-only operation and bank observations on separately reviewed private loopback port (candidate 8095, not deployed); independent Comet/ICS23 verifier must authenticate chain effects, never rely on HTTP sender text"
+    },
+    {
+      "id": "ticket_multileg_funding",
+      "owner": "HD Finance+Codex/Wolo",
+      "state": "SOURCE_REVIEW_ONLY",
+      "requirement": "One authenticated MsgSend funds one owner ticket, multiple market-leg allocations sum exactly once to original total, one physical consumption per ticket, independent entitlement refs per leg; SERIALIZABLE global uniqueness still missing"
     },
     {
       "id": "custody",
