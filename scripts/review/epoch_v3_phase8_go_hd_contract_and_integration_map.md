@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.epoch-v3-go-hd-integration-map"
+title: "Held Epoch V3 Native Wolo to PostgreSQL Source Integration Map"
+type: "reference"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn", "wolochain"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "review-only-nonactivating-contract-candidate"
+reviewed_at: "2026-10-27"
+review_interval_days: 14
+sensitivity: "internal"
+---
+
 # Epoch-v3 native financial interface / canonical production integration map
 Status: HELD, SOURCE-OWNED, NO GO PROOF. Phase8 HD interface proposal, not a claim that Wolo Go publishes this executable.
 Review stack: HD #937 bde1a40808b661b4fbd257353d71b4700d52ed81 → #938 ab3c653512f5d5b6c3bc39fe46f199144d2061c8 → #940 (read current exact HEAD). Wolo held #115 ae9f0277b58f2288e7b1fc25b03eef2a30271577.
