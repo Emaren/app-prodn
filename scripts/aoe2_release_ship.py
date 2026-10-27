@@ -1566,7 +1566,7 @@ printf '%s\\n' \
   "durable_rollback=$ROLLBACK" \
   "durable_cache_free=1" \
   "activation_bundle_while_stopped=1" \
-  "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_critical_routes_and_bounded_health_soak" \
+  "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_and_identity_only_bounded_health_soak" \
   > "$ACT_RECEIPT/certification.txt"
 COMMITTED=1
 
@@ -2851,7 +2851,7 @@ def activate_release(
         "fast_rollback_modules": result["fast_rollback_modules"],
         "durable_rollback": result["durable_rollback"],
         "release_specific_proof": (
-            "INFRASTRUCTURE exact runtime identity, internal/public critical-route proof, and bounded post-activation health soak"
+            "INFRASTRUCTURE exact runtime/build identity, internal/public deployment-version probes, protected Wolo listener continuity, and bounded identity-only post-activation health soak; dynamic route proof deferred"
         ),
         "wolo_mutated": False,
         "transport_recovered_after_timeout": transport_recovered_after_timeout,
