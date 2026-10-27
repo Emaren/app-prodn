@@ -53,8 +53,8 @@ Official references: Apple XNU [clonefile(2)](https://github.com/apple-oss-distr
 On the **actual Mac**, fetch the fixture directly from the **immutable review commit** and verify the exact Git blob digest **before execution**. The command does **not** change interactive shell exit settings, and the Python fixture cannot be pointed at an actual Watcher file:
 ```bash
 FIXTURE="$(mktemp -t aoe2war-phase10-fixture)"
-URL="https://raw.githubusercontent.com/Emaren/app-prodn/d10104ea128138cc0772af03b50187c386230c06/docs/review/fixtures/session_d_apfs_clone_fixture.py"
-EXPECTED_BLOB="d19287651aa28ef39d7cf7c073601f34dc477124"
+URL="https://raw.githubusercontent.com/Emaren/app-prodn/8cc634410babc899af0bf4f8fb2e501e8be5a386/docs/review/fixtures/session_d_apfs_clone_fixture.py"
+EXPECTED_BLOB="d33a87067225e6a19b9bf4cfab78aea08c3ba75c"
 if [ -n "$FIXTURE" ] &&
    curl -fL --max-time 45 --output "$FIXTURE" "$URL" &&
    [ "$(git hash-object "$FIXTURE")" = "$EXPECTED_BLOB" ] &&
@@ -66,6 +66,14 @@ else
 fi
 ```
 A positive `PASS_APFS_FIXTURE_ONLY` JSON from the Mac is required before considering the real-file trial. Source review or Linux execution is **NOT** this proof. Keep the returned JSON as a time-stamped Mac receipt; no filesystem cleanup is authorized by fixture success. A successful fixture is not real-file authorization.
+
+## APFS fixture first operator attempt — failed safely; guard corrected (2026-10-27)
+
+The owner executed the immutable original fixture at commit `d10104ea128138cc0772af03b50187c386230c06` (Git blob `d19287651aa28ef39d7cf7c073601f34dc477124`). Fetch/blob checksum and `python3 -m py_compile` **PASS**, but actual fixture JSON returned `HOLD_APFS_FIXTURE_NOT_VERIFIED`, reason `WATCHER_TARGET_NOT_APFS: no fixture attempted`. Real Watcher touched **0 files**; realized Mac reclaim **0 B**; no APFS clone/COW assertion.
+
+**Root cause is in OUR fixture precondition**, not a demonstrated non-APFS Mac: Darwin `stat -f %T` outputs a **file type**, not a filesystem type. It cannot equal literal `apfs` for a directory. This invalid check was not supported by Mac `stat(1)`; current correction replaces it with `/usr/sbin/diskutil info -plist /System/Volumes/Data` using Python `plistlib`, requiring `FilesystemType=apfs`, exact `st_dev` matching between Data volume and Watcher `dist`, and a temporary test directory with the same `st_dev`. Any query, volume or XML-plist failure remains a hard HOLD; **no bypass/no fallback**. The corrected fixture source is immutable at `app-prodn@8cc634410babc899af0bf4f8fb2e501e8be5a386`, Git blob `d33a87067225e6a19b9bf4cfab78aea08c3ba75c`.
+
+**Operator rerun required using the updated pinned command below.** The first run did not create disposable fixtures and cannot count as a fixture PASS. Never act on the real Watcher binaries until this clean rerun reports `PASS_APFS_FIXTURE_ONLY`, and all separately required manual transaction approvals are met.
 
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
