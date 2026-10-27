@@ -459,6 +459,17 @@ Priority #1 remains exact attached docs-context `.next` **1,328,688 KiB (~1.267 
 
 **Current decision:** `PASS_ACTIVE_AND_STAGED_DIFFERENT`, `PASS_MOST_RECENT_25_CERTIFIED_HISTORY_NO_MATCH`, `HOLD_CERTIFIED_FIELD_AND_ALL_HISTORICAL_ROLLBACK_REFERENCES`, `HOLD_INDEPENDENT_BACKUP_OR_REBUILD`, `HOLD_EXACT_ONE_PATH_RETIRE_AUTHORIZATION`. New recovered **0 B**. Watcher aliases, production controls, worktrees, Codex, recordings, finance/recovery, MobileSync and macOS swap/snapshots unmodified. Existing PR remains draft.
 
+
+## Phase11 native owner-Mac ranked generated-output census: four .next ≈5.172 GiB logical, protected worktrees separated (2026-10-27)
+
+The owner downloaded immutable Phase11 camera from source commit `118614927519ecd33ea8a5f51307c560772f8915`, **verified Git blob SHA-1 `8f769a2e356623dea4a7f369861c63ffa8784889`**, verified Python `ast.parse`, then actually ran the same script on the owner Mac: `PASS: PHASE11_SOURCE_AND_SYNTAX_VERIFIED`, `Workspace probes {'app-prodn':'PASS','api-prodn':'PASS'} FD:PASS_POINT_IN_TIME`, `ALERT_LARGE_STALE_NEXT_COUNT:4`, `NO_MUTATION / NEW_RECLAIMED=0`.
+
+**Four historical direct registered `.next` outputs**, allocated GiB rounded by camera: `codex-authenticated-satchel-deposit` **1.393**, `codex-satchel-complete-financial-paths` **1.298**, `update-independent-docs-context-20261015` **1.267**, `app-prodn-e5-seal` **1.214**. Sum **~5.172 GiB** logical allocation; first **two total ~2.691 GiB and are protected financial/Codex worktrees**. The two non-financial build outputs total **~2.481 GiB** **under review**, not approved-to-delete or physical reclaim prediction. Docs build has the older release-controller negative active/staged/25 history evidence but older rollback and exact restore remain HOLD. E5 build is `HOLD_UNKNOWN_RUNTIME` and its BUILD_ID/source/FD/rollback authority have NOT been verified. Four app-prodn `.next` entries all raised **age/size review alerts**, including protected financial worktrees; **never turn these alerts into automatic deletion**.
+
+Measured `node_modules` entries: `app-prodn-e5-seal` **0.832 GiB**, canonical `app/node_modules` **0.830 GiB**, `codex-final-satchel-qualification` **0.830 GiB**, `app-prodn-renaissance-phase1-20261020` **0.830 GiB**, Watcher `node_modules` **0.103 GiB**; numerous additional attached `node_modules` rows **UNKNOWN** (the plaintext doesn't show whether each is a symlink or `du` failure). `watcher/dist` **3.276 GiB** is protected published release content; canonical `app/.next` and Yarn cache displayed `0.000 GiB` due rounding, **not proof of exactly zero bytes**. No Mac Data `df` or APFS new ordinary-free capacity taken in this exact batch, so no actual cleanup gain can be inferred.
+
+**New Phase11 outcome:** **`PASS_NATIVE_MAC_IMMUTABLE_READONLY_BATCH`**, `PASS_FOUR_BIG_BUILD_ROWS`, `HOLD_FINANCIAL_NEXT_TREE_2`, `HOLD_E5_RUNTIME_AND_REBUILD_PROOF`, `HOLD_DOCS_ROLLBACK_REPRODUCIBILITY`, `HOLD_UNKNOWN_NODE_MODULES_STATUS_REASONS`, `HOLD_REAL_CLEANUP`. Qualified for immediate deletion **0 B**, additional actual recovered **0 B**. Detailed ranked ledger and exact follow-up scope: [Phase11 headroom plan](SESSION_D_PHASE11_MAC_BUILD_HEADROOM_20261027.md). Source camera **not installed as Storage OS, has no schedule or remove operation**. Preserve original financial source, receipts, signed Watcher binaries, worktrees, recordings, Codex and storage volumes.
+
 ## Exit / honest status
 
 - Previously reclaimed **2.606 GiB verified**, no source worktree removed.
