@@ -284,6 +284,32 @@ If `memory_pressure -Q` or a pyenv command fails, mark that subcheck HOLD; do no
 
 **Storage Atlas observation fields** (exact acquisition time not supplied, do not assign an invented UTC timestamp): `vmstat_page_size_bytes=16384`, `vmstat_pages_free=14478`, `vmstat_pages_inactive=281890`, `vmstat_pages_compressor_occupied=304192`, `vmstat_pages_stored_in_compressor=945399`, `swap_used_reported_MiB=3872.19`, `swap_used_delta_reported_MiB=-40`, `chrome_processes_in_top_20=13`, `chrome_top20_rss_kib_sum=5696256`, `chatgpt_codex_processes_in_top20=4`, `chatgpt_codex_top20_rss_kib_sum=684512`, `data_available_kib=8306796`, `data_used_kib=431013652`, `data_free_delta_previous_kib=736`, `starship_python_shim_timeout_observed=true`, `python_prompt_display=3.14.7`, `python_active_runtime_verified=false`, `phase10_actual_reclaimed_bytes=0`.
 
+## Owner Mac memory pressure and Python project interpreter VERIFIED (2026-10-27)
+
+A new owner-on-Mac read-only round ran:
+```
+/usr/bin/memory_pressure -Q
+command -v python
+python --version
+command -v pyenv
+pyenv version
+/usr/sbin/sysctl vm.swapusage
+/bin/df -k /System/Volumes/Data
+```
+
+**Actual receipt and decision:**
+- `memory_pressure -Q` recognized 16 GiB / 1,048,576 pages × 16,384 bytes and returned **`System-wide memory free percentage: 51%`**. This single reported percentage is not a trend, and does not imply an immediate memory emergency or that Chrome should be killed. Prior `vm_stat` cumulative counts and raw top-PID RSS still cannot prove per-process swap responsibility.
+- `command -v python` → `/Users/tonyblum/.pyenv/shims/python`; `python --version` → **Python 3.13.5**; `command -v pyenv` → `pyenv`; `pyenv version` → **`3.13.5 (set by /Users/tonyblum/projects/AoE2HDBets/app-prodn/.python-version)`**. Project's actual interpreter selection **PASS 3.13.5**. The command prompt briefly showed **3.14.7** before the read, then **3.13.5** afterward; the prior Starship pyenv-shim timeout is a prompt/display or lookup issue, NOT verified runtime drift. Avoid version-switch or reinstall work; rerun authoritative `python --version` only if a later build requires independent identity preflight.
+- Encrypted `vm.swapusage` **total=5120.00M, used=3760.19M, free=1359.81M**. Used swap fell **112.00 MiB** from immediately preceding `3872.19M`, and **152.00 MiB** from older `3912.19M`. No new `diskutil apfs list` snapshot accompanies this reading, so falling *used swap* does NOT demonstrate VM volume physical allocation shrinking, nor a specific Chrome attribution.
+- Data `/bin/df -k /System/Volumes/Data`: `/dev/disk3s5`, `1024-blocks=482797652`, `Used=431019720 KiB`, **`Available=8300728 KiB ≈ 7.9162 GiB`**, `Capacity=99%`. Previous direct Data reading `Used=431013652`, `Available=8306796` KiB; latest used **+6,068 KiB (~5.926 MiB)** and available **−6,068 KiB (~5.926 MiB)**. These two adjacent readings are reasonably stable compared with prior multigigabyte free-pool swings, which remain unexplained beyond the already proven VM + Data delta between two older full-container snapshots.
+- No process termination, cleanup, Watcher artifact writes, download filename change, Git workspace mutation, APFS snapshot modification or production/financial operation occurred in this operator batch. **Phase10 actual newly reclaimed=0 B**.
+
+**Acceptance transition:** `PASS_PYENV_PROJECT_INTERPRETER_3_13_5`; `PASS_SINGLE_MEMORY_PRESSURE_SNAPSHOT_51_PERCENT_FREE`; `PASS_SWAP_USED_DOWN_112_MIB_FROM_PRIOR`; `HOLD_VM_VOLUME_FREE_BLOCK_RELEASE_AND_HISTORICAL_BROWSER_CAUSALITY`; `HOLD_REAL_WATCHER_SINGLE_ALIAS_OWNER_APPROVAL`. Existing native disposable `clonefile`, separate inode, mtime correction, simulated download symlink and original-inode rollback remain PASS. A system RAM/RSS reading does not authorize closing Chrome, Codex or other active workloads.
+
+**Session B Storage Atlas fresh observation fields** (exact UTC timestamp not provided): `memory_pressure_total_bytes=17179869184`, `memory_pressure_free_percent=51`, `python_executable=/Users/tonyblum/.pyenv/shims/python`, `python_selected_version=3.13.5`, `python_selection_source=app-prodn/.python-version`, `python_identity_status=PASS`, `swap_used_reported_mib=3760.19`, `swap_total_reported_mib=5120`, `swap_used_change_from_previous_mib=-112.00`, `data_available_kib=8300728`, `data_used_kib=431019720`, `data_available_change_from_previous_kib=-6068`, `mac_actual_reclaimed_bytes=0`.
+
+**Next engineering priority** is not repeated memory sampling or fixture reruns. Qualify the **1,328,688 KiB** isolated docs-context worktree `.next` for active BUILD_ID/reference consumers, adjacent `.aoe2war-release` rollback evidence and attached-worktree status **read-only**, via the existing Workspace/Storage OS preview and exact path checks. Retention/deletion remains HOLD until the owner separately approves a bounded, reversible plan. For the Watcher alias: historical URL consumers and explicit inode/birthtime tradeoff/second-stage finalization approval remain HOLD.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
