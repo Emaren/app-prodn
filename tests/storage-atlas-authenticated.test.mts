@@ -85,7 +85,7 @@ test("stale, disputed, future and naive timestamps HOLD",()=>{
 test("incomplete inventory cannot claim complete; forged reclaim denied",()=>{
  const x=sample();x.data[0].coverage="complete";
  rejected(()=>authenticateStorageAtlas(x.envelope(),x.pins,time),"fake completeness");
- x.data[0].coverage="partial";x.data[0].measured_reclaimed_bytes=9999999;
+ x.data[0].coverage="partial";Object.assign(x.data[0],{measured_reclaimed_bytes:9999999});
  rejected(()=>authenticateStorageAtlas(x.envelope(),x.pins,time),"fabricated gained bytes");
 });
 test("oversized payload, negative capacity and malformed consumer HOLD",()=>{
