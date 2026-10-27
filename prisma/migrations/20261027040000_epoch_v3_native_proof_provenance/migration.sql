@@ -73,7 +73,7 @@ CREATE FUNCTION epoch_v3.assert_native_proof_for_receipt(
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER
  SET search_path=pg_catalog,epoch_v3 AS $$
 DECLARE c epoch_v3.native_proof_certificates%ROWTYPE; r epoch_v3.receipts%ROWTYPE;
- e epoch_v3.epochs%ROWTYPE;
+ e epoch_v3.epochs%ROWTYPE; qualified_count integer;
 BEGIN
  SELECT * INTO STRICT r FROM epoch_v3.receipts
  WHERE chain_id='wolo-1' AND tx_hash=p_hash AND message_index=p_index;
@@ -89,7 +89,25 @@ BEGIN
     OR c.funding_height<=e.h_star OR c.observed_at>clock_timestamp()
     OR c.expires_at<=clock_timestamp()
  THEN RAISE EXCEPTION 'BANK_PROOF_STALE_OR_RECEIPT_MISMATCH'; END IF;
-END $$;
+ -- Native bank evidence must prove BOTH distinct account domains using the
+ -- identical, fresh, signed H/H+1 consensus root, never sum both balances.
+ SELECT count(*) INTO qualified_count
+ FROM epoch_v3.native_account_reserve_evidence b
+ WHERE b.epoch_id=p_epoch AND b.chain_id='wolo-1'
+ AND b.bank_state_height=c.bank_state_height
+ AND b.bank_commit_height=c.bank_commit_height
+ AND b.block_sha256=c.root_block_sha256 AND b.app_sha256=c.root_app_sha256
+ AND b.observed_at<=clock_timestamp() AND b.expires_at>clock_timestamp()
+ AND b.expires_at<=b.observed_at+interval '120 seconds'
+ AND b.bank_balance_uwolo >=
+   b.liabilities_uwolo+b.maximum_unknown_outflow_uwolo+
+   b.gas_uwolo+b.operating_floor_uwolo
+ AND ((b.account_role='vault' AND b.bank_balance_uwolo=c.vault_bank_balance_uwolo)
+   OR (b.account_role='escrow' AND b.bank_balance_uwolo=c.escrow_bank_balance_uwolo));
+ IF qualified_count<>2 THEN
+   RAISE EXCEPTION 'BANK_PROOF_STALE_OR_ACCOUNT_RESERVE_DEFICIT';
+ END IF;
+END $;
 
 -- Every physical consumption path, old or future, passes one strengthened
 -- security boundary. Existing source-only PG fixture must install matching
