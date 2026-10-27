@@ -2,7 +2,7 @@
  * Signature validity proves receipt provenance, NOT complete census,
  * freshness outside the TTL, device health, reclaimed bytes, or live GO.
  */
-import {createHash, createPublicKey, verify as verifySignature} from "node:crypto";
+import {createPublicKey, verify as verifySignature} from "node:crypto";
 import {toStorageAtlasPublicSnapshot, type StorageAtlasPublicSnapshot}
  from "./aoe2StorageAtlasPublicContract.ts";
 
