@@ -138,5 +138,92 @@ class StageAdoptionTests(unittest.TestCase):
             adoption.read_packet(p)
 
 
+
+class StageProductLoaderPathTests(unittest.TestCase):
+    def test_actual_parser_resolves_gate_and_manifest_under_product_root(self):
+        import hashlib
+        import json
+        import aoe2_release_ship as ship
+        with tempfile.TemporaryDirectory(prefix="stage-product-source-root-") as tmp:
+            root = Path(tmp)
+            state = root / ".aoe2war-release"
+            stage = state / "stage-receipts"
+            manifests = state / "manifests"
+            gates = state / "gates"
+            for folder in (stage, manifests, gates):
+                folder.mkdir(parents=True, exist_ok=True)
+            product = "a" * 40
+            artifact = "b" * 64
+            previous = "c" * 40
+            gate = gates / "proof.json"
+            gate.write_text(json.dumps({
+                "status": "PASS", "target_sha": product,
+                "scope_sha256": "test-scope",
+            }) + "\\n")
+            hash_gate = hashlib.sha256(gate.read_bytes()).hexdigest()
+            manifest = {
+                "release_sha": product,
+                "previous_production_sha": previous,
+                "scope_sha256": "test-scope",
+                "risk_class": "APPLICATION",
+                "changed_files": [], "migration_paths": [],
+                "gate": {
+                    "receipt_path": str(gate.relative_to(root)),
+                    "receipt_sha256": hash_gate,
+                },
+            }
+            m = manifests / (product + ".json")
+            m.write_text(json.dumps(manifest) + "\\n")
+            hash_manifest = hashlib.sha256(m.read_bytes()).hexdigest()
+            m.with_suffix(".json.sha256").write_text(hash_manifest + "\\n")
+            receipt = {
+                "schema": 1, "kind": "aoe2war-stage-result",
+                "status": "STAGED", "release_sha": product,
+                "artifact_sha256": artifact,
+                "previous_production_sha": previous,
+                "source_sha": previous,
+                "live_runtime_mutated": False, "wolo_mutated": False,
+                "active_build_id": "previous-build",
+                "staged_build_id": "next-build",
+                "live_build_version": "previous-version",
+                "candidate_build_version": "next-version",
+                "candidate_node_modules_sha256": "d" * 64,
+                "candidate_node_modules_kb": 4096,
+                "prisma_schema_engine_commit": "e" * 40,
+                "prisma_schema_engine_sha256": "f" * 64,
+                "manifest_path": str(m.relative_to(root)),
+                "manifest_sha256": hash_manifest,
+                "gate_path": str(gate.relative_to(root)),
+                "gate_sha256": hash_gate,
+                "remote_receipt_dir": ship.REMOTE_RECEIPT_ROOT + "/stage-test",
+                "dependency_contract_unchanged": True,
+                "dependency_lock_changed": False,
+                "wolo_8092_count": 1,
+                "wolo_8093_count": 1,
+            }
+            for name in (
+                "isolated_worktree", "build_process_sandboxed",
+                "build_network_private", "build_secret_paths_inaccessible",
+                "dependency_fetch_sandboxed",
+                "dependency_fetch_scripts_disabled",
+                "dependency_build_offline", "prisma_schema_engine_seeded",
+                "cache_free_artifact", "artifact_path_relocated",
+            ):
+                receipt[name] = True
+            for name in (
+                "live_source_mutated", "live_public_mutated",
+                "live_node_modules_mutated", "live_build_version_mutated",
+            ):
+                receipt[name] = False
+            stage_file = stage / (product + "-" + artifact[:12] + ".json")
+            stage_file.write_text(json.dumps(receipt) + "\\n")
+            result = ship.load_stage_receipt(str(stage_file), source_root=root)
+            self.assertEqual(result[1]["release_sha"], product)
+            self.assertEqual(result[5], hash_manifest)
+            self.assertEqual(result[7], hash_gate)
+            with self.assertRaises(ship.ShipError):
+                ship.load_stage_receipt(str(stage_file))
+
+
 if __name__ == "__main__":
     unittest.main()
