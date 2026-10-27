@@ -775,6 +775,126 @@ def root_deep_storage_census() -> dict[str, Any]:
     return remote_root_json(REMOTE_ROOT_DEEP_CENSUS, policy(), timeout=300)
 
 
+
+def local_generated_worktree_census(*, home: Path | None = None) -> dict[str, Any]:
+    """Read-only registered Git-worktree build generations; never authorize deletion.
+
+    No recursive home scans, symlink descent, worktree prune or release-state reads.
+    Detection and age/size alarms are review signals, not retention authority.
+    """
+    operator_home = (home or Path.home()).resolve()
+    project = operator_home / "projects" / "AoE2HDBets"
+    result: dict[str, Any] = {
+        "schema": 1,
+        "kind": "local-registered-generated-builds",
+        "status": "PASS",
+        "generation_policy": {
+            "current_minimum": 1,
+            "historical_keep_range": [1, 3],
+            "age_alert_days": 7,
+            "allocated_alert_bytes": 1024 ** 3,
+            "auto_delete": False,
+        },
+        "rows": [],
+        "mutation_allowed": False,
+    }
+    if project.is_symlink() or not project.is_dir():
+        result["status"] = "HOLD_PROJECT_ROOT"
+        return result
+    project_real = project.resolve()
+    max_registered = 48
+    for name in ("app-prodn", "api-prodn"):
+        repo = project / name
+        if not repo.is_dir() or repo.is_symlink():
+            result["status"] = "HOLD_REPOSITORY_REGISTRY"
+            continue
+        try:
+            listing = subprocess.run(
+                ["git", "-C", str(repo), "worktree", "list", "--porcelain"],
+                capture_output=True, text=True, check=False, timeout=20,
+                env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            result["status"] = "HOLD_GIT_WORKTREE_LIST"
+            continue
+        if listing.returncode != 0:
+            result["status"] = "HOLD_GIT_WORKTREE_LIST"
+            continue
+        registered = [
+            Path(line[9:])
+            for line in listing.stdout.splitlines()
+            if line.startswith("worktree ")
+        ]
+        if len(registered) > max_registered:
+            result["status"] = "HOLD_WORKTREE_COUNT_LIMIT"
+            continue
+        for workspace in registered:
+            if not workspace.is_absolute() or workspace.is_symlink():
+                result["status"] = "HOLD_WORKTREE_PATH"
+                continue
+            try:
+                real = workspace.resolve(strict=True)
+                if real != project_real and project_real not in real.parents:
+                    result["status"] = "HOLD_WORKTREE_OUTSIDE_PROJECT"
+                    continue
+            except OSError:
+                result["status"] = "HOLD_WORKTREE_UNAVAILABLE"
+                continue
+            generated = workspace / ".next"
+            try:
+                stat_result = generated.lstat()
+            except FileNotFoundError:
+                continue
+            except OSError:
+                result["status"] = "HOLD_GENERATED_PATH_STAT"
+                continue
+            if generated.is_symlink() or not generated.is_dir():
+                result["rows"].append({
+                    "repository": name,
+                    "worktree": workspace.name,
+                    "classification": "HOLD_GENERATED_NOT_REGULAR_DIRECTORY",
+                    "mutation_authority": "NONE",
+                    "allocated_bytes": None,
+                    "probe_ok": False,
+                })
+                continue
+            bytes_used, probe_ok = _bounded_allocated_bytes(generated, timeout=45)
+            age_days = max(
+                0.0,
+                (datetime.now(timezone.utc).timestamp() - stat_result.st_mtime)
+                / 86400.0,
+            )
+            release = workspace / ".aoe2war-release"
+            financial = any(
+                marker in workspace.name.casefold()
+                for marker in ("codex", "satchel", "finance", "financial", "escrow", "wolo")
+            )
+            alert = (
+                probe_ok and bytes_used >= 1024 ** 3 and age_days >= 7
+                and not financial and real != repo.resolve()
+            )
+            result["rows"].append({
+                "repository": name,
+                "worktree": workspace.name,
+                "allocated_bytes": bytes_used if probe_ok else None,
+                "age_days_by_mtime": round(age_days, 1),
+                "probe_ok": probe_ok,
+                "release_state_exists": release.exists() or release.is_symlink(),
+                "classification": (
+                    "HOLD_FINANCIAL_OR_CODEX" if financial
+                    else "HOLD_ACTIVE_ROOT" if real == repo.resolve()
+                    else "HOLD_RELEASE_OR_RUNTIME_AUTHORITY"
+                ),
+                "retention_review_alert": bool(alert),
+                "mutation_authority": "NONE",
+            })
+    result["rows"].sort(key=lambda row: (
+        -int(row.get("allocated_bytes") or 0),
+        row["repository"], row["worktree"],
+    ))
+    return result
+
+
 def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
     operator_home = (home or Path.home()).resolve()
     rows = []
@@ -841,6 +961,7 @@ def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
             reverse=True,
         ),
         "mutation_allowed": False,
+        "registered_generated_builds": local_generated_worktree_census(home=operator_home),
     }
 
 
