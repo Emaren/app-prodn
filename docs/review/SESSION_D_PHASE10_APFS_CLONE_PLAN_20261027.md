@@ -164,6 +164,30 @@ The operator fetched the immutable review-branch source commit `8f8e5f9c004fab05
 
 **Storage Atlas fresh sample**: `apfs_data_free_kib=9365044`, `apfs_data_free_gib=8.9312019348`, `apfs_data_used_kib=431003520`, `apfs_data_capacity_display=98%`, `apfs_data_available_increase_from_prior_kib=2102060`, `apfs_data_used_decline_from_prior_kib=3212`, `data_apfs_snapshot_count=0`, `system_update_snapshot_count_reported=3`, `mtime_divergence_fixture=PASS_APFS_FIXTURE_ONLY`, `mtime_restoration_pass=true`, `clonefile_success_no_fallback=true`, `actual_watcher_files_touched=0`, `phase10_new_reclaimed_bytes=0`. The exact new observation timestamp was not supplied: do not silently attach the older `2026-10-27T15:04:27Z` timestamp.
 
+## APFS container reconciliation and stable build roots — latest owner read-only census (2026-10-27)
+
+**Operator-only Mac evidence; no write operation.** A full `diskutil apfs list`, direct `df -k /System/Volumes/Data`, and `du -sk` of three exact candidates were captured. The **first** `df` succeeded; the **last** `df` command in the same shell failed with `zsh: permission denied: df`. Do not invent a final-`df` confirmation: one complete preflight `df`, `diskutil`, and `du` are available. This zsh error is a command-execution/resolution issue until investigated with read-only `whence -va df`, `/bin/df -k /System/Volumes/Data`, and `/bin/ls -l /bin/df`; it is **not** evidence of APFS permission failure or root/OS corruption.
+
+| Evidence source | Exact reported values | Interpretation |
+|---|---|---|
+| APFS container `disk3` | UUID `DF99D6D6-A364-41E4-B992-12ED76BB8353`, 494,384,795,648 B capacity, 484,793,401,344 B volume usage (98.1% displayed), **9,591,394,304 B capacity not allocated** | Real shared physical allocation pool across System, Data, VM, Preboot, Recovery |
+| Data `disk3s5` | 441,347,043,328 B consumed, `/System/Volumes/Data` | Matches `df` used exactly in bytes |
+| Data `df -k` before inventory | `1024-blocks=482797652`, `Used=431002972`, `Available=9366596` KiB, `Capacity=98%` | `431002972 * 1024 = 441347043328` B = Data consumed; **`9366596 * 1024 = 9591394304` B**, exactly APFS container unallocated; Data available = **8.932682 GiB** |
+| System `disk3s1` | 18,507,264,000 B consumed; `Sealed: Broken` on mounted update path, while snapshot mounted at `/` `Snapshot Sealed: Yes` | Distinct properties; **do not** infer broken running root snapshot, attempt seal repairs or purge snapshots; refer to Mac OS specialist only if independently warranted |
+| Preboot `disk3s2` | 16,201,957,376 B consumed | Protected OS-managed volume. Size alone is not cleanup authority |
+| Recovery `disk3s3` | 2,414,116,864 B consumed, unmounted | Protected OS recovery |
+| VM `disk3s6` | 5,371,052,032 B consumed | OS-managed VM allocations; may vary; do not manually remove swap/VM objects |
+| Volume sum / APFS overhead | 483,841,433,600 B across five named volumes vs 484,793,401,344 B container allocated; difference 951,967,744 B | Other APFS overhead/shared accounting; no attribution to a directory or reclaimable target |
+| Docs-context worktree `.next` | **1,328,688 KiB** | Exactly matches preceding census. Adjacent protected `.aoe2war-release`: HOLD |
+| Watcher `dist` | **3,434,896 KiB** | Exactly matches preceding census. Local `public/downloads` symlink consumes this same tree; **do not** dedupe this count as a second independent directory |
+| `~/Library/Caches/go-build` | **627,104 KiB** | Equals earlier `642,154,496` B. Existing `storage local-maintain --json` is preview-only unless explicit future owner approval |
+
+**Capacity interpretation:** latest Data available **9,366,596 KiB = 8.932682 GiB**, **1,552 KiB (about 1.516 MiB) above** preceding direct `df` `9,365,044 KiB`; both readings indicate roughly the same available headroom. None of the three targeted build-output/cache directories grew. The earlier multigigabyte APFS free-space changes therefore **cannot** be attributed to growth in these three paths. This does NOT rule out other build products, container-shared volume activity, APFS purgeable blocks, OS-managed Preboot/VM volumes or unrelated writers. The prior Data snapshot inventory had **no Data snapshots**; three OS-update snapshots reported for the root-volume group remain protected. Inspect remaining directories, process lifetimes and APFS other-volume allocation **read-only** and compare like-for-like timestamps before concluding causality.
+
+**Telemetry — latest scope-only independent receipt**: `mac_apfs_container_uuid=DF99D6D6-A364-41E4-B992-12ED76BB8353`, `mac_container_capacity_bytes=494384795648`, `mac_container_used_bytes=484793401344`, `mac_container_free_bytes=9591394304`, `mac_data_consumed_bytes=441347043328`, `mac_data_available_kib=9366596`, `mac_data_available_gib=8.93268203735`, `mac_preboot_consumed_bytes=16201957376`, `mac_vm_consumed_bytes=5371052032`, `mac_recovery_consumed_bytes=2414116864`, `mac_system_consumed_bytes=18507264000`, `mac_docs_next_du_kib=1328688`, `mac_watcher_dist_du_kib=3434896`, `mac_go_build_cache_du_kib=627104`, `mac_last_df_attempt=HOLD_ZSH_PERMISSION_DENIED_DF`, `mac_new_reclaimed_bytes=0`. These sample fields should not inherit a prior operator timestamp. Do not mix with HEL1 Storage OS capacity; HEL1 volume and root belong to separate lanes.
+
+**Decision:** `PASS_APFS_CAPACITY_DF_DISKUTIL_RECONCILIATION` / `PASS_3_TARGET_SIZES_STABLE` / `HOLD_CAUSE_FREE_SPACE_VARIATION` / `HOLD_DF_SHELL_COMMAND_ERROR`. Historic download alias preservation and explicit per-file owner approval remain prerequisites for any real transaction. No clone/replace/delete, worktree retirement, Go cache apply or snapshot deletion performed.
+
 ## Human-approval **one** alias trial plan — NOT EXECUTABLE / NO APPROVAL
 
 **Exact proposed first alias:** `dist/AoE2HDBets-Watcher-1.6.0.AppImage` with SHA256 `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`, 134013759 B. Immutable canonical clone source: `dist/AoE2HDBets Watcher-1.6.0.AppImage` with the same SHA/length; historical names are preserved. We deliberately do **not** choose a signed Windows binary as first candidate.
