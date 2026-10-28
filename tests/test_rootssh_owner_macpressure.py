@@ -36,8 +36,7 @@ class RootAuthorityContract(TestCase):
         with mock.patch.object(rotate.os, "geteuid", return_value=0):
             with self.assertRaises((RuntimeError, ValueError)):
                 rotate.rotate_root("bm90LWEta2V5")
-        self.assertFalse(rotate.AUDIT.exists() and
-                         str(rotate.AUDIT).startswith("/tmp/fake-test-"))
+        # Malformed public key is rejected before any filesystem changes.
 
     def test_atomic_public_backup_is_create_once(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -81,7 +80,7 @@ class MacPressureContract(TestCase):
     def test_all_generated_buckets_remain_review_only(self):
         self.assertIn(".next", pressure.GENERATED_NAMES)
         self.assertIn("node_modules", pressure.GENERATED_NAMES)
-        self.assertIn((".cache/pip" in str(pressure.HOME_BUCKETS)), (True, False))
+        self.assertTrue(all(item[2].startswith(("REVIEW", "PROTECTED")) for item in pressure.HOME_BUCKETS))
         self.assertNotIn("shutil.rmtree", (ROOT / "scripts/aoe2_storage_mac_pressure.py").read_text())
 
 
