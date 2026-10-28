@@ -72,10 +72,24 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
        <p className="mt-2 max-w-3xl text-sm text-slate-400">Every number comes from signed source evidence. Gross allocations may overlap; intent is never a deletion permit.</p></div>
      <span className="rounded-full border border-white/10 bg-slate-900 px-4 py-2 text-[10px] font-bold tracking-widest text-slate-300">{current?"SIGNED SOURCE":"NO CURRENT SIGNED REVIEW FEED"}</span>
    </div>
+   <div className="rounded-[1.65rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6" aria-label="Largest reported storage buckets in selected plane">
+     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-bold text-white">Largest measured consumers · all four levels</h3>
+       <span className="text-xs text-slate-400">{activeId} · {current?plane.observedAt:"NO SIGNED OBSERVATION"}</span></div>
+     {!current||plane.hogs.length===0?<p className="mt-4 text-xs text-amber-200">NO VERIFIED RANKED HOGS. No empty category is assumed to be zero.</p>:
+       <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{plane.hogs.slice(0,8).map((h,index)=>
+         <button key={h.key} type="button" onClick={()=>{setLevel(h.level);setCategory(h.key);setAlias(null);setChoice(null);}}
+           className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[.025] p-3 text-left hover:border-cyan-300/30">
+           <span className="min-w-0"><span className="block text-[10px] text-slate-500">#{index+1} · L{h.level} · {h.overlaps?"OVERLAP":"UNIQUE GAIN UNKNOWN"}</span><span className="block truncate text-xs font-semibold text-white">{h.label}</span></span>
+           <span className="shrink-0 font-mono text-xs font-semibold text-white">{size(h.grossBytes)}</span>
+         </button>)}</div>}
+     <p className="mt-3 text-[10px] text-slate-500">Gross source allocations, not deduplicated disk consumption or recoverable capacity. Missing categories and stale feeds remain UNKNOWN.</p>
+   </div>
    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Four distinct storage levels">
      {ROLES.map(role=>{
        const Icon=role.icon,group=hogs.filter(h=>h.level===role.level),candidateCount=items?.filter(i=>i.level===role.level).length;
        const gross=group.reduce((a,h)=>a+h.grossBytes,0);
+       const observed=items?.filter(i=>i.level===role.level)??[];
+       const qualified=observed.filter(i=>i.level===1&&i.sourceStatus==="GUARDED"&&i.proofState==="COMPLETE"&&!i.overlaps).length;
        const tint=role.color==="cyan"?"border-cyan-400/40 bg-cyan-400/[.07]":role.color==="amber"?"border-amber-400/40 bg-amber-400/[.07]":role.color==="violet"?"border-violet-400/40 bg-violet-400/[.07]":"border-emerald-400/40 bg-emerald-400/[.07]";
        return <button type="button" key={role.level} onClick={()=>{setLevel(role.level);setCategory(null);setAlias(null);setChoice(null);}}
          aria-pressed={level===role.level}
@@ -84,10 +98,11 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
          <div className="mt-5 text-xs font-black tracking-wider text-white">{role.title}</div>
          <div className="mt-1 text-xs text-slate-400">{role.sub}</div>
          <div className="mt-4 flex items-end justify-between gap-2">
-           <div><div className="text-[10px] text-slate-500">GROSS ALLOCATED</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{current?size(gross):"UNKNOWN"}</div></div>
+           <div><div className="text-[10px] text-slate-500">GROSS ALLOCATED</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{current&&group.length>0?size(gross):"UNKNOWN"}</div></div>
            <div className="text-right"><div className="text-[10px] text-slate-500">SIGNED ALIASES</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{candidateCount??"—"}</div></div>
          </div>
          <div className="mt-3 text-[10px] text-slate-500">{current?`${group.length} signed categories · ${age(plane.observedAt)} old`:"No authenticated per-item census; deletion eligibility UNKNOWN"}</div>
+         {role.level===1&&<div className="mt-2 text-[10px] font-semibold text-cyan-200/80">{current&&items?`${qualified}/${observed.length} observed aliases source-guarded · policy exhaustion UNKNOWN`:"L1 policy coverage UNKNOWN · closed denominator not supplied"}</div>}
        </button>;
      })}
    </div>
@@ -115,11 +130,12 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
            <div className="font-mono font-bold text-white">{selected.alias}</div>
            <div className="mt-3 font-mono text-[10px] text-slate-400">FINGERPRINT {selected.fingerprint.slice(0,16)}…<br/>SOURCE {selected.sourceRevision.slice(0,12)}…<br/>RECEIPT {selected.sourceDigest.slice(0,16)}…</div>
            <div className="mt-3 text-amber-200">{selected.sourceStatus} / {selected.proofState} / {selected.overlaps?"OVERLAP":"NO APFS GAIN PROOF"}</div>
+           <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-400"><div>OWNER / CONSUMER<br/><b className="text-amber-200">NOT ATTESTED</b></div><div>REBUILD / ROLLBACK<br/><b className="text-amber-200">NOT ATTESTED</b></div><div>UNIQUE APFS GAIN<br/><b className="text-amber-200">UNKNOWN</b></div><div>BEFORE / AFTER<br/><b className="text-amber-200">RECEIPT NOT CONNECTED</b></div></div>
          </div>
          <p className="mt-3 text-xs text-slate-400">Current matching owner intent: <strong className="text-white">{history===null?"UNKNOWN":active??"NONE"}</strong></p>
          <div className="mt-4 grid grid-cols-2 gap-2">{CHOICES.map(([key,label])=>{
            const canApprove=selected.level===1&&selected.sourceStatus==="GUARDED"&&selected.proofState==="COMPLETE"&&!selected.overlaps&&Date.now()-Date.parse(plane!.observedAt)<=3600_000;
-           return <button key={key} type="button" disabled={busy||history===null||(key==="SINGLE_CANDIDATE_APPROVAL"&&!canApprove)} onClick={()=>{setChoice(key);setUnderstood(false);}}
+           return <button key={key} type="button" disabled={busy||history===null||(key==="SINGLE_CANDIDATE_APPROVAL"&&!canApprove)||(key==="MIGRATION_REVIEW"&&selected.level!==3)} onClick={()=>{setChoice(key);setUnderstood(false);}}
              className={`rounded-lg border p-3 text-left text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-30 ${choice===key?"border-cyan-300/50 bg-cyan-300/10 text-cyan-200":"border-white/10 text-slate-300"}`}>{label}</button>;
          })}</div>
          {choice&&<div className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/[.05] p-3 text-xs text-amber-100">
