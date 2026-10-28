@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5b6796e8ad7ce3ff8d842691c79e375ca20ad9831a5f229a140ffe032017eee7",
+      "sha256": "f263f0bb82d45e9ce96e29a2799648673b743cf549535396de449e5dfcccd0c3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/session-d-stale-three-next-preview-20261028",
-    "commit": "02e7afc059be3fe249f1c1702fcfb5376e612ae4"
+    "branch": "main",
+    "commit": "f1d81ecc50a7eef1f639f56cdea698185917e61f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

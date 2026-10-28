@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/session-d-stale-three-next-preview-20261028` at `02e7afc059be3fe249f1c1702fcfb5376e612ae4`
+Implementation baseline: `main` at `f1d81ecc50a7eef1f639f56cdea698185917e61f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
