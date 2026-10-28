@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-10-13"
+reviewed_at: "2026-10-28"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -1096,3 +1096,69 @@ dependencies and Download contents are **L2 review**, not L1 deleted.
 HEL1 Traffic DB, active swap, evidence and finance restore systems remain
 protected until independent source-owner proof. L1 is strictly guarded
 generated artifacts after regeneration/source/consumer/mount/APFS proof.
+
+## Private four-level Storage OS and exact owner feedback (Session G, 2026-10-28)
+
+The existing authenticated `/admin/storage-os` page now presents four
+distinct L1 guarded, L2 owner-review, L3 migration-review and L4 protected
+panels above the preserved signed radial hog chart and build/prune/snapshot
+ledger. All category allocations are GROSS and may overlap, share APFS clones,
+or omit unknown files; these are never inferred physical recovery amounts.
+Without a valid source HMAC receipt, item counts, source size and history
+remain **UNKNOWN** rather than fabricated zero.
+
+The optional, bounded `review_items` signed-payload extension accepts up to
+48 safe uppercase aliases per plane, immutable SHA-256 candidate fingerprint,
+source receipt digest and source revision, source status, proof status,
+overlap flag and measured gross bytes. Server category policy determines
+L1-L4; no publisher can reclassify the hard-protected CrossOver/Steam/Replay
+Lab, MobileSync backups, recovery vault, Codex, E5, signed Watcher packages,
+finance or active swap. Optional `capacity_samples` carries at most 24
+ordinary-free byte readings and is explicitly labelled observed drift,
+**not causal verified cleanup**. No raw filenames, paths, keys or financial
+identities are sent to the browser. The publisher/collector is NOT connected
+by this source-only change; Session C and D retain exclusive source ownership.
+
+Separate admin-authenticated `/api/admin/storage-os/reviews` GET/POST
+never calls a scanner or controller. POST is same-origin-only, JSON-size
+bounded, checks a fresh signed exact alias and fingerprint/source revision,
+and atomically appends one private, 0600 immutable review event under the
+existing operator state directory. Events are `PROTECT`, `REVIEW_LATER`,
+`SINGLE_CANDIDATE_APPROVAL`, `MIGRATION_REVIEW`, `REVOKE`; each declares
+`INTENT_ONLY_NO_DELETE` and carries an expected predecessor ID.
+L1 approval intent additionally requires `GUARDED`, complete proof, no
+overlap, a <=60-minute source reading, and expires after **10 minutes**.
+Other expiring review intents last up to 30 days. Any candidate, source or
+receipt fingerprint change invalidates historical approval. A protected
+preference remains exact-fingerprint-scoped and revocable; it NEVER weakens
+hard-coded protection. Missing signing/ledger authority fails closed.
+No delete endpoint, migration executor, reindex, service change or release
+controller is added. A human decision is NOT the guarded release-controller
+approval and does NOT affect Wolo finance or signed Atlas admission.
+
+**Acceptance HOLD:** a PR and CI are source evidence, not a live authenticated
+browser. Verify 401/403/200 on admin review endpoints, CSRF denial, stale
+receipt and tamper rejection, mobile/desktop/a11y states, single-fingerprint
+revocation and expiry, actual private publisher+receiver, and signed/unknown
+visualization before Central merges or deploys. Existing read-only dashboard
+GET remains side-effect free.
+
+### Native Finder Recents restoration, separately held
+
+Owner-native 2026-10-28T21:22Z `stat` confirms one historical Markdown
+file's birth and mtime literally equal epoch zero; Spotlight `mdls` reflects
+that data. Preserve this evidence without `touch` or timestamp rewriting.
+Native `mdutil` on both `/` and Data reports **indexing disabled**.
+Owner checks of Spotlight Documents/Folders and Search Privacy passed.
+Latest ordinary APFS free is **13.064 GiB**. Conservative AoE2WAR project
+planning gates: >=25 GiB ordinary free before even a small-folder index
+refresh and >=40 GiB before considering Data-volume index activation;
+these are not Apple-mandated thresholds. No full-volume reindex, index-store
+deletion, `sudo mdutil -E`, snapshot thinning, Finder reset or automatic
+index-enable command. After headroom and a separate explicit owner permit,
+record preflight APFS free and actual Spotlight state; make the smallest
+reversible settings change, monitor CPU/IO/free space and reassess if below
+25 GiB. Real closure needs two newly created nonprotected ordinary files
+opened once and found with correct dates in Finder Recents, Finder This Mac
+search and Spotlight. The historical file must be unchanged and before/after
+APFS receipts recorded. **Restoration is NOT YET VERIFIED.**
