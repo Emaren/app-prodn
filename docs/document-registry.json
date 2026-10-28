@@ -593,9 +593,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DESYNC_INCIDENT_PROTOCOL.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-28",
+      "reviewed_at": "2026-10-28",
       "sensitivity": "internal",
-      "sha256": "a25a664b4ed988f3974da499c6a8f059242ab1569e6ea9be481bd4e0566f570e",
+      "sha256": "ab00bfe550f867b76095e2f658814d74139b7da183e86a5d369bdcb6ef7a0916",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
