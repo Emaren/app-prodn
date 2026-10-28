@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-d-gigabyte-generated-ranked-plan-20261028` at `b9216cbe28efdf3f5856cd62107be31dcb565587`
+Implementation baseline: `feat/private-storage-command-center-20261028` at `95e6ea418862ccaefd322ae08c5e5506b049b3cf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

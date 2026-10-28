@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a069a679c27282bc0db95e723f1a09ff08ded16307e549f6b53afd2997c9ec2c",
+      "sha256": "ebe8dd8f8af132d24b07d4940e9882b843a9e634d1b71456a43d5fcda02f443c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "d4dbb5a3f40f40af436da390bf581329b2220a6a1f38d59f82903d8b0d4adfc7",
+      "sha256": "0bce29f7204cf8abb0e39dafbe17b126dd6cbc206c1dde3df7c68a5a5d0035fb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-d-gigabyte-generated-ranked-plan-20261028",
-    "commit": "b9216cbe28efdf3f5856cd62107be31dcb565587"
+    "branch": "feat/private-storage-command-center-20261028",
+    "commit": "95e6ea418862ccaefd322ae08c5e5506b049b3cf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
