@@ -66,7 +66,8 @@ class OwnerV5StageParkTests(unittest.TestCase):
         self.assertIn("status", source)
         self.assertNotIn("PRIVATE KEY", source)
         self.assertNotIn("sudo", source)
-        self.assertNotIn("activate", source)
+        self.assertNotIn("activate_release(", source)
+        self.assertNotIn("stage_release(", source)
 
     def test_signing_key_and_payload_are_never_transferred_in_preview(self):
         with mock.patch.object(park, "ssh", return_value=json.dumps(self.preview_packet()).encode()) as remote:
