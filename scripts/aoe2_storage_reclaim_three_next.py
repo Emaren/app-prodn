@@ -46,7 +46,12 @@ def assert_no_symlink_ancestors(path: Path) -> None:
     require(path.is_absolute(), "RELATIVE_PATH")
     current = path
     while True:
-        st = os.lstat(current)
+        try:
+            st = os.lstat(current)
+        except FileNotFoundError:
+            raise RuntimeError("HOLD: STALE_TARGET " + str(current)) from None
+        except OSError:
+            raise RuntimeError("HOLD: TARGET_METADATA_UNAVAILABLE " + str(current)) from None
         require(stat.S_ISDIR(st.st_mode), "SYMLINK_OR_NONDIRECTORY " + str(current))
         if current == Path("/"):
             return
@@ -99,6 +104,25 @@ def current_process_references(paths: list[Path]) -> None:
             raise RuntimeError("HOLD: OPEN_FILE_IN_BUILD_OUTPUT")
 
 
+def read_build_id(path: Path) -> str:
+    """No-follow bounded read; disappearance between stat and open is a HOLD."""
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        raise RuntimeError("HOLD: MISSING_BUILD_ID " + str(path)) from None
+    except OSError:
+        raise RuntimeError("HOLD: BUILD_ID_OPEN_UNSAFE " + str(path)) from None
+    with os.fdopen(fd, "rb") as stream:
+        st = os.fstat(stream.fileno())
+        require(stat.S_ISREG(st.st_mode) and st.st_size <= 256,
+                "BUILD_ID_SHAPE_UNSAFE")
+        raw = stream.read(257)
+    try:
+        return raw.decode("utf-8").strip()
+    except UnicodeError:
+        raise RuntimeError("HOLD: BUILD_ID_UNREADABLE " + str(path)) from None
+
+
 def candidate(repo: Path, build_id: str) -> dict:
     require(repo.is_relative_to(PROJECT), "OUTSIDE_PROJECT")
     assert_no_symlink_ancestors(repo)
@@ -106,8 +130,8 @@ def candidate(repo: Path, build_id: str) -> dict:
     build = repo / ".next"
     assert_no_symlink_ancestors(build)
     need = (build / "BUILD_ID")
-    require(need.is_file() and not need.is_symlink(), "BUILD_ID_MISSING_OR_LINKED")
-    require(need.read_text().strip() == build_id, "BUILD_ID_DRIFT")
+    require(need.is_file() and not need.is_symlink(), "MISSING_BUILD_ID_OR_LINKED")
+    require(read_build_id(need) == build_id, "BUILD_ID_DRIFT")
     top = command(["git", "-C", str(repo), "rev-parse", "--show-toplevel"]).decode().strip()
     require(top == str(repo), "NOT_EXACT_WORKTREE")
     require(not command(["git", "-C", str(repo), "ls-files", "--", ".next"]).strip(),
@@ -155,11 +179,29 @@ def main() -> int:
             "OWNER_MAC_NOT_VERIFIED")
     require(CANONICAL.is_dir() and not CANONICAL.is_symlink(),
             "CANONICAL_REPO_MISSING")
-    plan = [candidate(PROJECT / name, buildid) for name, buildid in TARGETS]
+    # Historical owner reclamation may already have removed one or all builds.
+    # A stale target is not re-eligible and must never trigger --apply.
+    plan = []
+    holds = []
+    for name, buildid in TARGETS:
+        path = PROJECT / name / ".next"
+        try:
+            plan.append(candidate(PROJECT / name, buildid))
+        except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+            message = str(exc)
+            if not message.startswith("HOLD: "):
+                message = "HOLD: TARGET_PROBE_UNAVAILABLE"
+            holds.append((str(path), message))
+    print("AOE2WAR EXACT THREE HISTORICAL NEXT.JS BUILDS")
+    if holds:
+        print("STATUS: HOLD — ONE_SHOT_HISTORICAL_TARGETS_NOT_QUALIFIED")
+        for path, reason in holds:
+            print("TARGET:", path, "STATUS: HOLD", "REASON:", reason)
+        print("PREVIEW_ONLY: no files changed; inspect prior reclaim receipts.")
+        return 2
     paths = [Path(p["path"]) for p in plan]
     current_process_references(paths)
     planned_bytes = sum(row["allocated_bytes"] for row in plan)
-    print("AOE2WAR EXACT THREE HISTORICAL NEXT.JS BUILDS")
     print("SCOPE: only three untracked, source-clean, BUILD_ID-pinned .next directories")
     print("NEVER: Codex runtime cache, recovery, financial files, Downloads, E5 seal")
     print("PLAN_GIB:", round(planned_bytes / 1024**3, 3))

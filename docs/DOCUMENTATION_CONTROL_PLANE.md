@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/storage-census-coverage-and-focus-20261028` at `a9a000d38435e91e0e242733b58f34198c6b5a7e`
+Implementation baseline: `fix/session-d-stale-three-next-preview-20261028` at `02e7afc059be3fe249f1c1702fcfb5376e612ae4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
