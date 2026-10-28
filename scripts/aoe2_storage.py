@@ -35,6 +35,14 @@ LOCAL_EXTENDED_REGENERABLE_PATHS = (
     ("pip_user_cache", Path(".cache/pip")),
 )
 
+# Separate, explicit opt-in for two downloaded Electron toolchain caches.
+# This mode does not select the legacy or --extended cache roots, and never
+# touches a project's node_modules, releases, CrossOver, Steam or recordings.
+LOCAL_ELECTRON_REGENERABLE_PATHS = (
+    ("electron_binary_download_cache", Path("Library/Caches/electron")),
+    ("electron_builder_download_cache", Path("Library/Caches/electron-builder")),
+)
+
 LOCAL_PROTECTED_PATHS = (
     ("recovery_vault", Path("aoe2war-recovery")),
     ("codex_sessions", Path(".codex/sessions")),
@@ -1199,7 +1207,10 @@ def _assert_local_reclaim_path(home: Path, path: Path) -> None:
         raise StorageError(f"local cache path escapes operator home: {path}")
 
 
-def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False, home: Path | None = None) -> int:
+def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False,
+                   electron_only: bool = False, home: Path | None = None) -> int:
+    if extended and electron_only:
+        raise StorageError("--electron-only cannot be combined with --extended")
     operator_home = (home or Path.home()).resolve()
     before = local_storage_snapshot(measure=True, home=operator_home)
     extra_candidates = []
@@ -1222,13 +1233,32 @@ def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False, home
             "allocated_bytes": _allocated_bytes(path) if path.exists() and not blocked_reason else 0,
             "blocked_reason": blocked_reason,
         })
-    selected = LOCAL_REGENERABLE_PATHS + (LOCAL_EXTENDED_REGENERABLE_PATHS if extended else ())
+    # Electron is a distinct cache lane. Fail closed on BOTH targets before
+    # deleting either; never expand the legacy/default or extended allowlists.
+    electron_candidates: list[dict[str, Any]] = []
+    if electron_only:
+        for name, relative in LOCAL_ELECTRON_REGENERABLE_PATHS:
+            path = operator_home / relative
+            _assert_local_reclaim_path(operator_home, path)
+            if path.exists() and not path.is_dir():
+                raise StorageError(f"Electron cache target must be a directory: {path}")
+            electron_candidates.append({
+                "name": name, "path": str(path), "exists": path.exists(),
+                "allocated_bytes": _allocated_bytes(path) if path.exists() else 0,
+            })
+    selected = (
+        LOCAL_ELECTRON_REGENERABLE_PATHS if electron_only else
+        LOCAL_REGENERABLE_PATHS + (LOCAL_EXTENDED_REGENERABLE_PATHS if extended else ())
+    )
     payload: dict[str, Any] = {
         "schema": 1,
         "kind": "aoe2war-local-storage-maintenance",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "apply": apply,
         "extended": extended,
+        "electron_only": electron_only,
+        "electron_candidates": electron_candidates,
+        "electron_reclaimable_bytes": sum(int(row["allocated_bytes"]) for row in electron_candidates),
         "extra_candidates": extra_candidates,
         "extra_reclaimable_bytes": sum(int(row["allocated_bytes"]) for row in extra_candidates),
         "before": before,
@@ -1278,14 +1308,20 @@ def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False, home
         print(f"Four-cache plan: {gib(before['reclaimable_bytes'])}")
         print(f"Extra opt-in:    {gib(payload['extra_reclaimable_bytes'])} across four package caches")
         print(f"Extended apply:  {'YES' if extended else 'NO'}")
+        print(f"Electron only:   {'YES' if electron_only else 'NO'}")
+        if electron_only:
+            print(f"Electron plan:   {gib(payload['electron_reclaimable_bytes'])} · two download caches")
         print(f"Free before:     {gib(before['filesystem']['free_bytes'])}")
         if apply:
             print(f"Free after:      {gib(payload['after']['filesystem']['free_bytes'])}")
             print(f"Measured gain:   {gib(payload['reclaimed_bytes'])}")
             print(f"Receipt:         {payload['receipt']}")
         else:
-            print("READ ONLY: --apply removes only four original caches; --apply --extended")
-            print("adds npm content, Homebrew downloads, and two pip download cache roots.")
+            if electron_only:
+                print("READ ONLY: --apply --electron-only removes ONLY the two named Electron download caches.")
+            else:
+                print("READ ONLY: --apply removes only four original caches; --apply --extended")
+                print("adds npm content, Homebrew downloads, and two pip download cache roots.")
     return 0
 
 
@@ -1527,6 +1563,7 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("local-maintain")
     q.add_argument("--apply", action="store_true")
     q.add_argument("--extended", action="store_true", help="explicitly include four additional package download/content caches")
+    q.add_argument("--electron-only", action="store_true", help="opt-in two standalone Electron toolchain download caches, no other cache roots")
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("local-pressure")
     q.add_argument("--json", action="store_true")
@@ -1588,7 +1625,8 @@ def main() -> int:
             print_estate(payload)
         return 0
     if args.command == "local-maintain":
-        return local_maintain(apply=args.apply, json_mode=args.json, extended=args.extended)
+        return local_maintain(apply=args.apply, json_mode=args.json, extended=args.extended,
+                              electron_only=args.electron_only)
     if args.command == "local-pressure":
         cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_mac_pressure.py"),
                "--limit", str(args.limit)]
