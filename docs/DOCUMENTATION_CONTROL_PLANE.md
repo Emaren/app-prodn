@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/mac-three-build-reclaim-20261028` at `146013c37206736a6962053460a5782581c74508`
+Implementation baseline: `fix/owner-v5-existing-tony-release-lock-20261028` at `68d193567ba7d7c0ecf67451598be5001ee5b5c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

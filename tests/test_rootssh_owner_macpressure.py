@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import json
 from pathlib import Path
 import tempfile
@@ -47,6 +48,50 @@ class RootAuthorityContract(TestCase):
                 rotate.durable_new(path, b"other bytes")
             self.assertEqual(path.read_bytes(), b"public bytes")
 
+    def test_observed_tony_shared_release_lease_is_not_root_private(self):
+        # Mirrors independently observed HEL1 ownership/modes, without
+        # constructing a privileged process or touching any real server.
+        with tempfile.TemporaryDirectory() as tmp:
+            control = Path(tmp) / "os-control"
+            control.mkdir(mode=0o750)
+            locks = control / "locks"
+            locks.mkdir(mode=0o755)
+            lock = locks / "release.lock"
+            lock.touch(mode=0o664)
+            lock.chmod(0o664)
+            original = rotate.LEASE
+            rotate.LEASE = lock
+            try:
+                device, inode, mode = rotate.shared_release_lock_shape(
+                    operator_uid=os.getuid())
+                self.assertEqual(mode & 0o777, 0o664)
+                self.assertEqual((device, inode), (lock.stat().st_dev, lock.stat().st_ino))
+                # After narrow chmod the mode-tightening transaction must
+                # not be blindly replayable against unexpected starting state.
+                lock.chmod(0o644)
+                with self.assertRaisesRegex(RuntimeError, "0664"):
+                    rotate.shared_release_lock_shape(operator_uid=os.getuid())
+            finally:
+                rotate.LEASE = original
+
+    def test_shared_release_lease_rejects_group_writable_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            control = Path(tmp) / "os-control"
+            control.mkdir(mode=0o750)
+            locks = control / "locks"
+            locks.mkdir(mode=0o775)
+            locks.chmod(0o775)
+            lock = locks / "release.lock"
+            lock.touch(mode=0o664)
+            lock.chmod(0o664)
+            original = rotate.LEASE
+            rotate.LEASE = lock
+            try:
+                with self.assertRaisesRegex(RuntimeError, "ownership/mode drift"):
+                    rotate.shared_release_lock_shape(operator_uid=os.getuid())
+            finally:
+                rotate.LEASE = original
+
     def test_rotation_uses_no_sudo_in_ssh_transport(self):
         src = (ROOT / "scripts/aoe2_owner_v5_enroll_rootssh.py").read_text()
         self.assertIn('"root@hel1"', src)
@@ -55,6 +100,8 @@ class RootAuthorityContract(TestCase):
         self.assertNotIn('"sudo"', src)
         self.assertNotIn('"owner-private.pem"', src)
         self.assertIn('"OWNER_V5_ENROLLED_PREVIEW_PASS"', src)
+        self.assertIn("ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK", src)
+        self.assertIn("mode 0664->0644", src)
 
 
 class MacPressureContract(TestCase):
