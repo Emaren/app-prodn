@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, readdirSync, statSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { HOG_CATALOG, signVisualPayloadForTests, verifyVisualReceipt } from "../lib/storageVisualPrivate.ts";
-import { effectiveOwnerDecision, latestEvent, type OwnerReviewEvent } from "../lib/storageOwnerReviews.ts";
+import { appendOwnerReview, readOwnerReviews, effectiveOwnerDecision, latestEvent, type OwnerReviewEvent } from "../lib/storageOwnerReviews.ts";
 
 const key="cd".repeat(32),clock=new Date("2026-10-28T21:40:00Z");
 const fingerprint="a".repeat(64),digest="b".repeat(64),revision="c".repeat(40);
@@ -75,4 +77,30 @@ test("read-only telemetry GET remains untouched; owner POST requires admin, same
  assert.match(ui,/FOUR|Four levels/);
  assert.match(ui,/UNKNOWN/);
  assert.match(ui,/INTENT|deletion permit/i);
+});
+
+test("native isolated fixture: append-only private review, CAS replay HOLD and revocation",async()=>{
+ const root=mkdtempSync(path.join(tmpdir(),"storage-owner-review-"));
+ mkdirSync(path.join(root,"state"),{mode:0o700});
+ const original=process.env.AOE2WAR_OS_STORE_DIR;
+ process.env.AOE2WAR_OS_STORE_DIR=root;
+ try{
+   assert.deepEqual(await readOwnerReviews(),[]);
+   const candidate=verify(payload).planes[0].reviewItems![0];
+   const first=await appendOwnerReview({plane:"mac",item:candidate,decision:"PROTECT",previousId:null,now:clock});
+   assert.equal(first.effect,"INTENT_ONLY_NO_DELETE");
+   assert.equal((await readOwnerReviews()).length,1);
+   await assert.rejects(()=>appendOwnerReview({plane:"mac",item:candidate,decision:"REVIEW_LATER",previousId:null,now:clock}),/STALE_EXPECTATION/);
+   const second=await appendOwnerReview({plane:"mac",item:candidate,decision:"REVOKE",previousId:first.id,now:clock});
+   assert.equal(second.previousId,first.id);
+   assert.equal(effectiveOwnerDecision(second,candidate,clock),null);
+   const folder=path.join(root,"state","storage-owner-reviews.v1");
+   const names=readdirSync(folder);
+   assert.equal(names.length,2);
+   for(const name of names)assert.equal(statSync(path.join(folder,name)).mode&0o077,0);
+ }finally{
+   if(original===undefined)delete process.env.AOE2WAR_OS_STORE_DIR;
+   else process.env.AOE2WAR_OS_STORE_DIR=original;
+   rmSync(root,{recursive:true,force:true});
+ }
 });
