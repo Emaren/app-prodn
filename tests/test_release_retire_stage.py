@@ -54,7 +54,7 @@ class StageOwnerPermitTests(unittest.TestCase):
                               "-pubout", "-outform", "DER"],
                              capture_output=True, check=True).stdout
         import hashlib
-        self.pin.write_text(hashlib.sha256(der).hexdigest() + "\\n")
+        self.pin.write_text(hashlib.sha256(der).hexdigest() + "\n")
 
     def signed(self, change=None):
         payload = {
@@ -101,6 +101,24 @@ class StageOwnerPermitTests(unittest.TestCase):
                         "-out", str(self.public)], check=True, capture_output=True)
         with self.assertRaisesRegex(MODULE.Hold, "OWNER_V4_PUBLIC_KEY_PIN_MISMATCH"):
             self.verify(self.signed())
+
+    def test_valid_signature_under_wrong_but_protected_root_key_is_rejected(self):
+        # Permit is re-signed by the substituted key, not merely tampered.
+        other_priv = Path(self.temp.name) / "substituted-owner-private.pem"
+        subprocess.run(["openssl", "genpkey", "-algorithm", "ed25519",
+                        "-out", str(other_priv)], check=True, capture_output=True)
+        subprocess.run(["openssl", "pkey", "-in", str(other_priv), "-pubout",
+                        "-out", str(self.public)], check=True, capture_output=True)
+        packet = self.signed()
+        message = Path(self.temp.name) / "other-message"
+        signature = Path(self.temp.name) / "other-signature"
+        message.write_bytes(MODULE.DOMAIN + MODULE.canonical(packet["payload"]))
+        subprocess.run(["openssl", "pkeyutl", "-sign", "-rawin",
+                        "-inkey", str(other_priv), "-in", str(message),
+                        "-out", str(signature)], check=True, capture_output=True)
+        packet["signature_base64"] = base64.b64encode(signature.read_bytes()).decode()
+        with self.assertRaisesRegex(MODULE.Hold, "OWNER_V4_PUBLIC_KEY_PIN_MISMATCH"):
+            self.verify(packet)
 
     def test_poisoned_digest_rejected_even_if_signed(self):
         with self.assertRaisesRegex(MODULE.Hold, "signed stage evidence drift"):
@@ -222,18 +240,6 @@ class RetirementIsolationTests(unittest.TestCase):
         self.assertTrue((receipt / "unknown.json").exists())
         self.assertTrue((self.state / "nonces" / (("R" * 40) + ".json")).exists())
         self.assertFalse((receipt / "complete.json").exists())
-
-    def test_root_owned_but_wrong_public_key_and_valid_other_signature_denied(self):
-        other_priv = Path(self.temp.name) / "different-owner-private.pem"
-        other_pub = Path(self.temp.name) / "different-owner-public.pem"
-        subprocess.run(["openssl", "genpkey", "-algorithm", "ed25519",
-                        "-out", str(other_priv)], check=True, capture_output=True)
-        subprocess.run(["openssl", "pkey", "-in", str(other_priv), "-pubout",
-                        "-out", str(other_pub)], check=True, capture_output=True)
-        # A correctly signed packet under a substituted root-owned key is not authority.
-        packet = self.signed() if hasattr(self, "signed") else None
-        self.assertTrue(MODULE.HEX64.fullmatch("a" * 64))
-        # True cryptographic permission is checked in StageOwnerPermitTests.
 
     def test_source_path_swap_between_lstat_and_rename_is_unknown_no_replay(self):
         original_rename = os.rename
