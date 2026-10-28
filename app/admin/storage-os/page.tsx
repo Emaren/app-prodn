@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StorageCommandCenter, StorageReading } from "@/lib/storageCommandCenterProjection";
+import StorageVisualExplorer from "@/components/storage-os/StorageVisualExplorer";
 
 type PlaneId = StorageReading["id"];
 const IDS: PlaneId[] = ["mac", "hel1-root", "hel1-volume-105319120"];
@@ -255,6 +256,8 @@ export default function PrivateStorageOsPage() {
           </div>
         </div>
       </section>
+
+      <StorageVisualExplorer visual={data?.visual} activeId={activeId}/>
 
       <section className="grid gap-4 xl:grid-cols-[.8fr_1.2fr]">
         <div className={`${FRAME} p-5 sm:p-7`}>
