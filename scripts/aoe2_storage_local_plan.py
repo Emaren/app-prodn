@@ -238,6 +238,7 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         "measurement_gap_count": census.get("measurement_gap_count") if census_good else None,
         "measurement_gaps": census.get("measurement_gaps", []) if census_good else [],
         "apfs_accounting": census.get("apfs_accounting") if census_good else None,
+        "scope_bounds": census.get("scope_bounds") if census_good else None,
     }
     actions = [{"lane": key, "allocated_bytes": row["allocated_bytes"],
                 "requires_owner_authorization": commands[key]}
@@ -437,10 +438,14 @@ def l1_exhaustion_receipt(plan_result: dict[str, Any],
         "candidate_holds": sorted(candidates, key=lambda r: (
             -r["gross_allocated_bytes"], str(r["path"]))),
         "generated_nonmeasurement_reason_counts": dict(sorted(by_reason.items())),
-        "omitted_project_count": next((
-            row.get("remaining_projects") for row in
-            plan_result.get("coverage", {}).get("measurement_gaps", [])
-            if row.get("name") == "PROJECT_CENSUS_INCOMPLETE"), None),
+        "omitted_project_count": (
+            coverage.get("scope_bounds", {}).get("direct_project_roots_omitted")
+            if isinstance(coverage.get("scope_bounds"), dict) else None),
+        "omitted_worktree_count": (
+            coverage.get("scope_bounds", {}).get("canonical_git_worktrees_omitted")
+            if isinstance(coverage.get("scope_bounds"), dict) else None),
+        "nested_build_roots_out_of_scope": True,
+        "other_home_project_trees_out_of_scope": True,
         "gross_allocated_bytes_not_unique_recoverable": True,
         "certified_recovered_bytes": 0,
         "predicted_unique_recoverable_bytes": None,
