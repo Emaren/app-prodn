@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Activity, Archive, Clock3, Eye, Layers3, Shield, ShieldAlert, Trash2 } from "lucide-react";
 import type { StorageVisualView, PlaneId, VisualHog, VisualEvent } from "@/lib/storageVisualPrivate";
 
@@ -93,7 +93,7 @@ export default function StorageVisualExplorer({visual,activeId}:{visual:StorageV
   const hogs=plane?.hogs??[];
   const events=plane?.events??[];
   const total=hogs.reduce((a,b)=>a+b.grossBytes,0);
-  const slice=useMemo(()=>hogs.find(x=>x.key===selectedKey)??null,[hogs,selectedKey]);
+  const slice=hogs.find(x=>x.key===selectedKey)??null;
   const current=source==="SIGNED_PRIVATE_RECEIPT"&&plane?.status==="RECEIPT";
   return <section aria-label="Storage intelligence" className="space-y-4">
     <div className="flex flex-wrap items-end justify-between gap-3 px-1">
