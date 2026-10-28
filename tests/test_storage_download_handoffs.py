@@ -99,6 +99,33 @@ class DownloadHandoffTests(unittest.TestCase):
         with self.assertRaises(helper.Hold):
             helper.move_to_trash(self.home, confirm=p["plan_sha256"], now=self.now)
 
+    def test_exact_reviewed_purge_never_touches_other_trash(self):
+        target = self.put("aoe2war_old.py", b"old-script")
+        unrelated = self.home / ".Trash" / "chat-keep.html"
+        unrelated.write_bytes(b"historical private content")
+        plan = self.preview()
+        helper.move_to_trash(self.home, confirm=plan["plan_sha256"], now=self.now)
+        purged = helper.purge_reviewed_batch(self.home, confirm=plan["plan_sha256"])
+        self.assertEqual(purged["status"], "PURGED_EXACT_REVIEWED_BATCH")
+        self.assertEqual(purged["purged"], [target.name])
+        self.assertEqual(unrelated.read_bytes(), b"historical private content")
+        self.assertTrue((Path(self.home / ".Trash") /
+                         ("AoE2WAR-handoff-review-" + plan["plan_sha256"][:16]) /
+                         "aoe2war-review-receipt.json").exists())
+        with self.assertRaises(helper.Hold):
+            helper.purge_reviewed_batch(self.home, confirm=plan["plan_sha256"])
+
+    def test_tampered_or_extra_trash_content_prevents_any_purge(self):
+        self.put("aoe2war_old.py", b"old-script")
+        plan = self.preview()
+        result = helper.move_to_trash(self.home, confirm=plan["plan_sha256"], now=self.now)
+        dest = Path(result["trash_directory"])
+        (dest / "chat.html").write_bytes(b"do not delete")
+        with self.assertRaises(helper.Hold):
+            helper.purge_reviewed_batch(self.home, confirm=plan["plan_sha256"])
+        self.assertTrue((dest / "aoe2war_old.py").exists())
+        self.assertTrue((dest / "chat.html").exists())
+
     def test_parent_symlinks_fail_closed(self):
         (self.home / "Downloads").rmdir()
         other = Path(self.tmp.name) / "elsewhere"
