@@ -79,7 +79,9 @@ def dir_stats(build: Path) -> tuple[int, int]:
 
 def current_process_references(paths: list[Path]) -> None:
     """Any active process command or open path beneath a candidate is a hold."""
-    names = [str(path) for path in paths]
+    # A worktree-wide process (e.g., Next dev server with cwd=repo)
+    # also protects its .next build output, even when no .next FD is open.
+    names = sorted({str(path) for build in paths for path in (build, build.parent)})
     process_list = command(["ps", "-axo", "command="], timeout=20).decode(errors="replace")
     for line in process_list.splitlines():
         if any(path in line for path in names):
