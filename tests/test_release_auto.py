@@ -743,27 +743,13 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
                     production=self.production(),
                 )
 
-    def test_ship_wires_exact_resume_before_superseded_retirement(self):
+    def test_ship_requires_separately_signed_stage_retirement(self):
         import inspect
 
         source = inspect.getsource(MODULE.ship_all)
-
-        self.assertIn(
-            "resolve_stage_receipt",
-            source,
-        )
-        self.assertIn(
-            "retire_superseded_stage",
-            source,
-        )
-        self.assertLess(
-            source.index("resolve_stage_receipt"),
-            source.index("retire_superseded_stage"),
-        )
-        self.assertIn(
-            "post-retirement release preflight",
-            source,
-        )
+        self.assertIn("resolve_stage_receipt", source)
+        self.assertIn("RETIRE_STAGE_ONLY", source)
+        self.assertNotIn("retire_superseded_stage(", source)
 
     def test_prepare_only_stages_exact_release_without_activating_or_migrating(self):
         initial = sample()
@@ -814,20 +800,28 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
         for fn in (collect, retire, docs, gate, stage, activate):
             fn.assert_not_called()
 
-    def test_prepare_only_refuses_unverified_existing_stage_without_retirement(self):
-        initial = sample()
-        initial["production"]["staged_build_id"] = "candidate-build"
-        collect = mock.Mock()
-        with (
-            mock.patch.object(MODULE, "resolve_stage_receipt", side_effect=MODULE.AutoShipError("unsafe stage")),
-            mock.patch.object(MODULE, "retire_superseded_stage") as retire,
-            mock.patch.object(MODULE, "stage_release") as stage,
-            mock.patch.object(MODULE, "activate_and_certify") as activate,
-        ):
-            result = MODULE.ship_all(collect=collect, initial=initial, prepare_only=True)
-        self.assertEqual(result, 2)
-        for fn in (collect, retire, stage, activate):
-            fn.assert_not_called()
+    def test_all_ship_modes_refuse_unverified_stage_without_any_mutation(self):
+        for prepare_only in (False, True):
+            with self.subTest(prepare_only=prepare_only):
+                initial = sample()
+                initial["production"]["staged_build_id"] = "candidate-build"
+                collect = mock.Mock()
+                with (
+                    mock.patch.object(MODULE, "resolve_stage_receipt",
+                                      side_effect=MODULE.AutoShipError("unsafe stage")) as resolve,
+                    mock.patch.object(MODULE, "retire_superseded_stage") as retire,
+                    mock.patch.object(MODULE, "ensure_documentation_baseline") as docs,
+                    mock.patch.object(MODULE, "gate_release") as gate,
+                    mock.patch.object(MODULE, "stage_release") as stage,
+                    mock.patch.object(MODULE, "activate_and_certify") as activate,
+                ):
+                    result = MODULE.ship_all(
+                        collect=collect, initial=initial, prepare_only=prepare_only,
+                    )
+                self.assertEqual(result, 2)
+                resolve.assert_called_once()
+                for fn in (collect, retire, docs, gate, stage, activate):
+                    fn.assert_not_called()
 
     def test_prepare_only_still_obeys_listener_and_dirty_source_preflight(self):
         for field, value in (("wolo_8092_count", 0), ("wolo_8093_count", 2), ("service", "inactive")):
