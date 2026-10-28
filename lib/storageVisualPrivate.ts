@@ -139,6 +139,7 @@ export function verifyVisualReceipt(
     for(const rawEvent of p.events){
       const e=obj(rawEvent),at=time(e.at),kind=e.kind,bytes=e.bytes;
       if(typeof e.id!=="string"||!/^[a-zA-Z0-9_-]{8,64}$/.test(e.id)||eventIds.has(e.id)||!at||Date.parse(at)>clock.getTime()+60_000||Date.parse(at)>Date.parse(ts)+60_000||!EVENT_KINDS.includes(kind as VisualEventKind)||!(e.category===null||isKey(e.category))||!(bytes===null||safeBytes(bytes)!==null))throw Error("VISUAL_EVENT_INVALID");
+      if(isKey(e.category)&&!HOG_CATALOG[e.category].planes.includes(id as PlaneId))throw Error("VISUAL_EVENT_WRONG_PLANE");
       eventIds.add(e.id);
       const dg=e.transaction_digest;
       if(kind==="PRUNE_RECEIPT"&&!(typeof dg==="string"&&/^[0-9a-f]{64}$/i.test(dg)))throw Error("VISUAL_PRUNE_RECEIPT_MISSING");
