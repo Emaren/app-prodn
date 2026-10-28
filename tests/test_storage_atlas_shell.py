@@ -48,7 +48,7 @@ class StorageAtlasShellTests(unittest.TestCase):
 
     def test_atlas_cannot_operate_on_storage(self):
         for dangerous in (
-            "rm -rf", "shutil.rmtree", "unlink(", "deleteFile(", 
+            "rm -rf", "shutil.rmtree", "unlink(", "deleteFile(",
             "systemctl", "sudo ", "execFile(", "execSync(",
             "wallet_private", "private.pem",
         ):
