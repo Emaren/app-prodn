@@ -84,6 +84,8 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
         name, path = r.get("name"), r.get("path")
         if not (isinstance(name, str) and isinstance(path, str)
                 and name.startswith(("worktree_generated:", "project_generated:"))
+                and r.get("classification") == "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED"
+                and r.get("mutation_allowed") is False
                 and path.startswith("/") and ".." not in Path(path).parts
                 and Path(path).name in GENERATED_NAMES):
             continue
