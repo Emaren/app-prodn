@@ -53,6 +53,8 @@ function validEvent(e:unknown):e is OwnerReviewEvent{
     x.effect==="INTENT_ONLY_NO_DELETE";
 }
 export async function readOwnerReviews():Promise<OwnerReviewEvent[]>{
+  // Missing operator state means UNKNOWN, not an authenticated empty history.
+  await checkedDir(rootDir());
   let dir:string;
   try{dir=await getDir(false);}catch(e){
     if((e as NodeJS.ErrnoException).code==="ENOENT")return [];
