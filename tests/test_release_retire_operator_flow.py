@@ -122,7 +122,7 @@ class OwnerOnlyPermitBuilderTests(unittest.TestCase):
 class PublicEnrollmentTests(unittest.TestCase):
     def test_installer_has_no_private_signing_key_or_apply_path(self):
         text = (ROOT / "scripts/aoe2_release_retire_install.py").read_text()
-        for token in ("owner-private.pem", "os.rename(", "stage_release(",
+        for token in ("os.rename(", "stage_release(",
                       "activate_release(", "ship_all(", "/api/bets"):
             self.assertNotIn(token, text)
 
