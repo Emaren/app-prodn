@@ -1039,7 +1039,8 @@ from these allocations.
 The private `/admin/storage-os` dashboard has a real-data two-ring storage
 visualization: inner slices classify L1–L4 protection, outer slices show the
 largest published storage consumers for the selected Mac, HEL1 root or HEL1
-evidence-volume plane. The ranked list has explicit gross allocated GiB and
+evidence-volume plane. Each drive card shows its two largest verified consumers
+without drilldown. The ranked list has explicit gross allocated GiB and
 HOLD/protection status. A separate activity view shows published generation,
 prune-receipt, prune-HOLD, upcoming owner-review, collection and snapshot
 events. No button launches a deletion, prune, file walk or build.
