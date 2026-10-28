@@ -339,8 +339,8 @@ def main() -> int:
     parser.add_argument("--focus", choices=sorted(FOCUS_ROOTS),
                         help="read-only, one-level cache-child review; never an apply mode")
     args = parser.parse_args()
-    if not 5 <= args.limit <= 512:
-        parser.error("--limit must be 5..512")
+    if not 5 <= args.limit <= 1024:
+        parser.error("--limit must be 5..1024")
     home = Path.home()
     root = home / "projects/AoE2HDBets"
     data = focused_census(home, args.focus) if args.focus else census(home, root, limit=args.limit)
