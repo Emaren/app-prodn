@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bfcb0d1af2884142e44fd51886e1e660d2f16873223baf51fc5d7fd798d12407",
+      "sha256": "d31cdd0291e7a04df816e5b677c6a2976f8140420f980ca12a7147e633dd1a0e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-gate-trailing-whitespace-20261028",
-    "commit": "8f33f957de77b17a2e6eb1958b9da077b3937a35"
+    "branch": "fix/session-g-macos-kingdom-runtime-fixture-20261028",
+    "commit": "604286b47dea8ba33950dbc0d068b63ec39b5df2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
