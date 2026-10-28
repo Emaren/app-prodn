@@ -18,7 +18,10 @@ from pathlib import Path
 import re
 import secrets
 import subprocess
+import sys
 import tempfile
+
+OPENSSL = ("/opt/homebrew/opt/openssl@3/bin/openssl" if sys.platform == "darwin" else "openssl")
 
 TARGET = "ade91ac70bbab9866012a1a05b6a842bb5c0b515"
 APP = "/var/www/AoE2HDBets/app-prodn"
@@ -52,7 +55,7 @@ def canonical(value):
 
 
 def owner_public_identity(private_key, *, passphrase=None):
-    args = ["openssl", "pkey", "-in", str(private_key), "-pubout", "-outform", "DER"]
+    args = [OPENSSL, "pkey", "-in", str(private_key), "-pubout", "-outform", "DER"]
     if passphrase is not None:
         args += ["-passin", "fd:0"]
     p = subprocess.run(
@@ -113,7 +116,7 @@ def sign_preview(preview, *, private_key, expected_owner_spki, expected_controll
     with tempfile.TemporaryDirectory(prefix="aoe2war-owner-sign-") as tmp:
         msg, signature = Path(tmp) / "message", Path(tmp) / "signature"
         msg.write_bytes(DOMAIN + canonical(payload))
-        cmd = ["openssl", "pkeyutl", "-sign", "-rawin",
+        cmd = [OPENSSL, "pkeyutl", "-sign", "-rawin",
                "-inkey", str(private_key), "-in", str(msg), "-out", str(signature)]
         if passphrase is not None:
             cmd += ["-passin", "fd:0"]
