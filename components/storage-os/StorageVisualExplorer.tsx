@@ -6,7 +6,7 @@ import type { StorageVisualView, PlaneId, VisualHog, VisualEvent } from "@/lib/s
 
 const FRAME="rounded-[1.65rem] border border-white/10 bg-slate-950/65";
 const LEVELS=[
-  {level:1,short:"L1 · SAFE",name:"Verified generated",detail:"Guarded only",color:"#22d3ee"},
+  {level:1,short:"L1 · GUARDED",name:"Generated review",detail:"Proof required",color:"#22d3ee"},
   {level:2,short:"L2 · REVIEW",name:"Owner decision",detail:"Never auto-delete",color:"#fbbf24"},
   {level:3,short:"L3 · MIGRATE",name:"Restore dependent",detail:"Explicit authorization",color:"#a78bfa"},
   {level:4,short:"L4 · PROTECT",name:"Irreplaceable / active",detail:"No automation",color:"#34d399"},
