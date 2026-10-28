@@ -1,0 +1,47 @@
+name: phase15-docsv2-genuine-review-regenerate-once
+on:
+  push:
+    branches:
+      - review/session-g-phase15-signed-stage-park-20261027
+permissions:
+  contents: write
+jobs:
+  isolated-docsv2-generation:
+    if: github.repository == 'Emaren/app-prodn'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: review/session-g-phase15-signed-stage-park-20261027
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Preserve exact implementation baseline and regenerate existing DocsV2
+        run: |
+          python3 scripts/docs_v2_check.py --write
+          python3 scripts/docs_v2_check.py
+      - name: Commit ONLY existing generated documentation index/registry
+        shell: bash
+        run: |
+          git add -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          if git diff --cached --quiet; then exit 0; fi
+          git diff --name-only | while IFS= read -r file; do
+            case "$file" in
+              docs/DOCUMENTATION_CONTROL_PLANE.md|docs/document-registry.json) ;;
+              *) echo "UNEXPECTED_CHANGED_PATH: $file"; exit 1 ;;
+            esac
+          done
+          if [ "${PIPESTATUS[1]}" != 0 ]; then exit 1; fi
+          git diff --cached --name-only | while IFS= read -r file; do
+            case "$file" in
+              docs/DOCUMENTATION_CONTROL_PLANE.md|docs/document-registry.json) ;;
+              *) echo "UNEXPECTED_STAGED_PATH: $file"; exit 1 ;;
+            esac
+          done
+          if [ "${PIPESTATUS[1]}" != 0 ]; then exit 1; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs(generate): exact desync domain review and source-bound DocsV2 registry"
+          git push origin HEAD:refs/heads/review/session-g-phase15-signed-stage-park-20261027
