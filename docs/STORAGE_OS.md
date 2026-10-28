@@ -981,3 +981,43 @@ historical-target preflight; previously removed builds must stay STALE/HOLD.
 Any new deletion authorization, if later independently qualified, requires
 its own narrowly reviewed, receipt-backed existing-controller transaction
 and owner approval. No new mutator or cleanup batch has been added here.
+
+## Session D protected-role correction for five owner-native generated candidates
+
+The 2026-10-28 owner-native #971 generated rank had five >=256 MiB
+named generated outputs totaling **4.392 GiB gross `du` allocation**,
+**zero independently certified unique APFS recovery**. These rows are
+source-proven measurements of allocations, **not** deletion eligibility.
+
+The existing `generated_rank` now separates explicit source-owned policy
+roles from historical generated **unqualified** review:
+- `PROTECTED_E5_SEAL`: E5 `.next` (1.214 GiB gross);
+- `PROTECTED_CANONICAL_ACTIVE_DEPENDENCIES`: canonical
+  `app-prodn/node_modules` (0.830 GiB gross);
+- `PROTECTED_CODEX_WORKTREE`: registered `.worktrees/codex-*`
+  dependency roots, including `codex-final-satchel-qualification`
+  (0.830 GiB gross), and `~/.codex` worktree paths;
+- `PROTECTED_WATCHER_SIGNED_WEBSITE_DISTRIBUTION`:
+  `aoe2-watcher/dist` (0.688 GiB gross in the accepted rank), known
+  linked from the website download path; the signed/release-sensitive output
+  is not an ordinary obsolete `dist`;
+- `HISTORICAL_GENERATED_UNQUALIFIED`:
+  `app-prodn-renaissance-phase1-20261020/node_modules` (0.830 GiB gross),
+  **still HOLD** for rebuild, source cleanliness, consumers, owner, hardlink,
+  mount and APFS unique recovery proof, not eligible Level 1.
+
+Role classification uses exact structural path identity, including
+`codex-*` only in the declared worktree namespace, rather than the
+previous exact path-part check. It is a source-owned protection policy, **not**
+live `lsof`/Git/owner/clone/rebuild attestation. Existing per-row unknowns,
+HOLD reasons, null unique bytes and `mutation_authority=NONE` remain
+unchanged. Duplicate exact paths now block even the *informational*
+unprotected, nonoverlapping gross allocation estimate; nested generated
+parent/child allocations continue not to add. Input claims about hardlinks
+are never accepted as proof of exclusive physical extents.
+
+Do not rescan, apply, remove, migrate, unlink aliases or treat any of the
+five rows as an approved deletion. Central Gate 3 needs owner-native read-only
+adoption of corrected roles; Gates 4-8 remain held for real independent
+physical, source, consumer and approval evidence. +20 GiB is not established
+from these allocations.
