@@ -140,6 +140,45 @@ class MacLocalPlanTests(TestCase):
             self.assertEqual(mod.observe(["health"], cwd=ROOT, accept_hold=True)["overall"], "HOLD")
             self.assertEqual(mod.observe(["cache"], cwd=ROOT)["status"], "UNKNOWN")
 
+    def test_level1_and_level2_registers_never_claim_unique_apfs_gain(self):
+        first = base()
+        first["before"]["regenerable"][0]["path"] = "/private/test/Library/Caches/yarn"
+        observed = pressure(False)
+        observed["measurement_gap_count"] = 1
+        observed["measurement_gaps"] = [{
+            "name": "generic_cache", "path": "/private/test/.cache",
+            "reason": "DU_TIMEOUT", "allocated_bytes": None,
+            "metadata_fingerprint_sha256": "a" * 64,
+            "next_readonly_action": "RECHECK_NAMED_PATH",
+            "mutation_allowed": False,
+        }]
+        observed["apfs_accounting"] = {
+            "ordinary_available_bytes": 10 * 1024 ** 3,
+            "unique_clone_bytes": None, "snapshots_bytes": None,
+            "verified_reclaimed_bytes": None,
+        }
+        observed["measured"].append({
+            "name": "generic_cache", "path": "/private/test/.cache",
+            "classification": "REVIEW_GENERATED", "allocated_bytes": None,
+            "complete": False, "measurement_reason": "DU_TIMEOUT",
+        })
+        result = mod.plan(first, ext(), electron(), observed, watchdog())
+        self.assertEqual(result["coverage"]["measurement_gap_count"], 1)
+        self.assertEqual(result["coverage"]["measurement_gaps"][0]["reason"], "DU_TIMEOUT")
+        self.assertEqual(result["level_1_certified_reclaimable_bytes"], 0)
+        self.assertIsNone(result["level_1_unique_apfs_gain_estimate_bytes"])
+        candidate = result["level_1_candidate_register"][0]
+        self.assertEqual(candidate["allocated_bytes"], 1000)
+        self.assertEqual(candidate["consumer_status"], "UNKNOWN")
+        self.assertEqual(candidate["mutation_authority"], "NONE")
+        self.assertIsNone(candidate["expected_unique_apfs_gain_bytes"])
+        review = result["level_2_owner_review_register"][0]
+        self.assertEqual(review["name"], "generic_cache")
+        self.assertIsNone(review["allocated_bytes"])
+        self.assertEqual(review["mutation_authority"], "NONE")
+        self.assertEqual(result["level_1_closure"]["status"], "HOLD_NOT_CERTIFIED")
+        self.assertEqual(result["level_1_closure"]["native_independent_observation_cycles"], 0)
+
     def test_human_cli_is_read_only_and_has_no_auto_apply(self):
         with mock.patch.object(mod, "observe", side_effect=[
                 base(), ext(), electron(), pressure(), watchdog()]):
