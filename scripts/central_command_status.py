@@ -74,13 +74,13 @@ def _gh_issue(issue: dict[str, Any]) -> dict[str, Any] | None:
     title = raw.get("title")
     updated = raw.get("updated_at")
     if not isinstance(title, str) or not isinstance(updated, str) or not re.fullmatch(
-        r"20\\d\\d-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\dZ", updated
+        r"20\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ", updated
     ):
         return None
     comments = raw.get("comments")
     if type(comments) is not int or comments < 0:
         return None
-    title = "".join(c for c in title if c >= " " and c != "\\x7f")[:160]
+    title = "".join(c for c in title if c >= " " and c != "\x7f")[:160]
     return {"source": "GITHUB_ISSUE", "issueTitle": title, "issueState": raw["state"],
             "issueUrl": url, "lastGitHubActivityAt": updated, "commentCount": comments}
 
