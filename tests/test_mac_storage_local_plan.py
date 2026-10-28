@@ -77,7 +77,7 @@ class MacLocalPlanTests(TestCase):
         self.assertFalse(result["financial_or_release_authority"])
         self.assertTrue(result["coverage"]["overlapping_parent_child_rows"])
         self.assertEqual(result["heartbeat"]["capacity"], "CRITICAL")
-        self.assertEqual(result["next_census_command"], "aoe2war storage local-pressure --limit 512")
+        self.assertEqual(result["next_census_command"], "aoe2war storage local-pressure --limit 1024")
 
     def test_generic_cache_review_identifies_protected_child_and_owner_readonly_command(self):
         x = pressure()
@@ -242,6 +242,114 @@ class MacLocalPlanTests(TestCase):
         self.assertFalse(result["level_2_register_coverage"]["complete_named_display"])
         self.assertEqual(result["level_2_register_coverage"]["source_rows_observed"], 999)
         self.assertEqual(result["level_2_register_coverage"]["source_rows_displayed"], 2)
+
+    def test_gigabyte_rank_uses_exact_measured_generated_not_project_parents(self):
+        x = pressure(False)
+        gib = 1024 ** 3
+        root = "/tmp/projects/game"
+        x["measured"].extend([
+            {"name": "project:game", "path": root,
+             "classification": "PROJECT_REVIEW_NEVER_AUTO_DELETE",
+             "allocated_bytes": 12 * gib, "complete": True},
+            {"name": "project_generated:game:.next", "path": root + "/.next",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "allocated_bytes": 2 * gib, "complete": True,
+             "measurement_reason": "MEASURED", "symlink": False,
+             "mutation_allowed": False, "metadata_fingerprint_sha256": "a" * 64},
+            {"name": "project_generated:game:node_modules",
+             "path": root + "/node_modules",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "allocated_bytes": 800 * 1024**2, "complete": True,
+             "measurement_reason": "MEASURED", "symlink": False,
+             "mutation_allowed": False, "metadata_fingerprint_sha256": "b" * 64},
+            {"name": "project_generated:game:dist", "path": root + "/dist",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "allocated_bytes": 255 * 1024**2, "complete": True,
+             "measurement_reason": "MEASURED", "symlink": False,
+             "mutation_allowed": False, "metadata_fingerprint_sha256": "c" * 64},
+        ])
+        x["observed_path_count"] = len(x["measured"])
+        x["displayed_path_count"] = len(x["measured"])
+        result = mod.plan(base(), ext(), electron(), x, watchdog())
+        rank = result["gigabyte_generated_ranked_plan"]
+        self.assertEqual(rank["ranked_count"], 2)
+        self.assertEqual([v["artifact_class"] for v in rank["ranked_generated"]],
+                         [".next", "node_modules"])
+        self.assertEqual(rank["nominal_nonoverlap_unprotected_allocated_bytes"],
+                         2 * gib + 800 * 1024**2)
+        self.assertEqual(rank["certified_unique_reclaimable_bytes"], 0)
+        self.assertIsNone(rank["predicted_unique_reclaimable_bytes"])
+        self.assertEqual(rank["verdict"], "EVIDENCE_INSUFFICIENT")
+        self.assertTrue(all(v["mutation_authority"] == "NONE"
+                            for v in rank["ranked_generated"]))
+        self.assertTrue(all("LIVE_CONSUMERS_NOT_PROVEN" in v["hold_reasons"]
+                            for v in rank["ranked_generated"]))
+
+    def test_gigabyte_rank_excludes_protected_e5_and_codex_and_never_follows_links(self):
+        gib = 1024 ** 3
+        x = pressure(False)
+        x["measured"].extend([
+            {"name": "project_generated:app-prodn-e5-seal:.next",
+             "path": "/tmp/projects/app-prodn-e5-seal/.next",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "allocated_bytes": 4 * gib, "complete": True,
+             "measurement_reason": "MEASURED", "symlink": False,
+             "mutation_allowed": False, "metadata_fingerprint_sha256": "e" * 64},
+            {"name": "worktree_generated:agent:node_modules",
+             "path": "/tmp/.codex/worktrees/agent/node_modules",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "allocated_bytes": None, "complete": False,
+             "measurement_reason": "SYMLINK_TARGET", "symlink": True,
+             "mutation_allowed": False, "metadata_fingerprint_sha256": "f" * 64},
+            {"name": "project_generated:game:dist",
+             "path": "/tmp/projects/game/dist",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "allocated_bytes": 3 * gib, "complete": True,
+             "measurement_reason": "MEASURED", "symlink": False,
+             "mutation_allowed": True, "metadata_fingerprint_sha256": "b" * 64},
+        ])
+        rank = mod.generated_rank(x)
+        self.assertEqual(rank["ranked_count"], 1)
+        self.assertTrue(rank["ranked_generated"][0]["protected_ancestry"])
+        self.assertEqual(rank["nominal_nonoverlap_unprotected_allocated_bytes"], 0)
+        self.assertEqual(rank["unknown_generated"][0]["reason"], "SYMLINK_TARGET")
+        self.assertFalse(rank["apply_permitted"])
+
+    def test_gigabyte_rank_detects_generated_parent_child_and_duplicate_paths(self):
+        gib = 1024**3
+        x = pressure()
+        entries = []
+        for name, path, amount in (
+            ("dist", "/tmp/project/dist", 2*gib),
+            ("build", "/tmp/project/dist/build", gib),
+            ("dist-alias", "/tmp/project/dist", 2*gib),
+        ):
+            entries.append({
+                "name": "project_generated:game:" + name, "path": path,
+                "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+                "allocated_bytes": amount, "complete": True,
+                "measurement_reason": "MEASURED", "symlink": False,
+                "mutation_allowed": False, "metadata_fingerprint_sha256": "a" * 64,
+            })
+        x["measured"].extend(entries)
+        rank = mod.generated_rank(x)
+        self.assertEqual(rank["ranked_count"], 2)
+        self.assertTrue(all("PARENT_CHILD_GENERATED_OVERLAP" in v["hold_reasons"]
+                            for v in rank["ranked_generated"]))
+        self.assertEqual(rank["nominal_nonoverlap_unprotected_allocated_bytes"], 0)
+        self.assertIn("DUPLICATE_PATH_HOLD",
+                      [v["reason"] for v in rank["unknown_generated"]])
+
+    def test_gigabyte_rank_has_fail_closed_census_coverage_and_no_apply(self):
+        self.assertFalse(mod.generated_rank({"status": "UNKNOWN"})["named_enumeration_complete"])
+        x = pressure()
+        x["observed_path_count"] = 999
+        x["displayed_path_count"] = 2
+        self.assertFalse(mod.generated_rank(x)["named_enumeration_complete"])
+        r = mod.generated_rank(x)
+        self.assertEqual(r["ranked_count"], 0)
+        self.assertIsNone(r["shortfall_bytes"])
+        self.assertFalse(r["apply_permitted"])
 
     def test_human_cli_is_read_only_and_has_no_auto_apply(self):
         with mock.patch.object(mod, "observe", side_effect=[
