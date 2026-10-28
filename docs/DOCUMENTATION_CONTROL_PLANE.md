@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-d-mac-l1-capacity-certificate-20261028` at `61a267a1a9bf7308ad6182109463ad93ad9fd70e`
+Implementation baseline: `feat/session-d-mac-l1-capacity-certificate-20261028` at `02e09ee556ffd64464f51834850456761a5c3b43`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
