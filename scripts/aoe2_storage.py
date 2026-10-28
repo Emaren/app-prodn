@@ -1605,6 +1605,7 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("local-pressure")
     q.add_argument("--json", action="store_true")
     q.add_argument("--limit", type=int, default=30)
+    q.add_argument("--focus", choices=("generic_cache",), help="bounded read-only cache child drilldown")
     q = sub.add_parser("local-plan")
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("local-reclaim-three-next")
@@ -1669,6 +1670,8 @@ def main() -> int:
     if args.command == "local-pressure":
         cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_mac_pressure.py"),
                "--limit", str(args.limit)]
+        if args.focus:
+            cmd.extend(["--focus", args.focus])
         if args.json:
             cmd.append("--json")
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
