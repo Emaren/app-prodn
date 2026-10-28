@@ -210,12 +210,23 @@ def verify_owner(packet, evidence, *, key=OWNER_KEY, source_path=None, now=None)
     require(HEX64.fullmatch(str(payload.get("controller_sha256") or "")) and
             payload["controller_sha256"] == digest(source_path),
             "unreviewed executable controller")
+    require(HEX40.fullmatch(str(payload.get("intended_release_sha") or "")) and
+            payload["intended_release_sha"] != SOURCE_SHA and
+            payload["intended_release_sha"] != evidence["live_source_sha"],
+            "missing/downgrade target release identity")
+    require(payload.get("source_stage_path") == str(APP / ".next-release") and
+            payload.get("dependency_stage_path") == str(APP / ".node_modules-release") and
+            payload.get("archive_root") == str(ARCHIVE) and
+            payload.get("global_lock_path") == str(GLOBAL_LOCK),
+            "permit does not bind canonical move/lease paths")
     for key_name, expected in evidence.items():
         require(payload.get(key_name) == expected, "signed stage evidence drift: " + key_name)
     issued = datetime.fromisoformat(payload["issued_at"].replace("Z", "+00:00"))
     expires = datetime.fromisoformat(payload["expires_at"].replace("Z", "+00:00"))
     now = now or datetime.now(timezone.utc)
-    require(issued.tzinfo and expires.tzinfo and issued <= now < expires
+    require(issued.tzinfo is not None and expires.tzinfo is not None and
+            issued.utcoffset().total_seconds() == 0 and
+            expires.utcoffset().total_seconds() == 0 and issued <= now < expires
             and 0 < (expires - issued).total_seconds() <= 1800
             and (now - issued).total_seconds() <= 1800, "expired/future owner permit")
     protected_file(key)
