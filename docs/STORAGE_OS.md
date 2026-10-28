@@ -945,3 +945,39 @@ generated builds, rollback generations, dependency caches, code/worktree
 consumers, APFS snapshot and clone uncertainties, and build/stage runway only
 after the source owners establish evidence contracts and bounded cost.
 The private page must display UNKNOWN for every unpublished measurement.
+
+## Session D gigabyte-first generated-output ranking
+
+The **existing** `aoe2war storage local-plan --json` command now carries a
+`gigabyte_generated_ranked_plan` generated from the same bounded named Mac
+census, not a separate scanner. The census observes only *existing* named
+`.next`, `.turbo`, `dist`, `build`, `node_modules`, `.direnv` and
+`.yarn-cache` children under at most 120 immediate `AoE2HDBets` project
+directories and declared Git worktrees. It does **not** traverse arbitrary
+source trees, protected user folders, or symlink targets. The display upper
+bound rises to 1024 rows, with explicit truncation and unknown measurements.
+
+Only exact named, complete, metadata-fingerprinted, nonsymlink rows of at
+least **256 MiB** enter the descending ranking. Their original full paths
+are the identity; repeated basename labels confer no equality. Project-root
+`du` sizes overlap generated children and are never summed into reclaim
+figures. Parent/child generated paths are flagged `PARENT_CHILD_GENERATED_OVERLAP`.
+The nominal nonoverlapping, unprotected `du` sum is gross allocated
+information, **not** unique physical APFS space.
+
+For each row, `source_head`, build ID, regeneration, active consumer,
+hardlink, mount, owner approval, and source cleanliness remain explicitly
+unattested until independent owner-native evidence arrives. Protected paths
+such as `.codex`, E5, `api-prodn`, Wolo/replay/finance, recovery,
+CrossOver and Docker stay `PROTECTED_ANCESTRY_HOLD`. Symlinked dependency
+roots are kept in `unknown_generated`, with null allocation; they are
+never dereferenced or treated as space to recover.
+
+The JSON verdict is `EVIDENCE_INSUFFICIENT`; certified unique reclaim
+is zero, expected APFS unique gain and the shortfall to +20 GiB are **null**.
+This is **not** permission to use `--apply`. Reuse existing
+`storage local-reclaim-three-next` for a separate read-only exact
+historical-target preflight; previously removed builds must stay STALE/HOLD.
+Any new deletion authorization, if later independently qualified, requires
+its own narrowly reviewed, receipt-backed existing-controller transaction
+and owner approval. No new mutator or cleanup batch has been added here.
