@@ -3330,6 +3330,9 @@ def retire_superseded_stage(
     staged_build_id: str,
     production: dict,
 ) -> dict:
+    # Direct callers previously bypassed ship_all's denial via this helper.
+    # This mutation lane is disabled; the signed stage-park tool is separate.
+    raise AutoShipError("RETIRE_STAGE_ONLY signed transaction required; legacy retirement disabled")
     script = remote_superseded_stage_retirement_script(
         current_release_sha=current_release_sha,
         staged_build_id=staged_build_id,
