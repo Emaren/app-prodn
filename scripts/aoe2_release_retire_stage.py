@@ -71,7 +71,8 @@ def no_link_directory(path, *, root_owned=False):
 
 
 def protected_file(path):
-    no_link_directory(path.parent)
+    # Trust anchor and signed permit must not sit in writable parent directories.
+    no_link_directory(path.parent, root_owned=True)
     st = os.lstat(path)
     require(stat.S_ISREG(st.st_mode) and st.st_uid == 0 and not (st.st_mode & 0o022),
             "missing/untrusted protected file")
