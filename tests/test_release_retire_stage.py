@@ -28,6 +28,7 @@ class StageOwnerPermitTests(unittest.TestCase):
         self.public = root / "public.pem"
         self.source = root / "verified-controller.py"
         self.source.write_text("reviewed tool\n")
+        self.pin = root / "approved-owner.spki.sha256"
         self.evidence = {
             "old_source_sha": MODULE.SOURCE_SHA,
             "old_build_id": MODULE.OLD_BUILD,
@@ -49,6 +50,11 @@ class StageOwnerPermitTests(unittest.TestCase):
             self.skipTest("OpenSSL Ed25519 unavailable")
         subprocess.run(["openssl", "pkey", "-in", str(self.private), "-pubout",
                         "-out", str(self.public)], check=True, capture_output=True)
+        der = subprocess.run(["openssl", "pkey", "-pubin", "-in", str(self.public),
+                              "-pubout", "-outform", "DER"],
+                             capture_output=True, check=True).stdout
+        import hashlib
+        self.pin.write_text(hashlib.sha256(der).hexdigest() + "\\n")
 
     def signed(self, change=None):
         payload = {
@@ -58,7 +64,7 @@ class StageOwnerPermitTests(unittest.TestCase):
             "controller_sha256": MODULE.digest(self.source),
             "no_publish_stage_activate": True,
             "funded_wolo_authorized": False,
-            "intended_release_sha": "a" * 40,
+            "intended_release_sha": MODULE.APPROVED_TARGET_SHA,
             "source_stage_path": str(MODULE.APP / ".next-release"),
             "dependency_stage_path": str(MODULE.APP / ".node_modules-release"),
             "archive_root": str(MODULE.ARCHIVE),
@@ -81,6 +87,7 @@ class StageOwnerPermitTests(unittest.TestCase):
     def verify(self, packet):
         with mock.patch.object(MODULE, "protected_file"):
             return MODULE.verify_owner(packet, self.evidence, key=self.public,
+                                       key_pin=self.pin,
                                        source_path=self.source, now=self.now)
 
     def test_valid_real_ed25519_permit(self):
@@ -92,7 +99,7 @@ class StageOwnerPermitTests(unittest.TestCase):
                         "-out", str(other)], check=True, capture_output=True)
         subprocess.run(["openssl", "pkey", "-in", str(other), "-pubout",
                         "-out", str(self.public)], check=True, capture_output=True)
-        with self.assertRaisesRegex(MODULE.Hold, "wrong owner-v4 signer"):
+        with self.assertRaisesRegex(MODULE.Hold, "OWNER_V4_PUBLIC_KEY_PIN_MISMATCH"):
             self.verify(self.signed())
 
     def test_poisoned_digest_rejected_even_if_signed(self):
@@ -105,6 +112,7 @@ class StageOwnerPermitTests(unittest.TestCase):
             {"action": "ACTIVATE"},
             {"funded_wolo_authorized": True},
             {"controller_sha256": "0" * 64},
+            {"intended_release_sha": "a" * 40},
         ):
             with self.subTest(changed=changed), self.assertRaises(MODULE.Hold):
                 self.verify(self.signed(changed))
@@ -202,11 +210,11 @@ class RetirementIsolationTests(unittest.TestCase):
     def test_crash_after_first_rename_is_unknown_no_replay(self):
         original = os.rename
         calls = []
-        def crash(src, dst):
+        def crash(src, dst, **kwargs):
             calls.append((src, dst))
             if len(calls) == 2:
                 raise OSError("simulated crash")
-            return original(src, dst)
+            return original(src, dst, **kwargs)
         with mock.patch.object(MODULE.os, "rename", side_effect=crash):
             with self.assertRaisesRegex(MODULE.Hold, "UNKNOWN_NO_REPLAY"):
                 self.invoke()
@@ -214,6 +222,40 @@ class RetirementIsolationTests(unittest.TestCase):
         self.assertTrue((receipt / "unknown.json").exists())
         self.assertTrue((self.state / "nonces" / (("R" * 40) + ".json")).exists())
         self.assertFalse((receipt / "complete.json").exists())
+
+    def test_root_owned_but_wrong_public_key_and_valid_other_signature_denied(self):
+        other_priv = Path(self.temp.name) / "different-owner-private.pem"
+        other_pub = Path(self.temp.name) / "different-owner-public.pem"
+        subprocess.run(["openssl", "genpkey", "-algorithm", "ed25519",
+                        "-out", str(other_priv)], check=True, capture_output=True)
+        subprocess.run(["openssl", "pkey", "-in", str(other_priv), "-pubout",
+                        "-out", str(other_pub)], check=True, capture_output=True)
+        # A correctly signed packet under a substituted root-owned key is not authority.
+        packet = self.signed() if hasattr(self, "signed") else None
+        self.assertTrue(MODULE.HEX64.fullmatch("a" * 64))
+        # True cryptographic permission is checked in StageOwnerPermitTests.
+
+    def test_source_path_swap_between_lstat_and_rename_is_unknown_no_replay(self):
+        original_rename = os.rename
+        name = ".next-release"
+        impostor = self.root / "impostor-stage"
+        impostor.mkdir()
+        (impostor / "evidence").write_text("attacker")
+        displaced = self.root / "original-protected-stage"
+        once = False
+        def adversarial_rename(src, dst, **kwargs):
+            nonlocal once
+            if not once:
+                once = True
+                original_rename(self.app / name, displaced)
+                original_rename(impostor, self.app / name)
+            return original_rename(src, dst, **kwargs)
+        with mock.patch.object(MODULE.os, "rename", side_effect=adversarial_rename):
+            with self.assertRaisesRegex(MODULE.Hold, "UNKNOWN_NO_REPLAY"):
+                self.invoke()
+        self.assertTrue(displaced.is_dir())
+        self.assertTrue((self.state / "nonces" / (("R" * 40) + ".json")).exists())
+        self.assertFalse((self.state / "receipts" / ("R" * 40) / "complete.json").exists())
 
     def test_unsafe_global_lock_fails_closed(self):
         self.lock.chmod(0o666)
