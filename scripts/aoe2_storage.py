@@ -1531,6 +1531,8 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("local-pressure")
     q.add_argument("--json", action="store_true")
     q.add_argument("--limit", type=int, default=30)
+    q = sub.add_parser("local-reclaim-three-next")
+    q.add_argument("--apply", action="store_true")
     q = sub.add_parser("deep-census")
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("triage")
@@ -1592,6 +1594,11 @@ def main() -> int:
                "--limit", str(args.limit)]
         if args.json:
             cmd.append("--json")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "local-reclaim-three-next":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_reclaim_three_next.py")]
+        if args.apply:
+            cmd.append("--apply")
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "triage":
         payload = storage_triage(expiry_inventory_path=args.expiry_inventory)
