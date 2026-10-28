@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/session-g-macos-kingdom-runtime-fixture-20261028` at `604286b47dea8ba33950dbc0d068b63ec39b5df2`
+Implementation baseline: `fix/macos-private-fixture-ancestry-release-20261028` at `da886285872d2fb96ba350625382f689293c67d0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
