@@ -260,6 +260,31 @@ class MacPressureContract(TestCase):
             self.assertEqual((protected / "keep").read_bytes(), b"never delete")
             self.assertTrue(census["apfs_accounting"]["du_allocation_is_not_unique_reclaim"])
 
+    def test_existing_project_generated_children_are_named_without_following_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            project = home / "projects" / "AoE2HDBets"
+            app = project / "safe-app"
+            (app / ".next").mkdir(parents=True)
+            (app / ".next" / "BUILD_ID").write_text("pinned-fixture")
+            unique = Path(tmp) / "unique-financial"
+            unique.mkdir()
+            (unique / "never-touch").write_bytes(b"PROTECTED")
+            (app / "node_modules").symlink_to(unique, target_is_directory=True)
+            result = pressure.census(home, project, limit=1024)
+            by_path = {row.get("path"): row for row in result["measured"]}
+            build = by_path[str(app / ".next")]
+            deps = by_path[str(app / "node_modules")]
+            self.assertEqual(build["name"], "project_generated:safe-app:.next")
+            self.assertEqual(build["measurement_reason"], "MEASURED")
+            self.assertTrue(build["complete"])
+            self.assertEqual(deps["measurement_reason"], "SYMLINK_TARGET")
+            self.assertIsNone(deps["allocated_bytes"])
+            self.assertFalse(deps["mutation_allowed"])
+            self.assertEqual((unique / "never-touch").read_bytes(), b"PROTECTED")
+            self.assertFalse((app / "dist").exists())
+            self.assertNotIn(str(app / "dist"), by_path)
+
     def test_focused_generic_cache_protects_codex_runtime_and_never_deletes(self):
         with tempfile.TemporaryDirectory() as tmp:
             home = Path(tmp) / "home"
