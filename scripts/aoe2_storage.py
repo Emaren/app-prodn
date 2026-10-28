@@ -1605,6 +1605,8 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("local-pressure")
     q.add_argument("--json", action="store_true")
     q.add_argument("--limit", type=int, default=30)
+    q = sub.add_parser("local-plan")
+    q.add_argument("--json", action="store_true")
     q = sub.add_parser("local-reclaim-three-next")
     q.add_argument("--apply", action="store_true")
     q = sub.add_parser("deep-census")
@@ -1667,6 +1669,11 @@ def main() -> int:
     if args.command == "local-pressure":
         cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_mac_pressure.py"),
                "--limit", str(args.limit)]
+        if args.json:
+            cmd.append("--json")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "local-plan":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_local_plan.py")]
         if args.json:
             cmd.append("--json")
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
