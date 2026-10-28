@@ -17,7 +17,7 @@ const payload={
      category:"DOWNLOADS",bytes:100000000,transaction_digest:null}]}
  ]};
 function signed(body:unknown=payload){return {schema:"aoe2war.storage-visual.signed.v1",payload:body,signature_hmac_sha256:signVisualPayloadForTests(body,key)};}
-function changed(fn:(v:any)=>void){const v=JSON.parse(JSON.stringify(payload));fn(v);return signed(v)}
+function changed(fn:(v:typeof payload)=>void){const v=JSON.parse(JSON.stringify(payload)) as typeof payload;fn(v);return signed(v)}
 const route=readFileSync("app/api/admin/storage-os/route.ts","utf8");
 const page=readFileSync("app/admin/storage-os/page.tsx","utf8");
 const explorer=readFileSync("components/storage-os/StorageVisualExplorer.tsx","utf8");
