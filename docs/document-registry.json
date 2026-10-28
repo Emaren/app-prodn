@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "29223cea67b4e53019d9564f813e9c46941ccfe401ed2cb1fbbd53f1b379aa52",
+      "sha256": "7073ec2e3c44b15685435003b04daa3f8c93c66530e5636b3d8a4bae38fe4834",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1900,9 +1900,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STORAGE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-10-28",
       "sensitivity": "internal",
-      "sha256": "58971f218f92cd5bea5aa2d6b51e72f651aa45be80dee9c9a34ed4ef624310dc",
+      "sha256": "28d1a69b25e3cc3b5560295d3ac6c44473d1c25e7e55b19d4a5da1a0a89fede3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/private-storage-hogs-activity-20261028",
-    "commit": "b5442c1dd24f478e433ab3a3cf1d7d3b7b434c36"
+    "branch": "feat/session-g-storage-level-review-20261028",
+    "commit": "7639997ab654135f1fb6bebc58dcbf2c2e5bc16e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
