@@ -16,6 +16,10 @@ import subprocess
 import sys
 import time
 
+# Explicit one-pass, read-only APFS geometry. No recurring collector.
+CAPACITY_SLICE_TIMEOUT = 110
+CAPACITY_MAX_OUTPUT = 1024 * 1024
+
 HOME_BUCKETS = (
     ("recovery_vault", "aoe2war-recovery", "PROTECTED_RECOVERY"),
     ("mobile_backups", "Library/Application Support/MobileSync/Backup", "PROTECTED_IOS"),
@@ -332,20 +336,193 @@ def focused_census(home: Path, focus: str) -> dict:
 
 
 
+def capacity_depth_one(root: Path, device: int, *, timeout: int = CAPACITY_SLICE_TIMEOUT) -> dict:
+    """One metadata-only du traversal per boundary; no file contents read.
+
+    Each depth-1 row is disjoint *within its own boundary only*.
+    Nested boundary results overlap and must NEVER be summed together.
+    """
+    report = {"root": str(root), "status": "HOLD", "allocated_bytes": None,
+              "direct_children": [], "unmeasured": [], "direct_file_count": 0,
+              "gross_not_unique_apfs_bytes": True, "mutation_allowed": False}
+    try:
+        st = os.lstat(root)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+            report["reason"] = "ROOT_SYMLINK_OR_NON_DIRECTORY"
+            return report
+        if st.st_dev != device:
+            report["reason"] = "CROSSES_DATA_DEVICE"
+            return report
+        entries = []
+        with os.scandir(root) as listing:
+            for entry in listing:
+                # Direct children only; no content inspection or recursion here.
+                entries.append(entry.name)
+                if len(entries) > 8192:
+                    report["reason"] = "DIRECT_ENTRY_BOUND_EXCEEDED"
+                    return report
+    except PermissionError:
+        report["reason"] = "ENUMERATION_PERMISSION_DENIED"
+        return report
+    except OSError:
+        report["reason"] = "ROOT_OR_ENUMERATION_UNAVAILABLE"
+        return report
+    try:
+        p = subprocess.run(
+            ["du", "-k", "-x", "-d", "1", str(root)], capture_output=True,
+            text=True, timeout=timeout, check=False)
+    except subprocess.TimeoutExpired:
+        report["reason"] = "DU_TIME_BUDGET_EXCEEDED"
+        return report
+    except OSError:
+        report["reason"] = "DU_NOT_AVAILABLE"
+        return report
+    if p.returncode != 0:
+        report["reason"] = "DU_ERROR_OR_PERMISSION_DENIED"
+        return report
+    if len(p.stdout.encode("utf-8", "surrogateescape")) > CAPACITY_MAX_OUTPUT:
+        report["reason"] = "DU_OUTPUT_LIMIT"
+        return report
+    values = {}
+    try:
+        for line in p.stdout.splitlines():
+            # Reject embedded newlines or tab-ambiguous names rather than
+            # assigning their allocations to a different path.
+            amount, name = line.split("\t", 1)
+            if not amount.isdecimal() or name in values:
+                raise ValueError("bad du")
+            target = Path(name)
+            if target != root and target.parent != root:
+                raise ValueError("unexpected du depth")
+            values[name] = int(amount) * 1024
+    except (ValueError, OverflowError):
+        report["reason"] = "DU_MALFORMED_OR_AMBIGUOUS"
+        return report
+    if str(root) not in values:
+        report["reason"] = "DU_ROOT_SUMMARY_MISSING"
+        return report
+    for name in sorted(entries):
+        child = root / name
+        try:
+            s = os.lstat(child)
+        except OSError:
+            report["unmeasured"].append({"path": str(child), "reason": "CHILD_STAT_FAILED"})
+            continue
+        if stat.S_ISLNK(s.st_mode):
+            report["unmeasured"].append({"path": str(child), "reason": "SYMLINK_NOT_FOLLOWED"})
+        elif s.st_dev != device:
+            report["unmeasured"].append({"path": str(child), "reason": "OTHER_MOUNT"})
+        elif stat.S_ISDIR(s.st_mode):
+            if str(child) not in values:
+                report["unmeasured"].append({"path": str(child), "reason": "MISSING_DU_CHILD"})
+            else:
+                report["direct_children"].append({
+                    "path": str(child), "allocated_bytes": values[str(child)],
+                    "scope": "SHALLOW_DIRECTORY_GROSS_NOT_UNIQUE",
+                    "mutation_allowed": False})
+        else:
+            # Single files are in the root du total, not independently
+            # classified. They are a residual, not free/reclaimable bytes.
+            report["direct_file_count"] += 1
+    report["allocated_bytes"] = values[str(root)]
+    directory_sum = sum(r["allocated_bytes"] for r in report["direct_children"])
+    report["root_files_links_and_metadata_gross_residual_bytes"] = (
+        max(0, report["allocated_bytes"] - directory_sum)
+        if not report["unmeasured"] and directory_sum <= report["allocated_bytes"] else None)
+    report["reason"] = "COMPLETE_SHALLOW_METADATA" if not report["unmeasured"] else "UNMEASURED_DIRECT_CHILDREN"
+    report["status"] = "OBSERVED_SHALLOW" if not report["unmeasured"] else "HOLD"
+    return report
+
+
+def capacity_accounting(home: Path, *, data_root: Path = Path("/System/Volumes/Data"),
+                        platform: str | None = None) -> dict:
+    """Opt-in 500-GB accounting, never a completeness or physical-reclaim claim."""
+    result = {
+        "schema": "aoe2war.mac-l1-capacity-accounting.v1",
+        "status": "HOLD", "scope": "APFS_DATA_ROOT_AND_HOME_SHALLOW_METADATA",
+        "mount_identity": None, "apfs_capacity": None, "data_top_level": None,
+        "home_top_level": None, "unexplained_physical_bytes": None,
+        "apfs_snapshots_bytes": None, "clones_shared_bytes": None,
+        "purgeable_bytes": None, "other_apfs_volumes_bytes": None,
+        "full_container_coverage_certified": False,
+        "private_file_contents_read": False, "mutation_allowed": False,
+    }
+    if (platform or sys.platform) != "darwin":
+        result["reason"] = "NOT_NATIVE_MAC"
+        return result
+    try:
+        home_stat = os.lstat(home)
+        data_stat = os.lstat(data_root)
+        if (not stat.S_ISDIR(home_stat.st_mode) or stat.S_ISLNK(home_stat.st_mode)
+                or not stat.S_ISDIR(data_stat.st_mode) or stat.S_ISLNK(data_stat.st_mode)
+                or home_stat.st_dev != data_stat.st_dev):
+            result["reason"] = "DATA_HOME_MOUNT_IDENTITY_MISMATCH"
+            return result
+        before = os.statvfs(data_root)
+        block = before.f_frsize or before.f_bsize
+        if (block <= 0 or before.f_blocks <= 0
+                or before.f_bavail < 0 or before.f_bfree < before.f_bavail):
+            result["reason"] = "STATVFS_INCOHERENT"
+            return result
+        # Reuse the existing source-owned authenticated-identity probe.
+        probe = Path(__file__).resolve().parent / "aoe2_storage_probe.py"
+        identity_proc = subprocess.run(
+            [sys.executable, str(probe), "--plane", "mac"],
+            capture_output=True, text=True, check=False, timeout=12)
+        payload = json.loads(identity_proc.stdout) if identity_proc.returncode == 0 else {}
+        identity = payload.get("filesystem") if isinstance(payload, dict) else None
+        if not (isinstance(identity, dict) and identity.get("fs_type") == "apfs"
+                and identity.get("uuid") and identity.get("mount_source")):
+            result["reason"] = "APFS_IDENTITY_UNVERIFIED"
+            return result
+        result["mount_identity"] = identity
+        result["apfs_capacity"] = {
+            "statvfs_shared_total_bytes": before.f_blocks * block,
+            "ordinary_available_bytes_before": before.f_bavail * block,
+            "free_blocks_bytes_before": before.f_bfree * block,
+            "container_capacity_from_diskutil_bytes": None,
+            "statvfs_not_independent_container_extent_proof": True,
+        }
+        result["data_top_level"] = capacity_depth_one(data_root, data_stat.st_dev)
+        result["home_top_level"] = capacity_depth_one(home, home_stat.st_dev)
+        after = os.statvfs(data_root)
+        result["apfs_capacity"]["ordinary_available_bytes_after"] = (
+            after.f_bavail * (after.f_frsize or after.f_bsize))
+        if (result["data_top_level"]["status"] != "OBSERVED_SHALLOW"
+                or result["home_top_level"]["status"] != "OBSERVED_SHALLOW"):
+            result["reason"] = "SHALLOW_CAPACITY_METADATA_INCOMPLETE"
+        else:
+            result["reason"] = "APFS_SHARED_METADATA_AND_PHYSICAL_EXTENTS_UNPROVEN"
+        # Missing metadata/clone/snapshot/OS volume measurements are UNKNOWN.
+        # du gross, APFS used and root residual are deliberately not subtracted
+        # into a false unique/extents or free-space recovery claim.
+    except (OSError, ValueError, json.JSONDecodeError, subprocess.TimeoutExpired):
+        result["reason"] = "CAPACITY_SOURCE_UNAVAILABLE"
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=30)
     parser.add_argument("--focus", choices=sorted(FOCUS_ROOTS),
                         help="read-only, one-level cache-child review; never an apply mode")
+    parser.add_argument("--capacity-only", action="store_true",
+                        help="one opt-in, read-only mount-aware shallow Data + home accounting")
     args = parser.parse_args()
     if not 5 <= args.limit <= 1024:
         parser.error("--limit must be 5..1024")
     home = Path.home()
     root = home / "projects/AoE2HDBets"
-    data = focused_census(home, args.focus) if args.focus else census(home, root, limit=args.limit)
+    data = (capacity_accounting(home) if args.capacity_only
+            else focused_census(home, args.focus) if args.focus
+            else census(home, root, limit=args.limit))
     if args.json:
         print(json.dumps(data, indent=2, sort_keys=True))
+    elif args.capacity_only:
+        print("AOE2WAR MAC SHALLOW APFS CAPACITY — READ ONLY")
+        print("Status:", data["status"], "Reason:", data.get("reason"))
+        print("Physical unique gain: UNKNOWN; full container proof: NO; no mutation")
     elif args.focus:
         print("AOE2WAR MAC FOCUSED CACHE CENSUS — READ ONLY")
         print("Focus:", data["focus"], "State:", data["status"])
