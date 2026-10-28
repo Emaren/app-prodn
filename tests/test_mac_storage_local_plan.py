@@ -568,15 +568,19 @@ class MacLocalPlanTests(TestCase):
         with mock.patch.object(mod, "observe", side_effect=[
                 base(), ext(), electron(), pressure(), watchdog(),
                 {"status": "HOLD", "reason": "NOT_NATIVE_MAC"}]) as probe:
-            with redirect_stdout(io.StringIO()), mock.patch.object(
-                    mod.sys, "argv", ["local-plan", "--l1-campaign", "--json"]):
+            with (mock.patch.object(mod.Path, "is_file", return_value=True),
+                  mock.patch.object(mod.Path, "is_symlink", return_value=False),
+                  redirect_stdout(io.StringIO()),
+                  mock.patch.object(
+                      mod.sys, "argv", ["local-plan", "--l1-campaign", "--json"])):
                 self.assertEqual(mod.main(), 0)
             self.assertEqual(probe.call_count, 6)
             self.assertIn("--capacity-only", probe.call_args.args[0])
         with mock.patch.object(mod, "observe", side_effect=[
                 base(), ext(), electron(), pressure(), watchdog()]) as probe:
-            with redirect_stdout(io.StringIO()), mock.patch.object(
-                    mod.sys, "argv", ["local-plan", "--json"]):
+            with (mock.patch.object(mod.Path, "is_file", return_value=False),
+                  redirect_stdout(io.StringIO()),
+                  mock.patch.object(mod.sys, "argv", ["local-plan", "--json"])):
                 self.assertEqual(mod.main(), 0)
             self.assertEqual(probe.call_count, 5)
 
