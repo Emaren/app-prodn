@@ -593,9 +593,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DESYNC_INCIDENT_PROTOCOL.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-28",
+      "reviewed_at": "2026-10-28",
       "sensitivity": "internal",
-      "sha256": "a25a664b4ed988f3974da499c6a8f059242ab1569e6ea9be481bd4e0566f570e",
+      "sha256": "ab00bfe550f867b76095e2f658814d74139b7da183e86a5d369bdcb6ef7a0916",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e67c667d73b6ca6ce43ac185ce3605667dc87d730cbdaad972addab737a5cdee",
+      "sha256": "4dafd1d83d0b4ede78c8eae85a455a01af4edfe3c8878c382bfc39f33897f876",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/phase11-website-atlas-finance-safe",
-    "commit": "4c0aa1b2b69a67ea3924bc833128298081a6580d"
+    "branch": "review/session-g-phase15-signed-stage-park-20261027",
+    "commit": "4f11d1998aec21f9bfa81606d301060feecc9bf2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

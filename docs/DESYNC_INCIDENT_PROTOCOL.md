@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "domain-contract"
-reviewed_at: "2026-08-28"
+reviewed_at: "2026-10-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -142,6 +142,72 @@ wagers, claims, and automation references follow the surviving pair. Multiple
 children, a funded child attached outside the exact winner family, or any
 incompatible frozen proposition fails closed into operator review instead of
 creating a second side bet.
+
+## Source-backed review — 2026-10-28 (technical; owner approval separate)
+
+**Scope and reviewer:** Session F performed a code-and-test review against website
+release stack `app-prodn/#952@6d13c39d45019346bf6f19c7d009fceedfd55933`
+(its desync implementation inherits the pre-existing source). This is an
+**actual technical review**, not a new settlement rule, production verification,
+funds approval, or representation of a human `aoe2war-web` domain sign-off.
+The accountable approval owner remains **`aoe2war-web`**; a separate
+authorized human domain reviewer must accept this reviewed contract and its
+remaining runtime risks before production financial authorization.
+
+**Verified against tracked implementation and source tests:**
+
+- **Three axes and append-only evidence:** `lib/replayDesyncIncidents.ts`
+  enforces admin-only confirmation, replay-hash/parse-iteration binding,
+  same-replay latest `supersedesId`, idempotency and conflicting-retry rejection,
+  and a replay-scoped transaction advisory lock.
+  `prisma/migrations/20260722203000_add_replay_desync_incidents/migration.sql`
+  creates constraints on initial commissioner review and false correction, unique
+  root/supersedes/idempotency indexes and database UPDATE/DELETE/TRUNCATE
+  rejection triggers. `tests/replay-desync-incidents.test.mts` covers
+  confirmation/correction/axis and retry cases. Parser suspicion remains
+  `parserDesyncCandidate`; none of these creates a winner or transfer proof.
+- **Challenge, rematch and refunds:** `lib/desyncChallenge.ts` blocks
+  unresolved or voided winner payouts and title/artifact movement; a rematch
+  winner needs a distinct later replay. `lib/desyncChallengeProtocol.ts`
+  appends the commissioner disposition and projects Challenge activity under
+  the existing advisory lock, preserving funded participants on rematch and
+  routing void/refund through `executeScheduledMatchSettlement`. An outcome
+  labeled `queued` is not money sent; persisted transfer rows with `txHash`
+  are consulted before claiming already-executed funded refunds.
+  `lib/scheduledMatchSettlements.ts` rechecks winner settlement under locked
+  canonical replay identity; `tests/desync-challenge.test.mts` and
+  `tests/desync-settlement-wiring.test.mts` cover negative boundaries.
+- **Child market and reconciliation:** `lib/desyncSideMarket.ts`
+  resolves human-confirmed YES, explicit human correction NO, and absence of
+  a human decision NO only after a safely settled winner/grace interval.
+  `app/api/replay-results/[id]/desync-incidents/route.ts` blocks direct
+  commissioner rematch/refund commands in the incident endpoint and requires
+  post-commit betting reconciliation; an error there returns deferred
+  recovery rather than claiming the durable incident was rolled back.
+  `tests/desync-side-market-domain.test.mts`,
+  `tests/desync-side-market-settlement.test.mts` and
+  `tests/desync-side-market-wagering.test.mts` cover side-outcome,
+  concurrency/terminal-state and wagering contracts in source tests.
+- **Release scope:** #952 changed retirement-only release controller,
+  documentation baseline and test files, **not** these desync implementation
+  modules or the desync migration. Its source CI PostgreSQL and
+  application-build jobs passing do **not** prove live financial settlement.
+
+**Not verified / must remain HOLD:** migration application and append-only
+triggers on current HEL1 PostgreSQL; real human-case replay-to-Challenge
+projection after partial/network failure; current effective funding liability,
+bank/vault/escrow balances, transfer execution and off-host restore; real
+exactly-once refund / cross-service idempotency from chain receipts; independent
+financial-writer exclusion and signed production release authority.
+The incident appends before downstream projection/reconciliation, so partial
+failure requires explicit source-owned retry and receipt inspection; an HTTP
+response or parsed replay alone must never establish payment or winner truth.
+
+**Approval record:** technical review **COMPLETED 2026-10-28 UTC**
+(Session F, implementation/read-only source and existing tests); accountable
+`aoe2war-web` **human domain approval = PENDING / NOT IMPERSONATED**.
+Any financial GO, custody decision or domain-policy change requires that
+genuine owner sign-off and separate authenticated runtime evidence.
 
 ## Deployment
 
