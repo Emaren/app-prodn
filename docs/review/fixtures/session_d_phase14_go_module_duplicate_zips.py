@@ -151,7 +151,10 @@ def zipped_source_duplicate(path, archive_stat):
     module_parts = relative.parts[:-2]
     root_name = "/".join(module_parts) + "@" + version
     extracted = MOD.joinpath(*module_parts[:-1], module_parts[-1]+"@"+version)
-    checked_stat(extracted, "dir")
+    node=extracted
+    while node != MOD:
+        checked_stat(node, "dir")
+        node=node.parent
     expected_prefix = root_name + "/"
     file_count = 0
     with zipfile.ZipFile(path) as archive:
