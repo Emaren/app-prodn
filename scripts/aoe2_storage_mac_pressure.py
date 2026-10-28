@@ -28,6 +28,13 @@ HOME_BUCKETS = (
     ("xcode_archives", "Library/Developer/Xcode/Archives", "PROTECTED_DEV_ARCHIVES"),
     ("homebrew", "Library/Homebrew", "REVIEW_TOOLCHAIN"),
     ("python_pyenv", ".pyenv", "REVIEW_TOOLCHAIN"),
+    ("electron_binary_cache", "Library/Caches/electron", "REVIEW_REGENERABLE_OPT_IN_ONLY"),
+    ("electron_builder_cache", "Library/Caches/electron-builder", "REVIEW_REGENERABLE_OPT_IN_ONLY"),
+    ("chrome_browser_cache", "Library/Caches/Google", "REVIEW_BROWSER_UI_MANAGED"),
+    ("docker_virtual_disks", "Library/Containers/com.docker.docker/Data/vms", "PROTECTED_ACTIVE_DOCKER_VM"),
+    ("codex_worktrees", ".codex/worktrees", "PROTECTED_DIRTY_WORKTREES"),
+    ("codex_runtimes", ".cache/codex-runtimes", "PROTECTED_ACTIVE_RUNTIME_UNKNOWN"),
+    ("crossover", "Library/Application Support/CrossOver", "PROTECTED_REPLAY_ENGINE"),
 )
 GENERATED_NAMES = (".next", "node_modules", ".direnv", ".turbo", "dist", "build", ".yarn-cache")
 
@@ -76,6 +83,7 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
         })
     for name, relative, classification in HOME_BUCKETS:
         add(name, home / relative, classification)
+    incomplete_reasons = []
     if project.is_dir() and not project.is_symlink():
         dirs = sorted(
             [p for p in project.iterdir() if p.is_dir() and not p.is_symlink()],
@@ -84,20 +92,33 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
         for path in dirs[:120]:
             add("project:" + path.name, path, "PROJECT_REVIEW_NEVER_AUTO_DELETE")
         if len(dirs) > 120:
+            incomplete_reasons.append("PROJECT_DIRECTORY_LIMIT_120")
             rows.append({"name": "PROJECT_CENSUS_INCOMPLETE",
                          "complete": False, "remaining_projects": len(dirs) - 120,
                          "mutation_allowed": False})
         # Discover declared worktrees from the canonical web Git repository,
         # rather than globbing inside arbitrary private user directories.
         primary = project / "app-prodn"
-        for repo in worktrees(primary)[:60]:
+        declared_worktrees = worktrees(primary)
+        if len(declared_worktrees) > 60:
+            incomplete_reasons.append("WORKTREE_LIMIT_60")
+        for repo in declared_worktrees[:60]:
             for name in GENERATED_NAMES:
                 add("worktree_generated:" + repo.name + ":" + name,
                     repo / name, "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED")
     rows.sort(key=lambda r: (-r.get("allocated_bytes", 0), r["name"]))
+    if len(rows) > limit:
+        incomplete_reasons.append("DISPLAY_ROW_LIMIT")
+    if any(row.get("complete") is not True for row in rows):
+        incomplete_reasons.append("NAMED_PATH_MEASUREMENT_INCOMPLETE")
+    incomplete_reasons = sorted(set(incomplete_reasons))
     return {"schema": 1, "status": "READ_ONLY", "mac_home": str(home),
             "project_root": str(project), "measured": rows[:limit],
-            "observed_path_count": len(rows), "mutation_allowed": False,
+            "observed_path_count": len(rows), "displayed_path_count": min(len(rows), limit),
+            "named_census_complete": not incomplete_reasons,
+            "incomplete_reasons": incomplete_reasons,
+            "coverage": "NAMED_PATHS_ONLY_NOT_WHOLE_DISK",
+            "mutation_allowed": False,
             "note": "Rows overlap (project vs generated); never sum them. Protection is not deletion authorization."}
 
 
@@ -106,8 +127,8 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=30)
     args = parser.parse_args()
-    if not 5 <= args.limit <= 100:
-        parser.error("--limit must be 5..100")
+    if not 5 <= args.limit <= 300:
+        parser.error("--limit must be 5..300")
     home = Path.home()
     root = home / "projects/AoE2HDBets"
     data = census(home, root, limit=args.limit)

@@ -25,6 +25,8 @@ Primary operator surface:
 ```bash
 aoe2war storage status
 aoe2war storage estate --measure
+aoe2war storage local-plan          # permanent, read-only Mac action board
+aoe2war storage local-pressure --limit 300
 aoe2war storage local-maintain
 aoe2war storage local-maintain --apply
 aoe2war storage plan
@@ -92,6 +94,55 @@ allocated bytes due to clones and snapshots; neither estimate is a success
 receipt until actual execution returns. Inspect current disk free with
 `df -k "$HOME"` before/after the operation. Running from an unmerged feature
 branch is never a production release authorization.
+
+## Reusable Mac cleanup operating cycle (2026-10-28)
+
+**Single operator entrypoint:** `aoe2war storage local-plan` (or `--json`).
+This is a permanent **read-only federation** within the existing Storage OS,
+not another deletion controller or a shell transcript. It invokes the existing
+local-maintain previews (four original caches, four extra opt-in content
+caches, and two opt-in Electron download caches), the named local-pressure
+census, and VPSSentry's independent Mac receipt watchdog if available.
+Unknown probes remain UNKNOWN; protected or overlapped source buckets are
+never declared reclaimable. The plan ranks named, measurable cache classes
+but does not infer all unclassified user files are junk. A zero cache preview
+means those *specific* classes are empty, **not** zero junk across the Mac.
+
+The new exact mode `aoe2war storage local-maintain --electron-only` previews
+ONLY `~/Library/Caches/electron` and `~/Library/Caches/electron-builder`,
+without selecting original/extended cache roots. After owner validation,
+`aoe2war storage local-maintain --apply --electron-only` operates within
+the same Storage OS retention/receipt authority and before/after APFS free
+measurement. This option and `--extended` are mutually exclusive. Apply
+now verifies the macOS owner session, a complete process census for active
+Electron builders, and open file descriptors beneath both named targets;
+failed census, unsafe ancestors and symlinks cause HOLD, never blind deletion.
+**Never schedule apply**: observation and recommendation may be timed;
+reclaim requires a separately authorized owner action and receipt.
+
+Historical physical Mac acceptance on Oct 28: isolated, exact-head PR #964
+source passed 11 focused native tests; the owner approved and executed
+only these two cache deletions, and APFS gained **0.538 GiB**. Historical
+receipt: `~/.local/state/aoe2war/storage/electron-pr964-e07021d1898a/`
+`.aoe2war-release/storage-local-receipts/20261028T162940Z-local-maintenance.json`.
+That approved one-time source checkout was an isolated acceptance path, not
+the normal future operating mechanism. After this feature is merged into
+source, use the canonical operator CLI rather than fetching PR archives.
+
+Local pressure now permits up to 300 displayed **named** rows and records
+`named_census_complete`, displayed/observed counts, reasons for truncation,
+and explicit `NAMED_PATHS_ONLY_NOT_WHOLE_DISK` scope. Additional named
+Electron, Chrome, Docker VM, Codex and CrossOver locations are classified
+as either review or protected **without deletion permission**. Project
+roots and their generated children overlap; do not sum allocations to
+claim free-space recovery. When a class has not been measured or is
+partially observed, it remains UNKNOWN and should be triaged.
+
+Daily launchd `com.aoe2war.mac-storage-pulse` and the VPSSentry watchdog
+remain the observation/freshness authorities; this planning command does
+not create a second timer. Three-plane HEL1 volume capacity and financial
+release/backup admission remain independently held as needed, regardless
+of local cache cleanup success.
 
 Capacity health and retention topology are separate facts. A volume below the
 capacity threshold may still carry structural rollback debt. The lean-retention
