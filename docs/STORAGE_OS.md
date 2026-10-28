@@ -51,6 +51,30 @@ primitive and never deletes durable rollback generations.
 - **Legacy/unknown:** never changed automatically.
 - **Regenerable:** separate bounded cache/staging retention lanes.
 
+## Mac Downloads handoff script review (operator-only)
+
+`aoe2war storage downloads-scripts` previews older, probable AoE2WAR
+one-off `.py` and `.sh` handoff downloads. It does **not** delete anything.
+It scans **only regular top-level files** under `~/Downloads`; no recursion
+or archives, chat exports, `conversations.json`, media, ZIPs, application
+installers, hidden worktrees, credentials, project roots or recovery vaults.
+Recognized name prefixes are *candidate hints*, not proof of Git provenance.
+Recent (default less than seven days old), oversized, linked/symlinked and
+high-authority names (signing, owner enrollment, keys, financial settlement,
+escrow, receipts, backup, restore, release, stage) remain held.
+
+After inspecting the candidate list, an owner may run
+`aoe2war storage downloads-scripts --trash --confirm EXACT_PLAN_SHA256`.
+The second command independently re-hashes and rechecks the entire batch
+before moving files into a private `~/.Trash/AoE2WAR-handoff-review-*`
+directory, with an exact per-file private receipt. If the preview changed,
+nothing moves. A partial rename failure is an explicit HOLD requiring manual
+review of the destination; never blindly retry. Nothing empties Trash. The
+measured APFS reclaimed bytes are **zero** until a separate, reviewed purge.
+Never treat script extensions, file age or human-readable titles as sufficient
+authorization for irreversible deletion. This feature is a deliberately
+bounded helper inside the existing Storage OS, not a timer or new daemon.
+
 ## Whole-estate census and local reclaim
 
 `aoe2war storage estate` is the fast cross-plane storage census. It reports the
