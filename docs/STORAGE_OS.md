@@ -1033,3 +1033,66 @@ five rows as an approved deletion. Central Gate 3 needs owner-native read-only
 adoption of corrected roles; Gates 4-8 remain held for real independent
 physical, source, consumer and approval evidence. +20 GiB is not established
 from these allocations.
+
+## Private Storage OS radial anatomy, hogs and activity (2026-10-28)
+
+The private `/admin/storage-os` dashboard has a real-data two-ring storage
+visualization: inner slices classify L1–L4 protection, outer slices show the
+largest published storage consumers for the selected Mac, HEL1 root or HEL1
+evidence-volume plane. Each drive card shows its two largest verified consumers
+without drilldown. The ranked list has explicit gross allocated GiB and
+HOLD/protection status. A separate activity view shows published generation,
+prune-receipt, prune-HOLD, upcoming owner-review, collection and snapshot
+events. No button launches a deletion, prune, file walk or build.
+
+**Strict source and geometry boundaries:**
+- The optional `lib/storageVisualPrivate.ts` reader accepts only an exact
+  bounded `aoe2war.storage-visual.signed.v1` envelope, carrying a
+  `aoe2war.storage-visual.private.v1` payload. It verifies HMAC-SHA256 over
+  `AOE2WAR_STORAGE_VISUAL_V1\\0` followed by sorted-key, UTF-8 compact
+  JSON (cross-language publishers must match this byte sequence), with an
+  **independent**, owner-managed 32–64 byte signing key in
+  `AOE2WAR_STORAGE_VISUAL_HMAC_KEY` (hex; never re-use the Mac Pulse key).
+  Server reads a single existing `state/storage-visual.v1.json` file from
+  the established `AOE2WAR_OS_STORE_DIR` only, no file creation or network
+  fetch, with bounded size, regular-file/no-symlink checks and timestamps.
+- Payload `generated_at` is ISO UTC and `planes` is an array of at most
+  three objects. Each plane has `id`, `observed_at`, `coverage` of
+  `PARTIAL` or `DISJOINT`, at most 32 `hogs`, and at most 64 `events`.
+  A hog is `{key, gross_allocated_bytes, overlaps}`. Keys are restricted
+  to source-owned `HOG_CATALOG`; server assigns L1–L4 policy, not publisher.
+  An event is `{id, at, kind, category, bytes, transaction_digest}`.
+  Kind is `GENERATED`, `PRUNE_RECEIPT`, `PRUNE_HOLD`, `NEXT_REVIEW`,
+  `SNAPSHOT` or `COLLECTED`. A prune receipt requires an exact hex SHA-256
+  transaction digest. All fields are bounded and audited; no raw personal
+  paths, credentials, URLs, identifiers of people or financial ledger
+  content pass into the browser.
+- A valid HMAC is **private provenance**, not three-host Ed25519 Atlas
+  admission, not an independently certified APFS recovery or financial
+  authority. `gross_allocated_bytes` may overlap parents/children, clones,
+  hardlinks and protected descendants. Pie segments are proportions of
+  *reported gross category sizes only*, not fractions of physical disk usage;
+  any `DISJOINT` claim is restricted to reported categories and rejected
+  when overlapping rows are present. Never add the radial sum to an APFS
+  free-space figure. A `PRUNE_RECEIPT` event displays the reported amount
+  as a receipt datum, **not** verified unique physical gain.
+- With no provisioned key or receipt, the visualization shows **NO VERIFIED
+  HOG FEED**, empty rings and no invented history. Invalid signatures or
+  malformed receipts fail closed. Underlying signed three-plane Atlas
+  remains HOLD; its admission is never promoted by this separate optional
+  private receipt.
+- The collector teams must adapt **existing** VPSSentry Mac Pulse and HEL1
+  observer sources. Do not install another timer, broad scan, new deletion
+  controller, privileged daemon or unbounded high-frequency file watcher.
+  Each publisher must supply source SHA, freshness, target mount identity,
+  categories and valid transaction receipts **before** production receiver
+  adoption and authenticated browser sign-off. No new collector has been
+  installed as part of this UI-source PR.
+
+Mac policy: CrossOver/Steam/Replay Lab, device MobileSync backups, recovery
+vault, E5 seal, active canonical app dependencies, Codex worktrees and signed
+Watcher release distribution are **L4 protected**. Historical Renaissance
+dependencies and Download contents are **L2 review**, not L1 deleted.
+HEL1 Traffic DB, active swap, evidence and finance restore systems remain
+protected until independent source-owner proof. L1 is strictly guarded
+generated artifacts after regeneration/source/consumer/mount/APFS proof.

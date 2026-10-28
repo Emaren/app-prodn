@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { StorageCommandCenter, StorageReading } from "@/lib/storageCommandCenterProjection";
+import StorageVisualExplorer from "@/components/storage-os/StorageVisualExplorer";
 
 type PlaneId = StorageReading["id"];
 const IDS: PlaneId[] = ["mac", "hel1-root", "hel1-volume-105319120"];
@@ -61,8 +62,8 @@ function Gauge({ value, large = false }: { value: number | null; large?: boolean
   );
 }
 function DriveCard({
-  plane, active, onSelect,
-}: { plane: StorageReading; active: boolean; onSelect: () => void }) {
+  plane, active, onSelect, topHogs,
+}: { plane: StorageReading; active: boolean; onSelect: () => void; topHogs: {label:string;grossBytes:number}[] }) {
   const Icon = plane.id === "mac" ? Laptop2 : plane.id === "hel1-root" ? Server : Database;
   return (
     <button type="button" onClick={onSelect} aria-pressed={active}
@@ -83,6 +84,13 @@ function DriveCard({
           <div className="mt-1 text-xl font-bold tabular-nums text-white">{humanBytes(plane.freeBytes)}</div></div>
         <div><div className="text-[10px] tracking-widest text-slate-500">OBSERVED</div>
           <div className="mt-1 text-lg font-semibold text-slate-200">{age(plane.asOf)}</div></div>
+      </div>
+      <div className="mt-4 border-t border-white/[.07] pt-3">
+        <div className="mb-2 text-[9px] font-bold tracking-[.2em] text-cyan-200/65">BIGGEST VERIFIED HOGS</div>
+        {topHogs.length?topHogs.slice(0,2).map(h=><div key={h.label} className="flex items-center justify-between gap-2 py-1 text-[11px] text-slate-400">
+          <span className="min-w-0 truncate">{h.label}</span>
+          <span className="shrink-0 font-mono text-slate-100">{humanBytes(h.grossBytes)}</span>
+        </div>):<div className="text-[10px] text-slate-600">NO VERIFIED HOG FEED</div>}
       </div>
       <div className="mt-3 flex items-center justify-between text-[10px] text-slate-500">
         <span>{plane.source.replaceAll("_", " ")}</span>
@@ -193,7 +201,8 @@ export default function PrivateStorageOsPage() {
             freeBytes: null, usedPercent: null, reclaimedBytes: null, status: "UNKNOWN" as const,
             source: "NONE" as const, asOf: null, classes: [],
           };
-          return <DriveCard key={id} plane={p} active={id === activeId} onSelect={() => setActiveId(id)}/>;
+          return <DriveCard key={id} plane={p} active={id === activeId} onSelect={() => setActiveId(id)}
+            topHogs={(data?.visual?.planes.find(v=>v.id===id)?.hogs??[]).slice(0,2)}/>;
         })}
       </section>
 
@@ -255,6 +264,8 @@ export default function PrivateStorageOsPage() {
           </div>
         </div>
       </section>
+
+      <StorageVisualExplorer visual={data?.visual} activeId={activeId}/>
 
       <section className="grid gap-4 xl:grid-cols-[.8fr_1.2fr]">
         <div className={`${FRAME} p-5 sm:p-7`}>

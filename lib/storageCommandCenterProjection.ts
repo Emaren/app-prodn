@@ -4,6 +4,7 @@
  *
  * A browser poll is NOT a host sample. Preserve origin, timestamp and nulls.
  */
+import type { StorageVisualView } from "./storageVisualPrivate";
 export type StoragePlaneId = "mac" | "hel1-root" | "hel1-volume-105319120";
 export type StorageReading = {
   id: StoragePlaneId;
@@ -22,6 +23,7 @@ export type StorageCommandCenter = {
   bridgeOnline: boolean;
   bridgeLastSeen: string | null;
   signedAdmission: "HOLD" | "NO_SIGNED_RECEIPT";
+  visual: StorageVisualView;
   planes: StorageReading[];
   release: {
     sourceSha: string | null;
@@ -80,6 +82,7 @@ const IDS: StoragePlaneId[] = ["mac", "hel1-root", "hel1-volume-105319120"];
 
 export function projectPrivateStorage(
   dashboardRaw: unknown, signedRaw: unknown, clock: Date = new Date(),
+  visual: StorageVisualView = {source:"NONE",authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY",planes:[]},
 ): StorageCommandCenter {
   const dashboard = obj(dashboardRaw);
   const bridge = obj(dashboard.bridge);
@@ -147,6 +150,7 @@ export function projectPrivateStorage(
     bridgeOnline: bridge.online === true && stillRecent(iso(bridge.lastSeenAt), now, 90_000),
     bridgeLastSeen: iso(bridge.lastSeenAt),
     signedAdmission: verified ? "HOLD" : "NO_SIGNED_RECEIPT",
+    visual,
     planes,
     release: {
       sourceSha, remoteSha, productionSha,
