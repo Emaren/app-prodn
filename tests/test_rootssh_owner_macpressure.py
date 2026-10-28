@@ -160,6 +160,78 @@ class MacPressureContract(TestCase):
             self.assertFalse(capped["named_census_complete"])
             self.assertIn("DISPLAY_ROW_LIMIT", capped["incomplete_reasons"])
 
+    def test_512_row_census_exposes_all_names_when_300_would_truncate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            project = home / "projects/AoE2HDBets"
+            project.mkdir(parents=True)
+            (project / "app-prodn").mkdir()
+            virtual_worktrees = [project / ("virtual" + str(n)) for n in range(48)]
+            with mock.patch.object(pressure, "worktrees", return_value=virtual_worktrees):
+                capped = pressure.census(home, project, limit=300)
+                complete = pressure.census(home, project, limit=512)
+            self.assertGreater(complete["observed_path_count"], 300)
+            self.assertEqual(complete["displayed_path_count"], complete["observed_path_count"])
+            self.assertEqual(len(complete["measured"]), complete["observed_path_count"])
+            self.assertNotIn("DISPLAY_ROW_LIMIT", complete["incomplete_reasons"])
+            self.assertTrue(complete["named_census_complete"])
+            self.assertEqual(len(capped["measured"]), 300)
+            self.assertIn("DISPLAY_ROW_LIMIT", capped["incomplete_reasons"])
+            self.assertFalse(capped["named_census_complete"])
+            self.assertEqual(complete["coverage"], "NAMED_PATHS_ONLY_NOT_WHOLE_DISK")
+
+    def test_focused_generic_cache_protects_codex_runtime_and_never_deletes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            cache = home / ".cache"
+            (cache / "codex-runtimes").mkdir(parents=True)
+            (cache / "codex-runtimes/unique_runtime").write_bytes(b"PROTECTED_RUNTIME")
+            (cache / "other-generator").mkdir()
+            (cache / "other-generator/regenerable").write_bytes(b"REVIEW_ONLY")
+            result = pressure.focused_census(home, "generic_cache")
+            self.assertEqual(result["status"], "READ_ONLY")
+            self.assertTrue(result["complete"])
+            self.assertEqual(result["coverage"], "ONE_LEVEL_NAMED_CACHE_CHILDREN_ONLY")
+            by_name = {r["name"]: r for r in result["children"]}
+            self.assertEqual(by_name["codex-runtimes"]["classification"],
+                             "PROTECTED_ACTIVE_RUNTIME_UNKNOWN")
+            self.assertFalse(by_name["codex-runtimes"]["auto_delete_permitted"])
+            self.assertTrue(by_name["codex-runtimes"]["complete"])
+            self.assertTrue(by_name["other-generator"]["classification"].startswith("REVIEW"))
+            self.assertEqual((cache / "codex-runtimes/unique_runtime").read_bytes(),
+                             b"PROTECTED_RUNTIME")
+            self.assertFalse(result["auto_delete_permitted"])
+
+    def test_focused_cache_symlink_does_not_follow_or_claim_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            cache = home / ".cache"
+            outside = Path(tmp) / "unique-financial"
+            outside.mkdir()
+            (outside / "evidence").write_text("IRREPLACEABLE")
+            cache.mkdir(parents=True)
+            (cache / "external_link").symlink_to(outside, target_is_directory=True)
+            result = pressure.focused_census(home, "generic_cache")
+            self.assertFalse(result["complete"])
+            self.assertEqual(result["status"], "INCOMPLETE")
+            self.assertIn("FOCUS_CHILD_SYMLINK", result["incomplete_reasons"])
+            self.assertEqual(result["children"][0]["allocated_bytes"], None)
+            self.assertEqual((outside / "evidence").read_text(), "IRREPLACEABLE")
+            self.assertFalse(result["auto_delete_permitted"])
+
+    def test_focused_cache_missing_and_symlink_root_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            self.assertEqual(pressure.focused_census(home, "generic_cache")["status"], "ABSENT")
+            target = Path(tmp) / "protected"
+            target.mkdir()
+            (home / ".cache").symlink_to(target, target_is_directory=True)
+            result = pressure.focused_census(home, "generic_cache")
+            self.assertFalse(result["complete"])
+            self.assertEqual(result["status"], "UNKNOWN")
+            self.assertIn("FOCUS_ROOT_SYMLINK", result["incomplete_reasons"])
+
     def test_newly_named_review_and_protection_do_not_grant_deletion(self):
         names = dict((name, classification)
                      for name, _path, classification in pressure.HOME_BUCKETS)
