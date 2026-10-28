@@ -87,7 +87,7 @@ def named_measurement(path: Path, home: Path, timeout: int = 45) -> dict:
                         "NONE_ABSENT" if reason == "ABSENT" else
                         "REVIEW_LINK_OR_MOUNT" if "SYMLINK" in reason or
                         "MOUNT" in reason else "RECHECK_NAMED_PATH"),
-                    next_readonly_command="aoe2war storage local-pressure --limit 512 --json",
+                    next_readonly_command="aoe2war storage local-pressure --limit 1024 --json",
                     mutation_allowed=False)
     try:
         home_dev = os.lstat(home).st_dev
@@ -184,6 +184,20 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
         )
         for path in dirs[:120]:
             add("project:" + path.name, path, "PROJECT_REVIEW_NEVER_AUTO_DELETE")
+            # One-level, fixed-basename probes only; never recurse into source
+            # or enumerate personal directories. Include only extant outputs,
+            # so 120 sibling projects do not manufacture 840 absent rows.
+            for basename in GENERATED_NAMES:
+                output = path / basename
+                try:
+                    os.lstat(output)  # no-follow existence check
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    # Unreadable outputs must be reported as UNKNOWN, not lost.
+                    pass
+                add("project_generated:" + path.name + ":" + basename, output,
+                    "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED")
         if len(dirs) > 120:
             incomplete_reasons.append("PROJECT_DIRECTORY_LIMIT_120")
             rows.append({"name": "PROJECT_CENSUS_INCOMPLETE",
@@ -325,8 +339,8 @@ def main() -> int:
     parser.add_argument("--focus", choices=sorted(FOCUS_ROOTS),
                         help="read-only, one-level cache-child review; never an apply mode")
     args = parser.parse_args()
-    if not 5 <= args.limit <= 512:
-        parser.error("--limit must be 5..512")
+    if not 5 <= args.limit <= 1024:
+        parser.error("--limit must be 5..1024")
     home = Path.home()
     root = home / "projects/AoE2HDBets"
     data = focused_census(home, args.focus) if args.focus else census(home, root, limit=args.limit)

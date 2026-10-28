@@ -15,7 +15,10 @@ import sys
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-MAX_OUTPUT = 512_000
+MAX_OUTPUT = 3_000_000
+GENERATED_THRESHOLD = 256 * 1024 * 1024
+GENERATED_NAMES = frozenset(('.next', '.turbo', 'dist', 'build', 'node_modules', '.direnv', '.yarn-cache'))
+GENERATED_PROTECTED = frozenset(('.codex', 'app-prodn-e5-seal', 'api-prodn', 'wolo', 'financial', 'replay', 'recovery', 'mobilesync', 'crossover', 'docker', '.aoe2war-release'))
 
 
 def observe(argv: list[str], *, cwd: Path, timeout: int = 240,
@@ -63,6 +66,100 @@ def cache_rows(source: dict[str, Any], name: str) -> list[dict[str, Any]] | None
                       "allocated_bytes": b, "exists": r.get("exists") is True,
                       "blocked": bool(r.get("blocked_reason")) or r.get("symlink") is True})
     return clean
+
+
+def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
+    """Only rank exact source-observed names. Never infer unique APFS relief."""
+    valid = (census.get("status") == "READ_ONLY"
+             and census.get("mutation_allowed") is False
+             and census.get("coverage") == "NAMED_PATHS_ONLY_NOT_WHOLE_DISK"
+             and isinstance(census.get("measured"), list))
+    observations = census["measured"] if valid else []
+    ranked = []
+    unknown = []
+    seen = set()
+    for r in observations:
+        if not isinstance(r, dict):
+            continue
+        name, path = r.get("name"), r.get("path")
+        if not (isinstance(name, str) and isinstance(path, str)
+                and name.startswith(("worktree_generated:", "project_generated:"))
+                and r.get("classification") == "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED"
+                and r.get("mutation_allowed") is False
+                and path.startswith("/") and ".." not in Path(path).parts
+                and Path(path).name in GENERATED_NAMES):
+            continue
+        if path in seen:
+            unknown.append({"path": path, "reason": "DUPLICATE_PATH_HOLD"})
+            continue
+        seen.add(path)
+        size = r.get("allocated_bytes")
+        if not (r.get("complete") is True and r.get("measurement_reason") == "MEASURED"
+                and r.get("symlink") is False and type(size) is int and size >= 0):
+            unknown.append({"path": path, "reason": str(r.get("measurement_reason", "UNKNOWN"))})
+            continue
+        if size < GENERATED_THRESHOLD:
+            continue
+        protected = bool({p.lower() for p in Path(path).parts} & GENERATED_PROTECTED)
+        basename = Path(path).name
+        proof = r.get("metadata_fingerprint_sha256")
+        reasons = [
+            "SOURCE_HEAD_AND_DIRTY_STATE_NOT_ATTESTED", "REBUILD_NOT_PROVEN",
+            "LIVE_CONSUMERS_NOT_PROVEN", "HARDLINK_TREE_NOT_PROVEN",
+            "MOUNT_AND_OWNER_NOT_RECHECKED", "OWNER_APPROVAL_MISSING",
+            "APFS_UNIQUE_GAIN_UNKNOWN",
+        ]
+        if protected:
+            reasons.append("PROTECTED_ANCESTRY_HOLD")
+        if basename == ".next":
+            reasons.append("BUILD_ID_NOT_PINNED")
+        if not (isinstance(proof, str) and len(proof) == 64):
+            reasons.append("CENSUS_FINGERPRINT_MISSING")
+        ranked.append({
+            "path": path, "name": name, "artifact_class": basename,
+            "allocated_bytes": size, "metadata_fingerprint_sha256": proof,
+            "exact_candidate_sha256": hashlib.sha256(
+                (path + "|" + str(size) + "|" + str(proof)).encode()).hexdigest(),
+            "source_head": None, "source_state": "UNKNOWN",
+            "build_id": None, "owner_verified": False,
+            "regeneration_proof": "UNKNOWN",
+            "consumer_proof": "UNKNOWN", "hardlink_proof": "UNKNOWN",
+            "mount_proof": "UNKNOWN", "protected_ancestry": protected,
+            "hold_reasons": sorted(reasons), "overlaps_generated": [],
+            "unique_recoverable_bytes": None, "mutation_authority": "NONE",
+        })
+    paths = [r["path"] for r in ranked]
+    for r in ranked:
+        path = r["path"].rstrip("/")
+        r["overlaps_generated"] = sorted(
+            p for p in paths if p != r["path"] and
+            (p.startswith(path + "/") or path.startswith(p.rstrip("/") + "/")))
+        if r["overlaps_generated"]:
+            r["hold_reasons"].append("PARENT_CHILD_GENERATED_OVERLAP")
+    ranked.sort(key=lambda r: (-r["allocated_bytes"], r["path"]))
+    gross_nonoverlap = sum(r["allocated_bytes"] for r in ranked
+                           if not r["overlaps_generated"] and not r["protected_ancestry"])
+    complete = (valid and type(census.get("observed_path_count")) is int
+                and census["observed_path_count"] == len(observations)
+                and census.get("displayed_path_count") == len(observations)
+                and not any(x in census.get("incomplete_reasons", []) for x in
+                            ("DISPLAY_ROW_LIMIT", "PROJECT_DIRECTORY_LIMIT_120",
+                             "WORKTREE_LIMIT_60")))
+    return {
+        "status": "READ_ONLY_HOLD",
+        "threshold_bytes": GENERATED_THRESHOLD,
+        "ranked_generated": ranked, "ranked_count": len(ranked),
+        "unknown_generated": sorted(unknown, key=lambda r: (r["path"], r["reason"])),
+        "named_enumeration_complete": complete,
+        "nominal_nonoverlap_unprotected_allocated_bytes": gross_nonoverlap,
+        "nominal_size_not_unique_apfs_gain": True,
+        "certified_unique_reclaimable_bytes": 0,
+        "predicted_unique_reclaimable_bytes": None,
+        "target_additional_bytes": 20 * 1024**3,
+        "shortfall_bytes": None, "verdict": "EVIDENCE_INSUFFICIENT",
+        "owner_authorized": False, "apply_permitted": False,
+        "next_readonly_command": "aoe2war storage local-plan --json",
+    }
 
 
 def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any],
@@ -196,6 +293,7 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
                                            if row["status"] == "OBSERVED"),
         "cache_allocation_not_guaranteed_APFS_gain": True,
         "priority_cache_actions": actions,
+        "gigabyte_generated_ranked_plan": generated_rank(census),
         "level_1_candidate_register": sorted(level1, key=lambda r: (r["path"], r["name"])),
         "level_2_owner_review_register": sorted(level2, key=lambda r: (str(r["path"]), r["name"])),
         "level_2_register_coverage": {
@@ -230,7 +328,7 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         } for r in review[:15]],
         "coverage": coverage,
         "heartbeat": hb_summary,
-        "next_census_command": "aoe2war storage local-pressure --limit 512",
+        "next_census_command": "aoe2war storage local-pressure --limit 1024",
         "auto_delete_permitted": False,
         "financial_or_release_authority": False,
         "protected_data_never_selected": True,
@@ -246,7 +344,7 @@ def main() -> int:
     y = observe(base + ["--extended", "--json"], cwd=ROOT)
     z = observe(base + ["--electron-only", "--json"], cwd=ROOT)
     census = observe([sys.executable, str(ROOT / "scripts/aoe2_storage_mac_pressure.py"),
-                      "--limit", "512", "--json"], cwd=ROOT, timeout=240)
+                      "--limit", "1024", "--json"], cwd=ROOT, timeout=240)
     watcher = Path.home() / "projects/VPSSentry/scripts/mac_storage_pulse_health.py"
     hb = observe([sys.executable, str(watcher), "--json"], cwd=ROOT, timeout=12,
                  accept_hold=True) if watcher.is_file() and not watcher.is_symlink() else {
@@ -275,6 +373,12 @@ def main() -> int:
               "source allowlisted, 0 fully qualified")
         print("Level 2 register:", len(result["level_2_owner_review_register"]),
               "review-only, 0 authorized")
+        generated = result["gigabyte_generated_ranked_plan"]
+        print("Generated >=256 MiB:", generated["ranked_count"],
+              "HOLD; physical APFS gain UNKNOWN")
+        for item in generated["ranked_generated"]:
+            print("  GENERATED HOLD", round(item["allocated_bytes"] / 1024**3, 3),
+                  "GiB", item["path"], ",".join(item["hold_reasons"]))
         print("Independent heartbeat:", result["heartbeat"]["overall"],
               "capacity:", result["heartbeat"]["capacity"])
         for action in result["priority_cache_actions"]:
