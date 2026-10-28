@@ -179,6 +179,70 @@ class MacLocalPlanTests(TestCase):
         self.assertEqual(result["level_1_closure"]["status"], "HOLD_NOT_CERTIFIED")
         self.assertEqual(result["level_1_closure"]["native_independent_observation_cycles"], 0)
 
+    def test_level2_includes_generated_and_project_paths_with_symlink_holds(self):
+        observed = pressure(False)
+        observed["observed_path_count"] = 5
+        observed["displayed_path_count"] = 5
+        observed["measurement_gap_count"] = 1
+        observed["measurement_gaps"] = [{
+            "name": "worktree_generated:agent:node_modules",
+            "path": "/tmp/worktrees/agent/node_modules",
+            "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+            "reason": "SYMLINK_TARGET", "allocated_bytes": None,
+            "metadata_fingerprint_sha256": "b" * 64,
+            "next_readonly_action": "REVIEW_LINK_OR_MOUNT",
+            "mutation_allowed": False,
+        }]
+        observed["measured"].extend([
+            {
+                "name": "worktree_generated:agent:node_modules",
+                "path": "/tmp/worktrees/agent/node_modules",
+                "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+                "allocated_bytes": None, "complete": False,
+                "measurement_reason": "SYMLINK_TARGET",
+                "metadata_fingerprint_sha256": "b" * 64,
+                "next_readonly_action": "REVIEW_LINK_OR_MOUNT",
+            },
+            {
+                "name": "project:api-prodn", "path": "/tmp/projects/api-prodn",
+                "classification": "PROJECT_REVIEW_NEVER_AUTO_DELETE",
+                "allocated_bytes": 1234, "complete": True,
+                "measurement_reason": "MEASURED",
+            },
+            {
+                "name": "codex_runtimes", "path": "/tmp/private/.cache/codex-runtimes",
+                "classification": "PROTECTED_ACTIVE_RUNTIME_UNKNOWN",
+                "allocated_bytes": 9999, "complete": True,
+                "measurement_reason": "MEASURED",
+            },
+        ])
+        result = mod.plan(base(), ext(), electron(), observed, watchdog())
+        register = result["level_2_owner_review_register"]
+        names = {r["name"] for r in register}
+        self.assertIn("worktree_generated:agent:node_modules", names)
+        self.assertIn("project:api-prodn", names)
+        self.assertNotIn("codex_runtimes", names)
+        held = next(r for r in register
+                    if r["name"] == "worktree_generated:agent:node_modules")
+        self.assertIsNone(held["allocated_bytes"])
+        self.assertEqual(held["risk_classification"],
+                         "LEVEL_2_HOLD_SYMLINK_REFERENCE_NO_TRAVERSAL")
+        self.assertEqual(held["mutation_authority"], "NONE")
+        self.assertEqual(held["metadata_fingerprint_sha256"], "b" * 64)
+        self.assertTrue(result["level_2_register_coverage"]["complete_named_display"])
+        self.assertTrue(result["level_2_register_coverage"]["gross_allocations_must_not_be_summed"])
+        self.assertEqual(result["level_1_certified_reclaimable_bytes"], 0)
+        self.assertEqual(result["level_1_closure"]["status"], "HOLD_NOT_CERTIFIED")
+
+    def test_truncated_census_never_claims_full_level2_coverage(self):
+        observed = pressure()
+        observed["observed_path_count"] = 999
+        observed["displayed_path_count"] = 2
+        result = mod.plan(base(), ext(), electron(), observed, watchdog())
+        self.assertFalse(result["level_2_register_coverage"]["complete_named_display"])
+        self.assertEqual(result["level_2_register_coverage"]["source_rows_observed"], 999)
+        self.assertEqual(result["level_2_register_coverage"]["source_rows_displayed"], 2)
+
     def test_human_cli_is_read_only_and_has_no_auto_apply(self):
         with mock.patch.object(mod, "observe", side_effect=[
                 base(), ext(), electron(), pressure(), watchdog()]):
