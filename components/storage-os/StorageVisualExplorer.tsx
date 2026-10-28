@@ -41,7 +41,7 @@ function Sunburst({items,selectedKey}: {items:VisualHog[];selectedKey:string|nul
         const start=cursor;cursor+=h.grossBytes/gross*360;
         return <path key={h.key} d={wedge(start,cursor,76,103)}
           fill={selectedKey===h.key?"#ffffff":RING_COLORS[i%RING_COLORS.length]}
-          stroke="#050b14" strokeWidth="1.4" opacity={selectedKey&&selectedKey!==h.key?.35:1}/>;
+          stroke="#050b14" strokeWidth="1.4" opacity={selectedKey && selectedKey !== h.key ? 0.35 : 1}/>;
       })}
       {gross>0&&levelSlices.map(x=>{
         const start=innerCursor;innerCursor+=x.value/gross*360;
