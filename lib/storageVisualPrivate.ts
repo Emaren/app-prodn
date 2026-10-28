@@ -195,7 +195,8 @@ export function verifyVisualReceipt(
     if(capacitySamples.some((x,j)=>j>0&&x.at===capacitySamples[j-1].at))throw Error("VISUAL_CAPACITY_DUPLICATE");
     out.push({id:id as PlaneId,observedAt,coverage:p.coverage as VisualPlane["coverage"],
       hogs:hogs.sort((a,b)=>b.grossBytes-a.grossBytes),events:events.sort((a,b)=>b.at.localeCompare(a.at)),
-      reviewItems,capacitySamples,
+      reviewItems:rawItems===undefined?undefined:reviewItems,
+      capacitySamples:rawSamples===undefined?undefined:capacitySamples,
       status:clock.getTime()-Date.parse(observedAt)<=36*3600_000?"RECEIPT":"STALE"});
   }
   return {authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY",source:"SIGNED_PRIVATE_RECEIPT",planes:out};
