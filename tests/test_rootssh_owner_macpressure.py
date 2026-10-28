@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import json
+import subprocess
 from pathlib import Path
 import tempfile
 from unittest import TestCase, mock
@@ -179,6 +180,85 @@ class MacPressureContract(TestCase):
             self.assertIn("DISPLAY_ROW_LIMIT", capped["incomplete_reasons"])
             self.assertFalse(capped["named_census_complete"])
             self.assertEqual(complete["coverage"], "NAMED_PATHS_ONLY_NOT_WHOLE_DISK")
+
+    def test_named_allocation_missing_is_proven_absent_not_unknown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            out = pressure.named_measurement(home / "does-not-exist", home)
+            self.assertTrue(out["complete"])
+            self.assertEqual(out["measurement_reason"], "ABSENT")
+            self.assertEqual(out["allocated_bytes"], 0)
+            self.assertFalse(out["mutation_allowed"])
+
+    def test_named_symlink_is_held_without_following_private_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            protected = Path(tmp) / "private"
+            protected.write_bytes(b"UNIQUE_FINANCIAL_EVIDENCE")
+            (home / "link").symlink_to(protected)
+            out = pressure.named_measurement(home / "link", home)
+            self.assertFalse(out["complete"])
+            self.assertIsNone(out["allocated_bytes"])
+            self.assertEqual(out["measurement_reason"], "SYMLINK_TARGET")
+            self.assertEqual(protected.read_bytes(), b"UNIQUE_FINANCIAL_EVIDENCE")
+
+    def test_named_timeout_and_permission_failure_never_report_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            target = home / "cache"
+            target.write_bytes(b"must survive")
+            with mock.patch.object(pressure.subprocess, "run",
+                                   side_effect=subprocess.TimeoutExpired("du", 1)):
+                timeout = pressure.named_measurement(target, home)
+            self.assertEqual(timeout["measurement_reason"], "DU_TIMEOUT")
+            self.assertIsNone(timeout["allocated_bytes"])
+            failing = mock.Mock(returncode=1, stdout="",
+                                stderr="Operation not permitted")
+            with mock.patch.object(pressure.subprocess, "run",
+                                   return_value=failing):
+                denied = pressure.named_measurement(target, home)
+            self.assertEqual(denied["measurement_reason"], "DU_PERMISSION_DENIED")
+            self.assertIsNone(denied["allocated_bytes"])
+            self.assertEqual(target.read_bytes(), b"must survive")
+
+    def test_named_du_race_captures_unknown_instead_of_stale_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            target = home / "mutable"
+            target.write_bytes(b"first")
+            def fake_du(*args, **kwargs):
+                target.write_bytes(b"second longer data")
+                return mock.Mock(returncode=0, stdout="4\\tignored", stderr="")
+            with mock.patch.object(pressure.subprocess, "run", side_effect=fake_du):
+                result = pressure.named_measurement(target, home)
+            self.assertEqual(result["measurement_reason"], "DRIFT_DURING_DU")
+            self.assertIsNone(result["allocated_bytes"])
+
+    def test_named_census_reports_every_unsafe_row_without_junk_authority(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            project = home / "projects" / "AoE2HDBets"
+            project.mkdir(parents=True)
+            protected = Path(tmp) / "protected"
+            protected.mkdir()
+            (protected / "keep").write_bytes(b"never delete")
+            (home / ".cache").symlink_to(protected, target_is_directory=True)
+            census = pressure.census(home, project, limit=512)
+            self.assertFalse(census["named_census_complete"])
+            self.assertIn("NAMED_PATH_MEASUREMENT_INCOMPLETE",
+                          census["incomplete_reasons"])
+            gaps = {r["name"]: r for r in census["measurement_gaps"]}
+            self.assertEqual(gaps["generic_cache"]["reason"], "SYMLINK_TARGET")
+            self.assertIsNone(gaps["generic_cache"]["allocated_bytes"])
+            self.assertFalse(gaps["generic_cache"]["mutation_allowed"])
+            self.assertTrue(gaps["generic_cache"]["metadata_fingerprint_sha256"])
+            self.assertEqual((protected / "keep").read_bytes(), b"never delete")
+            self.assertTrue(census["apfs_accounting"]["du_allocation_is_not_unique_reclaim"])
 
     def test_focused_generic_cache_protects_codex_runtime_and_never_deletes(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -6,6 +6,7 @@ controller; only the existing Storage OS deletion modes can mutate caches.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -58,8 +59,8 @@ def cache_rows(source: dict[str, Any], name: str) -> list[dict[str, Any]] | None
         b = r.get("allocated_bytes")
         if isinstance(b, bool) or not isinstance(b, int) or b < 0:
             return None
-        clean.append({"name": r["name"], "allocated_bytes": b,
-                      "exists": r.get("exists") is True,
+        clean.append({"name": r["name"], "path": r.get("path"),
+                      "allocated_bytes": b, "exists": r.get("exists") is True,
                       "blocked": bool(r.get("blocked_reason")) or r.get("symlink") is True})
     return clean
 
@@ -100,12 +101,64 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         "incomplete_reasons": census.get("incomplete_reasons") if census_good else ["CENSUS_UNAVAILABLE"],
         "overlapping_parent_child_rows": True,
         "unclassified_whole_home": True,
+        "measurement_gap_count": census.get("measurement_gap_count") if census_good else None,
+        "measurement_gaps": census.get("measurement_gaps", []) if census_good else [],
+        "apfs_accounting": census.get("apfs_accounting") if census_good else None,
     }
     actions = [{"lane": key, "allocated_bytes": row["allocated_bytes"],
                 "requires_owner_authorization": commands[key]}
                for key, row in buckets.items()
                if row["status"] == "OBSERVED" and row["allocated_bytes"] > 0]
     actions.sort(key=lambda row: row["allocated_bytes"], reverse=True)
+    # Level 1 is an evidence register, NOT automatic eligibility. Preserve the
+    # canonical local-maintain allowlist and require independent consumer,
+    # ancestry, regeneration, owner approval and same-APFS accounting proofs.
+    level1 = []
+    for lane, bucket in buckets.items():
+        if bucket["status"] != "OBSERVED":
+            continue
+        for item in bucket["rows"]:
+            path = item.get("path")
+            if (not isinstance(path, str) or not path.startswith("/")
+                    or item["blocked"] or not item["exists"]
+                    or item["allocated_bytes"] <= 0):
+                continue
+            level1.append({
+                "name": item["name"], "path": path,
+                "candidate_fingerprint_sha256": hashlib.sha256(
+                    (lane + "|" + path + "|" + str(item["allocated_bytes"])).encode()
+                ).hexdigest(),
+                "allocated_bytes": item["allocated_bytes"], "producer": lane + "_cache",
+                "source_allowlisted": True, "consumer_status": "UNKNOWN",
+                "protected_ancestry_status": "NOT_INDEPENDENTLY_ATTESTED",
+                "regeneration_proof": "RECIPE_ONLY_NO_NATIVE_REBUILD",
+                "risk_classification": "HOLD_UNVERIFIED_LIVE_CONSUMER",
+                "expected_unique_apfs_gain_bytes": None,
+                "owner_approved": False, "mutation_authority": "NONE",
+                "next_readonly_action": (
+                    "aoe2war storage local-maintain --json" if lane == "original"
+                    else "aoe2war storage local-maintain --extended --json"
+                    if lane == "extended"
+                    else "aoe2war storage local-maintain --electron-only --json"),
+            })
+    # Duplicate paths or parent-child overlaps are never independent bytes.
+    for candidate in level1:
+        target = candidate["path"].rstrip("/")
+        if any(other is not candidate and (
+                target == other["path"].rstrip("/") or
+                target.startswith(other["path"].rstrip("/") + "/") or
+                other["path"].rstrip("/").startswith(target + "/"))
+                for other in level1):
+            candidate["risk_classification"] = "HOLD_OVERLAPPING_PATHS"
+    level2 = [{
+        "name": r.get("name"), "path": r.get("path"),
+        "classification": r.get("classification"),
+        "allocated_bytes": r.get("allocated_bytes") if r.get("complete") is True else None,
+        "measurement_reason": r.get("measurement_reason", "LEGACY_UNKNOWN"),
+        "risk_classification": "LEVEL_2_OWNER_REVIEW_NO_DELETE_PROOF",
+        "expected_unique_apfs_gain_bytes": None,
+        "mutation_authority": "NONE",
+    } for r in review]
     capacity = watchdog.get("capacity")
     hb = watchdog.get("heartbeat")
     hb_summary = {
@@ -128,6 +181,18 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
                                            if row["status"] == "OBSERVED"),
         "cache_allocation_not_guaranteed_APFS_gain": True,
         "priority_cache_actions": actions,
+        "level_1_candidate_register": sorted(level1, key=lambda r: (r["path"], r["name"])),
+        "level_2_owner_review_register": sorted(level2, key=lambda r: (str(r["path"]), r["name"])),
+        "level_1_certified_reclaimable_bytes": 0,
+        "level_1_unique_apfs_gain_estimate_bytes": None,
+        "level_1_closure": {
+            "status": "HOLD_NOT_CERTIFIED",
+            "native_independent_observation_cycles": 0,
+            "unresolved_eligible_candidates": None,
+            "protected_mutation_verified": None,
+            "physical_recovery_verified_bytes": None,
+            "seal_authority": "CENTRAL_COMMAND_ONLY",
+        },
         "review_only_large_buckets": [{
             "name": r.get("name"), "classification": r.get("classification"),
             "allocated_bytes": r.get("allocated_bytes"), "measured": r.get("complete") is True,
@@ -179,6 +244,12 @@ def main() -> int:
               "complete:", result["coverage"]["named_census_complete"])
         if result["coverage"]["incomplete_reasons"]:
             print("Census holds:", ",".join(result["coverage"]["incomplete_reasons"]))
+        for hold in result["coverage"]["measurement_gaps"]:
+            print("  NAMED PATH HOLD:", hold["name"], hold["reason"])
+        print("Level 1 register:", len(result["level_1_candidate_register"]),
+              "source allowlisted, 0 fully qualified")
+        print("Level 2 register:", len(result["level_2_owner_review_register"]),
+              "review-only, 0 authorized")
         print("Independent heartbeat:", result["heartbeat"]["overall"],
               "capacity:", result["heartbeat"]["capacity"])
         for action in result["priority_cache_actions"]:

@@ -7,8 +7,10 @@ promotion. Reports worktree-generated content separately from protected data.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 import subprocess
 import sys
@@ -68,6 +70,88 @@ def allocated(path: Path, timeout: int = 45) -> tuple[int, bool]:
         return 0, False
 
 
+def named_measurement(path: Path, home: Path, timeout: int = 45) -> dict:
+    """Exact named-path evidence: never convert an unknown to zero allocation."""
+    def row(reason, size=None, st=None):
+        proof = [str(path), reason, str(size)]
+        if st:
+            proof.extend(map(str, (st.st_dev, st.st_ino, st.st_mode,
+                                   st.st_mtime_ns, st.st_size)))
+        return dict(allocated_bytes=size, complete=reason in ("MEASURED", "ABSENT"),
+                    measurement_reason=reason, exists=st is not None,
+                    symlink=bool(st and stat.S_ISLNK(st.st_mode)),
+                    metadata_fingerprint_sha256=hashlib.sha256(
+                        "|".join(proof).encode("utf-8", "surrogateescape")).hexdigest(),
+                    fingerprint_is_not_content_hash=True,
+                    next_readonly_action=(
+                        "NONE_ABSENT" if reason == "ABSENT" else
+                        "REVIEW_LINK_OR_MOUNT" if "SYMLINK" in reason or
+                        "MOUNT" in reason else "RECHECK_NAMED_PATH"),
+                    next_readonly_command="aoe2war storage local-pressure --limit 512 --json",
+                    mutation_allowed=False)
+    try:
+        home_dev = os.lstat(home).st_dev
+    except OSError:
+        return row("HOME_STAT_FAILED")
+    for ancestor in reversed(path.parents):
+        try:
+            s = os.lstat(ancestor)
+        except FileNotFoundError:
+            return row("ABSENT", 0)
+        except PermissionError:
+            return row("PERMISSION_DENIED")
+        except OSError:
+            return row("ANCESTOR_STAT_FAILED")
+        if stat.S_ISLNK(s.st_mode):
+            return row("SYMLINK_ANCESTOR")
+        if not stat.S_ISDIR(s.st_mode):
+            return row("NONDIRECTORY_ANCESTOR")
+    try:
+        before = os.lstat(path)
+    except FileNotFoundError:
+        return row("ABSENT", 0)
+    except PermissionError:
+        return row("PERMISSION_DENIED")
+    except OSError:
+        return row("TARGET_STAT_FAILED")
+    if stat.S_ISLNK(before.st_mode):
+        return row("SYMLINK_TARGET", st=before)
+    if before.st_dev != home_dev:
+        return row("OTHER_MOUNT", st=before)
+    if not (stat.S_ISDIR(before.st_mode) or stat.S_ISREG(before.st_mode)):
+        return row("NONREGULAR", st=before)
+    try:
+        p = subprocess.run(["du", "-skx", str(path)], capture_output=True,
+                           text=True, timeout=timeout, check=False)
+    except subprocess.TimeoutExpired:
+        return row("DU_TIMEOUT", st=before)
+    except OSError:
+        return row("DU_UNAVAILABLE", st=before)
+    try:
+        after = os.lstat(path)
+    except FileNotFoundError:
+        return row("VANISHED_DURING_DU", st=before)
+    except PermissionError:
+        return row("PERMISSION_DENIED_AFTER_DU", st=before)
+    except OSError:
+        return row("TARGET_STAT_FAILED_AFTER_DU", st=before)
+    identity = lambda s: (s.st_dev, s.st_ino, s.st_mode, s.st_mtime_ns, s.st_size)
+    if identity(before) != identity(after):
+        return row("DRIFT_DURING_DU", st=before)
+    if p.returncode:
+        return row("DU_PERMISSION_DENIED" if
+                   ("permission denied" in p.stderr.lower() or
+                    "operation not permitted" in p.stderr.lower())
+                   else "DU_NONZERO", st=before)
+    try:
+        kb = int(p.stdout.split()[0])
+        if kb < 0:
+            raise ValueError
+    except (ValueError, IndexError):
+        return row("DU_MALFORMED", st=before)
+    return row("MEASURED", kb * 1024, before)
+
+
 def worktrees(root: Path) -> list[Path]:
     if not root.is_dir() or root.is_symlink():
         return []
@@ -87,13 +171,9 @@ def worktrees(root: Path) -> list[Path]:
 def census(home: Path, project: Path, *, limit: int = 30) -> dict:
     rows = []
     def add(name: str, path: Path, classification: str) -> None:
-        size, complete = allocated(path)
-        rows.append({
-            "name": name, "path": str(path), "classification": classification,
-            "allocated_bytes": size, "complete": complete,
-            "exists": path.exists(), "symlink": path.is_symlink(),
-            "mutation_allowed": False,
-        })
+        rows.append({"name": name, "path": str(path),
+                     "classification": classification,
+                     **named_measurement(path, home)})
     for name, relative, classification in HOME_BUCKETS:
         add(name, home / relative, classification)
     incomplete_reasons = []
@@ -119,14 +199,39 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
             for name in GENERATED_NAMES:
                 add("worktree_generated:" + repo.name + ":" + name,
                     repo / name, "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED")
-    rows.sort(key=lambda r: (-r.get("allocated_bytes", 0), r["name"]))
+    rows.sort(key=lambda r: (-(r.get("allocated_bytes") or 0), r["name"]))
     if len(rows) > limit:
         incomplete_reasons.append("DISPLAY_ROW_LIMIT")
-    if any(row.get("complete") is not True for row in rows):
+    gaps = [{"name": r["name"], "path": r.get("path"),
+             "classification": r.get("classification"),
+             "reason": r.get("measurement_reason", "CENSUS_BOUND"),
+             "allocated_bytes": None,
+             "metadata_fingerprint_sha256": r.get("metadata_fingerprint_sha256"),
+             "next_readonly_action": r.get("next_readonly_action", "REVIEW_CENSUS_BOUND"),
+             "next_readonly_command": r.get(
+                 "next_readonly_command",
+                 "aoe2war storage local-pressure --limit 512 --json"),
+             "mutation_allowed": False}
+            for r in rows if r.get("complete") is not True]
+    if gaps:
         incomplete_reasons.append("NAMED_PATH_MEASUREMENT_INCOMPLETE")
     incomplete_reasons = sorted(set(incomplete_reasons))
+    try:
+        v = os.statvfs(home)
+        available = v.f_bavail * v.f_frsize
+    except OSError:
+        available = None
+        incomplete_reasons.append("APFS_STATVFS_UNAVAILABLE")
     return {"schema": 1, "status": "READ_ONLY", "mac_home": str(home),
             "project_root": str(project), "measured": rows[:limit],
+            "measurement_gaps": sorted(gaps, key=lambda r: r["name"]),
+            "measurement_gap_count": len(gaps),
+            "apfs_accounting": {
+                "ordinary_available_bytes": available, "snapshots_bytes": None,
+                "unique_clone_bytes": None, "purgeable_bytes": None,
+                "verified_reclaimed_bytes": None,
+                "du_allocation_is_not_unique_reclaim": True,
+            },
             "observed_path_count": len(rows), "displayed_path_count": min(len(rows), limit),
             "named_census_complete": not incomplete_reasons,
             "incomplete_reasons": incomplete_reasons,
@@ -242,6 +347,9 @@ def main() -> int:
         print("Displayed:", data["displayed_path_count"],
               "Named coverage complete:", data["named_census_complete"])
         print("Incomplete reasons:", ",".join(data["incomplete_reasons"]))
+        print("Named measurement gaps:", data["measurement_gap_count"])
+        for r in data["measurement_gaps"]:
+            print(" HOLD:", r["name"], r["reason"], r["next_readonly_action"])
         print("GiB       Classification                       Path")
         for row in data["measured"]:
             if row.get("allocated_bytes", 0):
