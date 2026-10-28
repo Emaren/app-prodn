@@ -80,6 +80,7 @@ class RootAuthorityContract(TestCase):
             control.mkdir(mode=0o750)
             locks = control / "locks"
             locks.mkdir(mode=0o775)
+            locks.chmod(0o775)
             lock = locks / "release.lock"
             lock.touch(mode=0o664)
             lock.chmod(0o664)
