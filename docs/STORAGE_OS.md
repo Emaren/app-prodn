@@ -98,6 +98,40 @@ capacity threshold may still carry structural rollback debt. The lean-retention
 expiry lane remains authoritative for reducing the runtime estate to two hot
 expanded rollback generations plus three proven cold checkpoints.
 
+## Exact three historical Next.js build reclaim (owner-approved)
+
+When the read-only Mac pressure census identifies these **three exact old
+worktree builds**, `./bin/aoe2war storage local-reclaim-three-next` previews
+their metadata and process-reference protections before any deletion:
+
+- `.worktrees/codex-authenticated-satchel-deposit/.next` with BUILD_ID
+  `blonE7yFq5o1cHzYKgxU7`;
+- `.worktrees/codex-satchel-complete-financial-paths/.next` with BUILD_ID
+  `knIrFoqHX9wcagyb6VeOv`;
+- `.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next`
+  with BUILD_ID `umMYGufkqoA0nkvTGXIo2`.
+
+These were **owner-measured** on Oct 28 at 1,461,128 + 1,361,188 + 1,328,688
+KiB = **4,151,004 KiB (3.959 GiB allocated)**. They have zero Git-tracked
+`.next` files and worktrees with clean tracked source. These checks alone do
+not certify inactivity. The source-owned command reruns all checks and also
+rejects unsafe symlinks/hardlinks/owners/mounts, active worktree processes or
+open files, changed BUILD_IDs, tracked `.next` files and dirty source.
+
+`./bin/aoe2war storage local-reclaim-three-next --apply` asks the local
+operator to type `RECLAIM THREE VERIFIED HISTORICAL NEXT BUILDS`, takes an
+exclusive local receipt lock, rechecks all three pinned candidates, creates a
+durable intent receipt, deletes **only those three historical generated
+`.next` directories**, writes per-target receipts and final measured APFS
+available-space delta. A partial/unknown outcome must be inspected, **never
+automatically replayed**. Source worktrees and all non-generated files survive.
+
+This scope explicitly excludes E5 seal `.next`, Codex runtime cache
+`~/.cache/codex-runtimes` (possibly active), downloads, iPhone backups,
+recovery vault, node_modules and any financial/replay/release evidence.
+A source-only GitHub PR and successful CI are not equivalent to executing
+the owner Mac cleanup.
+
 ## Mac gigabyte-first large-artifact census
 
 When `local-maintain --apply --extended` measures little or no recovery,

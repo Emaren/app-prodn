@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "35b1b8bc8ed7e5fed7135615dfc139420dfcfe367a0673c1f9b889da44cf2de7",
+      "sha256": "bb2f8c2d76a7f9be2139fa976a1d5e7bd27b11fbf5a6f697de3a6551159f57e5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "2a72ed03376d8930cc4a394b54301b7a8a25243e215205c2b8289550ef292a70",
+      "sha256": "2e7cef67e4c3df822d075a02d8b615fa582d9d36d4af2b487ee3088b4824868f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/root-ssh-owner-v5-enrollment-20261028",
-    "commit": "6a9a36512765981af45f78bb628001723a27b46b"
+    "branch": "ops/mac-three-build-reclaim-20261028",
+    "commit": "146013c37206736a6962053460a5782581c74508"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

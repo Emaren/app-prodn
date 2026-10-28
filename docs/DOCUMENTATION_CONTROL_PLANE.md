@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/root-ssh-owner-v5-enrollment-20261028` at `6a9a36512765981af45f78bb628001723a27b46b`
+Implementation baseline: `ops/mac-three-build-reclaim-20261028` at `146013c37206736a6962053460a5782581c74508`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
