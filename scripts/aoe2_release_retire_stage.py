@@ -29,6 +29,8 @@ RECEIPTS = Path("/mnt/HC_Volume_105319120/aoe2war/deploy-receipts")
 STATE = Path("/mnt/HC_Volume_105319120/aoe2war/os-control/stage-park-v1")
 GLOBAL_LOCK = Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 OWNER_KEY = Path("/etc/aoe2war/website-owner-v4/owner-public.pem")
+OWNER_SPKI_PIN = Path("/etc/aoe2war/website-owner-v4/owner-public.spki.sha256")
+APPROVED_TARGET_SHA = "ade91ac70bbab9866012a1a05b6a842bb5c0b515"
 SOURCE_SHA = "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6"
 OLD_BUILD = "u842UVpDjLRLz-paxPv2U"
 DOMAIN = b"AOE2WAR.RETIRE_STAGE_ONLY.V1\n"
@@ -196,7 +198,25 @@ def protected_file_shape(path):
             "linked/mutable evidence path")
 
 
-def verify_owner(packet, evidence, *, key=OWNER_KEY, source_path=None, now=None):
+def owner_spki_sha256(key=OWNER_KEY, *, pin=OWNER_SPKI_PIN):
+    """Verify the separately enrolled public-key identity as canonical DER SPKI."""
+    protected_file(key)
+    protected_file(pin)
+    expected = pin.read_text(encoding="ascii").strip()
+    require(HEX64.fullmatch(expected) is not None, "invalid owner-v4 pin")
+    result = subprocess.run(
+        ["openssl", "pkey", "-pubin", "-in", str(key), "-pubout", "-outform", "DER"],
+        capture_output=True, timeout=15, check=False,
+    )
+    require(result.returncode == 0 and result.stdout,
+            "invalid owner-v4 public key")
+    actual = hashlib.sha256(result.stdout).hexdigest()
+    require(actual == expected, "OWNER_V4_PUBLIC_KEY_PIN_MISMATCH")
+    return actual
+
+
+def verify_owner(packet, evidence, *, key=OWNER_KEY, key_pin=OWNER_SPKI_PIN,
+                 source_path=None, now=None):
     require(type(packet) is dict and set(packet) == {"payload", "signature_base64"},
             "signed permit structure invalid")
     payload = packet["payload"]
@@ -211,10 +231,8 @@ def verify_owner(packet, evidence, *, key=OWNER_KEY, source_path=None, now=None)
     require(HEX64.fullmatch(str(payload.get("controller_sha256") or "")) and
             payload["controller_sha256"] == digest(source_path),
             "unreviewed executable controller")
-    require(HEX40.fullmatch(str(payload.get("intended_release_sha") or "")) and
-            payload["intended_release_sha"] != SOURCE_SHA and
-            payload["intended_release_sha"] != evidence["live_source_sha"],
-            "missing/downgrade target release identity")
+    require(payload.get("intended_release_sha") == APPROVED_TARGET_SHA,
+            "intended release SHA is not independently accepted canonical website source")
     require(payload.get("source_stage_path") == str(APP / ".next-release") and
             payload.get("dependency_stage_path") == str(APP / ".node_modules-release") and
             payload.get("archive_root") == str(ARCHIVE) and
@@ -230,7 +248,7 @@ def verify_owner(packet, evidence, *, key=OWNER_KEY, source_path=None, now=None)
             expires.utcoffset().total_seconds() == 0 and issued <= now < expires
             and 0 < (expires - issued).total_seconds() <= 1800
             and (now - issued).total_seconds() <= 1800, "expired/future owner permit")
-    protected_file(key)
+    owner_spki_sha256(key, pin=key_pin)
     sig = base64.b64decode(packet["signature_base64"], validate=True)
     require(len(sig) == 64, "wrong Ed25519 signature length")
     with tempfile.TemporaryDirectory(prefix="aoe2war-stage-verify-") as directory:
@@ -296,7 +314,8 @@ def durable_json(path, payload):
 
 
 def apply(packet, *, app=APP, receipts=RECEIPTS, archive=ARCHIVE,
-          state=STATE, lock=GLOBAL_LOCK, key=OWNER_KEY, source_path=None):
+          state=STATE, lock=GLOBAL_LOCK, key=OWNER_KEY, key_pin=OWNER_SPKI_PIN,
+          source_path=None):
     require(os.geteuid() == 0, "APPLY requires authorized root operator")
     for parent in (archive, state, state / "nonces", state / "receipts"):
         st = no_link_directory(parent)
@@ -312,7 +331,8 @@ def apply(packet, *, app=APP, receipts=RECEIPTS, archive=ARCHIVE,
                 (lock_stat.st_dev, lock_stat.st_ino), "release-lock inode changed")
         fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         evidence, original = stage_evidence(app=app, receipts=receipts)
-        permit = verify_owner(packet, evidence, key=key, source_path=source_path)
+        permit = verify_owner(packet, evidence, key=key, key_pin=key_pin,
+                              source_path=source_path)
         active_consumers(app)
         nonce = permit["nonce"]
         nonce_path = state / "nonces" / (nonce + ".json")
@@ -384,8 +404,13 @@ def main():
     args = parser.parse_args()
     try:
         if args.preview:
+            require(os.geteuid() == 0, "privileged root preview required")
             evidence, _ = stage_evidence()
+            identity = owner_spki_sha256()
             print(json.dumps({"status": "PREVIEW_ONLY", "evidence": evidence,
+                              "controller_sha256": digest(Path(__file__)),
+                              "owner_spki_sha256": identity,
+                              "approved_target_sha": APPROVED_TARGET_SHA,
                               "authorization": "HOLD_NOT_CONSUMED"}, sort_keys=True))
             return 0
         require(args.permit is not None, "--permit required for APPLY")
