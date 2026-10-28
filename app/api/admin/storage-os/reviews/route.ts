@@ -9,7 +9,7 @@ const HEADERS={"Cache-Control":"private, no-store, max-age=0"};
 function reject(status:number,detail:string){return NextResponse.json({detail},{status,headers:HEADERS});}
 export async function GET(request:NextRequest){
   const admin=await requireAdmin(request);
-  if("error" in admin)return admin.error;
+  if("error" in admin){admin.error.headers.set("Cache-Control",HEADERS["Cache-Control"]);return admin.error;}
   try{
     const events=await readOwnerReviews();
     return NextResponse.json({schema:"aoe2war.storage-owner-reviews.v1",events}, {headers:HEADERS});
@@ -18,7 +18,7 @@ export async function GET(request:NextRequest){
 /** Owner intent only. Never invokes a delete, migration, scanner or release controller. */
 export async function POST(request:NextRequest){
   const admin=await requireAdmin(request);
-  if("error" in admin)return admin.error;
+  if("error" in admin){admin.error.headers.set("Cache-Control",HEADERS["Cache-Control"]);return admin.error;}
   const origin=request.headers.get("origin");
   if(!origin||origin!==new URL(request.url).origin||request.headers.get("sec-fetch-site")==="cross-site")
     return reject(403,"REVIEW_CROSS_ORIGIN_HOLD");
@@ -54,6 +54,8 @@ export async function POST(request:NextRequest){
     const item=plane.reviewItems?.find(i=>i.alias===body.alias);
     if(!item||item.fingerprint!==body.fingerprint||item.sourceDigest!==body.sourceDigest||
       item.sourceRevision!==body.sourceRevision)return reject(409,"REVIEW_FINGERPRINT_DRIFT");
+    // L4 is immutable manual-only; migration design intent belongs to L3.
+    if(choice==="MIGRATION_REVIEW"&&item.level!==3)return reject(409,"REVIEW_MIGRATION_LEVEL_HOLD");
     const approval=choice==="SINGLE_CANDIDATE_APPROVAL";
     if(approval&&(item.level!==1||item.sourceStatus!=="GUARDED"||item.proofState!=="COMPLETE"||
       item.overlaps||Date.now()-Date.parse(plane.observedAt)>60*60_000))
