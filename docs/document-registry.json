@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e6a402efc0dc3ece029c6cb6a762dda85ce34278542d0c4cdd6fbf435071334c",
+      "sha256": "cdc9de21e71b56627246484d755a9cbd42fb54145389b6e5765fc69c272f2756",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/owner-v5-existing-tony-release-lock-20261028",
-    "commit": "68d193567ba7d7c0ecf67451598be5001ee5b5c3"
+    "branch": "ops/owner-v5-park-from-current-main-20261028",
+    "commit": "232e8c9636f5a60054a868c16336f3b325e89dd9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
