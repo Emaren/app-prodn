@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/session-g-phase15-signed-stage-park-20261027` at `9f3c7a4e85dcd0e8893c5b3cfec62dd302e3aa67`
+Implementation baseline: `review/session-g-phase15-signed-stage-park-20261027` at `280f28d799d0691bf7f7aa698de878a5396292f6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
