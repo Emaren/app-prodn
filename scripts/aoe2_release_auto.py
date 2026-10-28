@@ -3474,56 +3474,17 @@ def ship_all(
                     initial["production"],
                 )
             except AutoShipError as resume_error:
-                if prepare_only:
-                    raise AutoShipError(
-                        "prepare-only refuses ambiguous existing staged release; "
-                        "no retirement, activation, rebuild or retry attempted: "
-                        + str(resume_error)
-                    ) from resume_error
-                print(
-                    "Exact current-release resume evidence is unavailable; "
-                    "evaluating bounded superseded-stage recovery..."
-                )
-
-                retired = retire_superseded_stage(
-                    current_release_sha=release_head,
-                    staged_build_id=str(staged_build_id),
-                    production=initial["production"],
-                )
-
-                print(
-                    "PASS: superseded staged candidate retired — "
-                    f"release={retired.get('retired_release_sha')} "
-                    f"build={retired.get('retired_staged_build_id')}"
-                )
-                print(f"Retirement:     {retired.get('receipt_dir')}")
-                print(
-                    "Recovered root: "
-                    f"{retired.get('root_reclaimed_kb', '—')}KB"
-                )
-                print(
-                    "Recovery policy: exact durable provenance + zero runtime "
-                    "references + service/Wolo proof"
-                )
-                print(
-                    "Prior resume failure was safely classified: "
+                # An old stage is evidence, not disposable scratch. Retirement
+                # requires a separately reviewed, purpose-bound owner permit and
+                # durable one-use authorization; the ordinary ship path cannot
+                # grant those by acquiring its concurrency lease.
+                raise AutoShipError(
+                    "existing staged release is not an exact current-release "
+                    "resume; implicit retirement is disabled. A separate signed "
+                    "RETIRE_STAGE_ONLY transaction is required. No retirement, "
+                    "publication, staging, migration, activation or retry attempted: "
                     + str(resume_error)
-                )
-
-                initial = collect()
-
-                if initial["production"].get("staged_build_id"):
-                    raise AutoShipError(
-                        "superseded-stage retirement reported success but "
-                        "production still exposes a staged BUILD_ID"
-                    )
-
-                recovered_errors = preflight_errors(initial)
-                if recovered_errors:
-                    raise AutoShipError(
-                        "post-retirement release preflight is not clean: "
-                        + "; ".join(recovered_errors)
-                    )
+                ) from resume_error
 
             else:
                 print(f"Release HEAD:   {release_head}")
