@@ -56,6 +56,7 @@ test("names, bytes, mount/plane/category identity and overlaps have strict bound
 test("forged delete/prune claims and raw filenames are rejected",()=>{
  assert.throws(()=>verifyVisualReceipt(changed(v=>v.planes[0].events[0].kind="PRUNE_RECEIPT"),key,now),/PRUNE_RECEIPT_MISSING/);
  assert.throws(()=>verifyVisualReceipt(changed(v=>v.planes[0].events[0].category="/private/financial.csv"),key,now),/EVENT_INVALID/);
+ assert.throws(()=>verifyVisualReceipt(changed(v=>v.planes[0].events[0].category="HEL1_TRAFFIC_DB"),key,now),/EVENT_WRONG_PLANE/);
  assert.throws(()=>verifyVisualReceipt(changed(v=>v.planes[0].events[0].bytes=-1),key,now),/EVENT_INVALID/);
  assert.throws(()=>verifyVisualReceipt(changed(v=>v.planes[0].events[0].id="../secret"),key,now),/EVENT_INVALID/);
  assert.throws(()=>verifyVisualReceipt(changed(v=>v.planes[0].events.push(v.planes[0].events[0])),key,now),/EVENT_INVALID/);
@@ -74,6 +75,7 @@ test("private source has no unsigned fallback, no mutation methods and no scanne
  assert.match(reader,/timingSafeEqual/);
  assert.doesNotMatch(reader,/child_process|execFile\(|spawn\(|rmSync\(|unlink\(/);
  assert.match(page,/<StorageVisualExplorer visual=\{data\?\.visual\}/);
+ assert.match(page,/BIGGEST VERIFIED HOGS/);
  assert.match(explorer,/NO VERIFIED HOG FEED/);
  assert.match(explorer,/GROSS ALLOCATIONS · MAY OVERLAP/);
  assert.match(explorer,/PRUNE RECEIPT/);
