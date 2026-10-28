@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/session-g-macos-kingdom-runtime-fixture-20261028` at `604286b47dea8ba33950dbc0d068b63ec39b5df2`
+Implementation baseline: `feat/storage-os-download-handoff-review-20261028` at `7a400cc650fec4cdcb6c413ad1987642126b42f5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

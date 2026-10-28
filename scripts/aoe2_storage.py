@@ -1528,6 +1528,13 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--apply", action="store_true")
     q.add_argument("--extended", action="store_true", help="explicitly include four additional package download/content caches")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("downloads-scripts")
+    q.add_argument("--json", action="store_true")
+    q.add_argument("--min-age-days", type=int, default=7)
+    q.add_argument("--trash", action="store_true")
+    q.add_argument("--purge", action="store_true")
+    q.add_argument("--ack-irrevocable", action="store_true")
+    q.add_argument("--confirm", help="exact review plan_sha256 for Trash/Purge")
     q = sub.add_parser("local-pressure")
     q.add_argument("--json", action="store_true")
     q.add_argument("--limit", type=int, default=30)
@@ -1589,6 +1596,20 @@ def main() -> int:
         return 0
     if args.command == "local-maintain":
         return local_maintain(apply=args.apply, json_mode=args.json, extended=args.extended)
+    if args.command == "downloads-scripts":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_download_scripts.py"),
+               "--min-age-days", str(args.min_age_days)]
+        if args.json:
+            cmd.append("--json")
+        if args.trash:
+            cmd.append("--trash")
+        if args.purge:
+            cmd.append("--purge")
+        if args.ack_irrevocable:
+            cmd.append("--ack-irrevocable")
+        if args.confirm:
+            cmd.extend(["--confirm", args.confirm])
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "local-pressure":
         cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_mac_pressure.py"),
                "--limit", str(args.limit)]
