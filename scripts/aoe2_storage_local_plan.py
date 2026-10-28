@@ -150,15 +150,30 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
                 other["path"].rstrip("/").startswith(target + "/"))
                 for other in level1):
             candidate["risk_classification"] = "HOLD_OVERLAPPING_PATHS"
+    # The legacy large-bucket summary is limited to REVIEW*, but the full
+    # register must also include project worktrees and REBUILDABLE_REVIEW*
+    # generated paths; otherwise many observed rows silently disappear.
+    review_classes = ("REVIEW", "REBUILDABLE_REVIEW", "PROJECT_REVIEW")
+    level2_source = [
+        r for r in measured if isinstance(r, dict)
+        and str(r.get("classification", "")).startswith(review_classes)
+    ]
     level2 = [{
         "name": r.get("name"), "path": r.get("path"),
         "classification": r.get("classification"),
         "allocated_bytes": r.get("allocated_bytes") if r.get("complete") is True else None,
         "measurement_reason": r.get("measurement_reason", "LEGACY_UNKNOWN"),
-        "risk_classification": "LEVEL_2_OWNER_REVIEW_NO_DELETE_PROOF",
+        "metadata_fingerprint_sha256": r.get("metadata_fingerprint_sha256"),
+        "next_readonly_action": r.get("next_readonly_action", "REVIEW_GENERATED_SOURCE"),
+        "protected_ancestry_status": "NOT_INDEPENDENTLY_ATTESTED",
+        "consumer_status": "UNKNOWN",
+        "risk_classification": (
+            "LEVEL_2_HOLD_SYMLINK_REFERENCE_NO_TRAVERSAL"
+            if str(r.get("measurement_reason", "")).startswith("SYMLINK")
+            else "LEVEL_2_OWNER_REVIEW_NO_DELETE_PROOF"),
         "expected_unique_apfs_gain_bytes": None,
         "mutation_authority": "NONE",
-    } for r in review]
+    } for r in level2_source]
     capacity = watchdog.get("capacity")
     hb = watchdog.get("heartbeat")
     hb_summary = {
@@ -183,6 +198,16 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         "priority_cache_actions": actions,
         "level_1_candidate_register": sorted(level1, key=lambda r: (r["path"], r["name"])),
         "level_2_owner_review_register": sorted(level2, key=lambda r: (str(r["path"]), r["name"])),
+        "level_2_register_coverage": {
+            "included_rows": len(level2),
+            "source_rows_displayed": len(measured),
+            "source_rows_observed": coverage["observed_path_count"],
+            "complete_named_display": (
+                coverage["observed_path_count"] == coverage["displayed_path_count"]
+                if isinstance(coverage["observed_path_count"], int) else False),
+            "protected_rows_not_owner_reviewed": True,
+            "gross_allocations_must_not_be_summed": True,
+        },
         "level_1_certified_reclaimable_bytes": 0,
         "level_1_unique_apfs_gain_estimate_bytes": None,
         "level_1_closure": {
