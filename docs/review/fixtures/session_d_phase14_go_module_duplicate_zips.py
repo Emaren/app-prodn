@@ -235,15 +235,25 @@ def main():
         all_zips=candidates()
         no_open_archive_readers()
         approved=[]
+        disqualified={}
         for path, s in all_zips:
-            source_count=zipped_source_duplicate(path,s)
+            try:
+                source_count=zipped_source_duplicate(path,s)
+            except (Hold, zipfile.BadZipFile, OSError) as exc:
+                key=(str(exc) if isinstance(exc,Hold)
+                     else "BAD_OR_UNREADABLE_MODULE_ZIP")
+                disqualified[key]=disqualified.get(key,0)+1
+                continue
             approved.append({"path":path,"dev":s.st_dev,"ino":s.st_ino,
                 "size":s.st_size,"mtime_ns":s.st_mtime_ns,
+                "allocated_bytes":s.st_blocks*512,
                 "sha256":hash_file(path),"source_count":source_count})
         total=sum(x["size"] for x in approved)
         before=df()
         print("GO_MODULE_ZIP_COUNT:",len(approved))
-        print("DUPLICATE_ZIP_ALLOCATED_LOGICAL_BYTES:",total)
+        print("NONQUALIFYING_ZIP_COUNTS:",json.dumps(disqualified,sort_keys=True))
+        print("DUPLICATE_ZIP_LOGICAL_BYTES:",total)
+        print("DUPLICATE_ZIP_ALLOCATED_BYTES:",sum(x["allocated_bytes"] for x in approved))
         print("DF_BEFORE_AVAILABLE_KIB:",before["available_kib"])
         if not args.apply:
             print("PREVIEW_ONLY: no deletion. Apply requires independently reviewed source and exact guards.")
@@ -263,6 +273,22 @@ def main():
                 raise Hold("ZIP_DIGEST_CHANGED_PRE_REMOVE")
             zipped_source_duplicate(p,s)
         before=df()
+        # Seal the complete intended target list before any unlink. This is
+        # an intent witness, never proof that a deletion actually occurred.
+        intent, intent_sha=receipt({
+            "schema":1,"kind":"phase14-go-zip-pre-delete-intent",
+            "status":"INTENT_ONLY_NO_DELETION_CLAIM",
+            "source_sha256":hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "data_before":before,
+            "nonqualifying_zip_counts":disqualified,
+            "candidate_verified_zip_files":[{
+                "relative_to_go_modcache":str(entry["path"].relative_to(MOD)),
+                "sha256":entry["sha256"],"logical_bytes":entry["size"],
+                "allocated_bytes":entry["allocated_bytes"]
+            } for entry in approved],
+        })
+        print("INTENT_RECEIPT:",intent)
+        print("INTENT_SHA256:",intent_sha)
         deleted=[]
         # Exact file unlink only. Never removes any module directory or metadata.
         for entry in approved:
@@ -273,15 +299,22 @@ def main():
                 raise Hold("ZIP_CHANGED_DURING_REMOVE")
             os.unlink(p)
             deleted.append({"relative_to_go_modcache":str(p.relative_to(MOD)),
-                "file_size_bytes":entry["size"],"source_file_count":entry["source_count"],
+                "file_size_bytes":entry["size"],
+                "allocated_bytes_before":entry["allocated_bytes"],
+                "source_file_count":entry["source_count"],
                 "zip_sha256":entry["sha256"]})
         after=df()
         record={"schema":1,"kind":"aoe2war-phase14-go-duplicate-zip-cleanup",
           "created_at":datetime.now(timezone.utc).isoformat(),
           "scope":"verified zip duplicates under exact Go download cache only",
           "go_config_guard":env,"source_modcache":str(MOD),
+          "source_script_sha256":hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+          "pre_delete_intent_receipt":intent,
+          "pre_delete_intent_sha256":intent_sha,
+          "not_verified_zip_counts":disqualified,
           "removed_files":deleted,
           "removed_logical_zip_bytes":sum(v["file_size_bytes"] for v in deleted),
+          "removed_allocated_zip_bytes_before":sum(v["allocated_bytes_before"] for v in deleted),
           "data_before":before,"data_after":after,
           "net_ordinary_free_delta_kib":after["available_kib"]-before["available_kib"],
           "external_apfs_vm_activity_can_change_net_free":True,
