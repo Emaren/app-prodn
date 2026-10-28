@@ -1205,12 +1205,22 @@ def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False, home
     extra_candidates = []
     for name, relative in LOCAL_EXTENDED_REGENERABLE_PATHS:
         path = operator_home / relative
-        _assert_local_reclaim_path(operator_home, path)
-        if path.exists() and not path.is_dir():
-            raise StorageError(f"extended cache target must be a plain directory: {path}")
+        # A newly introduced cache must not block the legacy four-cache lane.
+        # Extended apply, however, fails closed on any untrusted path before
+        # deleting the first cache.
+        blocked_reason = None
+        try:
+            _assert_local_reclaim_path(operator_home, path)
+            if path.exists() and not path.is_dir():
+                raise StorageError(f"extended cache target must be a plain directory: {path}")
+        except StorageError as exc:
+            blocked_reason = str(exc)
+            if extended:
+                raise
         extra_candidates.append({
             "name": name, "path": str(path), "exists": path.exists(),
-            "allocated_bytes": _allocated_bytes(path) if path.exists() else 0,
+            "allocated_bytes": _allocated_bytes(path) if path.exists() and not blocked_reason else 0,
+            "blocked_reason": blocked_reason,
         })
     selected = LOCAL_REGENERABLE_PATHS + (LOCAL_EXTENDED_REGENERABLE_PATHS if extended else ())
     payload: dict[str, Any] = {
