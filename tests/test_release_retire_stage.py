@@ -122,6 +122,7 @@ class StageOwnerPermitTests(unittest.TestCase):
 
 class RetirementIsolationTests(unittest.TestCase):
     def setUp(self):
+        self.real_no_link_directory = MODULE.no_link_directory
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -226,7 +227,7 @@ class RetirementIsolationTests(unittest.TestCase):
         linked = self.root / "linked-dir"
         linked.symlink_to(real, target_is_directory=True)
         with self.assertRaises(MODULE.Hold):
-            MODULE.no_link_directory(linked)
+            self.real_no_link_directory(linked)
 
     def test_privileged_consumer_reference_is_denied(self):
         with mock.patch.object(MODULE.os, "readlink",
