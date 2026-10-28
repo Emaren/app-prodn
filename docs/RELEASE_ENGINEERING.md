@@ -178,6 +178,36 @@ public SPKI SHA256 `3730382540cbb93672fa03b9c4f236a895500c30e22ccca8b884946b9308
 public PEM SHA256 `a60623079218c934295502350f0cbedcbcf9e42559f0d07469b0d703f59cb13b`.
 The encrypted old RSA private key remains preserved.
 
+**Existing HEL1 shared release lock is not a root-private trust directory.**
+An independent owner-root read-only scan on Oct 28 established
+`/mnt/HC_Volume_105319120/aoe2war/os-control` owned by `tony:tony`
+mode `0750`, its `locks` child owned by `tony:tony` mode `0755`,
+and `locks/release.lock` owned by `tony:tony` mode `0664`, empty.
+The initial owner-v5 installer incorrectly demanded root ownership of that
+shared lock directory and failed **before** creating a rotation transaction.
+The old public SPKI pin remained `3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd`;
+the controller installed checksum was
+`44a897e07d6999a15042885cfe8f0773c4645771a33011c700ef1c58293e2be4`;
+no v5 transaction directory, intent or completion receipt existed.
+
+The enrollment transaction now recognizes only this **exact observed
+tony-owned lock shape**, obtains the existing release flock, archives the
+old PUBLIC trust, and tightens **only** the original lock file from
+`0664` to `0644` under the exclusive flock, preserving its inode,
+owner and directory permissions. This narrow change is necessary because
+the *installed* stage retirement controller refuses a group-writable
+release.lock. Any ownership, path, symlink or mode drift is a HOLD.
+The owner must type `ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK`
+at the Mac terminal, explicitly approving both the public-key enrollment and
+exact 0664→0644 existing lock-file permission change.
+
+No broad `chown`/`chmod` of shared release paths, and the root-only
+`/etc/aoe2war/website-owner-v4` trust anchors and
+`/var/lib/aoe2war-owner-rotations` audits retain their strict
+root-owned protections. An interrupted transaction may leave an intent
+or tightened mode without completed rotation; **inspect root evidence
+rather than retrying**.
+
 The canonical `python3 scripts/aoe2_owner_v5_enroll_rootssh.py --apply`
 operator checks a clean local `main`, exact Mac v5 public fingerprint,
 the installed HEL1 controller SHA256, existing old RSA public trust, and
@@ -196,6 +226,39 @@ park the stale Oct 27 stage; stage parking requires its own local v5 signed
 `PARK_ONLY` permit; staging/release needs the canonical app controller,
 migration preflight and separate activation/public BUILD_ID receipts. Wolo
 8092/8093 are only observed, and funded settlement remains held.
+
+### Owner-v5 signed historical stage park (source-owned)
+
+The owner confirmed HEL1 public Ed25519 v5 enrollment with
+`OWNER_V5_ENROLLED_PREVIEW_PASS`, root receipt
+`/var/lib/aoe2war-owner-rotations/v5-20261028-3730382540cb/complete.json`,
+and SPKI `3730382540cbb93672fa03b9c4f236a895500c30e22ccca8b884946b9308001c`.
+Do **not** rerun key enrollment; the rotation has a one-use audit.
+
+With the historical Oct 27 stage still present, run the canonical
+`python3 -B scripts/aoe2_release_park_owner_v5.py` for read-only
+root preview. Only after that exact preview is PASS should the owner invoke
+`python3 -B scripts/aoe2_release_park_owner_v5.py --apply` once. The
+operator checks canonical clean Git `main`, a private local Ed25519-v5 key,
+the actual root HEL1 stage evidence, exact installed controller SHA
+`44a897e07d6999a15042885cfe8f0773c4645771a33011c700ef1c58293e2be4`,
+pinned owner SPKI, old-build fingerprint and approved next website target
+`ade91ac70bbab9866012a1a05b6a842bb5c0b515`. It asks the owner to
+type `SIGN AND PARK VERIFIED HISTORICAL STAGE` and unlocks the *local*
+encrypted key with a private no-echo prompt. The signed permit is saved
+owner-private in `.aoe2war-release/stage-park-v5`; only that signed
+nonsecret permit is forwarded through already-proven key-authenticated
+`root@hel1` SSH.
+
+The remote step checks the existing root-private `/etc/aoe2war/retire-permits`
+folder, writes a nonce-unique root-owned 0600 permit with durable fsync, and
+calls only the already-installed `aoe2_release_retire_stage.py --apply --permit`
+controller. This is a **non-deleting historical stage park**, not a
+website stage, activation, or Wolo financial operation. Receipt
+`PARKED_NO_DELETE` plus `stage_collision_cleared=true` is necessary
+before a *separate* new production stage transaction. Unknown root SSH
+results, after-import errors, or consumed nonces **must never be blindly
+retried**; inspect root stage-park-v1 receipt/nonce directories.
 
 ## Root control assets and mounted build scratch
 
