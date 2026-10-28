@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-d-named-mac-measurement-register-20261028` at `a15827b2d861c5f8212d6e070edace37c50976de`
+Implementation baseline: `feat/session-d-named-mac-measurement-register-20261028` at `b00a45dc8ce6510685802e75644642d64db4a5f5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
