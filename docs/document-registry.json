@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bb2f8c2d76a7f9be2139fa976a1d5e7bd27b11fbf5a6f697de3a6551159f57e5",
+      "sha256": "aae11b8976c6e63e47ee2ebd586140727afddf870f16ffc4ad62217fce11a6de",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1537,7 +1537,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "787754788a37111f4278838f39fe6321fc24e865f9c7737fe7c29902537d6e6c",
+      "sha256": "c30af2bf559763575408782e0ed359eceb099fab900008ff19d05765cfb3e8a7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/mac-three-build-reclaim-20261028",
-    "commit": "146013c37206736a6962053460a5782581c74508"
+    "branch": "fix/owner-v5-existing-tony-release-lock-20261028",
+    "commit": "b4fdf9d2742542c2ea4d3e49cc4da991b778aec2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
