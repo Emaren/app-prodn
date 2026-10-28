@@ -153,22 +153,90 @@ def move_to_trash(home: Path, *, confirm: str, min_age_days: int = 7,
     return result
 
 
+
+def purge_reviewed_batch(home: Path, *, confirm: str) -> dict:
+    """Irreversibly purge only a previously hash-reviewed, isolated Trash batch."""
+    if not re.fullmatch(r"[0-9a-f]{64}", confirm):
+        raise Hold("exact 64-character review digest required")
+    safe_directory(home)
+    trash = home / ".Trash"
+    safe_directory(trash)
+    dest = trash / ("AoE2WAR-handoff-review-" + confirm[:16])
+    safe_directory(dest)
+    receipt = dest / "aoe2war-review-receipt.json"
+    st_receipt = receipt.lstat()
+    if not stat.S_ISREG(st_receipt.st_mode) or st_receipt.st_nlink != 1:
+        raise Hold("untrusted batch receipt")
+    plan = json.loads(receipt.read_text(encoding="utf-8"))
+    if plan.get("plan_sha256") != confirm or plan.get("status") != "TRASHED_NOT_PURGED":
+        raise Hold("receipt not exact or already purged")
+    rows = plan.get("candidates")
+    if not isinstance(rows, list) or not rows or len(rows) > MAX_FILES:
+        raise Hold("invalid receipt candidate list")
+    names = [row.get("name") for row in rows if isinstance(row, dict)]
+    if len(names) != len(rows) or len(set(names)) != len(names) or \
+       {x.name for x in dest.iterdir()} != set(names) | {receipt.name}:
+        raise Hold("unexpected batch files; no purge")
+    for row in rows:
+        name = row["name"]
+        if not isinstance(name, str) or not eligible(name):
+            raise Hold("unexpected protected filename; no purge")
+        file = dest / name
+        st = file.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or \
+           st.st_dev != row["dev"] or st.st_ino != row["ino"] or \
+           st.st_size != row["bytes"] or file_hash(file) != row["sha256"]:
+            raise Hold("batch byte/identity drift; no purge")
+    before = os.statvfs(home)
+    before_free = before.f_bavail * before.f_frsize
+    removed = []
+    try:
+        for row in rows:
+            (dest / row["name"]).unlink()
+            removed.append(row["name"])
+    except OSError as exc:
+        raise Hold(
+            f"PARTIAL_PURGE: removed {len(removed)} files from {dest}; manual review required"
+        ) from exc
+    after = os.statvfs(home)
+    actual = max(0, after.f_bavail * after.f_frsize - before_free)
+    result = {
+        **plan, "status": "PURGED_EXACT_REVIEWED_BATCH",
+        "purged": removed, "reclaimed_bytes": actual,
+        "free_bytes_before": before_free,
+        "free_bytes_after": after.f_bavail * after.f_frsize,
+        "purged_at_utc": datetime.now(timezone.utc).isoformat(),
+    }
+    receipt.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    receipt.chmod(0o600)
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--min-age-days", type=int, default=7)
-    parser.add_argument("--trash", action="store_true")
-    parser.add_argument("--confirm", help="exact preview plan_sha256, required for --trash")
+    actions = parser.add_mutually_exclusive_group()
+    actions.add_argument("--trash", action="store_true")
+    actions.add_argument("--purge", action="store_true")
+    parser.add_argument("--ack-irrevocable", action="store_true")
+    parser.add_argument("--confirm", help="exact preview or prior Trash batch plan_sha256")
     args = parser.parse_args()
     try:
-        if args.trash:
+        if args.purge:
+            if not args.ack_irrevocable or not args.confirm:
+                raise Hold("--purge requires --ack-irrevocable and --confirm PLAN_SHA256")
+            result = purge_reviewed_batch(Path.home(), confirm=args.confirm)
+        elif args.trash:
+            if args.ack_irrevocable:
+                raise Hold("--ack-irrevocable only applies to --purge")
             if not args.confirm:
                 raise Hold("--trash requires --confirm PLAN_SHA256")
             result = move_to_trash(Path.home(), confirm=args.confirm,
                                    min_age_days=args.min_age_days)
         else:
-            if args.confirm:
-                raise Hold("--confirm is only valid with --trash")
+            if args.confirm or args.ack_irrevocable:
+                raise Hold("confirmation is only valid with --trash or --purge")
             result = inventory(Path.home(), min_age_days=args.min_age_days)
     except (Hold, OSError) as exc:
         print(json.dumps({"status": "HOLD", "error": str(exc)}))
@@ -185,6 +253,8 @@ def main() -> int:
         if args.trash:
             print("Moved to:", result["trash_directory"])
             print("NO DISK SPACE RECLAIMED: Trash has not been emptied.")
+        elif args.purge:
+            print("PURGED exact reviewed batch. Measured reclaimed bytes:", result["reclaimed_bytes"])
         else:
             print("READ ONLY. Opt in with --trash --confirm PLAN_SHA256.")
     return 0
