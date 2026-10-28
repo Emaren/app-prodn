@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/private-storage-os-strict-read-only-20261028` at `64feda8dd2af64a2474668b2af9df16beef459ec`
+Implementation baseline: `fix/private-storage-os-strict-read-only-20261028` at `506797375e542f7f9b9fe1615cec346b72c887a5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
