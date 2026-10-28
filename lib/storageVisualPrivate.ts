@@ -21,7 +21,7 @@ export type PlaneId = "mac" | "hel1-root" | "hel1-volume-105319120";
 export type Level = 1 | 2 | 3 | 4;
 export type HogKey =
   | "CROSSOVER_STEAM_REPLAY" | "RECOVERY_VAULT" | "MOBILESYNC_BACKUPS"
-  | "DOWNLOADS" | "DOCKER_VM" | "CODEX_WORKTREES" | "CODEX_RUNTIME"
+  | "GUARDED_GENERATED" | "DOWNLOADS" | "DOCKER_VM" | "CODEX_WORKTREES" | "CODEX_RUNTIME"
   | "E5_SEAL" | "APP_ACTIVE_DEPENDENCIES" | "RENAISSANCE_DEPENDENCIES"
   | "WATCHER_SIGNED_DIST" | "OTHER_GENERATED" | "PROJECT_SOURCE"
   | "PYTHON_TOOLCHAINS" | "GO_MODULES" | "BROWSER_CACHES"
@@ -31,6 +31,7 @@ export type HogKey =
   | "OTHER_MEASURED";
 
 export const HOG_CATALOG: Record<HogKey,{ label: string; level: Level; planes: readonly PlaneId[] }> = {
+  GUARDED_GENERATED:{label:"Source-qualified generated review",level:1,planes:["mac","hel1-root","hel1-volume-105319120"]},
   CROSSOVER_STEAM_REPLAY:{label:"CrossOver · Steam & Replay Lab",level:4,planes:["mac"]},
   RECOVERY_VAULT:{label:"Recovery vault",level:4,planes:["mac"]},
   MOBILESYNC_BACKUPS:{label:"iPhone & iPad backups",level:4,planes:["mac"]},
@@ -63,9 +64,17 @@ const EVENT_KINDS=["GENERATED","PRUNE_RECEIPT","PRUNE_HOLD","NEXT_REVIEW","SNAPS
 export type VisualEventKind=typeof EVENT_KINDS[number];
 export type VisualHog={key:HogKey;label:string;level:Level;grossBytes:number;overlaps:boolean};
 export type VisualEvent={id:string;at:string;kind:VisualEventKind;category:HogKey|null;bytes:number|null;transactionDigest:string|null};
+export type VisualReviewItem={
+  alias:string; category:HogKey; level:Level; grossBytes:number;
+  fingerprint:string; sourceDigest:string; sourceRevision:string;
+  sourceStatus:"GUARDED"|"REVIEW_ONLY"|"PROTECTED"|"MIGRATION_REVIEW";
+  proofState:"COMPLETE"|"INCOMPLETE"; overlaps:boolean;
+};
+export type VisualCapacitySample={at:string; ordinaryFreeBytes:number};
 export type VisualPlane={
   id:PlaneId; observedAt:string; coverage:"PARTIAL"|"DISJOINT"; hogs:VisualHog[];
   events:VisualEvent[];status:"RECEIPT"|"STALE";
+  reviewItems?:VisualReviewItem[];capacitySamples?:VisualCapacitySample[];
 };
 export type StorageVisualView={
   authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY";
@@ -146,8 +155,47 @@ export function verifyVisualReceipt(
       if(dg!==null&&!(typeof dg==="string"&&/^[0-9a-f]{64}$/i.test(dg)))throw Error("VISUAL_EVENT_DIGEST_INVALID");
       events.push({id:e.id,at,kind:kind as VisualEventKind,category:e.category as HogKey|null,bytes:bytes as number|null,transactionDigest:dg as string|null});
     }
+    // Optional, HMAC-bound exact candidate aliases: no raw paths, owner or secret fields.
+    // Missing producer extension means UNKNOWN, never zero known candidates.
+    const rawItems=p.review_items,rawSamples=p.capacity_samples;
+    if(rawItems!==undefined&&(!Array.isArray(rawItems)||rawItems.length>48))
+      throw Error("VISUAL_REVIEW_ROWS_INVALID");
+    if(rawSamples!==undefined&&(!Array.isArray(rawSamples)||rawSamples.length>24))
+      throw Error("VISUAL_CAPACITY_ROWS_INVALID");
+    const reviewItems:VisualReviewItem[]=[];
+    const aliases=new Set<string>();
+    for(const rawItem of (rawItems??[]) as unknown[]){
+      const item=obj(rawItem),category=item.category;
+      if(typeof item.alias!=="string"||!/^[A-Z][A-Z0-9_-]{5,39}$/.test(item.alias)||
+        aliases.has(item.alias)||!isKey(category)||!HOG_CATALOG[category].planes.includes(id as PlaneId)||
+        safeBytes(item.gross_allocated_bytes)===null||typeof item.overlaps!=="boolean"||
+        typeof item.fingerprint!=="string"||!/^[0-9a-f]{64}$/.test(item.fingerprint)||
+        typeof item.source_digest!=="string"||!/^[0-9a-f]{64}$/.test(item.source_digest)||
+        typeof item.source_revision!=="string"||!/^[0-9a-f]{40}$/.test(item.source_revision)||
+        !["GUARDED","REVIEW_ONLY","PROTECTED","MIGRATION_REVIEW"].includes(item.source_status as string)||
+        !["COMPLETE","INCOMPLETE"].includes(item.proof_state as string))
+        throw Error("VISUAL_REVIEW_ITEM_INVALID");
+      aliases.add(item.alias);
+      const level=HOG_CATALOG[category].level;
+      if((level===4&&item.source_status!=="PROTECTED")||
+        (level===1&&item.source_status==="GUARDED"&&item.proof_state!=="COMPLETE"))
+        throw Error("VISUAL_REVIEW_POLICY_HOLD");
+      reviewItems.push({alias:item.alias,category,level,grossBytes:item.gross_allocated_bytes as number,
+        fingerprint:item.fingerprint,sourceDigest:item.source_digest,sourceRevision:item.source_revision,
+        sourceStatus:item.source_status as VisualReviewItem["sourceStatus"],
+        proofState:item.proof_state as VisualReviewItem["proofState"],overlaps:item.overlaps as boolean});
+    }
+    const capacitySamples:VisualCapacitySample[]=[];
+    for(const rawSample of (rawSamples??[]) as unknown[]){
+      const sample=obj(rawSample),at=time(sample.at),free=safeBytes(sample.ordinary_free_bytes);
+      if(!at||Date.parse(at)>Date.parse(ts)+60_000||free===null)throw Error("VISUAL_CAPACITY_SAMPLE_INVALID");
+      capacitySamples.push({at,ordinaryFreeBytes:free});
+    }
+    capacitySamples.sort((a,b)=>a.at.localeCompare(b.at));
+    if(capacitySamples.some((x,j)=>j>0&&x.at===capacitySamples[j-1].at))throw Error("VISUAL_CAPACITY_DUPLICATE");
     out.push({id:id as PlaneId,observedAt,coverage:p.coverage as VisualPlane["coverage"],
       hogs:hogs.sort((a,b)=>b.grossBytes-a.grossBytes),events:events.sort((a,b)=>b.at.localeCompare(a.at)),
+      reviewItems,capacitySamples,
       status:clock.getTime()-Date.parse(observedAt)<=36*3600_000?"RECEIPT":"STALE"});
   }
   return {authority:"PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY",source:"SIGNED_PRIVATE_RECEIPT",planes:out};
