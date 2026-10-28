@@ -110,8 +110,15 @@ jobs:
           mkdir -p renaissance-88-chrome
           cp .next/BUILD_ID renaissance-88-chrome/BUILD_ID
           cp .next/server/app-paths-manifest.json renaissance-88-chrome/app-paths-manifest.json
-          python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" --output renaissance-88-chrome/plan.json
-          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > renaissance-88-chrome/identity.txt
+          BUILD_ID="$(cat .next/BUILD_ID)"
+          # Next.js nanoid permits leading "-" or "_"; pass as a bound option VALUE,
+          # never a positional token argparse can reinterpret as another switch.
+          if [[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]]; then
+            echo "::error::Invalid or missing exact Next BUILD_ID; candidate rejected"
+            exit 2
+          fi
+          python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id="$BUILD_ID" --output renaissance-88-chrome/plan.json
+          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$BUILD_ID" > renaissance-88-chrome/identity.txt
       - name: Actual Chrome desktop/mobile; bounded PR pilot or full scheduled census
         env:
           PW_HOME: ${{ runner.temp }}/renaissance-88-pw
