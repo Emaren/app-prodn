@@ -163,6 +163,8 @@ def zipped_source_duplicate(path, archive_stat):
             if not member.startswith(expected_prefix):
                 raise Hold("ZIP_OUTSIDE_EXPECTED_MODULE")
             leaf = member[len(expected_prefix):]
+            if not leaf and item.is_dir():
+                continue
             pieces = PurePosixPath(leaf).parts
             if (str(PurePosixPath(leaf)) != leaf.rstrip("/")
                 or any(p in (".", "..", "") for p in pieces)):
@@ -304,7 +306,17 @@ def main():
             if (s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns)!=(
                 entry["dev"],entry["ino"],entry["size"],entry["mtime_ns"]):
                 raise Hold("ZIP_CHANGED_DURING_REMOVE")
-            os.unlink(p)
+            fd=os.open(p.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+            try:
+                current=os.stat(p.name,dir_fd=fd,follow_symlinks=False)
+                if ((current.st_dev,current.st_ino,current.st_size,current.st_mtime_ns)
+                    !=(entry["dev"],entry["ino"],entry["size"],entry["mtime_ns"])):
+                    raise Hold("ZIP_CHANGED_AT_UNLINK")
+                if not stat.S_ISREG(current.st_mode):
+                    raise Hold("ZIP_NOT_ORDINARY_AT_UNLINK")
+                os.unlink(p.name,dir_fd=fd)
+            finally:
+                os.close(fd)
             deleted.append({"relative_to_go_modcache":str(p.relative_to(MOD)),
                 "file_size_bytes":entry["size"],
                 "allocated_bytes_before":entry["allocated_bytes"],
