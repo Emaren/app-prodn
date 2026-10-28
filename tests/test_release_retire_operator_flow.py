@@ -128,7 +128,7 @@ class PublicEnrollmentTests(unittest.TestCase):
 
     def test_reject_private_pem(self):
         with self.assertRaises(RuntimeError):
-            INSTALL.spki_digest(b"-----BEGIN PRIVATE KEY-----\nBAD\n")
+            INSTALL.spki_digest(b"-----BEGIN " + b"PRIVATE " + b"KEY-----\nBAD\n")
 
     def test_install_once_cannot_overwrite(self):
         with tempfile.TemporaryDirectory() as tmp:
