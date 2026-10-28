@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-gate-trailing-whitespace-20261028` at `8f33f957de77b17a2e6eb1958b9da077b3937a35`
+Implementation baseline: `fix/session-g-macos-kingdom-runtime-fixture-20261028` at `604286b47dea8ba33950dbc0d068b63ec39b5df2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
