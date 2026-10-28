@@ -68,6 +68,35 @@ def cache_rows(source: dict[str, Any], name: str) -> list[dict[str, Any]] | None
     return clean
 
 
+def generated_protection_role(path: str) -> tuple[str, bool]:
+    """Read-only policy from exact path structure; not source/consumer attestation.
+
+    Avoid mistaking a Codex worktree for canonical app-prodn merely because
+    both end in node_modules, and hold website-linked signed Watcher output.
+    """
+    parts = tuple(p.lower() for p in Path(path).parts)
+    artifact = parts[-1]
+    if "app-prodn-e5-seal" in parts:
+        return "PROTECTED_E5_SEAL", True
+    if ".codex" in parts:
+        return "PROTECTED_CODEX_WORKTREE", True
+    if any(
+        parent in (".worktrees", ".aoe2war-workspaces")
+        and any(p.startswith("codex-") for p in parts[i + 1:-1])
+        for i, parent in enumerate(parts[:-1])
+    ):
+        return "PROTECTED_CODEX_WORKTREE", True
+    if (artifact == "node_modules" and len(parts) >= 4
+            and parts[-4:] == ("projects", "aoe2hdbets",
+                               "app-prodn", "node_modules")):
+        return "PROTECTED_CANONICAL_ACTIVE_DEPENDENCIES", True
+    if artifact == "dist" and len(parts) >= 2 and parts[-2] == "aoe2-watcher":
+        return "PROTECTED_WATCHER_SIGNED_WEBSITE_DISTRIBUTION", True
+    if set(parts) & GENERATED_PROTECTED:
+        return "PROTECTED_POLICY_ANCESTRY", True
+    return "HISTORICAL_GENERATED_UNQUALIFIED", False
+
+
 def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
     """Only rank exact source-observed names. Never infer unique APFS relief."""
     valid = (census.get("status") == "READ_ONLY"
@@ -78,6 +107,7 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
     ranked = []
     unknown = []
     seen = set()
+    duplicate_paths = set()
     for r in observations:
         if not isinstance(r, dict):
             continue
@@ -90,6 +120,7 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
                 and Path(path).name in GENERATED_NAMES):
             continue
         if path in seen:
+            duplicate_paths.add(path)
             unknown.append({"path": path, "reason": "DUPLICATE_PATH_HOLD"})
             continue
         seen.add(path)
@@ -100,7 +131,7 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
             continue
         if size < GENERATED_THRESHOLD:
             continue
-        protected = bool({p.lower() for p in Path(path).parts} & GENERATED_PROTECTED)
+        role, protected = generated_protection_role(path)
         basename = Path(path).name
         proof = r.get("metadata_fingerprint_sha256")
         reasons = [
@@ -110,7 +141,7 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
             "APFS_UNIQUE_GAIN_UNKNOWN",
         ]
         if protected:
-            reasons.append("PROTECTED_ANCESTRY_HOLD")
+            reasons.extend(("PROTECTED_ANCESTRY_HOLD", role))
         if basename == ".next":
             reasons.append("BUILD_ID_NOT_PINNED")
         if not (isinstance(proof, str) and len(proof) == 64):
@@ -125,11 +156,14 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
             "regeneration_proof": "UNKNOWN",
             "consumer_proof": "UNKNOWN", "hardlink_proof": "UNKNOWN",
             "mount_proof": "UNKNOWN", "protected_ancestry": protected,
+            "protection_role": role,
             "hold_reasons": sorted(reasons), "overlaps_generated": [],
             "unique_recoverable_bytes": None, "mutation_authority": "NONE",
         })
     paths = [r["path"] for r in ranked]
     for r in ranked:
+        if r["path"] in duplicate_paths:
+            r["hold_reasons"].append("DUPLICATE_PATH_HOLD")
         path = r["path"].rstrip("/")
         r["overlaps_generated"] = sorted(
             p for p in paths if p != r["path"] and
@@ -137,8 +171,11 @@ def generated_rank(census: dict[str, Any]) -> dict[str, Any]:
         if r["overlaps_generated"]:
             r["hold_reasons"].append("PARENT_CHILD_GENERATED_OVERLAP")
     ranked.sort(key=lambda r: (-r["allocated_bytes"], r["path"]))
-    gross_nonoverlap = sum(r["allocated_bytes"] for r in ranked
-                           if not r["overlaps_generated"] and not r["protected_ancestry"])
+    gross_nonoverlap = sum(
+        r["allocated_bytes"] for r in ranked
+        if not r["overlaps_generated"] and not r["protected_ancestry"]
+        and r["path"] not in duplicate_paths
+    )
     complete = (valid and type(census.get("observed_path_count")) is int
                 and census["observed_path_count"] == len(observations)
                 and census.get("displayed_path_count") == len(observations)
