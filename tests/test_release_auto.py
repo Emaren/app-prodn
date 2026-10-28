@@ -640,108 +640,23 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
             "wolo_8093_count": 1,
         }
 
-    def test_retirement_script_requires_exact_provenance_and_zero_runtime_refs(self):
-        script = MODULE.remote_superseded_stage_retirement_script(
-            current_release_sha="b" * 40,
-            staged_build_id="staged-build",
-            production=self.production(),
-        )
-
-        self.assertIn('MATCHES=()', script)
-        self.assertIn(r"classification\tAMBIGUOUS_STAGE", script)
-        self.assertIn(r"classification\tCURRENT_STAGE", script)
-        self.assertIn('OPEN_REFS=0', script)
-        self.assertIn(r"classification\tACTIVE_REFERENCE", script)
-        self.assertIn('.next-release', script)
-        self.assertIn('.node_modules-release', script)
-        self.assertIn('stale-stage-retirements', script)
-        self.assertIn(
-            'sudo -n /usr/bin/install -d '
-            '-o tony -g tony -m 0750',
-            script,
-        )
-        self.assertIn('original-stage-status.txt', script)
-        self.assertIn('RETIREMENT_SHA256', script)
-        self.assertIn('http://127.0.0.1:3030/api/deployment-version', script)
-        self.assertIn(':8092', script)
-        self.assertIn(':8093', script)
-
-    def test_retirement_accepts_only_superseded_release(self):
-        stdout = "\n".join(
-            [
-                "match_count\t1",
-                "found_release_sha\t" + ("c" * 40),
-                "open_references\t0",
-                "status\tRETIRED",
-                "classification\tSUPERSEDED_STAGE",
-                "retired_release_sha\t" + ("c" * 40),
-                "retired_staged_build_id\tstaged-build",
-                "receipt_dir\t/mnt/HC_Volume_105319120/aoe2war/"
-                "stale-stage-retirements/test",
-                "root_reclaimed_kb\t123",
-                "wolo_8092_count\t1",
-                "wolo_8093_count\t1",
-            ]
-        )
-
-        result = type(
-            "Result",
-            (),
-            {
-                "returncode": 0,
-                "stdout": stdout,
-                "stderr": "",
-            },
-        )()
-
-        with mock.patch.object(
-            MODULE,
-            "run",
-            return_value=result,
+    def test_legacy_stage_retirement_has_no_direct_or_indirect_mutation_lane(self):
+        for fn in (
+            MODULE.remote_superseded_stage_retirement_script,
+            MODULE.retire_superseded_stage,
         ):
-            recovered = MODULE.retire_superseded_stage(
-                current_release_sha="b" * 40,
-                staged_build_id="staged-build",
-                production=self.production(),
-            )
+            with self.subTest(fn=fn.__name__):
+                with mock.patch.object(MODULE, "run") as remote:
+                    with self.assertRaisesRegex(
+                        MODULE.AutoShipError, "RETIRE_STAGE_ONLY|unsigned stage retirement"
+                    ):
+                        fn(
+                            current_release_sha="b" * 40,
+                            staged_build_id="staged-build",
+                            production=self.production(),
+                        )
+                    remote.assert_not_called()
 
-        self.assertEqual(
-            recovered["classification"],
-            "SUPERSEDED_STAGE",
-        )
-        self.assertEqual(
-            recovered["retired_release_sha"],
-            "c" * 40,
-        )
-
-    def test_current_release_stage_is_never_auto_retired(self):
-        result = type(
-            "Result",
-            (),
-            {
-                "returncode": 42,
-                "stdout": (
-                    "match_count\t1\n"
-                    "classification\tCURRENT_STAGE\n"
-                ),
-                "stderr": "",
-            },
-        )()
-
-        with mock.patch.object(
-            MODULE,
-            "run",
-            return_value=result,
-        ):
-            with self.assertRaisesRegex(
-                MODULE.AutoShipError,
-                "belongs to the current release",
-            ):
-                MODULE.retire_superseded_stage(
-                    current_release_sha="b" * 40,
-                    staged_build_id="staged-build",
-                    production=self.production(),
-                )
 
     def test_ship_requires_separately_signed_stage_retirement(self):
         import inspect
