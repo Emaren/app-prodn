@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6324e2851750b658a85c5060fed690b3f875d8858224c1e9674fdbb4da98ad71",
+      "sha256": "22173f9b2848ef49aa3a913cdca96cd0e39788ec9e15703c51377b00c1738a2e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "bc017a295abef332a90b3827abb7e3b74c909f0dc50814abf55cc958a6299a72",
+      "sha256": "a238b90726f0696be275b304f779838956fa8fdb04a98288e3a836b2e8c55edb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-d-named-mac-measurement-register-20261028",
-    "commit": "b00a45dc8ce6510685802e75644642d64db4a5f5"
+    "branch": "fix/session-d-level2-generated-register-20261028",
+    "commit": "212419e1a16a689e2a25679fac85cd8a1cebedd3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
