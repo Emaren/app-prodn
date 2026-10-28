@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ebe8dd8f8af132d24b07d4940e9882b843a9e634d1b71456a43d5fcda02f443c",
+      "sha256": "abaec68cd3d63f4ada2e60ef7eafd0c5ddc36dc2e1bc6f8526283a85ebaa2818",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "0bce29f7204cf8abb0e39dafbe17b126dd6cbc206c1dde3df7c68a5a5d0035fb",
+      "sha256": "253ff53f1ff317e89dcf5cc472b918b2eeb27af19fb684d435b5d03f523ba0b4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/private-storage-command-center-20261028",
-    "commit": "95e6ea418862ccaefd322ae08c5e5506b049b3cf"
+    "branch": "fix/private-storage-os-strict-read-only-20261028",
+    "commit": "64feda8dd2af64a2474668b2af9df16beef459ec"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
