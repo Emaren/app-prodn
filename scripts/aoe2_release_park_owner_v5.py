@@ -144,7 +144,13 @@ def ssh(*remote: str, payload: bytes | None = None, timeout: int = 300) -> bytes
 
 
 def private_local_directory(path: Path) -> None:
-    if not path.exists():
+    # Never traverse a symlink at either of the receipt ancestors.
+    for root in (ROOT, ROOT / ".aoe2war-release"):
+        if root.exists() or root.is_symlink():
+            st = os.lstat(root)
+            require(stat.S_ISDIR(st.st_mode) and st.st_uid == os.getuid(),
+                    "local receipt ancestor linked or unowned")
+    if not path.exists() and not path.is_symlink():
         path.mkdir(mode=0o700, parents=True)
     st = os.lstat(path)
     require(stat.S_ISDIR(st.st_mode) and st.st_uid == os.getuid() and
@@ -186,13 +192,20 @@ def main() -> int:
     require(sys.platform == "darwin", "owner Mac required")
     require(PRIVATE.is_file() and not PRIVATE.is_symlink(),
             "encrypted Mac owner-v5 key missing")
-    require(subprocess.run(["git", "-C", str(ROOT), "branch", "--show-current"],
-                           capture_output=True, text=True).stdout.strip() == "main",
+    key_stat = os.lstat(PRIVATE)
+    require(stat.S_ISREG(key_stat.st_mode) and key_stat.st_uid == os.getuid()
+            and not (key_stat.st_mode & 0o077),
+            "Mac owner-v5 private key is not owner-private")
+    branch = subprocess.run(
+        ["git", "-C", str(ROOT), "branch", "--show-current"],
+        capture_output=True, text=True, timeout=20, check=False)
+    require(branch.returncode == 0 and branch.stdout.strip() == "main",
             "run canonical main only")
-    require(not subprocess.run(["git", "-C", str(ROOT),
-                               "status", "--porcelain", "--untracked-files=no"],
-                               capture_output=True).stdout,
-            "dirty tracked canonical worktree")
+    status = subprocess.run(
+        ["git", "-C", str(ROOT), "status", "--porcelain", "--untracked-files=no"],
+        capture_output=True, timeout=20, check=False)
+    require(status.returncode == 0 and not status.stdout,
+            "dirty/unverifiable tracked canonical worktree")
     evidence = preview()
     print("PASS: HEL1_ROOT_STAGE_PREVIEW_ONLY")
     print("OWNER_SPKI_SHA256:", EXPECTED_OWNER)
