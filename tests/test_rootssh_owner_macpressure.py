@@ -100,6 +100,8 @@ class RootAuthorityContract(TestCase):
         self.assertNotIn('"sudo"', src)
         self.assertNotIn('"owner-private.pem"', src)
         self.assertIn('"OWNER_V5_ENROLLED_PREVIEW_PASS"', src)
+        self.assertIn("ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK", src)
+        self.assertIn("mode 0664->0644", src)
 
 
 class MacPressureContract(TestCase):
