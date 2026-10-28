@@ -184,6 +184,20 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
         )
         for path in dirs[:120]:
             add("project:" + path.name, path, "PROJECT_REVIEW_NEVER_AUTO_DELETE")
+            # One-level, fixed-basename probes only; never recurse into source
+            # or enumerate personal directories. Include only extant outputs,
+            # so 120 sibling projects do not manufacture 840 absent rows.
+            for basename in GENERATED_NAMES:
+                output = path / basename
+                try:
+                    os.lstat(output)  # no-follow existence check
+                except FileNotFoundError:
+                    continue
+                except OSError:
+                    # Unreadable outputs must be reported as UNKNOWN, not lost.
+                    pass
+                add("project_generated:" + path.name + ":" + basename, output,
+                    "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED")
         if len(dirs) > 120:
             incomplete_reasons.append("PROJECT_DIRECTORY_LIMIT_120")
             rows.append({"name": "PROJECT_CENSUS_INCOMPLETE",
