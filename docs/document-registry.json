@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bd0914a13ee8af20a201e83f87983d2ea3abacca164510b1ffc3b90038c3e5b8",
+      "sha256": "5b6796e8ad7ce3ff8d842691c79e375ca20ad9831a5f229a140ffe032017eee7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/storage-census-coverage-and-focus-20261028",
-    "commit": "a9a000d38435e91e0e242733b58f34198c6b5a7e"
+    "branch": "fix/session-d-stale-three-next-preview-20261028",
+    "commit": "02e7afc059be3fe249f1c1702fcfb5376e612ae4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
