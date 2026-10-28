@@ -351,6 +351,141 @@ class MacLocalPlanTests(TestCase):
         self.assertIsNone(r["shortfall_bytes"])
         self.assertFalse(r["apply_permitted"])
 
+    def test_accepted_five_path_protection_roles_and_zero_qualified_reclaim(self):
+        gib = 1024 ** 3
+        roots = [
+            ("/Users/test/projects/AoE2HDBets/.worktrees/app-prodn-e5-seal/.next",
+             1.214, "PROTECTED_E5_SEAL"),
+            ("/Users/test/projects/AoE2HDBets/app-prodn/node_modules",
+             0.830, "PROTECTED_CANONICAL_ACTIVE_DEPENDENCIES"),
+            ("/Users/test/projects/AoE2HDBets/.worktrees/codex-final-satchel-qualification/node_modules",
+             0.830, "PROTECTED_CODEX_WORKTREE"),
+            ("/Users/test/projects/AoE2HDBets/app-prodn-renaissance-phase1-20261020/node_modules",
+             0.830, "HISTORICAL_GENERATED_UNQUALIFIED"),
+            ("/Users/test/projects/AoE2HDBets/aoe2-watcher/dist",
+             0.688, "PROTECTED_WATCHER_SIGNED_WEBSITE_DISTRIBUTION"),
+        ]
+        x = pressure()
+        for i, (path, gib_size, role) in enumerate(roots):
+            x["measured"].append({
+                "name": "project_generated:" + str(i) + ":" + Path(path).name,
+                "path": path, "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+                "allocated_bytes": round(gib_size * gib), "complete": True,
+                "measurement_reason": "MEASURED", "symlink": False,
+                "mutation_allowed": False, "metadata_fingerprint_sha256": "a" * 64,
+            })
+        result = mod.generated_rank(x)
+        self.assertEqual(result["ranked_count"], 5)
+        self.assertAlmostEqual(sum(v["allocated_bytes"] for v in result["ranked_generated"]) / gib,
+                               4.392, places=3)
+        by_path = {v["path"]: v for v in result["ranked_generated"]}
+        for path, size, role in roots:
+            row = by_path[path]
+            self.assertEqual(row["protection_role"], role)
+            self.assertEqual(row["protected_ancestry"], role != "HISTORICAL_GENERATED_UNQUALIFIED")
+            self.assertEqual(row["mutation_authority"], "NONE")
+            self.assertIsNone(row["unique_recoverable_bytes"])
+            self.assertEqual(row["hardlink_proof"], "UNKNOWN")
+            self.assertIn("HARDLINK_TREE_NOT_PROVEN", row["hold_reasons"])
+            self.assertIn("LIVE_CONSUMERS_NOT_PROVEN", row["hold_reasons"])
+            if row["protected_ancestry"]:
+                self.assertIn("PROTECTED_ANCESTRY_HOLD", row["hold_reasons"])
+                self.assertIn(role, row["hold_reasons"])
+        self.assertAlmostEqual(result["nominal_nonoverlap_unprotected_allocated_bytes"] / gib,
+                               0.830, places=3)
+        self.assertEqual(result["certified_unique_reclaimable_bytes"], 0)
+        self.assertIsNone(result["predicted_unique_reclaimable_bytes"])
+        self.assertEqual(result["verdict"], "EVIDENCE_INSUFFICIENT")
+        self.assertFalse(result["apply_permitted"])
+
+    def test_codex_prefix_only_under_worktree_scope_and_alias_cannot_look_safe(self):
+        for path in (
+            "/Users/test/.codex/worktrees/agent/app-prodn/node_modules",
+            "/Users/test/projects/AoE2HDBets/.worktrees/codex-escrow-v3/node_modules",
+            "/Users/test/projects/AoE2HDBets/.aoe2war-workspaces/codex-a/app-prodn/build",
+        ):
+            self.assertEqual(mod.generated_protection_role(path),
+                             ("PROTECTED_CODEX_WORKTREE", True))
+        self.assertEqual(
+            mod.generated_protection_role(
+                "/Users/test/projects/AoE2HDBets/app-prodn-renaissance-phase1-20261020/node_modules"),
+            ("HISTORICAL_GENERATED_UNQUALIFIED", False))
+        self.assertEqual(
+            mod.generated_protection_role("/tmp/projects/codex-sample/node_modules"),
+            ("HISTORICAL_GENERATED_UNQUALIFIED", False))
+        self.assertEqual(
+            mod.generated_protection_role("/tmp/projects/app-prodn/node_modules"),
+            ("HISTORICAL_GENERATED_UNQUALIFIED", False))
+
+    def test_watcher_website_signed_dist_is_held_not_an_unprotected_build(self):
+        for path in ("/Users/test/projects/AoE2HDBets/aoe2-watcher/dist",
+                     "/Users/test/projects/aoe2-watcher/dist"):
+            self.assertEqual(mod.generated_protection_role(path),
+                ("PROTECTED_WATCHER_SIGNED_WEBSITE_DISTRIBUTION", True))
+        self.assertEqual(mod.generated_protection_role(
+            "/Users/test/projects/AoE2HDBets/other-watcher/dist"),
+            ("HISTORICAL_GENERATED_UNQUALIFIED", False))
+
+    def test_shared_hardlink_claim_in_input_never_becomes_physical_reclaim_proof(self):
+        gib = 1024**3
+        path = "/tmp/projects/stale-build/node_modules"
+        x = pressure()
+        x["measured"].append({
+            "name": "project_generated:stale-build:node_modules", "path": path,
+            "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+            "allocated_bytes": gib, "complete": True, "measurement_reason": "MEASURED",
+            "symlink": False, "mutation_allowed": False,
+            "metadata_fingerprint_sha256": "f" * 64,
+            "hardlink_proof": "VERIFIED", "st_nlink": 2,
+            "unique_recoverable_bytes": gib, "owner_approved": True,
+        })
+        row = mod.generated_rank(x)["ranked_generated"][0]
+        self.assertEqual(row["hardlink_proof"], "UNKNOWN")
+        self.assertIsNone(row["unique_recoverable_bytes"])
+        self.assertFalse(row["owner_verified"])
+        self.assertIn("HARDLINK_TREE_NOT_PROVEN", row["hold_reasons"])
+        self.assertEqual(row["mutation_authority"], "NONE")
+
+    def test_duplicate_exact_generated_path_drops_from_nominal_gross(self):
+        gib = 1024**3
+        x = pressure()
+        path = "/tmp/projects/stale-deps/node_modules"
+        row = {
+            "name": "project_generated:stale-deps:node_modules",
+            "path": path, "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+            "allocated_bytes": gib, "complete": True, "measurement_reason": "MEASURED",
+            "symlink": False, "mutation_allowed": False,
+            "metadata_fingerprint_sha256": "f" * 64,
+        }
+        x["measured"].extend((row, dict(row)))
+        ranked = mod.generated_rank(x)
+        self.assertEqual(ranked["ranked_count"], 1)
+        self.assertEqual(ranked["nominal_nonoverlap_unprotected_allocated_bytes"], 0)
+        self.assertIn("DUPLICATE_PATH_HOLD", ranked["ranked_generated"][0]["hold_reasons"])
+        self.assertIn("DUPLICATE_PATH_HOLD", [v["reason"] for v in ranked["unknown_generated"]])
+        self.assertEqual(ranked["certified_unique_reclaimable_bytes"], 0)
+
+    def test_parent_child_generated_paths_do_not_count_as_disjoint(self):
+        gib = 1024**3
+        x = pressure()
+        for name, path, size in (
+            ("dist", "/tmp/projects/stale/dist", 2*gib),
+            ("build", "/tmp/projects/stale/dist/build", gib),
+        ):
+            x["measured"].append({
+                "name": "project_generated:stale:" + name,
+                "path": path, "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+                "allocated_bytes": size, "complete": True,
+                "measurement_reason": "MEASURED", "symlink": False,
+                "mutation_allowed": False, "metadata_fingerprint_sha256": "b" * 64,
+            })
+        ranked = mod.generated_rank(x)
+        self.assertEqual(ranked["nominal_nonoverlap_unprotected_allocated_bytes"], 0)
+        self.assertTrue(all("PARENT_CHILD_GENERATED_OVERLAP" in row["hold_reasons"]
+                            for row in ranked["ranked_generated"]))
+        self.assertTrue(all(row["overlaps_generated"] for row in ranked["ranked_generated"]))
+        self.assertFalse(ranked["apply_permitted"])
+
     def test_human_cli_is_read_only_and_has_no_auto_apply(self):
         with mock.patch.object(mod, "observe", side_effect=[
                 base(), ext(), electron(), pressure(), watchdog()]):
