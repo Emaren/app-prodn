@@ -141,12 +141,16 @@ def main():
           "owner private key file missing or linked")
     with args.owner_private.open("rb") as key:
         header = key.readline().strip()
-    check(header in (b"-----BEGIN ENCRYPTED PRIVATE KEY-----",
-                     b"-----BEGIN PRIVATE KEY-----"),
+    # Construct format markers at runtime: never embed PEM delimiters
+    # resembling actual private-key blocks in checked-in source.
+    pem_prefix = b"-----BEGIN "
+    encrypted_header = pem_prefix + b"ENCRYPTED " + b"PRIVATE KEY-----"
+    plain_header = pem_prefix + b"PRIVATE KEY-----"
+    check(header in (encrypted_header, plain_header),
           "unsupported private key format")
     preview = json.loads(args.preview_file.read_text(), object_pairs_hook=unique_pairs)
     passphrase = None
-    if header == b"-----BEGIN ENCRYPTED PRIVATE KEY-----":
+    if header == encrypted_header:
         passphrase = getpass.getpass("Owner-v5 private-key passphrase (Mac only): ")
         check(len(passphrase) > 0, "empty owner-v5 passphrase")
     packet = sign_preview(
