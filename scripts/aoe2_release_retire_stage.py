@@ -151,8 +151,8 @@ def stage_evidence(*, app=APP, receipts=RECEIPTS):
     require(len(found) == 1, "missing/duplicate stage status")
     directory, status, rows = found[0]
     require(rows.get("release_sha") == SOURCE_SHA and
-            rows.get("previous_sha") == SOURCE_SHA and
-            rows.get("active_build_id"), "invalid stage ancestry")
+            rows.get("previous_sha") and rows.get("active_build_id"),
+            "invalid stage ancestry")
     manifest = directory / "release-manifest.json"
     gate = directory / "gate-receipt.json"
     receipt = directory / "stage-receipt.json"
@@ -176,7 +176,8 @@ def stage_evidence(*, app=APP, receipts=RECEIPTS):
     counts = {port: sum(bool(re.search(r":" + port + r"\s", line))
                         for line in socket_lines) for port in ("8092", "8093")}
     require(counts == {"8092": 1, "8093": 1}, "Wolo listener count drift")
-    require(live_build == rows["active_build_id"], "old stage/live BUILD_ID mismatch")
+    require(live_build == rows["active_build_id"] and
+            live_source == rows["previous_sha"], "old stage/live identity mismatch")
     evidence = {
         "old_source_sha": SOURCE_SHA, "old_build_id": OLD_BUILD,
         "old_artifact_sha256": next_hash, "old_dependency_sha256": dep_hash,
@@ -291,7 +292,9 @@ def apply(packet, *, app=APP, receipts=RECEIPTS, archive=ARCHIVE,
                 "protected operator state not root-owned private")
     require(os.lstat(app).st_dev == os.lstat(archive).st_dev,
             "archive and stage must be on same root filesystem")
-    protected_file(lock)
+    lock_stat = os.lstat(lock)
+    require(stat.S_ISREG(lock_stat.st_mode) and not (lock_stat.st_mode & 0o022),
+            "unsafe canonical shared release lock")
     with lock.open("r+b", buffering=0) as guard:
         fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         evidence, original = stage_evidence(app=app, receipts=receipts)
