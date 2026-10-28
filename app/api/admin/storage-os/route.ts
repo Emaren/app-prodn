@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/adminSession";
 import { readAoe2OsStorageEvidence } from "@/lib/aoe2Os";
 import { readAuthenticatedStorageAtlas } from "@/lib/aoe2StorageAtlasServer";
 import { projectPrivateStorage } from "@/lib/storageCommandCenterProjection";
+import { readPrivateStorageVisual } from "@/lib/storageVisualPrivate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -13,11 +14,12 @@ export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
   if ("error" in admin) return admin.error;
   try {
-    const [dashboard, signed] = await Promise.all([
+    const [dashboard, signed, visual] = await Promise.all([
       readAoe2OsStorageEvidence(),
       readAuthenticatedStorageAtlas(),
+      readPrivateStorageVisual(),
     ]);
-    return NextResponse.json(projectPrivateStorage(dashboard, signed), {
+    return NextResponse.json(projectPrivateStorage(dashboard, signed, new Date(), visual), {
       headers: NO_STORE,
     });
   } catch {
