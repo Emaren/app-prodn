@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import json
+import subprocess
 from pathlib import Path
 import tempfile
 from unittest import TestCase, mock
