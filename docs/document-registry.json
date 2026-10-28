@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d51adb167573eca7edaef99167331d930c900e4f1100d4c2d94f82ff850a88a1",
+      "sha256": "b1dfd990eb25796fff2ab0b849af5c9d439fb4e315337e0e8ed387a5a02d4240",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "7224c588986e8939274cab703ddf840d9cc8e622a46daa8deb077dc4d8243078",
+      "sha256": "36bf853d17ecc385291fc2f8333ca546134f4a01928ae1269e199c1cf5c0e919",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/private-storage-os-strict-read-only-20261028",
-    "commit": "506797375e542f7f9b9fe1615cec346b72c887a5"
+    "branch": "feat/private-storage-hogs-activity-20261028",
+    "commit": "8d285725ea8b28eeb1134565659e97a8399f8094"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
