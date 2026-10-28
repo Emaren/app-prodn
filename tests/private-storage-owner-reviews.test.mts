@@ -17,7 +17,8 @@ const payload={schema:"aoe2war.storage-visual.private.v1",generated_at:"2026-10-
       {at:"2026-10-28T21:38:00Z",ordinary_free_bytes:10001000000}]}]};
 function verify(v:unknown){return verifyVisualReceipt({schema:"aoe2war.storage-visual.signed.v1",payload:v,
   signature_hmac_sha256:signVisualPayloadForTests(v,key)},key,clock);}
-function modified(fn:(x:any)=>void){const next=JSON.parse(JSON.stringify(payload));fn(next);return next;}
+type Mutable={planes:[{review_items:Record<string,unknown>[];capacity_samples:Record<string,unknown>[]}]};
+function modified(fn:(x:Mutable)=>void){const next=JSON.parse(JSON.stringify(payload));fn(next);return next;}
 
 test("four source-controlled levels include guarded but immutable protected assets",()=>{
  assert.equal(HOG_CATALOG.GUARDED_GENERATED.level,1);
