@@ -103,6 +103,37 @@ class GoZipDuplicateTests(unittest.TestCase):
                 delete.assert_not_called()
                 self.assertTrue(z.exists())
 
+    def test_apply_unlinks_only_identical_cached_zip_preserving_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base,downloads,dest,z=self.setup_cache(temp)
+            modfile=z.parent/"v1.2.3.mod"
+            modfile.write_bytes(b"module example.com/mod\\n")
+            writes=[]
+            def seal(payload):
+                writes.append(payload)
+                return str(Path(temp)/("receipt-"+str(len(writes))+".json")), "a"*64
+            with mock.patch.object(MOD,"HOME",Path(temp)),mock.patch.object(
+                MOD,"MOD",base
+            ),mock.patch.object(MOD,"DOWNLOAD",downloads),mock.patch.object(
+                MOD,"validate_paths"
+            ),mock.patch.object(MOD,"verify_go_env",return_value={"public":True}),mock.patch.object(
+                MOD,"no_open_archive_readers"
+            ),mock.patch.object(MOD,"df",side_effect=[
+                {"device":"/dev/disk3s5","available_kib":10000,"used_kib":10000},
+                {"device":"/dev/disk3s5","available_kib":10000,"used_kib":10000},
+                {"device":"/dev/disk3s5","available_kib":10500,"used_kib":9500}
+            ]),mock.patch.object(MOD,"MIN_RECLAIM_KIB",0),mock.patch.object(
+                MOD,"receipt",side_effect=seal
+            ),mock.patch("sys.argv",["fixture","--apply"]),redirect_stdout(io.StringIO()):
+                self.assertEqual(MOD.main(),0)
+            self.assertFalse(z.exists())
+            self.assertTrue(dest.is_file())
+            self.assertTrue(modfile.is_file())
+            self.assertEqual(len(writes),2)
+            self.assertEqual(writes[0]["status"],"INTENT_ONLY_NO_DELETION_CLAIM")
+            self.assertEqual(writes[1]["net_ordinary_free_delta_kib"],500)
+            self.assertEqual(len(writes[1]["removed_files"]),1)
+
     def test_guard_holds_unknown_nonregular_archive_files(self):
         with tempfile.TemporaryDirectory() as temp:
             base,downloads,dest,z=self.setup_cache(temp)
