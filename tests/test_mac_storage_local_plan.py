@@ -577,12 +577,14 @@ class MacLocalPlanTests(TestCase):
             self.assertEqual(probe.call_count, 6)
             self.assertIn("--capacity-only", probe.call_args.args[0])
         with mock.patch.object(mod, "observe", side_effect=[
-                base(), ext(), electron(), pressure(), watchdog()]) as probe:
+                base(), ext(), electron(), pressure()]) as probe:
             with (mock.patch.object(mod.Path, "is_file", return_value=False),
                   redirect_stdout(io.StringIO()),
                   mock.patch.object(mod.sys, "argv", ["local-plan", "--json"])):
                 self.assertEqual(mod.main(), 0)
-            self.assertEqual(probe.call_count, 5)
+            self.assertEqual(probe.call_count, 4)
+            self.assertFalse(any("--capacity-only" in call.args[0]
+                                 for call in probe.call_args_list))
 
     def test_human_cli_is_read_only_and_has_no_auto_apply(self):
         with mock.patch.object(mod, "observe", side_effect=[
