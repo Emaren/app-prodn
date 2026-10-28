@@ -116,7 +116,6 @@ def candidates():
     eligible = []
     total = 0
     count = 0
-    uncompressed_total = 0
     for parent, dirs, files in os.walk(DOWNLOAD, topdown=True, followlinks=False):
         here = Path(parent)
         checked_stat(here, "dir")
@@ -137,18 +136,6 @@ def candidates():
             total += s.st_size
             if s.st_size == 0:
                 raise Hold("EMPTY_ZIP_FILE")
-            try:
-                with zipfile.ZipFile(path) as z:
-                    infos=z.infolist()
-                    if len(infos)>120000:
-                        raise Hold("ZIP_MEMBER_COUNT_LIMIT")
-                    expanded=sum(info.file_size for info in infos)
-            except zipfile.BadZipFile:
-                raise Hold("BAD_ZIP_IN_DOWNLOAD_CACHE")
-            if expanded>MAX_UNCOMPRESSED_PER_ZIP or (
-                expanded+uncompressed_total>MAX_UNCOMPRESSED_TOTAL):
-                raise Hold("TOTAL_ZIP_EXPANSION_BOUND")
-            uncompressed_total+=expanded
             eligible.append((path,s))
     return eligible
 
@@ -259,9 +246,19 @@ def main():
         no_open_archive_readers()
         approved=[]
         disqualified={}
+        expanded_total=0
         for path, s in all_zips:
             try:
+                with zipfile.ZipFile(path) as archive:
+                    members=archive.infolist()
+                    if len(members)>120000:
+                        raise Hold("ZIP_MEMBER_COUNT_LIMIT")
+                    expanded=sum(item.file_size for item in members)
+                if (expanded>MAX_UNCOMPRESSED_PER_ZIP or
+                    expanded_total+expanded>MAX_UNCOMPRESSED_TOTAL):
+                    raise Hold("TOTAL_ZIP_EXPANSION_BOUND")
                 source_count=zipped_source_duplicate(path,s)
+                expanded_total+=expanded
             except (Hold, zipfile.BadZipFile, OSError) as exc:
                 key=(str(exc) if isinstance(exc,Hold)
                      else "BAD_OR_UNREADABLE_MODULE_ZIP")
