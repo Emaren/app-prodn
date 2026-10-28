@@ -71,10 +71,27 @@ suspends that pruning and should not be carried into routine Finish runs.
 `aoe2war storage local-maintain` is deliberately narrower than a generic disk
 cleaner. Preview mode measures exactly four allowlisted regenerable Mac caches:
 Yarn, Go build cache, pnpm cache, and CoreSimulator cache. `--apply` removes only
-those paths, refuses symlinks/path escape, remeasures free space, and seals a
+those four paths, refuses symlinks/path escape, remeasures free space, and seals a
 local maintenance receipt. Recovery vaults, Codex sessions, CrossOver bottles,
 MobileSync backups, project sources, and evidence are observable protected
 classes and are never targets of this command.
+
+**Explicit opt-in package-cache reclamation (Oct 28):** `local-maintain`
+now also measures four exact additional regenerable classes: `~/.npm/_cacache`,
+`~/Library/Caches/Homebrew`, `~/Library/Caches/pip`, and `~/.cache/pip`.
+The pre-existing `local-maintain --apply` continues to remove **only the original
+four**; an owner must run `local-maintain --apply --extended` to include all
+four additional download/content caches. This does not classify the rest of
+`~/.npm`, `~/.cache`, developer worktrees, Xcode DerivedData, Homebrew
+installations, project dependencies, iPhone backups or historical evidence as
+prunable. Symlinked/escaped extended targets hold **before** any deletion, and
+legacy apply remains operable if an unrelated extended candidate is unsafe.
+The receipt records every deleted target and same-filesystem measured free-space
+delta. On nearly-full APFS systems the measured free-space delta can differ from
+allocated bytes due to clones and snapshots; neither estimate is a success
+receipt until actual execution returns. Inspect current disk free with
+`df -k "$HOME"` before/after the operation. Running from an unmerged feature
+branch is never a production release authorization.
 
 Capacity health and retention topology are separate facts. A volume below the
 capacity threshold may still carry structural rollback debt. The lean-retention
