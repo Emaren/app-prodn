@@ -70,6 +70,13 @@ test("read-only telemetry GET remains untouched; owner POST requires admin, same
  assert.match(route,/REVIEW_CROSS_ORIGIN_HOLD/);
  assert.match(route,/REVIEW_FINGERPRINT_DRIFT/);
  assert.match(route,/REVIEW_SINGLE_APPROVAL_NOT_QUALIFIED/);
+ assert.match(route,/REVIEW_MIGRATION_LEVEL_HOLD/);
+ assert.match(route,/admin.error.headers.set\("Cache-Control"/);
+ assert.match(ui,/Largest measured consumers/);
+ assert.match(ui,/L1 policy coverage UNKNOWN/);
+ assert.match(ui,/REBUILD \/ ROLLBACK/);
+ assert.match(ui,/UNIQUE APFS GAIN/);
+ assert.match(ui,/policy exhaustion UNKNOWN/);
  assert.match(ledger,/O_NOFOLLOW/);
  assert.match(ledger,/O_EXCL/);
  assert.match(ledger,/handle\.sync\(\)/);
