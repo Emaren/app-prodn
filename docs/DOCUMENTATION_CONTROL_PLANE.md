@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/private-storage-hogs-activity-20261028` at `b5442c1dd24f478e433ab3a3cf1d7d3b7b434c36`
+Implementation baseline: `feat/session-g-storage-level-review-20261028` at `7639997ab654135f1fb6bebc58dcbf2c2e5bc16e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
