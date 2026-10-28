@@ -351,17 +351,45 @@ def apply(packet, *, app=APP, receipts=RECEIPTS, archive=ARCHIVE,
         try:
             destination.mkdir(mode=0o700)
             fsync_dir(archive)
-            for name, old_stat in original.items():
-                current = os.lstat(app / name)
-                require((current.st_dev, current.st_ino) ==
-                        (old_stat.st_dev, old_stat.st_ino), "staged inode swapped before move")
-                active_consumers(app)
-                os.rename(app / name, destination / name)
-                fsync_dir(app)
-                fsync_dir(destination)
-                durable_json(receipt_dir / (name.lstrip(".") + ".json"), {
-                    "status": "PARKED", "name": name,
-                    "device": old_stat.st_dev, "inode": old_stat.st_ino})
+            # Anchor both parent directories with O_NOFOLLOW directory descriptors.
+            # Linux rename is NOT conditional on the source inode; the writable
+            # source parent can be adversarially raced. Post-move identity mismatch
+            # always becomes UNKNOWN_NO_REPLAY, not a successful stage clearance.
+            dirflags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            app_fd = os.open(app, dirflags)
+            archive_fd = os.open(destination, dirflags)
+            try:
+                app_dir = os.fstat(app_fd)
+                parked_dir = os.fstat(archive_fd)
+                require((app_dir.st_dev, app_dir.st_ino) ==
+                        (os.lstat(app).st_dev, os.lstat(app).st_ino),
+                        "app directory anchor changed")
+                require((parked_dir.st_dev, parked_dir.st_ino) ==
+                        (os.lstat(destination).st_dev, os.lstat(destination).st_ino),
+                        "archive directory anchor changed")
+                for name, old_stat in original.items():
+                    current = os.stat(name, dir_fd=app_fd, follow_symlinks=False)
+                    require(stat.S_ISDIR(current.st_mode) and
+                            (current.st_dev, current.st_ino) ==
+                            (old_stat.st_dev, old_stat.st_ino),
+                            "staged inode swapped before move")
+                    active_consumers(app)
+                    os.rename(name, name, src_dir_fd=app_fd, dst_dir_fd=archive_fd)
+                    moved = os.stat(name, dir_fd=archive_fd, follow_symlinks=False)
+                    require(stat.S_ISDIR(moved.st_mode) and
+                            (moved.st_dev, moved.st_ino) ==
+                            (old_stat.st_dev, old_stat.st_ino),
+                            "PATH_SWAP_UNKNOWN_NO_REPLAY: destination inode differs")
+                    require(not os.path.lexists(app / name),
+                            "source pathname reappeared during move")
+                    os.fsync(app_fd)
+                    os.fsync(archive_fd)
+                    durable_json(receipt_dir / (name.lstrip(".") + ".json"), {
+                        "status": "PARKED", "name": name,
+                        "device": old_stat.st_dev, "inode": old_stat.st_ino})
+            finally:
+                os.close(archive_fd)
+                os.close(app_fd)
             require(not (app / ".next-release").exists() and
                     not (app / ".node_modules-release").exists(), "stage collision remains")
             for name, old_stat in original.items():
