@@ -92,8 +92,26 @@ jobs:
           import subprocess
 
           base = os.environ.get("PR_BASE_SHA") or os.environ.get("PUSH_BEFORE_SHA")
+          if (not base or base == "0" * 40) and os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+              # workflow_dispatch has no PR base/before SHA. Checkout uses
+              # fetch-depth: 0; prove the merge base against origin/main
+              # instead of silently skipping changed-file lint.
+              subprocess.run(
+                  ["git", "rev-parse", "--verify", "refs/remotes/origin/main^{commit}"],
+                  check=True, capture_output=True, text=True,
+              )
+              base = subprocess.check_output(
+                  ["git", "merge-base", "HEAD", "refs/remotes/origin/main"],
+                  text=True,
+              ).strip()
+              subprocess.run(
+                  ["git", "merge-base", "--is-ancestor", base, "HEAD"],
+                  check=True,
+              )
+              print(f"Proved workflow_dispatch lint base: {base}", flush=True)
           if not base or base == "0" * 40:
               raise SystemExit("Cannot prove changed-file ESLint without a Git base SHA")
+          subprocess.run(["git", "cat-file", "-e", base + "^{commit}"], check=True)
 
           changes = subprocess.check_output(
               ["git", "diff", "--name-only", "--diff-filter=ACMR", base, "HEAD", "--"],
