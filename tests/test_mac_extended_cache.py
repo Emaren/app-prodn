@@ -8,6 +8,7 @@ from pathlib import Path
 import tempfile
 from contextlib import redirect_stdout
 import unittest
+from unittest import mock
 
 SOURCE = Path(__file__).resolve().parents[1] / "scripts" / "aoe2_storage.py"
 SPEC = importlib.util.spec_from_file_location("aoe2_storage_under_test", SOURCE)
@@ -34,11 +35,54 @@ class MacExtendedCacheTests(unittest.TestCase):
         self.addCleanup(setattr, storage, "LOCAL_RECEIPT_DIR", self.old_receipt_dir)
 
     def run_maintenance(self, *, apply=False, extended=False, electron_only=False):
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()), mock.patch.object(
+                storage, "_verify_electron_cache_inactive", return_value=None):
             return storage.local_maintain(
                 apply=apply, json_mode=False, extended=extended,
                 electron_only=electron_only, home=self.home
             )
+
+    def test_electron_apply_fails_closed_when_process_probe_fails(self):
+        cache = place(self.home, "Library/Caches/electron")
+        with mock.patch.object(storage, "_verify_electron_cache_inactive",
+                               side_effect=storage.StorageError("consumer probe")):
+            with self.assertRaisesRegex(storage.StorageError, "consumer probe"):
+                storage.local_maintain(apply=True, json_mode=True,
+                                       electron_only=True, home=self.home)
+        self.assertTrue((cache / "cache.bin").is_file())
+        self.assertFalse(storage.LOCAL_RECEIPT_DIR.exists())
+
+    def test_electron_in_os_process_guard_rejects_active_builder(self):
+        def fake(argv, **kwargs):
+            if argv[0] == "ps":
+                return mock.Mock(returncode=0, stdout="/usr/local/bin/electron-builder\n")
+            raise AssertionError("lsof must not be invoked on active builder")
+        with mock.patch.object(storage.sys, "platform", "darwin"), \
+             mock.patch.object(storage.os, "geteuid", return_value=501), \
+             mock.patch.object(storage.os, "getuid", return_value=501), \
+             mock.patch.object(storage.subprocess, "run", side_effect=fake):
+            with self.assertRaisesRegex(storage.StorageError, "active Electron packaging"):
+                storage._verify_electron_cache_inactive([self.home / "Library/Caches/electron"])
+
+    def test_electron_in_os_guard_rejects_open_file_and_probe_unavailable(self):
+        cache = self.home / "Library/Caches/electron"
+        cache.mkdir(parents=True)
+        def fake(argv, **kwargs):
+            if argv[0] == "ps":
+                return mock.Mock(returncode=0, stdout="python3\n")
+            return mock.Mock(returncode=0, stdout="p72\nn" + str(cache / "download.zip") + "\n")
+        with mock.patch.object(storage.sys, "platform", "darwin"), \
+             mock.patch.object(storage.os, "geteuid", return_value=501), \
+             mock.patch.object(storage.os, "getuid", return_value=501), \
+             mock.patch.object(storage.subprocess, "run", side_effect=fake):
+            with self.assertRaisesRegex(storage.StorageError, "open Electron cache"):
+                storage._verify_electron_cache_inactive([cache])
+        with mock.patch.object(storage.sys, "platform", "darwin"), \
+             mock.patch.object(storage.os, "geteuid", return_value=501), \
+             mock.patch.object(storage.os, "getuid", return_value=501), \
+             mock.patch.object(storage.subprocess, "run", side_effect=OSError("missing")):
+            with self.assertRaisesRegex(storage.StorageError, "consumer census unavailable"):
+                storage._verify_electron_cache_inactive([cache])
 
     def test_electron_only_preview_never_deletes_or_writes_receipt(self):
         electron = place(self.home, "Library/Caches/electron")
