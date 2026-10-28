@@ -1608,6 +1608,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--focus", choices=("generic_cache",), help="bounded read-only cache child drilldown")
     q = sub.add_parser("local-plan")
     q.add_argument("--json", action="store_true")
+    q.add_argument("--l1-campaign", action="store_true",
+                   help="one read-only native Mac L1 capacity and policy review, never apply")
     q = sub.add_parser("local-reclaim-three-next")
     q.add_argument("--apply", action="store_true")
     q = sub.add_parser("deep-census")
@@ -1679,6 +1681,8 @@ def main() -> int:
         cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_local_plan.py")]
         if args.json:
             cmd.append("--json")
+        if args.l1_campaign:
+            cmd.append("--l1-campaign")
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "local-reclaim-three-next":
         cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_reclaim_three_next.py")]
