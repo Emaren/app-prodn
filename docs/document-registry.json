@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a3d83741ab5dc4af3a06591573857aaea66351c075cf9968e6ce5948531c189f",
+      "sha256": "bd0914a13ee8af20a201e83f87983d2ea3abacca164510b1ffc3b90038c3e5b8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "45d759f75ce8f651a25c55adde1c6603bd768918af99c5a26f102a9dff41221a",
+      "sha256": "619d15b1f786646ad2387e8ab05283a0de8a23cd62cef181e27e26ab2fae6366",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/storage-electron-cache-opt-in-20261028",
-    "commit": "9574512e0c6b0d3b0fe566345d4e0e4b289af40e"
+    "branch": "feat/storage-census-coverage-and-focus-20261028",
+    "commit": "a9a000d38435e91e0e242733b58f34198c6b5a7e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
