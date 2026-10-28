@@ -26,6 +26,7 @@ RECEIPTS = HOME / "projects" / "AoE2HDBets" / "app-prodn" / ".aoe2war-release" /
 MAX_ZIPS = 1500
 MAX_BYTES = 3 * 1024**3
 MAX_UNCOMPRESSED_PER_ZIP = 2 * 1024**3
+MAX_UNCOMPRESSED_TOTAL = 16 * 1024**3
 MIN_RECLAIM_KIB = 10240
 
 
@@ -115,6 +116,7 @@ def candidates():
     eligible = []
     total = 0
     count = 0
+    uncompressed_total = 0
     for parent, dirs, files in os.walk(DOWNLOAD, topdown=True, followlinks=False):
         here = Path(parent)
         checked_stat(here, "dir")
@@ -135,6 +137,18 @@ def candidates():
             total += s.st_size
             if s.st_size == 0:
                 raise Hold("EMPTY_ZIP_FILE")
+            try:
+                with zipfile.ZipFile(path) as z:
+                    infos=z.infolist()
+                    if len(infos)>120000:
+                        raise Hold("ZIP_MEMBER_COUNT_LIMIT")
+                    expanded=sum(info.file_size for info in infos)
+            except zipfile.BadZipFile:
+                raise Hold("BAD_ZIP_IN_DOWNLOAD_CACHE")
+            if expanded>MAX_UNCOMPRESSED_PER_ZIP or (
+                expanded+uncompressed_total>MAX_UNCOMPRESSED_TOTAL):
+                raise Hold("TOTAL_ZIP_EXPANSION_BOUND")
+            uncompressed_total+=expanded
             eligible.append((path,s))
     return eligible
 
