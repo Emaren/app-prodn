@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/private-storage-command-center-20261028` at `3a031f185e0620087df6cddd4589de8c862c5af7`
+Implementation baseline: `feat/private-storage-command-center-20261028` at `95e6ea418862ccaefd322ae08c5e5506b049b3cf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
