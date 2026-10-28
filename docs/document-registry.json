@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "63daab51d863f364b61c5034eac1783662edcdb0a3a57f0e5925a5ee3e37a257",
+      "sha256": "6324e2851750b658a85c5060fed690b3f875d8858224c1e9674fdbb4da98ad71",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/session-d-named-mac-measurement-register-20261028",
-    "commit": "a15827b2d861c5f8212d6e070edace37c50976de"
+    "commit": "b00a45dc8ce6510685802e75644642d64db4a5f5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
