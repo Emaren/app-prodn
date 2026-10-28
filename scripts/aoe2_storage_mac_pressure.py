@@ -181,11 +181,22 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
     for name, relative, classification in HOME_BUCKETS:
         add(name, home / relative, classification)
     incomplete_reasons = []
+    scope_bounds = {
+        "direct_project_roots_total": None, "direct_project_roots_observed": 0,
+        "direct_project_roots_omitted": None, "canonical_git_worktrees_total": None,
+        "canonical_git_worktrees_observed": 0, "canonical_git_worktrees_omitted": None,
+        "nested_project_build_roots_in_scope": False,
+        "projects_outside_aoe2hdbets_in_scope": False,
+    }
     if project.is_dir() and not project.is_symlink():
         dirs = sorted(
             [p for p in project.iterdir() if p.is_dir() and not p.is_symlink()],
             key=lambda p: p.name,
         )
+        scope_bounds.update(
+            direct_project_roots_total=len(dirs),
+            direct_project_roots_observed=min(len(dirs), 120),
+            direct_project_roots_omitted=max(0, len(dirs)-120))
         for path in dirs[:120]:
             add("project:" + path.name, path, "PROJECT_REVIEW_NEVER_AUTO_DELETE")
             # One-level, fixed-basename probes only; never recurse into source
@@ -211,6 +222,10 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
         # rather than globbing inside arbitrary private user directories.
         primary = project / "app-prodn"
         declared_worktrees = worktrees(primary)
+        scope_bounds.update(
+            canonical_git_worktrees_total=len(declared_worktrees),
+            canonical_git_worktrees_observed=min(len(declared_worktrees), 60),
+            canonical_git_worktrees_omitted=max(0, len(declared_worktrees)-60))
         if len(declared_worktrees) > 60:
             incomplete_reasons.append("WORKTREE_LIMIT_60")
         for repo in declared_worktrees[:60]:
@@ -251,6 +266,7 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
                 "du_allocation_is_not_unique_reclaim": True,
             },
             "observed_path_count": len(rows), "displayed_path_count": min(len(rows), limit),
+            "scope_bounds": scope_bounds,
             "named_census_complete": not incomplete_reasons,
             "incomplete_reasons": incomplete_reasons,
             "coverage": "NAMED_PATHS_ONLY_NOT_WHOLE_DISK",
@@ -493,6 +509,9 @@ def capacity_accounting(home: Path, *, data_root: Path = Path("/System/Volumes/D
             result["reason"] = "SHALLOW_CAPACITY_METADATA_INCOMPLETE"
         else:
             result["reason"] = "APFS_SHARED_METADATA_AND_PHYSICAL_EXTENTS_UNPROVEN"
+        if (result["data_top_level"]["status"] == "OBSERVED_SHALLOW"
+                and result["home_top_level"]["status"] == "OBSERVED_SHALLOW"):
+            result["status"] = "OBSERVED_SHALLOW"
         # Missing metadata/clone/snapshot/OS volume measurements are UNKNOWN.
         # du gross, APFS used and root residual are deliberately not subtracted
         # into a false unique/extents or free-space recovery claim.
