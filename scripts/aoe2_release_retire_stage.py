@@ -307,6 +307,8 @@ def apply(packet, *, app=APP, receipts=RECEIPTS, archive=ARCHIVE,
     require(stat.S_ISREG(lock_stat.st_mode) and not (lock_stat.st_mode & 0o022),
             "unsafe canonical shared release lock")
     with lock.open("r+b", buffering=0) as guard:
+        require((os.fstat(guard.fileno()).st_dev, os.fstat(guard.fileno()).st_ino) ==
+                (lock_stat.st_dev, lock_stat.st_ino), "release-lock inode changed")
         fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         evidence, original = stage_evidence(app=app, receipts=receipts)
         permit = verify_owner(packet, evidence, key=key, source_path=source_path)
@@ -351,6 +353,10 @@ def apply(packet, *, app=APP, receipts=RECEIPTS, archive=ARCHIVE,
                     evidence["live_build_id"], "live BUILD_ID changed")
             require(command("systemctl", "is-active", "aoe2hdbets-web.service") ==
                     "active", "website service drift")
+            listeners = command("ss", "-ltn").splitlines()
+            for port in ("8092", "8093"):
+                require(sum(bool(re.search(r":" + port + r"\s", line))
+                            for line in listeners) == 1, "Wolo listener drift after park")
             durable_json(receipt_dir / "complete.json", {
                 "status": "PARKED_NO_DELETE", "nonce": nonce,
                 "evidence": evidence, "destination": str(destination),
