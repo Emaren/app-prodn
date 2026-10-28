@@ -871,3 +871,39 @@ evidence.
 The mounted evidence volume is included using the normal Storage OS snapshot so
 one report covers all three planes. Classification is evidence for the next
 planning step, not permission to delete.
+
+
+## Session D named Mac measurement and Level 1 review registers
+
+The permanent `aoe2war storage local-plan --json` command incorporates a
+bounded `local-pressure --limit 512 --json` named-path census. Every observed
+name has a typed `measurement_reason`, `allocated_bytes` and a metadata-only
+SHA-256 fingerprint. A verified absent path has zero allocation; symlinks,
+foreign mounts, permission/timeout/du failure, a vanished path, and identity
+drift produce **null allocation**, an exact entry in `measurement_gaps`, and
+a source-owned **read-only** next action. Rows remain named-only and can overlap;
+the census does not inspect the entire Mac.
+
+`coverage.measurement_gaps` in the local plan preserves *all* failing named
+rows, even when the display is capped. `coverage.apfs_accounting` separately
+reports ordinary statvfs headroom with unknown snapshot, clone and purgeable
+bytes left null; `du` allocation is **never** unique recoverable APFS space.
+
+`level_1_candidate_register` contains only positive-sized, exact-path
+allowlisted classes already previewed by existing `local-maintain`. These are
+evidence records, **not automatically approved candidates**. Each retains
+producer-lane, allocated size, candidate fingerprint and regeneration/consumer/
+protected-ancestry evidence gaps; overlaps are flagged and *all* have
+`mutation_authority=NONE`, unknown unique APFS gain and required owner
+approval. The register never includes historical three-build targets, E5,
+CrossOver, Codex state, replay/financial records, MobileSync, recovery or user
+archives.
+
+`level_2_owner_review_register` keeps named REVIEW paths and unknown sizes
+separate; location, age, filename or a reversible Trash move prove no deletion
+authority. `level_1_closure.status=HOLD_NOT_CERTIFIED` until two independent
+owner-native cycles, consumer/rebuild/ancestry proof, exact owner authorization,
+durable approved transaction receipts and independently observed APFS `df`
+recovery are complete. Only Central Command can issue the final closure seal.
+No new deletion, --apply mode, automated reclaim, or source-of-truth controller
+is introduced by these diagnostic additions.
