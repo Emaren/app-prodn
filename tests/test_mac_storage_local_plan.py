@@ -77,6 +77,25 @@ class MacLocalPlanTests(TestCase):
         self.assertFalse(result["financial_or_release_authority"])
         self.assertTrue(result["coverage"]["overlapping_parent_child_rows"])
         self.assertEqual(result["heartbeat"]["capacity"], "CRITICAL")
+        self.assertEqual(result["next_census_command"], "aoe2war storage local-pressure --limit 512")
+
+    def test_generic_cache_review_identifies_protected_child_and_owner_readonly_command(self):
+        x = pressure()
+        x["measured"].append({
+            "name": "generic_cache", "classification": "REVIEW_GENERATED",
+            "allocated_bytes": 5 * 1024**3, "complete": True,
+            "mutation_allowed": False,
+        })
+        result = mod.plan(base(), ext(), electron(), x, watchdog())
+        review = {r["name"]: r for r in result["review_only_large_buckets"]}
+        generic = review["generic_cache"]
+        self.assertTrue(generic["contains_known_protected_descendant"])
+        self.assertEqual(
+            generic["next_readonly_inspection"],
+            "aoe2war storage local-pressure --focus generic_cache"
+        )
+        self.assertEqual(generic["mutation_authority"], "NONE")
+        self.assertNotIn("generic_cache", [r["lane"] for r in result["priority_cache_actions"]])
 
     def test_incomplete_or_invalid_cache_class_never_becomes_zero_or_cleanup(self):
         bad = electron()
