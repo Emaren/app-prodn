@@ -87,7 +87,7 @@ def named_measurement(path: Path, home: Path, timeout: int = 45) -> dict:
                         "NONE_ABSENT" if reason == "ABSENT" else
                         "REVIEW_LINK_OR_MOUNT" if "SYMLINK" in reason or
                         "MOUNT" in reason else "RECHECK_NAMED_PATH"),
-                    next_readonly_command="aoe2war storage local-pressure --limit 512 --json",
+                    next_readonly_command="aoe2war storage local-pressure --limit 1024 --json",
                     mutation_allowed=False)
     try:
         home_dev = os.lstat(home).st_dev
