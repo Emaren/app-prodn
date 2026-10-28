@@ -1207,6 +1207,39 @@ def _assert_local_reclaim_path(home: Path, path: Path) -> None:
         raise StorageError(f"local cache path escapes operator home: {path}")
 
 
+
+def _verify_electron_cache_inactive(paths: list[Path]) -> None:
+    """Fail-closed on packaging processes or open cache descriptors on owner Mac.
+
+    This is a second in-OS guard, not just advice in an LLM-generated shell
+    script. A process/start race is still possible; do not auto-schedule apply.
+    """
+    if sys.platform != "darwin" or os.geteuid() != os.getuid():
+        raise StorageError("Electron cache mutation requires owner macOS session")
+    for argv, timeout in ((["ps", "-axo", "comm="], 15), (["lsof", "-nP", "-F", "n"], 60)):
+        try:
+            result = subprocess.run(argv, capture_output=True, text=True,
+                                    check=False, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise StorageError("Electron consumer census unavailable") from exc
+        if result.returncode != 0 or len(result.stdout) > 4_000_000:
+            raise StorageError("Electron consumer census incomplete")
+        if argv[0] == "ps":
+            active = ("electron-builder", "electron-packager", "electron-forge",
+                      "electron-rebuild")
+            if any(any(line.strip().lower().split("/")[-1] == executable for executable in active)
+                   for line in result.stdout.splitlines()):
+                raise StorageError("active Electron packaging process")
+        else:
+            targets = [str(path) for path in paths]
+            for line in result.stdout.splitlines():
+                if line.startswith("n") and any(
+                    line[1:] == target or line[1:].startswith(target + os.sep)
+                    for target in targets
+                ):
+                    raise StorageError("open Electron cache descriptor")
+
+
 def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False,
                    electron_only: bool = False, home: Path | None = None) -> int:
     if extended and electron_only:
@@ -1266,6 +1299,10 @@ def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False,
         "status": "PREVIEW",
     }
     if apply:
+        if electron_only:
+            _verify_electron_cache_inactive(
+                [operator_home / relative for _, relative in LOCAL_ELECTRON_REGENERABLE_PATHS]
+            )
         for name, relative in selected:
             path = operator_home / relative
             _assert_local_reclaim_path(operator_home, path)
