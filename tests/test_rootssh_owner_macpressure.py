@@ -367,7 +367,7 @@ class MacPressureContract(TestCase):
             def fake_du(args, **kwargs):
                 self.assertEqual(args[:5], ["du", "-k", "-x", "-d", "1"])
                 return mock.Mock(returncode=0, stdout=(
-                    f"8\\t{protected}\\n16\\t{root}\\n"), stderr="")
+                    f"8\t{protected}\n16\t{root}\n"), stderr="")
             with mock.patch.object(pressure.subprocess, "run", side_effect=fake_du):
                 output = pressure.capacity_depth_one(root, device)
             self.assertEqual(output["status"], "HOLD")
@@ -386,7 +386,7 @@ class MacPressureContract(TestCase):
             device = os.lstat(root).st_dev
             with mock.patch.object(pressure.subprocess, "run",
                   return_value=mock.Mock(returncode=0, stdout=(
-                      f"9\\t{root / 'artifact'}\\n12\\t{root}\\n"), stderr="")):
+                      f"9\t{root / 'artifact'}\n12\t{root}\n"), stderr="")):
                 result = pressure.capacity_depth_one(root, device)
             self.assertEqual(result["status"], "OBSERVED_SHALLOW")
             self.assertEqual(result["root_files_links_and_metadata_gross_residual_bytes"], 3072)
@@ -411,9 +411,9 @@ class MacPressureContract(TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             device = os.lstat(root).st_dev
-            for data in (f"2\\t{root}\\n2\\t{root}\\n",
-                         f"2\\t{root / 'unexpected' / 'deep'}\\n2\\t{root}\\n",
-                         f"bad\\t{root}\\n"):
+            for data in (f"2\t{root}\n2\t{root}\n",
+                         f"2\t{root / 'unexpected' / 'deep'}\n2\t{root}\n",
+                         f"bad\t{root}\n"):
                 with mock.patch.object(pressure.subprocess, "run",
                       return_value=mock.Mock(returncode=0, stdout=data, stderr="")):
                     self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
@@ -429,10 +429,10 @@ class MacPressureContract(TestCase):
                 if args[0] == "du":
                     path = Path(args[-1])
                     directory_rows = "".join(
-                        f"1\\t{child}\\n" for child in path.iterdir()
+                        f"1\t{child}\n" for child in path.iterdir()
                         if child.is_dir() and not child.is_symlink())
                     return mock.Mock(returncode=0, stderr="",
-                                     stdout=directory_rows + f"2\\t{path}\\n")
+                                     stdout=directory_rows + f"2\t{path}\n")
                 if "--plane" in args:
                     return mock.Mock(returncode=0, stdout=json.dumps({
                         "filesystem": {"fs_type": "apfs", "uuid": "fixture",
