@@ -1528,6 +1528,9 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--apply", action="store_true")
     q.add_argument("--extended", action="store_true", help="explicitly include four additional package download/content caches")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("local-pressure")
+    q.add_argument("--json", action="store_true")
+    q.add_argument("--limit", type=int, default=30)
     q = sub.add_parser("deep-census")
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("triage")
@@ -1584,6 +1587,12 @@ def main() -> int:
         return 0
     if args.command == "local-maintain":
         return local_maintain(apply=args.apply, json_mode=args.json, extended=args.extended)
+    if args.command == "local-pressure":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_mac_pressure.py"),
+               "--limit", str(args.limit)]
+        if args.json:
+            cmd.append("--json")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "triage":
         payload = storage_triage(expiry_inventory_path=args.expiry_inventory)
         if args.json:
