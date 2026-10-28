@@ -85,9 +85,9 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
          <div className="mt-1 text-xs text-slate-400">{role.sub}</div>
          <div className="mt-4 flex items-end justify-between gap-2">
            <div><div className="text-[10px] text-slate-500">GROSS ALLOCATED</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{current?size(gross):"UNKNOWN"}</div></div>
-           <div className="text-right"><div className="text-[10px] text-slate-500">EXACT ITEMS</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{candidateCount??"—"}</div></div>
+           <div className="text-right"><div className="text-[10px] text-slate-500">SIGNED ALIASES</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{candidateCount??"—"}</div></div>
          </div>
-         <div className="mt-3 text-[10px] text-slate-500">{current?`${group.length} signed categories · ${age(plane.observedAt)} old`:"No authenticated per-item census"}</div>
+         <div className="mt-3 text-[10px] text-slate-500">{current?`${group.length} signed categories · ${age(plane.observedAt)} old`:"No authenticated per-item census; deletion eligibility UNKNOWN"}</div>
        </button>;
      })}
    </div>
