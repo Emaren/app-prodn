@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/mac-regenerable-cache-extension-20261028` at `fdaafaa287bd81c4515e2cd38bf2b66b1dbc1856`
+Implementation baseline: `ops/root-ssh-owner-v5-enrollment-20261028` at `6a9a36512765981af45f78bb628001723a27b46b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
