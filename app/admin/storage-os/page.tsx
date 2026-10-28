@@ -291,7 +291,7 @@ export default function PrivateStorageOsPage() {
       </section>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pb-7 pt-4 text-[10px] font-semibold tracking-wider text-slate-500">
-        <div className="flex items-center gap-2"><HardDrive className="h-4 w-4"/> AO E2WAR / PRIVATE STORAGE CONTROL</div>
+        <div className="flex items-center gap-2"><HardDrive className="h-4 w-4"/> AOE2WAR / PRIVATE STORAGE CONTROL</div>
         <div>{loading ? "LOADING STORED RECEIPTS" : `LAST FETCH ${data?.polledAt ?? "UNKNOWN"}`}</div>
         <div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4"/> NO AUTO-DELETE OR RELEASE AUTHORITY</div>
       </footer>
