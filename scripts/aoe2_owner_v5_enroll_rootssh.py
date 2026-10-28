@@ -272,11 +272,11 @@ def main() -> int:
          "canonical tracked worktree must be clean")
     print("=== SOURCE-OWNED OWNER-V5 ROOT SSH ENROLLMENT ===", flush=True)
     print("TARGET:", EXPECTED_NEW, flush=True)
-    print("SCOPE: public key only; never stage, activate, finance", flush=True)
+    print("SCOPE: owner-v5 PUBLIC trust + exact shared release.lock mode 0664->0644; no stage, activation or WOLO", flush=True)
     with open("/dev/tty", "r") as fin, open("/dev/tty", "w") as fout:
-        fout.write("Type ENROLL OWNER V5 PUBLIC KEY to authorize: ")
+        fout.write("Type ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK to authorize: ")
         fout.flush()
-        need(fin.readline().strip() == "ENROLL OWNER V5 PUBLIC KEY",
+        need(fin.readline().strip() == "ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK",
              "owner did not authorize")
     cmd = ["ssh", "-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
            "-o", "ConnectTimeout=12", "root@hel1", "python3", "-",
