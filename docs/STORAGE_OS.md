@@ -26,7 +26,8 @@ Primary operator surface:
 aoe2war storage status
 aoe2war storage estate --measure
 aoe2war storage local-plan          # permanent, read-only Mac action board
-aoe2war storage local-pressure --limit 300
+aoe2war storage local-pressure --limit 512
+aoe2war storage local-pressure --focus generic_cache   # one-level protected-aware cache triage
 aoe2war storage local-maintain
 aoe2war storage local-maintain --apply
 aoe2war storage plan
@@ -129,14 +130,32 @@ That approved one-time source checkout was an isolated acceptance path, not
 the normal future operating mechanism. After this feature is merged into
 source, use the canonical operator CLI rather than fetching PR archives.
 
-Local pressure now permits up to 300 displayed **named** rows and records
+Local pressure now permits up to **512 displayed named rows**, including
+the 328 observed on the operator Mac on October 28, and reports
 `named_census_complete`, displayed/observed counts, reasons for truncation,
-and explicit `NAMED_PATHS_ONLY_NOT_WHOLE_DISK` scope. Additional named
-Electron, Chrome, Docker VM, Codex and CrossOver locations are classified
-as either review or protected **without deletion permission**. Project
-roots and their generated children overlap; do not sum allocations to
-claim free-space recovery. When a class has not been measured or is
-partially observed, it remains UNKNOWN and should be triaged.
+and explicit `NAMED_PATHS_ONLY_NOT_WHOLE_DISK` scope. This fixes a 300-row
+presentation cap; it does **not** infer complete filesystem coverage. Repo
+and worktree enumeration limits, unreadable children or symlinks still
+produce INCOMPLETE/HOLD, even if all names can be displayed.
+
+`aoe2war storage local-pressure --focus generic_cache` provides a bounded,
+**read-only one-level** breakdown of `~/.cache` through the same permanent
+Storage OS router. Its first 64 child entries are measured under a bounded
+time budget; capped, timed-out or symlinked children remain explicitly
+INCOMPLETE rather than guessed. The `codex-runtimes` child is categorically
+`PROTECTED_ACTIVE_RUNTIME_UNKNOWN`. Other immediate children are
+`REVIEW_CACHE_CHILD_NEEDS_AUTHORITY`, not allowlisted for deletion.
+The gross `generic_cache` row (~5.11 GiB observed previously) includes
+this known protected subtree (~4.77 GiB previously measured); do not equate
+the parent's allocated bytes with reclaimable bytes or sum overlapping rows.
+The permanent `local-plan` recommends this specific read-only focus when
+a generic cache bucket is present; it never suggests deleting the parent.
+
+Additional named Electron, Chrome, Docker VM, Codex and CrossOver locations
+remain review/protected **without deletion permission**. Project roots
+and their generated children overlap; do not sum allocations to claim
+free-space recovery. When a class is unmeasured or partially observed, it
+remains UNKNOWN and must be triaged before adding exact-path cleanup policy.
 
 Daily launchd `com.aoe2war.mac-storage-pulse` and the VPSSentry watchdog
 remain the observation/freshness authorities; this planning command does

@@ -131,11 +131,16 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         "review_only_large_buckets": [{
             "name": r.get("name"), "classification": r.get("classification"),
             "allocated_bytes": r.get("allocated_bytes"), "measured": r.get("complete") is True,
+            "contains_known_protected_descendant": r.get("name") == "generic_cache",
+            "next_readonly_inspection": (
+                "aoe2war storage local-pressure --focus generic_cache"
+                if r.get("name") == "generic_cache" else None
+            ),
             "mutation_authority": "NONE",
         } for r in review[:15]],
         "coverage": coverage,
         "heartbeat": hb_summary,
-        "next_census_command": "aoe2war storage local-pressure --limit 300",
+        "next_census_command": "aoe2war storage local-pressure --limit 512",
         "auto_delete_permitted": False,
         "financial_or_release_authority": False,
         "protected_data_never_selected": True,
@@ -151,7 +156,7 @@ def main() -> int:
     y = observe(base + ["--extended", "--json"], cwd=ROOT)
     z = observe(base + ["--electron-only", "--json"], cwd=ROOT)
     census = observe([sys.executable, str(ROOT / "scripts/aoe2_storage_mac_pressure.py"),
-                      "--limit", "300", "--json"], cwd=ROOT, timeout=240)
+                      "--limit", "512", "--json"], cwd=ROOT, timeout=240)
     watcher = Path.home() / "projects/VPSSentry/scripts/mac_storage_pulse_health.py"
     hb = observe([sys.executable, str(watcher), "--json"], cwd=ROOT, timeout=12,
                  accept_hold=True) if watcher.is_file() and not watcher.is_symlink() else {
@@ -170,7 +175,10 @@ def main() -> int:
                   (str(round(row["allocated_bytes"] / 1024**3, 3)) + " GiB")
                   if row["allocated_bytes"] is not None else "NOT MEASURED")
         print("Named census:", result["coverage"]["observed_path_count"],
+              "displayed:", result["coverage"]["displayed_path_count"],
               "complete:", result["coverage"]["named_census_complete"])
+        if result["coverage"]["incomplete_reasons"]:
+            print("Census holds:", ",".join(result["coverage"]["incomplete_reasons"]))
         print("Independent heartbeat:", result["heartbeat"]["overall"],
               "capacity:", result["heartbeat"]["capacity"])
         for action in result["priority_cache_actions"]:
@@ -178,6 +186,9 @@ def main() -> int:
         for row in result["review_only_large_buckets"][:6]:
             print("  REVIEW ONLY:", row["name"], row["classification"],
                   round((row["allocated_bytes"] or 0)/1024**3, 2), "GiB")
+            if row["next_readonly_inspection"]:
+                print("    NEXT READ-ONLY:", row["next_readonly_inspection"])
+                print("    INCLUDES PROTECTED CHILD: no gross allocation may be treated as junk")
         print("No mutation. Named path totals overlap; unknown files are never junk by default.")
     return 0
 
