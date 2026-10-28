@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "97974c9e949497a26834c9ae127e7fd8f9ec5a9a992930791062dfc89dd9accc",
+      "sha256": "7ca55396f3bc26ef5de92ca7edc1e5c4bbcbc8a2a0137af26389877f28fccee2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "1de7e7fe5bc10da045b2b7ebd4f2691099cbde20f020ed4673e86f8dc72c9487",
+      "sha256": "21a8d4a4c0514f30e3d6d9aec587577817782480c82d41f68178bc03ccf89790",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/storage-os-download-handoff-review-20261028",
-    "commit": "09d7ed0c41e5b44d4014fc0f6ae73eb1da8a9c40"
+    "commit": "7a400cc650fec4cdcb6c413ad1987642126b42f5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
