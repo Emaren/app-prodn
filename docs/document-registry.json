@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cb8327f61dc437ad93801b40a601e0523e57312cc7e08cdd243273f4c69cf7f6",
+      "sha256": "509ef34ea2afd13731e80cc34876d20c340e04fb0d3faf7f62cdea74e878f100",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "ed6b267d1c25fefb2ae94429b7a63db7b316a18eafb861f86fdedb3704e0d4d1",
+      "sha256": "534e4a930ce1f3d4540f68f1322021d16d931fcb613c273cc873c7d3d7d29a43",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/private-storage-command-center-20261028",
-    "commit": "8ef2cc9b708aeeddbc7a8ff7657e07229642bc5c"
+    "commit": "3fc6783dbb324867e126dc6ed34387f086d775e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
