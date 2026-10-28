@@ -98,6 +98,35 @@ capacity threshold may still carry structural rollback debt. The lean-retention
 expiry lane remains authoritative for reducing the runtime estate to two hot
 expanded rollback generations plus three proven cold checkpoints.
 
+## Mac gigabyte-first large-artifact census
+
+When `local-maintain --apply --extended` measures little or no recovery,
+**do not rerun the same exhausted cache policy**. Run the read-only
+`./bin/aoe2war storage local-pressure --limit 30` instead. Its source
+`scripts/aoe2_storage_mac_pressure.py` reports separately:
+- large project roots and declared Git worktree generated outputs
+  (`.next`, `node_modules`, `.direnv`, build/dist/cache) as **REVIEW only**;
+- Downloads, npm residual data, Xcode outputs, toolchains and Go/Cargo sources
+  as **REVIEW only**;
+- recovery vaults, MobileSync backup, Documents, Movies and historical evidence
+  as protected human data.
+
+It uses `du -skx` to measure allocated bytes with bounded subprocess time;
+symlinked targets are excluded. Parent project roots and nested generated
+outputs **overlap and must never be summed**. Large/unknown result is not
+deletion permission. A later feature may promote a candidate into an exact
+clean-worktree/hardlink/reference-verified, one-transaction reclaim path;
+until then it is observation, never `rm -rf`.
+
+Owner Mac result (Oct 28): original four-cache policy reclaimed 0.00 GiB;
+eight-cache opt-in policy reclaimed **81,528 KiB** (~79.6 MiB) from 3.82 to
+3.90 GiB free, receipt
+`.aoe2war-release/storage-local-receipts/20261028T041555Z-local-maintenance.json`.
+This is **not** a capacity recovery. Further decisions must target measured
+gigabyte-scale regenerable artifacts, with real APFS `df -k "$HOME"` deltas.
+Do not suggest erasing a ~38-GiB protected recovery vault or ~37-GiB
+MobileSync backups as automatic cleanup.
+
 ## Capacity triage and preventive operating loop (October 2026)
 
 The estate has **three different disks** with separate risks: the operator
