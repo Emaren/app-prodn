@@ -981,3 +981,15 @@ historical-target preflight; previously removed builds must stay STALE/HOLD.
 Any new deletion authorization, if later independently qualified, requires
 its own narrowly reviewed, receipt-backed existing-controller transaction
 and owner approval. No new mutator or cleanup batch has been added here.
+
+## Private Storage OS GET side-effect boundary
+
+The authenticated `GET /api/admin/storage-os` uses the existing
+`readAoe2OsStorageEvidence` read-only adapter, **not** the general dashboard
+loader. It reads only the already-existing bridge and estate snapshot JSON
+receipts. Missing files return null/UNKNOWN without creating state, runs,
+or events directories, writing snapshots or initializing an operator store.
+The existing general AoE2WAR OS dashboard and its run-controller behavior
+are not changed by this adapter. Signed-Atlas verification remains separate;
+no storage cleanup, remote command, release activation, extra collector or
+new authorization is added.
