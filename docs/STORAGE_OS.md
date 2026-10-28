@@ -899,7 +899,7 @@ approval. The register never includes historical three-build targets, E5,
 CrossOver, Codex state, replay/financial records, MobileSync, recovery or user
 archives.
 
-`level_2_owner_review_register` keeps named REVIEW paths and unknown sizes
+`level_2_owner_review_register` contains the named REVIEW, PROJECT_REVIEW and REBUILDABLE_REVIEW paths, including discovered generated worktree `node_modules` symlinks explicitly held as `LEVEL_2_HOLD_SYMLINK_REFERENCE_NO_TRAVERSAL`. Neither symlink targets nor protected ancestry are traversed or counted. `level_2_register_coverage` reports displayed/observed rows and does not claim full inventory when capped. This register keeps named REVIEW paths and unknown sizes
 separate; location, age, filename or a reversible Trash move prove no deletion
 authority. `level_1_closure.status=HOLD_NOT_CERTIFIED` until two independent
 owner-native cycles, consumer/rebuild/ancestry proof, exact owner authorization,
