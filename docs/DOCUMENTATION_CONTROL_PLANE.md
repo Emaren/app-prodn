@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/storage-electron-cache-opt-in-20261028` at `9574512e0c6b0d3b0fe566345d4e0e4b289af40e`
+Implementation baseline: `feat/storage-census-coverage-and-focus-20261028` at `a9a000d38435e91e0e242733b58f34198c6b5a7e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
