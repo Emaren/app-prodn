@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bb2f8c2d76a7f9be2139fa976a1d5e7bd27b11fbf5a6f697de3a6551159f57e5",
+      "sha256": "3a61233e842f01e573d1add1bcabb88ed553d07b401856bebf838dd0ef7ea441",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1537,7 +1537,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "787754788a37111f4278838f39fe6321fc24e865f9c7737fe7c29902537d6e6c",
+      "sha256": "4b39433548e1863d82a0a7644f7c4c576843cca5265718b17c69891d03a118a9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/mac-three-build-reclaim-20261028",
-    "commit": "146013c37206736a6962053460a5782581c74508"
+    "branch": "fix/owner-v5-encrypted-park-signer-20261028",
+    "commit": "842ccbd0540731b8ff37250f72d1540aa8a18ffd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
