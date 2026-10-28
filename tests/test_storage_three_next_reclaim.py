@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
+from contextlib import redirect_stdout
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -49,6 +51,41 @@ class ThreeNextTests(TestCase):
             evidence = reclaim.candidate(self.repo, "blonE7yFq5o1cHzYKgxU7")
         self.assertEqual(evidence["path"], str(self.build))
         self.assertTrue(self.build.exists())
+
+    def test_deleted_historical_build_reports_stale_target(self):
+        (self.build / "BUILD_ID").unlink()
+        self.build.rmdir()
+        with self.assertRaisesRegex(RuntimeError, "HOLD: STALE_TARGET"):
+            reclaim.candidate(self.repo, "blonE7yFq5o1cHzYKgxU7")
+
+    def test_missing_build_id_reports_explicit_hold(self):
+        (self.build / "BUILD_ID").unlink()
+        with self.assertRaisesRegex(RuntimeError, "MISSING_BUILD_ID"):
+            reclaim.candidate(self.repo, "blonE7yFq5o1cHzYKgxU7")
+
+    def test_build_id_disappears_between_stat_and_open(self):
+        with mock.patch.object(reclaim.os, "open", side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(RuntimeError, "HOLD: MISSING_BUILD_ID"):
+                reclaim.candidate(self.repo, "blonE7yFq5o1cHzYKgxU7")
+
+    def test_old_reclaimed_build_preview_is_non_mutating_hold(self):
+        (self.build / "BUILD_ID").unlink()
+        self.build.rmdir()
+        canonical = self.project / "app-prodn"
+        canonical.mkdir()
+        output = io.StringIO()
+        with mock.patch.object(reclaim, "CANONICAL", canonical), \
+             mock.patch.object(reclaim.sys, "platform", "darwin"), \
+             mock.patch.object(reclaim.sys, "argv", ["storage", "--apply"]), \
+             mock.patch.object(reclaim, "current_process_references",
+                               side_effect=AssertionError("never inspect stale apply")), \
+             redirect_stdout(output):
+            rc = reclaim.main()
+        self.assertEqual(rc, 2)
+        self.assertIn("STATUS: HOLD", output.getvalue())
+        self.assertIn("STALE_TARGET", output.getvalue())
+        self.assertTrue(self.repo.exists())
+        self.assertFalse(self.build.exists())
 
     def test_mismatched_build_id_fails_closed(self):
         with self.assertRaisesRegex(RuntimeError, "BUILD_ID_DRIFT"):
