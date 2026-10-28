@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "81fb95a42a4cd27cc0aea0d482a45ada521e2d8dda151f72538a28fda28e90b3",
+      "sha256": "d51adb167573eca7edaef99167331d930c900e4f1100d4c2d94f82ff850a88a1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "253ff53f1ff317e89dcf5cc472b918b2eeb27af19fb684d435b5d03f523ba0b4",
+      "sha256": "7224c588986e8939274cab703ddf840d9cc8e622a46daa8deb077dc4d8243078",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/private-storage-os-strict-read-only-20261028",
-    "commit": "64feda8dd2af64a2474668b2af9df16beef459ec"
+    "commit": "506797375e542f7f9b9fe1615cec346b72c887a5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
