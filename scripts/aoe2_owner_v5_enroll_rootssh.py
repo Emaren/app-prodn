@@ -12,6 +12,7 @@ import fcntl
 import hashlib
 import json
 import os
+import pwd
 from pathlib import Path
 import re
 import stat
@@ -86,6 +87,31 @@ def protected_dir(path: Path) -> None:
         current = current.parent
 
 
+def shared_release_lock_shape(*, operator_uid: int) -> tuple[int, int, int]:
+    """Validate HEL1's existing tony-owned shared release lock.
+
+    Exact observed modes: os-control 0750, locks 0755, release.lock 0664.
+    Preserve all directory ownership and modes; only the one lock file will
+    be tightened to 0644 under flock, meeting stage controller's requirement.
+    """
+    current = LEASE.parent
+    while True:
+        st = os.lstat(current)
+        need(stat.S_ISDIR(st.st_mode), "shared lock ancestor is linked/non-directory")
+        if current == Path("/"):
+            break
+        current = current.parent
+    for path, mode in ((LEASE.parent.parent, 0o750), (LEASE.parent, 0o755)):
+        st = os.lstat(path)
+        need(st.st_uid == operator_uid and stat.S_IMODE(st.st_mode) == mode,
+             "shared release directory ownership/mode drift: " + str(path))
+    st = os.lstat(LEASE)
+    need(stat.S_ISREG(st.st_mode) and st.st_uid == operator_uid and
+         stat.S_IMODE(st.st_mode) == 0o664 and st.st_size == 0,
+         "shared release lock not observed tony-owned 0664 empty file")
+    return (st.st_dev, st.st_ino, st.st_mode)
+
+
 def protected_file(path: Path) -> bytes:
     protected_dir(path.parent)
     st = os.lstat(path)
@@ -127,18 +153,23 @@ def rotate_root(encoded: str) -> int:
         AUDIT_PARENT.mkdir(mode=0o700)
     protected_dir(AUDIT_PARENT)
     protected_dir(TRUST)
-    protected_dir(LEASE.parent)
+    operator_uid = pwd.getpwnam("tony").pw_uid
+    lock_dev, lock_ino, lock_mode = shared_release_lock_shape(operator_uid=operator_uid)
     old_public = protected_file(PUB)
     old_pin = protected_file(PIN)
     need(old_pin.decode("ascii").strip() == EXPECTED_OLD and
          old_spki(old_public) == EXPECTED_OLD,
          "old owner identity changed; inspect root audit")
-    need(not LEASE.is_symlink(), "release lock is symlink")
-    with LEASE.open("rb") as lease:
+    lease_fd = os.open(LEASE, os.O_RDWR | os.O_NOFOLLOW | os.O_CLOEXEC)
+    with os.fdopen(lease_fd, "r+b") as lease:
         fst = os.fstat(lease.fileno())
-        need(stat.S_ISREG(fst.st_mode) and fst.st_uid == 0,
-             "release lease file untrusted")
+        need((fst.st_dev, fst.st_ino, fst.st_mode) ==
+             (lock_dev, lock_ino, lock_mode) and fst.st_uid == operator_uid,
+             "shared release lease inode/mode drift")
         fcntl.flock(lease.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        path_stat = os.lstat(LEASE)
+        need((path_stat.st_dev, path_stat.st_ino, path_stat.st_mode) ==
+             (lock_dev, lock_ino, lock_mode), "shared lock path replaced after flock")
         need(sha(protected_file(CONTROLLER)) == CONTROLLER_SHA,
              "controller changed after lease")
         need(old_spki(protected_file(PUB)) == EXPECTED_OLD and
@@ -155,6 +186,10 @@ def rotate_root(encoded: str) -> int:
             "new_spki_sha256": EXPECTED_NEW,
             "old_pem_sha256": sha(old_public),
             "new_pem_sha256": EXPECTED_PEM,
+            "shared_lock_path": str(LEASE),
+            "shared_lock_owner_uid": operator_uid,
+            "shared_lock_mode_before": "0664",
+            "shared_lock_mode_after": "0644",
             "controller_sha256": CONTROLLER_SHA,
             "stage_parked": False,
             "website_activated": False,
@@ -162,6 +197,19 @@ def rotate_root(encoded: str) -> int:
         }, sort_keys=True) + "\n").encode())
         fsync_dir(AUDIT)
         fsync_dir(AUDIT_PARENT)
+
+        # The installed stage parker already rejects the original mode 0664.
+        # Tighten only the exact observed shared file to 0644 without changing
+        # tony ownership, directories, file contents or inode.
+        os.fchmod(lease.fileno(), 0o644)
+        os.fsync(lease.fileno())
+        after_fd = os.fstat(lease.fileno())
+        after_path = os.lstat(LEASE)
+        need((after_fd.st_dev, after_fd.st_ino, after_fd.st_uid,
+              stat.S_IMODE(after_fd.st_mode)) ==
+             (lock_dev, lock_ino, operator_uid, 0o644) and
+             (after_path.st_dev, after_path.st_ino) ==
+             (lock_dev, lock_ino), "shared release lock mode repair failed")
 
         # Two file replacements under a canonical release lock. A crash or
         # post-switch preview failure is UNKNOWN; do not blindly rerun.
@@ -188,6 +236,9 @@ def rotate_root(encoded: str) -> int:
             "stage_parked": False,
             "website_activated": False,
             "finance_mutated": False,
+            "shared_release_lock_mode_before": "0664",
+            "shared_release_lock_mode_after": "0644",
+            "shared_release_lock_owner_preserved": True,
             "preview": preview,
         }, sort_keys=True) + "\n").encode())
         fsync_dir(AUDIT)
