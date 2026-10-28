@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/session-d-level2-generated-register-20261028` at `212419e1a16a689e2a25679fac85cd8a1cebedd3`
+Implementation baseline: `feat/session-d-gigabyte-generated-ranked-plan-20261028` at `b9216cbe28efdf3f5856cd62107be31dcb565587`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
