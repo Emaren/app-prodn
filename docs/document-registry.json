@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "83d692d57fb4abf26245d70b8de731529c744d47e3d3b88c3992309a92bb0954",
+      "sha256": "500e850bf0a01bcac2de0f1e48fa79cd59769872b5668f3595e6b4917f58287a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/session-g-phase15-signed-stage-park-20261027",
-    "commit": "9f3c7a4e85dcd0e8893c5b3cfec62dd302e3aa67"
+    "commit": "280f28d799d0691bf7f7aa698de878a5396292f6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
