@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d31cdd0291e7a04df816e5b677c6a2976f8140420f980ca12a7147e633dd1a0e",
+      "sha256": "1967c3e55a06cbbc16542bedd71e5ced388bb196f06042d961b8c2562f486657",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/session-g-macos-kingdom-runtime-fixture-20261028",
-    "commit": "604286b47dea8ba33950dbc0d068b63ec39b5df2"
+    "branch": "fix/macos-private-fixture-ancestry-release-20261028",
+    "commit": "da886285872d2fb96ba350625382f689293c67d0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
