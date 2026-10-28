@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/owner-v5-existing-tony-release-lock-20261028` at `68d193567ba7d7c0ecf67451598be5001ee5b5c3`
+Implementation baseline: `ops/owner-v5-park-from-current-main-20261028` at `6952b16d1795d3fd3372e4df75ce9e2c03b16ba5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

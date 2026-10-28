@@ -94,6 +94,55 @@ class OwnerOnlyPermitBuilderTests(unittest.TestCase):
                                capture_output=True)
             self.assertEqual(r.returncode, 0)
 
+    def test_encrypted_owner_v5_ed25519_signs_without_argv_passphrase(self):
+        # Real OpenSSL PBES2-encrypted Ed25519 fixture, matching owner-v5
+        # on the Mac. The passphrase is sent only to a child process stdin.
+        with tempfile.TemporaryDirectory() as directory:
+            private = Path(directory) / "encrypted-owner-v5.pem"
+            public = Path(directory) / "owner-v5-public.pem"
+            password = "fixture-only-different-long-passphrase"
+            subprocess.run([
+                "openssl", "genpkey", "-algorithm", "ed25519",
+                "-aes-256-cbc", "-pass", "stdin", "-out", str(private),
+            ], input=(password + "\n").encode(), check=True, capture_output=True)
+            subprocess.run([
+                "openssl", "pkey", "-in", str(private), "-pubout",
+                "-passin", "fd:0", "-out", str(public),
+            ], input=(password + "\n").encode(), check=True, capture_output=True)
+            identity = INSTALL.spki_digest(public.read_bytes())
+            preview = dict(self.preview, owner_spki_sha256=identity)
+            packet = MAC.sign_preview(
+                preview, private_key=private, expected_owner_spki=identity,
+                expected_controller=self.controller,
+                now=datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc),
+                nonce="Z" * 40, passphrase=password,
+            )
+            self.assertEqual(len(base64.b64decode(packet["signature_base64"])), 64)
+            self.assertEqual(packet["payload"]["action"], "PARK_ONLY")
+            msg, sig = Path(directory) / "message", Path(directory) / "signature"
+            msg.write_bytes(MAC.DOMAIN + MAC.canonical(packet["payload"]))
+            sig.write_bytes(base64.b64decode(packet["signature_base64"]))
+            good = subprocess.run([
+                "openssl", "pkeyutl", "-verify", "-pubin", "-inkey",
+                str(public), "-rawin", "-in", str(msg), "-sigfile", str(sig),
+            ], capture_output=True)
+            self.assertEqual(good.returncode, 0)
+
+            with self.assertRaisesRegex(ValueError, "owner private key unusable"):
+                MAC.sign_preview(
+                    preview, private_key=private, expected_owner_spki=identity,
+                    expected_controller=self.controller,
+                    now=datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc),
+                    nonce="Y" * 40, passphrase="wrong-password",
+                )
+
+    def test_encrypted_signer_never_passes_passphrase_as_cli_argv(self):
+        source = (ROOT / "scripts/aoe2_release_retire_permit_mac.py").read_text()
+        self.assertIn('"fd:0"', source)
+        self.assertIn("getpass.getpass", source)
+        self.assertNotIn('"-passin", "pass:"', source)
+        self.assertNotIn('"pass:" + passphrase', source)
+
     def test_wrong_controller_key_target_or_evidence_rejected(self):
         for field, value in (
             ("controller_sha256", "0" * 64),
