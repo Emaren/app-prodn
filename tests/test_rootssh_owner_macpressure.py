@@ -428,8 +428,11 @@ class MacPressureContract(TestCase):
             def fake_process(args, **kw):
                 if args[0] == "du":
                     path = Path(args[-1])
-                    return mock.Mock(returncode=0, stderr="", stdout=(
-                        f"2\\t{path}\\n"))
+                    directory_rows = "".join(
+                        f"1\\t{child}\\n" for child in path.iterdir()
+                        if child.is_dir() and not child.is_symlink())
+                    return mock.Mock(returncode=0, stderr="",
+                                     stdout=directory_rows + f"2\\t{path}\\n")
                 if "--plane" in args:
                     return mock.Mock(returncode=0, stdout=json.dumps({
                         "filesystem": {"fs_type": "apfs", "uuid": "fixture",
