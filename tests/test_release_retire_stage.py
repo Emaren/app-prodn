@@ -165,7 +165,7 @@ class RetirementIsolationTests(unittest.TestCase):
             mock.patch.object(MODULE, "command",
                               side_effect=lambda *args: (
                                   "active" if args[0] == "systemctl" else
-                                  "LISTEN :8092\nLISTEN :8093" if args[0] == "ss" else "6" * 40)),
+                                  "LISTEN :8092 \nLISTEN :8093 " if args[0] == "ss" else "6" * 40)),
         ]
         for patch in self.patches:
             patch.start()
