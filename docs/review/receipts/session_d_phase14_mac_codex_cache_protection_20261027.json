@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "kind": "session-d-phase14-owner-mac-capacity-and-noncodex-candidate",
+  "date": "2026-10-27",
+  "provenance": "latest owner Mac message and captured existing four-cache guarded controller stdout; historical parent sample and independent later free sample are NOT simultaneous",
+  "last_owner_stated_available_kib": 7794784,
+  "last_owner_stated_available_gib": 7.433685302734375,
+  "source_controller_preview_available_kib": 6670236,
+  "source_controller_preview_available_gib": 6.361232757568359,
+  "available_sample_difference_kib": 1124548,
+  "capacity_target_gib": 15,
+  "required_gain_from_owner_later_sample_gib": 7.566314697265625,
+  "four_allowlisted_cache_controller": {
+    "controller_source_head": "14ce71045150fcad4a25f0e3c3858c1c3cc7aab6",
+    "controller_git_blob": "3f2eea63fb291bc15de72820a4dc911e0fdf51df",
+    "source_blob_verified": true,
+    "preview_allocated_kib": 0,
+    "allocated_paths": {
+      "yarn_cache": 0,
+      "go_build_cache": 0,
+      "pnpm_cache": 0,
+      "core_simulator_cache": 0
+    },
+    "status": "HOLD_NO_SUBSTANTIAL_CURRENT_ALLOWLIST_ALLOCATION",
+    "apply_executed": false,
+    "deleted_paths": []
+  },
+  "review_only": {
+    "generic_cache_parent_allocated_kib": 5359044,
+    "codex_runtimes_allocated_kib": 5002332,
+    "generic_cache_excluding_codex_runtimes_kib": 356712,
+    "go_module_cache_kib": 2028328,
+    "pip_cache_kib": 42776,
+    "homebrew_cache_kib": 37680,
+    "npm_cache_kib": 44,
+    "cargo_registry": "MISSING_OR_SYMLINK_HOLD",
+    "xcode_derived_data": "MISSING_OR_SYMLINK_HOLD"
+  },
+  "critical_protection": [
+    "Never delete ~/.cache, ~/.cache/codex-runtimes or the primary plugin runtime; Codex may own Python, Node, Git, LibreOffice, financial restore and active user workflows.",
+    "Never delete entire ~/go/pkg/mod: module cache contains unpacked sources and potentially unique/private modules.",
+    "Never remove three com.apple.os.update-* snapshots, VM swap or APFS system state.",
+    "Keep Codex Restore Worktree HOLD until measured stable free headroom.",
+    "Never auto-delete financial Codex worktrees, ~38GiB recovery, ~26GiB Steam recordings, wallet, signed Watcher binaries, MobileSync, creative or unique personal content."
+  ],
+  "safe_separate_transaction_proposal": {
+    "scope": "under verified Go module cache download ZIPs, and only ZIP archive files proven byte-identical to corresponding unpacked source copies",
+    "source_review_path": "docs/review/fixtures/session_d_phase14_go_module_duplicate_zips.py",
+    "source_authority": "isolated reviewed PR #942, owner-controlled --apply, code+CI pins, no general-purpose bulk cache deletion",
+    "source_proof": "full byte-by-byte ZIP contents versus extracted module sources, no symlink ancestors or strange ZIP members, confirmed Go public proxy/env, no open cache readers or Go/git tool",
+    "restoration": "all extracted module source contents retained, Go public proxy required for future ZIP download; byte-identical ZIP reconstruction not claimed",
+    "before_after_witness": "/bin/df -k /System/Volumes/Data immediate before/after, pre-delete intent + final append-only chmod 0444 SHA256 receipts",
+    "max_future_reclaim_upper_bound_kib": 2028328,
+    "eligible_now": "UNPROVEN_UNTIL_MAC_PREFLIGHT",
+    "actual_current_eligible_kib": null,
+    "actual_new_deleted_paths": [],
+    "actual_new_reclaimed_bytes": 0
+  },
+  "target_milestone_unmet": true,
+  "actual_physical_gain_attributable_to_phase14": 0
+}
