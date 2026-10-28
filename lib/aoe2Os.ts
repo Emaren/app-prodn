@@ -655,6 +655,24 @@ export async function readAoe2OsRunEvents(runId: string, limit = 240) {
   }
 }
 
+/**
+ * Private Storage OS evidence reader: two existing receipt files only.
+ * Never call ensureStore()/listRuns(), because those create directories.
+ * A missing receipt is explicitly unknown and never initializes host state.
+ */
+export async function readAoe2OsStorageEvidence(): Promise<
+  Pick<Aoe2OsDashboard, "bridge" | "snapshot">
+> {
+  const [bridge, snapshot] = await Promise.all([
+    readJson<Aoe2OsBridgeHeartbeat>(bridgePath()),
+    readJson<Aoe2OsSnapshot>(snapshotPath()),
+  ]);
+  return {
+    bridge: bridge ? { ...bridge, online: bridgeIsOnline(bridge) } : null,
+    snapshot,
+  };
+}
+
 export async function loadAoe2OsDashboard(): Promise<Aoe2OsDashboard> {
   await ensureStore();
   const [bridge, snapshot, kingdomIntelligence, runs] = await Promise.all([

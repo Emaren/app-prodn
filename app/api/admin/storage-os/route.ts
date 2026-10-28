@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
-import { loadAoe2OsDashboard } from "@/lib/aoe2Os";
+import { readAoe2OsStorageEvidence } from "@/lib/aoe2Os";
 import { readAuthenticatedStorageAtlas } from "@/lib/aoe2StorageAtlasServer";
 import { projectPrivateStorage } from "@/lib/storageCommandCenterProjection";
 
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   if ("error" in admin) return admin.error;
   try {
     const [dashboard, signed] = await Promise.all([
-      loadAoe2OsDashboard(),
+      readAoe2OsStorageEvidence(),
       readAuthenticatedStorageAtlas(),
     ]);
     return NextResponse.json(projectPrivateStorage(dashboard, signed), {

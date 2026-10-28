@@ -6,11 +6,12 @@ import { projectPrivateStorage } from "../lib/storageCommandCenterProjection.ts"
 const now = new Date("2026-10-28T19:00:00Z");
 const route = readFileSync("app/api/admin/storage-os/route.ts", "utf8");
 const page = readFileSync("app/admin/storage-os/page.tsx", "utf8");
+const source = readFileSync("lib/aoe2Os.ts", "utf8");
 
 test("private route requires admin, has no write method or shell and disables caching", () => {
   assert.match(route, /requireAdmin\(request\)/);
   assert.match(route, /readAuthenticatedStorageAtlas\(\)/);
-  assert.match(route, /loadAoe2OsDashboard\(\)/);
+  assert.match(route, /readAoe2OsStorageEvidence\(\)/);
   assert.match(route, /private, no-store/);
   assert.doesNotMatch(route, /export async function (POST|DELETE|PUT|PATCH)/);
   assert.doesNotMatch(route, /child_process|execFile|spawn\(/);
@@ -103,4 +104,17 @@ test("browser has bounded foreground-only polling and no destructive controls", 
   assert.match(page, /setData\(null\)/);
   assert.match(page, /cache: "no-store"/);
   assert.doesNotMatch(page, /--apply|method: "POST"/);
+});
+
+
+test("private Storage OS source reads only existing receipt files and never initializes state", () => {
+  const begin = source.indexOf("export async function readAoe2OsStorageEvidence()");
+  const end = source.indexOf("export async function loadAoe2OsDashboard()", begin);
+  assert.ok(begin >= 0 && end > begin);
+  const reader = source.slice(begin, end);
+  assert.match(reader, /readJson<Aoe2OsBridgeHeartbeat>\(bridgePath\(\)\)/);
+  assert.match(reader, /readJson<Aoe2OsSnapshot>\(snapshotPath\(\)\)/);
+  assert.doesNotMatch(reader, /ensureStore\(|listRuns\(|fs\.mkdir|fs\.writeFile/);
+  assert.match(route, /readAoe2OsStorageEvidence\(\)/);
+  assert.doesNotMatch(route, /loadAoe2OsDashboard\(/);
 });
