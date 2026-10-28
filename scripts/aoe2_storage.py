@@ -25,6 +25,16 @@ LOCAL_REGENERABLE_PATHS = (
     ("pnpm_cache", Path("Library/Caches/pnpm")),
     ("core_simulator_cache", Path("Library/Developer/CoreSimulator/Caches")),
 )
+# An explicitly opted-in extension of the EXISTING local-maintain authority.
+# These are only package-manager content/download caches. No projects,
+# worktrees, npm installations, Xcode builds, iOS backups, journals, or user data.
+LOCAL_EXTENDED_REGENERABLE_PATHS = (
+    ("npm_content_cache", Path(".npm/_cacache")),
+    ("homebrew_download_cache", Path("Library/Caches/Homebrew")),
+    ("pip_download_cache", Path("Library/Caches/pip")),
+    ("pip_user_cache", Path(".cache/pip")),
+)
+
 LOCAL_PROTECTED_PATHS = (
     ("recovery_vault", Path("aoe2war-recovery")),
     ("codex_sessions", Path(".codex/sessions")),
@@ -1189,20 +1199,34 @@ def _assert_local_reclaim_path(home: Path, path: Path) -> None:
         raise StorageError(f"local cache path escapes operator home: {path}")
 
 
-def local_maintain(*, apply: bool, json_mode: bool, home: Path | None = None) -> int:
+def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False, home: Path | None = None) -> int:
     operator_home = (home or Path.home()).resolve()
     before = local_storage_snapshot(measure=True, home=operator_home)
+    extra_candidates = []
+    for name, relative in LOCAL_EXTENDED_REGENERABLE_PATHS:
+        path = operator_home / relative
+        _assert_local_reclaim_path(operator_home, path)
+        if path.exists() and not path.is_dir():
+            raise StorageError(f"extended cache target must be a plain directory: {path}")
+        extra_candidates.append({
+            "name": name, "path": str(path), "exists": path.exists(),
+            "allocated_bytes": _allocated_bytes(path) if path.exists() else 0,
+        })
+    selected = LOCAL_REGENERABLE_PATHS + (LOCAL_EXTENDED_REGENERABLE_PATHS if extended else ())
     payload: dict[str, Any] = {
         "schema": 1,
         "kind": "aoe2war-local-storage-maintenance",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "apply": apply,
+        "extended": extended,
+        "extra_candidates": extra_candidates,
+        "extra_reclaimable_bytes": sum(int(row["allocated_bytes"]) for row in extra_candidates),
         "before": before,
         "actions": [],
         "status": "PREVIEW",
     }
     if apply:
-        for name, relative in LOCAL_REGENERABLE_PATHS:
+        for name, relative in selected:
             path = operator_home / relative
             _assert_local_reclaim_path(operator_home, path)
             existed = path.exists()
@@ -1241,14 +1265,17 @@ def local_maintain(*, apply: bool, json_mode: bool, home: Path | None = None) ->
         print("⚔️  AOE2WAR LOCAL STORAGE")
         print()
         print(f"Status:          {payload['status']}")
-        print(f"Reclaimable:     {gib(before['reclaimable_bytes'])}")
+        print(f"Four-cache plan: {gib(before['reclaimable_bytes'])}")
+        print(f"Extra opt-in:    {gib(payload['extra_reclaimable_bytes'])} across four package caches")
+        print(f"Extended apply:  {'YES' if extended else 'NO'}")
         print(f"Free before:     {gib(before['filesystem']['free_bytes'])}")
         if apply:
             print(f"Free after:      {gib(payload['after']['filesystem']['free_bytes'])}")
             print(f"Measured gain:   {gib(payload['reclaimed_bytes'])}")
             print(f"Receipt:         {payload['receipt']}")
         else:
-            print("READ ONLY: pass --apply to remove only the four allowlisted regenerable caches.")
+            print("READ ONLY: --apply removes only four original caches; --apply --extended")
+            print("adds npm content, Homebrew downloads, and two pip download cache roots.")
     return 0
 
 
@@ -1455,6 +1482,11 @@ def self_test() -> int:
     assert (p["healthy_target"], p["maintenance_due"], p["automatic_threshold"], p["critical"]) == (78, 82, 85, 92)
     assert p["protected_newest"] == 2
     assert p["root_maintenance_host"] == "root@hel1"
+    assert {name for name, _ in LOCAL_EXTENDED_REGENERABLE_PATHS} == {
+        "npm_content_cache", "homebrew_download_cache", "pip_download_cache", "pip_user_cache",
+    }
+    assert not ({str(path) for _, path in LOCAL_REGENERABLE_PATHS} &
+                {str(path) for _, path in LOCAL_EXTENDED_REGENERABLE_PATHS})
     assert GENERATION_RE.fullmatch("activate-20260818T195631Z-005546f4068d")
     assert not GENERATION_RE.fullmatch("../activate-20260818T195631Z-005546f4068d")
     expected = "aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae"
@@ -1484,6 +1516,7 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--measure", action="store_true")
     q = sub.add_parser("local-maintain")
     q.add_argument("--apply", action="store_true")
+    q.add_argument("--extended", action="store_true", help="explicitly include four additional package download/content caches")
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("deep-census")
     q.add_argument("--json", action="store_true")
@@ -1540,7 +1573,7 @@ def main() -> int:
             print_estate(payload)
         return 0
     if args.command == "local-maintain":
-        return local_maintain(apply=args.apply, json_mode=args.json)
+        return local_maintain(apply=args.apply, json_mode=args.json, extended=args.extended)
     if args.command == "triage":
         payload = storage_triage(expiry_inventory_path=args.expiry_inventory)
         if args.json:
