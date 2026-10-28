@@ -164,13 +164,20 @@ def zipped_source_duplicate(path, archive_stat):
                 raise Hold("ZIP_OUTSIDE_EXPECTED_MODULE")
             leaf = member[len(expected_prefix):]
             pieces = PurePosixPath(leaf).parts
-            if not pieces or any(p in (".", "..", "") for p in pieces):
+            if (str(PurePosixPath(leaf)) != leaf.rstrip("/")
+                or any(p in (".", "..", "") for p in pieces)):
+                raise Hold("NONCANONICAL_ZIP_MEMBER_PATH")
+            if not pieces:
                 if item.is_dir():
                     continue
                 raise Hold("INVALID_ZIP_MEMBER")
             dest = extracted.joinpath(*pieces)
             if dest != extracted and extracted not in dest.parents:
                 raise Hold("ZIP_MEMBER_PATH_ESCAPE")
+            for ancestor in dest.parents:
+                if ancestor == extracted:
+                    break
+                checked_stat(ancestor, "dir")
             if item.is_dir():
                 checked_stat(dest, "dir")
                 continue
