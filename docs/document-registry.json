@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3a4fdbfb200ed2e157dff917893e435ea9e14df1125b9d6dd99d8c5cc45c33ec",
+      "sha256": "b09ae41c45f90471ff2f3c9f14274a085b18420995d0dd076e9f7e73839b1d6c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/session-d-mac-l1-capacity-certificate-20261028",
-    "commit": "7386cc36323a45b1717a8388a9315e60c034de69"
+    "commit": "ddae00077b6d7f3f7953dec46e7ba33d55a38468"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
