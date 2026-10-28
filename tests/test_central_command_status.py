@@ -60,7 +60,7 @@ class CentralCommandContracts(unittest.TestCase):
 
     def test_github_issue_verified_by_exact_identity_and_not_interpreted_as_command(self):
         issue = {"repository": "Emaren/app-prodn", "number": 975}
-        row = {"number": 975, "title": "safe\\x00 command\\nnot executable",
+        row = {"number": 975, "title": "safe\x00 command\nnot executable",
                "state": "open", "updated_at": "2026-10-28T22:20:00Z",
                "comments": 4, "html_url": "https://github.com/Emaren/app-prodn/issues/975"}
         with patch.object(module.shutil, "which", return_value="/usr/bin/gh"):
@@ -71,7 +71,7 @@ class CentralCommandContracts(unittest.TestCase):
         self.assertIsNotNone(actual)
         self.assertEqual(actual["source"], "GITHUB_ISSUE")
         self.assertTrue(actual["issueTitle"].startswith("safe"))
-        self.assertNotIn("\\n", actual["issueTitle"])
+        self.assertNotIn("\n", actual["issueTitle"])
         command = cmd.call_args.args[0]
         self.assertEqual(command[1:3], ["api", "-H"])
         self.assertEqual(command[-1], "repos/Emaren/app-prodn/issues/975")
