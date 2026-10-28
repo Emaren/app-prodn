@@ -197,6 +197,10 @@ old PUBLIC trust, and tightens **only** the original lock file from
 owner and directory permissions. This narrow change is necessary because
 the *installed* stage retirement controller refuses a group-writable
 release.lock. Any ownership, path, symlink or mode drift is a HOLD.
+The owner must type `ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK`
+at the Mac terminal, explicitly approving both the public-key enrollment and
+exact 0664→0644 existing lock-file permission change.
+
 No broad `chown`/`chmod` of shared release paths, and the root-only
 `/etc/aoe2war/website-owner-v4` trust anchors and
 `/var/lib/aoe2war-owner-rotations` audits retain their strict
