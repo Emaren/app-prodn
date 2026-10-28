@@ -173,7 +173,8 @@ def main() -> int:
         fout.write("Type exactly " + APPROVAL + " to reclaim these three build directories: ")
         fout.flush()
         require(fin.readline().strip() == APPROVAL, "OWNER_DECLINED")
-    require(RECEIPTS.is_dir() and not RECEIPTS.is_symlink(), "RECEIPT_DIRECTORY_UNTRUSTED")
+    assert_no_symlink_ancestors(RECEIPTS)
+    require(RECEIPTS.is_dir(), "RECEIPT_DIRECTORY_UNTRUSTED")
     lock_path = RECEIPTS / ".mac-three-build-reclaim.lock"
     lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     with os.fdopen(lock_fd, "rb+") as lock:
