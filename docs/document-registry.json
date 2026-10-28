@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4dafd1d83d0b4ede78c8eae85a455a01af4edfe3c8878c382bfc39f33897f876",
+      "sha256": "b1242a9a223f9af1f1e8afb681cd4a234c4d1501b666ba6c97d71f4f4337a855",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "dff2b0fb5bf19143d81539025df8d1c19b5d2e48161e96a569470b6c82e5950b",
+      "sha256": "f8e7030546e2e55b1e9f40898d02ae983b8295dd24a227fa305aa6f81a3c38c9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/session-g-phase15-signed-stage-park-20261027",
-    "commit": "4f11d1998aec21f9bfa81606d301060feecc9bf2"
+    "branch": "ops/mac-regenerable-cache-extension-20261028",
+    "commit": "fdaafaa287bd81c4515e2cd38bf2b66b1dbc1856"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

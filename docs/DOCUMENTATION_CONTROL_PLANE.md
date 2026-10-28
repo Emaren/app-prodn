@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/session-g-phase15-signed-stage-park-20261027` at `4f11d1998aec21f9bfa81606d301060feecc9bf2`
+Implementation baseline: `ops/mac-regenerable-cache-extension-20261028` at `fdaafaa287bd81c4515e2cd38bf2b66b1dbc1856`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
