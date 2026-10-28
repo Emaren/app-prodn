@@ -69,11 +69,16 @@ The second command independently re-hashes and rechecks the entire batch
 before moving files into a private `~/.Trash/AoE2WAR-handoff-review-*`
 directory, with an exact per-file private receipt. If the preview changed,
 nothing moves. A partial rename failure is an explicit HOLD requiring manual
-review of the destination; never blindly retry. Nothing empties Trash. The
-measured APFS reclaimed bytes are **zero** until a separate, reviewed purge.
-Never treat script extensions, file age or human-readable titles as sufficient
-authorization for irreversible deletion. This feature is a deliberately
-bounded helper inside the existing Storage OS, not a timer or new daemon.
+review of the destination; never blindly retry. Nothing empties Trash.
+A second, separate opt-in `downloads-scripts --purge --ack-irrevocable
+--confirm EXACT_PLAN_SHA256` verifies the exact previously reviewed Trash
+batch, every file's identity and SHA256, and the absence of **any** extra files
+before unlinking only those selected scripts. Unrelated Trash contents and all
+chat archives remain outside scope. Its receipt records before/after filesystem
+available bytes; estimated allocated bytes must never be reported as reclaimed.
+If there is a partial purge, stop and review manually. Never treat script
+extensions, age or readable titles as sufficient authorization for irreversible
+deletion. This is a bounded existing-Storage-OS helper, not a timer or daemon.
 
 ## Whole-estate census and local reclaim
 
