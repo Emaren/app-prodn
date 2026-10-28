@@ -144,6 +144,32 @@ class MacPressureContract(TestCase):
             self.assertTrue(all(row["mutation_allowed"] is False
                                 for row in result["measured"]))
 
+    def test_named_census_coverage_is_explicit_and_never_whole_disk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            project = home / "projects/AoE2HDBets"
+            project.mkdir(parents=True)
+            result = pressure.census(home, project, limit=300)
+            self.assertEqual(result["coverage"], "NAMED_PATHS_ONLY_NOT_WHOLE_DISK")
+            self.assertIs(result["mutation_allowed"], False)
+            self.assertEqual(result["displayed_path_count"], result["observed_path_count"])
+            self.assertTrue(result["named_census_complete"])
+            self.assertEqual(result["incomplete_reasons"], [])
+            capped = pressure.census(home, project, limit=5)
+            self.assertFalse(capped["named_census_complete"])
+            self.assertIn("DISPLAY_ROW_LIMIT", capped["incomplete_reasons"])
+
+    def test_newly_named_review_and_protection_do_not_grant_deletion(self):
+        names = dict((name, classification)
+                     for name, _path, classification in pressure.HOME_BUCKETS)
+        self.assertTrue(names["codex_worktrees"].startswith("PROTECTED"))
+        self.assertTrue(names["crossover"].startswith("PROTECTED"))
+        self.assertTrue(names["docker_virtual_disks"].startswith("PROTECTED"))
+        self.assertTrue(names["electron_binary_cache"].startswith("REVIEW"))
+        self.assertTrue(names["chrome_browser_cache"].startswith("REVIEW"))
+        self.assertNotIn("rmtree", (ROOT / "scripts/aoe2_storage_mac_pressure.py").read_text())
+
     def test_all_generated_buckets_remain_review_only(self):
         self.assertIn(".next", pressure.GENERATED_NAMES)
         self.assertIn("node_modules", pressure.GENERATED_NAMES)
