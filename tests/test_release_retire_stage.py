@@ -220,6 +220,38 @@ class RetirementIsolationTests(unittest.TestCase):
             self.invoke()
         self.assertTrue((self.app / ".next-release").exists())
 
+    def test_symlinked_stage_path_is_denied(self):
+        real = self.root / "real-dir"
+        real.mkdir()
+        linked = self.root / "linked-dir"
+        linked.symlink_to(real, target_is_directory=True)
+        with self.assertRaises(MODULE.Hold):
+            MODULE.no_link_directory(linked)
+
+    def test_privileged_consumer_reference_is_denied(self):
+        with mock.patch.object(MODULE.os, "readlink",
+                               return_value=str(self.app / ".next-release" / "server.js")):
+            with self.assertRaisesRegex(MODULE.Hold, "active staged inode consumer"):
+                MODULE.check_proc_link(Path("/proc/100/fd/9"),
+                                       [str(self.app / ".next-release")])
+
+    def test_simultaneous_global_lease_refuses_second_operator(self):
+        import fcntl
+        with self.lock.open("r+b") as competing:
+            fcntl.flock(competing.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError):
+                self.invoke()
+            fcntl.flock(competing.fileno(), fcntl.LOCK_UN)
+        self.assertFalse(list((self.state / "nonces").iterdir()))
+        self.assertTrue((self.app / ".next-release").exists())
+
+    def test_failed_durable_prestate_writes_never_consume_or_move(self):
+        with mock.patch.object(MODULE, "durable_json", side_effect=OSError("disk write failed")):
+            with self.assertRaises(OSError):
+                self.invoke()
+        self.assertFalse(list((self.state / "nonces").iterdir()))
+        self.assertTrue((self.app / ".next-release").exists())
+
     def test_no_publication_activation_finance_or_removal_capabilities(self):
         text = SCRIPT.read_text()
         for forbidden in ("aoe2_release_auto", "aoe2_release_ship", "ship_all(",
