@@ -907,3 +907,41 @@ durable approved transaction receipts and independently observed APFS `df`
 recovery are complete. Only Central Command can issue the final closure seal.
 No new deletion, --apply mode, automated reclaim, or source-of-truth controller
 is introduced by these diagnostic additions.
+
+## Private visual Storage Command Center — read-only first stage (2026-10-28)
+
+The authenticated admin entrypoint `/admin/storage-os` is linked from
+`/admin/aoe2war-os`; it is not a public AoE2WAR website surface.
+`GET /api/admin/storage-os` is guarded by the existing admin session and
+projects already-published operator-bridge estate snapshots and the existing
+strict three-plane signed Storage Atlas reader. It executes **no host scan,
+shell command, cleanup, source deployment or remote write**. Foreground
+browser refreshes read existing receipts only, at a bounded 15-second cadence.
+The raw bridge store path, credentials, private file paths and arbitrary run
+output are not exposed by this projection.
+
+Every capacity gauge has a provenance and measured timestamp. Signed three-plane
+evidence takes precedence, but the current signed contract deliberately reports
+`admission=HOLD` and `live=false`; it is never silently promoted to live GO.
+Unsigned operator estate snapshots may show historical root/volume ordinary
+free space, clearly labeled as estate receipts, not signed collector readings.
+Absent Mac evidence renders UNKNOWN, **not** the last operator-terminal number
+copied into source. No trend or rate is invented when repeated samples are
+unavailable. Source/remote/production parity uses existing release identities.
+
+The Mac Level 1 cleanup meter remains unscored in this first UI until a
+privately admitted, fresh, independently verified Mac closure receipt can
+supply its exact completed gates and denominator. The owner-side narrative
+baseline (2 of 8 engineering milestones) is deliberately **not hardcoded into
+the frontend** as an apparently live fact. Neither the dashboard nor signed
+Atlas public projection grants deletion or deployment authority.
+
+Follow-up, separate source-owned implementation: reuse the already installed
+VPSSentry Mac Pulse schedule and existing HEL1 observer/sentinel contracts to
+publish bounded versioned observations, signed when eligible, with freshness,
+prev-hash sequence and complete/partial classifications. Do not add a second
+scan timer merely because a browser needs data. Add native live-feeds for
+generated builds, rollback generations, dependency caches, code/worktree
+consumers, APFS snapshot and clone uncertainties, and build/stage runway only
+after the source owners establish evidence contracts and bounded cost.
+The private page must display UNKNOWN for every unpublished measurement.
