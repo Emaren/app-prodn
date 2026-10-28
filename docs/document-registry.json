@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c8900b2c361c6b3779d899997948a7384a12c0de953aa6d9813392505a6dc1dd",
+      "sha256": "a3d83741ab5dc4af3a06591573857aaea66351c075cf9968e6ce5948531c189f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "2e7cef67e4c3df822d075a02d8b615fa582d9d36d4af2b487ee3088b4824868f",
+      "sha256": "45d759f75ce8f651a25c55adde1c6603bd768918af99c5a26f102a9dff41221a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/storage-electron-cache-opt-in-20261028",
-    "commit": "e515be09d6cd791758b285128435919c137bb886"
+    "commit": "9574512e0c6b0d3b0fe566345d4e0e4b289af40e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
