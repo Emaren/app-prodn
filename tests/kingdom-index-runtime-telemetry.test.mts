@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {mkdtemp,writeFile,symlink,rm,chmod,rename} from "node:fs/promises";
+import {mkdtemp,writeFile,symlink,rm,chmod,rename,realpath} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {parseKingdomRuntimeTelemetry,readKingdomRuntimeTelemetry,RUNTIME_SCHEMA} from "../lib/kingdomIndexRuntimeTelemetry.mjs";
@@ -73,7 +73,7 @@ test("each field has fixed producer, denominator and range, no live quality grad
  assert.throws(()=>parseKingdomRuntimeTelemetry(snapshot([...rows,{...rows[0],id:"fake"}]),identity),/Source\/schema/);
 });
 test("private 0700/0600 owned snapshot reads, symlink, permissive directory and untrusted source refuse",async()=>{
- const dir=await mkdtemp(join(tmpdir(),"kingdom-index-runtime-"));
+ const dir=await mkdtemp(join(await realpath(tmpdir()),"kingdom-index-runtime-"));
  const file=join(dir,"latest.json"),link=join(dir,"redirect.json");
  try{
   await writeFile(file,snapshot(),{mode:0o600});
@@ -81,6 +81,9 @@ test("private 0700/0600 owned snapshot reads, symlink, permissive directory and 
   assert.equal(yes?.readings[0]?.numerator,88);
   await symlink(file,link);
   assert.equal(await readKingdomRuntimeTelemetry({file:link,...identity}),null);
+  // A symlinked ancestor must still fail, even when the target is a valid private fixture.
+  await symlink(dir,join(dir,"alias"),"dir");
+  assert.equal(await readKingdomRuntimeTelemetry({file:join(dir,"alias","latest.json"),...identity}),null);
   assert.equal(await readKingdomRuntimeTelemetry({file,...identity,expectedGitSha:"b".repeat(40)}),null);
   await chmod(dir,0o755);
   assert.equal(await readKingdomRuntimeTelemetry({file,...identity}),null);
@@ -91,7 +94,7 @@ test("private 0700/0600 owned snapshot reads, symlink, permissive directory and 
 });
 
 test("a new private atomic producer snapshot changes numerators on the same source and BUILD_ID without code deploy",async()=>{
- const dir=await mkdtemp(join(tmpdir(),"kingdom-runtime-refresh-"));
+ const dir=await mkdtemp(join(await realpath(tmpdir()),"kingdom-runtime-refresh-"));
  const live=join(dir,"latest.json"),staging=join(dir,".candidate");
  try{
   await writeFile(live,snapshot(),{mode:0o600});
