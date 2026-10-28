@@ -52,7 +52,7 @@ class RootAuthorityContract(TestCase):
         # Mirrors independently observed HEL1 ownership/modes, without
         # constructing a privileged process or touching any real server.
         with tempfile.TemporaryDirectory() as tmp:
-            control = Path(tmp) / "os-control"
+            control = Path(tmp).resolve() / "os-control"
             control.mkdir(mode=0o750)
             locks = control / "locks"
             locks.mkdir(mode=0o755)
@@ -76,7 +76,7 @@ class RootAuthorityContract(TestCase):
 
     def test_shared_release_lease_rejects_group_writable_parent(self):
         with tempfile.TemporaryDirectory() as tmp:
-            control = Path(tmp) / "os-control"
+            control = Path(tmp).resolve() / "os-control"
             control.mkdir(mode=0o750)
             locks = control / "locks"
             locks.mkdir(mode=0o775)
@@ -88,6 +88,26 @@ class RootAuthorityContract(TestCase):
             rotate.LEASE = lock
             try:
                 with self.assertRaisesRegex(RuntimeError, "ownership/mode drift"):
+                    rotate.shared_release_lock_shape(operator_uid=os.getuid())
+            finally:
+                rotate.LEASE = original
+
+    def test_shared_release_lock_rejects_symlinked_ancestor(self):
+        # A physical temp root is permitted, but a true symlink introduced
+        # anywhere in the protected lock path must remain forbidden.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            control = root / "os-control"
+            locks = control / "locks"
+            locks.mkdir(parents=True)
+            lock = locks / "release.lock"
+            lock.write_bytes(b"")
+            alias = root / "os-control-link"
+            alias.symlink_to(control, target_is_directory=True)
+            original = rotate.LEASE
+            rotate.LEASE = alias / "locks" / "release.lock"
+            try:
+                with self.assertRaisesRegex(RuntimeError, "linked/non-directory"):
                     rotate.shared_release_lock_shape(operator_uid=os.getuid())
             finally:
                 rotate.LEASE = original
