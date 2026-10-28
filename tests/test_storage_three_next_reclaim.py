@@ -21,7 +21,7 @@ class ThreeNextTests(TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="test-next-reclaim-")
         self.addCleanup(self.tmp.cleanup)
-        self.home = Path(self.tmp.name)
+        self.home = Path(self.tmp.name).resolve()
         self.project = self.home / "projects/AoE2HDBets"
         self.project.mkdir(parents=True)
         self.old_project = reclaim.PROJECT
@@ -73,6 +73,14 @@ class ThreeNextTests(TestCase):
         with mock.patch.object(reclaim, "dir_stats", return_value=(1_200_000_000, 101)):
             with self.assertRaisesRegex(RuntimeError, "WORKTREE_DIRTY"):
                 reclaim.candidate(self.repo, "blonE7yFq5o1cHzYKgxU7")
+
+    def test_symlinked_worktree_ancestor_still_fails_closed(self):
+        # Reconstruct an actual symlinked ancestor; no security guard changes.
+        alias = self.project / "linked-worktree"
+        alias.symlink_to(self.repo, target_is_directory=True)
+        with self.assertRaisesRegex(RuntimeError, "SYMLINK_OR_NONDIRECTORY"):
+            reclaim.candidate(alias, "blonE7yFq5o1cHzYKgxU7")
+        self.assertTrue((self.build / "BUILD_ID").exists())
 
     def test_symlink_build_directory_fails_closed(self):
         (self.build / "BUILD_ID").unlink()
