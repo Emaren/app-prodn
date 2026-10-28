@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1967c3e55a06cbbc16542bedd71e5ced388bb196f06042d961b8c2562f486657",
+      "sha256": "c8900b2c361c6b3779d899997948a7384a12c0de953aa6d9813392505a6dc1dd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/macos-private-fixture-ancestry-release-20261028",
-    "commit": "da886285872d2fb96ba350625382f689293c67d0"
+    "branch": "feat/storage-electron-cache-opt-in-20261028",
+    "commit": "e515be09d6cd791758b285128435919c137bb886"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
