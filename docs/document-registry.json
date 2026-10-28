@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b1dfd990eb25796fff2ab0b849af5c9d439fb4e315337e0e8ed387a5a02d4240",
+      "sha256": "a01135e6384965b80211288de8f223d5312320a87288d035e612d3c3bc19828b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/private-storage-hogs-activity-20261028",
-    "commit": "8d285725ea8b28eeb1134565659e97a8399f8094"
+    "commit": "f2fc728317d264d5ff9f5580da85ffc6a97437fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
