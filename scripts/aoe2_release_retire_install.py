@@ -120,6 +120,7 @@ def main():
     check(spki_digest(public) == opts.approved_owner_spki_sha256,
           "unapproved owner-v4 public-key identity")
     # Install-only: never touch historical stage, website runtime or finance.
+    ensure_public_dir(CONTROLLER.parent.parent)
     ensure_public_dir(CONTROLLER.parent)
     ensure_public_dir(TRUST.parent)
     ensure_public_dir(TRUST)
