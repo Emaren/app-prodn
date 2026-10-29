@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-g-postw1-kingdom-progress-q12-20261029",
-    "commit": "501e58121f3acee021448c281a60d3773602d093"
+    "branch": "feat/d-mac-exact-source-receipt-20261029",
+    "commit": "6533268dcc30d8d48fb4d6357ab350e61be2d3d4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
