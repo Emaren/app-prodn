@@ -50,4 +50,4 @@
 .sortActive{background:#173c4e;border-color:#65a9ba;color:#bff6ee}
 .sortButton:focus-visible,.refresh:focus-visible{outline:2px solid #9ef2e8;outline-offset:3px}
 .tickVerified{background:linear-gradient(180deg,rgba(var(--accent-rgb),.96),rgba(var(--accent-rgb),.54));border-color:var(--accent);box-shadow:0 0 12px rgba(var(--accent-rgb),.3)}
-@media(max-width:720px){.headingControls{gap:7px}.sortControls{gap:1px;padding:3px}.sortButton{width:32px;height:32px}.refresh{width:40px;height:40px}}
+@media(max-width:720px){.headline{flex-wrap:wrap}.headline>div:first-child{min-width:0;max-width:100%}.headingControls{width:100%;justify-content:flex-end;gap:7px}.sortControls{gap:1px;padding:3px}.sortButton{width:32px;height:32px}.refresh{width:40px;height:40px}}
