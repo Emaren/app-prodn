@@ -40,7 +40,7 @@ export default function VerifiedEventStrip(){
   <div className="flex flex-wrap items-center justify-between gap-3">
    <div className="flex items-center gap-3"><span className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-3 text-cyan-200"><Activity size={21}/></span><div><p className="text-[10px] uppercase tracking-[.3em] text-cyan-300">Q09 · Evidence wire</p><h2 className="text-xl font-bold text-white">Verified source activity</h2></div></div>
    <div className="flex items-center gap-2"><span className={"rounded-full border px-3 py-1 text-[10px] font-bold tracking-widest "+(data?.status==="FRESH"?"border-emerald-300/30 text-emerald-300":"border-amber-300/30 text-amber-200")}>{data?.status??"UNKNOWN"}</span>
-    <button type="button" onClick={()=>void refresh()} className="rounded-xl border border-white/15 p-2 text-slate-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white" aria-label="Refresh verified GitHub events"><RefreshCw size={16}/></button>
+    <button type="button" onClick={()=>void refresh()} className="rounded-xl border border-white/15 p-2 text-slate-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white" aria-label="Reload verified GitHub events"><RefreshCw size={16}/></button>
     <Link className="rounded-xl border border-cyan-200/20 px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-200/10" href="/admin/central-command/job-board">Job Exchange</Link></div>
   </div>
   <p className="mt-3 text-xs text-slate-400" role="status">{error??(data?"GitHub endpoints "+data.sourceCoverage.accepted+"/"+data.sourceCoverage.expected+" · read "+stamp(data.readAt)+" · bounded history, not deployment proof":"Reading private GitHub sources…")}</p>
