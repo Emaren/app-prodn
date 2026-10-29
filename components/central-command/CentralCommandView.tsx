@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import VerifiedEventStrip from "@/components/central-command/VerifiedEventStrip";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {ArrowLeft,RefreshCw,Copy,ShieldAlert,ExternalLink,Clock3} from "lucide-react";
 type Lane={id:"D"|"G"|"C"|"E"|"F"|"B";label:string;owner:string;mission:string;issueUrl:string;
@@ -51,6 +52,7 @@ export default function CentralCommandView(){
     <p className="mt-6 text-xs text-slate-400" role="status">{data?"GitHub metadata observed: "+seen(data.generatedAt)+" · native/runtime states UNKNOWN":loading?"Reading bounded private source…":"No accepted live source"}
      {error&&<span className="ml-2 text-rose-300">{error}</span>}</p>
    </header>
+   <VerifiedEventStrip/>
    <section aria-label="W1 release gate" className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
     <div className="rounded-3xl border border-amber-400/35 bg-slate-950/80 p-6">
      <p className="text-[10px] uppercase tracking-[.25em] text-amber-300">W1 · ONE NONFINANCIAL ACTIVATION</p>
