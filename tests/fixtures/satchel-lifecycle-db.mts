@@ -135,7 +135,7 @@ export function lifecycleOwnerKey(privateKeyHex?: string) {
 export async function seedLifecycleOwnerAndMarkets(db: LifecycleDatabase, options: {
   ownerPrivateKeyHex?: string; ownerWalletAddress?: string; ownerUid?: string;
   ownerSteamId?: string; now?: Date; team?: boolean; gamesRemaining?: number;
-  sessionKey?: string; stakeWolo?: number;
+  sessionKey?: string; stakeWolo?: number; desyncSide?: "none" | "yes" | "no"; desyncStakeWolo?: number;
 } = {}) {
   const key = lifecycleOwnerKey(options.ownerPrivateKeyHex);
   if (options.ownerWalletAddress !== undefined) assert.equal(options.ownerWalletAddress, key.walletAddress, "SDK depositor must own the actual ADR36 key");
@@ -145,12 +145,15 @@ export async function seedLifecycleOwnerAndMarkets(db: LifecycleDatabase, option
     inGameName: "LifecycleOwner", steamPersonaName: "LifecycleOwner", verified: true, verificationLevel: 2, verificationMethod: "isolated_test_fixture"}});
   const gamesRemaining = options.gamesRemaining ?? 3;
   const stakeWolo = options.stakeWolo ?? 12;
+  const desyncSide = options.desyncSide ?? "none", desyncStakeWolo = options.desyncStakeWolo ?? 0;
   assert.ok(Number.isSafeInteger(stakeWolo) && stakeWolo > 0 && stakeWolo <= 1000);
+  assert.ok(Number.isSafeInteger(desyncStakeWolo) && desyncStakeWolo >= 0 && stakeWolo + desyncStakeWolo <= 1000);
+  assert.equal(desyncSide === "none", desyncStakeWolo === 0);
   const preset = await db.prisma.betAutoPreset.create({data: {userId: owner.id, enabled: true, winnerStakeWolo: stakeWolo,
-    desyncSide: "none", desyncStakeWolo: 0, untilOut: false, gamesRemaining, selfOnly: true, version: 1}});
+    desyncSide, desyncStakeWolo, untilOut: false, gamesRemaining, selfOnly: true, version: 1}});
   const issuedAt = new Date(now.getTime() - 10000), signedAt = new Date(now.getTime() - 5000);
   const challenge: SatchelSpendChallenge = {ownerUid, walletAddress: key.walletAddress, presetId: preset.id, presetVersion: preset.version,
-    winnerStakeWolo: stakeWolo, desyncSide: "none", desyncStakeWolo: 0, perGameCapWolo: 1000, dailyCapWolo: 10000,
+    winnerStakeWolo: stakeWolo, desyncSide, desyncStakeWolo, perGameCapWolo: 1000, dailyCapWolo: 10000,
     untilOut: false, gamesRemaining, nonce: randomBytes(16).toString("hex"), issuedAtUtc: issuedAt.toISOString(),
     challengeExpiresAtUtc: new Date(now.getTime() + 240000).toISOString(), spendExpiresAtUtc: new Date(now.getTime() + 3600000).toISOString(),
     signedAtUtc: null, revokedAtUtc: null};
@@ -160,11 +163,18 @@ export async function seedLifecycleOwnerAndMarkets(db: LifecycleDatabase, option
   const consentId = randomUUID();
   const consent = await db.prisma.satchelAutoSpendConsent.create({data: {id: consentId, ownerUserId: owner.id,
     presetId: preset.id, presetVersion: preset.version, ownerUid, walletAddress: key.walletAddress, nonce: challenge.nonce,
-    winnerStakeWolo: stakeWolo, desyncSide: "none", desyncStakeWolo: 0, perGameCapWolo: 1000, dailyCapWolo: 10000,
+    winnerStakeWolo: stakeWolo, desyncSide, desyncStakeWolo, perGameCapWolo: 1000, dailyCapWolo: 10000,
     issuedAt, challengeExpiresAt: new Date(challenge.challengeExpiresAtUtc), spendExpiresAt: new Date(challenge.spendExpiresAtUtc), signedAt,
     originalMandate: {create: {untilOut: false, gamesRemaining, challengeText, ownerSignatureJson: signature, signedAt}}}});
   const source = await seedLifecycleSession(db, {ownerUid, ownerSteamId, now, team:options.team, sessionKey:options.sessionKey});
-  return {owner, preset, ...source, challenge, signature, consent, ownerKey: key, now};
+  const desyncMarket = desyncSide === "none" ? null : await db.prisma.betMarket.create({data: {
+    slug: "lifecycle-desync-" + randomUUID(), title: "Isolated lifecycle Desync", eventLabel: "Isolated SDK/PG lifecycle",
+    marketType: "desync", parentMarketId: source.market.id, status: "live", integrityStatus: "verified",
+    linkedSessionKey: source.session.sessionKey, propositionHash: source.market.propositionHash,
+    leftLabel: "No", rightLabel: "Yes", createdAt: source.market.createdAt,
+    phaseOpensAt: source.market.phaseOpensAt, closeAt: source.market.closeAt,
+  }});
+  return {owner, preset, ...source, desyncMarket, challenge, signature, consent, ownerKey: key, now};
 }
 
 export async function seedLifecycleSession(db:LifecycleDatabase, options:{ownerUid:string;ownerSteamId:string;now:Date;team?:boolean;sessionKey?:string}) {

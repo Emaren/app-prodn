@@ -105,6 +105,12 @@ with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     env.update({"GOTOOLCHAIN":"local","GOENV":"off","GOWORK":"off","GOFLAGS":"","CGO_ENABLED":"0","GOAMD64":"v1","GOEXPERIMENT":"","GOFIPS140":"off","GIT_NO_REPLACE_OBJECTS":"1","TZ":"UTC"})
     for key in ["DATABASE_URL","DIRECT_URL","PGHOST","PGPORT","PGUSER","PGPASSWORD","PGDATABASE","GODEBUG","GOOS","GOARCH"]:
         env.pop(key,None)
+    # Public WOLO aliases override private fixture chain/escrow settings when
+    # modules load. No inherited frontend financial endpoint/address is valid
+    # authority for this isolated native/HD verification process.
+    for key in list(env):
+        if key.startswith("NEXT_PUBLIC_WOLO_"):
+            env.pop(key,None)
     binary = root / "wolosatcheld"
     run(["go","build","-trimpath","-buildvcs=true","-tags=go1.27","-mod=readonly","-ldflags=-buildid=","-o",str(binary),"./cmd/wolosatcheld"],cwd=source,env=env)
     metadata = subprocess.check_output(["go","version","-m",str(binary)],text=True)
@@ -182,6 +188,17 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
          "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
          "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
          "tests/war-satchel-continuous-funded-lifecycle.test.mts"],cwd=ROOT,env=env)
+
+    # The same native recipe and unmodified pinned CLI must authenticate ONE
+    # physical funding transfer shared by winner + Desync market legs. Both
+    # claim orders and solo/team admission use actual isolated Prisma writers.
+    # Canonical claim creation and authenticated credit are exercised; payout
+    # delivery binds real SDK hashes at a controlled fixture boundary, not the
+    # production escrow payout executor.
+    run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs",
+         "--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs",
+         "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test",
+         "tests/war-satchel-two-market-funded-lifecycle.test.mts"],cwd=ROOT,env=env)
 
     # Boundary qualification reuses the SAME continuous SDK/Comet/IAVL fixture.
     # Only test genesis/recipe bounds change after the exact verifier was built.
