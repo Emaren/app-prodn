@@ -117,7 +117,7 @@ GET admin-only, POST 405). The browser never receives `GITHUB_TOKEN`, source
 comment bodies, review content or arbitrary upstream links. Only code-owned
 allowlisted GitHub issues, PRs, commit and review pages, and approved workflow
 paths are queried with a bounded request budget, 2.4-second per-source deadlines,
-55-second process cache, concurrent batches of five and 90-second rate-limit
+55-second process cache, concurrent batches of seven and 90-second rate-limit
 backoff. For comments the bounded latest Link-header page is read, not blindly
 the oldest first page. Returned data is versioned, deduplicated and timestamped
 from real GitHub provider fields, with each event linked to its provider ID.
