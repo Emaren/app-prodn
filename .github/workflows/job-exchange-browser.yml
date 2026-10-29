@@ -55,6 +55,9 @@ jobs:
           echo "REN88_PG_ROOT=$REN88_PG_ROOT" >> "$GITHUB_ENV"
           echo "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
           bash scripts/renaissance_88_pg_fixture.sh start
+          # Local-only admin user; the base replay fixture intentionally seeds no admins.
+          psql "postgresql://renaissance_owner@127.0.0.1:55437/renaissance88" -v ON_ERROR_STOP=1 -q -c "INSERT INTO users(uid,in_game_name,verified,is_admin,created_at) VALUES('fixture-admin','Fixture Admin',false,true,'2026-10-28T00:00:00Z')"
+          bash scripts/renaissance_88_pg_fixture.sh snapshot
       - name: Build exact candidate and verify generated source cleanliness
         run: |
           yarn build
