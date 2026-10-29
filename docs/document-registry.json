@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3e889b116be3d30887aa61dd7d792563865f90c38789149b016589b9170c646e",
+      "sha256": "66910e50b1f4045a5cacc94846607207c68cdfe6e16efa6ed40e396b275a1a4a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/d-q17-kingdom-navigation-atlas-20261029",
-    "commit": "0022fef1e322b80e2efec5a6fb6041fc1ddcf7d0"
+    "commit": "c76beddb788009aea84905077292ed67ea2e13c1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
