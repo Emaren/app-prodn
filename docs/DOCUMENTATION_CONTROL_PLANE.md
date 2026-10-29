@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/g-q09-a1-verified-events-20261029` at `db2434b7929dde96abb09e8ed53e8bda938e0b0d`
+Implementation baseline: `feat/g-q09-a1-verified-events-20261029` at `9a759433e764cf1c90d272555811052ef558b062`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
