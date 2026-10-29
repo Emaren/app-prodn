@@ -38,6 +38,13 @@ test("workflow events demand head sha, completed conclusion, vetted path/name",(
  const out=parseRuns("Emaren/app-prodn",p,now);
  assert.equal(out.length,1);assert.equal(out[0].state,"SUCCESS");
  assert.equal(out[0].sha,sha);assert.equal(out[0].kind,"HEAD_CI_CONCLUDED");
+ assert.equal(out[0].id,"github:Emaren/app-prodn:run:40952916496","real GitHub Actions IDs exceed the former invalid 10B cap");
+});
+test("current A3 workflow run is source-valid only when exact name and path agree",()=>{
+ const row={id:40974594654,head_sha:sha,name:"Q09 A3 Work Board and six-lane real Chrome",path:".github/workflows/central-work-ledger-browser.yml",status:"completed",conclusion:"success",updated_at:when};
+ const e=parseRuns("Emaren/app-prodn",{workflow_runs:[row,{...row,id:40974594655,path:".github/workflows/evil.yml"},{...row,id:40974594656,name:"AoE2WAR CI"}]},now);
+ assert.equal(e.length,1);assert.equal(e[0].id,"github:Emaren/app-prodn:run:40974594654");
+ assert.equal(e[0].state,"SUCCESS");assert.equal(e[0].sha,sha);
 });
 test("review preserves authored submission timestamp and source id, no false independent certification",()=>{
  const rows=parseReviews("Emaren/app-prodn",988,"G",[{id:5703747430,commit_id:sha,user:{login:"Emaren"},submitted_at:when,state:"APPROVED",body:"secret"}],now);
