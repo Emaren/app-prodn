@@ -13,6 +13,10 @@ import path from "node:path";
 
 export const VISUAL_SCHEMA = "aoe2war.storage-visual.private.v1";
 export const SIGNED_SCHEMA = "aoe2war.storage-visual.signed.v1";
+/** C v1 transports ONLY authenticated gross hog buckets. No verified individual
+ * review aliases or capacity samples traverse that strict source schema.
+ * Fail closed until a separately approved versioned C/G producer and tests exist. */
+export const INDIVIDUAL_TRANSPORT_ADOPTED: boolean = false;
 const DOMAIN = "AOE2WAR_STORAGE_VISUAL_V1\0";
 const MAX_FILE = 64 * 1024;
 const MAX_EVENTS = 64;
@@ -235,7 +239,14 @@ export async function readPrivateStorageVisual(clock:Date=new Date()):Promise<St
     const raw=await handle.readFile({encoding:"utf8"});
     const after=await handle.stat();
     if(before.ino!==after.ino||before.mtimeMs!==after.mtimeMs||before.size!==after.size)throw Error("VISUAL_FILE_CHANGED");
-    return verifyVisualReceipt(JSON.parse(raw),key,clock);
+    const view=verifyVisualReceipt(JSON.parse(raw),key,clock);
+    // Preserve signed original bytes, but never project legacy/manual optional
+    // review_items or capacity_samples as source-owned owner-action evidence.
+    // C's current strict v1 signed transport cannot authenticate either field.
+    if(!INDIVIDUAL_TRANSPORT_ADOPTED)return {...view,planes:view.planes.map(p=>({
+      ...p,reviewItems:undefined,capacitySamples:undefined
+    }))};
+    return view;
   }catch(e){
     if((e as NodeJS.ErrnoException).code==="ENOENT")return EMPTY_VISUAL;
     throw e;

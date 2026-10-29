@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Archive, Fingerprint, Layers3, ShieldAlert, ShieldCheck, History, Clock3 } from "lucide-react";
+import { INDIVIDUAL_TRANSPORT_ADOPTED } from "@/lib/storageVisualPrivate";
 import type { PlaneId, Level, StorageVisualView } from "@/lib/storageVisualPrivate";
 import type { OwnerDecision, OwnerReviewEvent } from "@/lib/storageOwnerReviews";
 
@@ -27,7 +28,7 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
  const [understood,setUnderstood]=useState(false),[busy,setBusy]=useState(false);
  const plane=visual?.planes.find(p=>p.id===activeId);
  const current=visual?.source==="SIGNED_PRIVATE_RECEIPT"&&plane?.status==="RECEIPT";
- const items=current?plane.reviewItems:undefined;
+ const items=current&&INDIVIDUAL_TRANSPORT_ADOPTED?plane.reviewItems:undefined;
  const hogs=current?plane.hogs:[];
  const selected=items?.find(i=>i.alias===alias)??null;
  const events=(history??[]).filter(e=>e.plane===activeId&&e.alias===alias);
@@ -64,7 +65,7 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
    }catch{setNotice("Decision NOT saved. Identity, authorization or secure register changed.");}
    finally{setBusy(false);}
  }
- const samples=current?plane.capacitySamples??[]:[];
+ const samples=current&&INDIVIDUAL_TRANSPORT_ADOPTED?plane.capacitySamples??[]:[];
  const change=samples.length>1?samples[samples.length-1].ordinaryFreeBytes-samples[0].ordinaryFreeBytes:null;
  return <section aria-label="L1 to L5 storage governance" className="space-y-4">
    <div className="flex flex-wrap items-end justify-between gap-3">
@@ -73,6 +74,7 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
        <p className="mt-2 max-w-3xl text-sm text-slate-400">Every number comes from signed source evidence. Gross allocations may overlap; intent is never a deletion permit.</p></div>
      <span className="rounded-full border border-white/10 bg-slate-900 px-4 py-2 text-[10px] font-bold tracking-widest text-slate-300">{current?"SIGNED SOURCE":"NO CURRENT SIGNED REVIEW FEED"}</span>
    </div>
+   {!INDIVIDUAL_TRANSPORT_ADOPTED&&<p role="status" className="rounded-xl border border-amber-300/30 p-4 text-xs font-semibold text-amber-200">INDIVIDUAL OWNER REVIEW UNAVAILABLE — canonical C v1 signs aggregate hogs only. No authenticated per-item alias, owner action, source-owned capacity history, L1 policy-scope 100% or independently certified physical gain exists. All approval/revoke actions remain disabled until a separately versioned C/G source contract is accepted. L5 NEVER DELETE is unaffected.</p>}
    <div className="rounded-[1.65rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6" aria-label="Largest reported storage buckets in selected plane">
      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-bold text-white">Largest measured consumers · all five levels</h3>
        <span className="text-xs text-slate-400">{activeId} · {current?plane.observedAt:"NO SIGNED OBSERVATION"}</span></div>
@@ -121,7 +123,7 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
    <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
      <div className="rounded-[1.65rem] border border-white/10 bg-slate-950/75 p-5 sm:p-7">
        <h3 className="text-xl font-bold text-white">{ROLES.find(r=>r.level===level)?.title} · Top consumers</h3>
-       <p className="mt-2 text-xs leading-5 text-slate-400">Select an observed category, then an exact source alias. Protected paths are never exposed to browsers.</p>
+       <p className="mt-2 text-xs leading-5 text-slate-400">Signed gross buckets are visible; individual candidate aliases and approvals are unavailable until independently authenticated by an approved source. Protected paths never reach the browser.</p>
        <div className="mt-5 space-y-2">{hogs.filter(h=>h.level===level).length===0?
          <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-slate-500">{current?"No reported category; coverage may be incomplete.":"NO VERIFIED HOG FEED"}</p>:
          hogs.filter(h=>h.level===level).map(h=><button key={h.key} type="button" onClick={()=>{setCategory(category===h.key?null:h.key);setAlias(null);}}
