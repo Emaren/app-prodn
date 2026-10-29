@@ -1201,6 +1201,28 @@ from a list of measured aliases or gross directory sizes.
   `REVOKE` to strip this classification. Changing permanent L5 requires a
   distinct owner-driven protection-removal process **not implemented here**.
 
+**W1 C-v1 source-contract acceptance HOLD (2026-10-29):** the accepted
+VPSSentry sender `aoe2war.storage-visual.source-plane.v1` authenticates
+only an exact 12-field payload (role, mount, source digest, timestamp,
+PARTIAL coverage, bounded category hogs, empty events and denial of
+delete/financial authority). Both C strict sender and G authenticated bridge
+reject any `review_items` or `capacity_samples` additions. The G receiver
+projects ONLY signed gross categories, NOT individual candidate aliases,
+capacity-history observations, policy-scope eligibility or physical gains.
+Although an offline legacy private HMAC parser can read optional review items
+to validate L4→L5 forensic migration, production read projection strips those
+fields, the authenticated review POST returns
+`409 REVIEW_SOURCE_TRANSPORT_UNAVAILABLE`, and the private UI shows
+`INDIVIDUAL OWNER REVIEW UNAVAILABLE` with no item approvals or revocation.
+Existing append-only history is preserved in private storage, not promoted
+to actionable current review decisions. This blocks **per-item owner approval**
+until a distinct C-approved versioned signed transport, source producer,
+provenance/mount/rollback/unique extent checks and genuine ACK/browser receipt
+have been independently qualified. It does **not** prevent truthful category
+gross hog display through the existing C v1 source HMAC. Never silently
+add optional fields to C v1, fabricate a source alias or use gross-byte
+drift to imply physical reclaim.
+
 The fixed server-side category catalog never trusts a publisher-provided
 level. Existing HMAC-signed L4 PROTECTED review items fail-closed migrate
 to L5 in the read view, without mutating signed originals or rewriting the
