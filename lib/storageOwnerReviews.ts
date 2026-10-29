@@ -84,6 +84,8 @@ export function latestEvent(events:OwnerReviewEvent[],plane:PlaneId,alias:string
   return events.filter(e=>e.plane===plane&&e.alias===alias).at(-1)??null;
 }
 export function effectiveOwnerDecision(event:OwnerReviewEvent|null,item:VisualReviewItem,now:Date){
+  // L5 owner protection is independent of mutable review history.
+  if(item.level===5)return null;
   if(!event||event.decision==="REVOKE"||event.fingerprint!==item.fingerprint||
     event.sourceDigest!==item.sourceDigest||event.sourceRevision!==item.sourceRevision||
     event.category!==item.category||(event.expiresAt!==null&&Date.parse(event.expiresAt)<=now.getTime()))
@@ -94,6 +96,7 @@ export function effectiveOwnerDecision(event:OwnerReviewEvent|null,item:VisualRe
 export async function appendOwnerReview(args:{
   plane:PlaneId;item:VisualReviewItem;decision:OwnerDecision;previousId:string|null;now?:Date;
 }):Promise<OwnerReviewEvent>{
+  if(args.item.level===5)throw Error("REVIEW_L5_OWNER_IMMUTABLE");
   const dir=await getDir(true),lock=path.join(dir,".write-lock");
   try{await fs.mkdir(lock,{mode:0o700});}catch{throw Error("REVIEW_BUSY_HOLD");}
   try{
