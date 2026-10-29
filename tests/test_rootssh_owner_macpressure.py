@@ -347,6 +347,108 @@ class MacPressureContract(TestCase):
         self.assertTrue(names["chrome_browser_cache"].startswith("REVIEW"))
         self.assertNotIn("rmtree", (ROOT / "scripts/aoe2_storage_mac_pressure.py").read_text())
 
+    def test_capacity_campaign_non_native_fails_without_probing_disk(self):
+        with mock.patch.object(pressure.subprocess, "run", side_effect=AssertionError("must not run")):
+            result = pressure.capacity_accounting(Path("/tmp/does-not-exist"), platform="linux")
+        self.assertEqual(result["reason"], "NOT_NATIVE_MAC")
+        self.assertFalse(result["full_container_coverage_certified"])
+        self.assertIsNone(result["unexplained_physical_bytes"])
+        self.assertFalse(result["mutation_allowed"])
+
+    def test_shallow_du_captures_direct_mount_slices_without_content_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            protected = root / "CrossOver"
+            protected.mkdir()
+            (protected / "unique-game-save").write_bytes(b"KEEP-FOREVER")
+            (root / "outside").symlink_to(protected, target_is_directory=True)
+            (root / "receipt").write_bytes(b"UNIQUE-PRIVATE")
+            device = os.lstat(root).st_dev
+            def fake_du(args, **kwargs):
+                self.assertEqual(args[:5], ["du", "-k", "-x", "-d", "1"])
+                return mock.Mock(returncode=0, stdout=(
+                    f"8\t{protected}\n16\t{root}\n"), stderr="")
+            with mock.patch.object(pressure.subprocess, "run", side_effect=fake_du):
+                output = pressure.capacity_depth_one(root, device)
+            self.assertEqual(output["status"], "HOLD")
+            self.assertEqual(output["allocated_bytes"], 16 * 1024)
+            self.assertEqual(output["direct_children"][0]["allocated_bytes"], 8 * 1024)
+            self.assertIn("SYMLINK_NOT_FOLLOWED",
+                          [v["reason"] for v in output["unmeasured"]])
+            self.assertIsNone(output["root_files_links_and_metadata_gross_residual_bytes"])
+            self.assertFalse(output["mutation_allowed"])
+            self.assertEqual((protected / "unique-game-save").read_bytes(), b"KEEP-FOREVER")
+
+    def test_shallow_du_complete_is_gross_only_and_never_apfs_gain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "artifact").mkdir()
+            device = os.lstat(root).st_dev
+            with mock.patch.object(pressure.subprocess, "run",
+                  return_value=mock.Mock(returncode=0, stdout=(
+                      f"9\t{root / 'artifact'}\n12\t{root}\n"), stderr="")):
+                result = pressure.capacity_depth_one(root, device)
+            self.assertEqual(result["status"], "OBSERVED_SHALLOW")
+            self.assertEqual(result["root_files_links_and_metadata_gross_residual_bytes"], 3072)
+            self.assertTrue(result["gross_not_unique_apfs_bytes"])
+
+    def test_shallow_du_timeout_permission_and_wrong_mount_all_hold(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            device = os.lstat(root).st_dev
+            self.assertEqual(pressure.capacity_depth_one(root, device + 1)["reason"],
+                             "CROSSES_DATA_DEVICE")
+            with mock.patch.object(pressure.subprocess, "run",
+                                   side_effect=subprocess.TimeoutExpired("du", 1)):
+                self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
+                                 "DU_TIME_BUDGET_EXCEEDED")
+            with mock.patch.object(pressure.subprocess, "run",
+                      return_value=mock.Mock(returncode=1, stdout="", stderr="Permission denied")):
+                self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
+                                 "DU_ERROR_OR_PERMISSION_DENIED")
+
+    def test_shallow_du_rejects_unexpected_depth_and_duplicate_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            device = os.lstat(root).st_dev
+            for data in (f"2\t{root}\n2\t{root}\n",
+                         f"2\t{root / 'unexpected' / 'deep'}\n2\t{root}\n",
+                         f"bad\t{root}\n"):
+                with mock.patch.object(pressure.subprocess, "run",
+                      return_value=mock.Mock(returncode=0, stdout=data, stderr="")):
+                    self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
+                                     "DU_MALFORMED_OR_AMBIGUOUS")
+
+    def test_capacity_native_fixture_still_holds_physical_extents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "Users" / "operator"
+            home.mkdir(parents=True)
+            # This is a fixture, NOT a Mac volume or a physical recovery receipt.
+            def fake_process(args, **kw):
+                if args[0] == "du":
+                    path = Path(args[-1])
+                    directory_rows = "".join(
+                        f"1\t{child}\n" for child in path.iterdir()
+                        if child.is_dir() and not child.is_symlink())
+                    return mock.Mock(returncode=0, stderr="",
+                                     stdout=directory_rows + f"2\t{path}\n")
+                if "--plane" in args:
+                    return mock.Mock(returncode=0, stdout=json.dumps({
+                        "filesystem": {"fs_type": "apfs", "uuid": "fixture",
+                                       "mount_source": "/dev/disk3s5",
+                                       "mountpoint": "/System/Volumes/Data"}}))
+                raise AssertionError("unexpected process")
+            with mock.patch.object(pressure.subprocess, "run", side_effect=fake_process):
+                receipt = pressure.capacity_accounting(home, data_root=root, platform="darwin")
+            self.assertEqual(receipt["status"], "OBSERVED_SHALLOW")
+            self.assertEqual(receipt["reason"],
+                             "APFS_SHARED_METADATA_AND_PHYSICAL_EXTENTS_UNPROVEN")
+            self.assertIsNone(receipt["unexplained_physical_bytes"])
+            self.assertFalse(receipt["full_container_coverage_certified"])
+            self.assertIsNone(receipt["clones_shared_bytes"])
+            self.assertFalse(receipt["mutation_allowed"])
+
     def test_all_generated_buckets_remain_review_only(self):
         self.assertIn(".next", pressure.GENERATED_NAMES)
         self.assertIn("node_modules", pressure.GENERATED_NAMES)

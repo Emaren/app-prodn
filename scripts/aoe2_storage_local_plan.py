@@ -238,6 +238,7 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         "measurement_gap_count": census.get("measurement_gap_count") if census_good else None,
         "measurement_gaps": census.get("measurement_gaps", []) if census_good else [],
         "apfs_accounting": census.get("apfs_accounting") if census_good else None,
+        "scope_bounds": census.get("scope_bounds") if census_good else None,
     }
     actions = [{"lane": key, "allocated_bytes": row["allocated_bytes"],
                 "requires_owner_authorization": commands[key]}
@@ -372,9 +373,96 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
     }
 
 
+def l1_exhaustion_receipt(plan_result: dict[str, Any],
+                          capacity: dict[str, Any]) -> dict[str, Any]:
+    """Pure fail-closed evidence decision. Never issue a native/signed YES."""
+    ranked = plan_result.get("gigabyte_generated_ranked_plan", {})
+    items = ranked.get("ranked_generated", [])
+    unknown = ranked.get("unknown_generated", [])
+    coverage = plan_result.get("coverage", {})
+    candidates = []
+    for row in items if isinstance(items, list) else []:
+        if not isinstance(row, dict) or row.get("protected_ancestry") is True:
+            continue
+        candidates.append({
+            "path": row.get("path"), "gross_allocated_bytes": row.get("allocated_bytes"),
+            "reason": "NO_REBUILD_CONSUMER_MOUNT_HARDLINK_OR_UNIQUE_APFS_PROOF",
+            "unique_apfs_gain_bytes": None, "mutation_authority": "NONE"})
+    for row in plan_result.get("level_1_candidate_register", []):
+        if isinstance(row, dict) and row.get("allocated_bytes", 0) > 0:
+            candidates.append({
+                "path": row.get("path"), "gross_allocated_bytes": row.get("allocated_bytes"),
+                "reason": "CACHE_CONSUMER_REBUILD_OWNER_PROOFS_MISSING",
+                "unique_apfs_gain_bytes": None, "mutation_authority": "NONE"})
+    reasons = []
+    if not isinstance(capacity, dict) or capacity.get("status") != "OBSERVED_SHALLOW":
+        reasons.append("PHYSICAL_CAPACITY_ACCOUNTING_HOLD")
+    # Even complete shallow du does not prove APFS clones, snapshots, other
+    # volumes or metadata accounting. Never equate a du residual to free bytes.
+    if not isinstance(capacity, dict) or not capacity.get("full_container_coverage_certified"):
+        reasons.append("WHOLE_APFS_SHARED_AND_CLONE_EXTENTS_UNPROVEN")
+    if (not isinstance(coverage, dict)
+            or coverage.get("observed_path_count") != coverage.get("displayed_path_count")
+            or coverage.get("incomplete_reasons")):
+        reasons.append("NAMED_POLICY_SCOPE_INCOMPLETE_OR_UNKNOWN")
+    if not ranked.get("named_enumeration_complete"):
+        reasons.append("GENERATED_SCOPE_NOT_PROVEN_COMPLETE")
+    if candidates:
+        reasons.append("EXACT_L1_CANDIDATES_NOT_PROOF_QUALIFIED")
+    if unknown:
+        # An ABSENT generated target is not an unknown allocation. Keep the
+        # separate reason counts instead of treating 284 rows as junk.
+        by_reason = {}
+        for row in unknown:
+            reason = row.get("reason", "UNKNOWN") if isinstance(row, dict) else "UNKNOWN"
+            by_reason[reason] = by_reason.get(reason, 0) + 1
+    else:
+        by_reason = {}
+    if any(k not in ("ABSENT", "SYMLINK_TARGET", "SYMLINK_ANCESTOR")
+           for k in by_reason):
+        reasons.append("UNRESOLVED_GENERATED_OBSERVATIONS")
+    reasons.extend((
+        "NATIVE_INDEPENDENT_TWO_CYCLES_NOT_PROVEN",
+        "EXPLICIT_OWNER_AND_CENTRAL_SEAL_ABSENT",
+        "APFS_PHYSICAL_BEFORE_AFTER_TRANSACTION_PROOF_ABSENT",
+    ))
+    return {
+        "schema": "aoe2war.mac-l1-exhaustion-decision.v1",
+        "decision": "L1_POLICY_EXHAUSTED_NO",
+        "proof_scope": (
+            "HOME_BUCKETS_PLUS_BOUNDED_AOE2HDBETS_DIRECT_PROJECT_GENERATED_"
+            "PLUS_CANONICAL_DECLARED_WORKTREES_PLUS_EXISTING_CACHE_ALLOWLIST"),
+        "whole_500gb_container_l1_inventory_certified": False,
+        "policy_scope_complete": False,
+        "blockers": sorted(set(reasons)),
+        "candidate_holds": sorted(candidates, key=lambda r: (
+            -r["gross_allocated_bytes"], str(r["path"]))),
+        "generated_nonmeasurement_reason_counts": dict(sorted(by_reason.items())),
+        "omitted_project_count": (
+            coverage.get("scope_bounds", {}).get("direct_project_roots_omitted")
+            if isinstance(coverage.get("scope_bounds"), dict) else None),
+        "omitted_worktree_count": (
+            coverage.get("scope_bounds", {}).get("canonical_git_worktrees_omitted")
+            if isinstance(coverage.get("scope_bounds"), dict) else None),
+        "nested_build_roots_out_of_scope": True,
+        "other_home_project_trees_out_of_scope": True,
+        "gross_allocated_bytes_not_unique_recoverable": True,
+        "certified_recovered_bytes": 0,
+        "predicted_unique_recoverable_bytes": None,
+        "unexplained_physical_residual_bytes": None,
+        "accepted_independent_gates_prior": 2,
+        "gate_count": 8,
+        "no_eligible_action_signed_receipt": None,
+        "authority": "READ_ONLY_NO_APPLY",
+        "native_second_cycle_and_owner_witness_required": True,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--l1-campaign", action="store_true",
+                        help="one read-only Mac capacity+existing-L1-policy observation, never apply")
     args = parser.parse_args()
     base = [sys.executable, str(ROOT / "scripts/aoe2_storage.py"), "local-maintain"]
     x = observe(base + ["--json"], cwd=ROOT)
@@ -388,6 +476,12 @@ def main() -> int:
                      "overall": "UNKNOWN", "reason": "VPSSENTRY_WATCHDOG_UNAVAILABLE"
                  }
     result = plan(x, y, z, census, hb)
+    if args.l1_campaign:
+        capacity = observe(
+            [sys.executable, str(ROOT / "scripts/aoe2_storage_mac_pressure.py"),
+             "--capacity-only", "--json"], cwd=ROOT, timeout=250)
+        result["l1_full_capacity_accounting"] = capacity
+        result["l1_policy_exhaustion_decision"] = l1_exhaustion_receipt(result, capacity)
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))
     else:
@@ -410,6 +504,11 @@ def main() -> int:
               "source allowlisted, 0 fully qualified")
         print("Level 2 register:", len(result["level_2_owner_review_register"]),
               "review-only, 0 authorized")
+        if args.l1_campaign:
+            receipt = result["l1_policy_exhaustion_decision"]
+            print("LEVEL 1 EXHAUSTION:", receipt["decision"])
+            print("Blockers:", ", ".join(receipt["blockers"]))
+            print("No signed closure, no deletion, no unique APFS gain inferred")
         generated = result["gigabyte_generated_ranked_plan"]
         print("Generated >=256 MiB:", generated["ranked_count"],
               "HOLD; physical APFS gain UNKNOWN")

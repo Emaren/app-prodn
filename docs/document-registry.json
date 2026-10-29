@@ -351,30 +351,6 @@
     },
     {
       "audience": [
-        "operators",
-        "developers",
-        "ai-agents"
-      ],
-      "authority": "private-source-dispatch-contract",
-      "id": "aoe2war.app-prodn.central-command-os",
-      "owner": "aoe2war-web",
-      "path": "docs/CENTRAL_COMMAND_OS.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-10-28",
-      "sensitivity": "internal",
-      "sha256": "64eed0f0acc741e8527d71022721ebf60e763dc14a794f8255de93b9d60bb45a",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "vpssentry",
-        "wolochain"
-      ],
-      "title": "Private Central Command OS",
-      "type": "reference"
-    },
-    {
-      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -663,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "53d6575c58194610c059f5f1922fe5bf99250826ddb0a7397c4bd4e27c3e69ba",
+      "sha256": "fbcf75edd0b299a88e7f457f57b817a7524dc097f2eb0545458ec25b8a11054d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1926,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "58971f218f92cd5bea5aa2d6b51e72f651aa45be80dee9c9a34ed4ef624310dc",
+      "sha256": "2482dc7e47058733fbbf3ffcb763e63c62a6247aa2e5ebb9837ae4ee58fdfcc8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-g-central-command-admin-w1-20261029",
-    "commit": "8d214b96df2913d8ac46de4c58654c098f1f89e5"
+    "branch": "feat/session-g-storage-level-review-20261028",
+    "commit": "757629f08cc0546bc5099c55c13be2ad641a29f3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
