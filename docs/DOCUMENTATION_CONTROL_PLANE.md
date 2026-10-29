@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/w1-f-source-finance-admission-20261029` at `070b6bd54757d2b4c53327d1bed642c53c968b69`
+Implementation baseline: `feat/session-g-postw1-signed-pulse-freshness-20261029` at `8ffcef73311412855469d6dc2d86d1c1e1b63784`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
