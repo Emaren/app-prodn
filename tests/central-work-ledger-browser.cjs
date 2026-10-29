@@ -63,7 +63,7 @@ async function run(){
       assert.equal(await page.getByRole("button",{name:/Inspect core .* evidence/}).count(),6);
       await page.getByRole("button",{name:"Inspect core C evidence"}).click();
       assert.equal(await page.getByRole("button",{name:"Inspect core C evidence"}).getAttribute("aria-pressed"),"true");
-      await page.getByText("No lane receipt in this bounded GitHub window.").waitFor();
+      await page.getByText("No lane receipt in this bounded GitHub window.").first().waitFor({timeout:10000});
       await page.getByRole("button",{name:"Inspect core G evidence"}).click();
       await page.getByText("DISPATCH PUBLISHED").first().waitFor();
     }
