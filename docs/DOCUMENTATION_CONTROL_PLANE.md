@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/d-mac-exact-source-receipt-20261029` at `6533268dcc30d8d48fb4d6357ab350e61be2d3d4`
+Implementation baseline: `feat/g-q09-a1-verified-events-20261029` at `e816a15dae3d0cac6ea6281d5b853fc815bdd29a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
