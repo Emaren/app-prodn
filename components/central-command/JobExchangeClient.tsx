@@ -39,6 +39,10 @@ export default function JobExchangeClient({lanes}:Props){
      <div className={styles.statusPanel}><span className={styles.statusTitle}>SOURCE FEED</span><strong className={data?.status==="FRESH"?styles.fresh:styles.warning}>{data?.status??"UNKNOWN"}</strong><span>{data?data.sourceCoverage.accepted+"/"+data.sourceCoverage.expected+" endpoints":"Awaiting authenticated source"}</span><button type="button" aria-label="Refresh job exchange source" onClick={()=>void refresh()}><RefreshCw size={15}/> Refresh</button></div></div>
     <div className={styles.stats}><div><span>OBSERVED COMMITS</span><strong>{data?commits:"—"}</strong></div><div><span>SOURCE MERGES</span><strong>{data?merged:"—"}</strong></div><div><span>CONCLUDED CI</span><strong>{data?CI:"—"}</strong></div><div className={styles.liveLock}><LockKeyhole size={15}/><span>DEPLOYED BUILD_ID</span><strong>UNKNOWN</strong></div></div>
    </header>
+   <nav aria-label="Private engineering evidence views" className="mb-6 flex flex-wrap gap-2">
+    <Link href="/admin/central-command/work-board" className="rounded-xl border border-cyan-200/30 bg-cyan-200/10 px-4 py-3 text-xs font-semibold text-cyan-100 hover:bg-cyan-200/20">Work Board →</Link>
+    <Link href="/admin/central-command/lanes" className="rounded-xl border border-violet-200/30 bg-violet-200/10 px-4 py-3 text-xs font-semibold text-violet-100 hover:bg-violet-200/20">Six-Lane Ledger →</Link>
+   </nav>
    <section className={styles.flow} aria-label="Owner instruction to verified production workflow">
     {stages.map((s,i)=>{const Icon=s.icon;return <div className={styles.stageWrap} key={s.title}><div className={styles.stage}>
       <Icon className={styles.stageIcon} size={21}/><span>{String(i+1).padStart(2,"0")}</span><strong>{s.title}</strong><small>{s.sub}</small>
