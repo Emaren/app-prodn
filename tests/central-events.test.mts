@@ -16,10 +16,11 @@ test("owner-published dispatch does not equal waking a ChatGPT session",()=>{
  const list=parseComments("Emaren/app-prodn",976,"G",[
  {id:6509196728,created_at:when,user:{login:"Emaren"},body:"## CENTRAL WORK ORDER — Q09-A1"},
  {id:6509196729,created_at:when,user:{login:"stranger"},body:"## CENTRAL WORK ORDER — pretend"},
- {id:6509196730,created_at:when,user:{login:"Emaren"},body:"ordinary source return"}
+ {id:6509196730,created_at:when,user:{login:"Emaren"},body:"ordinary source return"},
+ {id:6509196728+10,created_at:when,user:{login:"Emaren"},body:"## ⚔️ CENTRAL — LATEST POST-W1 SOURCE BASE / G Q09-A1 IMPLEMENT IMMEDIATELY"}
  ],now);
- assert.equal(list.length,3);assert.equal(list[0].kind,"DISPATCH_PUBLISHED");
- assert.equal(list[1].kind,"COMMENT_PUBLISHED");assert.equal(list[2].kind,"COMMENT_PUBLISHED");
+ assert.equal(list.length,4);assert.equal(list[0].kind,"DISPATCH_PUBLISHED");
+ assert.equal(list[1].kind,"COMMENT_PUBLISHED");assert.equal(list[2].kind,"COMMENT_PUBLISHED");assert.equal(list[3].kind,"DISPATCH_PUBLISHED");
  assert.equal(JSON.stringify(list).includes("pretend"),false);
  assert.equal(JSON.stringify(list).includes("OWNER_WOKE"),false);
 });
