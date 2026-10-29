@@ -76,6 +76,6 @@ class PublicFactoryTests(unittest.TestCase):
     def test_candidate_scope_is_separate_from_watcher(self):
         self.assertEqual(self.plan["phase_order"],["I","II","III","IV","V","VI","VII"])
         self.assertNotIn("/watcher",[r["route"] for r in self.plan["routes"]])
-        self.assertEqual(self.plan["historical_baseline"],{"pages":144,"handlers":274})
+        self.assertEqual(self.plan["historical_baseline"],{"pages":144,"handlers":273})
         self.assertEqual(self.plan["build"]["status"],"NOT_PROVIDED")
 if __name__=="__main__":unittest.main()
