@@ -36,7 +36,8 @@
         "/speed",
         "/admin/aoe2war-os",
         "/admin/storage-os",
-        "/admin/central-command"
+        "/admin/central-command",
+        "/admin/central-command/job-board"
       ]
     },
     {
