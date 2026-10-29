@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "88e598231af67e86e1b33907c9e0edc19c6bead8e12586da1b7807aa898fe39c",
+      "sha256": "3a63d26385f2e987f078261fe5a95914abd1e2ebec0de051afd27dbcd9035cba",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/session-g-central-command-admin-w1-20261029",
-    "commit": "ffa94f02369103491bec433f3e53106a38ed99fc"
+    "commit": "01f0170164d2db57d34f36fa14f99efeb984ebae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
