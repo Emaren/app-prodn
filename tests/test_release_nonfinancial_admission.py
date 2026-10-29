@@ -272,7 +272,7 @@ class NonfinancialWitnessTests(unittest.TestCase):
         host = json.loads(hostfile.read_text())
         host["schema"] = True
         hostfile.write_bytes(MODULE.canonical(host))
-        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "host journal claim"):
+        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "root journal claim"):
             self.admit()
 
     def test_independent_finance_signer_is_required(self):
