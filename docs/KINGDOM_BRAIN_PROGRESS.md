@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "cross-surface-integration-contract"
-reviewed_at: "2026-10-19"
+reviewed_at: "2026-10-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -27,7 +27,7 @@ sensitivity: "internal"
 ## Public read-only contract
 
 - `/kingdom-brain` reads only `/api/kingdom-index`, `/api/kingdom-agents`, and `/api/kingdom-patrol`. It must distinguish policy coverage, source-dated signals, and independently verified operational health.
-- `/kingdom-progress` reads existing sanitized `/api/kingdom-intelligence` only to show source observation recency. No project completion percentage, AI hours, commits, deployment status or milestone acceptance is inferred from that source. A future authenticated progress-evidence adapter is separately required.
+- `/kingdom-progress` reads sanitized `/api/kingdom-intelligence` for independent Intelligence recency and read-only `/api/kingdom-progress` for bounded **source-only milestone evidence**. The server accepts at most eight new explicitly owner-published `Q01`–`Q29` priorities via the `AOE2WAR_PUBLIC_PRIORITY_V1` JSON island in Central #984, never the raw private queue. Original five capsules remain on source failure; absent accepted source receipts remain `UNKNOWN`, not 0% or 100%. Only exact-SHA matched successful allowlisted GitHub Actions may verify **source** gates; no runtime, financial, deployed BUILD_ID or agent activity is inferred. Source contribution recency requires a validated commit SHA/time, not an issue edit or fetch timestamp. Completion shape checks and the `lastGood` fallback are **process-local**, not immutable durable history; Q15 remains a separate prerequisite for permanent completion receipts.
 - Both pages use bounded foreground-only polling and network deadlines, no new background collection workers, no financial mutations, no unrestricted logs and no authority to certify or release anything.
 - A future route-wide census must count file templates (public, private utility, sensitive dynamic, admin), distinct benchmark URLs and API handlers separately, all generated from source and versioned build proofs.
 - No existing page's visual design is changed by these new pages. The new views are high-density, visual-first instruments; descriptions exist for accessibility and direct authority drilldowns rather than explanatory prose walls.
@@ -49,7 +49,7 @@ Release-build dependency closure, criterion-level independent evidence, current 
 1. Integrate the source registries, new visual surfaces and pure policy-only patrol coverage under CI on a draft PR.
 2. Audit live production/source counts with `./bin/aoe2war speed inventory`, reconcile with the existing protected Index census.
 3. Attach real receipts for route-level source checks, deployments, security, browser performance, sensor status, and agent inspections. Avoid duplicate heavy file scans on public GETs.
-4. Add a separate evidence-backed project-milestone adapter; only then may progress pills fill automatically.
+4. Verify the now-implemented bounded, public-safe Q12 source-only milestone adapter against real independent CI receipts; do not treat an in-process cache as durable evidence or claim that any source gate certifies production.
 5. Evaluate future `/kingdom-recovery`, `/kingdom-sensors`, `/kingdom-tests`, `/kingdom-systems`, and Replay Laboratory against existing AoE2WAR OS, General Inspections, VPSSentry, Kingdom Intelligence, and Parser Observatory. New pages require unique evidence authority and useful visual contracts; do not invent thin aliases.
 6. Keep the War Satchel/Auto Bets financial worktree and WoloChain HOLD untouched; build/deploy these visual routes through ordinary protected app controller only.
 
