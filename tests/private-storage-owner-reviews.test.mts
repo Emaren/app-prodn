@@ -22,11 +22,17 @@ function verify(v:unknown){return verifyVisualReceipt({schema:"aoe2war.storage-v
 type Mutable={planes:[{review_items:Record<string,unknown>[];capacity_samples:Record<string,unknown>[]}]};
 function modified(fn:(x:Mutable)=>void){const next=JSON.parse(JSON.stringify(payload));fn(next);return next;}
 
-test("four source-controlled levels include guarded but immutable protected assets",()=>{
+test("five source-controlled levels preserve immutable legacy L4 protected as L5",()=>{
  assert.equal(HOG_CATALOG.GUARDED_GENERATED.level,1);
- assert.equal(HOG_CATALOG.CROSSOVER_STEAM_REPLAY.level,4);
- assert.equal(HOG_CATALOG.HEL1_ACTIVE_SWAP.level,4);
- assert.equal(HOG_CATALOG.WATCHER_SIGNED_DIST.level,4);
+ assert.equal(HOG_CATALOG.CROSSOVER_STEAM_REPLAY.level,5);
+ assert.equal(HOG_CATALOG.HEL1_ACTIVE_SWAP.level,5);
+ assert.equal(HOG_CATALOG.WATCHER_SIGNED_DIST.level,5);
+ assert.equal(HOG_CATALOG.OWNER_CHATGPT_CONVERSATION_ZIP.level,5);
+ assert.equal(HOG_CATALOG.OWNER_ORIGINAL_PHOTOS.level,5);
+ assert.equal(HOG_CATALOG.OWNER_INDEPENDENT_RECOVERY_COPY.level,5);
+ assert.equal(HOG_CATALOG.FINANCIAL_ORIGINALS.level,5);
+ assert.equal(HOG_CATALOG.EVIDENCE_ORIGINALS.level,5);
+ assert.equal(HOG_CATALOG.HEL1_DEPLOY_BUILDS.level,3);
 });
 test("signed individual aliases and capacity samples are bounded and gross-only",()=>{
  const view=verify(payload),p=view.planes[0];
@@ -81,7 +87,9 @@ test("read-only telemetry GET remains untouched; owner POST requires admin, same
  assert.match(ledger,/O_EXCL/);
  assert.match(ledger,/handle\.sync\(\)/);
  assert.doesNotMatch(route+ledger+ui,/rmSync|unlinkSync|execFile|spawn\(|--apply|killall Finder/);
- assert.match(ui,/FOUR|Four levels/);
+ assert.match(ui,/Five levels/);
+ assert.match(ui,/OWNER-EXPRESS NEVER DELETE/);
+ assert.match(route,/REVIEW_L5_OWNER_IMMUTABLE/);
  assert.match(ui,/UNKNOWN/);
  assert.match(ui,/INTENT|deletion permit/i);
 });
@@ -109,5 +117,48 @@ test("native isolated fixture: append-only private review, CAS replay HOLD and r
    if(original===undefined)delete process.env.AOE2WAR_OS_STORE_DIR;
    else process.env.AOE2WAR_OS_STORE_DIR=original;
    rmSync(root,{recursive:true,force:true});
+ }
+});
+
+
+test("signed legacy mixed L4 protected maps to immutable L5 without automatic downgrade",async()=>{
+ const old=modified(x=>{
+  const item=x.planes[0].review_items[0];
+  item.category="CROSSOVER_STEAM_REPLAY";
+  item.level=4;
+  item.source_status="PROTECTED";
+  item.proof_state="INCOMPLETE";
+ });
+ const inherited=verify(old).planes[0].reviewItems![0];
+ assert.equal(inherited.level,5);
+ assert.equal(inherited.sourceStatus,"PROTECTED");
+ const current=verify(payload).planes[0].reviewItems![0];
+ assert.equal(current.level,1);
+ const attempted=modified(x=>{
+  const item=x.planes[0].review_items[0];
+  item.category="CROSSOVER_STEAM_REPLAY";
+  item.level=1;
+  item.source_status="GUARDED";
+ });
+ assert.throws(()=>verify(attempted),/VISUAL_REVIEW_LEVEL_DOWNGRADE_HOLD|VISUAL_REVIEW_POLICY_HOLD/);
+ const ownerOriginal=modified(x=>{
+  const item=x.planes[0].review_items[0];
+  item.category="OWNER_CHATGPT_CONVERSATION_ZIP";
+  item.source_status="PROTECTED";
+  item.proof_state="INCOMPLETE";
+ });
+ assert.equal(verify(ownerOriginal).planes[0].reviewItems![0].level,5);
+ const root=mkdtempSync(path.join(tmpdir(),"storage-l5-permanent-"));
+ mkdirSync(path.join(root,"state"),{mode:0o700});
+ const previous=process.env.AOE2WAR_OS_STORE_DIR;
+ process.env.AOE2WAR_OS_STORE_DIR=root;
+ try{
+  for(const decision of ["PROTECT","REVOKE","SINGLE_CANDIDATE_APPROVAL","MIGRATION_REVIEW"] as const)
+   await assert.rejects(()=>appendOwnerReview({plane:"mac",item:inherited,decision,previousId:null,now:clock}),/REVIEW_L5_OWNER_IMMUTABLE/);
+  assert.deepEqual(await readOwnerReviews(),[]);
+  assert.equal(effectiveOwnerDecision({...baseEvent,decision:"PROTECT"},inherited,clock),null);
+ }finally{
+  if(previous===undefined)delete process.env.AOE2WAR_OS_STORE_DIR;else process.env.AOE2WAR_OS_STORE_DIR=previous;
+  rmSync(root,{recursive:true,force:true});
  }
 });
