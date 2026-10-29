@@ -17,10 +17,12 @@ async function run(){
   const nobody=await browser.newContext({baseURL:base});
   const anonPage=await nobody.newPage();
   await anonPage.goto("/admin/central-command/job-board",{waitUntil:"domcontentloaded"});
-  assert.notEqual(new URL(anonPage.url()).pathname,"/admin/central-command/job-board","Guest must redirect");
+  await anonPage.waitForURL(u=>new URL(u).pathname!=="/admin/central-command/job-board",{timeout:15000});
+  assert.equal(await anonPage.getByRole("heading",{name:/THE JOB EXCHANGE/}).count(),0,"Guest never receives private board");
   await nobody.addCookies([{name:"aoe2hdbets_session",url:base,value:non}]);
   await anonPage.goto("/admin/central-command/job-board",{waitUntil:"domcontentloaded"});
-  assert.notEqual(new URL(anonPage.url()).pathname,"/admin/central-command/job-board","Nonadmin must redirect");
+  await anonPage.waitForURL(u=>new URL(u).pathname!=="/admin/central-command/job-board",{timeout:15000});
+  assert.equal(await anonPage.getByRole("heading",{name:/THE JOB EXCHANGE/}).count(),0,"Nonadmin never receives private board");
   await nobody.close();
   for(const width of [375,768,1440]){
    const ctx=await browser.newContext({baseURL:base,viewport:{width,height:860},serviceWorkers:"block",reducedMotion:"reduce"});
