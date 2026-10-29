@@ -61,6 +61,9 @@ function keys(){
  ];
  if(vars.some(k=>typeof k!=="string"||!hex64.test(k))||new Set(vars).size!==4)
   throw Error("VISUAL_CREDENTIAL_SEGREGATION_HOLD");
+ const bridgeToken=process.env.AOE2WAR_OS_BRIDGE_TOKEN?.trim();
+ if(bridgeToken&&vars.some(k=>bridgeToken===k||bridgeToken===Buffer.from(k!,"hex").toString("base64")))
+  throw Error("VISUAL_BRIDGE_TOKEN_KEY_REUSE_HOLD");
  return vars as [string,string,string,string];
 }
 function stamp(x:unknown,now:number):string{
