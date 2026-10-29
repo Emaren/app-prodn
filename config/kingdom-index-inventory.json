@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
-    "routeHandlerTemplates": 278,
-    "apiHandlerTemplates": 275,
+    "routeHandlerTemplates": 284,
+    "apiHandlerTemplates": 281,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1549,6 +1549,11 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/internal/mecha/funded-tick/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/kingdom-agents/route.ts",
       "scope": "api",
       "ownership": "unassigned"
@@ -2149,6 +2154,21 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/user/war-satchel/auto-consent/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/war-satchel/balance/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/war-satchel/credit-verified/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/user/war-satchel/deposit-evidence/route.ts",
       "scope": "api",
       "ownership": "unassigned"
@@ -2159,7 +2179,17 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/user/war-satchel/funding-quote/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/user/war-satchel/wallet-proof/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/user/war-satchel/withdrawal/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

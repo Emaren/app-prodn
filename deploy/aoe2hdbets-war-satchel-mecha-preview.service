@@ -1,0 +1,28 @@
+[Unit]
+Description=AoE2WAR War Satchel Mecha operator preview (NO REAL WAGERS)
+Documentation=https://github.com/Emaren/app-prodn/issues/514
+After=network-online.target aoe2hdbets-web.service
+Wants=network-online.target
+# Deliberately no PartOf/Requires binding to Wolo settlement or consensus.
+
+[Service]
+Type=oneshot
+User=tony
+WorkingDirectory=/var/www/AoE2HDBets/app-prodn
+# Preview must NEVER inherit signing or settlement secrets.
+# It returns before querying the financial DB while source HOLD is active.
+ExecStart=/usr/bin/node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/war-satchel-funded-mecha-worker.ts --dry-run
+TimeoutStartSec=45
+Nice=8
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+CapabilityBoundingSet=
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

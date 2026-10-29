@@ -72,6 +72,15 @@ model User {
   warSatchelProofCandidates      WarSatchelProofCandidate[]
   warSatchelWalletChallenges     WarSatchelWalletChallenge[]
   warSatchelLedgerAccounts       WarSatchelLedgerAccount[]
+  satchelFundedBalance           SatchelFundedBalance?
+  satchelFundedReceipts          SatchelFundedReceipt[]
+  satchelPhysicalConsumptions    SatchelPhysicalReceiptConsumption[]
+  satchelClaimReturns            SatchelFundedClaimReturn[]
+  satchelFundedJournal           SatchelFundedJournal[]
+  satchelFundedReservations      SatchelFundedReservation[]
+  satchelAutoSpendConsents       SatchelAutoSpendConsent[]
+  satchelFundedWithdrawals       SatchelFundedWithdrawal[]
+  satchelWithdrawalChallenges    SatchelWithdrawalChallenge[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -2453,6 +2462,7 @@ model PendingWoloClaim {
 
   sourceFounderBonus    BetMarketFounderBonus?         @relation(fields: [sourceFounderBonusId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   correctiveAdjustments BetMarketFinancialAdjustment[]
+  satchelClaimReturn    SatchelFundedClaimReturn?
 
   @@unique([sourceMarketId, normalizedPlayerName, claimKind, claimGroupKey], map: "uq_pending_wolo_claims_market_player_kind_group")
   @@index([normalizedPlayerName, status], map: "ix_pending_wolo_claims_name_status")
@@ -2597,6 +2607,7 @@ model BetAutoPreset {
 
   user       User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   executions BetAutoExecution[]
+  satchelAutoSpendConsents SatchelAutoSpendConsent[]
 
   @@index([enabled, updatedAt], map: "ix_bet_auto_presets_enabled_updated_at")
   @@map("bet_auto_presets")
@@ -2635,6 +2646,7 @@ model BetAutoExecution {
   winnerMarket BetMarket       @relation("BetAutoExecutionWinnerMarket", fields: [winnerMarketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   desyncMarket BetMarket?      @relation("BetAutoExecutionDesyncMarket", fields: [desyncMarketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   ticket       BetStakeTicket? @relation(fields: [ticketId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  satchelFundedReservation SatchelFundedReservation?
 
   @@unique([presetId, gameIdentityKey], map: "uq_bet_auto_executions_preset_game")
   @@index([status, nextAttemptAt], map: "ix_bet_auto_executions_status_next_attempt")
@@ -5299,6 +5311,7 @@ model WarSatchelProofCandidate {
 
   intent WarSatchelDepositIntent @relation(fields: [intentId, userId], references: [id, userId], onDelete: Restrict, onUpdate: NoAction)
   user   User                    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  fundedReceipt SatchelFundedReceipt?
 
   @@unique([intentId, userId], map: "uq_war_satchel_proofs_intent_owner")
   @@unique([chainId, txHash, transferIndex], map: "uq_war_satchel_proofs_chain_tx_ordinal")
@@ -5378,4 +5391,342 @@ model WarSatchelLedgerPosting {
   @@unique([journalId, accountId], map: "uq_war_satchel_posting_one_entry_per_account")
   @@index([accountId, createdAt], map: "ix_war_satchel_postings_account_time")
   @@map("war_satchel_ledger_postings")
+}
+
+/**
+ * FUNDED C4: physically reconciled WOLO liabilities, separate from C3a simulation.
+ * SQL CHECK constraints ensure each bucket is nonnegative; only the reviewed
+ * serialized vault-level accounting adapter can mutate these amounts.
+ * Neither a Satchel balance nor this table alone authorizes token transfers.
+ */
+model SatchelFundedBalance {
+  ownerUserId            Int      @id @map("owner_user_id")
+  availableUwolo         BigInt   @default(0) @map("available_uwolo")
+  reservedUwolo          BigInt   @default(0) @map("reserved_uwolo")
+  committedUwolo         BigInt   @default(0) @map("committed_uwolo")
+  withdrawalPendingUwolo BigInt   @default(0) @map("withdrawal_pending_uwolo")
+  version                BigInt   @default(0)
+  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@map("war_satchel_funded_balances")
+}
+
+/** One globally unique, linked canonical on-chain transfer. */
+model SatchelFundedReceipt {
+  id              BigInt   @id @default(autoincrement())
+  ownerUserId     Int      @map("owner_user_id")
+  proofCandidateId BigInt  @unique(map: "uq_satchel_funded_proof") @map("proof_candidate_id")
+  chainId         String   @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  txHash          String   @map("tx_hash") @db.VarChar(64)
+  transferIndex   Int      @map("transfer_index")
+  amountUwolo     BigInt   @map("amount_uwolo")
+  vaultAddress    String   @map("vault_address") @db.VarChar(100)
+  canonicalHeight BigInt   @map("canonical_height")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  proofCandidate WarSatchelProofCandidate @relation(fields: [proofCandidateId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  journal SatchelFundedJournal[]
+
+  @@unique([chainId, txHash, transferIndex], map: "uq_satchel_funded_chain_transfer")
+  @@index([ownerUserId, createdAt], map: "ix_satchel_funded_receipts_owner")
+  @@map("war_satchel_funded_receipts")
+}
+
+/**
+ * Durable idempotency journal: each entry's bucket deltas are constrained by
+ * explicit event-specific CHECKs at the SQL layer.
+ */
+model SatchelFundedJournal {
+  id                          BigInt   @id @default(autoincrement())
+  ownerUserId                 Int      @map("owner_user_id")
+  sourceKey                   String   @unique(map: "uq_satchel_funded_journal_source") @map("source_key") @db.VarChar(180)
+  eventKind                   String   @map("event_kind") @db.VarChar(28)
+  amountUwolo                 BigInt   @map("amount_uwolo")
+  deltaAvailableUwolo         BigInt   @map("delta_available_uwolo")
+  deltaReservedUwolo          BigInt   @map("delta_reserved_uwolo")
+  deltaCommittedUwolo         BigInt   @map("delta_committed_uwolo")
+  deltaWithdrawalPendingUwolo BigInt   @map("delta_withdrawal_pending_uwolo")
+  receiptId                   BigInt?  @map("receipt_id")
+  claimReturnId               BigInt?  @map("claim_return_id")
+  executionId                 Int?     @map("execution_id")
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  receipt SatchelFundedReceipt? @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  claimReturn SatchelFundedClaimReturn? @relation(fields: [claimReturnId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ownerUserId, id], map: "ix_satchel_funded_journal_owner")
+  @@map("war_satchel_funded_journal")
+}
+
+/** One durable, irrevocably named reservation per watcher outbox execution. */
+model SatchelFundedReservation {
+  id              String   @id @db.VarChar(128)
+  ownerUserId     Int      @map("owner_user_id")
+  executionId     Int      @unique(map: "uq_satchel_funded_reservation_execution") @map("execution_id")
+  amountUwolo     BigInt   @map("amount_uwolo")
+  status          String   @default("reserved") @db.VarChar(24)
+  ticketRequestId String   @unique(map: "uq_satchel_funded_reservation_ticket_request") @map("ticket_request_id") @db.VarChar(128)
+  ticketId        Int?     @unique(map: "uq_satchel_funded_reservation_ticket") @map("ticket_id")
+  txHash          String?  @map("tx_hash") @db.VarChar(64)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  execution BetAutoExecution @relation(fields: [executionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  wagerAuthorization SatchelWagerAuthorization?
+
+  @@index([ownerUserId, status, createdAt], map: "ix_satchel_funded_reservation_owner")
+  @@map("war_satchel_funded_reservations")
+}
+
+/** Explicit off-chain Keplr ADR-36 authorization to AUTO-SPEND Satchel WOLO.
+ * Does not sign a chain transfer; it only bounds server authority to one
+ * immutable, owner-bound version of the Mecha preset for at most 24h.
+ */
+model SatchelAutoSpendConsent {
+  id                 String    @id @db.Uuid
+  ownerUserId        Int       @map("owner_user_id")
+  presetId           Int       @map("preset_id")
+  presetVersion      Int       @map("preset_version")
+  ownerUid           String    @map("owner_uid") @db.VarChar(100)
+  walletAddress      String    @map("wallet_address") @db.VarChar(100)
+  nonce              String    @unique(map: "uq_satchel_consent_nonce") @db.VarChar(64)
+  winnerStakeWolo    Int       @map("winner_stake_wolo")
+  desyncSide         String    @map("desync_side") @db.VarChar(8)
+  desyncStakeWolo    Int       @map("desync_stake_wolo")
+  perGameCapWolo     Int       @map("per_game_cap_wolo")
+  dailyCapWolo       Int       @map("daily_cap_wolo")
+  issuedAt           DateTime  @map("issued_at") @db.Timestamp(6)
+  challengeExpiresAt DateTime  @map("challenge_expires_at") @db.Timestamp(6)
+  spendExpiresAt     DateTime  @map("spend_expires_at") @db.Timestamp(6)
+  signedAt           DateTime? @map("signed_at") @db.Timestamp(6)
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamp(6)
+
+  owner User          @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  preset BetAutoPreset @relation(fields: [presetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  originalMandate SatchelAutoSpendMandate?
+
+  @@index([ownerUserId, presetId, presetVersion, signedAt], map: "ix_satchel_auto_consent_owner_plan")
+  @@map("war_satchel_auto_spend_consents")
+}
+
+/// Original owner-signed finite/until-out authorization. Old signedAt flags alone grant no spend.
+model SatchelAutoSpendMandate {
+  consentId String @id @map("consent_id") @db.Uuid
+  untilOut Boolean @map("until_out")
+  gamesRemaining Int? @map("games_remaining")
+  challengeText String @map("challenge_text") @db.Text
+  ownerSignatureJson Json? @map("owner_signature_json")
+  signedAt DateTime? @map("signed_at") @db.Timestamp(6)
+  consent SatchelAutoSpendConsent @relation(fields: [consentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@map("war_satchel_auto_spend_mandates")
+}
+
+/** User-specific physical Satchel withdrawal in escrow-like quarantine.
+ * An UNKNOWN broadcast can neither be refunded nor sent twice.
+ */
+model SatchelFundedWithdrawal {
+  id                 String    @id @db.Uuid
+  ownerUserId        Int       @map("owner_user_id")
+  ownerWalletAddress String    @map("owner_wallet_address") @db.VarChar(100)
+  amountUwolo        BigInt    @map("amount_uwolo")
+  status             String    @default("reserved") @db.VarChar(24)
+  txHash             String?   @unique(map: "uq_satchel_withdrawal_hash") @map("tx_hash") @db.VarChar(64)
+  confirmedHeight    BigInt?   @map("confirmed_height")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+  authorizingChallengeId String @unique(map: "uq_satchel_withdrawal_challenge") @map("authorizing_challenge_id") @db.Uuid
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  challenge SatchelWithdrawalChallenge @relation(fields: [authorizingChallengeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ownerUserId, status, createdAt], map: "ix_satchel_withdrawal_owner_status")
+  @@map("war_satchel_funded_withdrawals")
+}
+
+/** One-use ADR-36 Keplr withdrawal permission; ownership and amount immutable. */
+model SatchelWithdrawalChallenge {
+  id              String     @id @db.Uuid
+  ownerUserId     Int        @map("owner_user_id")
+  ownerUid        String     @map("owner_uid") @db.VarChar(100)
+  walletAddress   String     @map("wallet_address") @db.VarChar(100)
+  amountUwolo     BigInt     @map("amount_uwolo")
+  issuedAt        DateTime   @map("issued_at") @db.Timestamp(6)
+  expiresAt       DateTime   @map("expires_at") @db.Timestamp(6)
+  consumedAt      DateTime?  @map("consumed_at") @db.Timestamp(6)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  withdrawal SatchelFundedWithdrawal?
+
+  @@index([ownerUserId, issuedAt], map: "ix_satchel_withdraw_challenge_owner")
+  @@map("war_satchel_funded_withdrawal_challenges")
+}
+
+/**
+ * Independently verified escrow→exclusive Satchel vault return of a
+ * settled claim (WIN or complete unmatched refund). One claim / one tx /
+ * one receiving Steam owner. Distinct from Keplr user-funded deposits.
+ */
+model SatchelFundedClaimReturn {
+  id              BigInt   @id @default(autoincrement())
+  claimId         Int      @unique(map: "uq_satchel_funded_return_claim") @map("claim_id")
+  ownerUserId     Int      @map("owner_user_id")
+  sourceMarketId  Int      @map("source_market_id")
+  claimKind       String   @map("claim_kind") @db.VarChar(24)
+  chainId         String   @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  txHash          String   @map("tx_hash") @db.VarChar(64)
+  transferIndex   Int      @default(0) @map("transfer_index")
+  amountUwolo     BigInt   @map("amount_uwolo")
+  vaultAddress    String   @map("vault_address") @db.VarChar(100)
+  canonicalHeight BigInt   @map("canonical_height")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  claim PendingWoloClaim @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  journal SatchelFundedJournal[]
+
+  @@unique([chainId, txHash, transferIndex], map: "uq_satchel_funded_return_transfer")
+  @@index([ownerUserId, createdAt], map: "ix_satchel_funded_return_owner")
+  @@map("war_satchel_funded_claim_returns")
+}
+
+/// Global physical transaction identity shared by both existing receipt paths.
+/// Populated atomically by database triggers; never written from API payloads.
+model SatchelPhysicalReceiptConsumption {
+  chainId         String @map("chain_id") @db.VarChar(32)
+  txHash          String @map("tx_hash") @db.VarChar(64)
+  messageIndex    Int    @default(0) @map("message_index")
+  ownerUserId     Int    @map("owner_user_id")
+  receiptKind     String @map("receipt_kind") @db.VarChar(16)
+  sourceReceiptId BigInt @map("source_receipt_id")
+  amountUwolo     BigInt @map("amount_uwolo")
+  vaultAddress    String @map("vault_address") @db.VarChar(100)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([chainId, txHash])
+  @@unique([receiptKind, sourceReceiptId])
+  @@map("war_satchel_physical_receipt_consumptions")
+}
+
+/** Original owner ADR36 bytes and durable hold, never inferred from signer replies. */
+model SatchelWithdrawalAuthorization {
+  withdrawalId String @id @map("withdrawal_id") @db.Uuid
+  ownerUserId Int @map("owner_user_id")
+  ownerUid String @map("owner_uid") @db.VarChar(100)
+  walletAddress String @map("wallet_address") @db.VarChar(100)
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  amountUwolo BigInt @map("amount_uwolo")
+  challengeId String @unique(map:"uq_satchel_withdraw_auth_challenge") @map("challenge_id") @db.Uuid
+  ownerMandateJson Json @map("owner_mandate_json")
+  ownerMandateDigest String @map("owner_mandate_digest") @db.VarChar(64)
+  reservationDigest String @unique(map:"uq_satchel_withdraw_auth_hold") @map("reservation_digest") @db.VarChar(64)
+  memo String @db.VarChar(160)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_authorizations")
+}
+model SatchelWithdrawalApproval {
+  withdrawalId String @id @map("withdrawal_id") @db.Uuid
+  approvalJson Json @map("approval_json")
+  approvalDigest String @map("approval_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_approvals")
+}
+model SatchelWithdrawalRevocation {
+  withdrawalId String @id @map("withdrawal_id") @db.Uuid
+  ownerUserId Int @map("owner_user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_revocations")
+}
+/** Persisted before the first possible dispatch, never sent a second time. */
+model SatchelWithdrawalAttempt {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  withdrawalId String @unique(map:"uq_satchel_withdraw_attempt_id") @map("withdrawal_id") @db.Uuid
+  requestJson Json @map("request_json")
+  requestDigest String @map("request_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_attempts")
+}
+/** Transport observations remain nonauthoritative and append-only. */
+model SatchelWithdrawalObservation {
+  id BigInt @id @default(autoincrement())
+  operationId String @map("operation_id") @db.VarChar(128)
+  txHash String? @map("tx_hash") @db.VarChar(64)
+  state String @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@index([operationId,createdAt],map:"ix_satchel_withdraw_observation_op")
+  @@map("war_satchel_withdrawal_observations")
+}
+/** Exact independently signed v2 return economics, admitted before proof lookup. */
+model SatchelClaimReturnAuthorization {
+  claimId Int @id @map("claim_id")
+  ownerUserId Int @map("owner_user_id")
+  ownerUid String @map("owner_uid") @db.VarChar(100)
+  ticketId Int @map("ticket_id")
+  marketId Int @map("market_id")
+  legId Int @map("leg_id")
+  entitlementId String @map("entitlement_id") @db.VarChar(160)
+  operationId String @map("operation_id") @db.VarChar(128)
+  fundingTxHash String @map("funding_tx_hash") @db.VarChar(64)
+  fundedAmountUwolo BigInt @map("funded_amount_uwolo")
+  amountUwolo BigInt @map("amount_uwolo")
+  principalUwolo BigInt @map("principal_uwolo")
+  claimKind String @map("claim_kind") @db.VarChar(24)
+  escrowAddress String @map("escrow_address") @db.VarChar(100)
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  returnTxHash String @unique(map:"uq_satchel_return_authorization_hash") @map("return_tx_hash") @db.VarChar(64)
+  approvalJson Json @map("approval_json")
+  allocationDigest String @map("allocation_digest") @db.VarChar(64)
+  contextFingerprint String @map("context_fingerprint") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_claim_return_authorizations")
+}
+
+/// Authenticated withdrawal completion shares the physical tx namespace with credits.
+/// Separate UUID key preserves the original immutable bigint receipt contract.
+model SatchelWithdrawalPhysicalConsumption {
+  chainId String @map("chain_id") @db.VarChar(32)
+  txHash String @map("tx_hash") @db.VarChar(64)
+  messageIndex Int @default(0) @map("message_index")
+  withdrawalId String @unique @map("withdrawal_id") @db.Uuid
+  ownerUserId Int @map("owner_user_id")
+  amountUwolo BigInt @map("amount_uwolo")
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  @@id([chainId,txHash])
+  @@map("war_satchel_withdrawal_physical_consumptions")
+}
+
+/// Immutable review request built from the existing funded reservation; no parallel ledger.
+model SatchelWagerAuthorization {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  reservationId String @unique @map("reservation_id") @db.VarChar(128)
+  ownerUserId Int @map("owner_user_id")
+  snapshotJson Json @map("snapshot_json")
+  reservationDigest String @map("reservation_digest") @db.VarChar(64)
+  ledgerRevision String @map("ledger_revision") @db.VarChar(64)
+  consentDigest String @map("consent_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  reservation SatchelFundedReservation @relation(fields:[reservationId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  approval SatchelWagerApproval?
+  broadcast SatchelWagerBroadcast?
+  @@map("war_satchel_wager_authorizations")
+}
+model SatchelWagerApproval {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  approvalJson Json @map("approval_json")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  authorization SatchelWagerAuthorization @relation(fields:[operationId],references:[operationId],onDelete:Restrict,onUpdate:NoAction)
+  @@map("war_satchel_wager_approvals")
+}
+/// A candidate hash records an ACK, never finality. UNKNOWN requires proof-only recovery.
+model SatchelWagerBroadcast {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  txHash String @unique @map("tx_hash") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  authorization SatchelWagerAuthorization @relation(fields:[operationId],references:[operationId],onDelete:Restrict,onUpdate:NoAction)
+  @@map("war_satchel_wager_broadcasts")
 }

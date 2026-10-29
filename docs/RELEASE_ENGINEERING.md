@@ -1468,3 +1468,13 @@ GitHub v1.6.4 published with exact certified digests, governed VPS download
 promotion with Wolo/runtime continuity, and committed web download metadata
 matching the hosted hashes. The native ZIP is retained for integrity but Mac
 unsigned manual installations do not claim signed self-update support.
+
+## October 21, 2026 — Do not confuse one-shot signer acceptance with custody availability
+
+The WoloChain private service currently exposes `custody_capability: "UNAVAILABLE"` even if a source-level/test-only execution permit enables `accepting: true`. It deliberately does not assert independent custody reserves or release certification.
+
+HD `lib/warSatchelDedicatedSignerClient.ts` now requires **positive, exact `custody_capability: "AVAILABLE"` on both its initial and pre-submit signed/private-health checks**. Missing, malformed, ambiguous, changing or `UNAVAILABLE` values refuse the money-moving HTTP POST. Test fixtures may model the future positive handshake but **do not attest a real vault**.
+
+This is a fail-closed integration prerequisite: a Wolo service source upgrade may publish AVAILABLE only after independently witnessed exclusive custody, bank funds/reserves and obligations, trusted commit proof, protected rollback, build-pinned operator permit, and actual held-to-live deployment authorization. Neither `ok: true`, `accepting: true`, a test signature nor a JavaScript environment flag substitutes for that evidence.
+
+Do not enable the app financial bridge or merge this source as a claim of actual funded production support. Codex owns the separately protected Wolo capability issuer, native SDK transport and LIVE market-admission gate. This code and its regression tests keep the client closed until that actual positive state exists; unrelated public read behaviour is unchanged.
