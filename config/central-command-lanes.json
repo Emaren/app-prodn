@@ -54,14 +54,14 @@
     {
       "id": "G",
       "label": "Storage OS & Finder",
-      "mission": "Private L1–L4 review UI, source-bound owner decisions, Finder Recents acceptance",
+      "mission": "Private L1–L5 governance, signed gross-hog evidence and fail-closed individual review; Finder Recents acceptance",
       "owner": "Session G",
       "issue": {
         "repository": "Emaren/app-prodn",
         "number": 976
       },
       "workflow": "PRIVATE_ADMIN_UX",
-      "releaseDependency": "R1_ONLY"
+      "releaseDependency": "W1_SOURCE_AFTER_977"
     },
     {
       "id": "C",
@@ -85,7 +85,7 @@
         "number": 23
       },
       "workflow": "CAPACITY_GATE",
-      "releaseDependency": "R0_HARD_GATE"
+      "releaseDependency": "W1_HARD_GATE"
     },
     {
       "id": "F",
@@ -103,7 +103,7 @@
         }
       ],
       "workflow": "RELEASE_AND_WORKSPACE",
-      "releaseDependency": "R0_OWNER"
+      "releaseDependency": "W1_RELEASE_OWNER"
     },
     {
       "id": "B",

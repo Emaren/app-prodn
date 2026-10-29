@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { acceptStorageVisualSubmission } from "@/lib/storageVisualBridgeReceiver";
 
 import {
   appendAoe2OsRunEvent,
@@ -142,6 +143,22 @@ export async function POST(request: NextRequest) {
       },
       { status: 409, headers: NO_STORE }
     );
+  }
+
+  // Source-separated storage_visual uses the existing authenticated bridge.
+  // No synthetic heartbeat, timer, scanner or release-controller operation.
+  if (op === "storage_visual") {
+    try {
+      const payload = record(body.payload);
+      if (!payload || Buffer.byteLength(JSON.stringify(body),"utf8") > 49_152) {
+        return NextResponse.json({detail:"STORAGE_VISUAL_BODY_BOUNDS_HOLD"},{status:413,headers:NO_STORE});
+      }
+      const ack = await acceptStorageVisualSubmission(payload);
+      return NextResponse.json(ack,{status:201,headers:NO_STORE});
+    } catch {
+      // No raw private payload/keys/path or host data in an error response.
+      return NextResponse.json({detail:"STORAGE_VISUAL_AUTH_OR_REPLAY_HOLD"},{status:409,headers:NO_STORE});
+    }
   }
 
   const bridge = bridgeFields(body);

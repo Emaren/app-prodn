@@ -7,11 +7,11 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 147 exact page templates and 276 handler templates match Git HEAD",()=>{
+test("all 148 exact page templates and 278 handler templates match Git HEAD",()=>{
   const actual=census(gitHeadPaths(),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
-    pageTemplates:147,adminTemplates:29,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:10,routeHandlerTemplates:276,apiHandlerTemplates:273,nonApiHandlerTemplates:3
+    pageTemplates:148,adminTemplates:30,dynamicTemplates:20,publicIndexTemplates:88,
+    excludedStaticTemplates:10,routeHandlerTemplates:278,apiHandlerTemplates:275,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
@@ -19,8 +19,8 @@ test("all 147 exact page templates and 276 handler templates match Git HEAD",()=
 });
 test("seven Renaissance phases assign each canonical template exactly once",()=>{
   const phases=renaissance.phases.flatMap(p=>p.routes);
-  assert.equal(phases.length,147);
-  assert.equal(new Set(phases).size,147);
+  assert.equal(phases.length,148);
+  assert.equal(new Set(phases).size,148);
   assert.deepEqual([...phases].sort(),inventory.pages.map(p=>p.href).sort());
   assert.deepEqual(renaissance.modules.map(m=>m.href).sort(),phases.filter(h=>h==="/renaissance"||h.startsWith("/renaissance/")).sort());
 });
@@ -47,4 +47,8 @@ test("duplicate, removed, forged and unindexed template paths fail closed",()=>{
   assert.throws(()=>compareCensus(inventory,missing),/INVENTORY DRIFT/);
   const added=census([...paths,"app/newly-added/page.tsx"],indexed);
   assert.throws(()=>compareCensus(inventory,added),/INVENTORY DRIFT/);
+});
+
+test("the merged private storage owner handler remains source-indexed",()=>{
+ assert.ok(inventory.handlers.some(h=>h.entrypoint==="app/api/admin/storage-os/reviews/route.ts"&&h.scope==="api"));
 });

@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -347,6 +347,30 @@
         "app-prodn"
       ],
       "title": "AoE2WAR Bounty Board",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "private-source-dispatch-contract",
+      "id": "aoe2war.app-prodn.central-command-os",
+      "owner": "aoe2war-web",
+      "path": "docs/CENTRAL_COMMAND_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-28",
+      "sensitivity": "internal",
+      "sha256": "2f7d28ab453346b21cf47d3a6b99044a00a6956540a2020e1d53a05de04fa245",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "wolochain"
+      ],
+      "title": "Private Central Command OS",
       "type": "reference"
     },
     {
@@ -487,7 +511,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 \u2014 presentation and release contract",
+      "title": "Championship Hall E5 — presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cc44b469efacb24848fbba918fab7d09605599cc347d844c3ac8bd70f8b5544d",
+      "sha256": "0795daf0fc4065e46a49666247c2ab7f12b1aa20930410a179fcafb0c524ad88",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1338,7 +1362,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1360,7 +1384,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1428,7 +1452,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1475,7 +1499,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1567,7 +1591,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1680,7 +1704,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance 88 \u2014 Repeatable page qualification protocol",
+      "title": "Renaissance 88 — Repeatable page qualification protocol",
       "type": "runbook"
     },
     {
@@ -1702,7 +1726,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance Tab D \u2014 private census forge and Test Forge queue",
+      "title": "Renaissance Tab D — private census forge and Test Forge queue",
       "type": "runbook"
     },
     {
@@ -1750,7 +1774,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1902,7 +1926,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "58971f218f92cd5bea5aa2d6b51e72f651aa45be80dee9c9a34ed4ef624310dc",
+      "sha256": "2c695ac8c792d38956afeb4369086a12848a44f19b4dd523a6a0938f69355425",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2071,7 +2095,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2296,7 +2320,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2324,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/w1-f-source-finance-admission-20261029",
-    "commit": "5a87b68973cd02f6cac66deab1a1bfbd6f61296a"
+    "branch": "feat/session-g-central-command-admin-w1-20261029",
+    "commit": "9d38af03aef1b16cd21cddef1a250b8b70949997"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
