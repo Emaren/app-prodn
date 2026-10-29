@@ -52,7 +52,7 @@ export function projectCentralSignedPulse(
   if(!clockValid)return unknown("SOURCE_CLOCK_INVALID");
   if(invalidReceipt)return unknown("RECEIPT_INVALID_OR_UNREADABLE");
   if(!authenticated)return unknown("NO_AUTHENTICATED_RECEIPT");
-  const plane=view.planes.find(x=>x.id===id);
+  const plane=view?.planes.find(x=>x.id===id);
   if(!plane)return unknown("PLANE_NOT_IN_AUTHENTICATED_RECEIPT");
   const at=typeof plane.observedAt==="string"&&
    /^20\d\d-\d\d-\d\dT/.test(plane.observedAt)
