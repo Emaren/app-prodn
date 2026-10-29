@@ -21,7 +21,7 @@ shortcut around Wolo/finance, Doctor, independent restore, stage and owner permi
 - `/admin/central-command` requires the existing authenticated server admin
   session and reads `GET /api/admin/central-command` with `private, no-store`.
 - The API reads the merged source-owned `config/central-command-lanes.json`,
-  bounds original lane issue/PR metadata to six allowlisted lanes (three concurrent
+  bounds GitHub issue/PR metadata to six allowlisted lanes (three concurrent
   requests, each 2.5 seconds) and **never** accepts a user-controlled URL.
   A missing GitHub credential/network leaves evidence UNKNOWN.
 - The six progress bars have the **registered ASSIGNED** gate only (1/6).
@@ -130,3 +130,24 @@ A successful GitHub workflow is source-only and NEVER a production-build
 attestation. In-memory last-good is a bounded stale convenience, not the Q15
 immutable ledger. No operational automation, job reservation, financial writer,
 host probe or stage/activation approval is introduced.
+
+## Q09-A2 — visual Job Exchange (post-W1, source preview only)
+
+`/admin/central-command/job-board` uses the existing server-only
+`requireServerAdmin` guard, the reviewed Q09-A1 private event feed, and
+the six original source-owned lanes. The top rail depicts the stage taxonomy,
+NOT that all stages completed; last per-lane GitHub source receipts light
+read-only brain cards without implying a ChatGPT process is running.
+
+Explicit Q09-A1 #997 and Q09-A2 #998 tickets remain source *specifications*.
+No lane eligibility or owner wake is inferred from those issue bodies;
+the bullpen reports UNKNOWN until an independent authority certifies it.
+A GitHub merge is SOURCE_MERGED, not deployed. The release BUILD_ID,
+finance/custody receipts and independently witnessed host state stay UNKNOWN.
+
+The private page exposes direct GitHub original issue/event links, per-core
+keyboard-accessible selection, strict no-overflow mobile layouts at
+375/768/1440, and a separate Codex funded workstream. Motion is restrained,
+static/reduced-motion safe; no fictitious neural computing heartbeat.
+Session D exclusively owns AppShell/castle/global navigation. New local
+Central Command deep-link only; no remote execution or new daemon.
