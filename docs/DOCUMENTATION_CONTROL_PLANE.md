@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-g-central-command-admin-w1-20261029` at `433ecd4552930f15910434cb30405303b85044a3`
+Implementation baseline: `feat/session-g-central-command-admin-w1-20261029` at `bc22d9930830f278354e9d9ff381d7d804fe3ff3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
