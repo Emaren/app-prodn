@@ -215,6 +215,18 @@ async function run(){
       view.http=response?response.status():null;
       view.final_path=observed.pathname;
       view.sameOrigin=observed.origin===base;
+      // An actual Next redirect can finish its navigation before the client
+      // title settles (observed /about -> /requests mobile: 200, rendered,
+      // landmark=true, title=false). Wait briefly; never waive title proof.
+      if(!observed.title && route.redirect_to && observed.pathname===route.redirect_to){
+        try{
+          await page.waitForFunction(()=>document.title.trim().length>0,
+            {timeout:1800});
+          observed.title=true;
+        }catch{
+          record.errors.push(viewport.name+" redirect title still absent after bounded wait");
+        }
+      }
       view.body_title=observed.title;
       view.rendered=observed.rendered;
       view.landmark=observed.landmark;
