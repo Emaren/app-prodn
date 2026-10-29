@@ -1,5 +1,5 @@
 /* Q17 source-owned navigation allowlist. Admin entries never import into public menus.
- * Every href is backed by an existing app/admin/**/page.tsx and authenticated server guard.
+ * Every href is backed by an actual protected admin route's page.tsx source.
  * Dynamic user detail routes are not navigable without an actual uid.
  * Source presence is NOT runtime or deployment attestation. */
 export type AtlasVisibility = "public" | "admin" | "hidden-draft" | "redirect" | "api-non-nav" | "removed";
