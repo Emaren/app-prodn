@@ -275,6 +275,194 @@ def census(home: Path, project: Path, *, limit: int = 30) -> dict:
 
 
 
+
+# Post-W1 owner-opt-in metadata receipt. This intentionally does not call du,
+# named_measurement, a recursive traversal, a scan of protected worktrees,
+# or any mutating Storage OS controller.
+PROVENANCE_PROJECT_ENTRY_CAP = 121
+PROVENANCE_PROJECT_ROOT_CAP = 120
+PROVENANCE_WORKTREE_CAP = 60
+PROVENANCE_GIT_MAX_BYTES = 65536
+PROVENANCE_MAC_FREE_FLOOR = 25 * 1024**3
+
+
+def _protected_worktree_source(path: Path) -> bool:
+    parts = [p.lower() for p in path.parts]
+    return (".codex" in parts or "app-prodn-e5-seal" in parts
+            or any(part in (".worktrees", ".aoe2war-workspaces")
+                   and any(x.startswith("codex-") for x in parts[i + 1:])
+                   for i, part in enumerate(parts)))
+
+
+def root_provenance_only(home: Path, project: Path, *,
+                         platform: str | None = None) -> dict:
+    """A bounded native root-identity witness; never a storage scan or L1 permit.
+
+    Project directory entries: <=121, only 120 roots represented. Git worktree
+    declarations: <=61, only 60 represented. Overflow remains UNKNOWN.
+    Protected worktrees receive NO child walk or lstat at all. No APFS unique
+    extent can be calculated from these root-level inode identities.
+    """
+    receipt = {
+        "schema": "aoe2war.mac-l1-root-provenance.v1",
+        "status": "HOLD", "scope": "ONE_LEVEL_PROJECT_AND_DECLARED_GIT_ROOTS_ONLY",
+        "project_root": str(project), "project_roots": [], "worktree_roots": [],
+        "project_entry_cap": PROVENANCE_PROJECT_ENTRY_CAP,
+        "project_root_cap": PROVENANCE_PROJECT_ROOT_CAP,
+        "worktree_cap": PROVENANCE_WORKTREE_CAP,
+        "project_entries_seen": None, "project_directory_roots_seen": None,
+        "project_entry_overflow_unknown": None, "worktrees_declared_seen": None,
+        "worktree_overflow_unknown": None, "protected_worktrees_skipped": None,
+        "cross_namespace_aliases": [], "holds": [],
+        "ordinary_free_bytes": None,
+        "minimum_free_bytes_for_owner_review": PROVENANCE_MAC_FREE_FLOOR,
+        "free_floor_observed_pass": False, "floor_is_not_an_owner_permit": True,
+        "git_worktree_source": "LOCAL_CANONICAL_APP_PRODN_PORCELAIN",
+        "git_worktree_mutation_allowed": False,
+        "path_contents_read": False, "recursive_walk": False,
+        "du_executed": False, "spotlight_modified": False,
+        "protected_l5_inventoried": False,
+        "all_source_roots_certified": False,
+        "native_l1_gate_three_accepted": False,
+        "policy_scope_complete": False, "owner_approval": None,
+        "eligible_l1_candidates": None,
+        "gross_allocated_bytes": None,
+        "unique_apfs_recoverable_bytes": None,
+        "clone_hardlink_snapshot_unique_extents": None,
+        "physical_before_after_transaction_receipt": None,
+        "l1_policy_exhaustion_decision": "L1_POLICY_EXHAUSTED_NO",
+        "mutation_authority": "NONE",
+    }
+    if (platform or sys.platform) != "darwin":
+        receipt["holds"].append("NOT_NATIVE_MAC")
+        return receipt
+    if project != home / "projects" / "AoE2HDBets":
+        receipt["holds"].append("UNEXPECTED_PROJECT_ROOT")
+        return receipt
+    try:
+        st_home = os.lstat(home)
+        if not stat.S_ISDIR(st_home.st_mode) or stat.S_ISLNK(st_home.st_mode):
+            receipt["holds"].append("HOME_NOT_PHYSICAL_DIRECTORY")
+            return receipt
+        for ancestor in (home / "projects", project):
+            s = os.lstat(ancestor)
+            if (not stat.S_ISDIR(s.st_mode) or stat.S_ISLNK(s.st_mode)
+                    or s.st_dev != st_home.st_dev):
+                receipt["holds"].append("SYMLINK_OR_FOREIGN_MOUNT_ANCESTOR")
+                return receipt
+        v = os.statvfs(home)
+        size = v.f_frsize or v.f_bsize
+        if size <= 0 or v.f_bavail < 0:
+            receipt["holds"].append("STATVFS_INCOHERENT")
+            return receipt
+        receipt["ordinary_free_bytes"] = v.f_bavail * size
+        receipt["free_floor_observed_pass"] = (
+            receipt["ordinary_free_bytes"] >= PROVENANCE_MAC_FREE_FLOOR)
+        if not receipt["free_floor_observed_pass"]:
+            receipt["holds"].append("MAC_BELOW_25_GIB_LOW_IO_ADMISSION_FLOOR")
+            return receipt
+        entries = []
+        with os.scandir(project) as iterator:
+            for entry in iterator:
+                entries.append(entry.name)
+                if len(entries) >= PROVENANCE_PROJECT_ENTRY_CAP:
+                    break
+        receipt["project_entries_seen"] = len(entries)
+        receipt["project_entry_overflow_unknown"] = (
+            len(entries) == PROVENANCE_PROJECT_ENTRY_CAP)
+        if receipt["project_entry_overflow_unknown"]:
+            receipt["holds"].append("DIRECT_PROJECT_ENTRY_CAP")
+        physical_roots = set()
+        directory_count = 0
+        for name in sorted(entries[:PROVENANCE_PROJECT_ROOT_CAP]):
+            root = project / name
+            try:
+                s = os.lstat(root)
+            except OSError:
+                receipt["holds"].append("PROJECT_ROOT_STAT_UNKNOWN")
+                continue
+            if stat.S_ISLNK(s.st_mode):
+                receipt["holds"].append("PROJECT_SYMLINK_NOT_FOLLOWED")
+                continue
+            if not stat.S_ISDIR(s.st_mode):
+                continue
+            directory_count += 1
+            identity = {
+                "path": str(root), "device": s.st_dev, "inode": s.st_ino,
+                "owner_uid": s.st_uid, "identity_is_not_unique_apfs_extent": True,
+                "class": ("PROTECTED_ACTIVE_OR_OWNER_DATA_NO_CHILD_SCAN"
+                          if name.lower() in ("app-prodn", "api-prodn", "wolo",
+                                              "app-prodn-e5-seal")
+                          else "UNQUALIFIED_PROJECT_ROOT_NO_CHILD_SCAN"),
+            }
+            if s.st_dev != st_home.st_dev:
+                identity["class"] = "FOREIGN_MOUNT_HOLD"
+                receipt["holds"].append("PROJECT_ROOT_FOREIGN_MOUNT")
+            receipt["project_roots"].append(identity)
+            physical_roots.add(str(root))
+        receipt["project_directory_roots_seen"] = directory_count
+        primary = project / "app-prodn"
+        s = os.lstat(primary)
+        if (not stat.S_ISDIR(s.st_mode) or stat.S_ISLNK(s.st_mode)
+                or s.st_dev != st_home.st_dev):
+            receipt["holds"].append("CANONICAL_GIT_ROOT_UNVERIFIED")
+            return receipt
+        p = subprocess.run(
+            ["git", "-C", str(primary), "worktree", "list", "--porcelain"],
+            capture_output=True, text=True, check=False, timeout=12,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0",
+                 "GIT_TERMINAL_PROMPT": "0"})
+        if p.returncode or len(p.stdout.encode("utf-8", "surrogateescape")) > PROVENANCE_GIT_MAX_BYTES:
+            receipt["holds"].append("GIT_WORKTREE_SOURCE_UNKNOWN")
+            return receipt
+        declared = [line[9:] for line in p.stdout.splitlines()
+                    if line.startswith("worktree ")]
+        if not declared or len(declared) != len(set(declared)):
+            receipt["holds"].append("GIT_WORKTREE_DECLARATIONS_MISSING_OR_DUPLICATE")
+            return receipt
+        receipt["worktrees_declared_seen"] = min(len(declared), PROVENANCE_WORKTREE_CAP+1)
+        receipt["worktree_overflow_unknown"] = len(declared) > PROVENANCE_WORKTREE_CAP
+        if receipt["worktree_overflow_unknown"]:
+            receipt["holds"].append("GIT_WORKTREE_DECLARATIONS_OVER_CAP")
+        skipped = 0
+        for text_path in declared[:PROVENANCE_WORKTREE_CAP]:
+            root = Path(text_path)
+            if (not root.is_absolute() or ".." in root.parts
+                    or any(ord(c) < 32 for c in text_path)):
+                receipt["holds"].append("GIT_WORKTREE_PATH_AMBIGUOUS")
+                continue
+            if _protected_worktree_source(root):
+                skipped += 1
+                receipt["worktree_roots"].append({
+                    "path": text_path, "class": "PROTECTED_WORKTREE_NO_STAT_OR_TRAVERSAL",
+                    "identity": None, "mutation_authority": "NONE"})
+                continue
+            try:
+                s = os.lstat(root)
+            except OSError:
+                receipt["holds"].append("DECLARED_WORKTREE_ROOT_STAT_UNKNOWN")
+                continue
+            row = {"path": text_path, "device": s.st_dev, "inode": s.st_ino,
+                   "identity_is_not_unique_apfs_extent": True,
+                   "class": "UNQUALIFIED_DECLARED_WORKTREE_NO_CHILD_SCAN"}
+            if (not stat.S_ISDIR(s.st_mode) or stat.S_ISLNK(s.st_mode)
+                    or s.st_dev != st_home.st_dev):
+                row["class"] = "WORKTREE_SYMLINK_MOUNT_OR_TYPE_HOLD"
+                receipt["holds"].append("WORKTREE_ROOT_UNSAFE")
+            if text_path in physical_roots:
+                receipt["cross_namespace_aliases"].append(text_path)
+                receipt["holds"].append("PROJECT_WORKTREE_ALIAS_NO_DOUBLE_COUNT")
+            receipt["worktree_roots"].append(row)
+        receipt["protected_worktrees_skipped"] = skipped
+        if not receipt["holds"]:
+            receipt["status"] = "BOUNDED_ROOT_IDENTITIES_OBSERVED_NOT_L1_CERTIFIED"
+    except (OSError, subprocess.TimeoutExpired, UnicodeError):
+        receipt["holds"].append("ROOT_OR_WORKTREE_SOURCE_UNAVAILABLE")
+    receipt["holds"] = sorted(set(receipt["holds"]))
+    return receipt
+
+
+
 def focused_census(home: Path, focus: str) -> dict:
     """Bounded one-level triage; unknown/protected files are never reclaimable."""
     if focus not in FOCUS_ROOTS:
@@ -526,6 +714,8 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=30)
     parser.add_argument("--focus", choices=sorted(FOCUS_ROOTS),
                         help="read-only, one-level cache-child review; never an apply mode")
+    parser.add_argument("--root-provenance-only", action="store_true",
+                        help="bounded root lstat+Git metadata only; no du, no deletion")
     parser.add_argument("--capacity-only", action="store_true",
                         help="one opt-in, read-only mount-aware shallow Data + home accounting")
     args = parser.parse_args()
@@ -533,11 +723,20 @@ def main() -> int:
         parser.error("--limit must be 5..1024")
     home = Path.home()
     root = home / "projects/AoE2HDBets"
-    data = (capacity_accounting(home) if args.capacity_only
+    if args.root_provenance_only and (args.capacity_only or args.focus):
+        parser.error("--root-provenance-only cannot combine with capacity or focus")
+    data = (root_provenance_only(home, root) if args.root_provenance_only
+            else capacity_accounting(home) if args.capacity_only
             else focused_census(home, args.focus) if args.focus
             else census(home, root, limit=args.limit))
     if args.json:
         print(json.dumps(data, indent=2, sort_keys=True))
+    elif args.root_provenance_only:
+        print("AOE2WAR MAC BOUNDED ROOT PROVENANCE — READ ONLY")
+        print("Status:", data["status"], "Holds:", ",".join(data["holds"]))
+        print("Project roots:", len(data["project_roots"]),
+              "declared worktrees:", len(data["worktree_roots"]))
+        print("L1 exhaustion: NO; APFS unique gain UNKNOWN; NO mutation authority")
     elif args.capacity_only:
         print("AOE2WAR MAC SHALLOW APFS CAPACITY — READ ONLY")
         print("Status:", data["status"], "Reason:", data.get("reason"))
