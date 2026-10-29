@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {useMemo,useState} from "react";
-import {Activity,ArrowLeft,ArrowRight,BrainCircuit,CheckCircle2,CircleHelp,Crown,GitCommit,GitMerge,GitPullRequest,LockKeyhole,RadioTower,RefreshCw,ShieldCheck,Sparkles,Ticket,Workflow} from "lucide-react";
+import {Activity,ArrowLeft,ArrowRight,BrainCircuit,CheckCircle2,CircleHelp,Crown,GitCommit,GitMerge,GitPullRequest,LockKeyhole,RadioTower,RefreshCw,ShieldCheck,Ticket,Workflow} from "lucide-react";
 import {useCentralEvidence,type EvidenceEvent} from "@/components/central-command/VerifiedEventStrip";
 import styles from "./JobExchange.module.css";
 type Lane={id:string;label:string;issueUrl:string};
@@ -44,7 +44,7 @@ export default function JobExchangeClient({lanes}:Props){
       <Icon className={styles.stageIcon} size={21}/><span>{String(i+1).padStart(2,"0")}</span><strong>{s.title}</strong><small>{s.sub}</small>
      </div>{i<stages.length-1&&<ArrowRight aria-hidden="true" className={styles.flowArrow} size={14}/>}</div>})}
    </section>
-   <div className={styles.sectionHead}><div><p className={styles.eyebrow}>GITHUB FACTS · SIX ORIGINAL OWNERS</p><h2>THE SIX BRAINS</h2></div><p>Illumination represents last **GitHub source event**, never a running ChatGPT instance.</p></div>
+   <div className={styles.sectionHead}><div><p className={styles.eyebrow}>GITHUB FACTS · SIX ORIGINAL OWNERS</p><h2>THE SIX BRAINS</h2></div><p>Illumination represents last GitHub source event, never a running ChatGPT instance.</p></div>
    <section aria-label="Six authenticated engineering lane cores" className={styles.brains}>
     {lanes.map(l=>{const event=byLane[l.id],status=state(event);return <button type="button" onClick={()=>setSelected(l.id)} aria-pressed={selected===l.id} aria-label={"Inspect Session "+l.id+" source evidence"} key={l.id} className={styles.brainCard} data-selected={selected===l.id} data-tint={tint[l.id]??"sky"}>
       <span className={styles.orb}><span className={styles.orbInner}><BrainCircuit size={32} strokeWidth={1.2}/></span></span>
