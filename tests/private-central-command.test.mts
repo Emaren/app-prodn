@@ -15,6 +15,23 @@ test("six fixed source-owned lanes and truthful 1/6 gate source",()=>{
  assert.match(projection,/NO_ACCEPTED_RUNTIME_RECEIPT/);
  assert.doesNotMatch(projection,/EXECUTE|approveDelete|deploy\(/);
 });
+test("persistent six original lane issues follow five-level immutable W1, never stale R1 or R0 release authority",()=>{
+ const byId=Object.fromEntries(registry.lanes.map(x=>[x.id,x]));
+ assert.deepEqual(registry.lanes.map(x=>x.id),["D","G","C","E","F","B"]);
+ assert.deepEqual(registry.lanes.map(x=>[x.issue.repository,x.issue.number]),[
+  ["Emaren/app-prodn",975],["Emaren/app-prodn",976],
+  ["Emaren/VPSSentry",48],["Emaren/VPSSentry",23],
+  ["Emaren/app-prodn",665],["Emaren/wolochain",115]]);
+ assert.match(byId.G.mission,/L1–L5/);
+ assert.match(byId.G.mission,/fail-closed individual review/);
+ assert.equal(byId.G.releaseDependency,"W1_SOURCE_AFTER_977");
+ assert.equal(byId.E.releaseDependency,"W1_HARD_GATE");
+ assert.equal(byId.F.releaseDependency,"W1_RELEASE_OWNER");
+ assert.equal(byId.B.releaseDependency,"FUNDED_ONLY");
+ assert.doesNotMatch(JSON.stringify(registry.lanes),/R1_ONLY|R0_OWNER|R0_HARD_GATE|L1–L4/);
+ assert.equal(registry.authority,"DISPATCH_AND_OBSERVATION_ONLY");
+});
+
 test("admin page and API use existing session and never serve public status or writes",()=>{
  const page=read("app/admin/central-command/page.tsx");
  const api=read("app/api/admin/central-command/route.ts");
