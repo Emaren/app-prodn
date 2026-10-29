@@ -351,6 +351,30 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "private-source-dispatch-contract",
+      "id": "aoe2war.app-prodn.central-command-os",
+      "owner": "aoe2war-web",
+      "path": "docs/CENTRAL_COMMAND_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-28",
+      "sensitivity": "internal",
+      "sha256": "2f7d28ab453346b21cf47d3a6b99044a00a6956540a2020e1d53a05de04fa245",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "wolochain"
+      ],
+      "title": "Private Central Command OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -639,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "354a50ec0084524f1df4151ee757aae70686eacb5c539208f4d4bdeb7bd461f8",
+      "sha256": "0795daf0fc4065e46a49666247c2ab7f12b1aa20930410a179fcafb0c524ad88",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2324,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-g-storage-level-review-20261028",
-    "commit": "6badbd25cb41edfad1f109070d551985f1ebda4e"
+    "branch": "feat/session-g-central-command-admin-w1-20261029",
+    "commit": "9d38af03aef1b16cd21cddef1a250b8b70949997"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

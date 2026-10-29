@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-g-storage-level-review-20261028` at `6badbd25cb41edfad1f109070d551985f1ebda4e`
+Implementation baseline: `feat/session-g-central-command-admin-w1-20261029` at `9d38af03aef1b16cd21cddef1a250b8b70949997`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **101**
+- Authoritative repository documents: **102**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 61
+- `reference`: 62
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 80
+- `active`: 81
 - `draft`: 5
 - `generated`: 1
 - `historical`: 12
@@ -67,6 +67,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
+| [Private Central Command OS](CENTRAL_COMMAND_OS.md) | `reference` | `active` | `private-source-dispatch-contract` |
 | [AoE2WAR Challenge Protocols and Presentation](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Belt Constitution V1](CHAMPIONSHIP_BELT_CONSTITUTION.md) | `reference` | `active` | `product-contract` |
 | [Championship Belt Chain Capability Handoff](CHAMPIONSHIP_CHAIN_HANDOFF.md) | `reference` | `active` | `integration-contract` |

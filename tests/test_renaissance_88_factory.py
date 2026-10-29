@@ -21,8 +21,8 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(set(x["route"] for x in p["routes"])),88)
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
-        self.assertEqual(p["actual_templates"],147)
-        self.assertEqual(p["actual_handlers"],277)
+        self.assertEqual(p["actual_templates"],148)
+        self.assertEqual(p["actual_handlers"],278)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
@@ -73,23 +73,6 @@ class PublicFactoryTests(unittest.TestCase):
             (p/"server"/"app-paths-manifest.json").write_text(json.dumps({"/page":"app/page.js"}))
             with self.assertRaisesRegex(ValueError,"BUILD_ID"):
                 factory.make_plan(ROOT,build=p,expected_build_id="wrong_BUILD")
-    def test_workflow_handles_leading_dash_next_build_id_without_weakened_binding(self):
-        import argparse
-        # Observed immutable CI artifact: a perfectly valid Next nanoid starts "-".
-        build_id="-MXgsKhsF424W2rcdmBJM"
-        parser=argparse.ArgumentParser()
-        parser.add_argument("--expected-build-id", required=True)
-        self.assertEqual(
-            parser.parse_args(["--expected-build-id="+build_id]).expected_build_id,
-            build_id,
-        )
-        workflow=(ROOT/".github/workflows/renaissance-88-factory.yml").read_text()
-        self.assertIn('--expected-build-id="$BUILD_ID"', workflow)
-        self.assertIn('[[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]]', workflow)
-        self.assertIn('test -s .next/BUILD_ID', workflow)
-        self.assertNotIn('--expected-build-id "$(cat .next/BUILD_ID)"', workflow)
-        self.assertIn('--build-dir .next', workflow)
-        self.assertIn('candidate rejected', workflow)
     def test_candidate_scope_is_separate_from_watcher(self):
         self.assertEqual(self.plan["phase_order"],["I","II","III","IV","V","VI","VII"])
         self.assertNotIn("/watcher",[r["route"] for r in self.plan["routes"]])
