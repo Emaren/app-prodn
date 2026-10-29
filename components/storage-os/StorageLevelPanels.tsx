@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Archive, Fingerprint, Layers3, ShieldAlert, ShieldCheck, History, Clock3 } from "lucide-react";
-import { INDIVIDUAL_TRANSPORT_ADOPTED } from "@/lib/storageVisualPrivate";
+import { INDIVIDUAL_TRANSPORT_ADOPTED } from "@/lib/storageReviewTransportPolicy";
 import type { PlaneId, Level, StorageVisualView } from "@/lib/storageVisualPrivate";
 import type { OwnerDecision, OwnerReviewEvent } from "@/lib/storageOwnerReviews";
 
