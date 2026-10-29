@@ -34,6 +34,7 @@ async function githubJson(path: string, signal: AbortSignal): Promise<unknown> {
       ...(token ? { Authorization: "Bearer " + token } : {})
     }
   });
+  if (request.status === 429 || request.status >= 500 || request.status === 401 || request.status === 403) throw new Error("GitHub transport unavailable");
   if (!request.ok) throw new Error("GitHub source unavailable");
   const length = Number(request.headers.get("content-length") ?? "0");
   if (length > 180_000) throw new Error("Unbounded source");
@@ -44,7 +45,6 @@ async function githubJson(path: string, signal: AbortSignal): Promise<unknown> {
 
 const object = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === "object" && !Array.isArray(v);
-const sha40 = (v: unknown) => typeof v === "string" && /^[a-f0-9]{40}$/.test(v);
 
 async function verifiedCodeDate(scope: ApprovedScope, signal: AbortSignal, now: number): Promise<string | null> {
   if (!scope.lastCodeSha) return null;
@@ -54,7 +54,7 @@ async function verifiedCodeDate(scope: ApprovedScope, signal: AbortSignal, now: 
     if (!object(item) || item.sha !== scope.lastCodeSha || !object(item.commit) ||
         !object(item.commit.committer)) return null;
     return safeCodeDate(item.commit.committer.date, now);
-  } catch { return null; }
+  } catch (e) { if (String(e).includes("transport unavailable")) throw e; return null; }
 }
 
 async function acceptedSourceGates(scope: ApprovedScope, signal: AbortSignal, now: number): Promise<Set<string>> {
@@ -76,7 +76,10 @@ async function acceptedSourceGates(scope: ApprovedScope, signal: AbortSignal, no
       // The owner-approved versioned gate is backed by a successful, SHA-matched
       // source CI receipt. A code CI never certifies live/financial milestones.
       verified.add(gate.id);
-    } catch { /* missing, rate-limited and unverified all remain UNKNOWN */ }
+    } catch (e) {
+      if (String(e).includes("transport unavailable")) throw e;
+      // Missing/malformed run is unverified; a rate limit invalidates the whole projection.
+    }
   }));
   return verified;
 }
