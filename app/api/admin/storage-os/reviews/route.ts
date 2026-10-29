@@ -54,7 +54,11 @@ export async function POST(request:NextRequest){
     const item=plane.reviewItems?.find(i=>i.alias===body.alias);
     if(!item||item.fingerprint!==body.fingerprint||item.sourceDigest!==body.sourceDigest||
       item.sourceRevision!==body.sourceRevision)return reject(409,"REVIEW_FINGERPRINT_DRIFT");
-    // L4 is immutable manual-only; migration design intent belongs to L3.
+    // L5 is owner-express immutable NEVER DELETE, including migrated legacy L4
+    // PROTECTED. Generic review/REVOKE cannot withdraw permanent protection.
+    if(item.level===5)return reject(409,"REVIEW_L5_OWNER_IMMUTABLE");
+    // L4 is human-only; no automated delete operation exists in this API.
+    // Migration design intent belongs to item-specific L3 alone.
     if(choice==="MIGRATION_REVIEW"&&item.level!==3)return reject(409,"REVIEW_MIGRATION_LEVEL_HOLD");
     const approval=choice==="SINGLE_CANDIDATE_APPROVAL";
     if(approval&&(item.level!==1||item.sourceStatus!=="GUARDED"||item.proofState!=="COMPLETE"||
