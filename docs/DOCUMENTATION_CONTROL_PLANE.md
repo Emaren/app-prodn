@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-g-postw1-signed-pulse-freshness-20261029` at `8ffcef73311412855469d6dc2d86d1c1e1b63784`
+Implementation baseline: `feat/session-g-postw1-signed-pulse-freshness-20261029` at `56275786384e9f4a6d528d8e8721a4ac9559548d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
