@@ -26,6 +26,7 @@ TRUST = Path("/private/etc/aoe2war/release-admission" if sys.platform == "darwin
              else "/etc/aoe2war/release-admission")
 PACKETS = ROOT / ".aoe2war-release" / "nonfinancial-admissions"
 ROLES = ("source", "finance", "owner")
+TRUST_ROLES = (*ROLES, "host")  # independently signed root-HEL1 nonce consumption
 DOMAIN = b"AOE2WAR.W1.NONFINANCIAL.ADMISSION.V1\n"
 HEX40 = re.compile(r"[a-f0-9]{40}\Z")
 HEX64 = re.compile(r"[a-f0-9]{64}\Z")
@@ -184,9 +185,9 @@ def require_admission(
 
     registry = read_json(trust / "trust.json", trusted=True)
     check(registry.get("schema") == 1 and type(registry.get("keys")) is dict
-          and set(registry["keys"]) == set(ROLES), "unapproved trust schema/roles")
-    spkis = [registry["keys"][r].get("spki_sha256") for r in ROLES]
-    check(len(set(spkis)) == len(ROLES), "source/finance/owner signers not independent")
+          and set(registry["keys"]) == set(TRUST_ROLES), "unapproved trust schema/roles")
+    spkis = [registry["keys"][r].get("spki_sha256") for r in TRUST_ROLES]
+    check(len(set(spkis)) == len(TRUST_ROLES), "source/finance/owner/host signers not independent")
     challenge = read_json(trust / ("challenge-" + phase + ".json"), trusted=True)
     packet = read_json(packets / (release + "-" + phase + ".json"))
     check(packet.get("schema") == 1 and set(packet) == {"schema", "payload", "signatures"},
@@ -257,6 +258,12 @@ def require_admission(
           and payload.get("financial_movement_authorized") is False,
           "financial hold not preserved")
     if phase == "PRE_ACTIVATE":
+        pre_payload = read_json(packets / (release + "-PRE_STAGE.json")).get("payload")
+        check(type(pre_payload) is dict and
+              pre_payload.get("nonce") != payload.get("nonce") and
+              pre_payload.get("lease_id") == payload.get("lease_id") and
+              pre_payload.get("protected") == payload.get("protected"),
+              "changed protected Wolo/finance fingerprints or reused phase nonce")
         check(payload.get("stage_receipt_sha256") == stage_sha
               and payload.get("staged_build_id") == stage_receipt.get("staged_build_id")
               and payload.get("artifact_sha256") == stage_receipt.get("artifact_sha256")
@@ -276,6 +283,30 @@ def require_admission(
         pub = key_bytes(role, trust, registry)
         verify_signature(role, payload, signatures[role], pub)
     sealed_sha = digest(canonical(packet))
+    # Host root must independently consume and sign a nonce claim in its
+    # durable release lease journal BEFORE the Mac operator may stage.
+    # A user-owned Mac O_EXCL file is deliberately NOT sufficient authority.
+    host = read_json(trust / ("host-claim-" + phase + ".json"), trusted=True)
+    check(host.get("schema") == 1 and set(host) == {"schema", "payload", "signature_base64"},
+          "missing independent HEL1 root journal claim")
+    hp = host["payload"]
+    check(type(hp) is dict
+          and hp.get("kind") == "aoe2war-hel1-root-nonce-consumption-v1"
+          and hp.get("host") == "hel1"
+          and hp.get("phase") == phase
+          and hp.get("release_sha") == release
+          and hp.get("nonce") == payload["nonce"]
+          and hp.get("lease_id") == payload["lease_id"]
+          and hp.get("packet_sha256") == sealed_sha
+          and hp.get("protected") == protected
+          and hp.get("root_journal_status") == "CONSUMED"
+          and bool(HEX64.fullmatch(str(hp.get("root_journal_sha256") or ""))),
+          "host journal claim not candidate/nonce/fingerprint bound")
+    observed_at = timestamp(hp.get("observed_at"))
+    check(0 <= (instant - observed_at).total_seconds() <= 120,
+          "stale or future HEL1 live fingerprint witness")
+    verify_signature("host", hp, host["signature_base64"],
+                     key_bytes("host", trust, registry))
     if consume:
         packets.mkdir(parents=True, exist_ok=True)
         check(not packets.is_symlink() and packets.stat().st_mode & 0o077 == 0,
