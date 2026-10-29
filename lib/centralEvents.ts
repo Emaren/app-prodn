@@ -88,11 +88,11 @@ export function parseRuns(repo:string,input:unknown,now=Date.now()):SourceEvent[
 export function dedupeEvents(events:SourceEvent[],limit=60):SourceEvent[]{
  return [...new Map(events.map(e=>[e.id,e])).values()].sort((a,b)=>b.at.localeCompare(a.at)||a.id.localeCompare(b.id)).slice(0,limit);
 }
-type ResponseRead={ok:boolean;data:unknown;reason:string|null};
+type ResponseRead={ok:boolean;data:unknown;reason:string|null;lastPage?:number};
 let lastGood:EventFeed|null=null,cache:Promise<EventFeed>|null=null,until=0,backoffUntil=0;
 const TTL=55_000,STALE_MS=300_000;
 async function github(path:string,now:number):Promise<ResponseRead>{
- if(!/^repos\/Emaren\/(?:app-prodn|VPSSentry|wolochain)\/(?:issues\/[1-9]\d{0,4}\/comments|pulls\/[1-9]\d{0,4}(?:\/commits|\/reviews)?|actions\/runs)\?per_page=(?:12|5|8|18)&page=1$/.test(path))return{ok:false,data:null,reason:"DISALLOWED_ENDPOINT"};
+ if(!/^repos\/Emaren\/(?:app-prodn|VPSSentry|wolochain)\/(?:issues\/[1-9]\d{0,4}\/comments|pulls\/[1-9]\d{0,4}(?:\/commits|\/reviews)?|actions\/runs)\?per_page=(?:12|5|8|18)&page=[1-9]\\d{0,4}$/.test(path))return{ok:false,data:null,reason:"DISALLOWED_ENDPOINT"};
  if(now<backoffUntil)return{ok:false,data:null,reason:"RATE_LIMIT_BACKOFF"};
  try{
   const token=process.env.GITHUB_TOKEN?.trim();
@@ -101,7 +101,10 @@ async function github(path:string,now:number):Promise<ResponseRead>{
   if(!res.ok)return{ok:false,data:null,reason:"GITHUB_"+res.status};
   if(Number(res.headers.get("content-length")||0)>240_000)return{ok:false,data:null,reason:"OVERSIZE"};
   const text=await res.text();if(text.length>240_000)return{ok:false,data:null,reason:"OVERSIZE"};
-  return{ok:true,data:JSON.parse(text),reason:null};
+  const lastLink=(res.headers.get("link")||"").split(",").find(x=>x.includes('rel="last"'))||"";
+  const pageMatch=/[?&]page=(\\d{1,5})/.exec(lastLink);
+  const lastPage=pageMatch?Math.min(99999,Number(pageMatch[1])):1;
+  return{ok:true,data:JSON.parse(text),reason:null,lastPage};
  }catch{return{ok:false,data:null,reason:"SOURCE_UNAVAILABLE"};}
 }
 export async function readCentralEvents():Promise<EventFeed>{
@@ -114,7 +117,12 @@ export async function readCentralEvents():Promise<EventFeed>{
   const rows:SourceEvent[]=[];let accepted=0;let reason:string|null=null;
   for(let i=0;i<starts.length;i+=5){
    const batch=starts.slice(i,i+5),results=await Promise.all(batch.map(x=>github(x.path,now)));
-   results.forEach((r,j)=>{
+   const newest=await Promise.all(results.map((r,j)=>{
+    const row=batch[j];
+    if(!r.ok||row.kind!=="comments"||!r.lastPage||r.lastPage<=1)return Promise.resolve(r);
+    return github(row.path.replace("page=1","page="+r.lastPage),now);
+   }));
+   newest.forEach((r,j)=>{
     const s=batch[j];if(!r.ok){reason??=r.reason;return;}accepted++;
     if(s.kind==="comments")rows.push(...parseComments(s.repo,s.issue,("id" in s?s.id:null)??null,r.data,now));
     else if(s.kind==="runs")rows.push(...parseRuns(s.repo,r.data,now));
