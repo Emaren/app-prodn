@@ -55,6 +55,16 @@ test("native isolated source HMAC, durable signed ACK, idempotency and no fake H
   assert.ok(readFileSync(file,"utf8").includes('"signature_hmac_sha256"'));
   const duplicate=await acceptStorageVisualSubmission(submission,now);
   assert.equal(duplicate.payload.replay,"IDEMPOTENT");
+  // C canonical v1 exact 12-field source contract is never widened by G.
+  // Even a recomputed envelope/submission signature cannot add item or
+  // capacity fields: no authenticated source-owned individual producer exists.
+  for(const field of ["review_items","capacity_samples"] as const){
+    const injected=structuredClone(submission);
+    (injected.source_receipts[0].payload as Record<string,unknown>)[field]=[];
+    injected.source_receipts[0].signature_hmac_sha256=sig(key("a"),"AOE2WAR_SOURCE_PLANE_V1\\0",injected.source_receipts[0].payload);
+    injected.submission_id=createHash("sha256").update(domain+canonical(injected.source_receipts)).digest("hex");
+    await assert.rejects(()=>acceptStorageVisualSubmission(injected,now),/VISUAL_FIELDS_UNRECOGNIZED/);
+  }
   const fake=structuredClone(submission);
   fake.source_receipts[0].payload.read_only=false;
   await assert.rejects(()=>acceptStorageVisualSubmission(fake,now),/VISUAL_/);
