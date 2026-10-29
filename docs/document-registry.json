@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c1524172948bec3ac313098c9b05e906c7cda1944c80f3d40d3d7c01ec0ffeba",
+      "sha256": "2562626124dfcfd7bf9e8cf3896514d22c1f922097cb33abb7ff464c92ce9ddd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/session-g-postw1-signed-pulse-freshness-20261029",
-    "commit": "8ffcef73311412855469d6dc2d86d1c1e1b63784"
+    "commit": "56275786384e9f4a6d528d8e8721a4ac9559548d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
