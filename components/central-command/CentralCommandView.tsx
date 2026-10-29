@@ -7,7 +7,7 @@ type Lane={id:"D"|"G"|"C"|"E"|"F"|"B";label:string;owner:string;mission:string;i
  sourceAuthority:string;nextBlocker:string;gateStates:Record<string,string>;verifiedNumerator:number;denominator:number};
 type Snapshot={schema:string;authority:string;generatedAt:string;
  r0:{referenceSha:string;proof:string};w1:{sourceSha:string|null;buildId:string|null;status:string};
- releaseGates:{name:string;state:string}[];lanes:Lane[];caveat:string};
+ releaseGates:{name:string;state:string}[];lanes:Lane[];timeline:{id:string;at:string;kind:string;laneId:string;url:string;provenance:string}[];caveat:string};
 const GATES=["ASSIGNED","SOURCE_REVIEWED","HEAD_CI_PASSED","MERGED","NATIVE_ACCEPTED","LIVE_VERIFIED"] as const;
 const BORDERS:Record<Lane["id"],string>={D:"border-sky-400/40",G:"border-violet-400/40",
  C:"border-cyan-400/40",E:"border-amber-400/40",F:"border-emerald-400/40",B:"border-rose-400/40"};
@@ -97,6 +97,18 @@ export default function CentralCommandView(){
       </div>
      </article>)}
      {!data&&<p className="col-span-full rounded-2xl border border-dashed border-white/20 p-6 text-sm text-slate-400">All six lanes UNKNOWN while the admin snapshot is unavailable. No prior green result retained.</p>}
+    </div>
+   </section>
+   <section aria-label="Bounded GitHub evidence timeline" className="rounded-3xl border border-white/10 bg-slate-950/70 p-5 sm:p-7">
+    <h2 className="text-xl font-bold">Observed source timeline</h2>
+    <p className="mt-2 text-xs text-slate-500">GitHub issue/PR last-updated clocks only. NOT native runs, actual handoff delivery, CI outcomes or deployment events.</p>
+    <div className="mt-4 grid gap-2 md:grid-cols-2">{(data?.timeline??[]).map(e=>
+     <a key={e.id} href={e.url} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-white/10 p-3 text-xs hover:border-cyan-300/30">
+      <span className="font-semibold text-cyan-200">{e.laneId} · {e.kind}</span>
+      <span className="ml-2 text-slate-400">{seen(e.at)}</span>
+      <span className="mt-1 block text-[10px] text-slate-500">{e.provenance}</span>
+     </a>)}
+     {(!data||data.timeline.length===0)&&<p className="text-xs text-slate-500">No independently observed GitHub metadata; timeline UNKNOWN</p>}
     </div>
    </section>
    <footer className="border-t border-white/10 pt-5 text-xs leading-6 text-slate-500">
