@@ -1212,6 +1212,27 @@ def stage_release(
                 print(f"  - {error}")
         return 2
 
+    # Independently signed Source+Finance+owner PRE_STAGE admission is
+    # mandatory before the existing SSH stage controller can mutate HEL1.
+    # No signature, trust root, root-issued nonce or replay journal => HOLD.
+    try:
+        from aoe2_release_nonfinancial_admission import require_admission
+        require_admission(
+            "PRE_STAGE", manifest=manifest, manifest_sha=manifest_sha,
+            gate_sha=gate_sha,
+            active_build_id=str(data["production"].get("active_build_id") or ""),
+            consume=True,
+        )
+    except Exception as exc:
+        payload = {"schema": 1, "kind": "aoe2war-stage-admission",
+                   "status": "HOLD", "production_mutated": False,
+                   "reason": str(exc)}
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: independently signed PRE_STAGE admission: " + str(exc))
+        return 2
+
     stamp = utc_now()
     receipt_dir = (
         f"{REMOTE_RECEIPT_ROOT}/"
