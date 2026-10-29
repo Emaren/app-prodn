@@ -69,7 +69,7 @@ jobs:
           export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
           test -x "$CHROME_BIN"
           mkdir -p job-exchange-browser
-          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > central-events-browser/next.log 2>&1 &
+          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > job-exchange-browser/next.log 2>&1 &
           next_pid=$!
           trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
           ready=0
@@ -81,7 +81,7 @@ jobs:
           done
           test "$ready" = 1
           node tests/job-exchange-browser.cjs
-          printf 'source=%s\nbuild=%s\nproduction_certified=false\n' "$SOURCE_SHA" "$BUILD_ID" > central-events-browser/identity.txt
+          printf 'source=%s\nbuild=%s\nproduction_certified=false\n' "$SOURCE_SHA" "$BUILD_ID" > job-exchange-browser/identity.txt
           test -z "$(git status --porcelain --untracked-files=no)"
       - name: Stop isolated fixture
         if: always()
@@ -91,6 +91,6 @@ jobs:
         if: always()
         with:
           name: central-q09-a2-chrome-${{ github.run_id }}-${{ github.run_attempt }}
-          path: central-events-browser/
+          path: job-exchange-browser/
           if-no-files-found: warn
           retention-days: 14
