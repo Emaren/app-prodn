@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/g-q09-a2-living-job-exchange-20261029` at `8b6a15868921ea7ea7deeff8159c7119febe918e`
+Implementation baseline: `feat/g-q09-a2-living-job-exchange-20261029` at `500b5c743f221561972921c401c6de63e4c04174`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
