@@ -53,6 +53,21 @@ async function main(){
    assert.equal(res.status(),200,"admin source page not served");
    const atlas=page.locator("#navigation-atlas");
    await atlas.getByRole("heading",{name:"Navigation Atlas"}).waitFor({timeout:20000});
+   // Private command pages must not have a persistent five-pill overlay
+   // covering the bottom of operator cards, but navigation stays keyboard
+   // discoverable and can be restored without writing public nav preference.
+   if (width < 1024) {
+     const dockToggle=page.getByRole("button",{name:"Show app navigation"});
+     await dockToggle.waitFor({state:"visible",timeout:15000});
+     assert.equal(await page.locator('[data-mobile-floating-nav] nav:visible').count(),0,
+       "persistent navigation obscures private command content");
+     await dockToggle.focus();await page.keyboard.press("Enter");
+     await page.locator('[data-mobile-floating-nav] nav:visible').waitFor({timeout:5000});
+     assert.equal(await page.locator('[data-mobile-floating-nav] nav a').count(),5,
+       "expanded command bar must retain all original links");
+     await page.getByRole("button",{name:"Hide app navigation"}).click();
+     await dockToggle.waitFor({state:"visible",timeout:5000});
+   }
    // A streamed App Router shell may expose the heading before all cards
    // commit. Wait for actual DOM count; never infer coverage from the title.
    await page.waitForFunction(() => document.querySelectorAll('#navigation-atlas a[data-atlas-href]').length === 29,

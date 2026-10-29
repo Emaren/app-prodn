@@ -70,6 +70,18 @@ test("private hub remains protected by actual server-admin guard and never claim
   assert.doesNotMatch(atlas,/productionCertified:\s*true|LIVE VERIFIED|DEPLOYED SUCCESS/);
   assert.ok(PENDING_NAVIGATION.every(item=>!ADMIN_ATLAS_ROUTES.some(route=>route.href.includes("job-board"))));
 });
+test("private admin mobile dock is collapsible without changing global user preference",()=>{
+  const dock=src("components/pwa/MobileFloatingNav.tsx");
+  assert.match(dock,/pathname === "\/admin" \|\| pathname\?\.startsWith\("\/admin\/"\)/);
+  assert.match(dock,/useState<NavMode>\("hidden"\)/);
+  assert.match(dock,/const effectiveMode = isPrivateAdmin \? adminMode : mode/);
+  assert.match(dock,/if \(isPrivateAdmin\) \{/);
+  assert.match(dock,/setAdminMode\(nextMode\)/);
+  assert.match(dock,/window\.localStorage\.setItem\(STORAGE_KEY, nextMode\)/);
+  assert.match(dock,/aria-label="Show app navigation"/);
+  assert.match(dock,/aria-label="Hide app navigation"/);
+});
+
 test("approved direct page references cannot be fabricated as Job Exchange before G source integration",()=>{
   assert.ok(!topLevel.includes("/admin/job-board"));
   assert.ok(!ADMIN_ATLAS_ROUTES.some(route=>route.href.includes("job-board")));

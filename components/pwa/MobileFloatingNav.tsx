@@ -36,6 +36,12 @@ function readMode(): NavMode {
 export default function MobileFloatingNav() {
   const pathname = usePathname();
   const [mode, setMode] = React.useState<NavMode>("normal");
+  // Private admin pages have long, scrollable command surfaces. Start their
+  // floating navigation collapsed, without overwriting the user's ordinary
+  // site-wide stored preference or removing access to the command links.
+  const isPrivateAdmin = pathname === "/admin" || pathname?.startsWith("/admin/");
+  const [adminMode, setAdminMode] = React.useState<NavMode>("hidden");
+  const effectiveMode = isPrivateAdmin ? adminMode : mode;
   const touchStartY = React.useRef<number | null>(null);
 
   React.useEffect(() => {
@@ -43,6 +49,10 @@ export default function MobileFloatingNav() {
   }, []);
 
   const setStoredMode = (nextMode: NavMode) => {
+    if (isPrivateAdmin) {
+      setAdminMode(nextMode);
+      return;
+    }
     setMode(nextMode);
     window.localStorage.setItem(STORAGE_KEY, nextMode);
   };
@@ -64,7 +74,7 @@ export default function MobileFloatingNav() {
     }
   };
 
-  if (mode === "hidden") {
+  if (effectiveMode === "hidden") {
     return (
       <button
         data-mobile-floating-nav
@@ -80,7 +90,7 @@ export default function MobileFloatingNav() {
     );
   }
 
-  const expanded = mode === "expanded";
+  const expanded = effectiveMode === "expanded";
 
   return (
     <div
