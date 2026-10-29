@@ -326,6 +326,69 @@ class NonfinancialWitnessTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.AdmissionHOLD, "artifact"):
             self.admit(phase="PRE_ACTIVATE", stage=changed)
 
+    def test_missing_independent_admission_blocks_stage_before_ssh(self):
+        import contextlib
+        import io
+        stage_path = SCRIPT.parents[0] / "aoe2_release_stage.py"
+        spec = importlib.util.spec_from_file_location(
+            "aoe2_release_stage_missing_proof", stage_path)
+        controller = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(controller)
+        data = {"local": {"head": "b" * 40},
+                "production": {"active_build_id": "existing-build"}}
+        with (
+            mock.patch.object(controller, "load_manifest",
+                              return_value=(SCRIPT, {"release_sha": "b" * 40,
+                                                    "previous_production_sha": "a" * 40},
+                                            "d" * 64)),
+            mock.patch.object(controller, "gate_integrity",
+                              return_value=(SCRIPT, "e" * 64)),
+            mock.patch.object(controller, "watcher_distribution_version",
+                              return_value=""),
+            mock.patch.object(controller, "production_transport",
+                              return_value=({}, None)),
+            mock.patch.object(controller, "validation_errors", return_value=[]),
+            mock.patch("aoe2_release_nonfinancial_admission.require_admission",
+                       side_effect=MODULE.AdmissionHOLD("missing independent witness")),
+            mock.patch.object(controller, "run") as remote_ssh,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(controller.stage_release(data, json_output=True), 2)
+            remote_ssh.assert_not_called()
+
+    def test_missing_independent_admission_blocks_activation_before_ssh(self):
+        import contextlib
+        import io
+        ship_path = SCRIPT.parents[0] / "aoe2_release_ship.py"
+        spec = importlib.util.spec_from_file_location(
+            "aoe2_release_ship_missing_proof", ship_path)
+        controller = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(controller)
+        data = {"production": {"active_build_id": "existing-build"}}
+        receipt = {"release_sha": "b" * 40, "staged_build_id": "stage-build",
+                   "artifact_sha256": "c" * 64}
+        manifest = {"release_sha": "b" * 40,
+                    "previous_production_sha": "a" * 40}
+        with (
+            mock.patch.object(controller, "load_stage_receipt",
+                              return_value=(SCRIPT, receipt, "d" * 64,
+                                            SCRIPT, manifest, "e" * 64,
+                                            SCRIPT, "f" * 64)),
+            mock.patch.object(controller, "verify_production_migration_receipt"),
+            mock.patch.object(controller, "production_transport",
+                              return_value=({}, None)),
+            mock.patch.object(controller, "activation_validation_errors",
+                              return_value=[]),
+            mock.patch("aoe2_release_nonfinancial_admission.require_admission",
+                       side_effect=MODULE.AdmissionHOLD("no host root claim")),
+            mock.patch.object(controller, "run") as remote_ssh,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(controller.activate_release(
+                data, stage_receipt="synthetic.json", dry_run=False,
+                json_output=True), 2)
+            remote_ssh.assert_not_called()
+
     def test_no_source_controller_has_environment_bypass(self):
         self.assertNotIn("os.getenv", SCRIPT.read_text())
         stage = (SCRIPT.parents[0] / "aoe2_release_stage.py").read_text()
