@@ -93,7 +93,9 @@ async function freshProjection(now: number): Promise<PublicEnvelope> {
     const scopes = readPublicPriorityScopes(issue.body, catalog.projects);
     const entries: PublicProgressEntry[] = [];
     for (const scope of scopes) {
-      // Prevent changed milestone destinations under an already-accepted scope version.
+      // Process-local collision detection only. A restart forgets this map:
+      // immutable completion history requires an independently reviewed durable
+      // ledger (Q15), not an in-memory claim of permanent certification.
       const key = scope.id + ":" + scope.scopeVersion;
       const shape = JSON.stringify({
         id: scope.id, label: scope.label, href: scope.href, category: scope.category,
@@ -105,9 +107,9 @@ async function freshProjection(now: number): Promise<PublicEnvelope> {
         verifiedCodeDate(scope, controller.signal, now)
       ]);
       const projected = progressFromVerifiedScope(scope, gates, lastWorkedAt);
-      // A verified completed version must not be downgraded by editing receipts.
-      const before = lastGood?.envelope.entries.find(e => e.id === scope.id && e.scopeVersion === scope.scopeVersion);
-      entries.push(before?.percent === 100 && projected.percent !== 100 ? before : projected);
+      // Never relabel an old process-local percentage FRESH after receipts
+      // disappear. Stale last-good is reserved for actual source outages.
+      entries.push(projected);
       scopeRegistry.set(key, shape);
     }
     const envelope: PublicEnvelope = {
