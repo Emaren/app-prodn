@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1def9a7e9268553eba50197384d4de939d58f9758a756c800b7dd01f1f935842",
+      "sha256": "8c55878dac088c5a5a87adf1abbd1e146ff170cf8a11f819d47cf8032f0afd3d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/f-w1-decode-uri-component-high-20261029",
-    "commit": "2138d4bd6187dfefd6f2356abb4ecaaad3825427"
+    "branch": "feat/session-g-postw1-kingdom-progress-q12-20261029",
+    "commit": "501e58121f3acee021448c281a60d3773602d093"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
