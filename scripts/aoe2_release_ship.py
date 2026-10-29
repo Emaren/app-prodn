@@ -2613,6 +2613,27 @@ def activate_release(
                 print(f"  - {error}")
         return 2
 
+    # Phase-specific, independent signed PRE_ACTIVATE receipt is a second,
+    # separate authorization. A dry-run verifies but does not consume it.
+    try:
+        from aoe2_release_nonfinancial_admission import require_admission
+        require_admission(
+            "PRE_ACTIVATE", manifest=manifest, manifest_sha=manifest_sha,
+            gate_sha=gate_sha,
+            active_build_id=str(data["production"].get("active_build_id") or ""),
+            stage_receipt=receipt, stage_sha=receipt_sha,
+            consume=not dry_run,
+        )
+    except Exception as exc:
+        payload = {"schema": 1, "kind": "aoe2war-activation-admission",
+                   "status": "HOLD", "production_mutated": False,
+                   "reason": str(exc)}
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: independently signed PRE_ACTIVATE admission: " + str(exc))
+        return 2
+
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     release_short = receipt["release_sha"][:12]
     receipt_dir = f"{REMOTE_RECEIPT_ROOT}/activate-{stamp}-{release_short}"
