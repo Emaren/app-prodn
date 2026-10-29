@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/w1-f-source-finance-admission-20261029` at `1046ff809714a98b839e1d6cbadb7e8e68749804`
+Implementation baseline: `feat/w1-f-source-finance-admission-20261029` at `f9aea93df2f99d78b54cb66c79106cfb3ad80ad0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
