@@ -50,11 +50,6 @@ async function run(){
   const reviewNonAdmin=await context.request.post("/api/admin/storage-os/reviews",{data:noAliasBody,headers:originHeaders});
   assert.equal(reviewNonAdmin.status(),403);
   await context.addCookies([{name:"aoe2hdbets_session",value:admin,url:base,httpOnly:true,sameSite:"Lax"}]);
-  const reviewBlocked=await context.request.post("/api/admin/storage-os/reviews",{data:noAliasBody,headers:originHeaders});
-  assert.equal(reviewBlocked.status(),409);
-  assert.match(reviewBlocked.headers()["cache-control"]||"",/no-store/);
-  assert.equal((await reviewBlocked.json()).detail,"REVIEW_SOURCE_TRANSPORT_UNAVAILABLE");
-  receipt.tests.push("STORAGE_OWNER_REVIEW_NO_VERIFIED_SOURCE_POST_403_409_NO_STORE");
   await context.close();
   for(const width of [375,768,1440]){
    const c=await browser.newContext({baseURL:base,viewport:{width,height:820},serviceWorkers:"block",reducedMotion:"reduce"});
@@ -93,6 +88,19 @@ async function run(){
     assert.equal(storageRes.status(),200);
     await page.getByText("INDIVIDUAL OWNER REVIEW UNAVAILABLE",{exact:false}).waitFor({timeout:15000});
     assert.equal(await page.getByRole("button",{name:"Record this exact decision"}).count(),0);
+    // A real page-origin browser fetch supplies its own Origin/Sec-Fetch-Site;
+    // direct APIRequestContext doesn't establish browser CSRF provenance.
+    const blocked=await page.evaluate(async body=>{
+      const res=await fetch("/api/admin/storage-os/reviews",{
+        method:"POST",credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(body)
+      });
+      return {status:res.status,cache:res.headers.get("cache-control"),detail:(await res.json()).detail};
+    },noAliasBody);
+    assert.deepEqual(blocked,{status:409,cache:"private, no-store, max-age=0",detail:"REVIEW_SOURCE_TRANSPORT_UNAVAILABLE"},
+      "Authenticated same-origin browser POST must fail-closed on unadopted source transport");
+    receipt.tests.push("STORAGE_OWNER_REAL_BROWSER_403_409_NO_STORE");
     await page.screenshot({path:path.join(out,"storage-owner-no-candidates-375.png"),fullPage:false});
     receipt.tests.push("STORAGE_OWNER_CHROME_375_C_V1_UNKNOWN_NO_APPROVAL");
    }
