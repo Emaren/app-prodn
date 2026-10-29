@@ -7,7 +7,7 @@ import {createHash,createHmac,timingSafeEqual} from "node:crypto";
 import {constants} from "node:fs";
 import {promises as fs} from "node:fs";
 import path from "node:path";
-import {HOG_CATALOG,verifyVisualReceipt,readPrivateStorageVisual} from "./storageVisualPrivate";
+import {HOG_CATALOG,verifyVisualReceipt,readPrivateStorageVisual} from "./storageVisualPrivate.ts";
 
 const SUBMISSION_SCHEMA="aoe2war.storage-visual.bridge-submission.v1";
 const SOURCE_SIGNED="aoe2war.storage-visual.source-signed.v1";
@@ -20,6 +20,9 @@ const SUB_DOMAIN="AOE2WAR_STORAGE_BRIDGE_SUBMISSION_V1\0",ACK_DOMAIN="AOE2WAR_ST
 const PLANES=["mac","hel1-root","hel1-volume-105319120"] as const;
 type Plane=typeof PLANES[number];
 type Obj=Record<string,unknown>;
+type Hog={key:keyof typeof HOG_CATALOG;gross_allocated_bytes:number;overlaps:true};
+type SourceRow={id:Plane;observed_at:string;hogs:Hog[]};
+type VisualRow={id:Plane;observed_at:string;coverage:"PARTIAL";hogs:Hog[];events:unknown[]};
 const hex64=/^[a-f0-9]{64}$/;
 const SOURCE_FIELDS=["schema","id","observed_at","source_evidence_sha256","collector","mount_identity","coverage","hogs","events","read_only","auto_delete_permitted","financial_authority"];
 function obj(x:unknown):Obj{
@@ -99,7 +102,7 @@ function parseSource(raw:unknown,key:string,now:number){
  }
  const expected=hmac(key,SRC_DOMAIN,canonical(p));
  if(!matches(expected,envelope.signature_hmac_sha256))throw Error("VISUAL_SOURCE_AUTH_HOLD");
- return p;
+ return p as unknown as SourceRow;
 }
 async function secureDir(dir:string){
  const st=await fs.lstat(dir);
@@ -174,17 +177,18 @@ export async function acceptStorageVisualSubmission(raw:unknown,now:Date=new Dat
       oldRaw===null||sha(oldRaw)!==entry.stored_sha256)throw Error("VISUAL_REPLAY_INCONSISTENT");
    return signedAck(id,checked.map(p=>p.id as Plane),now,entry.stored_sha256,ackKey,"IDEMPOTENT");
   }
-  const kept=new Map((old.source==="SIGNED_PRIVATE_RECEIPT"?old.planes:[]).filter(p=>
-    nowMs-Date.parse(p.observedAt)<=36*3600_000).map(p=>[p.id,{
-      id:p.id,observed_at:p.observedAt,coverage:p.coverage,
-      hogs:p.hogs.map(h=>({key:h.key,gross_allocated_bytes:h.grossBytes,overlaps:h.overlaps})),
-      events:p.events.map(e=>({id:e.id,at:e.at,kind:e.kind,category:e.category,bytes:e.bytes,transaction_digest:e.transactionDigest}))
-    }]));
+  const kept=new Map<Plane,VisualRow>();
+  for(const p of (old.source==="SIGNED_PRIVATE_RECEIPT"?old.planes:[])){
+   if(nowMs-Date.parse(p.observedAt)>36*3600_000)continue;
+   kept.set(p.id,{id:p.id,observed_at:p.observedAt,coverage:"PARTIAL",
+    hogs:p.hogs.map(h=>({key:h.key,gross_allocated_bytes:h.grossBytes,overlaps:h.overlaps as true})),
+    events:p.events.map(e=>({id:e.id,at:e.at,kind:e.kind,category:e.category,bytes:e.bytes,transaction_digest:e.transactionDigest}))});
+  }
   for(const p of checked){
    const prev=kept.get(p.id as Plane);
    if(prev&&Date.parse(p.observed_at as string)<=Date.parse(prev.observed_at))
     throw Error("VISUAL_REPLAY_OR_NONMONOTONE_SOURCE");
-   kept.set(p.id as Plane,{id:p.id,observed_at:p.observed_at,coverage:"PARTIAL",
+   kept.set(p.id,{id:p.id,observed_at:p.observed_at,coverage:"PARTIAL",
     hogs:p.hogs,events:[]});
   }
   const payload={schema:VISUAL_SCHEMA,generated_at:now.toISOString(),
