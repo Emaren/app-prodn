@@ -574,6 +574,11 @@ class ShipTests(unittest.TestCase):
                 ),
             ),
             mock.patch.object(MODULE, "sha256_file", return_value="4" * 64),
+            # Timeout-recovery unit fixture must explicitly mock the newly
+            # mandatory independent PRE_ACTIVATE admission. Real release code
+            # never bypasses this verifier.
+            mock.patch("aoe2_release_nonfinancial_admission.require_admission",
+                       return_value={"status": "ADMITTED_SOURCE_ONLY"}),
         ):
             rc = MODULE.activate_release(
                 data,
