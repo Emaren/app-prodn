@@ -10,9 +10,20 @@ const dir = new URL("../app/admin/", import.meta.url);
 const topLevel = readdirSync(dir, {withFileTypes:true})
   .filter(row => row.isDirectory() && existsSync(new URL(row.name + "/page.tsx", dir)))
   .map(row => "/admin/" + row.name).sort();
+function allPagePaths(directory: URL, href: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name === "page.tsx") found.push(href);
+    else if (entry.isDirectory()) found.push(...allPagePaths(new URL(entry.name + "/", directory), href + "/" + entry.name));
+  }
+  return found;
+}
+const staticAdminPaths = allPagePaths(dir, "/admin").filter(p=>!p.includes("[")).sort();
 
 test("all 28 actual admin pages + admin root are exactly catalogued, zero orphan navigation", () => {
   assert.equal(topLevel.length, 28, "The source census must be updated if new pages are approved");
+  assert.deepEqual(staticAdminPaths, ["/admin", ...topLevel].sort(),
+    "Deep static admin pages have no source-approved navigation edge. Coordinate with G before exposing them.");
   assert.deepEqual(
     ADMIN_ATLAS_ROUTES.map(route=>route.href).sort(),
     ["/admin",...topLevel].sort(),
