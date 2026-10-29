@@ -22,15 +22,27 @@ async function main(){
   authenticatedSourceOnly:true,realChrome:true,results:[]};
  fs.mkdirSync(output,{recursive:true});
  try{
-  const anonymous=await browser.newContext({baseURL:base});
-  const anon=await anonymous.request.get("/admin/aoe2war-os", {maxRedirects:0});
-  assert.ok([302,303,307,308].includes(anon.status()),"anonymous admin page must redirect");
+  // Next.js 15 can deliver an HTTP 200 streamed shell containing a
+  // NEXT_REDIRECT instruction after headers have flushed. The security
+  // assertion is actual browser navigation away from the admin route,
+  // not a particular HTTP status code.
+  const anonymous=await browser.newContext({baseURL:base,serviceWorkers:"block"});
+  const anonPage=await anonymous.newPage();
+  const anon=await anonPage.goto("/admin/aoe2war-os",{waitUntil:"domcontentloaded",timeout:30000});
+  await anonPage.waitForURL(url=>url.pathname==="/",{timeout:20000});
+  assert.equal(new URL(anonPage.url()).pathname,"/","anonymous reached protected Admin OS");
+  assert.equal(await anonPage.locator("#navigation-atlas").count(),0,"anonymous saw Atlas");
+  console.log("Q17_ANONYMOUS_REDIRECT",JSON.stringify({firstStatus:anon?.status(),finalPath:new URL(anonPage.url()).pathname}));
   await anonymous.close();
   const noadmin=await jwt("fixture-scout"),admin=await jwt("fixture-admin");
-  const bad=await browser.newContext({baseURL:base});
+  const bad=await browser.newContext({baseURL:base,serviceWorkers:"block"});
   await bad.addCookies([{name:"aoe2hdbets_session",value:noadmin,url:base,httpOnly:true,sameSite:"Lax"}]);
-  const badRes=await bad.request.get("/admin/aoe2war-os",{maxRedirects:0});
-  assert.ok([302,303,307,308].includes(badRes.status()),"nonadmin private page must redirect");
+  const badPage=await bad.newPage();
+  const badRes=await badPage.goto("/admin/aoe2war-os",{waitUntil:"domcontentloaded",timeout:30000});
+  await badPage.waitForURL(url=>url.pathname==="/",{timeout:20000});
+  assert.equal(new URL(badPage.url()).pathname,"/","nonadmin reached protected Admin OS");
+  assert.equal(await badPage.locator("#navigation-atlas").count(),0,"nonadmin saw Atlas");
+  console.log("Q17_NONADMIN_REDIRECT",JSON.stringify({firstStatus:badRes?.status(),finalPath:new URL(badPage.url()).pathname}));
   await bad.close();
   for(const width of [375,768,1440]){
    const context=await browser.newContext({baseURL:base,viewport:{width,height:900},reducedMotion:"reduce",serviceWorkers:"block"});
