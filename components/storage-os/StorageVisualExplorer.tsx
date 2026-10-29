@@ -3,15 +3,9 @@
 import { useState } from "react";
 import { Activity, Archive, Clock3, Eye, Layers3, Shield, ShieldAlert, Trash2 } from "lucide-react";
 import type { StorageVisualView, PlaneId, VisualHog, VisualEvent } from "@/lib/storageVisualPrivate";
+import { LEVELS, INVALID_LEVEL, byLevel, grossLevelSlices } from "@/lib/storageVisualLevelPolicy";
 
 const FRAME="rounded-[1.65rem] border border-white/10 bg-slate-950/65";
-const LEVELS=[
-  {level:1,short:"L1 · GUARDED",name:"Generated review",detail:"Proof required",color:"#22d3ee"},
-  {level:2,short:"L2 · REVIEW",name:"Owner decision",detail:"Never auto-delete",color:"#fbbf24"},
-  {level:3,short:"L3 · MIGRATE",name:"Restore dependent",detail:"Explicit authorization",color:"#a78bfa"},
-  {level:4,short:"L4 · PROTECT",name:"Irreplaceable / active",detail:"No automation",color:"#34d399"},
-] as const;
-function byLevel(level:number){return LEVELS.find(x=>x.level===level)??LEVELS[3]}
 function size(bytes:number|null):string{
   if(bytes===null)return "—";
   if(bytes===0)return "0 B";
@@ -29,8 +23,7 @@ function wedge(start:number,end:number,inside:number,outside:number){
 const RING_COLORS=["#22d3ee","#a5b4fc","#fbbf24","#34d399","#38bdf8","#f472b6","#d8b4fe","#fca5a5","#7dd3fc","#f9a8d4"];
 
 function Sunburst({items,selectedKey}: {items:VisualHog[];selectedKey:string|null}) {
-  const gross=items.reduce((n,h)=>n+h.grossBytes,0);
-  const levelSlices=LEVELS.map(l=>({level:l.level,value:items.filter(h=>h.level===l.level).reduce((a,h)=>a+h.grossBytes,0)}));
+  const {total:gross,slices:levelSlices,complete}=grossLevelSlices(items);
   let cursor=0,innerCursor=0;
   return <div className="relative mx-auto w-full max-w-[340px]">
     <svg role="img" aria-label={gross>0?"Concentric chart of relative gross allocations, not unique disk use":"No verified storage-size receipt"} viewBox="0 0 240 240" className="w-full">
@@ -46,7 +39,7 @@ function Sunburst({items,selectedKey}: {items:VisualHog[];selectedKey:string|nul
       {gross>0&&levelSlices.map(x=>{
         const start=innerCursor;innerCursor+=x.value/gross*360;
         return <path key={x.level} d={wedge(start,innerCursor,46,68)}
-          fill={byLevel(x.level).color} stroke="#050b14" strokeWidth="1.5"/>;
+          fill={x.color} stroke="#050b14" strokeWidth="1.5"/>;
       })}
       <circle cx="120" cy="120" r="37" fill="#07111e" stroke="#334155" strokeWidth="1"/>
       <text x="120" y="117" textAnchor="middle" fill="#f8fafc" fontSize="18" fontWeight="700">
@@ -55,6 +48,7 @@ function Sunburst({items,selectedKey}: {items:VisualHog[];selectedKey:string|nul
       <text x="120" y="135" textAnchor="middle" fill="#94a3b8" fontSize="8" letterSpacing="1.2">{gross>0?"GROSS SLICES":"NO RECEIPT"}</text>
     </svg>
     <div className="text-center text-[10px] font-bold tracking-widest text-slate-500">INNER · PROTECTION LEVELS　 OUTER · TOP CONSUMERS</div>
+    {!complete&&<div role="status" className="mt-2 text-center text-xs font-bold text-amber-200">UNKNOWN LEVEL / SIZE HOLD · NO PROTECTION CLASSIFICATION OR RECOVERY AUTHORITY</div>}
   </div>;
 }
 function Timeline({events,source}: {events:VisualEvent[];source:string}) {
@@ -143,7 +137,7 @@ export default function StorageVisualExplorer({visual,activeId}:{visual:StorageV
         </div>:
         <div className="mt-5 space-y-2">{hogs.slice(0,12).map((h,i)=>{
           const pct=total>0?Math.max(1,100*h.grossBytes/total):0;
-          const meta=byLevel(h.level);
+          const meta=byLevel(h.level)??INVALID_LEVEL;
           return <button key={h.key} type="button" onClick={()=>setSelectedKey(selectedKey===h.key?null:h.key)}
             aria-pressed={selectedKey===h.key} className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline-2 focus-visible:outline-cyan-200 ${selectedKey===h.key?"border-cyan-300/50 bg-cyan-300/[.05]":"border-white/[.07] bg-white/[.025] hover:border-white/20"}`}>
             <div className="flex items-center justify-between gap-3">
@@ -152,7 +146,7 @@ export default function StorageVisualExplorer({visual,activeId}:{visual:StorageV
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800"><div className="h-full rounded-full" style={{width:`${pct}%`,background:meta.color}}/></div>
             <div className="mt-2 flex justify-between gap-2 text-[9px] font-bold tracking-wide text-slate-500">
-              <span style={{color:meta.color}}>L{h.level} · {meta.name.toUpperCase()}</span>
+              <span style={{color:meta.color}}>{meta.short} · {meta.name.toUpperCase()}</span>
               <span>{h.overlaps?"OVERLAPS":"GROSS · UNVERIFIED UNIQUE"}</span>
             </div>
           </button>;
