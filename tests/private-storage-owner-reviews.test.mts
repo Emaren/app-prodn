@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync, mkdtempSync, mkdirSync, readdirSync, statSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, mkdirSync, readdirSync, statSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { HOG_CATALOG, signVisualPayloadForTests, verifyVisualReceipt } from "../lib/storageVisualPrivate.ts";
+import { HOG_CATALOG, INDIVIDUAL_TRANSPORT_ADOPTED, readPrivateStorageVisual, signVisualPayloadForTests, verifyVisualReceipt } from "../lib/storageVisualPrivate.ts";
 import { appendOwnerReview, readOwnerReviews, effectiveOwnerDecision, latestEvent, type OwnerReviewEvent } from "../lib/storageOwnerReviews.ts";
 
 const key="cd".repeat(32),clock=new Date("2026-10-28T21:40:00Z");
@@ -90,6 +90,8 @@ test("read-only telemetry GET remains untouched; owner POST requires admin, same
  assert.match(ui,/Five levels/);
  assert.match(ui,/OWNER-EXPRESS NEVER DELETE/);
  assert.match(route,/REVIEW_L5_OWNER_IMMUTABLE/);
+ assert.match(route,/REVIEW_SOURCE_TRANSPORT_UNAVAILABLE/);
+ assert.match(ui,/INDIVIDUAL OWNER REVIEW UNAVAILABLE/);
  assert.match(ui,/UNKNOWN/);
  assert.match(ui,/INTENT|deletion permit/i);
 });
@@ -159,6 +161,34 @@ test("signed legacy mixed L4 protected maps to immutable L5 without automatic do
   assert.equal(effectiveOwnerDecision({...baseEvent,decision:"PROTECT"},inherited,clock),null);
  }finally{
   if(previous===undefined)delete process.env.AOE2WAR_OS_STORE_DIR;else process.env.AOE2WAR_OS_STORE_DIR=previous;
+  rmSync(root,{recursive:true,force:true});
+ }
+});
+
+test("C-v1 unsupported individual/capacity evidence stays inaccessible in private read view, even when manually signed",async()=>{
+ assert.equal(INDIVIDUAL_TRANSPORT_ADOPTED,false);
+ const root=mkdtempSync(path.join(tmpdir(),"storage-C-v1-fail-closed-"));
+ const state=path.join(root,"state");
+ mkdirSync(state,{mode:0o700});
+ const prevRoot=process.env.AOE2WAR_OS_STORE_DIR,prevKey=process.env.AOE2WAR_STORAGE_VISUAL_HMAC_KEY;
+ process.env.AOE2WAR_OS_STORE_DIR=root;
+ process.env.AOE2WAR_STORAGE_VISUAL_HMAC_KEY=key;
+ try{
+  const envelope={schema:"aoe2war.storage-visual.signed.v1",payload,
+   signature_hmac_sha256:signVisualPayloadForTests(payload,key)};
+  writeFileSync(path.join(state,"storage-visual.v1.json"),JSON.stringify(envelope)+"\n",{mode:0o600});
+  // Offline parser verifies legacy HMAC/L5 migration for forensic compatibility.
+  assert.equal(verifyVisualReceipt(envelope,key,clock).planes[0].reviewItems?.length,1);
+  // Live read path never promotes the unsupported legacy extras to owner authority.
+  const observed=await readPrivateStorageVisual(clock);
+  assert.equal(observed.source,"SIGNED_PRIVATE_RECEIPT");
+  assert.equal(observed.planes[0].hogs[0].key,"GUARDED_GENERATED");
+  assert.equal(observed.planes[0].reviewItems,undefined);
+  assert.equal(observed.planes[0].capacitySamples,undefined);
+  assert.equal(statSync(path.join(state,"storage-visual.v1.json")).mode&0o077,0);
+ }finally{
+  if(prevRoot===undefined)delete process.env.AOE2WAR_OS_STORE_DIR;else process.env.AOE2WAR_OS_STORE_DIR=prevRoot;
+  if(prevKey===undefined)delete process.env.AOE2WAR_STORAGE_VISUAL_HMAC_KEY;else process.env.AOE2WAR_STORAGE_VISUAL_HMAC_KEY=prevKey;
   rmSync(root,{recursive:true,force:true});
  }
 });
