@@ -47,3 +47,40 @@ shortcut around Wolo/finance, Doctor, independent restore, stage and owner permi
   decision as blanket deletion or reindex authorization.
 
 Release authority remains with Central and F; source merge is not deployment.
+
+## Source-authenticated Storage OS bridge (app-side G contract)
+
+The existing `POST /api/internal/aoe2war-os/bridge` has one separate
+`op=storage_visual` branch, authenticated first by its existing bridge bearer.
+It does NOT create an extra heartbeat, background timer or host scanner. The
+relay forwards the source-owned C
+`aoe2war.storage-visual.bridge-submission.v1` unchanged, up to 49,152 bytes.
+
+The receiver checks the domain-separated Mac and HEL1 per-source 32-byte HMACs
+with separate `AOE2WAR_STORAGE_VISUAL_MAC_HMAC_KEY` and
+`AOE2WAR_STORAGE_VISUAL_HEL1_HMAC_KEY`; checks schema, exact ordered plane ID,
+mount/collector role, source-digest, timestamp <=36h and <=60s future,
+PARTIAL coverage, bounded allowlisted gross hogs, empty unproven event rows,
+NO financial/deletion privilege and monotone source observation. No keys are
+in source control or auto-created. A separate
+`AOE2WAR_STORAGE_VISUAL_HMAC_KEY` signs the private visual read-side file.
+A distinct `AOE2WAR_STORAGE_BRIDGE_ACK_HMAC_KEY` signs a durable,
+independently read-back ACK. The existing bridge bearer must not reuse any
+of those keys. Missing, malformed or reused environment keys HOLD.
+
+Only private owner-controlled state directories (0700) and files (0600)
+are accepted. A single exclusive writer lease, atomic fsync/rename,
+durable 0600 acknowledgment ledger, bounded history and verified readback
+precede signed `STORED_VERIFIED_READBACK` status. Replayed, stale,
+tampered or unqualified source data HOLD; identical durable exact retries
+are `IDEMPOTENT` only while the current stored bytes match the recorded
+digest. Previously signed, still fresh planes are retained on a partial
+source submission; missing/expired planes remain UNKNOWN. No source is
+called physically reclaimed without separate APFS/witness receipts.
+
+Source fixture tests cannot prove real HMAC/key provisioning, DynamicUser
+permission behavior, natural scheduled measurements or remote delivery.
+The C source-owner permit `C-ADOPT-PERMIT-01` and F protected W1 activation
+remain separate explicit owner gates. No live website host operation,
+credential installation, terminal command or financial write was performed
+by implementing this source.
