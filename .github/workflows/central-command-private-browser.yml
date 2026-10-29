@@ -24,8 +24,8 @@ jobs:
       DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
       SESSION_SECRET: isolated-ci-not-production
       NEXTAUTH_SECRET: isolated-ci-not-production
-      NEXTAUTH_URL: http://127.0.0.1:3137
-      CENTRAL_BROWSER_ORIGIN: http://127.0.0.1:3137
+      NEXTAUTH_URL: http://localhost:3137
+      CENTRAL_BROWSER_ORIGIN: http://localhost:3137
       AOE2WAR_PROD_DB_PREVIEW: 'false'
       CENTRAL_BROWSER_FIXTURE_ALLOWED: '1'
     steps:
@@ -82,13 +82,13 @@ jobs:
           test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
           export CHROME_BIN
           mkdir -p "$CENTRAL_BROWSER_OUT"
-          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > "$CENTRAL_BROWSER_OUT/next.log" 2>&1 &
+          node ./node_modules/next/dist/bin/next start --hostname localhost --port 3137 > "$CENTRAL_BROWSER_OUT/next.log" 2>&1 &
           next_pid=$!
           trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
           ready=0
           for i in $(seq 1 90); do
             kill -0 "$next_pid" 2>/dev/null || { cat "$CENTRAL_BROWSER_OUT/next.log"; exit 2; }
-            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:3137/ || true)"
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://localhost:3137/ || true)"
             if [ "$code" != 000 ]; then ready=1; break; fi
             sleep 2
           done
