@@ -534,7 +534,7 @@ class MacLocalPlanTests(TestCase):
         self.assertEqual(ledger["measured_slots"], 1)
         self.assertEqual(ledger["known_absent_slots"], 1)
         self.assertEqual(ledger["omitted_slots"], 7)
-        self.assertEqual(ledger["unknown_slots"], 119 * 7 - 2)
+        self.assertEqual(ledger["unknown_slots"], 120 * 7 - 2)
         self.assertEqual(sum(ledger[k] for k in (
             "measured_slots", "known_absent_slots", "ambiguous_slots", "unknown_slots",
             "omitted_slots", "protected_out_of_scope_slots",
