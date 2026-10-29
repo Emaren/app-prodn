@@ -486,6 +486,106 @@ class MacLocalPlanTests(TestCase):
         self.assertTrue(all(row["overlaps_generated"] for row in ranked["ranked_generated"]))
         self.assertFalse(ranked["apply_permitted"])
 
+    def test_l1_campaign_never_seals_zero_eligible_without_independent_proofs(self):
+        x = pressure()
+        x["observed_path_count"] = 2
+        x["displayed_path_count"] = 2
+        x["scope_bounds"] = {
+            "direct_project_roots_total": 121,
+            "direct_project_roots_observed": 120,
+            "direct_project_roots_omitted": 1,
+            "canonical_git_worktrees_total": 61,
+            "canonical_git_worktrees_observed": 60,
+            "canonical_git_worktrees_omitted": 1}
+        x["incomplete_reasons"] = ["PROJECT_DIRECTORY_LIMIT_120", "WORKTREE_LIMIT_60"]
+        result = mod.plan(base(), ext(), electron(), x, watchdog())
+        l1 = mod.l1_exhaustion_receipt(result, {"status": "OBSERVED_SHALLOW",
+            "full_container_coverage_certified": False})
+        self.assertEqual(l1["decision"], "L1_POLICY_EXHAUSTED_NO")
+        self.assertEqual(l1["omitted_project_count"], 1)
+        self.assertEqual(l1["omitted_worktree_count"], 1)
+        self.assertIn("WHOLE_APFS_SHARED_AND_CLONE_EXTENTS_UNPROVEN", l1["blockers"])
+        self.assertIn("NAMED_POLICY_SCOPE_INCOMPLETE_OR_UNKNOWN", l1["blockers"])
+        self.assertEqual(l1["accepted_independent_gates_prior"], 2)
+        self.assertEqual(l1["gate_count"], 8)
+        self.assertIsNone(l1["no_eligible_action_signed_receipt"])
+        self.assertIsNone(l1["predicted_unique_recoverable_bytes"])
+        self.assertEqual(l1["certified_recovered_bytes"], 0)
+
+    def test_l1_campaign_distinguishes_known_absent_symlinks_and_unknown(self):
+        x = pressure()
+        x["observed_path_count"] = len(x["measured"])
+        x["displayed_path_count"] = len(x["measured"])
+        x["measured"].extend([
+            {"name": "project_generated:one:build", "path": "/tmp/projects/one/build",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "complete": True, "allocated_bytes": 0, "measurement_reason": "ABSENT",
+             "symlink": False, "mutation_allowed": False},
+            {"name": "project_generated:two:node_modules",
+             "path": "/tmp/projects/two/node_modules",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "complete": False, "allocated_bytes": None, "measurement_reason": "SYMLINK_TARGET",
+             "symlink": True, "mutation_allowed": False},
+            {"name": "project_generated:three:dist", "path": "/tmp/projects/three/dist",
+             "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+             "complete": False, "allocated_bytes": None,
+             "measurement_reason": "DU_PERMISSION_DENIED",
+             "symlink": False, "mutation_allowed": False},
+        ])
+        x["observed_path_count"] = len(x["measured"])
+        x["displayed_path_count"] = len(x["measured"])
+        result = mod.plan(base(), ext(), electron(), x, watchdog())
+        receipt = mod.l1_exhaustion_receipt(result, {"status": "HOLD"})
+        self.assertEqual(receipt["generated_nonmeasurement_reason_counts"],
+                         {"ABSENT": 1, "DU_PERMISSION_DENIED": 1, "SYMLINK_TARGET": 1})
+        self.assertIn("UNRESOLVED_GENERATED_OBSERVATIONS", receipt["blockers"])
+        self.assertIn("PHYSICAL_CAPACITY_ACCOUNTING_HOLD", receipt["blockers"])
+        self.assertEqual(receipt["decision"], "L1_POLICY_EXHAUSTED_NO")
+
+    def test_l1_campaign_positive_historical_node_modules_not_promoted(self):
+        x = pressure()
+        x["measured"].append({
+            "name": "project_generated:renaissance:node_modules",
+            "path": "/tmp/projects/renaissance/node_modules",
+            "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+            "complete": True, "allocated_bytes": 870_000_000,
+            "measurement_reason": "MEASURED", "symlink": False,
+            "mutation_allowed": False, "metadata_fingerprint_sha256": "f" * 64})
+        x["observed_path_count"] = len(x["measured"])
+        x["displayed_path_count"] = len(x["measured"])
+        result = mod.plan(base(), ext(), electron(), x, watchdog())
+        receipt = mod.l1_exhaustion_receipt(result, {"status": "OBSERVED_SHALLOW",
+            "full_container_coverage_certified": False})
+        paths = [z["path"] for z in receipt["candidate_holds"]]
+        self.assertIn("/tmp/projects/renaissance/node_modules", paths)
+        self.assertTrue(all(z["unique_apfs_gain_bytes"] is None
+                            for z in receipt["candidate_holds"]))
+        self.assertTrue(all(z["mutation_authority"] == "NONE"
+                            for z in receipt["candidate_holds"]))
+        self.assertEqual(receipt["decision"], "L1_POLICY_EXHAUSTED_NO")
+
+    def test_local_plan_campaign_invokes_capacity_probe_only_when_opted_in(self):
+        with mock.patch.object(mod, "observe", side_effect=[
+                base(), ext(), electron(), pressure(), watchdog(),
+                {"status": "HOLD", "reason": "NOT_NATIVE_MAC"}]) as probe:
+            with (mock.patch.object(mod.Path, "is_file", return_value=True),
+                  mock.patch.object(mod.Path, "is_symlink", return_value=False),
+                  redirect_stdout(io.StringIO()),
+                  mock.patch.object(
+                      mod.sys, "argv", ["local-plan", "--l1-campaign", "--json"])):
+                self.assertEqual(mod.main(), 0)
+            self.assertEqual(probe.call_count, 6)
+            self.assertIn("--capacity-only", probe.call_args.args[0])
+        with mock.patch.object(mod, "observe", side_effect=[
+                base(), ext(), electron(), pressure()]) as probe:
+            with (mock.patch.object(mod.Path, "is_file", return_value=False),
+                  redirect_stdout(io.StringIO()),
+                  mock.patch.object(mod.sys, "argv", ["local-plan", "--json"])):
+                self.assertEqual(mod.main(), 0)
+            self.assertEqual(probe.call_count, 4)
+            self.assertFalse(any("--capacity-only" in call.args[0]
+                                 for call in probe.call_args_list))
+
     def test_human_cli_is_read_only_and_has_no_auto_apply(self):
         with mock.patch.object(mod, "observe", side_effect=[
                 base(), ext(), electron(), pressure(), watchdog()]):

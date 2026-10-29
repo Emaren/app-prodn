@@ -1096,3 +1096,73 @@ dependencies and Download contents are **L2 review**, not L1 deleted.
 HEL1 Traffic DB, active swap, evidence and finance restore systems remain
 protected until independent source-owner proof. L1 is strictly guarded
 generated artifacts after regeneration/source/consumer/mount/APFS proof.
+
+
+## Session D: 500 GB Mac L1 policy-exhaustion campaign (read-only)
+
+The separate owner-native **one-time opt-in** command is
+`./bin/aoe2war storage local-plan --l1-campaign --json`. It reuses the
+existing named `local-pressure` inventory, source `local-maintain` cache
+previews and the same `local-plan` ranker. It adds one shallow, mount-aware
+APFS Data and home metadata accounting pass through the **existing**
+`aoe2_storage_mac_pressure.py --capacity-only --json` source, and derives
+a fail-closed `l1_policy_exhaustion_decision`. It adds **no** automatic
+deletion, authorization, timer, process, private-file-content reads, sudo,
+snapshot change, indexing modification or new cleanup controller. Do not
+run repeatedly merely to make the certificate green.
+
+**Declared policy scope:** existing `HOME_BUCKETS` (including protected
+recovery, iOS backups, CrossOver/Replay, Codex and Docker), at most 120
+direct `AoE2HDBets` sibling project roots and their present immediate
+generated basename children, at most 60 worktrees declared by canonical
+`app-prodn`, and the existing source-allowlisted Yarn/Go/pnpm/Electron/
+npm/Homebrew/pip cache modes. This is **not** all applications in the user's
+`~/projects`, nested monorepos, other home accounts or the Mac's full
+physical container. The named census now reports `scope_bounds` with
+total/observed/omitted direct projects and declared worktrees separately.
+The 1024 displayed-row bound remains and explicitly holds rather than
+silently certifying omission. `ABSENT`, `SYMLINK_TARGET`, permission
+failure, timeout and out-of-scope are different classes; none authorize
+unlink. Parent and generated child allocations overlap. Existing cache
+source proof and standalone guarded transaction rules remain binding.
+
+**Capacity accounting:** native Mac only, using the preexisting source-owned
+`aoe2_storage_probe.py --plane mac` APFS identity and `statvfs` counters.
+A bounded `du -k -x -d 1` metadata-only traversal is performed once
+for `/System/Volumes/Data` and once for the actual home root, with
+per-boundary max 110 seconds, 1 MiB output limit and 8192 direct-entry
+limit. Child `lstat` refuses symlink traversal and different devices.
+Nonzero `du`, inaccessible paths, unmeasured mounts, output ambiguity,
+missing rows and timeout are typed HOLDs, **not zero usage**. Data and
+home summaries **overlap** and must not be added. `du` can account
+hardlinks only within its scan and cannot prove exclusive physical APFS
+extents, clone sharing or snapshot/other-volume usage. The unaccounted
+physical/container residual remains **null** unless independently
+measured on the owner Mac. `OBSERVED_SHALLOW` means shallow metadata
+collected; it does **not** mean the APFS container is fully accounted for.
+Neither free-space drift nor gross allocation is a physical reclaimed
+byte transaction receipt. Only one native opt-in source run is proposed;
+no ongoing disk-wide job is installed.
+
+**Mandatory certificate:** until full named and project policy scope,
+source cleanliness/BUILD_ID, pinned rebuild, consumer inactivity,
+hardlinks, mount/owner, APFS clones/snapshots/unique extent, owner approval,
+guarded transaction receipts (or externally authenticated zero-eligible
+evidence), two independent native observations, protected-data nonmutation
+and independent Central acceptance are demonstrably satisfied, the output
+is `L1_POLICY_EXHAUSTED_NO`, never a misleading all-clean.
+`certified_recovered_bytes=0` refers to this *new* campaign only.
+`no_eligible_action_signed_receipt=null`: this source has no local
+signing authority and does not counterfeit a signed receipt. Existing
+8-gate baseline **2/8** remains an independent Central observation,
+not a source-earned additional gate. No `--apply` mode exists in the
+campaign. Never convert a failed physical scan into a full-capacity YES.
+
+If the real owner-native campaign still finds only protected or unqualified
+historical generated material, the defensible outcome is **NO** to the
+present complete-policy certificate with an exact blocker register;
+the +20 GiB new safe cleanup target is **not** demonstrated. Once Central
+accepts that no in-scope *provably safe* actions remain, it may separately
+decide a bounded **zero-eligible** policy disposition without claiming
+that all 500 GB were independently inspected or automatically reclaimable.
+No new broad inventory after the scope is conclusively classified.

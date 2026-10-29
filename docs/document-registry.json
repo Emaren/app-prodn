@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "75fd1af165768d99b1c96dd09f89b7127f20617ff4f64930dbd6f6db46da3ecb",
+      "sha256": "30f104d9e6f27f98bad1b8f2a78d80fa76ae4fb2d3a8727aecfac3eaef6e98e5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "58971f218f92cd5bea5aa2d6b51e72f651aa45be80dee9c9a34ed4ef624310dc",
+      "sha256": "f533833695fd14195de0b4572755286ef5936d8f8aa1e7d9a062eca081968d9c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/central-command-registry-readonly-20261028",
-    "commit": "73463c72fcb7b1cb1c77591fc3d8bc0cb2f37164"
+    "branch": "feat/session-d-mac-l1-capacity-certificate-20261028",
+    "commit": "b1c231cc956a779f621a1f3fbcc43de395710aa1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
