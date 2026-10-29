@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a0bcfd8aea03cafab2250f709a15c8471acd0b4e043c78a63d9073ac3d2953e9",
+      "sha256": "83888b84868552872501898ce7dedf841b83eebcd8a17cfac77c26b760c824b7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/g-q09-a2-living-job-exchange-20261029",
-    "commit": "9c704f883c058b9be02af8d000d724f1fa3a9645"
+    "commit": "8b6a15868921ea7ea7deeff8159c7119febe918e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
