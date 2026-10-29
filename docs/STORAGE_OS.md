@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-10-28"
+reviewed_at: "2026-10-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -1097,68 +1097,148 @@ HEL1 Traffic DB, active swap, evidence and finance restore systems remain
 protected until independent source-owner proof. L1 is strictly guarded
 generated artifacts after regeneration/source/consumer/mount/APFS proof.
 
-## Private four-level Storage OS and exact owner feedback (Session G, 2026-10-28)
 
-The existing authenticated `/admin/storage-os` page now presents four
-distinct L1 guarded, L2 owner-review, L3 migration-review and L4 protected
-panels above the preserved signed radial hog chart and build/prune/snapshot
-ledger. All category allocations are GROSS and may overlap, share APFS clones,
-or omit unknown files; these are never inferred physical recovery amounts.
-Without a valid source HMAC receipt, item counts, source size and history
-remain **UNKNOWN** rather than fabricated zero.
+## Session D: 500 GB Mac L1 policy-exhaustion campaign (read-only)
 
-The optional, bounded `review_items` signed-payload extension accepts up to
-48 safe uppercase aliases per plane, immutable SHA-256 candidate fingerprint,
-source receipt digest and source revision, source status, proof status,
-overlap flag and measured gross bytes. Server category policy determines
-L1-L4; no publisher can reclassify the hard-protected CrossOver/Steam/Replay
-Lab, MobileSync backups, recovery vault, Codex, E5, signed Watcher packages,
-finance or active swap. Optional `capacity_samples` carries at most 24
-ordinary-free byte readings and is explicitly labelled observed drift,
-**not causal verified cleanup**. No raw filenames, paths, keys or financial
-identities are sent to the browser. The publisher/collector is NOT connected
-by this source-only change; Session C and D retain exclusive source ownership.
+The separate owner-native **one-time opt-in** command is
+`./bin/aoe2war storage local-plan --l1-campaign --json`. It reuses the
+existing named `local-pressure` inventory, source `local-maintain` cache
+previews and the same `local-plan` ranker. It adds one shallow, mount-aware
+APFS Data and home metadata accounting pass through the **existing**
+`aoe2_storage_mac_pressure.py --capacity-only --json` source, and derives
+a fail-closed `l1_policy_exhaustion_decision`. It adds **no** automatic
+deletion, authorization, timer, process, private-file-content reads, sudo,
+snapshot change, indexing modification or new cleanup controller. Do not
+run repeatedly merely to make the certificate green.
 
-Separate admin-authenticated `/api/admin/storage-os/reviews` GET/POST
-never calls a scanner or controller. POST is same-origin-only, JSON-size
-bounded, checks a fresh signed exact alias and fingerprint/source revision,
-and atomically appends one private, 0600 immutable review event under the
-existing operator state directory. Events are `PROTECT`, `REVIEW_LATER`,
-`SINGLE_CANDIDATE_APPROVAL`, `MIGRATION_REVIEW`, `REVOKE`; each declares
-`INTENT_ONLY_NO_DELETE` and carries an expected predecessor ID.
-L1 approval intent additionally requires `GUARDED`, complete proof, no
-overlap, a <=60-minute source reading, and expires after **10 minutes**.
-Other expiring review intents last up to 30 days. Any candidate, source or
-receipt fingerprint change invalidates historical approval. A protected
-preference remains exact-fingerprint-scoped and revocable; it NEVER weakens
-hard-coded protection. Missing signing/ledger authority fails closed.
-No delete endpoint, migration executor, reindex, service change or release
-controller is added. A human decision is NOT the guarded release-controller
-approval and does NOT affect Wolo finance or signed Atlas admission.
+**Declared policy scope:** existing `HOME_BUCKETS` (including protected
+recovery, iOS backups, CrossOver/Replay, Codex and Docker), at most 120
+direct `AoE2HDBets` sibling project roots and their present immediate
+generated basename children, at most 60 worktrees declared by canonical
+`app-prodn`, and the existing source-allowlisted Yarn/Go/pnpm/Electron/
+npm/Homebrew/pip cache modes. This is **not** all applications in the user's
+`~/projects`, nested monorepos, other home accounts or the Mac's full
+physical container. The named census now reports `scope_bounds` with
+total/observed/omitted direct projects and declared worktrees separately.
+The 1024 displayed-row bound remains and explicitly holds rather than
+silently certifying omission. `ABSENT`, `SYMLINK_TARGET`, permission
+failure, timeout and out-of-scope are different classes; none authorize
+unlink. Parent and generated child allocations overlap. Existing cache
+source proof and standalone guarded transaction rules remain binding.
 
-**Acceptance HOLD:** a PR and CI are source evidence, not a live authenticated
-browser. Verify 401/403/200 on admin review endpoints, CSRF denial, stale
-receipt and tamper rejection, mobile/desktop/a11y states, single-fingerprint
-revocation and expiry, actual private publisher+receiver, and signed/unknown
-visualization before Central merges or deploys. Existing read-only dashboard
-GET remains side-effect free.
+**Capacity accounting:** native Mac only, using the preexisting source-owned
+`aoe2_storage_probe.py --plane mac` APFS identity and `statvfs` counters.
+A bounded `du -k -x -d 1` metadata-only traversal is performed once
+for `/System/Volumes/Data` and once for the actual home root, with
+per-boundary max 110 seconds, 1 MiB output limit and 8192 direct-entry
+limit. Child `lstat` refuses symlink traversal and different devices.
+Nonzero `du`, inaccessible paths, unmeasured mounts, output ambiguity,
+missing rows and timeout are typed HOLDs, **not zero usage**. Data and
+home summaries **overlap** and must not be added. `du` can account
+hardlinks only within its scan and cannot prove exclusive physical APFS
+extents, clone sharing or snapshot/other-volume usage. The unaccounted
+physical/container residual remains **null** unless independently
+measured on the owner Mac. `OBSERVED_SHALLOW` means shallow metadata
+collected; it does **not** mean the APFS container is fully accounted for.
+Neither free-space drift nor gross allocation is a physical reclaimed
+byte transaction receipt. Only one native opt-in source run is proposed;
+no ongoing disk-wide job is installed.
 
-### Native Finder Recents restoration, separately held
+**Mandatory certificate:** until full named and project policy scope,
+source cleanliness/BUILD_ID, pinned rebuild, consumer inactivity,
+hardlinks, mount/owner, APFS clones/snapshots/unique extent, owner approval,
+guarded transaction receipts (or externally authenticated zero-eligible
+evidence), two independent native observations, protected-data nonmutation
+and independent Central acceptance are demonstrably satisfied, the output
+is `L1_POLICY_EXHAUSTED_NO`, never a misleading all-clean.
+`certified_recovered_bytes=0` refers to this *new* campaign only.
+`no_eligible_action_signed_receipt=null`: this source has no local
+signing authority and does not counterfeit a signed receipt. Existing
+8-gate baseline **2/8** remains an independent Central observation,
+not a source-earned additional gate. No `--apply` mode exists in the
+campaign. Never convert a failed physical scan into a full-capacity YES.
 
-Owner-native 2026-10-28T21:22Z `stat` confirms one historical Markdown
-file's birth and mtime literally equal epoch zero; Spotlight `mdls` reflects
-that data. Preserve this evidence without `touch` or timestamp rewriting.
-Native `mdutil` on both `/` and Data reports **indexing disabled**.
-Owner checks of Spotlight Documents/Folders and Search Privacy passed.
-Latest ordinary APFS free is **13.064 GiB**. Conservative AoE2WAR project
-planning gates: >=25 GiB ordinary free before even a small-folder index
-refresh and >=40 GiB before considering Data-volume index activation;
-these are not Apple-mandated thresholds. No full-volume reindex, index-store
-deletion, `sudo mdutil -E`, snapshot thinning, Finder reset or automatic
-index-enable command. After headroom and a separate explicit owner permit,
-record preflight APFS free and actual Spotlight state; make the smallest
-reversible settings change, monitor CPU/IO/free space and reassess if below
-25 GiB. Real closure needs two newly created nonprotected ordinary files
-opened once and found with correct dates in Finder Recents, Finder This Mac
-search and Spotlight. The historical file must be unchanged and before/after
-APFS receipts recorded. **Restoration is NOT YET VERIFIED.**
+If the real owner-native campaign still finds only protected or unqualified
+historical generated material, the defensible outcome is **NO** to the
+present complete-policy certificate with an exact blocker register;
+the +20 GiB new safe cleanup target is **not** demonstrated. Once Central
+accepts that no in-scope *provably safe* actions remain, it may separately
+decide a bounded **zero-eligible** policy disposition without claiming
+that all 500 GB were independently inspected or automatically reclaimable.
+No new broad inventory after the scope is conclusively classified.
+
+
+## Private five-level Storage OS, immutable owner originals and bounded intent (W1)
+
+This section supersedes any earlier four-level **display** policy; it does not
+change the existing signed storage measurement, Mac L1 census scope or owner
+release/deletion permits. All three independent planes are Mac APFS Data, HEL1
+root and HEL1 evidence volume. A plane's policy-scope L1 closure denominator
+and independently certified APFS physical gain remain **UNKNOWN** until
+source-owning D/C/E and owner-native witnesses prove them. No 100% is inferred
+from a list of measured aliases or gross directory sizes.
+
+- **L1 · guarded generated/obsolete:** require exact source/consumer/build
+  identity, closed policy-scope denominator, mount/clone/hardlink/unique
+  physical gain and rollback proof plus owner-scoped exact allowlist/lease.
+  Only L1 *could ever* qualify for an autonomous controller after a distinct
+  bounded permit. This PR has **no such permit, delete API or controller**.
+- **L2 · owner taught rebuildables:** category preview, independent rebuild
+  and reversal, anticipated unique gain and category+exact-action consent.
+  No standing blanket approval or automatic batch from a signed inventory.
+- **L3 · ambiguous individual:** one exact source alias and owner decision
+  at a time; migration *review intent* is not migration execution.
+- **L4 · human-only high-risk:** software provides no delete operation, even
+  when a human chooses to review. It cannot be batched.
+- **L5 · express NEVER DELETE:** permanent, highest-priority owner
+  classification. Includes the original ~1GiB ChatGPT Model 4.0 conversation
+  ZIP, original photos, designated independent ~40GiB Mac project disaster
+  recovery copy, wallet/signer/consensus/financial/liability originals,
+  immutable evidence archives, and all historic L4 **PROTECTED** classes
+  (CrossOver/Steam/Replay Lab, backups, protected recovery, Codex, current
+  releases, signed Watcher, Traffic/evidence/financial stores and swap).
+  Do not downgrade, delete, migrate automatically, or use generic review
+  `REVOKE` to strip this classification. Changing permanent L5 requires a
+  distinct owner-driven protection-removal process **not implemented here**.
+
+The fixed server-side category catalog never trusts a publisher-provided
+level. Existing HMAC-signed L4 PROTECTED review items fail-closed migrate
+to L5 in the read view, without mutating signed originals or rewriting the
+append-only private historical ledger. An explicitly claimed lower level
+for an old protected item is rejected. New owner-original category keys
+are fixed, path-free and cannot include real names or sensitive bytes.
+All L5 generic review POSTs (including PROTECT/REVOKE) are rejected both
+by admin HTTP and direct ledger append, and the UI renders **no software
+decision buttons** for L5. Old evidence is retained, not erased.
+Current L4 is deliberately human-only.
+
+Signed source HMAC optional `review_items` (up to 48/plane) and bounded
+`capacity_samples` (24/plane) remain private and path-free. Gross hog
+allocations can overlap APFS snapshots/clones; zero emitted hog entries means
+**no verified ranked hog observation**, not measured 0 bytes. No live publisher
+is invented. Owner review POST is admin-gated, same-origin, request bounded,
+source/fingerprint CAS, 0600 append-only with 10-minute L1 intent lease
+and `INTENT_ONLY_NO_DELETE` for all levels. L5 is permanently excluded
+regardless of history. Snapshot free-space changes are not causal
+cleanup transaction receipts. Backend/read-side, signed history and all
+three levels must fail-closed on missing, stale or forged source data.
+
+**L1 coverage is NOT 100%:** Mac D's latest accepted 8-gate baseline remains
+2/8, 0B new certified unique APFS gain. These are not a closed eligible
+denominator for the three independent planes. No candidate cleanup, Finder
+index operation, HEL1 backup/resize, user-file mutation or production
+activation has been authorized. The last owner-native ordinary Mac free-space
+capture was 17.704GiB; the preferred **40GiB** Data indexing headroom requires
+22.296GiB additional *genuine* space. Root/Data Spotlight indexing remained
+disabled at that capture. Preserve historical epoch-zero birth/mtime evidence.
+Only after separate owner permission and capacity acceptance consider
+`mdutil -i on /System/Volumes/Data` (never `-E`), then prove two new normal
+files actually appear in Recents, Finder This Mac and Spotlight with correct
+dates. L1/Finder may stay PENDING at website W1 launch where they are not
+protected release preconditions.
+
+The existing canonical Mac action board, D source-owned census and signed
+C publisher are independent. Do not duplicate scanners, watchers, timers,
+release controllers or financial authority. Current W1 release is still
+independently capacity/backup/Doctor/financial-noninterference/owner-permit
+gated.
