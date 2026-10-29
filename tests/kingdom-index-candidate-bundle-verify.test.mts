@@ -100,7 +100,7 @@ test("complete synthetic exact-bound bundle is internally consistent but never c
   assert.equal(r.criterionPointsAwarded,null);
  }finally{await rm(root,{recursive:true,force:true})}
 });
-test("truthful provisional Index remains a noncertifying candidate observation",async()=>{
+test("provisional or current Index labels cannot authorize an unapproved candidate bundle",async()=>{
   const root=await fixture();
   const relabel=async(filename:string,field:"kingdomIndexStatus"|"indexStatus",value:string)=>{
     await mutate(root,filename,d=>{
@@ -111,16 +111,11 @@ test("truthful provisional Index remains a noncertifying candidate observation",
   try{
     await relabel("api-loopback.json","kingdomIndexStatus","provisional");
     await relabel("concurrent-loopback.json","indexStatus","provisional");
-    const accepted=await verifyIndexCandidateBundle(root,args);
-    assert.equal(accepted.status,"SELF_CONSISTENT_CANDIDATE_EVIDENCE_ONLY");
-    assert.equal(accepted.certified,false);
-    assert.equal(accepted.criterionPointsAwarded,null);
-    await relabel("concurrent-loopback.json","indexStatus","unmeasured");
-    await assert.rejects(verifyIndexCandidateBundle(root,args),/Concurrent API status differs/);
-    await relabel("concurrent-loopback.json","indexStatus","provisional");
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/Unexpected current\/provisional Index status in unapproved bundle/);
     await relabel("api-loopback.json","kingdomIndexStatus","current");
-    await assert.rejects(verifyIndexCandidateBundle(root,args),/API response inconsistency/);
-    await relabel("api-loopback.json","kingdomIndexStatus","provisional");
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/Unexpected current\/provisional Index status in unapproved bundle/);
+    await relabel("api-loopback.json","kingdomIndexStatus","unmeasured");
+    await relabel("concurrent-loopback.json","indexStatus","unmeasured");
     await mutate(root,"api-loopback.json",d=>{
       (d.observed as Array<Record<string,unknown>>)[0].indexScore=100;
       d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
@@ -128,14 +123,17 @@ test("truthful provisional Index remains a noncertifying candidate observation",
     await assert.rejects(verifyIndexCandidateBundle(root,args),/API response inconsistency or false score/);
   }finally{await rm(root,{recursive:true,force:true})}
 });
-test("mixed provisional and unmeasured samples are rejected even with valid checksums",async()=>{
+test("mixed evidenced drifted and unmeasured samples are rejected even with valid checksums",async()=>{
   const root=await fixture();
   try{
     await mutate(root,"api-loopback.json",d=>{
-      (d.observed as Array<Record<string,unknown>>)[1].kingdomIndexStatus="provisional";
+      Object.assign((d.observed as Array<Record<string,unknown>>)[1],{
+        kingdomIndexStatus:"drifted",indexMeasuredVersion:"src-bbbbbbbbbbbbbbbb",
+        indexObservationKind:"source-review",
+      });
       d.sha256=hash(JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>k!=="sha256"))));
     });
-    await assert.rejects(verifyIndexCandidateBundle(root,args),/API response inconsistency/);
+    await assert.rejects(verifyIndexCandidateBundle(root,args),/API historical source lineage inconsistency/);
   }finally{await rm(root,{recursive:true,force:true})}
 });
 test("wrong expected source, build, collector and cross-route receipts are rejected",async()=>{
