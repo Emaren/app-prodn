@@ -1,5 +1,5 @@
 /** Q09-A1: private GitHub facts. Never a chat-session heartbeat or host attestation. */
-import lanesRegistry from "@/config/central-command-lanes.json";
+import lanesRegistry from "../config/central-command-lanes.json" with {type:"json"};
 export const EVENT_SCHEMA = "aoe2war.central-source-events.v1" as const;
 export type EventKind = "COMMENT_PUBLISHED"|"DISPATCH_PUBLISHED"|"SOURCE_COMMIT_OBSERVED"|"PR_OPENED"|"PR_UPDATED"|"MERGE_ACCEPTED"|"REVIEW_SUBMITTED"|"HEAD_CI_CONCLUDED";
 export type SourceEvent = {id:string;kind:EventKind;laneId:string|null;at:string;repo:string;sourceUrl:string;sha:string|null;state:string|null;authority:"GITHUB_SOURCE";};
