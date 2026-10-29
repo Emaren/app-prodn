@@ -221,7 +221,7 @@ async function run(){
       if(!observed.title && route.redirect_to && observed.pathname===route.redirect_to){
         try{
           await page.waitForFunction(()=>document.title.trim().length>0,
-            {timeout:1800});
+            null,{timeout:1800});
           observed.title=true;
         }catch{
           record.errors.push(viewport.name+" redirect title still absent after bounded wait");
