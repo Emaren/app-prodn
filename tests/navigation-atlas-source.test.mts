@@ -25,7 +25,7 @@ const JOB_EXCHANGE = "/admin/central-command/job-board";
 
 test("all 30 approved static admin routes have one actual authorized navigation edge", () => {
   assert.equal(topLevel.length, 28, "Unexpected top-level admin source changes must be reviewed");
-  assert.ok(existsSync(new URL("../app/admin/central-command/job-board/page.tsx", root)),
+  assert.ok(existsSync(new URL("app/admin/central-command/job-board/page.tsx", root)),
     "Accepted G Job Exchange source must exist");
   const approvedStaticRoutes = ["/admin",...topLevel,JOB_EXCHANGE].sort();
   assert.equal(approvedStaticRoutes.length, 30);
