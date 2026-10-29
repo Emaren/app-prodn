@@ -41,6 +41,8 @@ async function main(){
    assert.equal(res.status(),200);await page.getByRole("heading",{name:"Verified source activity"}).waitFor({timeout:15000});
    await page.getByText("HEAD CI CONCLUDED").waitFor({timeout:15000});
    assert.equal(await page.getByRole("link",{name:/HEAD CI CONCLUDED/}).count(),1);
+   await page.getByRole("article").first().waitFor({timeout:25000});
+   await page.getByRole("article").nth(5).waitFor({timeout:25000});
    assert.equal(await page.getByRole("article").count(),6);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+5));
    await page.addScriptTag({content:axe.source});
