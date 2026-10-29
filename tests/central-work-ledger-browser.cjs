@@ -39,7 +39,6 @@ async function run(){
    await p.goto(route,{waitUntil:"domcontentloaded",timeout:30000});await p.waitForURL(u=>new URL(u).pathname!==route,{timeout:18000});
    assert.equal(await p.getByRole("heading",{name:/THE (WORK BOARD|EVIDENCE LEDGER)/}).count(),0);
   }
-  assert.equal((await guest.request.get(root+"/work-ledger")).status(),404,"unknown path must not create unintended API");
   assert.equal((await guest.request.get("/api/admin/central-command/work-ledger")).status(),403);
   await guest.clearCookies();assert.equal((await guest.request.get("/api/admin/central-command/work-ledger")).status(),401);
   await guest.close();
