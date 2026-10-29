@@ -39,6 +39,15 @@ async function run(){
   assert.ok(json.lanes.every(x=>x.verifiedNumerator===1&&x.denominator===6));
   assert.ok(json.lanes.every(x=>Object.entries(x.gateStates).filter(([k,v])=>k!=="ASSIGNED").every(([,v])=>v==="UNKNOWN")));
   assert.equal(json.w1.sourceSha,null);assert.equal(json.w1.buildId,null);
+  // No CI HMAC keys or host observer are installed. All three source planes
+  // must therefore be UNKNOWN, never green due to fresh GitHub issue clocks.
+  assert.equal(json.signedStoragePulse.authority,"SIGNED_GROSS_STORAGE_OBSERVATION_ONLY_NOT_AGENT_LIVENESS");
+  assert.equal(json.signedStoragePulse.ttlHours,36);
+  assert.deepEqual(json.signedStoragePulse.planes.map(p=>p.id),[
+    "mac","hel1-root","hel1-volume-105319120"]);
+  assert.ok(json.signedStoragePulse.planes.every(p=>p.state==="UNKNOWN"&&
+    p.reason==="NO_AUTHENTICATED_RECEIPT"&&p.observedAt===null));
+  receipt.tests.push("NO_SIGNED_SOURCE_THREE_PLANES_UNKNOWN_NOT_AGENT_HEALTH");
   assert.doesNotMatch(JSON.stringify(json),/local_fixture_only|isolated-ci-not-production|\/Users\//);
   const post=await context.request.post("/api/admin/central-command",{data:{}});
   assert.equal(post.status(),405);receipt.tests.push("ADMIN_200_NO_STORE_AUTH_ONLY_NO_POST");
@@ -60,6 +69,10 @@ async function run(){
    assert.equal(res.status(),200);
    await page.getByRole("heading",{name:"Central Command",exact:true}).waitFor({timeout:15000});
    await page.getByRole("heading",{name:"Six-lane acceptance"}).waitFor({timeout:15000});
+   const freshness=page.getByRole("region",{name:"Signed storage observation freshness"});
+   await freshness.getByRole("heading",{name:"Signed source pulses · evidence freshness"}).waitFor({timeout:15000});
+   await freshness.getByText("NO_AUTHENTICATED_RECEIPT").first().waitFor({timeout:15000});
+   assert.equal(await freshness.getByText("UNKNOWN",{exact:true}).count(),3);
    await page.getByRole("article").first().waitFor({timeout:15000});
    assert.equal(await page.getByRole("article").count(),6);
    assert.equal(await page.getByRole("progressbar").count(),6);
