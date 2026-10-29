@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "620df06c5b2a16e6ae20f1ca5d40a4fdde5b95d16f91708b0b1d3e14c3510772",
+      "sha256": "44ae9b85f91ea678fc864d3082c6bc8c1c83483aa37236979736092f27849586",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1926,7 +1926,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "2c695ac8c792d38956afeb4369086a12848a44f19b4dd523a6a0938f69355425",
+      "sha256": "b302bdf54d41cd7368539104f3b6ec25394a69d8e5f2732f058735bc63f6d1e6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/w1-f-source-finance-admission-20261029",
-    "commit": "070b6bd54757d2b4c53327d1bed642c53c968b69"
+    "branch": "feat/d-post-w1-mac-root-provenance-20261029",
+    "commit": "c1956bd204963a63de91d7727893cbd2dae611f1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
