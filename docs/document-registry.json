@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "77f615509882ca2f9adeef01f64f21e52c93a049398d4d6a96ae4a5fd71f46d6",
+      "sha256": "fbcf75edd0b299a88e7f457f57b817a7524dc097f2eb0545458ec25b8a11054d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/session-g-storage-level-review-20261028",
-    "commit": "9c6ea4402f27ebbe20130e55d82370e5ea613a38"
+    "commit": "757629f08cc0546bc5099c55c13be2ad641a29f3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
