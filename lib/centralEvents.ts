@@ -92,7 +92,7 @@ type ResponseRead={ok:boolean;data:unknown;reason:string|null;lastPage?:number};
 let lastGood:EventFeed|null=null,cache:Promise<EventFeed>|null=null,until=0,backoffUntil=0;
 const TTL=55_000,STALE_MS=300_000;
 async function github(path:string,now:number):Promise<ResponseRead>{
- if(!/^repos\/Emaren\/(?:app-prodn|VPSSentry|wolochain)\/(?:issues\/[1-9]\d{0,4}\/comments|pulls\/[1-9]\d{0,4}(?:\/commits|\/reviews)?|actions\/runs)\?per_page=(?:12|5|8|18)&page=[1-9]\\d{0,4}$/.test(path))return{ok:false,data:null,reason:"DISALLOWED_ENDPOINT"};
+ if(!/^repos\/Emaren\/(?:app-prodn|VPSSentry|wolochain)\/(?:issues\/[1-9]\d{0,4}\/comments|pulls\/[1-9]\d{0,4}(?:\/commits|\/reviews)?|actions\/runs)\?per_page=(?:12|5|8|18)&page=[1-9]\d{0,4}$/.test(path))return{ok:false,data:null,reason:"DISALLOWED_ENDPOINT"};
  if(now<backoffUntil)return{ok:false,data:null,reason:"RATE_LIMIT_BACKOFF"};
  try{
   const token=process.env.GITHUB_TOKEN?.trim();
@@ -102,7 +102,7 @@ async function github(path:string,now:number):Promise<ResponseRead>{
   if(Number(res.headers.get("content-length")||0)>240_000)return{ok:false,data:null,reason:"OVERSIZE"};
   const text=await res.text();if(text.length>240_000)return{ok:false,data:null,reason:"OVERSIZE"};
   const lastLink=(res.headers.get("link")||"").split(",").find(x=>x.includes('rel="last"'))||"";
-  const pageMatch=/[?&]page=(\\d{1,5})/.exec(lastLink);
+  const pageMatch=/[?&]page=(\d{1,5})/.exec(lastLink);
   const lastPage=pageMatch?Math.min(99999,Number(pageMatch[1])):1;
   return{ok:true,data:JSON.parse(text),reason:null,lastPage};
  }catch{return{ok:false,data:null,reason:"SOURCE_UNAVAILABLE"};}
