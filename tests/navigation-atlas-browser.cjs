@@ -53,7 +53,12 @@ async function main(){
    assert.equal(res.status(),200,"admin source page not served");
    const atlas=page.locator("#navigation-atlas");
    await atlas.getByRole("heading",{name:"Navigation Atlas"}).waitFor({timeout:20000});
-   assert.equal(await atlas.locator('a[data-atlas-href]').count(),29,"must show every source-backed private route");
+   // A streamed App Router shell may expose the heading before all cards
+   // commit. Wait for actual DOM count; never infer coverage from the title.
+   await page.waitForFunction(() => document.querySelectorAll('#navigation-atlas a[data-atlas-href]').length === 29,
+     null, {timeout:20000});
+   const routeCount=await atlas.locator('a[data-atlas-href]').count();
+   assert.equal(routeCount,29,"must show every source-backed private route");
    assert.equal(await atlas.getByRole("status").first().innerText(),"29 of 29 source routes · LIVE STATUS UNVERIFIED");
    const input=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await input.fill("storage");
