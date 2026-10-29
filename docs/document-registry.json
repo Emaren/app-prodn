@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "622271c1969494939b0689ad174453826546159748f92c347aa6d3ddde1eb758",
+      "sha256": "cc44b469efacb24848fbba918fab7d09605599cc347d844c3ac8bd70f8b5544d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2325,7 +2325,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/w1-f-source-finance-admission-20261029",
-    "commit": "f9aea93df2f99d78b54cb66c79106cfb3ad80ad0"
+    "commit": "5a87b68973cd02f6cac66deab1a1bfbd6f61296a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
