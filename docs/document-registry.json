@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "30f104d9e6f27f98bad1b8f2a78d80fa76ae4fb2d3a8727aecfac3eaef6e98e5",
+      "sha256": "77f615509882ca2f9adeef01f64f21e52c93a049398d4d6a96ae4a5fd71f46d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1902,7 +1902,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "f533833695fd14195de0b4572755286ef5936d8f8aa1e7d9a062eca081968d9c",
+      "sha256": "2482dc7e47058733fbbf3ffcb763e63c62a6247aa2e5ebb9837ae4ee58fdfcc8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2324,8 +2324,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-d-mac-l1-capacity-certificate-20261028",
-    "commit": "b1c231cc956a779f621a1f3fbcc43de395710aa1"
+    "branch": "feat/session-g-storage-level-review-20261028",
+    "commit": "9c6ea4402f27ebbe20130e55d82370e5ea613a38"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
