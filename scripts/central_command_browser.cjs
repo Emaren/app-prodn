@@ -86,7 +86,7 @@ async function run(){
     // no individual approval control, even while gross dashboard is available.
     const storageRes=await page.goto("/admin/storage-os",{waitUntil:"domcontentloaded",timeout:25000});
     assert.equal(storageRes.status(),200);
-    await page.getByText("INDIVIDUAL OWNER REVIEW UNAVAILABLE",{exact:false}).waitFor({timeout:15000});
+    await page.locator('section[aria-label="L1 to L5 storage governance"]:visible p[role="status"]:visible').filter({hasText:"INDIVIDUAL OWNER REVIEW UNAVAILABLE"}).first().waitFor({state:"visible",timeout:15000});
     assert.equal(await page.getByRole("button",{name:"Record this exact decision"}).count(),0);
     // A real page-origin browser fetch supplies its own Origin/Sec-Fetch-Site;
     // direct APIRequestContext doesn't establish browser CSRF provenance.
