@@ -389,6 +389,110 @@ class NonfinancialWitnessTests(unittest.TestCase):
                 json_output=True), 2)
             remote_ssh.assert_not_called()
 
+    def test_signed_invalid_phase_receipts_stop_before_controller_ssh(self):
+        # Exercise REAL Ed25519 parsing/verification via a test-only trust-root
+        # adapter, not a mocked verifier raising a synthetic HOLD.
+        import contextlib
+        import io
+
+        def verify_with_fixture(phase, **kwargs):
+            original = MODULE.ordinary
+
+            def read_fixture(path, *, trusted=False):
+                return original(path, trusted=False)
+
+            with mock.patch.object(MODULE, "ordinary",
+                                   side_effect=read_fixture):
+                return MODULE.require_admission(
+                    phase, trust=self.trust, packets=self.packets,
+                    now=self.now, **kwargs
+                )
+
+        stage_path = SCRIPT.parents[0] / "aoe2_release_stage.py"
+        spec = importlib.util.spec_from_file_location(
+            "aoe2_release_stage_signed_negative", stage_path)
+        stage = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(stage)
+        stage_data = {"local": {"head": self.release},
+                      "production": {"active_build_id": "existing-build"}}
+        stage_patches = (
+            mock.patch.object(stage, "load_manifest",
+                              return_value=(SCRIPT, self.manifest,
+                                            self.manifest_sha)),
+            mock.patch.object(stage, "gate_integrity",
+                              return_value=(SCRIPT, self.gate_sha)),
+            mock.patch.object(stage, "watcher_distribution_version",
+                              return_value=""),
+            mock.patch.object(stage, "production_transport",
+                              return_value=({}, None)),
+            mock.patch.object(stage, "validation_errors", return_value=[]),
+        )
+        for invalid in ("wrong_scope", "wrong_lease", "malformed_count",
+                        "stale_build", "replayed_nonce"):
+            payload = json.loads(json.dumps(self.payload))
+            if invalid == "wrong_scope":
+                payload["scope_sha256"] = "0" * 64
+            elif invalid == "wrong_lease":
+                payload["lease_path"] = "/tmp/invalid-release-lease"
+            elif invalid == "malformed_count":
+                payload["protected"]["8092"]["count"] = True
+            self.write_packet(payload)
+            stage_data["production"]["active_build_id"] = (
+                "changed-live-build" if invalid == "stale_build"
+                else "existing-build"
+            )
+            if invalid == "replayed_nonce":
+                self.admit(consume=True)
+            with (
+                *stage_patches,
+                mock.patch("aoe2_release_nonfinancial_admission.require_admission",
+                           side_effect=verify_with_fixture),
+                mock.patch.object(stage, "run") as ssh,
+                contextlib.redirect_stdout(io.StringIO()),
+            ):
+                with self.subTest(phase="PRE_STAGE", invalid=invalid):
+                    self.assertEqual(stage.stage_release(
+                        stage_data, json_output=True), 2)
+                    ssh.assert_not_called()
+
+        # An independently signed PRE_STAGE exists, but the new PRE_ACTIVATE
+        # packet swaps the staged artifact; SSH must still be impossible.
+        self.write_packet(self.payload)
+        stage_receipt = {"staged_build_id": "verified-stage-build",
+                         "artifact_sha256": "f" * 64,
+                         "candidate_node_modules_sha256": "a" * 64}
+        activation_payload = self.make_payload(
+            phase="PRE_ACTIVATE", stage=stage_receipt)
+        activation_payload["nonce"] = "a" * 64
+        activation_payload["artifact_sha256"] = "1" * 64
+        self.write_packet(activation_payload, phase="PRE_ACTIVATE")
+        ship_path = SCRIPT.parents[0] / "aoe2_release_ship.py"
+        spec = importlib.util.spec_from_file_location(
+            "aoe2_release_ship_signed_negative", ship_path)
+        ship = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ship)
+        with (
+            mock.patch.object(ship, "load_stage_receipt",
+                              return_value=(
+                                  SCRIPT, stage_receipt, "e" * 64,
+                                  SCRIPT, self.manifest, self.manifest_sha,
+                                  SCRIPT, self.gate_sha)),
+            mock.patch.object(ship, "verify_production_migration_receipt"),
+            mock.patch.object(ship, "production_transport",
+                              return_value=({}, None)),
+            mock.patch.object(ship, "activation_validation_errors",
+                              return_value=[]),
+            mock.patch("aoe2_release_nonfinancial_admission.require_admission",
+                       side_effect=verify_with_fixture),
+            mock.patch.object(ship, "run") as ssh,
+            contextlib.redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(ship.activate_release(
+                {"production": {"active_build_id": "existing-build"}},
+                stage_receipt="signed-synthetic.json",
+                dry_run=False, json_output=True), 2)
+            ssh.assert_not_called()
+
     def test_no_source_controller_has_environment_bypass(self):
         self.assertNotIn("os.getenv", SCRIPT.read_text())
         stage = (SCRIPT.parents[0] / "aoe2_release_stage.py").read_text()
