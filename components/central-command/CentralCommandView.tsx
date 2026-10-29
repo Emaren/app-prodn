@@ -5,7 +5,8 @@ import {ArrowLeft,RefreshCw,Copy,ShieldAlert,ExternalLink,Clock3} from "lucide-r
 type Lane={id:"D"|"G"|"C"|"E"|"F"|"B";label:string;owner:string;mission:string;issueUrl:string;
  prUrl:string|null;prHead:string|null;prBase:string|null;githubObservedAt:string|null;
  sourceAuthority:string;nextBlocker:string;gateStates:Record<string,string>;verifiedNumerator:number;denominator:number};
-type Snapshot={schema:string;authority:string;generatedAt:string;
+type SignedPulse={authority:"SIGNED_GROSS_STORAGE_OBSERVATION_ONLY_NOT_AGENT_LIVENESS";ttlHours:36;planes:{id:"mac"|"hel1-root"|"hel1-volume-105319120";state:"FRESH"|"STALE"|"UNKNOWN";reason:string;observedAt:string|null}[]};
+type Snapshot={schema:string;authority:string;generatedAt:string;signedStoragePulse?:SignedPulse;
  r0:{referenceSha:string;proof:string};w1:{sourceSha:string|null;buildId:string|null;status:string};
  releaseGates:{name:string;state:string}[];lanes:Lane[];timeline:{id:string;at:string;kind:string;laneId:string;url:string;provenance:string}[];caveat:string};
 const GATES=["ASSIGNED","SOURCE_REVIEWED","HEAD_CI_PASSED","MERGED","NATIVE_ACCEPTED","LIVE_VERIFIED"] as const;
@@ -68,6 +69,26 @@ export default function CentralCommandView(){
        <span className="text-slate-300">{g.name}</span><span className="shrink-0 font-semibold text-amber-300">{g.state}</span></div>)}
       {!data&&<p className="text-xs text-slate-300">UNKNOWN — source unavailable</p>}</div>
     </div>
+   </section>
+   <section aria-label="Signed storage observation freshness" className="rounded-3xl border border-white/10 bg-slate-950/75 p-5 sm:p-7">
+    <h2 className="text-xl font-extrabold">Signed source pulses · evidence freshness</h2>
+    <p className="mt-2 text-xs leading-5 text-slate-300">Only the existing authenticated gross-storage receipt can supply an observation clock. FRESH means a signed observation within 36 hours, NOT a healthy observer process, complete filesystem coverage, APFS recovery or permission to repair. GitHub updates never refresh these clocks.</p>
+    <div className="mt-4 grid gap-3 md:grid-cols-3">
+     {(["mac","hel1-root","hel1-volume-105319120"] as const).map(id=>{
+      const source=data?.signedStoragePulse?.authority==="SIGNED_GROSS_STORAGE_OBSERVATION_ONLY_NOT_AGENT_LIVENESS"
+       ?data.signedStoragePulse.planes.find(p=>p.id===id):null;
+      const state=source?.state??"UNKNOWN";
+      return <div key={id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+       <div className="flex items-start justify-between gap-2">
+        <span className="break-all font-mono text-[11px] text-slate-200">{id}</span>
+        <span className={"text-xs font-black "+(state==="FRESH"?"text-cyan-200":state==="STALE"?"text-amber-200":"text-slate-300")}>{state}</span>
+       </div>
+       <p className="mt-2 break-words font-mono text-[10px] text-slate-400">{source?.reason??"NO_AUTHENTICATED_RECEIPT"}</p>
+       <p className="mt-2 text-[11px] text-slate-300">Signed observation: {seen(source?.observedAt??null)}</p>
+      </div>;
+     })}
+    </div>
+    <p className="mt-3 text-[11px] text-amber-200">Read-only evidence age; agent liveness and repair authority remain UNKNOWN. No keys, host control, timers or live data collectors are created here.</p>
    </section>
    <section aria-label="Six source-owned engineering lanes">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-2xl font-extrabold">Six-lane acceptance</h2><span className="text-xs text-slate-400">Gate numerator / denominator. Not a productivity score.</span></div>

@@ -108,3 +108,40 @@ The C source-owner permit `C-ADOPT-PERMIT-01` and F protected W1 activation
 remain separate explicit owner gates. No live website host operation,
 credential installation, terminal command or financial write was performed
 by implementing this source.
+
+## Post-W1 signed observer evidence freshness (isolated G source)
+
+The private Central Command now projects three **read-only signed storage
+observation clocks** by reusing `readPrivateStorageVisual()`, the existing
+authenticated local receiver/readback. It does not read GitHub timestamps as
+host evidence or trigger a publisher. The pure
+`lib/centralSignedPulse.ts` policy binds the three fixed source plane IDs
+(`mac`, `hel1-root`, `hel1-volume-105319120`) to:
+
+- **FRESH** only when that plane occurs in a valid authenticated private visual
+  receipt, its status agrees with the observation clock, and the signed
+  observation is no older than 36h (existing C v1 maximum age).
+- **STALE** when an authenticated plane observation is older than 36h and its
+  reader status is independently STALE; no new wrapper `generated_at` can renew it.
+- **UNKNOWN** on missing keys/receipt/plane, unverifiable or unreadable store,
+  invalid/future-dated clock, or contradictory authenticated status.
+
+The private API keeps existing admin authorization, no-store and GET-only
+semantics. A failure returns an explicit `RECEIPT_INVALID_OR_UNREADABLE`
+UNKNOWN without leaking signature or filesystem details or retaining prior
+FRESH results. The browser presents observation freshness, **NOT an actual
+healthy systemd agent, live service, full L1 scan, independent signed ACK
+delivery or deployment permit**. Gross-only C v1 transport and permanent L5
+NEVER DELETE are untouched. This incremental projection creates no timer,
+daemon, scanner, agent tab controller, auto-repair, financial or deletion
+authority. A future approved original publisher may reuse the existing
+observer schedule and signed C ingress; only authenticated durable readback is
+eligible to change these states. CI's disposable no-key Chrome must show all
+three planes UNKNOWN.
+
+This post-W1 branch is explicitly excluded from the frozen W1 deployment
+candidate until a separate independent source review/merge and future release.
+The held #933 public inspection evidence expiry fix is **not copied**:
+inspection scores alone lack source-signed agent receipts, and the existing
+private Central Command previously had no GREEN agent-health claim.
+
