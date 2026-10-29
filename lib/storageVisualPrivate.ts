@@ -18,7 +18,7 @@ const MAX_FILE = 64 * 1024;
 const MAX_EVENTS = 64;
 const MAX_HOGS = 32;
 export type PlaneId = "mac" | "hel1-root" | "hel1-volume-105319120";
-export type Level = 1 | 2 | 3 | 4;
+export type Level = 1 | 2 | 3 | 4 | 5;
 export type HogKey =
   | "CROSSOVER_STEAM_REPLAY" | "RECOVERY_VAULT" | "MOBILESYNC_BACKUPS"
   | "GUARDED_GENERATED" | "DOWNLOADS" | "DOCKER_VM" | "CODEX_WORKTREES" | "CODEX_RUNTIME"
@@ -28,42 +28,50 @@ export type HogKey =
   | "HEL1_ROOT_SYSTEM" | "HEL1_DEPLOY_BUILDS" | "HEL1_ROOT_BACKUPS"
   | "HEL1_EVIDENCE_ARCHIVE" | "HEL1_TRAFFIC_DB" | "HEL1_ACTIVE_SWAP"
   | "HEL1_FINANCIAL_RESTORE" | "HEL1_SNAPSHOTS" | "HEL1_STAGING"
-  | "OTHER_MEASURED";
+  | "OTHER_MEASURED"
+  | "OWNER_CHATGPT_CONVERSATION_ZIP" | "OWNER_ORIGINAL_PHOTOS"
+  | "OWNER_INDEPENDENT_RECOVERY_COPY" | "FINANCIAL_ORIGINALS" | "EVIDENCE_ORIGINALS";
 
 export const HOG_CATALOG: Record<HogKey,{ label: string; level: Level; planes: readonly PlaneId[] }> = {
   GUARDED_GENERATED:{label:"Source-qualified generated review",level:1,planes:["mac","hel1-root","hel1-volume-105319120"]},
-  CROSSOVER_STEAM_REPLAY:{label:"CrossOver · Steam & Replay Lab",level:4,planes:["mac"]},
-  RECOVERY_VAULT:{label:"Recovery vault",level:4,planes:["mac"]},
-  MOBILESYNC_BACKUPS:{label:"iPhone & iPad backups",level:4,planes:["mac"]},
+  CROSSOVER_STEAM_REPLAY:{label:"CrossOver · Steam & Replay Lab",level:5,planes:["mac"]},
+  RECOVERY_VAULT:{label:"Recovery vault",level:5,planes:["mac"]},
+  MOBILESYNC_BACKUPS:{label:"iPhone & iPad backups",level:5,planes:["mac"]},
   DOWNLOADS:{label:"Downloads · owner review",level:2,planes:["mac"]},
   DOCKER_VM:{label:"Docker virtual disks",level:3,planes:["mac"]},
-  CODEX_WORKTREES:{label:"Codex worktrees",level:4,planes:["mac"]},
-  CODEX_RUNTIME:{label:"Codex runtime",level:4,planes:["mac"]},
-  E5_SEAL:{label:"E5 release seal",level:4,planes:["mac"]},
-  APP_ACTIVE_DEPENDENCIES:{label:"Active app dependencies",level:4,planes:["mac"]},
+  CODEX_WORKTREES:{label:"Codex worktrees",level:5,planes:["mac"]},
+  CODEX_RUNTIME:{label:"Codex runtime",level:5,planes:["mac"]},
+  E5_SEAL:{label:"E5 release seal",level:5,planes:["mac"]},
+  APP_ACTIVE_DEPENDENCIES:{label:"Active app dependencies",level:5,planes:["mac"]},
   RENAISSANCE_DEPENDENCIES:{label:"Historical Renaissance dependencies",level:2,planes:["mac"]},
-  WATCHER_SIGNED_DIST:{label:"Signed Watcher distribution",level:4,planes:["mac"]},
+  WATCHER_SIGNED_DIST:{label:"Signed Watcher distribution",level:5,planes:["mac"]},
   OTHER_GENERATED:{label:"Other generated outputs",level:2,planes:["mac","hel1-root","hel1-volume-105319120"]},
-  PROJECT_SOURCE:{label:"Project source & worktrees",level:4,planes:["mac"]},
+  PROJECT_SOURCE:{label:"Project source & worktrees",level:5,planes:["mac"]},
   PYTHON_TOOLCHAINS:{label:"Python toolchains",level:2,planes:["mac"]},
   GO_MODULES:{label:"Go module cache",level:2,planes:["mac"]},
   BROWSER_CACHES:{label:"Browser caches",level:2,planes:["mac"]},
-  HEL1_ROOT_SYSTEM:{label:"Root OS & services",level:4,planes:["hel1-root"]},
+  HEL1_ROOT_SYSTEM:{label:"Root OS & services",level:5,planes:["hel1-root"]},
   HEL1_DEPLOY_BUILDS:{label:"Deployment builds",level:3,planes:["hel1-root"]},
-  HEL1_ROOT_BACKUPS:{label:"Root backup evidence",level:4,planes:["hel1-root"]},
-  HEL1_EVIDENCE_ARCHIVE:{label:"Evidence archive",level:4,planes:["hel1-volume-105319120"]},
-  HEL1_TRAFFIC_DB:{label:"Traffic database",level:4,planes:["hel1-volume-105319120"]},
-  HEL1_ACTIVE_SWAP:{label:"Active swap",level:4,planes:["hel1-volume-105319120"]},
-  HEL1_FINANCIAL_RESTORE:{label:"Financial restore",level:4,planes:["hel1-volume-105319120"]},
+  HEL1_ROOT_BACKUPS:{label:"Root backup evidence",level:5,planes:["hel1-root"]},
+  HEL1_EVIDENCE_ARCHIVE:{label:"Evidence archive",level:5,planes:["hel1-volume-105319120"]},
+  HEL1_TRAFFIC_DB:{label:"Traffic database",level:5,planes:["hel1-volume-105319120"]},
+  HEL1_ACTIVE_SWAP:{label:"Active swap",level:5,planes:["hel1-volume-105319120"]},
+  HEL1_FINANCIAL_RESTORE:{label:"Financial restore",level:5,planes:["hel1-volume-105319120"]},
   HEL1_SNAPSHOTS:{label:"Snapshot generations",level:3,planes:["hel1-root","hel1-volume-105319120"]},
   HEL1_STAGING:{label:"Stage and rollback outputs",level:3,planes:["hel1-root","hel1-volume-105319120"]},
   OTHER_MEASURED:{label:"Other measured buckets",level:3,planes:["mac","hel1-root","hel1-volume-105319120"]},
+  OWNER_CHATGPT_CONVERSATION_ZIP:{label:"Owner original ChatGPT 4.0 conversation ZIP · NEVER DELETE",level:5,planes:["mac"]},
+  OWNER_ORIGINAL_PHOTOS:{label:"Original photos · NEVER DELETE",level:5,planes:["mac"]},
+  OWNER_INDEPENDENT_RECOVERY_COPY:{label:"Independent Mac project DR copy · NEVER DELETE",level:5,planes:["mac"]},
+  FINANCIAL_ORIGINALS:{label:"Wallet, signer, consensus, liability originals · NEVER DELETE",level:5,planes:["mac","hel1-root","hel1-volume-105319120"]},
+  EVIDENCE_ORIGINALS:{label:"Immutable original evidence and marked archives · NEVER DELETE",level:5,planes:["mac","hel1-root","hel1-volume-105319120"]},
 };
 const PLANE_IDS: PlaneId[]=["mac","hel1-root","hel1-volume-105319120"];
 const EVENT_KINDS=["GENERATED","PRUNE_RECEIPT","PRUNE_HOLD","NEXT_REVIEW","SNAPSHOT","COLLECTED"] as const;
 export type VisualEventKind=typeof EVENT_KINDS[number];
 export type VisualHog={key:HogKey;label:string;level:Level;grossBytes:number;overlaps:boolean};
 export type VisualEvent={id:string;at:string;kind:VisualEventKind;category:HogKey|null;bytes:number|null;transactionDigest:string|null};
+/** L5 protection is derived by immutable source policy, not a sender-provided downgrade. */
 export type VisualReviewItem={
   alias:string; category:HogKey; level:Level; grossBytes:number;
   fingerprint:string; sourceDigest:string; sourceRevision:string;
@@ -139,7 +147,7 @@ export function verifyVisualReceipt(
       if(!isKey(key)||!HOG_CATALOG[key].planes.includes(id as PlaneId)||keys.has(key)||safeBytes(h.gross_allocated_bytes)===null||typeof h.overlaps!=="boolean")throw Error("VISUAL_HOG_INVALID");
       keys.add(key);
       const rule=HOG_CATALOG[key];
-      // Protection level comes from fixed server-side policy, never from an untrusted publisher.
+      // Legacy L4 PROTECTED is owner-express permanent L5, never source-downgradable.
       hogs.push({key,label:rule.label,level:rule.level,grossBytes:h.gross_allocated_bytes as number,overlaps:h.overlaps});
     }
     // DISJOINT requires affirmative, per-category nonoverlap assertions. Do not
@@ -176,8 +184,16 @@ export function verifyVisualReceipt(
         !["COMPLETE","INCOMPLETE"].includes(item.proof_state as string))
         throw Error("VISUAL_REVIEW_ITEM_INVALID");
       aliases.add(item.alias);
-      const level=HOG_CATALOG[category].level;
-      if((level===4&&item.source_status!=="PROTECTED")||
+      const catalogLevel=HOG_CATALOG[category].level;
+      // Old signed L4 PROTECTED receipts migrate conservatively to immutable L5.
+      // An explicit level on future receipts may never downgrade a protected class.
+      const legacyProtected=item.source_status==="PROTECTED"&&(item.level===4||catalogLevel===5);
+      const level:Level=legacyProtected?5:catalogLevel;
+      if(item.level!==undefined&&(![1,2,3,4,5].includes(item.level as number)||
+        (item.level!==level&&!(item.level===4&&level===5&&item.source_status==="PROTECTED"))))
+        throw Error("VISUAL_REVIEW_LEVEL_DOWNGRADE_HOLD");
+      if((level===5&&item.source_status!=="PROTECTED")||
+        (level===4&&item.source_status==="PROTECTED")||
         (level===1&&item.source_status==="GUARDED"&&item.proof_state!=="COMPLETE"))
         throw Error("VISUAL_REVIEW_POLICY_HOLD");
       reviewItems.push({alias:item.alias,category,level,grossBytes:item.gross_allocated_bytes as number,
