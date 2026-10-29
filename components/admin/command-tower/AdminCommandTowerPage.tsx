@@ -30,6 +30,7 @@ import {
 
 import AdminUserCard from "@/components/admin/command-tower/AdminUserCard";
 import SiteThemeCampaignPanel from "@/components/admin/command-tower/SiteThemeCampaignPanel";
+import { ADMIN_ATLAS_ROUTES, NAVIGATION_ATLAS_HREF } from "@/lib/navigationAtlas";
 import type { AdminUserRow, DraftState } from "@/components/admin/command-tower/types";
 import WoloChainEntryTile from "@/components/admin/command-tower/WoloChainEntryTile";
 import {
@@ -87,6 +88,15 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
   { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
 ] as const;
+
+/* Keep every original command destination and its icon while guaranteeing
+ * an additive path to each implemented top-level admin page. */
+const COMPLETE_ADMIN_NAV_LINKS = [
+  ...ADMIN_NAV_LINKS,
+  ...ADMIN_ATLAS_ROUTES
+    .filter(route => !ADMIN_NAV_LINKS.some(original => original.href === route.href))
+    .map(route => ({ href: route.href, label: route.label, Icon: LayoutGrid })),
+];
 
 const JOURNEY_FILTERS: Array<{ mode: JourneyFilterMode; label: string }> = [
   { mode: "all", label: "All" },
@@ -496,8 +506,13 @@ export default function AdminCommandTowerPage() {
             the product signals that tell you who is alive, who is drifting, and where the heat is
             building.
           </p>
+          <Link href={NAVIGATION_ATLAS_HREF} className="group mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/25 bg-cyan-300/[.07] px-5 py-4 text-sm text-cyan-100 transition hover:border-cyan-200/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200">
+            <span><strong className="block text-base">Navigation Atlas · All Command Links</strong>
+              <span className="mt-1 block text-xs text-cyan-100/70">{ADMIN_ATLAS_ROUTES.length} implemented private destinations across six districts · source only, deployment unverified</span></span>
+            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+          </Link>
           <nav aria-label="Admin sections" className="flex flex-wrap gap-2 pt-2">
-            {ADMIN_NAV_LINKS.map(({ href, label, Icon }) => (
+            {COMPLETE_ADMIN_NAV_LINKS.map(({ href, label, Icon }) => (
               <Link
                 key={href}
                 href={href}

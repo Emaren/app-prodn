@@ -628,6 +628,10 @@ export default function AdminPage() {
               >
                 Open User List
               </Link>
+              <Link href="/admin/aoe2war-os#navigation-atlas"
+                className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-400/10 px-5 py-3 text-sm text-cyan-100 transition hover:border-cyan-300/50">
+                Navigation Atlas · All Command Links
+              </Link>
               <Link
                 href="/admin/living-kingdom"
                 className="inline-flex rounded-full border border-sky-200/18 bg-sky-300/[0.06] px-5 py-3 text-sm text-sky-100 transition hover:border-sky-200/36 hover:bg-sky-300/10"
