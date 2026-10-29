@@ -1264,3 +1264,60 @@ C publisher are independent. Do not duplicate scanners, watchers, timers,
 release controllers or financial authority. Current W1 release is still
 independently capacity/backup/Doctor/financial-noninterference/owner-permit
 gated.
+
+## Session D post-W1: bounded native Mac L1 root provenance, no cleanup authority
+
+A separate, **post-W1 source-only** increment adds
+`scripts/aoe2_storage_mac_pressure.py --root-provenance-only --json`.
+This is **not** the existing `--l1-campaign` capacity scan, a new scheduler,
+an automatic cleanup controller, or a replacement for the held D draft #983
+logical-slot denominator. It reads **one level** of the named
+`~/projects/AoE2HDBets` directory, capped at **121 direct entry names /
+120 displayed project directory roots**, and invokes the existing canonical
+`git worktree list --porcelain` metadata command once with a 12-second
+limit and 64-KiB output cap. Up to **60 declared worktree roots** are
+represented; an observed 61st or source failure is a typed HOLD, not an
+assumption that missing roots are absent. Cross-namespace duplicate paths
+are marked as overlaps, never independent storage allocations.
+
+The **only filesystem metadata operations** are shallow `lstat` and one
+`statvfs`; protected Codex/E5 worktrees are classified from their declared
+paths and receive **no child traversal or even root stat**. Symlinked
+project ancestors, symlink targets, foreign mount, missing canonical Git
+source, malformed declaration, root type or permission ambiguity and cap
+overflows are HOLD. No `du`, `find`, content reads, git status scan, Mac
+Spotlight changes, snapshots, repair/deletion operation, new keys or financial
+access. Mac data outside that named bounded root (including L5 original
+photos, owner-designated ~1GiB ChatGPT conversation ZIP, ~40GiB independent
+recovery copy, and wallet/finance originals) is **never traversed**.
+
+The mode refuses any project-root enumeration if native `statvfs(home)`
+ordinary free is **below 25 GiB**, or if it is not running on macOS; this
+safety threshold is **not an owner/transaction permit** and not APFS
+physical uniqueness proof. The source-produced private owner JSON is
+metadata evidence only. Even with complete bounded root identities, the
+independent native L1 eight-gate certificate remains **2/8 HOLD** until
+Central verifies the exact root denominator, off-scope and omissions,
+source/worktree identity, consumer/rebuild/lockfile, APFS clone/snapshot/
+hardlink unique extents and independent owner/second-cycle signatures.
+Every receipt contains `native_l1_gate_three_accepted=false`,
+`policy_scope_complete=false`, `eligible_l1_candidates=null`,
+`unique_apfs_recoverable_bytes=null`,
+`physical_before_after_transaction_receipt=null`,
+`L1_POLICY_EXHAUSTED_NO` and `mutation_authority=NONE`. There is no
+new positive L1 candidate, no byte prediction and no signed no-eligible
+receipt.
+
+**Smallest proposed first owner command is only**
+`df -Pk /System/Volumes/Data`, after separate owner permission. If
+the contemporaneous ordinary available blocks are below **26,214,400 KiB**
+(25 GiB), stop: DO NOT run the root provenance command or other scans.
+If the floor and source parity are independently admitted and Central/
+owner approve one metadata pass, use the new `--root-provenance-only`
+command once on source-adopted Mac, keeping JSON private. The historic
+Renaissance `node_modules` is L2 owner preview only, NOT L1 auto-delete.
+A later individually approved guarded transaction would require causal
+same-mount pre/post physical measurement, independent clone/snapshot and
+concurrent-writer isolation; gross `du` and raw `df` drift cannot certify
+new unique recoverable bytes. W1 website source and production permits
+remain completely separate.

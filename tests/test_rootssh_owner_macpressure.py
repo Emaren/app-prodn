@@ -456,5 +456,143 @@ class MacPressureContract(TestCase):
         self.assertNotIn("shutil.rmtree", (ROOT / "scripts/aoe2_storage_mac_pressure.py").read_text())
 
 
+
+class MacRootProvenancePostW1Tests(TestCase):
+    """Synthetic tiny fixtures only; never a native Mac scan."""
+
+    @staticmethod
+    def roots(tmp):
+        home = Path(tmp).resolve() / "home"
+        project = home / "projects" / "AoE2HDBets"
+        primary = project / "app-prodn"
+        primary.mkdir(parents=True)
+        return home, project, primary
+
+    @staticmethod
+    def free(gib=40):
+        from types import SimpleNamespace
+        return SimpleNamespace(f_frsize=4096, f_bsize=4096,
+                               f_bavail=gib * 1024**3 // 4096)
+
+    @staticmethod
+    def git(*paths):
+        return subprocess.CompletedProcess([], 0, "".join(
+            "worktree " + str(path) + "\nHEAD " + "a"*40 + "\n\n"
+            for path in paths), "")
+
+    def test_metadata_only_protected_codex_skips_stat_and_never_claims_l1(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, project, primary = self.roots(tmp)
+            (project / "renaissance").mkdir()
+            normal = Path(tmp) / "review-worktree"
+            normal.mkdir()
+            codex = Path(tmp) / ".worktrees" / "codex-protected"
+            original = os.lstat
+            touched = []
+            def spy(path):
+                touched.append(str(path))
+                if str(path) == str(codex):
+                    raise AssertionError("protected worktree was stat-ed")
+                return original(path)
+            def git_only(args, **kwargs):
+                self.assertEqual(args[0], "git")
+                self.assertEqual(kwargs["env"]["GIT_OPTIONAL_LOCKS"], "0")
+                return self.git(primary, normal, codex)
+            with mock.patch.object(pressure.os, "statvfs", return_value=self.free()), \
+                 mock.patch.object(pressure.os, "lstat", side_effect=spy), \
+                 mock.patch.object(pressure.subprocess, "run", side_effect=git_only):
+                got = pressure.root_provenance_only(home, project, platform="darwin")
+            self.assertIn(str(primary), got["cross_namespace_aliases"])
+            self.assertEqual(got["protected_worktrees_skipped"], 1)
+            self.assertEqual(got["worktrees_declared_seen"], 3)
+            self.assertNotIn(str(codex), touched)
+            self.assertEqual(got["worktree_roots"][-1]["class"],
+                             "PROTECTED_WORKTREE_NO_STAT_OR_TRAVERSAL")
+            self.assertFalse(got["du_executed"])
+            self.assertFalse(got["recursive_walk"])
+            self.assertFalse(got["native_l1_gate_three_accepted"])
+            self.assertFalse(got["policy_scope_complete"])
+            self.assertEqual(got["l1_policy_exhaustion_decision"], "L1_POLICY_EXHAUSTED_NO")
+            for key in ("gross_allocated_bytes", "eligible_l1_candidates",
+                        "unique_apfs_recoverable_bytes", "physical_before_after_transaction_receipt"):
+                self.assertIsNone(got[key])
+
+    def test_low_free_floor_aborts_before_scandir_and_git(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, project, _ = self.roots(tmp)
+            with mock.patch.object(pressure.os, "statvfs", return_value=self.free(10)), \
+                 mock.patch.object(pressure.os, "scandir", side_effect=AssertionError("scan")), \
+                 mock.patch.object(pressure.subprocess, "run", side_effect=AssertionError("git")):
+                got = pressure.root_provenance_only(home, project, platform="darwin")
+            self.assertEqual(got["status"], "HOLD")
+            self.assertIn("MAC_BELOW_25_GIB_LOW_IO_ADMISSION_FLOOR", got["holds"])
+            self.assertIsNone(got["project_entries_seen"])
+
+    def test_symlink_ancestor_aborts_without_scandir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp).resolve() / "home"
+            external = Path(tmp).resolve() / "elsewhere"
+            (external / "AoE2HDBets").mkdir(parents=True)
+            home.mkdir()
+            (home / "projects").symlink_to(external, target_is_directory=True)
+            with mock.patch.object(pressure.os, "scandir", side_effect=AssertionError("scan")):
+                got = pressure.root_provenance_only(
+                    home, home / "projects" / "AoE2HDBets", platform="darwin")
+            self.assertIn("SYMLINK_OR_FOREIGN_MOUNT_ANCESTOR", got["holds"])
+
+    def test_121_entries_and_61_worktrees_hold_not_claim_exact_coverage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, project, primary = self.roots(tmp)
+            for i in range(125):
+                (project / ("p%03d" % i)).mkdir()
+            paths = [primary] + [Path(tmp) / ("w%03d" % i) for i in range(60)]
+            with mock.patch.object(pressure.os, "statvfs", return_value=self.free()), \
+                 mock.patch.object(pressure.subprocess, "run", return_value=self.git(*paths)):
+                got = pressure.root_provenance_only(home, project, platform="darwin")
+            self.assertEqual(got["project_entries_seen"], 121)
+            self.assertTrue(got["project_entry_overflow_unknown"])
+            self.assertLessEqual(len(got["project_roots"]), 120)
+            self.assertTrue(got["worktree_overflow_unknown"])
+            self.assertEqual(got["worktrees_declared_seen"], 61)
+            self.assertIn("DIRECT_PROJECT_ENTRY_CAP", got["holds"])
+            self.assertIn("GIT_WORKTREE_DECLARATIONS_OVER_CAP", got["holds"])
+            self.assertFalse(got["all_source_roots_certified"])
+
+    def test_foreign_mount_and_worktree_symlink_are_nontraversal_holds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, project, primary = self.roots(tmp)
+            foreign = project / "foreign"
+            foreign.mkdir()
+            alias = Path(tmp) / "alias"
+            alias.symlink_to(primary, target_is_directory=True)
+            original = os.lstat
+            from types import SimpleNamespace
+            def substitute(path):
+                s = original(path)
+                return (SimpleNamespace(st_mode=s.st_mode, st_dev=s.st_dev + 1,
+                                        st_ino=s.st_ino, st_uid=s.st_uid)
+                        if str(path) == str(foreign) else s)
+            with mock.patch.object(pressure.os, "statvfs", return_value=self.free()), \
+                 mock.patch.object(pressure.os, "lstat", side_effect=substitute), \
+                 mock.patch.object(pressure.subprocess, "run",
+                                   return_value=self.git(primary, alias)):
+                got = pressure.root_provenance_only(home, project, platform="darwin")
+            self.assertIn("PROJECT_ROOT_FOREIGN_MOUNT", got["holds"])
+            self.assertIn("WORKTREE_ROOT_UNSAFE", got["holds"])
+            self.assertIsNone(got["clone_hardlink_snapshot_unique_extents"])
+
+    def test_git_failure_does_not_imply_zero_worktrees(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, project, primary = self.roots(tmp)
+            with mock.patch.object(pressure.os, "statvfs", return_value=self.free()), \
+                 mock.patch.object(pressure.subprocess, "run",
+                                   return_value=subprocess.CompletedProcess([], 1, "", "bad")):
+                got = pressure.root_provenance_only(home, project, platform="darwin")
+            self.assertIn("GIT_WORKTREE_SOURCE_UNKNOWN", got["holds"])
+            self.assertIsNone(got["worktrees_declared_seen"])
+            self.assertFalse(got["native_l1_gate_three_accepted"])
+
+
+
 if __name__ == "__main__":
     unittest.main()
