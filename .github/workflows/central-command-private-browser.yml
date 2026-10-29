@@ -6,6 +6,8 @@ on:
       - 'app/api/admin/central-command/**'
       - 'components/central-command/**'
       - 'lib/centralCommandPrivate.ts'
+      - 'lib/centralSignedPulse.ts'
+      - 'tests/central-signed-pulse.test.mts'
       - 'scripts/central_command_browser.cjs'
       - '.github/workflows/central-command-private-browser.yml'
       - 'config/central-command-lanes.json'
@@ -50,7 +52,7 @@ jobs:
       - name: Source contracts including actual private HMAC/ACK fixture
         run: |
           set -euo pipefail
-          node --experimental-strip-types --test tests/private-central-command.test.mts tests/private-storage-visual-bridge.test.mts
+          node --experimental-strip-types --test tests/private-central-command.test.mts tests/private-storage-visual-bridge.test.mts tests/central-signed-pulse.test.mts
           test -z "$(git status --porcelain --untracked-files=no)"
       - name: Create isolated PostgreSQL fixture and synthetic admin role
         run: |
