@@ -74,6 +74,11 @@ test("zero verified is UNKNOWN, finite certified release scope can reach 100", (
   const completed = progressFromVerifiedScope(sourceOnly, new Set(["public-ui", "source-tests"]), null);
   assert.equal(completed.percent, 100);
   assert.equal(completed.verifiedCount, 2);
+  // In-process lastGood is NOT durable history: without fresh accepted receipts,
+  // do not replay a previous 100% as independently verified FRESH.
+  const afterReceiptsLost = progressFromVerifiedScope(sourceOnly, new Set(), null);
+  assert.equal(afterReceiptsLost.percent, null);
+  assert.equal(afterReceiptsLost.evidenceStatus, "UNKNOWN");
 });
 
 test("sort most/least/recent: unknown is last, same-value ties keep stable original ID", () => {
