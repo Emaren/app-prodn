@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/f-w1-decode-uri-component-high-20261029` at `2138d4bd6187dfefd6f2356abb4ecaaad3825427`
+Implementation baseline: `integration/20261023-satchel-final-gated` at `fde7b8aed337910eed8af8b4bab993706bdf1052`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
