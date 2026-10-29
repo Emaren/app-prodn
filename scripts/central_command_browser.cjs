@@ -42,6 +42,19 @@ async function run(){
   assert.doesNotMatch(JSON.stringify(json),/local_fixture_only|isolated-ci-not-production|\/Users\//);
   const post=await context.request.post("/api/admin/central-command",{data:{}});
   assert.equal(post.status(),405);receipt.tests.push("ADMIN_200_NO_STORE_AUTH_ONLY_NO_POST");
+  const noAliasBody={plane:"mac",alias:"BUILD_0001",fingerprint:"a".repeat(64),sourceDigest:"b".repeat(64),
+   sourceRevision:"c".repeat(40),decision:"SINGLE_CANDIDATE_APPROVAL",previousId:null};
+  const originHeaders={Origin:base,"Content-Type":"application/json"};
+  // No admin/session bypass and no owner action without source-owned C v2 contract.
+  await context.addCookies([{name:"aoe2hdbets_session",value:noadmin,url:base,httpOnly:true,sameSite:"Lax"}]);
+  const reviewNonAdmin=await context.request.post("/api/admin/storage-os/reviews",{data:noAliasBody,headers:originHeaders});
+  assert.equal(reviewNonAdmin.status(),403);
+  await context.addCookies([{name:"aoe2hdbets_session",value:admin,url:base,httpOnly:true,sameSite:"Lax"}]);
+  const reviewBlocked=await context.request.post("/api/admin/storage-os/reviews",{data:noAliasBody,headers:originHeaders});
+  assert.equal(reviewBlocked.status(),409);
+  assert.match(reviewBlocked.headers()["cache-control"]||"",/no-store/);
+  assert.equal((await reviewBlocked.json()).detail,"REVIEW_SOURCE_TRANSPORT_UNAVAILABLE");
+  receipt.tests.push("STORAGE_OWNER_REVIEW_NO_VERIFIED_SOURCE_POST_403_409_NO_STORE");
   await context.close();
   for(const width of [375,768,1440]){
    const c=await browser.newContext({baseURL:base,viewport:{width,height:820},serviceWorkers:"block",reducedMotion:"reduce"});
@@ -72,6 +85,16 @@ async function run(){
     await page.getByText("No accepted live source").waitFor({timeout:12000});
     assert.equal(await page.getByRole("article").count(),0,"No stale success on loss");
     receipt.tests.push("HOST_LOSS_STALE_DATA_CLEARED");
+   }
+   if(width===375){
+    // Actual private Storage UI must disclose source contract limit and show
+    // no individual approval control, even while gross dashboard is available.
+    const storageRes=await page.goto("/admin/storage-os",{waitUntil:"domcontentloaded",timeout:25000});
+    assert.equal(storageRes.status(),200);
+    await page.getByText("INDIVIDUAL OWNER REVIEW UNAVAILABLE",{exact:false}).waitFor({timeout:15000});
+    assert.equal(await page.getByRole("button",{name:"Record this exact decision"}).count(),0);
+    await page.screenshot({path:path.join(out,"storage-owner-no-candidates-375.png"),fullPage:false});
+    receipt.tests.push("STORAGE_OWNER_CHROME_375_C_V1_UNKNOWN_NO_APPROVAL");
    }
    await c.close();
   }
