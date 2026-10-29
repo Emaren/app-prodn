@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/f-w1-decode-uri-component-high-20261029` at `2138d4bd6187dfefd6f2356abb4ecaaad3825427`
+Implementation baseline: `feat/session-g-postw1-kingdom-progress-q12-20261029` at `501e58121f3acee021448c281a60d3773602d093`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
