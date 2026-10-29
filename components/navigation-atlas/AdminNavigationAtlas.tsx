@@ -85,7 +85,7 @@ export default function AdminNavigationAtlas() {
         <div className="mt-6 grid gap-4 border-t border-white/10 pt-5 lg:grid-cols-[1fr_auto]">
           <div>
             <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-200"><ShieldCheck size={15}/> Not yet source-integrated</h3>
-            <p className="mt-2 text-xs text-slate-400">{PENDING_NAVIGATION.map(item=>item.label).join(" · ")}. No clickable route is fabricated until G’s approved pages exist.</p>
+            <p className="mt-2 text-xs text-slate-400">{PENDING_NAVIGATION.map(item=>item.label).join(" · ")}. The separately proposed Work Board is not implemented and has no fabricated URL.</p>
             <p className="mt-2 text-xs text-slate-300">Authorization: server-enforced admin layout. Data source: committed route allowlist. Production BUILD_ID: unverified.</p>
           </div>
           <Link href="/admin" className="self-center rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-white/40">Back to Admin Home</Link>
