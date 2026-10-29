@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/g-q09-a2-living-job-exchange-20261029` at `eadcdc6365caffc037ee1ad53c32519cb8786af6`
+Implementation baseline: `feat/d-q17-kingdom-navigation-atlas-20261029` at `511ada661abdc8709b75992206fabcaca309b242`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
