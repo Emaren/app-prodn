@@ -7,7 +7,7 @@ const {createHash}=require("node:crypto");
 const {createRequire}=require("node:module");
 async function run(){
  const base=process.env.CENTRAL_BROWSER_ORIGIN;
- assert.equal(base,"http://127.0.0.1:3137","only disposable loopback");
+ assert.equal(base,"http://localhost:3137","only disposable loopback");
  assert.equal(process.env.CENTRAL_BROWSER_FIXTURE_ALLOWED,"1");
  const chrome=process.env.CHROME_BIN,pw=process.env.PW_HOME,out=process.env.CENTRAL_BROWSER_OUT;
  assert.ok(chrome&&fs.existsSync(chrome)&&pw&&out&&path.isAbsolute(out));
