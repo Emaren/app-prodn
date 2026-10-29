@@ -65,7 +65,8 @@ export default function KingdomProgressClient() {
       }
       if (progress.status === "fulfilled") {
         setLive(progress.value.entries.filter(entry =>
-          entry && typeof entry.id === "string" && /^[a-z0-9-]{2,40}$/.test(entry.id) &&
+          entry && typeof entry.id === "string" &&
+          (projects.projects.some(project => project.id === entry.id) || /^Q(?:0[1-9]|1[0-9]|2[0-9])$/.test(entry.id)) &&
           typeof entry.label === "string" && entry.label.length <= 48 &&
           Array.isArray(entry.milestones) && entry.milestones.length <= 8 &&
           (entry.percent === null || (typeof entry.percent === "number" &&
@@ -138,7 +139,7 @@ export default function KingdomProgressClient() {
         <section className={styles.stack} aria-label="Project progress capsules">
           {ordered.map((project, i) => {
             const expanded = focus === project.id;
-            return <article key={project.id} className={[styles.capsule, styles[palettes[project.originalIndex % palettes.length]], expanded ? styles.expanded : ""].join(" ")}>
+            return <article key={project.id} data-campaign-id={project.id} className={[styles.capsule, styles[palettes[project.originalIndex % palettes.length]], expanded ? styles.expanded : ""].join(" ")}>
               <button type="button" className={styles.pill} aria-expanded={expanded} onClick={() => setFocus(expanded ? null : project.id)}>
                 <span className={styles.glass} aria-hidden="true"/>
                 <span className={styles.flare} aria-hidden="true"/>
