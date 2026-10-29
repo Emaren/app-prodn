@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/d-q17-kingdom-navigation-atlas-20261029` at `18eb6064b9f31245c1b522086f22101b033ea29f`
+Implementation baseline: `feat/d-q17-kingdom-navigation-atlas-20261029` at `0aa16a81facc89ca88a2eb120f277ab66a4075f8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
