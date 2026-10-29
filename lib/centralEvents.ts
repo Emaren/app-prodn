@@ -33,7 +33,7 @@ export function parseComments(repo:string,issue:number,lane:string|null,input:un
   // It NEVER means a ChatGPT session woke or followed it.
   const publishedByOwner=["Emaren","Arduous"].includes(user.login);
   const body=typeof v.body==="string"?v.body.slice(0,4000):"";
-  const isDispatch=publishedByOwner&&/(CENTRAL.*(?:WORK ORDER|EXECUTION ORDER|OWNER-AUTHORIZED WAKE)|CC-2026.*R2)/i.test(body)&&body.length<4000;
+  const isDispatch=publishedByOwner&&/(CENTRAL[^\n]{0,220}(?:WORK ORDER|EXECUTION ORDER|OWNER-AUTHORIZED WAKE|IMPLEMENT IMMEDIATELY|NOW EXECUTE)|CC-2026[^\n]{0,160}R2)/i.test(body)&&body.length<4000;
   const e=evt("comment:"+id,isDispatch?"DISPATCH_PUBLISHED":"COMMENT_PUBLISHED",v.created_at,repo,
    "https://github.com/"+repo+"/issues/"+issue+"#issuecomment-"+id,lane,null,null,now);
   if(e)out.push(e);
