@@ -184,3 +184,18 @@ PostgreSQL/Chrome 375/768/1440 auth/a11y screenshots cover these receipts.
 D exclusively owns AppShell/HeaderMenu/Navigation Atlas/shared mobile dock;
 G adds local private Job Exchange links only. Priority queue, release rails
 and public-safe Kingdom Works require separate scoped acceptance.
+
+### A3 production evidence hardening (source-only)
+
+The allowlisted original A1 GitHub reader additionally observes the
+source-backed A3 PR #1003 and original issue #1002 within its existing
+55-second cached, seven-way bounded GitHub request budget; it does not create
+another browser or backend waterfall. Current GitHub Actions run IDs exceed
+ten billion: use the real safe-integer provider ID and an **exact code-owned
+workflow name+path pair** to reject spoofed CI labels. A concluded successful
+single workflow is a receipt for that workflow's exact head SHA, not whole-CI,
+review or installation approval. The desktop source flow now shows all eight
+stages in a 4-by-2 grid, the tablet in two columns, and mobile retains an
+accessible contained horizontal scroller. The floating mobile castle/dock
+belongs exclusively to Session D Q17 and must be corrected there if overlapping
+content, not by G altering shared navigation.

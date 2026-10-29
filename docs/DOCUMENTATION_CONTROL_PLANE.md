@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/g-q09-a3-work-ledger-20261029` at `d9f2e8aa081074278e370566c03ff0c3b0d92886`
+Implementation baseline: `feat/g-q09-a3-work-ledger-20261029` at `f5609123d6b20c0420c23c286c1292f3f21432c7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
