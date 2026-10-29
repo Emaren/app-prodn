@@ -444,12 +444,14 @@ class NonfinancialWitnessTests(unittest.TestCase):
             if invalid == "replayed_nonce":
                 self.admit(consume=True)
             with (
-                *stage_patches,
+                contextlib.ExitStack() as patch_stack,
                 mock.patch("aoe2_release_nonfinancial_admission.require_admission",
                            side_effect=verify_with_fixture),
                 mock.patch.object(stage, "run") as ssh,
                 contextlib.redirect_stdout(io.StringIO()),
             ):
+                for patcher in stage_patches:
+                    patch_stack.enter_context(patcher)
                 with self.subTest(phase="PRE_STAGE", invalid=invalid):
                     self.assertEqual(stage.stage_release(
                         stage_data, json_output=True), 2)
