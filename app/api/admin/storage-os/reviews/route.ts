@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
-import { readPrivateStorageVisual, type PlaneId } from "@/lib/storageVisualPrivate";
+import { INDIVIDUAL_TRANSPORT_ADOPTED, readPrivateStorageVisual, type PlaneId } from "@/lib/storageVisualPrivate";
 import { appendOwnerReview, readOwnerReviews } from "@/lib/storageOwnerReviews";
 
 export const dynamic="force-dynamic";
@@ -22,6 +22,11 @@ export async function POST(request:NextRequest){
   const origin=request.headers.get("origin");
   if(!origin||origin!==new URL(request.url).origin||request.headers.get("sec-fetch-site")==="cross-site")
     return reject(403,"REVIEW_CROSS_ORIGIN_HOLD");
+  // C v1's exact source HMAC permits hogs only; no per-item review alias nor
+  // source-owned capacity_sample is authenticated over the existing bridge.
+  // Reject even correctly shaped, manually signed legacy items. No approval
+  // can be minted until separate C/G versioned source contract is accepted.
+  if(!INDIVIDUAL_TRANSPORT_ADOPTED)return reject(409,"REVIEW_SOURCE_TRANSPORT_UNAVAILABLE");
   if(!request.headers.get("content-type")?.startsWith("application/json"))return reject(415,"REVIEW_CONTENT_TYPE_HOLD");
   const suppliedLength=Number(request.headers.get("content-length")??"0");
   if(!Number.isFinite(suppliedLength)||suppliedLength>2048)return reject(413,"REVIEW_BODY_BOUNDS_HOLD");
