@@ -360,9 +360,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CENTRAL_COMMAND_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-28",
+      "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "2f7d28ab453346b21cf47d3a6b99044a00a6956540a2020e1d53a05de04fa245",
+      "sha256": "68970834ac50f1bc6e6ce232d851078a373366693d094dcf2dc2bb9ae136bbc3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "574d4377658370d0a28c6d2aa3695a9cfb24d3f2c610d1d14b33c3e3837a7d35",
+      "sha256": "6c7820f90ff61b45e92e0f5c030080c2a2ee0cdaf57f0f571877144386c780d4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/d-mac-exact-source-receipt-20261029",
-    "commit": "6533268dcc30d8d48fb4d6357ab350e61be2d3d4"
+    "branch": "feat/g-q09-a1-verified-events-20261029",
+    "commit": "e816a15dae3d0cac6ea6281d5b853fc815bdd29a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
