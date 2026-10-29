@@ -237,6 +237,44 @@ class NonfinancialWitnessTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.AdmissionHOLD, "stale"):
             self.admit()
 
+    def test_boolean_float_or_string_listener_count_fails_when_signed(self):
+        # JSON true == Python 1 and 1.0 == 1; source signing alone
+        # must not turn either into a measured single listening process.
+        for malformed in (True, 1.0, "1"):
+            p = json.loads(json.dumps(self.payload))
+            p["protected"]["8092"]["count"] = malformed
+            self.write_packet(p)
+            with self.subTest(count=malformed), self.assertRaisesRegex(
+                MODULE.AdmissionHOLD, "listener fingerprint"
+            ):
+                self.admit()
+
+    def test_schema_true_or_float_never_masquerades_as_integer_v1(self):
+        packet = self.write_packet(self.payload)
+        for malformed in (True, 1.0):
+            p = {**packet, "schema": malformed}
+            (self.packets / (self.release + "-PRE_STAGE.json")).write_bytes(
+                MODULE.canonical(p))
+            with self.subTest(packet_schema=malformed), self.assertRaisesRegex(
+                MODULE.AdmissionHOLD, "noncanonical"
+            ):
+                self.admit()
+        self.write_packet(self.payload)
+        trustfile = self.trust / "trust.json"
+        registry = json.loads(trustfile.read_text())
+        registry["schema"] = True
+        trustfile.write_bytes(MODULE.canonical(registry))
+        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "trust schema"):
+            self.admit()
+        registry["schema"] = 1
+        trustfile.write_bytes(MODULE.canonical(registry))
+        hostfile = self.trust / "host-claim-PRE_STAGE.json"
+        host = json.loads(hostfile.read_text())
+        host["schema"] = True
+        hostfile.write_bytes(MODULE.canonical(host))
+        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "host journal claim"):
+            self.admit()
+
     def test_independent_finance_signer_is_required(self):
         packet = self.write_packet(self.payload)
         del packet["signatures"]["finance"]
