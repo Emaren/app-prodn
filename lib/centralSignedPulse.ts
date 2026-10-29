@@ -46,7 +46,7 @@ export function projectCentralSignedPulse(
  const clockValid=Number.isFinite(readClock)&&readClock>=0;
  const authenticated=view?.source==="SIGNED_PRIVATE_RECEIPT"&&
    view.authority==="PRIVATE_SIGNED_GROSS_ALLOCATION_ONLY";
- const rows=SIGNED_PULSE_PLANES.map(id=>{
+ const rows=SIGNED_PULSE_PLANES.map((id):SignedPulseRow=>{
   const unknown=(reason:SignedPulseReason):SignedPulseRow=>
    ({id,state:"UNKNOWN",reason,observedAt:null});
   if(!clockValid)return unknown("SOURCE_CLOCK_INVALID");
