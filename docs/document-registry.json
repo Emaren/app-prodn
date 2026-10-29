@@ -362,7 +362,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "68970834ac50f1bc6e6ce232d851078a373366693d094dcf2dc2bb9ae136bbc3",
+      "sha256": "817091418a411f8a9f0e0b9c2359cc74c301830dd840b357c6deb58ebdafb5a3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "33d1696705cff44b9fecdd49b20dea256e95ef606dd382786c267787f64d645c",
+      "sha256": "154f637166f5b1ed951eab7364a31a934be4add7ba74f624139f165976f299a9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/g-q09-a1-verified-events-20261029",
-    "commit": "db2434b7929dde96abb09e8ed53e8bda938e0b0d"
+    "branch": "feat/g-q09-a2-living-job-exchange-20261029",
+    "commit": "89f166f5c6acdf47bbf51620abc9da94488c1f73"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
