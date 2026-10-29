@@ -16,8 +16,8 @@ export const SIGNED_SCHEMA = "aoe2war.storage-visual.signed.v1";
 /** C v1 transports ONLY authenticated gross hog buckets. No verified individual
  * review aliases or capacity samples traverse that strict source schema.
  * Fail closed until a separately approved versioned C/G producer and tests exist. */
-import { INDIVIDUAL_TRANSPORT_ADOPTED } from "./storageReviewTransportPolicy";
-export { INDIVIDUAL_TRANSPORT_ADOPTED } from "./storageReviewTransportPolicy";
+import { INDIVIDUAL_TRANSPORT_ADOPTED } from "./storageReviewTransportPolicy.ts";
+export { INDIVIDUAL_TRANSPORT_ADOPTED } from "./storageReviewTransportPolicy.ts";
 const DOMAIN = "AOE2WAR_STORAGE_VISUAL_V1\0";
 const MAX_FILE = 64 * 1024;
 const MAX_EVENTS = 64;
