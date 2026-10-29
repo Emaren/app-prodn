@@ -7,7 +7,7 @@ export type EventFeed={schema:typeof EVENT_SCHEMA;status:"FRESH"|"PARTIAL"|"STAL
 const REPO=/^Emaren\/(?:app-prodn|VPSSentry|wolochain)$/;
 const SHA=/^[0-9a-f]{40}$/;
 const LANES=(lanesRegistry.lanes as Array<{id:string;issue:{repository:string;number:number}}>).map(l=>({id:l.id,repo:l.issue.repository,issue:l.issue.number}));
-const PULLS=[{repo:"Emaren/app-prodn",number:999,lane:"G"},{repo:"Emaren/app-prodn",number:1001,lane:"G"},{repo:"Emaren/app-prodn",number:988,lane:"G"},{repo:"Emaren/app-prodn",number:993,lane:"D"},{repo:"Emaren/app-prodn",number:992,lane:"F"},{repo:"Emaren/VPSSentry",number:53,lane:"C"},{repo:"Emaren/VPSSentry",number:51,lane:"E"},{repo:"Emaren/wolochain",number:119,lane:"B"}] as const;
+const PULLS=[{repo:"Emaren/app-prodn",number:1003,lane:"G"},{repo:"Emaren/app-prodn",number:999,lane:"G"},{repo:"Emaren/app-prodn",number:1001,lane:"G"},{repo:"Emaren/app-prodn",number:988,lane:"G"},{repo:"Emaren/app-prodn",number:993,lane:"D"},{repo:"Emaren/app-prodn",number:992,lane:"F"},{repo:"Emaren/VPSSentry",number:53,lane:"C"},{repo:"Emaren/VPSSentry",number:51,lane:"E"},{repo:"Emaren/wolochain",number:119,lane:"B"}] as const;
 const ghBase="https://api.github.com/";
 const toObj=(x:unknown):Record<string,unknown>|null=>x!==null&&typeof x==="object"&&!Array.isArray(x)?x as Record<string,unknown>:null;
 const arr=(x:unknown):unknown[]=>Array.isArray(x)?x:[];
@@ -111,7 +111,7 @@ export async function readCentralEvents():Promise<EventFeed>{
  const now=Date.now();if(cache&&now<until)return cache;
  const work=async():Promise<EventFeed>=>{
   const starts=[...LANES.map(x=>({path:"repos/"+x.repo+"/issues/"+x.issue+"/comments?per_page=12&page=1",kind:"comments" as const,...x})),
-    ...[{repo:"Emaren/app-prodn",issue:934,id:null},{repo:"Emaren/app-prodn",issue:984,id:null}].map(x=>({path:"repos/"+x.repo+"/issues/"+x.issue+"/comments?per_page=12&page=1",kind:"comments" as const,...x})),
+    ...[{repo:"Emaren/app-prodn",issue:934,id:null},{repo:"Emaren/app-prodn",issue:984,id:null},{repo:"Emaren/app-prodn",issue:1002,id:"G"}].map(x=>({path:"repos/"+x.repo+"/issues/"+x.issue+"/comments?per_page=12&page=1",kind:"comments" as const,...x})),
     ...PULLS.flatMap(x=>[{path:"repos/"+x.repo+"/pulls/"+x.number+"?per_page=8&page=1",kind:"pr" as const,...x},{path:"repos/"+x.repo+"/pulls/"+x.number+"/commits?per_page=5&page=1",kind:"commits" as const,...x},{path:"repos/"+x.repo+"/pulls/"+x.number+"/reviews?per_page=8&page=1",kind:"reviews" as const,...x}]),
     {path:"repos/Emaren/app-prodn/actions/runs?per_page=18&page=1",kind:"runs" as const,repo:"Emaren/app-prodn"}];
   const rows:SourceEvent[]=[];let accepted=0;let reason:string|null=null;
@@ -142,6 +142,6 @@ export async function readCentralEvents():Promise<EventFeed>{
   if(accepted>0)lastGood=out;
   return out;
  };
- cache=work().catch(()=>({schema:EVENT_SCHEMA,status:"UNKNOWN",observedAt:null,readAt:new Date().toISOString(),sourceCoverage:{accepted:0,expected:33},errorCode:"SOURCE_UNAVAILABLE",history:"BOUNDED_GITHUB_WINDOW_NOT_DURABLE",events:[]} as EventFeed));
+ cache=work().catch(()=>({schema:EVENT_SCHEMA,status:"UNKNOWN",observedAt:null,readAt:new Date().toISOString(),sourceCoverage:{accepted:0,expected:37},errorCode:"SOURCE_UNAVAILABLE",history:"BOUNDED_GITHUB_WINDOW_NOT_DURABLE",events:[]} as EventFeed));
  until=now+TTL;return cache;
 }
