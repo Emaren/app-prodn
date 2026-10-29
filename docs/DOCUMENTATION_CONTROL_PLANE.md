@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/d-mac-exact-source-receipt-20261029` at `6533268dcc30d8d48fb4d6357ab350e61be2d3d4`
+Implementation baseline: `feat/d-q17-kingdom-navigation-atlas-20261029` at `0022fef1e322b80e2efec5a6fb6041fc1ddcf7d0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
