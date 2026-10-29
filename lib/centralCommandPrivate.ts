@@ -65,6 +65,16 @@ export async function readPrivateCentralCommand(){
   const results=await Promise.all(chunk.map(p=>github(p)));
   chunk.forEach((p,i)=>readings.set(p,results[i]));
  }
+ const timeline: {id:string;at:string;kind:string;laneId:LaneId;url:string;provenance:string}[]=[];
+ for(const j of jobs){
+  const i=readings.get(j.issuePath),at=safeTime(i?.updated_at);
+  if(i?.number===j.issue.number&&at)timeline.push({id:j.id+"-issue",at,kind:"Issue last updated",laneId:j.id,url:"https://github.com/"+j.issue.repository+"/issues/"+j.issue.number,provenance:"GITHUB_METADATA_NOT_EVENT_WITNESS"});
+  if(j.pr&&j.prPath){
+   const r=readings.get(j.prPath),when=safeTime(r?.updated_at);
+   if(r?.number===j.pr.number&&when)timeline.push({id:j.id+"-pr",at:when,kind:"PR metadata updated",laneId:j.id,url:"https://github.com/"+j.pr.repo+"/pull/"+j.pr.number,provenance:"GITHUB_METADATA_NOT_CI_PROOF"});
+  }
+ }
+ timeline.sort((a,b)=>b.at.localeCompare(a.at));
  const out:PrivateLane[]=jobs.map(({id,lane,issue,pr,issuePath,prPath})=>{
   const issueRecord=readings.get(issuePath) as Issue|null;
   const prRecord=prPath?(readings.get(prPath) as Pr|null):null;
@@ -92,7 +102,7 @@ export async function readPrivateCentralCommand(){
   r0:{referenceSha:R0_AUDIT_SHA,proof:"IMMUTABLE_SOURCE_AUDIT_REFERENCE_NOT_CURRENT_LIVE"},
   w1:{sourceSha:null,buildId:null,stage:null,activation:null,status:"NO_ACCEPTED_RUNTIME_RECEIPT"},
   releaseGates:[{name:"Capacity and independent restore",state:"UNKNOWN"},{name:"Doctor and DocsV2",state:"UNKNOWN"},{name:"Website-only finance noninterference",state:"UNKNOWN"},{name:"Stage receipt and real BUILD_ID",state:"UNKNOWN"},{name:"Owner PRE_STAGE / PRE_ACTIVATE",state:"UNKNOWN"}],
-  lanes:out,unverifiedGates:GATES.slice(1),
+  lanes:out,timeline:timeline.slice(0,12),unverifiedGates:GATES.slice(1),
   caveat:"GitHub issue/PR metadata proves only a source was observed; not CI, merge, host health, cleanup or production. A separate ChatGPT session does not run because this board updates.",
  };
 }
