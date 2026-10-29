@@ -16,6 +16,8 @@ export type PrivateLane={
 const PR_BY_LANE:Partial<Record<LaneId,{repo:string;number:number}>>={
  D:{repo:"Emaren/app-prodn",number:978},
  G:{repo:"Emaren/app-prodn",number:977},
+ C:{repo:"Emaren/VPSSentry",number:50},
+ E:{repo:"Emaren/VPSSentry",number:49},
  B:{repo:"Emaren/wolochain",number:115},
 };
 const BLOCKERS:Record<LaneId,string>={
