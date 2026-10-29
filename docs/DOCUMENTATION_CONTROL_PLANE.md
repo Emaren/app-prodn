@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-g-central-command-admin-w1-20261029` at `9d38af03aef1b16cd21cddef1a250b8b70949997`
+Implementation baseline: `integration/20261023-satchel-final-gated` at `9b92dbc245ce5b4d176086ae730f0a1ba6ef0eaf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
