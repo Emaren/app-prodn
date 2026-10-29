@@ -1267,28 +1267,28 @@ gated.
 
 ## Post-W1 D: bounded Mac L1 policy-scope ledger (read-only, no deletion)
 
-The existing one-time \`storage local-plan --l1-campaign --json\` receipt now includes
-\`bounded_policy_scope_ledger\` with a mathematically conserved **logical
+The existing one-time `storage local-plan --l1-campaign --json` receipt now includes
+`bounded_policy_scope_ledger` with a mathematically conserved **logical
 slot** denominator, not a claimed physical storage inventory. One slot is one
 already-declared direct AoE2HDBets project or canonical Git worktree root
 times one of the seven existing generated basenames. The two source-provided
-bounded strata disclose \`total = observed + omitted\` separately (maximum
+bounded strata disclose `total = observed + omitted` separately (maximum
 120 observed project roots and 60 observed declared worktrees). A bad count
-or invalid census leaves the denominator \`null\` and status \`HOLD\`.
+or invalid census leaves the denominator `null` and status `HOLD`.
 
-Every logical slot lands in **exactly one** bucket: \`measured_slots\`,
-\`known_absent_slots\`, \`ambiguous_slots\`, \`unknown_slots\`,
-\`omitted_slots\`, \`protected_out_of_scope_slots\`, or
-\`overlap_slots_not_double_counted\`. The sum MUST equal
-\`denominator_slots\`; a violation refuses the count. Exact generated
+Every logical slot lands in **exactly one** bucket: `measured_slots`,
+`known_absent_slots`, `ambiguous_slots`, `unknown_slots`,
+`omitted_slots`, `protected_out_of_scope_slots`, or
+`overlap_slots_not_double_counted`. The sum MUST equal
+`denominator_slots`; a violation refuses the count. Exact generated
 paths repeated as project and worktree slots are classified once, with the
 second logical slot recorded as overlap, never summed as physical bytes.
 Named census rows omitted by the 1024 display cap are separately recorded
-as \`undisplayed_named_rows\` and force a coverage HOLD. A declared root
+as `undisplayed_named_rows` and force a coverage HOLD. A declared root
 missing from displayed evidence contributes seven **unknown** slots;
 a project output skipped by source's extant-only probe is **unknown**, NOT
-assumed \`ABSENT\`. Only an explicit complete no-follow \`ABSENT\`
-measurement is \`known_absent\`; symlinks, foreign mount, permission,
+assumed `ABSENT`. Only an explicit complete no-follow `ABSENT`
+measurement is `known_absent`; symlinks, foreign mount, permission,
 malformed or duplicate rows are ambiguous. Codex and other source-protected
 generated slots remain protected, not L1 candidates.
 
@@ -1297,9 +1297,9 @@ real whole-container extents. Nested/other-home projects, original home
 buckets and separately governed HEL1 planes remain outside this denominator;
 a count of zero measured candidates, even with zero reported omitted slots,
 does **not** establish policy exhaustion. The result always preserves
-\`L1_POLICY_EXHAUSTED_NO\`, \`policy_scope_complete=false\`,
-\`certified_recovered_bytes=0\`, \`predicted_unique_recoverable_bytes=null\`
-and \`mutation_authority=NONE\`. Shared APFS clones, snapshots, hardlinks,
+`L1_POLICY_EXHAUSTED_NO`, `policy_scope_complete=false`,
+`certified_recovered_bytes=0`, `predicted_unique_recoverable_bytes=null`
+and `mutation_authority=NONE`. Shared APFS clones, snapshots, hardlinks,
 concurrent writers, and physical recovery remain unverified. No additional
 probe, scan, signer, service, deletion mode or owner authorization is added.
 This isolated post-W1 source increment is NOT a prerequisite to the frozen
