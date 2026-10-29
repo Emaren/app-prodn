@@ -486,6 +486,157 @@ class MacLocalPlanTests(TestCase):
         self.assertTrue(all(row["overlaps_generated"] for row in ranked["ranked_generated"]))
         self.assertFalse(ranked["apply_permitted"])
 
+    @staticmethod
+    def _slot_row(kind, root, basename, reason="ABSENT", *, count=None):
+        path = str(Path(root) / basename)
+        return {
+            "name": kind + "_generated:" + Path(root).name + ":" + basename,
+            "path": path,
+            "classification": "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED",
+            "complete": reason in ("MEASURED", "ABSENT"),
+            "measurement_reason": reason,
+            "allocated_bytes": (1024 if reason == "MEASURED" else 0 if reason == "ABSENT" else None)
+                               if count is None else count,
+            "symlink": reason == "SYMLINK_TARGET",
+            "mutation_allowed": False,
+        }
+
+    @staticmethod
+    def _slot_census(project_total=1, project_observed=1, worktree_total=0,
+                     worktree_observed=0, rows=None):
+        rows = list(rows or [])
+        return {
+            "status": "READ_ONLY", "mutation_allowed": False,
+            "coverage": "NAMED_PATHS_ONLY_NOT_WHOLE_DISK",
+            "scope_bounds": {
+                "direct_project_roots_total": project_total,
+                "direct_project_roots_observed": project_observed,
+                "direct_project_roots_omitted": project_total - project_observed,
+                "canonical_git_worktrees_total": worktree_total,
+                "canonical_git_worktrees_observed": worktree_observed,
+                "canonical_git_worktrees_omitted": worktree_total - worktree_observed,
+            },
+            "measured": rows, "observed_path_count": len(rows),
+            "displayed_path_count": len(rows), "incomplete_reasons": [],
+            "named_census_complete": True,
+        }
+
+    def test_policy_denominator_121_projects_120_observed_never_fabricates_absence(self):
+        root = "/tmp/projects/project001"
+        rows = [{"name": "project:project001", "path": root,
+                 "classification": "PROJECT_REVIEW_NEVER_AUTO_DELETE",
+                 "complete": True, "measurement_reason": "MEASURED"}]
+        rows.append(self._slot_row("project", root, "build", "MEASURED"))
+        rows.append(self._slot_row("project", root, "dist", "ABSENT"))
+        x = self._slot_census(project_total=121, project_observed=120, rows=rows)
+        ledger = mod.bounded_generated_scope_ledger(x)
+        self.assertEqual(ledger["denominator_slots"], 121 * 7)
+        self.assertEqual(ledger["measured_slots"], 1)
+        self.assertEqual(ledger["known_absent_slots"], 1)
+        self.assertEqual(ledger["omitted_slots"], 7)
+        self.assertEqual(ledger["unknown_slots"], 119 * 7 - 2)
+        self.assertEqual(sum(ledger[k] for k in (
+            "measured_slots", "known_absent_slots", "ambiguous_slots", "unknown_slots",
+            "omitted_slots", "protected_out_of_scope_slots",
+            "overlap_slots_not_double_counted")), ledger["denominator_slots"])
+        self.assertFalse(ledger["policy_scope_complete"])
+        self.assertIsNone(ledger["apfs_unique_recoverable_bytes"])
+
+    def test_policy_denominator_declared_worktree_symlink_permission_and_codex_protection(self):
+        normal, codex = "/tmp/branches/review", "/tmp/.worktrees/codex-bank"
+        names = sorted(mod.GENERATED_NAMES)
+        rows = [self._slot_row("worktree", codex, name, "ABSENT") for name in names]
+        rows.extend(self._slot_row(
+            "worktree", normal, name,
+            "SYMLINK_TARGET" if name == "dist" else
+            "OTHER_MOUNT" if name == "build" else
+            "DU_PERMISSION_DENIED" if name == "node_modules" else
+            "ABSENT") for name in names)
+        ledger = mod.bounded_generated_scope_ledger(
+            self._slot_census(project_total=0, project_observed=0,
+                              worktree_total=2, worktree_observed=2, rows=rows))
+        self.assertEqual(ledger["denominator_slots"], 14)
+        self.assertEqual(ledger["protected_out_of_scope_slots"], 7)
+        self.assertEqual(ledger["ambiguous_slots"], 3)
+        self.assertEqual(ledger["known_absent_slots"], 4)
+        self.assertEqual(ledger["unknown_slots"], 0)
+        self.assertEqual(ledger["omitted_slots"], 0)
+        self.assertFalse(ledger["policy_scope_complete"])
+        self.assertEqual(ledger["validation_holds"], ["UNPROVEN_GENERATED_SLOT_COVERAGE"])
+
+    def test_policy_denominator_truncated_display_holds_unseen_worktree(self):
+        root = "/tmp/branches/one"
+        rows = [self._slot_row("worktree", root, name) for name in sorted(mod.GENERATED_NAMES)]
+        x = self._slot_census(project_total=0, project_observed=0,
+                              worktree_total=2, worktree_observed=2, rows=rows)
+        x["observed_path_count"] = 15  # 8 other named paths omitted by 7-row display
+        ledger = mod.bounded_generated_scope_ledger(x)
+        self.assertEqual(ledger["denominator_slots"], 14)
+        self.assertEqual(ledger["known_absent_slots"], 7)
+        self.assertEqual(ledger["unknown_slots"], 7)
+        self.assertEqual(ledger["undisplayed_named_rows"], 8)
+        self.assertIn("DISPLAY_TRUNCATED_UNKNOWN_CLASSIFICATIONS",
+                      ledger["validation_holds"])
+        self.assertFalse(ledger["policy_scope_complete"])
+
+    def test_policy_denominator_duplicate_cross_namespace_paths_not_double_counted(self):
+        root = "/tmp/projects/review"
+        rows = [{"name": "project:review", "path": root,
+                 "classification": "PROJECT_REVIEW_NEVER_AUTO_DELETE",
+                 "complete": True}]
+        rows += [self._slot_row("project", root, name, "MEASURED")
+                 for name in sorted(mod.GENERATED_NAMES)]
+        rows += [self._slot_row("worktree", root, name, "MEASURED")
+                 for name in sorted(mod.GENERATED_NAMES)]
+        ledger = mod.bounded_generated_scope_ledger(
+            self._slot_census(worktree_total=1, worktree_observed=1, rows=rows))
+        self.assertEqual(ledger["denominator_slots"], 14)
+        self.assertEqual(ledger["measured_slots"], 7)
+        self.assertEqual(ledger["overlap_slots_not_double_counted"], 7)
+        self.assertEqual(ledger["known_unique_path_count"], 7)
+        self.assertIn("CROSS_NAMESPACE_ALIAS_LOGICAL_OVERLAP", ledger["validation_holds"])
+
+    def test_policy_denominator_duplicate_and_bad_bounds_fail_closed(self):
+        root = "/tmp/projects/review"
+        rows = [{"name": "project:review", "path": root,
+                 "classification": "PROJECT_REVIEW_NEVER_AUTO_DELETE"}]
+        rows += [self._slot_row("project", root, "build", "MEASURED")] * 2
+        x = self._slot_census(rows=rows)
+        ledger = mod.bounded_generated_scope_ledger(x)
+        self.assertEqual(ledger["ambiguous_slots"], 1)
+        self.assertEqual(ledger["unknown_slots"], 6)
+        x["scope_bounds"]["direct_project_roots_total"] = 2
+        invalid = mod.bounded_generated_scope_ledger(x)
+        self.assertEqual(invalid["status"], "HOLD")
+        self.assertIsNone(invalid["denominator_slots"])
+        self.assertIn("PROJECT_BOUND_INCOHERENT", invalid["validation_holds"])
+
+    def test_policy_denominator_zero_candidates_and_clone_shared_space_still_no(self):
+        root = "/tmp/branches/isolated"
+        rows = [self._slot_row("worktree", root, name)
+                for name in sorted(mod.GENERATED_NAMES)]
+        x = self._slot_census(project_total=0, project_observed=0,
+                              worktree_total=1, worktree_observed=1, rows=rows)
+        result = mod.plan(base(), ext(), electron(), x, watchdog())
+        cap = {"status": "OBSERVED_SHALLOW",
+               "full_container_coverage_certified": False,
+               "clones_shared_bytes": None, "apfs_snapshots_bytes": None}
+        receipt = mod.l1_exhaustion_receipt(result, cap)
+        ledger = receipt["bounded_policy_scope_ledger"]
+        self.assertEqual(ledger["denominator_slots"], 7)
+        self.assertEqual(ledger["known_absent_slots"], 7)
+        self.assertEqual(ledger["measured_slots"], 0)
+        self.assertEqual(ledger["unknown_slots"], 0)
+        self.assertEqual(receipt["decision"], "L1_POLICY_EXHAUSTED_NO")
+        self.assertFalse(receipt["policy_scope_complete"])
+        self.assertIsNone(receipt["unexplained_physical_residual_bytes"])
+        self.assertIsNone(receipt["predicted_unique_recoverable_bytes"])
+        self.assertEqual(receipt["certified_recovered_bytes"], 0)
+        self.assertIsNone(receipt["no_eligible_action_signed_receipt"])
+        self.assertIn("WHOLE_APFS_SHARED_AND_CLONE_EXTENTS_UNPROVEN",
+                      receipt["blockers"])
+        self.assertEqual(ledger["status"], "COUNTED_BOUNDED_SCOPE_HOLD")
+
     def test_l1_campaign_never_seals_zero_eligible_without_independent_proofs(self):
         x = pressure()
         x["observed_path_count"] = 2
