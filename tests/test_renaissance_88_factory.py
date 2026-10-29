@@ -21,8 +21,8 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(set(x["route"] for x in p["routes"])),88)
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
-        self.assertEqual(p["actual_templates"],147)
-        self.assertEqual(p["actual_handlers"],276)
+        self.assertEqual(p["actual_templates"],148)
+        self.assertEqual(p["actual_handlers"],277)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
@@ -76,6 +76,6 @@ class PublicFactoryTests(unittest.TestCase):
     def test_candidate_scope_is_separate_from_watcher(self):
         self.assertEqual(self.plan["phase_order"],["I","II","III","IV","V","VI","VII"])
         self.assertNotIn("/watcher",[r["route"] for r in self.plan["routes"]])
-        self.assertEqual(self.plan["historical_baseline"],{"pages":144,"handlers":273})
+        self.assertEqual(self.plan["historical_baseline"],{"pages":144,"handlers":274})
         self.assertEqual(self.plan["build"]["status"],"NOT_PROVIDED")
 if __name__=="__main__":unittest.main()
