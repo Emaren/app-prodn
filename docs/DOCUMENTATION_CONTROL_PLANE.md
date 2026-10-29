@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/session-g-storage-level-review-20261028` at `851551bfb43798177f8918db43da8047125363b2`
+Implementation baseline: `feat/session-g-storage-level-review-20261028` at `3ac645b6f653d3ff195406d4e4bcd9b3bcf9190f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
