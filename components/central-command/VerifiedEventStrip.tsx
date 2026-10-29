@@ -11,7 +11,7 @@ export function useCentralEvidence(){
  const pending=useRef<AbortController|null>(null),seen=useRef(new Set<string>());
  const refresh=useCallback(async()=>{
   if(pending.current)return;
-  const c=new AbortController();pending.current=c;const t=window.setTimeout(()=>c.abort(),11000);
+  const c=new AbortController();pending.current=c;const t=window.setTimeout(()=>c.abort(),21000);
   try{
    const response=await fetch("/api/admin/central-command/events",{cache:"no-store",credentials:"same-origin",signal:c.signal});
    if(!response.ok)throw Error("Private source feed unavailable");
