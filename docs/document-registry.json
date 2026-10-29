@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0795daf0fc4065e46a49666247c2ab7f12b1aa20930410a179fcafb0c524ad88",
+      "sha256": "d6fbcee0263335b00c55d150ffb955d4c330b85486f897c00785436c9b1a2621",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1926,7 +1926,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "2c695ac8c792d38956afeb4369086a12848a44f19b4dd523a6a0938f69355425",
+      "sha256": "13a56462e85aac6689b4a752cac964c087293ec1554d07b59875a0f559fcd583",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/session-g-central-command-admin-w1-20261029",
-    "commit": "9d38af03aef1b16cd21cddef1a250b8b70949997"
+    "branch": "feat/d-mac-l1-denominator-20261029",
+    "commit": "cb6b1956e9a531ed09816aea772811b4361cedd8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
