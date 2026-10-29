@@ -99,3 +99,91 @@ jobs:
           path: ${{ runner.temp }}/navigation-atlas-acceptance/
           retention-days: 14
           if-no-files-found: warn
+
+  # D-owned cross-integration acceptance: execute G's unmodified A1 + A2
+  # Chrome scripts at the same accepted post-W1 candidate SHA. Their original
+  # path-filtered workflows do not trigger for a D-only navigation diff.
+  q09-crosslink-chrome:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
+      SESSION_SECRET: isolated-q09-ci-not-production
+      NEXTAUTH_SECRET: isolated-q09-ci-not-production
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      BROWSER_BASE_URL: http://127.0.0.1:3137
+      AOE2WAR_PROD_DB_PREVIEW: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0', cache: yarn }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Install pinned A1 and A2 runners and adversarial source tests
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npm install --prefix "$RUNNER_TEMP/q09-integration-pw" --no-save --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
+          npx prisma generate
+          node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/central-events.test.mts
+      - name: Start truly isolated and nonmutating PostgreSQL browser fixture
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-q09-integrated-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          printf '%s\n' "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" "REN88_PG_ROOT=$REN88_PG_ROOT" "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
+          bash scripts/renaissance_88_pg_fixture.sh start
+          psql "postgresql://renaissance_owner@127.0.0.1:55437/renaissance88" -v ON_ERROR_STOP=1 -q -c "INSERT INTO users(uid,in_game_name,verified,is_admin,created_at) VALUES('fixture-admin','Fixture Admin',false,true,'2026-10-28T00:00:00Z')"
+          bash scripts/renaissance_88_pg_fixture.sh snapshot
+      - name: Build exact reconciled Next production source
+        run: |
+          timeout -k 10s 30m yarn build
+          test -s .next/BUILD_ID
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Run original G Event Engine and Job Exchange Chrome at 375 768 1440
+        env:
+          PW_HOME: ${{ runner.temp }}/q09-integration-pw
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
+          export CHROME_BIN
+          mkdir -p q09-crosslink-browser
+          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > q09-crosslink-browser/next.log 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 90); do
+            kill -0 "$next_pid" 2>/dev/null || { cat q09-crosslink-browser/next.log; exit 2; }
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:3137/ || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          node tests/central-events-browser.cjs
+          node tests/job-exchange-browser.cjs
+          bash scripts/renaissance_88_pg_fixture.sh verify > q09-crosslink-browser/pg-nonmutation.txt
+          printf 'source=%s\nbuild=%s\nproduction_certified=false\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > q09-crosslink-browser/source-identity.txt
+          sha256sum central-events-browser/receipt.json job-exchange-browser/receipt.json .next/BUILD_ID > q09-crosslink-browser/hashes.txt
+      - name: Stop disposable PostgreSQL
+        if: always()
+        run: |
+          if [ -n "${REN88_PG_ROOT:-}" ]; then bash scripts/renaissance_88_pg_fixture.sh stop || true; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: q17-g-q09-a1-a2-integration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            central-events-browser/
+            job-exchange-browser/
+            q09-crosslink-browser/
+          retention-days: 14
+          if-no-files-found: warn

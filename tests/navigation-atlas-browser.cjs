@@ -93,7 +93,7 @@ async function main(){
    assert.equal(await people.getAttribute("aria-pressed"),"true","keyboard cluster filter");
    assert.ok(await atlas.locator('a[data-atlas-href]').count()>0);
    await atlas.getByRole("button",{name:"All chambers"}).click();
-   assert.equal(await atlas.locator('a[data-atlas-href]').count(),29);
+   assert.equal(await atlas.locator('a[data-atlas-href]').count(),30);
    const boardEntry = atlas.locator('a[data-atlas-href="/admin/central-command/job-board"]');
    assert.equal(await boardEntry.count(),1,"new accepted Job Exchange must be linked exactly once");
    const boardSearch=atlas.getByRole("searchbox",{name:"Find a chamber"});
@@ -171,6 +171,7 @@ async function main(){
    }
    await brainG.focus();await page.keyboard.press("Enter");
    assert.equal(await brainG.getAttribute("aria-pressed"),"true");
+   await page.addScriptTag({content:axe.source});
    const jobAxe=await page.evaluate(async()=>{
      const result=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
      return result.violations.filter(v=>["serious","critical"].includes(v.impact))
