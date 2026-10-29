@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/central-command-registry-readonly-20261028` at `b5e5a91c38d631ed25209ecdbbe8e82378a093b0`
+Implementation baseline: `feat/central-command-registry-readonly-20261028` at `b186efd50251c0fe00d1be1c0604ef7ca7f211e0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
