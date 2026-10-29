@@ -26,7 +26,7 @@ export default function AdminNavigationAtlas() {
 
   return (
     <section id="navigation-atlas" aria-labelledby="navigation-atlas-heading"
-      className="relative isolate scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[#050d1c] px-4 py-7 text-slate-100 shadow-[0_24px_90px_rgba(0,0,0,.45)] sm:px-8 sm:py-9">
+      className="relative isolate mx-auto w-full min-w-0 max-w-[calc(100vw-2rem)] scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[#050d1c] px-4 py-7 text-slate-100 shadow-[0_24px_90px_rgba(0,0,0,.45)] sm:px-8 sm:py-9">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,rgba(34,211,238,.12),transparent_40%),radial-gradient(ellipse_at_85%_20%,rgba(168,85,247,.12),transparent_38%),linear-gradient(125deg,rgba(15,23,42,.7),transparent)]" />
       <div className="relative">
         <div className="flex flex-wrap items-start justify-between gap-4">

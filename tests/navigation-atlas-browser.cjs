@@ -73,7 +73,15 @@ async function main(){
    assert.equal(await atlas.locator('a[data-atlas-href]').count(),29);
    assert.equal(await atlas.locator('a[href*="job-board"]').count(),0,"G future route must not leak");
    const box=await atlas.boundingBox();
-   assert.ok(box&&box.x>=-4&&box.x+box.width<=width+8,"atlas horizontal overflow at "+width);
+   const layout=await page.evaluate(() => ({
+     viewport: innerWidth,
+     htmlScrollWidth: document.documentElement.scrollWidth,
+     bodyScrollWidth: document.body.scrollWidth,
+     horizontalScroll: window.scrollX,
+   }));
+   console.log("Q17_ATLAS_BOUNDS",JSON.stringify({width,box,layout}));
+   assert.ok(box&&box.x>=-4&&box.x+box.width<=width+8,
+     "atlas horizontal overflow at "+width+": "+JSON.stringify({box,layout}));
    await page.addScriptTag({content:axe.source});
    const violations=await page.evaluate(async()=>{
     const el=document.querySelector("#navigation-atlas");
