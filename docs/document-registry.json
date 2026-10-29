@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1def9a7e9268553eba50197384d4de939d58f9758a756c800b7dd01f1f935842",
+      "sha256": "74d4be3f0771aa010f5a6c5b1abde71f40f9ef48280ec01d32a2ced06de909b8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/f-w1-decode-uri-component-high-20261029",
-    "commit": "2138d4bd6187dfefd6f2356abb4ecaaad3825427"
+    "branch": "feat/d-mac-exact-source-receipt-20261029",
+    "commit": "86c679f3ed4c3cb2e78f8ab7e2f1944d2b58ddd5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
