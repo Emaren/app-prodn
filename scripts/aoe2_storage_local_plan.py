@@ -332,6 +332,7 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
         "cache_allocation_not_guaranteed_APFS_gain": True,
         "priority_cache_actions": actions,
         "gigabyte_generated_ranked_plan": generated_rank(census),
+        "bounded_l1_policy_scope_ledger": bounded_generated_scope_ledger(census),
         "level_1_candidate_register": sorted(level1, key=lambda r: (r["path"], r["name"])),
         "level_2_owner_review_register": sorted(level2, key=lambda r: (str(r["path"]), r["name"])),
         "level_2_register_coverage": {
@@ -373,6 +374,153 @@ def plan(base: dict[str, Any], extended: dict[str, Any], electron: dict[str, Any
     }
 
 
+
+def bounded_generated_scope_ledger(census: dict[str, Any]) -> dict[str, Any]:
+    """Pure logical-slot accounting; never a physical-byte or cleanup certificate.
+
+    One slot is a declared root plus one fixed generated basename. Project
+    outputs omitted by the producer are UNKNOWN (not proven absent); declared
+    worktrees explicitly emit ABSENT rows. Cross-namespace duplicate paths
+    get one classification and one separately disclosed overlap slot.
+    """
+    ledger = {
+        "schema": "aoe2war.mac-l1-bounded-scope-ledger.v1",
+        "grain": "DECLARED_ROOT_X_FIXED_GENERATED_BASENAME_LOGICAL_SLOT",
+        "generated_basenames": sorted(GENERATED_NAMES),
+        "source": "EXISTING_BOUNDED_MAC_NAMED_CENSUS_ONLY",
+        "status": "HOLD", "denominator_slots": None,
+        "measured_slots": None, "known_absent_slots": None,
+        "ambiguous_slots": None, "unknown_slots": None,
+        "omitted_slots": None, "protected_out_of_scope_slots": None,
+        "overlap_slots_not_double_counted": None,
+        "project_roots": None, "declared_worktree_roots": None,
+        "undisplayed_named_rows": None, "validation_holds": [],
+        "known_unique_path_count": None, "apfs_unique_recoverable_bytes": None,
+        "physical_root_overlap_may_remain_unknown": True,
+        "nested_and_other_home_roots_not_in_denominator": True,
+        "policy_scope_complete": False, "mutation_authority": "NONE",
+    }
+    if not (isinstance(census, dict)
+            and census.get("status") == "READ_ONLY"
+            and census.get("mutation_allowed") is False
+            and census.get("coverage") == "NAMED_PATHS_ONLY_NOT_WHOLE_DISK"
+            and isinstance(census.get("measured"), list)
+            and isinstance(census.get("scope_bounds"), dict)):
+        ledger["validation_holds"].append("CENSUS_OR_SCOPE_BOUNDS_UNTRUSTED")
+        return ledger
+    bounds = census["scope_bounds"]
+    counts = {}
+    for label, prefix in (("project", "direct_project_roots"),
+                          ("worktree", "canonical_git_worktrees")):
+        triple = [bounds.get(prefix + suffix) for suffix in
+                  ("_total", "_observed", "_omitted")]
+        if (any(type(v) is not int or v < 0 for v in triple)
+                or triple[0] != triple[1] + triple[2]
+                or triple[1] > (120 if label == "project" else 60)):
+            ledger["validation_holds"].append(label.upper() + "_BOUND_INCOHERENT")
+            return ledger
+        counts[label] = tuple(triple)
+    observed = census.get("observed_path_count")
+    displayed = census.get("displayed_path_count")
+    rows = census["measured"]
+    if (type(observed) is not int or type(displayed) is not int
+            or observed < 0 or displayed != len(rows)
+            or displayed > observed or displayed > 1024):
+        ledger["validation_holds"].append("DISPLAY_COUNT_INCOHERENT")
+        return ledger
+    ledger["undisplayed_named_rows"] = observed - displayed
+    ledger["project_roots"] = dict(zip(("total", "observed", "omitted"),
+                                        counts["project"]))
+    ledger["declared_worktree_roots"] = dict(zip(("total", "observed", "omitted"),
+                                                  counts["worktree"]))
+    roots: dict[str, set[str]] = {"project": set(), "worktree": set()}
+    slots: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        path, name = row.get("path"), row.get("name")
+        if not (isinstance(path, str) and path.startswith("/")
+                and ".." not in Path(path).parts and isinstance(name, str)):
+            continue
+        if name.startswith("project:") and name != "project:":
+            roots["project"].add(path.rstrip("/"))
+        if (name.startswith(("project_generated:", "worktree_generated:"))
+                and row.get("classification") ==
+                "REBUILDABLE_REVIEW_PROTECTED_UNTIL_AUTHORIZED"
+                and Path(path).name in GENERATED_NAMES):
+            kind = "project" if name.startswith("project_generated:") else "worktree"
+            root = str(Path(path).parent)
+            # Only a declared project row establishes a scanned project root.
+            # A worktree's seven named entries establish its observed root.
+            if kind == "worktree":
+                roots[kind].add(root)
+            slots.setdefault((kind, root, Path(path).name), []).append(row)
+    if any(len(roots[kind]) > counts[kind][1] for kind in roots):
+        ledger["validation_holds"].append("ROOT_IDENTITY_COUNT_EXCEEDS_BOUND")
+        return ledger
+    names = sorted(GENERATED_NAMES)
+    categories = {key: 0 for key in ("measured", "known_absent", "ambiguous",
+                                      "unknown", "omitted", "protected", "overlap")}
+    # Namespace slots are accounted separately, then exact physical paths
+    # repeated across two namespaces are deliberately collapsed into OVERLAP.
+    classified_paths: set[str] = set()
+    for kind in ("project", "worktree"):
+        for root in sorted(roots[kind]):
+            for basename in names:
+                path = str(Path(root) / basename)
+                if path in classified_paths:
+                    categories["overlap"] += 1
+                    continue
+                classified_paths.add(path)
+                _, protected = generated_protection_role(path)
+                if protected:
+                    categories["protected"] += 1
+                    continue
+                observations = slots.get((kind, root, basename), [])
+                if len(observations) != 1:
+                    categories["ambiguous" if len(observations) > 1 else "unknown"] += 1
+                    continue
+                row = observations[0]
+                reason, size = row.get("measurement_reason"), row.get("allocated_bytes")
+                valid = (row.get("mutation_allowed") is False
+                         and row.get("symlink") is False
+                         and row.get("complete") is True
+                         and type(size) is int and size >= 0)
+                if valid and reason == "MEASURED":
+                    categories["measured"] += 1
+                elif valid and reason == "ABSENT" and size == 0:
+                    categories["known_absent"] += 1
+                else:
+                    categories["ambiguous"] += 1
+        unseen = counts[kind][1] - len(roots[kind])
+        categories["unknown"] += unseen * len(names)
+        categories["omitted"] += counts[kind][2] * len(names)
+    denominator = sum(v[0] for v in counts.values()) * len(names)
+    if sum(categories.values()) != denominator:
+        ledger["validation_holds"].append("SCOPE_CONSERVATION_FAILED")
+        return ledger
+    ledger.update(
+        denominator_slots=denominator,
+        measured_slots=categories["measured"],
+        known_absent_slots=categories["known_absent"],
+        ambiguous_slots=categories["ambiguous"],
+        unknown_slots=categories["unknown"],
+        omitted_slots=categories["omitted"],
+        protected_out_of_scope_slots=categories["protected"],
+        overlap_slots_not_double_counted=categories["overlap"],
+        known_unique_path_count=len(classified_paths),
+        status="COUNTED_BOUNDED_SCOPE_HOLD")
+    if ledger["undisplayed_named_rows"]:
+        ledger["validation_holds"].append("DISPLAY_TRUNCATED_UNKNOWN_CLASSIFICATIONS")
+    if categories["unknown"] or categories["omitted"] or categories["ambiguous"]:
+        ledger["validation_holds"].append("UNPROVEN_GENERATED_SLOT_COVERAGE")
+    if categories["overlap"]:
+        ledger["validation_holds"].append("CROSS_NAMESPACE_ALIAS_LOGICAL_OVERLAP")
+    # No native second-cycle, immutable provenance, APFS physical uniqueness,
+    # private HOME_BUCKETS and other-project proof can be minted by this ledger.
+    return ledger
+
+
 def l1_exhaustion_receipt(plan_result: dict[str, Any],
                           capacity: dict[str, Any]) -> dict[str, Any]:
     """Pure fail-closed evidence decision. Never issue a native/signed YES."""
@@ -394,7 +542,12 @@ def l1_exhaustion_receipt(plan_result: dict[str, Any],
                 "path": row.get("path"), "gross_allocated_bytes": row.get("allocated_bytes"),
                 "reason": "CACHE_CONSUMER_REBUILD_OWNER_PROOFS_MISSING",
                 "unique_apfs_gain_bytes": None, "mutation_authority": "NONE"})
+    ledger = plan_result.get("bounded_l1_policy_scope_ledger")
     reasons = []
+    if (not isinstance(ledger, dict) or ledger.get("status") != "COUNTED_BOUNDED_SCOPE_HOLD"
+            or ledger.get("validation_holds") or ledger.get("unknown_slots")
+            or ledger.get("omitted_slots") or ledger.get("ambiguous_slots")):
+        reasons.append("BOUNDED_POLICY_DENOMINATOR_INCOMPLETE_OR_UNKNOWN")
     if not isinstance(capacity, dict) or capacity.get("status") != "OBSERVED_SHALLOW":
         reasons.append("PHYSICAL_CAPACITY_ACCOUNTING_HOLD")
     # Even complete shallow du does not prove APFS clones, snapshots, other
@@ -434,6 +587,7 @@ def l1_exhaustion_receipt(plan_result: dict[str, Any],
             "PLUS_CANONICAL_DECLARED_WORKTREES_PLUS_EXISTING_CACHE_ALLOWLIST"),
         "whole_500gb_container_l1_inventory_certified": False,
         "policy_scope_complete": False,
+        "bounded_policy_scope_ledger": ledger,
         "blockers": sorted(set(reasons)),
         "candidate_holds": sorted(candidates, key=lambda r: (
             -r["gross_allocated_bytes"], str(r["path"]))),
