@@ -29,6 +29,13 @@ const entries = [
     ]
   }
 ];
+// Defense-in-depth: even a malformed upstream JSON response must not add
+// arbitrary lowercase lookalikes or out-of-contract uppercase priority IDs.
+entries.push(
+  {...entries[1], id:"q12", label:"FORGED LOWERCASE LOOKALIKE"},
+  {...entries[1], id:"Q30", label:"FORGED OUT OF RANGE PRIORITY"},
+  {...entries[1], id:"Q00", label:"FORGED ZERO PRIORITY"}
+);
 const base = process.env.BROWSER_BASE_URL || "http://127.0.0.1:3137";
 const widths = [375, 768, 1440];
 const outputReport = [];
@@ -56,6 +63,18 @@ const ensure = (condition, message) => assert.ok(condition, message);
       await page.getByRole("button", {name:"Sort latest verified code contribution first"}).waitFor({timeout:12000});
       await page.waitForFunction(() => document.querySelectorAll('section[aria-label="Project progress capsules"] > article').length === 6, null, {timeout:12000});
       ensure(await capsules(page).count() === 6, "five originals plus approved priority");
+      // This is a REAL DOM assertion after the client has parsed the fetched
+      // payload. It catches the previous lowercase-only filter regression.
+      const q12Rendered = page.locator('article[data-campaign-id="Q12"]');
+      ensure(await q12Rendered.count() === 1, "approved uppercase Q12 not rendered");
+      ensure(await q12Rendered.locator("strong").first().innerText() === "Kingdom Progress",
+        "approved Q12 label not visible");
+      ensure((await q12Rendered.innerText()).includes("33%"),
+        "source-backed Q12 1/3 percentage not rendered");
+      for (const forbidden of ["q12", "Q00", "Q30"]) {
+        ensure(await page.locator('article[data-campaign-id="' + forbidden + '"]').count() === 0,
+          "unapproved campaign ID rendered: " + forbidden);
+      }
       const pageText = await page.locator("main").innerText();
       for (const name of original) ensure(pageText.includes(name), "original campaign lost: " + name);
       ensure(!pageText.includes("Private #984"), "raw queue leaked");
@@ -74,6 +93,9 @@ const ensure = (condition, message) => assert.ok(condition, message);
       const q12 = capsules(page).filter({hasText: "Kingdom Progress"});
       await q12.locator("button").first().click();
       ensure(await q12.locator("button").first().getAttribute("aria-expanded") === "true", "expand failed");
+      ensure((await q12.innerText()).includes("PUBLIC UI"), "approved milestone not rendered");
+      ensure((await q12.innerText()).includes("1 ACCEPTED"), "finite verified milestone count missing");
+      ensure((await q12.innerText()).includes("UNVERIFIED"), "unverified gates mislabeled");
       await most.click();
       ensure(await capsules(page).filter({hasText:"Kingdom Progress"}).locator("button").first().getAttribute("aria-expanded") === "true", "expand identity lost on reorder");
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -86,7 +108,23 @@ const ensure = (condition, message) => assert.ok(condition, message);
       ensure(serious.length === 0, "axe serious/critical: " + JSON.stringify(serious.map(v=>({id:v.id,impact:v.impact}))));
       ensure(errors.length === 0, "browser JS errors: " + errors.join("; "));
       await page.screenshot({path:path.join(output,"kingdom-progress-" + width + ".png"),fullPage:true});
-      outputReport.push({width,capsules:6,keyboard:"PASS",most:"PASS",least:"PASS",recent:"PASS",focusIdentity:"PASS",horizontalOverflow:overflow,axeSerious:0,axeCritical:0});
+      // The real client must retain the original five when the public feed
+      // genuinely becomes UNKNOWN; never invent zero-percent receipts.
+      await page.route("**/api/kingdom-progress", route => route.fulfill({
+        status:200, contentType:"application/json",
+        body:JSON.stringify({schema:1,status:"UNKNOWN",observedAt:null,
+          readAt:"2026-10-29T18:00:00.000Z",entries:[]})
+      }));
+      await page.getByRole("button", {name:"Refresh engineering source signal"}).click();
+      await page.waitForFunction(() =>
+        document.querySelectorAll('section[aria-label="Project progress capsules"] > article').length === 5,
+        null, {timeout:12000});
+      ensure((await capsules(page).count()) === 5, "original five not retained on UNKNOWN");
+      for (const row of await capsules(page).all()) {
+        ensure((await row.innerText()).includes("MILESTONE EVIDENCE PENDING"),
+          "UNKNOWN campaign was rendered with a fabricated completion");
+      }
+      outputReport.push({width,capsules:6,approvedQ12:"RENDERED",invalidIds:"REJECTED",unknownFallback:"ORIGINAL_FIVE",keyboard:"PASS",most:"PASS",least:"PASS",recent:"PASS",focusIdentity:"PASS",horizontalOverflow:overflow,axeSerious:0,axeCritical:0});
       await page.close();
     }
     fs.writeFileSync(path.join(output,"acceptance.json"),JSON.stringify({sourceSha:process.env.SOURCE_SHA || null,buildId:process.env.BUILD_ID || null,productionCertified:false,fixture:"SYNTHETIC_PUBLIC_APPROVED_DATA_ONLY",results:outputReport},null,2)+"\n");
