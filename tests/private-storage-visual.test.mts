@@ -29,7 +29,7 @@ test("valid HMAC view renders gross categories only, policy-defined protection l
  assert.equal(v.planes.length,1);
  assert.equal(v.planes[0].status,"RECEIPT");
  assert.equal(v.planes[0].coverage,"PARTIAL");
- assert.equal(v.planes[0].hogs[0].level,4);
+ assert.equal(v.planes[0].hogs[0].level,5); // Old L4 PROTECTED is permanently promoted.
  assert.equal(v.planes[0].hogs[1].level,2);
  assert.match(v.planes[0].hogs[0].label,/CrossOver/);
  assert.equal(v.planes[0].events[0].kind,"NEXT_REVIEW");
