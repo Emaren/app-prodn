@@ -75,7 +75,7 @@ const ensure = (condition, message) => assert.ok(condition, message);
         ensure(await page.locator('article[data-campaign-id="' + forbidden + '"]').count() === 0,
           "unapproved campaign ID rendered: " + forbidden);
       }
-      const pageText = await page.locator("main").innerText();
+      const pageText = await page.locator("main").last().innerText();
       for (const name of original) ensure(pageText.includes(name), "original campaign lost: " + name);
       ensure((await page.locator('article[data-campaign-id="parser-engine"]').innerText()).includes("REPLAY / MACHINERY"),
         "original parser premium label drifted");
@@ -105,9 +105,14 @@ const ensure = (condition, message) => assert.ok(condition, message);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ensure(overflow <= 8, "mobile horizontal overflow " + overflow + " at " + width);
       await page.addScriptTag({path:axePath});
-      const axe = await page.evaluate(async () => await window.axe.run(document.querySelector("main"), {
+      const axe = await page.evaluate(async () => {
+        const capsulesRegion = document.querySelector('section[aria-label="Project progress capsules"]');
+        const target = capsulesRegion?.closest("main");
+        if (!target) throw new Error("Kingdom Progress accessibility region missing");
+        return await window.axe.run(target, {
         runOnly: {type: "tag",values: ["wcag2a","wcag2aa","wcag21a","wcag21aa"]}
-      }));
+      });
+      });
       const serious = axe.violations.filter(v => v.impact === "serious" || v.impact === "critical");
       ensure(serious.length === 0, "axe serious/critical: " + JSON.stringify(serious.map(v=>({id:v.id,impact:v.impact}))));
       ensure(errors.length === 0, "browser JS errors: " + errors.join("; "));
