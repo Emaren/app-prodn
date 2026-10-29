@@ -93,7 +93,7 @@ test("read-only telemetry GET remains untouched; owner POST requires admin, same
  assert.match(route,/REVIEW_SOURCE_TRANSPORT_UNAVAILABLE/);
  assert.match(ui,/INDIVIDUAL OWNER REVIEW UNAVAILABLE/);
  assert.match(ui,/storageReviewTransportPolicy/);
- assert.doesNotMatch(ui,/import \{ INDIVIDUAL_TRANSPORT_ADOPTED \} from "@\\/lib\\/storageVisualPrivate"/);
+ assert.doesNotMatch(ui,/INDIVIDUAL_TRANSPORT_ADOPTED.*storageVisualPrivate/);
  assert.equal(readFileSync("lib/storageReviewTransportPolicy.ts","utf8").includes("export const INDIVIDUAL_TRANSPORT_ADOPTED: boolean = false"),true);
  assert.match(ui,/UNKNOWN/);
  assert.match(ui,/INTENT|deletion permit/i);
