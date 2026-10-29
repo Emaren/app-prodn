@@ -26,7 +26,7 @@ export default function AdminNavigationAtlas() {
 
   return (
     <section id="navigation-atlas" aria-labelledby="navigation-atlas-heading"
-      className="relative isolate mx-auto w-full min-w-0 max-w-[calc(100vw-2rem)] scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[#050d1c] px-4 py-7 text-slate-100 shadow-[0_24px_90px_rgba(0,0,0,.45)] sm:px-8 sm:py-9">
+      className="relative isolate mx-auto w-full min-w-0 max-w-[calc(100vw-4rem)] sm:max-w-full scroll-mt-24 overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[#050d1c] px-4 py-7 text-slate-100 shadow-[0_24px_90px_rgba(0,0,0,.45)] sm:px-8 sm:py-9">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_15%_0%,rgba(34,211,238,.12),transparent_40%),radial-gradient(ellipse_at_85%_20%,rgba(168,85,247,.12),transparent_38%),linear-gradient(125deg,rgba(15,23,42,.7),transparent)]" />
       <div className="relative">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -57,7 +57,7 @@ export default function AdminNavigationAtlas() {
             <div className="relative"><Search aria-hidden="true" className="absolute left-3 top-3 h-4 w-4 text-slate-400"/>
               <input id="navigation-atlas-search" type="search" value={query} onChange={e=>setQuery(e.target.value)}
                 placeholder="Search people, jobs, storage, releases…" autoComplete="off"
-                className="w-full rounded-xl border border-cyan-200/20 bg-slate-950/85 py-3 pl-10 pr-3 text-sm text-white placeholder:text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"/>
+                className="w-full rounded-xl border border-cyan-200/20 bg-slate-950/85 py-3 pl-10 pr-3 text-sm text-white placeholder:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200"/>
             </div>
           </div>
           <p role="status" aria-live="polite" className="text-xs text-slate-300">{visible.length} of {ADMIN_ATLAS_ROUTES.length} source routes · LIVE STATUS UNVERIFIED</p>
@@ -77,7 +77,7 @@ export default function AdminNavigationAtlas() {
               <span className="flex items-center justify-between gap-3 text-[10px] font-mono text-cyan-200/75"><span>NODE {String(i+1).padStart(2,"0")}</span><ArrowUpRight aria-hidden="true" size={15}/></span>
               <span className="mt-3 text-base font-bold text-white group-hover:text-cyan-100">{route.label}</span>
               <span className="mt-1 text-xs leading-5 text-slate-400">{route.detail}</span>
-              <span className="mt-auto pt-3 font-mono text-[10px] text-slate-500">{route.href}</span>
+              <span className="mt-auto pt-3 font-mono text-[10px] text-slate-300">{route.href}</span>
             </Link>
           ))}
         </nav>
@@ -86,7 +86,7 @@ export default function AdminNavigationAtlas() {
           <div>
             <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-200"><ShieldCheck size={15}/> Not yet source-integrated</h3>
             <p className="mt-2 text-xs text-slate-400">{PENDING_NAVIGATION.map(item=>item.label).join(" · ")}. No clickable route is fabricated until G’s approved pages exist.</p>
-            <p className="mt-2 text-xs text-slate-500">Authorization: server-enforced admin layout. Data source: committed route allowlist. Production BUILD_ID: unverified.</p>
+            <p className="mt-2 text-xs text-slate-300">Authorization: server-enforced admin layout. Data source: committed route allowlist. Production BUILD_ID: unverified.</p>
           </div>
           <Link href="/admin" className="self-center rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-white/40">Back to Admin Home</Link>
         </div>
