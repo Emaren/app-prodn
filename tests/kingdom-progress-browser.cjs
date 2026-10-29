@@ -77,6 +77,10 @@ const ensure = (condition, message) => assert.ok(condition, message);
       }
       const pageText = await page.locator("main").innerText();
       for (const name of original) ensure(pageText.includes(name), "original campaign lost: " + name);
+      ensure((await page.locator('article[data-campaign-id="parser-engine"]').innerText()).includes("REPLAY / MACHINERY"),
+        "original parser premium label drifted");
+      ensure((await page.locator('article[data-campaign-id="replay-truth"]').innerText()).includes("REPLAY / CERTAINTY"),
+        "original replay premium label drifted");
       ensure(!pageText.includes("Private #984"), "raw queue leaked");
       ensure((await firstLabel(page)).includes("Kingdom Progress"), "recent default must rank SHA-backed recent work");
       const most = page.getByRole("button", {name:"Sort most verified complete first"});
