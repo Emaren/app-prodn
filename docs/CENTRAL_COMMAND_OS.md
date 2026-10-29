@@ -48,6 +48,30 @@ shortcut around Wolo/finance, Doctor, independent restore, stage and owner permi
 
 Release authority remains with Central and F; source merge is not deployment.
 
+## Durable six-lane W1 source registry (owner policy 2026-10-29)
+
+The source-owned `config/central-command-lanes.json` retains the six
+original lane IDs **D, G, C, E, F, B**, their original GitHub issue numbers and
+read-only dispatch authority. That registry is the reusable handoff contract,
+not an agent controller or a claim that ChatGPT tabs run automatically.
+
+G covers **L1–L5** five-level Storage OS governance and separately capacity-
+gated Finder Recents; its source enters the coordinated nonfinancial W1 only
+after independent review and normal integration of Storage PR #977. The
+current C v1 exact HMAC schema verifies gross hogs only: individual
+review/approval remains **UNAVAILABLE** and L1 scope/physical gain **UNKNOWN**,
+not a promise of a live per-item transport.
+
+E owns the **W1_HARD_GATE** capacity and independent restore criteria. F owns
+the single **W1_RELEASE_OWNER** website-only stage/rollback and separately
+authorized activation. This supersedes obsolete registry labels `R1_ONLY`,
+`R0_HARD_GATE` and `R0_OWNER` for *current work only*; frozen R0 source
+and signed historical release receipts are not rewritten. Financial B remains
+`FUNDED_ONLY` under hard hold. None of these source labels grants deletion,
+provider purchase, Mac indexing, production installation or financial custody.
+
+
+
 ## Source-authenticated Storage OS bridge (app-side G contract)
 
 The existing `POST /api/internal/aoe2war-os/bridge` has one separate
