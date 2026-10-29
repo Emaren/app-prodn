@@ -566,7 +566,7 @@ export default function AoE2WarOsAdminPage() {
           : null;
 
   return (
-    <main className="mx-auto max-w-[1480px] space-y-6 px-4 py-8 text-white sm:px-6 lg:px-8">
+    <main className="mx-auto w-full min-w-0 max-w-[1480px] space-y-6 px-4 py-8 text-white sm:px-6 lg:px-8">
       <AdminNavigationAtlas />
       <div className="rounded-[2rem] bg-[radial-gradient(circle_at_12%_5%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(145deg,#07111f,#020617_58%,#07101c)] p-6 shadow-2xl sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-5">
