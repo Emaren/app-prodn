@@ -184,13 +184,15 @@ def require_admission(
         check(stage_receipt is None and not stage_sha, "pre-stage cannot include staged artifact")
 
     registry = read_json(trust / "trust.json", trusted=True)
-    check(registry.get("schema") == 1 and type(registry.get("keys")) is dict
+    check(type(registry.get("schema")) is int and registry["schema"] == 1
+          and type(registry.get("keys")) is dict
           and set(registry["keys"]) == set(TRUST_ROLES), "unapproved trust schema/roles")
     spkis = [registry["keys"][r].get("spki_sha256") for r in TRUST_ROLES]
     check(len(set(spkis)) == len(TRUST_ROLES), "source/finance/owner/host signers not independent")
     challenge = read_json(trust / ("challenge-" + phase + ".json"), trusted=True)
     packet = read_json(packets / (release + "-" + phase + ".json"))
-    check(packet.get("schema") == 1 and set(packet) == {"schema", "payload", "signatures"},
+    check(type(packet.get("schema")) is int and packet["schema"] == 1
+          and set(packet) == {"schema", "payload", "signatures"},
           "noncanonical witness packet")
     payload, signatures = packet["payload"], packet["signatures"]
     check(type(payload) is dict and type(signatures) is dict
@@ -244,7 +246,7 @@ def require_admission(
           "incomplete protected Wolo/finance observation")
     for port in ("8092", "8093"):
         p = protected[port]
-        check(type(p) is dict and p.get("count") == 1
+        check(type(p) is dict and type(p.get("count")) is int and p["count"] == 1
               and type(p.get("pid")) is int and p["pid"] > 1
               and all(bool(HEX64.fullmatch(str(p.get(k) or ""))) for k in (
                   "executable_sha256", "unit_sha256", "config_sha256", "source_sha256")),
@@ -287,7 +289,8 @@ def require_admission(
     # durable release lease journal BEFORE the Mac operator may stage.
     # A user-owned Mac O_EXCL file is deliberately NOT sufficient authority.
     host = read_json(trust / ("host-claim-" + phase + ".json"), trusted=True)
-    check(host.get("schema") == 1 and set(host) == {"schema", "payload", "signature_base64"},
+    check(type(host.get("schema")) is int and host["schema"] == 1
+          and set(host) == {"schema", "payload", "signature_base64"},
           "missing independent HEL1 root journal claim")
     hp = host["payload"]
     check(type(hp) is dict
