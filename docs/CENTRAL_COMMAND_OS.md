@@ -8,7 +8,7 @@ systems: ["app-prodn","vpssentry","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "private-source-dispatch-contract"
-reviewed_at: "2026-10-28"
+reviewed_at: "2026-10-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -108,3 +108,25 @@ The C source-owner permit `C-ADOPT-PERMIT-01` and F protected W1 activation
 remain separate explicit owner gates. No live website host operation,
 credential installation, terminal command or financial write was performed
 by implementing this source.
+
+## Q09-A1 — private GitHub source-event window (post-W1, not deployed)
+
+The separate authenticated `GET /api/admin/central-command/events` uses the same
+`requireAdmin` database-backed session guard (anonymous 401, non-admin 403,
+GET admin-only, POST 405). The browser never receives `GITHUB_TOKEN`, source
+comment bodies, review content or arbitrary upstream links. Only code-owned
+allowlisted GitHub issues, PRs, commit and review pages, and approved workflow
+paths are queried with a bounded request budget, 2.4-second per-source deadlines,
+55-second process cache, concurrent batches of five and 90-second rate-limit
+backoff. For comments the bounded latest Link-header page is read, not blindly
+the oldest first page. Returned data is versioned, deduplicated and timestamped
+from real GitHub provider fields, with each event linked to its provider ID.
+Unknown, partial and stale source coverage is explicit.
+
+The event strip on `/admin/central-command` revalidates only while the
+document is visible (75-second cadence), cancels on unmount and preserves six
+original lane cards. An issued GitHub command is NOT a wake/working receipt.
+A successful GitHub workflow is source-only and NEVER a production-build
+attestation. In-memory last-good is a bounded stale convenience, not the Q15
+immutable ledger. No operational automation, job reservation, financial writer,
+host probe or stage/activation approval is introduced.
