@@ -98,7 +98,7 @@ export function readPublicPriorityScopes(issueBody: unknown, original: ReadonlyA
 }
 
 export function safeCodeDate(value: unknown, now = Date.now()): string | null {
-  if (typeof value !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(value)) return null;
+  if (typeof value !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(value)) return null;
   const time = Date.parse(value);
   if (!Number.isFinite(time) || time > now + 30_000 || time < Date.UTC(2020, 0, 1)) return null;
   return new Date(time).toISOString();
@@ -133,10 +133,10 @@ export function sortProgressEntries<T extends Pick<PublicProgressEntry, "id" | "
     (order.get(a.id) ?? 1000) - (order.get(b.id) ?? 1000) || a.id.localeCompare(b.id);
   return [...entries].sort((a, b) => {
     if (mode === "recent") {
-      const ta = safeCodeDate(a.lastWorkedAt)?.valueOf();
-      const tb = safeCodeDate(b.lastWorkedAt)?.valueOf();
-      const da = ta ? Date.parse(String(ta)) : NaN;
-      const db = tb ? Date.parse(String(tb)) : NaN;
+      const ta = safeCodeDate(a.lastWorkedAt);
+      const tb = safeCodeDate(b.lastWorkedAt);
+      const da = ta ? Date.parse(ta) : NaN;
+      const db = tb ? Date.parse(tb) : NaN;
       if (Number.isFinite(da) !== Number.isFinite(db)) return Number.isFinite(da) ? -1 : 1;
       if (Number.isFinite(da) && da !== db) return db - da;
     } else {
