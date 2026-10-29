@@ -6,10 +6,11 @@ import type { PlaneId, Level, StorageVisualView } from "@/lib/storageVisualPriva
 import type { OwnerDecision, OwnerReviewEvent } from "@/lib/storageOwnerReviews";
 
 const ROLES=[
- {level:1 as Level,title:"L1 / GUARDED",sub:"Exact reproducible outputs",color:"cyan",icon:Layers3},
- {level:2 as Level,title:"L2 / REVIEW",sub:"Unknown / owner judgment",color:"amber",icon:ShieldAlert},
- {level:3 as Level,title:"L3 / MIGRATION",sub:"Restore & rollback dependent",color:"violet",icon:Archive},
- {level:4 as Level,title:"L4 / PROTECTED",sub:"Active, historical or financial",color:"emerald",icon:ShieldCheck},
+ {level:1 as Level,title:"L1 / PROVEN GENERATED",sub:"Exact guarded allowlist · execution OFF",color:"cyan",icon:Layers3},
+ {level:2 as Level,title:"L2 / TAUGHT REVIEW",sub:"Category preview, owner teaching and consent",color:"amber",icon:ShieldAlert},
+ {level:3 as Level,title:"L3 / INDIVIDUAL",sub:"One ambiguous item at a time",color:"violet",icon:Archive},
+ {level:4 as Level,title:"L4 / HUMAN ONLY",sub:"No software deletion or batch action",color:"emerald",icon:ShieldAlert},
+ {level:5 as Level,title:"L5 / NEVER DELETE",sub:"Permanent owner-express immutable protection",color:"rose",icon:ShieldCheck},
 ];
 const CHOICES:[OwnerDecision,string][]=[
  ["PROTECT","PROTECT"],
@@ -65,15 +66,15 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
  }
  const samples=current?plane.capacitySamples??[]:[];
  const change=samples.length>1?samples[samples.length-1].ordinaryFreeBytes-samples[0].ordinaryFreeBytes:null;
- return <section aria-label="L1 to L4 storage governance" className="space-y-4">
+ return <section aria-label="L1 to L5 storage governance" className="space-y-4">
    <div className="flex flex-wrap items-end justify-between gap-3">
      <div><div className="text-[10px] font-bold tracking-[.3em] text-cyan-200/70">OWNER STORAGE GOVERNANCE</div>
-       <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Four levels. Zero guesswork.</h2>
+       <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">Five levels. Never delete L5.</h2>
        <p className="mt-2 max-w-3xl text-sm text-slate-400">Every number comes from signed source evidence. Gross allocations may overlap; intent is never a deletion permit.</p></div>
      <span className="rounded-full border border-white/10 bg-slate-900 px-4 py-2 text-[10px] font-bold tracking-widest text-slate-300">{current?"SIGNED SOURCE":"NO CURRENT SIGNED REVIEW FEED"}</span>
    </div>
    <div className="rounded-[1.65rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6" aria-label="Largest reported storage buckets in selected plane">
-     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-bold text-white">Largest measured consumers · all four levels</h3>
+     <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-lg font-bold text-white">Largest measured consumers · all five levels</h3>
        <span className="text-xs text-slate-400">{activeId} · {current?plane.observedAt:"NO SIGNED OBSERVATION"}</span></div>
      {!current||plane.hogs.length===0?<p className="mt-4 text-xs text-amber-200">NO VERIFIED RANKED HOGS. No empty category is assumed to be zero.</p>:
        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">{plane.hogs.slice(0,8).map((h,index)=>
@@ -82,15 +83,26 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
            <span className="min-w-0"><span className="block text-[10px] text-slate-500">#{index+1} · L{h.level} · {h.overlaps?"OVERLAP":"UNIQUE GAIN UNKNOWN"}</span><span className="block truncate text-xs font-semibold text-white">{h.label}</span></span>
            <span className="shrink-0 font-mono text-xs font-semibold text-white">{size(h.grossBytes)}</span>
          </button>)}</div>}
-     <p className="mt-3 text-[10px] text-slate-500">Gross source allocations, not deduplicated disk consumption or recoverable capacity. Missing categories and stale feeds remain UNKNOWN.</p>
+     <p className="mt-3 text-[10px] text-slate-400">Gross source allocations, not deduplicated disk consumption or recoverable capacity. Missing categories and stale feeds remain UNKNOWN. L5 inventory shows sizes only and never creates candidates.</p>
    </div>
-   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Four distinct storage levels">
+   <div className="rounded-xl border border-amber-300/20 bg-slate-950/70 p-4 text-xs text-slate-300" aria-label="Three independently measured L1 policy-scope states">
+     <div className="mb-2 font-bold text-amber-200">L1 source-policy coverage · independent per storage plane</div>
+     <div className="grid gap-2 sm:grid-cols-3">{(["mac","hel1-root","hel1-volume-105319120"] as PlaneId[]).map(id=>{
+       const source=visual?.planes.find(p=>p.id===id);
+       return <div key={id} className="rounded-lg border border-white/10 p-3"><strong className="block text-white">{id}</strong>
+         <span className="mt-1 block text-amber-200">SCOPE EXHAUSTION: UNKNOWN</span>
+         <span className="mt-1 block text-slate-400">Source: {source?.status==="RECEIPT"?"SIGNED PARTIAL":source?.status==="STALE"?"STALE":"NONE"} · observed {source?.observedAt?age(source.observedAt):"UNKNOWN"}</span>
+         <span className="mt-1 block text-slate-400">Closed eligibility denominator: UNKNOWN · independently certified physical gain: UNKNOWN</span>
+       </div>;
+     })}</div>
+   </div>
+   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Five distinct storage levels">
      {ROLES.map(role=>{
        const Icon=role.icon,group=hogs.filter(h=>h.level===role.level),candidateCount=items?.filter(i=>i.level===role.level).length;
        const gross=group.reduce((a,h)=>a+h.grossBytes,0);
        const observed=items?.filter(i=>i.level===role.level)??[];
        const qualified=observed.filter(i=>i.level===1&&i.sourceStatus==="GUARDED"&&i.proofState==="COMPLETE"&&!i.overlaps).length;
-       const tint=role.color==="cyan"?"border-cyan-400/40 bg-cyan-400/[.07]":role.color==="amber"?"border-amber-400/40 bg-amber-400/[.07]":role.color==="violet"?"border-violet-400/40 bg-violet-400/[.07]":"border-emerald-400/40 bg-emerald-400/[.07]";
+       const tint=role.color==="cyan"?"border-cyan-400/40 bg-cyan-400/[.07]":role.color==="amber"?"border-amber-400/40 bg-amber-400/[.07]":role.color==="violet"?"border-violet-400/40 bg-violet-400/[.07]":role.color==="rose"?"border-rose-400/40 bg-rose-400/[.07]":"border-emerald-400/40 bg-emerald-400/[.07]";
        return <button type="button" key={role.level} onClick={()=>{setLevel(role.level);setCategory(null);setAlias(null);setChoice(null);}}
          aria-pressed={level===role.level}
          className={`min-h-[208px] rounded-[1.65rem] border p-5 text-left transition hover:border-white/35 focus-visible:outline-2 focus-visible:outline-cyan-200 ${level===role.level?tint:"border-white/10 bg-slate-950/75"}`}>
@@ -102,7 +114,7 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
            <div className="text-right"><div className="text-[10px] text-slate-500">SIGNED ALIASES</div><div className="mt-1 text-xl font-bold tabular-nums text-white">{candidateCount??"—"}</div></div>
          </div>
          <div className="mt-3 text-[10px] text-slate-500">{current?`${group.length} signed categories · ${age(plane.observedAt)} old`:"No authenticated per-item census; deletion eligibility UNKNOWN"}</div>
-         {role.level===1&&<div className="mt-2 text-[10px] font-semibold text-cyan-200/80">{current&&items?`${qualified}/${observed.length} observed aliases source-guarded · policy exhaustion UNKNOWN`:"L1 policy coverage UNKNOWN · closed denominator not supplied"}</div>}
+         {role.level===1&&<div className="mt-2 text-[10px] font-semibold text-cyan-200/80">{current&&items?`${qualified}/${observed.length} observed aliases source-guarded · policy exhaustion UNKNOWN · NOT scope coverage`:"L1 policy coverage UNKNOWN · closed denominator not supplied"}</div>}
        </button>;
      })}
    </div>
@@ -133,17 +145,19 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
            <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-slate-400"><div>OWNER / CONSUMER<br/><b className="text-amber-200">NOT ATTESTED</b></div><div>REBUILD / ROLLBACK<br/><b className="text-amber-200">NOT ATTESTED</b></div><div>UNIQUE APFS GAIN<br/><b className="text-amber-200">UNKNOWN</b></div><div>BEFORE / AFTER<br/><b className="text-amber-200">RECEIPT NOT CONNECTED</b></div></div>
          </div>
          <p className="mt-3 text-xs text-slate-400">Current matching owner intent: <strong className="text-white">{history===null?"UNKNOWN":active??"NONE"}</strong></p>
-         <div className="mt-4 grid grid-cols-2 gap-2">{CHOICES.map(([key,label])=>{
+         {selected.level===5&&<p className="mt-4 rounded-xl border border-rose-300/40 p-3 text-xs font-bold text-rose-200">OWNER-EXPRESS NEVER DELETE. Legacy L4 PROTECTED remains L5 permanently. No generic approval, revocation, migration or delete action exists here.</p>}
+         {selected.level===4&&<p className="mt-4 text-xs font-semibold text-amber-200">L4 HUMAN ONLY. Review records never perform or authorize software deletion.</p>}
+         {selected.level!==5&&<div className="mt-4 grid grid-cols-2 gap-2">{CHOICES.map(([key,label])=>{
            const canApprove=selected.level===1&&selected.sourceStatus==="GUARDED"&&selected.proofState==="COMPLETE"&&!selected.overlaps&&Date.now()-Date.parse(plane!.observedAt)<=3600_000;
            return <button key={key} type="button" disabled={busy||history===null||(key==="SINGLE_CANDIDATE_APPROVAL"&&!canApprove)||(key==="MIGRATION_REVIEW"&&selected.level!==3)} onClick={()=>{setChoice(key);setUnderstood(false);}}
              className={`rounded-lg border p-3 text-left text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-30 ${choice===key?"border-cyan-300/50 bg-cyan-300/10 text-cyan-200":"border-white/10 text-slate-300"}`}>{label}</button>;
-         })}</div>
-         {choice&&<div className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/[.05] p-3 text-xs text-amber-100">
+         })}</div>}
+         {selected.level!==5&&choice&&<div className="mt-4 rounded-xl border border-amber-300/25 bg-amber-300/[.05] p-3 text-xs text-amber-100">
            <p>Scoped to this signed fingerprint and source revision. This creates owner REVIEW INTENT, never an executable delete or migration authority. Drift invalidates earlier approvals.</p>
            <label className="mt-3 flex items-center gap-2"><input type="checkbox" checked={understood} onChange={e=>setUnderstood(e.target.checked)}/> I understand this does not delete or authorize a controller.</label>
            <button type="button" disabled={!understood||busy} onClick={()=>void record(choice)} className="mt-3 w-full rounded-lg bg-cyan-300 p-2 font-bold text-slate-950 disabled:opacity-30">Record this exact decision</button>
          </div>}
-         {last&&last.decision!=="REVOKE"&&<button type="button" disabled={busy||history===null} onClick={()=>void record("REVOKE")} className="mt-3 text-xs text-slate-400 underline disabled:opacity-30">Revoke latest decision</button>}
+         {selected.level!==5&&last&&last.decision!=="REVOKE"&&<button type="button" disabled={busy||history===null} onClick={()=>void record("REVOKE")} className="mt-3 text-xs text-slate-400 underline disabled:opacity-30">Revoke latest decision</button>}
          <div className="mt-5 border-t border-white/10 pt-4"><div className="flex items-center gap-2 text-xs font-bold text-white"><History className="h-4 w-4"/> Append-only history</div>
          {events.slice(-5).reverse().map(e=><div key={e.id} className="mt-2 flex justify-between gap-2 text-[10px] text-slate-400"><span>{e.decision.replaceAll("_"," ")}</span><span>{age(e.at)} · {e.fingerprint===selected.fingerprint?"MATCH":"SUPERSEDED"}</span></div>)}
          {events.length===0&&<p className="mt-2 text-xs text-slate-500">No recorded decisions for this alias.</p>}</div>
