@@ -61,7 +61,7 @@ async function run(){
    assert.ok(focused);assert.equal(errors.length,0,"No uncaught JS errors");
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+5),"No horizontal overflow");
    await page.addScriptTag({content:axe.source});
-   const violations=await page.evaluate(async()=>{const r=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});return r.violations.filter(x=>["critical","serious"].includes(x.impact)).map(x=>x.id)});
+   const violations=await page.evaluate(async()=>{const r=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});return r.violations.filter(x=>["critical","serious"].includes(x.impact)).map(x=>({id:x.id,impact:x.impact,nodes:x.nodes.slice(0,6).map(n=>({target:n.target,summary:n.failureSummary}))}))});
    assert.deepEqual(violations,[],"No serious or critical axe findings");
    const screenshot=path.join(out,"central-command-"+width+".png");
    await page.screenshot({path:screenshot,fullPage:false});
