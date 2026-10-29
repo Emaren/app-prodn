@@ -20,7 +20,7 @@ export default function CentralCommandView(){
  const refresh=useCallback(async()=>{
   if(pending.current)return;
   const c=new AbortController();pending.current=c;setLoading(true);
-  const timeout=window.setTimeout(()=>c.abort(),9000);
+  const timeout=window.setTimeout(()=>c.abort(),12000);
   try{
    const response=await fetch("/api/admin/central-command",{cache:"no-store",signal:c.signal,credentials:"same-origin"});
    if(!response.ok)throw Error("Authenticated Central Command snapshot unavailable");
@@ -92,7 +92,7 @@ export default function CentralCommandView(){
       <div className="mt-1 text-[10px] text-slate-500">{lane.sourceAuthority} · no host/production attestation</div>
       <div className="mt-5 flex flex-wrap gap-2">
        <a href={lane.issueUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10">Issue <ExternalLink className="h-3 w-3"/></a>
-       {lane.prUrl&&<a href={lane.prUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10">PR / CI</a>}
+       {lane.prUrl&&<a href={lane.prUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10">PR</a>\n       {lane.prUrl&&<a href={lane.prUrl+"/checks"} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/10">CI checks</a>}}
        <button type="button" onClick={()=>void copy(lane)} className="inline-flex items-center gap-1 rounded-lg border border-cyan-300/25 px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-300/10 focus-visible:outline-2 focus-visible:outline-white"><Copy className="h-3 w-3"/>{copied===lane.id?"Copied":"Copy handoff"}</button>
       </div>
      </article>)}
