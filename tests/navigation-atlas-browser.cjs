@@ -152,23 +152,17 @@ async function main(){
      return {rect:rect?{x:rect.x,y:rect.y,width:rect.width,height:rect.height}:null,
        width:innerWidth,docWidth:document.documentElement.scrollWidth,
        centerReachable:!!core&&(core===visibleAtCenter||core.contains(visibleAtCenter)),
+       floatingDockPresent:!!document.querySelector('[data-mobile-floating-nav]'),
        persistentDockVisible:!!document.querySelector('[data-mobile-floating-nav] nav'),
        centerX:x,centerY:y};
    });
    console.log("Q17_G_BRAIN_GEOMETRY",JSON.stringify({width,...brainGeometry}));
    assert.ok(brainGeometry.centerReachable,"G brain center blocked by floating navigation or overlay");
    assert.ok(brainGeometry.docWidth<=width+4,"G board horizontal overflow");
-   if(width<1024){
-     assert.equal(brainGeometry.persistentDockVisible,false,
-       "Expanded floating bar overlays actual G source cards");
-     const toggle=page.getByRole("button",{name:"Show app navigation"});
-     await toggle.waitFor({state:"visible",timeout:5000});
-     await toggle.focus();await page.keyboard.press("Enter");
-     await page.locator('[data-mobile-floating-nav] nav:visible').waitFor({timeout:5000});
-     assert.equal(await page.locator('[data-mobile-floating-nav] nav a').count(),5);
-     await page.getByRole("button",{name:"Hide app navigation"}).click();
-     await toggle.waitFor({state:"visible",timeout:5000});
-   }
+   assert.equal(brainGeometry.floatingDockPresent,false,
+     "Even the collapsed fixed Command bar obstructs G cards; use the existing page back-link and header instead");
+   assert.equal(brainGeometry.persistentDockVisible,false,
+     "A fixed overlay must not cover G brain cards");
    await brainG.focus();await page.keyboard.press("Enter");
    assert.equal(await brainG.getAttribute("aria-pressed"),"true");
    await page.addScriptTag({content:axe.source});
@@ -191,7 +185,7 @@ async function main(){
      assert.equal(await page.locator("#navigation-atlas").count(),1);
    }
    report.results.push({width,privateAdmin200:true,adminNodes:30,jobExchangeLinked:true,
-     gSixBrains:6,brainUnobstructed:true,jobBoardAxeSerious:0,jobBoardAxeCritical:0,
+     gSixBrains:6,brainUnobstructed:true,jobBoardDockSuppressed:true,jobBoardAxeSerious:0,jobBoardAxeCritical:0,
      noFutureWorkBoardLink:true,search:true,keyboardFilter:true,axeSerious:0,axeCritical:0,privacyRedirect:true});
    await context.close();
   }

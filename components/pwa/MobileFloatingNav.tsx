@@ -74,6 +74,12 @@ export default function MobileFloatingNav() {
     }
   };
 
+  // The G Job Exchange already has its own Central Command breadcrumb and
+  // global castle/header navigation. A fixed dock—even collapsed—obscures
+  // glowing source cards on narrow screens. Suppress it ONLY on that route.
+  // Never change public preferences or other admin surfaces.
+  if (pathname === "/admin/central-command/job-board") return null;
+
   if (effectiveMode === "hidden") {
     return (
       <button

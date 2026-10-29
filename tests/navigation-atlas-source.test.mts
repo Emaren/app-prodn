@@ -95,6 +95,8 @@ test("private admin mobile dock is collapsible without changing global user pref
   assert.match(dock,/window\.localStorage\.setItem\(STORAGE_KEY, nextMode\)/);
   assert.match(dock,/aria-label="Show app navigation"/);
   assert.match(dock,/aria-label="Hide app navigation"/);
+  assert.match(dock,/pathname === "\/admin\/central-command\/job-board"\) return null/);
+  assert.match(src("app/admin/central-command/job-board/page.tsx"),/await requireServerAdmin\(\)/);
 });
 
 test("new nested G Job Exchange is real private source; future work board remains unlinked",()=>{
