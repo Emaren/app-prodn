@@ -21,7 +21,7 @@ shortcut around Wolo/finance, Doctor, independent restore, stage and owner permi
 - `/admin/central-command` requires the existing authenticated server admin
   session and reads `GET /api/admin/central-command` with `private, no-store`.
 - The API reads the merged source-owned `config/central-command-lanes.json`,
-  bounds GitHub issue/PR metadata to six allowlisted lanes (three concurrent
+  bounds original lane issue/PR metadata to six allowlisted lanes (three concurrent
   requests, each 2.5 seconds) and **never** accepts a user-controlled URL.
   A missing GitHub credential/network leaves evidence UNKNOWN.
 - The six progress bars have the **registered ASSIGNED** gate only (1/6).
@@ -117,7 +117,7 @@ GET admin-only, POST 405). The browser never receives `GITHUB_TOKEN`, source
 comment bodies, review content or arbitrary upstream links. Only code-owned
 allowlisted GitHub issues, PRs, commit and review pages, and approved workflow
 paths are queried with a bounded request budget, 2.4-second per-source deadlines,
-55-second process cache, concurrent batches of five and 90-second rate-limit
+55-second process cache, concurrent batches of seven and 90-second rate-limit
 backoff. For comments the bounded latest Link-header page is read, not blindly
 the oldest first page. Returned data is versioned, deduplicated and timestamped
 from real GitHub provider fields, with each event linked to its provider ID.
