@@ -25,7 +25,7 @@ class NonfinancialWitnessTests(unittest.TestCase):
         self.packets.mkdir(mode=0o700)
         self.keys = {}
         registry = {"schema": 1, "keys": {}}
-        for role in MODULE.ROLES:
+        for role in MODULE.TRUST_ROLES:
             private = root / (role + "-private.pem")
             public = self.trust / (role + ".pub.pem")
             subprocess.run([MODULE.OPENSSL, "genpkey", "-algorithm", "Ed25519",
@@ -123,7 +123,8 @@ class NonfinancialWitnessTests(unittest.TestCase):
         (self.trust / ("challenge-" + phase + ".json")).write_bytes(
             MODULE.canonical(challenge))
         signatures = {}
-        for role, private in self.keys.items():
+        for role in MODULE.ROLES:
+            private = self.keys[role]
             with tempfile.TemporaryDirectory() as tmp:
                 message = Path(tmp) / "msg"
                 sig = Path(tmp) / "sig"
@@ -136,6 +137,27 @@ class NonfinancialWitnessTests(unittest.TestCase):
         packet = {"schema": 1, "payload": payload, "signatures": signatures}
         (self.packets / (self.release + "-" + phase + ".json")).write_bytes(
             MODULE.canonical(packet))
+        host_payload = {
+            "kind": "aoe2war-hel1-root-nonce-consumption-v1",
+            "host": "hel1", "phase": phase,
+            "release_sha": self.release, "nonce": payload["nonce"],
+            "lease_id": payload["lease_id"],
+            "packet_sha256": MODULE.digest(MODULE.canonical(packet)),
+            "protected": payload["protected"], "root_journal_status": "CONSUMED",
+            "root_journal_sha256": "f" * 64,
+            "observed_at": self.now.isoformat().replace("+00:00", "Z"),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            message, sig = Path(tmp) / "msg", Path(tmp) / "sig"
+            message.write_bytes(MODULE.DOMAIN + b"host\n"
+                                + MODULE.canonical(host_payload))
+            subprocess.run([MODULE.OPENSSL, "pkeyutl", "-sign", "-rawin",
+                            "-inkey", str(self.keys["host"]), "-in", str(message),
+                            "-out", str(sig)], check=True, capture_output=True)
+            host_claim = {"schema": 1, "payload": host_payload,
+                          "signature_base64": base64.b64encode(sig.read_bytes()).decode()}
+        (self.trust / ("host-claim-" + phase + ".json")).write_bytes(
+            MODULE.canonical(host_claim))
         return packet
 
     def admit(self, *, phase="PRE_STAGE", stage=None, consume=False, now=None):
@@ -195,6 +217,26 @@ class NonfinancialWitnessTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.AdmissionHOLD, "signature"):
             self.admit()
 
+    def test_host_root_claim_is_required_and_cannot_be_substituted(self):
+        self.write_packet(self.payload)
+        host = self.trust / "host-claim-PRE_STAGE.json"
+        host.unlink()
+        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "unreadable"):
+            self.admit()
+        self.write_packet(self.payload)
+        claim = json.loads(host.read_text())
+        claim["payload"]["root_journal_sha256"] = "0" * 64
+        host.write_bytes(MODULE.canonical(claim))
+        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "signature"):
+            self.admit()
+        self.write_packet(self.payload)
+        claim = json.loads(host.read_text())
+        claim["payload"]["observed_at"] = (
+            self.now - timedelta(minutes=15)).isoformat().replace("+00:00", "Z")
+        host.write_bytes(MODULE.canonical(claim))
+        with self.assertRaisesRegex(MODULE.AdmissionHOLD, "stale"):
+            self.admit()
+
     def test_independent_finance_signer_is_required(self):
         packet = self.write_packet(self.payload)
         del packet["signatures"]["finance"]
@@ -238,6 +280,7 @@ class NonfinancialWitnessTests(unittest.TestCase):
                  "artifact_sha256": "f" * 64,
                  "candidate_node_modules_sha256": "a" * 64}
         p = self.make_payload(phase="PRE_ACTIVATE", stage=stage)
+        p["nonce"] = "a" * 64  # a distinct second owner challenge
         self.write_packet(p, phase="PRE_ACTIVATE")
         self.assertEqual(self.admit(phase="PRE_ACTIVATE", stage=stage)["phase"],
                          "PRE_ACTIVATE")
