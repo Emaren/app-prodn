@@ -30,3 +30,15 @@ test("no method escalation, external egress, invalid URI or cross-origin API",()
  assert.equal(classifyApiFixtureRequest("not url","GET",base,"REACHABLE"),"BLOCK_UNPARSABLE");
  assert.equal(decide("/kingdom"),"NOT_API");
 });
+
+
+// Regression for the observed /about -> /requests mobile title race:
+// do not classify a redirect render PASS until real document.title appears.
+test("redirect title waits for genuine browser title without bypassing render gate",()=>{
+ const fs=require("node:fs"),source=fs.readFileSync(new URL("../scripts/renaissance_88_browser.cjs",import.meta.url),"utf8");
+ assert.match(source,/route\.redirect_to && observed\.pathname===route\.redirect_to/);
+ assert.match(source,/page\.waitForFunction\(\(\)=>document\.title\.trim\(\)\.length>0/);
+ assert.match(source,/null,\{timeout:1800\}/);
+ assert.match(source,/redirect title still absent after bounded wait/);
+ assert.match(source,/record\.views\.every\(v=>v\.rendered&&v\.landmark&&v\.body_title\)/);
+});

@@ -1166,3 +1166,101 @@ accepts that no in-scope *provably safe* actions remain, it may separately
 decide a bounded **zero-eligible** policy disposition without claiming
 that all 500 GB were independently inspected or automatically reclaimable.
 No new broad inventory after the scope is conclusively classified.
+
+
+## Private five-level Storage OS, immutable owner originals and bounded intent (W1)
+
+This section supersedes any earlier four-level **display** policy; it does not
+change the existing signed storage measurement, Mac L1 census scope or owner
+release/deletion permits. All three independent planes are Mac APFS Data, HEL1
+root and HEL1 evidence volume. A plane's policy-scope L1 closure denominator
+and independently certified APFS physical gain remain **UNKNOWN** until
+source-owning D/C/E and owner-native witnesses prove them. No 100% is inferred
+from a list of measured aliases or gross directory sizes.
+
+- **L1 · guarded generated/obsolete:** require exact source/consumer/build
+  identity, closed policy-scope denominator, mount/clone/hardlink/unique
+  physical gain and rollback proof plus owner-scoped exact allowlist/lease.
+  Only L1 *could ever* qualify for an autonomous controller after a distinct
+  bounded permit. This PR has **no such permit, delete API or controller**.
+- **L2 · owner taught rebuildables:** category preview, independent rebuild
+  and reversal, anticipated unique gain and category+exact-action consent.
+  No standing blanket approval or automatic batch from a signed inventory.
+- **L3 · ambiguous individual:** one exact source alias and owner decision
+  at a time; migration *review intent* is not migration execution.
+- **L4 · human-only high-risk:** software provides no delete operation, even
+  when a human chooses to review. It cannot be batched.
+- **L5 · express NEVER DELETE:** permanent, highest-priority owner
+  classification. Includes the original ~1GiB ChatGPT Model 4.0 conversation
+  ZIP, original photos, designated independent ~40GiB Mac project disaster
+  recovery copy, wallet/signer/consensus/financial/liability originals,
+  immutable evidence archives, and all historic L4 **PROTECTED** classes
+  (CrossOver/Steam/Replay Lab, backups, protected recovery, Codex, current
+  releases, signed Watcher, Traffic/evidence/financial stores and swap).
+  Do not downgrade, delete, migrate automatically, or use generic review
+  `REVOKE` to strip this classification. Changing permanent L5 requires a
+  distinct owner-driven protection-removal process **not implemented here**.
+
+**W1 C-v1 source-contract acceptance HOLD (2026-10-29):** the accepted
+VPSSentry sender `aoe2war.storage-visual.source-plane.v1` authenticates
+only an exact 12-field payload (role, mount, source digest, timestamp,
+PARTIAL coverage, bounded category hogs, empty events and denial of
+delete/financial authority). Both C strict sender and G authenticated bridge
+reject any `review_items` or `capacity_samples` additions. The G receiver
+projects ONLY signed gross categories, NOT individual candidate aliases,
+capacity-history observations, policy-scope eligibility or physical gains.
+Although an offline legacy private HMAC parser can read optional review items
+to validate L4→L5 forensic migration, production read projection strips those
+fields, the authenticated review POST returns
+`409 REVIEW_SOURCE_TRANSPORT_UNAVAILABLE`, and the private UI shows
+`INDIVIDUAL OWNER REVIEW UNAVAILABLE` with no item approvals or revocation.
+Existing append-only history is preserved in private storage, not promoted
+to actionable current review decisions. This blocks **per-item owner approval**
+until a distinct C-approved versioned signed transport, source producer,
+provenance/mount/rollback/unique extent checks and genuine ACK/browser receipt
+have been independently qualified. It does **not** prevent truthful category
+gross hog display through the existing C v1 source HMAC. Never silently
+add optional fields to C v1, fabricate a source alias or use gross-byte
+drift to imply physical reclaim.
+
+The fixed server-side category catalog never trusts a publisher-provided
+level. Existing HMAC-signed L4 PROTECTED review items fail-closed migrate
+to L5 in the read view, without mutating signed originals or rewriting the
+append-only private historical ledger. An explicitly claimed lower level
+for an old protected item is rejected. New owner-original category keys
+are fixed, path-free and cannot include real names or sensitive bytes.
+All L5 generic review POSTs (including PROTECT/REVOKE) are rejected both
+by admin HTTP and direct ledger append, and the UI renders **no software
+decision buttons** for L5. Old evidence is retained, not erased.
+Current L4 is deliberately human-only.
+
+Signed source HMAC optional `review_items` (up to 48/plane) and bounded
+`capacity_samples` (24/plane) remain private and path-free. Gross hog
+allocations can overlap APFS snapshots/clones; zero emitted hog entries means
+**no verified ranked hog observation**, not measured 0 bytes. No live publisher
+is invented. Owner review POST is admin-gated, same-origin, request bounded,
+source/fingerprint CAS, 0600 append-only with 10-minute L1 intent lease
+and `INTENT_ONLY_NO_DELETE` for all levels. L5 is permanently excluded
+regardless of history. Snapshot free-space changes are not causal
+cleanup transaction receipts. Backend/read-side, signed history and all
+three levels must fail-closed on missing, stale or forged source data.
+
+**L1 coverage is NOT 100%:** Mac D's latest accepted 8-gate baseline remains
+2/8, 0B new certified unique APFS gain. These are not a closed eligible
+denominator for the three independent planes. No candidate cleanup, Finder
+index operation, HEL1 backup/resize, user-file mutation or production
+activation has been authorized. The last owner-native ordinary Mac free-space
+capture was 17.704GiB; the preferred **40GiB** Data indexing headroom requires
+22.296GiB additional *genuine* space. Root/Data Spotlight indexing remained
+disabled at that capture. Preserve historical epoch-zero birth/mtime evidence.
+Only after separate owner permission and capacity acceptance consider
+`mdutil -i on /System/Volumes/Data` (never `-E`), then prove two new normal
+files actually appear in Recents, Finder This Mac and Spotlight with correct
+dates. L1/Finder may stay PENDING at website W1 launch where they are not
+protected release preconditions.
+
+The existing canonical Mac action board, D source-owned census and signed
+C publisher are independent. Do not duplicate scanners, watchers, timers,
+release controllers or financial authority. Current W1 release is still
+independently capacity/backup/Doctor/financial-noninterference/owner-permit
+gated.
