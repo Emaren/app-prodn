@@ -8,13 +8,13 @@
   },
   "policy": "Canonical entrypoint inventory only. Path scopes are classification hints, not authenticated access tests. Dynamic route patterns require separately governed fixtures; APIs require separate domain-owner assignments. No score, dependency completeness, authorization or production certification follows from this file. Never serve detailed protected paths in a public Index response.",
   "counts": {
-    "pageTemplates": 144,
-    "adminTemplates": 26,
+    "pageTemplates": 148,
+    "adminTemplates": 30,
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
-    "routeHandlerTemplates": 279,
-    "apiHandlerTemplates": 276,
+    "routeHandlerTemplates": 278,
+    "apiHandlerTemplates": 275,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -55,6 +55,12 @@
       "assurance": "unverified"
     },
     {
+      "href": "/admin/central-command",
+      "entrypoint": "app/admin/central-command/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
       "href": "/admin/clans",
       "entrypoint": "app/admin/clans/page.tsx",
       "scope": "admin-path",
@@ -81,6 +87,18 @@
     {
       "href": "/admin/kingdom-bettors",
       "entrypoint": "app/admin/kingdom-bettors/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/living-kingdom/[uid]",
+      "entrypoint": "app/admin/living-kingdom/[uid]/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/living-kingdom",
+      "entrypoint": "app/admin/living-kingdom/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -135,6 +153,12 @@
     {
       "href": "/admin/replay-review",
       "entrypoint": "app/admin/replay-review/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/storage-os",
+      "entrypoint": "app/admin/storage-os/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -940,6 +964,11 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/admin/central-command/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/admin/championship-challenges/route.ts",
       "scope": "api",
       "ownership": "unassigned"
@@ -996,6 +1025,16 @@
     },
     {
       "entrypoint": "app/api/admin/live-ticker/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/living-kingdom/[uid]/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/living-kingdom/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
@@ -1166,6 +1205,16 @@
     },
     {
       "entrypoint": "app/api/admin/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/storage-os/reviews/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/storage-os/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
@@ -1496,11 +1545,6 @@
     },
     {
       "entrypoint": "app/api/internal/aoe2war-os/native-replay/artifact/route.ts",
-      "scope": "api",
-      "ownership": "unassigned"
-    },
-    {
-      "entrypoint": "app/api/internal/mecha/funded-tick/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
@@ -2105,21 +2149,6 @@
       "ownership": "unassigned"
     },
     {
-      "entrypoint": "app/api/user/war-satchel/auto-consent/route.ts",
-      "scope": "api",
-      "ownership": "unassigned"
-    },
-    {
-      "entrypoint": "app/api/user/war-satchel/balance/route.ts",
-      "scope": "api",
-      "ownership": "unassigned"
-    },
-    {
-      "entrypoint": "app/api/user/war-satchel/credit-verified/route.ts",
-      "scope": "api",
-      "ownership": "unassigned"
-    },
-    {
       "entrypoint": "app/api/user/war-satchel/deposit-evidence/route.ts",
       "scope": "api",
       "ownership": "unassigned"
@@ -2130,17 +2159,7 @@
       "ownership": "unassigned"
     },
     {
-      "entrypoint": "app/api/user/war-satchel/funding-quote/route.ts",
-      "scope": "api",
-      "ownership": "unassigned"
-    },
-    {
       "entrypoint": "app/api/user/war-satchel/wallet-proof/route.ts",
-      "scope": "api",
-      "ownership": "unassigned"
-    },
-    {
-      "entrypoint": "app/api/user/war-satchel/withdrawal/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

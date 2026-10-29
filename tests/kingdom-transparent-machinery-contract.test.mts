@@ -26,7 +26,14 @@ test("six independent information pages have one canonical navigation and source
     assert.ok(hrefs.includes(route));
     assert.equal(assurances.routeProfiles[route],profile);
     assert.ok(cohort.includes(route));
-    assert.ok(titles.includes('href: "' + route + '"'));
+    // The castle keeps Systems as one gateway; instruments remain discoverable there.
+    const systemsGateway = read("app/kingdom-systems/page.tsx");
+    if (["kingdom-sensors", "kingdom-tests", "kingdom-recovery"].includes(name)) {
+      assert.ok(systemsGateway.includes('href: "' + route + '"'));
+      assert.ok(!titles.split("const KINGDOM_LINKS = [")[1].split("] as const;")[0].includes('href: "' + route + '"'));
+    } else {
+      assert.ok(titles.includes('href: "' + route + '"'));
+    }
     assert.ok(menu.includes('href: "' + route + '"'));
     const page = read("app/" + name + "/page.tsx");
     assert.ok(page.includes('kind="' + kind + '"'));

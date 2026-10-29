@@ -1109,125 +1109,51 @@ class ShipTests(unittest.TestCase):
             MODULE.activation_validation_errors(data, receipt, transport),
         )
 
-    def test_activation_prewarms_statistics_before_health_soak(self):
+    def test_activation_identity_only_health_probes_and_soak(self):
+        # The public /api/bets and /api/lobby GETs schedule background
+        # settlement/market maintenance. A release MUST NEVER call them.
         script = render_activation_script()
-
-        prewarm = script.index('STATISTICS_PREWARM="FAIL"')
-        soak = script.index(
-            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
-            prewarm,
-        )
-
-        self.assertLess(prewarm, soak)
-
-        prewarm_block = script[prewarm:soak]
-
-        self.assertIn(
-            "http://127.0.0.1:3030/api/statistics",
-            prewarm_block,
-        )
-        self.assertIn(
-            "--connect-timeout 3",
-            prewarm_block,
-        )
-        self.assertIn(
-            "--max-time 20",
-            prewarm_block,
-        )
-        self.assertIn(
-            "-w '%{time_total}'",
-            prewarm_block,
-        )
-
-        self.assertIn(
-            "statistics_prewarm=$STATISTICS_PREWARM",
-            script,
-        )
-        self.assertIn(
-            "statistics_warm_seconds=$STATISTICS_WARM_SECONDS",
-            script,
-        )
-
-    def test_activation_prewarms_workshop_before_health_soak(self):
-        script = render_activation_script()
-
-        prewarm = script.index('WORKSHOP_PREWARM="FAIL"')
-        soak = script.index(
-            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
-            prewarm,
-        )
-
-        self.assertLess(prewarm, soak)
-
-        block = script[prewarm:soak]
-
-        self.assertIn(
-            "http://127.0.0.1:3030/workshop",
-            block,
-        )
-        self.assertIn(
-            "--connect-timeout 3",
-            block,
-        )
-        self.assertIn(
-            "--max-time 25",
-            block,
-        )
-        self.assertIn(
-            "-w '%{time_total}'",
-            block,
-        )
-
-        self.assertIn(
-            "workshop_prewarm=$WORKSHOP_PREWARM",
-            script,
-        )
-        self.assertIn(
-            "workshop_warm_seconds=$WORKSHOP_WARM_SECONDS",
-            script,
-        )
-
-    def test_activation_prewarms_common_leaderboards_before_health_soak(self):
-        script = render_activation_script()
-
-        prewarm = script.index('LEADERBOARD_PREWARM="PASS"')
-        soak = script.index(
-            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
-            prewarm,
-        )
-
-        self.assertLess(prewarm, soak)
-
-        block = script[prewarm:soak]
-
-        for lane, scope in (
-            ("rm", "all"),
-            ("rm", "claimed"),
-            ("dm", "all"),
-            ("dm", "claimed"),
+        for forbidden in (
+            "/api/bets",
+            "/api/lobby",
+            "/api/statistics",
+            "/workshop",
         ):
+            self.assertNotIn(forbidden, script)
+        self.assertIn(
+            'critical_get http://127.0.0.1:3030/api/deployment-version',
+            script,
+        )
+        self.assertIn(
+            'critical_get "$PUBLIC/api/deployment-version"',
+            script,
+        )
+        self.assertIn(
+            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
+            script,
+        )
+        self.assertIn('test "$soak_wolo8092" = "$before_wolo8092"', script)
+        self.assertIn('test "$soak_wolo8093" = "$before_wolo8093"', script)
+
+    def test_dynamic_performance_prewarms_are_deferred_outside_release(self):
+        script = render_activation_script()
+        # These are audit fields, not a claim of prewarming or endpoint health.
+        for name in ("STATISTICS", "LEADERBOARD", "WORKSHOP"):
             self.assertIn(
-                f'"{lane} {scope}"',
-                block,
+                name + '_PREWARM="DEFERRED_IDENTITY_ONLY"',
+                script,
             )
-
+            self.assertIn(
+                name.lower() + "_prewarm=$" + name + "_PREWARM",
+                script,
+            )
         self.assertIn(
-            "/api/lobby/leaderboard?lane=$lane&scope=$scope&offset=0&limit=50",
-            block,
-        )
-        self.assertIn(
-            "-w '%{time_total}'",
-            block,
-        )
-
-        self.assertIn(
-            "leaderboard_prewarm=$LEADERBOARD_PREWARM",
+            "No dynamic route/leaderboard/statistics/",
             script,
         )
-        self.assertIn(
-            "leaderboard_warm_seconds=$LEADERBOARD_WARM_SECONDS",
-            script,
-        )
+        self.assertNotIn('STATISTICS_PREWARM="PASS"', script)
+        self.assertNotIn('LEADERBOARD_PREWARM="PASS"', script)
+        self.assertNotIn('WORKSHOP_PREWARM="PASS"', script)
 
     def test_activation_uses_root_name_independent_content_hash(self):
         _, receipt, _ = activation_sample()

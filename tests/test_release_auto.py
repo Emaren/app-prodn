@@ -493,7 +493,7 @@ class AutoShipTests(unittest.TestCase):
             if args and args[0] == "curl"
         ]
 
-        self.assertEqual(len(public_calls), 4)
+        self.assertEqual(len(public_calls), 1)
 
         for args in public_calls:
             self.assertIn("-fsS", args)
@@ -504,6 +504,13 @@ class AutoShipTests(unittest.TestCase):
         self.assertTrue(
             any(args[0] == "ssh" for args in calls)
         )
+        # Release readiness must never enqueue market/settlement writers.
+        self.assertTrue(public_calls[0][-1].endswith("/api/deployment-version"))
+        remote_calls = [args for args in calls if args and args[0] == "ssh"]
+        self.assertEqual(len(remote_calls), 1)
+        self.assertIn("for p in /api/deployment-version; do", remote_calls[0][-1])
+        self.assertNotIn("/api/bets", remote_calls[0][-1])
+        self.assertNotIn("/api/lobby", remote_calls[0][-1])
 
     def test_route_proof_fails_closed_on_public_curl_failure(self):
         failed = subprocess.CompletedProcess(
@@ -633,130 +640,31 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
             "wolo_8093_count": 1,
         }
 
-    def test_retirement_script_requires_exact_provenance_and_zero_runtime_refs(self):
-        script = MODULE.remote_superseded_stage_retirement_script(
-            current_release_sha="b" * 40,
-            staged_build_id="staged-build",
-            production=self.production(),
-        )
-
-        self.assertIn('MATCHES=()', script)
-        self.assertIn(r"classification\tAMBIGUOUS_STAGE", script)
-        self.assertIn(r"classification\tCURRENT_STAGE", script)
-        self.assertIn('OPEN_REFS=0', script)
-        self.assertIn(r"classification\tACTIVE_REFERENCE", script)
-        self.assertIn('.next-release', script)
-        self.assertIn('.node_modules-release', script)
-        self.assertIn('stale-stage-retirements', script)
-        self.assertIn(
-            'sudo -n /usr/bin/install -d '
-            '-o tony -g tony -m 0750',
-            script,
-        )
-        self.assertIn('original-stage-status.txt', script)
-        self.assertIn('RETIREMENT_SHA256', script)
-        self.assertIn('http://127.0.0.1:3030/api/bets', script)
-        self.assertIn(':8092', script)
-        self.assertIn(':8093', script)
-
-    def test_retirement_accepts_only_superseded_release(self):
-        stdout = "\n".join(
-            [
-                "match_count\t1",
-                "found_release_sha\t" + ("c" * 40),
-                "open_references\t0",
-                "status\tRETIRED",
-                "classification\tSUPERSEDED_STAGE",
-                "retired_release_sha\t" + ("c" * 40),
-                "retired_staged_build_id\tstaged-build",
-                "receipt_dir\t/mnt/HC_Volume_105319120/aoe2war/"
-                "stale-stage-retirements/test",
-                "root_reclaimed_kb\t123",
-                "wolo_8092_count\t1",
-                "wolo_8093_count\t1",
-            ]
-        )
-
-        result = type(
-            "Result",
-            (),
-            {
-                "returncode": 0,
-                "stdout": stdout,
-                "stderr": "",
-            },
-        )()
-
-        with mock.patch.object(
-            MODULE,
-            "run",
-            return_value=result,
+    def test_legacy_stage_retirement_has_no_direct_or_indirect_mutation_lane(self):
+        for fn in (
+            MODULE.remote_superseded_stage_retirement_script,
+            MODULE.retire_superseded_stage,
         ):
-            recovered = MODULE.retire_superseded_stage(
-                current_release_sha="b" * 40,
-                staged_build_id="staged-build",
-                production=self.production(),
-            )
+            with self.subTest(fn=fn.__name__):
+                with mock.patch.object(MODULE, "run") as remote:
+                    with self.assertRaisesRegex(
+                        MODULE.AutoShipError, "RETIRE_STAGE_ONLY|unsigned stage retirement"
+                    ):
+                        fn(
+                            current_release_sha="b" * 40,
+                            staged_build_id="staged-build",
+                            production=self.production(),
+                        )
+                    remote.assert_not_called()
 
-        self.assertEqual(
-            recovered["classification"],
-            "SUPERSEDED_STAGE",
-        )
-        self.assertEqual(
-            recovered["retired_release_sha"],
-            "c" * 40,
-        )
 
-    def test_current_release_stage_is_never_auto_retired(self):
-        result = type(
-            "Result",
-            (),
-            {
-                "returncode": 42,
-                "stdout": (
-                    "match_count\t1\n"
-                    "classification\tCURRENT_STAGE\n"
-                ),
-                "stderr": "",
-            },
-        )()
-
-        with mock.patch.object(
-            MODULE,
-            "run",
-            return_value=result,
-        ):
-            with self.assertRaisesRegex(
-                MODULE.AutoShipError,
-                "belongs to the current release",
-            ):
-                MODULE.retire_superseded_stage(
-                    current_release_sha="b" * 40,
-                    staged_build_id="staged-build",
-                    production=self.production(),
-                )
-
-    def test_ship_wires_exact_resume_before_superseded_retirement(self):
+    def test_ship_requires_separately_signed_stage_retirement(self):
         import inspect
 
         source = inspect.getsource(MODULE.ship_all)
-
-        self.assertIn(
-            "resolve_stage_receipt",
-            source,
-        )
-        self.assertIn(
-            "retire_superseded_stage",
-            source,
-        )
-        self.assertLess(
-            source.index("resolve_stage_receipt"),
-            source.index("retire_superseded_stage"),
-        )
-        self.assertIn(
-            "post-retirement release preflight",
-            source,
-        )
+        self.assertIn("resolve_stage_receipt", source)
+        self.assertIn("RETIRE_STAGE_ONLY", source)
+        self.assertNotIn("retire_superseded_stage(", source)
 
     def test_prepare_only_stages_exact_release_without_activating_or_migrating(self):
         initial = sample()
@@ -807,20 +715,28 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
         for fn in (collect, retire, docs, gate, stage, activate):
             fn.assert_not_called()
 
-    def test_prepare_only_refuses_unverified_existing_stage_without_retirement(self):
-        initial = sample()
-        initial["production"]["staged_build_id"] = "candidate-build"
-        collect = mock.Mock()
-        with (
-            mock.patch.object(MODULE, "resolve_stage_receipt", side_effect=MODULE.AutoShipError("unsafe stage")),
-            mock.patch.object(MODULE, "retire_superseded_stage") as retire,
-            mock.patch.object(MODULE, "stage_release") as stage,
-            mock.patch.object(MODULE, "activate_and_certify") as activate,
-        ):
-            result = MODULE.ship_all(collect=collect, initial=initial, prepare_only=True)
-        self.assertEqual(result, 2)
-        for fn in (collect, retire, stage, activate):
-            fn.assert_not_called()
+    def test_all_ship_modes_refuse_unverified_stage_without_any_mutation(self):
+        for prepare_only in (False, True):
+            with self.subTest(prepare_only=prepare_only):
+                initial = sample()
+                initial["production"]["staged_build_id"] = "candidate-build"
+                collect = mock.Mock()
+                with (
+                    mock.patch.object(MODULE, "resolve_stage_receipt",
+                                      side_effect=MODULE.AutoShipError("unsafe stage")) as resolve,
+                    mock.patch.object(MODULE, "retire_superseded_stage") as retire,
+                    mock.patch.object(MODULE, "ensure_documentation_baseline") as docs,
+                    mock.patch.object(MODULE, "gate_release") as gate,
+                    mock.patch.object(MODULE, "stage_release") as stage,
+                    mock.patch.object(MODULE, "activate_and_certify") as activate,
+                ):
+                    result = MODULE.ship_all(
+                        collect=collect, initial=initial, prepare_only=prepare_only,
+                    )
+                self.assertEqual(result, 2)
+                resolve.assert_called_once()
+                for fn in (collect, retire, docs, gate, stage, activate):
+                    fn.assert_not_called()
 
     def test_prepare_only_still_obeys_listener_and_dirty_source_preflight(self):
         for field, value in (("wolo_8092_count", 0), ("wolo_8093_count", 2), ("service", "inactive")):

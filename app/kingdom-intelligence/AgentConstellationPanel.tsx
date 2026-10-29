@@ -91,7 +91,7 @@ export default function AgentConstellationPanel({
     >
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
-          <div className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/45">
+          <div className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/90">
             Agent constellation
           </div>
           <h2 className="mt-2 font-serif text-2xl text-[#f4e5bd]">
@@ -193,7 +193,7 @@ export default function AgentConstellationPanel({
                         }}
                       />
                     </div>
-                    <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
+                    <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-300">
                       <span>{effectiveProgressLabel ?? "progress"}</span>
                       <span>
                         {effectiveProgress.toFixed(
@@ -215,7 +215,7 @@ export default function AgentConstellationPanel({
                         <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
                       ) : null}
                     </div>
-                    <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
+                    <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-300">
                       <span aria-live="polite">{recoveryNotice}</span>
                       <span>—</span>
                     </div>
@@ -255,7 +255,7 @@ export default function AgentConstellationPanel({
         })}
       </div>
 
-      <div className="relative z-10 mt-3 border-t border-white/6 pt-3 text-[10px] leading-4 text-slate-600">
+      <div className="relative z-10 mt-3 border-t border-white/6 pt-3 text-[10px] leading-4 text-slate-300">
         Beacon law: cyan pulse = working · green solid = healthy/closed · amber pulse = waiting/attention · red = failed/blocked · slate = idle.
       </div>
     </section>

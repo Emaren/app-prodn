@@ -15,18 +15,26 @@ test("Bets private board warm is one-shot, no-store, and shorter than poll caden
   assert.match(helper, /Date\.now\(\) - record\.resolvedAt > BETS_BOARD_WARM_MAX_AGE_MS/);
 });
 
-test("Bets is warmed on bounded idle and direct navigation intent", () => {
+test("Bets warms only on direct navigation intent, never unrelated page mount", () => {
   const shell = source("app/AppShell.tsx");
 
-  assert.match(shell, /betsIdleWarmRef = React\.useRef\(false\)/);
-  assert.match(shell, /pathname === "\/bets"[\s\S]*connection\?\.saveData[\s\S]*\/\(\^\|-\)2g\$\//);
-  assert.match(shell, /href === "\/bets"[\s\S]*warmBetsBoard\(uid\)/);
-  assert.match(shell, /betsIdleWarmRef\.current = false;[\s\S]*\}, \[uid\]\)/);
-  assert.match(shell, /router\.prefetch\("\/players"\);[\s\S]*setTimeout\(warmBetsNavigation, 500\)/);
-  const idleWarmBody = shell.match(/const warmBetsNavigation = \(\) => \{([\s\S]*?)\n    \};/)?.[1] ?? "";
-  assert.match(idleWarmBody, /router\.prefetch\("\/bets"\)/);
-  assert.match(idleWarmBody, /queueMicrotask\(\(\) => \{[\s\S]*warmBetsBoard\(uid\)/);
-  assert.doesNotMatch(idleWarmBody, /warmBetsClient/);
+  assert.doesNotMatch(shell, /betsIdleWarmRef/);
+  assert.doesNotMatch(shell, /warmBetsNavigation/);
+  assert.doesNotMatch(shell, /router\.prefetch\("\/bets"\)/);
+  assert.doesNotMatch(shell, /betsRouteTimer/);
+  // Three deliberate interactions with the Bets link; none on generic app load.
+  const intentWarmMatches = shell.match(/void warmBetsBoard\(uid\);/g) ?? [];
+  assert.equal(intentWarmMatches.length, 3);
+  for (const intent of ["onMouseEnter", "onFocus", "onPointerDown"]) {
+    const from = shell.indexOf(intent + "={() => {");
+    assert.ok(from >= 0, intent + " handler exists");
+    const guard = shell.indexOf('if (href === "/bets")', from);
+    const warm = shell.indexOf("void warmBetsBoard(uid);", guard);
+    assert.ok(guard > from && guard - from < 200, intent + " is guarded by href");
+    assert.ok(warm > guard && warm - guard < 240, intent + " owns warmup");
+  }
+  // Players retains independent prefetch; the user-initiated Bets link remains usable.
+  assert.match(shell, /prefetch=\{href === "\/players"\}/);
 });
 
 

@@ -1,0 +1,104 @@
+name: Renaissance Tab D candidate census (not certified)
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'config/renaissance-campaign.json'
+      - 'config/kingdom-index-inventory.json'
+      - 'scripts/renaissance_tabd_forge.py'
+      - 'tests/test_renaissance_tabd_forge.py'
+      - '.github/workflows/renaissance-tabd-forge.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '29 4 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: renaissance-tabd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    name: Read-only exact-head source evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Assert source, adversarial regression and immutable identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          python3 -m unittest discover -s tests -p test_renaissance_tabd_forge.py -v
+          python3 scripts/renaissance_tabd_forge.py inventory --fast --expected-sha "$EXPECTED_SHA" > tabd-inventory.json
+          timeout -k 5s 8m python3 scripts/renaissance_tabd_forge.py inventory --expected-sha "$EXPECTED_SHA" > tabd-full-dependencies.json
+          python3 scripts/renaissance_tabd_forge.py verify --fast --expected-sha "$EXPECTED_SHA" > tabd-verify.json
+          python3 scripts/renaissance_tabd_forge.py matrix --fast --expected-sha "$EXPECTED_SHA" > tabd-matrix.json
+          test -z "$(git status --porcelain --untracked-files=no)"
+          sha256sum tabd-*.json > tabd-digests.txt
+          printf 'source=%s\ncandidate_only=true\ncertified=false\n' "$EXPECTED_SHA" > tabd-identity.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-tabd-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tabd-*.json
+            tabd-*.txt
+          retention-days: 14
+          if-no-files-found: warn
+  emitted-next:
+    name: Nightly/manual source-bound Next census
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      EXPECTED_SHA: ${{ github.sha }}
+      NODE_ENV: production
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: isolated-ci-not-production
+      NEXTAUTH_SECRET: isolated-ci-not-production
+      NEXTAUTH_URL: http://127.0.0.1:3030
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build exact immutable candidate and reconcile emitted path census
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npx prisma generate
+          timeout -k 10s 30m yarn build
+          test -s .next/BUILD_ID
+          python3 scripts/renaissance_tabd_forge.py inventory --expected-sha "$EXPECTED_SHA" \
+            --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" > tabd-built-inventory.json
+          python3 scripts/renaissance_tabd_forge.py verify --fast --expected-sha "$EXPECTED_SHA" \
+            --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" > tabd-built-verify.json
+          sha256sum .next/BUILD_ID .next/server/app-paths-manifest.json tabd-built-*.json > tabd-built-digests.txt
+          test -z "$(git status --porcelain --untracked-files=no)"
+          printf 'source=%s\nbuild_id=%s\ncandidate_only=true\ncertified=false\n' \
+            "$EXPECTED_SHA" "$(cat .next/BUILD_ID)" > tabd-built-identity.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-tabd-built-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tabd-built-*.json
+            tabd-built-*.txt
+          if-no-files-found: warn
+          retention-days: 14

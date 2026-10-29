@@ -143,9 +143,6 @@ const KINGDOM_LINKS = [
   { href: "/kingdom-brain", label: "Kingdom Brain", icon: BrainCircuit, body: "Follow the flow of truth across the machine" },
   { href: "/kingdom-progress", label: "Kingdom Progress", icon: BarChart3, body: "Evidence-bound campaigns and milestones" },
   { href: "/renaissance", label: "Renaissance Campaign", icon: Crown, body: "Twelve engineering instruments · one command gateway" },
-  { href: "/kingdom-sensors", label: "Kingdom Sensors", icon: Radio, body: "Observation arrays and provenance-bound signals" },
-  { href: "/kingdom-tests", label: "Kingdom Tests", icon: ClipboardCheck, body: "Proof lanes and exact-source tests" },
-  { href: "/kingdom-recovery", label: "Kingdom Recovery", icon: Archive, body: "Verified recovery receipts and restoration boundaries" },
   { href: "/kingdom-systems", label: "Kingdom Systems", icon: Cpu, body: "The machine rack of deployed routes and services" },
   { href: "/replay-laboratory", label: "Replay Laboratory", icon: Eye, body: "Explore the unknown HD replay research frontier" },
   { href: "/wolo-machine", label: "Wolo Machine", icon: Network, body: "HD WoloChain consensus, modules and release provenance" },
@@ -203,6 +200,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/replay-laboratory", title: "Replay Laboratory" },
   { prefix: "/wolo-machine", title: "Wolo Machine" },
   { prefix: "/kingdom-index", title: "Kingdom Index" },
+  { prefix: "/aoe2war-os/storage-atlas", title: "Storage Atlas" },
   { prefix: "/aoe2war-os", title: "AoE2WAR OS" },
   { prefix: "/television-wolo", title: "Television WOLO" },
   { prefix: "/kingdom-agents", title: "Kingdom Agents" },
@@ -977,12 +975,6 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [footerReady, setFooterReady] = React.useState(false);
   const footerWarmupRef = React.useRef<HTMLDivElement | null>(null);
   const leaderboardIdleWarmRef = React.useRef(false);
-  const betsIdleWarmRef = React.useRef(false);
-
-  React.useEffect(() => {
-    betsIdleWarmRef.current = false;
-  }, [uid]);
-
   React.useEffect(() => {
     try {
       const stored = Number.parseInt(
@@ -1129,49 +1121,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, router]);
 
-  React.useEffect(() => {
-    if (pathname === "/bets" || betsIdleWarmRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-    let betsRouteTimer: number | null = null;
-    const connection = (
-      navigator as Navigator & {
-        connection?: { saveData?: boolean; effectiveType?: string };
-      }
-    ).connection;
-
-    const warmBetsNavigation = () => {
-      if (
-        cancelled ||
-        betsIdleWarmRef.current ||
-        document.visibilityState !== "visible" ||
-        connection?.saveData ||
-        /(^|-)2g$/.test(connection?.effectiveType ?? "")
-      ) {
-        return;
-      }
-
-      betsIdleWarmRef.current = true;
-      router.prefetch("/bets");
-      queueMicrotask(() => {
-        if (cancelled || document.visibilityState !== "visible") return;
-        void warmBetsBoard(uid);
-      });
-    };
-
-    // Give the tiny Player Registry prefetch the uncontested first half-second.
-    // Betting Hall begins only after that protected handoff window so its board
-    // fetch and RSC prefetch cannot steal the fast /players path during startup.
-    router.prefetch("/players");
-    betsRouteTimer = window.setTimeout(warmBetsNavigation, 500);
-
-    return () => {
-      cancelled = true;
-      if (betsRouteTimer !== null) window.clearTimeout(betsRouteTimer);
-    };
-  }, [pathname, router, uid]);
+  // Betting data is intentionally warmed only by explicit user interaction
+  // with the Bets navigation link, never by mounting unrelated site pages.
 
   const isExtremePlayerProfileSurface =
     isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";

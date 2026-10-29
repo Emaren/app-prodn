@@ -160,6 +160,73 @@ consumer; current or ambiguous stages remain preserved.
     or lost transport after privileged mutation begins is preserved as
     uncertain transaction evidence rather than auto-cleaned or blindly retried.
 
+## Production root SSH authority and signer compatibility (October 28)
+
+A verified operator-plane access test on the owner Mac returned `REMOTE_UID=0`
+using `ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes root@hel1 'id -u'`.
+This is existing **key-authenticated HEL1 root access**. Release operations must
+check this route before asking for `tony`'s interactive server sudo password.
+Mac Touch ID cannot unlock Linux sudo. Never introduce NOPASSWD, log passwords,
+or copy private signing keys to HEL1.
+
+The Oct 27 owner-v4 `owner-public.pem` was actually an RSA-3072 public key
+(625-byte PEM), while the merged `aoe2_release_retire_stage.py` controller
+requires an Ed25519 signature of exactly 64 bytes. Repeating the old encrypted
+RSA key passphrase could never satisfy the contract. A new encrypted Mac-only
+owner-v5 Ed25519 signing key passed a **real** 64-byte local sign/verify test:
+public SPKI SHA256 `3730382540cbb93672fa03b9c4f236a895500c30e22ccca8b884946b9308001c`;
+public PEM SHA256 `a60623079218c934295502350f0cbedcbcf9e42559f0d07469b0d703f59cb13b`.
+The encrypted old RSA private key remains preserved.
+
+**Existing HEL1 shared release lock is not a root-private trust directory.**
+An independent owner-root read-only scan on Oct 28 established
+`/mnt/HC_Volume_105319120/aoe2war/os-control` owned by `tony:tony`
+mode `0750`, its `locks` child owned by `tony:tony` mode `0755`,
+and `locks/release.lock` owned by `tony:tony` mode `0664`, empty.
+The initial owner-v5 installer incorrectly demanded root ownership of that
+shared lock directory and failed **before** creating a rotation transaction.
+The old public SPKI pin remained `3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd`;
+the controller installed checksum was
+`44a897e07d6999a15042885cfe8f0773c4645771a33011c700ef1c58293e2be4`;
+no v5 transaction directory, intent or completion receipt existed.
+
+The enrollment transaction now recognizes only this **exact observed
+tony-owned lock shape**, obtains the existing release flock, archives the
+old PUBLIC trust, and tightens **only** the original lock file from
+`0664` to `0644` under the exclusive flock, preserving its inode,
+owner and directory permissions. This narrow change is necessary because
+the *installed* stage retirement controller refuses a group-writable
+release.lock. Any ownership, path, symlink or mode drift is a HOLD.
+The owner must type `ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK`
+at the Mac terminal, explicitly approving both the public-key enrollment and
+exact 0664→0644 existing lock-file permission change.
+
+No broad `chown`/`chmod` of shared release paths, and the root-only
+`/etc/aoe2war/website-owner-v4` trust anchors and
+`/var/lib/aoe2war-owner-rotations` audits retain their strict
+root-owned protections. An interrupted transaction may leave an intent
+or tightened mode without completed rotation; **inspect root evidence
+rather than retrying**.
+
+The canonical `python3 scripts/aoe2_owner_v5_enroll_rootssh.py --apply`
+operator checks a clean local `main`, exact Mac v5 public fingerprint,
+the installed HEL1 controller SHA256, existing old RSA public trust, and
+the canonical release lease. It uses the existing pinned root SSH identity,
+transfers its source in memory, and enrolls only the PUBLIC key at the stable
+controller-read `/etc/aoe2war/website-owner-v4` file paths; the v4 directory
+name is retained solely for binary compatibility. It archives the old public
+trust and pins into a root-private immutable audit and creates a separate
+`OWNER_V5_ENROLLED_PREVIEW_PASS` receipt **only after** a fresh installed
+controller `--preview` succeeds. One authorization phrase is required. A
+partial/unknown outcome must be investigated from the root audit; never replay.
+
+**Distinct release phases must stay distinct**: verified root SSH does not
+automatically authorize website activation; public-key enrollment does not
+park the stale Oct 27 stage; stage parking requires its own local v5 signed
+`PARK_ONLY` permit; staging/release needs the canonical app controller,
+migration preflight and separate activation/public BUILD_ID receipts. Wolo
+8092/8093 are only observed, and funded settlement remains held.
+
 ## Root control assets and mounted build scratch
 
 `aoe2war finish` owns the root-controlled release helpers needed by staging.

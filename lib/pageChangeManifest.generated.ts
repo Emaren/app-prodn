@@ -5,22 +5,22 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-2c3e461b0b3629528a09",
+    version: "src-8ec949b86a01d1fa951c",
   },
   {
     href: "/oracle",
     label: "The Oracle",
-    version: "src-d681bee1e784380a94a7",
+    version: "src-69ea29d4555e697a3743",
   },
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-bb3b69a45665b9a6d0bf",
+    version: "src-7dbb698dc122403c797d",
   },
   {
     href: "/champions",
     label: "Champions",
-    version: "src-1edc7c0c78fb51d2df0d",
+    version: "src-e698288d0f3bea61e43a",
   },
   {
     href: "/chaosium",
@@ -50,7 +50,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/academy",
     label: "Academy",
-    version: "src-45fb820d2c2f02053f97",
+    version: "src-efa95e74905e8f7c8401",
   },
   {
     href: "/market",
@@ -70,7 +70,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/forum",
     label: "Forum",
-    version: "src-033cb107876b6463d14c",
+    version: "src-a4385899d468bb5467fc",
   },
   {
     href: "/radio",
@@ -80,12 +80,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-caae1d2b18e78b6dc68f",
+    version: "src-4d8a2ced48423c604c09",
   },
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-4527a5ab790e0f1b7701",
+    version: "src-b40c6fd3e735b9c51f57",
   },
   {
     href: "/game-stats",
@@ -100,7 +100,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-forge",
     label: "Kingdom Forge",
-    version: "src-5a82fecdfb0a41c79a7f",
+    version: "src-17a40befecc2e2b73161",
   },
   {
     href: "/round-chamber",
@@ -120,11 +120,11 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/speed",
     label: "Speed",
-    version: "src-1cee80cc8e6aff47c374",
+    version: "src-0e7cf93e3df8758e54ac",
   },
   {
     href: "/aoe2war-os",
     label: "AoE2WAR OS",
-    version: "src-b80e3817daef3d3ac54d",
+    version: "src-ea125df5f35625d1a67d",
   },
 ] as const;

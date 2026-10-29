@@ -34,7 +34,9 @@
         "/aoe2war-os",
         "/kingdom-recovery",
         "/speed",
-        "/admin/aoe2war-os"
+        "/admin/aoe2war-os",
+        "/admin/storage-os",
+        "/admin/central-command"
       ]
     },
     {
@@ -83,7 +85,9 @@
         "/matchups/[left]/[right]",
         "/matchups/team/[left]/[right]",
         "/nations",
-        "/admin/user-list"
+        "/admin/user-list",
+        "/admin/living-kingdom",
+        "/admin/living-kingdom/[uid]"
       ]
     },
     {

@@ -393,12 +393,6 @@ fi
 
 test "$(dependency_hash "$SOURCE_MODULES_PATH")" = "$TARGET_DEPENDENCY_SHA"
 
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
 
 if [ "$MODE" = "DRY_RUN" ]; then
   printf 'status\tPREPARED\n'
@@ -604,13 +598,7 @@ test "$after_public" = "$TARGET_VERSION"
 test "$after_wolo8092" = "$EXPECTED_WOLO8092"
 test "$after_wolo8093" = "$EXPECTED_WOLO8093"
 
-critical_get http://127.0.0.1:3030/
-critical_get http://127.0.0.1:3030/api/lobby
-critical_get http://127.0.0.1:3030/api/bets
 critical_get http://127.0.0.1:3030/api/deployment-version
-critical_get "$PUBLIC/"
-critical_get "$PUBLIC/api/lobby"
-critical_get "$PUBLIC/api/bets"
 critical_get "$PUBLIC/api/deployment-version"
 
 printf '%s\n' \

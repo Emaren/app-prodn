@@ -119,7 +119,7 @@ function MeasurementsTable({
   dense?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200" role="region" tabIndex={0} aria-label="Scrollable recent speed observations">
       <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="text-[10px] uppercase tracking-[0.18em] text-white/32">
           <tr>

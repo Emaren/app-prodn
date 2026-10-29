@@ -135,7 +135,7 @@ Usage:
   aoe2war watcher-staging [--apply] [--json]
   aoe2war watcher-downloads [--apply] [--json]
   aoe2war watcher-release [--apply] [--json] [--version VERSION] [--source PATH]
-  aoe2war storage <status|estate|local-maintain|plan|maintain|verify|campaign|handoff|db-snapshots> [options]
+  aoe2war storage <status|estate|deep-census|triage|local-maintain|local-plan|local-pressure|atlas-probe|atlas-snapshot|artifacts|plan|maintain|verify|campaign|handoff|db-snapshots> [options]
   aoe2war council [--json]
   aoe2war brain [--json]
   aoe2war workspace <status|plan|clean> [options]

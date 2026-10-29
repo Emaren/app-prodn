@@ -1,0 +1,121 @@
+{
+  "schema": "aoe2war.central-command.lane-registry.v1",
+  "owner": "Central Command #934",
+  "authority": "DISPATCH_AND_OBSERVATION_ONLY",
+  "dispatchIssue": {
+    "repository": "Emaren/app-prodn",
+    "number": 934
+  },
+  "implementationIssue": {
+    "repository": "Emaren/app-prodn",
+    "number": 979
+  },
+  "evidenceGates": [
+    {
+      "id": "ASSIGNED",
+      "meaning": "Named lane and tracked issue, not work started"
+    },
+    {
+      "id": "SOURCE_REVIEWED",
+      "meaning": "Exact source independently inspected"
+    },
+    {
+      "id": "HEAD_CI_PASSED",
+      "meaning": "All required checks pass at exact head"
+    },
+    {
+      "id": "MERGED",
+      "meaning": "Accepted source landed on canonical main"
+    },
+    {
+      "id": "NATIVE_ACCEPTED",
+      "meaning": "Host/runtime measured with original receipt"
+    },
+    {
+      "id": "LIVE_VERIFIED",
+      "meaning": "Production accepted: source/build/auth/health/rollback evidence"
+    }
+  ],
+  "confidencePolicy": "No percentage unless original evidence certifies the numerator and denominator. GitHub issues/PRs alone never certify host adoption, cleanup, financial custody or production deployment.",
+  "instructionBoundary": "GitHub dispatch comments do not transmit commands to separate ChatGPT sessions. Each assistant window must read its issue or use an explicitly authorized connector/agent.",
+  "lanes": [
+    {
+      "id": "D",
+      "label": "Mac Level 1",
+      "mission": "Complete bounded policy inventory and native L1 exhaustion certification",
+      "owner": "Session D",
+      "issue": {
+        "repository": "Emaren/app-prodn",
+        "number": 975
+      },
+      "workflow": "MAC_LOCAL_L1",
+      "releaseDependency": "PARALLEL"
+    },
+    {
+      "id": "G",
+      "label": "Storage OS & Finder",
+      "mission": "Private L1–L5 governance, signed gross-hog evidence and fail-closed individual review; Finder Recents acceptance",
+      "owner": "Session G",
+      "issue": {
+        "repository": "Emaren/app-prodn",
+        "number": 976
+      },
+      "workflow": "PRIVATE_ADMIN_UX",
+      "releaseDependency": "W1_SOURCE_AFTER_977"
+    },
+    {
+      "id": "C",
+      "label": "Live storage telemetry",
+      "mission": "Reuse Mac Pulse/HEL1 observer and private authenticated storage receipts",
+      "owner": "Session C",
+      "issue": {
+        "repository": "Emaren/VPSSentry",
+        "number": 48
+      },
+      "workflow": "STORAGE_VISUAL_RECEIPTS",
+      "releaseDependency": "LIVE_DATA"
+    },
+    {
+      "id": "E",
+      "label": "HEL1 capacity",
+      "mission": "Protected evidence-volume capacity and independent backup/resize admission",
+      "owner": "Session E",
+      "issue": {
+        "repository": "Emaren/VPSSentry",
+        "number": 23
+      },
+      "workflow": "CAPACITY_GATE",
+      "releaseDependency": "W1_HARD_GATE"
+    },
+    {
+      "id": "F",
+      "label": "Deploy & workspace",
+      "mission": "Source-bound website-only release authority, staging, rollback and safe worktree retirement",
+      "owner": "Session F",
+      "issue": {
+        "repository": "Emaren/app-prodn",
+        "number": 665
+      },
+      "relatedIssues": [
+        {
+          "repository": "Emaren/app-prodn",
+          "number": 475
+        }
+      ],
+      "workflow": "RELEASE_AND_WORKSPACE",
+      "releaseDependency": "W1_RELEASE_OWNER"
+    },
+    {
+      "id": "B",
+      "label": "WoloChain",
+      "mission": "Escrow/settlement source proofs and independently held funded activation",
+      "owner": "Session B",
+      "issue": {
+        "repository": "Emaren/wolochain",
+        "number": 115
+      },
+      "workflow": "FUNDED_WOLO",
+      "releaseDependency": "FUNDED_ONLY"
+    }
+  ]
+}

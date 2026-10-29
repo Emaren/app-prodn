@@ -43,6 +43,29 @@ class ReleaseRollbackTests(unittest.TestCase):
         self.assertIn('critical_get "$PUBLIC/api/deployment-version"', script)
 
 
+    def test_rollback_preflight_and_postflight_never_trigger_financial_writers(self):
+        for dry_run in (True, False):
+            with self.subTest(dry_run=dry_run):
+                script = MODULE.remote_rollback_script(
+                    self.plan(),
+                    dry_run=dry_run,
+                    receipt_dir=(
+                        "/mnt/HC_Volume_105319120/aoe2war/"
+                        "deploy-receipts/rollback-test"
+                    ),
+                )
+                self.assertIn(
+                    'critical_get "$PUBLIC/api/deployment-version"',
+                    script,
+                )
+                self.assertIn(
+                    'critical_get http://127.0.0.1:3030/api/deployment-version',
+                    script,
+                )
+                for forbidden in ("/api/bets", "/api/lobby", "/api/statistics"):
+                    self.assertNotIn(forbidden, script)
+
+
     def test_manual_rollback_swaps_dependency_tree_with_runtime_while_stopped(self):
         script = MODULE.remote_rollback_script(
             self.plan(),

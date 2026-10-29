@@ -165,6 +165,7 @@ function bridgePayload(speedCurrent = true) {
       },
       replay_truth: {
         available: true,
+        production_source: RELEASE,
         accounted_percent: 100,
         unclassified: 0,
         matches_current_release: true,
@@ -303,6 +304,31 @@ function makeEstate(speedCurrent = true) {
     },
   };
 }
+
+test("bounded statfs receipts carry live observation time; fallback preserves bridge capture time", () => {
+  for (const fallback of [false, true]) {
+    const estate = makeEstate(true);
+    try {
+      if (fallback) {
+        estate.options.filesystemEvidence = { rootFreeGiB: null, volumeUsedPercent: null };
+      }
+      const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+      assert.ok(snapshot);
+      const organization = snapshot.categories.find((row) => row.id === "organization")!;
+      const rootResilience = snapshot.categories.find((row) => row.id === "security")!
+        .checks.find((row) => row.id === "root-resilience")!;
+      assert.equal(rootResilience.evidenceAt, fallback ? "2026-09-19T03:09:00Z" : "2026-09-19T03:10:00.000Z");
+      assert.match(rootResilience.detail, fallback ? /operator bridge fallback/ : /live VPS/);
+      for (const id of ["root-free", "volume-used"]) {
+        const row = organization.checks.find((item) => item.id === id)!;
+        assert.equal(row.evidenceAt, fallback ? "2026-09-19T03:09:00Z" : "2026-09-19T03:10:00.000Z");
+        assert.match(row.detail, fallback ? /operator bridge fallback/ : /live VPS/);
+      }
+    } finally {
+      rmSync(estate.root, { recursive: true, force: true });
+    }
+  }
+});
 
 test("live VPS capacity supersedes a contradictory older bridge storage snapshot", () => {
   const estate = makeEstate(true);
@@ -631,5 +657,124 @@ test("governed host deferrals, review worktrees, and verified recovery staging s
     );
   } finally {
     rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+
+test("expired October 13 browser and replay evidence cannot earn live points on October 25", () => {
+  const estate = makeEstate(true);
+  try {
+    const snapshot = buildBridgeGeneralInspectionsSnapshot({
+      ...estate.options,
+      now: Date.parse("2026-10-25T12:00:00Z"),
+    });
+    assert.ok(snapshot);
+    const speed = snapshot.categories.find((item) => item.id === "speed");
+    const data = snapshot.categories.find((item) => item.id === "data");
+    assert.equal(speed?.checks.find((item) => item.id === "lcp50")?.earned, 0);
+    assert.equal(speed?.checks.find((item) => item.id === "static-edge")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "parser-estate")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "db-mutation")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "wolo-mutation")?.earned, 0);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("contradictory receipt SHAs cannot earn current-source Speed or replay proof", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    envelope.payload.performance.cold_lcp.release_sha = "b".repeat(40);
+    envelope.payload.performance.edge_delivery.release_sha = "b".repeat(40);
+    envelope.payload.replay_truth.matches_current_release = true;
+    envelope.payload.replay_truth.production_source = "b".repeat(40);
+    writeJson(estate.options.bridgePath, envelope);
+
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const speed = snapshot.categories.find((item) => item.id === "speed");
+    const data = snapshot.categories.find((item) => item.id === "data");
+    assert.equal(speed?.checks.find((item) => item.id === "lcp50")?.earned, 0);
+    assert.equal(speed?.checks.find((item) => item.id === "static-edge")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "parser-estate")?.earned, 0);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+
+test("live source/build divergence cannot inherit browser proof or override scoped CI gate", () => {
+  for (const drift of ["source", "build"]) {
+    const estate = makeEstate(true);
+    try {
+      const envelope = bridgePayload(true);
+      if (drift === "source") {
+        envelope.payload.source.production.source_sha = "c".repeat(40);
+      } else {
+        envelope.payload.source.production.active_build_id = "unmatched-live-build";
+      }
+      writeJson(estate.options.bridgePath, envelope);
+      const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+      assert.ok(snapshot);
+      const speed = snapshot.categories.find((item) => item.id === "speed");
+      const data = snapshot.categories.find((item) => item.id === "data");
+      const tests = snapshot.categories.find((item) => item.id === "tests");
+      assert.equal(speed?.checks.find((item) => item.id === "lcp50")?.earned, 0);
+      assert.equal(speed?.checks.find((item) => item.id === "static-edge")?.earned, 0);
+      if (drift === "source") {
+        assert.equal(data?.checks.find((item) => item.id === "parser-estate")?.earned, 0);
+      }
+      // Historic gate remains bound to its original certified source/build,
+      // not a claim that the diverged runtime is certified.
+      assert.equal(tests?.score, 100);
+      assert.ok(snapshot.notes.some((note) => note.includes("production source/build")));
+    } finally {
+      rmSync(estate.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("corrupt certified gate receipt is rejected rather than awarding proof", () => {
+  const estate = makeEstate(true);
+  try {
+    const gatePath = path.join(
+      estate.options.deployRoot,
+      "activate-20260919T030800Z-" + RELEASE.slice(0, 12),
+      "gate-receipt.json",
+    );
+    writeFileSync(gatePath, "{broken json");
+    assert.equal(buildBridgeGeneralInspectionsSnapshot(estate.options), null);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+
+test("documentation gate, taxonomy and maps require fresh source-bound receipts", () => {
+  for (const drift of ["expired-docs", "missing-doc-time", "live-build"]) {
+    const estate = makeEstate(true);
+    try {
+      const envelope = bridgePayload(true);
+      if (drift === "expired-docs") {
+        envelope.payload.documentation.captured_at = "2026-09-12T03:09:00Z";
+      } else if (drift === "missing-doc-time") {
+        delete (envelope.payload.documentation as { captured_at?: string }).captured_at;
+      } else {
+        envelope.payload.source.production.active_build_id = "unmatched-live-build";
+      }
+      writeJson(estate.options.bridgePath, envelope);
+      const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+      assert.ok(snapshot);
+      const docs = snapshot.categories.find((item) => item.id === "documentation");
+      assert.ok(docs);
+      assert.equal(docs.score, 0, drift);
+      for (const item of docs.checks) {
+        assert.equal(item.earned, 0, `${drift}: ${item.id}`);
+      }
+      assert.equal(snapshot.categories.find((item) => item.id === "tests")?.score, 100);
+    } finally {
+      rmSync(estate.root, { recursive: true, force: true });
+    }
   }
 });

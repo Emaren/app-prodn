@@ -25,6 +25,9 @@ Primary operator surface:
 ```bash
 aoe2war storage status
 aoe2war storage estate --measure
+aoe2war storage local-plan          # permanent, read-only Mac action board
+aoe2war storage local-pressure --limit 512
+aoe2war storage local-pressure --focus generic_cache   # one-level protected-aware cache triage
 aoe2war storage local-maintain
 aoe2war storage local-maintain --apply
 aoe2war storage plan
@@ -71,15 +74,162 @@ suspends that pruning and should not be carried into routine Finish runs.
 `aoe2war storage local-maintain` is deliberately narrower than a generic disk
 cleaner. Preview mode measures exactly four allowlisted regenerable Mac caches:
 Yarn, Go build cache, pnpm cache, and CoreSimulator cache. `--apply` removes only
-those paths, refuses symlinks/path escape, remeasures free space, and seals a
+those four paths, refuses symlinks/path escape, remeasures free space, and seals a
 local maintenance receipt. Recovery vaults, Codex sessions, CrossOver bottles,
 MobileSync backups, project sources, and evidence are observable protected
 classes and are never targets of this command.
+
+**Explicit opt-in package-cache reclamation (Oct 28):** `local-maintain`
+now also measures four exact additional regenerable classes: `~/.npm/_cacache`,
+`~/Library/Caches/Homebrew`, `~/Library/Caches/pip`, and `~/.cache/pip`.
+The pre-existing `local-maintain --apply` continues to remove **only the original
+four**; an owner must run `local-maintain --apply --extended` to include all
+four additional download/content caches. This does not classify the rest of
+`~/.npm`, `~/.cache`, developer worktrees, Xcode DerivedData, Homebrew
+installations, project dependencies, iPhone backups or historical evidence as
+prunable. Symlinked/escaped extended targets hold **before** any deletion, and
+legacy apply remains operable if an unrelated extended candidate is unsafe.
+The receipt records every deleted target and same-filesystem measured free-space
+delta. On nearly-full APFS systems the measured free-space delta can differ from
+allocated bytes due to clones and snapshots; neither estimate is a success
+receipt until actual execution returns. Inspect current disk free with
+`df -k "$HOME"` before/after the operation. Running from an unmerged feature
+branch is never a production release authorization.
+
+## Reusable Mac cleanup operating cycle (2026-10-28)
+
+**Single operator entrypoint:** `aoe2war storage local-plan` (or `--json`).
+This is a permanent **read-only federation** within the existing Storage OS,
+not another deletion controller or a shell transcript. It invokes the existing
+local-maintain previews (four original caches, four extra opt-in content
+caches, and two opt-in Electron download caches), the named local-pressure
+census, and VPSSentry's independent Mac receipt watchdog if available.
+Unknown probes remain UNKNOWN; protected or overlapped source buckets are
+never declared reclaimable. The plan ranks named, measurable cache classes
+but does not infer all unclassified user files are junk. A zero cache preview
+means those *specific* classes are empty, **not** zero junk across the Mac.
+
+The new exact mode `aoe2war storage local-maintain --electron-only` previews
+ONLY `~/Library/Caches/electron` and `~/Library/Caches/electron-builder`,
+without selecting original/extended cache roots. After owner validation,
+`aoe2war storage local-maintain --apply --electron-only` operates within
+the same Storage OS retention/receipt authority and before/after APFS free
+measurement. This option and `--extended` are mutually exclusive. Apply
+now verifies the macOS owner session, a complete process census for active
+Electron builders, and open file descriptors beneath both named targets;
+failed census, unsafe ancestors and symlinks cause HOLD, never blind deletion.
+**Never schedule apply**: observation and recommendation may be timed;
+reclaim requires a separately authorized owner action and receipt.
+
+Historical physical Mac acceptance on Oct 28: isolated, exact-head PR #964
+source passed 11 focused native tests; the owner approved and executed
+only these two cache deletions, and APFS gained **0.538 GiB**. Historical
+receipt: `~/.local/state/aoe2war/storage/electron-pr964-e07021d1898a/`
+`.aoe2war-release/storage-local-receipts/20261028T162940Z-local-maintenance.json`.
+That approved one-time source checkout was an isolated acceptance path, not
+the normal future operating mechanism. After this feature is merged into
+source, use the canonical operator CLI rather than fetching PR archives.
+
+Local pressure now permits up to **512 displayed named rows**, including
+the 328 observed on the operator Mac on October 28, and reports
+`named_census_complete`, displayed/observed counts, reasons for truncation,
+and explicit `NAMED_PATHS_ONLY_NOT_WHOLE_DISK` scope. This fixes a 300-row
+presentation cap; it does **not** infer complete filesystem coverage. Repo
+and worktree enumeration limits, unreadable children or symlinks still
+produce INCOMPLETE/HOLD, even if all names can be displayed.
+
+`aoe2war storage local-pressure --focus generic_cache` provides a bounded,
+**read-only one-level** breakdown of `~/.cache` through the same permanent
+Storage OS router. Its first 64 child entries are measured under a bounded
+time budget; capped, timed-out or symlinked children remain explicitly
+INCOMPLETE rather than guessed. The `codex-runtimes` child is categorically
+`PROTECTED_ACTIVE_RUNTIME_UNKNOWN`. Other immediate children are
+`REVIEW_CACHE_CHILD_NEEDS_AUTHORITY`, not allowlisted for deletion.
+The gross `generic_cache` row (~5.11 GiB observed previously) includes
+this known protected subtree (~4.77 GiB previously measured); do not equate
+the parent's allocated bytes with reclaimable bytes or sum overlapping rows.
+The permanent `local-plan` recommends this specific read-only focus when
+a generic cache bucket is present; it never suggests deleting the parent.
+
+Additional named Electron, Chrome, Docker VM, Codex and CrossOver locations
+remain review/protected **without deletion permission**. Project roots
+and their generated children overlap; do not sum allocations to claim
+free-space recovery. When a class is unmeasured or partially observed, it
+remains UNKNOWN and must be triaged before adding exact-path cleanup policy.
+
+Daily launchd `com.aoe2war.mac-storage-pulse` and the VPSSentry watchdog
+remain the observation/freshness authorities; this planning command does
+not create a second timer. Three-plane HEL1 volume capacity and financial
+release/backup admission remain independently held as needed, regardless
+of local cache cleanup success.
 
 Capacity health and retention topology are separate facts. A volume below the
 capacity threshold may still carry structural rollback debt. The lean-retention
 expiry lane remains authoritative for reducing the runtime estate to two hot
 expanded rollback generations plus three proven cold checkpoints.
+
+## Exact three historical Next.js build reclaim (owner-approved)
+
+When the read-only Mac pressure census identifies these **three exact old
+worktree builds**, `./bin/aoe2war storage local-reclaim-three-next` previews
+their metadata and process-reference protections before any deletion:
+
+- `.worktrees/codex-authenticated-satchel-deposit/.next` with BUILD_ID
+  `blonE7yFq5o1cHzYKgxU7`;
+- `.worktrees/codex-satchel-complete-financial-paths/.next` with BUILD_ID
+  `knIrFoqHX9wcagyb6VeOv`;
+- `.aoe2war-workspaces/app-prodn/update-independent-docs-context-20261015/.next`
+  with BUILD_ID `umMYGufkqoA0nkvTGXIo2`.
+
+These were **owner-measured** on Oct 28 at 1,461,128 + 1,361,188 + 1,328,688
+KiB = **4,151,004 KiB (3.959 GiB allocated)**. They have zero Git-tracked
+`.next` files and worktrees with clean tracked source. These checks alone do
+not certify inactivity. The source-owned command reruns all checks and also
+rejects unsafe symlinks/hardlinks/owners/mounts, active worktree processes or
+open files, changed BUILD_IDs, tracked `.next` files and dirty source.
+
+`./bin/aoe2war storage local-reclaim-three-next --apply` asks the local
+operator to type `RECLAIM THREE VERIFIED HISTORICAL NEXT BUILDS`, takes an
+exclusive local receipt lock, rechecks all three pinned candidates, creates a
+durable intent receipt, deletes **only those three historical generated
+`.next` directories**, writes per-target receipts and final measured APFS
+available-space delta. A partial/unknown outcome must be inspected, **never
+automatically replayed**. Source worktrees and all non-generated files survive.
+
+This scope explicitly excludes E5 seal `.next`, Codex runtime cache
+`~/.cache/codex-runtimes` (possibly active), downloads, iPhone backups,
+recovery vault, node_modules and any financial/replay/release evidence.
+A source-only GitHub PR and successful CI are not equivalent to executing
+the owner Mac cleanup.
+
+## Mac gigabyte-first large-artifact census
+
+When `local-maintain --apply --extended` measures little or no recovery,
+**do not rerun the same exhausted cache policy**. Run the read-only
+`./bin/aoe2war storage local-pressure --limit 30` instead. Its source
+`scripts/aoe2_storage_mac_pressure.py` reports separately:
+- large project roots and declared Git worktree generated outputs
+  (`.next`, `node_modules`, `.direnv`, build/dist/cache) as **REVIEW only**;
+- Downloads, npm residual data, Xcode outputs, toolchains and Go/Cargo sources
+  as **REVIEW only**;
+- recovery vaults, MobileSync backup, Documents, Movies and historical evidence
+  as protected human data.
+
+It uses `du -skx` to measure allocated bytes with bounded subprocess time;
+symlinked targets are excluded. Parent project roots and nested generated
+outputs **overlap and must never be summed**. Large/unknown result is not
+deletion permission. A later feature may promote a candidate into an exact
+clean-worktree/hardlink/reference-verified, one-transaction reclaim path;
+until then it is observation, never `rm -rf`.
+
+Owner Mac result (Oct 28): original four-cache policy reclaimed 0.00 GiB;
+eight-cache opt-in policy reclaimed **81,528 KiB** (~79.6 MiB) from 3.82 to
+3.90 GiB free, receipt
+`.aoe2war-release/storage-local-receipts/20261028T041555Z-local-maintenance.json`.
+This is **not** a capacity recovery. Further decisions must target measured
+gigabyte-scale regenerable artifacts, with real APFS `df -k "$HOME"` deltas.
+Do not suggest erasing a ~38-GiB protected recovery vault or ~37-GiB
+MobileSync backups as automatic cleanup.
 
 ## Capacity triage and preventive operating loop (October 2026)
 
@@ -721,3 +871,396 @@ evidence.
 The mounted evidence volume is included using the normal Storage OS snapshot so
 one report covers all three planes. Classification is evidence for the next
 planning step, not permission to delete.
+
+
+## Session D named Mac measurement and Level 1 review registers
+
+The permanent `aoe2war storage local-plan --json` command incorporates a
+bounded `local-pressure --limit 512 --json` named-path census. Every observed
+name has a typed `measurement_reason`, `allocated_bytes` and a metadata-only
+SHA-256 fingerprint. A verified absent path has zero allocation; symlinks,
+foreign mounts, permission/timeout/du failure, a vanished path, and identity
+drift produce **null allocation**, an exact entry in `measurement_gaps`, and
+a source-owned **read-only** next action. Rows remain named-only and can overlap;
+the census does not inspect the entire Mac.
+
+`coverage.measurement_gaps` in the local plan preserves *all* failing named
+rows, even when the display is capped. `coverage.apfs_accounting` separately
+reports ordinary statvfs headroom with unknown snapshot, clone and purgeable
+bytes left null; `du` allocation is **never** unique recoverable APFS space.
+
+`level_1_candidate_register` contains only positive-sized, exact-path
+allowlisted classes already previewed by existing `local-maintain`. These are
+evidence records, **not automatically approved candidates**. Each retains
+producer-lane, allocated size, candidate fingerprint and regeneration/consumer/
+protected-ancestry evidence gaps; overlaps are flagged and *all* have
+`mutation_authority=NONE`, unknown unique APFS gain and required owner
+approval. The register never includes historical three-build targets, E5,
+CrossOver, Codex state, replay/financial records, MobileSync, recovery or user
+archives.
+
+`level_2_owner_review_register` contains the named REVIEW, PROJECT_REVIEW and REBUILDABLE_REVIEW paths, including discovered generated worktree `node_modules` symlinks explicitly held as `LEVEL_2_HOLD_SYMLINK_REFERENCE_NO_TRAVERSAL`. Neither symlink targets nor protected ancestry are traversed or counted. `level_2_register_coverage` reports displayed/observed rows and does not claim full inventory when capped. This register keeps named REVIEW paths and unknown sizes
+separate; location, age, filename or a reversible Trash move prove no deletion
+authority. `level_1_closure.status=HOLD_NOT_CERTIFIED` until two independent
+owner-native cycles, consumer/rebuild/ancestry proof, exact owner authorization,
+durable approved transaction receipts and independently observed APFS `df`
+recovery are complete. Only Central Command can issue the final closure seal.
+No new deletion, --apply mode, automated reclaim, or source-of-truth controller
+is introduced by these diagnostic additions.
+
+## Private visual Storage Command Center — read-only first stage (2026-10-28)
+
+The authenticated admin entrypoint `/admin/storage-os` is linked from
+`/admin/aoe2war-os`; it is not a public AoE2WAR website surface.
+`GET /api/admin/storage-os` is guarded by the existing admin session and
+projects already-published operator-bridge estate snapshots and the existing
+strict three-plane signed Storage Atlas reader. It executes **no host scan,
+shell command, cleanup, source deployment or remote write**. Foreground
+browser refreshes read existing receipts only, at a bounded 15-second cadence.
+The raw bridge store path, credentials, private file paths and arbitrary run
+output are not exposed by this projection.
+
+Every capacity gauge has a provenance and measured timestamp. Signed three-plane
+evidence takes precedence, but the current signed contract deliberately reports
+`admission=HOLD` and `live=false`; it is never silently promoted to live GO.
+Unsigned operator estate snapshots may show historical root/volume ordinary
+free space, clearly labeled as estate receipts, not signed collector readings.
+Absent Mac evidence renders UNKNOWN, **not** the last operator-terminal number
+copied into source. No trend or rate is invented when repeated samples are
+unavailable. Source/remote/production parity uses existing release identities.
+
+The Mac Level 1 cleanup meter remains unscored in this first UI until a
+privately admitted, fresh, independently verified Mac closure receipt can
+supply its exact completed gates and denominator. The owner-side narrative
+baseline (2 of 8 engineering milestones) is deliberately **not hardcoded into
+the frontend** as an apparently live fact. Neither the dashboard nor signed
+Atlas public projection grants deletion or deployment authority.
+
+Follow-up, separate source-owned implementation: reuse the already installed
+VPSSentry Mac Pulse schedule and existing HEL1 observer/sentinel contracts to
+publish bounded versioned observations, signed when eligible, with freshness,
+prev-hash sequence and complete/partial classifications. Do not add a second
+scan timer merely because a browser needs data. Add native live-feeds for
+generated builds, rollback generations, dependency caches, code/worktree
+consumers, APFS snapshot and clone uncertainties, and build/stage runway only
+after the source owners establish evidence contracts and bounded cost.
+The private page must display UNKNOWN for every unpublished measurement.
+
+## Session D gigabyte-first generated-output ranking
+
+The **existing** `aoe2war storage local-plan --json` command now carries a
+`gigabyte_generated_ranked_plan` generated from the same bounded named Mac
+census, not a separate scanner. The census observes only *existing* named
+`.next`, `.turbo`, `dist`, `build`, `node_modules`, `.direnv` and
+`.yarn-cache` children under at most 120 immediate `AoE2HDBets` project
+directories and declared Git worktrees. It does **not** traverse arbitrary
+source trees, protected user folders, or symlink targets. The display upper
+bound rises to 1024 rows, with explicit truncation and unknown measurements.
+
+Only exact named, complete, metadata-fingerprinted, nonsymlink rows of at
+least **256 MiB** enter the descending ranking. Their original full paths
+are the identity; repeated basename labels confer no equality. Project-root
+`du` sizes overlap generated children and are never summed into reclaim
+figures. Parent/child generated paths are flagged `PARENT_CHILD_GENERATED_OVERLAP`.
+The nominal nonoverlapping, unprotected `du` sum is gross allocated
+information, **not** unique physical APFS space.
+
+For each row, `source_head`, build ID, regeneration, active consumer,
+hardlink, mount, owner approval, and source cleanliness remain explicitly
+unattested until independent owner-native evidence arrives. Protected paths
+such as `.codex`, E5, `api-prodn`, Wolo/replay/finance, recovery,
+CrossOver and Docker stay `PROTECTED_ANCESTRY_HOLD`. Symlinked dependency
+roots are kept in `unknown_generated`, with null allocation; they are
+never dereferenced or treated as space to recover.
+
+The JSON verdict is `EVIDENCE_INSUFFICIENT`; certified unique reclaim
+is zero, expected APFS unique gain and the shortfall to +20 GiB are **null**.
+This is **not** permission to use `--apply`. Reuse existing
+`storage local-reclaim-three-next` for a separate read-only exact
+historical-target preflight; previously removed builds must stay STALE/HOLD.
+Any new deletion authorization, if later independently qualified, requires
+its own narrowly reviewed, receipt-backed existing-controller transaction
+and owner approval. No new mutator or cleanup batch has been added here.
+
+## Private Storage OS GET side-effect boundary
+
+The authenticated `GET /api/admin/storage-os` uses the existing
+`readAoe2OsStorageEvidence` read-only adapter, **not** the general dashboard
+loader. It reads only the already-existing bridge and estate snapshot JSON
+receipts. Missing files return null/UNKNOWN without creating state, runs,
+or events directories, writing snapshots or initializing an operator store.
+The existing general AoE2WAR OS dashboard and its run-controller behavior
+are not changed by this adapter. Signed-Atlas verification remains separate;
+no storage cleanup, remote command, release activation, extra collector or
+new authorization is added.
+
+## Session D protected-role correction for five owner-native generated candidates
+
+The 2026-10-28 owner-native #971 generated rank had five >=256 MiB
+named generated outputs totaling **4.392 GiB gross `du` allocation**,
+**zero independently certified unique APFS recovery**. These rows are
+source-proven measurements of allocations, **not** deletion eligibility.
+
+The existing `generated_rank` now separates explicit source-owned policy
+roles from historical generated **unqualified** review:
+- `PROTECTED_E5_SEAL`: E5 `.next` (1.214 GiB gross);
+- `PROTECTED_CANONICAL_ACTIVE_DEPENDENCIES`: canonical
+  `app-prodn/node_modules` (0.830 GiB gross);
+- `PROTECTED_CODEX_WORKTREE`: registered `.worktrees/codex-*`
+  dependency roots, including `codex-final-satchel-qualification`
+  (0.830 GiB gross), and `~/.codex` worktree paths;
+- `PROTECTED_WATCHER_SIGNED_WEBSITE_DISTRIBUTION`:
+  `aoe2-watcher/dist` (0.688 GiB gross in the accepted rank), known
+  linked from the website download path; the signed/release-sensitive output
+  is not an ordinary obsolete `dist`;
+- `HISTORICAL_GENERATED_UNQUALIFIED`:
+  `app-prodn-renaissance-phase1-20261020/node_modules` (0.830 GiB gross),
+  **still HOLD** for rebuild, source cleanliness, consumers, owner, hardlink,
+  mount and APFS unique recovery proof, not eligible Level 1.
+
+Role classification uses exact structural path identity, including
+`codex-*` only in the declared worktree namespace, rather than the
+previous exact path-part check. It is a source-owned protection policy, **not**
+live `lsof`/Git/owner/clone/rebuild attestation. Existing per-row unknowns,
+HOLD reasons, null unique bytes and `mutation_authority=NONE` remain
+unchanged. Duplicate exact paths now block even the *informational*
+unprotected, nonoverlapping gross allocation estimate; nested generated
+parent/child allocations continue not to add. Input claims about hardlinks
+are never accepted as proof of exclusive physical extents.
+
+Do not rescan, apply, remove, migrate, unlink aliases or treat any of the
+five rows as an approved deletion. Central Gate 3 needs owner-native read-only
+adoption of corrected roles; Gates 4-8 remain held for real independent
+physical, source, consumer and approval evidence. +20 GiB is not established
+from these allocations.
+
+## Private Storage OS radial anatomy, hogs and activity (2026-10-28)
+
+The private `/admin/storage-os` dashboard has a real-data two-ring storage
+visualization: inner slices classify L1–L4 protection, outer slices show the
+largest published storage consumers for the selected Mac, HEL1 root or HEL1
+evidence-volume plane. Each drive card shows its two largest verified consumers
+without drilldown. The ranked list has explicit gross allocated GiB and
+HOLD/protection status. A separate activity view shows published generation,
+prune-receipt, prune-HOLD, upcoming owner-review, collection and snapshot
+events. No button launches a deletion, prune, file walk or build.
+
+**Strict source and geometry boundaries:**
+- The optional `lib/storageVisualPrivate.ts` reader accepts only an exact
+  bounded `aoe2war.storage-visual.signed.v1` envelope, carrying a
+  `aoe2war.storage-visual.private.v1` payload. It verifies HMAC-SHA256 over
+  `AOE2WAR_STORAGE_VISUAL_V1\\0` followed by sorted-key, UTF-8 compact
+  JSON (cross-language publishers must match this byte sequence), with an
+  **independent**, owner-managed 32–64 byte signing key in
+  `AOE2WAR_STORAGE_VISUAL_HMAC_KEY` (hex; never re-use the Mac Pulse key).
+  Server reads a single existing `state/storage-visual.v1.json` file from
+  the established `AOE2WAR_OS_STORE_DIR` only, no file creation or network
+  fetch, with bounded size, regular-file/no-symlink checks and timestamps.
+- Payload `generated_at` is ISO UTC and `planes` is an array of at most
+  three objects. Each plane has `id`, `observed_at`, `coverage` of
+  `PARTIAL` or `DISJOINT`, at most 32 `hogs`, and at most 64 `events`.
+  A hog is `{key, gross_allocated_bytes, overlaps}`. Keys are restricted
+  to source-owned `HOG_CATALOG`; server assigns L1–L4 policy, not publisher.
+  An event is `{id, at, kind, category, bytes, transaction_digest}`.
+  Kind is `GENERATED`, `PRUNE_RECEIPT`, `PRUNE_HOLD`, `NEXT_REVIEW`,
+  `SNAPSHOT` or `COLLECTED`. A prune receipt requires an exact hex SHA-256
+  transaction digest. All fields are bounded and audited; no raw personal
+  paths, credentials, URLs, identifiers of people or financial ledger
+  content pass into the browser.
+- A valid HMAC is **private provenance**, not three-host Ed25519 Atlas
+  admission, not an independently certified APFS recovery or financial
+  authority. `gross_allocated_bytes` may overlap parents/children, clones,
+  hardlinks and protected descendants. Pie segments are proportions of
+  *reported gross category sizes only*, not fractions of physical disk usage;
+  any `DISJOINT` claim is restricted to reported categories and rejected
+  when overlapping rows are present. Never add the radial sum to an APFS
+  free-space figure. A `PRUNE_RECEIPT` event displays the reported amount
+  as a receipt datum, **not** verified unique physical gain.
+- With no provisioned key or receipt, the visualization shows **NO VERIFIED
+  HOG FEED**, empty rings and no invented history. Invalid signatures or
+  malformed receipts fail closed. Underlying signed three-plane Atlas
+  remains HOLD; its admission is never promoted by this separate optional
+  private receipt.
+- The collector teams must adapt **existing** VPSSentry Mac Pulse and HEL1
+  observer sources. Do not install another timer, broad scan, new deletion
+  controller, privileged daemon or unbounded high-frequency file watcher.
+  Each publisher must supply source SHA, freshness, target mount identity,
+  categories and valid transaction receipts **before** production receiver
+  adoption and authenticated browser sign-off. No new collector has been
+  installed as part of this UI-source PR.
+
+Mac policy: CrossOver/Steam/Replay Lab, device MobileSync backups, recovery
+vault, E5 seal, active canonical app dependencies, Codex worktrees and signed
+Watcher release distribution are **L4 protected**. Historical Renaissance
+dependencies and Download contents are **L2 review**, not L1 deleted.
+HEL1 Traffic DB, active swap, evidence and finance restore systems remain
+protected until independent source-owner proof. L1 is strictly guarded
+generated artifacts after regeneration/source/consumer/mount/APFS proof.
+
+
+## Session D: 500 GB Mac L1 policy-exhaustion campaign (read-only)
+
+The separate owner-native **one-time opt-in** command is
+`./bin/aoe2war storage local-plan --l1-campaign --json`. It reuses the
+existing named `local-pressure` inventory, source `local-maintain` cache
+previews and the same `local-plan` ranker. It adds one shallow, mount-aware
+APFS Data and home metadata accounting pass through the **existing**
+`aoe2_storage_mac_pressure.py --capacity-only --json` source, and derives
+a fail-closed `l1_policy_exhaustion_decision`. It adds **no** automatic
+deletion, authorization, timer, process, private-file-content reads, sudo,
+snapshot change, indexing modification or new cleanup controller. Do not
+run repeatedly merely to make the certificate green.
+
+**Declared policy scope:** existing `HOME_BUCKETS` (including protected
+recovery, iOS backups, CrossOver/Replay, Codex and Docker), at most 120
+direct `AoE2HDBets` sibling project roots and their present immediate
+generated basename children, at most 60 worktrees declared by canonical
+`app-prodn`, and the existing source-allowlisted Yarn/Go/pnpm/Electron/
+npm/Homebrew/pip cache modes. This is **not** all applications in the user's
+`~/projects`, nested monorepos, other home accounts or the Mac's full
+physical container. The named census now reports `scope_bounds` with
+total/observed/omitted direct projects and declared worktrees separately.
+The 1024 displayed-row bound remains and explicitly holds rather than
+silently certifying omission. `ABSENT`, `SYMLINK_TARGET`, permission
+failure, timeout and out-of-scope are different classes; none authorize
+unlink. Parent and generated child allocations overlap. Existing cache
+source proof and standalone guarded transaction rules remain binding.
+
+**Capacity accounting:** native Mac only, using the preexisting source-owned
+`aoe2_storage_probe.py --plane mac` APFS identity and `statvfs` counters.
+A bounded `du -k -x -d 1` metadata-only traversal is performed once
+for `/System/Volumes/Data` and once for the actual home root, with
+per-boundary max 110 seconds, 1 MiB output limit and 8192 direct-entry
+limit. Child `lstat` refuses symlink traversal and different devices.
+Nonzero `du`, inaccessible paths, unmeasured mounts, output ambiguity,
+missing rows and timeout are typed HOLDs, **not zero usage**. Data and
+home summaries **overlap** and must not be added. `du` can account
+hardlinks only within its scan and cannot prove exclusive physical APFS
+extents, clone sharing or snapshot/other-volume usage. The unaccounted
+physical/container residual remains **null** unless independently
+measured on the owner Mac. `OBSERVED_SHALLOW` means shallow metadata
+collected; it does **not** mean the APFS container is fully accounted for.
+Neither free-space drift nor gross allocation is a physical reclaimed
+byte transaction receipt. Only one native opt-in source run is proposed;
+no ongoing disk-wide job is installed.
+
+**Mandatory certificate:** until full named and project policy scope,
+source cleanliness/BUILD_ID, pinned rebuild, consumer inactivity,
+hardlinks, mount/owner, APFS clones/snapshots/unique extent, owner approval,
+guarded transaction receipts (or externally authenticated zero-eligible
+evidence), two independent native observations, protected-data nonmutation
+and independent Central acceptance are demonstrably satisfied, the output
+is `L1_POLICY_EXHAUSTED_NO`, never a misleading all-clean.
+`certified_recovered_bytes=0` refers to this *new* campaign only.
+`no_eligible_action_signed_receipt=null`: this source has no local
+signing authority and does not counterfeit a signed receipt. Existing
+8-gate baseline **2/8** remains an independent Central observation,
+not a source-earned additional gate. No `--apply` mode exists in the
+campaign. Never convert a failed physical scan into a full-capacity YES.
+
+If the real owner-native campaign still finds only protected or unqualified
+historical generated material, the defensible outcome is **NO** to the
+present complete-policy certificate with an exact blocker register;
+the +20 GiB new safe cleanup target is **not** demonstrated. Once Central
+accepts that no in-scope *provably safe* actions remain, it may separately
+decide a bounded **zero-eligible** policy disposition without claiming
+that all 500 GB were independently inspected or automatically reclaimable.
+No new broad inventory after the scope is conclusively classified.
+
+
+## Private five-level Storage OS, immutable owner originals and bounded intent (W1)
+
+This section supersedes any earlier four-level **display** policy; it does not
+change the existing signed storage measurement, Mac L1 census scope or owner
+release/deletion permits. All three independent planes are Mac APFS Data, HEL1
+root and HEL1 evidence volume. A plane's policy-scope L1 closure denominator
+and independently certified APFS physical gain remain **UNKNOWN** until
+source-owning D/C/E and owner-native witnesses prove them. No 100% is inferred
+from a list of measured aliases or gross directory sizes.
+
+- **L1 · guarded generated/obsolete:** require exact source/consumer/build
+  identity, closed policy-scope denominator, mount/clone/hardlink/unique
+  physical gain and rollback proof plus owner-scoped exact allowlist/lease.
+  Only L1 *could ever* qualify for an autonomous controller after a distinct
+  bounded permit. This PR has **no such permit, delete API or controller**.
+- **L2 · owner taught rebuildables:** category preview, independent rebuild
+  and reversal, anticipated unique gain and category+exact-action consent.
+  No standing blanket approval or automatic batch from a signed inventory.
+- **L3 · ambiguous individual:** one exact source alias and owner decision
+  at a time; migration *review intent* is not migration execution.
+- **L4 · human-only high-risk:** software provides no delete operation, even
+  when a human chooses to review. It cannot be batched.
+- **L5 · express NEVER DELETE:** permanent, highest-priority owner
+  classification. Includes the original ~1GiB ChatGPT Model 4.0 conversation
+  ZIP, original photos, designated independent ~40GiB Mac project disaster
+  recovery copy, wallet/signer/consensus/financial/liability originals,
+  immutable evidence archives, and all historic L4 **PROTECTED** classes
+  (CrossOver/Steam/Replay Lab, backups, protected recovery, Codex, current
+  releases, signed Watcher, Traffic/evidence/financial stores and swap).
+  Do not downgrade, delete, migrate automatically, or use generic review
+  `REVOKE` to strip this classification. Changing permanent L5 requires a
+  distinct owner-driven protection-removal process **not implemented here**.
+
+**W1 C-v1 source-contract acceptance HOLD (2026-10-29):** the accepted
+VPSSentry sender `aoe2war.storage-visual.source-plane.v1` authenticates
+only an exact 12-field payload (role, mount, source digest, timestamp,
+PARTIAL coverage, bounded category hogs, empty events and denial of
+delete/financial authority). Both C strict sender and G authenticated bridge
+reject any `review_items` or `capacity_samples` additions. The G receiver
+projects ONLY signed gross categories, NOT individual candidate aliases,
+capacity-history observations, policy-scope eligibility or physical gains.
+Although an offline legacy private HMAC parser can read optional review items
+to validate L4→L5 forensic migration, production read projection strips those
+fields, the authenticated review POST returns
+`409 REVIEW_SOURCE_TRANSPORT_UNAVAILABLE`, and the private UI shows
+`INDIVIDUAL OWNER REVIEW UNAVAILABLE` with no item approvals or revocation.
+Existing append-only history is preserved in private storage, not promoted
+to actionable current review decisions. This blocks **per-item owner approval**
+until a distinct C-approved versioned signed transport, source producer,
+provenance/mount/rollback/unique extent checks and genuine ACK/browser receipt
+have been independently qualified. It does **not** prevent truthful category
+gross hog display through the existing C v1 source HMAC. Never silently
+add optional fields to C v1, fabricate a source alias or use gross-byte
+drift to imply physical reclaim.
+
+The fixed server-side category catalog never trusts a publisher-provided
+level. Existing HMAC-signed L4 PROTECTED review items fail-closed migrate
+to L5 in the read view, without mutating signed originals or rewriting the
+append-only private historical ledger. An explicitly claimed lower level
+for an old protected item is rejected. New owner-original category keys
+are fixed, path-free and cannot include real names or sensitive bytes.
+All L5 generic review POSTs (including PROTECT/REVOKE) are rejected both
+by admin HTTP and direct ledger append, and the UI renders **no software
+decision buttons** for L5. Old evidence is retained, not erased.
+Current L4 is deliberately human-only.
+
+Signed source HMAC optional `review_items` (up to 48/plane) and bounded
+`capacity_samples` (24/plane) remain private and path-free. Gross hog
+allocations can overlap APFS snapshots/clones; zero emitted hog entries means
+**no verified ranked hog observation**, not measured 0 bytes. No live publisher
+is invented. Owner review POST is admin-gated, same-origin, request bounded,
+source/fingerprint CAS, 0600 append-only with 10-minute L1 intent lease
+and `INTENT_ONLY_NO_DELETE` for all levels. L5 is permanently excluded
+regardless of history. Snapshot free-space changes are not causal
+cleanup transaction receipts. Backend/read-side, signed history and all
+three levels must fail-closed on missing, stale or forged source data.
+
+**L1 coverage is NOT 100%:** Mac D's latest accepted 8-gate baseline remains
+2/8, 0B new certified unique APFS gain. These are not a closed eligible
+denominator for the three independent planes. No candidate cleanup, Finder
+index operation, HEL1 backup/resize, user-file mutation or production
+activation has been authorized. The last owner-native ordinary Mac free-space
+capture was 17.704GiB; the preferred **40GiB** Data indexing headroom requires
+22.296GiB additional *genuine* space. Root/Data Spotlight indexing remained
+disabled at that capture. Preserve historical epoch-zero birth/mtime evidence.
+Only after separate owner permission and capacity acceptance consider
+`mdutil -i on /System/Volumes/Data` (never `-E`), then prove two new normal
+files actually appear in Recents, Finder This Mac and Spotlight with correct
+dates. L1/Finder may stay PENDING at website W1 launch where they are not
+protected release preconditions.
+
+The existing canonical Mac action board, D source-owned census and signed
+C publisher are independent. Do not duplicate scanners, watchers, timers,
+release controllers or financial authority. Current W1 release is still
+independently capacity/backup/Doctor/financial-noninterference/owner-permit
+gated.

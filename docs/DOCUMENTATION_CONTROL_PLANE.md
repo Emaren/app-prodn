@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/20261024-live-watcher-atomic-admission` at `2337493a5d71309dd86a61f6e35d052ef9ac7776`
+Implementation baseline: `feat/session-g-central-command-admin-w1-20261029` at `9d38af03aef1b16cd21cddef1a250b8b70949997`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **96**
+- Authoritative repository documents: **102**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 60
-- `runbook`: 17
+- `reference`: 62
+- `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 80
+- `active`: 81
+- `draft`: 5
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -66,6 +67,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
+| [Private Central Command OS](CENTRAL_COMMAND_OS.md) | `reference` | `active` | `private-source-dispatch-contract` |
 | [AoE2WAR Challenge Protocols and Presentation](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Belt Constitution V1](CHAMPIONSHIP_BELT_CONSTITUTION.md) | `reference` | `active` | `product-contract` |
 | [Championship Belt Chain Capability Handoff](CHAMPIONSHIP_CHAIN_HANDOFF.md) | `reference` | `active` | `integration-contract` |
@@ -97,6 +99,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
+| [Living Kingdom Admin Observatory](LIVING_KINGDOM_ADMIN.md) | `reference` | `draft` | `admin-journey-read-projection` |
 | [Local Development](LOCAL_DEVELOPMENT.md) | `runbook` | `active` | `operator-contract` |
 | [Marketplace Business V1](MARKETPLACE_BUSINESS.md) | `reference` | `active` | `financial-domain-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
@@ -118,7 +121,11 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
 | [AoE2WAR Certified Release Engineering Seal — 2026-08-10](RELEASE_ENGINEERING_SEAL_2026-08-10.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Release Recovery OS](RELEASE_RECOVERY_OS.md) | `reference` | `active` | `release-recovery-contract` |
+| [Renaissance 88 Public Route Evidence Factory](RENAISSANCE_88_FACTORY.md) | `runbook` | `draft` | `candidate-browser-diagnostics` |
+| [Round Four: Disposable Browser Dependencies and A11y Triage](RENAISSANCE_88_ROUND4.md) | `runbook` | `draft` | `candidate-fixture-observation` |
 | [Renaissance OS](RENAISSANCE_OS.md) | `reference` | `active` | `renaissance-campaign-integration-contract` |
+| [Renaissance 88 — Repeatable page qualification protocol](RENAISSANCE_PAGE_QUALIFICATION_PROTOCOL.md) | `runbook` | `draft` | `candidate-browser-and-criterion-worklist-not-certification` |
+| [Renaissance Tab D — private census forge and Test Forge queue](RENAISSANCE_TABD_FORGE.md) | `runbook` | `draft` | `candidate-private-source-inventory` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Replay Truth OS](REPLAY_TRUTH_OS.md) | `runbook` | `active` | `operational-procedure` |

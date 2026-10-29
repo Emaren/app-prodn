@@ -733,7 +733,7 @@ export default function DownloadPage() {
                 : "mt-4 rounded-[1.5rem] border border-white/8 bg-black/25 p-4"
             }
           >
-            <pre className="overflow-x-auto text-sm leading-7 text-slate-100">
+            <pre role="region" tabIndex={0} aria-label="Watcher installation commands" className="overflow-x-auto text-sm leading-7 text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
               <code>{MAC_TERMINAL_FALLBACK}</code>
             </pre>
           </div>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { ArrowRight, Crown, ExternalLink, Flame, Landmark } from "lucide-react";
 
 type KingdomStat = {
@@ -156,21 +156,12 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
     cycleTitle();
   }
 
-  function handleHeroKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (event.key !== "Enter" && event.key !== " ") return;
-    const target = event.target as HTMLElement;
-    if (target.closest("a,button")) return;
-    event.preventDefault();
-    cycleTitle();
-  }
 
   return (
     <section
       className="relative isolate min-h-[38rem] cursor-pointer overflow-hidden rounded-[2.2rem] border border-amber-100/18 bg-[#03060c] shadow-[0_44px_140px_rgba(0,0,0,0.52),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-white/[0.055] sm:min-h-[43rem] lg:min-h-[46rem]"
       onClick={handleHeroClick}
-      onKeyDown={handleHeroKeyDown}
-      tabIndex={0}
-      aria-label="Cycle Kingdom hero title styles"
+
     >
       <Image
         src="/kingdom/kingdom-hero-bg.webp"
@@ -189,6 +180,11 @@ export default function KingdomHero({ featuredStats }: KingdomHeroProps) {
         <div>
           <div className="flex flex-wrap gap-2">
             <HeroChip icon={<Crown className="h-3.5 w-3.5" />}>AoE2WAR</HeroChip>
+            <button type="button" onClick={cycleTitle}
+              aria-label="Cycle Kingdom hero title styles"
+              className="rounded-full border border-amber-100/20 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-100 transition hover:border-amber-100/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200">
+              Change title style
+            </button>
             <HeroChip icon={<Flame className="h-3.5 w-3.5" />} tone="green">
               Feudal Age
             </HeroChip>

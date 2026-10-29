@@ -25,6 +25,24 @@ LOCAL_REGENERABLE_PATHS = (
     ("pnpm_cache", Path("Library/Caches/pnpm")),
     ("core_simulator_cache", Path("Library/Developer/CoreSimulator/Caches")),
 )
+# An explicitly opted-in extension of the EXISTING local-maintain authority.
+# These are only package-manager content/download caches. No projects,
+# worktrees, npm installations, Xcode builds, iOS backups, journals, or user data.
+LOCAL_EXTENDED_REGENERABLE_PATHS = (
+    ("npm_content_cache", Path(".npm/_cacache")),
+    ("homebrew_download_cache", Path("Library/Caches/Homebrew")),
+    ("pip_download_cache", Path("Library/Caches/pip")),
+    ("pip_user_cache", Path(".cache/pip")),
+)
+
+# Separate, explicit opt-in for two downloaded Electron toolchain caches.
+# This mode does not select the legacy or --extended cache roots, and never
+# touches a project's node_modules, releases, CrossOver, Steam or recordings.
+LOCAL_ELECTRON_REGENERABLE_PATHS = (
+    ("electron_binary_download_cache", Path("Library/Caches/electron")),
+    ("electron_builder_download_cache", Path("Library/Caches/electron-builder")),
+)
+
 LOCAL_PROTECTED_PATHS = (
     ("recovery_vault", Path("aoe2war-recovery")),
     ("codex_sessions", Path(".codex/sessions")),
@@ -1189,20 +1207,103 @@ def _assert_local_reclaim_path(home: Path, path: Path) -> None:
         raise StorageError(f"local cache path escapes operator home: {path}")
 
 
-def local_maintain(*, apply: bool, json_mode: bool, home: Path | None = None) -> int:
+
+def _verify_electron_cache_inactive(paths: list[Path]) -> None:
+    """Fail-closed on packaging processes or open cache descriptors on owner Mac.
+
+    This is a second in-OS guard, not just advice in an LLM-generated shell
+    script. A process/start race is still possible; do not auto-schedule apply.
+    """
+    if sys.platform != "darwin" or os.geteuid() != os.getuid():
+        raise StorageError("Electron cache mutation requires owner macOS session")
+    for argv, timeout in ((["ps", "-axo", "comm="], 15), (["lsof", "-nP", "-F", "n"], 60)):
+        try:
+            result = subprocess.run(argv, capture_output=True, text=True,
+                                    check=False, timeout=timeout)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise StorageError("Electron consumer census unavailable") from exc
+        if result.returncode != 0 or len(result.stdout) > 4_000_000:
+            raise StorageError("Electron consumer census incomplete")
+        if argv[0] == "ps":
+            active = ("electron-builder", "electron-packager", "electron-forge",
+                      "electron-rebuild")
+            if any(any(line.strip().lower().split("/")[-1] == executable for executable in active)
+                   for line in result.stdout.splitlines()):
+                raise StorageError("active Electron packaging process")
+        else:
+            targets = [str(path) for path in paths]
+            for line in result.stdout.splitlines():
+                if line.startswith("n") and any(
+                    line[1:] == target or line[1:].startswith(target + os.sep)
+                    for target in targets
+                ):
+                    raise StorageError("open Electron cache descriptor")
+
+
+def local_maintain(*, apply: bool, json_mode: bool, extended: bool = False,
+                   electron_only: bool = False, home: Path | None = None) -> int:
+    if extended and electron_only:
+        raise StorageError("--electron-only cannot be combined with --extended")
     operator_home = (home or Path.home()).resolve()
     before = local_storage_snapshot(measure=True, home=operator_home)
+    extra_candidates = []
+    for name, relative in LOCAL_EXTENDED_REGENERABLE_PATHS:
+        path = operator_home / relative
+        # A newly introduced cache must not block the legacy four-cache lane.
+        # Extended apply, however, fails closed on any untrusted path before
+        # deleting the first cache.
+        blocked_reason = None
+        try:
+            _assert_local_reclaim_path(operator_home, path)
+            if path.exists() and not path.is_dir():
+                raise StorageError(f"extended cache target must be a plain directory: {path}")
+        except StorageError as exc:
+            blocked_reason = str(exc)
+            if extended:
+                raise
+        extra_candidates.append({
+            "name": name, "path": str(path), "exists": path.exists(),
+            "allocated_bytes": _allocated_bytes(path) if path.exists() and not blocked_reason else 0,
+            "blocked_reason": blocked_reason,
+        })
+    # Electron is a distinct cache lane. Fail closed on BOTH targets before
+    # deleting either; never expand the legacy/default or extended allowlists.
+    electron_candidates: list[dict[str, Any]] = []
+    if electron_only:
+        for name, relative in LOCAL_ELECTRON_REGENERABLE_PATHS:
+            path = operator_home / relative
+            _assert_local_reclaim_path(operator_home, path)
+            if path.exists() and not path.is_dir():
+                raise StorageError(f"Electron cache target must be a directory: {path}")
+            electron_candidates.append({
+                "name": name, "path": str(path), "exists": path.exists(),
+                "allocated_bytes": _allocated_bytes(path) if path.exists() else 0,
+            })
+    selected = (
+        LOCAL_ELECTRON_REGENERABLE_PATHS if electron_only else
+        LOCAL_REGENERABLE_PATHS + (LOCAL_EXTENDED_REGENERABLE_PATHS if extended else ())
+    )
     payload: dict[str, Any] = {
         "schema": 1,
         "kind": "aoe2war-local-storage-maintenance",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "apply": apply,
+        "extended": extended,
+        "electron_only": electron_only,
+        "electron_candidates": electron_candidates,
+        "electron_reclaimable_bytes": sum(int(row["allocated_bytes"]) for row in electron_candidates),
+        "extra_candidates": extra_candidates,
+        "extra_reclaimable_bytes": sum(int(row["allocated_bytes"]) for row in extra_candidates),
         "before": before,
         "actions": [],
         "status": "PREVIEW",
     }
     if apply:
-        for name, relative in LOCAL_REGENERABLE_PATHS:
+        if electron_only:
+            _verify_electron_cache_inactive(
+                [operator_home / relative for _, relative in LOCAL_ELECTRON_REGENERABLE_PATHS]
+            )
+        for name, relative in selected:
             path = operator_home / relative
             _assert_local_reclaim_path(operator_home, path)
             existed = path.exists()
@@ -1241,14 +1342,23 @@ def local_maintain(*, apply: bool, json_mode: bool, home: Path | None = None) ->
         print("⚔️  AOE2WAR LOCAL STORAGE")
         print()
         print(f"Status:          {payload['status']}")
-        print(f"Reclaimable:     {gib(before['reclaimable_bytes'])}")
+        print(f"Four-cache plan: {gib(before['reclaimable_bytes'])}")
+        print(f"Extra opt-in:    {gib(payload['extra_reclaimable_bytes'])} across four package caches")
+        print(f"Extended apply:  {'YES' if extended else 'NO'}")
+        print(f"Electron only:   {'YES' if electron_only else 'NO'}")
+        if electron_only:
+            print(f"Electron plan:   {gib(payload['electron_reclaimable_bytes'])} · two download caches")
         print(f"Free before:     {gib(before['filesystem']['free_bytes'])}")
         if apply:
             print(f"Free after:      {gib(payload['after']['filesystem']['free_bytes'])}")
             print(f"Measured gain:   {gib(payload['reclaimed_bytes'])}")
             print(f"Receipt:         {payload['receipt']}")
         else:
-            print("READ ONLY: pass --apply to remove only the four allowlisted regenerable caches.")
+            if electron_only:
+                print("READ ONLY: --apply --electron-only removes ONLY the two named Electron download caches.")
+            else:
+                print("READ ONLY: --apply removes only four original caches; --apply --extended")
+                print("adds npm content, Homebrew downloads, and two pip download cache roots.")
     return 0
 
 
@@ -1455,6 +1565,11 @@ def self_test() -> int:
     assert (p["healthy_target"], p["maintenance_due"], p["automatic_threshold"], p["critical"]) == (78, 82, 85, 92)
     assert p["protected_newest"] == 2
     assert p["root_maintenance_host"] == "root@hel1"
+    assert {name for name, _ in LOCAL_EXTENDED_REGENERABLE_PATHS} == {
+        "npm_content_cache", "homebrew_download_cache", "pip_download_cache", "pip_user_cache",
+    }
+    assert not ({str(path) for _, path in LOCAL_REGENERABLE_PATHS} &
+                {str(path) for _, path in LOCAL_EXTENDED_REGENERABLE_PATHS})
     assert GENERATION_RE.fullmatch("activate-20260818T195631Z-005546f4068d")
     assert not GENERATION_RE.fullmatch("../activate-20260818T195631Z-005546f4068d")
     expected = "aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae"
@@ -1484,7 +1599,19 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--measure", action="store_true")
     q = sub.add_parser("local-maintain")
     q.add_argument("--apply", action="store_true")
+    q.add_argument("--extended", action="store_true", help="explicitly include four additional package download/content caches")
+    q.add_argument("--electron-only", action="store_true", help="opt-in two standalone Electron toolchain download caches, no other cache roots")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("local-pressure")
+    q.add_argument("--json", action="store_true")
+    q.add_argument("--limit", type=int, default=30)
+    q.add_argument("--focus", choices=("generic_cache",), help="bounded read-only cache child drilldown")
+    q = sub.add_parser("local-plan")
+    q.add_argument("--json", action="store_true")
+    q.add_argument("--l1-campaign", action="store_true",
+                   help="one read-only native Mac L1 capacity and policy review, never apply")
+    q = sub.add_parser("local-reclaim-three-next")
+    q.add_argument("--apply", action="store_true")
     q = sub.add_parser("deep-census")
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("triage")
@@ -1505,6 +1632,15 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("handoff_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("db-snapshots")
     q.add_argument("db_snapshot_args", nargs=argparse.REMAINDER)
+    q = sub.add_parser("atlas-snapshot")
+    q.add_argument("--inputs", type=Path, required=True)
+    q.add_argument("--previous", type=Path)
+    q.add_argument("--public", action="store_true")
+    q = sub.add_parser("artifacts")
+    q.add_argument("--inventory", type=Path, required=True)
+    q.add_argument("--apply", action="store_true")
+    q = sub.add_parser("atlas-probe")
+    q.add_argument("--plane", required=True, choices=("mac", "hel1-root", "hel1-volume-105319120"))
     return p
 
 
@@ -1531,7 +1667,28 @@ def main() -> int:
             print_estate(payload)
         return 0
     if args.command == "local-maintain":
-        return local_maintain(apply=args.apply, json_mode=args.json)
+        return local_maintain(apply=args.apply, json_mode=args.json, extended=args.extended,
+                              electron_only=args.electron_only)
+    if args.command == "local-pressure":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_mac_pressure.py"),
+               "--limit", str(args.limit)]
+        if args.focus:
+            cmd.extend(["--focus", args.focus])
+        if args.json:
+            cmd.append("--json")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "local-plan":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_local_plan.py")]
+        if args.json:
+            cmd.append("--json")
+        if args.l1_campaign:
+            cmd.append("--l1-campaign")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "local-reclaim-three-next":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_reclaim_three_next.py")]
+        if args.apply:
+            cmd.append("--apply")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     if args.command == "triage":
         payload = storage_triage(expiry_inventory_path=args.expiry_inventory)
         if args.json:
@@ -1573,6 +1730,20 @@ def main() -> int:
             *args.db_snapshot_args,
         ]
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "atlas-snapshot":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_atlas.py"), "--inputs", str(args.inputs)]
+        if args.previous is not None:
+            cmd.extend(["--previous", str(args.previous)])
+        if args.public:
+            cmd.append("--public")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "artifacts":
+        cmd = [sys.executable, str(ROOT / "scripts" / "aoe2_storage_artifacts.py"), "--inventory", str(args.inventory)]
+        if args.apply:
+            cmd.append("--apply")
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "atlas-probe":
+        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_probe.py"), "--plane", args.plane], cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
 
 

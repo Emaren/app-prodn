@@ -15,26 +15,483 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
-## October 18 — high-confidence commit-history security census for oversized PRs
+## October 26, 2026 — historical Index numbers retain their original date and source
 
-GitGuardian skipped the War Satchel integration draft because of its
-large PR size. The existing tracked-file scan already checks the current
-checkout. The CI release/documentation lane now additionally checks
-**added text in each reviewed commit**, including merge resolutions,
-using the repository's existing high-confidence credential patterns.
-The scanner requires an exact Git base SHA, bounded commit count/patch
-size, and available Git ancestry; ambiguous analysis fails the job.
-Reports show only commit, path and finding class—never credential bytes.
-Deleted credentials in intermediate revisions are therefore still visible
-as audit findings. Tests cover added versus removed lines and sensitive
-paths. An unchanged current checkout cannot erase earlier findings.
+The website-only Kingdom Index candidate preserves PR #930's `HIST.` score
+fallback. Its `historicalReview` metadata now comes from the same immutable
+baseline record as `lastReviewScore`, including the original review date,
+source fingerprint and review references. A newer operator observation
+cannot replace those fields or lend its timestamp to an older estimate.
+Missing historical provenance stays unknown. The ledger's **REVIEW DATE**
+and detail drawer follow the displayed score's lineage; calendar-day reviews
+remain `DATE ONLY` rather than implying an observation at midnight UTC.
 
-**Security evidence limitation:** this is a targeted first-party
-high-confidence/history scan, NOT a replacement for full GitGuardian
-coverage, entropy/credential-verification detection, binary scans,
-independent key provenance or a security review. A green result is
-neither a finance release permit nor proof of vault isolation. A real
-secret exposure requires credential rotation and dedicated investigation.
+Historical estimates and provisional source reviews remain unauthenticated.
+They do not populate the current `score`, grant criterion approvals or certify
+the deployed build. The existing signed, source/build-bound publisher and
+expiry/replay checks remain required for actual current certification. This
+change adds no score issuer, financial authority, migration or release permit.
+
+## October 25, 2026 — Round Five release-health gate and producer lineage
+
+**Only a dated operational measurement can change Doctor/GI.** Owner evidence
+remains Doctor 59/100 UNSAFE (2 P0 / 4 P1), General Inspections 69/100.
+The Round Five source work neither changes a score nor runs a collector.
+
+**Source-side correction:** all 66 check rows now include
+`expectedProducerChannel` — a deterministic route *hint* for such
+producers as SpeedOS cold-browser/edge, Central DocsV2, certified release
+gate, bounded OS statfs, original Storage OS expiry ledger, Operator Bridge,
+Wolo listener observations and replay closure. `originalProducer`,
+`originalProducerReceiptId` and `originalProducerReceiptDigest`
+remain **null** because the current sanitized snapshot contains no signed
+per-check originals; `producerAuthority:
+UNVERIFIED_FROM_PUBLISHED_SNAPSHOT` means no delivery or certification
+has been established. Missing/unrecognized check IDs are
+`unattributed`, never silently mapped to a trusted producer. The two
+root-capacity *Security* and *Organization* origin paths now record actual
+bounded statfs capture time; bridge fallback keeps its original observation
+time. No additional directory traversal, host probe or polling was added.
+
+### Website-only release health versus separately held finance
+
+| Area | Current dated source/witness | Website-only release decision | Financial/mainnet decision |
+| --- | --- | --- | --- |
+| DocsV2 `docs-check` and `strict-build` **P0** | Central 8 overdue active docs; exact-head DocsV2 gate FAIL | **Blocking governed source acceptance** until substantive source review, lineage reconciliation and independent strict CI PASS | Passing docs never authorizes funded Wolo |
+| `central-source-snapshot-stale` and `central-federation-drift` **P1** | Central snapshot/history not yet reconciled with accepted release source | **Blocking a clean release source certificate** until Central signs exact accepted source/doc IDs; do not rewrite historical SHA pins | Financial source lineage/custody must independently qualify |
+| `archive-stale` **P1** | Context camera older than latest source; no subsequent verified fresh archive | **Estate P1 blocks final Finish audit** even though storage recovery and archive generation are owned outside the web release | Does not establish chain insolvency |
+| `vps-source-drift` **P1** | WoloChain VPS checkout differs from registered baseline | **Estate P1 blocks final Finish audit**; site-only release requires actual Wolo source ancestry reconciliation while funding remains a separately held authorization | **Financial activation HELD** until actual implementation and custody lineage independently verified |
+| Evidence volume 92%, ~26 GiB free | Owner `df`, protected archive filesystem, not an inventory of expendable bytes | **Doctor BLOCKER at the observed 92% capacity**; release preflight accepts only a narrowly proven, governed retention recovery or actual independently verified capacity repair. No blind cleanup | Preserve financial journals, unique evidence and recovery copies |
+| VPS Sentry namespace + notification delivery | Sentry #4 observed `226/NAMESPACE`, failing mail, invalid webhook/backoff | **Monitoring reliability deficit**; require actual successful alert delivery and post-repair failure-free host receipts before declaring OS GREEN | No restart of consensus, signer or settlement |
+| VPS Sentry Wolo status | #5 legacy 26657/1317 monitor disagrees with separate wolo-1 RPC 27657/REST 1318 witness | **Do not falsely mark production consensus down** from legacy monitoring | Actual RPC identity/liveness alone is not verified custody or settlement |
+
+**Verified current Finish gate, not merely a recommendation:** The
+canonical `scripts/aoe2_finish.py` at main inspects Doctor **BLOCKER**
+findings in dry-run and preflight, allowing only narrowly authorized
+provenance or policy-controlled protected capacity remedies
+(lines ~4266–4318, 4689–4726). Its final independent
+`./bin/aoe2war audit --json` **fails when either P0 or P1 is nonzero**
+(lines ~4963–4984), and its final Doctor blocks on every remaining
+`BLOCKER` (lines ~4988–5005). Consequently **all six currently observed
+Estate findings prevent normal Finish certification** until actually
+repaired or an explicitly approved, source-reviewable controller policy
+changes. A site's funding boundary does **not** exempt `vps-source-drift`
+from the final source/estate gate. The observed 92% evidence volume
+breaches the Doctor critical threshold; a hypothetical automatic retention
+forecast is not authorization to clean storage and cannot be assumed.
+Warnings alone do not necessarily trigger that final hard stop, but they
+still prevent declaring a 100/HEALTHY Doctor. This gate interpretation is
+a source reading of the present controller; it is not proof of the
+controller's actual deployment or an authorization to run Finish.
+
+**Release control separation:** The current source can pass TypeScript/Node/
+PostgreSQL/Next while DocsV2 remains blocked. Even after DocsV2 passes,
+a production release requires the actual original controller workflow,
+a signed owner/witness, the accepted source SHA versus emitted BUILD_ID,
+unchanged source/secret controls and real host/rollback/pre-post-check
+evidence. Those conditions are not satisfied by a GitHub-only draft.
+Never treat an internally reported `CERTIFIED` label as independent
+production authority. Website-only release admission does not authorize
+funded settlement, balance writes, signing or treasury operations.
+
+### Bounded owner-only reinspection and immutable evidence plan
+
+1. Central DocsV2 single writer substantively reviews all eight #30 items,
+   keeps per-item reviewer+source history, corrects actual discrepancies,
+   intentionally reseals the accepted combined tree and proves strict checks.
+2. Wolo owner reconciles the exact VPS checkout ancestry and certified baseline
+   (without touching the live chain); context owner captures and hashes a
+   source-complete new durable archive, retaining the previous generation.
+3. Storage owner reads only the already-indexed recovery/expiry records and
+   small `statfs` counters, verifying two protected hot and three cold
+   checkpoints. No broad Mac `du`, unbounded SSH hash walk, `--apply`
+   or deletion. If reclaim isn't provably safe, review volume expansion.
+4. VPS Sentry owner separately fixes namespace-instance lifecycle, verifies a
+   real end-to-end delivery receipt with independent sink acceptance,
+   and updates the mainnet monitoring registry to actual `wolo-1`
+   identity/authorized ports; no service restart in this branch.
+5. After legitimate owner-approved deployment, an operator (not a public GET)
+   runs the **original** `aoe2war doctor --json` and inspect producer
+   in a bounded maintenance window. Preserve command version, exact SHA,
+   actual BUILD_ID, `observedAt`, monotonic collection sequence,
+   immutable native receipt digest, original P0/P1 codes, and source-vs-host
+   capture clock. The existing bridge consumes only permitted published
+   receipts; API requests never run Doctor or mutate infrastructure.
+6. Confirm *each* canonical check's original source, producer age, TTL,
+   receipt acceptance, failure owner and actual measured weight. Only a fresh
+   66/66 PASS evidence census **and** Doctor's own independently sourced
+   100/HEALTHY proof permits claiming green. Reducing the score by rejecting
+   stale evidence is correct until actual repair.
+
+**Governance:** This is an acceptance plan, not proof that an automatic
+scheduler, systemd repair, archive, new Wolo receipt or release has occurred.
+See [central #773](https://github.com/Emaren/app-prodn/issues/773),
+[DocsV2 #30](https://github.com/Emaren/AoE2WAR-docs/issues/30),
+[VPS Sentry #4](https://github.com/Emaren/vps-sentry/issues/4)
+and [#5](https://github.com/Emaren/vps-sentry/issues/5).
+
+## October 25, 2026 — Round Four replay-safe 66-check report
+
+The read-only `GET /api/general-inspections?report=why-not-green`
+still performs exactly **one** existing collector read. It now passes the
+**request-time clock** into the existing projection rather than deriving
+all freshness from an embedded `snapshot.generatedAt` alone.
+A previously legitimate 100/100 JSON snapshot replayed after six hours is
+**STALE**, not newly valid proof; a more-than-five-minute future-dated
+snapshot is **UNKNOWN**. The published historical category scores and
+original source/BUILD_ID claims are preserved, not recomputed or renewed.
+
+Each of the 66 `evidenceChecks` rows now labels the **claimed** source
+SHA/build version and explicitly reports
+`originalProducerReceiptId: null` and
+`originalProducerReceiptDigest: null` because the current sanitized
+`InspectionCheck` contract lacks independent per-check receipt identifiers.
+They **must not** be substituted by a stable `checkKey`, timestamp,
+browser URL or hash of reserialized report content. Native producer receipts
+remain the owner-owned requirement for promotion to independently verified
+PASS. Derived `evaluatedAt`, `snapshotAgeHours`,
+`snapshotEvidenceStatus` and per-check `evidenceStatus` are diagnosis
+fields only. Request-clock sampling is bounded, read-only and does not
+scan directories, run Doctor, or schedule any background task.
+
+**Post-merge authority gate:** The Operator Bridge owner must attach,
+for each original check receipt, a content-addressed producer receipt ID,
+original observation time, release SHA, actual BUILD_ID, environment/host,
+receipt-type, explicit finding codes, validated TTL and independent
+source identity. A hash of an unauthenticated bridge self-report cannot
+certify a release. Actual reinspection of host security/chain state needs
+a separate owner-approved safe collection path; no public API may start
+processes. Documentation P0/P1 closure still depends on the governed
+Central DocsV2 single writer, fresh context camera, and WoloChain ancestry;
+none can be closed from this projection.
+
+**Bounded capacity evidence:** Existing `statfs` reads are individually
+timestamped from the real host observation time; older bridge-backed
+fallback capacity carries the original bridge `generated_at` rather than
+being silently rebranded as a new local sample. Both have a six-hour
+reporting TTL, while a true filesystem read uses no recursive storage walk.
+A timestamp-less or expired capacity check is UNKNOWN/STALE; a *fresh
+local measured* threshold deficit is FAIL. A partially credited aging
+bridge fallback is UNKNOWN, **not** proof of a new capacity incident.
+Immutable certification proofs also need an original observation timestamp
+even though their certification validity does not automatically expire.
+
+**Explicit limitations:** 66 rows identify 66 scoring contracts, **not**
+66 new original physical measurements. A full scored row may still carry
+UNKNOWN/STALE, requiring owner acceptance of new source-bound evidence.
+Source-only CI does not prove production host repair. Protected evidence
+volume was owner measured at 92% capacity; avoid heavy Mac inventory
+scripts and all unapproved cleanup. VPS Sentry
+[`#4`](https://github.com/Emaren/vps-sentry/issues/4) and
+[`#5`](https://github.com/Emaren/vps-sentry/issues/5)
+own namespace/delivery and historical RPC-monitor reconciliation; live
+`wolo-1` uses RPC `27657`, REST `1318`, not retired `26657/1317`.
+WheatAndStone auto-renewal intentionally remains shelved.
+
+
+## October 25, 2026 — Renaissance Round Three: explicit source-versus-operation closure
+
+**Disposition: HOLD.** Latest independently supplied owner read-only Doctor at
+`2026-10-25T14:18:42.058942Z` was **59/100 UNSAFE** with Estate **P0=2,
+P1=4**; observed General Inspections was **69/100**, not remeasured after
+the source-only draft. The reported category scores are dated, not certified
+post-repair grades. CERTIFIED production source
+`6be434c00469afa4acb0623715c3bcf724f927f4` and BUILD_ID
+`xqX6Oi-zV5gSKH1kIC4zC` matched in that owner receipt. None of the
+following pending repairs allows reusing this October 25 receipt as fresh.
+
+### Estate Doctor's six exact audit producers and resolution dependencies
+
+| Severity, original `area/key` | Observed root/provenance | Source-side remedy / external proof required |
+| --- | --- | --- |
+| P0 `Documentation/docs-check` | Central strict check returned rc=2 on expired Developer guide and historical central Rivalries metadata; not evidence of a missing entire corpus | Central docs owner performs substantive review, reconciles canonical metadata and reruns `docs-check` on exact accepted source |
+| P0 `Documentation/strict-build` | Strict build blocked by same docs-generating error, rc=2 | Requires docs-check and its own successful strict build; never waive the build gate |
+| P1 `Documentation/central-source-snapshot-stale` | Central app snapshot `ad781a02aa5ffa6fd0053b817fcccf6ee0429f51` differs from actual production `6be434c00469afa4acb0623715c3bcf724f927f4` | Central verifies active vs source lineage and reviews/updates snapshot; preserve prior commit as historical |
+| P1 `Documentation/central-federation-drift` | Central `audit-taxonomy` rc=2 at same expired review blockers | Source/doc registry steward fixes real federation and reruns taxonomy audit; not equivalent to changed hash = healthy |
+| P1 `Context Durability/archive-stale` | AoE2HDBets 2026-10-23T20:03:51Z archive predates 2026-10-25T00:50:51Z latest source | VPSSentry context owner produces, hashes and verifies a newer source-complete camera without deleting the prior one |
+| P1 `WoloChain/vps-source-drift` | VPS checkout `78c25985420ee41a6678c42fab8ea8d6c3b1b519` vs registered implementation baseline `4ce11c4965da64e3d4dee6a8681b6198e1aba1eb` | WoloChain owner reviews actual code ancestry/dirty state and production contract, then governs any baseline adjustment; does **not** imply failed RPC |
+
+**Documentation details:** The original error cites
+`AoE2WAR-docs/docs/start-here/developer.md` (reviewed 2026-07-26)
+and `app-prodn/docs/RIVALRIES_AND_WAR_VAULT.md`. App-prodn **source AND
+local document registry** already recorded Rivalries `reviewed_at:
+2026-10-25`; **central taxonomy** still held `2026-07-26`. Do not
+blindly change app review timestamps. Eight central Oct 24 review deadlines,
+three central-to-app hash disagreements, and the central implementation
+baseline are separate review/federation work. All five original individual
+source-doc checker commands passed; central generation/strict checks failed.
+The source-only PR's strict DocsV2 baseline gate remains owned by Central's
+**single writer**; Tab C must not edit shared `docs/document-registry.json`,
+`scripts/aoe2_doctor.py`, or `scripts/aoe2_audit.py`.
+
+### Original Doctor 13 independent deduction points (not hidden by Estate totals)
+
+| Exact Doctor finding | Points | Owner-proven action and gate |
+| --- | ---: | --- |
+| `Disaster Recovery/volume-capacity-critical` | 8 | Mounted evidence volume 296G / 258G used / 26G available, 92% full (inode use 17%); Storage OS read-only retention/protected restore/cold-checkpoint census, independently authorize any verified transaction; use expansion if safe retention cannot free sufficient bytes |
+| `Host/failed-units` | 2 | Failed `certbot.service` (historical WheatAndStone-only NXDOMAIN, domain intentionally abandoned) and `vps-sentry-unit-event@started__ssh.service.service` (226/NAMESPACE); verify newly clean active Certbot cycle and VPS Sentry operator-event delivery, not reset-failed cosmetics |
+| `Toolchain/next-contract` | 1 | Installed Next 15.5.28 vs operations contract 15.5.27; toolchain owner decides/validates supported version and exact-source tests, updates contract only with reviewed evidence |
+| `Architecture/semantic-map-runtime-stale` — `SYSTEM_MAP.md` | 1 | VPSSentry map owner reviews and source-certifies runtime seal including active release identity; preserve dated historical seals |
+| `Architecture/semantic-map-runtime-stale` — `SERVER_STORAGE_MAP.md` | 1 | Same independent source-certified map refresh for storage map |
+
+**No user action needed for WheatAndStone:** Its specific Certbot renewal config was
+successfully **parked** by the operator under
+`/etc/letsencrypt/renewal-shelved/wheatandstone.ca.conf`; do not restore
+unowned DNS or remove other certificate renewals. Locally served
+`aoe2war.com` TLS was valid through 2026-12-19, but public-edge status
+and next Certbot success are independent tests. VPS Sentry issue
+`Emaren/vps-sentry#4` owns upstream event namespace/delivery repair:
+`vps-sentry.service` captured events but the email path failed without
+`/etc/postfix/main.cf`, and webhook reported invalid/backoff. A successful
+collector or publisher is **not** proof of alert delivery. Current deployed
+template already matches source `RuntimeDirectory=vps-sentry` and
+`ReadWritePaths=/var/lib/vps-sentry`; 226/NAMESPACE occurred during
+concurrent SSH stop/start event instances. Lifecycle race remains unproven.
+
+### Seven-category repair and evidence queue (66 canonical check contracts)
+
+The **dated** 69/100 snapshot implies 214 missing *category* points across
+seven categories (not 214 independently confirmed current failures). Each
+check's **PASS/FAIL/STALE/UNKNOWN** requires its original receipt from the
+current running build. The published category total cannot identify which
+checks were awarded points. Never allocate missing points to a check by guess.
+
+| Dated category | Missing of 100 | Canonical check IDs / source-bound next evidence |
+| --- | ---: | --- |
+| Speed 63 | 37 | `lcp50`, `lcp95`, `ready50`, `ready95`, `ttfb95`, `static-edge`, `dynamic-edge`, `featured-edge`, `stable-lcp`, `speed-fresh`: new exact-release browser/edge cohorts, bounded sampling, native capture times |
+| Documentation 35 | 65 | `doctor-docs`, `docs-control`, `taxonomy`, `strict-doc-build`, `audit-taxonomy`, `source-docs`, `system-map`, `storage-map`, `central-doc-repo`, `docs-fresh`: independent docs review and Central accepted metadata/federation receipts |
+| Organization 76 | 24 | `root-free`, `volume-used`, `mac-free`, `hot-rollbacks`, `cold-checkpoints`, `expiry-debt`, `watcher-downloads`, `staging`, `worktrees`, `caches`: current statfs and **read-only** Storage OS inventories, no unapproved deletion |
+| Test & Build 100 | 0 | `node-tests`, `python-tests`, `typescript`, `eslint`, `docs-gate`, `secret-scan`, `dependency`, `prisma`, `production-build`: preserve historical certified source/build scope, report aged gate `STALE` for current-readiness purposes rather than rescoring history |
+| Release 64 | 36 | `certified`, `doctor`, `estate-findings`, `build-parity`, `service`, `source-parity`, `receipt`, `finish`: observed build identity, certified history plus new read-only Doctor; do not run Finish/host release on GET |
+| Security 75 | 25 | `vpssentry`, `failed-units`, `updates`, `reboot`, `maintenance`, `secrets`, `recovery`, `root-resilience`, `security-fresh`: event-hook/notification roundtrip, patch evidence and actual recovery proof |
+| Data/Wolo/Replay 73 | 27 | `wolo-8092`, `wolo-8093`, `wolo-estate`, `parser-estate`, `recovery-data`, `watcher-release`, `db-mutation`, `wolo-mutation`, `data-fresh`, `evidence`: port 27657 chain `wolo-1` RPC independently observed alive/not-catching-up at block 2,634,595, but neither 8092/8093 listener nor RPC health proves custody/finality/financial solvency |
+
+### Sustainable evidence policy (source implemented vs owner-owned activation)
+
+This draft adds **additive** machine-readable `evidenceChecks` to existing
+`GET /api/general-inspections?report=why-not-green`. Each row exposes
+`checkKey=category/checkId` (a *check contract*, **not** a fabricated original
+receipt ID), raw capture time, original TTL, derived `nextDueAt`, current
+`evidenceStatus` **PASS, FAIL, STALE or UNKNOWN**, earned points,
+repair classification and detail. The legacy `gaps[].status`
+`pass/fail/unknown` field remains backward compatible. A full-weight
+check with a current, mathematically valid but failing sample ratio is
+reported **FAIL** without altering its awarded weight, and expired original
+evidence is **STALE** even when historical credit was 100. Invalid ratios,
+absent times and missing original producer receipt IDs remain UNKNOWN.
+
+**No independent reinspection scheduler is activated by this read-only source
+change.** Existing production Operator Bridge/Storage OS owners must schedule
+and certify bounded collection before the earliest `nextDueAt`, with a
+**6-hour-or-faster** window for rapidly changing release/security/Wolo
+receipts and original 72/168-hour producer TTLs for documentation and
+browser cohorts. A schedule alone is not a completed measurement; each run
+must append immutable, content-hashed original producer evidence with
+captured-at, received-at, exact source SHA, BUILD_ID, host identity,
+producer name, check ID, result and next deadline, then prove that the
+*deployed* reader consumes it. Never use a transport receive time as a
+new observation or a signed self-attestation as independent release truth.
+No competing Doctor, hidden background task, finance authority or host write
+may be added to the public report.
+
+**Finite operating queue:** (1) Central source-review/taxonomy fixes and
+DocsV2 single-writer accepted baseline; (2) Wolo ancestry and VPSSentry
+context camera; (3) protected volume-retention plan and capacity remedy;
+(4) VPS Sentry issue #4 namespace + notification delivery;
+(5) toolchain/map and other real Doctor warnings; (6) current source/build
+browser/edge/replay/host intake; (7) exact-head source CI and *separate*
+operator production verification; (8) same 66 checks independently prove
+full points and `evidenceStatus=PASS`, and Doctor independently proves
+100/HEALTHY without blockers or warnings. As of this draft, steps 1–8
+are **not complete**; overall 100 is not claimed.
+
+
+## October 25, 2026 — Tab C evidence-bound operational gap projection (source-only draft)
+
+**Dated operator screen observations, not new measurements:** General Inspections 69/100:
+Speed 63, Documentation 35, Organization/Storage 76, Test & Build 100,
+Release & Runtime 64, Security 75, Data/Wolo/Replay 73. Kingdom Intelligence
+Doctor 59/100 UNSAFE (P0=2, P1=4) was observed separately. These screen
+readings are not independently authenticated host observations and must not
+supersede current source-bound receipts or newer trusted measurements.
+
+### Proof origin, TTL and authority
+
+- The **preferred bridge reader** accepts an Operator Bridge
+  `kingdom-intelligence.json` envelope and searches existing VPS activation,
+  gate, stage and certification files; the **fallback reader** reads local
+  `.aoe2war-release` Finish/gate/speed/edge receipts if the bridge is unavailable.
+  A valid certified activation binds stage/gate/certification release SHA. A
+  transport `receivedAt` is not a new `payload.generated_at` measurement.
+- SpeedOS cold-browser LCP/ready/TTFB and Cloudflare edge cohorts require both
+  explicit **exact certified release SHA** and current-release assertion.
+  Metrics lose live points as their native receipt ages from 24 hours fresh
+  to zero at 168 hours, or immediately on a source mismatch. A stale October
+  13 measurement cannot grant current live speed points on October 25.
+  This also applies to per-browser mutation-boundary credit.
+- Replay-corpus accounting requires a matching
+  `replay_truth.production_source`, current-release assertion and fresh replay
+  receipt (24 hours fresh, zero at 168 hours). Replay history remains useful,
+  but must not count as verified current-release operational success.
+- The source/build-scoped **Test & Build Integrity** score remains tied to the
+  certified gate's declared `required_commands`, validated return codes and
+  certification. A successful historic gate is not proof of current Doctor,
+  Wolo economics or browser behavior. A validator not required by the
+  certified gate scope stays explicitly marked not required.
+- Bridge-backed Doctor, systemd, Wolo listener and security observations
+  decay with capture/receipt delivery (one hour fresh, zero after six).
+  Root/volume capacity prefers live read-only VPS statfs; older bridge capacity
+  is a decaying fallback. Immutable certification proof does not expire solely
+  because the last host heartbeat is old.
+- The seven inspection categories use their own pre-existing canonical
+  100-point weights; these are **not** the Kingdom Index 30/25/20/15/10
+  page-quality certification criteria.
+
+### Machine-readable why-not-green
+
+`GET /api/general-inspections?report=why-not-green` projects **one already
+collected, sanitized** `GeneralInspectionsSnapshot` into a source-attributed
+seven-category PASS / FAIL / UNKNOWN matrix and an exact-weight repair queue.
+The response includes each check ID, awarded/max/missing points, timestamp,
+TTL, uncertainty reason and owner-evidence repair. The default API response
+and website visual layout remain unchanged; no additional host scan, operator
+command, database write, service restart, signing or financial operation occurs.
+
+A **FAIL** is assigned only to fresh explicit measured operational/source
+invariant mismatches. A missing timestamp, expired receipt, partial checker
+coverage or unavailable host truth is **UNKNOWN**, not an observed failure.
+The new report does not change the persisted underlying score or independently
+certify a claimed positive reading; `measuredHealthChanged=false`.
+
+### Exact source-registry triage observed on October 25
+
+Read-only comparison: `Emaren/AoE2WAR-docs main` taxonomy blob
+`26e18f739e7585b41de0d260e914c9cc62b35b77` (225 entries);
+`Emaren/app-prodn main` source registry blob
+`f7c1af190ad1ae77e311189fee4a005e0afa5be5` (96 entries).
+These are GitHub **source registry** observations, not a contemporaneous VPS
+Doctor receipt. `reviewed_at + review_interval_days` with the governance SLO
+(date due still valid; overdue starting next day) identifies **eight central
+active entries overdue after 2026-10-24**:
+
+| Exact doc ID | Repository | Source path |
+| --- | --- | --- |
+| `aoe2war.arch.truth-planes` | AoE2WAR-docs | `docs/architecture/truth-planes.md` |
+| `aoe2war.gov.documentation-lifecycle` | AoE2WAR-docs | `docs/governance/documentation-lifecycle.md` |
+| `aoe2war.gov.metadata-contract` | AoE2WAR-docs | `docs/governance/metadata-contract.md` |
+| `aoe2war.gov.review-slos` | AoE2WAR-docs | `docs/governance/review-slos.md` |
+| `aoe2war.home` | AoE2WAR-docs | `docs/index.md` |
+| `aoe2war.start.ai-agent` | AoE2WAR-docs | `docs/start-here/ai-agent.md` |
+| `aoe2war.start.developer` | AoE2WAR-docs | `docs/start-here/developer.md` |
+| `aoe2war.app-prodn.docs-rivalries-and-war-vault` | app-prodn | `docs/RIVALRIES_AND_WAR_VAULT.md` |
+
+The **app-prodn source registry itself** has zero overdue active positive-
+interval entries. Treat `review_interval_days=0` historical, generated and
+superseded records as intentionally outside normal review expiry, not sixteen
+phantom failures.
+
+Three `app-prodn` paths have different source hashes in the central
+taxonomy versus the current local registry: `docs/DOCUMENTATION_CONTROL_PLANE.md`,
+`docs/RIVALRIES_AND_WAR_VAULT.md`, and `docs/PAGE_CHANGE_NOTICES.md`.
+That is **federated reference drift to investigate**, not automatic proof of
+corruption: central may be pinned to an intentionally older reviewed source.
+DocsV2 owner must review the changed content and policy, then produce a
+source-pinned, approved registry synchronization and strict-check receipt.
+No automatic source registry write is made by Tab C.
+
+Documentation aggregate scores are not an ID-level DocsV2 review registry.
+To close a Documentation 35 reading, obtain the **current detailed DocsV2
+review/expiry and reference-drift output** from the documentation owner,
+record each exact document ID and policy deadline, reconcile missing
+registry/index entries and renew legitimate source reviews. Do not delete
+failing documents, change the scoring threshold, relabel an expired review
+as current or invent overdue IDs from aggregate ratios. Source correction
+is distinct from the later authorized host proof.
+
+### Read-only repair queue and acceptance
+
+1. **Source-fixable:** refuse stale/cross-release Speed and replay credit;
+   fail safely under a deleted/corrupt receipt; preserve scoped gate semantics;
+   validate canonical weighted arithmetic and diagnostic report generation.
+2. **Documentation owner:** resolve exact expired DocsV2 IDs, bad references and
+   registry drift using a dated, source-bound strict DocsV2 receipt. The
+   source score alone cannot identify those IDs.
+3. **Host owner:** capture current read-only Doctor P0/P1 details, active
+   release/build/source identity, VPS services and capacity, speed cohorts
+   and replay/Wolo safety receipts on the actual certified production build.
+   Listener availability does **not** prove wallet custody or settlement.
+4. **Central certification:** verify exact-head CI and independently required
+   production/browser evidence before claiming **next measured operational
+   health**. A complete gap-report tool is only **health tooling completeness**.
+
+This draft is not a release request and grants no permission to mutate finance,
+restart consensus or settlement, run Finish, alter production journals or award
+Kingdom Index points.
+
+
+
+### October 25 Round Two — independent fallback, documentation and Doctor closure
+
+Tab C source review found a second stale-credit path in the local Finish
+fallback (`lib/generalInspections/serverSnapshot.ts`), not just the preferred
+Operator Bridge. Both producers now zero any expired Speed cohort receipt
+(24 hours full, zero by 168 hours) or mismatched release/build proof, rather
+than aging only the freshness weight while keeping metric points. The local
+fallback also gates its documentation checks to the certified Finish source,
+build and original Finish observation (full for 12 hours, zero by 72).
+The bridge requires a non-fallback original documentation capture plus fresh
+collection/delivery clocks and exact active release/build for **all ten** docs
+checks. A missing timestamp cannot borrow a new delivery timestamp.
+
+The `why-not-green` report treats gate source/build history as separate from
+live performance: a gate may have had a historic Test & Build score of 100 on
+its certified release, but an expired 168-hour gate observation is now
+`UNKNOWN` for *current* evidence in the diagnostic report, never a silently
+current PASS. This is report classification only; the canonical check weights,
+required-command policy and scored gate receipts do not change.
+
+The October 25 historical category-level repair ledger is:
+
+| Inspection | Historical / 100 | Missing | Actual read-only closure |
+| --- | ---: | ---: | --- |
+| Website Speed | 63 | 37 | Exact-source/build browser and edge receipts; audit p50/p95, cohort counts, capture TTL and mutation proof |
+| Documentation | 35 | 65 | All ten actual weighted docs check results, central strict gates, five source checkers, taxonomy, maps, repository parity and reviewed document IDs |
+| Organization/Storage | 76 | 24 | Root/volume read-only capacity, expiry/rollback protections, staging, download generations, operator worktree receipts |
+| Test & Build | 100 | 0 | Preserve certified declared-command gate; report its source/build/time authority separately from current runtime |
+| Release/Runtime | 64 | 36 | Runtime active source/build, certified activation, Doctor's exact failures, service and Finish closure |
+| Security | 75 | 25 | Current criticals, systemd units, host update/reboot posture, secret scan and recovery class receipts |
+| Data/Wolo/Replay | 73 | 27 | Wolo 8092/8093 counts, replay corpus/freshness, browser mutation boundary, recovery and Watcher contract |
+
+**Do not infer check-level earned points or precise Doctor fault IDs from
+these seven rounded category scores.** The Doctor publisher keeps its
+complete `findings` under `scripts/aoe2_doctor.py` and nested Estate
+`info.estate.findings`, but the Council/Brain public health adapter forwards
+only `doctor_score`, `doctor_status` and Estate `p0`/`p1` totals.
+For P0=2 and P1=4, the Estate aggregation itself deducts 20+8=28 Doctor
+points under today's policy. A Doctor 59 means total deduction 41 and thus
+**13 additional points deducted by independent Doctor checks**, with exact
+keys still UNKNOWN pending the original read-only Doctor receipt. Do not
+silently replace that missing evidence with guessed six IDs or treat
+a public 59 as evidence of a specific broken Wolo daemon.
+
+The independently owner-observed `wolo-1` mainnet RPC at 127.0.0.1:27657
+responded on October 25 (height 2,634,595, catching_up=false); legacy
+26657 is intentionally quiet. That fixes the **diagnostic interpretation**,
+not the estate P0/P1 list or financial settlement certification. The
+operational contract already specifies port 27657.
+
+To reproduce the closure: (1) Central's single DocsV2 owner intentionally
+refreshes the shared registry's implementation baseline and this Markdown's
+hash on the final source head, then runs the strict checker; (2) exact-head
+Node/TypeScript/Next/Python/PostgreSQL/source-census CI must succeed with
+no skipped mandatory checks; (3) owner reads `aoe2war doctor --json` and
+the no-store General Inspections JSON on the same live certified release,
+checking original capture and receipt delivery times; (4) reproduce exact
+P0/P1 keys and each 35/100 Documentation weighted deficit from those
+observations; (5) only then repair under the correct domain owner, recollect
+fresh evidence, and compare deltas. A source-only PR cannot independently
+claim that the live reported 69/59 has changed.
+
 
 ## October 18, 2026 — archival score lineage remains immutable under live agent updates
 

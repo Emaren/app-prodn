@@ -1,0 +1,460 @@
+#!/usr/bin/env python3
+"""Checks for root SSH owner-v5 public rotation and Mac read-only census."""
+from __future__ import annotations
+
+import importlib.util
+import os
+import json
+import subprocess
+from pathlib import Path
+import tempfile
+from unittest import TestCase, mock
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, ROOT / path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+rotate = load("aoe2_owner_v5_enroll_rootssh_test", "scripts/aoe2_owner_v5_enroll_rootssh.py")
+pressure = load("aoe2_storage_mac_pressure_test", "scripts/aoe2_storage_mac_pressure.py")
+
+
+class RootAuthorityContract(TestCase):
+    def test_pins_are_exact_and_distinct(self):
+        self.assertEqual(len(rotate.EXPECTED_OLD), 64)
+        self.assertEqual(len(rotate.EXPECTED_NEW), 64)
+        self.assertNotEqual(rotate.EXPECTED_OLD, rotate.EXPECTED_NEW)
+        self.assertEqual(len(rotate.CONTROLLER_SHA), 64)
+
+    def test_refuses_malformed_public_key_before_mutation(self):
+        with mock.patch.object(rotate.os, "geteuid", return_value=0):
+            with self.assertRaises((RuntimeError, ValueError)):
+                rotate.rotate_root("bm90LWEta2V5")
+        # Malformed public key is rejected before any filesystem changes.
+
+    def test_atomic_public_backup_is_create_once(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "public"
+            rotate.durable_new(path, b"public bytes")
+            self.assertEqual(path.read_bytes(), b"public bytes")
+            with self.assertRaises(FileExistsError):
+                rotate.durable_new(path, b"other bytes")
+            self.assertEqual(path.read_bytes(), b"public bytes")
+
+    def test_observed_tony_shared_release_lease_is_not_root_private(self):
+        # Mirrors independently observed HEL1 ownership/modes, without
+        # constructing a privileged process or touching any real server.
+        with tempfile.TemporaryDirectory() as tmp:
+            control = Path(tmp).resolve() / "os-control"
+            control.mkdir(mode=0o750)
+            locks = control / "locks"
+            locks.mkdir(mode=0o755)
+            lock = locks / "release.lock"
+            lock.touch(mode=0o664)
+            lock.chmod(0o664)
+            original = rotate.LEASE
+            rotate.LEASE = lock
+            try:
+                device, inode, mode = rotate.shared_release_lock_shape(
+                    operator_uid=os.getuid())
+                self.assertEqual(mode & 0o777, 0o664)
+                self.assertEqual((device, inode), (lock.stat().st_dev, lock.stat().st_ino))
+                # After narrow chmod the mode-tightening transaction must
+                # not be blindly replayable against unexpected starting state.
+                lock.chmod(0o644)
+                with self.assertRaisesRegex(RuntimeError, "0664"):
+                    rotate.shared_release_lock_shape(operator_uid=os.getuid())
+            finally:
+                rotate.LEASE = original
+
+    def test_shared_release_lease_rejects_group_writable_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            control = Path(tmp).resolve() / "os-control"
+            control.mkdir(mode=0o750)
+            locks = control / "locks"
+            locks.mkdir(mode=0o775)
+            locks.chmod(0o775)
+            lock = locks / "release.lock"
+            lock.touch(mode=0o664)
+            lock.chmod(0o664)
+            original = rotate.LEASE
+            rotate.LEASE = lock
+            try:
+                with self.assertRaisesRegex(RuntimeError, "ownership/mode drift"):
+                    rotate.shared_release_lock_shape(operator_uid=os.getuid())
+            finally:
+                rotate.LEASE = original
+
+    def test_shared_release_lock_rejects_symlinked_ancestor(self):
+        # A physical temp root is permitted, but a true symlink introduced
+        # anywhere in the protected lock path must remain forbidden.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            control = root / "os-control"
+            locks = control / "locks"
+            locks.mkdir(parents=True)
+            lock = locks / "release.lock"
+            lock.write_bytes(b"")
+            alias = root / "os-control-link"
+            alias.symlink_to(control, target_is_directory=True)
+            original = rotate.LEASE
+            rotate.LEASE = alias / "locks" / "release.lock"
+            try:
+                with self.assertRaisesRegex(RuntimeError, "linked/non-directory"):
+                    rotate.shared_release_lock_shape(operator_uid=os.getuid())
+            finally:
+                rotate.LEASE = original
+
+    def test_rotation_uses_no_sudo_in_ssh_transport(self):
+        src = (ROOT / "scripts/aoe2_owner_v5_enroll_rootssh.py").read_text()
+        self.assertIn('"root@hel1"', src)
+        self.assertIn('"BatchMode=yes"', src)
+        self.assertIn('"StrictHostKeyChecking=yes"', src)
+        self.assertNotIn('"sudo"', src)
+        self.assertNotIn('"owner-private.pem"', src)
+        self.assertIn('"OWNER_V5_ENROLLED_PREVIEW_PASS"', src)
+        self.assertIn("ENROLL OWNER V5 AND TIGHTEN RELEASE LOCK", src)
+        self.assertIn("mode 0664->0644", src)
+
+
+class MacPressureContract(TestCase):
+    def test_census_is_readonly_and_protects_user_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            project = home / "projects/AoE2HDBets"
+            project.mkdir(parents=True)
+            (home / "Downloads").mkdir()
+            (home / "Downloads/test.zip").write_bytes(b"keep" * 1024)
+            (project / "app-prodn").mkdir()
+            (project / "app-prodn/.next").mkdir()
+            (project / "app-prodn/.next/BUILD_ID").write_text("still here")
+            result = pressure.census(home, project, limit=30)
+            self.assertEqual(result["status"], "READ_ONLY")
+            self.assertIs(result["mutation_allowed"], False)
+            self.assertTrue((home / "Downloads/test.zip").exists())
+            self.assertTrue((project / "app-prodn/.next/BUILD_ID").exists())
+            self.assertTrue(all(row["mutation_allowed"] is False
+                                for row in result["measured"]))
+
+    def test_named_census_coverage_is_explicit_and_never_whole_disk(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            project = home / "projects/AoE2HDBets"
+            project.mkdir(parents=True)
+            result = pressure.census(home, project, limit=300)
+            self.assertEqual(result["coverage"], "NAMED_PATHS_ONLY_NOT_WHOLE_DISK")
+            self.assertIs(result["mutation_allowed"], False)
+            self.assertEqual(result["displayed_path_count"], result["observed_path_count"])
+            self.assertTrue(result["named_census_complete"])
+            self.assertEqual(result["incomplete_reasons"], [])
+            capped = pressure.census(home, project, limit=5)
+            self.assertFalse(capped["named_census_complete"])
+            self.assertIn("DISPLAY_ROW_LIMIT", capped["incomplete_reasons"])
+
+    def test_512_row_census_exposes_all_names_when_300_would_truncate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            project = home / "projects/AoE2HDBets"
+            project.mkdir(parents=True)
+            (project / "app-prodn").mkdir()
+            virtual_worktrees = [project / ("virtual" + str(n)) for n in range(48)]
+            with mock.patch.object(pressure, "worktrees", return_value=virtual_worktrees):
+                capped = pressure.census(home, project, limit=300)
+                complete = pressure.census(home, project, limit=512)
+            self.assertGreater(complete["observed_path_count"], 300)
+            self.assertEqual(complete["displayed_path_count"], complete["observed_path_count"])
+            self.assertEqual(len(complete["measured"]), complete["observed_path_count"])
+            self.assertNotIn("DISPLAY_ROW_LIMIT", complete["incomplete_reasons"])
+            self.assertTrue(complete["named_census_complete"])
+            self.assertEqual(len(capped["measured"]), 300)
+            self.assertIn("DISPLAY_ROW_LIMIT", capped["incomplete_reasons"])
+            self.assertFalse(capped["named_census_complete"])
+            self.assertEqual(complete["coverage"], "NAMED_PATHS_ONLY_NOT_WHOLE_DISK")
+
+    def test_named_allocation_missing_is_proven_absent_not_unknown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            out = pressure.named_measurement(home / "does-not-exist", home)
+            self.assertTrue(out["complete"])
+            self.assertEqual(out["measurement_reason"], "ABSENT")
+            self.assertEqual(out["allocated_bytes"], 0)
+            self.assertFalse(out["mutation_allowed"])
+
+    def test_named_symlink_is_held_without_following_private_content(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            protected = Path(tmp) / "private"
+            protected.write_bytes(b"UNIQUE_FINANCIAL_EVIDENCE")
+            (home / "link").symlink_to(protected)
+            out = pressure.named_measurement(home / "link", home)
+            self.assertFalse(out["complete"])
+            self.assertIsNone(out["allocated_bytes"])
+            self.assertEqual(out["measurement_reason"], "SYMLINK_TARGET")
+            self.assertEqual(protected.read_bytes(), b"UNIQUE_FINANCIAL_EVIDENCE")
+
+    def test_named_timeout_and_permission_failure_never_report_zero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            target = home / "cache"
+            target.write_bytes(b"must survive")
+            with mock.patch.object(pressure.subprocess, "run",
+                                   side_effect=subprocess.TimeoutExpired("du", 1)):
+                timeout = pressure.named_measurement(target, home)
+            self.assertEqual(timeout["measurement_reason"], "DU_TIMEOUT")
+            self.assertIsNone(timeout["allocated_bytes"])
+            failing = mock.Mock(returncode=1, stdout="",
+                                stderr="Operation not permitted")
+            with mock.patch.object(pressure.subprocess, "run",
+                                   return_value=failing):
+                denied = pressure.named_measurement(target, home)
+            self.assertEqual(denied["measurement_reason"], "DU_PERMISSION_DENIED")
+            self.assertIsNone(denied["allocated_bytes"])
+            self.assertEqual(target.read_bytes(), b"must survive")
+
+    def test_named_du_race_captures_unknown_instead_of_stale_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            target = home / "mutable"
+            target.write_bytes(b"first")
+            def fake_du(*args, **kwargs):
+                target.write_bytes(b"second longer data")
+                return mock.Mock(returncode=0, stdout="4\\tignored", stderr="")
+            with mock.patch.object(pressure.subprocess, "run", side_effect=fake_du):
+                result = pressure.named_measurement(target, home)
+            self.assertEqual(result["measurement_reason"], "DRIFT_DURING_DU")
+            self.assertIsNone(result["allocated_bytes"])
+
+    def test_named_census_reports_every_unsafe_row_without_junk_authority(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            project = home / "projects" / "AoE2HDBets"
+            project.mkdir(parents=True)
+            protected = Path(tmp) / "protected"
+            protected.mkdir()
+            (protected / "keep").write_bytes(b"never delete")
+            (home / ".cache").symlink_to(protected, target_is_directory=True)
+            census = pressure.census(home, project, limit=512)
+            self.assertFalse(census["named_census_complete"])
+            self.assertIn("NAMED_PATH_MEASUREMENT_INCOMPLETE",
+                          census["incomplete_reasons"])
+            gaps = {r["name"]: r for r in census["measurement_gaps"]}
+            self.assertEqual(gaps["generic_cache"]["reason"], "SYMLINK_TARGET")
+            self.assertIsNone(gaps["generic_cache"]["allocated_bytes"])
+            self.assertFalse(gaps["generic_cache"]["mutation_allowed"])
+            self.assertTrue(gaps["generic_cache"]["metadata_fingerprint_sha256"])
+            self.assertEqual((protected / "keep").read_bytes(), b"never delete")
+            self.assertTrue(census["apfs_accounting"]["du_allocation_is_not_unique_reclaim"])
+
+    def test_existing_project_generated_children_are_named_without_following_links(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            project = home / "projects" / "AoE2HDBets"
+            app = project / "safe-app"
+            (app / ".next").mkdir(parents=True)
+            (app / ".next" / "BUILD_ID").write_text("pinned-fixture")
+            unique = Path(tmp) / "unique-financial"
+            unique.mkdir()
+            (unique / "never-touch").write_bytes(b"PROTECTED")
+            (app / "node_modules").symlink_to(unique, target_is_directory=True)
+            result = pressure.census(home, project, limit=1024)
+            by_path = {row.get("path"): row for row in result["measured"]}
+            build = by_path[str(app / ".next")]
+            deps = by_path[str(app / "node_modules")]
+            self.assertEqual(build["name"], "project_generated:safe-app:.next")
+            self.assertEqual(build["measurement_reason"], "MEASURED")
+            self.assertTrue(build["complete"])
+            self.assertEqual(deps["measurement_reason"], "SYMLINK_TARGET")
+            self.assertIsNone(deps["allocated_bytes"])
+            self.assertFalse(deps["mutation_allowed"])
+            self.assertEqual((unique / "never-touch").read_bytes(), b"PROTECTED")
+            self.assertFalse((app / "dist").exists())
+            self.assertNotIn(str(app / "dist"), by_path)
+
+    def test_focused_generic_cache_protects_codex_runtime_and_never_deletes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            cache = home / ".cache"
+            (cache / "codex-runtimes").mkdir(parents=True)
+            (cache / "codex-runtimes/unique_runtime").write_bytes(b"PROTECTED_RUNTIME")
+            (cache / "other-generator").mkdir()
+            (cache / "other-generator/regenerable").write_bytes(b"REVIEW_ONLY")
+            result = pressure.focused_census(home, "generic_cache")
+            self.assertEqual(result["status"], "READ_ONLY")
+            self.assertTrue(result["complete"])
+            self.assertEqual(result["coverage"], "ONE_LEVEL_NAMED_CACHE_CHILDREN_ONLY")
+            by_name = {r["name"]: r for r in result["children"]}
+            self.assertEqual(by_name["codex-runtimes"]["classification"],
+                             "PROTECTED_ACTIVE_RUNTIME_UNKNOWN")
+            self.assertFalse(by_name["codex-runtimes"]["auto_delete_permitted"])
+            self.assertTrue(by_name["codex-runtimes"]["complete"])
+            self.assertTrue(by_name["other-generator"]["classification"].startswith("REVIEW"))
+            self.assertEqual((cache / "codex-runtimes/unique_runtime").read_bytes(),
+                             b"PROTECTED_RUNTIME")
+            self.assertFalse(result["auto_delete_permitted"])
+
+    def test_focused_cache_symlink_does_not_follow_or_claim_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            cache = home / ".cache"
+            outside = Path(tmp) / "unique-financial"
+            outside.mkdir()
+            (outside / "evidence").write_text("IRREPLACEABLE")
+            cache.mkdir(parents=True)
+            (cache / "external_link").symlink_to(outside, target_is_directory=True)
+            result = pressure.focused_census(home, "generic_cache")
+            self.assertFalse(result["complete"])
+            self.assertEqual(result["status"], "INCOMPLETE")
+            self.assertIn("FOCUS_CHILD_SYMLINK", result["incomplete_reasons"])
+            self.assertEqual(result["children"][0]["allocated_bytes"], None)
+            self.assertEqual((outside / "evidence").read_text(), "IRREPLACEABLE")
+            self.assertFalse(result["auto_delete_permitted"])
+
+    def test_focused_cache_missing_and_symlink_root_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            home.mkdir()
+            self.assertEqual(pressure.focused_census(home, "generic_cache")["status"], "ABSENT")
+            target = Path(tmp) / "protected"
+            target.mkdir()
+            (home / ".cache").symlink_to(target, target_is_directory=True)
+            result = pressure.focused_census(home, "generic_cache")
+            self.assertFalse(result["complete"])
+            self.assertEqual(result["status"], "UNKNOWN")
+            self.assertIn("FOCUS_ROOT_SYMLINK", result["incomplete_reasons"])
+
+    def test_newly_named_review_and_protection_do_not_grant_deletion(self):
+        names = dict((name, classification)
+                     for name, _path, classification in pressure.HOME_BUCKETS)
+        self.assertTrue(names["codex_worktrees"].startswith("PROTECTED"))
+        self.assertTrue(names["crossover"].startswith("PROTECTED"))
+        self.assertTrue(names["docker_virtual_disks"].startswith("PROTECTED"))
+        self.assertTrue(names["electron_binary_cache"].startswith("REVIEW"))
+        self.assertTrue(names["chrome_browser_cache"].startswith("REVIEW"))
+        self.assertNotIn("rmtree", (ROOT / "scripts/aoe2_storage_mac_pressure.py").read_text())
+
+    def test_capacity_campaign_non_native_fails_without_probing_disk(self):
+        with mock.patch.object(pressure.subprocess, "run", side_effect=AssertionError("must not run")):
+            result = pressure.capacity_accounting(Path("/tmp/does-not-exist"), platform="linux")
+        self.assertEqual(result["reason"], "NOT_NATIVE_MAC")
+        self.assertFalse(result["full_container_coverage_certified"])
+        self.assertIsNone(result["unexplained_physical_bytes"])
+        self.assertFalse(result["mutation_allowed"])
+
+    def test_shallow_du_captures_direct_mount_slices_without_content_reads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            protected = root / "CrossOver"
+            protected.mkdir()
+            (protected / "unique-game-save").write_bytes(b"KEEP-FOREVER")
+            (root / "outside").symlink_to(protected, target_is_directory=True)
+            (root / "receipt").write_bytes(b"UNIQUE-PRIVATE")
+            device = os.lstat(root).st_dev
+            def fake_du(args, **kwargs):
+                self.assertEqual(args[:5], ["du", "-k", "-x", "-d", "1"])
+                return mock.Mock(returncode=0, stdout=(
+                    f"8\t{protected}\n16\t{root}\n"), stderr="")
+            with mock.patch.object(pressure.subprocess, "run", side_effect=fake_du):
+                output = pressure.capacity_depth_one(root, device)
+            self.assertEqual(output["status"], "HOLD")
+            self.assertEqual(output["allocated_bytes"], 16 * 1024)
+            self.assertEqual(output["direct_children"][0]["allocated_bytes"], 8 * 1024)
+            self.assertIn("SYMLINK_NOT_FOLLOWED",
+                          [v["reason"] for v in output["unmeasured"]])
+            self.assertIsNone(output["root_files_links_and_metadata_gross_residual_bytes"])
+            self.assertFalse(output["mutation_allowed"])
+            self.assertEqual((protected / "unique-game-save").read_bytes(), b"KEEP-FOREVER")
+
+    def test_shallow_du_complete_is_gross_only_and_never_apfs_gain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "artifact").mkdir()
+            device = os.lstat(root).st_dev
+            with mock.patch.object(pressure.subprocess, "run",
+                  return_value=mock.Mock(returncode=0, stdout=(
+                      f"9\t{root / 'artifact'}\n12\t{root}\n"), stderr="")):
+                result = pressure.capacity_depth_one(root, device)
+            self.assertEqual(result["status"], "OBSERVED_SHALLOW")
+            self.assertEqual(result["root_files_links_and_metadata_gross_residual_bytes"], 3072)
+            self.assertTrue(result["gross_not_unique_apfs_bytes"])
+
+    def test_shallow_du_timeout_permission_and_wrong_mount_all_hold(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            device = os.lstat(root).st_dev
+            self.assertEqual(pressure.capacity_depth_one(root, device + 1)["reason"],
+                             "CROSSES_DATA_DEVICE")
+            with mock.patch.object(pressure.subprocess, "run",
+                                   side_effect=subprocess.TimeoutExpired("du", 1)):
+                self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
+                                 "DU_TIME_BUDGET_EXCEEDED")
+            with mock.patch.object(pressure.subprocess, "run",
+                      return_value=mock.Mock(returncode=1, stdout="", stderr="Permission denied")):
+                self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
+                                 "DU_ERROR_OR_PERMISSION_DENIED")
+
+    def test_shallow_du_rejects_unexpected_depth_and_duplicate_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            device = os.lstat(root).st_dev
+            for data in (f"2\t{root}\n2\t{root}\n",
+                         f"2\t{root / 'unexpected' / 'deep'}\n2\t{root}\n",
+                         f"bad\t{root}\n"):
+                with mock.patch.object(pressure.subprocess, "run",
+                      return_value=mock.Mock(returncode=0, stdout=data, stderr="")):
+                    self.assertEqual(pressure.capacity_depth_one(root, device)["reason"],
+                                     "DU_MALFORMED_OR_AMBIGUOUS")
+
+    def test_capacity_native_fixture_still_holds_physical_extents(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "Users" / "operator"
+            home.mkdir(parents=True)
+            # This is a fixture, NOT a Mac volume or a physical recovery receipt.
+            def fake_process(args, **kw):
+                if args[0] == "du":
+                    path = Path(args[-1])
+                    directory_rows = "".join(
+                        f"1\t{child}\n" for child in path.iterdir()
+                        if child.is_dir() and not child.is_symlink())
+                    return mock.Mock(returncode=0, stderr="",
+                                     stdout=directory_rows + f"2\t{path}\n")
+                if "--plane" in args:
+                    return mock.Mock(returncode=0, stdout=json.dumps({
+                        "filesystem": {"fs_type": "apfs", "uuid": "fixture",
+                                       "mount_source": "/dev/disk3s5",
+                                       "mountpoint": "/System/Volumes/Data"}}))
+                raise AssertionError("unexpected process")
+            with mock.patch.object(pressure.subprocess, "run", side_effect=fake_process):
+                receipt = pressure.capacity_accounting(home, data_root=root, platform="darwin")
+            self.assertEqual(receipt["status"], "OBSERVED_SHALLOW")
+            self.assertEqual(receipt["reason"],
+                             "APFS_SHARED_METADATA_AND_PHYSICAL_EXTENTS_UNPROVEN")
+            self.assertIsNone(receipt["unexplained_physical_bytes"])
+            self.assertFalse(receipt["full_container_coverage_certified"])
+            self.assertIsNone(receipt["clones_shared_bytes"])
+            self.assertFalse(receipt["mutation_allowed"])
+
+    def test_all_generated_buckets_remain_review_only(self):
+        self.assertIn(".next", pressure.GENERATED_NAMES)
+        self.assertIn("node_modules", pressure.GENERATED_NAMES)
+        self.assertTrue(all(item[2].startswith(("REVIEW", "PROTECTED")) for item in pressure.HOME_BUCKETS))
+        self.assertNotIn("shutil.rmtree", (ROOT / "scripts/aoe2_storage_mac_pressure.py").read_text())
+
+
+if __name__ == "__main__":
+    unittest.main()
