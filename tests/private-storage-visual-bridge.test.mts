@@ -61,7 +61,7 @@ test("native isolated source HMAC, durable signed ACK, idempotency and no fake H
   for(const field of ["review_items","capacity_samples"] as const){
     const injected=structuredClone(submission);
     (injected.source_receipts[0].payload as Record<string,unknown>)[field]=[];
-    injected.source_receipts[0].signature_hmac_sha256=sig(key("a"),"AOE2WAR_SOURCE_PLANE_V1\\0",injected.source_receipts[0].payload);
+    injected.source_receipts[0].signature_hmac_sha256=sig(key("a"),"AOE2WAR_SOURCE_PLANE_V1"+String.fromCharCode(0),injected.source_receipts[0].payload);
     injected.submission_id=createHash("sha256").update(domain+canonical(injected.source_receipts)).digest("hex");
     await assert.rejects(()=>acceptStorageVisualSubmission(injected,now),/VISUAL_FIELDS_UNRECOGNIZED/);
   }
