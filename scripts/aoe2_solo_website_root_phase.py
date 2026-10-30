@@ -400,7 +400,7 @@ def reconcile_activation_rollback(args):
          "live site not actually restored")
     before=root_file(STATE/(attempt+"-PRE_ACTIVATE-native-before.json"))
     from aoe2_solo_website_native_audit_adapter import audit
-    after=audit(issued["candidate_sha"],"POST_ROLLBACK",attempt)
+    after=audit(issued["candidate_sha"],"POST_ROLLBACK",attempt,post_stage=True)
     from aoe2_solo_website_financial_proof import rollback_finance_status
     result=rollback_finance_status({"status":"ROLLED_BACK"},before,after)
     need(result=="ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED",
