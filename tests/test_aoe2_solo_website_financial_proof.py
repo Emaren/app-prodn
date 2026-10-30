@@ -35,6 +35,9 @@ def finance():
     "incomplete_units")}},
   "side_effects":{k:{"route_graph_sha256":D,"native_trace_sha256":D,
     "writer_edge_sha256":D,"unresolved_edges":[]} for k in ("GET","HEAD","PREWARM")}}
+ census["side_effects"]["HEAD"].update(
+  routing_mode="NATIVE_HEAD_HANDLER_SEMANTICS_REVIEWED",
+  handler_semantics_sha256=D,get_fallback_trace_sha256=D)
  return {"protected":{"writers":{"native_census":census}}}
 
 def source():
@@ -156,6 +159,15 @@ class BFinancialProofAdversarial(unittest.TestCase):
    with self.subTest(route=route),self.assertRaises(FinancialProofHold):
     verify_writer_census(f)
 
+ def test_head_runtime_handler_semantics_required(self):
+  for field in ("routing_mode","handler_semantics_sha256",
+                "get_fallback_trace_sha256"):
+   f=finance()
+   f["protected"]["writers"]["native_census"]["side_effects"]["HEAD"].pop(field)
+   with self.subTest(missing=field),self.assertRaisesRegex(
+      FinancialProofHold,"HEAD handler"):
+    verify_writer_census(f)
+
  def test_discovery_unknown_cron_or_ingress_blocks(self):
   for key in ("unresolved_writers","unclassified_financial_jobs",
               "unknown_http_effects","unmapped_external_ingress"):
@@ -223,9 +235,11 @@ class BFinancialProofAdversarial(unittest.TestCase):
   g["writer_nodes"].append("lib/bets.ts")
   g["routes"]["GET"]+=["app/page.tsx","app/api/lobby/route.ts",
     "app/api/live-games/route.ts","app/api/bets/route.ts"]
+  g["routes"]["HEAD"]+=["app/page.tsx","app/api/lobby/route.ts",
+    "app/api/live-games/route.ts","app/api/bets/route.ts"]
   g["routes"]["PREWARM"].append("scripts/prewarm-production.mjs")
   sc["read_side_effect_policy"]={"GET":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
-    "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM","HEAD":"UNVERIFIED_NO_PROBE"}
+    "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM","HEAD":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM"}
   def bind():
    sc["dependency_graph_sha256"]=hashlib.sha256(canonical(g)).hexdigest()
    sc["import_edges_sha256"]=hashlib.sha256(canonical(g["edges"])).hexdigest()
@@ -234,6 +248,14 @@ class BFinancialProofAdversarial(unittest.TestCase):
    sc["prewarm_effects_sha256"]=hashlib.sha256(canonical(
      g["routes"]["PREWARM"])).hexdigest()
   bind();self.assertTrue(verify_closed_graph(sc))
+  sc["read_side_effect_policy"]["HEAD"]="UNVERIFIED_NO_PROBE"
+  with self.assertRaisesRegex(FinancialProofHold,"misclassified"):
+   verify_closed_graph(sc)
+  sc["read_side_effect_policy"]["HEAD"]="FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM"
+  g["routes"]["HEAD"].remove("app/api/bets/route.ts");bind()
+  with self.assertRaisesRegex(FinancialProofHold,"entrypoints hidden"):
+   verify_closed_graph(sc)
+  g["routes"]["HEAD"].append("app/api/bets/route.ts");bind()
   g["routes"]["GET"].remove("app/api/bets/route.ts");bind()
   with self.assertRaisesRegex(FinancialProofHold,"entrypoints hidden"):
    verify_closed_graph(sc)
