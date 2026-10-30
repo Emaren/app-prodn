@@ -1,0 +1,42 @@
+name: G P0 final-release acceptance source contracts
+on:
+  push:
+    branches:
+      - review/g-p0-production-acceptance-20261030
+  pull_request:
+    paths:
+      - scripts/aoe2_release_final_acceptance.py
+      - scripts/aoe2_release_final_chrome.cjs
+      - tests/test_aoe2_release_final_acceptance.py
+      - .github/workflows/g-final-release-acceptance-source.yml
+permissions:
+  contents: read
+jobs:
+  source-security-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Compile and adversarial host gate tests
+        run: |
+          python3 -m py_compile scripts/aoe2_release_final_acceptance.py tests/test_aoe2_release_final_acceptance.py
+          python3 -m unittest -v tests/test_aoe2_release_final_acceptance.py
+      - name: Chrome runner syntax and strict no-credentials fail closed
+        run: |
+          node --check scripts/aoe2_release_final_chrome.cjs
+          if node scripts/aoe2_release_final_chrome.cjs; then
+            echo "HOLD: browser runner accepted missing auth/evidence"
+            exit 1
+          fi
+          echo "PASS: missing auth/evidence blocked; no production request attempted"
+      - name: Confirm no production acceptance implied
+        run: |
+          git diff --check
+          grep -q 'production_certified:false' scripts/aoe2_release_final_chrome.cjs
+          grep -q 'NOT_EXECUTED_BY_THIS_HOST_CHECK' scripts/aoe2_release_final_acceptance.py
