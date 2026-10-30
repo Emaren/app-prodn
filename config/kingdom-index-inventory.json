@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
-    "routeHandlerTemplates": 281,
-    "apiHandlerTemplates": 278,
+    "routeHandlerTemplates": 282,
+    "apiHandlerTemplates": 279,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1233,6 +1233,11 @@
     },
     {
       "entrypoint": "app/api/admin/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/storage-os/freshness/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
