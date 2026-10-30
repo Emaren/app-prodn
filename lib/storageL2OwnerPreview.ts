@@ -53,7 +53,7 @@ export function ownerL2ReviewBasket(
   previews: readonly L2CategoryPreview[],
   selectedKeys: readonly string[],
 ): L2CategoryPreview[] {
-  const byKey = new Map(previews.map(p => [p.key, p] as const));
+  const byKey = new Map<string, L2CategoryPreview>(previews.map(p => [p.key, p] as const));
   const unique = new Set(selectedKeys);
   if (selectedKeys.length !== unique.size ||
       selectedKeys.some(key => !byKey.has(key))) return [];
