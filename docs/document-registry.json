@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "910c96ec78d379319be7a9472480e80c881c5d93ac4a24dd0fb34e40887250a5",
+      "sha256": "e76830294a404a173fd5517e48acc019cb52e25ee1cf4a302de4d73ac87f370f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/g-operation-storage-transfer-visual-20261030",
-    "commit": "2f9e69c326285609c32c519ea1458fc2466a22c8"
+    "branch": "review/g-storage-transfer-atlas-33-chrome-20261030",
+    "commit": "911b4d3feb29d614bad7f3890310a093df00042e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
