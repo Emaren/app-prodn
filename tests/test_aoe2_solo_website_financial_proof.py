@@ -5,7 +5,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from aoe2_solo_website_financial_proof import (
  FinancialProofHold,REQUIRED_SERVICES,REQUIRED_TIMERS,REQUIRED_UNITS,
  REQUIRED_SURFACES,canonical,verify_writer_census,verify_source_closure,
- rollback_finance_status)
+ rollback_finance_status,verify_installed_source_review)
 D="a"*64
 
 def unit(name):
@@ -129,6 +129,31 @@ class BFinancialProofAdversarial(unittest.TestCase):
   with self.assertRaises(FinancialProofHold):verify_source_closure(r)
   r["source_scope"]["artifact_sha256"]="c"*64
   self.assertTrue(verify_source_closure(r))
+
+ def test_installed_source_review_must_match_signed_graph(self):
+  r=source();s=r["source_scope"]
+  review={"kind":"aoe2war.solo.website.source-review.v1",
+          "status":"INDEPENDENTLY_REVIEWED","candidate_sha":r["candidate_sha"],
+          "transitive_closure_sha256":s["dependency_graph_sha256"],
+          **{k:s[k] for k in ("import_edges_sha256",
+             "finance_surface_sha256","get_head_effects_sha256",
+             "prewarm_effects_sha256","writer_census_sha256")},
+          **{k:[] for k in ("unresolved_import_edges",
+            "changed_financial_writers","financial_migration_paths",
+            "unchecked_producer_edges","unreviewed_get_side_effects",
+            "unreviewed_prewarm_side_effects")}}
+  raw=canonical(review)
+  s["source_review_sha256"]=hashlib.sha256(raw).hexdigest()
+  self.assertTrue(verify_installed_source_review(r,raw))
+  with self.assertRaisesRegex(FinancialProofHold,"installed source review"):
+   verify_installed_source_review(r,raw+b" ")
+  review["get_head_effects_sha256"]="c"*64
+  mutated=canonical(review)
+  s["source_review_sha256"]=hashlib.sha256(mutated).hexdigest()
+  with self.assertRaisesRegex(FinancialProofHold,"native closure diverges"):
+   verify_installed_source_review(r,mutated)
+  with self.assertRaises(FinancialProofHold):
+   verify_installed_source_review(r,b'{"kind":1,"kind":2}')
 
  def test_web_rollback_never_means_financial_rollback(self):
   from unittest.mock import patch
