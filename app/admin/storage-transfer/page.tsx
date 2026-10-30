@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ArrowRight, Archive, ChevronRight,
   Database, HardDrive, Laptop2, LockKeyhole, Network,
-  RefreshCw, Server, WifiOff
+  RefreshCw, Server, Waves, WifiOff
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TransferMissionPanels from "@/components/storage-transfer/TransferMissionPanels";
