@@ -40,6 +40,44 @@ class Guards(unittest.TestCase):
         self.assertEqual(observed["finance_fingerprint_sha256"],
                          root.digest(root.canonical(protected)))
 
+    def test_native_issue_requires_original_fd200_same_server_lease(self):
+        from aoe2_solo_website_command_channel import REMOTE
+        import aoe2_solo_website_engine_v1 as engine
+        import aoe2_solo_website_native_audit_adapter as adapter
+        import aoe2_solo_website_forced_ssh as forced
+        from unittest.mock import MagicMock
+        issue=("PRE_STAGE",engine.W1,None,None,None)
+        fake=MagicMock()
+        fake.run.return_value=__import__("subprocess").CompletedProcess(
+            ["protected"],0,'{"status":"ROOT_ISSUED_NOT_AUTHORIZED"}',"")
+        fake.assert_alive.return_value=None
+        class Lease:
+            def __enter__(self):return fake
+            def __exit__(self,*args):return False
+        with patch("aoe2_solo_website_command_channel.command_lease",
+                   return_value=Lease()) as command:
+            result=engine.root_issue(*issue)
+        self.assertEqual(result["status"],"ROOT_ISSUED_NOT_AUTHORIZED")
+        self.assertTrue(command.called)
+        cmd=fake.run.call_args.args[0]
+        self.assertIn(" issue PRE_STAGE "+engine.W1,cmd)
+        self.assertIn("original FD200 root issuance HOLD",
+                      __import__("inspect").getsource(engine.root_issue))
+        self.assertIn("'issue':None",REMOTE)
+        self.assertIn("issue_dispatched=True",REMOTE)
+        self.assertIn("issuance-only lease",REMOTE)
+        self.assertNotIn("aoe2war-solo-issue",__import__("inspect").getsource(forced.main))
+        audit=__import__("inspect").getsource(adapter.audit)
+        self.assertIn("pass_fds=(200,)",audit)
+
+    def test_native_issue_root_whitelist_blocks_extra_args_or_shell(self):
+        import aoe2_solo_website_command_channel as channel
+        code=channel.REMOTE
+        self.assertIn("stage issue must be fresh",code)
+        self.assertIn("invalid activation issue identity",code)
+        self.assertIn("unallowlisted SSH root verb",
+                      (S/"aoe2_solo_website_forced_ssh.py").read_text())
+
     def test_root_nonce_consume_exact_argument_contract(self):
         import inspect
         from aoe2_solo_website_nonce_ledger import Journal

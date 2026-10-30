@@ -176,7 +176,8 @@ def audit(candidate,phase,attempt,*,post_stage=False):
                            "--phase",phase,"--attempt",attempt,
                            "--boundary","post-stage"if post_stage else "pre-phase"],
                           stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE,timeout=20,check=False)
+                          stderr=subprocess.PIPE,timeout=20,check=False,
+                          pass_fds=(200,))
     need(result.returncode==0 and 0<len(result.stdout)<=262144,
          "independent physical native audit HOLD")
     report=parse(result.stdout)

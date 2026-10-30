@@ -185,19 +185,6 @@ def main(mode,original):
         remote=namespace["REMOTE"]
         need(type(remote)is str and len(remote)<262144,"lease engine missing")
         os.execv("/usr/bin/python3",["/usr/bin/python3","-u","-c",remote,LOCK,holder])
-    elif tokens[0]=="aoe2war-solo-issue":
-        need(len(tokens) in (3,6) and
-             tokens[1] in ("PRE_STAGE","PRE_ACTIVATE") and
-             bool(HEX40.fullmatch(tokens[2])),"bad root issue")
-        if tokens[1]=="PRE_STAGE":
-            need(len(tokens)==3,"stage issue must be fresh")
-        else:
-            need(len(tokens)==6 and
-                 all(HEX64.fullmatch(x)for x in tokens[3:]),
-                 "invalid activation attempt/lease/receipt digest")
-        pinned_helper("phase")
-        os.execv("/usr/bin/python3",
-                 ["/usr/bin/python3",str(HELPERS["phase"]),"issue",*tokens[1:]])
     else:raise Hold("unallowlisted SSH root verb")
 if __name__=="__main__":
     try:
