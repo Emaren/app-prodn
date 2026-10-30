@@ -150,7 +150,7 @@ class FrozenReleaseP0Tests(unittest.TestCase):
         self.assertIn("website_dispatched=True",remote)
         self.assertIn("root phase not actually consumed",remote)
         self.assertIn("wrong owner nonce proof",remote)
-        self.assertIn("phase completion without website mutation",remote)
+        self.assertIn("phase completion without verified website mutation",remote)
         self.assertIn("if phase is None or not phase_verified",remote)
         # Merely authenticating the SSH key is NOT authorization to spawn
         # arbitrary stage, shell, finance or migration commands as UID1000.
