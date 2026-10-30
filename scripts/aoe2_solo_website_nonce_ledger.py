@@ -134,12 +134,33 @@ class Journal:
             need(outcome.is_file() and not outcome.is_symlink(),
                  "previous consumed phase outcome unresolved; never redispatch")
 
+    def refuse_parallel_unconsumed_challenges(self,now):
+        # The authenticated observer selects exactly ONE outstanding fresh
+        # challenge. Reject a second concurrent one at the point of issuance.
+        for file in self.state.iterdir():
+            match=re.fullmatch(
+                r"([a-f0-9]{64})-(PRE_STAGE|PRE_ACTIVATE)-issue.json",
+                file.name)
+            if not match:
+                continue
+            attempt,phase=match.groups()
+            used=self.name(attempt,phase,"used")
+            if used.is_symlink():
+                raise Hold("SOLO_OWNER_LEDGER_HOLD: linked used marker")
+            if used.exists():
+                self.secure(used)
+                continue
+            prior=self.read(attempt,phase,"issue")
+            if parse_time(prior["expires_at"])>now:
+                raise Hold("SOLO_OWNER_LEDGER_HOLD: another unconsumed owner intent")
+
     def issue(self,phase,candidate,*,attempt=None,lease=None,stage_sha=None,
               observation=None,now=None):
         now=now or datetime.now(timezone.utc)
         need(bool(re.fullmatch(r"[0-9a-f]{40}",candidate)),"bad source SHA")
         with self.exclusive():
             self.refuse_unreconciled_phases()
+            self.refuse_parallel_unconsumed_challenges(now)
             if phase=="PRE_STAGE":
                 need(lease is None and stage_sha is None,"stage must be fresh")
                 # Root issuer may reserve a random attempt ID for READ-ONLY
