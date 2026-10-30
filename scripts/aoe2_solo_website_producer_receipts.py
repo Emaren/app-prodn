@@ -11,7 +11,7 @@ from aoe2_solo_website_root_phase import Hold, need, canonical, utc, digest
 
 TRUST=pathlib.Path("/etc/aoe2war/solo-owner-website-v1/trusted-producers.json")
 DOMAIN=b"AOE2WAR.SOLO_WEBSITE.NATIVE_PRODUCER_RECEIPT.V1\n"
-CLASSES=("doctor","recovery","finance","host","source")
+CLASSES=("doctor","recovery","finance","host","source","stage")
 
 def safe_bytes(file,limit=262144):
     need(file.is_absolute(),"relative producer trust")
@@ -55,7 +55,7 @@ def verify_all(report):
              body["content_sha256"]==digest(canonical(
                 report[{"doctor":"doctor","recovery":"recovery",
                         "finance":"finance","host":"mount",
-                        "source":"source_scope"}[name]])),
+                        "source":"source_scope","stage":"stage"}[name]])),
              "producer signed stale/other scope/content")
         key=trust[name]
         need(type(key) is dict and
