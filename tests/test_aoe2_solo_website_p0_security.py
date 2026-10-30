@@ -298,6 +298,18 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                 with self.assertRaises(root.Hold):
                     verify_all(report)  # unsigned stage mutation is never evidence
 
+    def test_original_receipt_inode_is_read_nofollow(self):
+        with tempfile.TemporaryDirectory(prefix="aoe2-stage-raw-") as t:
+            folder=Path(t)
+            original=folder/"stage-receipt.json"
+            raw=b'{ "status" : "STAGED" }\n'
+            original.write_bytes(raw)
+            self.assertEqual(root.read_original_stage_bytes(original),raw)
+            linked=folder/"linked-stage.json"
+            linked.symlink_to(original)
+            with self.assertRaises(root.Hold):
+                root.read_original_stage_bytes(linked)
+
     def test_raw_stage_digest_and_build_artifacts_are_bound(self):
         receipt={"status":"STAGED","artifact_sha256":"a"*64,
                  "candidate_node_modules_sha256":"b"*64,
