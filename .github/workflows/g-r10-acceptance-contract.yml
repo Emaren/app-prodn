@@ -30,5 +30,13 @@ jobs:
                --activation-dir /not/installed --out "$RUNNER_TEMP/no-production.json"; then
             echo "HOLD: host preflight falsely authorized"; exit 1
           fi
-          test ! -e "$RUNNER_TEMP/no-production.json"
-          echo "PASS: non-HEL1 cannot issue a production receipt"
+          test -s "$RUNNER_TEMP/no-production.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"no-production.json"
+          evidence=json.loads(p.read_text())
+          assert evidence["status"]=="HOLD" and evidence["production_certified"] is False
+          assert evidence["checks"]["live_source_build_compiled_service_and_public_identity"]["verdict"]=="HOLD"
+          assert all(x["verdict"]=="HOLD" for x in evidence["checks"].values())
+          print("PASS: non-HEL1 writes only an explicit tamper-evident-scope HOLD")
+          PY
