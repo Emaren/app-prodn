@@ -108,7 +108,9 @@ def observe_unit(name):
  invocation=canonical({key:p[key] for key in (
   "InvocationID","Result","ExecMainStatus","ExecMainStartTimestampMonotonic",
   "ExecMainExitTimestampMonotonic")})
- record={"unit":name,"kind":kind,"state":status,\n  "main_pid":int(p["MainPID"] or "0") if kind=="timer" else int(p["MainPID"]),\n  "declared_user":p["User"],"declared_group":p["Group"],
+ record={"unit":name,"kind":kind,"state":status,
+  "main_pid":int(p["MainPID"] or "0") if kind=="timer" else int(p["MainPID"]),
+  "declared_user":p["User"],"declared_group":p["Group"],
   "unit_file_sha256":sha(cat),"dropins_sha256":sha(drop),
   "exec_sha256":sha(p["ExecStart"].encode()),
   "environment_sha256":sha(env),
