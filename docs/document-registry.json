@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "22eeccf642ccec546693fda62d0e9da65ec6d75c3a514e0f3f36bc6ea5c6deb7",
+      "sha256": "57f791a8945ee5d28c08d67f762a78ab4318b7b7ac8fec6abdce5ba80633efd3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/g-q09-a3-work-ledger-20261029",
-    "commit": "150db4545e203c361c703dea29c9d486ab704a13"
+    "branch": "feat/d-q17-a3-32-route-atlas-20261029",
+    "commit": "95bb55841aaae47a2775f0022d23363307e10047"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
