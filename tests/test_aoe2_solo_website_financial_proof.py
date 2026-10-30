@@ -51,6 +51,27 @@ def source():
    "unresolved_dynamic_imports","unreviewed_external_calls")},
   "writer_census_sha256":hashlib.sha256(canonical(
    f["protected"]["writers"]["native_census"])).hexdigest()}
+ graph={"nodes":["pages/home.tsx","components/home.tsx",
+               "routes/get.ts","routes/head.ts","jobs/prewarm.ts",
+               "aoe2hdbets-staking-rewards.service",
+               "wolochain-mainnet-settlement.service",
+               "wolochain-founder-rewards-settlement.service"],
+        "edges":[["pages/home.tsx","components/home.tsx"],
+                 ["routes/get.ts","components/home.tsx"]],
+        "changed_nodes":["pages/home.tsx"],
+        "writer_nodes":["aoe2hdbets-staking-rewards.service",
+                        "wolochain-mainnet-settlement.service",
+                        "wolochain-founder-rewards-settlement.service"],
+        "routes":{"GET":["routes/get.ts"],"HEAD":["routes/head.ts"],
+                  "PREWARM":["jobs/prewarm.ts"]}}
+ scope["graph"]=graph
+ scope["changed_files"]=graph["changed_nodes"]
+ scope["dependency_graph_sha256"]=hashlib.sha256(canonical(graph)).hexdigest()
+ scope["import_edges_sha256"]=hashlib.sha256(canonical(graph["edges"])).hexdigest()
+ scope["get_head_effects_sha256"]=hashlib.sha256(canonical(
+  {"GET":graph["routes"]["GET"],"HEAD":graph["routes"]["HEAD"]})).hexdigest()
+ scope["prewarm_effects_sha256"]=hashlib.sha256(canonical(
+  graph["routes"]["PREWARM"])).hexdigest()
  return {"candidate_sha":"b"*40,"source_scope":scope,"finance":f,
          "stage":{"status":"NOT_STAGED"}}
 
@@ -132,6 +153,21 @@ class BFinancialProofAdversarial(unittest.TestCase):
   r["source_scope"]["unresolved_dynamic_imports"]=["unknown-dynamic-writer"]
   with self.assertRaises(FinancialProofHold):verify_source_closure(r)
   r=source();r["source_scope"]["writer_census_sha256"]=D
+  with self.assertRaises(FinancialProofHold):verify_source_closure(r)
+
+ def test_changed_transitive_financial_import_is_rejected(self):
+  r=source();s=r["source_scope"];graph=s["graph"]
+  graph["edges"].append(["components/home.tsx",
+                          "wolochain-mainnet-settlement.service"])
+  s["dependency_graph_sha256"]=hashlib.sha256(canonical(graph)).hexdigest()
+  s["import_edges_sha256"]=hashlib.sha256(canonical(graph["edges"])).hexdigest()
+  with self.assertRaisesRegex(FinancialProofHold,"transitively reaches"):
+   verify_source_closure(r)
+
+ def test_forged_graph_digest_and_incomplete_get_routes_fail(self):
+  r=source();r["source_scope"]["graph"]["edges"].clear()
+  with self.assertRaises(FinancialProofHold):verify_source_closure(r)
+  r=source();r["source_scope"]["graph"]["routes"]["PREWARM"]=[]
   with self.assertRaises(FinancialProofHold):verify_source_closure(r)
 
  def test_staged_artifact_and_deps_binding(self):
