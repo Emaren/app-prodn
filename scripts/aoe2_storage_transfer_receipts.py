@@ -174,7 +174,7 @@ def validate_envelope(envelope,trust,now=None):
                 all(integer(p[k]) for k in ("source_bytes","compressed_bytes",
                     "ciphertext_bytes","transferred_bytes","source_free_before",
                     "source_free_after")) and
-                p["compressed_bytes"]<=p["source_bytes"] and
+                # Incompressible sources may produce slightly larger archives.
                 p["transferred_bytes"]<=p["ciphertext_bytes"] and
                 p["ciphertext_bytes"]>0 and
                 all(hex64(p[k]) for k in ("age_recipient_fp_sha256",
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS storage_transfer_receipt (
     campaign_id TEXT NOT NULL, cohort_id TEXT NOT NULL,
     sequence INTEGER NOT NULL, role TEXT NOT NULL,
     sha256 TEXT NOT NULL UNIQUE, body_json TEXT NOT NULL,
-    observed_at TEXT NOT NULL,
+    signed_envelope_json TEXT NOT NULL, observed_at TEXT NOT NULL,
     PRIMARY KEY(campaign_id,cohort_id,sequence,role)
 );
 CREATE INDEX IF NOT EXISTS storage_transfer_receipt_lookup ON
@@ -284,10 +284,10 @@ def ingest(conn,envelope,trust,now=None):
                             rp["receiver_failure_domain_id"]),
                         "independent restore mismatch/same failure domain")
         conn.execute("INSERT INTO storage_transfer_receipt "
-            "(campaign_id,cohort_id,sequence,role,sha256,body_json,observed_at)"
-            " VALUES (?,?,?,?,?,?,?)",
+            "(campaign_id,cohort_id,sequence,role,sha256,body_json,"
+            "signed_envelope_json,observed_at) VALUES (?,?,?,?,?,?,?,?)",
             (campaign,cohort,sequence,role,digest,canonical(p).decode(),
-             p["observed_at"]))
+             canonical(envelope).decode(),p["observed_at"]))
         conn.commit()
     except BaseException:
         conn.rollback()
