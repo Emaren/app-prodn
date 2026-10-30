@@ -119,6 +119,19 @@ class BFinancialProofAdversarial(unittest.TestCase):
   with self.assertRaisesRegex(FinancialProofHold,"native discovery"):
    verify_writer_census(f)
 
+ def test_new_reviewed_active_writer_cannot_hide_pid(self):
+  f=finance();c=f["protected"]["writers"]["native_census"]
+  name="extra-custody-batch.service"
+  c["units"][name]=unit(name)
+  c["units"][name]["state"]="active"
+  c["discovered_unit_names"].append(name)
+  c["unit_inventory_sha256"]=hashlib.sha256(canonical(c["units"])).hexdigest()
+  c["reviewed_additional_units"]=[name]
+  c["additional_units_review_sha256"]=hashlib.sha256(canonical(
+   c["reviewed_additional_units"])).hexdigest()
+  with self.assertRaisesRegex(FinancialProofHold,"no real PID"):
+   verify_writer_census(f)
+
  def test_oneshot_idle_does_not_invent_pid(self):
   f=finance();r=f["protected"]["writers"]["native_census"]["units"][
    "aoe2hdbets-staking-rewards.service"]
