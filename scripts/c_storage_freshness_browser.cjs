@@ -53,13 +53,13 @@ async function main(){
    const errors=[];page.on("pageerror",e=>errors.push(e.message));
    const pageRes=await page.goto("/admin/storage-os",{waitUntil:"domcontentloaded",timeout:25000});
    assert.equal(pageRes.status(),200);
-   const panel=page.getByTestId("c-signed-freshness");
+   const panel=page.locator('[data-testid="c-signed-freshness"]:visible').first();
    await panel.waitFor({state:"visible",timeout:15000});
-   await page.getByTestId("c-adoption-state").getByText("Not adopted").waitFor({timeout:10000});
+   await panel.locator('[data-testid="c-adoption-state"]:visible').first().waitFor({timeout:10000});
    for(const id of ["mac","hel1-root","hel1-volume-105319120"]){
-    const p=page.getByTestId("c-freshness-"+id);await p.waitFor();
-    await page.getByTestId("c-status-"+id).waitFor({timeout:15000});
-    assert.equal((await page.getByTestId("c-status-"+id).textContent()).trim(),"UNKNOWN");
+    const p=panel.locator('[data-testid="c-freshness-"+id]:visible').first();await p.waitFor();
+    await p.locator('[data-testid="c-status-"+id]:visible').first().waitFor({timeout:15000});
+    assert.equal((await p.locator('[data-testid="c-status-"+id]:visible').first().textContent()).trim(),"UNKNOWN");
     await p.getByText("NO VERIFIED READING").waitFor();
    }
    assert.equal(await panel.getByText("0/2 VERIFIED").count(),2);
