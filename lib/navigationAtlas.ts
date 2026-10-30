@@ -25,6 +25,8 @@ export const ADMIN_ATLAS_ROUTES: readonly AtlasRoute[] = [
   { href:"/admin/aoe2war-os", label:"AoE2WAR OS · Navigation Atlas", cluster:"command", detail:"Private navigation constellation, audits and releases", visibility:"admin" },
   { href:"/admin/central-command", label:"Central Command", cluster:"command", detail:"Six engineering lanes, work, priorities and release gates", visibility:"admin" },
   { href:"/admin/central-command/job-board", label:"Living Job Exchange · Six Brains", cluster:"command", detail:"Private verified source events, six lane cores and work receipts; no proof of agent wake or deployment", visibility:"admin" },
+  { href:"/admin/central-command/work-board", label:"Living Work Board", cluster:"command", detail:"Authenticated eight-stage source milestone flow, queued work, commits, reviews and release gates", visibility:"admin" },
+  { href:"/admin/central-command/lanes", label:"Six-Lane Evidence Ledger", cluster:"command", detail:"Six engineering cores and authenticated source-backed activity with UNKNOWN host state", visibility:"admin" },
   { href:"/admin/ai", label:"AI Council Command", cluster:"intelligence", detail:"Private council controls", visibility:"admin" },
   { href:"/admin/auto-bets", label:"Auto Bets Command", cluster:"economy", detail:"Protected betting controls", visibility:"admin" },
   { href:"/admin/bounties", label:"Bounty Command", cluster:"economy", detail:"Bounty operations", visibility:"admin" },
@@ -52,14 +54,12 @@ export const ADMIN_ATLAS_ROUTES: readonly AtlasRoute[] = [
   { href:"/admin/workshop", label:"Workshop Command", cluster:"creative", detail:"Kingdom development studio", visibility:"admin" },
 ] as const;
 
-/* The G Job Exchange is now accepted source at its real nested admin page.
- * A distinct Work Board is not implemented; do not manufacture its URL. */
+/* The accepted G Job Exchange and A3 Work Board/Lanes all have real, server-
+ * protected page source. Never fabricate a dynamic user detail identity. */
 export const NON_NAVIGABLE_ADMIN_DETAIL_ROUTES = [
   "/admin/living-kingdom/[uid]",
 ] as const;
-export const PENDING_NAVIGATION = [
-  { label:"Independent Work Board", note:"No separately implemented source route" },
-] as const;
+export const PENDING_NAVIGATION: readonly { label: string; note: string }[] = [];
 export const NAVIGATION_ATLAS_HREF = "/admin/aoe2war-os#navigation-atlas";
 export const NAVIGATION_CLASSIFICATIONS: readonly AtlasVisibility[] = [
   "public", "admin", "hidden-draft", "redirect", "api-non-nav", "removed",

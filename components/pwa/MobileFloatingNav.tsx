@@ -74,11 +74,13 @@ export default function MobileFloatingNav() {
     }
   };
 
-  // The G Job Exchange already has its own Central Command breadcrumb and
-  // global castle/header navigation. A fixed dock—even collapsed—obscures
-  // glowing source cards on narrow screens. Suppress it ONLY on that route.
-  // Never change public preferences or other admin surfaces.
-  if (pathname === "/admin/central-command/job-board") return null;
+  // G's three private source observatories supply their own keyboard-accessible
+  // Mission Control breadcrumb and local navigation. Even the collapsed fixed
+  // dock can cover lower cards on narrow viewports. Never render it on these
+  // source-scoped routes; keep all original controls everywhere else.
+  if (pathname === "/admin/central-command/job-board" ||
+      pathname === "/admin/central-command/work-board" ||
+      pathname === "/admin/central-command/lanes") return null;
 
   if (effectiveMode === "hidden") {
     return (
