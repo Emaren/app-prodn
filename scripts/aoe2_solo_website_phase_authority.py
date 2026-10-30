@@ -68,13 +68,15 @@ def prove_consumed(phase, signed_packet, runner, manifest_raw, gate_raw, *,
         "root nonce proof unrelated to owner packet")
     return PhaseCapability(phase,packet_sha,p["nonce"],p["attempt_id"],
             p["candidate_sha"],p["manifest_sha256"],p["gate_sha256"],
-            p["active_build_id"],p["stage_receipt_sha256"],id(runner))
+            p["active_build_id"],p["stage_receipt_sha256"],
+            id(getattr(runner, "__self__", runner)))
 
 def require_phase_capability(phase,capability,remote_runner,*,manifest,
                              manifest_sha,gate_sha,active_build_id,
                              stage_receipt=None,stage_sha=None,dry_run=False):
     required(type(capability) is PhaseCapability and
-             capability.phase==phase and capability.runner_id==id(remote_runner),
+             capability.phase==phase and
+             capability.runner_id==id(getattr(remote_runner, "__self__", remote_runner)),
              "no exact current live lease capability")
     required(phase in ("PRE_STAGE","PRE_ACTIVATE") and not dry_run,
              "no stage/activate mutation without actual phase")
