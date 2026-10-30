@@ -1,0 +1,54 @@
+name: G Storage Transfer single canonical DocsV2 refresh
+on:
+  push:
+    branches:
+      - review/g-operation-storage-transfer-visual-20261030
+    paths:
+      - .github/workflows/g-storage-transfer-docsv2-once.yml
+permissions:
+  contents: write
+jobs:
+  refresh:
+    name: Source-frozen 105-doc generator and strict check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Self-retire temporary generator before source baseline
+        run: |
+          git switch -C review/g-operation-storage-transfer-visual-20261030
+          git merge-base --is-ancestor 1e5eae56f3434f2634ef7e59e070d67cc088babb HEAD || exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/g-storage-transfer-docsv2-once.yml
+          git commit -m "chore(storage-transfer): retire one-time canonical baseline generator"
+      - name: Regenerate and verify DocsV2 against actual source
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('docs/document-registry.json')
+          r=json.loads(p.read_text())
+          docs=r['documents']
+          assert len(docs)==105, f"document count drift: {len(docs)}"
+          named={x['path'] for x in docs}
+          assert {'docs/STORAGE_OS.md','docs/OPERATOR_START_HERE.md'}.issubset(named)
+          source=Path('app/admin/storage-transfer/page.tsx').read_text()
+          assert 'TransferMissionPanels' in source
+          assert 'transferReceipt: null' in Path('app/api/admin/storage-transfer/route.ts').read_text()
+          print('PASS: 105 canonical docs and signed-receipt HOLD, baseline',r['implementation_baseline'])
+          PY
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
+          if [ "$actual" != "$expected" ]; then
+            printf 'HOLD: unexpected generated paths:\n%s\n' "$actual"; exit 1
+          fi
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git commit -m "docs(storage-transfer): seal exact G Phase-1 visual source against 105-document registry"
+          python3 scripts/docs_v2_check.py
+          git diff --exit-code
+          git push origin HEAD:review/g-operation-storage-transfer-visual-20261030
