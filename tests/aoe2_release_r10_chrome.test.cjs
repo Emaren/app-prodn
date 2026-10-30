@@ -34,7 +34,7 @@ function fixture(t){
 test("mandatory real owner session state: missing arguments HOLD",()=>{
  const p=cp.spawnSync(process.execPath,[script],{encoding:"utf8",timeout:12000});
  assert.equal(p.status,2);
- assert.match(p.stderr,/FINAL_CHROME_HOLD:MISSING_/);
+ assert.match(p.stderr,/R10_CHROME_HOLD:MISSING_/);
 });
 test("all seven names cannot mask a substituted official route",t=>{
  const f=fixture(t);
