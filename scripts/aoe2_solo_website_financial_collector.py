@@ -6,7 +6,7 @@ auditor MUST close cron, ingress, database, source and GET/prewarm side effects.
 No service starts/stops, no database requests, no env/secret values emitted.
 """
 from __future__ import annotations
-import hashlib, json, os, pathlib, re, socket, stat, subprocess, sys
+import hashlib, json, os, pathlib, pwd, re, socket, stat, subprocess, sys
 from aoe2_solo_website_financial_proof import (
  HOST,REQUIRED_UNITS,REQUIRED_SERVICES,REQUIRED_TIMERS,ONESHOT_SERVICES,
  canonical,FinancialProofHold,require)
@@ -105,7 +105,7 @@ def observe_unit(name):
  invocation=canonical({key:p[key] for key in (
   "InvocationID","Result","ExecMainStatus","ExecMainStartTimestampMonotonic",
   "ExecMainExitTimestampMonotonic")})
- record={"unit":name,"kind":kind,"state":status,"main_pid":int(p["MainPID"]),
+ record={"unit":name,"kind":kind,"state":status,\n  "main_pid":int(p["MainPID"] or "0") if kind=="timer" else int(p["MainPID"]),\n  "declared_user":p["User"],"declared_group":p["Group"],
   "unit_file_sha256":sha(cat),"dropins_sha256":sha(drop),
   "exec_sha256":sha(p["ExecStart"].encode()),
   "environment_sha256":sha(env),
@@ -116,6 +116,13 @@ def observe_unit(name):
   proc=proc_identity(record["main_pid"])
   record["start_time_ticks"]=proc["start_time_ticks"]
   record["executable_sha256"]=proc["executable_sha256"]
+  record["uid"]=proc["uid"]
+  record["process_cgroup_sha256"]=proc["cgroup_sha256"]
+  declared=p["User"] or "root"
+  try:expected_uid=pwd.getpwnam(declared).pw_uid
+  except KeyError as exc:raise FinancialProofHold("native declared service user missing")from exc
+  require(proc["uid"]==expected_uid,
+          "native process UID differs from systemd unit principal")
   # Captured cgroup MUST include systemd's current controlling group.
   require(p["ControlGroup"] and p["ControlGroup"].encode()in
           (pathlib.Path("/proc")/str(record["main_pid"])/"cgroup").read_bytes(),
