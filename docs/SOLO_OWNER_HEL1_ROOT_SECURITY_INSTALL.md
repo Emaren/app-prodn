@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.hel1-root-security-install-v1"
+title: "Session C: HEL1 original-lock and root SSH installation"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn", "VPSSentry"]
+audience: ["operators", "developers", "ai-agents"]
+source_of_truth: "git"
+authority: "operational-procedure"
+reviewed_at: "2026-10-30"
+review_interval_days: 7
+sensitivity: "internal"
+---
+
 # Session C: HEL1 original-lock and root SSH installation
 
 **DRAFT — not installed, no owner approval implied.**
