@@ -305,6 +305,8 @@ def complete_activation(args):
     need(challenge["candidate_sha"]==candidate and
          used["owner_packet_sha256"]==approved["packet_sha256"],
          "completion not bound to owner signed activation")
+    need(approved.get("original_fd200_session_sha256")==original_fd200_session_sha256(),
+         "completion from new/different original FD200 session forbidden")
     from aoe2_solo_website_native_audit_adapter import audit
     report=audit(candidate,"POST_ACTIVATE",attempt,post_stage=True)
     now=native_observation_for_owner(report)
@@ -338,6 +340,14 @@ def complete_activation(args):
     write_once(STATE/(attempt+"-PRE_ACTIVATE-completed.json"),record)
     return record
 
+def original_fd200_session_sha256():
+    """Bind root receipt to one protected HEL1 session, not any later flock."""
+    session=os.environ.get("AOE2WAR_SOLO_FD200_SESSION")
+    need(type(session)is str and bool(HEX64.fullmatch(session)),
+         "original FD200 release session identity absent")
+    Journal().inherited_lease_fd()
+    return digest(bytes.fromhex(session))
+
 def reconcile_activation_rollback(args):
     """PROVE website trap rollback + B-signed financial invariants; never mutate.
 
@@ -363,6 +373,8 @@ def reconcile_activation_rollback(args):
     need(consumed["owner_packet_sha256"]==approved["packet_sha256"] and
          approved["candidate_sha"]==issued["candidate_sha"],
          "rollback was not from this genuine consumed owner phase")
+    need(approved.get("original_fd200_session_sha256")==original_fd200_session_sha256(),
+         "rollback from new/different original FD200 session forbidden")
     status_file=folder/"rollback-status.txt"
     need(status_file.is_file() and not status_file.is_symlink(),
          "no original protected rollback trap evidence")
@@ -526,10 +538,12 @@ def consume(args):
         write_once(STATE/(a+"-PRE_ACTIVATE-native-before.json"),report)
     packet_sha=digest(canonical(signed))
     # Consume once inside original FD200 lease and fsync before dispatch.
+    session_sha=original_fd200_session_sha256()
     l.consume_under_existing_lock(issued,packet_sha,
         p["host_observation_sha256"])
     approved={
         "schema":1,"policy":POLICY,"phase":phase,"attempt_id":a,
+        "original_fd200_session_sha256":session_sha,
         "nonce":p["nonce"],"lease_id":p["lease_id"],
         "candidate_sha":p["candidate_sha"],"packet_sha256":packet_sha,
         "host_observation_sha256":p["host_observation_sha256"],
