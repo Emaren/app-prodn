@@ -213,6 +213,73 @@ class FrozenReleaseP0Tests(unittest.TestCase):
         with self.assertRaises((root.Hold,OSError)):
             verify_all({"receipt_provenance":{},"candidate_sha":"b"*40})
 
+    def test_real_ed25519_signed_native_receipts_and_financial_tamper(self):
+        from aoe2_solo_website_producer_receipts import (
+            verify_all,DOMAIN,CLASSES
+        )
+        if not Path("/usr/bin/openssl").is_file():
+            self.skipTest("OpenSSL unavailable")
+        with tempfile.TemporaryDirectory(prefix="aoe2-real-native-signed-") as tmp:
+            directory=Path(tmp)
+            private=directory/"machine-private.pem"
+            public=directory/"machine-public.pem"
+            p=subprocess.run(["/usr/bin/openssl","genpkey","-algorithm",
+                              "ED25519","-out",str(private)],
+                             capture_output=True,timeout=10)
+            self.assertEqual(p.returncode,0,p.stderr)
+            p=subprocess.run(["/usr/bin/openssl","pkey","-in",str(private),
+                              "-pubout","-out",str(public)],
+                             capture_output=True,timeout=10)
+            self.assertEqual(p.returncode,0,p.stderr)
+            der=subprocess.run(["/usr/bin/openssl","pkey","-pubin",
+                                "-in",str(public),"-outform","DER"],
+                               capture_output=True,timeout=10)
+            self.assertEqual(der.returncode,0)
+            key={"public_key_path":str(public),
+                 "public_spki_sha256":hashlib.sha256(der.stdout).hexdigest()}
+            trust={name:key for name in CLASSES}
+            trust_path=directory/"enrolled.json"
+            trust_path.write_text(json.dumps(trust))
+            now=datetime.now(timezone.utc).isoformat()
+            report={
+                "candidate_sha":"b"*40,"attempt_id":"a"*64,"phase":"PRE_STAGE",
+                "doctor":{"status":"PASS"},
+                "recovery":{"status":"PHYSICALLY_ACCEPTED"},
+                "finance":{"exposure":{"pending_transactions_sha256":"c"*64}},
+                "mount":{"mount":"/mnt/HC_Volume_105319120"},
+                "source_scope":{"status":"INDEPENDENTLY_REVIEWED"},
+                "receipt_provenance":{"signed_producers":{}},
+            }
+            mapping={"doctor":"doctor","recovery":"recovery","finance":"finance",
+                     "host":"mount","source":"source_scope"}
+            for producer in CLASSES:
+                blob=json.dumps(report[mapping[producer]],sort_keys=True,
+                                separators=(",",":"),ensure_ascii=True).encode()
+                body={"producer":producer,"candidate_sha":report["candidate_sha"],
+                      "attempt_id":report["attempt_id"],"phase":"PRE_STAGE",
+                      "host":"ubuntu-4gb-hel1-11","observed_at":now,
+                      "content_sha256":hashlib.sha256(blob).hexdigest()}
+                data=directory/("data-"+producer)
+                sig=directory/("sig-"+producer)
+                data.write_bytes(DOMAIN+json.dumps(body,sort_keys=True,
+                    separators=(",",":"),ensure_ascii=True).encode())
+                r=subprocess.run(["/usr/bin/openssl","pkeyutl","-sign",
+                    "-inkey",str(private),"-rawin","-in",str(data),
+                    "-out",str(sig)],capture_output=True,timeout=10)
+                self.assertEqual(r.returncode,0,r.stderr)
+                import base64
+                report["receipt_provenance"]["signed_producers"][producer]={
+                    "payload":body,
+                    "signature_base64":base64.b64encode(sig.read_bytes()).decode()}
+            import aoe2_solo_website_producer_receipts as receipts
+            def fixture_bytes(path,limit=262144):return Path(path).read_bytes()
+            with patch.object(receipts,"TRUST",trust_path),\
+                 patch.object(receipts,"safe_bytes",side_effect=fixture_bytes):
+                self.assertTrue(verify_all(report))
+                report["finance"]["exposure"]["pending_transactions_sha256"]="f"*64
+                with self.assertRaises(root.Hold):
+                    verify_all(report)
+
     def test_raw_stage_digest_and_build_artifacts_are_bound(self):
         receipt={"status":"STAGED","artifact_sha256":"a"*64,
                  "candidate_node_modules_sha256":"b"*64,
