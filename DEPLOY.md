@@ -15,6 +15,81 @@ sensitivity: "internal"
 
 # app-prodn Deploy
 
+
+## October 29, 2026 — M1 local operator release preflight (read-only, HOLD)
+
+**Scope:** the owner's \`Darwin/arm64\` development M1, not HEL1 or the older Intel
+backup receiver. This is a non-mutating **preparation/identification step**, never
+release admission. The full single owner-run bounded preflight command and
+native PASS/HOLD output belong in the F release issue #665, with cross-reference
+in migration #1007 and Central #975. The command uses \`os.lstat\`, \`statvfs\`,
+\`git rev-parse\`, \`git worktree list --porcelain\` (metadata only), bounded local
+BUILD_ID reads and exact-path asset inspection. It never calls \`finish\`,
+\`ship\`, \`stage\`, \`activate\`, \`next build\`, \`npm install\`, \`git fetch\`,
+\`git checkout\`, \`git reset\`, \`du\`, \`find\`, recursive Git status, cleanup,
+deletion or any network host mutation. Never use \`set -e\`/\`errexit\`.
+
+**Mandatory evidence matrix:**
+
+1. **Host/checkout** — \`uname\` must be Darwin/arm64; canonical existing
+   \`~/projects/AoE2HDBets/app-prodn\` and ancestor directories must be actual
+   directories, not symlinks. Report exact Git \`HEAD\`, branch, origin-repository
+   match, and existing \`git worktree list --porcelain\` entries by HEAD. Frozen W1
+   candidate is **\`b46a51f1592c9f296839924ae55e722618b10d35\`**;
+   accepted **separate post-W1** is
+   \`fa5c350b35cba7ace8d4515a7ad52ba4e1534295\`. A local checkout at
+   any other SHA is HOLD for release from that checkout; do **not** reset
+   or create a duplicate worktree to force parity. The old Oct 28 context
+   recorded local \`e822ab6d...\` but was NOT current proof.
+2. **Dirty/untracked** — bounded preflight deliberately does not recursively
+   enumerate under the <25 GiB native source scan floor. Mark dirty/untracked
+   **UNKNOWN / HOLD**, not clean, until separately independently bounded/approved
+   source status is proven; do not overwrite local-only code.
+3. **Headroom** — measure ordinary free bytes via
+   \`statvfs('/System/Volumes/Data')\` (or owner native \`df -Pk\`). At the most
+   recent M1 receipt it was **4,891,268 KiB = 4.6647 GiB**, **below the
+   independent 8 GiB operator-worktree floor**, 25 GiB guarded broad-scan floor
+   and 30 GiB recovery target. This is a historic owner-pasted reading, NOT
+   present live/signed telemetry. Recheck once; if <8 GiB, **HOLD any new local
+   checkout, Node install, build or other potentially large producer**.
+   No automatic cache prune or protected-file deletion is authorized.
+4. **Local artifact names, not assumed certification** — read only exact
+   metadata for \`bin/aoe2war\`, \`bin/aoe2war-release\`,
+   \`scripts/aoe2_release_ship.py\`,
+   \`scripts/aoe2_release_nonfinancial_admission.py\`,
+   \`.next/BUILD_ID\`, \`.next-release/BUILD_ID\`, \`.aoe2war-release\`,
+   \`.aoe2war-release/gates\`, \`.aoe2war-release/manifests\`,
+   \`.aoe2war-release/activation-receipts\` and \`node_modules\`. Presence is
+   not proof of a release-certified artifact, signed gate, working rollback or
+   installed production BUILD_ID. Never copy old artifacts into a new candidate
+   or remove a current/ambiguous artifact.
+5. **Authority and remote gates remain separate** — M1 canonical
+   \`/private/etc/aoe2war/release-admission\` is root-owned 0755, created empty
+   by owner; it contains no enrolled/trusted phase permits. F's draft
+   solo-owner controller [#1008](https://github.com/Emaren/app-prodn/pull/1008)
+   is non-dispatching as of this checkpoint, so W1's original incompatible
+   multi-human verifier cannot be bypassed. No fake role keys or v4 permit
+   replay. F needs an independently admitted solo-owner website-only policy,
+   exact stage/activation nonce+lease and real HEL1 observation.
+6. **Remote physical blockers and release order** — owner HEL1 last measured
+   ~21.0264 GiB free, with prior effective ~92.563% used, needing at least
+   **12.916 GiB** actual relief plus write margin; E's six genuine independent
+   off-provider restores **0/6**, Mac recovery **0 GiB** reclaimed; Doctor,
+   source/finance/owner/host witness, protected rollback and phase-specific
+   authorization absent. F releases immutable frozen W1 first and accepted
+   post-W1 separately only after all original admission checks pass.
+   Stage/activation are **NO-GO** until F independently records new evidence.
+
+**Safe strategy at <8 GiB:** preserve the already existing checkout/worktree
+and release/rollback material; conduct only the bounded read-only diagnostic.
+Do not attempt to manufacture capacity by duplicating builds, resetting
+worktrees or migrating/removing original HD, Watcher, Codex, database, L5 or
+financial assets. E's Intel archive is deliberately deferred until the next
+owner session; F may propose a separately reviewed remote-only execution
+strategy, but this runbook itself authorizes no deployment. A clean source
+and green CI are not substitutes for native host permits or live rollback.
+
+
 ## October 22, 2026 — targeted release-safety review
 
 Rechecked the ordinary protected release path, exact Git source identity, isolated staging, runtime/public version parity, fast and durable rollback, and Wolo 8092/8093 observer boundary against the current `scripts/aoe2_release.py` / `scripts/aoe2_release_ship.py` controls. This review does **not** grant any additional one-time exception or authorize settlement, signer, custody, schema migration or restart outside the release controller. The Traffic Observatory country presentation correction must use a new reviewed, artifact-bound website activation and separately coordinated Traffic API rollout. Dated historical deployment examples remain evidence of their own time, not current runtime truth.
