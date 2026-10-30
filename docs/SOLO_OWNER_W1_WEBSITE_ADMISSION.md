@@ -275,6 +275,23 @@ as `CLOSED_WORLD_VERIFIED`. This source is uninstalled and has not collected
 current HEL1 evidence. Never make up missing identities, suppress an active
 financial timer, or let CI fixtures stand in for live snapshots.
 
+**Frozen W1 already has GET-to-finance side effects.** Exact immutable W1
+`b46a51f1592c9f296839924ae55e722618b10d35` contains
+`GET /api/lobby -> loadLobbySnapshot -> queueLobbyMaintenance ->
+ensureBetMarkets`, `GET /api/live-games -> queueBetMarketEnsure`,
+`GET /api/bets -> queueBetMarketEnsure` (even though the downstream
+snapshot passes `ensureMarkets:false`), and prewarm calls `/`,
+`/api/lobby`, `/api/live-games`. `lib/bets.ts`'s ensure path
+can reach market settlement, pending claim reconciliation and founder
+bonuses. These are source-proven **mutation-capable reachability**,
+not evidence that funds moved. A W1 signed graph omitting the
+`W1_PUBLIC_FINANCIAL_EDGES` floor fails; source CI alone cannot
+declare public read routes financially inert. F/Central must resolve
+whether live unchanged financial-capable behavior can be safely
+admitted under separately signed noninterference, or whether a new
+reviewed source/runtime fence and SHA is necessary. Never silently
+change frozen W1 or disable protected writers to manufacture PASS.
+
 **Transitive source admission** must bind the exact candidate source tree,
 actual changed files, package/dependency graph, import edges, dynamic and
 server actions, financial DTOs, layout/SSR, GET/HEAD handlers and scheduled
