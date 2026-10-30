@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2b10a4c0219ac06fb528b5d9f0921d0d22dc495f7672f6656c156ba295552e86",
+      "sha256": "3216ab2a780bf5a4320b824792af05353e47793eebfd99662665da7b40b23a7f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1893,6 +1893,29 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.hel1-root-security-install-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/SOLO_OWNER_HEL1_ROOT_SECURITY_INSTALL.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-30",
+      "sensitivity": "internal",
+      "sha256": "f4f95a4c585e3d45e5ea1283c7af51d61569dc7a6981f3904c975e074b61e924",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "VPSSentry"
+      ],
+      "title": "Session C: HEL1 original-lock and root SSH installation",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -1904,7 +1927,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "eff5d4dc2a5d0f90a79788fdd72b605d92b15e5866a922a85061514cdb155339",
+      "sha256": "f5fdbb5640b7fe9abd55973592287af131355689b26ee306e37c72ac70447242",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2418,8 +2441,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "repair/g-docsv2-frozen-648bdc4a-20261030",
-    "commit": "d9ce905d97cf0043683f3c4d46da257b5190865e"
+    "branch": "repair/g-docsv2-f-final-02c9b263-20261030",
+    "commit": "1c4f57f74bc8cf142c7a651cc52b14b027234375"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
