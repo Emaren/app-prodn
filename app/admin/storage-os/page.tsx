@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { StorageCommandCenter, StorageReading } from "@/lib/storageCommandCenterProjection";
 import StorageVisualExplorer from "@/components/storage-os/StorageVisualExplorer";
 import StorageLevelPanels from "@/components/storage-os/StorageLevelPanels";
+import SignedFreshnessPanel from "@/components/storage-os/SignedFreshnessPanel";
 
 type PlaneId = StorageReading["id"];
 const IDS: PlaneId[] = ["mac", "hel1-root", "hel1-volume-105319120"];
@@ -194,6 +195,8 @@ export default function PrivateStorageOsPage() {
       </header>
 
       {error && <div role="alert" className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error} — READINGS WITHHELD</div>}
+
+      <SignedFreshnessPanel/>
 
       <section className="grid gap-3 md:grid-cols-3" aria-label="Storage planes">
         {IDS.map(id => {
