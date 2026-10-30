@@ -62,9 +62,11 @@ class FrozenReleaseP0Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="aoe2-lease-guardian-") as t:
             p=Path(t);locked=p/"release.lock";locked.touch()
             state=p/"quiescent"
+            unknown=p/"systemctl-unavailable"
             systemctl=p/"systemctl"
             systemctl.write_text("#!/usr/bin/env python3\n"
                 "import os,sys\n"
+                "if os.path.exists(os.environ['GUARD_UNKNOWN_FILE']):sys.exit(23)\n"
                 "quiet=os.path.exists(os.environ['GUARD_QUIET_FILE'])\n"
                 "print('ActiveState='+('inactive' if quiet else 'active'))\n"
                 "print('MainPID='+('0' if quiet else '2333'))\n"
@@ -76,7 +78,8 @@ class FrozenReleaseP0Tests(unittest.TestCase):
             os.dup2(fd,200,inheritable=True)
             if fd!=200:os.close(fd)
             env=dict(os.environ,PATH=str(p)+os.pathsep+os.environ["PATH"],
-                     GUARD_QUIET_FILE=str(state))
+                     GUARD_QUIET_FILE=str(state),
+                     GUARD_UNKNOWN_FILE=str(unknown))
             try:
                 guard=subprocess.Popen([sys.executable,"-c",channel.STAGE_GUARD,
                     str(sleeper.pid),"ABCDEF1234"],pass_fds=(200,),
@@ -100,7 +103,12 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                 time.sleep(1.4)
                 self.assertFalse(can_relock(),
                     "SSH/shell death must not drop original FD200 lease")
+                unknown.touch()
                 state.touch()
+                time.sleep(1.25)
+                self.assertFalse(can_relock(),
+                    "unavailable systemd cannot release original FD200 flock")
+                unknown.unlink()
                 deadline=time.monotonic()+8
                 while time.monotonic()<deadline and not can_relock():
                     time.sleep(.2)
