@@ -252,11 +252,12 @@ def rollback_finance_status(phase_result,before,after):
   verify_financial_identity(report["finance"])
  # A copied PRE_ACTIVATE receipt cannot impersonate a post-failure capture.
  # Each boundary is separately signed by the enrolled finance producer.
+ from aoe2_solo_website_root_phase import utc
  require(before.get("phase")=="PRE_ACTIVATE" and
          after.get("phase")=="POST_ROLLBACK" and
          type(before.get("observed_at"))is str and
          type(after.get("observed_at"))is str and
-         after["observed_at"]>before["observed_at"] and
+         utc(after["observed_at"])>utc(before["observed_at"]) and
          before["receipt_provenance"]["signed_producers"]["finance"]["signature_base64"]!=
          after["receipt_provenance"]["signed_producers"]["finance"]["signature_base64"],
          "replayed/undifferentiated native finance rollback observations")
