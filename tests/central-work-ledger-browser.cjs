@@ -56,7 +56,49 @@ async function run(){
     await page.getByText("FRESH",{exact:true}).first().waitFor({timeout:15000});
     assert.equal(await page.getByText("PRODUCTION BUILD_ID").first().count(),1);
     if(slug==="work-board"){
-      assert.equal(await page.locator('section[aria-label="Source-milestone evidence columns"] > div').count(),8);
+      // A single source component renders eight immutable stages. Next App Router can
+      // briefly retain two streamed copies during hydration; never certify a snapshot
+      // with 16 elements as an eight-stage result. Wait for one settled real grid,
+      // then enforce exact stage IDs/order, count and no hidden duplicate grid.
+      const requiredStages=["queue","dispatch","commit","ci","review","merge","return","live"];
+      const boardSelector='section[aria-label="Source-milestone evidence columns"]';
+      const earlyBoard=await page.evaluate(selector=>[...document.querySelectorAll(selector)].map(board=>({
+       nodes:board.querySelectorAll(':scope > [data-stage]').length,
+       stages:[...board.querySelectorAll(':scope > [data-stage]')].map(node=>node.getAttribute("data-stage")),
+       hidden:board.getAttribute("aria-hidden"),rect:board.getBoundingClientRect().toJSON()
+      })),boardSelector);
+      console.log("Q09_A3_STREAMED_BOARD_DIAGNOSTIC",JSON.stringify({width,earlyBoard}));
+      try{
+       await page.waitForFunction(({selector,stages})=>{
+        const boards=[...document.querySelectorAll(selector)];
+        if(boards.length!==1)return false;
+        const nodes=[...boards[0].children];
+        return nodes.length===stages.length&&nodes.every((node,index)=>
+         node.getAttribute("data-stage")===stages[index])&&
+         document.querySelectorAll("[data-stage]").length===stages.length;
+       },{selector:boardSelector,stages:requiredStages},{timeout:25000,polling:100});
+       await page.waitForLoadState("load",{timeout:15000});
+       const stageState=await page.evaluate(selector=>{
+        const boards=[...document.querySelectorAll(selector)];
+        return{boards:boards.length,stageIds:boards.flatMap(board=>
+         [...board.children].map(node=>node.getAttribute("data-stage"))),
+         totalStageNodes:document.querySelectorAll("[data-stage]").length};
+       },boardSelector);
+       console.log("Q09_A3_SETTLED_EIGHT_STAGE_PROOF",JSON.stringify({width,...stageState}));
+       assert.equal(stageState.boards,1,"Duplicate Work Board source grid persisted");
+       assert.equal(stageState.totalStageNodes,8,"Duplicate source milestone UI persisted");
+       assert.deepEqual(stageState.stageIds,requiredStages,"Source stages missing, out of order or duplicated");
+      }catch(e){
+       const failureState=await page.evaluate(selector=>({
+        boards:[...document.querySelectorAll(selector)].map(board=>({
+         count:board.children.length,ids:[...board.children].map(node=>node.getAttribute("data-stage")),
+         visible:!!(board.getClientRects().length),html:board.outerHTML.slice(0,500)})),
+        allStageNodes:document.querySelectorAll("[data-stage]").length
+       }),boardSelector);
+       console.error("Q09_A3_DUPLICATE_STAGE_DIAGNOSTIC",JSON.stringify({width,failureState}));
+       await page.screenshot({path:path.join(dir,"work-board-duplicate-diagnostic-"+width+".png"),fullPage:true});
+       throw e;
+      }
       await page.getByText("PR #999",{exact:false}).first().waitFor();
       assert.equal(await page.getByText("A return comment is not classified").count(),1);
     }else{
