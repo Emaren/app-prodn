@@ -32,7 +32,7 @@ def no_duplicates(pairs):
 MAX_SCRIPT=512*1024
 MAX_FRAME=6*1024*1024
 REMOTE=r'''
-import base64,fcntl,json,os,pathlib,selectors,signal,stat,subprocess,sys,time
+import base64,fcntl,json,os,pathlib,re,selectors,shlex,signal,stat,subprocess,sys,time
 lock=pathlib.Path(sys.argv[1]);holder=sys.argv[2]
 meta=pathlib.Path(str(lock)+'.meta');fd=None
 MAX_SCRIPT=524288;MAX_OUTPUT=2097152
@@ -46,13 +46,41 @@ def run(x):
  os.dup2(fd,200,inheritable=True)
  source=script.decode('utf-8','strict')
  if x['run_as']=='tony':
-  # The W1 native stage/activation engine expects the real UID1000
-  # filesystem/deploy-key account. Root is reserved for nonce/witness.
+  # W1 original protected stage/activation must execute as real UID1000.
   argv=['/usr/bin/setpriv','--reuid=1000','--regid=1000',
    '--init-groups','/usr/bin/env','-i','HOME=/home/tony',
    'USER=tony','LOGNAME=tony','PATH=/usr/local/bin:/usr/bin:/bin',
    '/bin/bash','-lc',source]
- else:argv=['/bin/bash','-lc',source]
+ else:
+  # Absolutely NO arbitrary root bash/script/program execution. Root commands
+  # are an exact reviewed phase-helper argv, never shell-interpreted.
+  parts=shlex.split(source)
+  helper='/usr/local/libexec/aoe2war/solo-v1-root-phase'
+  if len(parts)<4 or parts[0]!='python3' or parts[1]!=helper:
+   raise PermissionError('root phase helper only')
+  verb=parts[2]
+  sizes={'consume':4,'consumed-proof':6,'mark-staged':6,
+         'complete-activation':6}
+  if verb not in sizes or len(parts)!=sizes[verb]:
+   raise PermissionError('unknown protected root verb')
+  hex64=re.compile(r'[0-9a-f]{64}\Z')
+  hex40=re.compile(r'[0-9a-f]{40}\Z')
+  if verb=='consume':
+   if not re.fullmatch(r'[A-Za-z0-9+/=]{100,350000}',parts[3]):
+    raise PermissionError('invalid owner packet encoding')
+  else:
+   if not hex64.fullmatch(parts[3]):
+    raise PermissionError('invalid owner attempt')
+   if verb=='consumed-proof':
+    if parts[4] not in ('PRE_STAGE','PRE_ACTIVATE') or not hex64.fullmatch(parts[5]):
+     raise PermissionError('bad root proof identity')
+   elif verb=='complete-activation':
+    if not hex40.fullmatch(parts[4]) or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}',parts[5]):
+     raise PermissionError('invalid release and BUILD_ID')
+   else:
+    if not hex64.fullmatch(parts[4]) or not parts[5].startswith('/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/stage-'):
+     raise PermissionError('foreign stage receipt')
+  argv=['/usr/bin/python3',helper,verb]+parts[3:]
  p=subprocess.Popen(argv,stdin=subprocess.DEVNULL,
   stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,pass_fds=(200,))
  out={p.stdout:bytearray(),p.stderr:bytearray()};uncertain=False
