@@ -18,8 +18,8 @@ sensitivity: "internal"
 
 ## October 29, 2026 — W1 and post-W1 SOLO OWNER WEBSITE-ONLY operator authority
 
-**Current release entrypoint:** [Solo Owner W1 / Post-W1 Release and Rollback — Operator v1](docs/SOLO_OWNER_WEBSITE_RELEASE_V1_OPERATOR_RUNBOOK.md).
-In this docs directory, use the path without the docs/ prefix.
+**Current release entrypoint:** [Solo Owner W1 / Post-W1 Release and Rollback — Operator v1](SOLO_OWNER_WEBSITE_RELEASE_V1_OPERATOR_RUNBOOK.md).
+The link resolves within this docs directory.
 This is the single versioned operator procedure for the exact frozen W1
 source b46a51f1592c9f296839924ae55e722618b10d35 followed by the
 accepted post-W1 source fa5c350b35cba7ace8d4515a7ad52ba4e1534295.
