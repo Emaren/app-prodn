@@ -57,9 +57,9 @@ async function main(){
    await panel.waitFor({state:"visible",timeout:15000});
    await panel.locator('[data-testid="c-adoption-state"]:visible').first().waitFor({timeout:10000});
    for(const id of ["mac","hel1-root","hel1-volume-105319120"]){
-    const p=panel.locator('[data-testid="c-freshness-"+id]:visible').first();await p.waitFor();
-    await p.locator('[data-testid="c-status-"+id]:visible').first().waitFor({timeout:15000});
-    assert.equal((await p.locator('[data-testid="c-status-"+id]:visible').first().textContent()).trim(),"UNKNOWN");
+    const p=panel.getByTestId("c-freshness-"+id).first();await p.waitFor();
+    await p.getByTestId("c-status-"+id).first().waitFor({timeout:15000});
+    assert.equal((await p.getByTestId("c-status-"+id).first().textContent()).trim(),"UNKNOWN");
     await p.getByText("NO VERIFIED READING").waitFor();
    }
    assert.equal(await panel.getByText("0/2 VERIFIED").count(),2);
