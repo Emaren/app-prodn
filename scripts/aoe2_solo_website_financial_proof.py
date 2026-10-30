@@ -250,6 +250,16 @@ def rollback_finance_status(phase_result,before,after):
   # Validate all six machine/producer Ed25519 receipts, NOT just SHA strings.
   verify_all(report)
   verify_financial_identity(report["finance"])
+ # A copied PRE_ACTIVATE receipt cannot impersonate a post-failure capture.
+ # Each boundary is separately signed by the enrolled finance producer.
+ require(before.get("phase")=="PRE_ACTIVATE" and
+         after.get("phase")=="POST_ROLLBACK" and
+         type(before.get("observed_at"))is str and
+         type(after.get("observed_at"))is str and
+         after["observed_at"]>before["observed_at"] and
+         before["receipt_provenance"]["signed_producers"]["finance"]["signature_base64"]!=
+         after["receipt_provenance"]["signed_producers"]["finance"]["signature_base64"],
+         "replayed/undifferentiated native finance rollback observations")
  a,b=before["finance"],after["finance"]
  require(a.get("protected")==b.get("protected") and
          a.get("exposure")==b.get("exposure"),
