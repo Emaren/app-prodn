@@ -111,6 +111,30 @@ def verify_financial_identity(finance):
     verify_writer_census(finance)
     return protected
 
+def validate_stage_boundary(stage,phase,candidate,*,post_stage=False):
+    need(type(stage)is dict, "native stage receipt class missing")
+    if phase in ("PRE_ACTIVATE","POST_ROLLBACK") or post_stage:
+        need(stage.get("status")=="STAGED" and
+             stage.get("origin")=="HEL1_DURABLE_PROTECTED_STORE" and
+             stage.get("release_sha")==candidate and
+             type(stage.get("receipt"))is dict and
+             type(stage.get("staged_build_id"))is str and
+             bool(stage.get("staged_build_id")) and
+             all(type(stage.get(k))is str and len(stage[k])==64 and
+                 all(c in "0123456789abcdef" for c in stage[k])
+                 for k in ("receipt_sha256","artifact_sha256",
+                           "node_modules_sha256")) and
+             stage["receipt"].get("artifact_sha256")==stage["artifact_sha256"] and
+             stage["receipt"].get("candidate_node_modules_sha256")==
+                 stage["node_modules_sha256"] and
+             stage["receipt"].get("staged_build_id")==stage["staged_build_id"] and
+             stage["receipt"].get("release_sha")==candidate,
+             "native raw stage/artifact/dependency/BUILD_ID conflict")
+    else:
+        need(phase=="PRE_STAGE" and stage.get("status") in ("NOT_STAGED","UNKNOWN"),
+             "PRE_STAGE cannot impersonate prior durable artifact")
+    return True
+
 def audit(candidate,phase,attempt,*,post_stage=False):
     owner_approved_installed_binary(candidate)
     # The pinned tool MUST validate signed B/C/E class+third-host evidence
@@ -163,28 +187,7 @@ def audit(candidate,phase,attempt,*,post_stage=False):
          type(rb.get("active_build_id"))is str and
          type(rb.get("previous_source_sha"))is str,
          "unsigned rollback evidence")
-    stage=report["stage"]
-    need(type(stage)is dict, "native stage receipt class missing")
-    if phase=="PRE_ACTIVATE" or post_stage:
-        need(stage.get("status")=="STAGED" and
-             stage.get("origin")=="HEL1_DURABLE_PROTECTED_STORE" and
-             stage.get("release_sha")==candidate and
-             type(stage.get("receipt"))is dict and
-             type(stage.get("staged_build_id"))is str and
-             bool(stage.get("staged_build_id")) and
-             all(type(stage.get(k))is str and len(stage[k])==64 and
-                 all(c in "0123456789abcdef" for c in stage[k])
-                 for k in ("receipt_sha256","artifact_sha256",
-                           "node_modules_sha256")) and
-             stage["receipt"].get("artifact_sha256")==stage["artifact_sha256"] and
-             stage["receipt"].get("candidate_node_modules_sha256")==
-                 stage["node_modules_sha256"] and
-             stage["receipt"].get("staged_build_id")==stage["staged_build_id"] and
-             stage["receipt"].get("release_sha")==candidate,
-             "native raw stage/artifact/dependency/BUILD_ID conflict")
-    else:
-        need(stage.get("status") in ("NOT_STAGED","UNKNOWN"),
-             "PRE_STAGE cannot impersonate prior durable artifact")
+    validate_stage_boundary(report["stage"],phase,candidate,post_stage=post_stage)
     need(type(report["source_scope"])is dict and
          report["source_scope"].get("status")=="INDEPENDENTLY_REVIEWED",
          "source/gate/finance transitive closure missing")
