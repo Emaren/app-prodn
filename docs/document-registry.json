@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3216ab2a780bf5a4320b824792af05353e47793eebfd99662665da7b40b23a7f",
+      "sha256": "feca67f2f84d5486eb67360efef85e50658b188344134869b4f3c4d13c75b6fa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1927,7 +1927,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "f5fdbb5640b7fe9abd55973592287af131355689b26ee306e37c72ac70447242",
+      "sha256": "bb6b48b61d5ab845c07f3c41dc79cf09a960b74d068d336aecfc34ee0b6fa72f",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2441,8 +2441,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "repair/g-docsv2-f-final-02c9b263-20261030",
-    "commit": "1c4f57f74bc8cf142c7a651cc52b14b027234375"
+    "branch": "repair/g-docsv2-f-r10-source-20261030",
+    "commit": "6f2b3f8ad8f9cf8d2f7f62495dcac4a7d4cf9fa6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
