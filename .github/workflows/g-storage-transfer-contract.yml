@@ -1,0 +1,28 @@
+name: G Storage Transfer Phase-1 contracts
+on:
+  push:
+    branches:
+      - review/g-operation-storage-transfer-visual-20261030
+  pull_request:
+    paths:
+      - 'app/admin/storage-transfer/**'
+      - 'app/api/admin/storage-transfer/**'
+      - 'components/storage-transfer/**'
+      - 'lib/storageTransferPresentation.ts'
+      - 'tests/storage-transfer-visual-contract.test.mts'
+      - '.github/workflows/g-storage-transfer-contract.yml'
+permissions:
+  contents: read
+jobs:
+  acceptance-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+      - name: Validate bounded authenticated presentation and no writes
+        run: |
+          node --experimental-strip-types --test tests/storage-transfer-visual-contract.test.mts
+          git diff --check
