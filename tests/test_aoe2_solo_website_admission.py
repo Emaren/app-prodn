@@ -76,6 +76,11 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
     def run_check(self, *, signed=None, manifest_raw=None, gate_raw=None,
                   host=None, challenge=None, previous_stage=None, stage_receipt=None):
         # This test isolates policy; separate test exercises actual RSA signature.
+        # For a targeted HOST policy failure, bind the mock owner's digest to
+        # that exact host input. Otherwise we'd only test digest mismatch.
+        if host is not None and signed is None:
+            signed = copy.deepcopy(self.signed)
+            signed["payload"]["host_observation_sha256"] = M.digest(M.canonical(host))
         with patch.object(M, "verify_owner_signature", return_value=None):
             return M.verify_inputs(
                 self.signed if signed is None else signed,
