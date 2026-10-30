@@ -49,7 +49,9 @@ function recent(t:string|null,now:number,windowMs=15*60_000){
  return Number.isFinite(stamp)&&stamp<=now+60_000&&now-stamp<=windowMs;
 }
 function cleanCohort(c:TransferCohort,now:number):boolean{
- if(!ALIAS.test(c.id)||!ALIAS.test(c.campaignId)||!ALIAS.test(c.label.replace(/ /g,"_"))||
+ if(!c||typeof c!=="object"||typeof c.id!=="string"||typeof c.campaignId!=="string"||
+ typeof c.label!=="string"||!c.stage||typeof c.stage!=="object"||
+ !ALIAS.test(c.id)||!ALIAS.test(c.campaignId)||!ALIAS.test(c.label.replace(/ /g,"_"))||
  c.destination!=="intel"||!["mac","hel1-root","hel1-volume-105319120"].includes(c.source)||
  ![1,2,3,4,5].includes(c.protectedLevel)||!Array.isArray(c.samples)||c.samples.length>32||
  !c.senderAuthenticated||!c.receiverAuthenticated||
@@ -59,6 +61,10 @@ function cleanCohort(c:TransferCohort,now:number):boolean{
  for(const v of [c.compressedBytes,c.ciphertextBytes,c.bytesSent,c.bytesReadback]){
   if(v!==null&&!safeBytes(v))return false;
  }
+ if(c.samples.some((x)=>!x||typeof x!=="object"||!safeBytes(x.bytesSent)||
+ !Number.isFinite(Date.parse(x.at))))return false;
+ if(Object.entries(c.stage).some(([step,state])=>!TRANSFER_STEPS.includes(step as TransferStep)||
+ !["UNKNOWN","WAITING","ACTIVE","VERIFIED","HOLD"].includes(state)))return false;
  if(c.bytesSent!==null&&c.ciphertextBytes!==null&&c.bytesSent>c.ciphertextBytes)return false;
  if(c.bytesReadback!==null&&c.bytesSent!==null&&c.bytesReadback>c.bytesSent)return false;
  if(c.ciphertextSha256!==null&&!SHA.test(c.ciphertextSha256))return false;
@@ -76,10 +82,12 @@ export function projectTransferPublication(raw:TransferPublication|null, now=new
   verifiedArchives:null,independentRestores:null,transferredBytes:null,
   readbackBytes:null,reclaimedBytes:null,intelFreeBytes:null,intelReserveBytes:null};
  if(!raw||raw.schema!=="aoe2war.storage-transfer.admitted-publication.v1"||
- raw.issuer!=="C_NATIVE_SENDER_RECEIVER_VERIFIER"||!ALIAS.test(raw.campaignId)||
- !Array.isArray(raw.cohorts)||raw.cohorts.length>24||
- !recent(raw.observedAt,now.getTime())||!raw.expiresAt||
- Date.parse(raw.expiresAt)<=now.getTime())return empty;
+ raw.issuer!=="C_NATIVE_SENDER_RECEIVER_VERIFIER"||typeof raw.campaignId!=="string"||
+ !ALIAS.test(raw.campaignId)||!Array.isArray(raw.cohorts)||
+ raw.cohorts.length>24||typeof raw.observedAt!=="string"||
+ typeof raw.expiresAt!=="string")return empty;
+ if(!recent(raw.observedAt,now.getTime())||Date.parse(raw.expiresAt)<=now.getTime())
+  return {...empty,status:"STALE"};
  const seen=new Set<string>();
  const cohorts:TransferCohort[]=[];
  for(const cohort of raw.cohorts){
