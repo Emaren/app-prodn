@@ -11,8 +11,11 @@ from aoe2_solo_website_financial_proof import (
  HOST,REQUIRED_UNITS,REQUIRED_SERVICES,REQUIRED_TIMERS,ONESHOT_SERVICES,
  canonical,FinancialProofHold,require)
 MAX_CMD_BYTES=2_000_000
+# Additional finance-capable namespaces MUST be discovered for explicit
+# independent in-scope/excluded classification; not silently omitted.
 PREFIXES=("aoe2hdbets-","aoe2dewarwagers-","wolochain-","wolochaind-",
-          "aoe2-wolo-","aoe2war-prewarm.")
+          "aoe2-wolo-","aoe2war-prewarm.","wolo-","tokenchain-",
+          "tokenchaind-","tokentap-","traffic-")
 NATIVE_PROPS=("Id","LoadState","ActiveState","SubState","Type","MainPID",
  "User","Group","FragmentPath","DropInPaths","ExecStart","Environment",
  "EnvironmentFiles","ControlGroup","InvocationID","Result",
