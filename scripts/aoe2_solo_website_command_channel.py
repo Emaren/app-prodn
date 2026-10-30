@@ -61,11 +61,21 @@ def run(x):
   verb=parts[2]
   sizes={'consume':4,'consumed-proof':6,'mark-staged':6,
          'complete-activation':6,'reconcile-rollback':5}
-  if verb not in sizes or len(parts)!=sizes[verb]:
+  if verb=='issue':
+   if len(parts) not in (5,8):
+    raise PermissionError('bad native issue arity')
+  elif verb not in sizes or len(parts)!=sizes[verb]:
    raise PermissionError('unknown protected root verb')
   hex64=re.compile(r'[0-9a-f]{64}\Z')
   hex40=re.compile(r'[0-9a-f]{40}\Z')
-  if verb=='consume':
+  if verb=='issue':
+   if parts[3] not in ('PRE_STAGE','PRE_ACTIVATE') or not hex40.fullmatch(parts[4]):
+    raise PermissionError('invalid native source/phase issue')
+   if parts[3]=='PRE_STAGE':
+    if len(parts)!=5:raise PermissionError('stage issue extra arguments')
+   elif len(parts)!=8 or not all(hex64.fullmatch(v) for v in parts[5:]):
+    raise PermissionError('activation issue not bound to prior stage')
+  elif verb=='consume':
    if not re.fullmatch(r'[A-Za-z0-9+/=]{100,350000}',parts[3]):
     raise PermissionError('invalid owner packet encoding')
   else:
@@ -168,7 +178,10 @@ try:
   else:
    parts=shlex.split(base64.b64decode(x['script'],validate=True).decode('utf-8'))
    verb=parts[2] if len(parts)>=3 else None
-   if verb=='consume':
+   if verb=='issue':
+    if phase is not None or phase_verified or website_dispatched:
+     raise PermissionError('native issue requires unused original FD200 channel')
+   elif verb=='consume':
     if phase is not None:raise PermissionError('owner phase already consumed')
    elif verb=='consumed-proof':
     if phase is None or phase_verified or website_dispatched:
