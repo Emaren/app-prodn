@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/g-operation-storage-transfer-visual-20261030` at `eb22e2b32680063595e15e06fe0991f779b4421e`
+Implementation baseline: `review/g-operation-storage-transfer-visual-20261030` at `ae8a80b24309c4bd68975dfff390fc2360893361`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
