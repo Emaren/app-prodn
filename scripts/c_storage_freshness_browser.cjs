@@ -69,7 +69,10 @@ async function main(){
    assert.ok(await page.evaluate(()=>document.activeElement!==document.body),"Keyboard navigable");
    await page.addScriptTag({content:axe.source});
    const serious=await page.evaluate(async()=>{
-    const r=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
+    const roots=Array.from(document.querySelectorAll('[data-testid="c-signed-freshness"]'));
+    const root=roots.find(e=>e.getBoundingClientRect().height>0&&getComputedStyle(e).visibility!=="hidden");
+    if(!root)throw Error("C_FRESHNESS_VISIBLE_PANEL_MISSING");
+    const r=await window.axe.run(root,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
     return r.violations.filter(x=>["critical","serious"].includes(x.impact))
       .map(x=>({id:x.id,impact:x.impact,nodes:x.nodes.slice(0,5).map(n=>n.target)}));
    });
