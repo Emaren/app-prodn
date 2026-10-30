@@ -85,6 +85,7 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
             "finance_fingerprint_sha256": "e" * 64,
             "financial_movement_authorized": False,
             "custody_authorized": False, "migration_paths": [],
+            "scope_review_sha256": "f" * 64,
             "stage_receipt_sha256": None, "staged_build_id": None,
             "pre_stage_packet_sha256": None,
         }
@@ -104,6 +105,7 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
         # Unit fixtures mock the PINNED host module at its narrow I/O boundary.
         # Production callers cannot inject observations into verify_inputs.
         with patch.object(M, "verify_owner_signature", return_value=None), \
+             patch.object(M, "reviewed_scope", return_value={"status": "INDEPENDENTLY_REVIEWED"}), \
              patch.object(M, "read_authenticated_hel1",
                           return_value=(self.host if host is None else host,
                                         self.challenge if challenge is None else challenge)):
@@ -133,6 +135,23 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
         self.assertEqual(result["status"], "INPUTS_VERIFIED_ONLY_NOT_AUTHORIZED")
         self.assertIs(result["financial_release_authorized"], False)
         self.assertIs(result["host_lease_and_nonce_consumed"], False)
+
+    def test_missing_independent_scope_review_holds(self):
+        with patch.object(M, "reviewed_scope", side_effect=M.Hold("review absent")), \
+             patch.object(M, "read_authenticated_hel1", return_value=(self.host, self.challenge)), \
+             patch.object(M, "verify_owner_signature", return_value=None):
+            with self.assertRaises(M.Hold):
+                M.verify_inputs(self.signed, self.manifest_raw,
+                                self.gate_raw, now=self.now)
+
+    def test_transitive_proof_cannot_be_replaced_with_any_json(self):
+        with patch.object(M, "reviewed_scope", side_effect=M.Hold("closure absent")), \
+             patch.object(M, "read_authenticated_hel1", return_value=(self.host, self.challenge)), \
+             patch.object(M, "verify_owner_signature", return_value=None):
+            changed = self.signed_with(scope_review_sha256="a" * 64)
+            with self.assertRaises(M.Hold):
+                M.verify_inputs(changed, self.manifest_raw,
+                                self.gate_raw, now=self.now)
 
     def test_gate_status_fail_rejected_even_when_hash_signed(self):
         gate = copy.deepcopy(self.gate)
