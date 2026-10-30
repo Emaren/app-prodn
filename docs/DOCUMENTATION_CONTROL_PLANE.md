@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/d-q17-kingdom-navigation-atlas-20261029` at `b88ccc010e7f1b925ecb2c95260d99469a1105ee`
+Implementation baseline: `feat/c-storage-signed-freshness-20261029` at `ceb97910c6544d7b47336e20b90e6454b2f3a477`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
