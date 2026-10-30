@@ -93,7 +93,7 @@ def identity(name,record):
   require(sha(record.get(key)),"unit "+key+" absent: "+name)
  pid=record.get("main_pid")
  require(type(pid)is int and pid>=0,"missing PID: "+name)
- if record["state"]=="active" and name in REQUIRED_SERVICES and name not in ONESHOT_SERVICES:
+ if record["state"]=="active" and name.endswith(".service") and name not in ONESHOT_SERVICES:
   require(pid>1,"active persistent settlement/HD/DE process has no real PID: "+name)
  if pid:
   require(type(record.get("start_time_ticks"))is int and
