@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/d-storage-l2-owner-preview-20261029` at `aa7c2add926b222adb87430d468547bf256d7bdb`
+Implementation baseline: `feat/d-storage-l2-owner-preview-20261029` at `187288a01633b9557f7ae51fb5339ab3f03d5a61`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
