@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `repair/g-docsv2-f-r10-source-20261030` at `6f2b3f8ad8f9cf8d2f7f62495dcac4a7d4cf9fa6`
+Implementation baseline: `repair/g-docsv2-f-r10-native-1ea63d4a-20261030` at `b5f240db62421e84dd393daccbb6656baabec27d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
