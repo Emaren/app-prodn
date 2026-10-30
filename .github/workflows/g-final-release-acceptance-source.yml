@@ -8,6 +8,7 @@ on:
       - scripts/aoe2_release_final_acceptance.py
       - scripts/aoe2_release_final_chrome.cjs
       - tests/test_aoe2_release_final_acceptance.py
+      - tests/aoe2_release_final_chrome.test.cjs
       - .github/workflows/g-final-release-acceptance-source.yml
 permissions:
   contents: read
@@ -30,6 +31,7 @@ jobs:
       - name: Chrome runner syntax and strict no-credentials fail closed
         run: |
           node --check scripts/aoe2_release_final_chrome.cjs
+          node --test tests/aoe2_release_final_chrome.test.cjs
           if node scripts/aoe2_release_final_chrome.cjs; then
             echo "HOLD: browser runner accepted missing auth/evidence"
             exit 1
