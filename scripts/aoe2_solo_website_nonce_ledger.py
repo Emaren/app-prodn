@@ -116,9 +116,9 @@ class Journal:
         # nonce while the old protected website operation is UNKNOWN.
         # Match exact root-owned O_EXCL journal files, never user JSON.
         self.secure(self.state,True)
-        entries=list(self.state.iterdir())
-        need(len(entries)<=4096,"unbounded phase journal; inspect manually")
-        for file in entries:
+        # Historical append-only issue/receipt records are not new
+        # in-flight attempts. Never permanently exhaust a 4096-file cap.
+        for file in self.state.iterdir():
             if not file.name.endswith("-used.json"):
                 continue
             self.secure(file)
