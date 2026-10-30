@@ -106,6 +106,9 @@ def verify_financial_identity(finance):
          finance.get("financial_movement_authorized") is False and
          finance.get("wolo_finance_p1")=="HOLD",
          "financial release or native receipt not authorized")
+    # Role hashes alone do not enumerate the actual systemd units/oneshots.
+    from aoe2_solo_website_financial_proof import verify_writer_census
+    verify_writer_census(finance)
     return protected
 
 def audit(candidate,phase,attempt,*,post_stage=False):
@@ -191,4 +194,11 @@ def audit(candidate,phase,attempt,*,post_stage=False):
          "no authenticated producer evidence")
     from aoe2_solo_website_producer_receipts import verify_all
     verify_all(report)  # independent root-enrolled signed producer bytes
+    # The native source signer must bind a recomputed transitive graph,
+    # including GET/HEAD and prewarm effects, to this exact signed census.
+    from aoe2_solo_website_financial_proof import verify_installed_source_review
+    reviewed=pathlib.Path("/etc/aoe2war/solo-owner-website-v1/source-reviews") / (candidate+".json")
+    # Independently enrolled root-protected review must contain real matching
+    # closure and GET/HEAD/prewarm digests. It cannot be a status-only claim.
+    verify_installed_source_review(report, protected(reviewed,65536))
     return report

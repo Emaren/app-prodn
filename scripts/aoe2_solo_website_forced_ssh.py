@@ -6,7 +6,7 @@ No arbitrary shell/user-selected helper; no private-key provisioning.
 All installed helper bytes require independent review and root SHA pins.
 """
 from __future__ import annotations
-import base64, hashlib, json, os, re, socket, stat, sys
+import base64, hashlib, ipaddress, json, os, re, socket, stat, subprocess, sys
 from pathlib import Path
 
 HOST="ubuntu-4gb-hel1-11"
@@ -49,23 +49,110 @@ def pinned_helper(name):
     digest=hashlib.sha256(raw).hexdigest()
     need(trust[name]==digest,"root helper SHA drift")
     return raw,digest
+def ed25519_identity(pub):
+    """Compare actual SSH wire keys, not forced-command strings."""
+    need(type(pub) is str, "missing Ed25519 identity")
+    fields=pub.split(" ")
+    need(len(fields)==2 and fields[0]=="ssh-ed25519" and fields[1],
+         "identity must be canonical ssh-ed25519")
+    try:
+        wire=base64.b64decode(fields[1],validate=True)
+    except (ValueError,base64.binascii.Error) as exc:
+        raise Hold("invalid SSH public key encoding") from exc
+    need(base64.b64encode(wire).decode("ascii")==fields[1],
+         "noncanonical SSH public key")
+    def part(offset):
+        need(offset+4<=len(wire),"short SSH wire key")
+        length=int.from_bytes(wire[offset:offset+4],"big")
+        need(0<length<=64 and offset+4+length<=len(wire),
+             "invalid SSH wire key framing")
+        return wire[offset+4:offset+4+length],offset+4+length
+    algorithm,pos=part(0)
+    key,end=part(pos)
+    need(algorithm==b"ssh-ed25519" and len(key)==32 and end==len(wire),
+         "invalid Ed25519 public key material")
+    return key
+
+
+def installed_key_occurrences(lines, public_identity):
+    """Find every occurrence of a key, regardless of options or comments."""
+    identity=ed25519_identity(public_identity)
+    found=[]
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        for match in re.finditer(
+                r"(?:^|\s)ssh-ed25519\s+([A-Za-z0-9+/=]+)(?=\s|$)",
+                line):
+            try:
+                actual=ed25519_identity("ssh-ed25519 "+match.group(1))
+            except Hold:
+                continue
+            if actual==identity:
+                found.append(line)
+    return found
+
+
+def verify_effective_sshd_config(connection=None):
+    """Prove root authorized keys are not provided through an alternate SSHD path."""
+    value=connection if connection is not None else os.environ.get("SSH_CONNECTION","")
+    tokens=value.split() if type(value) is str else list(value)
+    need(len(tokens)==4,"missing native SSH connection identity")
+    client,client_port,server,server_port=tokens
+    try:
+        ipaddress.ip_address(client)
+        ipaddress.ip_address(server)
+        need(1<=int(client_port)<=65535 and 1<=int(server_port)<=65535,
+             "invalid SSH ports")
+    except (ValueError,TypeError) as exc:
+        raise Hold("invalid SSH connection") from exc
+    context="user=root,host="+client+",addr="+client+",laddr="+server+",lport="+server_port
+    result=subprocess.run(["/usr/sbin/sshd","-T","-C",context],
+                          stdin=subprocess.DEVNULL,capture_output=True,
+                          timeout=10,check=False)
+    need(result.returncode==0 and 0<len(result.stdout)<=131072,
+         "cannot verify effective root sshd policy")
+    settings={}
+    for line in result.stdout.decode("utf-8","strict").splitlines():
+        key,_,value=line.partition(" ")
+        need(key and value and key not in settings,
+             "invalid effective sshd policy")
+        settings[key]=value.strip()
+    need(settings.get("authorizedkeysfile")==".ssh/authorized_keys",
+         "alternate AuthorizedKeysFile bypasses forced command")
+    need(settings.get("authorizedkeyscommand")=="none",
+         "AuthorizedKeysCommand allows alternate credentials")
+    need(settings.get("trustedusercakeys")=="none",
+         "unreviewed SSH certificate CA enabled")
+    need(settings.get("pubkeyauthentication")=="yes" and
+         settings.get("permitrootlogin") in
+            ("yes","prohibit-password","forced-commands-only"),
+         "root public key admission unavailable")
+    need(settings.get("authorizedprincipalsfile","none")=="none",
+         "unexpected certificate principal enrollment")
+    return True
+
+
 def verify_forced_authorized_keys():
-    """Fail closed unless sshd is configured to force both distinct keys."""
+    """Both enrolled keys must have exactly one restricted authorized entry.
+
+    Native installation must additionally prove sshd's effective authorized
+    key files/command, otherwise an alternate SSH key source can bypass this.
+    """
     enrolled=json.loads(trusted_bytes(SSH_KEYS,32768))
-    need(type(enrolled)is dict and
-         set(enrolled)=={"observer","command"},
-         "owner-approved distinct SSH public keys not enrolled")
+    need(type(enrolled)is dict and set(enrolled)=={"observer","command"},
+         "two SSH root key identities not enrolled")
+    observer=ed25519_identity(enrolled["observer"])
+    command=ed25519_identity(enrolled["command"])
+    need(observer!=command,"observer and command credentials reuse Ed25519 key")
     lines=trusted_bytes(AUTHORIZED,262144).decode("utf8").splitlines()
-    expected=[]
     for mode in ("observer","command"):
         pub=enrolled[mode]
-        need(type(pub)is str and
-             re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/=]{50,500}",pub),
-             "invalid enrolled SSH ED25519 public identity")
-        expected.append('restrict,command="'+FORCED+' '+mode+'" '+pub)
-    need(expected[0]!=expected[1] and
-         all(lines.count(line)==1 for line in expected),
-         "server sshd root forced-command bindings absent/duplicated")
+        expected='restrict,command="'+FORCED+' '+mode+'" '+pub
+        matches=installed_key_occurrences(lines,pub)
+        need(len(matches)==1 and matches[0]==expected,
+             "duplicate or unrestricted enrolled root SSH key: "+mode)
+    verify_effective_sshd_config()
     return True
 
 def main(mode,original):
