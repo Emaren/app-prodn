@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/f-w1-decode-uri-component-high-20261029` at `2138d4bd6187dfefd6f2356abb4ecaaad3825427`
+Implementation baseline: `repair/g-docsv2-f-r10-source-20261030` at `6f2b3f8ad8f9cf8d2f7f62495dcac4a7d4cf9fa6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **102**
+- Authoritative repository documents: **106**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 62
-- `runbook`: 21
+- `reference`: 63
+- `runbook`: 24
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 81
-- `draft`: 5
+- `active`: 83
+- `draft`: 7
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -133,6 +133,10 @@ This page is generated from the validated front matter in this repository. Cross
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
+| [Session C: HEL1 original-lock and root SSH installation](SOLO_OWNER_HEL1_ROOT_SECURITY_INSTALL.md) | `runbook` | `active` | `operational-procedure` |
+| [Q19 — Solo-owner WEBSITE-ONLY admission v1 (review-only PR)](SOLO_OWNER_W1_WEBSITE_ADMISSION.md) | `reference` | `draft` | `review-only-release-admission-contract` |
+| [Solo-owner W1 / Post-W1 Release and Rollback — Operator v1](SOLO_OWNER_WEBSITE_RELEASE_V1_OPERATOR_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
+| [AoE2WAR Solo-owner Website-only Capacity Decision v1](SOLO_WEBSITE_CAPACITY_RECOVERY_DECISION_V1.md) | `runbook` | `draft` | `proposed-operational-policy-not-authorization` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |

@@ -15,6 +15,98 @@ sensitivity: "internal"
 
 # AoE2WAR Release Engineering
 
+## October 30, 2026 — Independent Session B website-only financial-isolation audit
+
+**SOURCE REVIEW: BOUNDED PASS. PRODUCTION NONINTERFERENCE: HOLD. FINANCIAL GO: FALSE.**
+This is an independent review of exact source, not a host or bank receipt.
+Website-only W1/post-W1 deployment must **preserve** the financial HOLD; it
+does **not** require funded Wolo/Satchel approval or a 1-WOLO canary.
+
+**Exact source comparisons:** old website `33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a`
+to frozen W1 `b46a51f1592c9f296839924ae55e722618b10d35`:
+**57** changed paths. W1 to accepted post-W1
+`fa5c350b35cba7ace8d4515a7ad52ba4e1534295`:
+**65** changed paths. Neither diff changes `prisma/` nor a directly named
+WOLO/wallet/escrow/settlement/staking/finance writer. **This is NOT transitive
+closure proof.** W1 changes `package.json`, `yarn.lock`, the stage/ship
+scripts, protected-OS bridge route, and admin storage review route.
+
+**Inspected transitive effect edges:**
+
+- W1 `/api/admin/storage-os/reviews` exports an authenticated POST and
+  imports `appendOwnerReview` (writes an OS review journal), but its
+  immediate `INDIVIDUAL_TRANSPORT_ADOPTED` guard rejects with HTTP 409,
+  and `lib/storageReviewTransportPolicy.ts` hardcodes **false**. This is a
+  narrowly source-proven disabled path, not a universal no-write guarantee.
+- W1 `/api/internal/aoe2war-os/bridge` remains POST-capable with authenticated
+  OS event/snapshot/visual journal writes. An existing action-dispatch graph
+  must be included in closure; its storage-visual receiver has no financial
+  permission on the inspected paths. Do not infer all server startup/endpoint
+  effects from changed filenames alone.
+- Post-W1 new central-events/work-ledger/freshness endpoints are authenticated
+  GET/read projections, and the new kingdom-progress route only fetches
+  bounded GitHub source information. Their indirect admin-session, storage
+  and existing server imports remain subject to exact closed-world review.
+- `deploy/aoe2war-deps@.service` fetches dependencies using
+  `--ignore-scripts`. `deploy/aoe2war-build@.service` runs candidate
+  lifecycle/build inside a disposable worktree, `PrivateNetwork=yes`,
+  `ProtectSystem=strict`, `ProtectHome=yes`, constrained
+  `ReadWritePaths` and inaccessible financial configuration/volume paths.
+  This is a **source sandbox design**, not verified installed HEL1 unit bytes.
+  Recheck `prebuild`, `postbuild`, `prestart`, Prisma-client generation
+  and W1's changed dependency contract at exact artifact admission.
+- `scripts/aoe2_release_stage.py` builds beside live and observes
+  8092/8093 listener counts. `scripts/aoe2_release_ship.py` can stop/start
+  the **web** unit, move .next/node_modules, reset app Git source, generate
+  the Prisma client, and retain/rollback web artifacts; zero manifest
+  migrations forbid schema migration. **Equal 8092/8093 listener counts do
+  not prove PID, executable, systemd drop-ins, keyring, open writer handle,
+  SQL effects or pending transaction continuity.**
+
+**Release-security blockers and required F corrections:**
+
+1. **TRANSITIVE_SCOPE = HOLD:** Independently resolve and seal all 57/65
+   changed paths' runtime imports, API writers, dynamic module side
+   effects, startup/dependency lifecycle, SQL/Prisma consumers, OS bridge
+   actions and production service/dependency edges. F #1008's
+   root-owned `source-reviews/<candidate>.json` plus supplied hash fields
+   does **not** independently compute or authenticate a reviewer. Reject
+   any incomplete graph, mutable file, signer change or unexamined producer.
+2. **HOST_NONINTERFERENCE = HOLD:** Establish real pinned root-HEL1 helper
+   identity and authentic before/stage/after/rollback observations for
+   8092/8093 actual PIDs, binary/config/units, financial writers/timers,
+   bank/escrow and pending-fee/UNKNOWN journal identities and mutation
+   effects. A changed chain balance from unrelated transactions is not
+   intrinsically website-caused; prove the **release caused no financial
+   write or transfer**, with proper external-event attribution.
+3. **DISPATCH = HOLD:** Proposed F #1008 solo-owner verifier returns
+   `INPUTS_VERIFIED_ONLY_NOT_AUTHORIZED`. Its separate nonce ledger and
+   pinned SSH reader are not installed protected stage/activation dispatch.
+   Keep frozen W1 unmodified. Independently wire fresh owner consent,
+   original admission preservation, atomic global lease/nonce consumption,
+   immutable stage receipt and rollback into the real stage/activation engine;
+   assert post-mutation finance noninterference under the same lease.
+4. **CI_AND_PHYSICAL = HOLD:** At F's independently examined
+   `1fa2d6647e92a8a992ce3468a7de8285a4b292aa`,
+   [CI 41009842455](https://github.com/Emaren/app-prodn/actions/runs/41009842455)
+   was **FAIL**, because DocsV2 implementation baseline is stale.
+   Its isolated PG and Type/contract/Next jobs passed and the Python suite
+   reported **1,521 OK, 11 skipped**; these are not deployed tests.
+   F's newer heads need their **own** exact-head DocsV2 and CI evidence.
+   HEL1 last reported ~21 GiB free and >92% effective, six genuine
+   independent restores 0/6. Require >=30 GiB free, <=88% effective,
+   <92% Finish, signed Doctor 0 P0/P1, E recovery and actual stage/activate
+   rollback/browser receipts before website GO.
+
+**HARD BOUNDARY:** No financial key, custody permit, balance mutation,
+legacy 8092/8093 restart, fund transfer or canary was created by this
+independent review. `FINANCIAL_HOLD` must persist throughout a
+**separately admitted website-only** release. This paragraph is source
+documentation only. G/F must regenerate/check DocsV2 indexes/baseline
+through the canonical generator; no manual registry sealing or CI waiver.
+
+---
+
 ## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
 
 The source release classifier in `scripts/aoe2_release_gate.py` now assigns
