@@ -4,7 +4,7 @@ import {
   Activity, Archive, ArrowRight, CheckCircle2, Database, HardDrive,
   LockKeyhole, Radar, Server, ShieldAlert, ShieldCheck, Timer, Waves,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   byteLabel, measuredProgress, TRANSFER_STEPS,
   type TransferCohort, type TransferReadModel,
@@ -154,7 +154,7 @@ function CargoCard({cohort,now}:{cohort:TransferCohort;now:Date}){
 }
 export default function TransferMissionPanels({model}:{model:TransferReadModel}){
  const [expanded,setExpanded]=useState(false);
- const now=useMemo(()=>new Date(),[model]);
+ const now=new Date();
  const active=model.cohorts.some(c=>c.stage.TRANSFER==="ACTIVE");
  return <div className="space-y-5">
   <section className={SURFACE+" overflow-hidden p-5 sm:p-7"} aria-label="Transfer mission control">
