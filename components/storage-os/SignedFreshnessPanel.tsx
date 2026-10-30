@@ -95,16 +95,16 @@ export default function SignedFreshnessPanel(){
           className="min-w-0 rounded-2xl border border-white/10 bg-white/[.025] p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold tracking-wide text-slate-200">{LABELS[i]}</span>
-            <Icon aria-hidden className={"h-4 w-4 "+(current?"text-cyan-300":stale?"text-amber-300":"text-slate-500")}/>
+            <Icon aria-hidden className={"h-4 w-4 "+(current?"text-cyan-300":stale?"text-amber-300":"text-slate-400")}/>
           </div>
           <div data-testid={"c-status-"+id} className={"mt-4 text-[10px] font-black tracking-[.17em] "+(current?"text-cyan-200":stale?"text-amber-200":"text-slate-400")}>
             {label}
           </div>
           <div className="mt-2 flex items-center gap-2 text-xs text-slate-300">
-            <Clock3 aria-hidden className="h-3.5 w-3.5 text-slate-500"/>
+            <Clock3 aria-hidden className="h-3.5 w-3.5 text-slate-400"/>
             {describe(plane,Date.now())}
           </div>
-          <div className="mt-3 border-t border-white/[.06] pt-3 text-[10px] leading-5 text-slate-500">
+          <div className="mt-3 border-t border-white/[.06] pt-3 text-[10px] leading-5 text-slate-400">
             <div>Source HMAC at read <span className="float-right text-amber-200/80">UNPROVEN</span></div>
             <div>Durable signed ACK <span className="float-right text-amber-200/80">UNKNOWN</span></div>
           </div>
@@ -116,7 +116,7 @@ export default function SignedFreshnessPanel(){
       <div className="text-slate-300">Mac scheduled signed: <strong className="text-amber-200">0/2 VERIFIED</strong></div>
       <div className="text-slate-300">HEL1 scheduled signed: <strong className="text-amber-200">0/2 VERIFIED</strong></div>
     </div>
-    <p className="relative mt-3 text-[10px] leading-5 text-slate-500">
+    <p className="relative mt-3 text-[10px] leading-5 text-slate-400">
       {busy?"CHECKING PRIVATE RECEIPTS · ":""}Foreground read-only · 15s bounded polling · no host scan · no deletion or financial authority.
     </p>
   </section>;
