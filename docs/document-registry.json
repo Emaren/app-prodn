@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "910c96ec78d379319be7a9472480e80c881c5d93ac4a24dd0fb34e40887250a5",
+      "sha256": "fe962a1b539ce6fb9379f3dcd45550c88b9c506e71e12d96fe40fe923ba82e22",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "review/g-operation-storage-transfer-visual-20261030",
-    "commit": "2f9e69c326285609c32c519ea1458fc2466a22c8"
+    "branch": "feature/storage-transfer-control-room-20261030",
+    "commit": "73fe9a98e11b37b4fa1fc86d9dbe8a142fbebe17"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
