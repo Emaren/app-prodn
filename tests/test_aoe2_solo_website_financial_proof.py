@@ -5,7 +5,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from aoe2_solo_website_financial_proof import (
  FinancialProofHold,REQUIRED_SERVICES,REQUIRED_TIMERS,REQUIRED_UNITS,
  REQUIRED_SURFACES,canonical,verify_writer_census,verify_source_closure,
- rollback_finance_status,verify_installed_source_review)
+ rollback_finance_status,verify_installed_source_review,W1_SHA,W1_PUBLIC_FINANCIAL_EDGES)
 D="a"*64
 
 def unit(name):
@@ -169,6 +169,36 @@ class BFinancialProofAdversarial(unittest.TestCase):
   r["source_scope"]["writer_census_sha256"]=hashlib.sha256(canonical(
    r["finance"]["protected"]["writers"]["native_census"])).hexdigest()
   with self.assertRaisesRegex(FinancialProofHold,"source DAG"):
+   verify_source_closure(r)
+
+ def test_frozen_w1_cannot_hide_known_get_prewarm_financial_edges(self):
+  # Exact immutable W1 is the PR base; this is a source-grounded
+  # regression, not an invented signed auditor report.
+  root=Path(__file__).resolve().parents[1]
+  observed={
+   "app/api/lobby/route.ts":("export async function GET","loadLobbySnapshot"),
+   "lib/lobbySnapshot.ts":("queueLobbyMaintenance(prisma);",
+                           ".then(() => ensureBetMarkets(prisma))"),
+   "app/api/live-games/route.ts":("export async function GET",
+                                  "queueBetMarketEnsure(prisma, 0);"),
+   "app/api/bets/route.ts":("export async function GET",
+                            "queueBetMarketEnsure(prisma, 0);",
+                            "ensureMarkets: false,"),
+   "lib/betMarketEnsureQueue.ts":("ensureBetMarkets(prisma)",),
+   "lib/bets.ts":("settleResolvedMarketWagers(prisma)",
+                   "reconcilePendingCoreBetClaims(prisma)",
+                   "settleFounderBonuses(prisma)"),
+   "scripts/prewarm-production.mjs":('"/api/lobby"', '"/api/live-games"'),
+  }
+  for path,needles in observed.items():
+   text=(root/path).read_text()
+   for needle in needles:
+    with self.subTest(path=path,edge=needle):
+     self.assertIn(needle,text,"W1 route evidence drifted; re-audit candidate")
+  r=source()
+  r["candidate_sha"]=W1_SHA
+  r["source_scope"]["candidate_sha"]=W1_SHA
+  with self.assertRaisesRegex(FinancialProofHold,"frozen W1 GET/prewarm"):
    verify_source_closure(r)
 
  def test_changed_transitive_financial_import_is_rejected(self):
