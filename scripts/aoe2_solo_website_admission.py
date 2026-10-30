@@ -162,17 +162,48 @@ def verify_inputs(signed, manifest_raw, gate_raw, observe_hel1, *,
     check(now.utcoffset() == timedelta(0) and
           timedelta(0) < expires - issued <= timedelta(minutes=10) and
           issued <= now <= expires, "expired or future owner approval")
-    manifest = parse(manifest_raw)
+    manifest, gate = parse(manifest_raw), parse(gate_raw)
     check(digest(manifest_raw) == p["manifest_sha256"] and
-          digest(gate_raw) == p["gate_sha256"] and len(gate_raw) > 0,
+          digest(gate_raw) == p["gate_sha256"],
           "unbound manifest or gate")
-    check(manifest.get("release_sha") == target and
+    check(manifest.get("schema") == 1 and
+          manifest.get("kind") == "aoe2war-release-manifest" and
+          manifest.get("release_sha") == target and
           manifest.get("previous_production_sha") == previous and
           manifest.get("scope_sha256") == p["scope_sha256"] and
           manifest.get("migration_paths") == [] and
           type(manifest.get("changed_files")) is list and
+          len(manifest["changed_files"]) == len(set(manifest["changed_files"])) and
           all(type(f) is str and not f.startswith("prisma/")
               for f in manifest["changed_files"]), "unknown source or migration")
+    policy = manifest.get("policy")
+    check(type(policy) is dict and
+          all(policy.get(k) is True for k in (
+              "exact_sealed_commit", "build_beside_live", "preserve_rollback",
+              "prove_internal_and_public")) and
+          policy.get("wolo_mutation_allowed") is False and
+          type(manifest.get("gate")) is dict and
+          manifest["gate"].get("status") == "PASS" and
+          manifest["gate"].get("receipt_sha256") == digest(gate_raw),
+          "unreviewed manifest/rollback/gate policy")
+    check(gate.get("schema") == 2 and gate.get("kind") == "gate-receipt" and
+          gate.get("status") == "PASS" and gate.get("mode") == "committed" and
+          gate.get("target_sha") == target and gate.get("base_sha") == previous and
+          gate.get("scope_sha256") == p["scope_sha256"] and
+          gate.get("changed_files") == manifest["changed_files"] and
+          type(gate.get("required_commands")) is list and
+          len(gate["required_commands"]) > 0 and
+          type(gate.get("commands")) is list and
+          gate["required_commands"] ==
+          [x.get("label") for x in gate["commands"]
+           if type(x) is dict] and
+          all(type(x) is dict and type(x.get("returncode")) is int and
+              x["returncode"] == 0 for x in gate["commands"]),
+          "release gate did not actually PASS exact committed scope")
+    # A green gate and absence of Prisma migrations NEVER establish
+    # transitive financial non-interference. No activation can be authorized
+    # until an independently reviewed closed-world import/writer proof
+    # is authenticated by the separately reviewed source authority.
     check(callable(observe_hel1), "authenticated HEL1 observer absent")
     h, challenge = observe_hel1()
     check(type(h) is dict and type(challenge) is dict, "no HEL1 receipt")
