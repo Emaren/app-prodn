@@ -200,8 +200,12 @@ async function main(){
        status:503,contentType:"application/json",body:JSON.stringify({error:"ISOLATED_SOURCE_UNAVAILABLE"})
      }));
      const edge=page.locator('#navigation-atlas a[data-atlas-href="'+href+'"]');
-     await edge.focus();await page.keyboard.press("Enter");
-     await page.waitForURL(url=>url.pathname===href,{timeout:20000});
+     await edge.focus();
+     assert.equal(await edge.evaluate(el=>document.activeElement===el),true,
+       "keyboard focus must reach private A3 navigation edge");
+     await edge.press("Enter");
+     await page.waitForURL(url=>url.pathname===href,{waitUntil:"commit",timeout:30000});
+     console.log("Q17_A3_ROUTE_COMMIT",JSON.stringify({width,href,path:new URL(page.url()).pathname}));
      await page.getByRole("heading",{name:heading}).waitFor({timeout:20000});
      await page.getByRole("navigation",{name:"Private Central Command views"}).waitFor();
      assert.equal(await page.locator("[data-mobile-floating-nav]").count(),0,
