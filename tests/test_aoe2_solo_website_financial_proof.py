@@ -201,7 +201,7 @@ class BFinancialProofAdversarial(unittest.TestCase):
    verify_financial_identity(f)
   units[role_units["staking"]]["state"]="inactive"
   processes["hd"]["pid"]=0
-  with self.assertRaisesRegex(Hold,"process"):
+  with self.assertRaisesRegex(Hold,"idle oneshot"):
    verify_financial_identity(f)
 
  def test_head_runtime_handler_semantics_required(self):
