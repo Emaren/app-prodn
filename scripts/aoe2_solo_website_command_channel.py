@@ -41,9 +41,19 @@ def emit(v):print(json.dumps(v,separators=(',',':')),flush=True)
 def run(x):
  script=base64.b64decode(x['script'],validate=True)
  if not 0<len(script)<=MAX_SCRIPT or type(x['timeout'])is not int or not 1<=x['timeout']<=1800:raise ValueError('bounds')
+ if x.get('run_as') not in ('root','tony'):raise ValueError('noncanonical phase principal')
  # The child retains the original physical flock even if this parent dies.
  os.dup2(fd,200,inheritable=True)
- p=subprocess.Popen(['bash','-lc',script.decode('utf-8','strict')],stdin=subprocess.DEVNULL,
+ source=script.decode('utf-8','strict')
+ if x['run_as']=='tony':
+  # The W1 native stage/activation engine expects the real UID1000
+  # filesystem/deploy-key account. Root is reserved for nonce/witness.
+  argv=['/usr/bin/setpriv','--reuid=1000','--regid=1000',
+   '--init-groups','/usr/bin/env','-i','HOME=/home/tony',
+   'USER=tony','LOGNAME=tony','PATH=/usr/local/bin:/usr/bin:/bin',
+   '/bin/bash','-lc',source]
+ else:argv=['/bin/bash','-lc',source]
+ p=subprocess.Popen(argv,stdin=subprocess.DEVNULL,
   stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,pass_fds=(200,))
  out={p.stdout:bytearray(),p.stderr:bytearray()};uncertain=False
  try:
@@ -94,7 +104,7 @@ try:
   if line==b'release\n':break
   if len(line)>=800000 or not line.endswith(b'\n'):raise ValueError('frame')
   x=json.loads(line)
-  if set(x)!={'id','script','timeout'}or type(x['id'])is not str or len(x['id'])!=32:raise ValueError('request')
+  if set(x)!={'id','script','timeout','run_as'}or type(x['id'])is not str or len(x['id'])!=32:raise ValueError('request')
   emit(run(x))
 except BaseException as e:
  emit({'kind':'held','error_type':type(e).__name__})
@@ -126,12 +136,17 @@ class LeaseRunner:
     dest.extend(chunk)
  def assert_alive(self):require(self.process.poll() is None,'original production release lease lost')
  def run(self,script,*,timeout):
+  return self._dispatch(script,timeout=timeout,run_as='root')
+ def run_tony(self,script,*,timeout):
+  return self._dispatch(script,timeout=timeout,run_as='tony')
+ def _dispatch(self,script,*,timeout,run_as):
   require(self.lock.acquire(blocking=False),'release phase runner is nonreentrant')
   try:
    self.assert_alive();raw=script.encode('utf-8');require(0<len(raw)<=MAX_SCRIPT,'release script exceeds channel bound')
    import secrets
    identity=secrets.token_hex(16)
-   request={'id':identity,'script':base64.b64encode(raw).decode('ascii'),'timeout':timeout}
+   request={'id':identity,'script':base64.b64encode(raw).decode('ascii'),
+    'timeout':timeout,'run_as':run_as}
    self.process.stdin.write((json.dumps(request,separators=(',',':'))+'\n').encode());self.process.stdin.flush()
    answer=self.frame(timeout+200)
    require(type(answer)is dict and set(answer)=={'kind','id','returncode','uncertain','stdout','stderr'} and
