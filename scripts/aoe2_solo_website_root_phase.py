@@ -152,27 +152,46 @@ def native_observation_for_owner(report):
     }
 
 def issue(args):
-    phase,candidate=args[0:2]
-    need(phase in ("PRE_STAGE","PRE_ACTIVATE")and HEX40.fullmatch(candidate),"bad phase or candidate")
-    need(candidate in [x[0]for x in TRAINS.values()],"candidate not approved")
-    evidence=native()
-    gate_native(evidence)
-    ledger=Journal()
-    if phase=="PRE_STAGE":
-        need(len(args)==2,"stage challenge arguments")
-        challenge=ledger.issue(phase,candidate)
-    else:
-        need(len(args)==5,"activate requires prior attempt/lease/stage SHA")
-        challenge=ledger.issue(phase,candidate,attempt=args[2],lease=args[3],stage_sha=args[4])
-    # Owner intent binds a real root-issued source/finance/Doctor/restore
-    # observation; no unreviewed owner-supplied fields can populate this.
+    need(len(args)>=2,"missing candidate or phase")
+    phase,candidate=args[:2]
+    need(phase in ("PRE_STAGE","PRE_ACTIVATE") and
+         bool(HEX40.fullmatch(candidate)) and
+         candidate in [x[0] for x in TRAINS.values()],
+         "bad phase or release candidate")
     from aoe2_solo_website_native_audit_adapter import audit
-    report=audit(candidate,phase,challenge["attempt_id"])
-    h=native_observation_for_owner(report)
-    snapshot={"schema":1,"observation":h,"at":datetime.now(timezone.utc).isoformat()}
-    write_once(STATE/(challenge["attempt_id"]+"-"+phase+"-observation.json"),snapshot)
+    import secrets
+    ledger=Journal()
+    live=native()
+    gate_native(live)
+    if phase=="PRE_STAGE":
+        need(len(args)==2,"stage requires new random attempt")
+        attempt=secrets.token_hex(32)
+    else:
+        need(len(args)==5 and
+             type(args[2]) is str and bool(HEX64.fullmatch(args[2])) and
+             all(type(x)is str and HEX64.fullmatch(x)for x in args[3:]),
+             "activation requires prior attempt,lease,stage SHA")
+        attempt=args[2]
+    # P1: Run the trusted real B/C/E/Doctor/finance audit BEFORE issuing.
+    # Failed audit creates NO consumable nonce. The journal seals the native
+    # snapshot before it records the phase issue as the final commit marker.
+    report=audit(candidate,phase,attempt)
+    observation=native_observation_for_owner(report)
+    need(observation["mounted"] is True and
+         observation["source_sha"]==live["source_sha"] and
+         observation["build_id"]==live["build_id"],
+         "root native snapshot changed during issuance")
+    snapshot={"schema":1,"observation":observation,
+              "at":datetime.now(timezone.utc).isoformat()}
+    if phase=="PRE_STAGE":
+        challenge=ledger.issue(phase,candidate,attempt=attempt,
+                               observation=snapshot)
+    else:
+        challenge=ledger.issue(phase,candidate,attempt=attempt,
+            lease=args[3],stage_sha=args[4],observation=snapshot)
     return {"status":"ROOT_ISSUED_NOT_AUTHORIZED","challenge":challenge,
             "snapshot_sha256":digest(canonical(snapshot))}
+
 def mark_staged(args):
     """Record a REAL protected stage receipt inside SAME inherited lock."""
     need(len(args)==3,"stage mark requires attempt/receipt SHA/remote receipt dir")
