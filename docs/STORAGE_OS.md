@@ -1264,3 +1264,85 @@ C publisher are independent. Do not duplicate scanners, watchers, timers,
 release controllers or financial authority. Current W1 release is still
 independently capacity/backup/Doctor/financial-noninterference/owner-permit
 gated.
+
+## Operation Storage Transfer — independent receipt contract (post-W1, 2026-10-30)
+
+Mission: [admin #1014](https://github.com/Emaren/app-prodn/issues/1014);
+[physical recovery #60](https://github.com/Emaren/VPSSentry/issues/60).
+This is NOT a new F #1008 W1 admission gate. G owns read-only admin
+GET/UI, E owns source-consistent snapshots and Intel receive/restore, D owns
+M1 cold cohorts, C owns signatures/replay validation.
+
+Canonical source module: scripts/aoe2_storage_transfer_receipts.py.
+Schema: aoe2war.storage-transfer.v1. Domain bytes:
+AOE2WAR.STORAGE_TRANSFER.RECEIPT.V1 + ASCII newline.
+Message to sign: domain plus JSON of payload with keys sorted,
+compact separators, ensure_ascii True and allow_nan False.
+Each envelope has EXACT fields schema, signer_host, key_id, payload,
+signature_base64. Signature must verify as genuine Ed25519 64 bytes,
+against the correct owner-enrolled SPKI-pinned public key.
+
+All events bind opaque campaign/cohort IDs, positive sequence, source
+(m1, hel1-root or hel1-volume), Intel receiver, observed_at UTC Z and
+expires_at (max 10 minutes old, <=15-minute lifespan). Actual native
+source, Intel and independent restore-auditor keys must be distinct, as
+must enrolled host failure domains. Private keys never enter a web repo.
+
+- SOURCE: signed original content SHA256, source FS UUID (private server
+  evidence only), consistent snapshot type, protected class, actual
+  original/compressed/ciphertext byte counts, compression codec, age
+  recipient public fingerprint SHA256, ciphertext SHA256, transferred
+  bytes, source free-before/free-after and failure domain. Each source
+  receipt extends an exact prior SHA256 source envelope chain.
+- INTEL RECEIVER: separately signed reference to exact source envelope
+  SHA256; source and receiver campaign/cohort/sequence must agree.
+  Actual Intel ciphertext readback SHA256 must equal source ciphertext
+  SHA256; received bytes must equal complete transmitted ciphertext,
+  and Intel failure domain must differ. Sender self-certification FAILS.
+- INDEPENDENT RESTORE: separate independently enrolled restore-auditor
+  key binds exact receiver envelope SHA256, original content SHA256,
+  original byte count, explicit isolated content readback, real evidence
+  SHA256 and distinct failure domain. A valid cryptographic attestation
+  does NOT by itself prove the native physical restore happened; E/owner
+  must witness the genuine third-host recovery before counting 6/6.
+
+SQLite root-only receipt ledger is append-only by unique
+(campaign_id,cohort_id,sequence,role). BEGIN IMMEDIATE transaction,
+source sequence + 1, original parent digest, strict role order, immutable
+source/receiver cross-hashes, and synchronous FULL reject replay, false
+sender progress, mismatched readback, wrong signer, stale/forged timestamps,
+same-host restorations, incomplete receipts and out-of-order history.
+A repeated original receipt is rejected even after process restart.
+
+G interface: current GET /api/admin/storage-transfer remains protected
+by requireAdmin, private/no-store, ZERO shell, SSH, host scans or writes.
+Future integration may consume a bounded independently approved private
+read model from the native ledger, projecting only safe aliases,
+nullable byte counts, verified native receipt status and UTC freshness.
+No raw paths, FS UUID, private key, full host identities or live filesystem
+measurements in browser. Until the source and Intel signers actually exist,
+transferReceipt must remain null and UNKNOWN, not synthetic green.
+
+Host installation: only after explicit owner review, enroll 5 separate
+actual Ed25519 public keys as root-owned
+/etc/aoe2war/storage-transfer-v1/producer-public-keys.json.
+Provision the existing protected root-only SQLite ledger separately,
+initialize schema in an owner-approved offline setup; normal ingestion
+never auto-creates DB or migrations. E/D must independently implement
+source-side age encryption, receive-only Intel filesystem readback and
+a separate third failure-domain restore witness. Only ciphertext may
+reside on Intel (FileVault OFF). Native sampler/publisher cadence remains
+bounded launchd/systemd oneshots. Signed source metadata does not
+prove actual bytes were copied; E must validate native origin.
+
+Rollback: stop ONLY newly approved transfer receipt ingestion services,
+preserve append-only evidence and originals, remove/revoke only explicitly
+reviewed newly enrolled producer permissions; never delete historical
+receipts, archives, original financial or Traffic data. Never infer
+source filesystem reclaimed bytes from copied/transferred archive size.
+No user release permit, cleanup, funded WOLO, migration or financial
+write capability is conferred.
+
+Current physical evidence: no completed transfers and no six-class
+independent physical restores authenticated. Source-code tests do not
+change host installation or release HOLD.
