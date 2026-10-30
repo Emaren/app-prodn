@@ -38,6 +38,7 @@ def verify_all(report):
     need(type(claims)is dict and set(claims)==set(CLASSES),
          "missing machine-signed producer receipts")
     now=datetime.now(timezone.utc)
+    seen_signers=set()
     for name in CLASSES:
         entry=claims[name]
         need(type(entry)is dict and set(entry)=={"payload","signature_base64"},
@@ -69,8 +70,12 @@ def verify_all(report):
         # SPKI pin is independently reviewable; never trust a key path alone.
         p=subprocess.run(["/usr/bin/openssl","pkey","-pubin","-outform","DER"],
                          input=pem,capture_output=True,timeout=10)
-        need(p.returncode==0 and hashlib.sha256(p.stdout).hexdigest()==
-             key["public_spki_sha256"],"native producer SPKI identity changed")
+        spki_digest=hashlib.sha256(p.stdout).hexdigest()
+        need(p.returncode==0 and spki_digest==key["public_spki_sha256"],
+             "native producer SPKI identity changed")
+        need(spki_digest not in seen_signers,
+             "producer signer SPKI identity reused across independent classes")
+        seen_signers.add(spki_digest)
         try:sig=base64.b64decode(entry["signature_base64"],validate=True)
         except (TypeError,ValueError) as exc:
             raise Hold("invalid native producer signature") from exc
