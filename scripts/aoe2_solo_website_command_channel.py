@@ -139,6 +139,10 @@ try:
  with temp.open('x')as f:os.chmod(temp,0o600);f.write(holder+'\n');f.flush();os.fsync(f.fileno())
  os.replace(temp,meta)
  emit({'kind':'acquired'})
+ # A stolen command SSH key alone cannot launch a UID1000 shell.
+ # Root must first consume a REAL signed owner phase, then independently
+ # verify that same immutable root journal phase before one website action.
+ phase=None;phase_verified=False;website_dispatched=False
  while True:
   line=sys.stdin.buffer.readline(800000)
   if not line:break
@@ -149,7 +153,39 @@ try:
   current=os.lstat(lock)
   if (current.st_dev,current.st_ino)!=(fs.st_dev,fs.st_ino):
    raise PermissionError('canonical release.lock inode changed before dispatch')
-  emit(run(x))
+  verb=None
+  if x.get('run_as')=='tony':
+   if phase is None or not phase_verified or website_dispatched:
+    raise PermissionError('signed single-use website phase not armed')
+   website_dispatched=True  # burn on attempt, including SSH loss/UNKNOWN
+  else:
+   parts=shlex.split(base64.b64decode(x['script'],validate=True).decode('utf-8'))
+   verb=parts[2] if len(parts)>=3 else None
+   if verb=='consume':
+    if phase is not None:raise PermissionError('owner phase already consumed')
+   elif verb=='consumed-proof':
+    if phase is None or phase_verified or website_dispatched:
+     raise PermissionError('unexpected root proof sequence')
+   elif verb in ('mark-staged','complete-activation'):
+    if phase is None or not website_dispatched:
+     raise PermissionError('phase completion without website mutation')
+  outcome=run(x)
+  if x.get('run_as')=='root' and outcome['returncode']==0:
+   try:
+    reply=json.loads(base64.b64decode(outcome['stdout'],validate=True))
+   except (ValueError,TypeError):
+    raise PermissionError('malformed root nonce proof')
+   if verb=='consume':
+    if reply.get('status')!='ROOT_CONSUMED_SINGLE_USE':
+     raise PermissionError('root phase not actually consumed')
+    phase=(reply['attempt_id'],reply['phase'],reply['packet_sha256'])
+   elif verb=='consumed-proof':
+    if (reply.get('status')!='ROOT_CONSUMED_SINGLE_USE' or
+        (reply.get('attempt_id'),reply.get('phase'),
+         reply.get('packet_sha256'))!=phase):
+     raise PermissionError('wrong owner nonce proof')
+    phase_verified=True
+  emit(outcome)
   current=os.lstat(lock)
   if (current.st_dev,current.st_ino)!=(fs.st_dev,fs.st_ino):
    raise PermissionError('canonical release.lock inode changed after dispatch')
