@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  Activity, Archive, ArrowRight, CheckCircle2, Clock3, Database, HardDrive,
+  Activity, Archive, ArrowRight, CheckCircle2, Database, HardDrive,
   LockKeyhole, Radar, Server, ShieldAlert, ShieldCheck, Timer, Waves,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   byteLabel, measuredProgress, TRANSFER_STEPS,
-  type TransferCohort, type TransferReadModel, type TransferStep,
+  type TransferCohort, type TransferReadModel,
 } from "@/lib/storageTransferPresentation";
 
 const SURFACE="rounded-[1.6rem] border border-cyan-200/[.12] bg-[#0b1523]/90 shadow-[0_20px_65px_rgba(0,0,0,.18)]";
