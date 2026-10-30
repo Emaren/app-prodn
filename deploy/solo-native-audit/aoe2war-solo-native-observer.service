@@ -1,0 +1,28 @@
+[Unit]
+Description=AoE2WAR read-only solo website native admission metadata pulse (NOT release authorization)
+ConditionPathIsExecutable=/usr/local/libexec/aoe2war/solo-v1-native-admission
+ConditionPathIsMountPoint=/mnt/HC_Volume_105319120
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/libexec/aoe2war/solo-v1-native-admission --read-only --status-only
+Nice=15
+IOSchedulingClass=idle
+CPUQuota=5%
+MemoryMax=128M
+TasksMax=16
+TimeoutStartSec=12
+NoNewPrivileges=yes
+PrivateNetwork=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX
+StandardOutput=journal
+StandardError=journal
