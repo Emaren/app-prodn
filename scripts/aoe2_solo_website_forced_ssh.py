@@ -16,6 +16,9 @@ HELPERS={"observer":ROOT/"solo-v1-readonly-observer",
          "channel":ROOT/"solo-v1-command-channel.py",
          "phase":ROOT/"solo-v1-root-phase"}
 LOCK="/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock"
+SSH_KEYS=Path("/etc/aoe2war/solo-owner-website-v1/approved-ssh-keys.json")
+AUTHORIZED=Path("/root/.ssh/authorized_keys")
+FORCED="/usr/bin/python3 /usr/local/libexec/aoe2war/solo-v1-forced-ssh.py"
 HEX40=re.compile(r"[a-f0-9]{40}\Z")
 HEX64=re.compile(r"[a-f0-9]{64}\Z")
 class Hold(RuntimeError):pass
@@ -46,10 +49,30 @@ def pinned_helper(name):
     digest=hashlib.sha256(raw).hexdigest()
     need(trust[name]==digest,"root helper SHA drift")
     return raw,digest
+def verify_forced_authorized_keys():
+    """Fail closed unless sshd is configured to force both distinct keys."""
+    enrolled=json.loads(trusted_bytes(SSH_KEYS,32768))
+    need(type(enrolled)is dict and
+         set(enrolled)=={"observer","command"},
+         "owner-approved distinct SSH public keys not enrolled")
+    lines=trusted_bytes(AUTHORIZED,262144).decode("utf8").splitlines()
+    expected=[]
+    for mode in ("observer","command"):
+        pub=enrolled[mode]
+        need(type(pub)is str and
+             re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/=]{50,500}",pub),
+             "invalid enrolled SSH ED25519 public identity")
+        expected.append('restrict,command="'+FORCED+' '+mode+'" '+pub)
+    need(expected[0]!=expected[1] and
+         all(lines.count(line)==1 for line in expected),
+         "server sshd root forced-command bindings absent/duplicated")
+    return True
+
 def main(mode,original):
     need(sys.platform=="linux" and os.geteuid()==0 and
          socket.gethostname()==HOST,"wrong native HEL1 root")
     need(mode in ("observer","command"),"unrecognized key role")
+    verify_forced_authorized_keys()
     need(type(original)is str and 0<len(original)<=6144,"invalid SSH request")
     if mode=="observer":
         need(original=="aoe2war-solo-observe",
