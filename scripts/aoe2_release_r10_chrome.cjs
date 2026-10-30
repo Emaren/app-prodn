@@ -221,7 +221,7 @@ async function main(){
  if(out.browser_status!=="PASS")process.exitCode=2;
 }
 main().catch(err=>{
- const code=String(err.message||err).replace(/[\r\n]/g," ").slice(0,240);
+ const code=String(err.message||err).replace(/[\r\n]/g," ").replace(/^R10_CHROME_HOLD:/,"").slice(0,240);
  console.error("R10_CHROME_HOLD:"+code);
  const at=process.argv.indexOf("--out");
  const out=at>=0?process.argv[at+1]:null;
