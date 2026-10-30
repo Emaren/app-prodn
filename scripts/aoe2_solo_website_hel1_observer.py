@@ -74,7 +74,7 @@ def active_build():
         return None
 
 
-def fresh_challenge():
+def fresh_challenge(*, test_expected_uid=None):
     """Only ONE fresh, independently audited and UNCONSUMED root challenge.
 
     Historical journal entries are immutable and never count against an
@@ -85,8 +85,9 @@ def fresh_challenge():
     if not STATE.is_dir() or STATE.is_symlink():
         return {}
     try:
+        expected_uid=0 if test_expected_uid is None else test_expected_uid
         root=STATE.lstat()
-        if root.st_uid!=0 or root.st_mode&0o022:
+        if root.st_uid!=expected_uid or root.st_mode&0o022:
             return {}
         active=[]
         now=datetime.now(timezone.utc)
@@ -96,7 +97,7 @@ def fresh_challenge():
                 entry.name):
                 continue
             meta=entry.lstat()
-            if (not stat.S_ISREG(meta.st_mode) or meta.st_uid!=0 or
+            if (not stat.S_ISREG(meta.st_mode) or meta.st_uid!=expected_uid or
                     meta.st_mode&0o077 or not 0<meta.st_size<=16384):
                 return {}
             with entry.open("rb") as stream:
@@ -123,7 +124,7 @@ def fresh_challenge():
             if used.exists():
                 used_meta=used.lstat()
                 if (not stat.S_ISREG(used_meta.st_mode) or
-                    used_meta.st_uid!=0 or used_meta.st_mode&0o077):
+                    used_meta.st_uid!=expected_uid or used_meta.st_mode&0o077):
                     return {}
                 continue
             active.append(payload)
