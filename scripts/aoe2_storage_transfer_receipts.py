@@ -299,6 +299,30 @@ def ingest(conn,envelope,trust,now=None):
             "receipt_sha256":digest,"campaign_id":campaign,"cohort_id":cohort,
             "sequence":sequence,"financial_or_cleanup_authority":False}
 
+def verify_stored_receipt(conn,campaign,cohort,sequence,role,trust):
+    """Reverify immutable historical signed ENVELOPE, not merely a DB flag.
+
+    Historical verification checks original signed observed-at time; it does
+    not assert receipt is currently fresh. Retain old public keys when rotating
+    producer identities, or archived proof loses cryptographic recheck.
+    """
+    row=conn.execute("SELECT sha256,body_json,signed_envelope_json,observed_at "
+        "FROM storage_transfer_receipt WHERE campaign_id=? AND cohort_id=? "
+        "AND sequence=? AND role=?",
+        (campaign,cohort,sequence,role)).fetchone()
+    require(row is not None,"historical signed receipt missing")
+    claimed,payload_json,envelope_json,observed=row
+    envelope=parse(envelope_json.encode("utf-8"))
+    p=envelope["payload"]
+    checked,digest=validate_envelope(envelope,trust,now=utc(p["observed_at"]))
+    require(digest==claimed and canonical(p).decode()==payload_json and
+            checked["observed_at"]==observed,
+            "stored signed receipt mutated after original ingest")
+    return {"receipt_sha256":digest,"role":role,
+            "signature_reverified":True,
+            "fresh_live_observation":False}
+
+
 def open_existing_db(path=DB):
     require(path.is_absolute() and not path.is_symlink(),"untrusted ledger DB")
     for node in (path,*path.parents):
