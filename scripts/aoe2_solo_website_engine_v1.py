@@ -64,8 +64,19 @@ def engine_context(candidate):
           "mixed source controller imports")
     return release,ship,stage,activation,gate
 def root_issue(phase,target,attempt,lease,stage_sha):
-    args=["/usr/bin/ssh","-T","-n","-o","BatchMode=yes",
-          "-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",
+    from aoe2_solo_website_host_observer import (
+        CONFIG_ROOT,KNOWN_HOSTS,host_fingerprint,protected_file
+    )
+    host_fingerprint()
+    key=CONFIG_ROOT/"hel1-command-identity"
+    protected_file(key,private=True)
+    args=["/usr/bin/sudo","-n","/usr/bin/ssh","-T","-n",
+          "-o","BatchMode=yes","-o","IdentitiesOnly=yes",
+          "-o","StrictHostKeyChecking=yes",
+          "-o","GlobalKnownHostsFile=/dev/null",
+          "-o","UserKnownHostsFile="+str(KNOWN_HOSTS),
+          "-o","HostKeyAlgorithms=ssh-ed25519",
+          "-o","ConnectTimeout=8","-i",str(key),
           HOST,"python3 "+shlex.quote(ROOT_PHASE)+" issue "+
           " ".join(shlex.quote(x)for x in
                    ([phase,target]if phase=="PRE_STAGE" else
