@@ -88,3 +88,42 @@ its same SSD is not the independent third restore target. W1 remains HOLD.
 `INPUTS_VERIFIED_ONLY_NOT_AUTHORIZED`. This PR by itself is not a production
 release authority. No owner keys, paid backups, bank transfers, delete or
 service mutations are authorized by accepting source code.
+
+## Central security review follow-up (PR #1008, subsequent head)
+
+- **Gate:** the verifier now parses the original schema-2 release gate
+  receipt and demands exact source/base/scope, explicit `status=PASS`, matching
+  `required_commands` and **zero** command failures, plus the schema-1
+  sealed manifest's gate SHA and rollback/no-Wolo-mutating policy. A hash of
+  `status=FAIL` is never admission.
+- **Transitive scope:** an exact SHA-bound, root-protected reviewer report is
+  mandatory at `/private/etc/aoe2war/solo-owner-website-v1/source-reviews/<candidate>.json`.
+  It requires closed-world import graph and finance-surface hashes with zero
+  unresolved import edges, unchecked producer edges or changed financial
+  writers. The report MUST be installed only after a genuine separately
+  reviewed source and CI receipt; its editable `review_url` field by itself
+  is NOT cryptographic proof of an independent review. No report is installed
+  or accepted by this source PR.
+- **HEL1:** a dedicated `aoe2_solo_website_host_observer.py` now strictly
+  pins the previously measured HEL1 ED25519 host fingerprint and fixed IP,
+  requires root-owned Mac SSH identity and single-entry known_hosts, and
+  checks the authorized remote helper's pinned SHA256 before accepting
+  output. Arbitrary supplied host callback/dictionaries are no longer a
+  production verifier argument. This source module does **not** enroll
+  any SSH key or install the remote root helper. Missing physical input HOLD.
+- **Stage, nonce, and dispatch:** still NOT IMPLEMENTED. The original immutable
+  stage receipt and exact .next artifact must be re-read from protected HEL1
+  storage, not caller input. A reviewed on-host nonce and lease issuer must
+  make PRE_STAGE and PRE_ACTIVATE single-use transactions with fsync and
+  global `release.lock` fencing. The new controller must run through real
+  reviewed protected release-engine stage/activation and rollback, not
+  monkeypatch frozen W1's admission or claim from synthetic receipts.
+- **CI:** initial #41008372217 was not green; DocsV2 correctly rejected the
+  code-only implementation-baseline drift. It requires a legitimate
+  `python3 scripts/docs_v2_check.py --write --refresh-baseline` on the
+  exact finalized new head in a full trusted checkout, review of the emitted
+  documentation diff, then new exact-head CI and independent code review.
+  Do not fake that baseline by changing registry bytes by hand.
+
+This remains **source proposal / fail closed** until these gaps are actually
+resolved and physical recovery and site capacity independently pass.
