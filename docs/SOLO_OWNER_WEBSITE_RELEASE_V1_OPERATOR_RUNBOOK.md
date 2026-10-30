@@ -2,12 +2,12 @@
 id: "aoe2war.app-prodn.solo-owner-w1-release-v1"
 title: "Solo-owner W1 / Post-W1 Release and Rollback — Operator v1"
 type: "runbook"
-status: "blocked-pending-physical-and-authority"
+status: "active"
 owner: "aoe2war-web"
 systems: ["app-prodn", "wolochain", "VPSSentry"]
 audience: ["operators", "developers", "ai-agents"]
 source_of_truth: "git"
-authority: "operational-procedure-not-release-permit"
+authority: "operational-procedure"
 reviewed_at: "2026-10-29"
 review_interval_days: 7
 sensitivity: "internal"
