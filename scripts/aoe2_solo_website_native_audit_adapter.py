@@ -196,6 +196,9 @@ def audit(candidate,phase,attempt,*,post_stage=False):
     verify_all(report)  # independent root-enrolled signed producer bytes
     # The native source signer must bind a recomputed transitive graph,
     # including GET/HEAD and prewarm effects, to this exact signed census.
-    from aoe2_solo_website_financial_proof import verify_source_closure
-    verify_source_closure(report)
+    from aoe2_solo_website_financial_proof import verify_installed_source_review
+    reviewed=pathlib.Path("/etc/aoe2war/solo-owner-website-v1/source-reviews") / (candidate+".json")
+    # Independently enrolled root-protected review must contain real matching
+    # closure and GET/HEAD/prewarm digests. It cannot be a status-only claim.
+    verify_installed_source_review(report, protected(reviewed,65536))
     return report
