@@ -260,6 +260,8 @@ def main():
             need(lock_snapshot()==before,"canonical release lock replaced")
             save_backup(original)
             new=original+("\n".join(expected_lines(keys))+"\n").encode()
+            need(authorized_keys_file()==original,
+                 "another administrator changed root keys during enrollment")
             atomic_write(ROOT_KEYS,new)
             check_key_lines(authorized_keys_file(),keys,installed=True)
             sshd_policy(args.ssh_connection)
@@ -286,6 +288,8 @@ def main():
     fd=lock_exclusive()
     try:
         need(lock_snapshot()==before,"original lock inode changed")
+        need(authorized_keys_file()==new,
+             "root authorized_keys changed during rollback")
         atomic_write(ROOT_KEYS,saved)
         check_key_lines(authorized_keys_file(),keys,installed=False)
         sshd_policy(args.ssh_connection)
