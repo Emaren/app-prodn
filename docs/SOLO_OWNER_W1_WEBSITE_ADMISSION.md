@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.solo-owner-w1-website-admission"
+title: "Q19 — Solo-owner WEBSITE-ONLY admission v1 (review-only PR)"
+type: "reference"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn", "vpssentry"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "review-only-release-admission-contract"
+reviewed_at: "2026-10-29"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Q19 — Solo-owner WEBSITE-ONLY admission v1 (review-only PR)
 
 Authority: **ONE real human owner**, not a fictional signer council. This file and
