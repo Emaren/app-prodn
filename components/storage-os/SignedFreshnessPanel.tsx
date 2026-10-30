@@ -97,7 +97,7 @@ export default function SignedFreshnessPanel(){
             <span className="text-[11px] font-semibold tracking-wide text-slate-200">{LABELS[i]}</span>
             <Icon aria-hidden className={"h-4 w-4 "+(current?"text-cyan-300":stale?"text-amber-300":"text-slate-500")}/>
           </div>
-          <div className={"mt-4 text-[10px] font-black tracking-[.17em] "+(current?"text-cyan-200":stale?"text-amber-200":"text-slate-400")}>
+          <div data-testid={"c-status-"+id} className={"mt-4 text-[10px] font-black tracking-[.17em] "+(current?"text-cyan-200":stale?"text-amber-200":"text-slate-400")}>
             {label}
           </div>
           <div className="mt-2 flex items-center gap-2 text-xs text-slate-300">
