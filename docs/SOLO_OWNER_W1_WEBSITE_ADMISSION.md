@@ -150,6 +150,41 @@ service mutations are authorized by accepting source code.
   documentation diff, then new exact-head CI and independent code review.
   Do not fake that baseline by changing registry bytes by hand.
 
+This remains **source proposal / fail closed** until these gaps are actually
+resolved and physical recovery and site capacity independently pass.
+
+## October 29 — authoritative operator execution and lock integration HOLD
+
+The **single operator runbook** is
+[SOLO_OWNER_WEBSITE_RELEASE_V1_OPERATOR_RUNBOOK.md](SOLO_OWNER_WEBSITE_RELEASE_V1_OPERATOR_RUNBOOK.md),
+linked from docs/OPERATOR_START_HERE.md and root DEPLOY.md. It contains
+real M1 and HEL1 host-guarded, read-only commands and precise native
+W1/post-W1 stage/activation/rollback interfaces, but deliberately prints
+HOLD for all currently unauthorized live mutations.
+
+**Do not mistake the nonce module for an installed stage controller.**
+Frozen W1 `scripts/aoe2_release.py` takes HEL1 release.lock through a
+separate long-lived SSH flock process while its protected stage and activation
+engine runs. Holding an independent root nonce-journal flock and then
+calling the original stage function would deadlock; consuming the nonce
+and releasing that lock before stage would lose atomicity. A separately
+reviewed controller must bind root nonce consumption to the *existing
+ongoing lease transaction*, or implement a single new protected root
+transaction with equivalent safety. The old stage/activate functions also
+hard-require the incompatible multi-human `require_admission`;
+no environment skip flag, monkeypatch, shim, fake signing roots or frozen
+W1 source modification is permitted.
+
+The new HEL1 collector source
+`scripts/aoe2_solo_website_hel1_observer.py` is a **read-only host
+program**, not installed. It intentionally reports UNKNOWN for unsigned
+rollback, finance, Doctor, recovery and stage evidence. It must not be
+pinned or installed until independently reviewed and connected to real
+protected native receipts.
+
+G owns generated DocsV2 baseline work. Do not modify the generated
+baseline in this session. Each new source change requires fresh exact-head
+CI; earlier PASS jobs do not qualify a new commit.
 
 ## G production browser acceptance — execute only after F authenticates LIVE
 
@@ -201,6 +236,3 @@ authenticated underlying E/D/C/F signed receipts. Missing one means
 `HOLD — PRODUCTION ACCEPTANCE INCOMPLETE`. Record the final PASS/HOLD with
 evidence links in Q18 #1007, G #976 and F #665. No new UI features or live
 host mutations are authorized by this runbook.
-
-This remains **source proposal / fail closed** until these gaps are actually
-resolved and physical recovery and site capacity independently pass.

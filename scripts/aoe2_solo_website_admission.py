@@ -279,13 +279,31 @@ def verify_inputs(signed, manifest_raw, gate_raw, *,
           h.get("recovery_verified_classes") == CLASSES and
           h.get("independent_restore_verdict") == "PHYSICALLY_ACCEPTED",
           "Doctor or six independently restored classes HOLD")
+    protected = h.get("protected")
+    check(type(protected) is dict and
+          set(protected) == {"8092", "8093", "writers"},
+          "protected Wolo/finance service identity missing")
+    for port in ("8092", "8093"):
+        witness = protected[port]
+        check(type(witness) is dict and witness.get("count") == 1 and
+              type(witness.get("pid")) is int and witness["pid"] > 1 and
+              all(type(witness.get(k)) is str and HEX64.fullmatch(witness[k])
+                  for k in ("executable_sha256", "unit_sha256",
+                            "config_sha256", "source_sha256")),
+              "protected listener identity missing: " + port)
+    writers = protected["writers"]
+    check(type(writers) is dict and
+          all(type(writers.get(k)) is str and HEX64.fullmatch(writers[k])
+              for k in ("hd_sha256", "de_sha256", "settlement_sha256",
+                        "custody_sha256")),
+          "protected HD/DE/settlement/custody writer hash missing")
     check(h.get("wolo_finance_p1") == "HOLD" and
           h.get("financial_movement_authorized") is False and
-          h.get("finance_fingerprint_sha256") == p["finance_fingerprint_sha256"] and
-          type(h.get("protected_8092_pid")) is int and
-          h["protected_8092_pid"] > 1 and
-          type(h.get("protected_8093_pid")) is int and
-          h["protected_8093_pid"] > 1, "protected finance witness HOLD")
+          h.get("finance_fingerprint_sha256") == digest(canonical(protected)) and
+          h["finance_fingerprint_sha256"] == p["finance_fingerprint_sha256"] and
+          h.get("protected_8092_pid") == protected["8092"]["pid"] and
+          h.get("protected_8093_pid") == protected["8093"]["pid"],
+          "protected finance/writer witness HOLD")
     if p["phase"] == "PRE_STAGE":
         check(previous_stage is None and stage_receipt is None and
               all(p[k] is None for k in (

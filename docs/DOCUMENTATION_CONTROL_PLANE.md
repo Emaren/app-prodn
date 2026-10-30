@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `repair/g-docsv2-pr1008-20261030` at `ce792bfbcdab42b8607809f70fcc9dc5e0f1f14a`
+Implementation baseline: `fix/f-w1-decode-uri-component-high-20261029` at `2138d4bd6187dfefd6f2356abb4ecaaad3825427`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **103**
+- Authoritative repository documents: **102**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 63
+- `reference`: 62
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 6
+- `draft`: 5
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -133,7 +133,6 @@ This page is generated from the validated front matter in this repository. Cross
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
-| [Q19 — Solo-owner WEBSITE-ONLY admission v1 (review-only PR)](SOLO_OWNER_W1_WEBSITE_ADMISSION.md) | `reference` | `draft` | `review-only-release-admission-contract` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |

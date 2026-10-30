@@ -41,6 +41,27 @@ class NonceLedgerTests(unittest.TestCase):
             j.issue("PRE_ACTIVATE",self.sha,attempt=stage["attempt_id"],
                     lease=stage["lease_id"],stage_sha="c"*64,now=self.now)
 
+    def test_consumed_stage_without_durable_completion_blocks_all_reissue(self):
+        stage=self.j.issue("PRE_STAGE",self.sha,now=self.now)
+        with self.j.exclusive():
+            self.j.consume_under_existing_lock(stage,"a"*64,"b"*64,now=self.now)
+        with self.assertRaises(M.Hold):
+            self.j.issue("PRE_STAGE",self.sha,now=self.now+timedelta(seconds=1))
+
+    def test_consumed_activation_without_native_completion_blocks_reissue(self):
+        stage=self.j.issue("PRE_STAGE",self.sha,now=self.now)
+        with self.j.exclusive():
+            self.j.consume_under_existing_lock(stage,"a"*64,"b"*64,now=self.now)
+            self.j.mark_staged_under_existing_lock(stage,"c"*64)
+        activation=self.j.issue("PRE_ACTIVATE",self.sha,
+            attempt=stage["attempt_id"],lease=stage["lease_id"],
+            stage_sha="c"*64,now=self.now)
+        with self.j.exclusive():
+            self.j.consume_under_existing_lock(activation,"d"*64,"e"*64,
+                now=self.now)
+        with self.assertRaises(M.Hold):
+            self.j.issue("PRE_STAGE",self.sha,now=self.now+timedelta(seconds=1))
+
     def test_cannot_consume_without_held_lock(self):
         stage=self.j.issue("PRE_STAGE",self.sha,now=self.now)
         with self.assertRaises(M.Hold):

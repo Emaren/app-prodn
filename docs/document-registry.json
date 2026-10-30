@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c4fed2654eb0372b6f071198ace1a1f132f1338789f86027221af924332ceb47",
+      "sha256": "1def9a7e9268553eba50197384d4de939d58f9758a756c800b7dd01f1f935842",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1893,29 +1893,6 @@
     },
     {
       "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "review-only-release-admission-contract",
-      "id": "aoe2war.app-prodn.solo-owner-w1-website-admission",
-      "owner": "aoe2war-web",
-      "path": "docs/SOLO_OWNER_W1_WEBSITE_ADMISSION.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-10-29",
-      "sensitivity": "internal",
-      "sha256": "535c90bed07f1ea0081b2c517398aaba0b76f8ed5924e2b962ae1d9ba371ddd8",
-      "source_of_truth": "git",
-      "status": "draft",
-      "systems": [
-        "app-prodn",
-        "vpssentry"
-      ],
-      "title": "Q19 \u2014 Solo-owner WEBSITE-ONLY admission v1 (review-only PR)",
-      "type": "reference"
-    },
-    {
-      "audience": [
         "operators",
         "ai-agents"
       ],
@@ -2371,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "repair/g-docsv2-pr1008-20261030",
-    "commit": "ce792bfbcdab42b8607809f70fcc9dc5e0f1f14a"
+    "branch": "fix/f-w1-decode-uri-component-high-20261029",
+    "commit": "2138d4bd6187dfefd6f2356abb4ecaaad3825427"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
