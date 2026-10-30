@@ -54,12 +54,13 @@ def owner_approved_installed_binary(candidate):
     need(digest(binary)==body["binary_sha256"],"installed native audit binary drift")
     return binary
 
-def audit(candidate,phase,attempt):
+def audit(candidate,phase,attempt,*,post_stage=False):
     owner_approved_installed_binary(candidate)
     # The pinned tool MUST validate signed B/C/E class+third-host evidence
     # and collect genuine current HEL1 snapshots, not owner-supplied JSON.
     result=subprocess.run([str(PROGRAM),"--read-only","--candidate",candidate,
-                           "--phase",phase,"--attempt",attempt],
+                           "--phase",phase,"--attempt",attempt,
+                           "--boundary","post-stage"if post_stage else "pre-phase"],
                           stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE,timeout=20,check=False)
     need(result.returncode==0 and 0<len(result.stdout)<=262144,
@@ -109,7 +110,7 @@ def audit(candidate,phase,attempt):
          "unsigned rollback evidence")
     stage=report["stage"]
     need(type(stage)is dict, "native stage receipt class missing")
-    if phase=="PRE_ACTIVATE":
+    if phase=="PRE_ACTIVATE" or post_stage:
         need(stage.get("status")=="STAGED" and
              stage.get("origin")=="HEL1_DURABLE_PROTECTED_STORE" and
              stage.get("release_sha")==candidate and
