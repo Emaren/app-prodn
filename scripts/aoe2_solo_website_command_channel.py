@@ -112,8 +112,16 @@ def run(x):
   'stdout':base64.b64encode(out[p.stdout]).decode(),'stderr':base64.b64encode(out[p.stderr]).decode()}
 try:
  if os.geteuid()!=0:raise PermissionError('root-only protected command lease required')
- if not lock.is_absolute() or lock.is_symlink() or lock.parent.is_symlink():
+ if not lock.is_absolute() or lock.is_symlink():
   raise PermissionError('original release.lock path must exist and be unlinked')
+ # UID1000 owns the original lock inode, so its containing directories
+ # MUST NOT be UID1000-owned or writable by UID1000. Otherwise tony can
+ # unlink+replace the lock while another process holds the old inode.
+ for ancestor in (lock.parent,*lock.parent.parents):
+  if ancestor.is_symlink():raise PermissionError('linked release ancestor')
+  a=ancestor.stat()
+  if not stat.S_ISDIR(a.st_mode)or a.st_uid!=0 or a.st_mode&0o022:
+   raise PermissionError('release lock ancestor can be replaced by UID1000')
  st=lock.stat()
  if st.st_uid!=1000 or stat.S_IMODE(st.st_mode)!=0o644 or not stat.S_ISREG(st.st_mode):
   raise PermissionError('native UID1000 mode0644 release.lock identity mismatch')
@@ -122,6 +130,11 @@ try:
  if (fs.st_dev,fs.st_ino)!=(st.st_dev,st.st_ino):
   raise PermissionError('release.lock inode changed')
  fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+ # Re-check the path identity under the physical flock. If a privileged
+ # actor replaces the path, fail closed instead of admitting a split lock.
+ again=os.lstat(lock)
+ if (again.st_dev,again.st_ino)!=(fs.st_dev,fs.st_ino):
+  raise PermissionError('canonical release.lock inode changed after flock')
  temp=meta.with_name('.'+meta.name+'.'+str(os.getpid()))
  with temp.open('x')as f:os.chmod(temp,0o600);f.write(holder+'\n');f.flush();os.fsync(f.fileno())
  os.replace(temp,meta)
@@ -133,7 +146,13 @@ try:
   if len(line)>=800000 or not line.endswith(b'\n'):raise ValueError('frame')
   x=json.loads(line)
   if set(x)!={'id','script','timeout','run_as'}or type(x['id'])is not str or len(x['id'])!=32:raise ValueError('request')
+  current=os.lstat(lock)
+  if (current.st_dev,current.st_ino)!=(fs.st_dev,fs.st_ino):
+   raise PermissionError('canonical release.lock inode changed before dispatch')
   emit(run(x))
+  current=os.lstat(lock)
+  if (current.st_dev,current.st_ino)!=(fs.st_dev,fs.st_ino):
+   raise PermissionError('canonical release.lock inode changed after dispatch')
 except BaseException as e:
  emit({'kind':'held','error_type':type(e).__name__})
 finally:
