@@ -111,13 +111,23 @@ service mutations are authorized by accepting source code.
   output. Arbitrary supplied host callback/dictionaries are no longer a
   production verifier argument. This source module does **not** enroll
   any SSH key or install the remote root helper. Missing physical input HOLD.
-- **Stage, nonce, and dispatch:** still NOT IMPLEMENTED. The original immutable
+- **Durable stage receipt:** the owner PRE_ACTIVATE verifier now demands
+  the **pinned root-SSH observation** include an on-host re-read receipt,
+  source, BUILD_ID, artifact and dependencies. A caller-supplied receipt is
+  insufficient and cannot become an activation permit.
+- **Atomic nonce/lease foundation:** `scripts/aoe2_solo_website_nonce_ledger.py`
+  adds root-only exclusive `release.lock`, durable O_EXCL+fsync phase
+  journal and separate fresh PRE_STAGE/PRE_ACTIVATE challenge nonces. Tests
+  reject replay, missing stage, wrong lease, expired issuance and consumption
+  outside a held transaction. It exposes **no remote command, stage or
+  activation endpoint**; it is NOT a production lease issuer until the
+  actual HEL1 root install and protected deploy controller are reviewed.
+- **Dispatch and rollback:** still **NOT CONNECTED**. The original immutable
   stage receipt and exact .next artifact must be re-read from protected HEL1
-  storage, not caller input. A reviewed on-host nonce and lease issuer must
-  make PRE_STAGE and PRE_ACTIVATE single-use transactions with fsync and
-  global `release.lock` fencing. The new controller must run through real
-  reviewed protected release-engine stage/activation and rollback, not
-  monkeypatch frozen W1's admission or claim from synthetic receipts.
+  storage. Genuine owner PRE_STAGE/PRE_ACTIVATE intents must be consumed by
+  a reviewed on-host agent that retains the global lease across actual
+  protected STAGE/ACTIVATE/rollback. Never monkeypatch frozen W1's
+  admission or claim from synthetic receipts.
 - **CI:** initial #41008372217 was not green; DocsV2 correctly rejected the
   code-only implementation-baseline drift. It requires a legitimate
   `python3 scripts/docs_v2_check.py --write --refresh-baseline` on the
