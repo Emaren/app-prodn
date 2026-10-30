@@ -17,6 +17,9 @@ import re
 import stat
 import subprocess
 import tempfile
+from aoe2_solo_website_host_observer import (
+    read_authenticated_hel1, ObserverHold,
+)
 
 POLICY = "aoe2war.solo-owner.website.admission.v1"
 DOMAIN = b"AOE2WAR.SOLO_OWNER.WEBSITE.ADMISSION.V1\n"
@@ -132,13 +135,13 @@ def verify_owner_signature(signed, *, key=OWNER_PUBLIC):
     check(result.returncode == 0, "owner signature verification failed")
 
 
-def verify_inputs(signed, manifest_raw, gate_raw, observe_hel1, *,
+def verify_inputs(signed, manifest_raw, gate_raw, *,
                   previous_stage=None, stage_receipt=None, now=None):
-    """Only a trusted controller may supply observe_hel1 (live SSH/lease reader).
+    """Perform live pinned HEL1 root-SSH read; never accept a caller callback.
 
-    Returns NOT_AUTHORIZED. It does NOT consume nonce or alter any service.
-    A reviewed controller must also verify the true gate verdict, host
-    observation source, immutable stage receipt and atomic lease.
+    Returns NOT_AUTHORIZED. Does not consume a nonce or release the website.
+    The separate host/root issuer and atomic stage/activation dispatcher are
+    still required before a reviewed controller may authorize release.
     """
     check(type(signed) is dict and type(signed.get("payload")) is dict,
           "signed intent absent")
@@ -204,8 +207,10 @@ def verify_inputs(signed, manifest_raw, gate_raw, observe_hel1, *,
     # transitive financial non-interference. No activation can be authorized
     # until an independently reviewed closed-world import/writer proof
     # is authenticated by the separately reviewed source authority.
-    check(callable(observe_hel1), "authenticated HEL1 observer absent")
-    h, challenge = observe_hel1()
+    try:
+        h, challenge = read_authenticated_hel1()
+    except ObserverHold as exc:
+        raise Hold(str(exc)) from exc
     check(type(h) is dict and type(challenge) is dict, "no HEL1 receipt")
     check(digest(canonical(h)) == p["host_observation_sha256"] and
           challenge.get("policy") == POLICY and
