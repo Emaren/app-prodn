@@ -60,7 +60,7 @@ def run(x):
    raise PermissionError('root phase helper only')
   verb=parts[2]
   sizes={'consume':4,'consumed-proof':6,'mark-staged':6,
-         'complete-activation':6}
+         'complete-activation':6,'reconcile-rollback':5}
   if verb not in sizes or len(parts)!=sizes[verb]:
    raise PermissionError('unknown protected root verb')
   hex64=re.compile(r'[0-9a-f]{64}\Z')
@@ -77,6 +77,9 @@ def run(x):
    elif verb=='complete-activation':
     if not hex40.fullmatch(parts[4]) or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}',parts[5]):
      raise PermissionError('invalid release and BUILD_ID')
+   elif verb=='reconcile-rollback':
+    if not re.fullmatch(r'/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/activate-[A-Za-z0-9_-]{12,160}',parts[4]):
+     raise PermissionError('foreign activation rollback path')
    else:
     if not hex64.fullmatch(parts[4]) or not parts[5].startswith('/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/stage-'):
      raise PermissionError('foreign stage receipt')
