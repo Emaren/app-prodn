@@ -49,23 +49,69 @@ def pinned_helper(name):
     digest=hashlib.sha256(raw).hexdigest()
     need(trust[name]==digest,"root helper SHA drift")
     return raw,digest
+def ed25519_identity(pub):
+    """Compare actual SSH wire keys, not forced-command strings."""
+    need(type(pub) is str, "missing Ed25519 identity")
+    fields=pub.split(" ")
+    need(len(fields)==2 and fields[0]=="ssh-ed25519" and fields[1],
+         "identity must be canonical ssh-ed25519")
+    try:
+        wire=base64.b64decode(fields[1],validate=True)
+    except (ValueError,base64.binascii.Error) as exc:
+        raise Hold("invalid SSH public key encoding") from exc
+    need(base64.b64encode(wire).decode("ascii")==fields[1],
+         "noncanonical SSH public key")
+    def part(offset):
+        need(offset+4<=len(wire),"short SSH wire key")
+        length=int.from_bytes(wire[offset:offset+4],"big")
+        need(0<length<=64 and offset+4+length<=len(wire),
+             "invalid SSH wire key framing")
+        return wire[offset+4:offset+4+length],offset+4+length
+    algorithm,pos=part(0)
+    key,end=part(pos)
+    need(algorithm==b"ssh-ed25519" and len(key)==32 and end==len(wire),
+         "invalid Ed25519 public key material")
+    return key
+
+
+def installed_key_occurrences(lines, public_identity):
+    """Find every occurrence of a key, regardless of options or comments."""
+    identity=ed25519_identity(public_identity)
+    found=[]
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        for match in re.finditer(
+                r"(?:^|\s)ssh-ed25519\s+([A-Za-z0-9+/=]+)(?=\s|$)",
+                line):
+            try:
+                actual=ed25519_identity("ssh-ed25519 "+match.group(1))
+            except Hold:
+                continue
+            if actual==identity:
+                found.append(line)
+    return found
+
+
 def verify_forced_authorized_keys():
-    """Fail closed unless sshd is configured to force both distinct keys."""
+    """Both enrolled keys must have exactly one restricted authorized entry.
+
+    Native installation must additionally prove sshd's effective authorized
+    key files/command, otherwise an alternate SSH key source can bypass this.
+    """
     enrolled=json.loads(trusted_bytes(SSH_KEYS,32768))
-    need(type(enrolled)is dict and
-         set(enrolled)=={"observer","command"},
-         "owner-approved distinct SSH public keys not enrolled")
+    need(type(enrolled)is dict and set(enrolled)=={"observer","command"},
+         "two SSH root key identities not enrolled")
+    observer=ed25519_identity(enrolled["observer"])
+    command=ed25519_identity(enrolled["command"])
+    need(observer!=command,"observer and command credentials reuse Ed25519 key")
     lines=trusted_bytes(AUTHORIZED,262144).decode("utf8").splitlines()
-    expected=[]
     for mode in ("observer","command"):
         pub=enrolled[mode]
-        need(type(pub)is str and
-             re.fullmatch(r"ssh-ed25519 [A-Za-z0-9+/=]{50,500}",pub),
-             "invalid enrolled SSH ED25519 public identity")
-        expected.append('restrict,command="'+FORCED+' '+mode+'" '+pub)
-    need(expected[0]!=expected[1] and
-         all(lines.count(line)==1 for line in expected),
-         "server sshd root forced-command bindings absent/duplicated")
+        expected='restrict,command="'+FORCED+' '+mode+'" '+pub
+        matches=installed_key_occurrences(lines,pub)
+        need(len(matches)==1 and matches[0]==expected,
+             "duplicate or unrestricted enrolled root SSH key: "+mode)
     return True
 
 def main(mode,original):
