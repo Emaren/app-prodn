@@ -104,10 +104,34 @@ class Journal:
         try: os.fsync(d)
         finally: os.close(d)
         return hashlib.sha256(b).hexdigest()
+    def refuse_unreconciled_phases(self):
+        # A lost SSH/activation result cannot be cured by issuing another
+        # nonce while the old protected website operation is UNKNOWN.
+        # Match exact root-owned O_EXCL journal files, never user JSON.
+        self.secure(self.state,True)
+        entries=list(self.state.iterdir())
+        need(len(entries)<=4096,"unbounded phase journal; inspect manually")
+        for file in entries:
+            if not file.name.endswith("-used.json"):
+                continue
+            self.secure(file)
+            match=re.fullmatch(
+                r"([0-9a-f]{64})-(PRE_STAGE|PRE_ACTIVATE)-used.json",
+                file.name)
+            need(match is not None,"uncanonical used nonce record")
+            attempt,phase=match.groups()
+            if phase=="PRE_STAGE":
+                outcome=self.name(attempt,"PRE_STAGE","staged")
+            else:
+                outcome=self.state/(attempt+"-PRE_ACTIVATE-completed.json")
+            need(outcome.is_file() and not outcome.is_symlink(),
+                 "previous consumed phase outcome unresolved; never redispatch")
+
     def issue(self,phase,candidate,*,attempt=None,lease=None,stage_sha=None,now=None):
         now=now or datetime.now(timezone.utc)
         need(bool(re.fullmatch(r"[0-9a-f]{40}",candidate)),"bad source SHA")
         with self.exclusive():
+            self.refuse_unreconciled_phases()
             if phase=="PRE_STAGE":
                 need(attempt is None and lease is None and stage_sha is None,"stage must be fresh")
                 attempt,lease=secrets.token_hex(32),secrets.token_hex(32)
