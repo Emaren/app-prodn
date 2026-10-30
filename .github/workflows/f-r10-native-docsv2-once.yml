@@ -1,0 +1,56 @@
+name: One-shot R10 F native issuer exact DocsV2 reseal
+on:
+  push:
+    branches:
+      - repair/g-docsv2-f-r10-native-1ea63d4a-20261030
+permissions:
+  contents: write
+jobs:
+  canonical-docsv2:
+    name: Canonical DocsV2 under exact audited F source
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Self-retire and seal documentation only
+        shell: bash {0}
+        run: |
+          EXPECTED_SOURCE=1ea63d4af29f4db240da858e4146dbc6cc2c9c97
+          BRANCH=repair/g-docsv2-f-r10-native-1ea63d4a-20261030
+          TEMP=.github/workflows/f-r10-native-docsv2-once.yml
+          if [ "$(git rev-parse HEAD^)" != "$EXPECTED_SOURCE" ]; then
+            echo "HOLD: SOURCE_ANCESTRY_CHANGED"
+            exit 2
+          fi
+          if [ "$(git diff --name-only "$EXPECTED_SOURCE" HEAD)" != "$TEMP" ]; then
+            echo "HOLD: GENERATOR_CHANGED_SOURCE"
+            exit 2
+          fi
+          git switch -C "$BRANCH" || exit 2
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- "$TEMP" || exit 2
+          git commit -m "chore(R10): retire native issuer DocsV2 generator" || exit 2
+          BEFORE=$(git rev-parse HEAD)
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch "$BRANCH" --head "$BEFORE" || exit 2
+          git add -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json || exit 2
+          DIFF=$(git diff --cached --name-only)
+          EXPECTED=$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)
+          if [ "$DIFF" != "$EXPECTED" ]; then
+            echo "HOLD: EXTRA_OR_MISSING_GENERATED_DOCS $DIFF"
+            exit 2
+          fi
+          git commit -m "docs(R10): canonical native admission issuer baseline" || exit 2
+          python3 scripts/docs_v2_check.py || exit 2
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "HOLD: GENERATOR_NOT_CLEAN"
+            exit 2
+          fi
+          git push origin "HEAD:refs/heads/$BRANCH" || exit 2
+          echo "PASS: ONLY_CANONICAL_DOCSV2_UPDATED"
