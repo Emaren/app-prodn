@@ -306,7 +306,7 @@ def complete_activation(args):
          used["owner_packet_sha256"]==approved["packet_sha256"],
          "completion not bound to owner signed activation")
     from aoe2_solo_website_native_audit_adapter import audit
-    report=audit(candidate,"PRE_ACTIVATE",attempt)
+    report=audit(candidate,"POST_ACTIVATE",attempt,post_stage=True)
     now=native_observation_for_owner(report)
     original=root_file(STATE/(attempt+"-PRE_ACTIVATE-observation.json"))["observation"]
     need(now["source_sha"]==candidate and now["build_id"]==build and
@@ -331,6 +331,10 @@ def complete_activation(args):
         "doctor_p0":now["doctor_p0"],"doctor_p1":now["doctor_p1"],
         "rollback_available":now["rollback_available"],
         "financial_release_authorized":False}
+    # Distinct root-sealed POST_ACTIVATE signed native evidence; an earlier
+    # PRE_ACTIVATE report cannot be reused as proof of live finance continuity.
+    write_once(STATE/(attempt+"-POST_ACTIVATE-native-after.json"),report)
+    record["post_activation_native_sha256"]=digest(canonical(report))
     write_once(STATE/(attempt+"-PRE_ACTIVATE-completed.json"),record)
     return record
 
