@@ -194,6 +194,26 @@ def issue(args):
     return {"status":"ROOT_ISSUED_NOT_AUTHORIZED","challenge":challenge,
             "snapshot_sha256":digest(canonical(snapshot))}
 
+def read_original_stage_bytes(path):
+    """Read exact HEL1 receipt bytes from one O_NOFOLLOW file descriptor."""
+    need(path.is_absolute() and not path.is_symlink(),
+         "durable stage receipt path must not be linked")
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        st=os.fstat(fd)
+        need(stat.S_ISREG(st.st_mode) and 0<st.st_size<=262144,
+             "invalid original durable stage file")
+        raw=os.read(fd,262145)
+        need(0<len(raw)<=262144 and len(raw)==st.st_size,
+             "stage receipt truncated/mutated while reading")
+        after=os.fstat(fd)
+        need((st.st_dev,st.st_ino,st.st_size)==
+             (after.st_dev,after.st_ino,after.st_size),
+             "stage file changed during root read")
+        return raw
+    finally:
+        os.close(fd)
+
 def assert_native_stage_bytes(original_raw,receipt,actual_stage):
     """Original HEL1 bytes, not a pretty-printed JSON reserialization."""
     need(type(original_raw)is bytes and type(receipt)is dict and
@@ -225,9 +245,7 @@ def mark_staged(args):
          not folder.is_symlink() and not base.is_symlink(),
          "noncanonical durable protected receipt directory")
     file=folder/"stage-receipt.json"
-    need(file.is_file()and not file.is_symlink()and
-         0<file.stat().st_size<=262144,"missing durable original receipt")
-    raw=file.read_bytes()
+    raw=read_original_stage_bytes(file)
     need(digest(raw)==expected_sha,"durable receipt content SHA drift")
     receipt=parse(raw)
     l=Journal();l.inherited_lease_fd()
