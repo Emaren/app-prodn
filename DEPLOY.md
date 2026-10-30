@@ -18,35 +18,35 @@ sensitivity: "internal"
 
 ## October 29, 2026 — M1 local operator release preflight (read-only, HOLD)
 
-**Scope:** the owner's \`Darwin/arm64\` development M1, not HEL1 or the older Intel
+**Scope:** the owner's `Darwin/arm64` development M1, not HEL1 or the older Intel
 backup receiver. This is a non-mutating **preparation/identification step**, never
 release admission. The full single owner-run bounded preflight command and
 native PASS/HOLD output belong in the F release issue #665, with cross-reference
-in migration #1007 and Central #975. The command uses \`os.lstat\`, \`statvfs\`,
-\`git rev-parse\`, \`git worktree list --porcelain\` (metadata only), bounded local
-BUILD_ID reads and exact-path asset inspection. It never calls \`finish\`,
-\`ship\`, \`stage\`, \`activate\`, \`next build\`, \`npm install\`, \`git fetch\`,
-\`git checkout\`, \`git reset\`, \`du\`, \`find\`, recursive Git status, cleanup,
-deletion or any network host mutation. Never use \`set -e\`/\`errexit\`.
+in migration #1007 and Central #975. The command uses `os.lstat`, `statvfs`,
+`git rev-parse`, `git worktree list --porcelain` (metadata only), bounded local
+BUILD_ID reads and exact-path asset inspection. It never calls `finish`,
+`ship`, `stage`, `activate`, `next build`, `npm install`, `git fetch`,
+`git checkout`, `git reset`, `du`, `find`, recursive Git status, cleanup,
+deletion or any network host mutation. Never use `set -e`/`errexit`.
 
 **Mandatory evidence matrix:**
 
-1. **Host/checkout** — \`uname\` must be Darwin/arm64; canonical existing
-   \`~/projects/AoE2HDBets/app-prodn\` and ancestor directories must be actual
-   directories, not symlinks. Report exact Git \`HEAD\`, branch, origin-repository
-   match, and existing \`git worktree list --porcelain\` entries by HEAD. Frozen W1
-   candidate is **\`b46a51f1592c9f296839924ae55e722618b10d35\`**;
+1. **Host/checkout** — `uname` must be Darwin/arm64; canonical existing
+   `~/projects/AoE2HDBets/app-prodn` and ancestor directories must be actual
+   directories, not symlinks. Report exact Git `HEAD`, branch, origin-repository
+   match, and existing `git worktree list --porcelain` entries by HEAD. Frozen W1
+   candidate is **`b46a51f1592c9f296839924ae55e722618b10d35`**;
    accepted **separate post-W1** is
-   \`fa5c350b35cba7ace8d4515a7ad52ba4e1534295\`. A local checkout at
+   `fa5c350b35cba7ace8d4515a7ad52ba4e1534295`. A local checkout at
    any other SHA is HOLD for release from that checkout; do **not** reset
    or create a duplicate worktree to force parity. The old Oct 28 context
-   recorded local \`e822ab6d...\` but was NOT current proof.
+   recorded local `e822ab6d...` but was NOT current proof.
 2. **Dirty/untracked** — bounded preflight deliberately does not recursively
    enumerate under the <25 GiB native source scan floor. Mark dirty/untracked
    **UNKNOWN / HOLD**, not clean, until separately independently bounded/approved
    source status is proven; do not overwrite local-only code.
 3. **Headroom** — measure ordinary free bytes via
-   \`statvfs('/System/Volumes/Data')\` (or owner native \`df -Pk\`). At the most
+   `statvfs('/System/Volumes/Data')` (or owner native `df -Pk`). At the most
    recent M1 receipt it was **4,891,268 KiB = 4.6647 GiB**, **below the
    independent 8 GiB operator-worktree floor**, 25 GiB guarded broad-scan floor
    and 30 GiB recovery target. This is a historic owner-pasted reading, NOT
@@ -54,17 +54,17 @@ deletion or any network host mutation. Never use \`set -e\`/\`errexit\`.
    checkout, Node install, build or other potentially large producer**.
    No automatic cache prune or protected-file deletion is authorized.
 4. **Local artifact names, not assumed certification** — read only exact
-   metadata for \`bin/aoe2war\`, \`bin/aoe2war-release\`,
-   \`scripts/aoe2_release_ship.py\`,
-   \`scripts/aoe2_release_nonfinancial_admission.py\`,
-   \`.next/BUILD_ID\`, \`.next-release/BUILD_ID\`, \`.aoe2war-release\`,
-   \`.aoe2war-release/gates\`, \`.aoe2war-release/manifests\`,
-   \`.aoe2war-release/activation-receipts\` and \`node_modules\`. Presence is
+   metadata for `bin/aoe2war`, `bin/aoe2war-release`,
+   `scripts/aoe2_release_ship.py`,
+   `scripts/aoe2_release_nonfinancial_admission.py`,
+   `.next/BUILD_ID`, `.next-release/BUILD_ID`, `.aoe2war-release`,
+   `.aoe2war-release/gates`, `.aoe2war-release/manifests`,
+   `.aoe2war-release/activation-receipts` and `node_modules`. Presence is
    not proof of a release-certified artifact, signed gate, working rollback or
    installed production BUILD_ID. Never copy old artifacts into a new candidate
    or remove a current/ambiguous artifact.
 5. **Authority and remote gates remain separate** — M1 canonical
-   \`/private/etc/aoe2war/release-admission\` is root-owned 0755, created empty
+   `/private/etc/aoe2war/release-admission` is root-owned 0755, created empty
    by owner; it contains no enrolled/trusted phase permits. F's draft
    solo-owner controller [#1008](https://github.com/Emaren/app-prodn/pull/1008)
    is non-dispatching as of this checkpoint, so W1's original incompatible
@@ -89,6 +89,58 @@ owner session; F may propose a separately reviewed remote-only execution
 strategy, but this runbook itself authorizes no deployment. A clean source
 and green CI are not substitutes for native host permits or live rollback.
 
+
+### Owner-native executed preflight — 2026-10-29 local (unsigned transcript)
+
+An actual **Darwin/arm64 M1** operator ran the bounded read-only preflight.
+This is owner-pasted terminal stdout, not signed source telemetry nor
+release admission. The exact device, inode and metadata below only attest
+the named leaf types; directory byte sizes are not recursive allocations.
+
+- `HOST=Tonys-Laptop.local Darwin arm64` — host gate **PASS**.
+- `APFS_FREE_GIB=5.847` for `/System/Volumes/Data` — physical owner-reported
+  reading **HOLD**: below 8 GiB operator-worktree minimum by **2.153 GiB**,
+  below 25 GiB guarded deep-scan floor by **19.153 GiB**, below 30 GiB recovery
+  target by **24.153 GiB**. Prior reading was 4.6647 GiB; 1.1823 GiB more
+  ordinary free has appeared, but there is **no attributable cleanup or
+  independently certified reclaimed byte**.
+- All three canonical path ancestors are direct **directories** on device
+  `16777233` (not terminal-path symlinks); repo
+  `/Users/tonyblum/projects/AoE2HDBets/app-prodn` inode `63012146`.
+- Canonical `main HEAD=650f72e0f46de295d240f5477620b8b9dc66dfa4`.
+  GitHub independent commit comparison proves this HEAD is an **ancestor**
+  of both frozen W1 `b46a51f...` (**223 commits ahead of local**) and
+  accepted post-W1 `fa5c350b...` (**438 commits ahead of local**), but
+  no source/dirty-state or origin parity has been proven on the host.
+  **HOLD CANONICAL_HEAD_NOT_W1**. Do not move/reset this `main`.
+- `REGISTERED_WORKTREES=41`, `W1_MATCHING_WORKTREES=0` in metadata-only
+  `git worktree list --porcelain`. This is **HOLD** for pinned W1 execution.
+  Actual dirtiness/untracked local-only code of each worktree remains **UNKNOWN**;
+  do not create, prune or overwrite any worktree.
+- `bin/aoe2war`, `bin/aoe2war-release`,
+  `scripts/aoe2_release_ship.py`, `DEPLOY.md`, `node_modules`,
+  and the three `.aoe2war-release` gates/manifests/activation-receipts
+  directories are present. Their cryptographic/source/rollback admission is
+  **UNVERIFIED**.
+- `scripts/aoe2_release_nonfinancial_admission.py` is
+  **MISSING_OR_UNREADABLE** in this current older checkout;
+  `.next/BUILD_ID` and `.next-release/BUILD_ID` are also missing or
+  unreadable. **Do not assume a certified local build or stage exists**.
+  No local build may be invented/triggered at this capacity.
+- `/private/etc/aoe2war/release-admission` appears as a directory with
+  `inode=200480030`; F had earlier verified root-owned 0755 but **EMPTY**,
+  and this latest check does **not inspect its contents**. Still no
+  accepted phase permits or operational solo-owner dispatcher.
+
+**Result: M1_RELEASE_EXECUTION_HOLD.** This local preflight is now complete.
+F must independently evaluate the operator launch strategy: an existing
+canonical checkout at an old ancestor and **zero W1 worktrees**, below 8 GiB
+ordinary headroom, without requesting a new local worktree/full build.
+That review cannot waive separate HEL1 capacity, E independent restores,
+Doctor, finance/scope protection, F's versioned solo-owner policy and
+separate PRE_STAGE/PRE_ACTIVATE authorization. The only safe immediate
+M1 action is to preserve the exact protected checkout and wait for a
+specifically reviewed F execution plan. No deployment occurred.
 
 ## October 22, 2026 — targeted release-safety review
 
