@@ -59,6 +59,7 @@ class NativeCollectorGuards(unittest.TestCase):
    result=simulated(argv)
    if argv[1]=="show":
     return result.replace(b"ActiveState=inactive",b"ActiveState=active")
+   return result
   with patch.object(collector,"run",side_effect=fake):
    with self.assertRaisesRegex(FinancialProofHold,"main PID"):
     collector.observe_unit("wolochain-founder-rewards-settlement.service")
