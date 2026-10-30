@@ -68,7 +68,7 @@ def audit(candidate,phase,attempt):
     need(set(report)=={"schema","policy","status","candidate_sha","phase",
                       "attempt_id","observed_at","doctor",
                       "recovery","finance","rollback","source_scope",
-                      "mount","receipt_provenance"},
+                      "mount","stage","receipt_provenance"},
          "missing native audit evidence fields")
     need(report["schema"]==1 and report["policy"]==POLICY and
          report["status"]=="INDEPENDENT_NATIVE_VERIFIED" and
@@ -107,6 +107,21 @@ def audit(candidate,phase,attempt):
          type(rb.get("active_build_id"))is str and
          type(rb.get("previous_source_sha"))is str,
          "unsigned rollback evidence")
+    stage=report["stage"]
+    need(type(stage)is dict, "native stage receipt class missing")
+    if phase=="PRE_ACTIVATE":
+        need(stage.get("status")=="STAGED" and
+             stage.get("origin")=="HEL1_DURABLE_PROTECTED_STORE" and
+             stage.get("release_sha")==candidate and
+             type(stage.get("receipt_sha256"))is str and
+             type(stage.get("artifact_sha256"))is str and
+             type(stage.get("node_modules_sha256"))is str and
+             type(stage.get("staged_build_id"))is str and
+             type(stage.get("receipt"))is dict,
+             "root did not independently reread genuine stage bytes")
+    else:
+        need(stage.get("status") in ("NOT_STAGED","UNKNOWN"),
+             "PRE_STAGE cannot impersonate prior durable artifact")
     need(type(report["source_scope"])is dict and
          report["source_scope"].get("status")=="INDEPENDENTLY_REVIEWED",
          "source/gate/finance transitive closure missing")
