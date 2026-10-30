@@ -1,0 +1,47 @@
+name: G Storage Transfer final source inventory DocsV2 refresh
+on:
+  push:
+    branches:
+      - review/g-operation-storage-transfer-visual-20261030
+    paths:
+      - .github/workflows/g-storage-transfer-final-docsv2-once.yml
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Pin post-W1, retire generator before baseline
+        run: |
+          git switch -C review/g-operation-storage-transfer-visual-20261030
+          git merge-base --is-ancestor 1e5eae56f3434f2634ef7e59e070d67cc088babb HEAD
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/g-storage-transfer-final-docsv2-once.yml
+          git commit -m "chore(storage-transfer): retire private-inventory DocsV2 generator"
+      - name: Canonical registered private route and DocsV2
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          docs=json.loads(Path("docs/document-registry.json").read_text())
+          assert len(docs["documents"])==102,"post-W1 canonical document count"
+          inv=json.loads(Path("config/kingdom-index-inventory.json").read_text())
+          assert inv["counts"]["pageTemplates"]==152 and inv["counts"]["routeHandlerTemplates"]==283
+          assert inv["counts"]["publicIndexTemplates"]==88
+          assert any(x["href"]=="/admin/storage-transfer" and x["scope"]=="admin-path" for x in inv["pages"])
+          print("PASS: source-bound DocsV2, 102 docs, protected 152/283 including 88 public")
+          PY
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
+          if [ "$actual" != "$expected" ]; then echo "HOLD: unexpected generated docs"; printf '%s\n' "$actual"; exit 1; fi
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git commit -m "docs(storage-transfer): exact private 152/283 source and canonical 102-document baseline"
+          python3 scripts/docs_v2_check.py
+          git diff --exit-code
+          git push origin HEAD:review/g-operation-storage-transfer-visual-20261030
