@@ -72,20 +72,20 @@ function NodeTile({
       </div>
     </div>
     <div className="mt-4 truncate text-[12px] font-black tracking-[.14em] text-slate-50">{label}</div>
-    <div className="mt-1 text-[11px] text-slate-500">{subtitle}</div>
+    <div className="mt-1 text-[11px] text-slate-400">{subtitle}</div>
     <div className="mt-4 border-t border-white/[.07] pt-3">
-      <div className="text-[9px] font-bold tracking-[.2em] text-slate-500">ORDINARY FREE SPACE</div>
+      <div className="text-[9px] font-bold tracking-[.2em] text-slate-400">ORDINARY FREE SPACE</div>
       <div className="mt-1 text-xl font-black tabular-nums text-slate-100">{bytes(reading?.freeBytes)}</div>
     </div>
     <div className="mt-3 flex items-center justify-between gap-2">
       <span className={"rounded-lg px-2 py-1 text-[9px] font-bold tracking-wider " +
         (reading?.status === "RECEIPT" ? "bg-cyan-400/10 text-cyan-200" :
         reading?.status === "STALE" ? "bg-amber-400/10 text-amber-200" :
-        "bg-white/[.05] text-slate-500")}>
+        "bg-white/[.05] text-slate-400")}>
         {reading?.status === "RECEIPT" && reading.source === "SIGNED_THREE_PLANE_RECEIPT" ? "SIGNED" :
           reading?.status === "RECEIPT" ? "ESTATE" : reading?.status === "STALE" ? "STALE" : "UNKNOWN"}
       </span>
-      <ChevronRight className="h-3.5 w-3.5 text-slate-500 transition group-hover:text-cyan-200"/>
+      <ChevronRight className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-cyan-200"/>
     </div>
   </button>;
 }
@@ -178,7 +178,7 @@ export default function StorageTransferControlRoomPage() {
       <section aria-label="Storage transfer host topology" className={PANEL+" space-y-4 p-4 sm:p-6"}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-[11px] font-black tracking-[.21em] text-cyan-100"><Waves className="h-4 w-4"/> TRANSFER TOPOLOGY</div>
-          <div className="text-[10px] tracking-wider text-slate-500">RECEIPT AGE · {observed(data?.storage.planes[0]?.asOf)}</div>
+          <div className="text-[10px] tracking-wider text-slate-400">RECEIPT AGE · {observed(data?.storage.planes[0]?.asOf)}</div>
         </div>
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {NAV.map(node=><NodeTile key={node.id} id={node.id} label={node.name} subtitle={node.subtitle}
@@ -187,9 +187,9 @@ export default function StorageTransferControlRoomPage() {
         </div>
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-200/15 bg-cyan-300/[.025] px-4 py-3 text-center sm:flex-row">
           <span className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-300">M1 <ArrowRight className="h-3 w-3"/> INTEL</span>
-          <span className="hidden text-slate-600 sm:inline">·</span>
+          <span className="hidden text-slate-400 sm:inline">·</span>
           <span className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-300">HEL1 ROOT <ArrowRight className="h-3 w-3"/> INTEL</span>
-          <span className="hidden text-slate-600 sm:inline">·</span>
+          <span className="hidden text-slate-400 sm:inline">·</span>
           <span className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-300">HEL1 VOLUME <ArrowRight className="h-3 w-3"/> INTEL</span>
           <span className="ml-0 flex items-center gap-1 text-[10px] text-amber-200 sm:ml-auto"><WifiOff className="h-3.5 w-3.5"/> TRANSFER RECEIPT NOT CONNECTED</span>
         </div>
@@ -199,7 +199,7 @@ export default function StorageTransferControlRoomPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">SOURCE INVENTORY</div>
             <h2 className="mt-1 text-2xl font-bold">Potential cargo</h2></div>
-          <span className="text-[10px] font-bold tracking-wider text-slate-500">NOT AUTHORIZED FOR TRANSFER OR DELETION</span>
+          <span className="text-[10px] font-bold tracking-wider text-slate-400">NOT AUTHORIZED FOR TRANSFER OR DELETION</span>
         </div>
         {candidates.length ?
           <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -207,17 +207,17 @@ export default function StorageTransferControlRoomPage() {
               <div className="truncate text-[12px] font-semibold text-slate-100">{item.label}</div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <div className="text-xl font-black tabular-nums">{bytes(item.grossBytes)}</div>
-                <div className="text-[10px] text-slate-500">L{item.level}</div>
+                <div className="text-[10px] text-slate-400">L{item.level}</div>
               </div>
               <div className="mt-3 text-[10px] text-amber-200">REVIEW BEFORE ARCHIVE</div>
             </div>)}
           </div> :
-          <div className="mt-5 flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 text-slate-500">
+          <div className="mt-5 flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 text-slate-400">
             <Archive className="h-6 w-6"/>
             <div className="text-xs font-medium">No authenticated source cohort inventory connected</div>
           </div>}
       </section>
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pb-6 pt-3 text-[10px] font-semibold tracking-wider text-slate-500">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pb-6 pt-3 text-[10px] font-semibold tracking-wider text-slate-400">
         <span>VISUAL OPERATOR CONTROL · NO TRANSFER OR DELETE AUTHORITY</span>
         <span>{loading ? "LOADING RECEIPTS" : "LAST API POLL " + (data?.polledAt ?? "UNKNOWN")}</span>
         <Link className="hover:text-cyan-200" href="/admin/aoe2war-os">AOE2WAR OS <ArrowRight className="ml-1 inline h-3 w-3"/></Link>

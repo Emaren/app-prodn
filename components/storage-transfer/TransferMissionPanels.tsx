@@ -20,7 +20,7 @@ function metric(label:string,value:string,description:string,icon:React.ReactNod
     title={description}>
    <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.17em] text-slate-400">{icon}{label}</div>
    <div className="mt-3 break-words text-2xl font-black tabular-nums text-white sm:text-3xl">{value}</div>
-   <p className="mt-1 text-[10px] leading-4 text-slate-500">{description}</p>
+   <p className="mt-1 text-[10px] leading-4 text-slate-400">{description}</p>
  </div>;
 }
 function duration(seconds:number|null):string{
@@ -57,7 +57,7 @@ function Rail({cohort}:{cohort:TransferCohort}){
      {String(index+1).padStart(2,"0")}{state==="VERIFIED"?<CheckCircle2 aria-hidden className="h-3.5 w-3.5 text-emerald-300"/>:
      <span aria-hidden className="h-2 w-2 rounded-full bg-slate-600"/>}</div>
     <div className="mt-2 min-h-8 text-[10px] font-bold leading-4 text-slate-200">{step}</div>
-    <div className="mt-1 text-[9px] font-medium tracking-wider text-slate-500">{state}</div>
+    <div className="mt-1 text-[9px] font-medium tracking-wider text-slate-400">{state}</div>
    </li>;
   })}
  </ol>;
@@ -65,10 +65,10 @@ function Rail({cohort}:{cohort:TransferCohort}){
 function Plot({cohort}:{cohort:TransferCohort}){
  const samples=cohort.samples.slice(-12).filter(x=>Number.isSafeInteger(x.bytesSent)&&
   Number.isFinite(Date.parse(x.at)));
- if(samples.length<3)return <div className="flex h-24 items-center justify-center text-xs text-slate-500">Rate samples not yet available</div>;
+ if(samples.length<3)return <div className="flex h-24 items-center justify-center text-xs text-slate-400">Rate samples not yet available</div>;
  const first=Date.parse(samples[0].at),last=Date.parse(samples[samples.length-1].at);
  const lo=samples[0].bytesSent,hi=samples[samples.length-1].bytesSent;
- if(last<=first||hi<=lo)return <div className="flex h-24 items-center justify-center text-xs text-slate-500">Rate continuity unverified</div>;
+ if(last<=first||hi<=lo)return <div className="flex h-24 items-center justify-center text-xs text-slate-400">Rate continuity unverified</div>;
  const line=samples.map(p=>{
   const x=12+276*(Date.parse(p.at)-first)/(last-first);
   const y=80-68*(p.bytesSent-lo)/(hi-lo);
@@ -108,7 +108,7 @@ function CargoCard({cohort,now}:{cohort:TransferCohort;now:Date}){
    <div className="h-full rounded-full bg-gradient-to-r from-cyan-700 via-cyan-400 to-emerald-300 transition-[width] motion-reduce:transition-none"
     style={{width:measure.percent===null?"0%":measure.percent+"%"}}/>
   </div>
-  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-500">
+  <div className="mt-2 flex flex-wrap justify-between gap-2 text-[11px] text-slate-400">
    <span>{byteLabel(cohort.bytesSent)} transferred</span>
    <span>{byteLabel(cohort.ciphertextBytes)} ciphertext total</span>
   </div>
@@ -123,7 +123,7 @@ function CargoCard({cohort,now}:{cohort:TransferCohort;now:Date}){
   </div>
   <div className="mt-5 border-t border-white/10 pt-4">
    <div className="mb-3 flex items-center justify-between gap-2 text-[11px] font-bold text-slate-300">
-    <span>Native evidence timeline</span><span className="text-[10px] text-slate-500">7 proofs</span>
+    <span>Native evidence timeline</span><span className="text-[10px] text-slate-400">7 proofs</span>
    </div>
    <Rail cohort={cohort}/>
   </div>
@@ -169,7 +169,7 @@ export default function TransferMissionPanels({model}:{model:TransferReadModel})
      <div className="flex items-center gap-2 text-cyan-200"><Server className="h-5 w-5"/><span className="text-[11px] font-bold tracking-widest">M1 · HEL1</span></div>
      <p className="mt-2 text-xs text-slate-400">Source snapshots · protected originals</p>
     </div>
-    <div className="flex flex-col items-center gap-2 text-slate-500">
+    <div className="flex flex-col items-center gap-2 text-slate-400">
      <div className={"h-[2px] w-full max-w-24 "+(active?"bg-cyan-300":"border-t border-dashed border-slate-600")} aria-hidden/>
      <span className="text-center text-[9px] font-bold tracking-widest">{active?"RECEIPTED TRANSFER":"NO LIVE FLOW CLAIM"}</span>
     </div>
@@ -198,9 +198,9 @@ export default function TransferMissionPanels({model}:{model:TransferReadModel})
    </div>
    {model.cohorts.length===0?
     <div className={SURFACE+" flex min-h-52 flex-col items-center justify-center px-5 py-9 text-center"} role="status">
-     <LockKeyhole className="h-9 w-9 text-slate-600"/>
+     <LockKeyhole className="h-9 w-9 text-slate-400"/>
      <h3 className="mt-4 text-lg font-semibold text-slate-200">Awaiting authenticated sender and Intel receipts</h3>
-     <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">No transfer progress, encryption result, throughput, receiver checksum or independent restore is currently verified. Host storage readings above remain separate.</p>
+     <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">No transfer progress, encryption result, throughput, receiver checksum or independent restore is currently verified. Host storage readings above remain separate.</p>
      <p className="mt-4 text-[11px] font-bold tracking-widest text-amber-200">NO RECEIPT IS NOT A ZERO-BYTE TRANSFER</p>
     </div>:
     <>
