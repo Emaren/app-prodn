@@ -96,6 +96,17 @@ class BFinancialProofAdversarial(unittest.TestCase):
    "aoe2hdbets-staking-rewards.service"]
   r["main_pid"]=123
   with self.assertRaises(FinancialProofHold):verify_writer_census(f)
+ def test_active_settlement_and_hd_need_real_process_identity(self):
+  for unitname in ("wolochain-mainnet-settlement.service",
+                   "wolochain-founder-rewards-settlement.service",
+                   "aoe2hdbets-web.service","aoe2dewarwagers-api.service"):
+   f=finance()
+   row=f["protected"]["writers"]["native_census"]["units"][unitname]
+   row["state"]="active"
+   with self.subTest(unit=unitname),self.assertRaisesRegex(
+       FinancialProofHold,"no real PID"):
+    verify_writer_census(f)
+
 
  def test_get_head_prewarm_unresolved_edges_block(self):
   for route in ("GET","HEAD","PREWARM"):
