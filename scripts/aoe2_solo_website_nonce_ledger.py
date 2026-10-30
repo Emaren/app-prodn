@@ -48,6 +48,13 @@ class Journal:
                  stat.S_ISREG(st.st_mode) and
                  (st.st_mode & 0o777) == (0o600 if self.test_mode else 0o644),
                  "native original uid1000/mode0644 release.lock changed")
+            if not self.test_mode:
+                for ancestor in (self.lock.parent,*self.lock.parent.parents):
+                    st_ancestor=ancestor.lstat()
+                    need(stat.S_ISDIR(st_ancestor.st_mode) and
+                         st_ancestor.st_uid==0 and
+                         not st_ancestor.st_mode & 0o022,
+                         "UID1000 can replace canonical lock through ancestor")
         else:
             need(not st.st_mode & 0o022,"writable protected journal")
             if not self.test_mode: need(os.geteuid()==0 and st.st_uid==0,"root-only journal")
@@ -57,7 +64,7 @@ class Journal:
         self.secure(self.lock)
         try: inherited=os.fstat(200)
         except OSError as exc: raise Hold("SOLO_OWNER_LEDGER_HOLD: no inherited FD200 release lease") from exc
-        original=self.lock.stat()
+        original=self.lock.lstat()
         need((inherited.st_dev,inherited.st_ino)==(original.st_dev,original.st_ino),
              "inherited release lease inode mismatch")
         if not self.test_mode:
