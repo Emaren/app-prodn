@@ -65,6 +65,20 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
             "finance_fingerprint_sha256": "e" * 64,
             "protected_8092_pid": 2001, "protected_8093_pid": 2002,
         }
+        self.host["protected"] = {
+            port: {
+                "count": 1,
+                "pid": self.host["protected_" + port + "_pid"],
+                "executable_sha256": "1" * 64, "unit_sha256": "2" * 64,
+                "config_sha256": "3" * 64, "source_sha256": "4" * 64,
+            } for port in ("8092", "8093")
+        }
+        self.host["protected"]["writers"] = {
+            "hd_sha256": "5" * 64, "de_sha256": "6" * 64,
+            "settlement_sha256": "7" * 64, "custody_sha256": "8" * 64,
+        }
+        self.host["finance_fingerprint_sha256"] = M.digest(
+            M.canonical(self.host["protected"]))
         self.challenge = {
             "policy": M.POLICY, "phase": "PRE_STAGE",
             "attempt_id": "1" * 64, "nonce": "2" * 64,
@@ -82,7 +96,7 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
             "active_build_id": "CURRENTBUILD123",
             "rollback_build_id": "ROLLBACKBUILD123",
             "host_observation_sha256": M.digest(M.canonical(self.host)),
-            "finance_fingerprint_sha256": "e" * 64,
+            "finance_fingerprint_sha256": self.host["finance_fingerprint_sha256"],
             "financial_movement_authorized": False,
             "custody_authorized": False, "migration_paths": [],
             "scope_review_sha256": "f" * 64,
