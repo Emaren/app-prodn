@@ -130,9 +130,14 @@ class Journal:
             if phase=="PRE_STAGE":
                 outcome=self.name(attempt,"PRE_STAGE","staged")
             else:
-                outcome=self.state/(attempt+"-PRE_ACTIVATE-completed.json")
+                completed=self.state/(attempt+"-PRE_ACTIVATE-completed.json")
+                reconciled=self.state/(attempt+"-PRE_ACTIVATE-rollback-reconciled.json")
+                need(not completed.is_symlink() and not reconciled.is_symlink(),
+                     "linked activation outcome marker")
+                outcome=completed if completed.is_file() else reconciled
             need(outcome.is_file() and not outcome.is_symlink(),
                  "previous consumed phase outcome unresolved; never redispatch")
+            self.secure(outcome)
 
     def refuse_parallel_unconsumed_challenges(self,now):
         # The authenticated observer selects exactly ONE outstanding fresh
