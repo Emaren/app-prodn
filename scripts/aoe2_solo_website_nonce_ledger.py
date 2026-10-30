@@ -58,27 +58,68 @@ class Journal:
         else:
             need(not st.st_mode & 0o022,"writable protected journal")
             if not self.test_mode: need(os.geteuid()==0 and st.st_uid==0,"root-only journal")
-    def inherited_lease_fd(self):
-        # The v4-style SSH lease passes the SAME open file description to
-        # child FD 200, unlike a separately reacquired recursive flock.
+    def inherited_lease_fd(self, *, owner_depth=1):
+        """Prove FD200 is the original command channel's locked OFD.
+
+        A matching inode plus a contended independent probe proves merely
+        that *some* process holds a lock, not that FD200 owns it. Kernel
+        /proc/locks owner PID and an inherited-duplicate FLOCK both must agree.
+        """
         self.secure(self.lock)
+        need(owner_depth in (1,2),"unreviewed lease ancestry")
         try: inherited=os.fstat(200)
         except OSError as exc: raise Hold("SOLO_OWNER_LEDGER_HOLD: no inherited FD200 release lease") from exc
         original=self.lock.lstat()
         need((inherited.st_dev,inherited.st_ino)==(original.st_dev,original.st_ino),
              "inherited release lease inode mismatch")
-        if not self.test_mode:
-            need(os.geteuid()==0,"root-only phase consumption")
-        # Require another independent OFD to observe an exclusive lock. This
-        # is a necessary liveness check, not independently sufficient consent.
+        if not self.test_mode: need(os.geteuid()==0,"root-only phase consumption")
+        owner_pid=os.getppid()
+        if owner_depth==2:
+            try:
+                rows=(Path("/proc")/str(owner_pid)/"status").read_text().splitlines()
+                owner_pid=int(next(x.split()[1] for x in rows if x.startswith("PPid:")))
+            except (OSError,ValueError,StopIteration,IndexError) as exc:
+                raise Hold("original lease channel ancestry unavailable") from exc
+        need(owner_pid>1,"original lease holder disappeared")
+        def check_owner():
+            try:
+                rows=Path("/proc/locks").read_text().splitlines()
+                parent_fd=(Path("/proc")/str(owner_pid)/"fd"/"200").stat()
+            except OSError as exc:
+                raise Hold("kernel original owner evidence unavailable") from exc
+            need((parent_fd.st_dev,parent_fd.st_ino)==
+                 (inherited.st_dev,inherited.st_ino),
+                 "channel FD200 was replaced")
+            owners=[]
+            for row in rows:
+                x=row.split()
+                if len(x)<8 or x[1:4]!=["FLOCK","ADVISORY","WRITE"]:continue
+                try:
+                    major,minor,inode=x[5].split(":")
+                    address=(int(major,16),int(minor,16),int(inode))
+                except (ValueError,IndexError) as exc:
+                    raise Hold("malformed native FLOCK evidence") from exc
+                if address==(os.major(inherited.st_dev),os.minor(inherited.st_dev),
+                             inherited.st_ino):
+                    owners.append(int(x[4]))
+            need(owners==[owner_pid],"original FD200 FLOCK not owned by command channel")
+        check_owner()
         probe=os.open(self.lock,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
         try:
-            try: fcntl.flock(probe,fcntl.LOCK_EX|fcntl.LOCK_NB)
-            except BlockingIOError: pass
+            try:fcntl.flock(probe,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:pass
             else:
                 fcntl.flock(probe,fcntl.LOCK_UN)
-                raise Hold("SOLO_OWNER_LEDGER_HOLD: global release lease not held")
-        finally: os.close(probe)
+                raise Hold("global release lease not held")
+        finally:os.close(probe)
+        inherited_dup=os.dup(200)
+        try:
+            try:fcntl.flock(inherited_dup,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise Hold("FD200 is NOT the lock-owning open-file-description") from exc
+            # NEVER LOCK_UN: this duplicate shares the original lease OFD.
+        finally:os.close(inherited_dup)
+        check_owner()
     @contextmanager
     def exclusive(self):
         self.secure(self.state,True);self.secure(self.lock)

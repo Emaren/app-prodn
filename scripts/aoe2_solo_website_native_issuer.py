@@ -137,8 +137,14 @@ def original_lease():
             (held.st_dev, held.st_ino, held.st_uid, stat.S_IMODE(held.st_mode)) ==
             (actual.st_dev, actual.st_ino, 1000, 0o644),
             "ORIGINAL_LOCK_INODE_OR_OWNER_CHANGED")
-    # F's root/command channel owns the exclusive flock lifecycle. Root issuer
-    # cannot manufacture its owner authorization from the presence of an FD.
+    # Issuer is the grandchild of the original root SSH command channel.
+    # Inode equality alone is not evidence that FD200 owns its original FLOCK.
+    if str(INSTALL) not in sys.path:
+        sys.path.insert(0,str(INSTALL))
+    from aoe2_solo_website_nonce_ledger import Journal
+    try: Journal().inherited_lease_fd(owner_depth=2)
+    except Exception as exc:
+        raise Hold("ORIGINAL_FD200_NOT_OWNED_BY_RELEASE_CHANNEL") from exc
     return (held.st_dev, held.st_ino)
 
 
