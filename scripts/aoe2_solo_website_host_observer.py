@@ -77,39 +77,9 @@ def read_authenticated_hel1():
     protected_file(REMOTE_HASH)
     approved_digest = REMOTE_HASH.read_text().strip()
     check(bool(HEX64.fullmatch(approved_digest)), "bad approved collector digest")
-    # One root-owned inode is opened, hash-verified, then executed from
-    # those SAME bytes; never hash path A then race to exec replaced path B.
-    remote_code = r"""
-import hashlib,os,pathlib,stat,sys
-p=pathlib.Path(sys.argv[1]);expected=sys.argv[2]
-if p.is_symlink() or any(q.is_symlink()for q in p.parents):
- raise SystemExit(9)
-for q in (p,*p.parents):
- st=q.stat()
- if st.st_uid!=0 or st.st_mode & 0o022:raise SystemExit(9)
-fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
-try:
- st=os.fstat(fd)
- if not stat.S_ISREG(st.st_mode)or not 0<st.st_size<=131072:
-  raise SystemExit(9)
- b=b''
- while True:
-  x=os.read(fd,8192)
-  if not x:break
-  b+=x
-  if len(b)>131072:raise SystemExit(9)
- h=hashlib.sha256(b).hexdigest()
- if h!=expected:raise SystemExit(9)
- print(h+'  '+str(p),flush=True)
- sys.argv=[str(p),'--read-only-json']
- exec(compile(b,str(p),'exec'),{'__name__':'__main__','__file__':str(p)})
-finally:os.close(fd)
-"""
-    remote=("python3 -c "+shlex.quote(remote_code)+" "+
-            shlex.quote(REMOTE_PROGRAM)+" "+shlex.quote(approved_digest))
-    # Only the root-owned M1 SSH identity can access HEL1's review-only
-    # observer. The interactive owner must explicitly refresh sudo first;
-    # no password prompt is requested inside an automated release phase.
+    # Authorized SSH server forced-command only accepts this literal verb.
+    # Remote binary hash is verified and executed from the same inode there.
+    remote = "aoe2war-solo-observe"
     cmd = ["/usr/bin/sudo", "-n", "/usr/bin/ssh", "-T", "-n", "-o", "BatchMode=yes",
            "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes",
            "-o", "GlobalKnownHostsFile=/dev/null",
