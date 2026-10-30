@@ -28,6 +28,7 @@ POST_W1 = "fa5c350b35cba7ace8d4515a7ad52ba4e1534295"
 OLD = "33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a"
 TRAINS = {"W1": (W1, OLD), "POST_W1": (POST_W1, W1)}
 OWNER_PUBLIC = Path("/private/etc/aoe2war/website-owner-v4/owner.pem")
+SOURCE_REVIEWS = Path("/private/etc/aoe2war/solo-owner-website-v1/source-reviews")
 OWNER_SPKI_SHA256 = "3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd"
 OPENSSL = "/opt/homebrew/opt/openssl@3/bin/openssl"
 HEX64 = re.compile(r"[a-f0-9]{64}\Z")
@@ -40,7 +41,8 @@ FIELDS = {
     "manifest_sha256", "gate_sha256", "scope_sha256",
     "active_build_id", "rollback_build_id", "host_observation_sha256",
     "finance_fingerprint_sha256", "financial_movement_authorized",
-    "custody_authorized", "migration_paths", "stage_receipt_sha256",
+    "custody_authorized", "migration_paths", "scope_review_sha256",
+    "stage_receipt_sha256",
     "staged_build_id", "pre_stage_packet_sha256",
 }
 
@@ -135,6 +137,45 @@ def verify_owner_signature(signed, *, key=OWNER_PUBLIC):
     check(result.returncode == 0, "owner signature verification failed")
 
 
+def reviewed_scope(candidate_sha, manifest, expected_digest):
+    """Read a root-protected closed-world source review, NOT owner-input JSON.
+
+    The separately authenticated independent GitHub review/CI receipt must
+    be checked before root installation. Root file ownership is necessary but
+    not sufficient to establish reviewer independence.
+    """
+    file = SOURCE_REVIEWS / (candidate_sha + ".json")
+    try:
+        for item in (SOURCE_REVIEWS, file):
+            check(not item.is_symlink(), "linked source review")
+            st = item.stat()
+            check(st.st_uid == 0 and not st.st_mode & 0o022,
+                  "source review not root-protected")
+        raw = file.read_bytes()
+    except OSError as exc:
+        raise Hold("SOLO_WEBSITE_HOLD: independent source review unavailable") from exc
+    check(digest(raw) == expected_digest, "source review content changed")
+    review = parse(raw)
+    check(review.get("schema") == 1 and
+          review.get("kind") == "aoe2war.solo.website.source-review.v1" and
+          review.get("status") == "INDEPENDENTLY_REVIEWED" and
+          review.get("candidate_sha") == candidate_sha and
+          review.get("previous_sha") == manifest["previous_production_sha"] and
+          review.get("scope_sha256") == manifest["scope_sha256"] and
+          review.get("changed_files") == manifest["changed_files"] and
+          all(type(review.get(key)) is str and HEX64.fullmatch(review[key])
+              for key in ("transitive_closure_sha256",
+                          "import_edges_sha256", "finance_surface_sha256")) and
+          all(review.get(key) == [] for key in (
+              "unresolved_import_edges", "changed_financial_writers",
+              "financial_migration_paths", "unchecked_producer_edges")) and
+          type(review.get("review_url")) is str and
+          review["review_url"].startswith(
+              "https://github.com/Emaren/app-prodn/pull/"),
+          "missing closed-world independently reviewed financial scope")
+    return review
+
+
 def verify_inputs(signed, manifest_raw, gate_raw, *,
                   previous_stage=None, stage_receipt=None, now=None):
     """Perform live pinned HEL1 root-SSH read; never accept a caller callback.
@@ -203,10 +244,9 @@ def verify_inputs(signed, manifest_raw, gate_raw, *,
           all(type(x) is dict and type(x.get("returncode")) is int and
               x["returncode"] == 0 for x in gate["commands"]),
           "release gate did not actually PASS exact committed scope")
-    # A green gate and absence of Prisma migrations NEVER establish
-    # transitive financial non-interference. No activation can be authorized
-    # until an independently reviewed closed-world import/writer proof
-    # is authenticated by the separately reviewed source authority.
+    check(type(p["scope_review_sha256"]) is str and
+          HEX64.fullmatch(p["scope_review_sha256"]), "missing scope-review binding")
+    reviewed_scope(target, manifest, p["scope_review_sha256"])
     try:
         h, challenge = read_authenticated_hel1()
     except ObserverHold as exc:
