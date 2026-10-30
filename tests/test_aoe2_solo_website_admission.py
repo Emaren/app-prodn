@@ -12,9 +12,12 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import sys
 from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "aoe2_solo_website_admission.py"
+if str(SCRIPT.parent) not in sys.path:
+    sys.path.insert(0, str(SCRIPT.parent))
 SPEC = importlib.util.spec_from_file_location("solo_website_admission", SCRIPT)
 M = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(M)
