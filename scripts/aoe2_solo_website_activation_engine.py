@@ -1,0 +1,3079 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import os
+import shlex
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+# The *operator engine* is separately reviewed. All release inputs, gate,
+# manifest, source and artifact still come from immutable candidate checkout.
+from aoe2_solo_website_engine_source import exact_candidate_script_dir
+SCRIPT_DIR = exact_candidate_script_dir()
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from aoe2_release_gate import (
+    MANIFEST_DIR,
+    ROOT,
+    same_source_recertification_allowed,
+    sha256_file,
+)
+
+PROD_HOST = os.getenv("AOE2_RELEASE_HOST", "hel1")
+PROD_REPO = os.getenv(
+    "AOE2_RELEASE_PROD_REPO",
+    "/var/www/AoE2HDBets/app-prodn",
+)
+SERVICE = os.getenv(
+    "AOE2_RELEASE_SERVICE",
+    "aoe2hdbets-web.service",
+)
+PUBLIC = os.getenv(
+    "AOE2_RELEASE_PUBLIC_BASE",
+    "https://aoe2war.com",
+)
+SHIP_PLAN_DIR = ROOT / ".aoe2war-release" / "ship-plans"
+
+EXPECTED_ORIGIN = "git@github.com:Emaren/app-prodn.git"
+EXPECTED_PROD_USER = "tony"
+EXPECTED_DEPLOY_KEY = "/home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn"
+EXPECTED_DEPLOY_KEY_FINGERPRINT = "SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3etNcZk"
+EXPECTED_KNOWN_HOSTS = "/home/tony/.ssh/known_hosts"
+EXPECTED_PROTOCOL = "0"
+
+TRACKED_WORKTREE_PROBE = r"""
+import json
+import os
+import pathlib
+import subprocess
+
+root = pathlib.Path.cwd()
+uid = os.geteuid()
+gid = os.getegid()
+
+raw = subprocess.check_output(
+    ["git", "ls-files", "-z"],
+)
+tracked = [
+    item
+    for item in raw.decode(
+        "utf-8",
+        "surrogateescape",
+    ).split("\0")
+    if item
+]
+
+missing = []
+foreign = []
+unwritable = []
+parent_foreign = []
+parent_unwritable = []
+parents = set()
+
+for relative in tracked:
+    path = root / relative
+
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        missing.append(relative)
+        continue
+    except OSError:
+        unwritable.append(relative)
+        continue
+
+    if info.st_uid != uid or info.st_gid != gid:
+        foreign.append(relative)
+
+    if (
+        not path.is_symlink()
+        and not os.access(path, os.W_OK)
+    ):
+        unwritable.append(relative)
+
+    parent = path.parent
+
+    while True:
+        parents.add(parent)
+
+        if parent == root:
+            break
+
+        try:
+            parent.relative_to(root)
+        except ValueError:
+            break
+
+        parent = parent.parent
+
+for parent in sorted(
+    parents,
+    key=lambda item: str(item),
+):
+    try:
+        info = parent.lstat()
+    except FileNotFoundError:
+        continue
+
+    try:
+        relative = (
+            "."
+            if parent == root
+            else str(parent.relative_to(root))
+        )
+    except ValueError:
+        continue
+
+    if info.st_uid != uid or info.st_gid != gid:
+        parent_foreign.append(relative)
+
+    if not os.access(
+        parent,
+        os.W_OK | os.X_OK,
+    ):
+        parent_unwritable.append(relative)
+
+def emit(name, value):
+    print(f"{name}\t{value}")
+
+def sample(values):
+    return json.dumps(
+        values[:5],
+        ensure_ascii=True,
+        separators=(",", ":"),
+    )
+
+emit("tracked_missing_entries", len(missing))
+emit("tracked_foreign_entries", len(foreign))
+emit("tracked_unwritable_entries", len(unwritable))
+emit(
+    "tracked_parent_foreign_dirs",
+    len(parent_foreign),
+)
+emit(
+    "tracked_parent_unwritable_dirs",
+    len(parent_unwritable),
+)
+emit("tracked_missing_sample", sample(missing))
+emit("tracked_foreign_sample", sample(foreign))
+emit(
+    "tracked_unwritable_sample",
+    sample(unwritable),
+)
+emit(
+    "tracked_parent_foreign_sample",
+    sample(parent_foreign),
+)
+emit(
+    "tracked_parent_unwritable_sample",
+    sample(parent_unwritable),
+)
+"""
+
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return max(minimum, min(maximum, value))
+
+
+ACTIVATION_SOAK_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_SOAK_SECONDS", 60, 10, 300
+)
+ACTIVATION_SOAK_INTERVAL_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_SOAK_INTERVAL_SECONDS", 10, 5, 60
+)
+FAST_ROLLBACK_KEEP = _bounded_env_int(
+    "AOE2_RELEASE_FAST_ROLLBACK_KEEP", 1, 1, 10
+)
+ACTIVATION_TIMEOUT_RECOVERY_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_TIMEOUT_RECOVERY_SECONDS", 300, 30, 900
+)
+ACTIVATION_TIMEOUT_RECOVERY_INTERVAL_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_TIMEOUT_RECOVERY_INTERVAL_SECONDS", 10, 2, 60
+)
+
+
+class ShipError(RuntimeError):
+    pass
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def run(
+    args: list[str],
+    *,
+    timeout: int = 30,
+) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        args,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+        check=False,
+    )
+
+
+def parse_kv(text: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for line in text.splitlines():
+        if "\t" in line:
+            key, value = line.split("\t", 1)
+            result[key] = value
+    return result
+
+
+def production_transport() -> tuple[dict[str, str], str | None]:
+    commands = [
+        "set -euo pipefail",
+        f"cd {shlex.quote(PROD_REPO)}",
+        "origin=$(git remote get-url origin 2>/dev/null || true)",
+        "sshcmd=$(git config --local --get core.sshCommand 2>/dev/null || true)",
+        "protocol=$(git config --local --get protocol.version 2>/dev/null || true)",
+        "executor=$(id -un)",
+        f"python3 -c {shlex.quote(TRACKED_WORKTREE_PROBE)}",
+        "git_foreign_entries=$(find .git ! -user \"$executor\" -printf . 2>/dev/null | wc -c | tr -d ' ')",
+        "git_unwritable_dirs=$(find .git -type d ! -writable -printf . 2>/dev/null | wc -c | tr -d ' ')",
+        f"deploy_key={shlex.quote(EXPECTED_DEPLOY_KEY)}",
+        "deploy_key_readable=$([ -r \"$deploy_key\" ] && echo 1 || echo 0)",
+        "deploy_key_owner=$(stat -c '%U:%G' \"$deploy_key\" 2>/dev/null || true)",
+        "deploy_key_mode=$(stat -c '%a' \"$deploy_key\" 2>/dev/null || true)",
+        "deploy_key_fingerprint=$(ssh-keygen -lf \"$deploy_key\" 2>/dev/null | awk '{print $2}' || true)",
+        "remote_main=$(git ls-remote --exit-code origin refs/heads/main 2>/dev/null | awk '{print $1}' || true)",
+        'printf "origin\\t%s\\nsshcmd\\t%s\\nprotocol\\t%s\\nexecutor\\t%s\\ngit_foreign_entries\\t%s\\ngit_unwritable_dirs\\t%s\\ndeploy_key_readable\\t%s\\ndeploy_key_owner\\t%s\\ndeploy_key_mode\\t%s\\ndeploy_key_fingerprint\\t%s\\nremote_main\\t%s\\n" "$origin" "$sshcmd" "$protocol" "$executor" "$git_foreign_entries" "$git_unwritable_dirs" "$deploy_key_readable" "$deploy_key_owner" "$deploy_key_mode" "$deploy_key_fingerprint" "$remote_main"',
+    ]
+    remote = "; ".join(commands)
+    p = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(remote)}",
+        ],
+        timeout=20,
+    )
+    if p.returncode != 0:
+        return {}, (p.stderr or "").strip() or f"ssh exited {p.returncode}"
+    return parse_kv(p.stdout or ""), None
+
+
+def load_manifest(release_sha: str) -> tuple[Path, dict, str]:
+    path = MANIFEST_DIR / f"{release_sha}.json"
+    digest_path = path.with_suffix(".json.sha256")
+    if not path.is_file():
+        raise ShipError(
+            f"Release manifest is missing: {path.relative_to(ROOT)}"
+        )
+    if not digest_path.is_file():
+        raise ShipError(
+            f"Manifest SHA-256 file is missing: {digest_path.relative_to(ROOT)}"
+        )
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ShipError(f"Release manifest is invalid JSON: {exc}") from exc
+
+    actual = sha256_file(path)
+    expected = digest_path.read_text(encoding="utf-8").split()[0]
+    if actual != expected:
+        raise ShipError(
+            f"Release manifest SHA-256 mismatch: expected {expected}, got {actual}"
+        )
+
+    return path, payload, actual
+
+
+def gate_integrity(manifest: dict) -> tuple[Path, str]:
+    gate = manifest.get("gate") or {}
+    rel = gate.get("receipt_path")
+    expected = gate.get("receipt_sha256")
+    if not rel or not expected:
+        raise ShipError("Manifest does not bind a gate receipt.")
+
+    path = (ROOT / rel).resolve()
+    try:
+        path.relative_to(ROOT.resolve())
+    except ValueError as exc:
+        raise ShipError("Manifest gate receipt escapes repository state.") from exc
+
+    if not path.is_file():
+        raise ShipError(f"Bound gate receipt is missing: {rel}")
+
+    actual = sha256_file(path)
+    if actual != expected:
+        raise ShipError(
+            f"Gate receipt SHA-256 mismatch: expected {expected}, got {actual}"
+        )
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ShipError(f"Gate receipt is invalid JSON: {exc}") from exc
+
+    if payload.get("status") != "PASS":
+        raise ShipError("Bound gate receipt is not PASS.")
+    if payload.get("target_sha") != manifest.get("release_sha"):
+        raise ShipError("Gate receipt target does not equal manifest release SHA.")
+    if payload.get("scope_sha256") != manifest.get("scope_sha256"):
+        raise ShipError("Gate receipt scope does not equal manifest scope.")
+
+    return path, actual
+
+
+
+def tracked_worktree_transport_errors(
+    transport: dict[str, str],
+) -> list[str]:
+    errors: list[str] = []
+
+    checks = (
+        (
+            "tracked_missing_entries",
+            "tracked_missing_sample",
+            "production tracked source is missing Git-tracked entries",
+        ),
+        (
+            "tracked_foreign_entries",
+            "tracked_foreign_sample",
+            "production tracked source contains entries not owned "
+            "by the canonical deploy user",
+        ),
+        (
+            "tracked_unwritable_entries",
+            "tracked_unwritable_sample",
+            "production tracked source contains files not writable "
+            "by the canonical deploy user",
+        ),
+        (
+            "tracked_parent_foreign_dirs",
+            "tracked_parent_foreign_sample",
+            "production tracked source has parent directories not "
+            "owned by the canonical deploy user",
+        ),
+        (
+            "tracked_parent_unwritable_dirs",
+            "tracked_parent_unwritable_sample",
+            "production tracked source has parent directories not "
+            "writable by the canonical deploy user",
+        ),
+    )
+
+    for count_key, sample_key, message in checks:
+        raw = transport.get(count_key)
+
+        try:
+            count = int(raw or "-1")
+        except ValueError:
+            count = -1
+
+        if count == 0:
+            continue
+
+        sample = transport.get(sample_key) or "[]"
+
+        if count < 0:
+            errors.append(
+                f"{message}; worktree hygiene probe is missing "
+                f"or invalid ({count_key}={raw!r})"
+            )
+            continue
+
+        errors.append(
+            f"{message}: count={count} sample={sample}; "
+            "canonical ownership repair: sudo chown -R "
+            f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER} "
+            f"{PROD_REPO}"
+        )
+
+    return errors
+
+
+def validation_errors(
+    data: dict,
+    manifest: dict,
+    transport: dict[str, str],
+) -> list[str]:
+    local = data["local"]
+    github = data["github"]
+    docs = data["documentation"]
+    prod = data["production"]
+
+    release_sha = manifest.get("release_sha")
+    errors: list[str] = []
+
+    if local.get("dirty_count") != 0:
+        errors.append("local worktree is not clean")
+    if not release_sha or local.get("head") != release_sha:
+        errors.append("local HEAD does not equal manifest release SHA")
+    if github.get("main_sha") != release_sha:
+        errors.append("GitHub main does not equal manifest release SHA")
+    if docs.get("baseline_is_ancestor_of_local") is not True:
+        errors.append("Documentation Baseline is not a valid ancestor")
+    if manifest.get("documentation_baseline") != docs.get(
+        "implementation_baseline"
+    ):
+        errors.append("manifest Documentation Baseline does not match repository")
+    if not prod.get("reachable"):
+        errors.append("production is unreachable")
+    if prod.get("dirty_count") != 0:
+        errors.append("production worktree is not clean")
+    if prod.get("source_sha") != manifest.get("previous_production_sha"):
+        errors.append("production source no longer equals manifest previous production")
+    same_source_recertification = bool(
+        same_source_recertification_allowed(data)
+        and manifest.get("previous_production_sha") == release_sha
+    )
+    if prod.get("source_sha") == release_sha and not same_source_recertification:
+        errors.append("production source already equals the release")
+    if prod.get("service") != "active":
+        errors.append("production web service is not active")
+    if not prod.get("active_build_id"):
+        errors.append("active production BUILD_ID is unavailable")
+    if prod.get("version_parity") is not True:
+        errors.append("internal/public build-version parity is not healthy")
+    if prod.get("staged_build_id"):
+        errors.append("a staged .next-release build already exists")
+    if prod.get("wolo_8092_count") != 1:
+        errors.append("protected WOLO listener 8092 count must be exactly 1")
+    if prod.get("wolo_8093_count") != 1:
+        errors.append("protected WOLO listener 8093 count must be exactly 1")
+
+    migrations = manifest.get("migration_paths") or []
+    if migrations and manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
+        errors.append(
+            "release contains Prisma migrations without a DATABASE/FINANCIAL gate"
+        )
+
+    if transport.get("origin") != EXPECTED_ORIGIN:
+        errors.append("production Git origin does not match canonical origin")
+    if transport.get("protocol") != EXPECTED_PROTOCOL:
+        errors.append("production Git protocol is not canonical protocol v0")
+    if transport.get("executor") != EXPECTED_PROD_USER:
+        errors.append("production Git execution user is not the canonical deploy user")
+    if transport.get("git_foreign_entries") != "0":
+        errors.append("production .git contains entries not owned by the deploy user")
+    if transport.get("git_unwritable_dirs") != "0":
+        errors.append("production .git contains directories not writable by the deploy user")
+    if transport.get("deploy_key_readable") != "1":
+        errors.append("production dedicated deploy key is not readable by the deploy user")
+    if transport.get("deploy_key_owner") != f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER}":
+        errors.append("production dedicated deploy key ownership is not canonical")
+    if transport.get("deploy_key_mode") not in {"400", "600"}:
+        errors.append("production dedicated deploy key permissions are not restrictive")
+    if transport.get("deploy_key_fingerprint") != EXPECTED_DEPLOY_KEY_FINGERPRINT:
+        errors.append("production dedicated deploy key fingerprint does not match")
+    sshcmd = transport.get("sshcmd") or ""
+    if EXPECTED_DEPLOY_KEY not in sshcmd:
+        errors.append("production core.sshCommand does not use the dedicated deploy key")
+    if "-F /dev/null" not in sshcmd:
+        errors.append("production core.sshCommand does not disable SSH config fallback")
+    if "IdentitiesOnly=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require IdentitiesOnly=yes")
+    if "BatchMode=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require BatchMode=yes")
+    if "StrictHostKeyChecking=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require strict host-key checking")
+    if f"UserKnownHostsFile={EXPECTED_KNOWN_HOSTS}" not in sshcmd:
+        errors.append("production core.sshCommand does not use the canonical known_hosts file")
+    if transport.get("remote_main") != release_sha:
+        errors.append("production origin main does not resolve to manifest release SHA")
+
+    errors.extend(tracked_worktree_transport_errors(transport))
+
+    return errors
+
+
+def build_plan(
+    data: dict,
+    manifest: dict,
+    manifest_sha: str,
+    gate_path: Path,
+    gate_sha: str,
+) -> dict:
+    prod = data["production"]
+    release_sha = manifest["release_sha"]
+    previous_sha = manifest["previous_production_sha"]
+    active_build = prod["active_build_id"]
+    version = prod["internal_build_version"]
+    release_short = release_sha[:12]
+
+    steps = [
+        {
+            "phase": "preflight",
+            "action": "Re-read production source, tracked-worktree ownership/writability, service, build identity, disk, Git transport, public version, and protected WOLO listeners; abort on drift before staging.",
+        },
+        {
+            "phase": "receipt",
+            "action": "Create a durable deployment receipt under /mnt/HC_Volume_105319120/aoe2war/deploy-receipts/ and record the bound release manifest plus predeploy truth.",
+        },
+        {
+            "phase": "rollback",
+            "action": "Preserve a cache-free copy of the active .next runtime plus source/build-version identity in durable rollback storage before activation.",
+        },
+        {
+            "phase": "isolate",
+            "command": f"git worktree add --detach <temporary-worktree> {release_sha}",
+            "action": "Create a disposable per-release worktree. Keep the live source, public tree, node_modules, build-version sidecar, and active runtime unchanged during staging.",
+        },
+        {
+            "phase": "migration",
+            "action": (
+                "After candidate staging, require an exact production migration frontier, "
+                "write a durable pre-migration pg_dump, apply only the manifest-bound additive "
+                "Prisma migrations, and verify their _prisma_migrations receipts before activation."
+                if (manifest.get("migration_paths") or [])
+                else "No Prisma migration. The manifest declares zero migration paths."
+            ),
+        },
+        {
+            "phase": "build",
+            "command": "prove unchanged Yarn/package dependency contract, copy live node_modules into a temporary worktree, then run NEXT_DIST_DIR=.next-release yarn build",
+            "action": "With an unchanged Yarn lock and package dependency contract, build in the disposable worktree using a copy of the proven dependency tree; fail closed when atomic node_modules activation and rollback would be required.",
+        },
+        {
+            "phase": "artifact",
+            "action": "Remove rebuildable cache, copy the cache-free candidate to live .next-release, and bind BUILD_ID, build version, and deterministic artifact SHA-256 in the stage receipt.",
+        },
+        {
+            "phase": "activate",
+            "command": f"systemctl stop {SERVICE}; mv .next .next-rollback-<UTC>; mv .next-release .next; git reset --hard {release_sha}; prisma generate; write-build-version; systemctl start {SERVICE}",
+            "action": "While the web service is stopped, advance runtime and source, regenerate the ignored operator-side Prisma client from the activated schema, bind build-version identity, then start only the AoE2WAR web service.",
+        },
+        {
+            "phase": "prove",
+            "action": "Prove service active; BUILD_ID/build-version identity; internal/public /api/deployment-version, active service, exact BUILD_ID and protected WOLO listener continuity; dynamic routes are excluded from release probes.",
+        },
+        {
+            "phase": "soak",
+            "action": "Keep the activation rollback trap armed through a bounded post-activation health soak that repeatedly proves exact source/build/version, critical internal/public routes, service health, and WOLO listener continuity.",
+        },
+        {
+            "phase": "certify",
+            "action": "Write final proof and artifact identity to the durable deployment receipt only after the soak passes. On any critical proof failure before certification, restore previous source/build-version/runtime, preserve the exact staged candidate, and prove internal health.",
+        },
+        {
+            "phase": "retention",
+            "action": "After certification, retain the newest verified fast rollback copies and prune only older modern fast copies whose BUILD_ID has durable volume-backed rollback/rescue evidence. Never auto-delete unmatched artifacts.",
+        },
+    ]
+
+    return {
+        "schema": 1,
+        "kind": "aoe2war-ship-plan",
+        "generated_at": utc_now(),
+        "mode": "DRY_RUN",
+        "release_sha": release_sha,
+        "release_short": release_short,
+        "implementation_sha": manifest.get("implementation_sha"),
+        "previous_production_sha": previous_sha,
+        "current_active_build_id": active_build,
+        "current_build_version": version,
+        "risk_class": manifest.get("risk_class"),
+        "migration_paths": manifest.get("migration_paths") or [],
+        "manifest_sha256": manifest_sha,
+        "gate_receipt_path": str(gate_path.relative_to(ROOT)),
+        "gate_receipt_sha256": gate_sha,
+        "protected_services": {
+            "wolo_8092_mutation_allowed": False,
+            "wolo_8093_mutation_allowed": False,
+        },
+        "public_base": PUBLIC,
+        "steps": steps,
+    }
+
+
+def write_plan(plan: dict) -> Path:
+    SHIP_PLAN_DIR.mkdir(parents=True, exist_ok=True)
+    path = SHIP_PLAN_DIR / (
+        f"{plan['release_sha']}-{plan['manifest_sha256'][:12]}.json"
+    )
+    path.write_text(
+        json.dumps(plan, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+ACTIVATION_RECEIPT_DIR = ROOT / ".aoe2war-release" / "activation-receipts"
+STAGE_RECEIPT_DIR = ROOT / ".aoe2war-release" / "stage-receipts"
+REMOTE_RECEIPT_ROOT = "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
+ROLLBACK_ROOT = "/mnt/HC_Volume_105319120/aoe2war/rollbacks"
+
+
+def _is_hex(value: object, length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(ch in "0123456789abcdef" for ch in value)
+    )
+
+
+def load_stage_receipt(
+    stage_receipt: str,
+) -> tuple[Path, dict, str, Path, dict, str, Path, str]:
+    raw = Path(stage_receipt)
+    path = (raw if raw.is_absolute() else ROOT / raw).resolve()
+    allowed = STAGE_RECEIPT_DIR.resolve()
+    try:
+        path.relative_to(allowed)
+    except ValueError as exc:
+        raise ShipError(
+            "Activation stage receipt must live under "
+            ".aoe2war-release/stage-receipts."
+        ) from exc
+    if not path.is_file():
+        raise ShipError(f"Stage receipt is missing: {path}")
+
+    try:
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ShipError(f"Stage receipt is invalid JSON: {exc}") from exc
+
+    if receipt.get("schema") != 1:
+        raise ShipError("Stage receipt schema is not supported.")
+    if receipt.get("kind") != "aoe2war-stage-result":
+        raise ShipError("Stage receipt kind is not aoe2war-stage-result.")
+    if receipt.get("status") != "STAGED":
+        raise ShipError("Stage receipt is not STAGED.")
+    if receipt.get("live_runtime_mutated") is not False:
+        raise ShipError("Stage receipt does not prove live runtime remained unchanged.")
+    if receipt.get("wolo_mutated") is not False:
+        raise ShipError("Stage receipt does not prove WOLO remained untouched.")
+    isolation_requirements = {
+        "isolated_worktree": True,
+        "build_process_sandboxed": True,
+        "build_network_private": True,
+        "build_secret_paths_inaccessible": True,
+        "dependency_fetch_sandboxed": True,
+        "dependency_fetch_scripts_disabled": True,
+        "dependency_build_offline": True,
+        "prisma_schema_engine_seeded": True,
+        "cache_free_artifact": True,
+        "artifact_path_relocated": True,
+        "live_source_mutated": False,
+        "live_public_mutated": False,
+        "live_node_modules_mutated": False,
+        "live_build_version_mutated": False,
+    }
+    for key, expected in isolation_requirements.items():
+        if receipt.get(key) is not expected:
+            raise ShipError(
+                f"Stage receipt does not prove isolated-stage invariant: {key}."
+            )
+
+    release_sha = receipt.get("release_sha")
+    artifact_sha = receipt.get("artifact_sha256")
+    if not _is_hex(release_sha, 40):
+        raise ShipError("Stage receipt release SHA is invalid.")
+    if not _is_hex(artifact_sha, 64):
+        raise ShipError("Stage receipt artifact SHA-256 is invalid.")
+
+    dependency_sha = receipt.get("candidate_node_modules_sha256")
+    if not _is_hex(dependency_sha, 64):
+        raise ShipError(
+            "Stage receipt candidate node_modules SHA-256 is invalid."
+        )
+
+    try:
+        dependency_kb = int(receipt.get("candidate_node_modules_kb") or 0)
+    except (TypeError, ValueError):
+        dependency_kb = 0
+    if dependency_kb <= 0:
+        raise ShipError(
+            "Stage receipt candidate node_modules size is invalid."
+        )
+
+    prisma_engine_commit = receipt.get("prisma_schema_engine_commit")
+    if not _is_hex(prisma_engine_commit, 40):
+        raise ShipError("Stage receipt Prisma schema-engine commit is invalid.")
+    prisma_engine_sha = receipt.get("prisma_schema_engine_sha256")
+    if not _is_hex(prisma_engine_sha, 64):
+        raise ShipError("Stage receipt Prisma schema-engine SHA-256 is invalid.")
+
+    for key in ("dependency_contract_unchanged", "dependency_lock_changed"):
+        if not isinstance(receipt.get(key), bool):
+            raise ShipError(
+                f"Stage receipt dependency evidence flag is invalid: {key}."
+            )
+    if path.name != f"{release_sha}-{artifact_sha[:12]}.json":
+        raise ShipError("Stage receipt filename is not bound to release/artifact.")
+
+    required = (
+        "active_build_id",
+        "staged_build_id",
+        "live_build_version",
+        "candidate_build_version",
+        "candidate_node_modules_sha256",
+        "candidate_node_modules_kb",
+        "prisma_schema_engine_commit",
+        "prisma_schema_engine_sha256",
+        "previous_production_sha",
+        "source_sha",
+        "manifest_path",
+        "manifest_sha256",
+        "gate_path",
+        "gate_sha256",
+        "remote_receipt_dir",
+    )
+    for key in required:
+        if not receipt.get(key):
+            raise ShipError(f"Stage receipt is missing required field: {key}")
+
+    if not _is_hex(receipt.get("previous_production_sha"), 40):
+        raise ShipError("Stage receipt previous production SHA is invalid.")
+    if not _is_hex(receipt.get("manifest_sha256"), 64):
+        raise ShipError("Stage receipt manifest SHA-256 is invalid.")
+    if not _is_hex(receipt.get("gate_sha256"), 64):
+        raise ShipError("Stage receipt gate SHA-256 is invalid.")
+    if int(receipt.get("wolo_8092_count") or 0) != 1:
+        raise ShipError("Stage receipt must bind exactly one WOLO 8092 listener.")
+    if int(receipt.get("wolo_8093_count") or 0) != 1:
+        raise ShipError("Stage receipt must bind exactly one WOLO 8093 listener.")
+
+    remote_receipt = str(receipt["remote_receipt_dir"])
+    if not remote_receipt.startswith(f"{REMOTE_RECEIPT_ROOT}/stage-"):
+        raise ShipError("Remote stage receipt is outside the canonical receipt root.")
+
+    manifest_path, manifest, manifest_sha = load_manifest(release_sha)
+    gate_path, gate_sha = gate_integrity(manifest)
+    if str(manifest_path.relative_to(ROOT)) != receipt["manifest_path"]:
+        raise ShipError("Stage receipt manifest path does not match release manifest.")
+    if manifest_sha != receipt["manifest_sha256"]:
+        raise ShipError("Stage receipt manifest SHA-256 does not match release manifest.")
+    if str(gate_path.relative_to(ROOT)) != receipt["gate_path"]:
+        raise ShipError("Stage receipt gate path does not match bound gate receipt.")
+    if gate_sha != receipt["gate_sha256"]:
+        raise ShipError("Stage receipt gate SHA-256 does not match bound gate receipt.")
+    if manifest.get("release_sha") != release_sha:
+        raise ShipError("Manifest release SHA does not match stage receipt.")
+    if manifest.get("previous_production_sha") != receipt["previous_production_sha"]:
+        raise ShipError("Manifest previous production SHA does not match stage receipt.")
+    if receipt.get("source_sha") != receipt.get("previous_production_sha"):
+        raise ShipError(
+            "Stage receipt does not prove production source remained on the previous SHA."
+        )
+    if manifest.get("risk_class") != receipt.get("risk_class"):
+        raise ShipError("Manifest risk class does not match stage receipt.")
+    if manifest.get("migration_paths") and manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
+        raise ShipError(
+            "Release contains Prisma migrations without a DATABASE/FINANCIAL gate."
+        )
+    dependency_lock_changed = "yarn.lock" in (
+        manifest.get("changed_files") or []
+    )
+    if receipt.get("dependency_lock_changed") is not dependency_lock_changed:
+        raise ShipError(
+            "Stage receipt dependency-lock evidence does not match manifest."
+        )
+
+    return (
+        path,
+        receipt,
+        sha256_file(path),
+        manifest_path,
+        manifest,
+        manifest_sha,
+        gate_path,
+        gate_sha,
+    )
+
+
+def activation_validation_errors(
+    data: dict,
+    receipt: dict,
+    transport: dict[str, str],
+) -> list[str]:
+    local = data["local"]
+    github = data["github"]
+    docs = data["documentation"]
+    prod = data["production"]
+    errors: list[str] = []
+
+    if local.get("dirty_count") != 0:
+        errors.append("local tooling worktree is not clean")
+    if not local.get("head"):
+        errors.append("local tooling HEAD is unavailable")
+    if github.get("main_sha") != local.get("head"):
+        errors.append("local tooling HEAD does not equal GitHub main")
+    if docs.get("baseline_is_ancestor_of_local") is not True:
+        errors.append("Documentation Baseline is not a valid ancestor of tooling HEAD")
+
+    if not prod.get("reachable"):
+        errors.append("production is unreachable")
+    if prod.get("dirty_count") != 0:
+        errors.append("production worktree is not clean")
+    if prod.get("source_sha") != receipt.get("previous_production_sha"):
+        errors.append("production source does not equal the stage receipt previous SHA")
+    if prod.get("service") != "active":
+        errors.append("production web service is not active")
+    if prod.get("active_build_id") != receipt.get("active_build_id"):
+        errors.append("active BUILD_ID drifted from stage receipt")
+    if prod.get("staged_build_id") != receipt.get("staged_build_id"):
+        errors.append("staged BUILD_ID drifted from stage receipt")
+    if prod.get("internal_build_version") != receipt.get("live_build_version"):
+        errors.append("internal live build version drifted from stage receipt")
+    if prod.get("public_build_version") != receipt.get("live_build_version"):
+        errors.append("public live build version drifted from stage receipt")
+    if prod.get("version_parity") is not True:
+        errors.append("internal/public live build-version parity is not healthy")
+    if prod.get("wolo_8092_count") != receipt.get("wolo_8092_count"):
+        errors.append("protected WOLO listener 8092 drifted from stage receipt")
+    if prod.get("wolo_8093_count") != receipt.get("wolo_8093_count"):
+        errors.append("protected WOLO listener 8093 drifted from stage receipt")
+
+    if transport.get("origin") != EXPECTED_ORIGIN:
+        errors.append("production Git origin does not match canonical origin")
+    if transport.get("protocol") != EXPECTED_PROTOCOL:
+        errors.append("production Git protocol is not canonical protocol v0")
+    if transport.get("executor") != EXPECTED_PROD_USER:
+        errors.append("production Git execution user is not the canonical deploy user")
+    if transport.get("git_foreign_entries") != "0":
+        errors.append("production .git contains entries not owned by the deploy user")
+    if transport.get("git_unwritable_dirs") != "0":
+        errors.append("production .git contains directories not writable by the deploy user")
+    if transport.get("deploy_key_readable") != "1":
+        errors.append("production dedicated deploy key is not readable by deploy user")
+    if transport.get("deploy_key_owner") != f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER}":
+        errors.append("production dedicated deploy key ownership is not canonical")
+    if transport.get("deploy_key_mode") not in {"400", "600"}:
+        errors.append("production dedicated deploy key permissions are not restrictive")
+    if transport.get("deploy_key_fingerprint") != EXPECTED_DEPLOY_KEY_FINGERPRINT:
+        errors.append("production dedicated deploy key fingerprint does not match")
+
+    sshcmd = transport.get("sshcmd") or ""
+    if EXPECTED_DEPLOY_KEY not in sshcmd:
+        errors.append("production core.sshCommand does not use the dedicated deploy key")
+    if "-F /dev/null" not in sshcmd:
+        errors.append("production core.sshCommand does not disable SSH config fallback")
+    if "IdentitiesOnly=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require IdentitiesOnly=yes")
+    if "BatchMode=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require BatchMode=yes")
+    if "StrictHostKeyChecking=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require strict host-key checking")
+    if f"UserKnownHostsFile={EXPECTED_KNOWN_HOSTS}" not in sshcmd:
+        errors.append("production core.sshCommand does not use the canonical known_hosts file")
+    if transport.get("remote_main") != github.get("main_sha"):
+        errors.append("production origin main does not equal current GitHub main")
+
+    errors.extend(tracked_worktree_transport_errors(transport))
+
+    return errors
+
+
+def remote_activation_script(
+    receipt: dict,
+    *,
+    stage_receipt_sha: str,
+    stage_receipt_text: str,
+    dry_run: bool,
+    receipt_dir: str,
+    rollback_dir: str,
+) -> str:
+    q = shlex.quote
+    mode = "DRY_RUN" if dry_run else "ACTIVATE"
+    return f"""
+set -euo pipefail
+trap 'rc=$?; failed_command=$BASH_COMMAND; printf "ACTIVATION_ASSERTION_FAILED line=%s rc=%s cmd=%q\\n" "$LINENO" "$rc" "$failed_command" >&2; exit "$rc"' ERR
+cd {q(PROD_REPO)}
+
+MODE={q(mode)}
+SERVICE={q(SERVICE)}
+PUBLIC={q(PUBLIC)}
+RELEASE={q(receipt['release_sha'])}
+PREVIOUS={q(receipt['previous_production_sha'])}
+OLD_BUILD={q(receipt['active_build_id'])}
+STAGED_BUILD={q(receipt['staged_build_id'])}
+LIVE_VERSION={q(receipt['live_build_version'])}
+CANDIDATE_VERSION={q(receipt['candidate_build_version'])}
+ARTIFACT={q(receipt['artifact_sha256'])}
+DEPENDENCY_ARTIFACT={q(receipt['candidate_node_modules_sha256'])}
+DEPENDENCY_KB={q(str(receipt['candidate_node_modules_kb']))}
+PRISMA_ENGINE_COMMIT={q(receipt['prisma_schema_engine_commit'])}
+PRISMA_ENGINE_SHA={q(receipt['prisma_schema_engine_sha256'])}
+DEPENDENCY_CONTRACT_UNCHANGED={q("1" if receipt['dependency_contract_unchanged'] else "0")}
+DEPENDENCY_LOCK_CHANGED={q("1" if receipt['dependency_lock_changed'] else "0")}
+MANIFEST_SHA={q(receipt['manifest_sha256'])}
+GATE_SHA={q(receipt['gate_sha256'])}
+STAGE_RECEIPT_SHA={q(stage_receipt_sha)}
+STAGE_REMOTE={q(receipt['remote_receipt_dir'])}
+ACT_RECEIPT={q(receipt_dir)}
+ROLLBACK={q(rollback_dir)}
+STAGE_RECEIPT_CONTENT={q(stage_receipt_text)}
+SOAK_SECONDS={ACTIVATION_SOAK_SECONDS}
+SOAK_INTERVAL={ACTIVATION_SOAK_INTERVAL_SECONDS}
+FAST_ROLLBACK_KEEP={FAST_ROLLBACK_KEEP}
+
+wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
+build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
+artifact_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    -C "$1" -cf - . \
+  | sha256sum | awk '{{print $1}}'
+}}
+dependency_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    --exclude='./.cache' --exclude='./.cache/*' \
+    -C "$1" -cf - . \
+  | sha256sum | awk '{{print $1}}'
+}}
+content_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    --exclude='./cache' --exclude='./cache/*' \
+    -C "$1" -cf - . \
+  | sha256sum | awk '{{print $1}}'
+}}
+source_status() {{
+  git status --porcelain=v1 --untracked-files=normal -- . \
+    ':(exclude).next-release' \
+    ':(exclude).next-release/**' \
+    ':(exclude).node_modules-release' \
+    ':(exclude).node_modules-release/**' \
+    ':(exclude).next-rollback*' \
+    ':(exclude).next-rollback*/**' \
+    ':(exclude).node_modules-rollback*' \
+    ':(exclude).node_modules-rollback*/**'
+}}
+source_state_hash() {{
+  {{
+    git rev-parse HEAD
+    printf '\\0'
+    source_status
+  }} | sha256sum | awk '{{print $1}}'
+}}
+release_path_is_reserved() {{
+  case "$1" in
+    .next|.next/*|node_modules|node_modules/*|\
+    .next-release|.next-release/*|.node_modules-release|.node_modules-release/*|\
+    .next-rollback*|.node_modules-rollback*|\
+    .aoe2war-build-version|.aoe2war-release|.aoe2war-release/*) return 0 ;;
+  esac
+  return 1
+}}
+release_only_list_integrity() {{
+  test -f "$RELEASE_ONLY_PATHS" \
+    && test ! -L "$RELEASE_ONLY_PATHS" \
+    && test "$(stat -c '%a' "$RELEASE_ONLY_PATHS")" = "600" \
+    && test "$(sha256sum "$RELEASE_ONLY_PATHS" | awk '{{print $1}}')" = "$release_only_paths_sha"
+}}
+release_path_literal() {{ printf '%s' ":(top,literal)$1"; }}
+release_path_shape_is_safe() {{
+  release_shape_path="$1"
+  case "$release_shape_path" in
+    ""|/*|.|..|./*|../*|*/./*|*/.|*/../*|*/..|*//*) return 1 ;;
+  esac
+  release_path_is_reserved "$release_shape_path" && return 1
+  release_shape_parent=""
+  release_shape_remainder="$release_shape_path"
+  while [[ "$release_shape_remainder" == */* ]]; do
+    release_shape_component="${{release_shape_remainder%%/*}}"
+    release_shape_remainder="${{release_shape_remainder#*/}}"
+    if [ -z "$release_shape_parent" ]; then
+      release_shape_parent="$release_shape_component"
+    else
+      release_shape_parent="$release_shape_parent/$release_shape_component"
+    fi
+    test ! -L "$release_shape_parent" || return 1
+    if [ -e "$release_shape_parent" ] && [ ! -d "$release_shape_parent" ]; then
+      return 1
+    fi
+  done
+  return 0
+}}
+release_path_absent() {{
+  release_absent_path="$1"
+  release_absent_literal="$(release_path_literal "$release_absent_path")"
+  test ! -e "$release_absent_path" || return 1
+  test ! -L "$release_absent_path" || return 1
+  release_absent_tracked_bytes="$(
+    git ls-files --cached -z -- "$release_absent_literal" | wc -c | tr -d ' '
+  )" || return 1
+  release_absent_untracked_bytes="$(
+    git ls-files --others --exclude-standard -z -- "$release_absent_literal" | wc -c | tr -d ' '
+  )" || return 1
+  release_absent_ignored_bytes="$(
+    git ls-files --others --ignored --exclude-standard -z -- "$release_absent_literal" | wc -c | tr -d ' '
+  )" || return 1
+  test "$release_absent_tracked_bytes" = "0" \
+    && test "$release_absent_untracked_bytes" = "0" \
+    && test "$release_absent_ignored_bytes" = "0"
+}}
+validate_release_only_paths() {{
+  release_only_list_integrity || return 1
+  while IFS= read -r -d '' release_only_path; do
+    release_path_shape_is_safe "$release_only_path" || return 1
+    release_only_literal="$(release_path_literal "$release_only_path")"
+    release_only_mode="$(
+      git -c core.quotePath=true ls-tree "$RELEASE" -- "$release_only_literal" \
+        | awk 'NR == 1 {{print $1; exit}}'
+    )"
+    case "$release_only_mode" in
+      100644|100755|120000) ;;
+      *) return 1 ;;
+    esac
+    release_path_absent "$release_only_path" || return 1
+  done < "$RELEASE_ONLY_PATHS"
+}}
+cleanup_release_only_paths() {{
+  cleanup_release_only_rc=0
+  release_only_list_integrity || return 1
+  while IFS= read -r -d '' release_only_path; do
+    # A failed reset toward RELEASE can materialize a newly tracked path while
+    # leaving HEAD at PREVIOUS. The pre-mutation proof makes -x safe here; the
+    # literal top-level pathspec prevents names from expanding as Git magic.
+    if ! release_path_shape_is_safe "$release_only_path"; then
+      cleanup_release_only_rc=1
+      continue
+    fi
+    release_only_literal="$(release_path_literal "$release_only_path")"
+    if [ -e "$release_only_path" ] || [ -L "$release_only_path" ]; then
+      git clean -f -x -- "$release_only_literal" >/dev/null 2>&1 \
+        || cleanup_release_only_rc=1
+    fi
+    release_path_absent "$release_only_path" || cleanup_release_only_rc=1
+  done < "$RELEASE_ONLY_PATHS"
+  return "$cleanup_release_only_rc"
+}}
+refresh_source_prisma() {{
+  test -x ./node_modules/.bin/prisma || return 1
+  ./node_modules/.bin/prisma generate >/dev/null || return 1
+  test -f lib/generated/prisma/client.js || return 1
+  test -f lib/generated/prisma/index.d.ts || return 1
+  test -f lib/generated/prisma/schema.prisma || return 1
+}}
+critical_get() {{
+  curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"
+}}
+
+before_head="$(git rev-parse HEAD)"
+before_dirty="$(source_status | wc -l | tr -d ' ')"
+before_source_state="$(source_state_hash)"
+before_service="$(systemctl is-active "$SERVICE" || true)"
+before_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
+before_active_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+before_staged_build="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
+before_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+before_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
+before_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
+before_wolo8092="$(wolo_count 8092)"
+before_wolo8093="$(wolo_count 8093)"
+
+sudo -n -l /usr/bin/systemctl stop "$SERVICE" >/dev/null
+sudo -n -l /usr/bin/systemctl start "$SERVICE" >/dev/null
+sudo -n -l /usr/bin/install >/dev/null
+
+test "$before_head" = "$PREVIOUS"
+test "$before_dirty" = "0"
+test "$before_service" = "active"
+test -n "$before_pid"
+test "$before_active_build" = "$OLD_BUILD"
+test "$before_staged_build" = "$STAGED_BUILD"
+test "$before_build_version_file" = "$LIVE_VERSION"
+test "$before_internal_version" = "$LIVE_VERSION"
+test "$before_public_version" = "$LIVE_VERSION"
+test "$before_wolo8092" = {q(str(receipt['wolo_8092_count']))}
+test "$before_wolo8093" = {q(str(receipt['wolo_8093_count']))}
+
+test -d "$STAGE_REMOTE"
+test -f "$STAGE_REMOTE/release-manifest.json"
+test -f "$STAGE_REMOTE/gate-receipt.json"
+test -f "$STAGE_REMOTE/stage-status.txt"
+test "$(sha256sum "$STAGE_REMOTE/release-manifest.json" | awk '{{print $1}}')" = "$MANIFEST_SHA"
+test "$(sha256sum "$STAGE_REMOTE/gate-receipt.json" | awk '{{print $1}}')" = "$GATE_SHA"
+grep -Fx "status=STAGED" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "release_sha=$RELEASE" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "active_build_id=$OLD_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "staged_build_id=$STAGED_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "candidate_build_version=$CANDIDATE_VERSION" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "artifact_sha256=$ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "candidate_node_modules_sha256=$DEPENDENCY_ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "candidate_node_modules_kb=$DEPENDENCY_KB" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "prisma_schema_engine_commit=$PRISMA_ENGINE_COMMIT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "prisma_schema_engine_sha256=$PRISMA_ENGINE_SHA" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "prisma_schema_engine_seeded=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "source_sha=$PREVIOUS" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "isolated_worktree=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "build_process_sandboxed=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "build_network_private=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "build_secret_paths_inaccessible=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_fetch_sandboxed=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_fetch_scripts_disabled=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_build_offline=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_contract_unchanged=$DEPENDENCY_CONTRACT_UNCHANGED" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_lock_changed=$DEPENDENCY_LOCK_CHANGED" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "cache_free_artifact=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "artifact_path_relocated=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_source_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_public_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_node_modules_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_build_version_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+
+test ! -e .next-release/cache
+test -d .node_modules-release
+
+candidate_artifact="$(artifact_hash .next-release)"
+test "$candidate_artifact" = "$ARTIFACT"
+
+candidate_dependency_artifact="$(dependency_hash .node_modules-release)"
+test "$candidate_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
+
+candidate_dependency_kb="$(du -sk .node_modules-release | awk '{{print $1}}')"
+# Filesystem allocated blocks are capacity telemetry, not content identity.
+# Exact candidate dependency identity is the deterministic SHA-256 above;
+# allocation may shift by filesystem block(s) after publication without any
+# dependency byte/tree drift.
+test "$candidate_dependency_kb" -gt 0
+
+candidate_prisma_engine=.node_modules-release/@prisma/engines/schema-engine-debian-openssl-3.0.x
+test -f "$candidate_prisma_engine"
+test -x "$candidate_prisma_engine"
+test ! -L "$candidate_prisma_engine"
+test "$(sha256sum "$candidate_prisma_engine" | awk '{{print $1}}')" = "$PRISMA_ENGINE_SHA"
+test "$("$candidate_prisma_engine" --version)" = "schema-engine-cli $PRISMA_ENGINE_COMMIT"
+
+candidate_dependency_identity="$(stat -Lc '%d:%i' .node_modules-release)"
+test -n "$candidate_dependency_identity"
+
+candidate_content_sha="$(content_hash .next-release)"
+test -n "$candidate_content_sha"
+
+if [ "$MODE" = "DRY_RUN" ]; then
+  printf 'status\\tPREPARED\\n'
+  printf 'release_sha\\t%s\\n' "$RELEASE"
+  printf 'source_sha\\t%s\\n' "$before_head"
+  printf 'active_build_id\\t%s\\n' "$before_active_build"
+  printf 'staged_build_id\\t%s\\n' "$before_staged_build"
+  printf 'live_build_version\\t%s\\n' "$before_internal_version"
+  printf 'candidate_build_version\\t%s\\n' "$CANDIDATE_VERSION"
+  printf 'artifact_sha256\\t%s\\n' "$candidate_artifact"
+  printf 'wolo8092\\t%s\\n' "$before_wolo8092"
+  printf 'wolo8093\\t%s\\n' "$before_wolo8093"
+  exit 0
+fi
+
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$ACT_RECEIPT"
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$ROLLBACK"
+printf '%s' "$STAGE_RECEIPT_CONTENT" > "$ACT_RECEIPT/stage-receipt.json"
+test "$(sha256sum "$ACT_RECEIPT/stage-receipt.json" | awk '{{print $1}}')" = "$STAGE_RECEIPT_SHA"
+cp -p "$STAGE_REMOTE/release-manifest.json" "$ACT_RECEIPT/release-manifest.json"
+cp -p "$STAGE_REMOTE/gate-receipt.json" "$ACT_RECEIPT/gate-receipt.json"
+cp -p "$STAGE_REMOTE/stage-status.txt" "$ACT_RECEIPT/stage-status.txt"
+RELEASE_ONLY_PATHS="$(mktemp "$ACT_RECEIPT/release-only-paths.nul.XXXXXX")"
+chmod 0600 "$RELEASE_ONLY_PATHS"
+test -f "$RELEASE_ONLY_PATHS"
+test ! -L "$RELEASE_ONLY_PATHS"
+test "$(stat -c '%a' "$RELEASE_ONLY_PATHS")" = "600"
+git diff --no-renames --name-only --diff-filter=A -z "$PREVIOUS" "$RELEASE" \
+  > "$RELEASE_ONLY_PATHS"
+release_only_paths_sha="$(sha256sum "$RELEASE_ONLY_PATHS" | awk '{{print $1}}')"
+test "${{#release_only_paths_sha}}" = "64"
+release_only_list_integrity
+validate_release_only_paths
+
+old_dependency_artifact="$(dependency_hash node_modules)"
+test "${{#old_dependency_artifact}}" = "64"
+
+# Fail closed before creating either durable rollback runtime half.
+# Reserve the measured live dependency tree + live Next runtime + 1 GiB
+# on the evidence filesystem for rollback materialization and overhead.
+rollback_parent="$(dirname "$ROLLBACK")"
+test -d "$rollback_parent"
+live_dependency_kb="$(du -sk node_modules | awk '{{print $1}}')"
+live_next_kb="$(du -sk .next | awk '{{print $1}}')"
+evidence_available_kb="$(df -Pk "$rollback_parent" | awk 'NR==2 {{print $4}}')"
+test "$live_dependency_kb" -gt 0
+test "$live_next_kb" -gt 0
+test "$evidence_available_kb" -gt 0
+evidence_required_kb=$((live_dependency_kb + live_next_kb + 1048576))
+
+printf '%s\n' \
+  "live_dependency_kb=$live_dependency_kb" \
+  "live_next_kb=$live_next_kb" \
+  "evidence_available_kb=$evidence_available_kb" \
+  "evidence_required_kb=$evidence_required_kb" \
+  > "$ACT_RECEIPT/disk-preflight.txt"
+
+test "$evidence_available_kb" -ge "$evidence_required_kb"
+
+printf '%s\\n' \
+  "release_sha=$RELEASE" \
+  "previous_production_sha=$PREVIOUS" \
+  "old_build_id=$OLD_BUILD" \
+  "staged_build_id=$STAGED_BUILD" \
+  "live_build_version=$LIVE_VERSION" \
+  "candidate_build_version=$CANDIDATE_VERSION" \
+  "artifact_sha256=$ARTIFACT" \
+  "candidate_content_sha256=$candidate_content_sha" \
+  "manifest_sha256=$MANIFEST_SHA" \
+  "gate_sha256=$GATE_SHA" \
+  "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
+  "release_only_paths_sha256=$release_only_paths_sha" \
+  "initial_source_state_sha256=$before_source_state" \
+  "before_pid=$before_pid" \
+  "before_wolo8092=$before_wolo8092" \
+  "before_wolo8093=$before_wolo8093" \
+  > "$ACT_RECEIPT/preactivation.txt"
+
+mkdir "$ROLLBACK/next"
+rsync -a --exclude '/cache/' .next/ "$ROLLBACK/next/"
+test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
+test ! -e "$ROLLBACK/next/cache"
+
+mkdir "$ROLLBACK/node_modules"
+rsync -a node_modules/ "$ROLLBACK/node_modules/"
+test "$(dependency_hash "$ROLLBACK/node_modules")" = "$old_dependency_artifact"
+printf '%s\\n' "$PREVIOUS" > "$ROLLBACK/source-sha"
+printf '%s\\n' "$LIVE_VERSION" > "$ROLLBACK/build-version"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+FAST_OLD=".next-rollback-activate-$STAMP"
+FAST_OLD_MODULES=".node_modules-rollback-activate-$STAMP"
+test ! -e "$FAST_OLD"
+test ! -e "$FAST_OLD_MODULES"
+MUTATED=0
+SOURCE_MUTATION_STARTED=0
+SERVICE_STOPPED=0
+COMMITTED=0
+
+rollback_activation() {{
+  rc=$?
+  if [ "$COMMITTED" = "1" ]; then return 0; fi
+  set +e
+  rollback_status="FAILED_PREACTIVATION"
+  if [ "$MUTATED" = "1" ]; then
+    rollback_status="ROLLBACK_FAILED"
+    sudo -n /usr/bin/systemctl stop "$SERVICE" >/dev/null 2>&1 || true
+    if [ -d .next ] && [ ! -e .next-release ] && [ -d "$FAST_OLD" ]; then
+      mv .next .next-release
+    fi
+    if [ -d node_modules ] && [ ! -e .node_modules-release ] && [ -d "$FAST_OLD_MODULES" ]; then
+      mv node_modules .node_modules-release
+    fi
+    if [ ! -e node_modules ] && [ -d "$FAST_OLD_MODULES" ]; then
+      mv "$FAST_OLD_MODULES" node_modules
+    fi
+    if [ ! -e .next ] && [ -d "$FAST_OLD" ]; then
+      mv "$FAST_OLD" .next
+    fi
+    rollback_pre_head="$(git rev-parse HEAD 2>/dev/null || true)"
+    rollback_pre_dirty="$(source_status 2>/dev/null | wc -l | tr -d ' ')"
+    # MUTATED is armed only after proving the original clean source state.
+    # Always restore that state: a failed reset can dirty tracked files while
+    # leaving HEAD at PREVIOUS, which makes HEAD-only rollback guards unsafe.
+    rollback_source_reset=1
+    git reset --hard "$PREVIOUS" >/dev/null 2>&1
+    rollback_source_reset_rc=$?
+    rollback_prisma_generate_rc=1
+    if [ "$rollback_source_reset_rc" = "0" ]; then
+      refresh_source_prisma >/dev/null 2>&1
+      rollback_prisma_generate_rc=$?
+    fi
+    rollback_release_only_cleanup_rc=0
+    if [ "$SOURCE_MUTATION_STARTED" = "1" ]; then
+      cleanup_release_only_paths
+      rollback_release_only_cleanup_rc=$?
+    fi
+    printf '%s\\n' "$LIVE_VERSION" > .aoe2war-build-version 2>/dev/null || true
+    sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
+    for _ in $(seq 1 30); do
+      if [ "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" = "active" ] \
+        && curl -fsS --max-time 5 http://127.0.0.1:3030/api/deployment-version >/dev/null 2>&1; then break; fi
+      sleep 1
+    done
+    rb_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+    rb_head="$(git rev-parse HEAD 2>/dev/null || true)"
+    rb_dirty="$(source_status 2>/dev/null | wc -l | tr -d ' ')"
+    rb_dirty_rc=$?
+    rb_source_state="$(source_state_hash 2>/dev/null)"
+    rb_source_state_rc=$?
+    rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+    rb_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
+    rb_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+    rollback_staged_cache_cleanup_rc=0
+    if [ -e .next-release/cache ] || [ -L .next-release/cache ]; then
+      rm -rf -- .next-release/cache
+      rollback_staged_cache_cleanup_rc=$?
+    fi
+    rb_staged_artifact=""
+    if [ -d .next-release ]; then
+      rb_staged_artifact="$(artifact_hash .next-release 2>/dev/null || true)"
+    fi
+    rb_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version 2>/dev/null | build_version 2>/dev/null || true)"
+    rb_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version" 2>/dev/null | build_version 2>/dev/null || true)"
+    rb_wolo8092="$(wolo_count 8092)"
+    rb_wolo8093="$(wolo_count 8093)"
+    if [ "$rb_service" = "active" ] \
+      && [ "$rollback_source_reset_rc" = "0" ] \
+      && [ "$rollback_prisma_generate_rc" = "0" ] \
+      && [ "$rollback_release_only_cleanup_rc" = "0" ] \
+      && [ "$rollback_staged_cache_cleanup_rc" = "0" ] \
+      && [ "$rb_dirty_rc" = "0" ] \
+      && [ "$rb_source_state_rc" = "0" ] \
+      && [ "$rb_head" = "$PREVIOUS" ] \
+      && [ "$rb_dirty" = "0" ] \
+      && [ "$rb_source_state" = "$before_source_state" ] \
+      && [ "$rb_build" = "$OLD_BUILD" ] \
+      && [ "$rb_staged" = "$STAGED_BUILD" ] \
+      && [ "$rb_staged_artifact" = "$ARTIFACT" ] \
+      && [ "$rb_build_version_file" = "$LIVE_VERSION" ] \
+      && [ "$rb_internal" = "$LIVE_VERSION" ] \
+      && [ "$rb_public" = "$LIVE_VERSION" ] \
+      && [ "$rb_wolo8092" = "$before_wolo8092" ] \
+      && [ "$rb_wolo8093" = "$before_wolo8093" ]; then
+      rollback_status="ROLLED_BACK"
+    fi
+    printf '%s\\n' \
+      "status=$rollback_status" \
+      "original_exit_code=$rc" \
+      "pre_rollback_source_sha=$rollback_pre_head" \
+      "pre_rollback_dirty_count=$rollback_pre_dirty" \
+      "source_reset_attempted=$rollback_source_reset" \
+      "source_reset_exit_code=$rollback_source_reset_rc" \
+      "source_prisma_generate_exit_code=$rollback_prisma_generate_rc" \
+      "release_only_cleanup_exit_code=$rollback_release_only_cleanup_rc" \
+      "staged_cache_cleanup_exit_code=$rollback_staged_cache_cleanup_rc" \
+      "source_sha=$rb_head" \
+      "dirty_count=$rb_dirty" \
+      "dirty_probe_exit_code=$rb_dirty_rc" \
+      "source_state_sha256=$rb_source_state" \
+      "source_state_probe_exit_code=$rb_source_state_rc" \
+      "active_build_id=$rb_build" \
+      "staged_build_id=$rb_staged" \
+      "staged_artifact_sha256=$rb_staged_artifact" \
+      "build_version_file=$rb_build_version_file" \
+      "internal_build_version=$rb_internal" \
+      "public_build_version=$rb_public" \
+      "wolo8092=$rb_wolo8092" \
+      "wolo8093=$rb_wolo8093" \
+      > "$ACT_RECEIPT/rollback-status.txt" 2>/dev/null || true
+  elif [ "$SERVICE_STOPPED" = "1" ]; then
+    # A last-moment source drift must abort before runtime/source mutation.
+    # Restore only service availability; never reset the newly observed work.
+    sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
+  fi
+  return "$rc"
+}}
+trap rollback_activation EXIT
+
+tracked_worktree_pre_mutation="$(
+  python3 -c {q(TRACKED_WORKTREE_PROBE)}
+)"
+printf '%s\\n' "$tracked_worktree_pre_mutation" \
+  > "$ACT_RECEIPT/tracked-worktree-pre-mutation.tsv"
+
+tracked_probe_value() {{
+  probe_key="$1"
+  printf '%s\\n' "$tracked_worktree_pre_mutation" \
+    | awk -F '\\t' -v key="$probe_key" '$1 == key {{print $2; exit}}'
+}}
+
+test "$(tracked_probe_value tracked_missing_entries)" = "0"
+test "$(tracked_probe_value tracked_foreign_entries)" = "0"
+test "$(tracked_probe_value tracked_unwritable_entries)" = "0"
+test "$(tracked_probe_value tracked_parent_foreign_dirs)" = "0"
+test "$(tracked_probe_value tracked_parent_unwritable_dirs)" = "0"
+
+SERVICE_STOPPED=1
+sudo -n /usr/bin/systemctl stop "$SERVICE"
+test "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" != "active"
+final_pre_mutation_head="$(git rev-parse HEAD)"
+final_pre_mutation_dirty="$(source_status | wc -l | tr -d ' ')"
+final_pre_mutation_source_state="$(source_state_hash)"
+final_release_only_paths_sha="$(sha256sum "$RELEASE_ONLY_PATHS" | awk '{{print $1}}')"
+test "$final_pre_mutation_head" = "$PREVIOUS"
+test "$final_pre_mutation_dirty" = "0"
+test "$final_pre_mutation_source_state" = "$before_source_state"
+test "$final_release_only_paths_sha" = "$release_only_paths_sha"
+validate_release_only_paths
+printf '%s\n' \
+  "final_pre_mutation_head=$final_pre_mutation_head" \
+  "final_pre_mutation_dirty_count=$final_pre_mutation_dirty" \
+  "final_pre_mutation_source_state_sha256=$final_pre_mutation_source_state" \
+  "final_release_only_paths_sha256=$final_release_only_paths_sha" \
+  >> "$ACT_RECEIPT/preactivation.txt"
+MUTATED=1
+mv .next "$FAST_OLD"
+mv node_modules "$FAST_OLD_MODULES"
+mv .node_modules-release node_modules
+test "$(stat -Lc '%d:%i' node_modules)" = "$candidate_dependency_identity"
+
+mv .next-release .next
+
+test "$(cat .next/BUILD_ID)" = "$STAGED_BUILD"
+test ! -e .next/cache
+test -d node_modules
+test ! -e .node_modules-release
+
+test -d "$FAST_OLD"
+test "$(cat "$FAST_OLD/BUILD_ID")" = "$OLD_BUILD"
+test -d "$FAST_OLD_MODULES"
+activated_content_sha="$(content_hash .next)"
+test "$activated_content_sha" = "$candidate_content_sha"
+SOURCE_MUTATION_STARTED=1
+git reset --hard "$RELEASE"
+test "$(git rev-parse HEAD)" = "$RELEASE"
+refresh_source_prisma
+test -z "$(source_status)"
+printf '%s\\n' "$CANDIDATE_VERSION" > .aoe2war-build-version
+test "$(cat .aoe2war-build-version | tr -d '\\r\\n')" = "$CANDIDATE_VERSION"
+sudo -n /usr/bin/systemctl start "$SERVICE"
+SERVICE_STOPPED=0
+
+READY=0
+for _ in $(seq 1 30); do
+  if [ "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" = "active" ] \
+    && curl -fsS --max-time 5 http://127.0.0.1:3030/api/deployment-version >/dev/null 2>&1; then READY=1; break; fi
+  sleep 1
+done
+test "$READY" = "1"
+
+after_service="$(systemctl is-active "$SERVICE")"
+after_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
+after_head="$(git rev-parse HEAD)"
+after_dirty="$(source_status | wc -l | tr -d ' ')"
+after_active_build="$(cat .next/BUILD_ID)"
+after_build_version_file="$(cat .aoe2war-build-version | tr -d '\\r\\n')"
+after_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
+after_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
+after_wolo8092="$(wolo_count 8092)"
+after_wolo8093="$(wolo_count 8093)"
+
+test "$after_service" = "active"
+test -n "$after_pid"
+test "$after_head" = "$RELEASE"
+test "$after_dirty" = "0"
+test "$after_active_build" = "$STAGED_BUILD"
+test "$after_build_version_file" = "$CANDIDATE_VERSION"
+test "$after_internal_version" = "$CANDIDATE_VERSION"
+test "$after_public_version" = "$CANDIDATE_VERSION"
+test "$after_wolo8092" = "$before_wolo8092"
+test "$after_wolo8093" = "$before_wolo8093"
+test ! -e .next-release
+test -d "$FAST_OLD"
+test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
+test ! -e "$ROLLBACK/next/cache"
+test "$(cat "$ROLLBACK/source-sha")" = "$PREVIOUS"
+test "$(cat "$ROLLBACK/build-version")" = "$LIVE_VERSION"
+
+critical_get http://127.0.0.1:3030/api/deployment-version
+critical_get "$PUBLIC/api/deployment-version"
+
+# ------------------------------------------------------------
+# RELEASE OBSERVATIONS ARE IDENTITY-ONLY.
+#
+# Public GET routes may queue bet-market reconciliation, write databases,
+# or submit settlement operations. No dynamic route/leaderboard/statistics/
+# Workshop prewarm may be part of a protected release or its rollback.
+# Performance prewarm belongs to a separately authorized, post-certification
+# task with an independently reviewed read-only route contract.
+# ------------------------------------------------------------
+STATISTICS_PREWARM="DEFERRED_IDENTITY_ONLY"
+STATISTICS_WARM_SECONDS=""
+LEADERBOARD_PREWARM="DEFERRED_IDENTITY_ONLY"
+LEADERBOARD_WARM_SECONDS=""
+WORKSHOP_PREWARM="DEFERRED_IDENTITY_ONLY"
+WORKSHOP_WARM_SECONDS=""
+
+# ------------------------------------------------------------
+# BOUNDED POST-ACTIVATION HEALTH SOAK
+#
+# COMMITTED is deliberately still 0 here. Any critical failure
+# exits through rollback_activation(), restoring OLD_BUILD.
+# ------------------------------------------------------------
+SOAK_SAMPLES=0
+soak_elapsed=0
+while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
+  sleep "$SOAK_INTERVAL"
+  soak_elapsed=$((soak_elapsed + SOAK_INTERVAL))
+
+  soak_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+  soak_head="$(git rev-parse HEAD)"
+  soak_dirty="$(source_status | wc -l | tr -d ' ')"
+  soak_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+  soak_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+  soak_internal="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
+  soak_public="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
+  soak_wolo8092="$(wolo_count 8092)"
+  soak_wolo8093="$(wolo_count 8093)"
+
+  test "$soak_service" = "active"
+  test "$soak_head" = "$RELEASE"
+  test "$soak_dirty" = "0"
+  test "$soak_build" = "$STAGED_BUILD"
+  test "$soak_build_version_file" = "$CANDIDATE_VERSION"
+  test "$soak_internal" = "$CANDIDATE_VERSION"
+  test "$soak_public" = "$CANDIDATE_VERSION"
+  test "$soak_wolo8092" = "$before_wolo8092"
+  test "$soak_wolo8093" = "$before_wolo8093"
+
+  critical_get http://127.0.0.1:3030/api/deployment-version
+  critical_get "$PUBLIC/api/deployment-version"
+
+  SOAK_SAMPLES=$((SOAK_SAMPLES + 1))
+done
+
+certified_dependency_artifact="$(dependency_hash node_modules)"
+test "$certified_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
+
+previous_fast_dependency_artifact="$(dependency_hash "$FAST_OLD_MODULES")"
+test "$previous_fast_dependency_artifact" = "$old_dependency_artifact"
+
+printf '%s\\n' \
+  "status=CERTIFIED" \
+  "release_sha=$RELEASE" \
+  "previous_production_sha=$PREVIOUS" \
+  "source_sha=$after_head" \
+  "old_build_id=$OLD_BUILD" \
+  "active_build_id=$after_active_build" \
+  "live_build_version=$LIVE_VERSION" \
+  "candidate_build_version=$after_internal_version" \
+  "build_version_file=$after_build_version_file" \
+  "artifact_sha256=$ARTIFACT" \
+  "candidate_node_modules_sha256=$certified_dependency_artifact" \
+  "previous_node_modules_sha256=$old_dependency_artifact" \
+  "content_sha256=$activated_content_sha" \
+  "manifest_sha256=$MANIFEST_SHA" \
+  "gate_sha256=$GATE_SHA" \
+  "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
+  "before_pid=$before_pid" \
+  "after_pid=$after_pid" \
+  "wolo8092=$after_wolo8092" \
+  "wolo8093=$after_wolo8093" \
+  "soak_seconds=$SOAK_SECONDS" \
+  "soak_samples=$SOAK_SAMPLES" \
+  "statistics_prewarm=$STATISTICS_PREWARM" \
+  "statistics_warm_seconds=$STATISTICS_WARM_SECONDS" \
+  "leaderboard_prewarm=$LEADERBOARD_PREWARM" \
+  "leaderboard_warm_seconds=$LEADERBOARD_WARM_SECONDS" \
+  "workshop_prewarm=$WORKSHOP_PREWARM" \
+  "workshop_warm_seconds=$WORKSHOP_WARM_SECONDS" \
+  "fast_rollback=$FAST_OLD" \
+  "fast_rollback_modules=$FAST_OLD_MODULES" \
+  "durable_rollback=$ROLLBACK" \
+  "durable_cache_free=1" \
+  "activation_bundle_while_stopped=1" \
+  "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_and_identity_only_bounded_health_soak" \
+  > "$ACT_RECEIPT/certification.txt"
+COMMITTED=1
+
+# ------------------------------------------------------------
+# VERIFIED FAST-ROLLBACK RETENTION
+#
+# This is post-certification and intentionally non-fatal. Only
+# modern fast copies with a durable BUILD_ID twin are eligible.
+# Unmatched artifacts are never auto-deleted. Keep the newest N
+# verified fast copies; older verified duplicates are reclaimable.
+# Proof discovery is shallow/bounded; never recursively walk evidence payloads.
+# ------------------------------------------------------------
+RETENTION_STATUS="PASS"
+RETENTION_PRUNED=0
+RETENTION_RECLAIMED_KB=0
+RETENTION_MATCHED=0
+RETENTION_UNMATCHED=0
+retention_candidates="$ACT_RECEIPT/fast-retention-candidates.tsv"
+retention_sorted="$ACT_RECEIPT/fast-retention-sorted.tsv"
+retention_plan="$ACT_RECEIPT/fast-retention.tsv"
+
+printf 'mtime\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$retention_candidates"
+printf 'action\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$retention_plan"
+
+retention_now_ns() {{
+  date +%s%N 2>/dev/null || true
+}}
+
+retention_delta_ms() {{
+  started="$1"
+  ended="$(retention_now_ns)"
+
+  if [[ "$started" =~ ^[0-9]+$ && "$ended" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$(( (ended - started) / 1000000 ))"
+  else
+    printf '0\n'
+  fi
+}}
+
+find_durable_build_proof() {{
+  wanted_build="$1"
+
+  for candidate_build_id in \
+    /mnt/HC_Volume_105319120/aoe2war/rollbacks/*/next/BUILD_ID
+  do
+    [ -f "$candidate_build_id" ] || continue
+
+    if [ "$(cat "$candidate_build_id" 2>/dev/null || true)" = "$wanted_build" ]; then
+      printf '%s\n' "$candidate_build_id"
+      return 0
+    fi
+  done
+
+  return 1
+}}
+
+find_rescue_build_proof() {{
+  wanted_build="$1"
+
+  for candidate_build_id in \
+    /mnt/HC_Volume_105319120/aoe2war/deploy-receipts/*/current-next/BUILD_ID
+  do
+    [ -f "$candidate_build_id" ] || continue
+
+    if [ "$(cat "$candidate_build_id" 2>/dev/null || true)" = "$wanted_build" ]; then
+      printf '%s\n' "$candidate_build_id"
+      return 0
+    fi
+  done
+
+  return 1
+}}
+
+RETENTION_TOTAL_STARTED="$(retention_now_ns)"
+RETENTION_PROOF_MS=0
+RETENTION_SIZE_MS=0
+RETENTION_DELETE_MS=0
+
+
+set +e
+for d in .next-rollback-activate-* .next-rollback-manual-*; do
+  [ -d "$d" ] || continue
+
+  # A fast rollback is one runtime unit: .next + node_modules.
+  # Legacy/unpaired artifacts are always keep-only.
+  modules="${{d/.next-/.node_modules-}}"
+  [ -d "$modules" ] || {{
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_probe_started="$(retention_now_ns)"
+    size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+    RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tMISSING_MODULE_PAIR\t-\n' \
+      "$d" "-" "${{size_kb:-0}}" >> "$retention_plan"
+    continue
+  }}
+
+  build="$(cat "$d/BUILD_ID" 2>/dev/null || true)"
+  [ -n "$build" ] || {{
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_probe_started="$(retention_now_ns)"
+    next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
+    size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+    size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+    RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNO_BUILD_ID\t-\n' \
+      "$d" "$build" "$size_kb" >> "$retention_plan"
+    continue
+  }}
+
+  # Pruning requires a durable proof for BOTH runtime halves.
+  proof_kind=""
+  proof_path=""
+  proof_modules=""
+
+  proof_lookup_started="$(retention_now_ns)"
+  match="$(find_durable_build_proof "$build" || true)"
+  if [ -n "$match" ]; then
+    proof_next="${{match%/BUILD_ID}}"
+    candidate_proof_modules="${{proof_next%/next}}/node_modules"
+    if [ -d "$candidate_proof_modules" ]; then
+      proof_kind="DURABLE_ROLLBACK"
+      proof_path="$proof_next"
+      proof_modules="$candidate_proof_modules"
+    fi
+  fi
+
+  if [ -z "$proof_kind" ]; then
+    match="$(find_rescue_build_proof "$build" || true)"
+    if [ -n "$match" ]; then
+      proof_next="${{match%/BUILD_ID}}"
+      candidate_proof_modules="${{proof_next%/current-next}}/current-node_modules"
+      if [ -d "$candidate_proof_modules" ]; then
+        proof_kind="DURABLE_RESCUE"
+        proof_path="$proof_next"
+        proof_modules="$candidate_proof_modules"
+      fi
+    fi
+  fi
+  proof_lookup_ms="$(retention_delta_ms "$proof_lookup_started")"
+  RETENTION_PROOF_MS=$((RETENTION_PROOF_MS + proof_lookup_ms))
+
+  if [ -z "$proof_kind" ] || [ ! -d "$proof_modules" ]; then
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_probe_started="$(retention_now_ns)"
+    next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
+    size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+    size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+    RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNO_PAIRED_DURABLE_PROOF\t-\n' \
+      "$d" "$build" "$size_kb" >> "$retention_plan"
+    continue
+  fi
+
+  mtime="$(stat -c '%Y' "$d" 2>/dev/null)"
+  size_probe_started="$(retention_now_ns)"
+  next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+  modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
+
+  if [ -z "$mtime" ] || [ -z "$next_kb" ] || [ -z "$modules_kb" ]; then
+    RETENTION_STATUS="WARN"
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+  size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+  RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+      "$d" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  size_kb=$((next_kb + modules_kb))
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$mtime" "$d" "$build" "$size_kb" "$proof_kind" "$proof_path" \
+    >> "$retention_candidates"
+done
+
+sort -rn -k1,1 "$retention_candidates" > "$retention_sorted"
+rank=0
+
+while IFS=$'\t' read -r mtime path build size_kb proof_kind proof_path; do
+  [ "$mtime" = "mtime" ] && continue
+  [ -n "$path" ] || continue
+
+  modules="${{path/.next-/.node_modules-}}"
+
+  # A pair that disappeared or became incomplete since enumeration
+  # immediately becomes keep-only.
+  if [ ! -d "$path" ] || [ ! -d "$modules" ]; then
+    RETENTION_STATUS="WARN"
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tPAIR_DRIFT\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  rank=$((rank + 1))
+  RETENTION_MATCHED=$((RETENTION_MATCHED + 1))
+
+  if [ "$rank" -le "$FAST_ROLLBACK_KEEP" ]; then
+    printf 'KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  case "$path" in
+    .next-rollback-activate-*|.next-rollback-manual-*) ;;
+    *)
+      RETENTION_STATUS="WARN"
+      printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+        "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+      continue
+      ;;
+  esac
+
+  if [ "$(cat "$path/BUILD_ID" 2>/dev/null || true)" != "$build" ]; then
+    RETENTION_STATUS="WARN"
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  # Remove the pair from the canonical rollback namespace atomically-ish:
+  # first rename BOTH halves on the same filesystem. If the second rename
+  # fails, restore the first immediately. Only then delete the two temps.
+  prune_next_tmp="${{path}}.prune-$$"
+  prune_modules_tmp="${{modules}}.prune-$$"
+
+  if [ -e "$prune_next_tmp" ] || [ -e "$prune_modules_tmp" ]; then
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_PRUNE_TMP_COLLISION\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  if ! mv "$path" "$prune_next_tmp"; then
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_PAIR_MOVE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  if ! mv "$modules" "$prune_modules_tmp"; then
+    mv "$prune_next_tmp" "$path" >/dev/null 2>&1 || true
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_PAIR_MOVE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  delete_started="$(retention_now_ns)"
+  if rm -rf -- "$prune_next_tmp" "$prune_modules_tmp" \
+    && [ ! -e "$prune_next_tmp" ] \
+    && [ ! -e "$prune_modules_tmp" ]; then
+    RETENTION_PRUNED=$((RETENTION_PRUNED + 1))
+    RETENTION_RECLAIMED_KB=$((RETENTION_RECLAIMED_KB + size_kb))
+    printf 'PRUNE_PAIR\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+  else
+    # Best-effort restoration of any surviving temp halves.
+    if [ -d "$prune_next_tmp" ] && [ ! -e "$path" ]; then
+      mv "$prune_next_tmp" "$path" >/dev/null 2>&1 || true
+    fi
+    if [ -d "$prune_modules_tmp" ] && [ ! -e "$modules" ]; then
+      mv "$prune_modules_tmp" "$modules" >/dev/null 2>&1 || true
+    fi
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_DELETE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+  fi
+  delete_ms="$(retention_delta_ms "$delete_started")"
+  RETENTION_DELETE_MS=$((RETENTION_DELETE_MS + delete_ms))
+done < "$retention_sorted"
+
+rm -f "$retention_candidates" "$retention_sorted"
+
+retention_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+retention_head="$(git rev-parse HEAD 2>/dev/null || true)"
+retention_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+retention_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+retention_wolo8092="$(wolo_count 8092)"
+retention_wolo8093="$(wolo_count 8093)"
+if [ "$retention_service" != "active" ] \
+  || [ "$retention_head" != "$RELEASE" ] \
+  || [ "$retention_build" != "$STAGED_BUILD" ] \
+  || [ "$retention_build_version_file" != "$CANDIDATE_VERSION" ] \
+  || [ "$retention_wolo8092" != "$before_wolo8092" ] \
+  || [ "$retention_wolo8093" != "$before_wolo8093" ]; then
+  RETENTION_STATUS="WARN"
+fi
+set -e
+
+RETENTION_TOTAL_MS="$(retention_delta_ms "$RETENTION_TOTAL_STARTED")"
+
+printf '%s\n' \
+  "status=$RETENTION_STATUS" \
+  "keep=$FAST_ROLLBACK_KEEP" \
+  "matched=$RETENTION_MATCHED" \
+  "unmatched_kept=$RETENTION_UNMATCHED" \
+  "pruned=$RETENTION_PRUNED" \
+  "reclaimed_kb=$RETENTION_RECLAIMED_KB" \
+  "source_sha=$retention_head" \
+  "active_build_id=$retention_build" \
+  "proof_lookup_ms=$RETENTION_PROOF_MS" \
+  "size_probe_ms=$RETENTION_SIZE_MS" \
+  "delete_ms=$RETENTION_DELETE_MS" \
+  "total_ms=$RETENTION_TOTAL_MS" \
+  "wolo8092=$retention_wolo8092" \
+  "wolo8093=$retention_wolo8093" \
+  > "$ACT_RECEIPT/fast-retention-result.txt"
+
+printf 'status\tCERTIFIED\n'
+printf 'release_sha\\t%s\\n' "$RELEASE"
+printf 'source_sha\\t%s\\n' "$after_head"
+printf 'previous_build_id\\t%s\\n' "$OLD_BUILD"
+printf 'active_build_id\\t%s\\n' "$after_active_build"
+printf 'candidate_build_version\\t%s\\n' "$after_internal_version"
+printf 'artifact_sha256\\t%s\\n' "$ARTIFACT"
+printf 'candidate_node_modules_sha256\\t%s\\n' "$certified_dependency_artifact"
+printf 'previous_node_modules_sha256\\t%s\\n' "$old_dependency_artifact"
+printf 'content_sha256\\t%s\\n' "$activated_content_sha"
+printf 'wolo8092\\t%s\\n' "$after_wolo8092"
+printf 'wolo8093\\t%s\\n' "$after_wolo8093"
+printf 'soak_seconds\\t%s\\n' "$SOAK_SECONDS"
+printf 'soak_samples\\t%s\\n' "$SOAK_SAMPLES"
+printf 'retention_status\\t%s\\n' "$RETENTION_STATUS"
+printf 'retention_keep\\t%s\\n' "$FAST_ROLLBACK_KEEP"
+printf 'retention_pruned\\t%s\\n' "$RETENTION_PRUNED"
+printf 'retention_reclaimed_kb\\t%s\\n' "$RETENTION_RECLAIMED_KB"
+printf 'retention_unmatched_kept\\t%s\\n' "$RETENTION_UNMATCHED"
+printf 'fast_rollback\\t%s\\n' "$FAST_OLD"
+printf 'fast_rollback_modules\\t%s\\n' "$FAST_OLD_MODULES"
+printf 'durable_rollback\\t%s\\n' "$ROLLBACK"
+printf 'durable_cache_free\\t1\\n'
+printf 'activation_bundle_while_stopped\\t1\\n'
+printf 'receipt_dir\\t%s\\n' "$ACT_RECEIPT"
+"""
+
+
+def validate_activation_result(result: dict[str, str], receipt: dict) -> list[str]:
+    errors: list[str] = []
+    if result.get("status") != "CERTIFIED":
+        errors.append("remote activation did not report CERTIFIED")
+    if result.get("release_sha") != receipt.get("release_sha"):
+        errors.append("activated release SHA does not equal stage receipt")
+    if result.get("source_sha") != receipt.get("release_sha"):
+        errors.append("production source changed away from staged release")
+    if result.get("previous_build_id") != receipt.get("active_build_id"):
+        errors.append("activation previous BUILD_ID does not equal stage receipt")
+    if result.get("active_build_id") != receipt.get("staged_build_id"):
+        errors.append("active BUILD_ID does not equal staged BUILD_ID")
+    if result.get("candidate_build_version") != receipt.get("candidate_build_version"):
+        errors.append("active build version does not equal candidate build version")
+    if result.get("artifact_sha256") != receipt.get("artifact_sha256"):
+        errors.append("active artifact SHA-256 does not equal staged artifact")
+
+    if result.get("candidate_node_modules_sha256") != receipt.get(
+        "candidate_node_modules_sha256"
+    ):
+        errors.append(
+            "active candidate node_modules SHA-256 does not equal "
+            "staged candidate node_modules"
+        )
+
+    previous_dependency_sha = (
+        result.get("previous_node_modules_sha256") or ""
+    )
+    if (
+        len(previous_dependency_sha) != 64
+        or any(
+            c not in "0123456789abcdef"
+            for c in previous_dependency_sha
+        )
+    ):
+        errors.append(
+            "previous node_modules SHA-256 is missing or invalid"
+        )
+
+    fast_rollback = result.get("fast_rollback") or ""
+    fast_rollback_modules = result.get("fast_rollback_modules") or ""
+    expected_fast_modules = (
+        fast_rollback.replace(".next-", ".node_modules-", 1)
+        if fast_rollback.startswith(".next-rollback-activate-")
+        else ""
+    )
+    if (
+        not expected_fast_modules
+        or fast_rollback_modules != expected_fast_modules
+    ):
+        errors.append(
+            "paired fast rollback node_modules path is missing or inconsistent"
+        )
+    if result.get("durable_cache_free") != "1":
+        errors.append("durable rollback does not prove cache-free storage")
+    if result.get("activation_bundle_while_stopped") != "1":
+        errors.append("activation does not prove source/build/runtime advanced while stopped")
+    if result.get("wolo8092") != str(receipt.get("wolo_8092_count")):
+        errors.append("WOLO listener 8092 changed during activation")
+    if result.get("wolo8093") != str(receipt.get("wolo_8093_count")):
+        errors.append("WOLO listener 8093 changed during activation")
+    if result.get("soak_seconds") != str(ACTIVATION_SOAK_SECONDS):
+        errors.append("activation health-soak duration does not match policy")
+    try:
+        soak_samples = int(result.get("soak_samples") or "0")
+    except ValueError:
+        soak_samples = 0
+    if soak_samples < 1:
+        errors.append("activation health soak did not complete any samples")
+    if result.get("retention_status") not in {"PASS", "WARN"}:
+        errors.append("fast-rollback retention did not report PASS/WARN")
+    if result.get("retention_keep") != str(FAST_ROLLBACK_KEEP):
+        errors.append("fast-rollback retention keep count does not match policy")
+    if not result.get("receipt_dir"):
+        errors.append("durable activation receipt directory is missing")
+    if not result.get("durable_rollback"):
+        errors.append("durable rollback directory is missing")
+    return errors
+
+
+def write_activation_receipt(payload: dict) -> Path:
+    ACTIVATION_RECEIPT_DIR.mkdir(parents=True, exist_ok=True)
+    path = ACTIVATION_RECEIPT_DIR / (
+        f"{payload['release_sha']}-{payload['artifact_sha256'][:12]}.json"
+    )
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def migration_names_from_manifest(manifest: dict) -> list[str]:
+    paths = [str(item) for item in (manifest.get("migration_paths") or [])]
+    names = sorted({Path(path).parent.name for path in paths})
+    if len(names) != len(paths):
+        raise ShipError("Manifest contains duplicate Prisma migration directories.")
+    return names
+
+
+def migration_receipt_verifier_python() -> str:
+    """Return the read-only verifier used by manual migration activation."""
+    return r'''
+from __future__ import annotations
+
+import datetime as dt
+import hashlib
+import re
+import stat
+import sys
+from pathlib import Path
+
+
+def fail(message: str, code: int = 82) -> None:
+    print(f"STOP: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def direct_regular(
+    receipt: Path,
+    path: Path,
+    *,
+    label: str,
+    max_bytes: int | None = None,
+    require_nonempty: bool = False,
+) -> int:
+    if path.parent != receipt:
+        fail(f"{label} is not direct receipt content")
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        fail(f"{label} is missing")
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+        fail(f"{label} is not a direct regular non-symlink file")
+    if max_bytes is not None and info.st_size > max_bytes:
+        fail(f"{label} exceeds bounded size")
+    if require_nonempty and info.st_size <= 0:
+        fail(f"{label} is empty")
+    return int(info.st_size)
+
+
+if len(sys.argv) != 5:
+    fail("migration receipt verifier arguments are invalid", 80)
+
+root = Path(sys.argv[1])
+release = sys.argv[2]
+database = sys.argv[3]
+expected_path = Path(sys.argv[4])
+
+if not re.fullmatch(r"[0-9a-f]{40}", release):
+    fail("release SHA is not exact lowercase Git identity", 80)
+if not database:
+    fail("production database name is empty", 80)
+if not root.is_dir():
+    fail("durable production migration receipt root is missing")
+if root.is_symlink():
+    fail("durable production migration receipt root may not be a symlink")
+
+try:
+    expected = [
+        line.strip()
+        for line in expected_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+except Exception as exc:
+    fail(f"expected migration set is unreadable: {exc}", 80)
+if not expected or len(expected) != len(set(expected)):
+    fail("expected migration set is empty or ambiguous", 80)
+
+release_short = release[:12]
+identity = re.compile(r"^migration-(\d{8}T\d{6}Z)-([0-9a-f]{12})$")
+candidates: list[Path] = []
+
+for candidate in sorted(root.iterdir(), key=lambda path: path.name):
+    if not (
+        candidate.name.startswith("migration-")
+        and candidate.name.endswith(f"-{release_short}")
+    ):
+        continue
+    if candidate.is_symlink() or not candidate.is_dir():
+        fail(f"matching migration receipt is not a direct directory: {candidate}")
+    match = identity.fullmatch(candidate.name)
+    if match is None or match.group(2) != release_short:
+        fail(f"matching migration receipt has invalid identity: {candidate.name}")
+    try:
+        parsed = dt.datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ")
+    except ValueError:
+        fail(f"matching migration receipt has invalid UTC timestamp: {candidate.name}")
+    if parsed.strftime("%Y%m%dT%H%M%SZ") != match.group(1):
+        fail(f"matching migration receipt timestamp is not canonical: {candidate.name}")
+    candidates.append(candidate)
+
+if not candidates:
+    fail("durable production migration receipt is missing")
+if len(candidates) != 1:
+    fail(
+        "durable production migration receipt is ambiguous: "
+        + ", ".join(path.name for path in candidates)
+    )
+
+receipt = candidates[0]
+status_path = receipt / "migration-status.txt"
+sidecar_path = receipt / "migration-status.txt.sha256"
+dump_path = receipt / "pre-migration.dump"
+
+direct_regular(
+    receipt,
+    status_path,
+    label="migration-status.txt",
+    max_bytes=256 * 1024,
+    require_nonempty=True,
+)
+direct_regular(
+    receipt,
+    sidecar_path,
+    label="migration-status.txt.sha256",
+    max_bytes=4096,
+    require_nonempty=True,
+)
+
+try:
+    sidecar_lines = [
+        line.strip()
+        for line in sidecar_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+except UnicodeDecodeError:
+    fail("migration status SHA-256 sidecar is not UTF-8 text")
+if len(sidecar_lines) != 1:
+    fail("migration status SHA-256 sidecar is ambiguous")
+parts = sidecar_lines[0].split(None, 1)
+if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+    fail("migration status SHA-256 sidecar is malformed")
+if parts[1].strip() != str(status_path):
+    fail("migration status SHA-256 sidecar path is not exact")
+observed_status_sha = hashlib.sha256(status_path.read_bytes()).hexdigest()
+if observed_status_sha != parts[0]:
+    fail("migration status SHA-256 sidecar does not match status bytes")
+
+try:
+    status_lines = status_path.read_text(encoding="utf-8").splitlines()
+except UnicodeDecodeError:
+    fail("migration status is not UTF-8 text")
+
+required_keys = {
+    "status",
+    "release_sha",
+    "database",
+    "dump",
+    "dump_sha256",
+}
+required: dict[str, str] = {}
+migrations: list[str] = []
+for line in status_lines:
+    if not line:
+        continue
+    if "=" not in line:
+        fail("migration status contains a malformed line")
+    key, value = line.split("=", 1)
+    if not key:
+        fail("migration status contains an empty field name")
+    if key == "migration":
+        if not value:
+            fail("migration status contains an empty migration")
+        migrations.append(value)
+        continue
+    if key in required_keys:
+        if key in required:
+            fail(f"migration status contains duplicate required field: {key}")
+        required[key] = value
+
+missing = sorted(required_keys - required.keys())
+if missing:
+    fail("migration status is missing required field(s): " + ", ".join(missing))
+if required["status"] != "APPLIED":
+    fail("migration status is not APPLIED")
+if required["release_sha"] != release:
+    fail("migration status release SHA does not match activation release")
+if required["database"] != database:
+    fail("migration status database does not match production database")
+if required["dump"] != "pre-migration.dump":
+    fail("migration status dump name is not canonical")
+if not re.fullmatch(r"[0-9a-f]{64}", required["dump_sha256"]):
+    fail("migration status dump SHA-256 is malformed")
+if len(migrations) != len(expected) or sorted(migrations) != sorted(expected):
+    fail(
+        "migration status migration set differs from release manifest: "
+        f"expected={sorted(expected)!r} observed={sorted(migrations)!r}"
+    )
+
+direct_regular(
+    receipt,
+    dump_path,
+    label="pre-migration.dump",
+    require_nonempty=True,
+)
+digest = hashlib.sha256()
+with dump_path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
+if digest.hexdigest() != required["dump_sha256"]:
+    fail("pre-migration dump SHA-256 does not match sealed migration status")
+
+print(str(receipt))
+'''
+
+
+def verify_production_migration_receipt(manifest: dict) -> None:
+    names = migration_names_from_manifest(manifest)
+    if not names:
+        return
+    if manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
+        raise ShipError("Prisma migrations require a DATABASE or FINANCIAL release gate.")
+
+    release_sha = str(manifest.get("release_sha") or "")
+    if (
+        len(release_sha) != 40
+        or any(ch not in "0123456789abcdef" for ch in release_sha)
+    ):
+        raise ShipError("Migration verification requires an exact release SHA.")
+
+    q = shlex.quote
+    expected = "\n".join(names)
+    receipt_verifier = migration_receipt_verifier_python()
+    release_short = release_sha[:12]
+    script = f"""
+set -Eeuo pipefail
+RELEASE={q(release_sha)}
+RELEASE_SHORT={q(release_short)}
+PROD_REPO={q(PROD_REPO)}
+RECEIPT_ROOT={q(REMOTE_RECEIPT_ROOT)}
+EXPECTED_MIGRATIONS={q(expected)}
+
+cred="$(mktemp /tmp/aoe2war-db-verify.XXXXXX)"
+cleanup() {{ rm -f "$cred"; }}
+trap cleanup EXIT INT TERM
+chmod 600 "$cred"
+
+python3 - "$PROD_REPO" > "$cred" <<'PY'
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+import shlex
+import sys
+
+repo = Path(sys.argv[1])
+database_url = None
+for candidate in [repo / ".env", repo / ".env.production", repo / ".env.local"]:
+    if not candidate.is_file():
+        continue
+    for raw in candidate.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() != "DATABASE_URL":
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {{chr(34), chr(39)}}:
+            value = value[1:-1]
+        database_url = value
+        break
+    if database_url:
+        break
+
+if not database_url:
+    raise SystemExit("STOP: production DATABASE_URL is unavailable")
+
+raw = database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+parsed = urlsplit(raw)
+if parsed.scheme not in {{"postgresql", "postgres"}}:
+    raise SystemExit("STOP: production DATABASE_URL is not PostgreSQL")
+
+for key, value in {{
+    "PGHOST": parsed.hostname or "",
+    "PGPORT": str(parsed.port or 5432),
+    "PGUSER": unquote(parsed.username or ""),
+    "PGPASSWORD": unquote(parsed.password or ""),
+    "PGDATABASE": unquote(parsed.path.lstrip("/")),
+}}.items():
+    print(f"export {{key}}={{shlex.quote(value)}}")
+PY
+# shellcheck disable=SC1090
+. "$cred"
+rm -f "$cred"
+cred=""
+
+expected_file="$(mktemp /tmp/aoe2war-expected-migrations.XXXXXX)"
+trap 'rm -f "$expected_file" "$cred"' EXIT INT TERM
+printf '%s\\n' "$EXPECTED_MIGRATIONS" | sed '/^$/d' | sort -u > "$expected_file"
+
+while IFS= read -r migration; do
+  [ -n "$migration" ] || continue
+  count="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+    "select count(*) from \\"_prisma_migrations\\" where migration_name='$migration' and finished_at is not null and rolled_back_at is null;")"
+  [ "$count" = "1" ] || {{
+    echo "STOP: production migration is not applied exactly once: $migration" >&2
+    exit 81
+  }}
+done < "$expected_file"
+
+receipt_match="$(
+python3 - "$RECEIPT_ROOT" "$RELEASE" "$PGDATABASE" "$expected_file" <<'PY'
+{receipt_verifier}
+PY
+)"
+[ -n "$receipt_match" ] || {{
+  echo "STOP: durable production migration receipt verifier returned no path" >&2
+  exit 82
+}}
+printf 'migration_receipt\\t%s\\n' "$receipt_match"
+"""
+    p = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        timeout=120,
+    )
+    if p.returncode != 0:
+        detail = ((p.stderr or "") or (p.stdout or "")).strip()
+        raise ShipError(
+            "Production migration verification failed"
+            + (f": {detail[-4000:]}" if detail else "")
+        )
+
+
+
+def _parse_recovery_probe(text: str) -> dict[str, dict[str, str]]:
+    groups: dict[str, dict[str, str]] = {
+        "CERT": {},
+        "RET": {},
+        "LIVE": {},
+        "HASH": {},
+    }
+    for raw in text.splitlines():
+        parts = raw.split("\t", 2)
+        if len(parts) != 3:
+            continue
+        group, key, value = parts
+        if group not in groups or not key:
+            continue
+        if key in groups[group]:
+            raise ShipError(
+                f"Certified timeout recovery returned duplicate {group}.{key}."
+            )
+        groups[group][key] = value
+    return groups
+
+
+def recover_certified_activation_result(
+    receipt: dict,
+    *,
+    receipt_dir: str,
+    stage_receipt_sha: str,
+    manifest_sha: str,
+    gate_sha: str,
+) -> tuple[dict[str, str] | None, str]:
+    # Recover only from exact durable CERTIFIED evidence after transport timeout.
+    q = shlex.quote
+    probe = "\n".join(
+        [
+            "set -euo pipefail",
+            f"ACT={q(receipt_dir)}",
+            f"PROD={q(PROD_REPO)}",
+            'test -f "$ACT/certification.txt" || exit 44',
+            'test -f "$ACT/fast-retention-result.txt" || exit 44',
+            'test -f "$ACT/stage-receipt.json" || exit 44',
+            'test -f "$ACT/release-manifest.json" || exit 44',
+            'test -f "$ACT/gate-receipt.json" || exit 44',
+            'while IFS="=" read -r key value; do printf "CERT\\t%s\\t%s\\n" "$key" "$value"; done < "$ACT/certification.txt"',
+            'while IFS="=" read -r key value; do printf "RET\\t%s\\t%s\\n" "$key" "$value"; done < "$ACT/fast-retention-result.txt"',
+            'printf "HASH\\tstage_receipt_sha256\\t%s\\n" "$(sha256sum "$ACT/stage-receipt.json" | cut -d" " -f1)"',
+            'printf "HASH\\tmanifest_sha256\\t%s\\n" "$(sha256sum "$ACT/release-manifest.json" | cut -d" " -f1)"',
+            'printf "HASH\\tgate_sha256\\t%s\\n" "$(sha256sum "$ACT/gate-receipt.json" | cut -d" " -f1)"',
+            'cd "$PROD"',
+            'printf "LIVE\\tsource_sha\\t%s\\n" "$(git rev-parse HEAD)"',
+            'printf "LIVE\\tdirty_count\\t%s\\n" "$(git status --porcelain --untracked-files=all | wc -l | tr -d " ")"',
+            f'printf "LIVE\\tservice\\t%s\\n" "$(systemctl is-active {shlex.quote(SERVICE)} 2>/dev/null || true)"',
+            'printf "LIVE\\tactive_build_id\\t%s\\n" "$(cat .next/BUILD_ID 2>/dev/null || true)"',
+            'printf "LIVE\\tbuild_version_file\\t%s\\n" "$(tr -d "\\r\\n" < .aoe2war-build-version 2>/dev/null || true)"',
+            'printf "LIVE\\tstaged_build_id\\t%s\\n" "$(cat .next-release/BUILD_ID 2>/dev/null || true)"',
+            'staged_modules=0; test -d .node_modules-release && staged_modules=1; printf "LIVE\\tstaged_modules\\t%s\\n" "$staged_modules"',
+            'internal="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version 2>/dev/null || true)"',
+            'public="$(curl -fsS --max-time 10 ' + shlex.quote(PUBLIC.rstrip("/") + "/api/deployment-version") + ' 2>/dev/null || true)"',
+            'python3 - "$internal" "$public" <<\'PY\'\nimport json, sys\nfor label, raw in (("internal", sys.argv[1]), ("public", sys.argv[2])):\n    try:\n        value = str(json.loads(raw).get("buildVersion") or "")\n    except Exception:\n        value = ""\n    print("LIVE\\t%s_build_version\\t%s" % (label, value))\nPY',
+            'printf "LIVE\\twolo8092\\t%s\\n" "$(ss -ltn 2>/dev/null | grep -Ec ":8092[[:space:]]" || true)"',
+            'printf "LIVE\\twolo8093\\t%s\\n" "$(ss -ltn 2>/dev/null | grep -Ec ":8093[[:space:]]" || true)"',
+            'fast="$(sed -n "s/^fast_rollback=//p" "$ACT/certification.txt")"',
+            'fast_modules="$(sed -n "s/^fast_rollback_modules=//p" "$ACT/certification.txt")"',
+            'durable="$(sed -n "s/^durable_rollback=//p" "$ACT/certification.txt")"',
+            'test -n "$fast" && test -d "$fast"',
+            'test -n "$fast_modules" && test -d "$fast_modules"',
+            'test -n "$durable" && test -d "$durable"',
+        ]
+    )
+
+    deadline = time.monotonic() + ACTIVATION_TIMEOUT_RECOVERY_SECONDS
+    last_detail = "durable certification evidence not visible yet"
+
+    while True:
+        try:
+            p = run(
+                [
+                    "ssh",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "ConnectTimeout=8",
+                    PROD_HOST,
+                    f"bash -lc {shlex.quote(probe)}",
+                ],
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            p = None
+            last_detail = "recovery probe transport timed out"
+
+        if p is not None and p.returncode == 0:
+            groups = _parse_recovery_probe(p.stdout or "")
+            cert = groups["CERT"]
+            ret = groups["RET"]
+            live = groups["LIVE"]
+            hashes = groups["HASH"]
+
+            expected_cert = {
+                "status": "CERTIFIED",
+                "release_sha": str(receipt.get("release_sha") or ""),
+                "previous_production_sha": str(receipt.get("previous_production_sha") or ""),
+                "source_sha": str(receipt.get("release_sha") or ""),
+                "old_build_id": str(receipt.get("active_build_id") or ""),
+                "active_build_id": str(receipt.get("staged_build_id") or ""),
+                "candidate_build_version": str(receipt.get("candidate_build_version") or ""),
+                "artifact_sha256": str(receipt.get("artifact_sha256") or ""),
+                "candidate_node_modules_sha256": str(receipt.get("candidate_node_modules_sha256") or ""),
+                "stage_receipt_sha256": stage_receipt_sha,
+                "manifest_sha256": manifest_sha,
+                "gate_sha256": gate_sha,
+                "wolo8092": str(receipt.get("wolo_8092_count")),
+                "wolo8093": str(receipt.get("wolo_8093_count")),
+                "durable_cache_free": "1",
+                "activation_bundle_while_stopped": "1",
+            }
+            expected_live = {
+                "source_sha": str(receipt.get("release_sha") or ""),
+                "dirty_count": "0",
+                "service": "active",
+                "active_build_id": str(receipt.get("staged_build_id") or ""),
+                "build_version_file": str(receipt.get("candidate_build_version") or ""),
+                "staged_build_id": "",
+                "staged_modules": "0",
+                "internal_build_version": str(receipt.get("candidate_build_version") or ""),
+                "public_build_version": str(receipt.get("candidate_build_version") or ""),
+                "wolo8092": str(receipt.get("wolo_8092_count")),
+                "wolo8093": str(receipt.get("wolo_8093_count")),
+            }
+            expected_hashes = {
+                "stage_receipt_sha256": stage_receipt_sha,
+                "manifest_sha256": manifest_sha,
+                "gate_sha256": gate_sha,
+            }
+
+            mismatches = []
+            for label, actual, expected in (
+                ("cert", cert, expected_cert),
+                ("live", live, expected_live),
+                ("hash", hashes, expected_hashes),
+            ):
+                mismatches.extend(
+                    f"{label}.{key}: expected {value!r}, got {actual.get(key)!r}"
+                    for key, value in expected.items()
+                    if actual.get(key) != value
+                )
+
+            if ret.get("status") not in {"PASS", "WARN"}:
+                mismatches.append(f"ret.status: expected PASS/WARN, got {ret.get('status')!r}")
+            if ret.get("keep") != str(FAST_ROLLBACK_KEEP):
+                mismatches.append(f"ret.keep: expected {FAST_ROLLBACK_KEEP!r}, got {ret.get('keep')!r}")
+            for key, expected in (
+                ("source_sha", str(receipt.get("release_sha") or "")),
+                ("active_build_id", str(receipt.get("staged_build_id") or "")),
+                ("wolo8092", str(receipt.get("wolo_8092_count"))),
+                ("wolo8093", str(receipt.get("wolo_8093_count"))),
+            ):
+                if ret.get(key) != expected:
+                    mismatches.append(f"ret.{key}: expected {expected!r}, got {ret.get(key)!r}")
+
+            try:
+                soak_samples = int(cert.get("soak_samples") or "0")
+            except ValueError:
+                soak_samples = 0
+            if soak_samples < 1:
+                mismatches.append("cert.soak_samples: no completed soak samples")
+            if cert.get("soak_seconds") != str(ACTIVATION_SOAK_SECONDS):
+                mismatches.append("cert.soak_seconds: policy duration does not match")
+
+            if mismatches:
+                raise ShipError(
+                    "Durable activation evidence appeared after transport timeout but does not exactly match the staged release: "
+                    + "; ".join(mismatches)
+                )
+
+            result = {
+                "status": cert["status"],
+                "release_sha": cert["release_sha"],
+                "source_sha": cert["source_sha"],
+                "previous_build_id": cert["old_build_id"],
+                "active_build_id": cert["active_build_id"],
+                "candidate_build_version": cert["candidate_build_version"],
+                "artifact_sha256": cert["artifact_sha256"],
+                "candidate_node_modules_sha256": cert["candidate_node_modules_sha256"],
+                "previous_node_modules_sha256": cert["previous_node_modules_sha256"],
+                "content_sha256": cert.get("content_sha256", ""),
+                "wolo8092": cert["wolo8092"],
+                "wolo8093": cert["wolo8093"],
+                "soak_seconds": cert["soak_seconds"],
+                "soak_samples": cert["soak_samples"],
+                "retention_status": ret["status"],
+                "retention_keep": ret["keep"],
+                "retention_pruned": ret.get("pruned", "0"),
+                "retention_reclaimed_kb": ret.get("reclaimed_kb", "0"),
+                "retention_unmatched_kept": ret.get("unmatched_kept", "0"),
+                "fast_rollback": cert["fast_rollback"],
+                "fast_rollback_modules": cert["fast_rollback_modules"],
+                "durable_rollback": cert["durable_rollback"],
+                "durable_cache_free": cert["durable_cache_free"],
+                "activation_bundle_while_stopped": cert["activation_bundle_while_stopped"],
+                "receipt_dir": receipt_dir,
+            }
+            return result, "recovered from durable CERTIFIED evidence"
+
+        if p is not None:
+            detail = ((p.stderr or "") or (p.stdout or "")).strip()
+            if detail:
+                last_detail = detail[-2000:]
+            elif p.returncode == 44:
+                last_detail = "remote activation has not published final evidence yet"
+            else:
+                last_detail = f"recovery probe exited {p.returncode}"
+
+        if time.monotonic() >= deadline:
+            return None, last_detail
+
+        time.sleep(ACTIVATION_TIMEOUT_RECOVERY_INTERVAL_SECONDS)
+
+def activate_release(
+    data: dict,
+    *,
+    stage_receipt: str,
+    dry_run: bool,
+    json_output: bool = False,
+    remote_runner=None,
+    signed_capability=None,
+) -> int:
+    try:
+        (
+            receipt_path,
+            receipt,
+            receipt_sha,
+            manifest_path,
+            manifest,
+            manifest_sha,
+            gate_path,
+            gate_sha,
+        ) = load_stage_receipt(stage_receipt)
+    except ShipError as exc:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}")
+        return 2
+
+    try:
+        verify_production_migration_receipt(manifest)
+    except ShipError as exc:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}")
+        return 2
+
+    transport, transport_error = production_transport()
+    if transport_error:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": transport_error}, indent=2))
+        else:
+            print(f"STOP: production Git transport inspection failed: {transport_error}")
+        return 2
+
+    errors = activation_validation_errors(data, receipt, transport)
+    if errors:
+        payload = {
+            "schema": 1,
+            "kind": "aoe2war-activation-preflight",
+            "status": "BLOCKED",
+            "release_sha": receipt["release_sha"],
+            "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+            "errors": errors,
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: RECEIPT-DRIVEN ACTIVATION PREFLIGHT BLOCKED")
+            for error in errors:
+                print(f"  - {error}")
+        return 2
+
+    # Genuine separate solo-owner signature and HEL1 root nonce witness,
+    # under the SAME original physical release lease. No old permit reuse.
+    try:
+        from aoe2_solo_website_phase_authority import require_phase_capability
+        require_phase_capability("PRE_ACTIVATE", signed_capability, remote_runner,
+            manifest=manifest, manifest_sha=manifest_sha, gate_sha=gate_sha,
+            active_build_id=str(data["production"].get("active_build_id") or ""),
+            stage_receipt=receipt, stage_sha=receipt_sha, dry_run=dry_run)
+    except Exception as exc:
+        payload = {"schema": 1, "kind": "aoe2war-activation-admission",
+                   "status": "HOLD", "production_mutated": False,
+                   "reason": str(exc)}
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: independently signed PRE_ACTIVATE admission: " + str(exc))
+        return 2
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    release_short = receipt["release_sha"][:12]
+    receipt_dir = f"{REMOTE_RECEIPT_ROOT}/activate-{stamp}-{release_short}"
+    rollback_dir = f"{ROLLBACK_ROOT}/activate-{stamp}-{release_short}"
+    script = remote_activation_script(
+        receipt,
+        stage_receipt_sha=receipt_sha,
+        stage_receipt_text=receipt_path.read_text(encoding="utf-8"),
+        dry_run=dry_run,
+        receipt_dir=receipt_dir,
+        rollback_dir=rollback_dir,
+    )
+    transport_recovered_after_timeout = False
+    activation_started_at = utc_now()
+    activation_started_monotonic = time.monotonic()
+    try:
+        if remote_runner is None:
+            raise ShipError("solo activation requires same held SSH lease")
+        p = remote_runner(script, timeout=180 if dry_run else 900)
+    except subprocess.TimeoutExpired as exc:
+        if dry_run:
+            message = f"activation dry-run transport timed out: {exc}"
+            if json_output:
+                print(json.dumps({"status": "ERROR", "error": message}, indent=2))
+            else:
+                print(f"STOP: {message}")
+            return 2
+
+        try:
+            result, recovery_detail = recover_certified_activation_result(
+                receipt,
+                receipt_dir=receipt_dir,
+                stage_receipt_sha=receipt_sha,
+                manifest_sha=manifest_sha,
+                gate_sha=gate_sha,
+            )
+        except ShipError as recovery_error:
+            if json_output:
+                print(json.dumps({
+                    "status": "REMOTE_STATE_UNKNOWN",
+                    "release_sha": receipt["release_sha"],
+                    "remote_receipt_dir": receipt_dir,
+                    "error": str(recovery_error),
+                }, indent=2, sort_keys=True))
+            else:
+                print("STOP: ACTIVATION TRANSPORT TIMED OUT; EVIDENCE CONFLICT")
+                print(f"Release: {receipt['release_sha']}")
+                print(f"Remote receipt: {receipt_dir}")
+                print(str(recovery_error))
+                print("Do not retry activation automatically.")
+            return 2
+
+        if result is None:
+            payload = {
+                "schema": 1,
+                "kind": "aoe2war-activation-result",
+                "status": "REMOTE_STATE_UNKNOWN",
+                "release_sha": receipt["release_sha"],
+                "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+                "remote_receipt_dir": receipt_dir,
+                "error": (
+                    "activation transport timed out and no exact durable "
+                    f"CERTIFIED result became provable: {recovery_detail}"
+                ),
+            }
+            if json_output:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("STOP: ACTIVATION TRANSPORT TIMED OUT — REMOTE STATE UNKNOWN")
+                print(f"Release: {receipt['release_sha']}")
+                print(f"Remote receipt: {receipt_dir}")
+                print(recovery_detail)
+                print(
+                    "Do not restage, remigrate, or retry activation blindly. "
+                    "Inspect durable activation/rollback evidence first."
+                )
+            return 2
+
+        transport_recovered_after_timeout = True
+    else:
+        if p.returncode != 0:
+            message = (p.stderr or "").strip() or f"ssh exited {p.returncode}"
+            payload = {
+                "schema": 1,
+                "kind": "aoe2war-activation-result",
+                "status": "ERROR",
+                "release_sha": receipt["release_sha"],
+                "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+                "remote_receipt_dir": receipt_dir,
+                "error": message,
+                "remote_stdout": (p.stdout or "").strip(),
+            }
+            if json_output:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("STOP: RECEIPT-DRIVEN ACTIVATION FAILED")
+                print(f"Release: {receipt['release_sha']}")
+                print(f"Receipt: {receipt_dir}")
+                if p.stdout:
+                    print(p.stdout.rstrip())
+                if message:
+                    print(message)
+                print(
+                    "Remote activation trap was armed before runtime mutation; "
+                    "inspect rollback-status.txt if mutation began."
+                )
+            return 2
+
+        result = parse_kv(p.stdout or "")
+    activation_completed_at = utc_now()
+    activation_duration_seconds = round(
+        time.monotonic() - activation_started_monotonic,
+        3,
+    )
+    if dry_run:
+        expected = {
+            "status": "PREPARED",
+            "release_sha": receipt["release_sha"],
+            "source_sha": receipt["previous_production_sha"],
+            "active_build_id": receipt["active_build_id"],
+            "staged_build_id": receipt["staged_build_id"],
+            "live_build_version": receipt["live_build_version"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "wolo8092": str(receipt["wolo_8092_count"]),
+            "wolo8093": str(receipt["wolo_8093_count"]),
+        }
+        mismatches = [
+            f"{key}: expected {value!r}, got {result.get(key)!r}"
+            for key, value in expected.items()
+            if result.get(key) != value
+        ]
+        if mismatches:
+            if json_output:
+                print(json.dumps({"status": "BLOCKED", "errors": mismatches}, indent=2))
+            else:
+                print("STOP: ACTIVATION DRY-RUN RESULT DRIFT")
+                for mismatch in mismatches:
+                    print(f"  - {mismatch}")
+            return 2
+        payload = {
+            "schema": 1,
+            "kind": "aoe2war-activation-preflight",
+            "status": "PASS",
+            "mode": "DRY_RUN",
+            "release_sha": receipt["release_sha"],
+            "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+            "stage_receipt_sha256": receipt_sha,
+            "manifest_path": str(manifest_path.relative_to(ROOT)),
+            "manifest_sha256": manifest_sha,
+            "gate_path": str(gate_path.relative_to(ROOT)),
+            "gate_sha256": gate_sha,
+            "artifact_sha256": receipt["artifact_sha256"],
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("⚔️  AOE2WAR PHASE IV-B ACTIVATION PREFLIGHT")
+            print(f"Release:        {receipt['release_sha']}")
+            print(f"Previous prod:  {receipt['previous_production_sha']}")
+            print(f"Active build:   {receipt['active_build_id']}")
+            print(f"Staged build:   {receipt['staged_build_id']}")
+            print(f"Live version:   {receipt['live_build_version']}")
+            print(f"Candidate ver:  {receipt['candidate_build_version']}")
+            print(f"Artifact SHA:   {receipt['artifact_sha256']}")
+            print(f"Manifest SHA:   {manifest_sha}")
+            print(f"Gate SHA:       {gate_sha}")
+            print(
+                "WOLO:           "
+                f"8092={receipt['wolo_8092_count']}  "
+                f"8093={receipt['wolo_8093_count']}  UNTOUCHED"
+            )
+            print()
+            print("PASS: ACTIVATION PREFLIGHT — ZERO PRODUCTION MUTATION")
+        return 0
+
+    result_errors = validate_activation_result(result, receipt)
+    if result_errors:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "errors": result_errors, "remote": result}, indent=2, sort_keys=True))
+        else:
+            print("STOP: ACTIVATION COMPLETED REMOTELY BUT RESULT VALIDATION FAILED")
+            for error in result_errors:
+                print(f"  - {error}")
+            print(f"Remote receipt: {receipt_dir}")
+        return 2
+
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-activation-result",
+        "generated_at": utc_now(),
+        "started_at": activation_started_at,
+        "completed_at": activation_completed_at,
+        "duration_seconds": activation_duration_seconds,
+        "status": "CERTIFIED",
+        "release_sha": receipt["release_sha"],
+        "implementation_sha": receipt.get("implementation_sha"),
+        "previous_production_sha": receipt["previous_production_sha"],
+        "risk_class": receipt.get("risk_class"),
+        "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+        "stage_receipt_sha256": receipt_sha,
+        "manifest_path": str(manifest_path.relative_to(ROOT)),
+        "manifest_sha256": manifest_sha,
+        "gate_path": str(gate_path.relative_to(ROOT)),
+        "gate_sha256": gate_sha,
+        "previous_build_id": result["previous_build_id"],
+        "active_build_id": result["active_build_id"],
+        "candidate_build_version": result["candidate_build_version"],
+        "artifact_sha256": result["artifact_sha256"],
+        "candidate_node_modules_sha256": result[
+            "candidate_node_modules_sha256"
+        ],
+        "previous_node_modules_sha256": result[
+            "previous_node_modules_sha256"
+        ],
+        "durable_cache_free": True,
+        "activation_bundle_while_stopped": True,
+        "wolo_8092_count": int(result["wolo8092"]),
+        "wolo_8093_count": int(result["wolo8093"]),
+        "soak_seconds": int(result["soak_seconds"]),
+        "soak_samples": int(result["soak_samples"]),
+        "fast_rollback_retention_status": result["retention_status"],
+        "fast_rollback_keep": int(result["retention_keep"]),
+        "fast_rollback_pruned": int(result["retention_pruned"]),
+        "fast_rollback_reclaimed_kb": int(result["retention_reclaimed_kb"]),
+        "fast_rollback_unmatched_kept": int(result["retention_unmatched_kept"]),
+        "remote_receipt_dir": result["receipt_dir"],
+        "fast_rollback": result["fast_rollback"],
+        "fast_rollback_modules": result["fast_rollback_modules"],
+        "durable_rollback": result["durable_rollback"],
+        "release_specific_proof": (
+            "INFRASTRUCTURE exact runtime/build identity, internal/public deployment-version probes, protected Wolo listener continuity, and bounded identity-only post-activation health soak; dynamic route proof deferred"
+        ),
+        "wolo_mutated": False,
+        "transport_recovered_after_timeout": transport_recovered_after_timeout,
+    }
+    local_receipt = write_activation_receipt(payload)
+    payload["local_receipt_path"] = str(local_receipt.relative_to(ROOT))
+    payload["local_receipt_sha256"] = sha256_file(local_receipt)
+    if json_output:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    print("⚔️  AOE2WAR RELEASE ACTIVATED + CERTIFIED")
+    print(f"Release:        {payload['release_sha']}")
+    print(f"Previous build: {payload['previous_build_id']}")
+    print(f"Active build:   {payload['active_build_id']}")
+    print(f"Candidate ver:  {payload['candidate_build_version']}")
+    print(f"Artifact SHA:   {payload['artifact_sha256']}")
+    print(
+        "Health soak:    "
+        f"{payload['soak_seconds']}s / {payload['soak_samples']} samples  PASS"
+    )
+    print(
+        "Fast retention: "
+        f"{payload['fast_rollback_retention_status']}  "
+        f"keep={payload['fast_rollback_keep']}  "
+        f"pruned={payload['fast_rollback_pruned']}  "
+        f"reclaimed={payload['fast_rollback_reclaimed_kb']}KB  "
+        f"unmatched-kept={payload['fast_rollback_unmatched_kept']}"
+    )
+    print(
+        "WOLO:           "
+        f"8092={payload['wolo_8092_count']}  "
+        f"8093={payload['wolo_8093_count']}  UNTOUCHED"
+    )
+    print(f"Fast rollback:  {payload['fast_rollback']}")
+    print(f"Durable rollback: {payload['durable_rollback']}")
+    print(f"Remote receipt: {payload['remote_receipt_dir']}")
+    print(f"Local receipt:  {payload['local_receipt_path']}")
+    if payload["transport_recovered_after_timeout"]:
+        print("Transport:      SSH timeout recovered from exact durable CERTIFIED evidence")
+    print()
+    print("PASS: RELEASE ACTIVATED + CERTIFIED — WOLO UNTOUCHED")
+    return 0
+
+def ship_release(
+    data: dict,
+    *,
+    dry_run: bool,
+    json_output: bool = False,
+) -> int:
+    if not dry_run:
+        message = (
+            "Phase III currently implements ship --dry-run only. "
+            "No production mutation was performed."
+        )
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": message}, indent=2))
+        else:
+            print(f"STOP: {message}")
+        return 2
+
+    release_sha = data["local"].get("head")
+    if not release_sha:
+        print("STOP: local HEAD is unavailable.")
+        return 2
+
+    try:
+        manifest_path, manifest, manifest_sha = load_manifest(release_sha)
+        gate_path, gate_sha = gate_integrity(manifest)
+    except ShipError as exc:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}")
+        return 2
+
+    transport, transport_error = production_transport()
+    if transport_error:
+        if json_output:
+            print(
+                json.dumps(
+                    {"status": "ERROR", "error": transport_error},
+                    indent=2,
+                )
+            )
+        else:
+            print(f"STOP: production Git transport inspection failed: {transport_error}")
+        return 2
+
+    errors = validation_errors(data, manifest, transport)
+    if errors:
+        payload = {
+            "schema": 1,
+            "kind": "aoe2war-ship-preflight",
+            "status": "BLOCKED",
+            "errors": errors,
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: SHIP DRY-RUN PREFLIGHT BLOCKED")
+            for error in errors:
+                print(f"  - {error}")
+        return 2
+
+    # A seal verifies the *source delta*, not the database's real applied
+    # frontier. Read it independently before advertising a green deployment
+    # plan; historically pending migrations must not disappear from view.
+    frontier = None
+    if manifest.get("migration_paths"):
+        from aoe2_release_migration_frontier import (
+            MigrationFrontierError,
+            inspect_release_frontier,
+        )
+        from aoe2_release_auto import AutoShipError, migration_contract
+
+        frontier_errors = []
+        try:
+            frontier = inspect_release_frontier(
+                ROOT, manifest, PROD_HOST, PROD_REPO
+            )
+            frontier_errors.extend(frontier["errors"])
+        except MigrationFrontierError as exc:
+            frontier_errors.append(str(exc))
+
+        # Independent SQL allowlist: the read-only DB comparison cannot
+        # authorize non-additive functions, financial writes, or exceptions.
+        try:
+            _contract, names = migration_contract(release_sha)
+            declared = {
+                str(p).split("/")[-2]
+                for p in manifest["migration_paths"]
+            }
+            if set(names) != declared:
+                frontier_errors.append(
+                    "SQL migration contract does not match sealed manifest"
+                )
+        except AutoShipError as exc:
+            frontier_errors.append("SQL migration contract HOLD: " + str(exc))
+
+        if frontier_errors:
+            payload = {
+                "schema": 1,
+                "kind": "aoe2war-ship-migration-frontier",
+                "status": "BLOCKED",
+                "errors": frontier_errors,
+                "frontier": frontier,
+                "production_mutated": False,
+            }
+            if json_output:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("STOP: SHIP DRY-RUN MIGRATION FRONTIER BLOCKED")
+                if frontier:
+                    print(
+                        "Source/DB/Pending: "
+                        f"{frontier['source_count']}/"
+                        f"{frontier['completed_count']}/"
+                        f"{len(frontier['pending'])}"
+                    )
+                for error in frontier_errors:
+                    print("  - " + error)
+                print("No migrations were applied.")
+            return 2
+
+    plan = build_plan(
+        data,
+        manifest,
+        manifest_sha,
+        gate_path,
+        gate_sha,
+    )
+    if frontier is not None:
+        plan["migration_frontier"] = frontier
+    plan_path = write_plan(plan)
+    payload = {
+        **plan,
+        "status": "PASS",
+        "manifest_path": str(manifest_path.relative_to(ROOT)),
+        "plan_path": str(plan_path.relative_to(ROOT)),
+        "plan_sha256": sha256_file(plan_path),
+    }
+
+    if json_output:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    print("⚔️  AOE2WAR SHIP DRY RUN")
+    print(f"Release:        {plan['release_sha']}")
+    print(f"Implementation: {plan['implementation_sha']}")
+    print(f"Previous prod:  {plan['previous_production_sha']}")
+    print(f"Risk:           {plan['risk_class']}")
+    print(f"Migrations:     {len(plan['migration_paths'])}")
+    print(f"Manifest SHA:   {plan['manifest_sha256']}")
+    print(f"Gate SHA:       {plan['gate_receipt_sha256']}")
+    print(f"Origin:         {transport.get('origin')}")
+    print(f"Protocol:       {transport.get('protocol')}")
+    print(f"Remote main:    {transport.get('remote_main')}")
+    print(f"Plan:           {payload['plan_path']}")
+    print(f"Plan SHA256:    {payload['plan_sha256']}")
+    print()
+    for index, step in enumerate(plan["steps"], start=1):
+        print(f"{index:02d}. {step['phase'].upper()}: {step['action']}")
+        if step.get("command"):
+            print(f"    $ {step['command']}")
+    print()
+    print("PASS: SHIP DRY RUN — ZERO PRODUCTION MUTATION")
+
+    return 0
