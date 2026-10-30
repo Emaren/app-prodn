@@ -9,7 +9,7 @@ permissions:
   contents: write
 jobs:
   refresh:
-    name: Source-frozen 105-doc generator and strict check
+    name: Source-frozen canonical post-W1 DocsV2 generator
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,13 +34,13 @@ jobs:
           p=Path('docs/document-registry.json')
           r=json.loads(p.read_text())
           docs=r['documents']
-          assert len(docs)==105, f"document count drift: {len(docs)}"
+          assert len(docs)==102, f"document count drift: {len(docs)}"
           named={x['path'] for x in docs}
           assert {'docs/STORAGE_OS.md','docs/OPERATOR_START_HERE.md'}.issubset(named)
           source=Path('app/admin/storage-transfer/page.tsx').read_text()
           assert 'TransferMissionPanels' in source
           assert 'transferReceipt: null' in Path('app/api/admin/storage-transfer/route.ts').read_text()
-          print('PASS: 105 canonical docs and signed-receipt HOLD, baseline',r['implementation_baseline'])
+          print('PASS: 102 canonical post-W1 docs and signed-receipt HOLD, baseline',r['implementation_baseline'])
           PY
           actual="$(git diff --name-only | sort)"
           expected="$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
@@ -48,7 +48,7 @@ jobs:
             printf 'HOLD: unexpected generated paths:\n%s\n' "$actual"; exit 1
           fi
           git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
-          git commit -m "docs(storage-transfer): seal exact G Phase-1 visual source against 105-document registry"
+          git commit -m "docs(storage-transfer): seal exact G Phase-1 visual source against 102-document post-W1 registry"
           python3 scripts/docs_v2_check.py
           git diff --exit-code
           git push origin HEAD:review/g-operation-storage-transfer-visual-20261030
