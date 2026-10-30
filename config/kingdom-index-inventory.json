@@ -8,16 +8,22 @@
   },
   "policy": "Canonical entrypoint inventory only. Path scopes are classification hints, not authenticated access tests. Dynamic route patterns require separately governed fixtures; APIs require separate domain-owner assignments. No score, dependency completeness, authorization or production certification follows from this file. Never serve detailed protected paths in a public Index response.",
   "counts": {
-    "pageTemplates": 151,
-    "adminTemplates": 33,
+    "pageTemplates": 152,
+    "adminTemplates": 34,
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
-    "routeHandlerTemplates": 282,
-    "apiHandlerTemplates": 279,
+    "routeHandlerTemplates": 283,
+    "apiHandlerTemplates": 280,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
+    {
+      "href": "/",
+      "entrypoint": "app/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
     {
       "href": "/about",
       "entrypoint": "app/about/page.tsx",
@@ -28,6 +34,12 @@
       "href": "/academy",
       "entrypoint": "app/academy/page.tsx",
       "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin",
+      "entrypoint": "app/admin/page.tsx",
+      "scope": "admin-path",
       "assurance": "unverified"
     },
     {
@@ -55,6 +67,12 @@
       "assurance": "unverified"
     },
     {
+      "href": "/admin/central-command",
+      "entrypoint": "app/admin/central-command/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
       "href": "/admin/central-command/job-board",
       "entrypoint": "app/admin/central-command/job-board/page.tsx",
       "scope": "admin-path",
@@ -63,12 +81,6 @@
     {
       "href": "/admin/central-command/lanes",
       "entrypoint": "app/admin/central-command/lanes/page.tsx",
-      "scope": "admin-path",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/admin/central-command",
-      "entrypoint": "app/admin/central-command/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -109,14 +121,14 @@
       "assurance": "unverified"
     },
     {
-      "href": "/admin/living-kingdom/[uid]",
-      "entrypoint": "app/admin/living-kingdom/[uid]/page.tsx",
+      "href": "/admin/living-kingdom",
+      "entrypoint": "app/admin/living-kingdom/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
     {
-      "href": "/admin/living-kingdom",
-      "entrypoint": "app/admin/living-kingdom/page.tsx",
+      "href": "/admin/living-kingdom/[uid]",
+      "entrypoint": "app/admin/living-kingdom/[uid]/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -151,12 +163,6 @@
       "assurance": "unverified"
     },
     {
-      "href": "/admin",
-      "entrypoint": "app/admin/page.tsx",
-      "scope": "admin-path",
-      "assurance": "unverified"
-    },
-    {
       "href": "/admin/parser-lab",
       "entrypoint": "app/admin/parser-lab/page.tsx",
       "scope": "admin-path",
@@ -177,6 +183,12 @@
     {
       "href": "/admin/storage-os",
       "entrypoint": "app/admin/storage-os/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/storage-transfer",
+      "entrypoint": "app/admin/storage-transfer/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -259,15 +271,15 @@
       "assurance": "unverified"
     },
     {
-      "href": "/bets/[marketId]",
-      "entrypoint": "app/bets/[marketId]/page.tsx",
-      "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
       "href": "/bets",
       "entrypoint": "app/bets/page.tsx",
       "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/bets/[marketId]",
+      "entrypoint": "app/bets/[marketId]/page.tsx",
+      "scope": "dynamic-template",
       "assurance": "unverified"
     },
     {
@@ -283,14 +295,20 @@
       "assurance": "unverified"
     },
     {
+      "href": "/challenge",
+      "entrypoint": "app/challenge/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
       "href": "/challenge/[id]",
       "entrypoint": "app/challenge/[id]/page.tsx",
       "scope": "dynamic-template",
       "assurance": "unverified"
     },
     {
-      "href": "/challenge",
-      "entrypoint": "app/challenge/page.tsx",
+      "href": "/champions",
+      "entrypoint": "app/champions/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -331,14 +349,14 @@
       "assurance": "unverified"
     },
     {
-      "href": "/champions",
-      "entrypoint": "app/champions/page.tsx",
+      "href": "/chaosium",
+      "entrypoint": "app/chaosium/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
     {
-      "href": "/chaosium",
-      "entrypoint": "app/chaosium/page.tsx",
+      "href": "/clans",
+      "entrypoint": "app/clans/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -346,12 +364,6 @@
       "href": "/clans/[slug]",
       "entrypoint": "app/clans/[slug]/page.tsx",
       "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/clans",
-      "entrypoint": "app/clans/page.tsx",
-      "scope": "public-index",
       "assurance": "unverified"
     },
     {
@@ -385,6 +397,12 @@
       "assurance": "unverified"
     },
     {
+      "href": "/game-stats",
+      "entrypoint": "app/game-stats/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
       "href": "/game-stats/[id]",
       "entrypoint": "app/game-stats/[id]/page.tsx",
       "scope": "dynamic-template",
@@ -403,12 +421,6 @@
       "assurance": "unverified"
     },
     {
-      "href": "/game-stats",
-      "entrypoint": "app/game-stats/page.tsx",
-      "scope": "public-index",
-      "assurance": "unverified"
-    },
-    {
       "href": "/general-inspections",
       "entrypoint": "app/general-inspections/page.tsx",
       "scope": "public-index",
@@ -417,6 +429,12 @@
     {
       "href": "/hd-replay-engine",
       "entrypoint": "app/hd-replay-engine/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom",
+      "entrypoint": "app/kingdom/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -493,8 +511,8 @@
       "assurance": "unverified"
     },
     {
-      "href": "/kingdom",
-      "entrypoint": "app/kingdom/page.tsx",
+      "href": "/leaderboard",
+      "entrypoint": "app/leaderboard/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -505,8 +523,8 @@
       "assurance": "unverified"
     },
     {
-      "href": "/leaderboard",
-      "entrypoint": "app/leaderboard/page.tsx",
+      "href": "/leagues",
+      "entrypoint": "app/leagues/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -514,12 +532,6 @@
       "href": "/leagues/[slug]",
       "entrypoint": "app/leagues/[slug]/page.tsx",
       "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/leagues",
-      "entrypoint": "app/leagues/page.tsx",
-      "scope": "public-index",
       "assurance": "unverified"
     },
     {
@@ -541,6 +553,12 @@
       "assurance": "unverified"
     },
     {
+      "href": "/market",
+      "entrypoint": "app/market/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
       "href": "/market/invoices/[publicId]",
       "entrypoint": "app/market/invoices/[publicId]/page.tsx",
       "scope": "dynamic-template",
@@ -550,12 +568,6 @@
       "href": "/market/kingdom/[slug]",
       "entrypoint": "app/market/kingdom/[slug]/page.tsx",
       "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/market",
-      "entrypoint": "app/market/page.tsx",
-      "scope": "public-index",
       "assurance": "unverified"
     },
     {
@@ -601,21 +613,15 @@
       "assurance": "unverified"
     },
     {
-      "href": "/oracle/[slug]",
-      "entrypoint": "app/oracle/[slug]/page.tsx",
-      "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
       "href": "/oracle",
       "entrypoint": "app/oracle/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
     {
-      "href": "/",
-      "entrypoint": "app/page.tsx",
-      "scope": "public-index",
+      "href": "/oracle/[slug]",
+      "entrypoint": "app/oracle/[slug]/page.tsx",
+      "scope": "dynamic-template",
       "assurance": "unverified"
     },
     {
@@ -631,6 +637,12 @@
       "assurance": "unverified"
     },
     {
+      "href": "/players",
+      "entrypoint": "app/players/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
       "href": "/players/[uid]",
       "entrypoint": "app/players/[uid]/page.tsx",
       "scope": "dynamic-template",
@@ -640,12 +652,6 @@
       "href": "/players/by-name/[name]",
       "entrypoint": "app/players/by-name/[name]/page.tsx",
       "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/players",
-      "entrypoint": "app/players/page.tsx",
-      "scope": "public-index",
       "assurance": "unverified"
     },
     {
@@ -663,6 +669,12 @@
     {
       "href": "/realm",
       "entrypoint": "app/realm/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/renaissance",
+      "entrypoint": "app/renaissance/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -711,12 +723,6 @@
     {
       "href": "/renaissance/marshal",
       "entrypoint": "app/renaissance/marshal/page.tsx",
-      "scope": "public-index",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/renaissance",
-      "entrypoint": "app/renaissance/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -817,15 +823,15 @@
       "assurance": "unverified"
     },
     {
-      "href": "/tournaments/[slug]",
-      "entrypoint": "app/tournaments/[slug]/page.tsx",
-      "scope": "dynamic-template",
-      "assurance": "unverified"
-    },
-    {
       "href": "/tournaments",
       "entrypoint": "app/tournaments/page.tsx",
       "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/tournaments/[slug]",
+      "entrypoint": "app/tournaments/[slug]/page.tsx",
+      "scope": "dynamic-template",
       "assurance": "unverified"
     },
     {
@@ -871,14 +877,20 @@
       "assurance": "unverified"
     },
     {
+      "href": "/watch",
+      "entrypoint": "app/watch/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
       "href": "/watch/[sessionKey]",
       "entrypoint": "app/watch/[sessionKey]/page.tsx",
       "scope": "dynamic-template",
       "assurance": "unverified"
     },
     {
-      "href": "/watch",
-      "entrypoint": "app/watch/page.tsx",
+      "href": "/wolo",
+      "entrypoint": "app/wolo/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -891,12 +903,6 @@
     {
       "href": "/wolo-machine",
       "entrypoint": "app/wolo-machine/page.tsx",
-      "scope": "public-index",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/wolo",
-      "entrypoint": "app/wolo/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
@@ -1252,6 +1258,11 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/admin/storage-transfer/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/admin/streams/retained-demo/route.ts",
       "scope": "api",
       "ownership": "unassigned"
@@ -1537,12 +1548,12 @@
       "ownership": "unassigned"
     },
     {
-      "entrypoint": "app/api/game-stats/live/route.ts",
+      "entrypoint": "app/api/game_stats/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
     {
-      "entrypoint": "app/api/game_stats/route.ts",
+      "entrypoint": "app/api/game-stats/live/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

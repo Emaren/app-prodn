@@ -21,11 +21,12 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(set(x["route"] for x in p["routes"])),88)
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
-        self.assertEqual(p["actual_templates"],151)
-        self.assertEqual(p["actual_handlers"],282)
+        self.assertEqual(p["actual_templates"],152)
+        self.assertEqual(p["actual_handlers"],283)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
+        self.assertNotIn("/admin/storage-transfer",[r["route"] for r in p["routes"]])
         self.assertIsNone(p["score"])
     def test_canonical_redirects_are_determined_from_source_not_guessed(self):
         rows={x["route"]:x for x in self.plan["routes"]}
