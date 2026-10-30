@@ -235,11 +235,16 @@ def verify_closed_graph(scope):
               {known_prewarm}),
           "frozen W1 public read/prewarm route omitted transitive settlement edge")
   declared=scope.get("read_side_effect_policy")
-  require(type(declared)is dict and
-          declared=={"GET":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
-                     "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
-                     "HEAD":"UNVERIFIED_NO_PROBE"},
+  require(type(declared)is dict and set(declared)==REQUIRED_ROUTES and
+          declared.get("GET")=="FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM" and
+          declared.get("PREWARM")=="FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
           "frozen W1 financial read route misclassified as inert")
+  # A HEAD probe that was never performed cannot authorize a website-only
+  # release. This claim still requires separately signed runtime/source proof.
+  require(declared.get("HEAD") in (
+          "FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
+          "INDEPENDENTLY_PROBED_NO_WRITER_EDGES"),
+          "unverified HEAD behavior remains release HOLD")
  targets=set(writers)
  for origin in changed:
   stack=[origin];seen=set()
