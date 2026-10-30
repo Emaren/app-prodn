@@ -1,0 +1,49 @@
+name: Q19 G one-shot DocsV2 baseline refresh
+on:
+  push:
+    branches:
+      - repair/g-docsv2-pr1008-20261030
+    paths:
+      - .github/workflows/g-q19-docsv2-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    name: Generate canonical DocsV2 on exact F implementation ancestry
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Retire temporary runner before establishing implementation baseline
+        run: |
+          git switch -C repair/g-docsv2-pr1008-20261030
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/g-q19-docsv2-refresh.yml
+          git commit -m "chore(Q19): retire one-shot DocsV2 generator"
+      - name: Run supported DocsV2 intentional implementation refresh
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
+          if [ "$actual" != "$expected" ]; then
+            printf 'HOLD: unexpected generated paths:\n%s\n' "$actual"
+            exit 1
+          fi
+          git diff --stat
+          grep '^Implementation baseline:' docs/DOCUMENTATION_CONTROL_PLANE.md
+          python3 -c 'import json; r=json.load(open("docs/document-registry.json")); print("DOCSV2_DOCUMENTS=",len(r["documents"]),"BASELINE=",r["implementation_baseline"])'
+      - name: Commit generated registry and index, then recheck canonical checker
+        run: |
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git commit -m "docs(Q19): refresh reviewed implementation baseline and registry"
+          python3 scripts/docs_v2_check.py
+          git diff --exit-code
+          git status --porcelain
+          git push origin HEAD:repair/g-docsv2-pr1008-20261030
