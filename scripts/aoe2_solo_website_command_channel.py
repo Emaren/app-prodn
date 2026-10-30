@@ -162,8 +162,21 @@ class LeaseRunner:
 def command_lease(path:Path,holder:str,*,host:str):
  # Same canonical path/holder contract as aoe2_release.remote_global_release_lease.
  command='python3 -u -c '+shlex.quote(REMOTE)+' '+shlex.quote(str(path))+' '+shlex.quote(holder)
- p=subprocess.Popen(['ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
-  '-o','ConnectTimeout=8',host,command],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+ from aoe2_solo_website_host_observer import (
+  CONFIG_ROOT,KNOWN_HOSTS,host_fingerprint,protected_file
+ )
+ host_fingerprint()
+ key=CONFIG_ROOT/'hel1-command-identity'
+ protected_file(key,private=True)
+ # Root-owned private key is intentionally inaccessible to Mac's user
+ # process; use cached explicit owner sudo authentication, no prompt.
+ p=subprocess.Popen(['/usr/bin/sudo','-n','/usr/bin/ssh',
+  '-T','-o','BatchMode=yes','-o','IdentitiesOnly=yes',
+  '-o','StrictHostKeyChecking=yes','-o','GlobalKnownHostsFile=/dev/null',
+  '-o','UserKnownHostsFile='+str(KNOWN_HOSTS),
+  '-o','HostKeyAlgorithms=ssh-ed25519','-o','ConnectTimeout=8',
+  '-i',str(key),host,command],
+  stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
  runner=LeaseRunner(p)
  try:
   require(runner.frame(15)=={'kind':'acquired'},'original production release flock busy/unavailable')
