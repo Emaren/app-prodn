@@ -13,6 +13,9 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import selectors
+import shlex
+import time
 
 HOST = "157.180.114.124"
 EXPECTED_HOST_FINGERPRINT = "SHA256:8L7ZF+xPA/YXe6uY1+yVPZFdY58JxYvHjC5S/U+I1Og"
@@ -74,9 +77,36 @@ def read_authenticated_hel1():
     protected_file(REMOTE_HASH)
     approved_digest = REMOTE_HASH.read_text().strip()
     check(bool(HEX64.fullmatch(approved_digest)), "bad approved collector digest")
-    # Pinned remote path, no user-controlled command interpolation or permits.
-    remote = ("sha256sum " + REMOTE_PROGRAM + " && " +
-              REMOTE_PROGRAM + " --read-only-json")
+    # One root-owned inode is opened, hash-verified, then executed from
+    # those SAME bytes; never hash path A then race to exec replaced path B.
+    remote_code = r"""
+import hashlib,os,pathlib,stat,sys
+p=pathlib.Path(sys.argv[1]);expected=sys.argv[2]
+if p.is_symlink() or any(q.is_symlink()for q in p.parents):
+ raise SystemExit(9)
+for q in (p,*p.parents):
+ st=q.stat()
+ if st.st_uid!=0 or st.st_mode & 0o022:raise SystemExit(9)
+fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+try:
+ st=os.fstat(fd)
+ if not stat.S_ISREG(st.st_mode)or not 0<st.st_size<=131072:
+  raise SystemExit(9)
+ b=b''
+ while True:
+  x=os.read(fd,8192)
+  if not x:break
+  b+=x
+  if len(b)>131072:raise SystemExit(9)
+ h=hashlib.sha256(b).hexdigest()
+ if h!=expected:raise SystemExit(9)
+ print(h+'  '+str(p),flush=True)
+ sys.argv=[str(p),'--read-only-json']
+ exec(compile(b,str(p),'exec'),{'__name__':'__main__','__file__':str(p)})
+finally:os.close(fd)
+"""
+    remote=("python3 -c "+shlex.quote(remote_code)+" "+
+            shlex.quote(REMOTE_PROGRAM)+" "+shlex.quote(approved_digest))
     cmd = ["/usr/bin/ssh", "-T", "-n", "-o", "BatchMode=yes",
            "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes",
            "-o", "GlobalKnownHostsFile=/dev/null",
@@ -84,20 +114,58 @@ def read_authenticated_hel1():
            "-o", "HostKeyAlgorithms=ssh-ed25519",
            "-o", "ConnectTimeout=8", "-i", str(SSH_IDENTITY),
            "root@" + HOST, remote]
+    # A bounded selector prevents a malicious/buggy SSH collector from
+    # growing output unboundedly before subprocess.run(timeout) returns.
     try:
-        result = subprocess.run(cmd, capture_output=True, timeout=20)
+        proc=subprocess.Popen(cmd,stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        output,errors=bytearray(),bytearray()
+        deadline=time.monotonic()+20
+        with selectors.DefaultSelector() as selector:
+            for pipe in (proc.stdout,proc.stderr):
+                os.set_blocking(pipe.fileno(),False)
+                selector.register(pipe,selectors.EVENT_READ)
+            while selector.get_map():
+                remaining=deadline-time.monotonic()
+                check(remaining>0,"HEL1 observer timed out")
+                events=selector.select(min(remaining,0.25))
+                for key,_ in events:
+                    block=os.read(key.fileobj.fileno(),8192)
+                    if not block:
+                        selector.unregister(key.fileobj)
+                        continue
+                    dest=output if key.fileobj is proc.stdout else errors
+                    limit=MAX_BYTES if dest is output else 8192
+                    check(len(dest)+len(block)<=limit,
+                          "HEL1 observer exceeded output bound")
+                    dest.extend(block)
+        check(proc.wait(timeout=max(0.1,deadline-time.monotonic()))==0,
+              "HEL1 observer returned nonzero")
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ObserverHold("HEL1_AUTHENTICATED_OBSERVER_HOLD: SSH unavailable") from exc
-    check(result.returncode == 0 and 0 < len(result.stdout) < MAX_BYTES,
-          "host observer failed or produced invalid output")
-    lines = result.stdout.splitlines()
+    finally:
+        if 'proc' in locals():
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+            for pipe in (proc.stdout,proc.stderr):
+                if pipe:pipe.close()
+    check(0<len(output)<MAX_BYTES,"invalid empty/large observer")
+    lines=bytes(output).splitlines()
     check(len(lines) == 2 and
           lines[0].decode("ascii", "replace").split(" ", 1)[0] ==
           approved_digest and
           lines[0].decode("ascii", "replace").split(" ", 1)[-1].strip() ==
           REMOTE_PROGRAM, "wrong installed host collector")
+    def unique(pairs):
+        result={}
+        for key,value in pairs:
+            check(key not in result,"duplicate host evidence property")
+            result[key]=value
+        return result
     try:
-        payload = json.loads(lines[1], parse_constant=lambda _: 1 / 0)
+        payload = json.loads(lines[1], object_pairs_hook=unique,
+                             parse_constant=lambda _: 1 / 0)
     except (ValueError, UnicodeError, TypeError, ZeroDivisionError) as exc:
         raise ObserverHold("HEL1_AUTHENTICATED_OBSERVER_HOLD: malformed host output") from exc
     check(type(payload) is dict and
