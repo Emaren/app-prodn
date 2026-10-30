@@ -11,6 +11,13 @@ const {createHash}=require("node:crypto");
 const {createRequire}=require("node:module");
 const NAMES=["Storage OS","Backup OS","Documents OS","General Inspections",
              "Kingdom Intelligence","Work Board","Navigation"];
+const PINNED_ROUTES={
+ "Storage OS":"/admin/storage-os",
+ "General Inspections":"/general-inspections",
+ "Kingdom Intelligence":"/kingdom-intelligence",
+ "Work Board":"/admin/central-command",
+ "Navigation":"/kingdom-index"
+};
 function hold(code){throw new Error("FINAL_CHROME_HOLD:"+code)}
 function args(argv){
  const allowed=new Set(["admin-state","nonadmin-state","surfaces","host-receipt",
@@ -44,6 +51,8 @@ function loadSurfaces(file){
   if(typeof item.path!=="string"||!/^\/(?!\/)[^\s?#]*$/.test(item.path)||
    typeof item.heading!=="string"||item.heading.length<3||
    typeof item.selector!=="string"||!item.selector.trim())hold("SURFACE_PATH_OR_SELECTOR_MISSING:"+item.name);
+  if(PINNED_ROUTES[item.name] && PINNED_ROUTES[item.name] !== item.path)
+   hold("CANONICAL_ROUTE_SUBSTITUTION:"+item.name);
  }
  return manifest.surfaces;
 }
@@ -89,7 +98,6 @@ async function main(){
    host.expected_build_id!==opts["expected-build-id"]||
    host.browser_acceptance!=="NOT_EXECUTED_BY_THIS_HOST_CHECK")
   hold("NATIVE_HOST_ACCEPTANCE_NOT_VERIFIED");
- if(!Array.isArray(["375","768","1440"]))hold("IMPOSSIBLE_VIEWPORTS");
  const pw=opts["pw-home"],chromium=require(path.join(pw,"node_modules/playwright-core")).chromium;
  const axe=require(path.join(pw,"node_modules/axe-core"));
  const out={schema:"aoe2war.g.production-chrome.v1",
@@ -161,6 +169,10 @@ async function main(){
      if(rec.axe_serious_or_critical.length)rec.diagnostics.push("SERIOUS_AXE_VIOLATION");
      if(rec.page_errors.length)rec.diagnostics.push("BROWSER_UNCAUGHT_ERROR");
      if(rec.blocked_mutations)rec.diagnostics.push("CLIENT_ATTEMPTED_MUTATION");
+     if(surface.name==="Navigation"){
+      const links=await page.locator('a[href^="/"]').count();
+      if(links<32)rec.diagnostics.push("NAVIGATION_32_ROUTE_ATLAS_NOT_OBSERVED");
+     }
     }catch(e){rec.diagnostics.push(("NAV_OR_SCAN_ERROR:"+String(e.message)).slice(0,250))}
     rec.verdict=rec.diagnostics.length?"HOLD":"PASS";
     out.surfaces.push(rec);
@@ -186,4 +198,21 @@ async function main(){
    evidence_path:opts.out,production_certified:false}));
  if(out.browser_status!=="PASS")process.exitCode=2;
 }
-main().catch(err=>{console.error("FINAL_CHROME_HOLD:"+String(err.message));process.exitCode=2});
+main().catch(err=>{
+ const code=String(err.message||err).replace(/[\r\n]/g," ").slice(0,240);
+ console.error("FINAL_CHROME_HOLD:"+code);
+ const at=process.argv.indexOf("--out");
+ const out=at>=0?process.argv[at+1]:null;
+ if(typeof out==="string"&&path.isAbsolute(out)){
+  try{
+   const fd=fs.openSync(out,fs.constants.O_WRONLY|fs.constants.O_CREAT|
+    fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,0o600);
+   try{fs.writeFileSync(fd,JSON.stringify({
+     schema:"aoe2war.g.production-chrome.v1",browser_status:"HOLD",
+     failure_codes:[code],genuine_browser:false,fixture:false,
+     production_certified:false,observed_at:new Date().toISOString()
+   },null,2)+"\n")}finally{fs.closeSync(fd)}
+  }catch{/* no clobbering any previous evidence */}
+ }
+ process.exitCode=2;
+});
