@@ -163,16 +163,27 @@ def verify_source_closure(report):
  return scope
 
 def rollback_finance_status(phase_result,before,after):
- """Web ROLLED_BACK is NOT a signed finance noninterference result."""
+ """A web ROLLED_BACK is not finance proof; verify native signed reports.
+
+ This helper MUST execute root-side after failure/UNKNOWN through a separately
+ bounded native auditor. The caller must never construct signed-looking input.
+ """
  require(type(phase_result)is dict and phase_result.get("status")=="ROLLED_BACK",
          "no verified website rollback")
- for label,record in (("before",before),("after",after)):
-  require(type(record)is dict and record.get("status")=="SIGNED_NATIVE_VERIFIED" and
-          all(sha(record.get(k)) for k in
-              ("producer_receipt_sha256","financial_exposure_sha256",
-               "writer_census_sha256")),
-          "rollback "+label+" financial state UNKNOWN")
- require(before["financial_exposure_sha256"]==after["financial_exposure_sha256"] and
-         before["writer_census_sha256"]==after["writer_census_sha256"],
-         "financial mutation during rollback")
+ from aoe2_solo_website_producer_receipts import verify_all
+ for label,report in (("before",before),("after",after)):
+  require(type(report)is dict and
+          report.get("status")=="INDEPENDENT_NATIVE_VERIFIED" and
+          type(report.get("finance"))is dict,
+          "rollback "+label+" native finance UNKNOWN")
+  # Validate all six machine/producer Ed25519 receipts, NOT just SHA strings.
+  verify_all(report)
+  verify_writer_census(report["finance"])
+ a,b=before["finance"],after["finance"]
+ require(a.get("protected")==b.get("protected") and
+         a.get("exposure")==b.get("exposure"),
+         "financial writers or balances/pending/liabilities changed during rollback")
+ require(before.get("candidate_sha")==after.get("candidate_sha") and
+         before.get("attempt_id")==after.get("attempt_id"),
+         "financial before/after evidence from different release attempts")
  return "ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED"
