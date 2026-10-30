@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "68116dc0d368c15ea28319d33f7feb0555e6447b59f71929f0ece26abc35796d",
+      "sha256": "5570e823801c0dc48ae7d1723f90abd626d02600a5f165fab8b04f702f615da4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/g-operation-storage-transfer-visual-20261030",
-    "commit": "b12ba35b4c42666410710f3b272f2c8159bc5f74"
+    "commit": "eb22e2b32680063595e15e06fe0991f779b4421e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
