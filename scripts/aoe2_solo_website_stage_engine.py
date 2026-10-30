@@ -117,10 +117,18 @@ def remote_stage_script(
     manifest_text: str = "",
     gate_text: str = "",
     watcher_version: str = "",
+    lease_guard: bool = False,
 ) -> str:
     q = shlex.quote
     build_unit_sha = sha256_file(BUILD_SANDBOX_UNIT_SOURCE)
     deps_unit_sha = sha256_file(DEPS_SANDBOX_UNIT_SOURCE)
+    guardian = ""
+    if lease_guard:
+        from aoe2_solo_website_command_channel import STAGE_GUARD
+        guardian = (
+            "python3 -c " + q(STAGE_GUARD)
+            + ' "$" "$build_instance" > "$RECEIPT/lease-guardian.pid"'
+        )
     return f"""
 set -Eeuo pipefail
 cd {q(PROD_REPO)}
@@ -559,6 +567,7 @@ install -d -m 0700 \
 
 deps_unit="aoe2war-deps@${{build_instance}}.service"
 build_unit="aoe2war-build@${{build_instance}}.service"
+{guardian}
 
 # Authorization probes only; execution is performed by the separate calls below.
 sudo -n -l /usr/bin/systemctl start --wait "$deps_unit" >/dev/null
@@ -1249,6 +1258,7 @@ def stage_release(
         manifest_text=manifest_path.read_text(encoding="utf-8"),
         gate_text=gate_path.read_text(encoding="utf-8"),
         watcher_version=watcher_version,
+        lease_guard=remote_runner is not None,
     )
 
     if not json_output:
