@@ -130,13 +130,27 @@ def load_trust(path=TRUST):
         pem=trusted_bytes(key_path,16384)
         output=subprocess.run(["/usr/bin/openssl","pkey","-pubin","-outform","DER"],
             input=pem,capture_output=True,timeout=10,check=False)
-        require(output.returncode==0 and sha(output.stdout)==entry["public_spki_sha256"],
-                "producer public key SPKI drift")
+        # RFC 8410 Ed25519 SubjectPublicKeyInfo: 12-byte DER prefix,
+        # followed by the exact 32-byte public key. No RSA/ECDSA aliases.
+        require(output.returncode==0 and
+                len(output.stdout)==44 and
+                output.stdout.startswith(bytes.fromhex("302a300506032b6570032100")) and
+                sha(output.stdout)==entry["public_spki_sha256"],
+                "producer must be real pinned Ed25519 SPKI")
         require(entry["public_spki_sha256"] not in identities,
                 "same signing key reused by different hosts")
         identities.add(entry["public_spki_sha256"])
-    domains=[item["failure_domain_id"] for item in data.values()]
-    require(len(domains)==len(set(domains)),"failure domains not independent")
+    # HEL1 root and its attached volume are the SAME failure domain,
+    # despite having independent signing keys. Don't invent physical
+    # independence from different mountpoint names.
+    require(data["hel1-root"]["failure_domain_id"]==
+            data["hel1-volume"]["failure_domain_id"],
+            "HEL1 root/volume must declare same physical host domain")
+    require(len({data["m1"]["failure_domain_id"],
+                 data["hel1-root"]["failure_domain_id"],
+                 data["intel"]["failure_domain_id"],
+                 data["restore-auditor"]["failure_domain_id"]})==4,
+            "source/Intel/independent restore failure domains not separate")
     return data
 
 def validate_envelope(envelope,trust,now=None):
