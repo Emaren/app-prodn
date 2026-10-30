@@ -127,7 +127,7 @@ def remote_stage_script(
         from aoe2_solo_website_command_channel import STAGE_GUARD
         guardian = (
             "python3 -c " + q(STAGE_GUARD)
-            + ' "$" "$build_instance" > "$RECEIPT/lease-guardian.pid"'
+            + ' "$$" "$build_instance" > "$RECEIPT/lease-guardian.pid"'
         )
     return f"""
 set -Eeuo pipefail
