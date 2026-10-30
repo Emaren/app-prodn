@@ -131,16 +131,33 @@ class BFinancialProofAdversarial(unittest.TestCase):
   self.assertTrue(verify_source_closure(r))
 
  def test_web_rollback_never_means_financial_rollback(self):
+  from unittest.mock import patch
   result={"status":"ROLLED_BACK"}
   with self.assertRaisesRegex(FinancialProofHold,"UNKNOWN"):
    rollback_finance_status(result,None,None)
-  before={"status":"SIGNED_NATIVE_VERIFIED","producer_receipt_sha256":D,
-          "financial_exposure_sha256":D,"writer_census_sha256":D}
-  after=copy.deepcopy(before);after["financial_exposure_sha256"]="e"*64
-  with self.assertRaises(FinancialProofHold):
-   rollback_finance_status(result,before,after)
-  self.assertEqual(rollback_finance_status(result,before,before),
-                   "ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED")
+  before={"status":"INDEPENDENT_NATIVE_VERIFIED",
+          "candidate_sha":"b"*40,"attempt_id":"c"*64,
+          "finance":finance()}
+  before["finance"]["exposure"]={"balances_sha256":D}
+  after=copy.deepcopy(before)
+  after["finance"]["exposure"]["balances_sha256"]="e"*64
+  with patch("aoe2_solo_website_producer_receipts.verify_all",
+             return_value=True) as signatures,patch(
+             "aoe2_solo_website_native_audit_adapter.verify_financial_identity",
+             return_value=True) as full_finance:
+   with self.assertRaisesRegex(FinancialProofHold,"changed during rollback"):
+    rollback_finance_status(result,before,after)
+   self.assertEqual(signatures.call_count,2)
+   self.assertEqual(full_finance.call_count,2)
+   after=copy.deepcopy(before)
+   self.assertEqual(rollback_finance_status(result,before,after),
+                    "ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED")
+   after["attempt_id"]="d"*64
+   with self.assertRaisesRegex(FinancialProofHold,"different release attempts"):
+    rollback_finance_status(result,before,after)
   with self.assertRaises(FinancialProofHold):
    rollback_finance_status({"status":"UNKNOWN"},before,before)
+  # Without native key enrollment a fabricated signed-looking report is NOT PASS.
+  with self.assertRaises((FinancialProofHold,ValueError,OSError)):
+   rollback_finance_status(result,before,before)
 if __name__=="__main__":unittest.main()
