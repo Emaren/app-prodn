@@ -197,6 +197,22 @@ class NativeTransferReceiptTests(unittest.TestCase):
         # Pure validation never treats receiver credential as source signature.
         with self.assertRaisesRegex(r.Hold,"unrecognized producer"):
             r.validate_envelope(self.sign(self.source(),host="intel"),self.trust,self.now)
+    def test_oversize_and_symlink_incoming_receipts_are_rejected_before_read(self):
+        with tempfile.TemporaryDirectory(prefix="aoe2-incoming-receipt-") as tmp:
+            directory=Path(tmp)
+            original=directory/"original.json"
+            original.write_bytes(b'{"schema":"test"}')
+            self.assertEqual(r.read_bounded_envelope(original),original.read_bytes())
+            linked=directory/"linked.json"
+            linked.symlink_to(original)
+            with self.assertRaisesRegex(r.Hold,"untrusted incoming envelope"):
+                r.read_bounded_envelope(linked)
+            too_big=directory/"oversize.json"
+            with too_big.open("wb") as out:
+                out.truncate(r.MAX_INPUT+1)
+            with self.assertRaisesRegex(r.Hold,"oversized"):
+                r.read_bounded_envelope(too_big)
+
     def test_duplicate_json_properties_and_nonfinite_are_denied(self):
         with self.assertRaisesRegex(r.Hold,"duplicate"):
             r.parse(b'{"schema":1,"schema":2}')
