@@ -9,7 +9,7 @@ from pathlib import Path
 STATE = Path("/var/lib/aoe2war-solo-website-v1")
 LOCK = Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 POLICY = "aoe2war.solo-owner.website.admission.v1"
-HEX64 = re.compile(r"[0-9a-f]{64}\\Z")
+HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 
 class Hold(RuntimeError): pass
 
