@@ -98,13 +98,16 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
         if host is not None and signed is None:
             signed = copy.deepcopy(self.signed)
             signed["payload"]["host_observation_sha256"] = M.digest(M.canonical(host))
-        with patch.object(M, "verify_owner_signature", return_value=None):
+        # Unit fixtures mock the PINNED host module at its narrow I/O boundary.
+        # Production callers cannot inject observations into verify_inputs.
+        with patch.object(M, "verify_owner_signature", return_value=None), \
+             patch.object(M, "read_authenticated_hel1",
+                          return_value=(self.host if host is None else host,
+                                        self.challenge if challenge is None else challenge)):
             return M.verify_inputs(
                 self.signed if signed is None else signed,
                 self.manifest_raw if manifest_raw is None else manifest_raw,
                 self.gate_raw if gate_raw is None else gate_raw,
-                lambda: (self.host if host is None else host,
-                         self.challenge if challenge is None else challenge),
                 previous_stage=previous_stage,
                 stage_receipt=stage_receipt, now=self.now)
 
@@ -165,9 +168,16 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
         self.expect_hold(signed=self.signed_with(candidate_sha=M.POST_W1))
 
     def test_missing_authenticated_host_reader(self):
-        with self.assertRaises(M.Hold):
+        with patch.object(M, "read_authenticated_hel1",
+                          side_effect=M.ObserverHold("PINNED_ROOT_SSH_UNAVAILABLE")):
+            with self.assertRaises(M.Hold):
+                M.verify_inputs(self.signed, self.manifest_raw, self.gate_raw,
+                                now=self.now)
+
+    def test_caller_cannot_supply_bogus_authenticated_host(self):
+        with self.assertRaises(TypeError):
             M.verify_inputs(self.signed, self.manifest_raw, self.gate_raw,
-                            None, now=self.now)
+                            lambda: (self.host, self.challenge), now=self.now)
 
     def test_live_capacity_below_88_hold(self):
         self.expect_hold(host=self.host_with(effective_used_pct=92.563))
