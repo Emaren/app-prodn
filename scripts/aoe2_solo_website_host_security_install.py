@@ -145,6 +145,7 @@ def sshd_policy(connection):
     need(settings.get("authorizedkeysfile")==".ssh/authorized_keys" and
          settings.get("authorizedkeyscommand")=="none" and
          settings.get("trustedusercakeys")=="none" and
+         settings.get("authorizedprincipalsfile","none")=="none" and
          settings.get("pubkeyauthentication")=="yes" and
          settings.get("permitrootlogin") in
             ("yes","prohibit-password","forced-commands-only"),
