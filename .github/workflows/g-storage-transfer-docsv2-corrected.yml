@@ -1,0 +1,46 @@
+name: G Storage Transfer corrected-source DocsV2 seal
+on:
+  push:
+    branches:
+      - review/g-operation-storage-transfer-visual-20261030
+    paths:
+      - .github/workflows/g-storage-transfer-docsv2-corrected.yml
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: Retire self before canonical source baseline
+        run: |
+          git switch -C review/g-operation-storage-transfer-visual-20261030
+          git merge-base --is-ancestor 1e5eae56f3434f2634ef7e59e070d67cc088babb HEAD
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/g-storage-transfer-docsv2-corrected.yml
+          git commit -m "chore(storage-transfer): retire corrected-source DocsV2 generator"
+      - name: Canonical source-bound DocsV2 and strict registry recheck
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git diff --check
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('docs/document-registry.json').read_text())
+          assert len(data['documents'])==102,"post-W1 docs count must reflect actual source"
+          source=Path('app/admin/storage-transfer/page.tsx').read_text()
+          assert 'TransferMissionPanels' in source
+          assert 'transferReceipt: null' in Path('app/api/admin/storage-transfer/route.ts').read_text()
+          print("DOCSV2_PASS",data["implementation_baseline"])
+          PY
+          actual="$(git diff --name-only | sort)"
+          expected="$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)"
+          if [ "$actual" != "$expected" ]; then echo "HOLD UNEXPECTED GENERATED PATHS"; printf '%s\n' "$actual"; exit 1; fi
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git commit -m "docs(storage-transfer): seal corrected Chrome/TypeScript source and 102-document registry"
+          python3 scripts/docs_v2_check.py
+          git diff --exit-code
+          git push origin HEAD:review/g-operation-storage-transfer-visual-20261030
