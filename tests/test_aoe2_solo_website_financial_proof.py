@@ -5,7 +5,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from aoe2_solo_website_financial_proof import (
  FinancialProofHold,REQUIRED_SERVICES,REQUIRED_TIMERS,REQUIRED_UNITS,
  REQUIRED_SURFACES,canonical,verify_writer_census,verify_source_closure,
- rollback_finance_status,verify_installed_source_review,W1_SHA,W1_PUBLIC_FINANCIAL_EDGES)
+ rollback_finance_status,verify_installed_source_review,W1_SHA,W1_PUBLIC_FINANCIAL_EDGES,verify_closed_graph)
 D="a"*64
 
 def unit(name):
@@ -213,6 +213,37 @@ class BFinancialProofAdversarial(unittest.TestCase):
   r["source_scope"]["candidate_sha"]=W1_SHA
   with self.assertRaisesRegex(FinancialProofHold,"frozen W1 GET/prewarm"):
    verify_source_closure(r)
+
+ def test_signed_w1_finance_route_reachability(self):
+  r=source();sc=r["source_scope"];g=sc["graph"];sc["candidate_sha"]=W1_SHA
+  for a,b in W1_PUBLIC_FINANCIAL_EDGES:
+   for node in (a,b):
+    if node not in g["nodes"]:g["nodes"].append(node)
+   if [a,b] not in g["edges"]:g["edges"].append([a,b])
+  g["writer_nodes"].append("lib/bets.ts")
+  g["routes"]["GET"]+=["app/page.tsx","app/api/lobby/route.ts",
+    "app/api/live-games/route.ts","app/api/bets/route.ts"]
+  g["routes"]["PREWARM"].append("scripts/prewarm-production.mjs")
+  sc["read_side_effect_policy"]={"GET":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
+    "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM","HEAD":"UNVERIFIED_NO_PROBE"}
+  def bind():
+   sc["dependency_graph_sha256"]=hashlib.sha256(canonical(g)).hexdigest()
+   sc["import_edges_sha256"]=hashlib.sha256(canonical(g["edges"])).hexdigest()
+   sc["get_head_effects_sha256"]=hashlib.sha256(canonical({
+     "GET":g["routes"]["GET"],"HEAD":g["routes"]["HEAD"]})).hexdigest()
+   sc["prewarm_effects_sha256"]=hashlib.sha256(canonical(
+     g["routes"]["PREWARM"])).hexdigest()
+  bind();self.assertTrue(verify_closed_graph(sc))
+  g["routes"]["GET"].remove("app/api/bets/route.ts");bind()
+  with self.assertRaisesRegex(FinancialProofHold,"entrypoints hidden"):
+   verify_closed_graph(sc)
+  g["routes"]["GET"].append("app/api/bets/route.ts")
+  g["edges"].remove(["app/api/bets/route.ts","lib/betMarketEnsureQueue.ts"]);bind()
+  with self.assertRaises(FinancialProofHold):verify_closed_graph(sc)
+  g["edges"].append(["app/api/bets/route.ts","lib/betMarketEnsureQueue.ts"])
+  sc["read_side_effect_policy"]["GET"]="READ_ONLY";bind()
+  with self.assertRaisesRegex(FinancialProofHold,"misclassified"):
+   verify_closed_graph(sc)
 
  def test_changed_transitive_financial_import_is_rejected(self):
   r=source();s=r["source_scope"];graph=s["graph"]
