@@ -47,3 +47,4 @@ jobs:
           git diff --exit-code
           git status --porcelain
           git push origin HEAD:repair/g-docsv2-pr1008-20261030
+# Retry after verified draft DocsV2 front matter added to new Q19 source document.
