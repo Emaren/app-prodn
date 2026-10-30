@@ -35,6 +35,9 @@ def finance():
     "incomplete_units")}},
   "side_effects":{k:{"route_graph_sha256":D,"native_trace_sha256":D,
     "writer_edge_sha256":D,"unresolved_edges":[]} for k in ("GET","HEAD","PREWARM")}}
+ census["side_effects"]["HEAD"].update(
+  routing_mode="NATIVE_HEAD_HANDLER_SEMANTICS_REVIEWED",
+  handler_semantics_sha256=D,get_fallback_trace_sha256=D)
  return {"protected":{"writers":{"native_census":census}}}
 
 def source():
@@ -156,6 +159,60 @@ class BFinancialProofAdversarial(unittest.TestCase):
    with self.subTest(route=route),self.assertRaises(FinancialProofHold):
     verify_writer_census(f)
 
+ def test_idle_oneshot_binding_allows_real_pid_zero_only(self):
+  from aoe2_solo_website_native_audit_adapter import verify_financial_identity,Hold
+  f=finance();protected=f["protected"];writers=protected["writers"]
+  live={"pid":111,"start_time_ticks":50,"uid":1000,
+        **{k:D for k in ("cgroup_sha256","executable_sha256",
+           "unit_sha256","dropin_sha256","environment_sha256",
+           "config_sha256","source_sha256")}}
+  protected["8092"]={**live,"count":1}
+  protected["8093"]={**live,"pid":112,"count":1}
+  units=writers["native_census"]["units"]
+  role_units={"staking":"aoe2hdbets-staking-rewards.service",
+    "bet-stake-reconcile":"aoe2hdbets-bet-stake-reconcile.service",
+    "challenge-reconcile":"aoe2hdbets-challenge-reconcile.service",
+    "replay-auto-recovery":"aoe2hdbets-replay-auto-recovery.service",
+    "trophy-tributes":"aoe2hdbets-trophy-tributes.service",
+    "wolo-transfer-heartbeat":"aoe2-wolo-transfer-heartbeat.service"}
+  processes={k:dict(live) for k in ("hd","de","settlement","staking",
+    "custody","bet-stake-reconcile","challenge-reconcile",
+    "replay-auto-recovery","trophy-tributes","wolo-transfer-heartbeat")}
+  for name,unit_name in role_units.items():
+   processes[name]={"unit":unit_name,"pid":0,"start_time_ticks":0,
+      "executable_sha256":None,"last_invocation_sha256":D,
+      "unit_sha256":D,"dropin_sha256":D,"environment_sha256":D,
+      "config_sha256":D,"source_sha256":D}
+  writers.update(processes=processes,
+    **{k:D for k in ("hd_sha256","de_sha256","settlement_sha256",
+                     "staking_sha256","custody_sha256")})
+  f.update(exposure={k:D for k in ("balances_sha256",
+    "pending_transactions_sha256","fees_sha256","liabilities_sha256",
+    "withdrawals_sha256","unknown_status_sha256","writer_db_state_sha256")},
+    native_receipt_sha256=D,financial_movement_authorized=False,
+    wolo_finance_p1="HOLD")
+  self.assertEqual(verify_financial_identity(f),protected)
+  processes["staking"]["last_invocation_sha256"]="b"*64
+  with self.assertRaisesRegex(Hold,"idle oneshot"):
+   verify_financial_identity(f)
+  processes["staking"]["last_invocation_sha256"]=D
+  units[role_units["staking"]]["state"]="active"
+  with self.assertRaisesRegex(Hold,"idle oneshot"):
+   verify_financial_identity(f)
+  units[role_units["staking"]]["state"]="inactive"
+  processes["hd"]["pid"]=0
+  with self.assertRaisesRegex(Hold,"idle oneshot"):
+   verify_financial_identity(f)
+
+ def test_head_runtime_handler_semantics_required(self):
+  for field in ("routing_mode","handler_semantics_sha256",
+                "get_fallback_trace_sha256"):
+   f=finance()
+   f["protected"]["writers"]["native_census"]["side_effects"]["HEAD"].pop(field)
+   with self.subTest(missing=field),self.assertRaisesRegex(
+      FinancialProofHold,"HEAD handler"):
+    verify_writer_census(f)
+
  def test_discovery_unknown_cron_or_ingress_blocks(self):
   for key in ("unresolved_writers","unclassified_financial_jobs",
               "unknown_http_effects","unmapped_external_ingress"):
@@ -223,9 +280,11 @@ class BFinancialProofAdversarial(unittest.TestCase):
   g["writer_nodes"].append("lib/bets.ts")
   g["routes"]["GET"]+=["app/page.tsx","app/api/lobby/route.ts",
     "app/api/live-games/route.ts","app/api/bets/route.ts"]
+  g["routes"]["HEAD"]+=["app/page.tsx","app/api/lobby/route.ts",
+    "app/api/live-games/route.ts","app/api/bets/route.ts"]
   g["routes"]["PREWARM"].append("scripts/prewarm-production.mjs")
   sc["read_side_effect_policy"]={"GET":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
-    "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM","HEAD":"UNVERIFIED_NO_PROBE"}
+    "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM","HEAD":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM"}
   def bind():
    sc["dependency_graph_sha256"]=hashlib.sha256(canonical(g)).hexdigest()
    sc["import_edges_sha256"]=hashlib.sha256(canonical(g["edges"])).hexdigest()
@@ -234,6 +293,14 @@ class BFinancialProofAdversarial(unittest.TestCase):
    sc["prewarm_effects_sha256"]=hashlib.sha256(canonical(
      g["routes"]["PREWARM"])).hexdigest()
   bind();self.assertTrue(verify_closed_graph(sc))
+  sc["read_side_effect_policy"]["HEAD"]="UNVERIFIED_NO_PROBE"
+  with self.assertRaisesRegex(FinancialProofHold,"misclassified"):
+   verify_closed_graph(sc)
+  sc["read_side_effect_policy"]["HEAD"]="FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM"
+  g["routes"]["HEAD"].remove("app/api/bets/route.ts");bind()
+  with self.assertRaisesRegex(FinancialProofHold,"entrypoints hidden"):
+   verify_closed_graph(sc)
+  g["routes"]["HEAD"].append("app/api/bets/route.ts");bind()
   g["routes"]["GET"].remove("app/api/bets/route.ts");bind()
   with self.assertRaisesRegex(FinancialProofHold,"entrypoints hidden"):
    verify_closed_graph(sc)

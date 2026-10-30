@@ -113,6 +113,10 @@ def run(x):
   p.stdout.close();p.stderr.close();os.close(200)
  return {'kind':'result','id':x['id'],'returncode':rc,'uncertain':uncertain,
   'stdout':base64.b64encode(out[p.stdout]).decode(),'stderr':base64.b64encode(out[p.stderr]).decode()}
+def same_lease_rollback(phase,verified,dispatched,burned,attempt):
+ return (phase is not None and phase[1]=='PRE_ACTIVATE' and
+         phase[0]==attempt and verified is True and
+         dispatched is True and burned is False)
 try:
  if os.geteuid()!=0:raise PermissionError('root-only protected command lease required')
  if not lock.is_absolute() or lock.is_symlink():
@@ -145,7 +149,7 @@ try:
  # A stolen command SSH key alone cannot launch a UID1000 shell.
  # Root must first consume a REAL signed owner phase, then independently
  # verify that same immutable root journal phase before one website action.
- phase=None;phase_verified=False;website_dispatched=False
+ phase=None;phase_verified=False;website_dispatched=False;rollback_dispatched=False
  while True:
   line=sys.stdin.buffer.readline(800000)
   if not line:break
@@ -170,8 +174,16 @@ try:
     if phase is None or phase_verified or website_dispatched:
      raise PermissionError('unexpected root proof sequence')
    elif verb in ('mark-staged','complete-activation'):
-    if phase is None or not website_dispatched:
-     raise PermissionError('phase completion without website mutation')
+    if phase is None or not phase_verified or not website_dispatched:
+     raise PermissionError('phase completion without verified website mutation')
+   elif verb=='reconcile-rollback':
+    # Only the same PRE_ACTIVATE SSH/FD200 lease may reconcile its own
+    # original consumed packet and attempted website action, at most once.
+    # A new lease on the same inode CANNOT inherit the old session state.
+    if not same_lease_rollback(phase,phase_verified,website_dispatched,
+                               rollback_dispatched,parts[3]):
+     raise PermissionError('rollback requires same active owner activation lease')
+    rollback_dispatched=True  # burn on attempt, including UNKNOWN/transport loss
   outcome=run(x)
   if x.get('run_as')=='root' and outcome['returncode']==0:
    try:

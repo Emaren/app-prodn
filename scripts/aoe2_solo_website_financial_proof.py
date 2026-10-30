@@ -158,6 +158,13 @@ def verify_writer_census(finance):
               ("route_graph_sha256","native_trace_sha256","writer_edge_sha256")) and
           record.get("unresolved_edges")==[],
           "financial side effects unreviewed: "+name)
+  if name=="HEAD":
+   # HEAD may dispatch GET handlers in the Next runtime; an empty
+   # unresolved list is insufficient without native handler review.
+   require(record.get("routing_mode")=="NATIVE_HEAD_HANDLER_SEMANTICS_REVIEWED" and
+           sha(record.get("handler_semantics_sha256")) and
+           sha(record.get("get_fallback_trace_sha256")),
+           "HEAD handler/GET fallback runtime semantics unverified")
  require(sha(census.get("native_snapshot_sha256")) and
          census.get("unit_inventory_sha256")==hashlib.sha256(canonical(units)).hexdigest(),
          "writer inventory changed after native observation")
@@ -221,6 +228,7 @@ def verify_closed_graph(scope):
              "app/api/live-games/route.ts","app/api/bets/route.ts"}
   known_prewarm="scripts/prewarm-production.mjs"
   require(known_get<=set(routes["GET"]) and
+          known_get<=set(routes["HEAD"]) and
           known_prewarm in routes["PREWARM"],
           "frozen W1 public financial entrypoints hidden from signed route inventory")
   def reaches(origin,target):
@@ -238,7 +246,7 @@ def verify_closed_graph(scope):
   require(type(declared)is dict and
           declared=={"GET":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
                      "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
-                     "HEAD":"UNVERIFIED_NO_PROBE"},
+                     "HEAD":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM"},
           "frozen W1 financial read route misclassified as inert")
  targets=set(writers)
  for origin in changed:

@@ -93,8 +93,41 @@ def verify_financial_identity(finance):
               "wolo-transfer-heartbeat")
     need(type(processes)is dict and set(processes)==set(required),
          "missing financial producer/process identity")
+    # Timer-driven services legitimately have MainPID=0 between runs.
+    # Their generic roles must bind to the EXACT signed native systemd
+    # unit, its idle status, last invocation and config digests. A zero
+    # PID in a persistent custody/HD/DE/settlement process remains HOLD.
+    from aoe2_solo_website_financial_proof import ONESHOT_SERVICES
+    role_unit={
+        "staking":"aoe2hdbets-staking-rewards.service",
+        "bet-stake-reconcile":"aoe2hdbets-bet-stake-reconcile.service",
+        "challenge-reconcile":"aoe2hdbets-challenge-reconcile.service",
+        "replay-auto-recovery":"aoe2hdbets-replay-auto-recovery.service",
+        "trophy-tributes":"aoe2hdbets-trophy-tributes.service",
+        "wolo-transfer-heartbeat":"aoe2-wolo-transfer-heartbeat.service",
+    }
+    census=writers.get("native_census")
+    units=census.get("units") if type(census)is dict else None
     for name in required:
-        identity(processes[name],name)
+        role=processes[name]
+        if type(role)is dict and role.get("pid")==0:
+            unit_name=role_unit.get(name)
+            unit=units.get(unit_name) if type(units)is dict else None
+            need(unit_name in ONESHOT_SERVICES and type(unit)is dict and
+                 role.get("unit")==unit_name and unit.get("main_pid")==0 and
+                 unit.get("state") in ("inactive","failed") and
+                 role.get("start_time_ticks")==0 and
+                 role.get("executable_sha256") is None and
+                 role.get("last_invocation_sha256")==unit.get("last_invocation_sha256") and
+                 digest64(role.get("last_invocation_sha256")) and
+                 role.get("unit_sha256")==unit.get("unit_file_sha256") and
+                 role.get("dropin_sha256")==unit.get("dropins_sha256") and
+                 role.get("environment_sha256")==unit.get("environment_sha256") and
+                 digest64(role.get("config_sha256")) and
+                 digest64(role.get("source_sha256")),
+                 "idle oneshot role not bound to genuine native unit: "+name)
+        else:
+            identity(role,name)
     exposure=finance.get("exposure")
     need(type(exposure)is dict and all(digest64(exposure.get(k))
          for k in ("balances_sha256","pending_transactions_sha256",

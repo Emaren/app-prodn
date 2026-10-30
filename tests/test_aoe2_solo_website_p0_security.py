@@ -150,7 +150,7 @@ class FrozenReleaseP0Tests(unittest.TestCase):
         self.assertIn("website_dispatched=True",remote)
         self.assertIn("root phase not actually consumed",remote)
         self.assertIn("wrong owner nonce proof",remote)
-        self.assertIn("phase completion without website mutation",remote)
+        self.assertIn("phase completion without verified website mutation",remote)
         self.assertIn("if phase is None or not phase_verified",remote)
         # Merely authenticating the SSH key is NOT authorization to spawn
         # arbitrary stage, shell, finance or migration commands as UID1000.
@@ -290,7 +290,27 @@ class FrozenReleaseP0Tests(unittest.TestCase):
             self.assertEqual(der.returncode,0)
             key={"public_key_path":str(public),
                  "public_spki_sha256":hashlib.sha256(der.stdout).hexdigest()}
-            trust={name:key for name in CLASSES}
+            # Six independently enrolled native signers, never one label-cloned key.
+            trust={}
+            signing={}
+            for producer in CLASSES:
+                role_private=directory/(producer+"-private.pem")
+                role_public=directory/(producer+"-public.pem")
+                p=subprocess.run(["/usr/bin/openssl","genpkey","-algorithm",
+                                  "ED25519","-out",str(role_private)],
+                                 capture_output=True,timeout=10)
+                self.assertEqual(p.returncode,0,p.stderr)
+                p=subprocess.run(["/usr/bin/openssl","pkey","-in",str(role_private),
+                                  "-pubout","-out",str(role_public)],
+                                 capture_output=True,timeout=10)
+                self.assertEqual(p.returncode,0,p.stderr)
+                der=subprocess.run(["/usr/bin/openssl","pkey","-pubin",
+                                    "-in",str(role_public),"-outform","DER"],
+                                   capture_output=True,timeout=10)
+                self.assertEqual(der.returncode,0,der.stderr)
+                trust[producer]={"public_key_path":str(role_public),
+                                  "public_spki_sha256":hashlib.sha256(der.stdout).hexdigest()}
+                signing[producer]=role_private
             trust_path=directory/"enrolled.json"
             trust_path.write_text(json.dumps(trust))
             now=datetime.now(timezone.utc).isoformat()
@@ -318,7 +338,7 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                 data.write_bytes(DOMAIN+json.dumps(body,sort_keys=True,
                     separators=(",",":"),ensure_ascii=True).encode())
                 r=subprocess.run(["/usr/bin/openssl","pkeyutl","-sign",
-                    "-inkey",str(private),"-rawin","-in",str(data),
+                    "-inkey",str(signing[producer]),"-rawin","-in",str(data),
                     "-out",str(sig)],capture_output=True,timeout=10)
                 self.assertEqual(r.returncode,0,r.stderr)
                 import base64
@@ -329,6 +349,11 @@ class FrozenReleaseP0Tests(unittest.TestCase):
             def fixture_bytes(path,limit=262144):return Path(path).read_bytes()
             with patch.object(receipts,"TRUST",trust_path),\
                  patch.object(receipts,"safe_bytes",side_effect=fixture_bytes):
+                self.assertTrue(verify_all(report))
+                trust_path.write_text(json.dumps({name:key for name in CLASSES}))
+                with self.assertRaisesRegex(root.Hold,"reuse"):
+                    verify_all(report)
+                trust_path.write_text(json.dumps(trust))
                 self.assertTrue(verify_all(report))
                 report["finance"]["exposure"]["pending_transactions_sha256"]="f"*64
                 with self.assertRaises(root.Hold):
