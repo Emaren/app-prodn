@@ -261,10 +261,11 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                 "finance":{"exposure":{"pending_transactions_sha256":"c"*64}},
                 "mount":{"mount":"/mnt/HC_Volume_105319120"},
                 "source_scope":{"status":"INDEPENDENTLY_REVIEWED"},
+                "stage":{"status":"NOT_STAGED"},
                 "receipt_provenance":{"signed_producers":{}},
             }
             mapping={"doctor":"doctor","recovery":"recovery","finance":"finance",
-                     "host":"mount","source":"source_scope"}
+                     "host":"mount","source":"source_scope","stage":"stage"}
             for producer in CLASSES:
                 blob=json.dumps(report[mapping[producer]],sort_keys=True,
                                 separators=(",",":"),ensure_ascii=True).encode()
@@ -292,6 +293,10 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                 report["finance"]["exposure"]["pending_transactions_sha256"]="f"*64
                 with self.assertRaises(root.Hold):
                     verify_all(report)
+                report["finance"]["exposure"]["pending_transactions_sha256"]="c"*64
+                report["stage"]["status"]="STAGED"
+                with self.assertRaises(root.Hold):
+                    verify_all(report)  # unsigned stage mutation is never evidence
 
     def test_raw_stage_digest_and_build_artifacts_are_bound(self):
         receipt={"status":"STAGED","artifact_sha256":"a"*64,
