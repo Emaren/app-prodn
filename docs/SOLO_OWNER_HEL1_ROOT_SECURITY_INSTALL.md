@@ -84,6 +84,42 @@ sudo -n /usr/bin/python3 /usr/local/libexec/aoe2war/solo-v1-host-security.py \
 BASH
 ~~~
 
+## M1 owner — actual negative SSH boundary proof (after approved install ONLY)
+
+This is a read-only *negative* root-login test. It passes only if sshd
+authenticates each enrolled key, runs the reviewed forced helper and that
+helper specifically rejects arbitrary root execution. An SSH authentication
+failure alone is NOT a passing forced-command proof.
+
+~~~bash
+bash <<'BASH'
+if [ "$(uname -s)" != "Darwin" ] || [ "$(uname -m)" != "arm64" ]; then
+  echo 'HOLD: WRONG_OWNER_M1'; exit 2
+fi
+if [ -z "$SOLO_OBSERVER_KEY" ] || [ -z "$SOLO_COMMAND_KEY" ]; then
+  echo 'HOLD: TWO_OWNER_APPROVED_ROOT_KEY_PATHS_REQUIRED'; exit 2
+fi
+sudo -v || exit 2
+for key in "$SOLO_OBSERVER_KEY" "$SOLO_COMMAND_KEY"; do
+  result=$(sudo -n /usr/bin/ssh -T -n -o BatchMode=yes \
+    -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+    -o GlobalKnownHostsFile=/dev/null \
+    -o UserKnownHostsFile=/private/etc/aoe2war/solo-owner-website-v1/hel1-known-hosts \
+    -o HostKeyAlgorithms=ssh-ed25519 -i "$key" \
+    root@157.180.114.124 /usr/bin/id 2>&1)
+  rc=$?
+  if [ "$rc" -eq 0 ]; then echo 'HOLD: UNRESTRICTED_ROOT_EXEC'; exit 2; fi
+  case "$result" in
+    *FORCED_SSH_HOLD:*) echo 'PASS: ENROLLED_ROOT_KEY_FORCED_HELPER_REJECTED_ID' ;;
+    *) echo 'HOLD: SSH_AUTH_OR_FORCED_HELPER_NOT_PROVEN'; exit 2 ;;
+  esac
+done
+BASH
+~~~
+
+Do not infer HEL1 actual FD200 or systemd orphan-build behavior from this
+negative SSH test; F still requires a separately approved native trial.
+
 After approved enrollment, F/C must independently verify sshd effective
 Match configuration, native actual root forced commands, SHA-pinned helper
 bytes, exact original lock dev/inode/uid/mode, and REJECTED arbitrary root
