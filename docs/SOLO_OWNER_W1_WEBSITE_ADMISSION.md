@@ -317,6 +317,28 @@ full writer census and exposure/liability/balance hashes, then and only then
 may return `ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED`. The B verifier
 `rollback_finance_status` is not an execution hook by itself.
 
+**F root-stage boundary repair (2026-10-30):** A signed `POST_ROLLBACK`
+native observation after an attempted activation is **post-stage**, even
+when the original website source was restored. The separate retained W1
+candidate stage receipt must remain `STAGED` with exact original HEL1
+receipt SHA, source SHA, artifact SHA, node_modules SHA and Next BUILD_ID.
+The root hook now requests `post_stage=True`, and the same shared
+stage validator rejects forged `NOT_STAGED`, altered artifact/dependency,
+foreign source and mismatching BUILD_ID. The PRE_STAGE boundary still
+forbids impersonating a durable staged artifact. No synthesized restore
+receipt or unsigned website-only rollback may be labeled PASS.
+
+**F successful activation witness repair:** Root completion must obtain a
+new `POST_ACTIVATE` independently producer-signed, root-validated native
+audit using the genuine staged boundary. It compares all protected writer
+identity and financial exposure hashes against the root-sealed prior
+`PRE_ACTIVATE` observation, writes a separate immutable
+`<attempt>-POST_ACTIVATE-native-after.json` and binds its canonical SHA
+to the completed activation certificate. Replaying the original signed
+`PRE_ACTIVATE` packet after source mutation is NOT post-activation
+evidence. The independent installed native signer must support this
+distinct phase; otherwise activation completion fails closed.
+
 **Gate ownership:** B owns the financial verifier, partial native observer,
 negative tests and this security contract; F owns original continuous FD200
 release/rollback execution and the final failure hook; C owns enforced SSH
