@@ -82,8 +82,11 @@ def identity(name,record):
   require(pid>1,"active persistent settlement/HD/DE process has no real PID: "+name)
  if pid:
   require(type(record.get("start_time_ticks"))is int and
-          record["start_time_ticks"]>0 and sha(record.get("executable_sha256")),
-          "running process not authenticated: "+name)
+          record["start_time_ticks"]>0 and sha(record.get("executable_sha256")) and
+          type(record.get("uid"))is int and record["uid"]>=0 and
+          sha(record.get("process_cgroup_sha256")) and
+          type(record.get("declared_user"))is str,
+          "running process UID/cgroup/start/executable not authenticated: "+name)
  else:
   require(record.get("start_time_ticks")==0 and
           record.get("executable_sha256")is None,
