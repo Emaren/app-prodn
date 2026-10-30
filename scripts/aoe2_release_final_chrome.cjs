@@ -91,6 +91,12 @@ async function authGates(browser,adminState,nonadminState){
 async function main(){
  const opts=args(process.argv.slice(2));
  if(!fs.existsSync(opts.chrome)||!fs.statSync(opts.chrome).isFile())hold("CHROME_MISSING");
+ for(const key of ["admin-state","nonadmin-state"]){
+  const st=fs.lstatSync(opts[key]);
+  if(!st.isFile()||st.isSymbolicLink()||(st.mode&0o077)!==0||
+     (typeof process.getuid==="function"&&st.uid!==process.getuid()))
+   hold("PRIVATE_SESSION_STATE_PERMISSIONS:"+key);
+ }
  const surfaces=loadSurfaces(opts.surfaces);
  const host=jsonFile(opts["host-receipt"]);
  if(host.schema!=="aoe2war.g.final-release-host.v1"||host.status!=="PASS"||
