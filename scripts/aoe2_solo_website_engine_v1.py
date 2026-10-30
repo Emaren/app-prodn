@@ -77,7 +77,7 @@ def root_issue(phase,target,attempt,lease,stage_sha):
           "-o","UserKnownHostsFile="+str(KNOWN_HOSTS),
           "-o","HostKeyAlgorithms=ssh-ed25519",
           "-o","ConnectTimeout=8","-i",str(key),
-          HOST,"python3 "+shlex.quote(ROOT_PHASE)+" issue "+
+          HOST,"aoe2war-solo-issue "+
           " ".join(shlex.quote(x)for x in
                    ([phase,target]if phase=="PRE_STAGE" else
                     [phase,target,attempt,lease,stage_sha]))]
