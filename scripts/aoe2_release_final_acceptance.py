@@ -126,10 +126,13 @@ def native_signed_report(path, expected, label):
           report.get("candidate_sha") == expected, label + "_WRONG_CANDIDATE")
     try:
         from aoe2_solo_website_producer_receipts import verify_all
-        from aoe2_solo_website_native_audit_adapter import verify_financial_identity
+        from aoe2_solo_website_native_audit_adapter import (
+            verify_financial_identity, owner_approved_installed_binary
+        )
+        owner_approved_installed_binary(expected)  # reviewed installed source, not ad hoc signed JSON
         verify_all(report)  # all six signatures and pinned root-protected trust
         verify_financial_identity(report["finance"])
-    except (ImportError, KeyError, ValueError, Exception) as exc:
+    except Exception as exc:
         # Real producer trust missing or stale is HOLD, never a fixture PASS.
         raise Hold(label + "_NATIVE_SIGNATURE_HOLD:" + type(exc).__name__) from exc
     check(report.get("status") == "INDEPENDENT_NATIVE_VERIFIED",
@@ -287,6 +290,12 @@ def run_acceptance(args):
         check(native_before is not None and native_after is not None,
               "SIGNED_NATIVE_FINANCE_NOT_AVAILABLE")
         before, after = native_before[0], native_after[0]
+        check(before["phase"] == "PRE_ACTIVATE" and
+              after["phase"] == "POST_ACTIVATE" and
+              before["attempt_id"] == after["attempt_id"] and
+              before["observed_at"] < after["observed_at"] and
+              native_before[1] != native_after[1],
+              "NATIVE_BEFORE_AFTER_PHASE_OR_REPLAY")
         check(before["finance"]["protected"] == after["finance"]["protected"],
               "PROTECTED_WRITER_PROCESS_IDENTITY_DRIFT")
         check(after["finance"].get("financial_movement_authorized") is False,
