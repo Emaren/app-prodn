@@ -208,7 +208,8 @@ def mark_staged(args):
     # Compare current native financial execution identities against owner
     # phase baseline. A matching PID alone never proves no write.
     from aoe2_solo_website_native_audit_adapter import audit
-    now_report=audit(challenge["candidate_sha"],"PRE_STAGE",attempt)
+    now_report=audit(challenge["candidate_sha"],"PRE_STAGE",attempt,
+                     post_stage=True)
     h=native_observation_for_owner(now_report)
     before=root_file(STATE/(attempt+"-PRE_STAGE-observation.json"))["observation"]
     need(h["protected"]==before["protected"] and
