@@ -75,38 +75,63 @@ def active_build():
 
 
 def fresh_challenge():
-    """Only use uniquely present, fresh, root-owned journaled issue.
+    """Only ONE fresh, independently audited and UNCONSUMED root challenge.
 
-    An absent/ambiguous phase remains UNKNOWN; never synthesize a challenge.
+    Historical journal entries are immutable and never count against an
+    arbitrary directory-entry cap. Consumed PRE_STAGE is not a second
+    candidate when its same-attempt PRE_ACTIVATE is issued.
     """
+    import re, stat
     if not STATE.is_dir() or STATE.is_symlink():
         return {}
     try:
-        items = []
-        for idx, file in enumerate(STATE.iterdir()):
-            if idx >= MAX_CHALLENGE_FILES:
+        root=STATE.lstat()
+        if root.st_uid!=0 or root.st_mode&0o022:
+            return {}
+        active=[]
+        now=datetime.now(timezone.utc)
+        for entry in STATE.iterdir():
+            if not re.fullmatch(
+                r"[0-9a-f]{64}-(PRE_STAGE|PRE_ACTIVATE)-issue[.]json",
+                entry.name):
+                continue
+            meta=entry.lstat()
+            if (not stat.S_ISREG(meta.st_mode) or meta.st_uid!=0 or
+                    meta.st_mode&0o077 or not 0<meta.st_size<=16384):
                 return {}
-            if not file.name.endswith("-issue.json") or file.is_symlink():
-                continue
-            st = file.stat()
-            if st.st_uid != 0 or st.st_mode & 0o077 or st.st_size > 16384:
+            with entry.open("rb") as stream:
+                raw=stream.read(16385)
+            def unique(pairs):
+                result={}
+                for key,val in pairs:
+                    if key in result:raise ValueError("duplicate root challenge")
+                    result[key]=val
+                return result
+            payload=json.loads(raw,object_pairs_hook=unique)
+            if (type(payload) is not dict or
+                payload.get("policy")!=POLICY or
+                payload.get("phase") not in ("PRE_STAGE","PRE_ACTIVATE") or
+                payload.get("attempt_id")+"-"+payload.get("phase")+"-issue.json"
+                    != entry.name):
                 return {}
-            with file.open() as handle:
-                payload = json.load(handle)
-            if (type(payload) is not dict or payload.get("policy") != POLICY or
-                    payload.get("phase") not in ("PRE_STAGE", "PRE_ACTIVATE")):
+            expiry=datetime.fromisoformat(
+                payload["expires_at"].replace("Z","+00:00"))
+            if expiry.tzinfo is None or expiry<=now:
                 continue
-            try:
-                when = datetime.fromisoformat(
-                    payload["expires_at"].replace("Z", "+00:00"))
-            except (ValueError, KeyError, AttributeError):
+            used=STATE/(payload["attempt_id"]+"-"+payload["phase"]+"-used.json")
+            if used.is_symlink():return {}
+            if used.exists():
+                used_meta=used.lstat()
+                if (not stat.S_ISREG(used_meta.st_mode) or
+                    used_meta.st_uid!=0 or used_meta.st_mode&0o077):
+                    return {}
                 continue
-            if when >= datetime.now(timezone.utc):
-                items.append(payload)
-        return items[0] if len(items) == 1 else {}
-    except (OSError, ValueError, TypeError):
+            active.append(payload)
+            if len(active)>1:
+                return {}  # ambiguous outstanding owner intents: HOLD
+        return active[0] if len(active)==1 else {}
+    except (OSError,ValueError,TypeError,KeyError,AttributeError):
         return {}
-
 
 def issued_root_snapshot(challenge):
     """Only exact owner-bound native snapshot written by root issuer counts."""
