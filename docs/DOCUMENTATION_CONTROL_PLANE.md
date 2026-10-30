@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/d-q17-a3-32-route-atlas-20261029` at `95bb55841aaae47a2775f0022d23363307e10047`
+Implementation baseline: `feat/d-q17-a3-32-route-atlas-20261029` at `0c13a0505cb0e5212622653eaf95fe9b4348db38`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
