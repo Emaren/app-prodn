@@ -39,6 +39,16 @@ aoe2-wolo-transfer-heartbeat.timer
 aoe2war-prewarm.timer
 """.split())
 REQUIRED_UNITS=REQUIRED_SERVICES|REQUIRED_TIMERS
+ONESHOT_SERVICES=frozenset("""
+aoe2hdbets-bet-stake-reconcile.service
+aoe2hdbets-bet-stake-reconcile-plan.service
+aoe2hdbets-challenge-reconcile.service
+aoe2hdbets-replay-auto-recovery.service
+aoe2hdbets-staking-rewards.service
+aoe2hdbets-trophy-tributes.service
+aoe2-wolo-transfer-heartbeat.service
+aoe2war-prewarm.service
+""".split())
 REQUIRED_SURFACES=frozenset(("systemd_units","systemd_timers","proc_cgroups",
  "cron_at","external_ingress","http_get_head","prewarm_jobs","database_writers"))
 REQUIRED_ROUTES=frozenset(("GET","HEAD","PREWARM"))
@@ -68,6 +78,8 @@ def identity(name,record):
   require(sha(record.get(key)),"unit "+key+" absent: "+name)
  pid=record.get("main_pid")
  require(type(pid)is int and pid>=0,"missing PID: "+name)
+ if record["state"]=="active" and name in REQUIRED_SERVICES and name not in ONESHOT_SERVICES:
+  require(pid>1,"active persistent settlement/HD/DE process has no real PID: "+name)
  if pid:
   require(type(record.get("start_time_ticks"))is int and
           record["start_time_ticks"]>0 and sha(record.get("executable_sha256")),
