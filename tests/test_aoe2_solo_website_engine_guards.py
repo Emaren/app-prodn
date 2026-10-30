@@ -22,7 +22,9 @@ class Guards(unittest.TestCase):
                    "writers":{}}
         report={
             "observed_at":"2026-10-30T07:00:00Z",
-            "finance":{"protected":protected,"wolo_finance_p1":"HOLD"},
+            "finance":{"protected":protected,"wolo_finance_p1":"HOLD",
+                       "exposure":{"balances_sha256":"a"*64},
+                       "native_receipt_sha256":"b"*64},
             "doctor":{"p0":0,"p1":0,"signed":True},
             "recovery":{"isolated_restored_classes":[
                 "APP_DB","TRAFFIC_SQLITE_WAL","WOLO_CONSENSUS_FINANCE",
