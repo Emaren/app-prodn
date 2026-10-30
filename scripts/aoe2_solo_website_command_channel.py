@@ -189,7 +189,10 @@ class LeaseRunner:
 @contextmanager
 def command_lease(path:Path,holder:str,*,host:str):
  # Same canonical path/holder contract as aoe2_release.remote_global_release_lease.
- command='python3 -u -c '+shlex.quote(REMOTE)+' '+shlex.quote(str(path))+' '+shlex.quote(holder)
+ # Root SSH has a server-side authorized_keys forced-command: it accepts
+ # this single fixed verb only; REMOTE is loaded from root-pinned installed
+ # code on HEL1, NEVER transmitted as arbitrary user-supplied Python.
+ command='aoe2war-solo-channel '+base64.b64encode(holder.encode('utf-8')).decode('ascii')
  from aoe2_solo_website_host_observer import (
   CONFIG_ROOT,KNOWN_HOSTS,host_fingerprint,protected_file
  )
