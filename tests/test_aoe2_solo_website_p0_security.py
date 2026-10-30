@@ -160,10 +160,13 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                      "candidate_sha":"b"*40,"attempt_id":attempt,
                      "nonce":"e"*64,"lease_id":"f"*64,
                      "expires_at":when.isoformat()}
-                (directory/(attempt+"-"+phase+"-issue.json")).write_text(
-                    json.dumps(rec))
+                issued=directory/(attempt+"-"+phase+"-issue.json")
+                issued.write_text(json.dumps(rec))
+                issued.chmod(0o600)  # real root journal is O_EXCL mode 0600
                 if consumed:
-                    (directory/(attempt+"-"+phase+"-used.json")).write_text("{}")
+                    used=directory/(attempt+"-"+phase+"-used.json")
+                    used.write_text("{}")
+                    used.chmod(0o600)
             for i in range(45):
                 make("PRE_STAGE",f"{i:064x}",now-timedelta(minutes=15))
             active="f"*64
