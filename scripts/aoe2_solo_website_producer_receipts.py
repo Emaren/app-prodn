@@ -37,6 +37,21 @@ def verify_all(report):
     claims=report["receipt_provenance"].get("signed_producers")
     need(type(claims)is dict and set(claims)==set(CLASSES),
          "missing machine-signed producer receipts")
+    # Six signatures from one signing key are one authority, not six.
+    # The physical producer origin is separately reviewed at installation.
+    identities=[]
+    for name in CLASSES:
+        key=trust[name]
+        need(type(key)is dict and
+             set(key)=={"public_key_path","public_spki_sha256"} and
+             type(key["public_key_path"])is str and
+             type(key["public_spki_sha256"])is str,
+             "invalid independently enrolled producer")
+        identities.append((key["public_key_path"],key["public_spki_sha256"]))
+    need(len(set(identities))==len(CLASSES) and
+         len({identity[0] for identity in identities})==len(CLASSES) and
+         len({identity[1] for identity in identities})==len(CLASSES),
+         "six producer roles reuse the same signing key or public-key path")
     now=datetime.now(timezone.utc)
     for name in CLASSES:
         entry=claims[name]
@@ -69,8 +84,12 @@ def verify_all(report):
         # SPKI pin is independently reviewable; never trust a key path alone.
         p=subprocess.run(["/usr/bin/openssl","pkey","-pubin","-outform","DER"],
                          input=pem,capture_output=True,timeout=10)
-        need(p.returncode==0 and hashlib.sha256(p.stdout).hexdigest()==
-             key["public_spki_sha256"],"native producer SPKI identity changed")
+        # DER prefix is the standard Ed25519 SubjectPublicKeyInfo algorithm
+        # OID 1.3.101.112 with a 32-byte public key; reject RSA/EC substitution.
+        need(p.returncode==0 and len(p.stdout)==44 and
+             p.stdout.startswith(bytes.fromhex("302a300506032b6570032100")) and
+             hashlib.sha256(p.stdout).hexdigest()==key["public_spki_sha256"],
+             "native producer Ed25519 SPKI identity changed")
         try:sig=base64.b64decode(entry["signature_base64"],validate=True)
         except (TypeError,ValueError) as exc:
             raise Hold("invalid native producer signature") from exc
