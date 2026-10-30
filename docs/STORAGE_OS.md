@@ -1285,8 +1285,11 @@ against the correct owner-enrolled SPKI-pinned public key.
 All events bind opaque campaign/cohort IDs, positive sequence, source
 (m1, hel1-root or hel1-volume), Intel receiver, observed_at UTC Z and
 expires_at (max 10 minutes old, <=15-minute lifespan). Actual native
-source, Intel and independent restore-auditor keys must be distinct, as
-must enrolled host failure domains. Private keys never enter a web repo.
+source, Intel and independent restore-auditor Ed25519 SPKI public
+keys must be distinct. HEL1 root and attached volume deliberately share
+ONE physical failure-domain ID (same machine), although each has a distinct
+signing key. M1, HEL1, Intel and the independent restore device must have
+FOUR distinct physical failure-domain IDs. Private keys never enter a web repo.
 
 - SOURCE: signed original content SHA256, source FS UUID (private server
   evidence only), consistent snapshot type, protected class, actual
