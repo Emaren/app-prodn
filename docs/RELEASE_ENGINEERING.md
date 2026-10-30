@@ -76,6 +76,45 @@ witness, source scope and independent financial review. It must be connected
 to the actual protected stage/activate engine; PR #1008 is **non-dispatching**,
 not a permit or frozen W1 patch.
 
+### Owner-executed HEL1 preflight — actual native evidence (2026-10-30 owner report)
+
+Owner ran the prior [HEL1 read-only preflight](https://github.com/Emaren/app-prodn/issues/665#issuecomment-6516118369)
+from `tony@ubuntu-4gb-hel1-11`. These are **owner-pasted native results, unsigned**, not a root-signed
+attestation or independently verified public website version. The command's output
+reached `READ-ONLY COMPLETE`; no mutation or release command was invoked.
+The execution output supplies no trusted same-sample UTC timestamp; do not invent one.
+
+| Probe | Native observation | Evidence meaning |
+|---|---|---|
+| Host / volume | `ubuntu-4gb-hel1-11`, `/dev/sdb` ext4, UUID `a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42` | Expected host and mount identity **PASS** |
+| Root filesystem | **66.704 GiB available**, **55.505% used** | Frozen Finish root >=5GiB **PASS** |
+| Attached evidence volume | **21.022 GiB available**, **92.878% used** | Frozen Finish volume <92% **HOLD** |
+| Proposed #1008 extra gate | 21.022 GiB free and 92.878% Finish used | >=30GiB free **HOLD** (gap **8.978 GiB**); separately measure effective-used <=88% |
+| Website / replay API | `aoe2hdbets-web.service`, `aoe2hdbets-api.service` both `active` | Process existence **PASS**, deployed functional parity **UNKNOWN** |
+| On-disk production source | `33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a` | Old production source still in checkout; W1/post-W1 not installed |
+| On-disk Next BUILD_ID | `DQ2jMprNQ_Njq6QM8GHju` | Local `.next/BUILD_ID` exists; internal/public parity **UNKNOWN** |
+| Wolo | Exactly one listening socket on each 8092 and 8093 | Counts **PASS**; binary/unit/config/financial writer fingerprints **UNKNOWN** |
+| Rollback/receipt dirs | Both exist, UID 0, mode 0755 | Directory presence **PASS**; restore/rollback integrity **UNKNOWN** |
+| Global release lock | UID **1000**, mode **0644** | Confirms real shared lock, conflicts with #1008 root-UID requirement |
+| HEL1 local SSH host public key | `SHA256:8L7ZF+xPA/YXe6uY1+yVPZFdY58JxYvHjC5S/U+I1Og` | **Matches PR #1008 pin** on HEL1; E's unlike Intel→HEL1 fingerprint still requires out-of-band reconciliation before fresh trust enrollment |
+| Solo-owner readonly root helper | Not installed or not readable at expected path | **HOLD**; no host-signed observation can be inferred |
+
+**New concrete engineering disposition for F:** Fix nonce ledger's special-case
+canonical shared lock UID 1000 (do not weaken root-owned private journal
+requirements and do not chown original lock); reconcile E's earlier different
+SSH fingerprint, but the **current HEL1 local public key confirms the PR #1008
+pin**. Preserve frozen W1 source and default no-dispatch policy. Current
+disk use alone fails original Finish safety regardless of owner decision on
+the proposed stricter 30GiB/88%/six-class rules.
+
+Owner command output is reported in current Session C conversation and
+summarized for F/Central; no private keys, secrets or owner approval permits
+were collected. The next production-specific evidence needed from F is
+installed root observer/actual signed Doctor+financial-source witness,
+same-sample effective disk measurements, legitimate exact-scope/manifest,
+rollback artifact cryptographic proof, independent owner phase approvals
+and authenticated internal/public BUILD_ID acceptance.
+
 ### Host observer and immutable evidence corrections for F/B
 
 1. **Host identity:** PR #1008 pins HEL1 ED25519
