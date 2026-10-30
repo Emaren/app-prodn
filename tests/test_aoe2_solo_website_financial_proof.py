@@ -168,7 +168,7 @@ class BFinancialProofAdversarial(unittest.TestCase):
    "PREWARM"]["route_graph_sha256"]="f"*64
   r["source_scope"]["writer_census_sha256"]=hashlib.sha256(canonical(
    r["finance"]["protected"]["writers"]["native_census"])).hexdigest()
-  with self.assertRaisesRegex(FinancialProofHold,"route DAG"):
+  with self.assertRaisesRegex(FinancialProofHold,"source DAG"):
    verify_source_closure(r)
 
  def test_changed_transitive_financial_import_is_rejected(self):
