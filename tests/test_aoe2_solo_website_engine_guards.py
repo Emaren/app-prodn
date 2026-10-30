@@ -64,6 +64,38 @@ class Guards(unittest.TestCase):
         self.assertIn("argv=['/usr/bin/python3',helper,verb]+parts[3:]",code)
         self.assertNotIn("else:argv=['/bin/bash','-lc',source]",code)
 
+    def test_original_fd200_rollback_must_be_same_live_activation_session(self):
+        # Execute the actual predicate extracted from the protected remote
+        # command loop; a new flock on the same inode has NO phase state.
+        import ast
+        import aoe2_solo_website_command_channel as channel
+        tree=ast.parse(channel.REMOTE)
+        node=next(x for x in tree.body if isinstance(x,ast.FunctionDef)
+                  and x.name=="same_lease_rollback")
+        env={}
+        exec(compile(ast.Module(body=[node],type_ignores=[]),
+                     "remote-lease-policy","exec"),env)
+        allow=env["same_lease_rollback"]
+        attempt="a"*64
+        phase=(attempt,"PRE_ACTIVATE","b"*64)
+        self.assertTrue(allow(phase,True,True,False,attempt))
+        for args in (
+            (None,False,False,False,attempt), # NEW SSH/FD200 lease
+            (phase,False,True,False,attempt), # owner proof absent
+            (phase,True,False,False,attempt), # no W1 action dispatched
+            (phase,True,True,True,attempt),  # already tried reconciliation
+            (phase,True,True,False,"c"*64),  # different nonce/attempt
+            ((attempt,"PRE_STAGE","b"*64),True,True,False,attempt),
+        ):
+            with self.subTest(args=args):
+                self.assertFalse(allow(*args))
+        remote=channel.REMOTE
+        self.assertIn("if not same_lease_rollback(",remote)
+        self.assertIn("rollback_dispatched=True",remote)
+        self.assertLess(remote.index("rollback_dispatched=True"),
+                        remote.index("  outcome=run(x)"))
+        self.assertIn("phase[1]=='PRE_ACTIVATE'",remote)
+
     def test_reconcile_rollback_rejects_untrusted_path_without_live_io(self):
         for path in ("/tmp/activate-fake",
                      "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/stage-fake",
