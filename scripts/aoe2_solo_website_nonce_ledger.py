@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Solo-owner website root-owned durable nonce ledger. No deploy interface."""
 from __future__ import annotations
-import fcntl, hashlib, json, os, re, secrets, stat
+import fcntl, hashlib, json, os, re, secrets, stat, threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -34,6 +34,8 @@ def parse_time(value):
 class Journal:
     def __init__(self, state=STATE, lock=LOCK, *, test_mode=False):
         self.state,self.lock,self.test_mode=Path(state),Path(lock),test_mode
+        self._held_fd=None
+        self._held_thread=None
     def secure(self,path,directory=False):
         need(path.is_absolute(),"nonabsolute protected path")
         for part in (path,*path.parents): need(not part.is_symlink(),"linked protected path")
@@ -48,8 +50,11 @@ class Journal:
         try:
             try: fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
             except BlockingIOError as exc: raise Hold("global release lock busy") from exc
+            need(self._held_fd is None,"reentrant release lock")
+            self._held_fd,self._held_thread=fd,threading.get_ident()
             yield
         finally:
+            self._held_fd,self._held_thread=None,None
             fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
     def name(self,attempt,phase,kind):
         need(type(attempt) is str and bool(HEX64.fullmatch(attempt)),"bad attempt")
@@ -95,6 +100,9 @@ class Journal:
     def consume_under_existing_lock(self,challenge,packet_sha,host_sha,*,now=None):
         """Caller MUST hold original release.lock through protected deploy."""
         now=now or datetime.now(timezone.utc)
+        need(self._held_fd is not None and
+             self._held_thread == threading.get_ident(),
+             "global release.lock must be held by this transaction")
         a,ph=challenge["attempt_id"],challenge["phase"]
         need(all(type(v) is str and HEX64.fullmatch(v) for v in (packet_sha,host_sha)),"missing hashes")
         need(self.read(a,ph,"issue")==challenge,"untrusted challenge")
@@ -106,6 +114,9 @@ class Journal:
             "consumed_at":utc(now),"status":"CONSUMED_NOT_DEPLOYED"})
     def mark_staged_under_existing_lock(self,challenge,stage_sha):
         """Only genuine protected engine may call this after durable stage."""
+        need(self._held_fd is not None and
+             self._held_thread == threading.get_ident(),
+             "global release.lock must be held by this transaction")
         need(challenge["phase"]=="PRE_STAGE" and type(stage_sha) is str and HEX64.fullmatch(stage_sha),"stage SHA")
         self.read(challenge["attempt_id"],"PRE_STAGE","used")
         return self.write_once(challenge["attempt_id"],"PRE_STAGE","staged",
