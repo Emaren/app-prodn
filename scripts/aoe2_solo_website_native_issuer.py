@@ -8,6 +8,7 @@ are admissible. Missing inputs fail closed. No service or finance mutations.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -126,19 +127,58 @@ def environment():
             "PYTHON_ENVIRONMENT_INJECTION")
 
 
+def assert_fd_owns_exclusive_flock(fd, path):
+    """Necessary kernel-OFD proof, never owner authorization by itself.
+
+    A matching inode alone is insufficient: a different process may hold the
+    flock, or FD200 may be a new open description rather than F's original.
+    Require the FLOCK WRITE entry in this *specific* descriptor's fdinfo,
+    AND contention from a distinct open-file description. Neither action
+    acquires, drops or replaces the original release lock.
+    """
+    try:
+        fdinfo = Path("/proc/self/fdinfo") / str(fd)
+        with fdinfo.open("rb") as stream:
+            raw = stream.read(16385)
+        require(len(raw) <= 16384 and any(
+            line.startswith(b"lock:") and b" FLOCK " in line and
+            b" ADVISORY " in line and b" WRITE " in line
+            for line in raw.splitlines()), "FD200_DOES_NOT_OWN_KERNEL_FLOCK")
+        probe = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        try:
+            try:
+                fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+            else:
+                fcntl.flock(probe, fcntl.LOCK_UN)
+                raise Hold("ORIGINAL_LOCK_NOT_CONTENDED")
+        finally:
+            os.close(probe)
+    except OSError as exc:
+        raise Hold("ORIGINAL_FLOCK_KERNEL_PROOF_UNAVAILABLE") from exc
+
+
 def original_lease():
-    """F must invoke this under its original FD200 lease, not invent a new one."""
+    """Require original protected inode + live FD200 OFD flock; NOT consent.
+
+    F/C additionally authenticate preserved command-channel session and
+    attempt/source phase before this binary is invoked. This check cannot
+    distinguish a *newly* acquired lock from the original lease history.
+    """
     try:
         held = os.fstat(200)
         actual = LOCK.lstat()
     except OSError as exc:
         raise Hold("MISSING_ORIGINAL_FD200_LEASE") from exc
-    require(stat.S_ISREG(held.st_mode) and not stat.S_ISLNK(actual.st_mode) and
+    require(stat.S_ISREG(held.st_mode) and stat.S_ISREG(actual.st_mode) and
+            not stat.S_ISLNK(actual.st_mode) and
             (held.st_dev, held.st_ino, held.st_uid, stat.S_IMODE(held.st_mode)) ==
             (actual.st_dev, actual.st_ino, 1000, 0o644),
             "ORIGINAL_LOCK_INODE_OR_OWNER_CHANGED")
-    # F's root/command channel owns the exclusive flock lifecycle. Root issuer
-    # cannot manufacture its owner authorization from the presence of an FD.
+    # F's root/command channel must separately authenticate the ORIGINAL
+    # lease session/owner packet. A kernel-live flock is necessary, not enough.
+    assert_fd_owns_exclusive_flock(200, LOCK)
     return (held.st_dev, held.st_ino)
 
 
