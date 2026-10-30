@@ -348,3 +348,51 @@ A genuine funded WOLO GO is not needed for a **proven nonfinancial** website
 release, but none of these physical, native signed and operator-authenticated
 website-specific gates can be silently skipped. Draft source PASS is not
 HEL1 acceptance or a production permit.
+
+
+## R10 — independent financial admission repairs (source only)
+
+This source branch requires four additional **fail-closed** original-release
+conditions, without changing frozen W1 or permitting funded WOLO:
+
+1. **Same-session rollback.** `reconcile-rollback` is legal only once in
+   the still-live ORIGINAL command-channel FD200 lease that consumed and
+   verified the same PRE_ACTIVATE attempt and dispatched its UID1000 website
+   action. A new SSH lease on the same lock inode is *not* a continuation.
+   Unknown/lost transport cannot be reconciled by opening a fresh lease;
+   that needs a future separately reviewed owner-approved recovery protocol.
+2. **Six independent public signing keys.** Six signed producer labels
+   without six distinct Ed25519 SPKI identities AND distinct protected key
+   paths are not independent authority. Native physical origin, key custody
+   and signed observation freshness require separate enrolled review.
+3. **HEAD runtime evidence.** W1 HEAD=UNVERIFIED_NO_PROBE is explicitly
+   **HOLD** for source-closure admission, not an empty unresolved list.
+   The signed W1 graph must include the original public GET handler
+   entrypoints under HEAD and their financial-writer reachability, and
+   signed native finance must contain HEAD-handler/GET-fallback traces,
+   not a status label alone. Do not probe finance-capable live GET/HEAD
+   to fabricate safe behavior.
+4. **Idle timer-driven services.** A legitimate PID0 oneshot is accepted
+   only with exact named native signed inactive/failed unit, zero process
+   identity, current unit/dropin/environment and last-invocation digest
+   correspondence. Persistent custody, HD/DE and settlement roles still
+   require real live PID/start/UID/cgroup/executable proof.
+
+**R10 install and production HOLD.** The historical supplemental
+14,390-byte C bootstrap with SHA256
+`c18f6ec0beda17c52a181081d1b901025b92aa1af7d0619444edd7c287a38c18`
+pins the OLD F `f041f6d073498ba675846b03e73d2e0efe08c08f` helper
+bytes. It MUST NOT be executed for a revised F source. C must independently
+publish/review the actual complete bootstrap bytes and new exact root-helper
+Git blob + SHA256 pin list before any owner-run native PLAN/INSTALL.
+An owner's successful SHA verification on HEL1 is not F's independent
+review of those file bytes.
+
+D's real SHA-pinned native auditor, six genuinely independent root-enrolled
+signed producer issuers/restore proofs, and E's physical capacity/recovery
+approval remain absent from installed host evidence. Existing strict original
+`<92%` Finish / additional `<=88%` effective / `>=30GiB` and six
+isolated classes remain enforced. No paper Policy B, blind swap retirement
+or source-only CI can override a production gate. Owner PRE_STAGE,
+stage, PRE_ACTIVATE, activation and final G Chrome are NOT authorized
+until these source, host and independent reviewer gates pass.
