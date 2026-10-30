@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import {
-  ArrowLeft, ArrowRight, Archive, CheckCheck, ChevronRight, CircleHelp,
-  Clock3, Database, HardDrive, Laptop2, LockKeyhole, Network,
-  RadioTower, RefreshCw, Server, ShieldCheck, ShieldAlert,
-  Timer, Waves, WifiOff
+  ArrowLeft, ArrowRight, Archive, ChevronRight,
+  Database, HardDrive, Laptop2, LockKeyhole, Network,
+  RefreshCw, Server, WifiOff
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TransferMissionPanels from "@/components/storage-transfer/TransferMissionPanels";
@@ -24,14 +23,6 @@ const NAV: { id: NodeId; name: string; subtitle: string }[] = [
   { id: "hel1-root", name: "HEL1 ROOT", subtitle: "Ubuntu · system" },
   { id: "hel1-volume-105319120", name: "HEL1 VOLUME", subtitle: "Live data · protected" },
   { id: "intel", name: "INTEL ARCHIVE", subtitle: "macOS · receiver" },
-];
-const STAGES = [
-  { label: "SNAPSHOT", hint: "Consistent original" },
-  { label: "COMPRESS", hint: "Real saved bytes" },
-  { label: "AGE LOCK", hint: "Source-encrypted" },
-  { label: "TRANSFER", hint: "Measured transport" },
-  { label: "READBACK", hint: "Receiver checksum" },
-  { label: "RESTORE", hint: "Independent proof" },
 ];
 const PANEL = "rounded-[1.5rem] border border-cyan-100/10 bg-slate-950/75 shadow-[0_24px_65px_rgba(0,0,0,.25)]";
 
@@ -98,13 +89,6 @@ function NodeTile({
     </div>
   </button>;
 }
-function UnknownStat({ label, icon }: { label: string; icon: React.ReactNode }) {
-  return <div className="rounded-2xl border border-white/[.075] bg-white/[.025] p-4">
-    <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.15em] text-slate-500">{icon}{label}</div>
-    <div className="mt-3 text-2xl font-black text-slate-300">—</div>
-    <div className="mt-2 text-[10px] tracking-wider text-slate-600">WAITING FOR AUTHENTIC RECEIPT</div>
-  </div>;
-}
 export default function StorageTransferControlRoomPage() {
   const [data, setData] = useState<TransferResponse | null>(null);
   const [selected, setSelected] = useState<NodeId>("mac");
@@ -160,7 +144,6 @@ export default function StorageTransferControlRoomPage() {
       pending.current = null;
     };
   },[refresh]);
-  const source = data?.storage.planes.find(p=>p.id===selected) ?? null;
   const transfer = useMemo(()=>projectTransferPublication(data?.transferReceipt??null),[data?.transferReceipt]);
   const candidates = data?.storage.visual?.planes.find(p=>p.id===selected)?.hogs ?? [];
   return <main className="relative min-h-screen overflow-hidden bg-[#050b14] text-slate-50">
