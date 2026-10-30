@@ -58,7 +58,7 @@ async function main(){
    await page.getByTestId("c-adoption-state").getByText("Not adopted").waitFor({timeout:10000});
    for(const id of ["mac","hel1-root","hel1-volume-105319120"]){
     const p=page.getByTestId("c-freshness-"+id);await p.waitFor();
-    await p.getByText("UNKNOWN",{exact:true}).waitFor({timeout:15000});
+    await page.getByTestId("c-status-"+id).getByText("UNKNOWN",{exact:true}).waitFor({timeout:15000});
     await p.getByText("NO VERIFIED READING").waitFor();
    }
    assert.equal(await panel.getByText("0/2 VERIFIED").count(),2);
