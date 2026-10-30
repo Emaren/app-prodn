@@ -94,7 +94,7 @@ class Journal:
             fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
     def name(self,attempt,phase,kind):
         need(type(attempt) is str and bool(HEX64.fullmatch(attempt)),"bad attempt")
-        need(phase in ("PRE_STAGE","PRE_ACTIVATE") and kind in ("issue","used","staged"),"bad phase")
+        need(phase in ("PRE_STAGE","PRE_ACTIVATE") and kind in ("issue","used","staged","observation"),"bad phase")
         return self.state/(attempt+"-"+phase+"-"+kind+".json")
     def read(self,attempt,phase,kind):
         p=self.name(attempt,phase,kind);self.secure(p)
@@ -134,14 +134,21 @@ class Journal:
             need(outcome.is_file() and not outcome.is_symlink(),
                  "previous consumed phase outcome unresolved; never redispatch")
 
-    def issue(self,phase,candidate,*,attempt=None,lease=None,stage_sha=None,now=None):
+    def issue(self,phase,candidate,*,attempt=None,lease=None,stage_sha=None,
+              observation=None,now=None):
         now=now or datetime.now(timezone.utc)
         need(bool(re.fullmatch(r"[0-9a-f]{40}",candidate)),"bad source SHA")
         with self.exclusive():
             self.refuse_unreconciled_phases()
             if phase=="PRE_STAGE":
-                need(attempt is None and lease is None and stage_sha is None,"stage must be fresh")
-                attempt,lease=secrets.token_hex(32),secrets.token_hex(32)
+                need(lease is None and stage_sha is None,"stage must be fresh")
+                # Root issuer may reserve a random attempt ID for READ-ONLY
+                # independent audit BEFORE a challenge exists. Never accept
+                # an externally supplied attempt at the SSH boundary.
+                need(attempt is None or
+                     (type(attempt) is str and HEX64.fullmatch(attempt)),
+                     "bad root-reserved attempt")
+                attempt,lease=attempt or secrets.token_hex(32),secrets.token_hex(32)
             else:
                 need(type(lease) is str and HEX64.fullmatch(lease) and
                      type(stage_sha) is str and HEX64.fullmatch(stage_sha),"activation binding")
@@ -155,6 +162,16 @@ class Journal:
             challenge={"schema":1,"policy":POLICY,"phase":phase,"candidate_sha":candidate,
                        "attempt_id":attempt,"lease_id":lease,"nonce":secrets.token_hex(32),
                        "issued_at":utc(now),"expires_at":utc(now+timedelta(minutes=10))}
+            # A failed audit must not leave an issued challenge. Commit
+            # the root-audited snapshot FIRST and the challenge LAST under
+            # the same original lock. Orphan snapshot is not an authority.
+            if not self.test_mode:
+                need(type(observation) is dict and
+                     observation.get("schema")==1 and
+                     type(observation.get("observation")) is dict,
+                     "no independent native audit before challenge")
+            if observation is not None:
+                self.write_once(attempt,phase,"observation",observation)
             self.write_once(attempt,phase,"issue",challenge)
             return challenge
     def consume_under_existing_lock(self,challenge,packet_sha,host_sha,*,now=None):
