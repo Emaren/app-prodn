@@ -1346,3 +1346,82 @@ write capability is conferred.
 Current physical evidence: no completed transfers and no six-class
 independent physical restores authenticated. Source-code tests do not
 change host installation or release HOLD.
+
+### Owner-held HEL1 native receipt ledger setup and rollback
+
+The following is **an installation procedure, not authorization**.
+Execute only after E/C independent source review, owner approval of real
+five-key enrollment and installed helper SHA, and an owner-supervised change
+window. Do NOT execute it during W1 activation.
+
+The owner must first independently install a root-owned, 0600 JSON trust
+file at /etc/aoe2war/storage-transfer-v1/producer-public-keys.json,
+with exactly five keys (m1, hel1-root, hel1-volume, intel,
+restore-auditor). Each entry has key_id, public_key_path,
+public_spki_sha256 (DER SHA256) and failure_domain_id. Verify all
+public PEM paths are root-owned, protected and contain genuinely distinct
+Ed25519 keys. NEVER paste signer private keys to HEL1 or GitHub.
+
+Only after that enrollment is reviewed, the following HEL1 guarded
+command creates the empty root-only ledger **once**. It refuses an
+existing DB, cannot delete or migrate production data, and does NOT
+enable timers or transfers. The command requires typed owner consent.
+
+~~~bash
+bash <<'BASH'
+if [ "$(uname -s)" != "Linux" ] || [ "$(hostname -s)" != "ubuntu-4gb-hel1-11" ]; then
+  echo 'HOLD: NOT_HEL1'; exit 2
+fi
+printf 'OWNER APPROVAL REQUIRED: exactly TYPE INSTALL STORAGE RECEIPT LEDGER\n'
+IFS= read -r approval < /dev/tty
+if [ "$approval" != "INSTALL STORAGE RECEIPT LEDGER" ]; then
+  echo 'HOLD: OWNER_DID_NOT_APPROVE'; exit 2
+fi
+sudo -n /usr/bin/python3 - <<'PY'
+import os, pathlib, socket, sqlite3, stat, sys
+if os.geteuid()!=0 or socket.gethostname()!="ubuntu-4gb-hel1-11":
+    print("HOLD: WRONG_ROOT_HOST");sys.exit(2)
+sys.path.insert(0,"/usr/local/libexec/aoe2war")
+try:
+    from aoe2_storage_transfer_receipts import create_schema, load_trust
+    producers=load_trust()
+    if len(producers)!=5:raise ValueError("unreviewed producer enrollment")
+    folder=pathlib.Path("/var/lib/aoe2war-storage-transfer-v1")
+    if folder.exists():raise ValueError("existing state requires manual review")
+    folder.mkdir(mode=0o700)
+    os.chown(folder,0,0);os.chmod(folder,0o700)
+    dest=folder/"receipts.sqlite3"
+    fd=os.open(dest,os.O_RDWR|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    os.close(fd)
+    c=sqlite3.connect(str(dest),isolation_level=None)
+    try:
+        create_schema(c)
+        c.execute("PRAGMA integrity_check")
+    finally:c.close()
+    d=os.open(folder,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(d)
+    finally:os.close(d)
+    print("PASS: EMPTY_ROOT_ONLY_RECEIPT_LEDGER_INITIALIZED")
+except Exception as exc:
+    print("HOLD: "+str(exc))
+    sys.exit(2)
+PY
+BASH
+~~~
+
+After actual native source/receiver/auditor service installation (owned
+by E/D and explicitly owner-approved), the event ingestion command is:
+native HEL1 root Python script, action ingest, path to an exact bounded
+signed envelope. It fails for replay, stale time, missing signature or
+wrong key; never creates its own database, performs live transfer or
+deletes archives. G's GET must read only a separately approved bounded
+materialized projection, NEVER invoke ingest.
+
+**Rollback procedure:** stop only newly enrolled receipt ingestion
+timer/service (once its actual reviewed unit name is known); preserve
+the immutable SQLite ledger, encrypted archives, enrolled public-key
+provenance, and existing source/receiver receipts. Revert new service
+routing via owner-approved unit rollback; no DB deletion, no
+auto-invalidation of native immutable evidence, no hidden public read
+access and no weakening F release/financial controls. Physical restore
+completion is not inferred merely from stored signatures.
