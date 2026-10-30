@@ -248,3 +248,156 @@ D owns M1 recovery; E owns six classes and Traffic #59 and Intel transport; B ow
 Do not spend on paid remote access or backups; no unapproved data deletion.
 
 **NO-GO until all source, physical, cryptographic, operational and owner approval gates are truly closed.**
+
+## 9. Approved solo-owner engine CLI (real commands, presently NOT ADMITTED)
+
+**WARNING: DO NOT RUN MUTATIONS NOW.** This new engine is NOT installed or
+independently certified; actual native audit/6-class restores, HEL1 capacity,
+M1 headroom, full CI and B/C signoff remain HOLD. Each block is runnable and
+fails closed without an approved installed controller and exact clean candidate.
+They do NOT use old owner-v4 permits or frozen W1 tri-human admission.
+
+Set operator variables from actual reviewed installation/evidence, not guessed
+paths: SOLO_CONTROLLER_DIR (installed reviewed #1008 code),
+SOLO_CANDIDATE_ROOT (already existing clean exact W1 checkout),
+SOLO_OWNER_PRIVATE_KEY (real preexisting owner private RSA path). Later:
+SOLO_PRE_STAGE_PACKET, SOLO_STAGE_RECEIPT, SOLO_ATTEMPT_ID, SOLO_LEASE_ID,
+SOLO_STAGE_SHA256, SOLO_PRE_ACTIVATE_PACKET. These are not currently present
+or authorized. Never paste private keys, passphrases or unrelated financial data.
+
+### M1 — HEL1 root-issued PRE_STAGE challenge
+
+~~~bash
+bash <<'BASH'
+echo '=== OWNER W1 ISSUE PRE_STAGE ==='
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+ echo 'HOLD: WRONG_HOST'; exit 2
+fi
+if [ -z "$SOLO_CONTROLLER_DIR" ] || [ -z "$SOLO_CANDIDATE_ROOT" ]; then
+ echo 'HOLD: REVIEWED_CONTROLLER_OR_CANDIDATE_UNAVAILABLE'; exit 2
+fi
+sudo -v || exit 2
+python3 "$SOLO_CONTROLLER_DIR/scripts/aoe2_solo_website_engine_v1.py" issue-stage --candidate "$SOLO_CANDIDATE_ROOT"
+echo "ISSUE_EXIT=$?"
+BASH
+~~~
+
+### M1 — explicit PRE_STAGE RSA owner consent
+
+~~~bash
+bash <<'BASH'
+echo '=== OWNER W1 SIGN PRE_STAGE ==='
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+ echo 'HOLD: WRONG_HOST'; exit 2
+fi
+if [ -z "$SOLO_CONTROLLER_DIR" ] || [ -z "$SOLO_CANDIDATE_ROOT" ] || [ -z "$SOLO_OWNER_PRIVATE_KEY" ]; then
+ echo 'HOLD: CONTROLLER_CANDIDATE_OR_EXISTING_KEY_MISSING'; exit 2
+fi
+sudo -v || exit 2
+python3 "$SOLO_CONTROLLER_DIR/scripts/aoe2_solo_website_owner_sign_v1.py" PRE_STAGE --candidate "$SOLO_CANDIDATE_ROOT" --owner-private-key "$SOLO_OWNER_PRIVATE_KEY"
+echo "SIGN_PRE_STAGE_EXIT=$?"
+BASH
+~~~
+
+Owner must type the fresh exact consent string printed by the signer.
+It outputs a new signed packet path, no automatic stage.
+
+### M1 — actually STAGE after genuine owner permit
+
+~~~bash
+bash <<'BASH'
+echo '=== OWNER W1 PROTECTED STAGE ==='
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+ echo 'HOLD: WRONG_HOST'; exit 2
+fi
+if [ -z "$SOLO_CONTROLLER_DIR" ] || [ -z "$SOLO_CANDIDATE_ROOT" ] || [ ! -f "$SOLO_PRE_STAGE_PACKET" ]; then
+ echo 'HOLD: CONTROLLER_CANDIDATE_OR_REAL_SIGNED_PACKET_MISSING'; exit 2
+fi
+sudo -v || exit 2
+python3 "$SOLO_CONTROLLER_DIR/scripts/aoe2_solo_website_engine_v1.py" stage --candidate "$SOLO_CANDIDATE_ROOT" --signed-packet "$SOLO_PRE_STAGE_PACKET"
+echo "PROTECTED_STAGE_EXIT=$?"
+BASH
+~~~
+
+### M1 — root-issue separate PRE_ACTIVATE, then sign
+
+Read ATTEMPT_ID, LEASE_ID and exact STAGE_SHA256 from genuine HEL1
+root-sealed stage evidence. SOLO_STAGE_RECEIPT must point to the ORIGINAL
+unchanged W1 local stage receipt FILE, not reserialized JSON.
+
+~~~bash
+bash <<'BASH'
+echo '=== OWNER W1 ISSUE AND SIGN PRE_ACTIVATE ==='
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+ echo 'HOLD: WRONG_HOST'; exit 2
+fi
+for v in SOLO_CONTROLLER_DIR SOLO_CANDIDATE_ROOT SOLO_OWNER_PRIVATE_KEY SOLO_PRE_STAGE_PACKET SOLO_STAGE_RECEIPT SOLO_ATTEMPT_ID SOLO_LEASE_ID SOLO_STAGE_SHA256; do
+ eval "x=\$$v"
+ if [ -z "$x" ]; then echo "HOLD: MISSING_$v"; exit 2; fi
+done
+if [ ! -f "$SOLO_PRE_STAGE_PACKET" ] || [ ! -f "$SOLO_STAGE_RECEIPT" ]; then
+ echo 'HOLD: PRIOR_OWNER_PACKET_OR_DURABLE_STAGE_MISSING'; exit 2
+fi
+sudo -v || exit 2
+python3 "$SOLO_CONTROLLER_DIR/scripts/aoe2_solo_website_engine_v1.py" issue-activation --candidate "$SOLO_CANDIDATE_ROOT" --attempt-id "$SOLO_ATTEMPT_ID" --lease-id "$SOLO_LEASE_ID" --stage-sha256 "$SOLO_STAGE_SHA256"
+rc=$?
+if [ "$rc" -ne 0 ]; then echo 'HOLD: ROOT_CHALLENGE_FAILED'; exit 2; fi
+python3 "$SOLO_CONTROLLER_DIR/scripts/aoe2_solo_website_owner_sign_v1.py" PRE_ACTIVATE --candidate "$SOLO_CANDIDATE_ROOT" --owner-private-key "$SOLO_OWNER_PRIVATE_KEY" --prior-owner-packet "$SOLO_PRE_STAGE_PACKET" --stage-receipt "$SOLO_STAGE_RECEIPT"
+echo "SIGN_PRE_ACTIVATE_EXIT=$?"
+BASH
+~~~
+
+### M1 — genuinely ACTIVATE the approved stage
+
+~~~bash
+bash <<'BASH'
+echo '=== OWNER W1 PROTECTED ACTIVATE ==='
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+ echo 'HOLD: WRONG_HOST'; exit 2
+fi
+if [ -z "$SOLO_CONTROLLER_DIR" ] || [ -z "$SOLO_CANDIDATE_ROOT" ] || [ ! -f "$SOLO_STAGE_RECEIPT" ] || [ ! -f "$SOLO_PRE_STAGE_PACKET" ] || [ ! -f "$SOLO_PRE_ACTIVATE_PACKET" ]; then
+ echo 'HOLD: STAGE_OR_NEW_OWNER_SIGNATURE_MISSING'; exit 2
+fi
+sudo -v || exit 2
+AOE2_SOLO_PRE_STAGE_PACKET="$SOLO_PRE_STAGE_PACKET" python3 "$SOLO_CONTROLLER_DIR/scripts/aoe2_solo_website_engine_v1.py" activate --candidate "$SOLO_CANDIDATE_ROOT" --signed-packet "$SOLO_PRE_ACTIVATE_PACKET" --stage-receipt "$SOLO_STAGE_RECEIPT"
+echo "PROTECTED_ACTIVATION_EXIT=$?"
+BASH
+~~~
+
+### HEL1 — verify SOURCE / BUILD_ID / service / rollback
+
+Run the HEL1 **read-only** native script in Section 2. Check that Git
+SHA, .next/BUILD_ID, service and authenticated internal/public endpoint
+match the original root stage and activation receipts. Obtain signed
+post-activation 8092/8093 and HD/DE/settlement/custody writer equality,
+Doctor, backup and actual rollback path hash. C/G must independently run
+authenticated Chrome at 375/768/1440; a 200 status is not acceptance.
+
+### M1 — emergency real rollback (only after genuine activation)
+
+~~~bash
+bash <<'BASH'
+echo '=== OWNER EMERGENCY PROTECTED WEBSITE ROLLBACK ==='
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+ echo 'HOLD: WRONG_HOST'; exit 2
+fi
+if [ -z "$SOLO_CANDIDATE_ROOT" ] || [ ! -d "$SOLO_CANDIDATE_ROOT" ]; then
+ echo 'HOLD: VERIFIED_RELEASE_CHECKOUT_UNAVAILABLE'; exit 2
+fi
+cd "$SOLO_CANDIDATE_ROOT" || exit 2
+./bin/aoe2war release rollback --dry-run --json
+rc=$?
+if [ "$rc" -ne 0 ]; then echo 'HOLD: ROLLBACK_DRY_RUN_NOT_VERIFIED'; exit 2; fi
+echo 'Owner: type ROLLBACK APPROVED only after the real activation/rollback receipt is verified'
+IFS= read -r approval
+if [ "$approval" != 'ROLLBACK APPROVED' ]; then echo 'HOLD: NO_OWNER_ROLLBACK_CONSENT'; exit 2; fi
+./bin/aoe2war release rollback --json
+echo "ROLLBACK_EXECUTION_EXIT=$?"
+BASH
+~~~
+
+These are genuine native interfaces; all protected mutation remains
+unavailable until separate installed/reviewed owner admission and actual
+physical receipts PASS. An ambiguous consumed nonce or SSH loss is
+NOT permission to retry. The later post-W1 candidate must be admitted
+separately from a confirmed W1 active source.
