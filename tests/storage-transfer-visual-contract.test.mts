@@ -53,7 +53,7 @@ test("fresh admitted sender/receiver produces only observed bytes and measured E
  assert.equal(x.reclaimedBytes,null);
  assert.equal(x.independentRestores,0);
  const progress=measuredProgress(x.cohorts[0],time);
- assert.equal(progress.percent,30000/44000*100);
+ assert.ok(progress.percent!==null&&Math.abs(progress.percent-(30000/44000*100))<1e-9);
  assert.equal(progress.label,"ESTIMATED");
  assert.ok(progress.bytesPerSecond!>0&&progress.etaSeconds!>0);
 });
