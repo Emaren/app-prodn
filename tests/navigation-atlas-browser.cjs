@@ -199,12 +199,23 @@ async function main(){
      await page.route("**/api/admin/central-command/work-ledger",r=>r.fulfill({
        status:503,contentType:"application/json",body:JSON.stringify({error:"ISOLATED_SOURCE_UNAVAILABLE"})
      }));
-     const edge=page.locator('#navigation-atlas a[data-atlas-href="'+href+'"]');
+     // Next App Router can transiently duplicate a server-streamed anchor
+     // while hydrating; its href is the same source-authorized destination.
+     // Wait for load and select a single real visible edge, not a stale
+     // strict locator that fails on harmless streamed DOM duplication.
+     await page.waitForLoadState("load",{timeout:30000});
+     const matching=page.locator('#navigation-atlas a[data-atlas-href="'+href+'"]');
+     const edge=matching.first();
+     const hrefs=await matching.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
+     assert.ok(hrefs.length>=1 && hrefs.every(v=>v===href),
+       "Atlas hydration exposed an unexpected navigation destination");
      await edge.focus();
      assert.equal(await edge.evaluate(el=>document.activeElement===el),true,
        "keyboard focus must reach private A3 navigation edge");
-     await edge.press("Enter");
-     await page.waitForURL(url=>url.pathname===href,{waitUntil:"commit",timeout:30000});
+     await Promise.all([
+       page.waitForURL(url=>url.pathname===href,{waitUntil:"commit",timeout:30000}),
+       page.keyboard.press("Enter")
+     ]);
      console.log("Q17_A3_ROUTE_COMMIT",JSON.stringify({width,href,path:new URL(page.url()).pathname}));
      await page.getByRole("heading",{name:heading}).waitFor({timeout:20000});
      await page.getByRole("navigation",{name:"Private Central Command views"}).waitFor();
