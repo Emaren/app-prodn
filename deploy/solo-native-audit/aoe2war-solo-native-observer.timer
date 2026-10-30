@@ -1,0 +1,12 @@
+[Unit]
+Description=AoE2WAR root read-only native admission metadata heartbeat (never finance GO)
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=15min
+AccuracySec=1min
+Persistent=false
+Unit=aoe2war-solo-native-observer.service
+
+[Install]
+WantedBy=timers.target
