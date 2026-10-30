@@ -173,6 +173,8 @@ def issue(args):
              all(type(x)is str and HEX64.fullmatch(x)for x in args[3:]),
              "activation requires prior attempt,lease,stage SHA")
         attempt=args[2]
+    ledger=Journal()
+    ledger.inherited_lease_fd()  # D native issuer requires SAME original flock
     # P1: Run the trusted real B/C/E/Doctor/finance audit BEFORE issuing.
     # Failed audit creates NO consumable nonce. The journal seals the native
     # snapshot before it records the phase issue as the final commit marker.
@@ -184,13 +186,13 @@ def issue(args):
          "root native snapshot changed during issuance")
     snapshot={"schema":1,"observation":observation,
               "at":datetime.now(timezone.utc).isoformat()}
-    ledger=Journal()
     if phase=="PRE_STAGE":
         challenge=ledger.issue(phase,candidate,attempt=attempt,
-                               observation=snapshot)
+                               observation=snapshot,under_original_lease=True)
     else:
         challenge=ledger.issue(phase,candidate,attempt=attempt,
-            lease=args[3],stage_sha=args[4],observation=snapshot)
+            lease=args[3],stage_sha=args[4],observation=snapshot,
+            under_original_lease=True)
     return {"status":"ROOT_ISSUED_NOT_AUTHORIZED","challenge":challenge,
             "snapshot_sha256":digest(canonical(snapshot))}
 
