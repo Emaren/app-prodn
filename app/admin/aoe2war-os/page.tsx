@@ -599,6 +599,10 @@ export default function AoE2WarOsAdminPage() {
               className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20">
               <DatabaseZap className="h-4 w-4" /> Storage Command Center
             </Link>
+            <Link href="/admin/storage-transfer"
+              className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-300/[.08] px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/20">
+              <DatabaseZap className="h-4 w-4" /> Operation Storage Transfer
+            </Link>
             <Link href="#navigation-atlas"
               className="inline-flex items-center gap-2 rounded-full border border-violet-300/30 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-300/20">
               <GitBranch className="h-4 w-4" /> Navigation Atlas
