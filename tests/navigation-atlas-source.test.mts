@@ -26,8 +26,8 @@ const WORK_BOARD = "/admin/central-command/work-board";
 const LANES = "/admin/central-command/lanes";
 const AUTHORIZED_NESTED_ROUTES = [JOB_EXCHANGE, WORK_BOARD, LANES] as const;
 
-test("all 32 approved static admin pages have an exact authenticated navigation edge", () => {
-  assert.equal(topLevel.length, 28, "Unexpected top-level admin source changes must be reviewed");
+test("all 33 approved static admin pages have an exact authenticated navigation edge", () => {
+  assert.equal(topLevel.length, 29, "Unexpected top-level admin source changes must be reviewed");
   assert.ok(existsSync(new URL("app/admin/central-command/job-board/page.tsx", root)),
     "Accepted G Job Exchange source must exist");
   for (const href of AUTHORIZED_NESTED_ROUTES) {
@@ -38,7 +38,7 @@ test("all 32 approved static admin pages have an exact authenticated navigation 
       "Every new private source page requires its own admin gate: " + href);
   }
   const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES].sort();
-  assert.equal(approvedStaticRoutes.length, 32);
+  assert.equal(approvedStaticRoutes.length, 33);
   assert.deepEqual(staticAdminPaths, approvedStaticRoutes,
     "No missing, invented or orphaned nested static admin page; investigate route policy first");
   assert.deepEqual(ADMIN_ATLAS_ROUTES.map(route=>route.href).sort(), approvedStaticRoutes,
@@ -46,6 +46,10 @@ test("all 32 approved static admin pages have an exact authenticated navigation 
   assert.equal(new Set(ADMIN_ATLAS_ROUTES.map(route=>route.href)).size, ADMIN_ATLAS_ROUTES.length);
   assert.ok(ADMIN_ATLAS_ROUTES.every(route=>route.visibility==="admin" && route.href.startsWith("/admin") &&
     !route.href.includes("?") && !route.href.includes("#") && !route.href.includes("[") ));
+  assert.ok(ADMIN_ATLAS_ROUTES.some(route=>route.href==="/admin/storage-transfer" &&
+    route.cluster==="infrastructure" && route.visibility==="admin"));
+  assert.match(src("app/admin/layout.tsx"), /await requireServerAdmin\(\)/);
+  assert.ok(!publicRoutes.some(row=>row.href==="/admin/storage-transfer"));
   assert.equal(ATLAS_CLUSTERS.length,6);
   assert.ok(ATLAS_CLUSTERS.every(group=>ADMIN_ATLAS_ROUTES.some(route=>route.cluster===group.id)));
   assert.deepEqual(dynamicAdminPaths, [...NON_NAVIGABLE_ADMIN_DETAIL_ROUTES].sort(),

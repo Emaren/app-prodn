@@ -1264,3 +1264,59 @@ C publisher are independent. Do not duplicate scanners, watchers, timers,
 release controllers or financial authority. Current W1 release is still
 independently capacity/backup/Doctor/financial-noninterference/owner-permit
 gated.
+
+## Operation Storage Transfer — Renaissance private control room (Phase 1)
+
+Issue [#1014](https://github.com/Emaren/app-prodn/issues/1014), existing
+Phase-1 PR [#1016](https://github.com/Emaren/app-prodn/pull/1016) and G visual
+follow-up are strictly **post-W1**, not admission to F's protected website
+release. The private `/admin/storage-transfer` route is reachable from
+`/admin/storage-os` and WarOS `/admin/aoe2war-os`. Its independent
+`GET /api/admin/storage-transfer` demands admin authorization and
+`private, no-store`; no transfer, SSH, scan, copy, mutation, or deletion
+is callable from render/poll.
+
+The initial live inputs are the existing **three-plane signed Storage Atlas**
+and the authenticated bounded gross-class visual store. An ordinary operator
+estate reading remains distinguished from signed host geometry. Intel free,
+reserve, transfer volumes, archive list, compression, age public recipient,
+ciphertext checksum/readback, isolated restore, source reclaim and ETA remain
+**UNKNOWN** while C's producer is absent; the API intentionally returns
+`transferReceipt: null`. UI empty/STALE is not a measured zero.
+
+`lib/storageTransferPresentation.ts` defines the bounded visual
+`aoe2war.storage-transfer.admitted-publication.v1` DTO, **not** a native
+attestation standard or self-authorizing `verified` claim. Only C's future
+independent cryptographic server adapter may mint it: separately enrolled
+sender and Intel receiver signatures, same immutable ciphertext SHA and
+campaign/cohort/sequence/parent chain, fresh expiry, source/receiver native
+byte samples, isolated different-physical failure-domain restore and
+source-filesystem before/after receipt. E owns sender-consistent encrypted
+capture and receiver readback; D owns immutable originals, protected
+classification and source/Intel physical space. No unverified browser input,
+payload boolean or source-side checksum can establish receiver proof.
+
+Actual cargo cards and seven-stage rails use only admitted cohorts; rates
+need at least three fresh, increasing sender samples with bounded intervals
+and stable rolling throughput. ETA remains MEASURING otherwise. Archive
+transmission, independent restoration and reclaimed bytes are **three
+different measures**. Reclaimed bytes require an independent restore, exact
+owner-approved original and native filesystem measurement, never a gross
+Traffic copied-image size. L2 is intent only with no automatic delete;
+L3/L4/L5 and finance originals remain protected.
+
+Polling only fetches the stored admin read model while document is visible:
+30-second cadence, 7-second timeout/abort, no overlapping requests, no host
+scan and no duplicate systemd/launchd sampler. Hidden windows clear the
+last public rendering. Receiver sleep, missing signatures, future clock,
+stale chain and incomplete controls cannot promote success. C/E/D native
+publisher and 57,802-byte source-age-encrypted pilot remain **separate
+owner-reviewed Phase-2 work**, not installed or claimed by the GUI.
+
+G's source tests verify authenticated-only response shape, malicious/expired
+claims, unique exact cohorts, conservative ETA, independent restore/reclaim,
+large byte counts and no-write API. The isolated Chrome job uses actual
+Chrome at 375/768/1440 with **disposable** admin/non-admin fixture identities
+and checks 401/403/405, axe, keyboard and no overflow. It is NOT real
+authenticated production acceptance. That still waits for F's installed
+SHA/BUILD_ID and D/E genuine signed physical receipts.

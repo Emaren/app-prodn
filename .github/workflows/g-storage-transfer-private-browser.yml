@@ -1,0 +1,115 @@
+name: Private Storage Transfer genuine admin Chrome
+on:
+  pull_request:
+    paths:
+      - 'app/admin/storage-transfer/**'
+      - 'app/api/admin/storage-transfer/**'
+      - 'components/storage-transfer/**'
+      - 'lib/storageTransferPresentation.ts'
+      - 'scripts/storage_transfer_private_browser.cjs'
+      - '.github/workflows/g-storage-transfer-private-browser.yml'
+      - 'tests/storage-transfer-visual-contract.test.mts'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: storage-transfer-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  private-admin:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
+      SESSION_SECRET: isolated-ci-not-production
+      NEXTAUTH_SECRET: isolated-ci-not-production
+      NEXTAUTH_URL: http://localhost:3137
+      STORAGE_TRANSFER_CHROME_ORIGIN: http://localhost:3137
+      AOE2WAR_PROD_DB_PREVIEW: 'false'
+      STORAGE_TRANSFER_FIXTURE_ALLOWED: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with: { node-version: '22.22.0', cache: yarn }
+      - uses: actions/setup-python@v7
+        with: { python-version: '3.13' }
+      - name: Install pinned test dependencies
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npm install --prefix "$RUNNER_TEMP/central-pw" --no-save --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
+          npx prisma generate
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Authenticated transfer source contracts (no native receipt fixtures)
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --test tests/storage-transfer-visual-contract.test.mts
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Create isolated PostgreSQL fixture and synthetic admin role
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT
+          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          printf '%s\n' "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" "REN88_PG_ROOT=$REN88_PG_ROOT" "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
+          bash scripts/renaissance_88_pg_fixture.sh start
+          psql "postgresql://renaissance_owner@127.0.0.1:55437/renaissance88" -v ON_ERROR_STOP=1 -q -c "INSERT INTO users(uid,in_game_name,verified,is_admin,created_at) VALUES('fixture-admin','Fixture Admin',false,true,'2026-10-28T00:00:00Z')"
+          bash scripts/renaissance_88_pg_fixture.sh snapshot
+      - name: Build exact candidate (no live credentials)
+        run: |
+          set -euo pipefail
+          timeout -k 10s 30m yarn build
+          test -s .next/BUILD_ID
+          test -s .next/server/app-paths-manifest.json
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Genuine transfer admin Chrome at 375/768/1440 and DB nonmutation acceptance
+        env:
+          PW_HOME: ${{ runner.temp }}/central-pw
+          STORAGE_TRANSFER_BROWSER_OUT: ${{ runner.temp }}/storage-transfer-acceptance
+        run: |
+          set -euo pipefail
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
+          export CHROME_BIN
+          mkdir -p "$STORAGE_TRANSFER_BROWSER_OUT"
+          node ./node_modules/next/dist/bin/next start --hostname localhost --port 3137 > "$STORAGE_TRANSFER_BROWSER_OUT/next.log" 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 90); do
+            kill -0 "$next_pid" 2>/dev/null || { cat "$STORAGE_TRANSFER_BROWSER_OUT/next.log"; exit 2; }
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://localhost:3137/ || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          node scripts/storage_transfer_private_browser.cjs
+          kill "$next_pid" 2>/dev/null || true
+          wait "$next_pid" 2>/dev/null || true
+          trap - EXIT
+          bash scripts/renaissance_88_pg_fixture.sh verify > "$STORAGE_TRANSFER_BROWSER_OUT/fixture-after.txt"
+          sha256sum .next/BUILD_ID .next/server/app-paths-manifest.json "$STORAGE_TRANSFER_BROWSER_OUT/receipt.json" > "$STORAGE_TRANSFER_BROWSER_OUT/sha256.txt"
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Stop disposable PG and save native evidence
+        if: always()
+        run: |
+          if [ -n "${REN88_PG_ROOT:-}" ]; then
+            bash scripts/renaissance_88_pg_fixture.sh stop || true
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-transfer-private-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/storage-transfer-acceptance/
+          retention-days: 14
+          if-no-files-found: warn

@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import {
-  ArrowLeft, ArrowRight, Archive, CheckCheck, ChevronRight, CircleHelp,
-  Clock3, Database, HardDrive, Laptop2, LockKeyhole, Network,
-  RadioTower, RefreshCw, Server, ShieldCheck, ShieldAlert,
-  Timer, Waves, WifiOff
+  ArrowLeft, ArrowRight, Archive, ChevronRight,
+  Database, HardDrive, Laptop2, LockKeyhole, Network,
+  RefreshCw, Server, Waves, WifiOff
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import TransferMissionPanels from "@/components/storage-transfer/TransferMissionPanels";
+import { projectTransferPublication, type TransferPublication } from "@/lib/storageTransferPresentation";
 import type { StorageCommandCenter, StorageReading } from "@/lib/storageCommandCenterProjection";
 
 type TransferResponse = {
   schema: "aoe2war.storage-transfer.control-room.v1";
   polledAt: string;
   storage: StorageCommandCenter;
-  transferReceipt: null;
+  transferReceipt: TransferPublication | null;
 };
 type NodeId = StorageReading["id"] | "intel";
 const NAV: { id: NodeId; name: string; subtitle: string }[] = [
@@ -22,14 +23,6 @@ const NAV: { id: NodeId; name: string; subtitle: string }[] = [
   { id: "hel1-root", name: "HEL1 ROOT", subtitle: "Ubuntu · system" },
   { id: "hel1-volume-105319120", name: "HEL1 VOLUME", subtitle: "Live data · protected" },
   { id: "intel", name: "INTEL ARCHIVE", subtitle: "macOS · receiver" },
-];
-const STAGES = [
-  { label: "SNAPSHOT", hint: "Consistent original" },
-  { label: "COMPRESS", hint: "Real saved bytes" },
-  { label: "AGE LOCK", hint: "Source-encrypted" },
-  { label: "TRANSFER", hint: "Measured transport" },
-  { label: "READBACK", hint: "Receiver checksum" },
-  { label: "RESTORE", hint: "Independent proof" },
 ];
 const PANEL = "rounded-[1.5rem] border border-cyan-100/10 bg-slate-950/75 shadow-[0_24px_65px_rgba(0,0,0,.25)]";
 
@@ -79,28 +72,22 @@ function NodeTile({
       </div>
     </div>
     <div className="mt-4 truncate text-[12px] font-black tracking-[.14em] text-slate-50">{label}</div>
-    <div className="mt-1 text-[11px] text-slate-500">{subtitle}</div>
+    <div className="mt-1 text-[11px] text-slate-400">{subtitle}</div>
     <div className="mt-4 border-t border-white/[.07] pt-3">
-      <div className="text-[9px] font-bold tracking-[.2em] text-slate-500">ORDINARY FREE SPACE</div>
+      <div className="text-[9px] font-bold tracking-[.2em] text-slate-400">ORDINARY FREE SPACE</div>
       <div className="mt-1 text-xl font-black tabular-nums text-slate-100">{bytes(reading?.freeBytes)}</div>
     </div>
     <div className="mt-3 flex items-center justify-between gap-2">
       <span className={"rounded-lg px-2 py-1 text-[9px] font-bold tracking-wider " +
         (reading?.status === "RECEIPT" ? "bg-cyan-400/10 text-cyan-200" :
         reading?.status === "STALE" ? "bg-amber-400/10 text-amber-200" :
-        "bg-white/[.05] text-slate-500")}>
-        {reading?.status === "RECEIPT" ? "RECEIPT" : reading?.status === "STALE" ? "STALE" : "UNKNOWN"}
+        "bg-white/[.05] text-slate-400")}>
+        {reading?.status === "RECEIPT" && reading.source === "SIGNED_THREE_PLANE_RECEIPT" ? "SIGNED" :
+          reading?.status === "RECEIPT" ? "ESTATE" : reading?.status === "STALE" ? "STALE" : "UNKNOWN"}
       </span>
-      <ChevronRight className="h-3.5 w-3.5 text-slate-500 transition group-hover:text-cyan-200"/>
+      <ChevronRight className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-cyan-200"/>
     </div>
   </button>;
-}
-function UnknownStat({ label, icon }: { label: string; icon: React.ReactNode }) {
-  return <div className="rounded-2xl border border-white/[.075] bg-white/[.025] p-4">
-    <div className="flex items-center gap-2 text-[10px] font-bold tracking-[.15em] text-slate-500">{icon}{label}</div>
-    <div className="mt-3 text-2xl font-black text-slate-300">—</div>
-    <div className="mt-2 text-[10px] tracking-wider text-slate-600">WAITING FOR AUTHENTIC RECEIPT</div>
-  </div>;
 }
 export default function StorageTransferControlRoomPage() {
   const [data, setData] = useState<TransferResponse | null>(null);
@@ -157,7 +144,7 @@ export default function StorageTransferControlRoomPage() {
       pending.current = null;
     };
   },[refresh]);
-  const source = data?.storage.planes.find(p=>p.id===selected) ?? null;
+  const transfer = useMemo(()=>projectTransferPublication(data?.transferReceipt??null),[data?.transferReceipt]);
   const candidates = data?.storage.visual?.planes.find(p=>p.id===selected)?.hogs ?? [];
   return <main className="relative min-h-screen overflow-hidden bg-[#050b14] text-slate-50">
     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[750px] bg-[radial-gradient(ellipse_at_50%_0%,rgba(6,182,212,.14),transparent_60%),radial-gradient(ellipse_at_90%_25%,rgba(16,185,129,.06),transparent_50%)]"/>
@@ -179,6 +166,7 @@ export default function StorageTransferControlRoomPage() {
           <div className="rounded-full border border-amber-200/25 bg-amber-400/[.06] px-3 py-2 text-[10px] font-bold tracking-wider text-amber-100">
             <LockKeyhole className="mr-1 inline h-3.5 w-3.5"/> READ-ONLY
           </div>
+          <Link href="/admin/aoe2war-os" className="rounded-full border border-cyan-200/20 px-3 py-2 text-[11px] font-bold text-cyan-100 hover:border-cyan-200/50">WAROS</Link>
           <button type="button" aria-label="Refresh authenticated receipts" onClick={()=>void refresh()} className="rounded-full border border-white/10 p-2.5 hover:text-cyan-200">
             <RefreshCw className="h-4 w-4"/>
           </button>
@@ -190,7 +178,7 @@ export default function StorageTransferControlRoomPage() {
       <section aria-label="Storage transfer host topology" className={PANEL+" space-y-4 p-4 sm:p-6"}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-[11px] font-black tracking-[.21em] text-cyan-100"><Waves className="h-4 w-4"/> TRANSFER TOPOLOGY</div>
-          <div className="text-[10px] tracking-wider text-slate-500">RECEIPT AGE · {observed(data?.storage.planes[0]?.asOf)}</div>
+          <div className="text-[10px] tracking-wider text-slate-400">RECEIPT AGE · {observed(data?.storage.planes[0]?.asOf)}</div>
         </div>
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {NAV.map(node=><NodeTile key={node.id} id={node.id} label={node.name} subtitle={node.subtitle}
@@ -199,69 +187,19 @@ export default function StorageTransferControlRoomPage() {
         </div>
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-200/15 bg-cyan-300/[.025] px-4 py-3 text-center sm:flex-row">
           <span className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-300">M1 <ArrowRight className="h-3 w-3"/> INTEL</span>
-          <span className="hidden text-slate-600 sm:inline">·</span>
+          <span className="hidden text-slate-400 sm:inline">·</span>
           <span className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-300">HEL1 ROOT <ArrowRight className="h-3 w-3"/> INTEL</span>
-          <span className="hidden text-slate-600 sm:inline">·</span>
+          <span className="hidden text-slate-400 sm:inline">·</span>
           <span className="flex items-center gap-1 text-[11px] font-bold tracking-wider text-slate-300">HEL1 VOLUME <ArrowRight className="h-3 w-3"/> INTEL</span>
           <span className="ml-0 flex items-center gap-1 text-[10px] text-amber-200 sm:ml-auto"><WifiOff className="h-3.5 w-3.5"/> TRANSFER RECEIPT NOT CONNECTED</span>
         </div>
       </section>
-      <section className="grid gap-4 xl:grid-cols-[1.55fr_.8fr]">
-        <div className={PANEL+" space-y-5 p-5 sm:p-7"}>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">LIVE RECEIPT PIPELINE</div>
-              <h2 className="mt-1 text-2xl font-bold">Transfer stages</h2>
-            </div>
-            <ShieldAlert className="h-6 w-6 text-amber-300/70"/>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {STAGES.map((step,index)=><div key={step.label} className="relative min-w-0 rounded-xl border border-white/[.07] bg-white/[.025] p-3">
-              <div className="text-[10px] font-bold text-slate-500">{String(index+1).padStart(2,"0")}</div>
-              <div className="mt-4 text-[10px] font-black tracking-[.07em] text-slate-300">{step.label}</div>
-              <div className="mt-2 h-1 rounded-full bg-slate-700"/>
-              <div className="mt-2 hidden text-[9px] text-slate-600 sm:block">{step.hint}</div>
-            </div>)}
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <UnknownStat label="COMPRESSED" icon={<Archive className="h-4 w-4"/>}/>
-            <UnknownStat label="AGE ENCRYPTED" icon={<LockKeyhole className="h-4 w-4"/>}/>
-            <UnknownStat label="TRANSFERRED" icon={<RadioTower className="h-4 w-4"/>}/>
-            <UnknownStat label="EST. REMAINING" icon={<Timer className="h-4 w-4"/>}/>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-slate-400">
-            <span className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-amber-200"/> No signed transfer or receiver acknowledgment yet</span>
-            <span>Stages update only from authentic native receipts</span>
-          </div>
-        </div>
-        <div className={PANEL+" space-y-4 p-5 sm:p-7"}>
-          <div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">SELECTED SOURCE</div>
-          <h2 className="text-2xl font-bold">{NAV.find(n=>n.id===selected)?.name}</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-white/[.03] p-4">
-              <div className="text-[9px] font-bold tracking-wider text-slate-500">AVAILABLE</div>
-              <div className="mt-2 text-2xl font-black tabular-nums">{bytes(source?.freeBytes)}</div>
-            </div>
-            <div className="rounded-2xl bg-white/[.03] p-4">
-              <div className="text-[9px] font-bold tracking-wider text-slate-500">RECLAIMED</div>
-              <div className="mt-2 text-2xl font-black tabular-nums">{bytes(source?.reclaimedBytes)}</div>
-            </div>
-          </div>
-          <div className="space-y-2 border-t border-white/10 pt-4">
-            <div className="flex items-center gap-2 text-[11px] text-slate-300"><ShieldCheck className="h-4 w-4 text-cyan-200"/> Independent restore required before cleanup</div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-300"><CheckCheck className="h-4 w-4 text-cyan-200"/> Owner-only per-original reclaim decision</div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-300"><CircleHelp className="h-4 w-4 text-slate-500"/> Source telemetry: {source?.source ?? "NONE"}</div>
-          </div>
-          <div className="rounded-xl border border-amber-300/15 bg-amber-300/[.045] p-3 text-[11px] leading-5 text-amber-100/80">
-            Source archives are never deleted just because ciphertext has been transferred.
-          </div>
-        </div>
-      </section>
+      <TransferMissionPanels model={transfer}/>
       <section aria-label="Verified source inventory" className={PANEL+" p-5 sm:p-7"}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">SOURCE INVENTORY</div>
             <h2 className="mt-1 text-2xl font-bold">Potential cargo</h2></div>
-          <span className="text-[10px] font-bold tracking-wider text-slate-500">NOT AUTHORIZED FOR TRANSFER OR DELETION</span>
+          <span className="text-[10px] font-bold tracking-wider text-slate-400">NOT AUTHORIZED FOR TRANSFER OR DELETION</span>
         </div>
         {candidates.length ?
           <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -269,17 +207,17 @@ export default function StorageTransferControlRoomPage() {
               <div className="truncate text-[12px] font-semibold text-slate-100">{item.label}</div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <div className="text-xl font-black tabular-nums">{bytes(item.grossBytes)}</div>
-                <div className="text-[10px] text-slate-500">L{item.level}</div>
+                <div className="text-[10px] text-slate-400">L{item.level}</div>
               </div>
               <div className="mt-3 text-[10px] text-amber-200">REVIEW BEFORE ARCHIVE</div>
             </div>)}
           </div> :
-          <div className="mt-5 flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 text-slate-500">
+          <div className="mt-5 flex min-h-32 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 text-slate-400">
             <Archive className="h-6 w-6"/>
             <div className="text-xs font-medium">No authenticated source cohort inventory connected</div>
           </div>}
       </section>
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pb-6 pt-3 text-[10px] font-semibold tracking-wider text-slate-500">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pb-6 pt-3 text-[10px] font-semibold tracking-wider text-slate-400">
         <span>VISUAL OPERATOR CONTROL · NO TRANSFER OR DELETE AUTHORITY</span>
         <span>{loading ? "LOADING RECEIPTS" : "LAST API POLL " + (data?.polledAt ?? "UNKNOWN")}</span>
         <Link className="hover:text-cyan-200" href="/admin/aoe2war-os">AOE2WAR OS <ArrowRight className="ml-1 inline h-3 w-3"/></Link>

@@ -19,7 +19,11 @@ const NO_STORE = { "Cache-Control": "private, no-store, max-age=0" };
  */
 export async function GET(request: NextRequest) {
   const admin = await requireAdmin(request);
-  if ("error" in admin) return admin.error;
+  if ("error" in admin) {
+    // Denied authentication must be private/noncacheable too.
+    admin.error.headers.set("Cache-Control", NO_STORE["Cache-Control"]);
+    return admin.error;
+  }
   try {
     const [estate, atlas, visual] = await Promise.all([
       readAoe2OsStorageEvidence(),
