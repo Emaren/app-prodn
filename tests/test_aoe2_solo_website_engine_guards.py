@@ -110,6 +110,14 @@ class Guards(unittest.TestCase):
         with self.assertRaises(native.Hold):
             native.validate_stage_boundary(stage,"PRE_STAGE",candidate)
 
+    def test_activation_completion_requires_separate_signed_post_activation(self):
+        import inspect
+        src=inspect.getsource(root.complete_activation)
+        self.assertIn('report=audit(candidate,"POST_ACTIVATE",attempt,post_stage=True)',src)
+        self.assertNotIn('report=audit(candidate,"PRE_ACTIVATE",attempt)',src)
+        self.assertIn('write_once(STATE/(attempt+"-POST_ACTIVATE-native-after.json"),report)',src)
+        self.assertIn('post_activation_native_sha256',src)
+
     def test_root_post_rollback_requests_post_stage_native_boundary(self):
         import inspect
         src=inspect.getsource(root.reconcile_activation_rollback)
