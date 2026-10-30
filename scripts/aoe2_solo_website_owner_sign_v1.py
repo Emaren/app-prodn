@@ -50,7 +50,7 @@ def sign_payload(payload,key):
     return out
 
 def prepare(phase,candidate,challenge,observation,manifest_raw,gate_raw,
-            prior=None,stage_receipt=None):
+            prior=None,stage_receipt=None,stage_receipt_raw=None):
     sha=candidate
     need(phase in ("PRE_STAGE","PRE_ACTIVATE"),"unknown phase")
     need(sha in [entry[0] for entry in TRAINS.values()],"candidate not allowed")
@@ -70,7 +70,12 @@ def prepare(phase,candidate,challenge,observation,manifest_raw,gate_raw,
         need(type(prior)is dict and type(stage_receipt)is dict,
              "activation requires real old signed owner packet and stage")
         signed_prior=prior
-        stage_sha=digest(canonical(stage_receipt))
+        need(type(stage_receipt_raw) is bytes and
+             parse(stage_receipt_raw)==stage_receipt,
+             "original stage receipt bytes unavailable")
+        # W1 stage's SHA is over exact original durable receipt FILE BYTES,
+        # not JSON canonicalization (the original receipt is pretty printed).
+        stage_sha=digest(stage_receipt_raw)
         build=stage_receipt.get("staged_build_id")
         prior_hash=digest(canonical(prior))
         need(stage_sha==observation.get("durable_stage_receipt_sha256") and
@@ -144,9 +149,11 @@ def main():
          "HEL1 does not have one exact fresh signed phase request")
     prior=load_file(args.prior_owner_packet) if args.prior_owner_packet else None
     stage=load_file(args.stage_receipt) if args.stage_receipt else None
+    stage_bytes=args.stage_receipt.read_bytes() if args.stage_receipt else None
     payload=prepare(args.phase,sha,challenge,obs,
                     manifest_path.read_bytes(),gate_path.read_bytes(),
-                    prior=prior,stage_receipt=stage)
+                    prior=prior,stage_receipt=stage,
+                    stage_receipt_raw=stage_bytes)
     # Preview exactly what the owner is approving. Approval is per phase
     # and candidate; never default YES or request a financial transfer.
     print("OWNER WEBSITE ONLY: "+args.phase)
