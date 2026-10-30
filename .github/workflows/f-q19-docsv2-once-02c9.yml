@@ -1,0 +1,58 @@
+name: One-shot F Q19 exact-head DocsV2 reseal
+on:
+  push:
+    branches:
+      - repair/g-docsv2-f-final-02c9b263-20261030
+permissions:
+  contents: write
+jobs:
+  canonical-docsv2:
+    name: Canonical DocsV2 generator, source unchanged
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Retire temporary workflow, seal canonical DocsV2, commit only generated docs
+        shell: bash {0}
+        run: |
+          EXPECTED_SOURCE=02c9b2631f9fc4c61d0cb9aa696a7856042322fc
+          BRANCH=repair/g-docsv2-f-final-02c9b263-20261030
+          TEMP_WORKFLOW=.github/workflows/f-q19-docsv2-once-02c9.yml
+          if [ "$(git rev-parse HEAD^)" != "$EXPECTED_SOURCE" ]; then
+            echo "HOLD: GENERATOR_SOURCE_ANCESTRY_MISMATCH"
+            exit 2
+          fi
+          DELTA=$(git diff --name-only "$EXPECTED_SOURCE" HEAD)
+          if [ "$DELTA" != "$TEMP_WORKFLOW" ]; then
+            echo "HOLD: UNREVIEWED_GENERATOR_SOURCE_DELTA $DELTA"
+            exit 2
+          fi
+          git switch -C "$BRANCH" || exit 2
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- "$TEMP_WORKFLOW" || exit 2
+          git commit -m "chore(Q19): retire temporary exact-head DocsV2 generator" || exit 2
+          BASELINE=$(git rev-parse HEAD)
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch "$BRANCH" --head "$BASELINE" || exit 2
+          git add -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json || exit 2
+          DELTA=$(git diff --cached --name-only)
+          EXPECTED_DOCS=$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)
+          if [ "$DELTA" != "$EXPECTED_DOCS" ]; then
+            echo "HOLD: UNEXPECTED_GENERATED_DOCS $DELTA"
+            exit 2
+          fi
+          git commit -m "docs(Q19): canonical exact-F-head DocsV2 reseal" || exit 2
+          python3 scripts/docs_v2_check.py || exit 2
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "HOLD: GENERATOR_LEFT_DIRTY_SOURCE"
+            exit 2
+          fi
+          git push origin "HEAD:refs/heads/$BRANCH" || exit 2
+          echo "PASS: SOURCE_UNCHANGED DOCS_ONLY_RESEAL"
+          git show -s --format='%H %P %s' HEAD
