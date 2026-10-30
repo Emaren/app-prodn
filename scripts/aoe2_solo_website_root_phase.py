@@ -231,6 +231,47 @@ def mark_staged(args):
             "source_sha":challenge["candidate_sha"],
             "financial_release_authorized":False}
 
+def complete_activation(args):
+    """Post-activation website/finance result from REAL native receipt checks."""
+    need(len(args)==3,"activation completion requires attempt/source/BUILD_ID")
+    attempt,candidate,build=args
+    need(HEX64.fullmatch(attempt) and HEX40.fullmatch(candidate),
+         "bad completion lineage")
+    l=Journal();l.inherited_lease_fd()
+    challenge=l.read(attempt,"PRE_ACTIVATE","issue")
+    used=l.read(attempt,"PRE_ACTIVATE","used")
+    approved=root_file(STATE/(attempt+"-PRE_ACTIVATE-approved.json"))
+    need(challenge["candidate_sha"]==candidate and
+         used["owner_packet_sha256"]==approved["packet_sha256"],
+         "completion not bound to owner signed activation")
+    from aoe2_solo_website_native_audit_adapter import audit
+    report=audit(candidate,"PRE_ACTIVATE",attempt)
+    now=native_observation_for_owner(report)
+    original=root_file(STATE/(attempt+"-PRE_ACTIVATE-observation.json"))["observation"]
+    need(now["source_sha"]==candidate and now["build_id"]==build and
+         now["web_service"]=="active" and
+         now["rollback_available"]is True and
+         now["protected"]==original["protected"] and
+         now["finance_fingerprint_sha256"]==
+         original["finance_fingerprint_sha256"],
+         "post-activation source/BUILD_ID or protected finance drift")
+    before=root_file(STATE/(attempt+"-PRE_STAGE-stage-receipt.json"))
+    need(before["receipt"]["staged_build_id"]==build and
+         before["receipt"]["release_sha"]==candidate and
+         before["stage_receipt_sha256"]==
+         approved["stage_receipt_sha256"],
+         "activated artifact not original root-sealed stage receipt")
+    record={
+        "schema":1,"policy":POLICY,"status":"ROOT_ACTIVATION_NATIVE_VERIFIED",
+        "attempt_id":attempt,"candidate_sha":candidate,"build_id":build,
+        "stage_receipt_sha256":approved["stage_receipt_sha256"],
+        "finance_fingerprint_sha256":now["finance_fingerprint_sha256"],
+        "doctor_p0":now["doctor_p0"],"doctor_p1":now["doctor_p1"],
+        "rollback_available":now["rollback_available"],
+        "financial_release_authorized":False}
+    write_once(STATE/(attempt+"-PRE_ACTIVATE-completed.json"),record)
+    return record
+
 def consumed(args):
     need(len(args)==3,"proof requires attempt phase packet hash")
     a,phase,packet_sha=args
@@ -355,6 +396,7 @@ def main():
     elif action=="consumed-proof":out=consumed(args)
     elif action=="consume":out=consume(args)
     elif action=="mark-staged":out=mark_staged(args)
+    elif action=="complete-activation":out=complete_activation(args)
     else:raise Hold("unknown root phase command")
     print(json.dumps(out,sort_keys=True,separators=(",",":")))
 if __name__=="__main__":
