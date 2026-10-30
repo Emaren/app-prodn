@@ -165,6 +165,10 @@ const KINGDOM_LINKS = [
   { href: "/speed", label: "Speed", icon: Zap, body: "Your live performance and readiness measurements" },
 ] as const;
 
+const KINGDOM_PRIMARY_HREFS: readonly string[] = [
+  "/kingdom-index", "/workshop", "/kingdom-progress", "/kingdom-systems",
+];
+
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/kingdom-bettors", title: "Kingdom Bettors" },
   { prefix: "/admin/kingdom-bettors", title: "Kingdom Bettors Command" },
@@ -803,6 +807,12 @@ function KingdomMenuPanel({
 }) {
   const t = useTranslations("Shell");
   const router = useRouter();
+  const [showMoreKingdom, setShowMoreKingdom] = React.useState(false);
+  const orderedKingdomLinks = [...KINGDOM_LINKS].sort((a, b) => {
+    const aRank = KINGDOM_PRIMARY_HREFS.indexOf(a.href);
+    const bRank = KINGDOM_PRIMARY_HREFS.indexOf(b.href);
+    return (aRank < 0 ? 99 : aRank) - (bRank < 0 ? 99 : bRank);
+  });
 
   return (
     <div
@@ -815,7 +825,7 @@ function KingdomMenuPanel({
       aria-label={t("kingdom.pagesAria")}
     >
       <div className="grid gap-1">
-        {KINGDOM_LINKS.map((item) => {
+        {orderedKingdomLinks.filter(item => showMoreKingdom || KINGDOM_PRIMARY_HREFS.includes(item.href)).map((item) => {
           const Icon = item.icon;
           const copyKeys =
             KINGDOM_COPY_KEYS[item.href];
@@ -864,6 +874,11 @@ function KingdomMenuPanel({
           );
         })}
       </div>
+      <button type="button" aria-expanded={showMoreKingdom}
+        onClick={() => setShowMoreKingdom(value => !value)}
+        className="mt-2 w-full rounded-xl border border-amber-200/20 bg-amber-300/[.07] px-4 py-3 text-left text-xs font-semibold text-amber-100 transition hover:bg-amber-300/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-200">
+        {showMoreKingdom ? "Show primary Kingdom Works" : "Explore all Kingdom chambers · 88-route Index"}
+      </button>
     </div>
   );
 }
