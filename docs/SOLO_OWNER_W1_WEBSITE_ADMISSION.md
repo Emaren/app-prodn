@@ -135,5 +135,57 @@ service mutations are authorized by accepting source code.
   documentation diff, then new exact-head CI and independent code review.
   Do not fake that baseline by changing registry bytes by hand.
 
+
+## G production browser acceptance — execute only after F authenticates LIVE
+
+**Scope and stop condition:** This is a production **procedure**, not a CI screenshot
+receipt or permission to deploy. Session F first supplies the authentic
+installed source SHA, Next.js BUILD_ID, public-served BUILD_ID, running
+service identities, rollback/build receipt and both approved release phases.
+The initial frozen W1 and the later post-W1 deployment are **separate**
+governed activations. Never reuse a W1 receipt to accept post-W1.
+
+Before Chrome, match on-host immutable activation/source evidence to the
+running process, the installed `.next/BUILD_ID` and the real public-served
+assets. Any mismatch, unverified admin session or missing F receipt means
+**PRODUCTION HOLD**; a passing GitHub Actions candidate is insufficient.
+
+For **each** viewport width **375, 768 and 1440 CSS pixels**, run the
+actual production origin in a real browser with a valid owner/admin session,
+then separately with anonymous and non-admin identities wherever access is
+restricted. Record the URL, installed source SHA, internal/public BUILD_ID,
+time, viewport, authenticated response, screenshot, axe results and
+horizontal overflow. Fail on a serious/critical accessibility violation,
+misleading stale state, private-data leak or an unauthorized mutation.
+Do not capture credentials, wallet filenames, raw home directories, key
+material or protected financial paths in screenshots or public routes.
+
+| Required interface | Production proof obligation |
+| --- | --- |
+| **Storage OS** | Private `/admin/storage-os`: distinct M1 and HEL1 readings, source provenance and age; Intel free/ciphertext destination only when source-authenticated. Never infer real APFS gain from gross categories, samples or a category preview. Confirm signed-freshness UNKNOWN/STALE on missing or failed producers. |
+| **Backup OS** | Resolve the **existing** private recovery/backup view from the deployed authenticated navigation inventory (do not invent a route). For each of six E classes require source-consistent capture, encrypted destination readback and a **physically independent isolated restore** witness; absent proof is UNKNOWN/HOLD, not 100%. |
+| **Documents OS** | Resolve the existing documents control interface and assert DocsV2 verified baseline/registry, genuine current document evidence and privacy. No synthetic 100% doc health or assumed standalone route. |
+| **General Inspections** | Check `/general-inspections` against production source/BUILD_ID, signed host receipts, true L1 8-gate policy and physical recovery. Stale or missing producer evidence must lower, never inflate, the score. |
+| **Kingdom Intelligence** | Check `/kingdom-intelligence` shows sanitized live/source provenance and physical restore/HEL1/Mac HOLD/UNKNOWN; no leaked host paths, phantom work or unsupported 100%. |
+| **Work Board / Six-Lane Ledger** | Private `/admin/central-command/work-board` and `/admin/central-command/lanes`: exactly one ordered 8-stage board, six original lanes, no hydration duplicates, correct access boundaries, live/source status explicitly distinguished. |
+| **Navigation Atlas** | Test the deployed 32-route Atlas and the independently required 88-route site navigation/accessibility set against the same **actual production BUILD_ID**, not a loopback CI build. |
+
+For Storage OS, also inspect append-only L2 owner history (individual exact
+fingerprint, source revision, owner click, scope, expiry, revoke/superseded
+state) **only if** a separately accepted authenticated per-item transport
+exists. Until then, the aggregate L2 basket is **LOCAL PREVIEW ONLY**,
+`INDIVIDUAL_TRANSPORT_ADOPTED=false`, and exact approval history is UNKNOWN.
+Any historic L2 approval may rank a future suggestion; it is **never**
+a standing delete token or automatic writer. L3/L4/L5 remain protected.
+L1 may not assert full closure before all 8/8 physical proof gates. Show
+actual reclaimed APFS bytes only after a permitted per-original disposal
+with before/after native disk receipt and independently verified restore.
+
+Acceptance requires both the screenshot/DOM/accessibility set **and**
+authenticated underlying E/D/C/F signed receipts. Missing one means
+`HOLD — PRODUCTION ACCEPTANCE INCOMPLETE`. Record the final PASS/HOLD with
+evidence links in Q18 #1007, G #976 and F #665. No new UI features or live
+host mutations are authorized by this runbook.
+
 This remains **source proposal / fail closed** until these gaps are actually
 resolved and physical recovery and site capacity independently pass.
