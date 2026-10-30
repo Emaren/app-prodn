@@ -64,28 +64,29 @@ def engine_context(candidate):
           "mixed source controller imports")
     return release,ship,stage,activation,gate
 def root_issue(phase,target,attempt,lease,stage_sha):
-    from aoe2_solo_website_host_observer import (
-        CONFIG_ROOT,KNOWN_HOSTS,host_fingerprint,protected_file
-    )
-    host_fingerprint()
-    key=CONFIG_ROOT/"hel1-command-identity"
-    protected_file(key,private=True)
-    args=["/usr/bin/sudo","-n","/usr/bin/ssh","-T","-n",
-          "-o","BatchMode=yes","-o","IdentitiesOnly=yes",
-          "-o","StrictHostKeyChecking=yes",
-          "-o","GlobalKnownHostsFile=/dev/null",
-          "-o","UserKnownHostsFile="+str(KNOWN_HOSTS),
-          "-o","HostKeyAlgorithms=ssh-ed25519",
-          "-o","ConnectTimeout=8","-i",str(key),
-          HOST,"aoe2war-solo-issue "+
-          " ".join(shlex.quote(x)for x in
-                   ([phase,target]if phase=="PRE_STAGE" else
-                    [phase,target,attempt,lease,stage_sha]))]
-    p=subprocess.run(args,capture_output=True,text=True,timeout=30)
-    check(p.returncode==0,"no real root HEL1 issued phase challenge: "+p.stderr[-500:])
-    item=json.loads(p.stdout)
+    # The genuine D native issuer observes the SAME original FD200 lease.
+    # The legacy direct solo-issue SSH command had no inherited FD200 and
+    # cannot issue a source-bound native certificate; never fall back to it.
+    from aoe2_solo_website_command_channel import command_lease
+    argv=[phase,target] if phase=="PRE_STAGE" else [
+        phase,target,attempt,lease,stage_sha]
+    check(all(type(v)is str and bool(v) for v in argv),
+          "incomplete native issue parameters")
+    cmd="python3 "+shlex.quote(ROOT_PHASE)+" issue "+" ".join(
+        shlex.quote(x) for x in argv)
+    holder=json.dumps({"policy":POLICY,"purpose":"ISSUE_ONLY",
+                       "phase":phase,"candidate_sha":target},
+                       sort_keys=True)
+    with command_lease(LOCK,holder,host=HOST) as runner:
+        answer=runner.run(cmd,timeout=90)
+        check(answer.returncode==0,
+              "no FD200-bound root native challenge issued: "+
+              (answer.stderr or "")[-500:])
+        try:item=json.loads((answer.stdout or "").strip())
+        except (ValueError,TypeError) as exc:
+            raise Hold("root native issue JSON malformed") from exc
     check(item.get("status")=="ROOT_ISSUED_NOT_AUTHORIZED",
-          "HEL1 challenge not issued")
+          "HEL1 challenge not issued under original session")
     return item
 def assert_owner_packet_shape(signed,phase,sha):
     check(type(signed) is dict and type(signed.get("payload")) is dict,
