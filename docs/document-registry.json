@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cb2f19a19fa7734ac9d3e9405f1b313ed197fc8c7bae2281cfb72e740883101f",
+      "sha256": "5071efcfcf7e066651c7bdead8c952507311f521f408c1197bd12d5fc8bacfdf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/d-storage-l2-owner-preview-20261029",
-    "commit": "aa7c2add926b222adb87430d468547bf256d7bdb"
+    "commit": "187288a01633b9557f7ae51fb5339ab3f03d5a61"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
