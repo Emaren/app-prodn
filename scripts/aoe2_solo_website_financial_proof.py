@@ -257,6 +257,9 @@ def rollback_finance_status(phase_result,before,after):
           "rollback "+label+" native finance UNKNOWN")
   # Validate all six machine/producer Ed25519 receipts, NOT just SHA strings.
   verify_all(report)
+  require(report["receipt_provenance"]["signed_producers"]["finance"]["payload"]["observed_at"]==
+          report.get("observed_at"),
+          "finance signature timestamp not bound to native observation")
   verify_financial_identity(report["finance"])
  # A copied PRE_ACTIVATE receipt cannot impersonate a post-failure capture.
  # Each boundary is separately signed by the enrolled finance producer.
