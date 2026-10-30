@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "internal"
 ---
 
-# AoE2WAR — Solo-owner protected website release v1
+# Solo-owner W1 / Post-W1 Release and Rollback — Operator v1
 
 **This runbook is executable evidence collection, NOT a deployment permit.** The W1 website candidate is frozen at SHA
 b46a51f1592c9f296839924ae55e722618b10d35. The separately accepted post-W1 source is SHA
