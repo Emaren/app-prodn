@@ -129,7 +129,16 @@ def issued_root_snapshot(challenge):
         if not 0<=age<=120:
             return None
         d=disk()
-        if (not d["mounted"] or h.get("free_bytes")!=d["free_bytes"] or
+        if (not d["mounted"] or
+                type(h.get("free_bytes")) is not int or
+                type(d["free_bytes"]) is not int or
+                d["free_bytes"] < 30 * 2**30 or
+                h["free_bytes"] < 30 * 2**30 or
+                # Bounded natural writes are normal; excess drift triggers
+                # a new root-issued challenge, never synthetic sameness.
+                abs(d["free_bytes"]-h["free_bytes"]) > 64*2**20 or
+                d["effective_used_pct"] > 88 or
+                d["finish_used_pct"] >= 92 or
                 abs(h.get("effective_used_pct",float("inf"))-
                     d["effective_used_pct"])>0.05 or
                 abs(h.get("finish_used_pct",float("inf"))-
