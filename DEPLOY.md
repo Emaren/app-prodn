@@ -15,6 +15,28 @@ sensitivity: "internal"
 
 # app-prodn Deploy
 
+
+## October 29, 2026 — W1 and post-W1 SOLO OWNER WEBSITE-ONLY operator authority
+
+**Current release entrypoint:** [Solo Owner W1 / Post-W1 Release and Rollback — Operator v1](docs/SOLO_OWNER_WEBSITE_RELEASE_V1_OPERATOR_RUNBOOK.md).
+The link is relative to the repository root.
+This is the single versioned operator procedure for the exact frozen W1
+source b46a51f1592c9f296839924ae55e722618b10d35 followed by the
+accepted post-W1 source fa5c350b35cba7ace8d4515a7ad52ba4e1534295.
+
+**HOLD:** the immutable W1 stage/activation scripts still require a
+multi-human source/finance/owner/host admission, incompatible with the
+real solo-owner operating model. Draft #1008 is NOT an installed protected
+solo-owner dispatcher; no fresh owner PRE_STAGE/PRE_ACTIVATE approvals or
+physical HEL1 recovery gates are cleared. Do not try the original stage/
+activation command as a workaround or resurrect old owner-v4 permits.
+M1/HEL1 inspection blocks in the new runbook are read-only and can run
+now; stage/activation/rollback mutation blocks deliberately refuse.
+G owns DocsV2 baseline/CI; F owns the real separately reviewed controller,
+E physical restores and usable HEL1 space relief. Frozen W1 main is not
+a source-integration target.
+
+
 ## October 22, 2026 — targeted release-safety review
 
 Rechecked the ordinary protected release path, exact Git source identity, isolated staging, runtime/public version parity, fast and durable rollback, and Wolo 8092/8093 observer boundary against the current `scripts/aoe2_release.py` / `scripts/aoe2_release_ship.py` controls. This review does **not** grant any additional one-time exception or authorize settlement, signer, custody, schema migration or restart outside the release controller. The Traffic Observatory country presentation correction must use a new reviewed, artifact-bound website activation and separately coordinated Traffic API rollout. Dated historical deployment examples remain evidence of their own time, not current runtime truth.
