@@ -136,11 +136,11 @@ def dispatch(phase,candidate,signed,receipt_path):
             with redirect_stdout(captured):
                 if phase=="PRE_STAGE":
                     rc=stage.stage_release(data,json_output=True,
-                        remote_runner=runner.run,signed_capability=cap)
+                        remote_runner=runner.run_tony,signed_capability=cap)
                 else:
                     rc=activation.activate_release(data,
                         stage_receipt=str(receipt_path),dry_run=False,
-                        json_output=True,remote_runner=runner.run,
+                        json_output=True,remote_runner=runner.run_tony,
                         signed_capability=cap)
             runner.assert_alive()
             check(rc==0,"protected phase NOT certified; nonce CONSUMED; reconcile")
