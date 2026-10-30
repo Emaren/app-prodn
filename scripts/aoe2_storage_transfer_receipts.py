@@ -337,6 +337,27 @@ def open_existing_db(path=DB):
     db.execute("PRAGMA synchronous=FULL")
     return db
 
+def read_bounded_envelope(path):
+    """O_NOFOLLOW same-file-description root ingress; never read giant spools."""
+    require(path.is_absolute() and not path.is_symlink(),
+            "untrusted incoming envelope path")
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        before=os.fstat(fd)
+        require(stat.S_ISREG(before.st_mode) and
+                0<before.st_size<=MAX_INPUT,"oversized/nonfile envelope")
+        data=os.read(fd,MAX_INPUT+1)
+        after=os.fstat(fd)
+        require(0<len(data)<=MAX_INPUT and
+                (before.st_dev,before.st_ino,before.st_size)==
+                (after.st_dev,after.st_ino,after.st_size) and
+                len(data)==before.st_size,
+                "incoming envelope replaced/truncated during read")
+        return data
+    finally:
+        os.close(fd)
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action",choices=["validate","ingest"])
@@ -344,7 +365,7 @@ def main():
     args=parser.parse_args()
     require(sys.platform=="linux" and os.geteuid()==0 and
             socket.gethostname()==EXPECTED_HOST,"not enrolled HEL1 root")
-    raw=args.envelope.read_bytes()
+    raw=read_bounded_envelope(args.envelope)
     trust=load_trust()
     envelope=parse(raw)
     if args.action=="validate":
