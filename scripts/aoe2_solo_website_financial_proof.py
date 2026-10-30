@@ -225,6 +225,14 @@ def verify_source_closure(report):
  require(scope.get("writer_census_sha256")==hashlib.sha256(canonical(census)).hexdigest(),
          "source dependency graph not bound to current writer census")
  verify_closed_graph(scope)
+ # Two separately signed native sources must agree on the exact route DAG.
+ # Otherwise a finance producer could omit an effect that source did record.
+ side=census["side_effects"]
+ require(all(side[verb]["route_graph_sha256"]==
+             scope["get_head_effects_sha256"] for verb in ("GET","HEAD")) and
+         side["PREWARM"]["route_graph_sha256"]==
+             scope["prewarm_effects_sha256"],
+         "signed financial GET/HEAD/PREWARM graph conflicts with signed source DAG")
  stage=report.get("stage")
  if type(stage)is dict and stage.get("status")=="STAGED":
   require(scope.get("artifact_sha256")==stage.get("artifact_sha256") and
