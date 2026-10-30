@@ -131,6 +131,7 @@ def native_observation_for_owner(report):
       "free_bytes":live["free_bytes"],
       "effective_used_pct":live["effective_used_pct"],
       "finish_used_pct":live["finish_used_pct"],
+      "mounted":live["mounted"],
       "rollback_available":rollback["preserved"],
       "rollback_build_id":rollback["active_build_id"],
       "doctor_p0":d["p0"],"doctor_p1":d["p1"],"doctor_signed":d["signed"],
@@ -375,7 +376,7 @@ def consume(args):
     packet_sha=digest(canonical(signed))
     # Consume once inside original FD200 lease and fsync before dispatch.
     l.consume_under_existing_lock(issued,packet_sha,
-        expected_observation_sha256=p["host_observation_sha256"])
+        p["host_observation_sha256"])
     approved={
         "schema":1,"policy":POLICY,"phase":phase,"attempt_id":a,
         "nonce":p["nonce"],"lease_id":p["lease_id"],
