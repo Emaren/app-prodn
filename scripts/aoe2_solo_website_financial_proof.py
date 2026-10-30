@@ -145,6 +145,62 @@ def verify_writer_census(finance):
          "writer inventory changed after native observation")
  return census
 
+def verify_closed_graph(scope):
+ """Verify signed graph edges, GET/HEAD/prewarm coverage and changed-to-writer paths.
+
+ Native auditor MUST recompute complete graph from exact source and runtime.
+ Signed graph bytes are inspectable; graph hashes alone do not prove closure.
+ """
+ graph=scope.get("graph")
+ require(type(graph)is dict and set(graph)=={"nodes","edges","changed_nodes",
+         "writer_nodes","routes"},"transitive source graph bytes absent")
+ nodes,edges=graph["nodes"],graph["edges"]
+ require(type(nodes)is list and all(type(n)is str and bool(n) for n in nodes)
+         and len(nodes)==len(set(nodes)) and 0<len(nodes)<=4000,
+         "invalid/repeated dependency nodes")
+ node_set=set(nodes)
+ require(type(edges)is list and 0<len(edges)<=15000 and
+         all(type(e)is list and len(e)==2 and
+             all(type(n)is str and n in node_set for n in e) for e in edges)
+         and len(edges)==len({tuple(e) for e in edges}),
+         "invalid/partial dependency edges")
+ changed=graph["changed_nodes"];writers=graph["writer_nodes"];routes=graph["routes"]
+ require(type(changed)is list and bool(changed) and
+         len(changed)==len(set(changed)) and set(changed)<=node_set and
+         changed==scope.get("changed_files"),
+         "source graph does not match actual changed files")
+ require(type(writers)is list and len(writers)==len(set(writers)) and
+         set(writers)<=node_set and
+         {"aoe2hdbets-staking-rewards.service",
+          "wolochain-mainnet-settlement.service",
+          "wolochain-founder-rewards-settlement.service"}<=set(writers),
+         "protected finance writer nodes excluded")
+ require(type(routes)is dict and set(routes)==REQUIRED_ROUTES and
+         all(type(v)is list and bool(v) and len(v)==len(set(v)) and
+             set(v)<=node_set for v in routes.values()),
+         "GET/HEAD/PREWARM entrypoints not enumerated")
+ require(scope.get("dependency_graph_sha256")==hashlib.sha256(
+         canonical(graph)).hexdigest() and
+         scope.get("import_edges_sha256")==hashlib.sha256(
+         canonical(edges)).hexdigest() and
+         scope.get("get_head_effects_sha256")==hashlib.sha256(
+         canonical({"GET":routes["GET"],"HEAD":routes["HEAD"]})).hexdigest() and
+         scope.get("prewarm_effects_sha256")==hashlib.sha256(
+         canonical(routes["PREWARM"])).hexdigest(),
+         "graph/import/GET/prewarm hashes do not bind actual edges")
+ adjacency={n:set() for n in nodes}
+ for a,b in edges:adjacency[a].add(b)
+ targets=set(writers)
+ for origin in changed:
+  stack=[origin];seen=set()
+  while stack:
+   node=stack.pop()
+   if node in seen:continue
+   require(node not in targets,
+           "changed source transitively reaches finance writer: "+origin)
+   seen.add(node);stack.extend(adjacency[node]-seen)
+ return graph
+
 def verify_source_closure(report):
  """Validate the auditor's source DAG obligations, BOUND to signed finance."""
  scope=report.get("source_scope")
@@ -168,6 +224,7 @@ def verify_source_closure(report):
  census=verify_writer_census(report.get("finance"))
  require(scope.get("writer_census_sha256")==hashlib.sha256(canonical(census)).hexdigest(),
          "source dependency graph not bound to current writer census")
+ verify_closed_graph(scope)
  stage=report.get("stage")
  if type(stage)is dict and stage.get("status")=="STAGED":
   require(scope.get("artifact_sha256")==stage.get("artifact_sha256") and
