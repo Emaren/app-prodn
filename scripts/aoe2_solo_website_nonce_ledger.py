@@ -41,8 +41,37 @@ class Journal:
         for part in (path,*path.parents): need(not part.is_symlink(),"linked protected path")
         st=path.stat()
         need(stat.S_ISDIR(st.st_mode) if directory else stat.S_ISREG(st.st_mode),"protected type")
-        need(not st.st_mode & 0o022,"writable protected path")
-        if not self.test_mode: need(os.geteuid()==0 and st.st_uid==0,"root required")
+        if path == self.lock:
+            # Original shared UID1000 release.lock is not a root-secret.
+            # Never chown/replace, chmod to writeable, or create a second lock.
+            need(st.st_uid == (os.getuid() if self.test_mode else 1000) and
+                 stat.S_ISREG(st.st_mode) and
+                 (st.st_mode & 0o777) == (0o600 if self.test_mode else 0o644),
+                 "native original uid1000/mode0644 release.lock changed")
+        else:
+            need(not st.st_mode & 0o022,"writable protected journal")
+            if not self.test_mode: need(os.geteuid()==0 and st.st_uid==0,"root-only journal")
+    def inherited_lease_fd(self):
+        # The v4-style SSH lease passes the SAME open file description to
+        # child FD 200, unlike a separately reacquired recursive flock.
+        self.secure(self.lock)
+        try: inherited=os.fstat(200)
+        except OSError as exc: raise Hold("SOLO_OWNER_LEDGER_HOLD: no inherited FD200 release lease") from exc
+        original=self.lock.stat()
+        need((inherited.st_dev,inherited.st_ino)==(original.st_dev,original.st_ino),
+             "inherited release lease inode mismatch")
+        if not self.test_mode:
+            need(os.geteuid()==0,"root-only phase consumption")
+        # Require another independent OFD to observe an exclusive lock. This
+        # is a necessary liveness check, not independently sufficient consent.
+        probe=os.open(self.lock,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        try:
+            try: fcntl.flock(probe,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError: pass
+            else:
+                fcntl.flock(probe,fcntl.LOCK_UN)
+                raise Hold("SOLO_OWNER_LEDGER_HOLD: global release lease not held")
+        finally: os.close(probe)
     @contextmanager
     def exclusive(self):
         self.secure(self.state,True);self.secure(self.lock)
@@ -100,9 +129,11 @@ class Journal:
     def consume_under_existing_lock(self,challenge,packet_sha,host_sha,*,now=None):
         """Caller MUST hold original release.lock through protected deploy."""
         now=now or datetime.now(timezone.utc)
-        need(self._held_fd is not None and
-             self._held_thread == threading.get_ident(),
-             "global release.lock must be held by this transaction")
+        if self._held_fd is not None:
+            need(self._held_thread == threading.get_ident(),
+                 "same thread held release lock required")
+        else:
+            self.inherited_lease_fd()
         a,ph=challenge["attempt_id"],challenge["phase"]
         need(all(type(v) is str and HEX64.fullmatch(v) for v in (packet_sha,host_sha)),"missing hashes")
         need(self.read(a,ph,"issue")==challenge,"untrusted challenge")
@@ -114,9 +145,11 @@ class Journal:
             "consumed_at":utc(now),"status":"CONSUMED_NOT_DEPLOYED"})
     def mark_staged_under_existing_lock(self,challenge,stage_sha):
         """Only genuine protected engine may call this after durable stage."""
-        need(self._held_fd is not None and
-             self._held_thread == threading.get_ident(),
-             "global release.lock must be held by this transaction")
+        if self._held_fd is not None:
+            need(self._held_thread == threading.get_ident(),
+                 "same thread held release lock required")
+        else:
+            self.inherited_lease_fd()
         need(challenge["phase"]=="PRE_STAGE" and type(stage_sha) is str and HEX64.fullmatch(stage_sha),"stage SHA")
         self.read(challenge["attempt_id"],"PRE_STAGE","used")
         return self.write_once(challenge["attempt_id"],"PRE_STAGE","staged",
