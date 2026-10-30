@@ -88,9 +88,14 @@ class NativeTransferReceiptTests(unittest.TestCase):
         host=host or (p["source_host"] if p["role"]=="source" else
               "intel" if p["role"]=="receiver" else "restore-auditor")
         message=r.DOMAIN+r.canonical(p)
-        signed=subprocess.run(["/usr/bin/openssl","pkeyutl","-sign",
-          "-inkey",str(self.keys[host]),"-rawin"],
-          input=message,capture_output=True,timeout=10,check=True).stdout
+        # Ed25519 pkeyutl is a one-shot operation. OpenSSL cannot determine
+        # stream length from piped stdin; sign exact bounded FILE bytes.
+        with tempfile.TemporaryDirectory(prefix="aoe2-transfer-sign-") as tmp:
+            input_path=Path(tmp)/"canonical-payload"
+            input_path.write_bytes(message)
+            signed=subprocess.run(["/usr/bin/openssl","pkeyutl","-sign",
+              "-inkey",str(self.keys[host]),"-rawin","-in",
+              str(input_path)],capture_output=True,timeout=10,check=True).stdout
         return {"schema":r.SCHEMA,"signer_host":host,
             "key_id":self.trust[host]["key_id"],"payload":p,
             "signature_base64":base64.b64encode(signed).decode()}
