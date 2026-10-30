@@ -47,6 +47,14 @@ class Guards(unittest.TestCase):
         self.assertIn('l.consume_under_existing_lock(issued,packet_sha,',source_text)
         self.assertNotIn('expected_observation_sha256=',source_text)
 
+    def test_root_remote_channel_never_executes_unbounded_root_shell(self):
+        source_text=(S/"aoe2_solo_website_command_channel.py").read_text()
+        self.assertIn("root phase helper only",source_text)
+        self.assertIn("unknown protected root verb",source_text)
+        self.assertIn("argv=['/usr/bin/python3',helper,verb]+parts[3:]",source_text)
+        self.assertIn("if x['run_as']=='tony':",source_text)
+        self.assertNotIn("else:argv=['/bin/bash','-lc',source]",source_text)
+
     def test_no_candidate_environment(self):
         with patch.dict("os.environ",{},clear=True):
             with self.assertRaises(source.Hold):
