@@ -7,14 +7,16 @@ import {
   RadioTower, RefreshCw, Server, ShieldCheck, ShieldAlert,
   Timer, Waves, WifiOff
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import TransferMissionPanels from "@/components/storage-transfer/TransferMissionPanels";
+import { projectTransferPublication, type TransferPublication } from "@/lib/storageTransferPresentation";
 import type { StorageCommandCenter, StorageReading } from "@/lib/storageCommandCenterProjection";
 
 type TransferResponse = {
   schema: "aoe2war.storage-transfer.control-room.v1";
   polledAt: string;
   storage: StorageCommandCenter;
-  transferReceipt: null;
+  transferReceipt: TransferPublication | null;
 };
 type NodeId = StorageReading["id"] | "intel";
 const NAV: { id: NodeId; name: string; subtitle: string }[] = [
@@ -89,7 +91,8 @@ function NodeTile({
         (reading?.status === "RECEIPT" ? "bg-cyan-400/10 text-cyan-200" :
         reading?.status === "STALE" ? "bg-amber-400/10 text-amber-200" :
         "bg-white/[.05] text-slate-500")}>
-        {reading?.status === "RECEIPT" ? "RECEIPT" : reading?.status === "STALE" ? "STALE" : "UNKNOWN"}
+        {reading?.status === "RECEIPT" && reading.source === "SIGNED_THREE_PLANE_RECEIPT" ? "SIGNED" :
+          reading?.status === "RECEIPT" ? "ESTATE" : reading?.status === "STALE" ? "STALE" : "UNKNOWN"}
       </span>
       <ChevronRight className="h-3.5 w-3.5 text-slate-500 transition group-hover:text-cyan-200"/>
     </div>
@@ -158,6 +161,7 @@ export default function StorageTransferControlRoomPage() {
     };
   },[refresh]);
   const source = data?.storage.planes.find(p=>p.id===selected) ?? null;
+  const transfer = useMemo(()=>projectTransferPublication(data?.transferReceipt??null),[data?.transferReceipt]);
   const candidates = data?.storage.visual?.planes.find(p=>p.id===selected)?.hogs ?? [];
   return <main className="relative min-h-screen overflow-hidden bg-[#050b14] text-slate-50">
     <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[750px] bg-[radial-gradient(ellipse_at_50%_0%,rgba(6,182,212,.14),transparent_60%),radial-gradient(ellipse_at_90%_25%,rgba(16,185,129,.06),transparent_50%)]"/>
@@ -179,6 +183,7 @@ export default function StorageTransferControlRoomPage() {
           <div className="rounded-full border border-amber-200/25 bg-amber-400/[.06] px-3 py-2 text-[10px] font-bold tracking-wider text-amber-100">
             <LockKeyhole className="mr-1 inline h-3.5 w-3.5"/> READ-ONLY
           </div>
+          <Link href="/admin/aoe2war-os" className="rounded-full border border-cyan-200/20 px-3 py-2 text-[11px] font-bold text-cyan-100 hover:border-cyan-200/50">WAROS</Link>
           <button type="button" aria-label="Refresh authenticated receipts" onClick={()=>void refresh()} className="rounded-full border border-white/10 p-2.5 hover:text-cyan-200">
             <RefreshCw className="h-4 w-4"/>
           </button>
@@ -206,57 +211,7 @@ export default function StorageTransferControlRoomPage() {
           <span className="ml-0 flex items-center gap-1 text-[10px] text-amber-200 sm:ml-auto"><WifiOff className="h-3.5 w-3.5"/> TRANSFER RECEIPT NOT CONNECTED</span>
         </div>
       </section>
-      <section className="grid gap-4 xl:grid-cols-[1.55fr_.8fr]">
-        <div className={PANEL+" space-y-5 p-5 sm:p-7"}>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">LIVE RECEIPT PIPELINE</div>
-              <h2 className="mt-1 text-2xl font-bold">Transfer stages</h2>
-            </div>
-            <ShieldAlert className="h-6 w-6 text-amber-300/70"/>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {STAGES.map((step,index)=><div key={step.label} className="relative min-w-0 rounded-xl border border-white/[.07] bg-white/[.025] p-3">
-              <div className="text-[10px] font-bold text-slate-500">{String(index+1).padStart(2,"0")}</div>
-              <div className="mt-4 text-[10px] font-black tracking-[.07em] text-slate-300">{step.label}</div>
-              <div className="mt-2 h-1 rounded-full bg-slate-700"/>
-              <div className="mt-2 hidden text-[9px] text-slate-600 sm:block">{step.hint}</div>
-            </div>)}
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <UnknownStat label="COMPRESSED" icon={<Archive className="h-4 w-4"/>}/>
-            <UnknownStat label="AGE ENCRYPTED" icon={<LockKeyhole className="h-4 w-4"/>}/>
-            <UnknownStat label="TRANSFERRED" icon={<RadioTower className="h-4 w-4"/>}/>
-            <UnknownStat label="EST. REMAINING" icon={<Timer className="h-4 w-4"/>}/>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-slate-400">
-            <span className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-amber-200"/> No signed transfer or receiver acknowledgment yet</span>
-            <span>Stages update only from authentic native receipts</span>
-          </div>
-        </div>
-        <div className={PANEL+" space-y-4 p-5 sm:p-7"}>
-          <div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">SELECTED SOURCE</div>
-          <h2 className="text-2xl font-bold">{NAV.find(n=>n.id===selected)?.name}</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-white/[.03] p-4">
-              <div className="text-[9px] font-bold tracking-wider text-slate-500">AVAILABLE</div>
-              <div className="mt-2 text-2xl font-black tabular-nums">{bytes(source?.freeBytes)}</div>
-            </div>
-            <div className="rounded-2xl bg-white/[.03] p-4">
-              <div className="text-[9px] font-bold tracking-wider text-slate-500">RECLAIMED</div>
-              <div className="mt-2 text-2xl font-black tabular-nums">{bytes(source?.reclaimedBytes)}</div>
-            </div>
-          </div>
-          <div className="space-y-2 border-t border-white/10 pt-4">
-            <div className="flex items-center gap-2 text-[11px] text-slate-300"><ShieldCheck className="h-4 w-4 text-cyan-200"/> Independent restore required before cleanup</div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-300"><CheckCheck className="h-4 w-4 text-cyan-200"/> Owner-only per-original reclaim decision</div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-300"><CircleHelp className="h-4 w-4 text-slate-500"/> Source telemetry: {source?.source ?? "NONE"}</div>
-          </div>
-          <div className="rounded-xl border border-amber-300/15 bg-amber-300/[.045] p-3 text-[11px] leading-5 text-amber-100/80">
-            Source archives are never deleted just because ciphertext has been transferred.
-          </div>
-        </div>
-      </section>
+      <TransferMissionPanels model={transfer}/>
       <section aria-label="Verified source inventory" className={PANEL+" p-5 sm:p-7"}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div><div className="text-[10px] font-bold tracking-[.25em] text-cyan-200/70">SOURCE INVENTORY</div>
