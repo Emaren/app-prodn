@@ -90,7 +90,7 @@ async function main(){
    }
    // A streamed App Router shell may expose the heading before all cards
    // commit. Wait for actual DOM count; never infer coverage from the title.
-   await page.waitForFunction(() => document.querySelectorAll('#navigation-atlas a[data-atlas-href]').length === 32,
+   await page.waitForFunction(() => (()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),
      null, {timeout:20000});
    const routeCount=await atlas.locator('a[data-atlas-href]').count();
    assert.equal(routeCount,32,"must show every source-backed private route");
@@ -191,7 +191,7 @@ async function main(){
    // G owns both components. The endpoint stays UNKNOWN with no pretend wake,
    // and these checks operate against an isolated database + browser only.
    await page.goto("/admin/aoe2war-os#navigation-atlas",{waitUntil:"domcontentloaded",timeout:45000});
-   await page.waitForFunction(()=>document.querySelectorAll('#navigation-atlas a[data-atlas-href]').length===32,null,{timeout:20000});
+   await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),null,{timeout:20000});
    for (const [href,heading,file,coreCount] of [
      ["/admin/central-command/work-board",/THE WORK BOARD/,"work-board",0],
      ["/admin/central-command/lanes",/THE EVIDENCE LEDGER/,"six-lanes",6]
@@ -226,7 +226,7 @@ async function main(){
      await page.screenshot({path:path.join(output,file+"-linked-"+width+".png"),fullPage:true});
      await page.unroute("**/api/admin/central-command/work-ledger");
      await page.goto("/admin/aoe2war-os#navigation-atlas",{waitUntil:"domcontentloaded",timeout:45000});
-     await page.waitForFunction(()=>document.querySelectorAll('#navigation-atlas a[data-atlas-href]').length===32,null,{timeout:20000});
+     await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),null,{timeout:20000});
    }
    if(width===1440){
      const tower=await page.goto("/admin/user-list",{waitUntil:"domcontentloaded",timeout:45000});
