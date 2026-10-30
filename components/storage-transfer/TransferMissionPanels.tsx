@@ -33,7 +33,7 @@ function duration(seconds:number|null):string{
 function freshness(value:string|null):string{
  if(!value)return "NO RECEIPT";
  const ms=Date.parse(value);
- return Number.isFinite(ms)?new Date(ms).toLocaleString("en-CA",{timeZone:"UTC",hour12:false})+" UTC":"INVALID";
+ return Number.isFinite(ms)?new Date(ms).toLocaleString():"INVALID";
 }
 function Badge({state}:{state:string}){
  const tone=state==="VERIFIED"?"border-emerald-400/25 bg-emerald-300/[.07] text-emerald-200":
@@ -142,8 +142,8 @@ function CargoCard({cohort,now}:{cohort:TransferCohort;now:Date}){
   <details className="mt-5 rounded-xl border border-white/[.09] bg-black/15 p-3 text-[11px] text-slate-400">
    <summary className="cursor-pointer font-bold text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">Receipt audit / provenance</summary>
    <dl className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-    <div><dt>Sender sample UTC</dt><dd className="break-all font-mono">{freshness(cohort.sourceObservedAt)}</dd></div>
-    <div><dt>Intel acknowledgment UTC</dt><dd className="break-all font-mono">{freshness(cohort.receiverObservedAt)}</dd></div>
+    <div><dt>Sender sample (local)</dt><dd className="break-all font-mono">{freshness(cohort.sourceObservedAt)}</dd></div>
+    <div><dt>Intel acknowledgment (local)</dt><dd className="break-all font-mono">{freshness(cohort.receiverObservedAt)}</dd></div>
     <div><dt>Source receipt SHA</dt><dd className="break-all font-mono">{clip(cohort.receiptDigest)}</dd></div>
     <div><dt>Ciphertext SHA</dt><dd className="break-all font-mono">{clip(cohort.ciphertextSha256)}</dd></div>
     <div><dt>Native receiver bytes</dt><dd className="tabular-nums">{byteLabel(cohort.bytesReadback)}</dd></div>
