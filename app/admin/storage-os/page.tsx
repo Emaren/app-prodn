@@ -194,6 +194,21 @@ export default function PrivateStorageOsPage() {
         </div>
       </header>
 
+      <Link href="/admin/storage-transfer"
+        className="group flex flex-wrap items-center justify-between gap-3 rounded-[1.4rem] border border-cyan-300/25 bg-gradient-to-r from-cyan-300/[.09] via-slate-950/80 to-emerald-300/[.035] p-5 transition hover:border-cyan-200/50">
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl bg-cyan-200/10 p-3 text-cyan-200"><HardDrive className="h-6 w-6"/></div>
+          <div>
+            <div className="text-[10px] font-black tracking-[.24em] text-cyan-200/75">RENAISSANCE / OPERATOR MISSIONS</div>
+            <div className="mt-1 text-lg font-bold text-white">Operation Storage Transfer</div>
+            <div className="mt-1 text-xs text-slate-400">M1 + HEL1 → Intel · encryption · verification · recovery</div>
+          </div>
+        </div>
+        <span className="inline-flex items-center gap-2 text-xs font-bold text-cyan-200">OPEN CONTROL ROOM
+          <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-1 group-hover:-translate-y-1"/>
+        </span>
+      </Link>
+
       {error && <div role="alert" className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error} — READINGS WITHHELD</div>}
 
       <SignedFreshnessPanel/>
