@@ -61,11 +61,11 @@ if [ "$(hostname -s)" != "ubuntu-4gb-hel1-11" ] || [ "$(uname -s)" != "Linux" ];
 fi
 if [ -z "$SSH_CONNECTION" ]; then echo 'HOLD: SSH_CONTEXT_MISSING'; exit 2; fi
 sudo /usr/bin/python3 /usr/local/libexec/aoe2war/solo-v1-host-security.py \
-  install --ssh-connection "$SSH_CONNECTION"
+  install --ssh-connection "$SSH_CONNECTION" < /dev/tty
 BASH
 ~~~
 
-Requires a real interactive typed owner approval. The installer checks the
+Requires a real interactive typed owner approval. The /dev/tty redirection is essential because the surrounding here-document is not interactive stdin. The installer checks the
 original flock is idle, holds the same inode, protects the two permitted
 ancestors, fsyncs a root-only backup of authorized_keys, and atomically
 appends exactly two distinct restricted entries. Failure restores the
@@ -100,11 +100,11 @@ if [ "$(hostname -s)" != "ubuntu-4gb-hel1-11" ] || [ "$(uname -s)" != "Linux" ];
 fi
 if [ -z "$SSH_CONNECTION" ]; then echo 'HOLD: SSH_CONTEXT_MISSING'; exit 2; fi
 sudo /usr/bin/python3 /usr/local/libexec/aoe2war/solo-v1-host-security.py \
-  rollback-keys --ssh-connection "$SSH_CONNECTION"
+  rollback-keys --ssh-connection "$SSH_CONNECTION" < /dev/tty
 BASH
 ~~~
 
-Requires a separate exact typed owner approval. It removes the two new
+Requires a separate exact typed owner approval via /dev/tty. It removes the two new
 restricted entries ONLY when authorized_keys equals original backup plus
 those exact two entries; all unrelated admin root access stays untouched.
 **Never automatically revert secured parent directories**: that would
