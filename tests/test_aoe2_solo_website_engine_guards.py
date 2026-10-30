@@ -57,6 +57,36 @@ class Guards(unittest.TestCase):
         self.assertIn("if x['run_as']=='tony':",source_text)
         self.assertNotIn("else:argv=['/bin/bash','-lc',source]",source_text)
 
+    def test_activation_rollback_root_command_never_uses_arbitrary_shell(self):
+        code=(S/"aoe2_solo_website_command_channel.py").read_text()
+        self.assertIn("'reconcile-rollback':5",code)
+        self.assertIn("foreign activation rollback path",code)
+        self.assertIn("argv=['/usr/bin/python3',helper,verb]+parts[3:]",code)
+        self.assertNotIn("else:argv=['/bin/bash','-lc',source]",code)
+
+    def test_reconcile_rollback_rejects_untrusted_path_without_live_io(self):
+        for path in ("/tmp/activate-fake",
+                     "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/stage-fake",
+                     "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/activate-fake/../secret"):
+            with self.subTest(path=path), self.assertRaises(root.Hold):
+                root.reconcile_activation_rollback(["a"*64,path])
+
+    def test_reconcile_rollback_without_original_fd200_holds(self):
+        dirname="/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/activate-20261030T090000Z-a123456789ab"
+        with patch.object(root,"Journal") as journal:
+            journal.return_value.inherited_lease_fd.side_effect=root.Hold(
+                "no original inherited release lease")
+            with self.assertRaises(root.Hold):
+                root.reconcile_activation_rollback(["a"*64,dirname])
+
+    def test_signed_pre_activation_audit_sealed_before_nonce_consume(self):
+        code=(S/"aoe2_solo_website_root_phase.py").read_text()
+        before=code.index('write_once(STATE/(a+"-PRE_ACTIVATE-native-before.json"),report)')
+        consume=code.index('l.consume_under_existing_lock(issued,packet_sha,')
+        self.assertLess(before,consume)
+        self.assertIn("rollback_finance_status",code)
+        self.assertIn("signed post-rollback finance not preserved",code)
+
     def test_no_candidate_environment(self):
         with patch.dict("os.environ",{},clear=True):
             with self.assertRaises(source.Hold):
