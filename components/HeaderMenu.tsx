@@ -117,6 +117,8 @@ export default function HeaderMenu({
       { href: "/kingdom-agents", label: "Kingdom Agents", icon: Network, featured: true },
       { href: "/radio", label: "Radio WOLO", icon: Radio, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
+      { href: "/admin/aoe2war-os#navigation-atlas", label: "Navigation Atlas", icon: Network, adminOnly: true, featured: true },
+      { href: "/admin/central-command/job-board", label: "Job Exchange", icon: Network, adminOnly: true, featured: true },
       { href: "/admin/kingdom-bettors", label: "House Bettors Control", icon: Bot, adminOnly: true, featured: true },
       {
         href: "/live-games",

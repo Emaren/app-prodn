@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AdminNavigationAtlas from "@/components/navigation-atlas/AdminNavigationAtlas";
 import {
   Activity,
   ArrowLeft,
@@ -565,7 +566,8 @@ export default function AoE2WarOsAdminPage() {
           : null;
 
   return (
-    <main className="mx-auto max-w-[1480px] px-4 py-8 text-white sm:px-6 lg:px-8">
+    <main className="mx-auto w-full min-w-0 max-w-[1480px] space-y-6 px-4 py-8 text-white sm:px-6 lg:px-8">
+      <AdminNavigationAtlas />
       <div className="rounded-[2rem] bg-[radial-gradient(circle_at_12%_5%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(145deg,#07111f,#020617_58%,#07101c)] p-6 shadow-2xl sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
@@ -596,6 +598,10 @@ export default function AoE2WarOsAdminPage() {
             <Link href="/admin/storage-os"
               className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/20">
               <DatabaseZap className="h-4 w-4" /> Storage Command Center
+            </Link>
+            <Link href="#navigation-atlas"
+              className="inline-flex items-center gap-2 rounded-full border border-violet-300/30 bg-violet-400/10 px-4 py-2 text-sm font-semibold text-violet-100 transition hover:bg-violet-300/20">
+              <GitBranch className="h-4 w-4" /> Navigation Atlas
             </Link>
             <div
               className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${
