@@ -10,7 +10,8 @@ Any unknown evidence/SSH loss consumes or HOLDS, never redispatches.
 from __future__ import annotations
 import argparse, base64, fcntl, hashlib, importlib.util, json, os
 from pathlib import Path
-import shlex, socket, subprocess, sys, time
+import shlex, socket, subprocess, sys, time, io
+from contextlib import redirect_stdout
 
 ROOT=Path(__file__).resolve().parents[1]
 HERE=Path(__file__).resolve().parent
@@ -131,21 +132,66 @@ def dispatch(phase,candidate,signed,receipt_path):
                 manifest_path.read_bytes(),gate_path.read_bytes(),
                 stage_receipt=stage_receipt,prior_packet=prior)
             runner.assert_alive()
-            if phase=="PRE_STAGE":
-                result=stage.stage_release(data,json_output=True,
-                    remote_runner=runner.run,signed_capability=cap)
-            else:
-                result=activation.activate_release(data,
-                    stage_receipt=str(receipt_path),dry_run=False,
-                    json_output=True,remote_runner=runner.run,
-                    signed_capability=cap)
+            captured=io.StringIO()
+            with redirect_stdout(captured):
+                if phase=="PRE_STAGE":
+                    rc=stage.stage_release(data,json_output=True,
+                        remote_runner=runner.run,signed_capability=cap)
+                else:
+                    rc=activation.activate_release(data,
+                        stage_receipt=str(receipt_path),dry_run=False,
+                        json_output=True,remote_runner=runner.run,
+                        signed_capability=cap)
             runner.assert_alive()
-            check(result==0,"protected remote phase not CERTIFIED; consumed, reconcile")
-            # Do not silently call the next phase: separate owner consent.
-            return {"status":"PROTECTED_ENGINE_RETURNED_REVIEW_NATIVE_RECEIPTS",
+            check(rc==0,"protected phase NOT certified; nonce CONSUMED; reconcile")
+            try:
+                result=json.loads(captured.getvalue())
+            except ValueError as exc:
+                raise Hold("PHASE_RETURNED_UNRECOGNIZABLE_RECEIPT; CONSUMED") from exc
+            check(type(result)is dict and
+                  result.get("release_sha")==sha and
+                  result.get("status")==("STAGED"if phase=="PRE_STAGE"else"CERTIFIED") and
+                  result.get("wolo_mutated")is False and
+                  result.get("manifest_sha256")==manifest_sha and
+                  result.get("gate_sha256")==gate_sha,
+                  "protected stage/activation result not exact certified source")
+            if phase=="PRE_STAGE":
+                check(result.get("live_runtime_mutated")is False and
+                      type(result.get("local_receipt_sha256"))is str and
+                      type(result.get("remote_receipt_dir"))is str and
+                      type(result.get("staged_build_id"))is str,
+                      "stage receipt/BUILD_ID missing")
+                command="python3 "+shlex.quote(ROOT_PHASE)+" mark-staged "+ " ".join(
+                    shlex.quote(x)for x in (
+                        packet["attempt_id"],result["local_receipt_sha256"],
+                        result["remote_receipt_dir"]))
+            else:
+                check(type(result.get("active_build_id"))is str and
+                      result.get("stage_receipt_sha256")==
+                      packet["stage_receipt_sha256"],
+                      "activated BUILD_ID/old stage differs")
+                command="python3 "+shlex.quote(ROOT_PHASE)+" complete-activation "+" ".join(
+                    shlex.quote(x)for x in (
+                        packet["attempt_id"],sha,result["active_build_id"]))
+            post=runner.run(command,timeout=35)
+            check(post.returncode==0,
+                  "root stage/activation final physical evidence HOLD; "
+                  "preserve consumed phase and inspect rollback: "+
+                  (post.stderr or "")[-500:])
+            try: verified=json.loads((post.stdout or "").strip())
+            except ValueError as exc:
+                raise Hold("root phase completion receipt invalid")from exc
+            check(verified.get("status")==(
+                      "REAL_DURABLE_STAGE_ROOT_SEALED"if phase=="PRE_STAGE"
+                      else"ROOT_ACTIVATION_NATIVE_VERIFIED") and
+                  verified.get("attempt_id")==packet["attempt_id"],
+                  "original root native completion not certified")
+            return {"status":"SOLO_OWNER_STAGE_VERIFIED"if phase=="PRE_STAGE"
+                    else"SOLO_OWNER_ACTIVATION_VERIFIED",
                 "phase":phase,"candidate_sha":sha,"attempt_id":packet["attempt_id"],
-                "financial_release_authorized":False,
-                "must_verify_live_artifact_and_finance_before_complete":True}
+                "root_native_completion":verified,
+                "protected_release_result":result,
+                "financial_release_authorized":False}
     finally:
         os.close(fd)
 def main():
