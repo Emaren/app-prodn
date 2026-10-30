@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "49d28c0fbae17f1dad570e9d98626db130c7f6aa89d1a0953db458959c3cc856",
+      "sha256": "78aa8b749fa1c3e458e6563e6cbed136f28c476a5577aed0d1860d2ef9fd2c34",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/d-q17-a3-32-route-atlas-20261029",
-    "commit": "2a4475a83f2385316ce457e8918e07bf33930972"
+    "commit": "f2e4eb8dd1dadd02f03ad34961d9646bd36fa386"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
