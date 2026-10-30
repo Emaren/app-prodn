@@ -236,3 +236,76 @@ authenticated underlying E/D/C/F signed receipts. Missing one means
 `HOLD — PRODUCTION ACCEPTANCE INCOMPLETE`. Record the final PASS/HOLD with
 evidence links in Q18 #1007, G #976 and F #665. No new UI features or live
 host mutations are authorized by this runbook.
+
+
+## P0 financial-isolation security contract — Session B, 2026-10-30
+
+**Source-level verifier is not native admission.** The independently reviewed
+website-only release MUST preserve the original Wolo finance HOLD and must not
+start/stop, fund, migrate, claim, reconcile, stake, settle, or change protected
+financial writer state. Neither a clean build nor a `ROLLED_BACK` web receipt
+can establish finance noninterference.
+
+The protected **real HEL1 writer census** is wider than ten generic roles.
+Its minimum native unit roster is the explicit
+`REQUIRED_SERVICES` + `REQUIRED_TIMERS` in
+`scripts/aoe2_solo_website_financial_proof.py` (25 distinct units).
+It includes both HD/DE web and API processes; distinct Wolo 8092 mainnet
+settlement and 8093 founder-rewards settlement daemons; chain consensus,
+additional settlement/relayer/custody producers; actual daily staking-rewards
+oneshot and timer; reconciliation plan/application, challenge, replay, trophy,
+Wolo transfer heartbeat; and five-minute GET/prewarm units and timers.
+Original 8092/8093 executable, PID, start ticks, UID, systemd unit/drop-ins,
+environment/config/source/cgroup, balances, fees, pending transactions,
+withdrawals, liabilities, UNKNOWN, and WAL/database digests remain separately
+mandatory in the root native audit. An idle oneshot is **not absent**; it needs
+its unit/timer schedule, trigger and last invocation evidence. A newly found
+systemd/cron/at/process/external ingress/database writer cannot disappear into
+a generic `staking` or `settlement` bucket: unknown or omitted identity is
+**P0 HOLD**, and any additional unit must be explicitly independently reviewed.
+
+`scripts/aoe2_solo_website_financial_collector.py` is a narrowly bounded
+root-HEL1 **read-only observer**, not an authority. It discovers installed
+systemd unit files, reads unit properties and hashes their native definitions,
+and checks actual live /proc PID/start-time/executable/cgroup relationships.
+It emits `UNSIGNED_PARTIAL_OBSERVATION` with unresolved cron, external
+ingress, financial DB, HTTP GET/HEAD, PREWARM, full source dependency and
+balance evidence. An unsigned collector output **cannot** enter admission
+as `CLOSED_WORLD_VERIFIED`. This source is uninstalled and has not collected
+current HEL1 evidence. Never make up missing identities, suppress an active
+financial timer, or let CI fixtures stand in for live snapshots.
+
+**Transitive source admission** must bind the exact candidate source tree,
+actual changed files, package/dependency graph, import edges, dynamic and
+server actions, financial DTOs, layout/SSR, GET/HEAD handlers and scheduled
+prewarm HTTP behavior to an independently SHA-pinned/owner-enrolled protected
+source review. The native auditor must independently recompute the graph,
+account for external calls and runtime side effects, and cryptographically
+sign its native producer report. The graph verifier traverses every changed
+node to financial writer nodes; reachable financial writers or unchecked
+import/GET/prewarm/external edges are **HOLD**. Signed strings containing
+only `INDEPENDENTLY_REVIEWED` without real graph bytes and reviewed digests
+are insufficient. `verify_all` checks the six Ed25519 producer receipt
+signatures, but independent producer enrollment/origin and real host evidence
+remain separate installation requirements.
+
+**Failure and rollback are financial UNKNOWN unless separately proven.**
+The engine's failed/SSH-lost/timeout activation retains a consumed nonce,
+never redispatches, and must label finance `ROLLBACK_FINANCE_UNKNOWN`
+even if original website source and 8092/8093 listener counts are restored.
+The final F-owned engine/root rollback hook must gather separate genuinely
+signed PRE_ACTIVATE and POST_ROLLBACK finance snapshots for the same attempt,
+reject phase/timestamp/signature replay, reverify all producer signatures,
+full writer census and exposure/liability/balance hashes, then and only then
+may return `ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED`. The B verifier
+`rollback_finance_status` is not an execution hook by itself.
+
+**Gate ownership:** B owns the financial verifier, partial native observer,
+negative tests and this security contract; F owns original continuous FD200
+release/rollback execution and the final failure hook; C owns enforced SSH
+key restrictions and canonical lock ancestors; E owns physical recovery and
+capacity; G owns DocsV2 control-plane reseal and post-deployment acceptance.
+A genuine funded WOLO GO is not needed for a **proven nonfinancial** website
+release, but none of these physical, native signed and operator-authenticated
+website-specific gates can be silently skipped. Draft source PASS is not
+HEL1 acceptance or a production permit.
