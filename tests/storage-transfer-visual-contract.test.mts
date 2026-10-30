@@ -71,7 +71,7 @@ test("unknown original size or zero speed never creates ETA",()=>{
 test("stale, forged sender/receiver, wrong origin, replay and cohort duplicate HOLD",()=>{
  const c=cohort();const raw=publication(c);
  assert.equal(projectTransferPublication({...raw,issuer:"UNVERIFIED" as never},time).status,"UNKNOWN");
- assert.equal(projectTransferPublication({...raw,expiresAt:"2026-10-30T12:20:00Z"},time).status,"UNKNOWN");
+ assert.equal(projectTransferPublication({...raw,expiresAt:"2026-10-30T12:20:00Z"},time).status,"STALE");
  assert.equal(projectTransferPublication({...raw,cohorts:[c,{...c}]},time).status,"UNKNOWN");
  assert.equal(projectTransferPublication({...raw,cohorts:[{...c,senderAuthenticated:false}]},time).status,"UNKNOWN");
  assert.equal(projectTransferPublication({...raw,cohorts:[{...c,receiverAuthenticated:false}]},time).status,"UNKNOWN");
