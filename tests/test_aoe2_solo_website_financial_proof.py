@@ -24,7 +24,7 @@ def finance():
  census={"schema":"aoe2war.financial-writer-census.v1",
   "host":"ubuntu-4gb-hel1-11","units":units,
   "discovered_unit_names":sorted(REQUIRED_UNITS),
-  "reviewed_additional_units":[],"additional_units_review_sha256":D,
+  "reviewed_additional_units":[],"additional_units_review_sha256":hashlib.sha256(canonical([])).hexdigest(),
   "unit_inventory_sha256":hashlib.sha256(canonical(units)).hexdigest(),
   "native_snapshot_sha256":D,
   "discovery":{"origin":"ROOT_NATIVE_SYSTEMD_PROC_CRON_INGRESS",
@@ -85,6 +85,7 @@ class BFinancialProofAdversarial(unittest.TestCase):
   with self.assertRaisesRegex(FinancialProofHold,"unreviewed"):
    verify_writer_census(f)
   c["reviewed_additional_units"]=["new-financial.service"]
+  c["additional_units_review_sha256"]=hashlib.sha256(canonical(c["reviewed_additional_units"])).hexdigest()
   self.assertTrue(verify_writer_census(f))
   c["discovered_unit_names"].remove("new-financial.service")
   with self.assertRaisesRegex(FinancialProofHold,"native discovery"):
@@ -134,6 +135,7 @@ class BFinancialProofAdversarial(unittest.TestCase):
   r=source();s=r["source_scope"]
   review={"kind":"aoe2war.solo.website.source-review.v1",
           "status":"INDEPENDENTLY_REVIEWED","candidate_sha":r["candidate_sha"],
+          "reviewed_additional_units":[],
           "transitive_closure_sha256":s["dependency_graph_sha256"],
           **{k:s[k] for k in ("import_edges_sha256",
              "finance_surface_sha256","get_head_effects_sha256",
