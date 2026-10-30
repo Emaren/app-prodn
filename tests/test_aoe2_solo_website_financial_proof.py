@@ -214,9 +214,13 @@ class BFinancialProofAdversarial(unittest.TestCase):
    rollback_finance_status(result,None,None)
   before={"status":"INDEPENDENT_NATIVE_VERIFIED",
           "candidate_sha":"b"*40,"attempt_id":"c"*64,
+          "phase":"PRE_ACTIVATE","observed_at":"2026-10-30T12:00:00Z",
+          "receipt_provenance":{"signed_producers":{"finance":{"signature_base64":"pre"}}},
           "finance":finance()}
   before["finance"]["exposure"]={"balances_sha256":D}
   after=copy.deepcopy(before)
+  after.update(phase="POST_ROLLBACK",observed_at="2026-10-30T12:00:01Z")
+  after["receipt_provenance"]["signed_producers"]["finance"]["signature_base64"]="post"
   after["finance"]["exposure"]["balances_sha256"]="e"*64
   with patch("aoe2_solo_website_producer_receipts.verify_all",
              return_value=True) as signatures,patch(
@@ -226,9 +230,11 @@ class BFinancialProofAdversarial(unittest.TestCase):
     rollback_finance_status(result,before,after)
    self.assertEqual(signatures.call_count,2)
    self.assertEqual(full_finance.call_count,2)
-   after=copy.deepcopy(before)
+   after["finance"]["exposure"]["balances_sha256"]=D
    self.assertEqual(rollback_finance_status(result,before,after),
                     "ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED")
+   with self.assertRaisesRegex(FinancialProofHold,"replayed"):
+    rollback_finance_status(result,before,copy.deepcopy(before))
    after["attempt_id"]="d"*64
    with self.assertRaisesRegex(FinancialProofHold,"different release attempts"):
     rollback_finance_status(result,before,after)
