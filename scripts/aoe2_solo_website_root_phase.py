@@ -172,6 +172,65 @@ def issue(args):
     write_once(STATE/(challenge["attempt_id"]+"-"+phase+"-observation.json"),snapshot)
     return {"status":"ROOT_ISSUED_NOT_AUTHORIZED","challenge":challenge,
             "snapshot_sha256":digest(canonical(snapshot))}
+def mark_staged(args):
+    """Record a REAL protected stage receipt inside SAME inherited lock."""
+    need(len(args)==3,"stage mark requires attempt/receipt SHA/remote receipt dir")
+    attempt,expected_sha,remote=args
+    need(type(attempt)is str and HEX64.fullmatch(attempt) and
+         type(expected_sha)is str and HEX64.fullmatch(expected_sha),
+         "noncanonical stage identity")
+    base=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/deploy-receipts")
+    folder=pathlib.Path(remote)
+    need(folder.is_absolute() and folder.parent==base and
+         folder.name.startswith("stage-") and
+         not folder.is_symlink() and not base.is_symlink(),
+         "noncanonical durable protected receipt directory")
+    file=folder/"stage-receipt.json"
+    need(file.is_file()and not file.is_symlink()and
+         0<file.stat().st_size<=262144,"missing durable original receipt")
+    raw=file.read_bytes()
+    need(digest(raw)==expected_sha,"durable receipt content SHA drift")
+    receipt=parse(raw)
+    l=Journal();l.inherited_lease_fd()
+    challenge=l.read(attempt,"PRE_STAGE","issue")
+    used=l.read(attempt,"PRE_STAGE","used")
+    approved=root_file(STATE/(attempt+"-PRE_STAGE-approved.json"))
+    need(used["owner_packet_sha256"]==approved["packet_sha256"] and
+         receipt.get("status")=="STAGED"and
+         receipt.get("release_sha")==challenge["candidate_sha"] and
+         receipt.get("wolo_mutated")is False and
+         receipt.get("live_runtime_mutated")is False and
+         receipt.get("live_source_mutated")is False and
+         type(receipt.get("artifact_sha256"))is str and
+         HEX64.fullmatch(receipt["artifact_sha256"]) and
+         type(receipt.get("staged_build_id"))is str,
+         "unrelated/unsound actual W1 stage receipt")
+    # Compare current native financial execution identities against owner
+    # phase baseline. A matching PID alone never proves no write.
+    from aoe2_solo_website_native_audit_adapter import audit
+    now_report=audit(challenge["candidate_sha"],"PRE_STAGE",attempt)
+    h=native_observation_for_owner(now_report)
+    before=root_file(STATE/(attempt+"-PRE_STAGE-observation.json"))["observation"]
+    need(h["protected"]==before["protected"] and
+         h["finance_fingerprint_sha256"]==before["finance_fingerprint_sha256"] and
+         h["source_sha"]==before["source_sha"] and
+         h["build_id"]==before["build_id"] and
+         h["rollback_available"]is True,
+         "stage drifted financial writers or mutated the live website")
+    # Seal immutable remote receipt BYTES under root-only journal; this
+    # immutable copy and SHA survive changes to tony-owned staging path.
+    write_once(STATE/(attempt+"-PRE_STAGE-stage-receipt.json"),
+               {"schema":1,"policy":POLICY,"stage_receipt_sha256":expected_sha,
+                "remote_path":str(file),"receipt":receipt,
+                "pre_finance_fingerprint_sha256":before["finance_fingerprint_sha256"],
+                "post_finance_fingerprint_sha256":h["finance_fingerprint_sha256"]})
+    l.mark_staged_under_existing_lock(challenge,expected_sha)
+    return {"status":"REAL_DURABLE_STAGE_ROOT_SEALED",
+            "attempt_id":attempt,"stage_receipt_sha256":expected_sha,
+            "staged_build_id":receipt["staged_build_id"],
+            "source_sha":challenge["candidate_sha"],
+            "financial_release_authorized":False}
+
 def consumed(args):
     need(len(args)==3,"proof requires attempt phase packet hash")
     a,phase,packet_sha=args
@@ -295,6 +354,7 @@ def main():
     if action=="issue":out=issue(args)
     elif action=="consumed-proof":out=consumed(args)
     elif action=="consume":out=consume(args)
+    elif action=="mark-staged":out=mark_staged(args)
     else:raise Hold("unknown root phase command")
     print(json.dumps(out,sort_keys=True,separators=(",",":")))
 if __name__=="__main__":
