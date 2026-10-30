@@ -47,7 +47,7 @@ class Guards(unittest.TestCase):
         import aoe2_solo_website_forced_ssh as forced
         from unittest.mock import MagicMock
         issue=("PRE_STAGE",engine.W1,None,None,None)
-        fake=MagicMock()
+        fake=MagicMock(unsafe=True)
         fake.run.return_value=__import__("subprocess").CompletedProcess(
             ["protected"],0,'{"status":"ROOT_ISSUED_NOT_AUTHORIZED"}',"")
         fake.assert_alive.return_value=None
