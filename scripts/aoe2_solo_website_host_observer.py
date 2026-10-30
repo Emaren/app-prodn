@@ -107,7 +107,10 @@ finally:os.close(fd)
 """
     remote=("python3 -c "+shlex.quote(remote_code)+" "+
             shlex.quote(REMOTE_PROGRAM)+" "+shlex.quote(approved_digest))
-    cmd = ["/usr/bin/ssh", "-T", "-n", "-o", "BatchMode=yes",
+    # Only the root-owned M1 SSH identity can access HEL1's review-only
+    # observer. The interactive owner must explicitly refresh sudo first;
+    # no password prompt is requested inside an automated release phase.
+    cmd = ["/usr/bin/sudo", "-n", "/usr/bin/ssh", "-T", "-n", "-o", "BatchMode=yes",
            "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes",
            "-o", "GlobalKnownHostsFile=/dev/null",
            "-o", "UserKnownHostsFile=" + str(KNOWN_HOSTS),
