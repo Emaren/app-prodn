@@ -202,6 +202,20 @@ class NativeTransferReceiptTests(unittest.TestCase):
             r.parse(b'{"schema":1,"schema":2}')
         with self.assertRaisesRegex(r.Hold,"nonfinite"):
             r.parse(b'{"x":NaN}')
+    def test_historical_signature_and_full_envelope_are_independently_rechecked(self):
+        _,received=self.pipeline()
+        original=r.verify_stored_receipt(self.conn,"campaign_20261030",
+            "m1_archive_001",1,"receiver",self.trust)
+        self.assertTrue(original["signature_reverified"])
+        self.assertFalse(original["fresh_live_observation"])
+        self.assertEqual(original["receipt_sha256"],received["receipt_sha256"])
+        self.conn.execute("UPDATE storage_transfer_receipt SET body_json=? "
+          "WHERE campaign_id=? AND cohort_id=? AND sequence=? AND role=?",
+          ('{"tampered":true}',"campaign_20261030","m1_archive_001",1,"receiver"))
+        with self.assertRaisesRegex(r.Hold,"mutated after original ingest"):
+            r.verify_stored_receipt(self.conn,"campaign_20261030",
+                "m1_archive_001",1,"receiver",self.trust)
+
     def test_signed_receipt_cannot_authorize_cleanup(self):
         envelope=self.sign(self.source())
         envelope["payload"]["delete_source"]=True
