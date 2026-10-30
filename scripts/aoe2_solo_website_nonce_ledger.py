@@ -69,8 +69,13 @@ class Journal:
              "inherited release lease inode mismatch")
         if not self.test_mode:
             need(os.geteuid()==0,"root-only phase consumption")
-        # Require another independent OFD to observe an exclusive lock. This
-        # is a necessary liveness check, not independently sufficient consent.
+        # A matching inode and a busy flock alone do NOT prove that FD200
+        # owns the lock: a second unrelated open description could be holding
+        # it. First observe contention from an independent open description.
+        # Then an idempotent LOCK_EX on FD200 must succeed, which Linux flock
+        # permits ONLY for the already-owning open-file-description while the
+        # original lock remains held. Do not acquire a new lock or use a new
+        # descriptor as a substitute for the SSH command-channel lease.
         probe=os.open(self.lock,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
         try:
             try: fcntl.flock(probe,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -78,6 +83,9 @@ class Journal:
             else:
                 fcntl.flock(probe,fcntl.LOCK_UN)
                 raise Hold("SOLO_OWNER_LEDGER_HOLD: global release lease not held")
+            try: fcntl.flock(200,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except (BlockingIOError,OSError) as exc:
+                raise Hold("SOLO_OWNER_LEDGER_HOLD: FD200 is not the original owning flock") from exc
         finally: os.close(probe)
     @contextmanager
     def exclusive(self):
