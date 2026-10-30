@@ -6,7 +6,7 @@ No arbitrary shell/user-selected helper; no private-key provisioning.
 All installed helper bytes require independent review and root SHA pins.
 """
 from __future__ import annotations
-import base64, hashlib, json, os, re, socket, stat, sys
+import base64, hashlib, ipaddress, json, os, re, socket, stat, subprocess, sys
 from pathlib import Path
 
 HOST="ubuntu-4gb-hel1-11"
@@ -93,6 +93,46 @@ def installed_key_occurrences(lines, public_identity):
     return found
 
 
+def verify_effective_sshd_config(connection=None):
+    """Prove root authorized keys are not provided through an alternate SSHD path."""
+    value=connection if connection is not None else os.environ.get("SSH_CONNECTION","")
+    tokens=value.split() if type(value) is str else list(value)
+    need(len(tokens)==4,"missing native SSH connection identity")
+    client,client_port,server,server_port=tokens
+    try:
+        ipaddress.ip_address(client)
+        ipaddress.ip_address(server)
+        need(1<=int(client_port)<=65535 and 1<=int(server_port)<=65535,
+             "invalid SSH ports")
+    except (ValueError,TypeError) as exc:
+        raise Hold("invalid SSH connection") from exc
+    context="user=root,host="+client+",addr="+client+",laddr="+server+",lport="+server_port
+    result=subprocess.run(["/usr/sbin/sshd","-T","-C",context],
+                          stdin=subprocess.DEVNULL,capture_output=True,
+                          timeout=10,check=False)
+    need(result.returncode==0 and 0<len(result.stdout)<=131072,
+         "cannot verify effective root sshd policy")
+    settings={}
+    for line in result.stdout.decode("utf-8","strict").splitlines():
+        key,_,value=line.partition(" ")
+        need(key and value and key not in settings,
+             "invalid effective sshd policy")
+        settings[key]=value.strip()
+    need(settings.get("authorizedkeysfile")==".ssh/authorized_keys",
+         "alternate AuthorizedKeysFile bypasses forced command")
+    need(settings.get("authorizedkeyscommand")=="none",
+         "AuthorizedKeysCommand allows alternate credentials")
+    need(settings.get("trustedusercakeys")=="none",
+         "unreviewed SSH certificate CA enabled")
+    need(settings.get("pubkeyauthentication")=="yes" and
+         settings.get("permitrootlogin") in
+            ("yes","prohibit-password","forced-commands-only"),
+         "root public key admission unavailable")
+    need(settings.get("authorizedprincipalsfile","none")=="none",
+         "unexpected certificate principal enrollment")
+    return True
+
+
 def verify_forced_authorized_keys():
     """Both enrolled keys must have exactly one restricted authorized entry.
 
@@ -112,6 +152,7 @@ def verify_forced_authorized_keys():
         matches=installed_key_occurrences(lines,pub)
         need(len(matches)==1 and matches[0]==expected,
              "duplicate or unrestricted enrolled root SSH key: "+mode)
+    verify_effective_sshd_config()
     return True
 
 def main(mode,original):
