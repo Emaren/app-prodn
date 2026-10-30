@@ -188,3 +188,44 @@ def rollback_finance_status(phase_result,before,after):
          before.get("attempt_id")==after.get("attempt_id"),
          "financial before/after evidence from different release attempts")
  return "ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED"
+
+def verify_installed_source_review(report,review_bytes):
+ """Bind signed native graph to a distinct root-enrolled reviewer artifact.
+
+ The owner must separately copy/enroll the exact review file on HEL1 and
+ authenticate its reviewer. Merely pasting a GitHub URL is NOT reviewer proof.
+ """
+ require(type(review_bytes)is bytes and 0<len(review_bytes)<=65536,
+         "root-enrolled source review absent")
+ scope=verify_source_closure(report)
+ require(scope["source_review_sha256"]==hashlib.sha256(review_bytes).hexdigest(),
+         "installed source review is not native signed review")
+ def unique(pairs):
+  out={}
+  for key,value in pairs:
+   require(key not in out,"duplicate source-review JSON property")
+   out[key]=value
+  return out
+ try:review=json.loads(review_bytes,object_pairs_hook=unique)
+ except (ValueError,UnicodeError,TypeError) as exc:
+  raise FinancialProofHold("invalid installed source review") from exc
+ require(type(review)is dict and
+         review.get("kind")=="aoe2war.solo.website.source-review.v1" and
+         review.get("status")=="INDEPENDENTLY_REVIEWED" and
+         review.get("candidate_sha")==report["candidate_sha"],
+         "foreign/unreviewed source review")
+ for review_key,scope_key in (
+  ("transitive_closure_sha256","dependency_graph_sha256"),
+  ("import_edges_sha256","import_edges_sha256"),
+  ("finance_surface_sha256","finance_surface_sha256"),
+  ("get_head_effects_sha256","get_head_effects_sha256"),
+  ("prewarm_effects_sha256","prewarm_effects_sha256"),
+  ("writer_census_sha256","writer_census_sha256")):
+  require(review.get(review_key)==scope.get(scope_key) and
+          sha(review.get(review_key)),
+          "native closure diverges from independent review: "+review_key)
+ for key in ("unresolved_import_edges","changed_financial_writers",
+             "financial_migration_paths","unchecked_producer_edges",
+             "unreviewed_get_side_effects","unreviewed_prewarm_side_effects"):
+  require(review.get(key)==[],"independent source review has unchecked edges: "+key)
+ return review
