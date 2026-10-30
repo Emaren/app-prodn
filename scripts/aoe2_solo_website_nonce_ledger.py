@@ -2,7 +2,7 @@
 """Solo-owner website root-owned durable nonce ledger. No deploy interface."""
 from __future__ import annotations
 import fcntl, hashlib, json, os, re, secrets, stat, threading
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -160,10 +160,14 @@ class Journal:
                 raise Hold("SOLO_OWNER_LEDGER_HOLD: another unconsumed owner intent")
 
     def issue(self,phase,candidate,*,attempt=None,lease=None,stage_sha=None,
-              observation=None,now=None):
+              observation=None,now=None,under_original_lease=False):
         now=now or datetime.now(timezone.utc)
         need(bool(re.fullmatch(r"[0-9a-f]{40}",candidate)),"bad source SHA")
-        with self.exclusive():
+        # A native phase issuer must use the same inherited HEL1 FD200 as
+        # the audit collector; a separately reacquired flock is not allowed.
+        if under_original_lease:
+            self.inherited_lease_fd()
+        with (nullcontext() if under_original_lease else self.exclusive()):
             self.refuse_unreconciled_phases()
             self.refuse_parallel_unconsumed_challenges(now)
             if phase=="PRE_STAGE":
