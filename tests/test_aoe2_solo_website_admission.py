@@ -23,13 +23,30 @@ SPEC.loader.exec_module(M)
 class SoloWebsiteAdmissionTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime(2026, 10, 30, 8, 0, tzinfo=timezone.utc)
+        self.gate = {
+            "schema": 2, "kind": "gate-receipt", "status": "PASS",
+            "mode": "committed", "target_sha": M.W1, "base_sha": M.OLD,
+            "scope_sha256": "d" * 64,
+            "changed_files": ["app/admin/storage-os/page.tsx"],
+            "required_commands": ["diff-check"],
+            "commands": [{"label": "diff-check", "returncode": 0}],
+        }
+        self.gate_raw = M.canonical(self.gate)
         self.manifest = {
+            "schema": 1, "kind": "aoe2war-release-manifest",
             "release_sha": M.W1, "previous_production_sha": M.OLD,
             "scope_sha256": "d" * 64, "migration_paths": [],
             "changed_files": ["app/admin/storage-os/page.tsx"],
+            "gate": {"status": "PASS",
+                     "receipt_sha256": M.digest(self.gate_raw)},
+            "policy": {
+                "exact_sealed_commit": True, "build_beside_live": True,
+                "preserve_rollback": True,
+                "prove_internal_and_public": True,
+                "wolo_mutation_allowed": False,
+            },
         }
         self.manifest_raw = M.canonical(self.manifest)
-        self.gate_raw = b'{"result":"PASS"}'
         self.host = {
             "origin": "AUTHENTICATED_HEL1_ROOT_SSH",
             "host": "ubuntu-4gb-hel1-11",
@@ -110,6 +127,39 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
         self.assertEqual(result["status"], "INPUTS_VERIFIED_ONLY_NOT_AUTHORIZED")
         self.assertIs(result["financial_release_authorized"], False)
         self.assertIs(result["host_lease_and_nonce_consumed"], False)
+
+    def test_gate_status_fail_rejected_even_when_hash_signed(self):
+        gate = copy.deepcopy(self.gate)
+        gate["status"] = "FAIL"
+        raw = M.canonical(gate)
+        manifest = copy.deepcopy(self.manifest)
+        manifest["gate"]["receipt_sha256"] = M.digest(raw)
+        manifest_raw = M.canonical(manifest)
+        signed = self.signed_with(
+            gate_sha256=M.digest(raw),
+            manifest_sha256=M.digest(manifest_raw),
+        )
+        self.expect_hold(signed=signed, gate_raw=raw, manifest_raw=manifest_raw)
+
+    def test_gate_command_failure_rejected_even_when_status_pass(self):
+        gate = copy.deepcopy(self.gate)
+        gate["commands"][0]["returncode"] = 1
+        raw = M.canonical(gate)
+        manifest = copy.deepcopy(self.manifest)
+        manifest["gate"]["receipt_sha256"] = M.digest(raw)
+        manifest_raw = M.canonical(manifest)
+        signed = self.signed_with(
+            gate_sha256=M.digest(raw),
+            manifest_sha256=M.digest(manifest_raw),
+        )
+        self.expect_hold(signed=signed, gate_raw=raw, manifest_raw=manifest_raw)
+
+    def test_source_closure_cannot_be_inferred_from_prisma_only(self):
+        manifest = copy.deepcopy(self.manifest)
+        manifest["changed_files"].append("lib/financialTransfer.ts")
+        manifest_raw = M.canonical(manifest)
+        signed = self.signed_with(manifest_sha256=M.digest(manifest_raw))
+        self.expect_hold(signed=signed, manifest_raw=manifest_raw)
 
     def test_candidate_substitution(self):
         self.expect_hold(signed=self.signed_with(candidate_sha=M.POST_W1))
