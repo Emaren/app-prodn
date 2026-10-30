@@ -194,6 +194,23 @@ def issue(args):
     return {"status":"ROOT_ISSUED_NOT_AUTHORIZED","challenge":challenge,
             "snapshot_sha256":digest(canonical(snapshot))}
 
+def assert_native_stage_bytes(original_raw,receipt,actual_stage):
+    """Original HEL1 bytes, not a pretty-printed JSON reserialization."""
+    need(type(original_raw)is bytes and type(receipt)is dict and
+         type(actual_stage)is dict,"missing native stage evidence")
+    need(actual_stage.get("origin")=="HEL1_DURABLE_PROTECTED_STORE" and
+         actual_stage.get("status")=="STAGED" and
+         actual_stage.get("receipt_sha256")==digest(original_raw) and
+         actual_stage.get("receipt")==receipt and
+         actual_stage.get("artifact_sha256")==receipt.get("artifact_sha256") and
+         actual_stage.get("node_modules_sha256")==
+            receipt.get("candidate_node_modules_sha256") and
+         actual_stage.get("staged_build_id")==receipt.get("staged_build_id") and
+         type(receipt.get("staged_build_id"))is str and
+         bool(receipt["staged_build_id"]),
+         "native durable stage bytes/artifact/dependency/build mismatch")
+    return True
+
 def mark_staged(args):
     """Record a REAL protected stage receipt inside SAME inherited lock."""
     need(len(args)==3,"stage mark requires attempt/receipt SHA/remote receipt dir")
@@ -234,13 +251,7 @@ def mark_staged(args):
                      post_stage=True)
     h=native_observation_for_owner(now_report)
     real_stage=now_report["stage"]
-    need(real_stage["receipt_sha256"]==digest(raw) and
-         real_stage["receipt"]==receipt and
-         real_stage["artifact_sha256"]==receipt.get("artifact_sha256") and
-         real_stage["node_modules_sha256"]==
-            receipt.get("candidate_node_modules_sha256") and
-         real_stage["staged_build_id"]==receipt.get("staged_build_id"),
-         "B/C independently observed native stage artifact/deps/BUILD_ID drift")
+    assert_native_stage_bytes(raw,receipt,real_stage)
     before=root_file(STATE/(attempt+"-PRE_STAGE-observation.json"))["observation"]
     need(h["financial_exposure"]==before["financial_exposure"] and
          h["protected"]==before["protected"] and
