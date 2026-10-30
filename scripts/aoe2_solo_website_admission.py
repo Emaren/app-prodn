@@ -308,17 +308,30 @@ def verify_inputs(signed, manifest_raw, gate_raw, *,
               prior.get("gate_sha256") == p["gate_sha256"] and
               prior.get("previous_sha") == previous,
               "phase chain mismatch")
-        check(type(p["stage_receipt_sha256"]) is str and
-              digest(canonical(stage_receipt)) == p["stage_receipt_sha256"] and
+        # The authenticated HEL1 root collector MUST re-read immutable
+        # stage evidence from durable release storage. Matching arbitrary
+        # operator-supplied dicts is never enough.
+        check(type(h.get("durable_stage_receipt")) is dict and
+              h.get("durable_stage_receipt") == stage_receipt and
+              h.get("stage_receipt_origin") == "HEL1_DURABLE_PROTECTED_STORE" and
+              type(h.get("durable_stage_receipt_sha256")) is str and
+              HEX64.fullmatch(h["durable_stage_receipt_sha256"]) and
+              h["durable_stage_receipt_sha256"] == p["stage_receipt_sha256"] and
+              type(p["stage_receipt_sha256"]) is str and
               stage_receipt.get("status") == "STAGED" and
               stage_receipt.get("release_sha") == target and
               stage_receipt.get("previous_production_sha") == previous and
               stage_receipt.get("wolo_mutated") is False and
               stage_receipt.get("live_runtime_mutated") is False and
+              stage_receipt.get("live_source_mutated") is False and
+              stage_receipt.get("artifact_sha256") ==
+              h.get("staged_artifact_sha256") and
+              stage_receipt.get("candidate_node_modules_sha256") ==
+              h.get("staged_node_modules_sha256") and
               p["staged_build_id"] == stage_receipt.get("staged_build_id") and
               p["staged_build_id"] == h.get("staged_build_id") and
               p["pre_stage_packet_sha256"] == digest(canonical(previous_stage)),
-              "stage receipt/artifact/BUILD_ID mismatch")
+              "durable stage receipt/artifact/BUILD_ID mismatch")
     verify_owner_signature(signed)
     return {"status": "INPUTS_VERIFIED_ONLY_NOT_AUTHORIZED",
             "phase": p["phase"], "train": p["train"],
