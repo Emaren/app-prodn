@@ -125,7 +125,7 @@ export function measuredProgress(c:TransferCohort,now=new Date()):{
  const base={percent,bytesPerSecond:null,etaSeconds:null,label:"MEASURING"};
  if(c.samples.length<3)return base;
  const latest=c.samples.slice(-5);
- let rates:number[]=[];
+ const rates:number[]=[];
  for(let i=1;i<latest.length;i++){
   const prev=latest[i-1],next=latest[i];
   const dt=(Date.parse(next.at)-Date.parse(prev.at))/1000;
