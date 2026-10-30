@@ -108,6 +108,43 @@ def fresh_challenge():
         return {}
 
 
+def issued_root_snapshot(challenge):
+    """Only exact owner-bound native snapshot written by root issuer counts."""
+    if not challenge:
+        return None
+    a=challenge.get("attempt_id");phase=challenge.get("phase")
+    if (type(a) is not str or not __import__("re").fullmatch("[a-f0-9]{64}",a) or
+            phase not in ("PRE_STAGE","PRE_ACTIVATE")):
+        return None
+    path=STATE/(a+"-"+phase+"-observation.json")
+    try:
+        info=path.lstat()
+        if path.is_symlink() or not __import__("stat").S_ISREG(info.st_mode) or (
+                info.st_uid!=0 or info.st_mode&0o077 or info.st_size>262144):
+            return None
+        snap=json.loads(path.read_bytes())
+        h=snap["observation"]
+        dt=datetime.fromisoformat(h["observed_at"].replace("Z","+00:00"))
+        age=(datetime.now(timezone.utc)-dt).total_seconds()
+        if not 0<=age<=120:
+            return None
+        d=disk()
+        if (not d["mounted"] or h.get("free_bytes")!=d["free_bytes"] or
+                abs(h.get("effective_used_pct",float("inf"))-
+                    d["effective_used_pct"])>0.05 or
+                abs(h.get("finish_used_pct",float("inf"))-
+                    d["finish_used_pct"])>0.05):
+            # The signed snapshot is meaningful only at the issued physical
+            # instant. Any drift before signing requires a NEW challenge.
+            return None
+        if (h.get("source_sha")!=source() or
+                h.get("build_id")!=active_build() or
+                h.get("web_service")!=service()):
+            return None
+        return h
+    except (OSError,TypeError,KeyError,ValueError,OverflowError):
+        return None
+
 def main():
     if sys.argv[1:] != ["--read-only-json"]:
         print("HOLD: ONLY_READ_ONLY_JSON_SUPPORTED", file=sys.stderr)
@@ -148,7 +185,15 @@ def main():
         "staged_node_modules_sha256": None,
         "staged_build_id": None,
     }
-    output({"schema": 1, "observation": obs, "challenge": fresh_challenge()})
+    challenge=fresh_challenge()
+    saved=issued_root_snapshot(challenge)
+    if saved is not None:
+        obs=saved
+    else:
+        # A challenge with missing/stale native root-issued snapshot MUST
+        # NOT be paired with synthetic read-only data.
+        challenge={}
+    output({"schema": 1, "observation": obs, "challenge": challenge})
     return 0
 
 
