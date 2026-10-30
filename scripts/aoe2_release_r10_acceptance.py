@@ -186,8 +186,8 @@ def host_identity(expected,build,compiled):
     # Source dirty filter matches F's original source_status() rather than .next runtime.
     dirty=cmd(["git","-C",str(REPO),"status","--porcelain=v1",
                "--untracked-files=normal","--",".",
-               ":(exclude).next",":(exclude).next/**",
                ":(exclude).next-release",":(exclude).next-release/**",
+               ":(exclude).node_modules-release",":(exclude).node_modules-release/**",
                ":(exclude).next-rollback*",":(exclude).next-rollback*/**",
                ":(exclude).node_modules-rollback*",":(exclude).node_modules-rollback*/**"])
     require(not dirty,"ACTIVE_SOURCE_DIRTY")
