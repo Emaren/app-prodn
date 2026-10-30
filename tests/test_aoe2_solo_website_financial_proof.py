@@ -72,6 +72,13 @@ def source():
   {"GET":graph["routes"]["GET"],"HEAD":graph["routes"]["HEAD"]})).hexdigest()
  scope["prewarm_effects_sha256"]=hashlib.sha256(canonical(
   graph["routes"]["PREWARM"])).hexdigest()
+ for route in ("GET","HEAD"):
+  f["protected"]["writers"]["native_census"]["side_effects"][route][
+   "route_graph_sha256"]=scope["get_head_effects_sha256"]
+ f["protected"]["writers"]["native_census"]["side_effects"]["PREWARM"][
+  "route_graph_sha256"]=scope["prewarm_effects_sha256"]
+ scope["writer_census_sha256"]=hashlib.sha256(canonical(
+  f["protected"]["writers"]["native_census"])).hexdigest()
  return {"candidate_sha":"b"*40,"source_scope":scope,"finance":f,
          "stage":{"status":"NOT_STAGED"}}
 
@@ -154,6 +161,15 @@ class BFinancialProofAdversarial(unittest.TestCase):
   with self.assertRaises(FinancialProofHold):verify_source_closure(r)
   r=source();r["source_scope"]["writer_census_sha256"]=D
   with self.assertRaises(FinancialProofHold):verify_source_closure(r)
+
+ def test_signed_finance_route_trace_must_match_signed_source_graph(self):
+  r=source()
+  r["finance"]["protected"]["writers"]["native_census"]["side_effects"][
+   "PREWARM"]["route_graph_sha256"]="f"*64
+  r["source_scope"]["writer_census_sha256"]=hashlib.sha256(canonical(
+   r["finance"]["protected"]["writers"]["native_census"])).hexdigest()
+  with self.assertRaisesRegex(FinancialProofHold,"route DAG"):
+   verify_source_closure(r)
 
  def test_changed_transitive_financial_import_is_rejected(self):
   r=source();s=r["source_scope"];graph=s["graph"]
