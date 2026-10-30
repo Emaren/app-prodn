@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7d5f5f729cab26889ef962f7c82d78ec5d6c415e5438d28a50ca475fb1748b37",
+      "sha256": "c03ed3ffc4c977e6977950b5cfd7a29e13e8355cc11456fef7b8e576eaf16b49",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2442,7 +2442,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "repair/g-docsv2-f-r10-native-1ea63d4a-20261030",
-    "commit": "fbaa72caff66a8db3f21d8803ed88f2e1f87fa37"
+    "commit": "b5f240db62421e84dd393daccbb6656baabec27d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
