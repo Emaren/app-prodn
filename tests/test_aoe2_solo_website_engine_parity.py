@@ -34,8 +34,18 @@ class EngineParity(unittest.TestCase):
     def test_stage_remote_program_and_truth(self):
         self.compare_native("scripts/aoe2_release_stage.py",
             "scripts/aoe2_solo_website_stage_engine.py",
-            ("remote_stage_script","validate_stage_result",
+            ("validate_stage_result",
              "persist_durable_stage_receipt","write_local_receipt"))
+
+    def test_stage_original_program_preserved_with_one_orphan_lease_guard(self):
+        script=(ROOT/"scripts/aoe2_solo_website_stage_engine.py").read_text()
+        self.assertIn("lease_guard: bool = False",script)
+        self.assertIn("from aoe2_solo_website_command_channel import STAGE_GUARD",script)
+        self.assertEqual(script.count("{guardian}"),1)
+        self.assertIn("lease_guard=remote_runner is not None",script)
+        self.assertIn("systemctl start --wait",script)
+        self.assertIn("pass_fds=(200,)",
+                      (ROOT/"scripts/aoe2_solo_website_command_channel.py").read_text())
 
     def test_activation_remote_rollback_and_truth(self):
         self.compare_native("scripts/aoe2_release_ship.py",
