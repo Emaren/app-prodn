@@ -15,6 +15,175 @@ sensitivity: "internal"
 
 # AoE2WAR Release Engineering
 
+## October 30, 2026 — C independent HEL1 website release-evidence review (REVIEW ONLY)
+
+**Scope:** Frozen W1 `b46a51f1592c9f296839924ae55e722618b10d35` first;
+separately admitted post-W1 `fa5c350b35cba7ace8d4515a7ad52ba4e1534295` second.
+Neither is verified deployed. This evidence addendum does not revise frozen W1,
+install a host collector, authorize signer keys, waive a release gate, or act as
+the final owner stage/activate runbook. `DEPLOY.md` remains the operator runbook;
+F owns its eventual integrated solo-owner release transaction.
+
+### Exact source distinction: present engine vs proposed extra policy
+
+- Frozen `config/aoe2war-operations.json` specifies root
+  `root_free_warn_gib=5`, `root_free_preferred_gib=6`, and mounted volume
+  `volume_used_critical_percent=92`.
+  `scripts/aoe2_finish.py::production_capacity_snapshot` uses `os.statvfs`
+  `f_bavail`; `assert_capacity_headroom` refuses **root <5 GiB** or
+  **mounted volume >=92% used**. These are **implemented Finish safety gates**.
+  The engine's root threshold is not interchangeable with a M1 developer
+  worktree floor, and root `/` capacity is not the attached volume.
+- Draft solo-owner PR [#1008](https://github.com/Emaren/app-prodn/pull/1008)
+  at `1fa2d6647e92a8a992ce3468a7de8285a4b292aa` additionally demands
+  **mounted free >=30 GiB**, **effective used <=88%**, **Finish used <92%**,
+  signed Doctor **0 P0/0 P1** and **six independently restored physical
+  backup classes**. Those are currently binding *proposed admission policy*,
+  not proof that frozen Finish already hard-codes a universal 30 GiB/88%/6-class
+  prerequisite. The separate 92% Finish threshold is real and still must pass.
+- **Owner review recommendation, not waiver:** for a strictly website-only
+  release with finance/database unchanged, reconsider whether the extra
+  30 GiB/88% and six off-host class restores are universally mandatory to
+  stage W1, or should be independent DR objectives subject to a separately
+  signed scoped risk policy. Any changed threshold or alternative backup proof
+  needs versioned code, independently reviewed risk boundaries, explicit owner
+  decision and new CI. Never patch reported scores, lower thresholds silently,
+  bypass W1's current fail-closed verifier, or treat a green website source
+  test as a production safety attestation. A stale unrelated Doctor failure
+  requires diagnosis and documented risk classification, not a fabricated 0.
+
+### Observed state vs missing physical evidence
+
+Latest *dated owner-native* HEL1 volume observation: **21.0264 GiB available**;
+prior effective usage **~92.563%** and Finish-style usage **~92.869%**,
+not a new signed same-timestamp admission. Root available capacity,
+current service process/binary/working tree, installed artifact and BUILD_ID,
+live signed Doctor, source-HMAC telemetry, producer fingerprints and rollback
+integrity are **UNKNOWN** until actual host receipts. Traffic SQLite file
+~48.01079 GiB has ~2.25958 GiB internal freelist; this is **not** reclaimed
+filesystem space or safe deletion authority.
+E source-only restore verifier exists; real isolated six-class physical
+restores **0/6**. Intel source ciphertext/transfer/readback/key custody
+still lacks qualifying signed proof. Do not invent a private Storage OS green.
+
+The existing W1 `scripts/aoe2_release_nonfinancial_admission.py`
+**requires distinct Source/Finance/Owner/Host signing identities**, whereas
+the system has **one real human owner**. An empty root-owned trust folder is not
+enrollment or a security incident by itself. A separately reviewed
+**solo-owner, website-only, domain/nonce/lease-bound** policy may replace
+unavailable human roles while retaining a distinct authenticated HEL1 *machine*
+witness, source scope and independent financial review. It must be connected
+to the actual protected stage/activate engine; PR #1008 is **non-dispatching**,
+not a permit or frozen W1 patch.
+
+### Owner-executed HEL1 preflight — actual native evidence (2026-10-30 owner report)
+
+Owner ran the prior [HEL1 read-only preflight](https://github.com/Emaren/app-prodn/issues/665#issuecomment-6516118369)
+from `tony@ubuntu-4gb-hel1-11`. These are **owner-pasted native results, unsigned**, not a root-signed
+attestation or independently verified public website version. The command's output
+reached `READ-ONLY COMPLETE`; no mutation or release command was invoked.
+The execution output supplies no trusted same-sample UTC timestamp; do not invent one.
+
+| Probe | Native observation | Evidence meaning |
+|---|---|---|
+| Host / volume | `ubuntu-4gb-hel1-11`, `/dev/sdb` ext4, UUID `a9a085d9-6c53-4d9f-8bb8-5aeb90bf0b42` | Expected host and mount identity **PASS** |
+| Root filesystem | **66.704 GiB available**, **55.505% used** | Frozen Finish root >=5GiB **PASS** |
+| Attached evidence volume | **21.022 GiB available**, **92.878% used** | Frozen Finish volume <92% **HOLD** |
+| Proposed #1008 extra gate | 21.022 GiB free and 92.878% Finish used | >=30GiB free **HOLD** (gap **8.978 GiB**); separately measure effective-used <=88% |
+| Website / replay API | `aoe2hdbets-web.service`, `aoe2hdbets-api.service` both `active` | Process existence **PASS**, deployed functional parity **UNKNOWN** |
+| On-disk production source | `33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a` | Old production source still in checkout; W1/post-W1 not installed |
+| On-disk Next BUILD_ID | `DQ2jMprNQ_Njq6QM8GHju` | Local `.next/BUILD_ID` exists; internal/public parity **UNKNOWN** |
+| Wolo | Exactly one listening socket on each 8092 and 8093 | Counts **PASS**; binary/unit/config/financial writer fingerprints **UNKNOWN** |
+| Rollback/receipt dirs | Both exist, UID 0, mode 0755 | Directory presence **PASS**; restore/rollback integrity **UNKNOWN** |
+| Global release lock | UID **1000**, mode **0644** | Confirms real shared lock, conflicts with #1008 root-UID requirement |
+| HEL1 local SSH host public key | `SHA256:8L7ZF+xPA/YXe6uY1+yVPZFdY58JxYvHjC5S/U+I1Og` | **Matches PR #1008 pin** on HEL1; E's unlike Intel→HEL1 fingerprint still requires out-of-band reconciliation before fresh trust enrollment |
+| Solo-owner readonly root helper | Not installed or not readable at expected path | **HOLD**; no host-signed observation can be inferred |
+
+**New concrete engineering disposition for F:** Fix nonce ledger's special-case
+canonical shared lock UID 1000 (do not weaken root-owned private journal
+requirements and do not chown original lock); reconcile E's earlier different
+SSH fingerprint, but the **current HEL1 local public key confirms the PR #1008
+pin**. Preserve frozen W1 source and default no-dispatch policy. Current
+disk use alone fails original Finish safety regardless of owner decision on
+the proposed stricter 30GiB/88%/six-class rules.
+
+Owner command output is reported in current Session C conversation and
+summarized for F/Central; no private keys, secrets or owner approval permits
+were collected. The next production-specific evidence needed from F is
+installed root observer/actual signed Doctor+financial-source witness,
+same-sample effective disk measurements, legitimate exact-scope/manifest,
+rollback artifact cryptographic proof, independent owner phase approvals
+and authenticated internal/public BUILD_ID acceptance.
+
+### Host observer and immutable evidence corrections for F/B
+
+1. **Host identity:** PR #1008 pins HEL1 ED25519
+   `SHA256:8L7ZF+xPA/YXe6uY1+yVPZFdY58JxYvHjC5S/U+I1Og` at
+   `157.180.114.124`, while E's Intel-to-HEL1 observation recorded
+   `SHA256:XE4TPnOIQhD6U0OQqfBACvJ0CEPIbURsgQMjnV0NOiE`.
+   These cannot be silently treated as the same current ED25519 host key.
+   Run the read-only HEL1 local public-host-key check, reconcile endpoint,
+   key rotation and independently pinned known_hosts **out-of-band** before
+   provisioning any privileged remote observer.
+2. **Canonical lease compatibility:** historical
+   `.../os-control/locks/release.lock` was a shared
+   `tony:tony` lock (previously mode `0664`; a narrow `0644`
+   transition was separately proposed), NOT a root-owned trust file.
+   PR #1008 `Journal.secure(self.lock)` currently demands UID 0 and will
+   fail on this documented real lock. Observe its present inode, uid, mode,
+   ancestor, and original lock holder; preserve the one true `flock`.
+   Root-only ownership applies to the separate nonce journal, not by
+   assumption to the shared lease. Any lock-mode/ownership repair requires
+   explicit independent owner review, never silent `chown`/lock replacement.
+3. **Signed facts:** a host helper's fields
+   `doctor_signed=true`, `recovery_verified_classes=[six names]`,
+   `independent_restore_verdict=PHYSICALLY_ACCEPTED`, or PIDs on 8092/8093
+   do not independently verify signed native Doctor provenance,
+   third-device isolated restoration, complete protected financial writer
+   exclusion, native binary/unit/config/source digests or rollback.
+   Bind raw signed receipts, source/host/mount identity, freshness, issuer,
+   independently recomputed hashes and explicit UNKNOWN.
+   **B independently verifies** website no-money scope plus all original
+   financial writers **before and after**, not a funded financial GO.
+4. **Controller:** remote `sha256sum helper && helper` needs root-owned
+   no-symlink immutable helper protection and restricted SSH principal;
+   bound stdout and duplicate-key safe JSON. PRE_ACTIVATE must rehash raw
+   immutable on-host stage receipt and artifacts. Root global lease must
+   be held across actual nonce consumption, protected stage/activate and
+   rollback. No self-issued host claims or operator-supplied fake receipts.
+5. **Live acceptance:** only after signed independent owner PRE_STAGE and
+   PRE_ACTIVATE authorizations, F proves current and resulting service,
+   on-disk source/BUILD_ID, internal `/api/deployment-version`,
+   public build parity, rollback receipt/readback and authenticated
+   375/768/1440 Chrome (Storage OS, Backup OS, General Inspections,
+   Kingdom Intelligence, L2, navigation and Work Board). Preserve finance
+   HOLD throughout. Repeat with separate receipts for post-W1.
+
+**Owner-run HEL1 read-only preflight (no Desktop Commander, no sudo):**
+[exact host-guarded command at F #665](https://github.com/Emaren/app-prodn/issues/665#issuecomment-6516118369).
+It reports PASS/HOLD for host, actual mount, both independent disk planes,
+services, Git/source BUILD_ID file, 8092/8093 listener counts, canonical
+lock+rollback directory metadata, proposed SSH public key fingerprint and
+root helper presence. A PASS for presence is **not** immutable
+source/rollback, signed Doctor, source/manifest, encrypted restore,
+root/owner permit or public version parity proof. Record the resulting
+native output and independent evidence references in
+[#934](https://github.com/Emaren/app-prodn/issues/934)
+and [#665](https://github.com/Emaren/app-prodn/issues/665);
+this document contains **no fabricated results**.
+
+**C stop condition:** Give F the review and owner preflight; remain
+read-only. No new dashboard, live installation, CI-waiver or financial write.
+Re-engage solely for real evidence discrepancies or a narrowly justified
+read-model integration after authentic receipts.
+
+Sources: [frozen config](https://github.com/Emaren/app-prodn/blob/b46a51f1592c9f296839924ae55e722618b10d35/config/aoe2war-operations.json),
+[frozen Finish engine](https://github.com/Emaren/app-prodn/blob/b46a51f1592c9f296839924ae55e722618b10d35/scripts/aoe2_finish.py),
+[canonical original admission](https://github.com/Emaren/app-prodn/blob/b46a51f1592c9f296839924ae55e722618b10d35/scripts/aoe2_release_nonfinancial_admission.py),
+[PR #1008 C independent review](https://github.com/Emaren/app-prodn/pull/1008#pullrequestreview-5708613938),
+[Central latest release evidence](https://github.com/Emaren/app-prodn/issues/934#issuecomment-6516044000),
+[Traffic #59](https://github.com/Emaren/traffic-api/issues/59).
+
 ## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
 
 The source release classifier in `scripts/aoe2_release_gate.py` now assigns
