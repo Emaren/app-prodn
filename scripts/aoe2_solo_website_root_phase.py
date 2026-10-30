@@ -334,6 +334,89 @@ def complete_activation(args):
     write_once(STATE/(attempt+"-PRE_ACTIVATE-completed.json"),record)
     return record
 
+def reconcile_activation_rollback(args):
+    """PROVE website trap rollback + B-signed financial invariants; never mutate.
+
+    Run only while the SAME original FD200 lease survives the website
+    activation attempt. UNKNOWN, missing W1 trap, or unsigned writer reports
+    remain HOLD. A returned PASS is a failure-reconciliation receipt, not an
+    owner permit to dispatch or transfer any WOLO.
+    """
+    need(len(args)==2,"reconciliation requires attempt and native receipt dir")
+    attempt,remote=args
+    need(type(attempt)is str and HEX64.fullmatch(attempt),
+         "bad original activation attempt")
+    base=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/deploy-receipts")
+    folder=pathlib.Path(remote)
+    need(folder.is_absolute() and folder.parent==base and
+         folder.name.startswith("activate-") and not folder.is_symlink() and
+         not base.is_symlink(),"foreign rollback-status directory")
+    l=Journal()
+    l.inherited_lease_fd()
+    issued=l.read(attempt,"PRE_ACTIVATE","issue")
+    consumed=l.read(attempt,"PRE_ACTIVATE","used")
+    approved=root_file(STATE/(attempt+"-PRE_ACTIVATE-approved.json"))
+    need(consumed["owner_packet_sha256"]==approved["packet_sha256"] and
+         approved["candidate_sha"]==issued["candidate_sha"],
+         "rollback was not from this genuine consumed owner phase")
+    status_file=folder/"rollback-status.txt"
+    need(status_file.is_file() and not status_file.is_symlink(),
+         "no original protected rollback trap evidence")
+    fd=os.open(status_file,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        st=os.fstat(fd)
+        need(stat.S_ISREG(st.st_mode) and 0<st.st_size<=16384,
+             "unbounded rollback trap record")
+        content=os.read(fd,16385)
+        need(0<len(content)<=16384,"incomplete rollback trap record")
+    finally:
+        os.close(fd)
+    status={}
+    try:
+        for line in content.decode("utf-8","strict").splitlines():
+            name,sep,value=line.partition("=")
+            need(sep and name not in status and name and
+                 all(c.islower() or c.isdigit() or c=="_" for c in name),
+                 "ambiguous original trap record")
+            status[name]=value
+    except UnicodeError as exc:
+        raise Hold("undecodable rollback trap") from exc
+    original=root_file(STATE/(attempt+"-PRE_ACTIVATE-observation.json"))["observation"]
+    need(status.get("status")=="ROLLED_BACK" and
+         status.get("source_sha")==original["source_sha"] and
+         status.get("active_build_id")==original["build_id"] and
+         status.get("dirty_count")=="0" and
+         status.get("source_reset_exit_code")=="0" and
+         status.get("source_prisma_generate_exit_code")=="0" and
+         status.get("release_only_cleanup_exit_code")=="0" and
+         status.get("staged_cache_cleanup_exit_code")=="0" and
+         status.get("wolo8092")==str(original["protected"]["8092"]["count"]) and
+         status.get("wolo8093")==str(original["protected"]["8093"]["count"]),
+         "original website rollback trap not complete")
+    observed=native()
+    need(observed["source_sha"]==original["source_sha"] and
+         observed["build_id"]==original["build_id"] and
+         observed["web_service"]=="active" and observed["mounted"]is True,
+         "live site not actually restored")
+    before=root_file(STATE/(attempt+"-PRE_ACTIVATE-native-before.json"))
+    from aoe2_solo_website_native_audit_adapter import audit
+    after=audit(issued["candidate_sha"],"POST_ROLLBACK",attempt)
+    from aoe2_solo_website_financial_proof import rollback_finance_status
+    result=rollback_finance_status({"status":"ROLLED_BACK"},before,after)
+    need(result=="ROLLED_BACK_WEB_AND_FINANCE_NATIVE_VERIFIED",
+         "signed post-rollback finance not preserved")
+    record={"schema":1,"policy":POLICY,
+            "status":"WEB_AND_FINANCE_ROLLBACK_NATIVE_VERIFIED",
+            "attempt_id":attempt,"candidate_sha":issued["candidate_sha"],
+            "previous_source_sha":original["source_sha"],
+            "previous_build_id":original["build_id"],
+            "rollback_trap_sha256":digest(content),
+            "before_native_sha256":digest(canonical(before)),
+            "after_native_sha256":digest(canonical(after)),
+            "financial_release_authorized":False}
+    write_once(STATE/(attempt+"-PRE_ACTIVATE-rollback-reconciled.json"),record)
+    return record
+
 def consumed(args):
     need(len(args)==3,"proof requires attempt phase packet hash")
     a,phase,packet_sha=args
@@ -433,6 +516,10 @@ def consume(args):
         need(p["stage_receipt_sha256"]is None and
              p["staged_build_id"]is None,
              "stage owner intent invented artifact")
+    # Retain the REAL signed native PRE_ACTIVATE boundary before attempting
+    # the website mutation. A subsequent trap/SSH loss cannot invent it.
+    if phase=="PRE_ACTIVATE":
+        write_once(STATE/(a+"-PRE_ACTIVATE-native-before.json"),report)
     packet_sha=digest(canonical(signed))
     # Consume once inside original FD200 lease and fsync before dispatch.
     l.consume_under_existing_lock(issued,packet_sha,
@@ -459,6 +546,7 @@ def main():
     elif action=="consume":out=consume(args)
     elif action=="mark-staged":out=mark_staged(args)
     elif action=="complete-activation":out=complete_activation(args)
+    elif action=="reconcile-rollback":out=reconcile_activation_rollback(args)
     else:raise Hold("unknown root phase command")
     print(json.dumps(out,sort_keys=True,separators=(",",":")))
 if __name__=="__main__":
