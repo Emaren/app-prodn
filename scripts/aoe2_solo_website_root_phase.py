@@ -162,7 +162,6 @@ def issue(args):
          "bad phase or release candidate")
     from aoe2_solo_website_native_audit_adapter import audit
     import secrets
-    ledger=Journal()
     live=native()
     gate_native(live)
     if phase=="PRE_STAGE":
@@ -185,6 +184,7 @@ def issue(args):
          "root native snapshot changed during issuance")
     snapshot={"schema":1,"observation":observation,
               "at":datetime.now(timezone.utc).isoformat()}
+    ledger=Journal()
     if phase=="PRE_STAGE":
         challenge=ledger.issue(phase,candidate,attempt=attempt,
                                observation=snapshot)
