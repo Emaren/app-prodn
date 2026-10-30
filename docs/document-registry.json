@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d64a367d0acb9c888c2e8480a966e5159b149baf48ad8b71f8fb5a23f75d6b17",
+      "sha256": "5071efcfcf7e066651c7bdead8c952507311f521f408c1197bd12d5fc8bacfdf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/g-q09-a3-work-ledger-20261029",
-    "commit": "c349bc2ae8fad8cc010423c2c7d3755060a9a410"
+    "branch": "feat/d-storage-l2-owner-preview-20261029",
+    "commit": "187288a01633b9557f7ae51fb5339ab3f03d5a61"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

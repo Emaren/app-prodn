@@ -5,6 +5,7 @@ import { Archive, Fingerprint, Layers3, ShieldAlert, ShieldCheck, History, Clock
 import { INDIVIDUAL_TRANSPORT_ADOPTED } from "@/lib/storageReviewTransportPolicy";
 import type { PlaneId, Level, StorageVisualView } from "@/lib/storageVisualPrivate";
 import type { OwnerDecision, OwnerReviewEvent } from "@/lib/storageOwnerReviews";
+import { ownerL2CategoryPreviews, ownerL2ReviewBasket } from "@/lib/storageL2OwnerPreview";
 
 const ROLES=[
  {level:1 as Level,title:"L1 / PROVEN GENERATED",sub:"Exact guarded allowlist · execution OFF",color:"cyan",icon:Layers3},
@@ -26,10 +27,17 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
  const [alias,setAlias]=useState<string|null>(null),[history,setHistory]=useState<OwnerReviewEvent[]|null>(null);
  const [notice,setNotice]=useState<string|null>(null),[choice,setChoice]=useState<OwnerDecision|null>(null);
  const [understood,setUnderstood]=useState(false),[busy,setBusy]=useState(false);
+ const [l2Selection,setL2Selection]=useState<{scope:string;keys:string[]}|null>(null);
  const plane=visual?.planes.find(p=>p.id===activeId);
  const current=visual?.source==="SIGNED_PRIVATE_RECEIPT"&&plane?.status==="RECEIPT";
  const items=current&&INDIVIDUAL_TRANSPORT_ADOPTED?plane.reviewItems:undefined;
  const hogs=current?plane.hogs:[];
+ const l2Options=ownerL2CategoryPreviews(visual,activeId);
+ // A change in the authenticated aggregate receipt invalidates every local selection.
+ const l2Scope=[activeId,plane?.observedAt??"UNKNOWN",plane?.coverage??"UNKNOWN",
+   ...l2Options.map(p=>p.key+":"+p.grossBytes+":"+p.overlaps)].join("|");
+ const l2Keys=l2Selection?.scope===l2Scope?l2Selection.keys:[];
+ const l2Basket=ownerL2ReviewBasket(l2Options,l2Keys);
  const selected=items?.find(i=>i.alias===alias)??null;
  const events=(history??[]).filter(e=>e.plane===activeId&&e.alias===alias);
  const last=events.at(-1)??null;
@@ -98,6 +106,58 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
        </div>;
      })}</div>
    </div>
+   <section aria-label="L2 owner preview" className="rounded-[1.65rem] border border-amber-300/30 bg-slate-950/75 p-5 sm:p-7">
+     <div className="flex flex-wrap items-center justify-between gap-2">
+       <div><div className="text-[10px] font-bold tracking-[.25em] text-amber-200">L2 OWNER PREVIEW</div>
+         <h3 className="mt-2 text-xl font-bold text-white">Review categories, not files</h3></div>
+       <span className="rounded-full border border-amber-300/30 px-3 py-2 text-[10px] font-bold text-amber-200">LOCAL SESSION ONLY</span>
+     </div>
+     <p className="mt-3 text-xs leading-5 text-slate-300">
+       Select only signed L2 aggregate buckets for a temporary owner preview. L4 HUMAN ONLY and L5 NEVER DELETE are protected.
+       L1 exhaustion remains UNKNOWN; no L2 selection is a deletion permit, file approval, source scan or saved owner intent.
+     </p>
+     <p role="status" className="mt-3 rounded-xl border border-amber-300/20 p-3 text-xs font-semibold text-amber-100">
+       NO INDIVIDUAL FILE IDENTITIES authenticated by current source. UNIQUE APFS RECOVERY: UNKNOWN.
+       No physical gain or eligibility inferred from gross bytes.
+     </p>
+     <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+       {l2Options.length===0?<p className="rounded-xl border border-dashed border-white/15 p-4 text-xs text-slate-400 sm:col-span-2">
+         NO CURRENT SIGNED L2 CATEGORIES · SOURCE UNKNOWN · selection disabled.</p>:
+         l2Options.map(row=>{
+           const selected=l2Keys.includes(row.key);
+           return <button type="button" key={row.key} aria-pressed={selected}
+             onClick={()=>setL2Selection(prev=>{
+               const keys=prev?.scope===l2Scope?prev.keys:[];
+               return {scope:l2Scope,keys:keys.includes(row.key)?keys.filter(k=>k!==row.key):[...keys,row.key]};
+             })}
+             className={selected?"min-w-0 rounded-xl border border-amber-300/70 bg-amber-300/10 p-4 text-left focus-visible:outline-2 focus-visible:outline-amber-200":"min-w-0 rounded-xl border border-white/15 p-4 text-left hover:border-amber-300/40 focus-visible:outline-2 focus-visible:outline-amber-200"}>
+             <span className="block text-[10px] font-bold text-amber-200">{selected?"IN PREVIEW":"SELECT FOR PREVIEW"} · REVIEW ONLY</span>
+             <strong className="mt-2 block break-words text-sm text-white">{row.label}</strong>
+             <span className="mt-2 block break-all font-mono text-[10px] text-slate-400">{row.key}</span>
+             <span className="mt-2 block text-xs text-slate-300">{size(row.grossBytes)} gross · {row.overlaps?"OVERLAP HOLD":"UNIQUE GAIN UNKNOWN"}</span>
+           </button>;
+         })}
+     </div>
+     <div aria-label="Owner L2 selection evidence preview" className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
+       <div className="flex flex-wrap items-center justify-between gap-2">
+         <h4 className="text-sm font-bold text-white">Owner preview · {l2Basket.length} selected categories</h4>
+         {l2Keys.length>0&&<button type="button" onClick={()=>setL2Selection(null)} className="text-xs font-semibold text-amber-200 underline">Clear selection</button>}
+       </div>
+       {l2Basket.length===0?<p className="mt-3 text-xs text-slate-400">No individual candidate register exists. Select a signed L2 bucket above to view its source evidence.</p>:
+         <div className="mt-3 space-y-2">{l2Basket.map(row=><div key={row.key} className="rounded-xl border border-amber-300/20 p-3 text-xs text-slate-300">
+           <strong className="text-white">{row.label}</strong>
+           <div className="mt-2 grid gap-2 sm:grid-cols-2">
+             <span>Exact category: <code className="break-all text-amber-200">{row.key}</code></span>
+             <span>Observed: {row.observedAt}</span>
+             <span>Source: {row.provenance}</span>
+             <span>Coverage: {row.coverage} · {row.confidence}</span>
+             <span>Reported gross: {size(row.grossBytes)} · {row.overlaps?"OVERLAP HOLD":"NOT UNIQUE APFS"}</span>
+             <span>Per-file provenance: {row.individualSource} · Delete eligible: NO</span>
+           </div>
+         </div>)}</div>}
+       <p className="mt-3 text-[11px] text-amber-100">Preview remains in this browser session only. No controller, deletion, approval, storage scan or saved L2 intent.</p>
+     </div>
+   </section>
    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Five distinct storage levels">
      {ROLES.map(role=>{
        const Icon=role.icon,group=hogs.filter(h=>h.level===role.level),candidateCount=items?.filter(i=>i.level===role.level).length;
@@ -128,7 +188,7 @@ export default function StorageLevelPanels({visual,activeId}:{visual:StorageVisu
          <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-slate-500">{current?"No reported category; coverage may be incomplete.":"NO VERIFIED HOG FEED"}</p>:
          hogs.filter(h=>h.level===level).map(h=><button key={h.key} type="button" onClick={()=>{setCategory(category===h.key?null:h.key);setAlias(null);}}
            aria-pressed={category===h.key} className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[.025] p-4 text-left hover:border-cyan-300/30">
-           <span className="min-w-0"><span className="block text-sm font-semibold text-white">{h.label}</span><span className="text-[10px] text-slate-500">{h.key} · {h.overlaps?"OVERLAPS":"UNIQUE APFS UNKNOWN"}</span></span>
+           <span className="min-w-0"><span className="block text-sm font-semibold text-white">{h.label}</span><span className="text-[10px] text-slate-500">{h.key} · {h.level===5?"L5 NEVER DELETE":h.level===4?"L4 HUMAN ONLY":h.level===2?"L2 OWNER REVIEW ONLY":"NO AUTOMATIC APPROVAL"} · {h.overlaps?"OVERLAPS":"UNIQUE APFS UNKNOWN"}</span></span>
            <span className="shrink-0 font-mono text-sm font-semibold text-white">{size(h.grossBytes)}</span></button>)}</div>
        {category&&<div className="mt-5 border-t border-white/10 pt-4">
          <div className="text-xs font-bold tracking-wide text-cyan-200">SOURCE-OWNED CANDIDATE ALIASES</div>
