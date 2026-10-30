@@ -32,7 +32,7 @@ def no_duplicates(pairs):
 MAX_SCRIPT=512*1024
 MAX_FRAME=6*1024*1024
 REMOTE=r'''
-import base64,fcntl,json,os,pathlib,re,selectors,shlex,signal,stat,subprocess,sys,time
+import base64,fcntl,json,os,pathlib,re,secrets,selectors,shlex,signal,stat,subprocess,sys,time
 lock=pathlib.Path(sys.argv[1]);holder=sys.argv[2]
 meta=pathlib.Path(str(lock)+'.meta');fd=None
 MAX_SCRIPT=524288;MAX_OUTPUT=2097152
@@ -133,6 +133,8 @@ try:
  if (fs.st_dev,fs.st_ino)!=(st.st_dev,st.st_ino):
   raise PermissionError('release.lock inode changed')
  fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+ # Session identity comes from this HEL1 lease holder, not the client.
+ os.environ['AOE2WAR_SOLO_FD200_SESSION']=secrets.token_hex(32)
  # Re-check the path identity under the physical flock. If a privileged
  # actor replaces the path, fail closed instead of admitting a split lock.
  again=os.lstat(lock)
@@ -170,8 +172,13 @@ try:
     if phase is None or phase_verified or website_dispatched:
      raise PermissionError('unexpected root proof sequence')
    elif verb in ('mark-staged','complete-activation'):
-    if phase is None or not website_dispatched:
+    if phase is None or not phase_verified or not website_dispatched:
      raise PermissionError('phase completion without website mutation')
+   elif verb=='reconcile-rollback':
+    if (phase is None or phase[1]!='PRE_ACTIVATE' or
+        not phase_verified or not website_dispatched or
+        parts[3]!=phase[0]):
+     raise PermissionError('rollback requires original activation lease session')
   outcome=run(x)
   if x.get('run_as')=='root' and outcome['returncode']==0:
    try:
