@@ -171,6 +171,7 @@ def rollback_finance_status(phase_result,before,after):
  require(type(phase_result)is dict and phase_result.get("status")=="ROLLED_BACK",
          "no verified website rollback")
  from aoe2_solo_website_producer_receipts import verify_all
+ from aoe2_solo_website_native_audit_adapter import verify_financial_identity
  for label,report in (("before",before),("after",after)):
   require(type(report)is dict and
           report.get("status")=="INDEPENDENT_NATIVE_VERIFIED" and
@@ -178,7 +179,7 @@ def rollback_finance_status(phase_result,before,after):
           "rollback "+label+" native finance UNKNOWN")
   # Validate all six machine/producer Ed25519 receipts, NOT just SHA strings.
   verify_all(report)
-  verify_writer_census(report["finance"])
+  verify_financial_identity(report["finance"])
  a,b=before["finance"],after["finance"]
  require(a.get("protected")==b.get("protected") and
          a.get("exposure")==b.get("exposure"),
