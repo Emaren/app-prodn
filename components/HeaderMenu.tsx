@@ -119,6 +119,8 @@ export default function HeaderMenu({
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       { href: "/admin/aoe2war-os#navigation-atlas", label: "Navigation Atlas", icon: Network, adminOnly: true, featured: true },
       { href: "/admin/central-command/job-board", label: "Job Exchange", icon: Network, adminOnly: true, featured: true },
+      { href: "/admin/central-command/work-board", label: "Work Board", icon: Network, adminOnly: true, featured: true },
+      { href: "/admin/central-command/lanes", label: "Six-Lane Ledger", icon: Network, adminOnly: true, featured: true },
       { href: "/admin/kingdom-bettors", label: "House Bettors Control", icon: Bot, adminOnly: true, featured: true },
       {
         href: "/live-games",

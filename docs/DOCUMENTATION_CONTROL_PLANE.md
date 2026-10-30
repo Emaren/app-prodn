@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/c-storage-signed-freshness-20261029` at `ceb97910c6544d7b47336e20b90e6454b2f3a477`
+Implementation baseline: `feat/d-storage-l2-owner-preview-20261029` at `187288a01633b9557f7ae51fb5339ab3f03d5a61`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

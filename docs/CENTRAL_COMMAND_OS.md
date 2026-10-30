@@ -151,3 +151,51 @@ keyboard-accessible selection, strict no-overflow mobile layouts at
 static/reduced-motion safe; no fictitious neural computing heartbeat.
 Session D exclusively owns AppShell/castle/global navigation. New local
 Central Command deep-link only; no remote execution or new daemon.
+
+## Q09-A3 — Work Board and Six-Lane Evidence Ledger (post-W1)
+
+G-owned private routes: `/admin/central-command/work-board` and
+`/admin/central-command/lanes`, protected server-side using the existing
+`requireServerAdmin` session+DB guard. A separate API
+`GET /api/admin/central-command/work-ledger` requires database-backed
+`requireAdmin` (guest 401, non-admin 403; POST 405, private no-store).
+No unapproved setter, task claiming, daemon, financial operation or release
+activation is exposed. These remain isolated post-W1 source candidates.
+
+`lib/centralWorkLedger.ts` projects the **same bounded cached original A1
+GitHub EventFeed** without another external request. Source link/repo, immutable
+event ID, UTC original timestamp, valid source SHA and vetted event kind are
+rechecked before generating a six-lane read-only ledger and source PR cards.
+CI receipt joins **only by exact full PR-head SHA**; a single successful
+workflow does NOT certify every required check. Comments/dispatches are not
+evidence an agent woke, a review was independent or a source return occurred.
+A merge is source-only, never evidence of a HEL1-installed BUILD_ID. QUEUED
+links only to canonical owner authority #984 and its eligibility remains
+UNKNOWN until an authenticated structured queue read exists. Unclassified
+SOURCE_RETURNED, native host, owner permits, restore, custody and deployment
+remain UNKNOWN, not fictional zero-completion percentages.
+
+The private UI has an 8-column readable source flow, lane neural cores with
+original issue links, immutable source-event drilldowns, separate Codex rail,
+three held release tracks, and strict 75-second visible-only refresh. It does
+not show source issue comment bodies, private canonical-queue prose or browser
+GitHub tokens. Standalone adversarial Node contracts and genuine isolated
+PostgreSQL/Chrome 375/768/1440 auth/a11y screenshots cover these receipts.
+D exclusively owns AppShell/HeaderMenu/Navigation Atlas/shared mobile dock;
+G adds local private Job Exchange links only. Priority queue, release rails
+and public-safe Kingdom Works require separate scoped acceptance.
+
+### A3 production evidence hardening (source-only)
+
+The allowlisted original A1 GitHub reader additionally observes the
+source-backed A3 PR #1003 and original issue #1002 within its existing
+55-second cached, seven-way bounded GitHub request budget; it does not create
+another browser or backend waterfall. Current GitHub Actions run IDs exceed
+ten billion: use the real safe-integer provider ID and an **exact code-owned
+workflow name+path pair** to reject spoofed CI labels. A concluded successful
+single workflow is a receipt for that workflow's exact head SHA, not whole-CI,
+review or installation approval. The desktop source flow now shows all eight
+stages in a 4-by-2 grid, the tablet in two columns, and mobile retains an
+accessible contained horizontal scroller. The floating mobile castle/dock
+belongs exclusively to Session D Q17 and must be corrected there if overlapping
+content, not by G altering shared navigation.

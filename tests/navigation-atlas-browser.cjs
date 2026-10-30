@@ -38,6 +38,12 @@ async function main(){
   await anonPage.goto("/admin/central-command/job-board",{waitUntil:"domcontentloaded",timeout:30000});
   await anonPage.waitForURL(url=>url.pathname==="/",{timeout:20000});
   assert.equal(await anonPage.getByRole("heading",{name:/THE JOB EXCHANGE/}).count(),0);
+  for(const href of ["/admin/central-command/work-board","/admin/central-command/lanes"]){
+   await anonPage.goto(href,{waitUntil:"domcontentloaded",timeout:30000});
+   await anonPage.waitForURL(url=>url.pathname==="/",{timeout:20000});
+   assert.equal(await anonPage.getByRole("heading",{name:/THE WORK BOARD|THE EVIDENCE LEDGER/}).count(),0,
+     "Anonymous visitor saw G A3 private source "+href);
+  }
   await anonymous.close();
   const noadmin=await jwt("fixture-scout"),admin=await jwt("fixture-admin");
   const bad=await browser.newContext({baseURL:base,serviceWorkers:"block"});
@@ -51,6 +57,12 @@ async function main(){
   await badPage.goto("/admin/central-command/job-board",{waitUntil:"domcontentloaded",timeout:30000});
   await badPage.waitForURL(url=>url.pathname==="/",{timeout:20000});
   assert.equal(await badPage.getByRole("heading",{name:/THE JOB EXCHANGE/}).count(),0);
+  for(const href of ["/admin/central-command/work-board","/admin/central-command/lanes"]){
+   await badPage.goto(href,{waitUntil:"domcontentloaded",timeout:30000});
+   await badPage.waitForURL(url=>url.pathname==="/",{timeout:20000});
+   assert.equal(await badPage.getByRole("heading",{name:/THE WORK BOARD|THE EVIDENCE LEDGER/}).count(),0,
+     "Nonadmin visitor saw G A3 private source "+href);
+  }
   await bad.close();
   for(const width of [375,768,1440]){
    const context=await browser.newContext({baseURL:base,viewport:{width,height:900},reducedMotion:"reduce",serviceWorkers:"block"});
@@ -78,11 +90,11 @@ async function main(){
    }
    // A streamed App Router shell may expose the heading before all cards
    // commit. Wait for actual DOM count; never infer coverage from the title.
-   await page.waitForFunction(() => document.querySelectorAll('#navigation-atlas a[data-atlas-href]').length === 30,
+   await page.waitForFunction(() => (()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),
      null, {timeout:20000});
    const routeCount=await atlas.locator('a[data-atlas-href]').count();
-   assert.equal(routeCount,30,"must show every source-backed private route");
-   assert.equal(await atlas.getByRole("status").first().innerText(),"30 of 30 source routes · LIVE STATUS UNVERIFIED");
+   assert.equal(routeCount,32,"must show every source-backed private route");
+   assert.equal(await atlas.getByRole("status").first().innerText(),"32 of 32 source routes · LIVE STATUS UNVERIFIED");
    const input=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await input.fill("storage");
    assert.equal(await atlas.locator('a[data-atlas-href]').count(),1,"route search must filter exactly");
@@ -93,7 +105,7 @@ async function main(){
    assert.equal(await people.getAttribute("aria-pressed"),"true","keyboard cluster filter");
    assert.ok(await atlas.locator('a[data-atlas-href]').count()>0);
    await atlas.getByRole("button",{name:"All chambers"}).click();
-   assert.equal(await atlas.locator('a[data-atlas-href]').count(),30);
+   assert.equal(await atlas.locator('a[data-atlas-href]').count(),32);
    const boardEntry = atlas.locator('a[data-atlas-href="/admin/central-command/job-board"]');
    assert.equal(await boardEntry.count(),1,"new accepted Job Exchange must be linked exactly once");
    const boardSearch=atlas.getByRole("searchbox",{name:"Find a chamber"});
@@ -101,8 +113,10 @@ async function main(){
    assert.equal(await atlas.locator('a[data-atlas-href]').count(),1,
      "Job Exchange should be source-discoverable by name");
    await boardSearch.fill("");
-   assert.equal(await atlas.locator('a[href*="work-board"]').count(),0,
-     "Unimplemented Work Board must not be linked");
+   assert.equal(await atlas.locator('a[data-atlas-href="/admin/central-command/work-board"]').count(),1,
+     "Accepted Work Board must appear once");
+   assert.equal(await atlas.locator('a[data-atlas-href="/admin/central-command/lanes"]').count(),1,
+     "Accepted Six Lanes must appear once");
    const box=await atlas.boundingBox();
    const layout=await page.evaluate(() => ({
      viewport: innerWidth,
@@ -173,20 +187,76 @@ async function main(){
    });
    assert.deepEqual(jobAxe,[],"G Job Exchange serious/critical accessibility");
    await page.screenshot({path:path.join(output,"job-exchange-linked-"+width+".png"),fullPage:true});
+   // Navigate through canonical Atlas edges to the genuine G A3 pages.
+   // G owns both components. The endpoint stays UNKNOWN with no pretend wake,
+   // and these checks operate against an isolated database + browser only.
+   await page.goto("/admin/aoe2war-os#navigation-atlas",{waitUntil:"domcontentloaded",timeout:45000});
+   await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),null,{timeout:20000});
+   for (const [href,heading,file,coreCount] of [
+     ["/admin/central-command/work-board",/THE WORK BOARD/,"work-board",0],
+     ["/admin/central-command/lanes",/THE EVIDENCE LEDGER/,"six-lanes",6]
+   ]){
+     await page.route("**/api/admin/central-command/work-ledger",r=>r.fulfill({
+       status:503,contentType:"application/json",body:JSON.stringify({error:"ISOLATED_SOURCE_UNAVAILABLE"})
+     }));
+     // Next App Router can transiently duplicate a server-streamed anchor
+     // while hydrating; its href is the same source-authorized destination.
+     // Wait for load and select a single real visible edge, not a stale
+     // strict locator that fails on harmless streamed DOM duplication.
+     await page.waitForLoadState("load",{timeout:30000});
+     const matching=page.locator('#navigation-atlas a[data-atlas-href="'+href+'"]');
+     const edge=matching.first();
+     const hrefs=await matching.evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href")));
+     assert.ok(hrefs.length>=1 && hrefs.every(v=>v===href),
+       "Atlas hydration exposed an unexpected navigation destination");
+     await edge.focus();
+     assert.equal(await edge.evaluate(el=>document.activeElement===el),true,
+       "keyboard focus must reach private A3 navigation edge");
+     await Promise.all([
+       page.waitForURL(url=>url.pathname===href,{waitUntil:"commit",timeout:30000}),
+       page.keyboard.press("Enter")
+     ]);
+     console.log("Q17_A3_ROUTE_COMMIT",JSON.stringify({width,href,path:new URL(page.url()).pathname}));
+     await page.getByRole("heading",{name:heading}).waitFor({timeout:20000});
+     await page.getByRole("navigation",{name:"Private Central Command views"}).waitFor();
+     assert.equal(await page.locator("[data-mobile-floating-nav]").count(),0,
+       "Even collapsed fixed dock must not overlap G A3 luminous source cards: "+href);
+     const nativeWidth=await page.evaluate(()=>({html:document.documentElement.scrollWidth,viewport:innerWidth}));
+     assert.ok(nativeWidth.html<=width+4,"A3 horizontal overflow "+JSON.stringify({href,width,nativeWidth}));
+     if(coreCount){
+       const cores=page.getByRole("button",{name:/Inspect core [BCDEFG] evidence/});
+       assert.equal(await cores.count(),6,"G A3 six-core source layout changed");
+       const core=page.getByRole("button",{name:"Inspect core G evidence"});
+       await core.scrollIntoViewIfNeeded();await core.focus();await page.keyboard.press("Enter");
+       assert.equal(await core.getAttribute("aria-pressed"),"true");
+     }else{
+       assert.equal(await page.locator('[data-stage]').count(),8,"Eight source milestone columns missing");
+     }
+     await page.addScriptTag({content:axe.source});
+     const a3Axe=await page.evaluate(async()=>{
+       const x=await window.axe.run(document,{runOnly:{type:"tag",values:["wcag2a","wcag2aa","wcag21a","wcag21aa"]}});
+       return x.violations.filter(v=>["serious","critical"].includes(v.impact)).map(v=>({id:v.id,impact:v.impact,target:v.nodes[0]?.target}));
+     });
+     assert.deepEqual(a3Axe,[],"A3 serious/critical a11y violation "+href);
+     await page.screenshot({path:path.join(output,file+"-linked-"+width+".png"),fullPage:true});
+     await page.unroute("**/api/admin/central-command/work-ledger");
+     await page.goto("/admin/aoe2war-os#navigation-atlas",{waitUntil:"domcontentloaded",timeout:45000});
+     await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),null,{timeout:20000});
+   }
    if(width===1440){
      const tower=await page.goto("/admin/user-list",{waitUntil:"domcontentloaded",timeout:45000});
      assert.equal(tower.status(),200);
      await page.getByRole("navigation",{name:"Admin sections"}).waitFor({timeout:25000});
      const menu=page.getByRole("navigation",{name:"Admin sections"});
-     assert.equal(await menu.locator("a").count(),30,"Command Tower incomplete");
+     assert.equal(await menu.locator("a").count(),32,"Command Tower incomplete");
      await page.getByRole("link",{name:/Navigation Atlas · All Command Links/}).first().focus();
      await page.keyboard.press("Enter");
      await page.waitForURL("**/admin/aoe2war-os#navigation-atlas",{timeout:20000});
      assert.equal(await page.locator("#navigation-atlas").count(),1);
    }
-   report.results.push({width,privateAdmin200:true,adminNodes:30,jobExchangeLinked:true,
+   report.results.push({width,privateAdmin200:true,adminNodes:32,jobExchangeLinked:true,workBoardLinked:true,lanesLinked:true,
      gSixBrains:6,brainUnobstructed:true,jobBoardDockSuppressed:true,jobBoardAxeSerious:0,jobBoardAxeCritical:0,
-     noFutureWorkBoardLink:true,search:true,keyboardFilter:true,axeSerious:0,axeCritical:0,privacyRedirect:true});
+     workBoardDockSuppressed:true,lanesDockSuppressed:true,search:true,keyboardFilter:true,axeSerious:0,axeCritical:0,privacyRedirect:true});
    await context.close();
   }
   report.status="PASS";

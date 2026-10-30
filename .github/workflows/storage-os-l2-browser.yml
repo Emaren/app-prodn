@@ -1,0 +1,97 @@
+name: Storage OS L2 genuine private Chrome 375 768 1440
+on:
+  pull_request:
+    paths:
+      - 'components/storage-os/**'
+      - 'lib/storageL2OwnerPreview.ts'
+      - 'tests/private-storage-l2-owner-preview.test.mts'
+      - 'tests/storage-os-l2-browser.cjs'
+      - '.github/workflows/storage-os-l2-browser.yml'
+permissions:
+  contents: read
+concurrency:
+  group: storage-os-l2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  private-chrome:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
+      SESSION_SECRET: isolated-storage-ci-not-production
+      NEXTAUTH_SECRET: isolated-storage-ci-not-production
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      STORAGE_BROWSER_ORIGIN: http://127.0.0.1:3137
+      STORAGE_BROWSER_FIXTURE_ALLOWED: '1'
+      AOE2WAR_PROD_DB_PREVIEW: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0', cache: yarn }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Exact-head source and adversarial L2 policy tests
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npm install --prefix "$RUNNER_TEMP/storage-l2-pw" --no-save --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
+          npx prisma generate
+          node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/private-storage-l2-owner-preview.test.mts tests/private-storage-owner-reviews.test.mts
+      - name: Start isolated read-only PostgreSQL fixture and admin identity
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-storage-l2-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          printf '%s\n' "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" "REN88_PG_ROOT=$REN88_PG_ROOT" "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
+          bash scripts/renaissance_88_pg_fixture.sh start
+          psql "postgresql://renaissance_owner@127.0.0.1:55437/renaissance88" -v ON_ERROR_STOP=1 -q -c "INSERT INTO users(uid,in_game_name,verified,is_admin,created_at) VALUES('fixture-admin','Fixture Admin',false,true,'2026-10-28T00:00:00Z')"
+          bash scripts/renaissance_88_pg_fixture.sh snapshot
+      - name: Exact-source Next production build
+        run: |
+          timeout -k 10s 30m yarn build
+          test -s .next/BUILD_ID
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Genuine admin and negative-auth Chrome, axe, nonmutation
+        env:
+          PW_HOME: ${{ runner.temp }}/storage-l2-pw
+          STORAGE_BROWSER_OUT: ${{ runner.temp }}/storage-l2-acceptance
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
+          export CHROME_BIN
+          mkdir -p "$STORAGE_BROWSER_OUT"
+          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > "$STORAGE_BROWSER_OUT/next.log" 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 90); do
+            kill -0 "$next_pid" 2>/dev/null || { cat "$STORAGE_BROWSER_OUT/next.log"; exit 2; }
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:3137/ || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          node tests/storage-os-l2-browser.cjs
+          bash scripts/renaissance_88_pg_fixture.sh verify > "$STORAGE_BROWSER_OUT/pg-nonmutation.txt"
+          printf 'source=%s\nbuild=%s\nproduction_certified=false\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > "$STORAGE_BROWSER_OUT/source-identity.txt"
+          sha256sum "$STORAGE_BROWSER_OUT/acceptance.json" .next/BUILD_ID > "$STORAGE_BROWSER_OUT/hashes.txt"
+      - name: Stop disposable fixture
+        if: always()
+        run: |
+          if [ -n "${REN88_PG_ROOT:-}" ]; then bash scripts/renaissance_88_pg_fixture.sh stop || true; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: storage-os-l2-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/storage-l2-acceptance/
+          retention-days: 14
+          if-no-files-found: warn
