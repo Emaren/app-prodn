@@ -227,6 +227,27 @@ class SoloWebsiteAdmissionTests(unittest.TestCase):
     def test_doctor_p1_hold(self):
         self.expect_hold(host=self.host_with(doctor_p1=1))
 
+    def test_missing_wolo_executable_hash_holds(self):
+        host = copy.deepcopy(self.host)
+        host["protected"]["8092"].pop("executable_sha256")
+        host["finance_fingerprint_sha256"] = M.digest(
+            M.canonical(host["protected"]))
+        self.expect_hold(host=host)
+
+    def test_missing_de_writer_fingerprint_holds(self):
+        host = copy.deepcopy(self.host)
+        host["protected"]["writers"]["de_sha256"] = ""
+        host["finance_fingerprint_sha256"] = M.digest(
+            M.canonical(host["protected"]))
+        self.expect_hold(host=host)
+
+    def test_forged_writer_fingerprint_does_not_match_owner_intent(self):
+        host = copy.deepcopy(self.host)
+        host["protected"]["writers"]["hd_sha256"] = "9" * 64
+        host["finance_fingerprint_sha256"] = M.digest(
+            M.canonical(host["protected"]))
+        self.expect_hold(host=host)
+
     def test_finance_movement_forbidden(self):
         self.expect_hold(signed=self.signed_with(financial_movement_authorized=True))
 
