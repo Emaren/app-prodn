@@ -87,6 +87,34 @@ class Guards(unittest.TestCase):
         self.assertIn("rollback_finance_status",code)
         self.assertIn("signed post-rollback finance not preserved",code)
 
+    def test_post_rollback_staged_receipt_is_cryptographically_bound(self):
+        candidate="a"*40
+        receipt={"artifact_sha256":"b"*64,
+                 "candidate_node_modules_sha256":"c"*64,
+                 "staged_build_id":"actual-next-build",
+                 "release_sha":candidate}
+        stage={"status":"STAGED","origin":"HEL1_DURABLE_PROTECTED_STORE",
+               "release_sha":candidate,"receipt":receipt,
+               "staged_build_id":"actual-next-build",
+               "receipt_sha256":"d"*64,"artifact_sha256":"b"*64,
+               "node_modules_sha256":"c"*64}
+        self.assertTrue(native.validate_stage_boundary(
+            stage,"POST_ROLLBACK",candidate,post_stage=True))
+        for changed in ({"status":"NOT_STAGED"},
+                        {**stage,"artifact_sha256":"f"*64},
+                        {**stage,"staged_build_id":"foreign-build"},
+                        {**stage,"release_sha":"f"*40}):
+            with self.subTest(changed=changed),self.assertRaises(native.Hold):
+                native.validate_stage_boundary(
+                    changed,"POST_ROLLBACK",candidate,post_stage=True)
+        with self.assertRaises(native.Hold):
+            native.validate_stage_boundary(stage,"PRE_STAGE",candidate)
+
+    def test_root_post_rollback_requests_post_stage_native_boundary(self):
+        import inspect
+        src=inspect.getsource(root.reconcile_activation_rollback)
+        self.assertIn('after=audit(issued["candidate_sha"],"POST_ROLLBACK",attempt,post_stage=True)',src)
+
     def test_no_candidate_environment(self):
         with patch.dict("os.environ",{},clear=True):
             with self.assertRaises(source.Hold):
