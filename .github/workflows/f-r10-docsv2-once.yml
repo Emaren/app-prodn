@@ -1,0 +1,56 @@
+name: One-shot F R10 canonical DocsV2 reseal
+on:
+  push:
+    branches: [repair/g-docsv2-f-r10-source-20261030]
+permissions:
+  contents: write
+jobs:
+  canonical-docsv2:
+    name: Canonical R10 DocsV2 with exact ancestry
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Remove one-shot, regenerate and strictly validate documentation
+        shell: bash {0}
+        run: |
+          EXPECTED_SOURCE=00d3766ef3152b693cb3bf096015726b643ebfac
+          BRANCH=repair/g-docsv2-f-r10-source-20261030
+          TEMP=.github/workflows/f-r10-docsv2-once.yml
+          if [ "$(git rev-parse HEAD^)" != "$EXPECTED_SOURCE" ]; then
+            echo "HOLD: WRONG_R10_ANCESTRY"
+            exit 2
+          fi
+          if [ "$(git diff --name-only "$EXPECTED_SOURCE" HEAD)" != "$TEMP" ]; then
+            echo "HOLD: UNREVIEWED_SOURCE_CHANGE"
+            exit 2
+          fi
+          git switch -C "$BRANCH" || exit 2
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -- "$TEMP" || exit 2
+          git commit -m "chore(Q19): retire one-shot R10 documentation generator" || exit 2
+          BASELINE=$(git rev-parse HEAD)
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch "$BRANCH" --head "$BASELINE" || exit 2
+          git add -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json || exit 2
+          ACTUAL=$(git diff --cached --name-only)
+          EXPECTED=$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "HOLD: NONCANONICAL_GENERATED_FILES $ACTUAL"
+            exit 2
+          fi
+          git commit -m "docs(Q19): canonical R10 exact-head source documentation" || exit 2
+          python3 scripts/docs_v2_check.py || exit 2
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "HOLD: DIRTY_SOURCE_AFTER_RESEAL"
+            exit 2
+          fi
+          git push origin "HEAD:refs/heads/$BRANCH" || exit 2
+          echo "PASS: DOCSV2_TWO_GENERATED_FILES_ONLY"
+          git show -s --format='%H %P %s' HEAD
