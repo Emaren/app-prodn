@@ -113,6 +113,10 @@ def run(x):
   p.stdout.close();p.stderr.close();os.close(200)
  return {'kind':'result','id':x['id'],'returncode':rc,'uncertain':uncertain,
   'stdout':base64.b64encode(out[p.stdout]).decode(),'stderr':base64.b64encode(out[p.stderr]).decode()}
+def same_lease_rollback(phase,verified,dispatched,burned,attempt):
+ return (phase is not None and phase[1]=='PRE_ACTIVATE' and
+         phase[0]==attempt and verified is True and
+         dispatched is True and burned is False)
 try:
  if os.geteuid()!=0:raise PermissionError('root-only protected command lease required')
  if not lock.is_absolute() or lock.is_symlink():
@@ -176,9 +180,8 @@ try:
     # Only the same PRE_ACTIVATE SSH/FD200 lease may reconcile its own
     # original consumed packet and attempted website action, at most once.
     # A new lease on the same inode CANNOT inherit the old session state.
-    if (phase is None or phase[1]!='PRE_ACTIVATE' or
-        phase[0]!=parts[3] or not phase_verified or
-        not website_dispatched or rollback_dispatched):
+    if not same_lease_rollback(phase,phase_verified,website_dispatched,
+                               rollback_dispatched,parts[3]):
      raise PermissionError('rollback requires same active owner activation lease')
     rollback_dispatched=True  # burn on attempt, including UNKNOWN/transport loss
   outcome=run(x)
