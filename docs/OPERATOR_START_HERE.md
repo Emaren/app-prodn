@@ -435,3 +435,19 @@ state until both an owning living contract and Engineering Memory have been
 updated. This prevents generated registries from creating the appearance of
 documentation completeness while durable human/AI knowledge remains trapped in
 a chat session.
+
+## Operation Storage Transfer — post-W1 private WarOS mission
+
+`/admin/storage-transfer` links from Storage OS and the private WarOS
+command interface. It observes existing signed host storage geometry,
+protected inventory buckets, and eventually **only C-admitted** independent
+sender + Intel receiver transfer records. The current receipt feed is
+**uninstalled**: transfer/age/throughput/restore/reclaim stay UNKNOWN.
+No GET, browser view, owner intent or historical receipt authorizes deletion
+or moves WOLO/Traffic/financial originals. See [Storage OS](STORAGE_OS.md),
+[#1014](https://github.com/Emaren/app-prodn/issues/1014), and E's
+[Operation Storage Transfer #60](https://github.com/Emaren/VPSSentry/issues/60).
+
+This work lives solely on the accepted **post-W1 feature review branch**.
+It does not move F's W1 or post-W1 production activation order, owner
+signatures, finance writer locks, release receipts or capacity policy.
