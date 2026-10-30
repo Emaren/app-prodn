@@ -119,7 +119,19 @@ def dispatch(phase,candidate,signed,receipt_path):
             "pid":os.getpid(),"attempt":packet["attempt_id"]},sort_keys=True)
         with command_lease(LOCK,holder,host=HOST) as runner:
             runner.assert_alive()
-            # The verified owner packet is sent to a root phase helper UNDER
+            # Before root O_EXCL nonce consumption, validate the entire
+            # current source/manifest/gate/financial/rollback/restore/Doctor
+            # and owner RSA signature. Failed preflight MUST NOT burn a nonce.
+            from aoe2_solo_website_admission import verify_inputs
+            preliminary=verify_inputs(
+                signed,manifest_path.read_bytes(),gate_path.read_bytes(),
+                previous_stage=prior,stage_receipt=stage_receipt)
+            check(preliminary.get("status")==
+                  "INPUTS_VERIFIED_ONLY_NOT_AUTHORIZED" and
+                  preliminary.get("phase")==phase and
+                  preliminary.get("candidate_sha")==sha,
+                  "live signed preflight failed before root nonce consumption")
+            # The verified owner packet is then sent to HEL1 root UNDER
             # original lease FD200; no local one-use filesystem claim counts.
             encoded=base64.b64encode(json.dumps(
                 signed,sort_keys=True,separators=(",",":")).encode()).decode()
