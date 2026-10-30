@@ -30,6 +30,7 @@ SERVICE = "aoe2hdbets-web.service"
 PUBLIC = "https://aoe2war.com/api/deployment-version"
 INTERNAL = "http://127.0.0.1:3030/api/deployment-version"
 D_DOMAIN = b"AOE2WAR.G.FINAL_RELEASE_ARTIFACT.V1\n"
+D_PIN = Path("/etc/aoe2war/solo-owner-website-v1/d-artifact-approved-spki.sha256")
 REQUIRED_NATIVE = ("doctor", "recovery", "finance", "host", "source", "stage")
 
 
@@ -144,6 +145,8 @@ def verify_d_artifact(path, key_path, pinned_spki, expected_sha, build_id,
                       stage_sha, artifact_sha):
     """D contract proposal: out-of-band pinned D Ed25519 signer, no self-cert."""
     check(bool(HEX64.fullmatch(pinned_spki)), "D_KEY_PIN_ABSENT")
+    enrolled = native_file(D_PIN, 256).decode("ascii").strip()
+    check(enrolled == pinned_spki, "D_INDEPENDENT_ENROLLMENT_MISMATCH")
     raw = native_file(path, 65536)
     doc = json.loads(raw, object_pairs_hook=no_duplicate)
     check(type(doc) is dict and set(doc) == {"schema", "payload", "signature_base64"}
@@ -238,6 +241,22 @@ def host_check(args):
             "service_mainpid": int(pid_str), "listeners": counts}
 
 
+def live_content_digest(directory):
+    """F activation's exact deterministic cache-free .next content-hash policy."""
+    cmd = ["tar", "--sort=name", "--mtime=UTC 1970-01-01", "--owner=0",
+           "--group=0", "--numeric-owner", "--exclude=./cache",
+           "--exclude=./cache/*", "-C", str(directory), "-cf", "-", "."]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    h = hashlib.sha256()
+    assert proc.stdout is not None
+    for block in iter(lambda: proc.stdout.read(1024 * 1024), b""):
+        h.update(block)
+    stderr = proc.stderr.read(1024) if proc.stderr else b""
+    check(proc.wait(timeout=20) == 0, "ACTIVE_NEXT_CONTENT_TAR_FAILED:" +
+          stderr.decode("utf8", "replace")[:90])
+    return h.hexdigest()
+
+
 def receipt_check(args, host):
     base = Path(args.activation_directory)
     cert = cert_values(native_file(base / "certification.txt", 65536))
@@ -260,6 +279,11 @@ def receipt_check(args, host):
     check(bool(artifact_sha and HEX64.fullmatch(artifact_sha)) and
           stage.get("artifact_sha256") == artifact_sha,
           "F_ARTIFACT_DIGEST_MISMATCH")
+    content_digest = cert.get("content_sha256")
+    check(bool(content_digest and HEX64.fullmatch(content_digest)),
+          "F_ACTIVATED_CONTENT_DIGEST_MISSING")
+    check(live_content_digest(REPO / ".next") == content_digest,
+          "ACTIVE_NEXT_BYTES_DIVERGE_FROM_F_RECEIPT")
     for port in ("8092", "8093"):
         check(cert.get("wolo" + port) == "1", "F_LISTENER_RECEIPT_MISMATCH")
     for field in ("fast_rollback", "fast_rollback_modules", "durable_rollback"):
