@@ -38,9 +38,13 @@ async function main(){
      page.on("pageerror",e=>errors.push(String(e)));
      const response=await page.goto("/admin/storage-os",{waitUntil:"domcontentloaded",timeout:45000});
      assert.equal(response.status(),200);
-     await page.getByText("L2 OWNER PREVIEW").waitFor({state:"visible",timeout:30000});
-     const pane=page.getByRole("region",{name:"L2 owner preview"});
-     await pane.waitFor({state:"visible"});
+     // Next App Router may transiently stream duplicate hidden server shells.
+     // Require an actually visible, hydrated private panel, never just text in HTML.
+     await page.waitForLoadState("load",{timeout:30000});
+     const pane=page.locator('section[aria-label="L2 owner preview"]:visible').first();
+     await pane.waitFor({state:"visible",timeout:30000});
+     assert.equal(new URL(page.url()).pathname,"/admin/storage-os","admin redirected away from private Storage OS");
+     assert.equal(await pane.getByText("L2 OWNER PREVIEW",{exact:true}).count(),1);
      assert.equal(await pane.getByText("LOCAL SESSION ONLY").count(),1);
      assert.equal(await pane.getByText(/NO INDIVIDUAL FILE IDENTITIES/).count(),1);
      assert.equal(await pane.getByText(/UNIQUE APFS RECOVERY: UNKNOWN/).count(),1);
