@@ -166,11 +166,40 @@ def dispatch(phase,candidate,signed,receipt_path):
                         json_output=True,remote_runner=runner.run_tony,
                         signed_capability=cap)
             runner.assert_alive()
-            check(rc==0,"protected phase NOT certified; nonce CONSUMED; reconcile")
             try:
                 result=json.loads(captured.getvalue())
             except ValueError as exc:
                 raise Hold("PHASE_RETURNED_UNRECOGNIZABLE_RECEIPT; CONSUMED") from exc
+            check(type(result)is dict,"protected phase result is not an object")
+            if rc != 0:
+                # Only activation's ORIGINAL durable trap and independently
+                # signed native B-finance snapshots can establish rollback.
+                # A failed stage or UNKNOWN SSH channel is never reconciled
+                # from local dicts or retried.
+                if phase=="PRE_ACTIVATE":
+                    remote=result.get("remote_receipt_dir")
+                    check(type(remote)is str and remote.startswith(
+                          "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/activate-"),
+                          "activation failed with unproven rollback directory; consumed")
+                    cmd="python3 "+shlex.quote(ROOT_PHASE)+" reconcile-rollback "+" ".join(
+                        shlex.quote(v) for v in (packet["attempt_id"],remote))
+                    proof=runner.run(cmd,timeout=90)
+                    check(proof.returncode==0,
+                          "activation failure: signed native rollback UNKNOWN; "+
+                          (proof.stderr or "")[-500:])
+                    try: native_result=json.loads((proof.stdout or "").strip())
+                    except ValueError as exc:
+                        raise Hold("root rollback reconciliation JSON invalid") from exc
+                    check(native_result.get("status")==
+                          "WEB_AND_FINANCE_ROLLBACK_NATIVE_VERIFIED" and
+                          native_result.get("attempt_id")==packet["attempt_id"],
+                          "native post-failure noninterference not certified")
+                    return {"status":"ACTIVATION_FAILED_BUT_ROLLBACK_FINANCE_VERIFIED",
+                            "candidate_sha":sha,
+                            "attempt_id":packet["attempt_id"],
+                            "root_native_reconciliation":native_result,
+                            "financial_release_authorized":False}
+                raise Hold("protected phase NOT certified; nonce CONSUMED; reconcile")
             check(type(result)is dict and
                   result.get("release_sha")==sha and
                   result.get("status")==("STAGED"if phase=="PRE_STAGE"else"CERTIFIED") and
