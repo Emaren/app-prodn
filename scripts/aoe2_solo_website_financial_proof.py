@@ -115,8 +115,9 @@ def verify_writer_census(finance):
          len(approved)==len(set(approved)) and
          set(units)==REQUIRED_UNITS|set(approved),
          "unknown/unreviewed financial unit")
- require(sha(census.get("additional_units_review_sha256")),
-         "additional-writer review not bound")
+ require(census.get("additional_units_review_sha256")==
+         hashlib.sha256(canonical(approved)).hexdigest(),
+         "additional-writer review is not bound to exact approved unit names")
  for name,record in units.items():identity(name,record)
  side=census.get("side_effects")
  require(type(side)is dict and set(side)==REQUIRED_ROUTES,
@@ -228,4 +229,7 @@ def verify_installed_source_review(report,review_bytes):
              "financial_migration_paths","unchecked_producer_edges",
              "unreviewed_get_side_effects","unreviewed_prewarm_side_effects"):
   require(review.get(key)==[],"independent source review has unchecked edges: "+key)
+ require(review.get("reviewed_additional_units")==
+         report["finance"]["protected"]["writers"]["native_census"]["reviewed_additional_units"],
+         "additional financial writers not independently reviewed")
  return review
