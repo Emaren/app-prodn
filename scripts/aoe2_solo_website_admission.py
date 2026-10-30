@@ -218,6 +218,7 @@ def verify_inputs(signed, manifest_raw, gate_raw, observe_hel1, *,
     else:
         check(type(previous_stage) is dict and type(stage_receipt) is dict,
               "activation missing actual stage")
+        verify_owner_signature(previous_stage)
         prior = previous_stage.get("payload")
         check(type(prior) is dict and
               prior.get("phase") == "PRE_STAGE" and
@@ -226,9 +227,18 @@ def verify_inputs(signed, manifest_raw, gate_raw, observe_hel1, *,
               prior.get("nonce") != p["nonce"] and
               prior.get("lease_id") == p["lease_id"] and
               prior.get("finance_fingerprint_sha256") ==
-              p["finance_fingerprint_sha256"], "phase chain mismatch")
+              p["finance_fingerprint_sha256"] and
+              prior.get("manifest_sha256") == p["manifest_sha256"] and
+              prior.get("gate_sha256") == p["gate_sha256"] and
+              prior.get("previous_sha") == previous,
+              "phase chain mismatch")
         check(type(p["stage_receipt_sha256"]) is str and
               digest(canonical(stage_receipt)) == p["stage_receipt_sha256"] and
+              stage_receipt.get("status") == "STAGED" and
+              stage_receipt.get("release_sha") == target and
+              stage_receipt.get("previous_production_sha") == previous and
+              stage_receipt.get("wolo_mutated") is False and
+              stage_receipt.get("live_runtime_mutated") is False and
               p["staged_build_id"] == stage_receipt.get("staged_build_id") and
               p["staged_build_id"] == h.get("staged_build_id") and
               p["pre_stage_packet_sha256"] == digest(canonical(previous_stage)),
