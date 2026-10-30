@@ -186,10 +186,17 @@ def host_identity(expected,build,compiled):
     # Source dirty filter matches F's original source_status() rather than .next runtime.
     dirty=cmd(["git","-C",str(REPO),"status","--porcelain=v1",
                "--untracked-files=normal","--",".",
-               ":(exclude).next"," :(exclude).next-release"])
+               ":(exclude).next",":(exclude).next/**",
+               ":(exclude).next-release",":(exclude).next-release/**",
+               ":(exclude).next-rollback*",":(exclude).next-rollback*/**",
+               ":(exclude).node_modules-rollback*",":(exclude).node_modules-rollback*/**"])
     require(not dirty,"ACTIVE_SOURCE_DIRTY")
-    require((REPO/".next/BUILD_ID").read_text().strip()==build,"REAL_NEXT_BUILD_ID_MISMATCH")
-    require((REPO/".aoe2war-build-version").read_text().strip()==compiled,
+    require(not (REPO/".next").is_symlink() and
+            not (REPO/".next/BUILD_ID").is_symlink() and
+            (REPO/".next/BUILD_ID").read_text().strip()==build,
+            "REAL_NEXT_BUILD_ID_MISMATCH")
+    require(not (REPO/".aoe2war-build-version").is_symlink() and
+            (REPO/".aoe2war-build-version").read_text().strip()==compiled,
             "COMPILED_BUILD_VERSION_MISMATCH")
     require(cmd(["systemctl","is-active",SERVICE])=="active","WEBSITE_SERVICE_INACTIVE")
     pid=cmd(["systemctl","show",SERVICE,"-p","MainPID","--value"])
