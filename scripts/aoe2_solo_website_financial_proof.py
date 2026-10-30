@@ -286,6 +286,8 @@ def verify_installed_source_review(report,review_bytes):
          "foreign/unreviewed source review")
  for review_key,scope_key in (
   ("transitive_closure_sha256","dependency_graph_sha256"),
+  ("source_tree_sha256","source_tree_sha256"),
+  ("manifest_sha256","manifest_sha256"),
   ("import_edges_sha256","import_edges_sha256"),
   ("finance_surface_sha256","finance_surface_sha256"),
   ("get_head_effects_sha256","get_head_effects_sha256"),
@@ -298,6 +300,8 @@ def verify_installed_source_review(report,review_bytes):
              "financial_migration_paths","unchecked_producer_edges",
              "unreviewed_get_side_effects","unreviewed_prewarm_side_effects"):
   require(review.get(key)==[],"independent source review has unchecked edges: "+key)
+ require(review.get("changed_files")==scope.get("changed_files"),
+         "native graph changes differ from independent review")
  require(review.get("reviewed_additional_units")==
          report["finance"]["protected"]["writers"]["native_census"]["reviewed_additional_units"],
          "additional financial writers not independently reviewed")
