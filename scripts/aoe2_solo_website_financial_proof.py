@@ -214,6 +214,32 @@ def verify_closed_graph(scope):
           "frozen W1 GET/prewarm financial wakeup edges omitted: "+str(sorted(missing)))
  adjacency={n:set() for n in nodes}
  for a,b in edges:adjacency[a].add(b)
+ # An edge list is not a route proof if its GET/prewarm entrypoints are
+ # disconnected from the edges. Require known W1 read-wakeup reachability.
+ if scope.get("candidate_sha")==W1_SHA:
+  known_get={"app/page.tsx","app/api/lobby/route.ts",
+             "app/api/live-games/route.ts","app/api/bets/route.ts"}
+  known_prewarm="scripts/prewarm-production.mjs"
+  require(known_get<=set(routes["GET"]) and
+          known_prewarm in routes["PREWARM"],
+          "frozen W1 public financial entrypoints hidden from signed route inventory")
+  def reaches(origin,target):
+   pending=[origin];seen=set()
+   while pending:
+    node=pending.pop()
+    if node==target:return True
+    if node in seen:continue
+    seen.add(node);pending.extend(adjacency[node]-seen)
+   return False
+  require(all(reaches(source,"lib/bets.ts") for source in known_get|
+              {known_prewarm}),
+          "frozen W1 public read/prewarm route omitted transitive settlement edge")
+  declared=scope.get("read_side_effect_policy")
+  require(type(declared)is dict and
+          declared=={"GET":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
+                     "PREWARM":"FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM",
+                     "HEAD":"UNVERIFIED_NO_PROBE"},
+          "frozen W1 financial read route misclassified as inert")
  targets=set(writers)
  for origin in changed:
   stack=[origin];seen=set()
