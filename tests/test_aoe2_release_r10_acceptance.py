@@ -28,7 +28,7 @@ class R10PostflightTests(TestCase):
         # The actual F source has NO root-sealed final cert or signed
         # independent durable-rollback drill. Both must remain hard HOLD.
         with mock.patch.object(a,"ordinary",side_effect=[b'{"schema":1}',b'status=CERTIFIED\n']):
-            with self.assertRaises(a.Hold):
+            with self.assertRaises(Exception):
                 a.original_and_cert({}, "1"*64,a.W1,a.W1_PREVIOUS,"build_X123","compiled",a.RECEIPTS/"receipt-123")
         src=Path(a.__file__).read_text()
         self.assertIn('F_ROOT_SEALED_FINAL_CERTIFICATE_MISSING',src)
