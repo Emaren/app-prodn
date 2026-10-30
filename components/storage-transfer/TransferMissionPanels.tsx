@@ -114,7 +114,10 @@ function CargoCard({cohort,now}:{cohort:TransferCohort;now:Date}){
   </div>
   <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
    {metric("ORIGINAL",byteLabel(cohort.originalBytes),"Source-consistent original bytes",<Database className="h-3.5 w-3.5"/>)}
-   {metric("COMPRESSED",byteLabel(cohort.compressedBytes),cohort.codec?"Measured "+cohort.codec:"Codec not reported",<Archive className="h-3.5 w-3.5"/>)}
+   {metric("COMPRESSED",byteLabel(cohort.compressedBytes),
+    cohort.codec?"Measured "+cohort.codec+(cohort.originalBytes!==null&&cohort.originalBytes>0&&
+     cohort.compressedBytes!==null?" · "+(cohort.compressedBytes/cohort.originalBytes*100).toFixed(1)+"% of original":""):
+     "Codec and ratio not reported",<Archive className="h-3.5 w-3.5"/>)}
    {metric("THROUGHPUT",measure.bytesPerSecond===null?"—":byteLabel(Math.round(measure.bytesPerSecond))+"/s","Measured rolling sender rate only",<Activity className="h-3.5 w-3.5"/>)}
    {metric("REMAINING",duration(measure.etaSeconds),"Estimate needs 3+ fresh, monotonic samples",<Timer className="h-3.5 w-3.5"/>)}
   </div>
