@@ -1,6 +1,9 @@
 AOE2WAR SOLO WEBSITE NATIVE ISSUER — OWNER/C/F INSTALLATION CONTRACT (REVIEW ONLY)
 
-Source target: F draft #1008 exact f041f6d073498ba675846b03e73d2e0efe08c08f.
+Source target: F draft #1008 exact c3fbb794e77c613b335ad2a7f1c912b71e218f6d
+(R11 reviewed current ABI; final F candidate must be re-pinned before installation).
+F now requires HEAD handler semantics and GET fallback trace, real idle oneshot
+role identities, and six unique Ed25519 public SPKI identities.
 Only additive paths. Do not edit F-owned engine/finance/producer/phase/SSH modules.
 No binary is currently approved/installed. This draft DOES NOT activate service/timer.
 
@@ -85,24 +88,45 @@ No binary is currently approved/installed. This draft DOES NOT activate service/
   - Current capacity original policy: attached volume >=30GiB ordinary free,
     effective used <=88%, Finish used <92%. Local budget alone is NOT release GO.
 
-4. CRITICAL F/C INTEGRATION HOLD — ORIGINAL FD200
-  - New issuer requires inherited original protected release.lock FD200 matching
-    UID1000 mode0644 dev+inode. It DOES NOT open/relock/recreate it.
-  - F's existing root_phase.issue calls audit() BEFORE the protected FD200
-    lease is established. The current F source therefore CANNOT yet complete
-    PRE_STAGE/PRE_ACTIVATE native admission with this issuer. F must move the
-    native issue/re-issuance into the original lease, preserving owner nonce,
-    source SHA, single-inode and fail-closed transport. C validates this
-    amendment and original lock continuity. DO NOT bypass FD200 to make green.
-  - F must integrate signed POST_ACTIVATE and POST_ROLLBACK under same original
-    lease; these phases are independent, not replay of PRE_ACTIVATE.
-  - F's producer verifier/content model currently demands that host signs only
-    mount; this assembler uses a signed mount.rollback_sha256 to bind the
-    root rollback section. B/C/F review this supplemental field.
-  - F adapter validates existing RSA binary approval, 15 report fields,
-    all signatures, E restore, source dependency/finance, stage and capacity.
-    C pins controller module source and owner independently approves actual
-    binary SHA after F review. NO unapproved relaxation of source/producer keys.
+4. CRITICAL F/C INTEGRATION HOLD — ORIGINAL FD200 (R11)
+  - Root issuer requires inherited original protected release.lock FD200,
+    UID1000 mode0644 matching dev/inode, plus *actual kernel-held exclusive
+    flock on FD200's own open-file description* and contention from a
+    second independently opened OFD. A matching inode alone is insufficient.
+    This is NECESSARY lock liveness, never sufficient original-session,
+    source/attempt continuity or human owner release authorization.
+  - F root_phase.issue currently calls audit() BEFORE protected FD200 exists,
+    then Journal.issue() calls Journal.exclusive() which independently
+    reopens/acquires the release.lock. F/C must refactor under the original
+    dispatcher lease across preflight/native audit/root issue/nonce consumption
+    and subsequent activation failure/reconciliation. Journal.issue should
+    never reacquire a shadow lock impersonating the original session.
+  - F native_audit_adapter.audit currently runs subprocess.run() without
+    pass_fds=(200,). Python child descriptors close by default. The F/C
+    audited subprocess and SSH dispatcher MUST preserve/pass the same
+    original FD200, while independently checking original lease lineage
+    rather than merely accepting fstat(200) or a newly acquired flock.
+  - F/C must test missing FD200, wrong dev/inode/UID/mode, file symlink,
+    same-inode but unlocked FD200, other OFD holding the lock, replacement
+    lease after lost original, stale candidate/attempt/owner phase, expiry,
+    dropped child descriptor, replayed PRE/POST and broken rollback session.
+    Do not disable O_NOFOLLOW, FD200 or flock provenance for green CI.
+  - F's adapter consumes all six current independent Ed25519 producer
+    signatures; source GET/HEAD/PREWARM classification now also requires
+    native HEAD handler semantics and get_fallback_trace_sha256. F's
+    verify_financial_identity accepts zero-PID idle oneshot roles ONLY
+    when bound to real service-unit hashes and last invocation. Do not
+    interpret idle MainPID=0 as an active PID or finance invariance.
+  - F must integrate POST_ACTIVATE and POST_ROLLBACK native audit under
+    the same protected original lease and root journal; source SHA/BUILD_ID,
+    signed finance exposure and independently measured live mount cannot
+    drift. C independently reviews root helper provenance and F owner RSA
+    installation approval for final source bytes, distinct phase permit.
+  - F's host producer signs only mount; D binds root rollback by
+    mount.rollback_sha256 and the exact root-owned original stage journal.
+    B/C/F separately review this ABI dependency before install.
+  - These are F/C-owned integration fixes. D source intentionally does NOT
+    install, reacquire, restart or circumvent the release controller.
 
 5. OWNER READ-ONLY PRE-FLIGHT — HEL1, not INSTALL (after C approval)
   python3 -B - <<'PY'
