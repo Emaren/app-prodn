@@ -93,8 +93,42 @@ def verify_financial_identity(finance):
               "wolo-transfer-heartbeat")
     need(type(processes)is dict and set(processes)==set(required),
          "missing financial producer/process identity")
+    from aoe2_solo_website_financial_proof import (
+        ONESHOT_SERVICES,canonical,verify_writer_census)
+    # A stopped timer-driven oneshot has no live PID. Preserve its actual
+    # last invocation/unit hashes; do not fabricate a process PID or allow
+    # an inactive persistent settlement/custody writer to masquerade as one.
+    idle_roles={
+        "staking":"aoe2hdbets-staking-rewards.service",
+        "bet-stake-reconcile":"aoe2hdbets-bet-stake-reconcile.service",
+        "challenge-reconcile":"aoe2hdbets-challenge-reconcile.service",
+        "replay-auto-recovery":"aoe2hdbets-replay-auto-recovery.service",
+        "trophy-tributes":"aoe2hdbets-trophy-tributes.service",
+        "wolo-transfer-heartbeat":"aoe2-wolo-transfer-heartbeat.service"}
+    census=writers.get("native_census")
+    units=census.get("units") if type(census)is dict else None
     for name in required:
-        identity(processes[name],name)
+        value=processes[name]
+        if type(value)is dict and value.get("pid")==0:
+            unit_name=idle_roles.get(name)
+            row=units.get(unit_name) if type(units)is dict else None
+            need(unit_name in ONESHOT_SERVICES and type(row)is dict and
+                 row.get("unit")==unit_name and
+                 row.get("main_pid")==0 and
+                 row.get("state") in ("inactive","failed") and
+                 row.get("start_time_ticks")==0 and
+                 row.get("executable_sha256") is None,
+                 "idle non-oneshot or forged running process: "+name)
+            need(set(value)=={"pid","unit","state","unit_file_sha256",
+                              "last_invocation_sha256","native_unit_sha256"} and
+                 value["unit"]==unit_name and value["state"]==row["state"] and
+                 value["unit_file_sha256"]==row["unit_file_sha256"] and
+                 value["last_invocation_sha256"]==row["last_invocation_sha256"] and
+                 value["native_unit_sha256"]==hashlib.sha256(
+                     canonical(row)).hexdigest(),
+                 "idle oneshot process claim not exact native unit census: "+name)
+        else:
+            identity(value,name)
     exposure=finance.get("exposure")
     need(type(exposure)is dict and all(digest64(exposure.get(k))
          for k in ("balances_sha256","pending_transactions_sha256",
@@ -107,7 +141,6 @@ def verify_financial_identity(finance):
          finance.get("wolo_finance_p1")=="HOLD",
          "financial release or native receipt not authorized")
     # Role hashes alone do not enumerate the actual systemd units/oneshots.
-    from aoe2_solo_website_financial_proof import verify_writer_census
     verify_writer_census(finance)
     return protected
 
