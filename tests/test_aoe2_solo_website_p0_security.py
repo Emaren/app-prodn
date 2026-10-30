@@ -138,7 +138,8 @@ class FrozenReleaseP0Tests(unittest.TestCase):
 
     def test_server_rejects_arbitrary_root_requests_even_with_root_key(self):
         with patch.object(forced.os,"geteuid",return_value=0),\
-             patch.object(forced.socket,"gethostname",return_value=forced.HOST):
+             patch.object(forced.socket,"gethostname",return_value=forced.HOST),\
+             patch.object(forced,"verify_forced_authorized_keys",return_value=True):
             for request,role in [
                 ("bash -lc id","command"),
                 ("python3 -c 'import os;os.system(\"id\")'","command"),
@@ -151,6 +152,16 @@ class FrozenReleaseP0Tests(unittest.TestCase):
                         forced.main(role,request)
         self.assertIn("SSH_ORIGINAL_COMMAND",
                       (SCRIPT_DIR/"aoe2_solo_website_forced_ssh.py").read_text())
+
+    def test_unenrolled_ssh_keys_can_never_be_assumed_forced(self):
+        with patch.object(forced,"trusted_bytes",
+                          side_effect=forced.Hold("UNENROLLED")):
+            with self.assertRaises(forced.Hold):
+                forced.verify_forced_authorized_keys()
+        source=(SCRIPT_DIR/"aoe2_solo_website_forced_ssh.py").read_text()
+        self.assertIn("restrict,command=",source)
+        self.assertIn("authorized_keys",source)
+        self.assertIn("verify_forced_authorized_keys()",source)
 
     def test_issued_challenge_excludes_consumed_pre_stage_and_old_history(self):
         with tempfile.TemporaryDirectory(prefix="aoe2-phase-select-") as t:
