@@ -55,7 +55,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
           export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
           export REN88_PG_ROOT
-          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/c-freshness88-XXXXXX")"
+          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-cfreshness-XXXXXX")"
           export RENAISSANCE_88_FIXTURE_ALLOWED=1
           printf '%s\n' "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" "REN88_PG_ROOT=$REN88_PG_ROOT" "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
           bash scripts/renaissance_88_pg_fixture.sh start
