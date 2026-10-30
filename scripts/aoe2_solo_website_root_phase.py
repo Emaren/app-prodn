@@ -118,6 +118,38 @@ def required_current_evidence(h):
          type(h.get("finance_fingerprint_sha256"))is str and
          HEX64.fullmatch(h["finance_fingerprint_sha256"]),
          "real native Doctor/E six-class/B finance receipts NOT INSTALLED")
+def native_observation_for_owner(report):
+    """Only independently authenticated, owner-enrolled native audit fills it."""
+    fin=report["finance"];d=report["doctor"];rec=report["recovery"]
+    stage=report["stage"];rollback=report["rollback"]
+    protected=fin["protected"]
+    live=native()
+    return {
+      "origin":"AUTHENTICATED_HEL1_ROOT_SSH","host":HOST,
+      "observed_at":report["observed_at"],"source_sha":live["source_sha"],
+      "build_id":live["build_id"],"web_service":live["web_service"],
+      "free_bytes":live["free_bytes"],
+      "effective_used_pct":live["effective_used_pct"],
+      "finish_used_pct":live["finish_used_pct"],
+      "rollback_available":rollback["preserved"],
+      "rollback_build_id":rollback["active_build_id"],
+      "doctor_p0":d["p0"],"doctor_p1":d["p1"],"doctor_signed":d["signed"],
+      "recovery_verified_classes":sorted(rec["isolated_restored_classes"]),
+      "independent_restore_verdict":rec["status"],
+      "wolo_finance_p1":fin["wolo_finance_p1"],
+      "financial_movement_authorized":False,
+      "finance_fingerprint_sha256":digest(canonical(protected)),
+      "protected_8092_pid":protected["8092"]["pid"],
+      "protected_8093_pid":protected["8093"]["pid"],
+      "protected":protected,
+      "stage_receipt_origin":stage.get("origin","UNKNOWN"),
+      "durable_stage_receipt":stage.get("receipt"),
+      "durable_stage_receipt_sha256":stage.get("receipt_sha256"),
+      "staged_artifact_sha256":stage.get("artifact_sha256"),
+      "staged_node_modules_sha256":stage.get("node_modules_sha256"),
+      "staged_build_id":stage.get("staged_build_id"),
+    }
+
 def issue(args):
     phase,candidate=args[0:2]
     need(phase in ("PRE_STAGE","PRE_ACTIVATE")and HEX40.fullmatch(candidate),"bad phase or candidate")
@@ -131,9 +163,12 @@ def issue(args):
     else:
         need(len(args)==5,"activate requires prior attempt/lease/stage SHA")
         challenge=ledger.issue(phase,candidate,attempt=args[2],lease=args[3],stage_sha=args[4])
-    # This is a root native snap. The collector reader must expose this EXACT
-    # snapshot for owner signing; phase consumptions reobserve current native.
-    snapshot={"schema":1,"observation":evidence,"at":datetime.now(timezone.utc).isoformat()}
+    # Owner intent binds a real root-issued source/finance/Doctor/restore
+    # observation; no unreviewed owner-supplied fields can populate this.
+    from aoe2_solo_website_native_audit_adapter import audit
+    report=audit(candidate,phase,challenge["attempt_id"])
+    h=native_observation_for_owner(report)
+    snapshot={"schema":1,"observation":h,"at":datetime.now(timezone.utc).isoformat()}
     write_once(STATE/(challenge["attempt_id"]+"-"+phase+"-observation.json"),snapshot)
     return {"status":"ROOT_ISSUED_NOT_AUTHORIZED","challenge":challenge,
             "snapshot_sha256":digest(canonical(snapshot))}
@@ -206,10 +241,52 @@ def consume(args):
          original["free_bytes"]>=30*2**30 and
          original["effective_used_pct"]<=88 and original["finish_used_pct"]<92,
          "root-issued HEL1 native snapshot/now drift")
-    # Reject any current UNKNOWN; do not synthesize finance/restore status.
-    from aoe2_solo_website_hel1_observer import main as _collector_main
-    # Current collector intentionally lacks signed B/C/E evidence; no GO.
-    raise Hold("root B/C/E signed financial, restore, Doctor and immutable stage evidence integration not installed")
+    from aoe2_solo_website_native_audit_adapter import audit
+    report=audit(p["candidate_sha"],phase,a)
+    current=native_observation_for_owner(report)
+    h=evidence["observation"]
+    need(digest(canonical(h))==p["host_observation_sha256"],
+         "owner did not sign exact root native snapshot")
+    keys=("source_sha","build_id","web_service","rollback_available",
+          "rollback_build_id","doctor_p0","doctor_p1","doctor_signed",
+          "recovery_verified_classes","independent_restore_verdict",
+          "wolo_finance_p1","financial_movement_authorized",
+          "finance_fingerprint_sha256","protected_8092_pid",
+          "protected_8093_pid","protected",
+          "stage_receipt_origin","durable_stage_receipt_sha256",
+          "staged_artifact_sha256","staged_node_modules_sha256",
+          "staged_build_id")
+    need(all(h.get(k)==current.get(k) for k in keys),
+         "live original finance/backup/Doctor/stage/rollback identity drift")
+    need(current["source_sha"]==p["previous_sha"] and
+         current["build_id"]==p["active_build_id"] and
+         current["finance_fingerprint_sha256"]==p["finance_fingerprint_sha256"],
+         "current source/finance origin is not owner signed")
+    if phase=="PRE_ACTIVATE":
+        need(current["durable_stage_receipt_sha256"]==
+             p["stage_receipt_sha256"] and
+             current["staged_build_id"]==p["staged_build_id"],
+             "activation stage/BUILD_ID not signed")
+    else:
+        need(p["stage_receipt_sha256"]is None and
+             p["staged_build_id"]is None,
+             "stage owner intent invented artifact")
+    packet_sha=digest(canonical(signed))
+    # Consume once inside original FD200 lease and fsync before dispatch.
+    l.consume_under_existing_lock(issued,packet_sha,
+        expected_observation_sha256=p["host_observation_sha256"])
+    approved={
+        "schema":1,"policy":POLICY,"phase":phase,"attempt_id":a,
+        "nonce":p["nonce"],"lease_id":p["lease_id"],
+        "candidate_sha":p["candidate_sha"],"packet_sha256":packet_sha,
+        "host_observation_sha256":p["host_observation_sha256"],
+        "manifest_sha256":p["manifest_sha256"],"gate_sha256":p["gate_sha256"],
+        "active_build_id":p["active_build_id"],
+        "stage_receipt_sha256":p["stage_receipt_sha256"],
+        "finance_fingerprint_sha256":p["finance_fingerprint_sha256"],
+    }
+    write_once(STATE/(a+"-"+phase+"-approved.json"),approved)
+    return consumed([a,phase,packet_sha])
 def main():
     if (sys.platform!="linux" or os.geteuid()!=0 or
         socket.gethostname()!=HOST):raise Hold("wrong physical HEL1 root")
