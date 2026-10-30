@@ -233,7 +233,16 @@ class BFinancialProofAdversarial(unittest.TestCase):
      "GET":g["routes"]["GET"],"HEAD":g["routes"]["HEAD"]})).hexdigest()
    sc["prewarm_effects_sha256"]=hashlib.sha256(canonical(
      g["routes"]["PREWARM"])).hexdigest()
-  bind();self.assertTrue(verify_closed_graph(sc))
+  bind()
+  with self.assertRaisesRegex(FinancialProofHold,"unverified HEAD"):
+   verify_closed_graph(sc)
+  sc["read_side_effect_policy"]["HEAD"]="FINANCIAL_WRITER_REACHABLE_NO_READ_ONLY_CLAIM"
+  self.assertTrue(verify_closed_graph(sc))
+  sc["read_side_effect_policy"]["HEAD"]="READ_ONLY"
+  with self.assertRaisesRegex(FinancialProofHold,"unverified HEAD"):
+   verify_closed_graph(sc)
+  sc["read_side_effect_policy"]["HEAD"]="INDEPENDENTLY_PROBED_NO_WRITER_EDGES"
+  self.assertTrue(verify_closed_graph(sc))
   g["routes"]["GET"].remove("app/api/bets/route.ts");bind()
   with self.assertRaisesRegex(FinancialProofHold,"entrypoints hidden"):
    verify_closed_graph(sc)
