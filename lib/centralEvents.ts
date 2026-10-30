@@ -7,7 +7,7 @@ export type EventFeed={schema:typeof EVENT_SCHEMA;status:"FRESH"|"PARTIAL"|"STAL
 const REPO=/^Emaren\/(?:app-prodn|VPSSentry|wolochain)$/;
 const SHA=/^[0-9a-f]{40}$/;
 const LANES=(lanesRegistry.lanes as Array<{id:string;issue:{repository:string;number:number}}>).map(l=>({id:l.id,repo:l.issue.repository,issue:l.issue.number}));
-const PULLS=[{repo:"Emaren/app-prodn",number:999,lane:"G"},{repo:"Emaren/app-prodn",number:1001,lane:"G"},{repo:"Emaren/app-prodn",number:988,lane:"G"},{repo:"Emaren/app-prodn",number:993,lane:"D"},{repo:"Emaren/app-prodn",number:992,lane:"F"},{repo:"Emaren/VPSSentry",number:53,lane:"C"},{repo:"Emaren/VPSSentry",number:51,lane:"E"},{repo:"Emaren/wolochain",number:119,lane:"B"}] as const;
+const PULLS=[{repo:"Emaren/app-prodn",number:1003,lane:"G"},{repo:"Emaren/app-prodn",number:999,lane:"G"},{repo:"Emaren/app-prodn",number:1001,lane:"G"},{repo:"Emaren/app-prodn",number:988,lane:"G"},{repo:"Emaren/app-prodn",number:993,lane:"D"},{repo:"Emaren/app-prodn",number:992,lane:"F"},{repo:"Emaren/VPSSentry",number:53,lane:"C"},{repo:"Emaren/VPSSentry",number:51,lane:"E"},{repo:"Emaren/wolochain",number:119,lane:"B"}] as const;
 const ghBase="https://api.github.com/";
 const toObj=(x:unknown):Record<string,unknown>|null=>x!==null&&typeof x==="object"&&!Array.isArray(x)?x as Record<string,unknown>:null;
 const arr=(x:unknown):unknown[]=>Array.isArray(x)?x:[];
@@ -16,7 +16,7 @@ export function validAt(x:unknown,now=Date.now()):string|null{
  if(typeof x!=="string"||!/^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(x))return null;
  const t=Date.parse(x);return Number.isFinite(t)&&t>946684800000&&t<=now+60_000?new Date(t).toISOString():null;
 }
-const numberId=(x:unknown)=>Number.isSafeInteger(x)&&Number(x)>0&&Number(x)<10_000_000_000?Number(x):null;
+const numberId=(x:unknown)=>Number.isSafeInteger(x)&&Number(x)>0&&Number(x)<=Number.MAX_SAFE_INTEGER?Number(x):null;
 function evt(id:string,kind:EventKind,at:unknown,repo:string,sourceUrl:string,laneId:string|null,sha:unknown=null,state:string|null=null,now=Date.now()):SourceEvent|null{
  const ts=validAt(at,now);
  if(!ts||!REPO.test(repo)||!/^[BCDEFG]$/.test(laneId||"")&&laneId!==null)return null;
@@ -72,13 +72,29 @@ export function parseReviews(repo:string,num:number,lane:string,input:unknown,no
  }
  return out;
 }
+const WORKFLOW_PATHS:Record<string,string>={
+ "AoE2WAR CI":".github/workflows/ci.yml",
+ "Q09 A3 Work Board and six-lane real Chrome":".github/workflows/central-work-ledger-browser.yml",
+ "Q09 verified GitHub events authenticated Chrome":".github/workflows/central-events-browser.yml",
+ "Q09 Kingdom Job Exchange genuine Chrome":".github/workflows/job-exchange-browser.yml",
+ "Private Central Command genuine admin Chrome":".github/workflows/central-command-private-browser.yml",
+ "Kingdom Progress Q12 real Chrome acceptance (post-W1)":".github/workflows/kingdom-progress-browser.yml",
+ "Renaissance 88 candidate Chrome factory":".github/workflows/renaissance-88-factory.yml",
+ "Renaissance 88 unsealed a11y preview (not Index admission)":".github/workflows/renaissance-88-a11y-preview.yml",
+ "Kingdom Index source census":".github/workflows/kingdom-index-source-census.yml",
+ "Renaissance source integrity":".github/workflows/renaissance-source-integrity.yml",
+ "Renaissance Tab D candidate census (not certified)":".github/workflows/renaissance-tabd-forge.yml"
+};
 export function parseRuns(repo:string,input:unknown,now=Date.now()):SourceEvent[]{
  const top=toObj(input),out:SourceEvent[]=[];
  for(const raw of arr(top?.workflow_runs).slice(0,18)){
   const r=toObj(raw),id=numberId(r?.id),sha=validSha(r?.head_sha);
   const name=typeof r?.name==="string"?r.name:"";
   const path=typeof r?.path==="string"?r.path:"";
-  if(!id||!sha||!/^\.github\/workflows\/[a-z0-9-]+\.ya?ml(@.+)?$/.test(path)||!["AoE2WAR CI","Kingdom Progress Q12 real Chrome acceptance (post-W1)","Renaissance 88 candidate Chrome factory","Renaissance 88 unsealed a11y preview (not Index admission)","Kingdom Index source census","Renaissance source integrity"].includes(name))continue;
+  const sourcePath=path.split("@")[0];
+  const suffix=path.slice(sourcePath.length);
+  // Exact allowlisted name+workflow pair, never a user-supplied CI badge.
+  if(!id||!sha||WORKFLOW_PATHS[name]!==sourcePath||(suffix&&!/^@[A-Za-z0-9_./-]{1,100}$/.test(suffix)))continue;
   if(r?.status!=="completed"||!["success","failure","cancelled","timed_out","skipped","action_required"].includes(String(r.conclusion)))continue;
   const e=evt("run:"+id,"HEAD_CI_CONCLUDED",r.updated_at,repo,"https://github.com/"+repo+"/actions/runs/"+id,null,sha,String(r.conclusion).toUpperCase(),now);
   if(e)out.push(e);
@@ -111,7 +127,7 @@ export async function readCentralEvents():Promise<EventFeed>{
  const now=Date.now();if(cache&&now<until)return cache;
  const work=async():Promise<EventFeed>=>{
   const starts=[...LANES.map(x=>({path:"repos/"+x.repo+"/issues/"+x.issue+"/comments?per_page=12&page=1",kind:"comments" as const,...x})),
-    ...[{repo:"Emaren/app-prodn",issue:934,id:null},{repo:"Emaren/app-prodn",issue:984,id:null}].map(x=>({path:"repos/"+x.repo+"/issues/"+x.issue+"/comments?per_page=12&page=1",kind:"comments" as const,...x})),
+    ...[{repo:"Emaren/app-prodn",issue:934,id:null},{repo:"Emaren/app-prodn",issue:984,id:null},{repo:"Emaren/app-prodn",issue:1002,id:"G"}].map(x=>({path:"repos/"+x.repo+"/issues/"+x.issue+"/comments?per_page=12&page=1",kind:"comments" as const,...x})),
     ...PULLS.flatMap(x=>[{path:"repos/"+x.repo+"/pulls/"+x.number+"?per_page=8&page=1",kind:"pr" as const,...x},{path:"repos/"+x.repo+"/pulls/"+x.number+"/commits?per_page=5&page=1",kind:"commits" as const,...x},{path:"repos/"+x.repo+"/pulls/"+x.number+"/reviews?per_page=8&page=1",kind:"reviews" as const,...x}]),
     {path:"repos/Emaren/app-prodn/actions/runs?per_page=18&page=1",kind:"runs" as const,repo:"Emaren/app-prodn"}];
   const rows:SourceEvent[]=[];let accepted=0;let reason:string|null=null;
@@ -142,6 +158,6 @@ export async function readCentralEvents():Promise<EventFeed>{
   if(accepted>0)lastGood=out;
   return out;
  };
- cache=work().catch(()=>({schema:EVENT_SCHEMA,status:"UNKNOWN",observedAt:null,readAt:new Date().toISOString(),sourceCoverage:{accepted:0,expected:33},errorCode:"SOURCE_UNAVAILABLE",history:"BOUNDED_GITHUB_WINDOW_NOT_DURABLE",events:[]} as EventFeed));
+ cache=work().catch(()=>({schema:EVENT_SCHEMA,status:"UNKNOWN",observedAt:null,readAt:new Date().toISOString(),sourceCoverage:{accepted:0,expected:37},errorCode:"SOURCE_UNAVAILABLE",history:"BOUNDED_GITHUB_WINDOW_NOT_DURABLE",events:[]} as EventFeed));
  until=now+TTL;return cache;
 }

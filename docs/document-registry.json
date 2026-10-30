@@ -362,7 +362,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "95c44963266913ddcaa630ca07eafa82c7baaff74f5cf23cc893b4dddb1eece3",
+      "sha256": "20cb304f018fbc6a466090a517200611827334639001d86c999ba949df8fd9f2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a6d6bf7f904851548722c44d6c9b357ff1d2b697f012fd9ac81beecfecd38beb",
+      "sha256": "d64a367d0acb9c888c2e8480a966e5159b149baf48ad8b71f8fb5a23f75d6b17",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/d-q17-kingdom-navigation-atlas-20261029",
-    "commit": "b88ccc010e7f1b925ecb2c95260d99469a1105ee"
+    "branch": "feat/g-q09-a3-work-ledger-20261029",
+    "commit": "c349bc2ae8fad8cc010423c2c7d3755060a9a410"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

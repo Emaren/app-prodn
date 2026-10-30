@@ -74,6 +74,8 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin", label: "Admin Home", Icon: Home },
   { href: "/admin/aoe2war-os", label: "AoE2WAR OS", Icon: ShieldCheck },
   { href: "/admin/central-command/job-board", label: "Living Job Exchange · Six Brains", Icon: LayoutGrid },
+  { href: "/admin/central-command/work-board", label: "Living Work Board", Icon: LayoutGrid },
+  { href: "/admin/central-command/lanes", label: "Six-Lane Evidence Ledger", Icon: LayoutGrid },
   { href: "/admin/hero-studio", label: "Hero Studio", Icon: Sparkles },
   { href: "/admin/events", label: "Featured Event", Icon: CalendarRange },
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },

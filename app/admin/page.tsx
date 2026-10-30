@@ -636,6 +636,14 @@ export default function AdminPage() {
                 className="inline-flex rounded-full border border-violet-300/30 bg-violet-400/10 px-5 py-3 text-sm text-violet-100 transition hover:border-violet-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-200">
                 Living Job Exchange · Six Brains
               </Link>
+              <Link href="/admin/central-command/work-board"
+                className="inline-flex rounded-full border border-violet-300/30 bg-violet-400/10 px-5 py-3 text-sm text-violet-100 transition hover:border-violet-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-200">
+                Living Work Board
+              </Link>
+              <Link href="/admin/central-command/lanes"
+                className="inline-flex rounded-full border border-cyan-300/30 bg-cyan-400/10 px-5 py-3 text-sm text-cyan-100 transition hover:border-cyan-300/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-200">
+                Six-Lane Evidence Ledger
+              </Link>
               <Link
                 href="/admin/living-kingdom"
                 className="inline-flex rounded-full border border-sky-200/18 bg-sky-300/[0.06] px-5 py-3 text-sm text-sky-100 transition hover:border-sky-200/36 hover:bg-sky-300/10"
