@@ -136,6 +136,19 @@ class FrozenReleaseP0Tests(unittest.TestCase):
         self.assertIn("canonical release.lock inode changed before dispatch",remote)
         self.assertIn("canonical release.lock inode changed after dispatch",remote)
 
+    def test_uid1000_remote_requires_single_consumed_owner_phase(self):
+        remote=channel.REMOTE
+        self.assertIn("signed single-use website phase not armed",remote)
+        self.assertIn("website_dispatched=True",remote)
+        self.assertIn("root phase not actually consumed",remote)
+        self.assertIn("wrong owner nonce proof",remote)
+        self.assertIn("phase completion without website mutation",remote)
+        self.assertIn("if phase is None or not phase_verified",remote)
+        # Merely authenticating the SSH key is NOT authorization to spawn
+        # arbitrary stage, shell, finance or migration commands as UID1000.
+        self.assertIn("unallowlisted",(
+            SCRIPT_DIR/"aoe2_solo_website_forced_ssh.py").read_text())
+
     def test_server_rejects_arbitrary_root_requests_even_with_root_key(self):
         with patch.object(forced.os,"geteuid",return_value=0),\
              patch.object(forced.socket,"gethostname",return_value=forced.HOST),\
