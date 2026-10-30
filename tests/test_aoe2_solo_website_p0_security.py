@@ -157,6 +157,38 @@ class FrozenReleaseP0Tests(unittest.TestCase):
         self.assertIn("unallowlisted",(
             SCRIPT_DIR/"aoe2_solo_website_forced_ssh.py").read_text())
 
+    def test_uid1000_writable_lock_ancestor_is_rejected_before_flock(self):
+        # Exercise the REAL Journal.secure() guard with a native UID1000
+        # canonical lock and a simulated owner-writable locks/ directory.
+        from types import SimpleNamespace
+        from aoe2_solo_website_nonce_ledger import Journal,Hold
+        with tempfile.TemporaryDirectory(prefix="aoe2-canonical-lock-") as tmp:
+            parent=Path(tmp)
+            lock=parent/"release.lock"
+            lock.touch(mode=0o644)
+            state=parent/"journal"
+            state.mkdir()
+            ledger=Journal(state,lock,test_mode=False)
+            def file_info(mode,uid):
+                return SimpleNamespace(st_mode=mode,st_uid=uid)
+            def lstat_override(path,*args,**kwargs):
+                if path==lock:
+                    return file_info(stat.S_IFREG|0o644,1000)
+                if path==lock.parent:
+                    return file_info(stat.S_IFDIR|0o755,1000)
+                return file_info(stat.S_IFDIR|0o755,0)
+            def stat_override(path,*args,**kwargs):
+                if path==lock:
+                    return file_info(stat.S_IFREG|0o644,1000)
+                return file_info(stat.S_IFDIR|0o755,0)
+            with patch.object(Path,"lstat",autospec=True,side_effect=lstat_override), \
+                 patch.object(Path,"stat",autospec=True,side_effect=stat_override), \
+                 patch("aoe2_solo_website_nonce_ledger.os.geteuid",return_value=0):
+                with self.assertRaisesRegex(Hold,"UID1000 can replace canonical lock"):
+                    ledger.secure(lock)
+        self.assertIn("release lock ancestor can be replaced by UID1000",
+                      channel.REMOTE)
+
     def test_server_rejects_arbitrary_root_requests_even_with_root_key(self):
         with patch.object(forced.os,"geteuid",return_value=0),\
              patch.object(forced.socket,"gethostname",return_value=forced.HOST),\
