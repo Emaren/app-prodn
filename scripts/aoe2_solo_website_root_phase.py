@@ -143,6 +143,8 @@ def native_observation_for_owner(report):
       "protected_8092_pid":protected["8092"]["pid"],
       "protected_8093_pid":protected["8093"]["pid"],
       "protected":protected,
+      "financial_exposure":fin["exposure"],
+      "finance_native_receipt_sha256":fin["native_receipt_sha256"],
       "stage_receipt_origin":stage.get("origin","UNKNOWN"),
       "durable_stage_receipt":stage.get("receipt"),
       "durable_stage_receipt_sha256":stage.get("receipt_sha256"),
@@ -231,8 +233,17 @@ def mark_staged(args):
     now_report=audit(challenge["candidate_sha"],"PRE_STAGE",attempt,
                      post_stage=True)
     h=native_observation_for_owner(now_report)
+    real_stage=now_report["stage"]
+    need(real_stage["receipt_sha256"]==digest(raw) and
+         real_stage["receipt"]==receipt and
+         real_stage["artifact_sha256"]==receipt.get("artifact_sha256") and
+         real_stage["node_modules_sha256"]==
+            receipt.get("candidate_node_modules_sha256") and
+         real_stage["staged_build_id"]==receipt.get("staged_build_id"),
+         "B/C independently observed native stage artifact/deps/BUILD_ID drift")
     before=root_file(STATE/(attempt+"-PRE_STAGE-observation.json"))["observation"]
-    need(h["protected"]==before["protected"] and
+    need(h["financial_exposure"]==before["financial_exposure"] and
+         h["protected"]==before["protected"] and
          h["finance_fingerprint_sha256"]==before["finance_fingerprint_sha256"] and
          h["source_sha"]==before["source_sha"] and
          h["build_id"]==before["build_id"] and
@@ -273,6 +284,7 @@ def complete_activation(args):
          now["web_service"]=="active" and
          now["rollback_available"]is True and
          now["protected"]==original["protected"] and
+         now["financial_exposure"]==original["financial_exposure"] and
          now["finance_fingerprint_sha256"]==
          original["finance_fingerprint_sha256"],
          "post-activation source/BUILD_ID or protected finance drift")
@@ -372,8 +384,8 @@ def consume(args):
           "rollback_build_id","doctor_p0","doctor_p1","doctor_signed",
           "recovery_verified_classes","independent_restore_verdict",
           "wolo_finance_p1","financial_movement_authorized",
-          "finance_fingerprint_sha256","protected_8092_pid",
-          "protected_8093_pid","protected",
+          "finance_fingerprint_sha256","financial_exposure",
+          "protected_8092_pid","protected_8093_pid","protected",
           "stage_receipt_origin","durable_stage_receipt_sha256",
           "staged_artifact_sha256","staged_node_modules_sha256",
           "staged_build_id")
