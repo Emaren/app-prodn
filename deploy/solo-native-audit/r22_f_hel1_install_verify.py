@@ -149,13 +149,20 @@ def main():
     encoded=getpass.getpass("Paste R22_INSTALL_PERMIT_BASE64 (input hidden): ").strip()
     if encoded.startswith("R22_INSTALL_PERMIT_BASE64="):
         encoded=encoded.split("=",1)[1]
+    if not encoded:return hold("ORIGINAL_OWNER_SIGNED_INSTALL_PERMIT_NOT_SUPPLIED")
     if len(encoded)>44000:return hold("UNBOUNDED_SIGNED_PERMIT")
     try:
         approval=base64.b64decode(encoded,validate=True)
         if not 0<len(approval)<=32768:return hold("INVALID_ENVELOPE_LENGTH")
         x=json.loads(approval)
-        if x.get("payload",{}).get("manifest_sha256")!=MANIFEST or x.get("payload",{}).get("operation")!="install":return hold("BAD_PERMIT_INTENT")
-    except Exception as e:return hold("PERMIT_BASE64_JSON:"+type(e).__name__)
+        if not isinstance(x,dict) or not isinstance(x.get("payload"),dict):
+            return hold("INVALID_OWNER_PERMIT_JSON_SHAPE")
+        if x["payload"].get("manifest_sha256")!=MANIFEST or x["payload"].get("operation")!="install":
+            return hold("BAD_PERMIT_INTENT")
+    except (ValueError, TypeError, KeyError) as e:
+        return hold("INVALID_OWNER_PERMIT_JSON:"+type(e).__name__)
+    except Exception as e:
+        return hold("INVALID_OWNER_PERMIT_BASE64:"+type(e).__name__)
     with tempfile.TemporaryDirectory(prefix="aoe2war-r22-install-input-") as td:
         path=Path(td)/"owner-install-envelope.json"
         fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
