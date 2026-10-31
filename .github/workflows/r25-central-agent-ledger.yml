@@ -1,0 +1,27 @@
+name: R25 Central Agent Ledger — focused Python
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/aoe2_central_agent_ledger.py"
+      - "tests/test_central_agent_ledger.py"
+      - "docs/central-agent-ledger/**"
+      - ".github/workflows/r25-central-agent-ledger.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  append-only-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate immutable R25 seed and empty history
+        run: python3 scripts/aoe2_central_agent_ledger.py validate
+      - name: Run six-to-1000 evidence and repeat-avoidance tests
+        run: python3 -m unittest discover -s tests -p 'test_central_agent_ledger.py' -v
+      - name: Verify G prompt (source-backed; no live agent claim)
+        run: python3 scripts/aoe2_central_agent_ledger.py prompt --lane G > /dev/null
