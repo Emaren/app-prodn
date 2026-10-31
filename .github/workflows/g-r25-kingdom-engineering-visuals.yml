@@ -1,0 +1,28 @@
+name: G R25 Kingdom Engineering Visual Contracts
+on:
+  pull_request:
+    paths:
+      - "config/aoe2war-os-registry.v1.json"
+      - "config/central-agent-os-bindings.v1.json"
+      - "docs/central-agent-ledger/**"
+      - "lib/kingdomEngineeringProjection.ts"
+      - "components/kingdom-engineering/**"
+      - "app/aoe2war-os/engineering/**"
+      - "app/aoe2war-os/Aoe2warOsDeck.tsx"
+      - "app/admin/engineering-os/**"
+      - "tests/test_r25_kingdom_visuals.py"
+      - ".github/workflows/g-r25-kingdom-engineering-visuals.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-evidence-and-visual-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify public/admin boundary and six source-based visual modes
+        run: python3 -m unittest discover -s tests -p 'test_r25_kingdom_visuals.py' -v
