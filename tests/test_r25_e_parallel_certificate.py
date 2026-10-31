@@ -15,6 +15,7 @@ spec = importlib.util.spec_from_file_location('r25_e', SCRIPT)
 e = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(e)
 REAL_ARCHIVE_IDENTITY=e.archive_identity
+REAL_ROOT_SEALED=e.root_sealed
 
 class R25EParallelCertificate(unittest.TestCase):
     def setUp(self):
@@ -52,7 +53,8 @@ class R25EParallelCertificate(unittest.TestCase):
                             'mainpid':2625090,'active':True,'proc_start_ticks':12345}),
                         patch.object(e,'archive_identity',return_value={
                             'sha256':e.ARCHIVE_SHA256,'embedded_git_commit':e.SOURCE}),
-                        patch.object(e, 'disk_free',side_effect=lambda p: 61*e.GIB)]
+                        patch.object(e, 'disk_free',side_effect=lambda p: 61*e.GIB),
+                        patch.object(e, 'root_sealed',return_value=True)]
         for p in self.patches:
             p.start()
             self.addCleanup(p.stop)
@@ -212,6 +214,16 @@ class R25EParallelCertificate(unittest.TestCase):
             with patch.object(e,'ARCHIVE_SHA256','0'*64):
                 with self.assertRaisesRegex(e.Hold,'ARCHIVE_SHA256_MISMATCH'):
                     e.archive_identity()
+
+    def test_real_root_seal_rejects_nonroot_and_group_writable(self):
+        real=REAL_ROOT_SEALED
+        with patch.object(e,'root_sealed',real):
+            with patch.object(e.os,'lstat',return_value=SimpleNamespace(st_uid=1000,st_mode=0o644)):
+                self.assertFalse(real(self.stage))
+            with patch.object(e.os,'lstat',return_value=SimpleNamespace(st_uid=0,st_mode=0o664)):
+                self.assertFalse(real(self.stage))
+            with patch.object(e.os,'lstat',return_value=SimpleNamespace(st_uid=0,st_mode=0o644)):
+                self.assertTrue(real(self.stage))
 
     def test_no_side_effect_code_paths(self):
         s=SCRIPT.read_text()
