@@ -21,6 +21,11 @@ C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
 ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
 ARCHIVE_SHA="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
 EXPECTED_OLD_PID=2625090
+# Owner-authenticated C #1084 independent full-tree receipt, Central #934/6547581709.
+# These IDs are *physical artifacts*, not GitHub CI or a source-build assertion.
+EXPECTED_C_NEXT_BUILD_ID="-dJl5VyecHu5BKNvfErJe"
+EXPECTED_C_TREE_SHA="5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d"
+EXPECTED_C_FILES=87038
 APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r24-parallel")
 LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
@@ -36,7 +41,7 @@ class Hold(Exception): pass
 def need(ok,why):
     if not ok: raise Hold(why)
 def digest(b):return hashlib.sha256(b).hexdigest()
-def canon(x):return json.dumps(x,sort_keys=True,separators=(",",":"),allow_nan=False).encode()
+def canon(x):return json.dumps(x,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode()
 def pairs_unique(pairs):
     out={}
     for k,v in pairs:
@@ -388,6 +393,13 @@ def protected_c_stage_boundary():
         need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
              not(st.st_mode&0o022), "C_STAGE_ROOT_TRUST_BOUNDARY")
 
+def c_physical_build_identity(built):
+    """Reject a valid-looking self-consistent tree that is not C's verified build."""
+    need(built.get("build_id")==EXPECTED_C_NEXT_BUILD_ID and
+         built.get("tree_sha256")==EXPECTED_C_TREE_SHA and
+         built.get("files")==EXPECTED_C_FILES,
+         "C_INDEPENDENT_PHYSICAL_BUILD_ID_TREE_OR_COUNT_MISMATCH")
+
 def verified_c_archive_source():
     """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
     protected_c_stage_boundary()
@@ -407,6 +419,8 @@ def verified_c_archive_source():
          digest(canon(srcfiles["rows"]))==source.get("source_manifest_sha256") and
          digest(canon(builtfiles["rows"]))==built.get("tree_sha256"),
          "C_ROOT_SOURCE_OR_BUILD_MANIFEST_DIGEST_DRIFT")
+    c_physical_build_identity(built)
+    need(len(builtfiles["rows"])==EXPECTED_C_FILES,"C_INDEPENDENT_FILE_COUNT_MISMATCH")
     need(built.get("root_sealed") is True and built.get("financial_writes_authorized") is False
          and built.get("old_web_pid_untouched")==EXPECTED_OLD_PID,
          "C_BUILD_RECEIPT_SCOPE_DRIFT")
@@ -441,6 +455,8 @@ def verified_c_archive_source():
             "source_receipt_status":"SOURCE_STAGED",
             "build_receipt_status":"BUILD_STAGED",
             "root_manifest_file_count":built.get("files"),
+            "independent_c_physical_tree_sha256":EXPECTED_C_TREE_SHA,
+            "independent_c_physical_next_build_id":EXPECTED_C_NEXT_BUILD_ID,
             "git_directory_absent_by_design":True}
 def stage():
     need(STAGE.is_dir() and not STAGE.is_symlink(),"PARALLEL_CANDIDATE_NOT_STAGED")
