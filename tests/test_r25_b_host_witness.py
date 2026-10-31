@@ -106,6 +106,12 @@ meta skuid 1000 ct state new drop"""
             with self.assertRaisesRegex(RuntimeError,"NFT_EGRESS_RULES_NOT_EXACT"):
                 b.nft_policy(17251)
 
+    def test_local_root_http_probe_never_uses_proxy_env(self):
+        import inspect
+        raw=inspect.getsource(b.http_proof)
+        self.assertIn("urllib.request.ProxyHandler({})",raw)
+        self.assertNotIn("urllib.request.urlopen(",raw)
+
     def test_no_unsafe_http_on_financial_endpoint_in_probe_source(self):
         import inspect
         raw=inspect.getsource(b.http_proof)
