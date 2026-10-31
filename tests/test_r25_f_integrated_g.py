@@ -50,20 +50,20 @@ class TestIntegratedG(unittest.TestCase):
         self.assertEqual(state["upstream_port"],3031)
     def test_mixed_routes_fail_closed(self):
         bad=self.nginx(True).replace(b"3030;",b"3031;",1)
-        with self.assertRaisesRegex(g.Hold,"G_PARTIAL_SIX_LOCATION_ROUTING_MIXED"):
+        with self.assertRaisesRegex(g.Hold,"NGINX_MIXED_3030_3031_PUBLIC_ROUTES"):
             self.witness(bad)
     def test_missing_seventh_custody_location_does_not_pass(self):
         bad=self.nginx(True).replace(
             b"proxy_pass http://127.0.0.1:27657/;",
             b"proxy_pass http://127.0.0.1:3030;")
-        with self.assertRaisesRegex(g.Hold,"G_PARTIAL_SIX_LOCATION_ROUTING_MIXED"):
+        with self.assertRaisesRegex(g.Hold,"NGINX_SIX_WEB_PROXY_CENSUS_MISMATCH"):
             self.witness(bad)
     def test_no_git_in_extracted_candidate(self):
         source=G_SOURCE.read_text()
         self.assertNotIn('git_source(STAGE,"aoe2war-r24-web")',source)
-        self.assertIn('"C_ROOT_SEALED_EXACT_GIT_ARCHIVE_NO_DOT_GIT"',source)
-        self.assertIn('"C_source_staged_sha256"',source)
-        self.assertIn('"C_build_staged_sha256"',source)
+        self.assertIn("def verified_c_archive_source():",source)
+        self.assertIn("C_SOURCE_ARCHIVE_NOT_EXACT_FROZEN_IDENTITY",source)
+        self.assertIn("C_BUILT_FILE_BYTES_CHANGED",source)
     def test_owner_mac_g_before_after_and_auto_rollback(self):
         text=MAC_SOURCE.read_text()
         for expected in ('g_witness(g_path, "before")',
