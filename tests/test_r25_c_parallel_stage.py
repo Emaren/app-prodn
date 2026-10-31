@@ -1,11 +1,12 @@
 """R25 C additive source archive, build and candidate gate tests."""
-import io,importlib.util,json,os,pathlib,subprocess,tarfile,tempfile,types,unittest
+import io,importlib.util,json,os,pathlib,stat,subprocess,tarfile,tempfile,types,unittest
 from unittest import mock
 
 BASE=pathlib.Path(__file__).resolve().parents[1]
 SRC=BASE/"scripts/aoe2_r25_c_parallel_stage.py"
 MAC=BASE/"scripts/aoe2_r25_c_owner_mac.py"
 UNIT=BASE/"deploy/aoe2hdbets-web-r24.service"
+VERIFIER=BASE/"scripts/aoe2_r25_c_stage_verify.py"
 def load(path):
     spec=importlib.util.spec_from_file_location(path.stem,path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
@@ -13,7 +14,7 @@ def load(path):
 class R25StageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.s=load(SRC);cls.m=load(MAC)
+        cls.s=load(SRC);cls.m=load(MAC);cls.v=load(VERIFIER)
     def make_tar(self,root,name="src.tar",entries=None):
         f=pathlib.Path(root)/name
         with tarfile.open(f,"w:") as t:
@@ -503,6 +504,62 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('"next_is_real_directory":True',src)
         self.assertIn('"old_web_pid_untouched":OLD_PID',src)
         self.assertIn('"financial_writes_authorized":False',src)
+
+    def test_51_independent_verifier_has_large_bounded_manifest_only(self):
+        source=VERIFIER.read_text()
+        self.assertEqual(self.v.BUILD_MANIFEST_MAX_BYTES,128*1024*1024)
+        self.assertIn('files=load(AUDIT/"BUILD_FILES.json",BUILD_MANIFEST_MAX_BYTES)',source)
+        self.assertIn('source=load(AUDIT/"SOURCE_STAGED.json",65536)',source)
+        self.assertIn('build=load(AUDIT/"BUILD_STAGED.json",65536)',source)
+        self.assertIn('os.read(fd,min(1048576,before.st_size-total))',source)
+        self.assertIn('ROOT_FILE_REPLACED_DURING_OPEN',source)
+        self.assertNotIn('files=load(AUDIT/"BUILD_FILES.json",16000000)',source)
+
+    def test_52_independent_verifier_reads_real_oversize_16mb_fixture(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d)/"large.json"
+            payload=b"X"*(16_000_001)
+            p.write_bytes(payload)
+            st=p.stat()
+            trusted=types.SimpleNamespace(st_mode=stat.S_IFREG|0o600,
+                        st_uid=0,st_size=st.st_size,st_dev=st.st_dev,
+                        st_ino=st.st_ino)
+            with mock.patch.object(pathlib.Path,"lstat",return_value=trusted):
+                with self.assertRaisesRegex(self.v.Hold,
+                                            "ROOT_FILE_SIZE_OUTSIDE_BOUND"):
+                    self.v.read_root_file(p,16000000)
+                result=self.v.read_root_file(
+                    p,self.v.BUILD_MANIFEST_MAX_BYTES)
+        self.assertEqual(result,payload)
+
+    def test_53_independent_verifier_blocks_untrusted_owner(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d)/"untrusted.json"
+            p.write_bytes(b'{"schema":1}')
+            st=p.stat()
+            untrusted=types.SimpleNamespace(st_mode=stat.S_IFREG|0o600,
+                        st_uid=1000,st_size=st.st_size,st_dev=st.st_dev,
+                        st_ino=st.st_ino)
+            with mock.patch.object(pathlib.Path,"lstat",return_value=untrusted):
+                with self.assertRaisesRegex(self.v.Hold,
+                                            "UNTRUSTED_ROOT_FILE_MODE_OR_OWNER"):
+                    self.v.read_root_file(p,16000000)
+
+    def test_54_independent_verifier_handles_short_os_reads(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=pathlib.Path(d)/"short.json"
+            p.write_bytes(b'{"status":"BUILD_STAGED"}')
+            st=p.stat()
+            trusted=types.SimpleNamespace(st_mode=stat.S_IFREG|0o600,
+                        st_uid=0,st_size=st.st_size,st_dev=st.st_dev,
+                        st_ino=st.st_ino)
+            original_read=os.read
+            def short_read(fd,size):
+                return original_read(fd,min(size,3))
+            with mock.patch.object(pathlib.Path,"lstat",return_value=trusted):
+                with mock.patch.object(self.v.os,"read",side_effect=short_read):
+                    result=self.v.read_root_file(p,16000000)
+            self.assertEqual(result,b'{"status":"BUILD_STAGED"}')
 
 if __name__=="__main__":
     unittest.main()
