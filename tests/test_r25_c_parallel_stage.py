@@ -428,5 +428,81 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('"next-build"',section)
         self.assertIn('"postbuild-cache"',section)
 
+    def test_45_postoom_new_one_use_mode_owner_no_tty(self):
+        src=SRC.read_text(); owner=MAC.read_text()
+        self.assertIn('commands.add_argument("--recover-oom"',src)
+        self.assertIn('elif a.recover_oom:postprebuild_recovery(resume_oom=True)',src)
+        self.assertIn('"recover-oom":"--recover-oom"',owner)
+        self.assertIn('POSTOOM_RECOVERY_ATTEMPT.json',src)
+        self.assertIn('"POSTOOM_PHASE_%02d.json"',src)
+        self.assertNotIn('open("/dev/tty"',owner)
+
+    def test_46_postoom_admits_only_prior_prisma_pass_and_heap_oom(self):
+        src=SRC.read_text()
+        self.assertIn('"POSTOOM_PRISMA_SUCCESS_NOT_PHYSICALLY_SEALED"',src)
+        self.assertIn('"POSTOOM_PREVIOUS_FAILURE_NOT_EXACT_HEAP_OOM"',src)
+        self.assertIn('"javascript heap out of memory" in oomdiagnostic.lower()',src)
+        self.assertIn('"POSTOOM_PRIOR_LATER_PHASE_ENTERED"',src)
+        self.assertIn('"POSTOOM_ALREADY_ENTERED_NO_RETRY"',src)
+        self.assertIn('read_no_symlink(marker,65536,True)',src)
+        self.assertIn('"POSTPREBUILD_PHASE_01.json"',src)
+        self.assertIn('"POSTPREBUILD_PHASE_02.json"',src)
+
+    def test_47_postoom_reuses_prisma_without_reinstall_or_typecheck(self):
+        src=SRC.read_text()
+        section=src.split('    if resume_oom:\n        build=[',1)[1].split(
+            '    else:\n        # First post-prebuild attempt;',1)[0]
+        self.assertNotIn('prisma/build/index.js',section)
+        self.assertNotIn('yarn.js',section)
+        self.assertNotIn('aoe2_release_prebuild_validation',section)
+        self.assertIn('--setenv=NEXT_DIST_DIR=.next-release',section)
+        self.assertIn('next/dist/bin/next',section)
+        self.assertIn('"postbuild-cache"',section)
+        self.assertIn('os.rename(release,DEST/".next")',section)
+        self.assertIn('os.symlink(".next",release)',section)
+        self.assertIn('POSTOOM_PROMOTION.json',section)
+        self.assertIn('"--property=PrivateNetwork=yes"',src)
+
+    def test_48_postoom_never_starts_when_old_web_drift(self):
+        with mock.patch.object(self.s,"old_identity",
+                               side_effect=self.s.Hold("OLD_3030_DRIFT")):
+            with mock.patch.object(self.s,"write_once") as write:
+                with mock.patch.object(self.s.subprocess,"run") as run:
+                    with self.assertRaisesRegex(self.s.Hold,"OLD_3030_DRIFT"):
+                        self.s.postprebuild_recovery(resume_oom=True)
+                    write.assert_not_called()
+                    run.assert_not_called()
+
+    def test_49_postoom_phase_receipt_prefix_and_duplicate_holds(self):
+        unit="aoe2war-r25-postoom-"+self.s.SHA[:8]+"-01-next-release-build"
+        args=["/usr/bin/systemd-run","--unit="+unit]
+        result=types.SimpleNamespace(returncode=0,stdout=b"PASS:built",stderr=b"")
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(self.s,"AUDIT",pathlib.Path(tmp)):
+                with mock.patch.object(self.s.subprocess,"run",return_value=result) as run:
+                    self.assertTrue(self.s.run_postprebuild_phase(
+                        1,"next-release-build",args,30,
+                        unit_prefix="aoe2war-r25-postoom",
+                        receipt_prefix="POSTOOM_PHASE"))
+                    with self.assertRaisesRegex(self.s.Hold,
+                                                "POSTREC_PHASE_ALREADY_ENTERED_NO_REPLAY"):
+                        self.s.run_postprebuild_phase(
+                            1,"next-release-build",args,30,
+                            unit_prefix="aoe2war-r25-postoom",
+                            receipt_prefix="POSTOOM_PHASE")
+                    run.assert_called_once()
+                receipt=json.loads((pathlib.Path(tmp)/
+                                    "POSTOOM_PHASE_01.json").read_text())
+                self.assertEqual(receipt["unit"],unit)
+                self.assertEqual(receipt["status"],"PASS")
+
+    def test_50_postoom_seal_uses_real_next_dir_and_no_public_cutover(self):
+        src=SRC.read_text()
+        self.assertEqual(src.count('write_once(AUDIT/"BUILD_STAGED.json",manifest)'),1)
+        self.assertIn('return finalize_build(before,sockets,budget,frozen)',src)
+        self.assertIn('"next_is_real_directory":True',src)
+        self.assertIn('"old_web_pid_untouched":OLD_PID',src)
+        self.assertIn('"financial_writes_authorized":False',src)
+
 if __name__=="__main__":
     unittest.main()
