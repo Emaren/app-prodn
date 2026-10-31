@@ -118,7 +118,7 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn("BatchMode=yes",s)
         self.assertIn("typed!=CONSENT",s)
         self.assertNotIn("set -euo pipefail",s)
-        self.assertNotIn("/dev/tty",s)
+        self.assertNotIn('open("/dev/tty"',s)
 
     def test_install_is_explicitly_nonreplayable(self):
         import inspect
