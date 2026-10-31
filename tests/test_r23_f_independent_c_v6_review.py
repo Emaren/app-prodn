@@ -40,7 +40,7 @@ class IndependentFReviewV6(unittest.TestCase):
         root=ROOT_SCRIPT.read_text()
         self.assertIn('NEW = Path("/etc/aoe2war/website-owner-v6")',root)
         self.assertIn("os.O_CREAT | os.O_EXCL",root)
-        self.assertIn('"chattr", "+i"',root)
+        self.assertIn('"/usr/bin/chattr", "+i"',root)
         self.assertIn("commit.json",root)
         self.assertIn("rollback.json",root)
         self.assertIn('"candidate_only": True',root)
