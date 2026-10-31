@@ -1,0 +1,48 @@
+name: G R10 independent protected release source acceptance
+on:
+  push:
+    branches:
+      - review/g-r10-final-w1-acceptance-f041f6d-20261030
+  pull_request:
+    paths:
+      - scripts/aoe2_release_r10_acceptance.py
+      - tests/test_aoe2_release_r10_acceptance.py
+      - .github/workflows/g-r10-acceptance-contract.yml
+permissions: { contents: read }
+jobs:
+  adversarial-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: { python-version: "3.13" }
+      - uses: actions/setup-node@v7
+        with: { node-version: "22.22.0" }
+      - name: Chrome source syntax, credentials and route substitution fail-closed
+        run: |
+          node --check scripts/aoe2_release_r10_chrome.cjs
+          node --test tests/aoe2_release_r10_chrome.test.cjs
+      - name: Python compile and adversarial no-real-host proof
+        run: |
+          python3 -m py_compile scripts/aoe2_release_r10_acceptance.py tests/test_aoe2_release_r10_acceptance.py
+          python3 -m unittest -v tests/test_aoe2_release_r10_acceptance.py
+          git diff --check
+      - name: Executable without native receipt must HOLD, never auto-authorize
+        run: |
+          if python3 -B scripts/aoe2_release_r10_acceptance.py \
+               --train W1 --attempt 1111111111111111111111111111111111111111111111111111111111111111 \
+               --build-id build_fake123 --compiled-version fake \
+               --activation-dir /not/installed --out "$RUNNER_TEMP/no-production.json"; then
+            echo "HOLD: host preflight falsely authorized"; exit 1
+          fi
+          test -s "$RUNNER_TEMP/no-production.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"no-production.json"
+          evidence=json.loads(p.read_text())
+          assert evidence["status"]=="HOLD" and evidence["production_certified"] is False
+          assert evidence["checks"]["live_source_build_compiled_service_and_public_identity"]["verdict"]=="HOLD"
+          assert all(x["verdict"]=="HOLD" for x in evidence["checks"].values())
+          print("PASS: non-HEL1 writes only an explicit tamper-evident-scope HOLD")
+          PY

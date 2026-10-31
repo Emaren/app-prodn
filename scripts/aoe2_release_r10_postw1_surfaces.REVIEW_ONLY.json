@@ -1,0 +1,49 @@
+{
+  "schema": "aoe2war.g.seven-surfaces.v1",
+  "status": "SOURCE_GROUNDED_PREPARATION_NOT_LIVE_ACCEPTANCE",
+  "note": "This is a review template. Backup OS has NO independent source-verified route in accepted post-W1; null MUST HOLD rather than aliasing another page. W1 route availability and production build not established.",
+  "surfaces": [
+    {
+      "name": "Storage OS",
+      "path": "/admin/storage-os",
+      "heading": "STORAGE / OS",
+      "selector": "section[aria-label=\"Storage planes\"]"
+    },
+    {
+      "name": "Backup OS",
+      "path": null,
+      "heading": null,
+      "selector": null
+    },
+    {
+      "name": "Documents OS",
+      "path": "/admin/aoe2war-os",
+      "heading": "AoE2WAR OS",
+      "selector": "a[href=\"#navigation-atlas\"]"
+    },
+    {
+      "name": "General Inspections",
+      "path": "/general-inspections",
+      "heading": "SOURCE-HEADING-NOT-VERIFIED",
+      "selector": "main"
+    },
+    {
+      "name": "Kingdom Intelligence",
+      "path": "/kingdom-intelligence",
+      "heading": "THE KINGDOM HAS A MIND.",
+      "selector": "main"
+    },
+    {
+      "name": "Work Board",
+      "path": "/admin/central-command/work-board",
+      "heading": "THE WORK BOARD",
+      "selector": "section[aria-label=\"Source-milestone evidence columns\"]"
+    },
+    {
+      "name": "Navigation",
+      "path": "/admin/aoe2war-os",
+      "heading": "AoE2WAR OS",
+      "selector": "#navigation-atlas"
+    }
+  ]
+}
