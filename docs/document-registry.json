@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e0435535a6a987adbd5ccb8cf9825ae7faa0e3c3d127a26e471a2bfe8ed3a991",
+      "sha256": "a49088a861bdb16e5bee31d81b61470189d668891ede9e75e378cd18aeb519f8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/g-r24-live-web-finance-rollback-witness-20261031",
-    "commit": "05c25e9a63a3bb2b6ec995e24156388f8267a5fd"
+    "commit": "977911263c729221b51fc78937f7a50a70fc5f15"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
