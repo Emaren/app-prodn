@@ -416,6 +416,9 @@ def complete_build(before,sockets,budget,account,yarn_receipt,recovery,record):
        "--property=TimeoutStartSec=1800",
        "/usr/bin/node",yarnjs,"build"]
     command(build,timeout=1900)
+    return finalize_build(before,sockets,budget,record)
+
+def finalize_build(before,sockets,budget,record):
     need((DEST/".next/BUILD_ID").is_file(),"REAL_NEXT_BUILD_ID_MISSING")
     build_id=(DEST/".next/BUILD_ID").read_text().strip()
     version=(DEST/".aoe2war-build-version").read_text().strip()
@@ -459,6 +462,7 @@ def complete_build(before,sockets,budget,account,yarn_receipt,recovery,record):
     write_once(AUDIT/"BUILD_STAGED.json",manifest)
     print("PASS:BUILD_STAGED BUILD_ID="+build_id+" BUILD_VERSION="+version,flush=True)
     return True
+
 def recover_dns_build():
     """Resume exactly one owner-observed, post-BUILD_ATTEMPT DNS failure.
 
@@ -607,6 +611,252 @@ def recover_dns_build():
         "financial_writes_authorized":False,"budget":budget})
     return complete_build(before,sockets,budget,build_account,imported,True,source)
 
+
+def postprebuild_recovery():
+    """Exactly one source-preserving recovery from owner-proven prebuild failure.
+
+    No dependency fetch, install, yarn lifecycle reinstall, node_modules rewrite,
+    original 3030 restart, 3031 startup, host DNS edits or finance secrets.
+    Each restricted networkless child gets its own immutable root phase receipt.
+    """
+    before=old_identity()
+    sockets=boundary_sockets()
+    ensure_not_running_candidate()
+    protected_root_dir(AUDIT,0o700)
+    need(DEST.parent==pathlib.Path("/var/lib") and not DEST.is_symlink(),
+         "POSTREC_STAGE_PARENT_OR_LINK_DRIFT")
+    account=pwd.getpwnam(BUILDER)
+    need(account.pw_uid==994,"POSTREC_BUILD_UID_CHANGED")
+    st=DEST.lstat()
+    need(stat.S_ISDIR(st.st_mode) and st.st_uid==994 and
+         stat.S_IMODE(st.st_mode)==0o700,
+         "POSTREC_STAGE_OWNER_OR_MODE_CHANGED")
+    expected_archive="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+    frozen=json.loads(read_no_symlink(AUDIT/"SOURCE_STAGED.json",65536,True))
+    first=json.loads(read_no_symlink(AUDIT/"BUILD_ATTEMPT.json",65536,True))
+    dns=json.loads(read_no_symlink(AUDIT/"DNS_RECOVERY_ATTEMPT.json",65536,True))
+    manifest=json.loads(read_no_symlink(AUDIT/"SOURCE_FILES.json",8*1024*1024,True))
+    need(frozen.get("status")=="SOURCE_STAGED" and
+         frozen.get("candidate_sha")==SHA and
+         frozen.get("git_archive_sha256")==expected_archive and
+         frozen.get("old_web_mainpid")==OLD_PID and
+         frozen.get("financial_writes_authorized") is False,
+         "POSTREC_FROZEN_SOURCE_RECEIPT_DRIFT")
+    need(first.get("status")=="BUILD_ATTEMPT_ENTERED" and
+         first.get("candidate_sha")==SHA and first.get("build_uid")==994 and
+         first.get("root_source_unchanged") is True and
+         first.get("financial_credentials_inherited") is False,
+         "POSTREC_FIRST_ATTEMPT_RECEIPT_DRIFT")
+    need(dns.get("status")=="DNS_RECOVERY_ATTEMPT_ENTERED" and
+         dns.get("candidate_sha")==SHA and dns.get("build_uid")==994 and
+         dns.get("old_web_mainpid")==OLD_PID and
+         dns.get("old_build_attempt_preserved") is True and
+         dns.get("financial_writes_authorized") is False,
+         "POSTREC_DNS_ATTEMPT_RECEIPT_DRIFT")
+    rows=manifest.get("rows")
+    need(manifest.get("schema")=="r25-c-source-files.v1" and
+         type(rows) is list and len(rows)>100 and
+         sha(canonical(rows))==frozen.get("source_manifest_sha256"),
+         "POSTREC_SOURCE_FILES_DIGEST_DRIFT")
+    # Prebuild generated only this source-tracked file, and it must still carry
+    # the first-party generator signature. No other source hash exceptions.
+    generated="lib/pageChangeManifest.generated.ts"
+    seen=set()
+    for row in rows:
+        need(type(row) is dict and type(row.get("name")) is str,
+             "POSTREC_BAD_SOURCE_MANIFEST_ROW")
+        name=row["name"]
+        rel=pathlib.PurePosixPath(name)
+        need(name not in seen and rel.parts and not rel.is_absolute() and
+             ".." not in rel.parts and ".git" not in rel.parts,
+             "POSTREC_SOURCE_PATH_UNSAFE")
+        seen.add(name)
+        p=DEST.joinpath(*rel.parts)
+        st=p.lstat()
+        need(st.st_uid==994 and not st.st_mode&0o022,
+             "POSTREC_SOURCE_OWNER_OR_PERMISSIONS_DRIFT:"+name[:90])
+        if row.get("kind")=="dir":
+            need(stat.S_ISDIR(st.st_mode),
+                 "POSTREC_SOURCE_DIR_DRIFT:"+name[:90])
+            continue
+        need(row.get("kind")=="file" and stat.S_ISREG(st.st_mode),
+             "POSTREC_SOURCE_KIND_DRIFT:"+name[:90])
+        fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        digest=hashlib.sha256()
+        prefix=b""
+        with os.fdopen(fd,"rb") as f:
+            for part in iter(lambda:f.read(1048576),b""):
+                if len(prefix)<96:prefix+=part[:96-len(prefix)]
+                digest.update(part)
+        if name==generated:
+            need(st.st_size<=32768 and
+                 prefix.startswith(b"// GENERATED by scripts/generate_page_change_manifest.py"),
+                 "POSTREC_GENERATED_MANIFEST_UNEXPECTED")
+        else:
+            need(st.st_size==row.get("size") and
+                 digest.hexdigest()==row.get("sha256"),
+                 "POSTREC_SOURCE_CONTENT_DRIFT:"+name[:90])
+    need(read_no_symlink(DEST/"r24-source-sha",128).decode().strip()==SHA,
+         "POSTREC_SOURCE_MARKER_DRIFT")
+    archive_identity(expected_archive)
+    imported=first.get("yarn_import")
+    need(type(imported) is dict and set(imported)=={
+        "package.json","bin/yarn.js","lib/cli.js"},
+        "POSTREC_YARN_IMPORT_RECEIPT_DRIFT")
+    for name,entry in imported.items():
+        need(type(entry) is dict and type(entry.get("size")) is int and
+             type(entry.get("sha256")) is str and
+             bool(HEX64.fullmatch(entry["sha256"])),
+             "POSTREC_YARN_IMPORT_RECORD_DRIFT")
+        p=DEST/".r25-yarn"/name
+        st=p.lstat()
+        need(stat.S_ISREG(st.st_mode) and st.st_uid==994 and
+             not st.st_mode&0o022 and st.st_size==entry["size"],
+             "POSTREC_YARN_IMPORTED_FILE_DRIFT:"+name)
+        h=hashlib.sha256()
+        fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        with os.fdopen(fd,"rb") as f:
+            for part in iter(lambda:f.read(1048576),b""):h.update(part)
+        need(h.hexdigest()==entry["sha256"],
+             "POSTREC_YARN_IMPORTED_SHA_DRIFT:"+name)
+    for name in (".r25-yarn",".r25-home",".r25-tmp",".r25-cache",
+                 ".r25-cache-dns-recovery1","node_modules",
+                 ".prisma-engine-seed"):
+        st=(DEST/name).lstat()
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==994 and
+             not st.st_mode&0o022,
+             "POSTREC_BUILD_DIR_DRIFT:"+name)
+    for name in (".next","BUILD_STAGED.json","BUILD_FILES.json"):
+        p=(AUDIT/name if name.endswith(".json") else DEST/name)
+        need(not p.exists() and not p.is_symlink(),
+             "POSTREC_UNEXPECTED_BUILD_ARTIFACT:"+name)
+    marker=AUDIT/"POSTPREBUILD_RECOVERY_ATTEMPT.json"
+    need(not marker.exists() and not marker.is_symlink(),
+         "POSTREC_ALREADY_ENTERED_NO_RETRY")
+    for number in range(1,7):
+        p=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%number)
+        need(not p.exists() and not p.is_symlink(),
+             "POSTREC_PHASE_JOURNAL_ALREADY_EXISTS")
+    version=read_no_symlink(DEST/".aoe2war-build-version",128).decode().strip()
+    need(bool(re.fullmatch(r"20[0-9]{12}-[0-9a-f]{10}",version)),
+         "POSTREC_PREBUILD_VERSION_NOT_PROVEN")
+    # Existing Yarn integrity must describe the exact Linux Node ABI and
+    # original package's required pinned top-level dependencies.
+    integrity=json.loads(read_no_symlink(
+        DEST/"node_modules/.yarn-integrity",160000))
+    need(integrity.get("systemParams")=="linux-x64-127" and
+         integrity.get("flags")==[] and
+         type(integrity.get("topLevelPatterns")) is list and
+         {"next@15.5.28","prisma@^7.10.0",
+          "@prisma/client@^7.10.0","typescript@^5"}.issubset(
+             set(integrity["topLevelPatterns"])),
+         "POSTREC_YARN_INTEGRITY_UNTRUSTED")
+    for name,expect in (("next","15.5.28"),("prisma","7.10.0"),
+                        ("@prisma/client","7.10.0"),("minimatch","11.0.3"),
+                        ("typescript","5.8.3")):
+        p=DEST/"node_modules"/name/"package.json"
+        raw=read_no_symlink(p,100000)
+        parsed=json.loads(raw)
+        need(parsed.get("name")==name and parsed.get("version")==expect,
+             "POSTREC_PACKAGE_VERSION_DRIFT:"+name)
+        if name=="prisma":
+            prisma_bin=parsed.get("bin")
+            need(isinstance(prisma_bin,dict) and
+                 prisma_bin.get("prisma")=="build/index.js",
+                 "POSTREC_PRISMA_ENTRYPOINT_CHANGED")
+    for name in ("next","prisma","eslint","tsc"):
+        link=DEST/"node_modules/.bin"/name
+        st=link.lstat()
+        need(stat.S_ISLNK(st.st_mode) and link.resolve().is_relative_to(DEST)
+             and link.resolve().is_file(),
+             "POSTREC_NODE_BIN_UNSAFE:"+name)
+    seed_dir=DEST/".prisma-engine-seed"
+    meta=json.loads(read_no_symlink(seed_dir/"metadata.json",4096))
+    raw_engine=seed_dir/"schema-engine-debian-openssl-3.0.x"
+    st=raw_engine.lstat()
+    need(meta.get("status")=="PASS" and meta.get("schema")==1 and
+         meta.get("target")=="debian-openssl-3.0.x" and
+         meta.get("engine_commit")=="0edf323efd1d98336f3f0a68684b56f689b900d3" and
+         meta.get("engine_sha256")==
+         "29557c21d47da6f1695ec1a747cb6c607dade5e44e8b3e4fa687bd4dc226956d" and
+         stat.S_ISREG(st.st_mode) and st.st_uid==994 and
+         st.st_size==23510888 and st.st_mode&0o111,
+         "POSTREC_PRISMA_ENGINE_METADATA_DRIFT")
+    h=hashlib.sha256()
+    fd=os.open(raw_engine,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    with os.fdopen(fd,"rb") as f:
+        for part in iter(lambda:f.read(1048576),b""):h.update(part)
+    need(h.hexdigest()==meta["engine_sha256"],
+         "POSTREC_PRISMA_SEEDED_ENGINE_SHA_DRIFT")
+    budget=root_storage_capacity()
+    need(old_identity()==before and boundary_sockets()==sockets,
+         "POSTREC_ORIGINAL_CHANGED_BEFORE_ENTRY")
+    # No old attempt is overwritten. This exclusive marker precedes ALL
+    # new sandbox process execution; a new failure requires new review.
+    write_once(marker,{
+        "status":"POSTPREBUILD_RECOVERY_ATTEMPT_ENTERED",
+        "candidate_sha":SHA,"original_attempts_preserved":2,
+        "original_root_source_archive_sha256":expected_archive,
+        "build_uid":994,"old_web_mainpid":OLD_PID,
+        "dependency_fetch_repeated":False,
+        "offline_install_repeated":False,
+        "prisma_engine_sha256":meta["engine_sha256"],
+        "prior_prebuild_version":version,
+        "financial_writes_authorized":False,
+        "network_enabled_for_build":False,"budget":budget})
+    print("PASS:POSTPREBUILD_RECOVERY_ENTERED_NO_REPLAY",flush=True)
+    common=["/usr/bin/systemd-run","--wait","--collect","--pipe",
+       "--property=User="+BUILDER,"--property=Group="+BUILDER,
+       "--property=WorkingDirectory="+str(DEST),
+       "--property=ProtectSystem=strict",
+       "--property=ReadWritePaths="+str(DEST),
+       "--property=ProtectHome=yes","--property=PrivateTmp=yes",
+       "--property=PrivateDevices=yes","--property=NoNewPrivileges=yes",
+       "--property=CapabilityBoundingSet=",
+       "--property=InaccessiblePaths=/etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+       "--property=PrivateNetwork=yes",
+       "--property=MemoryMax=4G",
+       "--property=TimeoutStartSec=1800",
+       "--setenv=HOME="+str(DEST/".r25-home"),
+       "--setenv=XDG_CACHE_HOME="+str(DEST/".r25-cache"),
+       "--setenv=TMPDIR="+str(DEST/".r25-tmp"),
+       "--setenv=PATH="+str(DEST/"node_modules/.bin")+":/usr/bin:/bin",
+       "--setenv=PRISMA_SCHEMA_ENGINE_BINARY="+str(raw_engine),
+       "--setenv=WARGRAPH_RUNTIME_DISABLED=true",
+       "--setenv=AOE2WAR_PROD_DB_PREVIEW=true",
+       "--setenv=NEXT_TELEMETRY_DISABLED=1",
+       "--setenv=NODE_OPTIONS=--max-old-space-size=2304"]
+    steps=[
+       ("minimatch",["/usr/bin/node",str(DEST/"scripts/ensure-minimatch11-legacy-api.mjs")],120),
+       ("page-manifest",["/usr/bin/python3",str(DEST/"scripts/generate_page_change_manifest.py")],180),
+       ("build-version",["/usr/bin/node",str(DEST/"scripts/write-build-version.mjs")],60),
+       ("prisma-generate",["/usr/bin/node",str(DEST/"node_modules/prisma/build/index.js"),"generate"],500),
+       ("release-validation",["/usr/bin/node",str(DEST/"scripts/aoe2_release_prebuild_validation.mjs")],1100),
+       ("next-build",["/usr/bin/node",str(DEST/"node_modules/next/dist/bin/next"),"build"],1900),
+       ("postbuild-cache",["/usr/bin/node",str(DEST/"scripts/prepare-runtime-cache.mjs")],120)
+    ]
+    for i,(label,argv,timeout) in enumerate(steps,1):
+        unit="aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i+label
+        commandline=common+["--unit="+unit]+argv
+        print("ENTER:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
+        p=subprocess.run(commandline,capture_output=True,timeout=timeout)
+        out=redacted_diagnostic_tail(p.stdout,1800)
+        err=redacted_diagnostic_tail(p.stderr,1800)
+        write_once(AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i),{
+            "status":"PASS" if p.returncode==0 else "HOLD",
+            "unit":unit,"phase":label,"exit_code":p.returncode,
+            "stdout_redacted_tail":out,"stderr_redacted_tail":err,
+            "candidate_sha":SHA,"build_uid":994,"private_network":True,
+            "finance_access":False})
+        if p.returncode:
+            raise Hold("POSTPREBUILD_PHASE_FAILED:"+label+
+                       ":EXIT="+str(p.returncode)+
+                       ":STDOUT="+out[-800:]+":STDERR="+err[-800:])
+        print("PASS:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
+    need(old_identity()==before and boundary_sockets()==sockets,
+         "POSTREC_OLD_WEB_OR_WOLO_CHANGED_BEFORE_SEAL")
+    return finalize_build(before,sockets,budget,frozen)
+
 def verified_b_runtime(b,raw):
     need(type(b)==dict and b.get("schema")=="aoe2war.r25.b.positive-parallel-runtime.v1"
          and b.get("candidate_sha")==SHA and
@@ -719,6 +969,7 @@ def main():
     commands.add_argument("--source-build",action="store_true")
     commands.add_argument("--build-stage",action="store_true")
     commands.add_argument("--recover-dns",action="store_true")
+    commands.add_argument("--recover-prebuild",action="store_true")
     commands.add_argument("--candidate-start",action="store_true")
     ap.add_argument("--archive-sha256",default="")
     a=ap.parse_args()
@@ -728,6 +979,7 @@ def main():
         build_source()
     elif a.build_stage:build_source()
     elif a.recover_dns:recover_dns_build()
+    elif a.recover_prebuild:postprebuild_recovery()
     else:start_candidate()
 if __name__=="__main__":
     try:main()
