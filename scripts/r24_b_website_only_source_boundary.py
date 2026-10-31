@@ -90,7 +90,8 @@ def route_paths(tree: bytes) -> list[str]:
         if mode not in ("100644", "100755") or kind != "blob":
             raise ValueError("ROUTE_TREE_NONREGULAR_FILE")
         if path.startswith("app/api/") and path.endswith(("/route.ts", "/route.js")):
-            if path in seen or not re.fullmatch(r"app/api/[A-Za-z0-9_@./\-\[\]]+/route\.(ts|js)", path):
+            if (path in seen or any(part in ("", ".", "..") for part in path.split("/"))
+                or not re.fullmatch(r"app/api/[A-Za-z0-9_@./\-\[\]]+/route\.(ts|js)", path)):
                 raise ValueError("ROUTE_TREE_DUPLICATE_OR_UNSAFE_PATH")
             seen.add(path)
             paths.append(path)
