@@ -331,6 +331,14 @@ def build_source():
        "status":"BUILD_ATTEMPT_ENTERED","root_source_unchanged":True,
        "build_uid":account.pw_uid,"financial_credentials_inherited":False,
        "yarn_import":yarn_receipt})
+    return complete_build(before,sockets,budget,account,yarn_receipt,False)
+
+def complete_build(before,sockets,budget,account,yarn_receipt,recovery):
+    unit_tag="-dns-recovery1" if recovery else ""
+    cache_dir=DEST/(".r25-cache-dns-recovery1" if recovery else ".r25-cache")
+    # Prior DNS-only UID994 sandbox probe physically verified this exact bind.
+    dns_bind=(["--property=BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:/run/systemd/resolve/stub-resolv.conf"]
+              if recovery else [])
     common=["/usr/bin/systemd-run","--wait","--collect","--pipe",
             "--property=User="+BUILDER,"--property=Group="+BUILDER,
             "--property=WorkingDirectory="+str(DEST),
@@ -350,21 +358,21 @@ def build_source():
     yarnjs=str(DEST/".r25-yarn/bin/yarn.js")
     # Fetch phase executes ZERO third-party lifecycle scripts. Network egress
     # excludes localhost. If IP firewall/cgroup enforcement fails, HOLD.
-    fetch=common+["--unit=aoe2war-r25-deps-"+SHA[:8],
-       "--property=IPAddressDeny=localhost","--property=IPAddressDeny=link-local",
+    fetch=common+["--unit=aoe2war-r25-deps-"+SHA[:8]+unit_tag,
+       "--property=IPAddressDeny=localhost","--property=IPAddressDeny=link-local"]+dns_bind+[
        "/usr/bin/node",yarnjs,"install","--frozen-lockfile","--ignore-scripts",
-       "--non-interactive","--cache-folder",str(DEST/".r25-cache")]
+       "--non-interactive","--cache-folder",str(cache_dir)]
     command(fetch,timeout=1500)
     # Explicit first-party, checksum-verifying engine seed in the same sandbox.
-    seed=common+["--unit=aoe2war-r25-prisma-"+SHA[:8],
-       "--property=IPAddressDeny=localhost","--property=IPAddressDeny=link-local",
+    seed=common+["--unit=aoe2war-r25-prisma-"+SHA[:8]+unit_tag,
+       "--property=IPAddressDeny=localhost","--property=IPAddressDeny=link-local"]+dns_bind+[
        "/usr/bin/python3",str(DEST/"scripts/aoe2_prisma_engine_seed.py")]
     command(seed,timeout=500)
     # All package lifecycle build scripts run with NO NETWORK, no host secrets.
     scripts=(f"/usr/bin/node {yarnjs} install --frozen-lockfile --offline "
-             f"--force --non-interactive --cache-folder {DEST/'.r25-cache'} && "
+             f"--force --non-interactive --cache-folder {cache_dir} && "
              f"/usr/bin/node {yarnjs} build")
-    build=common+["--unit=aoe2war-r25-build-"+SHA[:8],
+    build=common+["--unit=aoe2war-r25-build-"+SHA[:8]+unit_tag,
        "--property=PrivateNetwork=yes","--property=MemoryMax=4G",
        "--property=TimeoutStartSec=1800",
        "/bin/sh","-c",scripts]
@@ -412,6 +420,154 @@ def build_source():
     write_once(AUDIT/"BUILD_STAGED.json",manifest)
     print("PASS:BUILD_STAGED BUILD_ID="+build_id+" BUILD_VERSION="+version,flush=True)
     return True
+def recover_dns_build():
+    """Resume exactly one owner-observed, post-BUILD_ATTEMPT DNS failure.
+
+    Neither the source tree nor root build journal is replaced. The original
+    3030 website, 8092/8093, Nginx and financial paths are read-only boundaries.
+    The only new writes are a distinct recovery attempt receipt and new
+    restricted-build-UID dependency/build artifacts within the existing stage.
+    """
+    before=old_identity()
+    sockets=boundary_sockets()
+    ensure_not_running_candidate()
+    protected_root_dir(AUDIT,0o700)
+    need(DEST.parent==pathlib.Path("/var/lib") and not DEST.is_symlink(),
+         "RECOVERY_STAGE_PARENT_DRIFT")
+    build_account=pwd.getpwnam(BUILDER)
+    need(build_account.pw_uid==994 and build_account.pw_uid not in (0,1000),
+         "RECOVERY_BUILD_UID_NOT_OBSERVED_994")
+    stage_stat=DEST.lstat()
+    need(stat.S_ISDIR(stage_stat.st_mode) and
+         stage_stat.st_uid==build_account.pw_uid and
+         stat.S_IMODE(stage_stat.st_mode)==0o700,
+         "RECOVERY_STAGE_OWNER_MODE_DRIFT")
+    source=json.loads(read_no_symlink(AUDIT/"SOURCE_STAGED.json",65536,True))
+    previous=json.loads(read_no_symlink(AUDIT/"BUILD_ATTEMPT.json",65536,True))
+    original_rows=json.loads(read_no_symlink(AUDIT/"SOURCE_FILES.json",8*1024*1024,True))
+    expected_archive="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+    need(source.get("status")=="SOURCE_STAGED" and
+         source.get("candidate_sha")==SHA and
+         source.get("git_archive_sha256")==expected_archive and
+         source.get("old_web_mainpid")==OLD_PID and
+         source.get("financial_writes_authorized") is False,
+         "RECOVERY_SOURCE_RECEIPT_MISMATCH")
+    need(previous.get("status")=="BUILD_ATTEMPT_ENTERED" and
+         previous.get("candidate_sha")==SHA and
+         previous.get("build_uid")==build_account.pw_uid and
+         previous.get("root_source_unchanged") is True and
+         previous.get("financial_credentials_inherited") is False,
+         "RECOVERY_BUILD_ATTEMPT_MISMATCH")
+    rows=original_rows.get("rows")
+    need(original_rows.get("schema")=="r25-c-source-files.v1" and
+         type(rows) is list and len(rows)>100 and
+         sha(canonical(rows))==source.get("source_manifest_sha256"),
+         "RECOVERY_SOURCE_MANIFEST_MISMATCH")
+    # The original worker validated the stored digest, not the source bytes.
+    # For recovery rehash every extracted file before permitting any new fetch.
+    seen=set()
+    for item in rows:
+        need(type(item) is dict and type(item.get("name")) is str,
+             "RECOVERY_BAD_SOURCE_MANIFEST_ROW")
+        name=item["name"]
+        rel=pathlib.PurePosixPath(name)
+        need(name not in seen and not rel.is_absolute() and rel.parts and
+             ".." not in rel.parts and ".git" not in rel.parts,
+             "RECOVERY_SOURCE_PATH_TRAVERSAL_OR_DUPLICATE")
+        seen.add(name)
+        file=DEST.joinpath(*rel.parts)
+        st=file.lstat()
+        need(st.st_uid==build_account.pw_uid and not st.st_mode&0o022,
+             "RECOVERY_SOURCE_OWNER_OR_MODE_CHANGED:"+name[:90])
+        if item.get("kind")=="dir":
+            need(stat.S_ISDIR(st.st_mode),"RECOVERY_SOURCE_DIR_CHANGED:"+name[:90])
+        elif item.get("kind")=="file":
+            need(stat.S_ISREG(st.st_mode) and st.st_size==item.get("size"),
+                 "RECOVERY_SOURCE_FILE_LENGTH_CHANGED:"+name[:90])
+            fd=os.open(file,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+            h=hashlib.sha256()
+            with os.fdopen(fd,"rb") as stream:
+                for piece in iter(lambda:stream.read(1048576),b""):
+                    h.update(piece)
+            need(h.hexdigest()==item.get("sha256"),
+                 "RECOVERY_SOURCE_FILE_DIGEST_CHANGED:"+name[:90])
+        else:
+            raise Hold("RECOVERY_SOURCE_KIND_CHANGED")
+    need(read_no_symlink(DEST/"r24-source-sha",128).decode().strip()==SHA,
+         "RECOVERY_FROZEN_SOURCE_MARKER_CHANGED")
+    archive_identity(expected_archive)
+    imported=previous.get("yarn_import")
+    need(type(imported) is dict and
+         set(imported)=={"package.json","bin/yarn.js","lib/cli.js"},
+         "RECOVERY_IMPORTED_YARN_RECEIPT_INVALID")
+    for name,entry in imported.items():
+        need(type(entry) is dict and
+             type(entry.get("size")) is int and
+             type(entry.get("sha256")) is str and
+             bool(HEX64.fullmatch(entry["sha256"])),
+             "RECOVERY_IMPORTED_YARN_METADATA_INVALID")
+        path=DEST/".r25-yarn"/name
+        st=path.lstat()
+        need(stat.S_ISREG(st.st_mode) and
+             st.st_uid==build_account.pw_uid and
+             not st.st_mode&0o022 and st.st_size==entry["size"],
+             "RECOVERY_IMPORTED_YARN_FILE_DRIFT:"+name)
+        fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        h=hashlib.sha256()
+        with os.fdopen(fd,"rb") as stream:
+            for part in iter(lambda:stream.read(1048576),b""):
+                h.update(part)
+        need(h.hexdigest()==entry["sha256"],
+             "RECOVERY_IMPORTED_YARN_DIGEST_DRIFT:"+name)
+    # Physical probe observed no node_modules, .next or build-version. Refuse
+    # even if there is an unexpected zero-byte/partial attempt artifact.
+    for rel in ("node_modules",".next",".aoe2war-build-version",
+                ".r25-cache-dns-recovery1"):
+        path=DEST/rel
+        need(not path.exists() and not path.is_symlink(),
+             "RECOVERY_PARTIAL_ARTIFACT_OR_DUPLICATE:"+rel)
+    for rel in ("BUILD_STAGED.json","BUILD_FILES.json",
+                "DNS_RECOVERY_ATTEMPT.json"):
+        path=AUDIT/rel
+        need(not path.exists() and not path.is_symlink(),
+             "RECOVERY_AUDIT_ALREADY_EXISTS:"+rel)
+    for rel in (".r25-yarn",".r25-cache",".r25-home",".r25-tmp"):
+        st=(DEST/rel).lstat()
+        need(stat.S_ISDIR(st.st_mode) and
+             st.st_uid==build_account.pw_uid and not st.st_mode&0o022,
+             "RECOVERY_WORK_DIR_CHANGED:"+rel)
+    # Owner read-only DNS study: exact host resolver bytes and symlink are
+    # pinned, not guessed. The original /etc/resolv.conf and systemd-resolved
+    # configuration are NEVER modified by this operation.
+    stub=pathlib.Path("/etc/resolv.conf")
+    upstream=pathlib.Path("/run/systemd/resolve/resolv.conf")
+    need(stub.is_symlink() and
+         stub.resolve()==pathlib.Path("/run/systemd/resolve/stub-resolv.conf"),
+         "RECOVERY_HOST_RESOLVER_NOT_STUB")
+    need(sha(read_no_symlink(stub.resolve(),65536))==
+         "ebdf560272a77357195c39e98340b77e18c8a8ce2025ee950e9e0c7b01467ab8",
+         "RECOVERY_HOST_STUB_SHA_DRIFT")
+    raw=read_no_symlink(upstream,65536)
+    need(sha(raw)==
+         "e923eacb93e1520bf5645a8cee9b40d8cfaaf62b3f1102c8cf766d2d5bb98896"
+         and b"nameserver 1.1.1.1" in raw,
+         "RECOVERY_UPSTREAM_RESOLVER_SHA_DRIFT")
+    budget=root_storage_capacity()
+    need(old_identity()==before and boundary_sockets()==sockets,
+         "RECOVERY_ORIGINAL_SERVICES_DRIFT_PRE_JOURNAL")
+    cache=DEST/".r25-cache-dns-recovery1"
+    os.mkdir(cache,0o700)
+    os.chown(cache,build_account.pw_uid,build_account.pw_gid)
+    fsyncdir(DEST)
+    write_once(AUDIT/"DNS_RECOVERY_ATTEMPT.json",{
+        "status":"DNS_RECOVERY_ATTEMPT_ENTERED",
+        "candidate_sha":SHA,"old_build_attempt_preserved":True,
+        "build_uid":build_account.pw_uid,"old_web_mainpid":OLD_PID,
+        "upstream_resolver_sha256":sha(raw),
+        "isolated_dns_bind_only":True,"localhost_ip_deny_preserved":True,
+        "financial_writes_authorized":False,"budget":budget})
+    return complete_build(before,sockets,budget,build_account,imported,True)
+
 def verified_b_runtime(b,raw):
     need(type(b)==dict and b.get("schema")=="aoe2war.r25.b.positive-parallel-runtime.v1"
          and b.get("candidate_sha")==SHA and
@@ -523,6 +679,7 @@ def main():
     commands.add_argument("--source-stage",action="store_true")
     commands.add_argument("--source-build",action="store_true")
     commands.add_argument("--build-stage",action="store_true")
+    commands.add_argument("--recover-dns",action="store_true")
     commands.add_argument("--candidate-start",action="store_true")
     ap.add_argument("--archive-sha256",default="")
     a=ap.parse_args()
@@ -531,6 +688,7 @@ def main():
         stage_source(a.archive_sha256)
         build_source()
     elif a.build_stage:build_source()
+    elif a.recover_dns:recover_dns_build()
     else:start_candidate()
 if __name__=="__main__":
     try:main()
