@@ -54,7 +54,7 @@ def canonical(registry=REGISTRY,bindings=BINDINGS):
     need(reg.get("schema")=="aoe2war.os.census.v1" and
          cross.get("schema")=="aoe2war.central-agent-os-bindings.v1",
          "CANONICAL_OS_SCHEMA")
-    need(cross["source_registry_sha"]=="076b2b7ccc317ba65b26f5bb390390a379263ca4",
+    need(cross["source_registry_sha"]=="8b275229c16f67dc65f9d3bd4b500faf11aa72a0",
          "OS_REGISTRY_PR_REVIEW_SHA_CHANGED")
     records=reg.get("subordinate_os")
     need(isinstance(records,list) and len(records)==14 and
