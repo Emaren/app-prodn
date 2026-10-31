@@ -13,7 +13,9 @@ import stat, subprocess, sys, tarfile, time, urllib.request
 SHA="0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST="ubuntu-4gb-hel1-11"
 SOURCE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(SHA+".tar")
-DEST=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+# Root-owned /var/lib is the trust boundary: original /var/www/AoE2HDBets
+# is not root-owned and MUST NOT be chmod/chowned or used as stage parent.
+DEST=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
 OLD_UNIT="aoe2hdbets-web.service"
 NEW_UNIT="aoe2hdbets-web-r24.service"
@@ -172,6 +174,8 @@ def stage_source(expected):
     length=archive_identity(expected)
     need(not DEST.exists() and not DEST.is_symlink(),"CANDIDATE_STAGE_EXISTS_NO_REPLAY")
     protected_root_dir(DEST.parent)
+    need(DEST.parent==pathlib.Path('/var/lib') and DEST.name.startswith('aoe2war-r25-web-'),
+         'R25_ROOT_PROTECTED_STAGE_PARENT_REQUIRED')
     protected_root_dir(AUDIT.parent)
     if not AUDIT.exists():os.mkdir(AUDIT,0o700);fsyncdir(AUDIT.parent)
     protected_root_dir(AUDIT,0o700)
