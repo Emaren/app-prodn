@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/d-r17-native-independent-producer-signer` at `6319c5a91a0daed777f8b8dcf31db75d9ee94965`
+Implementation baseline: `review/d-r17-native-independent-producer-signer` at `ee5db528d5a989662b613dc1690c65d23794db68`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
