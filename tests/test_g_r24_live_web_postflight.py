@@ -143,6 +143,71 @@ class R25Tests(unittest.TestCase):
             (pathlib.Path(home)/"outside").write_bytes(b"outside")
             with self.assertRaises(g.Hold):g.bounded_tree(root)
 
+    def test_actual_six_location_nginx_topology_rejects_partial_switch(self):
+        labels=["^~ /players/by-name/","= /api/kingdom-presence/events",
+                "^~ /api/","= /","^~ /download/watcher/","/"]
+        def config(port=3030,missing_guard=False):
+            locations="\n".join(
+                "location "+label+" { "+
+                ("" if missing_guard else "if ($request_method !~ ^(GET|HEAD)$) { return 405; } ")+
+                "proxy_pass http://127.0.0.1:"+str(port)+"; }"
+                for label in labels)
+            return ("""server {
+ listen 443 ssl;
+ server_name aoe2war.com www.aoe2war.com;
+ """+locations+"""
+ location /rpc { proxy_pass http://127.0.0.1:27657; }
+ location /rest { proxy_pass http://127.0.0.1:1318; }
+}
+server {
+ listen 80;
+ server_name aoe2war.com www.aoe2war.com;
+}
+""").encode()
+        self.assertEqual(g.six_web_upstreams(config()),3030)
+        self.assertEqual(g.six_web_upstreams(config(3031)),3031)
+        for bad in [config(3031,True),
+                    config().replace(b"127.0.0.1:3030;",b"127.0.0.1:3031;",1),
+                    config().replace(b"location = / {",b"location = /other {"),
+                    config().replace(b"127.0.0.1:1318;",b"127.0.0.1:9999;")]:
+            with self.assertRaises(g.Hold):g.six_web_upstreams(bad)
+    def test_c_true_git_archive_manifests_without_git_checkout(self):
+        import json, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            root=pathlib.Path(d);(root/".next").mkdir()
+            (root/"node_modules").mkdir()
+            (root/"code.js").write_bytes(b"git-archived-source")
+            (root/".next/BUILD_ID").write_text("TrueNextBuild_ABC\n")
+            (root/"node_modules/a.js").write_bytes(b"node")
+            source_rows=[{"name":"code.js","kind":"file","size":19,
+                          "sha256":g.digest(b"git-archived-source")}]
+            build_rows=[{"path":"code.js","type":"file","size":19,
+                         "sha256":g.digest(b"git-archived-source")}]
+            source={"status":"SOURCE_STAGED","candidate_sha":g.TARGET,
+                    "git_archive_sha256":g.ARCHIVE_SHA,
+                    "source_manifest_sha256":g.digest(g.canon(source_rows))}
+            built={"status":"BUILD_STAGED","candidate_sha":g.TARGET,
+                   "source_git_archive_sha256":g.ARCHIVE_SHA,
+                   "tree_sha256":g.digest(g.canon(build_rows)),
+                   "build_id":"TrueNextBuild_ABC","root_sealed":True,
+                   "financial_writes_authorized":False,
+                   "old_web_pid_untouched":g.EXPECTED_OLD_PID}
+            files={"schema":"r25-c-source-files.v1","rows":source_rows}
+            artifact={"schema":"aoe2war.r25.c.full-artifact-files.v1","rows":build_rows}
+            mapping={"SOURCE_STAGED.json":source,"BUILD_STAGED.json":built,
+                     "SOURCE_FILES.json":files,"BUILD_FILES.json":artifact}
+            def readfile(p,maxsize=65536):
+                return json.dumps(mapping[pathlib.Path(p).name]).encode()
+            with patch.object(g,"STAGE",root),patch.object(g,"root_file",side_effect=readfile):
+                self.assertEqual(g.verified_c_archive_source()["receipt_build_id"],
+                                 "TrueNextBuild_ABC")
+                built["build_id"]="INVENTED_ID"
+                # A fabricated BUILD_ID cannot pass actual staged Next output.
+                with self.assertRaises(g.Hold):
+                    g.stage()
+                built["build_id"]="TrueNextBuild_ABC"
+                (root/"code.js").write_bytes(b"tampered")
+                with self.assertRaises(g.Hold):g.verified_c_archive_source()
     def test_no_false_public_build_and_duplicate_json(self):
         code=FILE.read_text()
         self.assertIn("public_next_build_id_directly_exposed",code)
