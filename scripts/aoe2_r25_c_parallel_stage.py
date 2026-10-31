@@ -773,7 +773,7 @@ def postprebuild_recovery():
     marker=AUDIT/"POSTPREBUILD_RECOVERY_ATTEMPT.json"
     need(not marker.exists() and not marker.is_symlink(),
          "POSTREC_ALREADY_ENTERED_NO_RETRY")
-    for number in range(1,8):
+    for number in range(1,5):
         p=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%number)
         need(not p.exists() and not p.is_symlink(),
              "POSTREC_PHASE_JOURNAL_ALREADY_EXISTS")
@@ -842,6 +842,7 @@ def postprebuild_recovery():
         "offline_install_repeated":False,
         "prisma_engine_sha256":meta["engine_sha256"],
         "prior_prebuild_version":version,
+        "build_version_rewritten":False,
         "financial_writes_authorized":False,
         "network_enabled_for_build":False,"budget":budget})
     print("PASS:POSTPREBUILD_RECOVERY_ENTERED_NO_REPLAY",flush=True)
@@ -866,10 +867,10 @@ def postprebuild_recovery():
        "--setenv=AOE2WAR_PROD_DB_PREVIEW=true",
        "--setenv=NEXT_TELEMETRY_DISABLED=1",
        "--setenv=NODE_OPTIONS=--max-old-space-size=2304"]
+    # The owner-observed .aoe2war-build-version was created after
+    # minimatch + page-manifest stages of the original prebuild. Preserve
+    # those exact bytes and avoid rerunning already completed first-party work.
     steps=[
-       ("minimatch",["/usr/bin/node",str(DEST/"scripts/ensure-minimatch11-legacy-api.mjs")],120),
-       ("page-manifest",["/usr/bin/python3",str(DEST/"scripts/generate_page_change_manifest.py")],180),
-       ("build-version",["/usr/bin/node",str(DEST/"scripts/write-build-version.mjs")],60),
        ("prisma-generate",["/usr/bin/node",str(DEST/"node_modules/prisma/build/index.js"),"generate"],500),
        ("release-validation",["/usr/bin/node",str(DEST/"scripts/aoe2_release_prebuild_validation.mjs")],1100),
        ("next-build",["/usr/bin/node",str(DEST/"node_modules/next/dist/bin/next"),"build"],1900),
