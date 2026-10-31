@@ -195,7 +195,8 @@ def preflight(a):
          and stat.S_IMODE(RECEIPTS.stat().st_mode)==0o700,
          "ROOT_PROTECTED_R24_RECEIPTS_DIR_NOT_PROVISIONED")
     git_state(a["previous_sha"])
-    need(service_state()[0]=="active","LIVE_WEB_NOT_ACTIVE")
+    active,pid=service_state()
+    need(active=="active" and pid.isdigit() and int(pid)>1,"LIVE_WEB_NOT_ACTIVE")
     need((REPO/".next/BUILD_ID").is_file() and (REPO/"node_modules").is_dir(),
          "EXISTING_ROLLBACK_RUNTIME_MISSING")
     need((REPO/".aoe2war-build-version").is_file(),"OLD_VERSION_SIDECAR_MISSING")
@@ -206,6 +207,14 @@ def preflight(a):
     need(stage_receipt.is_file() and not stage_receipt.is_symlink() and
          hashlib.sha256(stage_receipt.read_bytes()).hexdigest()==a["stage_receipt_sha256"],
          "F_STAGE_RECEIPT_MISSING_OR_UNPINNED")
+    stage=json_read(stage_receipt)
+    need(type(stage)==dict and stage.get("release_sha")==CANDIDATE
+         and stage.get("staged_build_id")==a["candidate_build_id"]
+         and stage.get("artifact_sha256")==a["stage_artifact_sha256"]
+         and stage.get("candidate_node_modules_sha256")==a["stage_dependencies_sha256"]
+         and stage.get("migration_authorized") is False
+         and stage.get("financial_write_authorized") is False,
+         "F_STAGE_RECEIPT_SCOPE_OR_IDENTITY_DRIFT")
     check_stage(a)
     return capture_units(a["financial_units"]),dict(socket_state())
 def write_receipt(path,obj):
@@ -213,6 +222,14 @@ def write_receipt(path,obj):
     fd=os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY|os.O_NOFOLLOW,0o600)
     with os.fdopen(fd,"wb") as f:
         f.write(raw);f.flush();os.fsync(f.fileno())
+    sync_dir(path.parent)
+def sync_dir(path):
+    fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try: os.fsync(fd)
+    finally: os.close(fd)
+def web_config():
+    return run(["/usr/bin/systemctl","show",SERVICE,
+         "-pFragmentPath","-pDropInPaths","-pExecStart","-pUser","-pWorkingDirectory"])
 def compare_protected(pre,post):
     need(pre==post,"FINANCIAL_OR_WOLO_PROCESS_IDENTITY_CHANGED")
 def confirm_web_version(target):
@@ -229,6 +246,7 @@ def move(a,b):
     os.rename(a,b)
 def cutover(a):
     pre_units,pre_socket=preflight(a)
+    before_web_config=web_config()
     need(hashlib.sha256(canonical(pre_units)).hexdigest()==a["financial_unit_records_sha256"],
          "B_FINANCIAL_UNIT_PREIMAGE_NOT_APPROVED")
     nonce=hashlib.sha256((CANDIDATE+a["previous_sha"]+a["candidate_build_id"]).encode()).hexdigest()[:20]
@@ -242,6 +260,7 @@ def cutover(a):
     backup_version=REPO/(".buildversion-r24-before-"+nonce)
     for p in (backup_next,backup_modules,backup_version): need(not p.exists(),"ROLLBACK_SLOT_CONFLICT")
     os.mkdir(folder,0o700)
+    sync_dir(RECEIPTS)
     write_receipt(folder/"before.json",{"candidate":CANDIDATE,
         "previous":a["previous_sha"],"previous_build_id":old_build,
         "previous_build_version":old_version.decode(errors="replace").strip(),
@@ -272,6 +291,10 @@ def cutover(a):
         confirm_web_version(a["candidate_build_version"])
         compare_protected((pre_units,pre_socket),
                           (capture_units(a["financial_units"]),dict(socket_state())))
+        need(web_config()==before_web_config,"WEB_SYSTEMD_UNIT_CHANGED_DURING_CUTOVER")
+        new_active,new_pid=service_state()
+        need(new_active=="active" and new_pid.isdigit() and int(new_pid)>1,
+             "NEW_WEB_MAINPID_NOT_LIVE")
         need((REPO/".next/BUILD_ID").read_text().strip()==a["candidate_build_id"],
              "LIVE_NEXT_BUILD_ID_DRIFT")
         write_receipt(folder/"commit.json",{"status":"LIVE_WEB_ONLY","candidate":CANDIDATE,
@@ -367,6 +390,9 @@ def rollback_committed(a,nonce):
         confirm_web_version(before["previous_build_version"])
         need((REPO/".next/BUILD_ID").read_text().strip()==oldbuild,
              "RESTORED_BUILD_ID_DRIFT")
+        restored_active,restored_pid=service_state()
+        need(restored_active=="active" and restored_pid.isdigit() and int(restored_pid)>1,
+             "RESTORED_WEB_MAINPID_NOT_LIVE")
         compare_protected((new_units,new_sockets),
                           (capture_units(a["financial_units"]),dict(socket_state())))
         write_receipt(folder/"rollback.json",{"status":"RESTORED_PREVIOUS_WEB",
