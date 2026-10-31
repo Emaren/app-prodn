@@ -167,17 +167,84 @@ def verify_lineage(approved,done,stage,before,after,attempt):
          done.get("finance_fingerprint_sha256")==digest(canonical(after["finance"]["protected"])),
          "POST_ACTIVATION_MOUNT_FINANCE_IDENTITY")
     return build
-def process_id(record):
+PROC_ROOT=pathlib.Path("/proc")
+def proc_start_ticks(base):
+    raw=(base/"stat").read_text()
+    close=raw.rfind(")")
+    need(close>0,"PROC_STAT_MALFORMED")
+    words=raw[close+2:].split()
+    need(len(words)>19,"PROC_STAT_TRUNCATED")
+    return int(words[19])
+def listener_socket_inode(port):
+    """Unique kernel LISTEN socket for port; never confuse open port with PID custody."""
+    found=[]
+    for table in ("tcp","tcp6"):
+        lines=(PROC_ROOT/"net"/table).read_text().splitlines()
+        need(bool(lines) and "local_address" in lines[0],"KERNEL_TCP_TABLE_MALFORMED")
+        for line in lines[1:]:
+            columns=line.split()
+            need(len(columns)>=10,"KERNEL_TCP_ROW_MALFORMED")
+            if columns[3]!="0A":
+                continue
+            address=columns[1].rsplit(":",1)
+            need(len(address)==2,"KERNEL_TCP_ADDRESS_MALFORMED")
+            if int(address[1],16)==port:
+                inode=columns[9]
+                need(inode.isdecimal() and int(inode)>0,"KERNEL_LISTEN_INODE_UNKNOWN")
+                found.append(inode)
+    need(len(found)==1,"KERNEL_LISTENER_NOT_UNIQUE:"+str(port))
+    return found[0]
+def process_listener_owns(port,pid,inode):
+    """Read kernel fd symlinks, not pasted socket->PID mappings."""
+    directory=PROC_ROOT/str(pid)/"fd"
+    checked=0
+    matched=False
+    for fd in directory.iterdir():
+        checked+=1
+        need(checked<=8192,"PROTECTED_FD_CENSUS_UNBOUNDED")
+        try:
+            linked=os.readlink(fd)
+        except FileNotFoundError:
+            # Closing unrelated descriptors can race with enumeration.
+            continue
+        if linked=="socket:["+inode+"]":
+            matched=True
+    need(matched,"LISTENER_INODE_NOT_OWNED_BY_SIGNED_PID:"+str(port))
+def process_id(port,record):
     pid=record.get("pid")
     need(type(pid)is int and pid>1,"INVALID_PROTECTED_LISTENER_PID")
-    raw=pathlib.Path(f"/proc/{pid}/stat").read_text()
-    words=raw[raw.rfind(")")+2:].split()
-    ticks=int(words[19])
-    line=next(s for s in pathlib.Path(f"/proc/{pid}/status").read_text().splitlines() if s.startswith("Uid:"))
+    base=PROC_ROOT/str(pid)
+    first=proc_start_ticks(base)
+    line=next(s for s in (base/"status").read_text().splitlines() if s.startswith("Uid:"))
     uid=int(line.split()[1])
-    need(ticks==record.get("start_time_ticks") and uid==record.get("uid"),
+    cgroup=(base/"cgroup").read_bytes()
+    # Compare the actual executable's bytes, not just /proc/{pid}/exe's name.
+    exe_fd=os.open(base/"exe",os.O_RDONLY|os.O_CLOEXEC)
+    try:
+        st=os.fstat(exe_fd)
+        need(stat.S_ISREG(st.st_mode),"SIGNED_LISTENER_EXE_NOT_REGULAR")
+        h=hashlib.sha256()
+        with os.fdopen(exe_fd,"rb",closefd=False) as file:
+            while True:
+                block=file.read(1024*1024)
+                if not block:break
+                h.update(block)
+        st_after=os.fstat(exe_fd)
+        need((st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns)==
+             (st_after.st_dev,st_after.st_ino,st_after.st_size,st_after.st_mtime_ns),
+             "SIGNED_LISTENER_EXE_CHANGED")
+    finally: os.close(exe_fd)
+    inode=listener_socket_inode(port)
+    process_listener_owns(port,pid,inode)
+    last=proc_start_ticks(base)
+    need(first==last==record.get("start_time_ticks") and uid==record.get("uid"),
          "PROTECTED_8092_8093_PID_REPLACED")
-    return {"pid":pid,"start_time_ticks":ticks,"uid":uid}
+    need(digest(cgroup)==record.get("cgroup_sha256") and
+         h.hexdigest()==record.get("executable_sha256"),
+         "PROTECTED_LISTENER_CGROUP_OR_EXE_DRIFT")
+    return {"pid":pid,"start_time_ticks":last,"uid":uid,
+            "socket_inode_sha256":digest(inode.encode()),
+            "executable_sha256":h.hexdigest(),"cgroup_sha256":digest(cgroup)}
 def live_identity(build,after):
     source=command(["/usr/bin/git","-C",str(REPO),"rev-parse","HEAD"])
     need(source==CANDIDATE,"LIVE_SOURCE_NOT_SIGNED_RELEASE")
@@ -211,7 +278,7 @@ def live_identity(build,after):
         need(live.get("ActiveState")==signed.get("state") and
              int(live.get("MainPID","-1"))==signed.get("main_pid"),
              "ORIGINAL_NATIVE_UNIT_PID_DRIFT:"+name)
-    ports={p:process_id(after["finance"]["protected"][p]) for p in ("8092","8093")}
+    ports={p:process_id(int(p),after["finance"]["protected"][p]) for p in ("8092","8093")}
     return {"source_sha":source,"next_build_id":local,"web_main_pid":webpid,
             "web_start_monotonic":props.get("ExecMainStartTimestampMonotonic"),
             "protected_listeners":ports,"original_units_remeasured":len(names)}
