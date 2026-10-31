@@ -190,6 +190,14 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn("EXPLICIT_PLAN_ONLY_OR_INSTALL_PHASE_REQUIRED",s)
         self.assertIn("PASS:R25_B_PLAN_ONLY_NO_INSTALL_SSH",s)
 
+    def test_root_installer_fits_exact_owner_fetch_bound(self):
+        raw=(ROOT/"scripts/r25_b_additive_3031_setup.py").read_bytes()
+        self.assertGreater(len(raw),20000)  # regression: original Mac HOLD
+        self.assertLessEqual(len(raw),mac.ROOT_SOURCE_MAX_BYTES)
+        self.assertIn('root=fetch(ROOT_REF,"scripts/r25_b_additive_3031_setup.py",ROOT_SOURCE_MAX_BYTES)',
+                      (ROOT/"scripts/r25_b_owner_mac_setup.py").read_text())
+        self.assertEqual(mac.gitblob(raw),mac.ROOT_BLOB)
+
     def test_owner_mac_root_and_templates_pinned(self):
         self.assertEqual(mac.B_SOURCE,b.SOURCE_COMMIT)
         self.assertEqual(mac.GUARD_SHA,b.GUARD_SHA)

@@ -17,6 +17,9 @@ import urllib.request
 B_SOURCE="87d340314e46032fce68e5cfdcc268b8e6593a82"
 ROOT_REF="b71962c6d851bf32643bde374ea51f89b2452019"
 ROOT_BLOB="89587750e67abdc0cbe97027b0f7388bf39a717e"
+# Root installer currently 21,525 bytes. Bound source retrieval above that size.
+# Keep this tied to a focused test so future source growth cannot silently HOLD on Mac.
+ROOT_SOURCE_MAX_BYTES=32768
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
 DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
@@ -51,7 +54,7 @@ def gitblob(data):
     return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\x00"+data).hexdigest()
 
 def payloads():
-    root=fetch(ROOT_REF,"scripts/r25_b_additive_3031_setup.py",20000)
+    root=fetch(ROOT_REF,"scripts/r25_b_additive_3031_setup.py",ROOT_SOURCE_MAX_BYTES)
     if gitblob(root)!=ROOT_BLOB:
         hold("ROOT_INSTALLER_EXACT_GIT_BLOB_DRIFT")
     assets={k:fetch(B_SOURCE,p,32768) for k,p in FILES.items()}
