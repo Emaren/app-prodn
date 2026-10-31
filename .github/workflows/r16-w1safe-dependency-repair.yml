@@ -1,0 +1,50 @@
+name: R16 one-shot W1_SAFE dependency repair
+on:
+  push:
+    branches: [r16-w1safe-deps]
+permissions:
+  contents: write
+jobs:
+  repair:
+    if: github.repository == 'Emaren/app-prodn'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - name: Recompute actual dependency graph without security waiver
+        run: |
+          corepack enable
+          node <<'JS'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          for (const k of Object.keys(p.resolutions)) {
+            if (k === 'glob' || k === 'glob/**/minimatch' ||
+                k === 'eslint-config-next/eslint-plugin-import/minimatch' ||
+                k === '@typescript-eslint/typescript-estree/**/minimatch' ||
+                k === 'minimatch') delete p.resolutions[k];
+          }
+          p.resolutions.glob='14.0.3';
+          p.resolutions.minimatch='11.0.3';
+          fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
+          JS
+          yarn install --ignore-scripts --non-interactive
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          yarn why glob
+          yarn why minimatch
+          python3 scripts/check_dependency_security.py
+      - name: Publish source-only minimal regenerated graph to review branch
+        run: |
+          git config user.name 'aoe2war-dependency-repair-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/r16-w1safe-dependency-repair.yml
+          git add package.json yarn.lock
+          git diff --cached --stat
+          git diff --cached --quiet && exit 1
+          git commit -m 'security(R16): regenerate W1_SAFE glob/minimatch patched dependency graph'
+          git push origin HEAD:refs/heads/r16-w1safe-deps
