@@ -288,4 +288,18 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertNotIn('CANDIDATE_STAGE.parent==OLD_APP.parent',text)
         self.assertNotIn('/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b',text)
 
+    def test_physical_C_artifact_pinned_and_mutation_holds(self):
+        s=self.s
+        self.assertEqual(s.C_PHYSICAL_BUILD_ID,"-dJl5VyecHu5BKNvfErJe")
+        self.assertEqual(s.C_PHYSICAL_FILES,87038)
+        self.assertEqual(s.C_PHYSICAL_TREE_SHA256,"5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d")
+        good={"tree_sha256":s.C_PHYSICAL_TREE_SHA256,"build_id":s.C_PHYSICAL_BUILD_ID,
+              "build_version":s.C_PHYSICAL_APP_VERSION,"files":s.C_PHYSICAL_FILES}
+        s.require_c_physical_build_identity(good)
+        for key,val in (("tree_sha256","0"*64),("build_id","fake-build"),
+                        ("build_version","fake-version"),("files",87037)):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(s.Hold,"C_PHYSICAL_87038_FILE_TREE_BUILD_ID_MISMATCH"):
+                    s.require_c_physical_build_identity({**good,key:val})
+
 if __name__=="__main__":unittest.main()
