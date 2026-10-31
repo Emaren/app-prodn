@@ -1,0 +1,52 @@
+name: One-shot F R10 source final audit-test DocsV2
+on:
+  push:
+    branches:
+      - repair/g-r10-final-audit-test-docs-20261030
+permissions:
+  contents: write
+jobs:
+  seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Canonical source exact-docs seal
+        shell: bash {0}
+        run: |
+          SOURCE=da1fc0be6bc4875bb74e065a48ba6a712e3ada42
+          BRANCH=repair/g-r10-final-audit-test-docs-20261030
+          TEMP=.github/workflows/f-r10-final-audit-test-docsv2-once.yml
+          if [ "$(git rev-parse HEAD^)" != "$SOURCE" ] ||
+             [ "$(git diff --name-only "$SOURCE" HEAD)" != "$TEMP" ]; then
+            echo "HOLD: SOURCE_CHANGED"
+            exit 2
+          fi
+          git switch -C "$BRANCH" || exit 2
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm "$TEMP" || exit 2
+          git commit -m "chore(R10): retire final DocsV2 generator" || exit 2
+          BASE=$(git rev-parse HEAD)
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch "$BRANCH" --head "$BASE" || exit 2
+          git add -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json || exit 2
+          CHANGED=$(git diff --cached --name-only)
+          EXPECTED=$(printf '%s\n' docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json)
+          if [ "$CHANGED" != "$EXPECTED" ]; then
+            echo "HOLD: UNEXPECTED_GENERATED_PATHS $CHANGED"
+            exit 2
+          fi
+          git commit -m "docs(R10): seal exact final native audit test head" || exit 2
+          python3 scripts/docs_v2_check.py || exit 2
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "HOLD: DIRTY_GENERATOR"
+            exit 2
+          fi
+          git push origin "HEAD:refs/heads/$BRANCH" || exit 2
+          echo "PASS: EXACT_SOURCE_CANONICAL_TWO_DOC_FILES"
