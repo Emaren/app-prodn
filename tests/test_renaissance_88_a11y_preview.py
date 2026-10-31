@@ -1,5 +1,6 @@
 """Quarantined accessibility preview must never turn into a source-seal bypass."""
 from pathlib import Path
+import subprocess
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -60,13 +61,87 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn('resource_type:req.resourceType()',chrome)
         self.assertIn('frame,',chrome)
         self.assertIn('return route.abort()',chrome)
-        self.assertIn('W1SAFE_R18_BLOCKED_REQUESTS',chrome)
+        self.assertIn('W1SAFE_R19_BLOCKED_REQUESTS',chrome)
         self.assertIn('u.pathname.slice(0,240)',chrome)
         self.assertNotIn('u.search',chrome)
         self.assertNotIn('u.hash',chrome)
         self.assertNotIn('req.postData()',chrome)
         self.assertNotIn('req.headers()',chrome)
-        self.assertIn('entry.mutations_blocked===0?',chrome)
+        self.assertIn('entry.mutations_blocked===3',chrome)
+
+    def test_r19_source_bound_blocked_background_requests_never_dispatch(self):
+        chrome=(ROOT/"scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs").read_text()
+        self.assertIn('"app/api/speed/sample/route.ts":"6c4a24250d12dc51a8fb8d9643eb69a1f8292776"',chrome)
+        self.assertIn('"app/api/kingdom-presence/anonymous-state/route.ts":"5523f0f98107c6d04bfd40b1a2cdd21aa1709906"',chrome)
+        self.assertIn('"lib/livingKingdom/hub.ts":"afb0bbcd9dd2ddc19281c807d23ff79871935a16"',chrome)
+        self.assertIn('"rev-parse","HEAD:"+p',chrome)
+        self.assertIn('"hash-object","--",p',chrome)
+        self.assertIn('BACKGROUND_ROUTE_SOURCE_DRIFT:',chrome)
+        self.assertIn('"/api/speed/sample":{count:2,initiatorPrefix:"/_next/static/chunks/app/layout-"}',chrome)
+        self.assertIn('"/api/kingdom-presence/anonymous-state":{count:1,initiatorPrefix:"/_next/static/chunks/"}',chrome)
+        self.assertIn('request.reason==="NON_READ_METHOD" && request.method==="POST"',chrome)
+        self.assertIn('request.resource_type==="fetch" && frame.origin===base',chrome)
+        self.assertIn('stack.type==="script"',chrome)
+        self.assertIn('all_post_attempts_aborted:true',chrome)
+        self.assertIn('server_post_mutation_proven:false',chrome)
+        self.assertIn('production_accepted:false',chrome)
+        self.assertIn('unknown.length===0',chrome)
+        self.assertIn('entry.blocked_request_overflow===0 && entry.mutations_blocked===3',chrome)
+        self.assertIn('entry.foreign_blocked===2',chrome)
+        self.assertIn('entry.fixture_classification.verdict==="PASS_BLOCKED_BACKGROUND_ONLY"',chrome)
+        self.assertIn('W1SAFE_R19_BLOCKED_REQUESTS',chrome)
+        self.assertIn('return route.abort()',chrome)
+        self.assertNotIn('route.fulfill(',chrome)
+        self.assertNotIn('route.continue({ method:',chrome)
+
+    def test_r19_fixture_policy_actual_node_negative_cases(self):
+        # Execute the production classification function without starting Chrome,
+        # importing no financial app modules and dispatching no network requests.
+        chrome=(ROOT/"scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs").read_text()
+        fragment=chrome[chrome.index("const backgroundRules = Object.freeze("):chrome.index("const report = {")]
+        script=r"""
+const assert=require("node:assert/strict");
+const base="http://127.0.0.1:3137";
+const backgroundSourceBlobs={}; // Only classification is under test; SHA verification runs in the real runner.
+""" + fragment + r"""
+const url=p=>({origin:base,pathname:p});
+const mk=(path,count=1)=>Array.from({length:count},()=>({
+  reason:"NON_READ_METHOD",method:"POST",location:url(path),resource_type:"fetch",
+  frame:url("/"),initiator:{type:"script",frames:[{script:url(path==="/api/speed/sample"
+    ?"/_next/static/chunks/app/layout-pinned.js":"/_next/static/chunks/65427.pinned.js")}]},
+}));
+const foreign=(origin,pathname)=>({
+  reason:"FOREIGN_ORIGIN",method:"GET",location:{origin,pathname},
+  resource_type:"script",frame:url("/"),initiator:{type:"script",frames:[]},
+});
+const good=()=>[
+ ...mk("/api/speed/sample",2),...mk("/api/kingdom-presence/anonymous-state"),
+ foreign("https://plausible.io","/js/script.js"),
+ foreign("https://traffic.tokentap.ca","/api/beacon.js"),
+];
+function verdict(v){return classifyBlockedFixture("/",v).verdict;}
+assert.equal(verdict(good()),"PASS_BLOCKED_BACKGROUND_ONLY");
+for(const edit of [
+ v=>v[0].method="DELETE",
+ v=>v[0].location.pathname="/api/bets",
+ v=>v[0].initiator.type="other",
+ v=>v[0].initiator.frames[0].script.pathname="/finance.js",
+ v=>v[0].frame.pathname="/admin",
+ v=>v[0].resource_type="document",
+ v=>v.push(mk("/api/speed/sample")[0]),
+ v=>v.pop(),
+ v=>v[3].location.origin="https://unexpected.invalid",
+ v=>v[4].method="POST",
+ v=>v[2].reason="FOREIGN_ORIGIN",
+]){
+ const v=good();edit(v);
+ assert.equal(verdict(v),"HOLD");
+}
+console.log("R19_BLOCKED_FIXTURE_NODE_NEGATIVE=12/12_PASS");
+"""
+        result=subprocess.run(["node","-e",script],capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn("12/12_PASS",result.stdout)
 
     def test_only_plan_from_exact_next_build_can_use_preview(self):
         self.assertIn('o.action!="plan" or o.build_dir is None',self.source)
