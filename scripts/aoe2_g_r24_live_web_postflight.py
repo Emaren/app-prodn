@@ -356,8 +356,13 @@ def audit(approved,phase):
     original=root_file(p/"before-nginx.conf",131072)
     need(digest(original)==commit.get("old_nginx_sha256"),
          "F_NGINX_ROLLBACK_CONTENT_DRIFT")
+    current=digest(root_file(pathlib.Path(approved["nginx_config"]),131072))
+    need(current==(commit.get("old_nginx_sha256") if phase=="rollback"
+                   else commit.get("new_nginx_sha256")),
+         "F_LOADED_NGINX_DOES_NOT_MATCH_ROOT_COMMIT")
     outcome={"commit_sha256":digest(canon(commit)),
              "root_rollback_nginx_sha256":digest(original),
+             "approved_after_nginx_sha256":commit.get("new_nginx_sha256"),
              "root_rollback_material_verified":True,
              "rollback_exercised":False}
     if phase=="rollback":
@@ -510,6 +515,12 @@ def verify(before,after,phase):
          "WRONG_BEFORE_OR_POSTFLIGHT_PHASE")
     compare_process_and_finance(before,after)
     need(before["nginx"]["upstream_port"]==3030,"BEFORE_NGINX_NOT_OLD")
+    need(after["release_journal"]["root_rollback_nginx_sha256"]==
+         before["nginx"]["file_sha256"],"F_ROLLBACK_PREIMAGE_NOT_ORIGINAL_NGINX")
+    if phase=="after":
+        need(after["nginx"]["file_sha256"]==
+             after["release_journal"]["approved_after_nginx_sha256"],
+             "F_CUTOVER_NGINX_NOT_ROOT_COMMITTED")
     expected=3031 if phase=="after" else 3030
     need(after["nginx"]["upstream_port"]==expected,"NGINX_NOT_EXPECTED_UPSTREAM")
     need(before["nginx"]["selected_file"]==after["nginx"]["selected_file"],
