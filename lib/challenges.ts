@@ -3765,19 +3765,12 @@ export async function loadChallengeTileById(
   prisma: PrismaClient,
   challengeId: number
 ): Promise<ScheduledMatchTile | null> {
-  const [rows, sessionSnapshot] = await Promise.all([
-    loadScheduledMatchRows(prisma, {
-      challengeId,
-      includeResolved: true,
-    }),
-    loadLiveSessionSnapshot(prisma),
-  ]);
-  const reconciledRows = await persistScheduledMatchResults(
-    prisma,
-    rows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  // Even a participant/admin-facing GET observes the persisted match result.
+  // The authenticated challenge reconciliation POST owns custody transitions.
+  const reconciledRows = await loadScheduledMatchRows(prisma, {
+    challengeId,
+    includeResolved: true,
+  });
   const projections=await loadChampionshipProjectionMap(prisma,[challengeId]);
   return buildComparableChallengeTiles(reconciledRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).find(
     (tile) => tile.id === challengeId
@@ -3864,12 +3857,9 @@ export async function loadChallengeHubSnapshot(
     ]),
   );
 
-  const reconciledRows = await persistScheduledMatchResults(
-    prisma,
-    historySnapshot.rows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  // Challenge Hall loads may be triggered on GET/SSR. Do not reconcile
+  // scheduled payouts, title custody or replay authority from a page read.
+  const reconciledRows = historySnapshot.rows;
 
   const preferenceRows =
     reconciledRows.length > 0
