@@ -197,7 +197,9 @@ def replace_existing(path,raw):
         f.write(raw);f.flush();os.fsync(f.fileno())
     # mode, uid/gid preserved from the approved original root nginx conf.
     old=os.lstat(path)
-    os.fchmod(os.open(tmp,os.O_RDONLY|os.O_NOFOLLOW),stat.S_IMODE(old.st_mode))
+    mode_fd=os.open(tmp,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:os.fchmod(mode_fd,stat.S_IMODE(old.st_mode))
+    finally:os.close(mode_fd)
     os.replace(tmp,path);fsyncdir(path.parent)
 def nginx_reload():
     cmd(["/usr/sbin/nginx","-t"],15)
