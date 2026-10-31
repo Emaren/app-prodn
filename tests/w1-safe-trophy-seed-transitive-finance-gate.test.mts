@@ -53,3 +53,17 @@ test("replay-ingest market producer stays authenticated without public GET wakeu
   assert.match(replay, /coordinateReplayPostIngest\s*\(/);
   assert.match(replay, /queueBetMarketEnsure\s*\(prisma,\s*0\)/);
 });
+
+test("authenticated replay auto-recovery must wake market reconciliation after terminal adjudication", () => {
+  const recovery = source("app/api/admin/replay-auto-recovery/route.ts");
+  const adjudication = source("lib/replayResultAdjudications.ts");
+  assert.match(recovery, /export async function POST\\s*\\(/);
+  assert.match(recovery, /!\\s*authorized\\s*\\(request\\)/);
+  assert.match(recovery, /reconcileAutomaticWatcherTerminalResults\\s*\\(/);
+  assert.doesNotMatch(adjudication, /\\bensureBetMarkets(AfterCommit)?\\s*\\(/);
+  assert.match(
+    recovery,
+    /\\b(?:ensureBetMarkets(?:AfterCommit)?|queueBetMarketEnsure)\\s*\\(/,
+    "P0: native five-minute authorized replay recovery can resolve results without market maintenance; missed ingest POST strands markets"
+  );
+});
