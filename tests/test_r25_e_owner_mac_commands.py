@@ -53,9 +53,9 @@ class OwnerMacCommands(unittest.TestCase):
         import re
 
         source=self.read(COPY)
-        body=source.split("python3 -B - <<'PY'\\n",1)[1].rsplit('\\nPY',1)[0]
+        body=source.split("python3 -B - <<'PY'\n",1)[1].rsplit('\nPY',1)[0]
         start=body.index("plan=parse_result(remote('--phase','plan'),'PLAN')")
-        end=body.index("\\ncampaign=(",start)
+        end=body.index("\ncampaign=(",start)
         plan_guard=body[start:end]
         self.assertIn("hash_cap=dict(cap)",plan_guard)
         self.assertIn("stable['capacity']=hash_cap",plan_guard)
