@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c85dc998b8c7db7a3b0997e71a8ef76f8d5b77cbd635ccad75e7b9ebabcb9745",
+      "sha256": "e0435535a6a987adbd5ccb8cf9825ae7faa0e3c3d127a26e471a2bfe8ed3a991",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r18-f-website-g-cdp-final-seal",
-    "commit": "7a822fc719775530520cb374977a2ccc540ed067"
+    "branch": "review/g-r24-live-web-finance-rollback-witness-20261031",
+    "commit": "05c25e9a63a3bb2b6ec995e24156388f8267a5fd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
