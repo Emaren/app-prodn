@@ -46,9 +46,13 @@ def fixture():
     after=copy.deepcopy(before);after["phase"]="after"
     after["nginx"].update(upstream_port=3031,file_sha256="d"*64)
     after["release_journal"]={"root_rollback_material_verified":True,
+                             "root_rollback_nginx_sha256":"a"*64,
+                             "approved_after_nginx_sha256":"d"*64,
                              "rollback_exercised":False,"commit_sha256":"f"*64}
     rollback=copy.deepcopy(before);rollback["phase"]="rollback"
     rollback["release_journal"]={"root_rollback_material_verified":True,
+                  "root_rollback_nginx_sha256":"a"*64,
+                  "approved_after_nginx_sha256":"d"*64,
                   "rollback_exercised":True,"rollback_receipt_sha256":"e"*64}
     return before,after,rollback
 
@@ -84,6 +88,8 @@ class R25Tests(unittest.TestCase):
           lambda a:a["nginx"].__setitem__("upstream_port",3030),
           lambda a:a["nginx"].__setitem__("selected_file","/tmp/site"),
           lambda a:a["release_journal"].__setitem__("root_rollback_material_verified",False),
+          lambda a:a["release_journal"].__setitem__("approved_after_nginx_sha256","0"*64),
+          lambda a:a["release_journal"].__setitem__("root_rollback_nginx_sha256","0"*64),
           lambda a:a.__setitem__("phase","rollback"),
           lambda a:a["old_http"].__setitem__("app_build_version","changed"),
           lambda a:a["candidate_http"].__setitem__("manifest_sha256","0"*64),
