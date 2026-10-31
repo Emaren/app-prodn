@@ -155,13 +155,19 @@ meta skuid 1000 ct state new drop"""
              patch.object(b,"nft_policy",return_value="b"*64), \
              patch.object(b,"root_db_envfile",return_value="dedicated_ro_dsn"), \
              patch.object(b,"db_proof",return_value={"role":b.DB_ROLE,"checked":["role_restricted"]}), \
-             patch.object(b,"run",return_value=(b.TARGET+"\n").encode()), \
+             patch.object(b,"c_archive_source_identity",return_value=b.TARGET), \
              patch.object(b.pathlib.Path,"is_file",return_value=True), \
              patch.object(b.pathlib.Path,"is_symlink",return_value=False), \
              patch.object(b.pathlib.Path,"read_text",return_value="real-build-id"):
             v=b.prestart("a"*64)
         self.assertEqual(v["status"],"PASS_B_PRESTART_FINANCIAL_CONTROLS_NOT_LIVE_NOT_RELEASE_AUTHORITY")
         self.assertEqual(v["release_authorized"],False)
+
+    def test_git_archive_without_dot_git_uses_sealed_sidecar(self):
+        with patch.object(b.pathlib.Path,"is_symlink",return_value=False), \
+             patch.object(b.pathlib.Path,"is_file",return_value=False):
+            with self.assertRaisesRegex(RuntimeError,"C_ROOT_STAGE_SOURCE_SIDECAR_MISSING"):
+                b.c_archive_source_identity()
 
     def test_new_c_service_os_principal_is_exact(self):
         self.assertEqual(b.USER,"aoe2war-r24-web")
