@@ -21,7 +21,7 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(set(x["route"] for x in p["routes"])),88)
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
-        self.assertEqual(p["actual_templates"],148)
+        self.assertEqual(p["actual_templates"],150)
         self.assertEqual(p["actual_handlers"],278)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
