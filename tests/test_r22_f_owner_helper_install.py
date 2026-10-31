@@ -34,6 +34,11 @@ class R22Tests(unittest.TestCase):
         self.assertEqual(r.returncode,2)
         self.assertIn('EXACT_ORIGINAL_HEL1_TONY_REQUIRED',r.stderr)
         self.assertNotIn('Authenticating',r.stdout)
+    def test_owner_signer_uses_real_tty_for_encrypted_key(self):
+        x=S.read_text()
+        self.assertEqual(x.count('with open("/dev/tty", "rb", buffering=0)'),2)
+        self.assertEqual(x.count('stdin=owner_tty'),2)
+        self.assertIn('OWNER_RSA_SPKI_SHA256_NOT_PINNED_OWNER',x)
     def test_original_source_and_candidate_pin(self):
         x=module(R)
         self.assertEqual(x.INSTALLER,'9569b449f6905d49ab0cd19e36b5b18dad527d3681b668ee598236c79b794040')
