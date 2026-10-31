@@ -39,7 +39,7 @@ MAX_TREE_BYTES = 16*GIB
 MAX_SINGLE_FILE_BYTES = 8*GIB
 MAX_DEPTH = 48
 MAX_SCAN_SECONDS = 360
-CAMPAIGN_PATTERN = re.compile(r'r25-e-20261031T[0-9]{6}Z-[0-9a-f]{20}\Z')
+CAMPAIGN_PATTERN = re.compile(r'r25-e-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{20}\Z')
 REGULAR_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | getattr(os, 'O_NOATIME', 0)
 DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC | getattr(os, 'O_NOATIME', 0)
 
@@ -413,6 +413,16 @@ def perform_copy(campaign,expected_sha):
         now=os.statvfs(VOLUME).f_bavail*os.statvfs(VOLUME).f_frsize
         rootfree=os.statvfs(Path('/')).f_bavail*os.statvfs(Path('/')).f_frsize
         need(now>=RESERVE and rootfree>=RESERVE,'AFTER_COPY_4G_RESERVE_VIOLATED')
+        # Root-only source restore metadata: the copy is intentionally private
+        # root:root 0600/0700, but original UID/GID/mode/mtime and each file's
+        # content SHA are retained for an independently authorized restore.
+        metadata={'schema':'aoe2war.r25.e.old-next-restore-metadata.v1',
+                  'old_source':str(OLD_NEXT),
+                  'entries':post['rows'],
+                  'source_content_sha256':post['content_sha256'],
+                  'source_metadata_sha256':post['metadata_sha256'],
+                  'not_a_restore_authorization':True}
+        write_once(campfd,'COPY_SOURCE_METADATA.json',metadata)
         receipt={'schema':'aoe2war.r25.e.durable-old-next-copy.v1',
                  'status':'COPY_VERIFIED_NOT_RECOVERY_READY',
                  'campaign':campaign,'destination':str(dest),
@@ -422,6 +432,7 @@ def perform_copy(campaign,expected_sha):
                  'c_build_id':C_BUILD_ID,'c_tree_sha256':C_TREE_SHA,
                  'source_content_sha256':plan['source_content_sha256'],
                  'source_metadata_sha256':plan['source_metadata_sha256'],
+                 'source_restore_metadata_receipt_sha256':digest(metadata),
                  'source_entries':post['entries'],
                  'logical_bytes':post['logical_bytes'],
                  'copy_stream':copied,
