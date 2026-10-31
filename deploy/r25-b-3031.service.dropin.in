@@ -34,7 +34,7 @@ ReadWritePaths=/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b/.next/cache
 # authenticate root-owned nft/pg credentials. Replace ONLY the NEW unit's
 # prestart with a source-SHA-pinned root read-only B preflight. The + prefix
 # runs this SINGLE root-owned, verified source outside web-user sandbox.
-# Replace __B_GUARD_SHA256__ from reviewed CI, NEVER substitute a dummy.
+# Replace dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d from reviewed CI, NEVER substitute a dummy.
 # C/F must root-pin both prestart source bytes and guard bytes before install.
 ExecStartPre=
 ExecStartPre=+/usr/bin/python3 -I -B /etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py --phase prestart --expected-guard-sha256 __B_GUARD_SHA256__
