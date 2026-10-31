@@ -384,7 +384,7 @@ def safe_replace_site(original,chosen):
          b"proxy_pass http://127.0.0.1:1318" in updated,
          "NGINX_WOLO_ROUTE_UNEXPECTEDLY_ABSENT")
     return updated
-def nginx_loaded_vhost(expected,config):
+def nginx_loaded_vhost(expected,config,old_count=6):
     """Confirm the exact active -T vhost bytes and full loaded 3030 census."""
     p=subprocess.run(["/usr/sbin/nginx","-T"],capture_output=True,timeout=22)
     need(p.returncode==0 and 0<len(p.stdout)<=8*1024*1024,
@@ -406,7 +406,7 @@ def nginx_loaded_vhost(expected,config):
             need(raw==expected.rstrip(b"\r\n"),
                  "NGINX_LOADED_TARGET_FILE_BYTES_MISMATCH")
             candidates.append(name)
-    need(len(candidates)==1 and global_old==6,
+    need(len(candidates)==1 and global_old==old_count,
          "NGINX_LOADED_SCOPE_INCLUDES_OR_OTHER_SITE_3030_UNRESOLVED")
     return candidates[0]
 def durable_write(path,raw,mode=0o400):
@@ -474,6 +474,7 @@ def apply():
         try:
             replace_existing(config,candidate)
             nginx_reload()
+            nginx_loaded_vhost(candidate,config,old_count=0)
             need(public_version()==j["candidate_build_version"],
                  "PUBLIC_CANDIDATE_NOT_ACTIVE")
             next_build_asset(PUBLIC,j["candidate_build_id"])
@@ -494,6 +495,7 @@ def apply():
                   file=sys.stderr)
             try:
                 replace_existing(config,old);nginx_reload()
+                nginx_loaded_vhost(old,config,old_count=6)
                 need(public_version()==http_version(OLD_PORT),
                      "ORIGINAL_PUBLIC_RESTORE_NOT_VERIFIED")
             except Exception as err:
@@ -521,6 +523,7 @@ def manual_rollback(nonce):
          "ORIGINAL_NGINX_ROLLBACK_BYTES_DRIFT")
     config=pathlib.Path(j["nginx_config"])
     current=root_file(config,131072)
+    nginx_loaded_vhost(current,config,old_count=0)
     need(sha(current)==commit["new_nginx_sha256"],
          "LIVE_NGINX_NOT_EXACT_CANDIDATE")
     s=snapshots(j["finance_units"])
@@ -534,6 +537,7 @@ def manual_rollback(nonce):
              "FINANCIAL_ORIGINAL_WEB_DRIFT_BEFORE_ROLLBACK")
         replace_existing(config,old)
         nginx_reload()
+        nginx_loaded_vhost(old,config,old_count=6)
         need(public_version()==http_version(OLD_PORT),
              "PUBLIC_OLD_VERSION_NOT_RESTORED")
         need(snapshots(j["finance_units"])==s,
@@ -543,9 +547,28 @@ def manual_rollback(nonce):
         fsyncdir(record)
         print("PASS:R24_OLD_WEB_PROXY_RESTORED; ORIGINAL_WEB_MAINPID_UNCHANGED")
     finally:os.close(lockfd)
+def plan_vhost():
+    # Narrow physical evidence for the exact active AoE2WAR Nginx config.
+    need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
+         "EXACT_HEL1_ROOT_REQUIRED")
+    config=VHOST;raw=root_file(config,131072)
+    loaded=nginx_loaded_vhost(raw,config,old_count=6)
+    proposed=safe_replace_site(raw,NEW_UPSTREAM)
+    print(canonical({"schema":"aoe2war.r25.f.nginx.vhost-plan.v1",
+        "host":HOST,"candidate_sha":TARGET,
+        "active_vhost_loaded_as":loaded,"root_vhost_path":str(config),
+        "original_vhost_sha256":sha(raw),
+        "proposed_vhost_sha256":sha(proposed),
+        "web_old_upstream_locations":6,
+        "web_new_upstream_locations_after_switch":6,
+        "unrelated_vhosts_modified":False,
+        "wolo_proxy_routes_modified":False,
+        "files_modified":False,"release_authorized":False}).decode())
 def main():
     need(len(sys.argv)>=2,"EXPLICIT_ROOT_OPERATOR_MODE")
-    if sys.argv[1:]==["--root-apply"]:
+    if sys.argv[1:]==["--root-vhost-plan"]:
+        plan_vhost()
+    elif sys.argv[1:]==["--root-apply"]:
         apply()
     elif (len(sys.argv)==4 and sys.argv[1]=="--root-rollback" and
           sys.argv[2]=="--nonce"):
