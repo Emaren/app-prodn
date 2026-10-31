@@ -22,6 +22,12 @@ from datetime import datetime, timezone
 SOURCE = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 ARCHIVE_SHA256 = "c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
 ARCHIVE_BYTES = 293550080
+# C independently rehashed the immutable 87,038-file built tree on HEL1.
+# E checks identity against that separate physical result, not a build replay.
+C_BUILD_ID = '-dJl5VyecHu5BKNvfErJe'
+C_BUILD_VERSION = '20261031171526-148d3df911'
+C_TREE_SHA256 = '5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d'
+MAX_ROLLBACK_CAMPAIGNS = 128
 HOST = "ubuntu-4gb-hel1-11"
 OLD_WEB = Path("/var/www/AoE2HDBets/app-prodn")
 VOLUME = Path("/mnt/HC_Volume_105319120")
@@ -250,8 +256,9 @@ def c_build_receipt(rootdev, build_id, build_version):
            built.get('status') == 'BUILD_STAGED' and
            built.get('candidate_sha') == SOURCE and
            built.get('source_git_archive_sha256') == ARCHIVE_SHA256 and
-           built.get('build_id') == build_id and
-           built.get('build_version') == build_version and
+           built.get('build_id') == build_id == C_BUILD_ID and
+           built.get('build_version') == build_version == C_BUILD_VERSION and
+           built.get('tree_sha256') == C_TREE_SHA256 and
            built.get('root_sealed') is True and
            built.get('old_web_pid_untouched') == 2625090 and
            built.get('new_service_started') is False and
@@ -326,6 +333,48 @@ def durable_evidence(path, old, rootdev, voldev, old_id):
             'logical_file_bytes': original['logical_file_bytes'],
             'content_matched': True, 'rollback_exercised': False}
 
+
+def discover_prior_next(old_id, voldev):
+    """Bounded direct-child rollback census: BUILD_ID only; no other host scan.
+
+    A BUILD_ID match is a locator, not integrity proof. durable_evidence() later
+    content-hashes the entire current old Next tree and the selected snapshot.
+    """
+    ensure(secure_path(DURABLE, VOLUME, voldev), 'ROLLBACK_ROOT_MISSING_OR_UNTRUSTED')
+    ensure(stat.S_ISDIR(os.lstat(DURABLE).st_mode), 'ROLLBACK_ROOT_NOT_DIRECTORY')
+    with os.scandir(DURABLE) as it:
+        items = sorted(it, key=lambda e: e.name)
+    ensure(len(items) <= MAX_ROLLBACK_CAMPAIGNS, 'ROLLBACK_CAMPAIGN_COUNT_EXCEEDS_BOUNDED_CENSUS')
+    examined = 0
+    matches = []
+    for item in items:
+        if item.is_symlink():
+            raise Hold('ROLLBACK_CAMPAIGN_SYMLINK')
+        if not item.is_dir(follow_symlinks=False):
+            continue
+        campaign = DURABLE / item.name
+        ensure(secure_path(campaign, VOLUME, voldev), 'ROLLBACK_CAMPAIGN_TRUST_BOUNDARY')
+        child = campaign/'prior-next'
+        if not child.exists() and not child.is_symlink():
+            continue
+        ensure(secure_path(child, VOLUME, voldev), 'ROLLBACK_PRIOR_NEXT_UNTRUSTED')
+        ensure(stat.S_ISDIR(os.lstat(child).st_mode), 'ROLLBACK_PRIOR_NEXT_NOT_DIRECTORY')
+        examined += 1
+        bid = child/'BUILD_ID'
+        if not bid.exists() and not bid.is_symlink():
+            continue
+        ensure(secure_path(bid, VOLUME, voldev), 'ROLLBACK_BUILD_ID_UNTRUSTED')
+        if old_next_id(child) == old_id:
+            matches.append(child)
+    ensure(len(matches) <= 1, 'AMBIGUOUS_MATCHING_ROLLBACKS_REQUIRE_EXPLICIT_REVIEW')
+    return (matches[0] if matches else None), {
+        'scope':str(DURABLE), 'direct_campaign_entries':len(items),
+        'prior_next_dirs_checked':examined,
+        'matching_current_old_build_id_count':len(matches),
+        'selection_policy':'UNIQUE_OLD_BUILD_ID_ONLY;_FULL_BYTES_VERIFIED_SEPARATELY',
+        'status':'UNIQUE_CANDIDATE_FOUND' if matches else 'NO_MATCHING_PRIOR_NEXT',
+        'selected_path':str(matches[0]) if matches else None}
+
 def host_devices():
     ensure(sys.platform == 'linux' and socket.gethostname().split('.')[0] == HOST
            and os.geteuid() == 0, 'HEL1_ROOT_READONLY_WITNESS_REQUIRED')
@@ -350,8 +399,12 @@ def certify(args):
     stage = stage_evidence(rootdev, args.candidate_max_bytes)
     state = 'BUILD_STAGED' if stage and stage.get('build_complete') else 'SOURCE_STAGED'
     rollback = None
-    if state == 'BUILD_STAGED' and args.durable_next:
-        rollback = durable_evidence(Path(args.durable_next), old, rootdev, voldev, old_id)
+    discovery = None
+    selected = Path(args.durable_next) if args.durable_next else None
+    if state == 'BUILD_STAGED' and args.discover_prior_next:
+        selected, discovery = discover_prior_next(old_id, voldev)
+    if state == 'BUILD_STAGED' and selected is not None:
+        rollback = durable_evidence(selected, old, rootdev, voldev, old_id)
         state = 'RECOVERY_READY'
     root_free = disk_free(Path('/'))
     vol_free = disk_free(VOLUME)
@@ -377,7 +430,7 @@ def certify(args):
               'volume': {'device': voldev, 'free_bytes': vol_free,
               'required_free_bytes': volume_need, 'reserve_bytes': VOLUME_RESERVE,
               'old_next_copy_budget_bytes': copy_budget},
-              'durable_rollback': rollback,
+              'durable_rollback': rollback, 'durable_discovery': discovery,
               'storage_admission': 'PASS_E_READONLY_CAPACITY' if enough else 'HOLD_E_CAPACITY',
               'historical_build_peak_proved': False,
               'c_receipt_source_to_build_binding_checked': bool(stage and stage.get('c_build_receipt')),
@@ -394,9 +447,12 @@ def main(argv=None):
     p.add_argument('--candidate-max-bytes', type=int, required=True)
     p.add_argument('--expected-old-pid', type=int, required=True)
     p.add_argument('--durable-next', default=None)
+    p.add_argument('--discover-prior-next', action='store_true')
     p.add_argument('--require-phase', choices=['SOURCE_STAGED','BUILD_STAGED',
                                               'RECOVERY_READY'],default='RECOVERY_READY')
     a = p.parse_args(argv)
+    if a.discover_prior_next and a.durable_next:
+        p.error('Use either --discover-prior-next or --durable-next, never both')
     try:
         r = certify(a)
         print(json.dumps(r, sort_keys=True))
@@ -405,7 +461,8 @@ def main(argv=None):
             return 2
         phases = ['SOURCE_STAGED', 'BUILD_STAGED', 'RECOVERY_READY']
         if phases.index(r['phase']) < phases.index(a.require_phase):
-            print('HOLD:R25_E:PHASE_IS_' + r['phase'],file=sys.stderr)
+            reason = (':'+r['durable_discovery']['status'] if r.get('durable_discovery') else '')
+            print('HOLD:R25_E:PHASE_IS_' + r['phase'] + reason,file=sys.stderr)
             return 2
         print('PASS:R25_E:' + r['phase'] + ':STORAGE_ONLY_NOT_RELEASE_AUTHORIZATION',
               file=sys.stderr)
