@@ -60,18 +60,22 @@ def run(x):
    raise PermissionError('root phase helper only')
   verb=parts[2]
   sizes={'consume':4,'consumed-proof':6,'mark-staged':6,
-         'complete-activation':6,'reconcile-rollback':5,'issue':None}
+         'complete-activation':6,'reconcile-rollback':5,'issue':None,'preissue':4}
   if verb not in sizes or (verb!='issue' and len(parts)!=sizes[verb]):
    raise PermissionError('unknown protected root verb')
   hex64=re.compile(r'[0-9a-f]{64}\Z')
   hex40=re.compile(r'[0-9a-f]{40}\Z')
-  if verb=='issue':
-   if (len(parts) not in (5,8) or
+  if verb=='preissue':
+   if not hex40.fullmatch(parts[3]):
+    raise PermissionError('invalid root preannouncement candidate')
+  elif verb=='issue':
+   if (len(parts) not in (6,8) or
        parts[3] not in ('PRE_STAGE','PRE_ACTIVATE') or
        not hex40.fullmatch(parts[4])):
     raise PermissionError('invalid issuer phase/source')
    if parts[3]=='PRE_STAGE':
-    if len(parts)!=5:raise PermissionError('stage issue must be fresh')
+    if len(parts)!=6 or not hex64.fullmatch(parts[5]):
+     raise PermissionError('stage issue needs original root-preissued attempt')
    elif len(parts)!=8 or not all(hex64.fullmatch(v) for v in parts[5:]):
     raise PermissionError('invalid activation issue identity')
   elif verb=='consume':
@@ -179,10 +183,10 @@ try:
    verb=parts[2] if len(parts)>=3 else None
    if issue_dispatched:
     raise PermissionError('issuance-only lease cannot dispatch another operation')
-   if verb=='issue':
+   if verb in ('issue','preissue'):
     if phase is not None or website_dispatched:
-     raise PermissionError('issue cannot follow consumed owner phase')
-    issue_dispatched=True  # one issue per original FD200 lease
+     raise PermissionError('preissue/issue cannot follow consumed owner phase')
+    issue_dispatched=True  # one preissue OR issue per original FD200 lease
    elif verb=='consume':
     if phase is not None:raise PermissionError('owner phase already consumed')
    elif verb=='consumed-proof':

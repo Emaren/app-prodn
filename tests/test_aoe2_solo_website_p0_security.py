@@ -250,7 +250,7 @@ class FrozenReleaseP0Tests(unittest.TestCase):
              patch.object(auditor,"audit",side_effect=root.Hold("AUDIT_UNAVAILABLE")) as audit,\
              patch.object(root,"Journal") as ledger:
             with self.assertRaises(root.Hold):
-                root.issue(["PRE_STAGE",root.TRAINS["W1"][0]])
+                root.issue(["PRE_STAGE",root.TRAINS["W1_SAFE"][0],"a"*64])
             audit.assert_called_once()
             ledger.return_value.inherited_lease_fd.assert_called_once()
             ledger.return_value.issue.assert_not_called()
