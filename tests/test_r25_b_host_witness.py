@@ -38,6 +38,13 @@ class TestBHostWitness(unittest.TestCase):
         self.assertIn("/usr/bin/psql",f.call_args.args[0])
         self.assertNotIn("dummy",repr(f.call_args.args[0]))
 
+    def test_literal_pg_prefix_filter_covers_pgx_and_pgfinance(self):
+        self.assertEqual(b.SQL.count("left(n.nspname, 3) <> 'pg_'"),5)
+        self.assertEqual(b.SQL.count("left(n.nspname, 8) <> 'pg_temp_'"),1)
+        self.assertNotIn("n.nspname NOT LIKE 'pg_",b.SQL)
+        self.assertIn("has_function_privilege",b.SQL)
+        self.assertIn("no_callable_security_definer",b.SQL)
+
     def test_nontrigger_volatile_and_definer_remain_fail_closed(self):
         import inspect
         sql=b.SQL

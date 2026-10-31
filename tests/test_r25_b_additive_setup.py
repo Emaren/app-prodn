@@ -71,6 +71,18 @@ class TestOwnerInstall(unittest.TestCase):
             self.assertEqual(cmd.call_args.args[0][-3],"aoe2hd_db")
             self.assertIn("aclexplode",cmd.call_args.args[0][-1])
 
+    def test_literal_schema_prefixes_in_preflight_and_atomic_pg_role(self):
+        import inspect
+        parts=(inspect.getsource(b.inherited_public_write_risks),
+               b.new_role_sql("A"*48).decode())
+        for sql in parts:
+            self.assertEqual(sql.count("left(n.nspname, 3) <> 'pg_'"),4)
+            self.assertEqual(sql.count("left(n.nspname, 8) <> 'pg_temp_'"),1)
+            self.assertNotIn("n.nspname NOT LIKE 'pg_",sql)
+        self.assertIn("has_table_privilege",parts[1])
+        self.assertIn("has_function_privilege",parts[1])
+        self.assertIn("reviewed_trigger_exclusions",parts[0])
+
     def test_trigger_exemption_requires_exact_39_and_nontrigger_still_blocks(self):
         import inspect, types
         sql=inspect.getsource(b.inherited_public_write_risks)
