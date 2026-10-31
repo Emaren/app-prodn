@@ -19,6 +19,7 @@ def fixture():
     files["aoe2_solo_website_root_phase.py"]=(
       "TRAINS={'W1_SAFE':('"+SAFE+"','"+PREV+"')}\nKEY_FP='"+m.KEY_FP+"'\n").encode()
     files["aoe2_solo_website_native_issuer.py"]=("#!/usr/bin/python3 -I\nW1_SAFE='"+SAFE+"'\n").encode()
+    files["aoe2_solo_website_producer_intake.py"]=("#!/usr/bin/python3 -I\nW1_SAFE='"+SAFE+"'\n").encode()
     bundle=m.bundle_bytes(files)
     targets={p:m.hash256(files[n]) for n,paths in m.MODULES.items() for p in paths}
     manifest={"schema":"aoe2war.hel1.root-install.v2", "controller_commit":SHA,
@@ -40,11 +41,13 @@ class RootManifestTests(unittest.TestCase):
         self.assertEqual(m.unpack(bundle),files)
         self.assertIn(b"\x00\x00\x00\x00",bundle[:10])
 
-    def test_source_exact_positive_13_targets(self):
+    def test_source_exact_positive_14_targets_with_signed_intake(self):
         files,bundle,manifest=fixture()
         got,targets=m.source_admit(manifest,bundle,SHA)
         self.assertEqual(got,files)
-        self.assertEqual(len(targets),13)
+        self.assertEqual(len(targets),14)
+        self.assertEqual(len(m.MODULES),12)
+        self.assertEqual(targets["solo-v1-producer-intake"],m.hash256(files["aoe2_solo_website_producer_intake.py"]))
         self.assertEqual(targets["solo-v1-native-admission"],m.hash256(files["aoe2_solo_website_native_issuer.py"]))
 
     def test_source_commit_or_safe_sha_swap_denied(self):
@@ -89,9 +92,10 @@ class RootManifestTests(unittest.TestCase):
 
     def test_missing_source_and_signer_module_denied(self):
         files,_,_=fixture()
-        one=dict(files);del one["aoe2_solo_website_native_issuer.py"]
-        with self.assertRaisesRegex(m.Hold,"INCOMPLETE_BUNDLE"):
-            m.unpack(m.bundle_bytes(one))
+        for missing in ("aoe2_solo_website_native_issuer.py","aoe2_solo_website_producer_intake.py"):
+            one=dict(files);del one[missing]
+            with self.subTest(missing=missing),self.assertRaisesRegex(m.Hold,"INCOMPLETE_BUNDLE"):
+                m.unpack(m.bundle_bytes(one))
 
     def test_owner_key_or_original_lock_manifest_mismatch_denied(self):
         _,bundle,manifest=fixture()
@@ -203,6 +207,34 @@ class RootManifestTests(unittest.TestCase):
         manifest["targets_sha256"]["solo-v1-native-admission"]=m.hash256(altered["aoe2_solo_website_native_issuer.py"])
         with self.assertRaisesRegex(m.Hold,"NATIVE_ISSUER_ENTRYPOINT_INTERPRETER_DRIFT"):
             m.source_admit(manifest,bundle,SHA)
+
+    def test_intake_source_sha_must_match_issuer_and_root_phase(self):
+        files,_,manifest=fixture()
+        altered=dict(files)
+        altered["aoe2_solo_website_producer_intake.py"]=b"#!/usr/bin/python3 -I\nW1_SAFE='"+b"f"*40+b"'\n"
+        archive=m.bundle_bytes(altered)
+        manifest["bundle_sha256"]=m.hash256(archive)
+        manifest["bundle_bytes"]=len(archive)
+        for key,fn in (("source_git_blobs",m.blobid),("source_sha256",m.hash256)):
+            manifest[key]=dict(manifest[key]);manifest[key]["aoe2_solo_website_producer_intake.py"]=fn(altered["aoe2_solo_website_producer_intake.py"])
+        manifest["targets_sha256"]=dict(manifest["targets_sha256"])
+        manifest["targets_sha256"]["solo-v1-producer-intake"]=m.hash256(altered["aoe2_solo_website_producer_intake.py"])
+        with self.assertRaisesRegex(m.Hold,"INTAKE_SAFE_SHA_CONFLICT"):
+            m.source_admit(manifest,archive,SHA)
+
+    def test_intake_entrypoint_cannot_be_interpreted_as_shell(self):
+        files,_,manifest=fixture()
+        altered=dict(files)
+        altered["aoe2_solo_website_producer_intake.py"]=b"#!/bin/sh\nW1_SAFE='"+SAFE.encode()+b"'\n"
+        archive=m.bundle_bytes(altered)
+        manifest["bundle_sha256"]=m.hash256(archive)
+        manifest["bundle_bytes"]=len(archive)
+        for key,fn in (("source_git_blobs",m.blobid),("source_sha256",m.hash256)):
+            manifest[key]=dict(manifest[key]);manifest[key]["aoe2_solo_website_producer_intake.py"]=fn(altered["aoe2_solo_website_producer_intake.py"])
+        manifest["targets_sha256"]=dict(manifest["targets_sha256"])
+        manifest["targets_sha256"]["solo-v1-producer-intake"]=m.hash256(altered["aoe2_solo_website_producer_intake.py"])
+        with self.assertRaisesRegex(m.Hold,"NATIVE_INTAKE_ENTRYPOINT_INTERPRETER_DRIFT"):
+            m.source_admit(manifest,archive,SHA)
 
     def test_signed_permit_consumption_is_one_time(self):
         with tempfile.TemporaryDirectory() as td:
