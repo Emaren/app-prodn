@@ -36,7 +36,9 @@ class R25StageTests(unittest.TestCase):
         self.assertEqual(self.m.SHA,self.s.SHA)
     def test_03_expected_F_stage_location(self):
         self.assertEqual(str(self.s.DEST),
-          "/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+          "/var/lib/aoe2war-r25-web-0cee3c836c4b")
+        self.assertEqual(self.s.DEST.parent,pathlib.Path("/var/lib"))
+        self.assertNotIn("AoE2HDBets",str(self.s.DEST))
     def test_04_both_runtime_users_separate(self):
         self.assertEqual(self.s.WEBUSER,"aoe2war-r24-web")
         self.assertEqual(self.s.BUILDER,"aoe2war-r24-build")
