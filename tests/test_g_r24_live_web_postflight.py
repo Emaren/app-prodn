@@ -150,7 +150,7 @@ class R25Tests(unittest.TestCase):
             locations="\n".join(
                 "location "+label+" { "+
                 ("" if missing_guard else "if ($request_method !~ ^(GET|HEAD)$) { return 405; } ")+
-                "proxy_pass http://127.0.0.1:"+str(port)+"; }"
+                "\nproxy_pass http://127.0.0.1:"+str(port)+";\n }"
                 for label in labels)
             return ("""server {
  listen 443 ssl;
@@ -198,7 +198,7 @@ server {
                      "SOURCE_FILES.json":files,"BUILD_FILES.json":artifact}
             def readfile(p,maxsize=65536):
                 return json.dumps(mapping[pathlib.Path(p).name]).encode()
-            with patch.object(g,"STAGE",root),patch.object(g,"root_file",side_effect=readfile):
+            with patch.object(g,"STAGE",root),patch.object(g,"root_file",side_effect=readfile),patch.object(g,"root_sealed_file",return_value=True):
                 self.assertEqual(g.verified_c_archive_source()["receipt_build_id"],
                                  "TrueNextBuild_ABC")
                 built["build_id"]="INVENTED_ID"
