@@ -402,14 +402,19 @@ def complete_build(before,sockets,budget,account,yarn_receipt,recovery,record):
        "--property=IPAddressDeny=localhost","--property=IPAddressDeny=link-local"]+dns_bind+[
        "/usr/bin/python3",str(DEST/"scripts/aoe2_prisma_engine_seed.py")]
     command(seed,timeout=500)
-    # All package lifecycle build scripts run with NO NETWORK, no host secrets.
-    scripts=(f"/usr/bin/node {yarnjs} install --frozen-lockfile --offline "
-             f"--force --non-interactive --cache-folder {cache_dir} && "
-             f"/usr/bin/node {yarnjs} build")
-    build=common+["--unit=aoe2war-r25-build-"+SHA[:8]+unit_tag,
+    # Distinct network-disabled units provide positive evidence of exactly
+    # which phase failed. Never mask offline install errors behind shell &&.
+    # No host credentials, direct executable paths, or package registry egress.
+    offline=common+["--unit=aoe2war-r25-offline-"+SHA[:8]+unit_tag,
        "--property=PrivateNetwork=yes","--property=MemoryMax=4G",
        "--property=TimeoutStartSec=1800",
-       "/bin/sh","-c",scripts]
+       "/usr/bin/node",yarnjs,"install","--frozen-lockfile","--offline",
+       "--force","--non-interactive","--cache-folder",str(cache_dir)]
+    command(offline,timeout=1500)
+    build=common+["--unit=aoe2war-r25-next-build-"+SHA[:8]+unit_tag,
+       "--property=PrivateNetwork=yes","--property=MemoryMax=4G",
+       "--property=TimeoutStartSec=1800",
+       "/usr/bin/node",yarnjs,"build"]
     command(build,timeout=1900)
     need((DEST/".next/BUILD_ID").is_file(),"REAL_NEXT_BUILD_ID_MISSING")
     build_id=(DEST/".next/BUILD_ID").read_text().strip()
