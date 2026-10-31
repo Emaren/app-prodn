@@ -222,13 +222,15 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn("ROOT_APPROVAL",root)
         self.assertIn('--root-owner-intent',mac)
         self.assertIn('--root-rollback-intent',mac)
-        self.assertIn("OWNER_CANNOT_OVERRIDE_SIGNED_ROOT_RELEASE_INTENT",mac)
+        self.assertNotIn('a.add_argument("--next-build-id"',mac)
+        self.assertNotIn('a.add_argument("--nonce"',mac)
+        self.assertIn('ROOT_APPROVED_BUILD_ID_OR_NONCE_MISSING',mac)
         self.assertIn('opts.next_build_id=j.get("candidate_build_id")',mac)
         self.assertIn('opts.nonce=j.get("nonce")',mac)
     def test_owner_mac_separate_tty_read_write(self):
         mac=MAC.read_text()
-        self.assertIn('with open("/dev/tty","w")',mac)
-        self.assertIn('with open("/dev/tty","r")',mac)
+        self.assertIn('with open("/dev/tty", "w")',mac)
+        self.assertIn('with open("/dev/tty", "r")',mac)
         self.assertNotIn('open("/dev/tty","r+")',mac)
         self.assertIn('StrictHostKeyChecking=yes',mac)
     def test_E_physical_receipt_hash_must_match_owner_policy(self):
