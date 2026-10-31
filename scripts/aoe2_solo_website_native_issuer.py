@@ -23,7 +23,7 @@ from datetime import datetime, timezone, timedelta
 HOST = "ubuntu-4gb-hel1-11"
 POLICY = "aoe2war.solo-owner.website.admission.v1"
 FROZEN = "b46a51f1592c9f296839924ae55e722618b10d35"
-W1_SAFE = "4eff4b1ad1f90aef35738c25f523998a16174bd8"
+W1_SAFE = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 CLASSES = ("doctor", "recovery", "finance", "host", "source", "stage")
 PHASES = ("PRE_STAGE", "PRE_ACTIVATE", "POST_ACTIVATE", "POST_ROLLBACK")
 HEX40 = re.compile(r"[0-9a-f]{40}\Z")

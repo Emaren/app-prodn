@@ -7,7 +7,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 S=ROOT/"scripts"
-NEW="4eff4b1ad1f90aef35738c25f523998a16174bd8"
+NEW="0cee3c836c4b0760478280c145e02e81e470ce0e"
 OLD="a9525f46302edff88ed073743a7dfaed08be9e3e"
 FROZEN="b46a51f1592c9f296839924ae55e722618b10d35"
 
@@ -17,7 +17,6 @@ class R18ExactIntegratedSource(unittest.TestCase):
                      "aoe2_solo_website_financial_proof.py",
                      "aoe2_solo_website_native_issuer.py",
                      "aoe2_solo_website_producer_intake.py",
-                     "aoe2_solo_website_producer_signer.py",
                      "aoe2_solo_website_root_phase.py"):
             with self.subTest(path=path):
                 body=(S/path).read_text()
@@ -47,6 +46,8 @@ class R18ExactIntegratedSource(unittest.TestCase):
         signer=(S/"aoe2_solo_website_producer_signer.py").read_text()
         root=(S/"aoe2_solo_website_root_phase.py").read_text()
         self.assertIn("AOE2WAR.SOLO_WEBSITE.PRODUCER_INTENT.V1",signer)
+        self.assertIn('p["candidate_sha"]==manifest["candidate_sha"]',signer)
+        self.assertIn("ROOT_PREISSUE_RESERVATION_HASH_MISMATCH",signer)
         self.assertIn("AOE2WAR.SOLO_OWNER.WEBSITE.ADMISSION.V1",root)
         self.assertIn("AOE2WAR.SOLO_WEBSITE.NATIVE_PRODUCER_RECEIPT.V1",signer)
         self.assertIn("preissue",root)
