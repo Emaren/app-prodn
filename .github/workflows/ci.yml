@@ -81,6 +81,8 @@ jobs:
         run: npx prisma generate
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
+      - name: Restore audited patched minimatch 11 legacy ESLint API
+        run: node scripts/ensure-minimatch11-legacy-api.mjs
       - name: Lint changed sources (Finish release-gate parity)
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
