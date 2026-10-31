@@ -24,6 +24,11 @@ NEW_UPSTREAM=b"proxy_pass http://127.0.0.1:3031;"
 ROOT_APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT_BASE=pathlib.Path("/var/lib/aoe2war-r24-parallel")
 OLD_APP=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
+C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
+C_SOURCE_ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
+C_SOURCE_ARCHIVE_SHA256="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+B_ROOT_POSTSTART=pathlib.Path("/etc/aoe2war/r24-parallel-web/b-poststart-positive.json")
+E_ROOT_RECOVERY=pathlib.Path("/etc/aoe2war/r24-parallel-web/e-recovery-ready.json")
 # Exact E #1078 accepted direct-child parallel runtime path on root filesystem.
 CANDIDATE_STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
 PUBLIC="https://aoe2war.com"
@@ -83,7 +88,10 @@ def approval(raw):
         "nginx_config","nginx_before_sha256","finance_units","finance_snapshot_sha256",
         "wolo_snapshot_sha256","old_web_snapshot_sha256","candidate_web_snapshot_sha256",
         "C_stage_artifact_sha256","E_durable_rollback_sha256",
-        "E_durable_receipt_path","lane_reviews"},
+        "E_durable_receipt_path",
+        "C_source_staged_sha256","C_build_staged_sha256",
+        "C_source_files_sha256","C_build_files_sha256",
+        "B_poststart_sha256","E_r25_recovery_sha256","lane_reviews"},
         "APPROVAL_EXACT_SCHEMA")
     need(j["schema"]==SCHEMA and j["candidate_sha"]==TARGET and
          type(j["nonce"])==str and NONCE.fullmatch(j["nonce"]),
@@ -92,7 +100,10 @@ def approval(raw):
          j["previous_sha"]!=TARGET,"PREVIOUS_SOURCE_IDENTITY")
     for f in ("nginx_before_sha256","finance_snapshot_sha256","wolo_snapshot_sha256",
               "old_web_snapshot_sha256","candidate_web_snapshot_sha256",
-              "C_stage_artifact_sha256","E_durable_rollback_sha256"):
+              "C_stage_artifact_sha256","E_durable_rollback_sha256",
+              "C_source_staged_sha256","C_build_staged_sha256",
+              "C_source_files_sha256","C_build_files_sha256",
+              "B_poststart_sha256","E_r25_recovery_sha256"):
         need(type(j[f])==str and HEX64.fullmatch(j[f]),"APPROVAL_HASH_MISSING:"+f)
     need(j["E_durable_receipt_path"]==
          "/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
@@ -256,37 +267,81 @@ def next_build_asset(base,build_id):
              "ACTUAL_NEXT_BUILD_ID_STATIC_ASSET_MISSING")
 
 def stage_identity(j):
+    """C's Git archive has no .git. Prove source via sealed C manifests."""
     need(CANDIDATE_STAGE.parent==OLD_APP.parent and
-         CANDIDATE_STAGE.name.startswith("app-prodn-r24-w1safe-"),
+         CANDIDATE_STAGE.name=="app-prodn-r24-w1safe-0cee3c836c4b",
          "E_PHYSICAL_PARALLEL_STAGE_LOCATION_DRIFT")
-    need(CANDIDATE_STAGE.is_dir() and not CANDIDATE_STAGE.is_symlink(),
-         "C_UNTRUSTED_CANDIDATE_STAGE")
-    for p in (CANDIDATE_STAGE.parent,CANDIDATE_STAGE):
-        st=os.lstat(p)
-        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
-             not st.st_mode&0o022,"C_ROOT_SEALED_CANDIDATE_STAGE_MISSING")
-    def small(rel):
+    for p in (CANDIDATE_STAGE.parent,CANDIDATE_STAGE,C_AUDIT):
+        protected_dir(p)
+    def c_file(rel,key,limit=4194304):
+        raw=root_file(C_AUDIT/rel,limit)
+        need(sha(raw)==j[key],"C_ROOT_SEALED_"+key+"_NOT_MATCHED")
+        return parse(raw)
+    source=c_file("SOURCE_STAGED.json","C_source_staged_sha256")
+    built=c_file("BUILD_STAGED.json","C_build_staged_sha256")
+    source_rows=c_file("SOURCE_FILES.json","C_source_files_sha256",16777216)
+    build_rows=c_file("BUILD_FILES.json","C_build_files_sha256",33554432)
+    need(source.get("status")=="SOURCE_STAGED" and
+         source.get("candidate_sha")==TARGET and
+         source.get("git_archive_sha256")==C_SOURCE_ARCHIVE_SHA256,
+         "C_EXACT_ARCHIVE_SOURCE_RECEIPT_MISSING")
+    need(built.get("schema")=="aoe2war.r25.c.full-built-artifact.v1" and
+         built.get("status")=="BUILD_STAGED" and
+         built.get("candidate_sha")==TARGET and
+         built.get("source_git_archive_sha256")==C_SOURCE_ARCHIVE_SHA256 and
+         built.get("root_sealed") is True and
+         built.get("old_web_pid_untouched")==2625090 and
+         built.get("new_service_started") is False,
+         "C_REAL_COMPLETE_BUILD_RECEIPT_MISSING")
+    need(source_rows.get("schema")=="r25-c-source-files.v1" and
+         build_rows.get("schema")=="aoe2war.r25.c.full-artifact-files.v1" and
+         type(source_rows.get("rows"))==list and
+         type(build_rows.get("rows"))==list,
+         "C_FULL_SOURCE_BUILD_FILE_MANIFESTS_ABSENT")
+    need(sha(canonical(source_rows["rows"]))==source["source_manifest_sha256"] and
+         sha(canonical(build_rows["rows"]))==built["tree_sha256"] and
+         len(build_rows["rows"])==built["files"],
+         "C_FULL_SOURCE_OR_BUILD_MANIFEST_DIGEST_DRIFT")
+    need(built["build_id"]==j["candidate_build_id"] and
+         built["build_version"]==j["candidate_build_version"],
+         "C_BUILD_RECEIPT_VERSIONS_MISMATCH")
+    archive=root_file(C_SOURCE_ARCHIVE,350000000)
+    need(sha(archive)==C_SOURCE_ARCHIVE_SHA256 and
+         len(archive)==293550080,"C_ORIGINAL_GIT_ARCHIVE_PHYSICAL_DIGEST_DRIFT")
+    embedded=cmd(["/usr/bin/git","get-tar-commit-id"],15)
+    # C seals the source via its exact original archived commit. We do not
+    # execute Git against the .git-less extracted candidate as root.
+    need(source["candidate_sha"]==TARGET and
+         source["git_archive_sha256"]==sha(archive),
+         "C_GIT_ARCHIVE_SOURCE_LINK_MISSING")
+    def file_in_manifest(rel):
+        hits=[x for x in build_rows["rows"]
+              if type(x)==dict and x.get("path")==rel and x.get("type")=="file"]
+        need(len(hits)==1 and type(hits[0].get("sha256"))==str,
+             "C_STAGE_FILE_NOT_COVERED_BY_FULL_BUILD_MANIFEST:"+rel)
         p=CANDIDATE_STAGE/rel
-        v=os.lstat(p)
-        need(stat.S_ISREG(v.st_mode) and v.st_uid==0 and
-             not v.st_mode&0o022 and 0<v.st_size<256,
-             "C_STAGE_SOURCE_OR_BUILD_NOT_ROOT_SEALED")
-        return p.read_text().strip()
-    need(small("r24-source-sha")==TARGET,"C_STAGE_GIT_SOURCE_MISMATCH")
-    # Root does not run Git hooks, filters or source in a candidate checkout;
-    # source identity is computed by the separate non-root web UID.
-    candidate_sha=cmd(["/usr/sbin/runuser","-u",NEW_USER,"--",
-        "/usr/bin/git","-c","safe.directory="+str(CANDIDATE_STAGE),
-        "-C",str(CANDIDATE_STAGE),"rev-parse","HEAD"],20).decode().strip()
-    need(candidate_sha==TARGET,"C_ACTUAL_CHECKOUT_SOURCE_SHA_NOT_VERIFIED")
-    need(small(".next/BUILD_ID")==j["candidate_build_id"],
-         "C_STAGE_NEXT_BUILD_ID_MISMATCH")
+        st=os.lstat(p)
+        need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,
+             "C_STAGE_ARTIFACT_ROOT_SEAL_MISSING:"+rel)
+        raw=p.read_bytes()
+        need(len(raw)==hits[0]["size"] and sha(raw)==hits[0]["sha256"],
+             "C_BUILT_FILE_CONTENT_NO_LONGER_MATCHES_FULL_MANIFEST:"+rel)
+        return raw.strip().decode("ascii") if len(raw)<256 else None
+    # BUILD_FILES is C's complete per-file SHA256 manifest, not a Git marker.
+    need(file_in_manifest(".next/BUILD_ID")==j["candidate_build_id"],
+         "C_ACTUAL_NEXT_BUILD_ID_NOT_APPROVED")
+    need(file_in_manifest(".aoe2war-build-version")==j["candidate_build_version"],
+         "C_ACTUAL_APP_BUILD_VERSION_NOT_APPROVED")
+    need(file_in_manifest("r24-source-sha")==TARGET,
+         "C_STAGE_ROOT_SEALED_GIT_ARCHIVE_MARKER_MISMATCH")
+    need((CANDIDATE_STAGE/"node_modules").is_dir() and
+         not (CANDIDATE_STAGE/"node_modules").is_symlink(),
+         "C_ACTUAL_DEPENDENCIES_MISSING")
     next_build_asset("http://127.0.0.1:3031",j["candidate_build_id"])
-    source=cmd(["/usr/sbin/runuser","-u","tony","--",
-         "/usr/bin/git","-C",str(OLD_APP),"rev-parse","HEAD"],15)
-    need(source.decode().strip()==j["previous_sha"],
+    original_head=cmd(["/usr/sbin/runuser","-u","tony","--",
+         "/usr/bin/git","-C",str(OLD_APP),"rev-parse","HEAD"],15).decode().strip()
+    need(original_head==j["previous_sha"],
          "ORIGINAL_WEB_SOURCE_GIT_DRIFT")
-
 def public_version():
     with urllib.request.urlopen(
             urllib.request.Request(PUBLIC+"/api/deployment-version",method="GET"),
