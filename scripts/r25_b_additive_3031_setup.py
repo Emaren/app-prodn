@@ -117,7 +117,7 @@ def check_inputs(args):
     if args.phase not in ("plan","install"):hold("INVALID_PHASE")
     if args.phase=="install" and args.consent!=("INSTALL-R25-B-NEW-ONLY-"+SOURCE_COMMIT[:12]):
         hold("EXPLICIT_OWNER_INSTALL_CONSENT_MISSING")
-    if RECEIPT.exists() or RECEIPT.is_symlink():
+    if RECEIPT.exists() or RECEIPT.is_symlink() or (RECEIPT.parent/"started.json").exists():
         hold("EXISTING_B_INSTALL_RECEIPT_NO_REPLAY")
     old_web();new_state()
     if Path("/proc/net/tcp").is_file():
@@ -151,14 +151,18 @@ def decode_bundle(data):
     if sha(out["guard"])!=GUARD_SHA or sha(out["witness"])!=WITNESS_SHA:
         hold("B_GUARD_OR_WITNESS_SHA_DRIFT")
     drop=out["dropin"].decode()
-    if ("--expected-guard-sha256 "+GUARD_SHA not in drop
-        or "User="+NEW_USER not in drop or "ExecStartPre=+" not in drop
-        or "InaccessiblePaths=/run /var/run" not in drop):
+    if (drop.count("__B_GUARD_SHA256__")!=1 or
+        "User="+NEW_USER not in drop or "ExecStartPre=+" not in drop or
+        "InaccessiblePaths=/run /var/run" not in drop):
         hold("NEW_UNIT_DROPIN_CONTRACT_DRIFT")
-    if "__" in drop:hold("UNRESOLVED_DROPIN_PLACEHOLDER")
-    template=out["nft"].decode()
+    drop=drop.replace("__B_GUARD_SHA256__",GUARD_SHA)
+    if "__" in drop or "--expected-guard-sha256 "+GUARD_SHA not in drop:
+        hold("UNRESOLVED_DROPIN_PLACEHOLDER")
+    out["dropin"]=drop.encode()
+    template="\n".join(s for s in out["nft"].decode().splitlines() if not s.lstrip().startswith("#"))
     if template.count("__DEDICATED_UID__")!=2:
         hold("NFT_TEMPLATE_UNEXPECTED_UID_PLACEHOLDER")
+    out["nft"]= (template+"\n").encode()
     return out
 
 def ensure_parent(path,mode):
@@ -168,7 +172,8 @@ def ensure_parent(path,mode):
         if not current.exists():
             current.mkdir(mode=mode if current==path else 0o755)
         root_path(current,expect_dir=True)
-    os.chmod(path,mode)
+    if stat.S_IMODE(path.stat().st_mode)!=mode:
+        hold("EXISTING_ROOT_DIRECTORY_MODE_NOT_EXACT")
 
 def create_new(path, data, mode):
     fd=os.open(str(path),os.O_CREAT|os.O_EXCL|os.O_WRONLY|os.O_NOFOLLOW,mode)
@@ -217,6 +222,12 @@ COMMIT;
 def install(args,bundle,uid):
     # No attempt to roll back after *any* external mutation; preserve partial
     # condition for independent review. Every path O_EXCL, no old-path touches.
+    ensure_parent(RECEIPT.parent,0o700)
+    create_new(RECEIPT.parent/"started.json",(json.dumps({
+       "schema":SCHEMA,"status":"INSTALL_STARTED_NOT_CERTIFIED",
+       "source_commit":SOURCE_COMMIT,"old_web_pid":OLD_PID,
+       "database_name":args.database,"no_retry_without_independent_repair":True
+    },sort_keys=True)+"\n").encode(),0o600)
     if uid is None:
         cmd(["/usr/sbin/useradd","--system","--no-create-home",
              "--shell","/usr/sbin/nologin","--user-group",NEW_USER])
@@ -226,7 +237,6 @@ def install(args,bundle,uid):
     ensure_parent(GUARD.parent,0o755)
     ensure_parent(WITNESS.parent,0o700)
     ensure_parent(DROPIN.parent,0o755)
-    ensure_parent(RECEIPT.parent,0o700)
     create_new(GUARD,bundle["guard"],0o644)
     create_new(WITNESS,bundle["witness"],0o644)
     nft_src=bundle["nft"].decode().replace("__DEDICATED_UID__",str(uid)).encode()
