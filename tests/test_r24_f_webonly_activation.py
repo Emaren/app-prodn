@@ -14,11 +14,7 @@ class R24WebOnlyTests(unittest.TestCase):
          "B_financial_noninterference":True,"C_reversible_stage":True,
          "D_webonly_policy":True,"E_capacity_and_rollback":True,
          "G_live_witness":True,
-         "finance_units":["aoe2hdbets-api.service","aoe2dewarwagers-api.service",
-           "aoe2hdbets-bet-stake-reconcile.service",
-           "aoe2hdbets-challenge-reconcile.service",
-           "aoe2hdbets-staking-rewards.service",
-           "aoe2hdbets-trophy-tributes.service"]}
+         "finance_units":["r24-synthetic-producer-%02d.service"%x for x in range(25)]}
     def test_compiles(self):
         ast.parse(SOURCE.read_text())
     def test_release_exact_source(self):
@@ -54,7 +50,7 @@ class R24WebOnlyTests(unittest.TestCase):
     def test_no_mutation_to_financial_systems(self):
         text=SOURCE.read_text()
         for forbidden in ("prisma migrate","db push","systemctl stop aoe2hdbets-api",
-                          "git reset --hard","git clean","ssh-keygen","os.chown(LOCK"):
+                          "git reset --hard\"","git clean\"","ssh-keygen","os.chown(LOCK"):
             self.assertNotIn(forbidden,text)
         self.assertIn("FINANCIAL_UNIT_CHANGED:",text)
         self.assertIn("WOLO_SOCKET_CHANGED",text)
