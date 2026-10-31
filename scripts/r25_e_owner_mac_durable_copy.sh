@@ -39,8 +39,13 @@ def canonical(x):return json.dumps(x,sort_keys=True,separators=(',',':'),ensure_
 
 plan=parse_result(remote('--phase','plan'),'PLAN')
 stable=dict(plan);plan_hash=stable.pop('plan_sha256',None)
-cap=dict(stable.get('capacity') or {});cap.pop('attached_free_before_bytes',None);cap.pop('root_free_before_bytes',None)
-stable['capacity']=cap
+# Keep the physical capacity values for the reserve check; strip free-space drift
+# ONLY from a separate copy used to reproduce the root worker's stable plan SHA.
+cap=dict(stable.get('capacity') or {})
+hash_cap=dict(cap)
+hash_cap.pop('attached_free_before_bytes',None)
+hash_cap.pop('root_free_before_bytes',None)
+stable['capacity']=hash_cap
 if not (
     plan.get('schema')=='aoe2war.r25.e.old-next-copy-plan.v1'
     and plan.get('mutations_authorized') is False
