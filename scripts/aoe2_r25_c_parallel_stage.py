@@ -49,6 +49,8 @@ def redacted_diagnostic_tail(raw,limit=1100):
     # A registry URL may carry auth in userinfo or query parameters.
     text=re.sub(r"(?i)\b(?:https?|postgres(?:ql)?|redis)://\S+",
                 "[URL_REDACTED]",text)
+    text=re.sub(r"(?i)\bauthorization\s*[:=]\s*(?:Bearer\s+)?[^\r\n]+",
+                "[AUTHORIZATION_REDACTED]",text)
     text=re.sub(r"(?i)\b(?:authorization|cookie|set-cookie|password|passwd|"
                 r"secret|token|_authToken|api[-_]?key|client[-_]?secret|"
                 r"database_url|nextauth_secret|session_secret)"
