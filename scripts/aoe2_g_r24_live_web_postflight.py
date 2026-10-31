@@ -448,7 +448,8 @@ def verified_c_archive_source():
                  node.resolve().is_relative_to(STAGE.resolve()),
                  "C_STAGE_INTERNAL_SYMLINK_CHANGED")
         else:raise Hold("C_UNKNOWN_FILE_TYPE")
-    return {"source_git_archive_sha256":ARCHIVE_SHA,
+    return {"c_build_receipt_sha256":digest(root_file(C_AUDIT/"BUILD_STAGED.json",65536)),
+            "source_git_archive_sha256":ARCHIVE_SHA,
             "source_manifest_sha256":source["source_manifest_sha256"],
             "build_manifest_sha256":built["tree_sha256"],
             "receipt_build_id":built["build_id"],
@@ -505,12 +506,54 @@ def root_snapshot(phase):
         "nginx":route,"release_lock":lock_state(),"release_journal":history,
         "approved_scope_sha256":digest(root_file(APPROVAL,16384)),
         "proof":"ROOT_SSH_MEASURED_NOT_FINANCE_SIGNED"}
-def ssh_snapshot(target,phase):
+def root_live_recheck(phase):
+    """Second public-probe guard; no second 87k-file build/dependency traversal."""
+    need(sys.platform=="linux" and os.geteuid()==0 and
+         socket.gethostname().split(".")[0]==HOST,"NOT_ROOT_ORIGINAL_HEL1")
+    need(phase in ("before","after","rollback"),"PHASE_INVALID")
+    original=git_source(OLD_REPO,"tony")
+    old_build=(OLD_REPO/".next/BUILD_ID").read_text().strip()
+    new_build=(STAGE/".next/BUILD_ID").read_text().strip()
+    need(BUILD.fullmatch(old_build) and new_build==EXPECTED_C_NEXT_BUILD_ID,
+         "LIVE_RECHECK_BUILD_ID_DRIFT")
+    root_build=root_file(C_AUDIT/"BUILD_STAGED.json",65536)
+    sealed=parse(root_build,65536)
+    c_physical_build_identity(sealed)
+    units=system_state()
+    need(units[OLD_UNIT]["properties"]["MainPID"]==str(EXPECTED_OLD_PID) and
+         units[OLD_UNIT]["properties"]["ActiveState"]=="active" and
+         units[NEW_UNIT]["properties"]["ActiveState"]=="active",
+         "LIVE_RECHECK_WEB_PROCESS_CHANGED")
+    ports={str(p):listening_socket(p) for p in (3030,3031,8092,8093)}
+    approved=scope()
+    return {"schema":"aoe2war.g.r25.live-recheck.v1","phase":phase,
+            "old_source":original,"old_next_build_id":old_build,
+            "candidate_next_build_id":new_build,
+            "c_build_receipt_sha256":digest(root_build),
+            "units":units,"ports":ports,
+            "old_http":http_site("http://127.0.0.1:3030",old_build),
+            "candidate_http":http_site("http://127.0.0.1:3031",new_build),
+            "nginx":nginx_route(approved),
+            "release_lock":lock_state(),"release_journal":audit(approved,phase),
+            "approved_scope_sha256":digest(root_file(APPROVAL,16384))}
+def compare_live_recheck(full,light):
+    need(light.get("schema")=="aoe2war.g.r25.live-recheck.v1" and
+         full["phase"]==light["phase"],"LIVE_RECHECK_PHASE_OR_SCHEMA")
+    for field in ("old_source","old_next_build_id","units","ports",
+                  "old_http","candidate_http","nginx","release_lock",
+                  "release_journal","approved_scope_sha256"):
+        need(full[field]==light[field],"LIVE_RECHECK_CHANGED:"+field)
+    need(full["candidate"]["next_build_id"]==light["candidate_next_build_id"] and
+         full["candidate"]["source"]["c_build_receipt_sha256"]==
+         light["c_build_receipt_sha256"],"LIVE_RECHECK_C_BUILD_CHANGED")
+
+def ssh_snapshot(target,phase,light=False):
     need(re.fullmatch(r"root@[A-Za-z0-9._-]{1,140}",target),"UNREVIEWED_SSH_TARGET")
     payload=pathlib.Path(__file__).read_bytes()
     argv=["/usr/bin/ssh","-T","-o","BatchMode=yes",
           "-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",
-          target,"/usr/bin/python3","-I","-B","-","--remote",phase]
+          target,"/usr/bin/python3","-I","-B","-",
+          "--remote-light" if light else "--remote",phase]
     return parse(run(argv,timeout=380,stdin=payload))
 def public_check(expected):
     result=http_site(PUBLIC,expected["candidate"]["next_build_id"]
@@ -582,6 +625,7 @@ def verify(before,after,phase):
 def main():
     a=argparse.ArgumentParser()
     a.add_argument("--remote",choices=("before","after","rollback"))
+    a.add_argument("--remote-light",choices=("before","after","rollback"))
     a.add_argument("--phase",choices=("before","after","rollback"))
     a.add_argument("--ssh-target")
     a.add_argument("--before",type=pathlib.Path)
@@ -590,20 +634,18 @@ def main():
     a.add_argument("--after-sha256")
     x=a.parse_args()
     try:
-        if x.remote:
-            need(not x.phase and not x.ssh_target and not x.before,"REMOTE_ARG_COLLISION")
-            result=root_snapshot(x.remote)
+        if x.remote or x.remote_light:
+            need(not (x.remote and x.remote_light) and not x.phase and
+                 not x.ssh_target and not x.before,"REMOTE_ARG_COLLISION")
+            result=root_live_recheck(x.remote_light) if x.remote_light else root_snapshot(x.remote)
         else:
             need(x.phase and x.ssh_target,"LOCAL_SSH_AND_PHASE_REQUIRED")
             snapshot=ssh_snapshot(x.ssh_target,x.phase)
             if x.phase=="before":
                 need(snapshot["nginx"]["upstream_port"]==3030,"PUBLIC_NOT_YET_AT_3030")
                 snapshot["public_before"]=public_check(snapshot)
-                recheck=ssh_snapshot(x.ssh_target,"before")
-                compare_process_and_finance(snapshot,recheck)
-                need(snapshot["nginx"]==recheck["nginx"] and
-                     snapshot["release_journal"]==recheck["release_journal"],
-                     "PUBLIC_OLD_UPSTREAM_DRIFT_DURING_BEFORE")
+                recheck=ssh_snapshot(x.ssh_target,"before",light=True)
+                compare_live_recheck(snapshot,recheck)
                 result=snapshot
             else:
                 need(x.before and x.before_sha256 and H64.fullmatch(x.before_sha256),
@@ -624,11 +666,8 @@ def main():
                 result=verify(before,snapshot,x.phase)
                 public=public_check(snapshot)
                 result["public"]=public
-                repeat=ssh_snapshot(x.ssh_target,x.phase)
-                compare_process_and_finance(snapshot,repeat)
-                need(repeat["nginx"]==snapshot["nginx"] and
-                     repeat["release_journal"]==snapshot["release_journal"],
-                     "NGINX_OR_ROOT_JOURNAL_CHANGED_DURING_PUBLIC_PROBE")
+                repeat=ssh_snapshot(x.ssh_target,x.phase,light=True)
+                compare_live_recheck(snapshot,repeat)
         print(json.dumps(result,sort_keys=True,separators=(",",":")))
         return 0
     except (Hold,KeyError,ValueError,TypeError,IndexError,StopIteration,
