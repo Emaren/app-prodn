@@ -201,6 +201,8 @@ def stage_source(expected):
                     dst.flush();os.fsync(dst.fileno())
                 row["sha256"]=h.hexdigest()
     (DEST/"r24-source-sha").write_text(SHA+"\n")
+    fsyncdir(DEST)
+    fsyncdir(DEST.parent)
     need(old_identity()==before and boundary_sockets()==sockets,
          "OLD_WEB_OR_WOLO_CHANGED_DURING_SOURCE_STAGE")
     write_once(AUDIT/"SOURCE_FILES.json",{"schema":"r25-c-source-files.v1","rows":rows})
@@ -237,7 +239,14 @@ def build_source():
     yarn=pathlib.Path("/home/tony/.cache/node/corepack/v1/yarn/1.22.22")
     need(yarn.is_dir() and (yarn/"bin/yarn.js").is_file(),
          "CANONICAL_YARN_1_22_22_UNAVAILABLE")
-    shutil.copytree(yarn,DEST/".r25-yarn",symlinks=False)
+    # The historical Yarn runtime is tony-owned, not a root trust source.
+    # Never follow any operator-writable symlink during privileged copying.
+    for item in (yarn,*yarn.rglob("*")):
+        st=item.lstat()
+        need(not stat.S_ISLNK(st.st_mode)
+             and (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode))
+             and not st.st_mode&0o022, "YARN_SOURCE_NOT_SAFE_FOR_ROOT_COPY")
+    shutil.copytree(yarn,DEST/".r25-yarn",symlinks=True)
     for sub in (".r25-home",".r25-cache",".r25-tmp"):
         (DEST/sub).mkdir(mode=0o700)
     command(["/usr/bin/chown","-R",f"{account.pw_uid}:{account.pw_gid}",str(DEST)],timeout=160)
