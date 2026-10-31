@@ -75,7 +75,9 @@ class RecoveryV6Tests(unittest.TestCase):
     def test_03_source_has_exact_independent_F_review_pin(self):
         # F's successor branch binds the ORIGINAL immutable C #1074 SHA.
         # Changing the pinned source requires a fresh F review.
-        self.assertEqual(self.s.F_REVIEWED_C_SOURCE_SHA,
+        # setUpClass deliberately substitutes a SYNTHETIC F pin for negative
+        # signature fixtures; reload the real production source for this gate.
+        self.assertEqual(load(SERVER).F_REVIEWED_C_SOURCE_SHA,
                          "318bd18a6fef630ea4ea32c2140199975cb3d834")
         self.assertIn('F_REVIEWED_C_SOURCE_SHA = "318bd18a6fef630ea4ea32c2140199975cb3d834"',
                       SERVER.read_text())
