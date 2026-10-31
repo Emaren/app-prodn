@@ -38,7 +38,7 @@ export type EngineeringProjection = {
     domainBindings: { lane: string; rationale: string; osIds: string[] }[];
     assignments: { lane: string; scope: string; sourceRef: string; result: string }[];
     buildStagedEvidence: "UNKNOWN";
-    3031RunningEvidence: "UNKNOWN";
+    candidate3031RunningEvidence: "UNKNOWN";
     publicCutoverEvidence: "UNKNOWN";
   };
 };
@@ -120,7 +120,7 @@ export function buildEngineeringProjection(audience: "public" | "admin"): Engine
         result: item.result,
       })),
       buildStagedEvidence: "UNKNOWN",
-      3031RunningEvidence: "UNKNOWN",
+      candidate3031RunningEvidence: "UNKNOWN",
       publicCutoverEvidence: "UNKNOWN",
     };
   }
