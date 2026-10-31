@@ -328,7 +328,7 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('"recover-prebuild":"--recover-prebuild"',owner)
         self.assertIn('POSTPREBUILD_RECOVERY_ATTEMPT.json',worker)
         self.assertIn('POSTPREBUILD_PHASE_%02d.json',worker)
-        section=worker.split('def postprebuild_recovery():',1)[1].split(
+        section=worker.split('def postprebuild_recovery(resume_oom=False):',1)[1].split(
             'def verified_b_runtime(',1)[0]
         self.assertNotIn('"install"',section)
         self.assertNotIn('"--offline"',section)
@@ -415,7 +415,7 @@ class R25StageTests(unittest.TestCase):
 
     def test_44_preserves_original_prebuild_outputs_and_skips_yarn(self):
         source=SRC.read_text()
-        section=source.split('def postprebuild_recovery():',1)[1].split(
+        section=source.split('def postprebuild_recovery(resume_oom=False):',1)[1].split(
             'def verified_b_runtime(',1)[0]
         self.assertIn('"prior_prebuild_version":version',section)
         self.assertIn('"build_version_rewritten":False',section)
