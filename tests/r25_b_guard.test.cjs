@@ -15,9 +15,9 @@ function fixture(overrides = {}, uid = 17251) {
     AOE2WAR_PROD_DB_PREVIEW: "true",
     AOE2WAR_R25_ISOLATED_WEB: "true",
     NODE_OPTIONS: "--require=" + GUARD_PATH,
-    PORT: "3031", HOSTNAME: "127.0.0.1", USER: "aoe2war_r25_web",
-    LOGNAME: "aoe2war_r25_web",
-    DATABASE_URL: "postgresql://aoe2war_r25_web_ro:dummy@127.0.0.1:5432/aoe2war_test",
+    PORT: "3031", HOSTNAME: "127.0.0.1", USER: "aoe2war-r24-web",
+    LOGNAME: "aoe2war-r24-web",
+    DATABASE_URL: "postgresql://aoe2war-r24-web_ro:dummy@127.0.0.1:5432/aoe2war_test",
   };
   Object.assign(env, overrides);
   class Server extends EventEmitter {
@@ -85,10 +85,10 @@ test("startup denied for writer-privileged DB principal",()=>{
   assert.throws(()=>fixture({DATABASE_URL:"postgresql://postgres:dummy@127.0.0.1:5432/db"}),/DEDICATED_DB_URL/);
 });
 test("startup denied for DB host outside loopback",()=>{
-  assert.throws(()=>fixture({DATABASE_URL:"postgresql://aoe2war_r25_web_ro:dummy@10.0.0.1:5432/db"}),/DEDICATED_DB_URL/);
+  assert.throws(()=>fixture({DATABASE_URL:"postgresql://aoe2war-r24-web_ro:dummy@10.0.0.1:5432/db"}),/DEDICATED_DB_URL/);
 });
 test("startup denied for arbitrary connection options",()=>{
-  assert.throws(()=>fixture({DATABASE_URL:"postgresql://aoe2war_r25_web_ro:dummy@127.0.0.1:5432/db?options=-c"}),/DEDICATED_DB_URL/);
+  assert.throws(()=>fixture({DATABASE_URL:"postgresql://aoe2war-r24-web_ro:dummy@127.0.0.1:5432/db?options=-c"}),/DEDICATED_DB_URL/);
 });
 test("POST including Next Server Actions and localhost never reaches listener",()=>{
   const f=fixture();const r=req(f,"POST","/api/bets/stake-intents");
