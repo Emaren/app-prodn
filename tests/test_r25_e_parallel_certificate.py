@@ -43,7 +43,7 @@ class R25EParallelCertificate(unittest.TestCase):
         self.dev = self.web.stat().st_dev
         self.args = SimpleNamespace(candidate_max_bytes=8*e.GIB,
                                     expected_old_pid=2625090,
-                                    durable_next=None,
+                                    durable_next=None, discover_prior_next=False,
                                     require_phase='RECOVERY_READY')
         self.patches = [patch.object(e, 'OLD_WEB', self.web),
                         patch.object(e, 'VOLUME', self.vol),
@@ -70,20 +70,20 @@ class R25EParallelCertificate(unittest.TestCase):
     def built_stage(self):
         p = self.stage/'.next/server'
         p.mkdir(parents=True)
-        (self.stage/'.next/BUILD_ID').write_text('NEW_BUILD_DEF456')
+        (self.stage/'.next/BUILD_ID').write_text(e.C_BUILD_ID)
         (self.stage/'node_modules/next').mkdir(parents=True)
         (self.stage/'node_modules/next/package.json').write_text('{"name":"next"}')
         (self.stage/'package.json').write_text('{"name":"aoe2war"}')
         (self.stage/'r24-source-sha').write_text(e.SOURCE+'\n')
-        (self.stage/'.aoe2war-build-version').write_text('NEW_VERSION_DEF456')
+        (self.stage/'.aoe2war-build-version').write_text(e.C_BUILD_VERSION)
         source={'status':'SOURCE_STAGED','candidate_sha':e.SOURCE,
                 'git_archive_sha256':e.ARCHIVE_SHA256,'old_web_mainpid':2625090,
                 'old_web_untouched':True,'new_candidate_started':False}
         build={'schema':'aoe2war.r25.c.full-built-artifact.v1',
                'status':'BUILD_STAGED','candidate_sha':e.SOURCE,
                'source_git_archive_sha256':e.ARCHIVE_SHA256,
-               'build_id':'NEW_BUILD_DEF456','build_version':'NEW_VERSION_DEF456',
-               'tree_sha256':'a'*64,'root_sealed':True,'old_web_pid_untouched':2625090,
+               'build_id':e.C_BUILD_ID,'build_version':e.C_BUILD_VERSION,
+               'tree_sha256':e.C_TREE_SHA256,'root_sealed':True,'old_web_pid_untouched':2625090,
                'new_service_started':False,'financial_writes_authorized':False}
         (self.audit/'SOURCE_STAGED.json').write_text(json.dumps(source))
         (self.audit/'BUILD_STAGED.json').write_text(json.dumps(build))
@@ -123,7 +123,7 @@ class R25EParallelCertificate(unittest.TestCase):
         self.built_stage()
         r=e.certify(self.args)
         self.assertEqual(r['phase'],'BUILD_STAGED')
-        self.assertEqual(r['candidate']['candidate_next_build_id'],'NEW_BUILD_DEF456')
+        self.assertEqual(r['candidate']['candidate_next_build_id'],e.C_BUILD_ID)
         self.assertEqual(r['root']['required_free_bytes'],4*e.GIB)
         self.assertFalse(r['source_to_build_binding_proved'])
         self.assertTrue(r['c_receipt_source_to_build_binding_checked'])
@@ -270,6 +270,73 @@ class R25EParallelCertificate(unittest.TestCase):
             with patch.object(e,'ARCHIVE_SHA256','0'*64):
                 with self.assertRaisesRegex(e.Hold,'ARCHIVE_SHA256_MISMATCH'):
                     e.archive_identity()
+
+    def test_physical_C_manifest_sha_tamper_rejected(self):
+        self.built_stage()
+        f=self.audit/'BUILD_STAGED.json'
+        data=json.loads(f.read_text());data['tree_sha256']='0'*64
+        f.write_text(json.dumps(data))
+        with self.assertRaisesRegex(e.Hold,'C_BUILD_RECEIPT_WRONG'):
+            e.certify(self.args)
+
+    def test_unique_existing_attached_copy_discovered_then_full_hashed(self):
+        self.built_stage()
+        dest=self.copied_old()
+        self.args.durable_next=None
+        self.args.discover_prior_next=True
+        r=e.certify(self.args)
+        self.assertEqual(r['phase'],'RECOVERY_READY')
+        self.assertEqual(r['durable_discovery']['selected_path'],str(dest))
+        self.assertTrue(r['durable_rollback']['content_matched'])
+
+    def test_no_old_build_matching_durable_reports_build_only(self):
+        self.built_stage()
+        dest=self.copied_old()
+        (dest/'BUILD_ID').write_text('DIFFERENT_OLD_BUILD')
+        self.args.durable_next=None
+        self.args.discover_prior_next=True
+        r=e.certify(self.args)
+        self.assertEqual(r['phase'],'BUILD_STAGED')
+        self.assertEqual(r['durable_discovery']['status'],'NO_MATCHING_PRIOR_NEXT')
+        self.assertIsNone(r['durable_rollback'])
+
+    def test_ambiguous_two_old_build_matched_copies_holds(self):
+        self.built_stage()
+        self.copied_old()
+        self.args.durable_next=None
+        self.args.discover_prior_next=True
+        second=self.durable/'OTHER/prior-next'
+        second.mkdir(parents=True)
+        shutil.copy2(self.old/'BUILD_ID',second/'BUILD_ID')
+        with self.assertRaisesRegex(e.Hold,'AMBIGUOUS_MATCHING_ROLLBACKS'):
+            e.certify(self.args)
+
+    def test_discovery_rejects_symlinked_prior_next(self):
+        self.built_stage()
+        dest=self.copied_old()
+        self.args.durable_next=None
+        self.args.discover_prior_next=True
+        shutil.rmtree(dest)
+        dest.symlink_to(self.old, target_is_directory=True)
+        with self.assertRaisesRegex(e.Hold,'PATH_SYMLINK|ROLLBACK_PRIOR_NEXT_UNTRUSTED'):
+            e.certify(self.args)
+
+    def test_discovery_rejects_unbounded_campaign_count(self):
+        self.built_stage()
+        self.args.discover_prior_next=True
+        with patch.object(e,'MAX_ROLLBACK_CAMPAIGNS',0):
+            (self.durable/'a').mkdir()
+            with self.assertRaisesRegex(e.Hold,'ROLLBACK_CAMPAIGN_COUNT_EXCEEDS'):
+                e.certify(self.args)
+
+    def test_discovery_matching_id_but_byte_tampered_holds(self):
+        self.built_stage()
+        dest=self.copied_old()
+        (dest/'important.bin').write_bytes(b'wrong')
+        self.args.durable_next=None
+        self.args.discover_prior_next=True
+        with self.assertRaisesRegex(e.Hold,'DURABLE_BYTES_OR_PATH_MISMATCH'):
+            e.certify(self.args)
 
     def test_real_root_seal_rejects_nonroot_and_group_writable(self):
         real=REAL_ROOT_SEALED
