@@ -39,6 +39,36 @@ jobs:
         run: |
           yarn install --frozen-lockfile --ignore-scripts --non-interactive
           python3 scripts/check_dependency_security.py
+      - name: Diagnose minimatch v11 default-import consumers (read-only)
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.resolve('node_modules');
+          const pattern = /\bimport\s+[A-Za-z_$][\w$]*\s+from\s*['"]minimatch['"]|\brequire\s*\(\s*['"]minimatch['"]\s*\)\.default|\bimport\s*\(\s*['"]minimatch['"]\s*\)\.then\s*\(/g;
+          const hits = [];
+          let checked=0;
+          const todo=[root];
+          while(todo.length && checked<70000) {
+            const dir=todo.pop();
+            for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
+              if(entry.isSymbolicLink() || ['.bin','.cache','.git','test','tests','fixtures','__tests__'].includes(entry.name))continue;
+              const name=path.join(dir,entry.name);
+              if(entry.isDirectory()){todo.push(name);continue;}
+              if(!entry.isFile() || !/\.(?:js|mjs|cjs)$/.test(entry.name))continue;
+              const st=fs.statSync(name);
+              if(st.size>1000000)continue;
+              checked++;
+              const source=fs.readFileSync(name,'utf8');
+              const match=pattern.exec(source);
+              pattern.lastIndex=0;
+              if(match)hits.push({file:path.relative(process.cwd(),name),snippet:source.slice(Math.max(0,match.index-75),match.index+160).replace(/\s+/g,' ').slice(0,240)});
+              if(hits.length>=70)break;
+            }
+            if(hits.length>=70)break;
+          }
+          console.log('MINIMATCH_V11_IMPORTER_DIAGNOSTIC',JSON.stringify({checked,hits}));
+          JS
       - name: Targeted parser and package compatibility tests
         run: |
           python3 -m unittest tests.test_dependency_security
