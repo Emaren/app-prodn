@@ -378,8 +378,19 @@ def root_sealed_file(p):
     st=p.lstat()
     return (stat.S_ISREG(st.st_mode) and st.st_uid==0 and
             not(st.st_mode&0o022) and st.st_nlink==1)
+def protected_c_stage_boundary():
+    """Reject mutable live-web parents; match C's direct root-owned /var/lib stage."""
+    expected=pathlib.Path("/var/lib")/("aoe2war-r25-web-"+TARGET[:12])
+    need(STAGE==expected and STAGE.parent==pathlib.Path("/var/lib"),
+         "C_ROOT_STAGE_PATH_NOT_REVIEWED")
+    for directory in (STAGE, STAGE.parent, C_AUDIT, C_AUDIT.parent):
+        st=directory.lstat()
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
+             not(st.st_mode&0o022), "C_STAGE_ROOT_TRUST_BOUNDARY")
+
 def verified_c_archive_source():
     """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
+    protected_c_stage_boundary()
     source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
     built=parse(root_file(C_AUDIT/"BUILD_STAGED.json",65536),65536)
     srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",33554432),33554432)
