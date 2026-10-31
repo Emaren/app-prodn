@@ -49,6 +49,14 @@ def need(ok,reason):
     if not ok:raise Hold(reason)
 def canonical(v):return json.dumps(v,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode("ascii")
 def hash256(x):return hashlib.sha256(x).hexdigest()
+def permit_identity(signed_payload):
+    """One-use identity is the exact canonical owner-authorized INTENT, not JSON formatting.
+
+    Different envelope whitespace, property order or signature encoding cannot
+    mint a new permit for an already consumed operation/source/digest/time scope.
+    This is called only AFTER the real RSA signature verifies successfully.
+    """
+    return hash256(DOM+canonical(signed_payload))
 def blobid(x):return hashlib.sha1(b"blob "+str(len(x)).encode()+b"\0"+x).hexdigest()
 def nodups(pairs):
     out={}
@@ -277,7 +285,7 @@ def permit(operation, manifest_hash,controller):
         sg.write_bytes(base64.b64decode(approved["signature_base64"],validate=True))
         checked=subprocess.run(["/usr/bin/openssl","dgst","-sha256","-verify",str(k),"-signature",str(sg),str(signed)],capture_output=True,timeout=8)
         need(checked.returncode==0,"OWNER_RSA_INSTALL_PERMIT_INVALID")
-    return hash256(read_file(APPROVAL,65536,trusted=True))
+    return permit_identity(body)
 
 def consume_permit(permit_sha,operation,manifest_hash):
     # One-use durable permit marker under an already protected CONFIG.
