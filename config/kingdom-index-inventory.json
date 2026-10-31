@@ -10,8 +10,8 @@
   "counts": {
     "pageTemplates": 150,
     "adminTemplates": 31,
-    "dynamicTemplates": 20,
-    "publicIndexTemplates": 89,
+    "dynamicTemplates": 21,
+    "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
     "routeHandlerTemplates": 278,
     "apiHandlerTemplates": 275,
@@ -223,9 +223,9 @@
       "assurance": "unverified"
     },
     {
-      "href": "/aoe2war-os/engineering",
-      "entrypoint": "app/aoe2war-os/engineering/page.tsx",
-      "scope": "public-index",
+      "href": "/aoe2war-os/[mode]",
+      "entrypoint": "app/aoe2war-os/[mode]/page.tsx",
+      "scope": "dynamic-template",
       "assurance": "unverified"
     },
     {
