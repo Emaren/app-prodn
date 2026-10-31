@@ -70,11 +70,11 @@ class R25StageTests(unittest.TestCase):
                     self.s.tar_inventory()
     def test_10_safe_tar_emits_file_list(self):
         with tempfile.TemporaryDirectory() as d:
-            f=self.make_tar(d)
+            f=self.make_tar(d,entries=[("source/file-%03d.txt"%i,"file") for i in range(101)])
             with mock.patch.object(self.s,"SOURCE",f):
                 rows,total=self.s.tar_inventory()
-            self.assertEqual(len(rows),2)
-            self.assertEqual(total,16)
+            self.assertEqual(len(rows),101)
+            self.assertEqual(total,808)
     def test_11_root_required_before_source_mutation(self):
         with mock.patch.object(self.s,"old_identity",side_effect=self.s.Hold("OLD")):
             with mock.patch.object(self.s,"archive_identity") as archive:
