@@ -44,7 +44,14 @@ def tonyrun(args,timeout=30):
     return run(["/usr/sbin/runuser","-u","tony","--",*map(str,args)],timeout=timeout)
 def canonical(o): return json.dumps(o,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode()
 def json_read(p):
-    return json.loads(p.read_bytes())
+    def nodups(pairs):
+        obj={}
+        for key,value in pairs:
+            need(key not in obj,"DUPLICATE_APPROVAL_FIELD")
+            obj[key]=value
+        return obj
+    return json.loads(p.read_bytes(),object_pairs_hook=nodups,
+        parse_constant=lambda _: (_ for _ in ()).throw(Hold("NONFINITE_APPROVAL_VALUE")))
 def protected_file(p):
     need(p.is_absolute(),"APPROVAL_PATH_NOT_ABSOLUTE")
     for v in (p,*p.parents):
@@ -83,7 +90,7 @@ def verify_review(approval):
     need(type(approval["candidate_build_version"])==str and
          3<=len(approval["candidate_build_version"])<=256,
          "BUILD_VERSION_NOT_PINNED")
-    need(type(approval["min_free_bytes"])==int and approval["min_free_bytes"]>=0,
+    need(type(approval["min_free_bytes"])==int and approval["min_free_bytes"]>=2*1024*1024*1024,
          "E_MIN_FREE_NOT_APPROVED")
     need(type(approval["reviews"])==dict and set(approval["reviews"])==set("BCDEFG"),
          "SIX_LANE_REVIEWS_NOT_SUPPLIED")
@@ -229,6 +236,7 @@ def cutover(a):
     need(not folder.exists() and not folder.is_symlink(),"EARLIER_OR_PARTIAL_TRANSACTION_HOLD")
     old_build=(REPO/".next/BUILD_ID").read_text().strip()
     old_version=(REPO/".aoe2war-build-version").read_bytes()
+    need(old_version and len(old_version)<=512,"ROLLBACK_VERSION_BYTES_INVALID")
     backup_next=REPO/(".next-r24-before-"+nonce)
     backup_modules=REPO/(".node_modules-r24-before-"+nonce)
     backup_version=REPO/(".buildversion-r24-before-"+nonce)
@@ -271,6 +279,7 @@ def cutover(a):
             "rollback_next":str(backup_next),"rollback_modules":str(backup_modules),
             "rollback_version":str(backup_version),"financial_unchanged":True})
         print("PASS:R24_WEB_ONLY_LIVE_EXACT_SOURCE_AND_BUILD_ID; ROLLBACK_RETAINED",flush=True)
+        print("R24_RECEIPT_ID="+nonce,flush=True)
     except BaseException as original_error:
         if changes:
             print("HOLD:R24_CUTOVER_FAILED_ROLLBACK_BEGIN:"+type(original_error).__name__,file=sys.stderr)
@@ -299,16 +308,88 @@ def cutover(a):
         raise
     finally:
         os.close(fd)
+
+def rollback_committed(a,nonce):
+    need(type(nonce)==str and re.fullmatch(r"[0-9a-f]{20}",nonce),
+         "ROLLBACK_ID_INVALID")
+    need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
+         "EXPECTED_ROOT_HEL1")
+    original_lock()
+    folder=RECEIPTS/("r24-web-"+nonce)
+    need(folder.is_dir() and not folder.is_symlink() and folder.stat().st_uid==0
+         and stat.S_IMODE(folder.stat().st_mode)==0o700,
+         "COMMITTED_ROOT_RECEIPT_MISSING")
+    before=json_read(folder/"before.json")
+    committed=json_read(folder/"commit.json")
+    need(committed.get("status")=="LIVE_WEB_ONLY" and
+         committed.get("candidate")==CANDIDATE and
+         committed.get("previous")==a["previous_sha"] and
+         committed.get("build_id")==a["candidate_build_id"] and
+         before.get("financial_sha256")==a["financial_unit_records_sha256"],
+         "COMMIT_IDENTITY_DRIFT")
+    need(not (folder/"rollback.json").exists(),"ROLLBACK_ALREADY_ATTEMPTED")
+    need(run_as_tony_git("rev-parse","HEAD")==CANDIDATE and
+         (REPO/".next/BUILD_ID").read_text().strip()==a["candidate_build_id"],
+         "LIVE_CANDIDATE_NOT_EXACT")
+    oldnext=REPO/(".next-r24-before-"+nonce)
+    oldmodules=REPO/(".node_modules-r24-before-"+nonce)
+    oldversion=REPO/(".buildversion-r24-before-"+nonce)
+    for p in (oldnext,oldmodules,oldversion):
+        need(p.exists() and not p.is_symlink(),"ROLLBACK_BYTES_MISSING")
+    oldbuild=before["previous_build_id"]
+    need(oldnext.joinpath("BUILD_ID").read_text().strip()==oldbuild,
+         "ROLLBACK_BUILD_ID_DRIFT")
+    need(oldversion.read_text().strip()==before["previous_build_version"],
+         "ROLLBACK_BUILD_VERSION_DRIFT")
+    new_units=capture_units(a["financial_units"])
+    new_sockets=dict(socket_state())
+    need(hashlib.sha256(canonical(new_units)).hexdigest()==before["financial_sha256"]
+         and new_sockets==before["wolo_listeners"],
+         "PROTECTED_FINANCE_DRIFT_BEFORE_MANUAL_ROLLBACK")
+    fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        original_lock()
+        # Save the new runtime for forensics; do not destroy or overwrite it.
+        retired=[REPO/(item+"-r24-retired-"+nonce)
+                 for item in (".next","node_modules",".aoe2war-build-version")]
+        need(not any(p.exists() or p.is_symlink() for p in retired),
+             "RETIRED_CANDIDATE_ALREADY_EXISTS")
+        run(["/usr/bin/systemctl","stop",SERVICE],timeout=35)
+        for live,ret in zip((REPO/".next",REPO/"node_modules",
+                             REPO/".aoe2war-build-version"),retired):
+            move(live,ret)
+        os.rename(oldnext,REPO/".next")
+        os.rename(oldmodules,REPO/"node_modules")
+        os.rename(oldversion,REPO/".aoe2war-build-version")
+        run_as_tony_git("switch","--detach",a["previous_sha"])
+        run(["/usr/bin/systemctl","start",SERVICE],timeout=45)
+        confirm_web_version(before["previous_build_version"])
+        need((REPO/".next/BUILD_ID").read_text().strip()==oldbuild,
+             "RESTORED_BUILD_ID_DRIFT")
+        compare_protected((new_units,new_sockets),
+                          (capture_units(a["financial_units"]),dict(socket_state())))
+        write_receipt(folder/"rollback.json",{"status":"RESTORED_PREVIOUS_WEB",
+            "source":a["previous_sha"],"build_id":oldbuild,
+            "candidate_retained_for_forensics":True,"financial_unchanged":True})
+        print("PASS:R24_MANUAL_ROLLBACK_PREVIOUS_WEB_AND_FINANCE_VERIFIED")
+    finally:
+        os.close(fd)
+
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("--apply",action="store_true")
+    ops=p.add_mutually_exclusive_group(required=True)
+    ops.add_argument("--apply",action="store_true")
+    ops.add_argument("--rollback",default=None)
     p.add_argument("--owner-build-id",default="")
     args=p.parse_args()
-    need(args.apply,"MUTATION_REQUIRES_EXPLICIT_APPLY")
     a=protected_file(APPROVAL)
     verify_review(a)
     need(args.owner_build_id==a["candidate_build_id"],"OWNER_BUILD_ID_NOT_APPROVED")
-    cutover(a)
+    if args.apply:
+        cutover(a)
+    else:
+        rollback_committed(a,args.rollback)
 if __name__=="__main__":
     try: main()
     except Exception as exc:
