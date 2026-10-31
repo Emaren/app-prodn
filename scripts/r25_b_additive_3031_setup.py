@@ -139,13 +139,13 @@ def inherited_public_write_risks(database):
       'schema_create', (
         SELECT count(*) FROM pg_namespace n,
         LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a
-        WHERE n.nspname NOT LIKE 'pg_temp_%'
+        WHERE left(n.nspname, 8) <> 'pg_temp_'
           AND a.grantee=0 AND a.privilege_type='CREATE'
       ),
       'table_write', (
         SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
         LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a
-        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+        WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
           AND c.relkind IN ('r','p','f','v','m')
           AND a.grantee=0 AND a.privilege_type IN
             ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
@@ -153,13 +153,13 @@ def inherited_public_write_risks(database):
       'sequence_write', (
         SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
         LATERAL aclexplode(COALESCE(c.relacl,acldefault('s',c.relowner))) a
-        WHERE n.nspname NOT LIKE 'pg_%' AND c.relkind='S'
+        WHERE left(n.nspname, 3) <> 'pg_' AND c.relkind='S'
           AND a.grantee=0 AND a.privilege_type IN ('USAGE','UPDATE')
       ),
       'unsafe_callable', (
         SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace,
         LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
-        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+        WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
           AND (p.prosecdef OR p.provolatile='v')
           AND a.grantee=0 AND a.privilege_type='EXECUTE'
           AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
@@ -167,7 +167,7 @@ def inherited_public_write_risks(database):
       'reviewed_trigger_exclusions', (
         SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace,
         LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
-        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+        WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
           AND (p.prosecdef OR p.provolatile='v')
           AND a.grantee=0 AND a.privilege_type='EXECUTE'
           AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
@@ -338,10 +338,10 @@ BEGIN
  IF has_database_privilege('aoe2war_r25_web_ro',current_database(),'CREATE')
  OR EXISTS(SELECT 1 FROM pg_auth_members m JOIN pg_roles r ON m.member=r.oid
     WHERE r.rolname='aoe2war_r25_web_ro')
- OR EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname NOT LIKE 'pg_temp_%%'
+ OR EXISTS(SELECT 1 FROM pg_namespace n WHERE left(n.nspname, 8) <> 'pg_temp_'
     AND has_schema_privilege('aoe2war_r25_web_ro',n.oid,'CREATE'))
  OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname NOT LIKE 'pg_%%' AND n.nspname<>'information_schema'
+    WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
       AND c.relkind IN ('r','p','f','v','m')
       AND (has_table_privilege('aoe2war_r25_web_ro',c.oid,'INSERT')
        OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'UPDATE')
@@ -350,16 +350,16 @@ BEGIN
        OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'REFERENCES')
        OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'TRIGGER')))
  OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname NOT LIKE 'pg_%%' AND c.relkind='S'
+    WHERE left(n.nspname, 3) <> 'pg_' AND c.relkind='S'
       AND (has_sequence_privilege('aoe2war_r25_web_ro',c.oid,'USAGE')
        OR has_sequence_privilege('aoe2war_r25_web_ro',c.oid,'UPDATE')))
  OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname NOT LIKE 'pg_%%' AND n.nspname<>'information_schema'
+    WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
       AND (p.prosecdef OR p.provolatile='v')
       AND has_function_privilege('aoe2war_r25_web_ro',p.oid,'EXECUTE')
       AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e')))
  OR (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname NOT LIKE 'pg_%%' AND n.nspname<>'information_schema'
+    WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
       AND (p.prosecdef OR p.provolatile='v')
       AND has_function_privilege('aoe2war_r25_web_ro',p.oid,'EXECUTE')
       AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))) <> 39

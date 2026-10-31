@@ -69,12 +69,12 @@ SELECT json_build_object(
  'no_db_create', NOT has_database_privilege(current_database(),'CREATE'),
  'no_schema_create', NOT EXISTS(
    SELECT 1 FROM pg_namespace n WHERE has_schema_privilege(n.oid,'CREATE')
-   AND n.nspname NOT LIKE 'pg_temp_%'
+   AND left(n.nspname, 8) <> 'pg_temp_'
  ),
  'no_table_mutation', NOT EXISTS(
    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE c.relkind IN ('r','p','f','v','m')
-     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
      AND (has_table_privilege(c.oid,'INSERT')
           OR has_table_privilege(c.oid,'UPDATE')
           OR has_table_privilege(c.oid,'DELETE')
@@ -84,26 +84,26 @@ SELECT json_build_object(
  ),
  'no_sequence_mutation', NOT EXISTS(
    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-   WHERE c.relkind='S' AND n.nspname NOT LIKE 'pg_%'
+   WHERE c.relkind='S' AND left(n.nspname, 3) <> 'pg_'
      AND (has_sequence_privilege(c.oid,'UPDATE')
           OR has_sequence_privilege(c.oid,'USAGE'))
  ),
  'no_callable_security_definer', NOT EXISTS(
    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
    WHERE p.prosecdef
-     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
      AND has_function_privilege(p.oid,'EXECUTE')
  ),
  'no_callable_volatile_user_functions', NOT EXISTS(
    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
    WHERE p.provolatile='v'
-     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
      AND has_function_privilege(p.oid,'EXECUTE')
       AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
  ),
  'reviewed_trigger_exclusions', (
     SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-    WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+    WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
       AND (p.prosecdef OR p.provolatile='v')
       AND has_function_privilege(p.oid,'EXECUTE')
       AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
