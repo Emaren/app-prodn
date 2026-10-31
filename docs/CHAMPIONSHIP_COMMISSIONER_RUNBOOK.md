@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-31"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -73,10 +73,37 @@ hidden current team roster behind. An empty/disputed custody state cannot
 silently produce a champion. Same-roster metadata refresh preserves seat
 order, reign start and economic/chain history.
 
+## October 31, 2026 — independent financial source review (Session B)
+
+This is a substantive source review against the F/D website-controller integration
+`b13a4a91d37a93ac2300dab7927544f374469101`, **not** a live HEL1
+escrow, balance, payout or signer attestation. Financial settlement remains
+release-HELD until the independent 8092/8093 identities, complete writer
+inventory, source/HEAD/prewarm side effects and real producer receipts pass.
+
+The `championship_v2` contract is **0 or 100 WOLO wager per warrior, with
+zero Match Guarantee**; zero is the default and requires no escrow deposit to
+issue/play a Challenge. Do not interpret a zero-funded defense as an unpaid
+chain debt. Real nonzero deposits must have authenticated sender, challenge
+leg/side, escrow destination and proof before the game's Watcher-confirmed
+start to become a matched winner-payout wager. An unmatched or late deposit
+is still a refund liability, **not** winner-purse authority. No title default
+creates a played winner or authorizes a winner payout.
+
+Evidence: `lib/championshipChallenges.ts` (paired legs created with
+`guaranteeAmountWolo: 0`, and proof-bound participant funding),
+`lib/scheduledMatchSettlements.ts` (`championshipWagerMatchedAtStart`,
+`buildRawTransfers` and persisted settlement proofs),
+`lib/trophies/championship.ts` (`createAllocatedPayout` and
+`transitionChampionshipCustody`), `lib/trophies/service.ts`
+(Founder Rewards payout allocations and uncertain broadcast handling), and
+`docs/CHAMPIONSHIP_BELT_CONSTITUTION.md` (V2 financial terms).
+All refer to the exact integration SHA above; no money moved for this review.
+
 ## Payments and belt intents
 
 The Payouts rail retains the title-level obligation and shows member allocation
-counts. `partial_paid` is not fully paid. Retry remaining seats with the
+counts. `partial_paid` is not fully paid. A queued or dry-run tribute/bounty is an obligation, not an executed transfer; even an app custody change and an accepted 8093 response do not prove a bank-committed payout. Retry remaining seats with the
 existing deterministic request identities; proved/transaction-backed seats
 must not be replaced or resent. Correct a failure only from payment proof and
 the recorded error. Do not infer settlement from app title ownership.

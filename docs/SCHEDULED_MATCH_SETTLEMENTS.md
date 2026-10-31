@@ -8,21 +8,22 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-31"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Scheduled Match Escrow Settlements
 
-Implementation review: 2026-09-30
+Independent financial implementation re-review: 2026-10-31, Session B, exact F/D integration source b13a4a91d37a93ac2300dab7927544f374469101. This is source evidence, not live HEL1/8092 escrow or balance attestation.
 
 New `championship_v2` Challenges follow the
 [Belt Constitution](./CHAMPIONSHIP_BELT_CONSTITUTION.md). Team funding uses
 stable paired ScheduledMatch financial legs beneath one parent title defense,
 with each participant signing their own original left/right CID/SID contract.
-Each winning roster seat receives its paired two-warrior wager purse. A title
+Each winning roster seat receives its paired two-warrior wager purse **only when both escrow deposits are independently proven matched at or before the Watcher-confirmed game start**. Later deposits cannot retroactively fund a winner payout; unmatched funding remains a refund liability. A title
 default is not a played result and uses refunds, not fabricated winner payouts.
+For championship_v2, allowed wagers are exactly **0 or 100 WOLO per warrior** with **0 WOLO Match Guarantee**; zero-wager play requires no deposit. Positive-guarantee no-show rules below are legacy scheduled-match rules, NOT V2 charges.
 Every leg stays on this existing proof/settlement ledger; public cards show one
 aggregate Challenge and never call payments/refunds complete before tx proof.
 
@@ -75,7 +76,7 @@ The scheduled-match executor only handles funded Challenge escrow rows from `sch
 - `double_no_show`: refund each funded participant their wager; route funded guarantees to Community Treasury.
 - `no_show_left`: refund both wagers, return the right/challenged guarantee, and award the left/challenger missed guarantee to the right/challenged player who checked in.
 - `no_show_right`: refund both wagers, return the left/challenger guarantee, and award the right/challenged missed guarantee to the left/challenger player who checked in.
-- `completed`: return both guarantees and award both wagers to the verified winner.
+- `completed`: if both deposits were matched, return funded guarantees and award the two wagers to the verified winner. For championship_v2 both deposits must be genuine before the Watcher start; missing, unmatched or late deposits receive **full refunds for each actually funded side**, not a winner payout. Zero-wager V2 creates no transfer.
 
 Title custody is separate from WOLO settlement. In the legacy protocol only an explicitly selected title
 is attached to a scheduled challenge. Verified watcher/replay proof records the
@@ -143,7 +144,7 @@ Execution is admin-only, records `refund_sent`, `guarantee_awarded`, `guarantee_
 - `#17`: canceled; refund Emaren `65 WOLO`.
 - `#18`: canceled; refund Emaren `1,030 WOLO`.
 - `#19`: double no-show; refund Emaren `15 WOLO`, refund Jim `15 WOLO`, send `20 WOLO` total guarantees to Community Treasury.
-- `#12`: no-show left; refund Julio Alvarez `1,000 WOLO`, refund Emaren `1,010 WOLO`, send Julio Alvarez's `10 WOLO` guarantee to Community Treasury.
+- `#12`: historical recorded example — no-show left; refund Julio Alvarez `1,000 WOLO`, refund Emaren `1,010 WOLO`, route Julio Alvarez's `10 WOLO` guarantee to Community Treasury. **REVIEW REQUIRED:** the historical treasury instruction conflicts with the CURRENT `buildRawTransfers` no_show_left branch, which awards the missed-side funded guarantee to the funded right-side participant and returns that side's own guarantee. Do NOT execute this example or assume it already paid. Inspect immutable source-version, funding, recipient and actual transaction proof before any backfill.
 
 This list is preserved as the original named backfill cohort, not as a live claim that
 those liabilities are still outstanding. Current settlement truth must come from the
@@ -151,3 +152,17 @@ admin dry-run, persisted settlement rows, and WoloChain transaction proof.
 
 Migrations do not execute WOLO transfers. Any still-unsettled row requires an
 operator-reviewed dry-run before execution.
+
+## October 31, 2026 independent review evidence
+
+This review inspected actual source at F/D integration
+`b13a4a91d37a93ac2300dab7927544f374469101`, not a live escrow state.
+`lib/scheduledMatchSettlements.ts` includes `championshipWagerMatchedAtStart`,
+`buildRawTransfers`, source-allocations and transfer identity accounting.
+`lib/championshipChallenges.ts` creates paired V2 legs with
+`guaranteeAmountWolo: 0`; `docs/CHAMPIONSHIP_BELT_CONSTITUTION.md`
+fixes V2 financial terms. `lib/woloBetSettlement.ts` gates 8092
+escrow execution by signer and health, not by an accepted response alone.
+Current settlement/UNKNOWN, fees, source custody and historical #12 bank truth
+require actual signed native evidence. **Never run an execution POST or
+funded transfer merely to satisfy documentation review.**
