@@ -61,13 +61,13 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn('resource_type:req.resourceType()',chrome)
         self.assertIn('frame,',chrome)
         self.assertIn('return route.abort()',chrome)
-        self.assertIn('W1SAFE_R18_BLOCKED_REQUESTS',chrome)
+        self.assertIn('W1SAFE_R19_BLOCKED_REQUESTS',chrome)
         self.assertIn('u.pathname.slice(0,240)',chrome)
         self.assertNotIn('u.search',chrome)
         self.assertNotIn('u.hash',chrome)
         self.assertNotIn('req.postData()',chrome)
         self.assertNotIn('req.headers()',chrome)
-        self.assertIn('entry.mutations_blocked===0?',chrome)
+        self.assertIn('entry.mutations_blocked===3',chrome)
 
     def test_r19_source_bound_blocked_background_requests_never_dispatch(self):
         chrome=(ROOT/"scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs").read_text()
