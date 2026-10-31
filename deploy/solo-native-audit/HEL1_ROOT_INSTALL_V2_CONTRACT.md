@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.deploy-solo-native-audit-hel1-root-install-v2-contract"
+title: "R16 HEL1 root-helper and native issuer installation contract"
+type: "runbook"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["operators","developers"]
+source_of_truth: "git"
+authority: "source-review-only-not-an-install-permit"
+reviewed_at: "2026-10-31"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # R16 C — W1_SAFE deterministic HEL1 root helper/issuer installation v2
 
 **SOURCE-ONLY DRAFT. No native installation or owner signature exists.** This is the replacement for obsolete f041f6d / c18f6ec0. Do not run old install. F is the sole controller freeze authority; B independently reviews finance DAG, D reviews native issuer, C signs off actual helper closure; G reseals DocsV2 and verifies final CI. W1_SAFE source SHA: `ac2443b15e0c9475c34e10b5f0acc60cb9c7295e`, not original W1 SHA. Controller SHA must be the final immutable F-approved commit, **not necessarily this PR's initial parent `77b27d643aeb8831f9298ec70d010c7ce59e28ea`**.
