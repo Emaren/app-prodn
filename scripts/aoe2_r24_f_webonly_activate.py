@@ -63,7 +63,8 @@ def validated_policy(raw):
     o=load(raw)
     need(type(o)==dict and set(o)=={"schema","candidate_sha","slot","build_id",
             "B_financial_noninterference","C_reversible_stage","D_webonly_policy",
-            "E_capacity_and_rollback","G_live_witness","finance_units","rollback_source_sha"},
+            "E_capacity_and_rollback","G_live_witness","finance_units",
+            "rollback_source_sha","build_version"},
          "POLICY_SCHEMA")
     need(o["schema"]==SCOPE_SCHEMA and o["candidate_sha"]==CANDIDATE and
          o["slot"]==str(SOURCE_DIR),"POLICY_CANDIDATE_OR_SLOT")
@@ -72,6 +73,9 @@ def validated_policy(raw):
         "G_live_witness")),"POLICY_INCOMPLETE_INDEPENDENT_ADMISSION")
     need(type(o["build_id"])==str and re.fullmatch(r"[A-Za-z0-9_-]{8,128}",o["build_id"]),
          "BUILD_ID_INVALID")
+    need(type(o["build_version"])==str and
+         re.fullmatch(r"[0-9]{14}-[a-f0-9]{10}",o["build_version"]),
+         "BUILD_VERSION_INVALID")
     need(type(o["rollback_source_sha"])==str and
          re.fullmatch(r"[0-9a-f]{40}",o["rollback_source_sha"]),"ROLLBACK_ID_MISSING")
     units=o["finance_units"]
@@ -101,6 +105,8 @@ def source_slot(policy):
         return path.read_bytes().strip().decode("ascii")
     need(checked("r24-source-sha",64)==CANDIDATE,"STAGED_GIT_IDENTITY")
     need(checked(".next/BUILD_ID",256)==policy["build_id"],"STAGED_BUILD_IDENTITY")
+    need(checked(".aoe2war-build-version",256)==policy["build_version"],
+         "STAGED_BUILD_VERSION_IDENTITY")
     need((SOURCE_DIR/"node_modules").is_dir() and
          not (SOURCE_DIR/"node_modules").is_symlink(),"STAGED_DEPENDENCY_TREE_MISSING")
 def snapshot(units):
@@ -122,12 +128,21 @@ def remote_version(url,policy,expected=True):
     with urllib.request.urlopen(req,timeout=8) as response:
         need(response.status==200,"WEB_RESPONSE_NOT_200")
         obj=load(response.read(16385))
-    need(type(obj)==dict,"WEB_IDENTITY_NOT_JSON")
-    # Exact keys known to the issuer, fail closed if response isn't source+BUILD_ID bound.
-    identity=json.dumps(obj,sort_keys=True)
+    need(type(obj)==dict and set(obj)=={"buildVersion"} and
+         type(obj["buildVersion"])==str,"WEB_IDENTITY_NOT_BUILD_VERSION")
     if expected:
-        need(CANDIDATE in identity and policy["build_id"] in identity,
-             "WEB_REAL_SOURCE_BUILD_ID_NOT_MATCHED")
+        need(obj["buildVersion"]==policy["build_version"],
+             "WEB_ACTUAL_BUILD_VERSION_NOT_MATCHED")
+        # Next exposes a build-specific static JS manifest. Do not misinterpret
+        # the deployment-version API as emitting SHA or BUILD_ID (it does not).
+        base=url.split("/api/deployment-version")[0]
+        need(base!=url,"WEB_VERSION_PATH_INVALID")
+        manifest=base+"/_next/static/"+policy["build_id"]+"/_buildManifest.js"
+        with urllib.request.urlopen(
+                urllib.request.Request(manifest,method="GET"),
+                timeout=8) as reply:
+            need(reply.status==200,"PUBLIC_BUILD_ID_STATIC_NOT_FOUND")
+            need(0<len(reply.read(65537))<=65536,"PUBLIC_BUILD_MANIFEST_BOUNDS")
     return obj
 def audit_dir():
     protected_dir(SLOT_ROOT)
@@ -174,8 +189,12 @@ def activate():
     # Fail if current unit is already based on another release slot.
     need(str(SLOT_ROOT) not in before[WEB],"ACTIVE_WEB_ALREADY_R24")
     service_old=remote_version(LOCAL_PUBLIC,scope,expected=False)
-    need(scope["rollback_source_sha"] in json.dumps(service_old),
-         "ORIGINAL_PUBLIC_SOURCE_NOT_MATCHED")
+    # Existing web source is checked from the live Git worktree without
+    # mutating the tracked checkout, not inferred from its version API.
+    live=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
+    old_head=run(["/usr/bin/git","-C",str(live),"rev-parse","HEAD"])
+    need(old_head.stdout.strip()==scope["rollback_source_sha"],
+         "ORIGINAL_LIVE_REPO_ROLLBACK_IDENTITY_CHANGED")
     old_state={"status":"PREPARED","candidate":CANDIDATE,"previous":service_old,
         "web_unit":before[WEB],"finance_units":{k:v for k,v in before.items() if k!=WEB},
         "wolo_listeners":before_sockets,"build_id":scope["build_id"]}
