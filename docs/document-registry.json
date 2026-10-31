@@ -160,7 +160,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "R16 C \u2014 W1_SAFE deterministic HEL1 root helper/issuer installation v2",
+      "title": "R16 C — W1_SAFE deterministic HEL1 root helper/issuer installation v2",
       "type": "runbook"
     },
     {
@@ -299,7 +299,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -532,7 +532,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 \u2014 presentation and release contract",
+      "title": "Championship Hall E5 — presentation and release contract",
       "type": "reference"
     },
     {
@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "289c7b241e67099e21c53bb7d351ea742174b58f9ffbbf19b499de5924d83306",
+      "sha256": "41783036f9ff3f1edcb60414f07dad631e249390b5e6de727e70793a71ce437b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1383,7 +1383,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1405,7 +1405,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1473,7 +1473,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1520,7 +1520,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1612,7 +1612,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1725,7 +1725,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance 88 \u2014 Repeatable page qualification protocol",
+      "title": "Renaissance 88 — Repeatable page qualification protocol",
       "type": "runbook"
     },
     {
@@ -1747,7 +1747,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance Tab D \u2014 private census forge and Test Forge queue",
+      "title": "Renaissance Tab D — private census forge and Test Forge queue",
       "type": "runbook"
     },
     {
@@ -1795,7 +1795,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1955,7 +1955,7 @@
         "app-prodn",
         "vpssentry"
       ],
-      "title": "Q19 \u2014 Solo-owner WEBSITE-ONLY admission v1 (review-only PR)",
+      "title": "Q19 — Solo-owner WEBSITE-ONLY admission v1 (review-only PR)",
       "type": "reference"
     },
     {
@@ -1979,7 +1979,7 @@
         "wolochain",
         "VPSSentry"
       ],
-      "title": "Solo-owner W1 / Post-W1 Release and Rollback \u2014 Operator v1",
+      "title": "Solo-owner W1 / Post-W1 Release and Rollback — Operator v1",
       "type": "runbook"
     },
     {
@@ -2209,7 +2209,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2434,7 +2434,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2462,8 +2462,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r18-f-final-owner-contract-seal",
-    "commit": "9957378044121fdf9cf3dacd5041714d9384a1b8"
+    "branch": "review/f-r23-inactive-root-trust-recovery-v1",
+    "commit": "fb232b278919a986dcbde3e7194029b59f04b9aa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
