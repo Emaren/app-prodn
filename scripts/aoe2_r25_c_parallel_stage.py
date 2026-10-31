@@ -45,23 +45,23 @@ def canonical(x):return json.dumps(x,sort_keys=True,separators=(",",":"),ensure_
 def redacted_diagnostic_tail(raw,limit=1100):
     """Sanitize terminal errors; never persist raw logs or dump env/credentials."""
     text=raw[-32768:].decode("utf-8","replace")
-    text=re.sub(r"\\x1b\\[[0-9;]*[A-Za-z]","",text)
+    text=re.sub(r"\x1b\[[0-9;]*[A-Za-z]","",text)
     # A registry URL may carry auth in userinfo or query parameters.
-    text=re.sub(r"(?i)\\b(?:https?|postgres(?:ql)?|redis)://\\S+",
+    text=re.sub(r"(?i)\b(?:https?|postgres(?:ql)?|redis)://\S+",
                 "[URL_REDACTED]",text)
-    text=re.sub(r"(?i)\\b(?:authorization|cookie|set-cookie|password|passwd|"
+    text=re.sub(r"(?i)\b(?:authorization|cookie|set-cookie|password|passwd|"
                 r"secret|token|_authToken|api[-_]?key|client[-_]?secret|"
                 r"database_url|nextauth_secret|session_secret)"
-                r"\\s*[:=]\\s*\\S+",
+                r"\s*[:=]\s*\S+",
                 "[CREDENTIAL_REDACTED]",text)
-    text=re.sub(r"(?i)\\bBearer\\s+\\S+","[BEARER_REDACTED]",text)
+    text=re.sub(r"(?i)\bBearer\s+\S+","[BEARER_REDACTED]",text)
     lines=[line.strip()[:320] for line in text.splitlines() if line.strip()]
     # Prefer diagnostic lines and retain a bounded tail for causal context.
     pattern=re.compile(r"error|failed|fatal|exit|EAI_AGAIN|ENOTFOUND|ENOENT|"
                        r"EACCES|permission|network|timeout|registry|prisma|"
                        r"lockfile|integrity|module|not found",re.I)
     selected=[line for line in lines if pattern.search(line)]
-    return "\\n".join((selected[-12:] or lines[-12:]))[-limit:]
+    return "\n".join((selected[-12:] or lines[-12:]))[-limit:]
 
 def command(argv,timeout=30,data=None):
     args=list(map(str,argv))
