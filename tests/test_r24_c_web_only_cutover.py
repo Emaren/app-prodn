@@ -35,7 +35,8 @@ class R24CWebsiteOnlyTests(unittest.TestCase):
             "min_free_bytes":3*1024**3,
             "financial_units":["r24-finance-%02d.service"%n for n in range(25)],
             "financial_unit_records_sha256":"d"*64,
-            "reviews":{name:"e"*40 for name in "BCDEFG"},
+            "reviews":{"B":"b"*40,"F":"f"*40,
+                       **self.w.REVIEWED_LANE_SOURCE},
             "policy_scope":"NONFINANCIAL_WEB_ONLY_NO_MIGRATIONS_NO_PRODUCERS",
             "rollback_verified":True,
         }
@@ -45,7 +46,11 @@ class R24CWebsiteOnlyTests(unittest.TestCase):
     def test_02_exact_candidate(self):
         self.assertEqual(self.w.CANDIDATE,"0cee3c836c4b0760478280c145e02e81e470ce0e")
     def test_03_complete_f_review_accepted(self):
-        self.w.verify_review(self.approval())
+        # ONLY synthetic fixture for pure schema validation; production pins
+        # remain empty until B proves a real read-only host and F approves it.
+        with mock.patch.object(self.w,"B_RUNTIME_FINANCE_APPROVED_SHA","b"*40):
+            with mock.patch.object(self.w,"F_INTEGRATION_APPROVED_SHA","f"*40):
+                self.w.verify_review(self.approval())
     def test_04_missing_B_review_holds(self):
         a=self.approval();del a["reviews"]["B"]
         with self.assertRaisesRegex(self.w.Hold,"SIX_LANE_REVIEWS"):
