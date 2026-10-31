@@ -244,15 +244,21 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('RECOVERY_PARTIAL_ARTIFACT_OR_DUPLICATE',source)
         self.assertIn('RECOVERY_BUILD_ATTEMPT_MISMATCH',source)
         self.assertIn('RECOVERY_UPSTREAM_RESOLVER_SHA_DRIFT',source)
-        self.assertIn('return complete_build(before,sockets,budget,build_account,imported,True)',source)
+        self.assertIn('return complete_build(before,sockets,budget,build_account,imported,True,source)',source)
 
     def test_31_recovery_and_original_build_use_same_root_seal(self):
         source=SRC.read_text()
-        self.assertIn('return complete_build(before,sockets,budget,account,yarn_receipt,False)',source)
-        self.assertIn('def complete_build(before,sockets,budget,account,yarn_receipt,recovery)',source)
+        self.assertIn('return complete_build(before,sockets,budget,account,yarn_receipt,False,record)',source)
+        self.assertIn('def complete_build(before,sockets,budget,account,yarn_receipt,recovery,record)',source)
         self.assertEqual(source.count('write_once(AUDIT/"BUILD_STAGED.json",manifest)'),1)
         self.assertEqual(source.count('"schema":"aoe2war.r25.c.full-built-artifact.v1"'),1)
-        self.assertIn('command([ "/usr/bin/chown"',source.replace('command(["/usr/bin/chown"', 'command([ "/usr/bin/chown"'))
+        self.assertIn('command(["/usr/bin/chown"',source)
+
+    def test_32_original_source_receipt_binds_built_archive_identity(self):
+        source=SRC.read_text()
+        self.assertIn('"source_git_archive_sha256":record["git_archive_sha256"]',source)
+        self.assertIn('complete_build(before,sockets,budget,account,yarn_receipt,False,record)',source)
+        self.assertIn('complete_build(before,sockets,budget,build_account,imported,True,source)',source)
 
 if __name__=="__main__":
     unittest.main()
