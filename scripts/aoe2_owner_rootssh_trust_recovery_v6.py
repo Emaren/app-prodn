@@ -35,7 +35,7 @@ ORIGINAL_WEBSITE = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 DOMAIN = b"AOE2WAR.OWNER_ROOTSSH_TRUST_RECOVERY.V6\n"
 # Fail closed until F independently reviews C code and publishes a new
 # F-governed implementation commit binding this exact reviewed C SHA.
-F_REVIEWED_C_SOURCE_SHA = ""
+F_REVIEWED_C_SOURCE_SHA = "318bd18a6fef630ea4ea32c2140199975cb3d834"
 SCHEMA = "aoe2war.owner-rootssh-trust-recovery.v6"
 HEX = re.compile(r"^[0-9a-f]{64}$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
