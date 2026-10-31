@@ -260,6 +260,18 @@ def http_proof(pid):
             hold("LOCAL_HTTP_GUARD_NOT_EXACT")
     return True
 
+def c_archive_source_identity():
+    """C stages git archive WITHOUT .git; use its root-sealed source sidecar."""
+    sidecar=SOURCE/"r24-source-sha"
+    if sidecar.is_symlink() or not sidecar.is_file():
+        hold("C_ROOT_STAGE_SOURCE_SIDECAR_MISSING")
+    st=sidecar.lstat()
+    if st.st_uid!=0 or st.st_mode & 0o022 or st.st_size>128:
+        hold("C_ROOT_STAGE_SOURCE_SIDECAR_NOT_SEALED")
+    if sidecar.read_text().strip()!=TARGET:
+        hold("C_ROOT_STAGE_SOURCE_SIDECAR_WRONG")
+    return TARGET
+
 def root_db_envfile():
     envfile=pathlib.Path("/etc/aoe2war/r24-parallel-web/readonly-runtime.env")
     if not envfile.is_absolute():hold("RUNTIME_ENV_NOT_ABSOLUTE")
@@ -299,7 +311,7 @@ def prestart(expected_guard_sha):
     if uid in (0,1000):hold("CANDIDATE_OS_UID_NOT_DISTINCT")
     egress=nft_policy(uid)
     db=db_proof(root_db_envfile(),uid)
-    source=run(["/usr/bin/git","-C",str(SOURCE),"rev-parse","HEAD"]).decode().strip()
+    source=c_archive_source_identity()
     if source!=TARGET:hold("PRESTART_EXACT_SOURCE_MISSING")
     build=SOURCE/".next"/"BUILD_ID"
     if not build.is_file() or build.is_symlink() or not build.read_text().strip():
@@ -353,7 +365,7 @@ def observe(expected_guard_sha):
     db=db_proof(env.get("DATABASE_URL",""),pw.pw_uid)
     http_proof(pid)
     # Read source identity without modifying build or files.
-    checkout=run(["/usr/bin/git","-C",str(SOURCE),"rev-parse","HEAD"]).decode().strip()
+    checkout=c_archive_source_identity()
     if checkout!=TARGET:hold("CANDIDATE_SOURCE_DRIFT")
     build=(SOURCE/".next"/"BUILD_ID")
     if not build.is_file() or build.is_symlink():hold("REAL_NEXT_BUILD_ID_MISSING")
@@ -364,7 +376,7 @@ def observe(expected_guard_sha):
         "host":HOST,"target_sha":TARGET,"old_web_pid":oldpid,
         "candidate_unit":UNIT,"candidate_pid":pid,"candidate_start_ticks":p["start_ticks"],
         "candidate_uid":pw.pw_uid,"candidate_cgroup_sha256":p["cgroup_sha256"],
-        "source_sha":checkout,"build_id":bid,"guard_sha256":guard,
+        "source_sha":checkout,"source_provenance":"C_ROOT_SEALED_ARCHIVE_SIDECAR_F_SEPARATELY_ATTESTS_TREE","build_id":bid,"guard_sha256":guard,
         "guard_local_http":True,"guard_wargraph_disabled_before_node":True,
         "candidate_readonly_pg":db,"kernel_uid_egress_sha256":nft_hash,
         "candidate_socket_inode_sha256":port_hash,
