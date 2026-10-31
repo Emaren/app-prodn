@@ -63,7 +63,7 @@ class TestBHostWitness(unittest.TestCase):
                 b.db_proof('postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app',17251)
 
     def test_private_cache_write_probe_only_enters_candidate_mount(self):
-        with patch.object(b,'run',return_value=b'PASS_PRIVATE_CACHE_DAC\\n') as runner:
+        with patch.object(b,'run',return_value=b'PASS_PRIVATE_CACHE_DAC') as runner:
             self.assertTrue(b.private_cache_write_proof(999,17251,17251))
             args=runner.call_args.args[0]
             self.assertEqual(args[:4],['/usr/bin/nsenter','--target','999','--mount'])
