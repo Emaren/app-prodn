@@ -27,6 +27,22 @@ const axe = requirePw("axe-core");
 const routes = ["/", "/lobby", "/bets", "/live-games", "/war-chest"];
 const api = ["/api/lobby", "/api/bets", "/api/live-games", "/api/header-summary"];
 const widths = [375, 768, 1440];
+// R18: retain bounded redacted request provenance for B/F to classify.
+// NEVER save cookies, tokens, headers, request bodies, query strings or fragments.
+const where = raw => {
+  try { const u=new URL(raw); return {origin:u.origin,pathname:u.pathname.slice(0,240)}; }
+  catch { return {origin:"UNMEASURED",pathname:"UNMEASURED"}; }
+};
+const requestKey = (method,url) => method+"\\0"+url;
+const cdpsafe = initiator => ({
+  type:String(initiator?.type||"UNMEASURED").slice(0,48),
+  frames:(initiator?.stack?.callFrames||[]).slice(0,4).map(f=>({
+    script:where(f.url||""),
+    function:String(f.functionName||"").slice(0,80),
+    line:Number.isSafeInteger(f.lineNumber)?f.lineNumber:null,
+    column:Number.isSafeInteger(f.columnNumber)?f.columnNumber:null,
+  })),
+});
 const report = {
   schema:"aoe2war.g.r16.w1safe.disposable-chrome.v1",
   source_sha:process.env.SOURCE_SHA || "UNKNOWN",
@@ -47,15 +63,46 @@ const report = {
       try {
         for (const pathname of routes) {
           const entry={width,pathname,status:null,heading:null,nav:false,
-            overflow:null,mutations_blocked:0,foreign_blocked:0,errors:[],
+            overflow:null,mutations_blocked:0,foreign_blocked:0,blocked_requests:[],blocked_request_overflow:0,errors:[],
             axe_serious_or_critical:[],screenshot:null,verdict:"HOLD"};
           const page = await context.newPage();
           page.on("pageerror", e=>entry.errors.push(e.message.slice(0,200)));
+          const cdp = await context.newCDPSession(page);
+          const initiators = new Map();
+          cdp.on("Network.requestWillBeSent", ev=>{
+            const method=ev.request?.method, url=ev.request?.url;
+            if (!method || !url) return;
+            const location=where(url);
+            if (location.origin===base && ["GET","HEAD"].includes(method)) return;
+            const key=requestKey(method,url);
+            const list=initiators.get(key)||[];
+            if (list.length<32) list.push(cdpsafe(ev.initiator));
+            initiators.set(key,list);
+          });
+          await cdp.send("Network.enable");
+          const intercepted = [];
           await page.route("**/*", async route=>{
             const req=route.request(); const u=new URL(req.url());
-            if (u.origin!==base) {entry.foreign_blocked++;return route.abort();}
-            if (!["GET","HEAD"].includes(req.method())) {
-              entry.mutations_blocked++; return route.abort();
+            const foreign=u.origin!==base;
+            const mutating=!["GET","HEAD"].includes(req.method());
+            if (foreign || mutating) {
+              if (foreign) entry.foreign_blocked++;
+              if (mutating) entry.mutations_blocked++;
+              let frame={origin:"UNMEASURED",pathname:"UNMEASURED"};
+              try {frame=where(req.frame().url());} catch {}
+              const record={
+                reason:foreign?"FOREIGN_ORIGIN": "NON_READ_METHOD",
+                method:req.method(),
+                location:where(req.url()),
+                resource_type:req.resourceType(),
+                frame,
+                initiator:{type:"CDP_PENDING",frames:[]},
+              };
+              if (entry.blocked_requests.length<32) {
+                entry.blocked_requests.push(record);
+                intercepted.push({record,key:requestKey(req.method(),req.url())});
+              } else entry.blocked_request_overflow++;
+              return route.abort();
             }
             return route.continue();
           });
@@ -83,6 +130,18 @@ const report = {
             ?"home":pathname.slice(1).replace(/[^a-z0-9-]/g,"-"))+".png";
           await page.screenshot({path:path.join(outDir,entry.screenshot),fullPage:false})
             .catch(e=>entry.errors.push("SCREENSHOT_UNMEASURED:"+String(e.message||e).slice(0,100)));
+          // Correlate CDP initiator stack with the blocked Playwright request.
+          // Never weaken the network block because a caller looks familiar.
+          for (const {record,key} of intercepted) {
+            const observed=initiators.get(key);
+            record.initiator=observed?.shift()||{type:"CDP_UNMEASURED",frames:[]};
+          }
+          if (entry.blocked_requests.length) {
+            console.log("W1SAFE_R18_BLOCKED_REQUESTS "+JSON.stringify({
+              width,pathname,blocked:entry.blocked_requests,
+              overflow:entry.blocked_request_overflow,
+            }));
+          }
           entry.verdict=entry.status===200 && entry.final_pathname===pathname && Boolean(entry.heading) &&
             entry.nav && entry.overflow===false && entry.errors.length===0 &&
             entry.axe_serious_or_critical.length===0 && entry.mutations_blocked===0?"PASS":"HOLD";
