@@ -49,17 +49,37 @@ class R24WebsiteCapacity(unittest.TestCase):
             self.assertEqual(m.examine(a)["storage_verdict"],
                              "HOLD_STORAGE_FEASIBILITY")
 
-    def test_post_stage_checks_actual_next_build_id_budget(self):
-        p=self.web/".next-release";p.mkdir()
+    def test_post_stage_parallel_full_runtime_and_next_build_id(self):
+        runtime=self.web.parent/"app-prodn-r24-w1safe-test"
+        p=runtime/".next";p.mkdir(parents=True)
         (p/"BUILD_ID").write_text("CANDIDATE_BUILD_123456")
         (p/"chunk.js").write_bytes(b"abc")
+        (runtime/"node_modules").mkdir()
+        (runtime/"node_modules"/"runtime.js").write_bytes(b"dep")
+        args=SimpleNamespace(candidate_max_bytes=m.GIB,stage="post-stage",
+                             parallel_dir=str(runtime))
         with patch.object(m,"free_bytes",side_effect=[5*m.GIB,8*m.GIB]):
-            r=m.examine(SimpleNamespace(candidate_max_bytes=m.GIB,stage="post-stage"))
+            r=m.examine(args)
         self.assertEqual(r["staged_candidate"]["next_build_id"],"CANDIDATE_BUILD_123456")
+        self.assertTrue(r["staged_candidate"]["legacy_website_must_remain_running"])
+        self.assertEqual(r["staged_candidate"]["allocated_bytes"],m.allocated_bytes(runtime))
         self.assertEqual(r["root_min_needed_bytes"],4*m.GIB)
+        self.assertEqual(r["parallel_financial_worker_disabled"],
+                         "NOT_VERIFIED_BY_STORAGE_TOOL")
         with patch.object(m,"free_bytes",side_effect=[5*m.GIB,8*m.GIB]):
             with self.assertRaises(m.Hold):
-                m.examine(SimpleNamespace(candidate_max_bytes=1,stage="post-stage"))
+                m.examine(SimpleNamespace(candidate_max_bytes=1,stage="post-stage",
+                                           parallel_dir=str(runtime)))
+
+    def test_live_checkout_or_inplace_stage_cannot_count_as_parallel(self):
+        stage=self.web/".next-release";stage.mkdir()
+        (stage/"BUILD_ID").write_text("IMPROPER_INPLACE_1234")
+        for wrong in (self.web,stage,self.root):
+            with self.subTest(wrong=str(wrong)):
+                args=SimpleNamespace(candidate_max_bytes=m.GIB,stage="post-stage",
+                                     parallel_dir=str(wrong))
+                with patch.object(m,"free_bytes",side_effect=[5*m.GIB,8*m.GIB]):
+                    with self.assertRaises(m.Hold):m.examine(args)
 
     def test_full_durable_match_and_one_byte_tamper(self):
         dest=self.durable/"transaction"/"prior-next";dest.mkdir(parents=True)
