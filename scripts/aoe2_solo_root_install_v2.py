@@ -37,6 +37,7 @@ MODULES={
  "aoe2_solo_website_financial_collector.py": ("aoe2_solo_website_financial_collector.py",),
  "aoe2_solo_website_producer_receipts.py": ("aoe2_solo_website_producer_receipts.py",),
  "aoe2_solo_website_native_issuer.py": ("solo-v1-native-admission",),
+ "aoe2_solo_website_producer_intake.py": ("solo-v1-producer-intake",),
 }
 TRUST_MAP={"observer":"solo-v1-readonly-observer","channel":"solo-v1-command-channel.py",
            "phase":"solo-v1-root-phase"}
@@ -101,6 +102,7 @@ def build(repo,sha,out):
     safe=trains.get("W1_SAFE")
     need(type(safe) is tuple and len(safe)==2 and bool(HEX40.fullmatch(safe[0])),"W1_SAFE_NOT_FINAL")
     need(literal(files["aoe2_solo_website_native_issuer.py"],"W1_SAFE")==safe[0],"ISSUER_SAFE_SHA_CONFLICT")
+    need(literal(files["aoe2_solo_website_producer_intake.py"],"W1_SAFE")==safe[0],"INTAKE_SAFE_SHA_CONFLICT")
     need(literal(files["aoe2_solo_website_root_phase.py"],"KEY_FP")==KEY_FP,"OWNER_RSA_PIN_DRIFT")
     archive=bundle_bytes(files)
     targets={dest:hash256(files[name]) for name,dests in MODULES.items() for dest in dests}
@@ -182,10 +184,12 @@ def source_admit(manifest,archive,source_commit):
     targets={t:hash256(files[n]) for n,tgts in MODULES.items() for t in tgts}
     need(manifest.get("targets_sha256")==dict(sorted(targets.items())),"TARGET_SET_DRIFT")
     need(files["aoe2_solo_website_native_issuer.py"].startswith(b"#!/usr/bin/python3 -I\n"),"NATIVE_ISSUER_ENTRYPOINT_INTERPRETER_DRIFT")
+    need(files["aoe2_solo_website_producer_intake.py"].startswith(b"#!/usr/bin/python3 -I\n"),"NATIVE_INTAKE_ENTRYPOINT_INTERPRETER_DRIFT")
     trains=literal(files["aoe2_solo_website_root_phase.py"],"TRAINS")
     safe=trains.get("W1_SAFE")
     need(type(safe)is tuple and list(safe)==[manifest["w1_safe_candidate"],manifest["w1_safe_previous"]],"SAFE_ROOT_PHASE_DRIFT")
     need(literal(files["aoe2_solo_website_native_issuer.py"],"W1_SAFE")==safe[0],"ISSUER_SAFE_DRIFT")
+    need(literal(files["aoe2_solo_website_producer_intake.py"],"W1_SAFE")==safe[0],"INTAKE_SAFE_SHA_CONFLICT")
     need(literal(files["aoe2_solo_website_root_phase.py"],"KEY_FP")==KEY_FP and
          manifest.get("owner_rsa_spki_sha256")==KEY_FP,"OWNER_RSA_PIN_MISMATCH")
     need(manifest.get("original_lock")==list(EXPECTED_LOCK),"LOCK_PIN_DRIFT")
@@ -370,7 +374,9 @@ def run_native(a):
                 protected(DEST.parent);os.mkdir(DEST,0o755);created.append(DEST)
             protected(DEST)
             for name,raw in sorted(payloads.items()):
-                p=DEST/name;write_new(p,raw,0o555 if name=="solo-v1-native-admission" else 0o600);created.append(p)
+                p=DEST/name
+                mode=0o555 if name=="solo-v1-native-admission" else (0o755 if name=="solo-v1-producer-intake" else 0o600)
+                write_new(p,raw,mode);created.append(p)
             write_new(TRUST,expected_trust);created.append(TRUST)
             write_new(MANIFEST_RECEIPT,install_receipt(a.approved_manifest_sha256,a.controller_sha,targets));created.append(MANIFEST_RECEIPT)
             need(native_lock_and_keys()==before,"LOCK_CHANGED_AFTER_HELPERS")

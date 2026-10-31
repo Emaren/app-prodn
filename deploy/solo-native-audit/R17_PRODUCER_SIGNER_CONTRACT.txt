@@ -1,0 +1,104 @@
+AOE2WAR R17 — PER-ORIGIN INDEPENDENT NATIVE PRODUCER SIGNER
+BASE: protected F #1054 a58e2416415665e2334ce884cebc2c3f64ce75b5
+WEBSITE: W1_SAFE #1053 a9525f46302edff88ed073743a7dfaed08be9e3e
+STATUS: SOURCE ONLY. NO ROOT INSTALL / OWNER CONSENT / PRE_STAGE HERE.
+
+Source executable:
+  scripts/aoe2_solo_website_producer_signer.py
+  C-reviewed exact digest installed as a regular, root-owned, non-writable
+  executable by C on EACH independent, physically reviewed signer origin.
+  Runs only as a NONROOT DEDICATED Unix UID; never with sudo or in F's
+  protected FD200 phase. Signer does not execute C root commands.
+  Never paste private keys into issues/chat; never create shared root key.
+  Separate role origins: doctor, recovery, finance, host, source, stage.
+  Unique approved UID, Ed25519 keypair/SPKI and independently verified
+  failure_domain_id per role; manifest alone DOES NOT prove independence.
+
+C PREINSTALL EVIDENCE (per actual origin, separately, NOT synthetic):
+  - Root-owned 0644 public enrollment manifest:
+      /etc/aoe2war/solo-producer-v1/<role>.json
+    fields exactly: schema,role,uid,origin_host,failure_domain_id,
+    controller_sha,candidate_sha,owner_public_key_path,
+    producer_public_key_path,private_key_path,public_spki_sha256,
+    collector_path,collector_sha256,output_dir,authorities.
+  - C independently enrolls all SIX entries in authorities, each:
+    uid,public_spki_sha256,failure_domain_id,origin_host.
+    Distinct actual key custody/failure domains, not merely different IDs.
+  - Each role's private key created/provisioned ONLY on its independent
+    C-approved signer origin by that dedicated UID, 0600 regular file,
+    producer-only ancestors; pub key root protected and SHA256 of DER Ed25519
+    SubjectPublicKeyInfo pinned in own manifest and F trusted-producers.json.
+    No key generation on the protected controller or central signer machine.
+    Do not claim generated keys until owner/C actually perform enrollment.
+  - C reviews and pins role-specific READ-ONLY collector executable SHA256.
+    B owns finance/source authenticity incl 25+ HEL1 systemd/idle oneshots,
+    8092/8093, external cron/at/ingress, database writer census, true GET/HEAD
+    prewarm callsite graph and production-producer completeness. F native
+    issuer independently remeasures live finance with no fake live PID.
+    C owns host/Doctor independent measurements and root/mount identity.
+    E owns six actual third-domain HEL1 restores; current 0/6 HOLD.
+    F owns original stage receipts; source PRE_STAGE cannot fabricate stage.
+
+F/C PROTECTED ORIGINAL FD200 PREISSUE REQUIREMENT (NOT PROVIDED BY THIS FILE):
+  F root_phase.issue currently generates a fresh PRE_STAGE attempt and calls
+  audit before signers know the attempt. F/C must first securely preannounce
+  a UNIQUE random 64hex attempt in an authenticated original-lease
+  command/owner-intent, carry through the SAME original FD200 and nonce
+  journal. No second lock, no guessed attempt, no synthetic signed GO.
+  Owner *separately* approves a producer-collection INTENT under domain
+    AOE2WAR.SOLO_WEBSITE.PRODUCER_INTENT.V1\n
+  (distinct from owner RSA phase-authorization and binary-install domains),
+  with payload exactly candidate_sha,controller_sha,attempt_id,phase,host,
+  issued_at,expires_at,finance_authorized=false,release_authorized=false.
+  Owner public key DER fingerprint remains pinned to existing original
+    3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd
+  C must approve signed intent transport to each remote independent origin.
+  This file only verifies an ALREADY RSA-SIGNED permit. It cannot create
+  owner RSA signatures or allocate attempt IDs/alter nonce ledger.
+
+EXECUTABLE SIGNER CONTRACT (after C physical enrollment and F preissue):
+  /usr/bin/python3 -I /usr/local/libexec/aoe2war/solo-v1-producer-signer
+    inspect --role <one of six> --intent /root-provisioned/signed-intent.json
+  Same with "sign" instead of "inspect" writes ONLY a new role UID-owned
+  0600 output envelope under output_dir (pre-created role UID 0700):
+      <attempt>-<PHASE>-<role>.json
+  O_EXCL, O_NOFOLLOW, pinned output-directory FD, fsync; repeat request
+  cannot overwrite or replay. Signing requires owner intent and checked
+  independent role enrollment + Ed25519 DER identity and reviewed collector.
+  The collector CLI contract is exactly:
+    collector --collect ROLE CANDIDATE_SHA PHASE ATTEMPT ISSUED_AT
+  Stdout JSON (<=262144 bytes):
+    {"schema":"aoe2war.solo.producer-measurement.v1",
+     "class":ROLE,"collected_at":<true UTC measurement time>,
+     "collector_sha256":<pinned source bytes sha256>,
+     "section":<actual independent measurement>}
+  Collector must return nonzero or unresolved rather than fabricate healthy.
+  Every collector captures within <=15s of common signed intent issued_at;
+  genuine timestamp retains separate collected_at in collector return.
+  The signed receipt uses that common cohort epoch (issued_at) so six F
+  producer receipts share the mandatory exact observed_at. No claim that all
+  six machines sampled at the identical nanosecond.
+  F receipt body keys: producer,candidate_sha,attempt_id,phase,host,
+  observed_at,content_sha256. Signed over original F domain:
+    AOE2WAR.SOLO_WEBSITE.NATIVE_PRODUCER_RECEIPT.V1\n
+  Production output signed-input JSON exactly F intake schema
+    aoe2war.solo.native-issuer-input.v1.
+  C must independently authenticate per-host transport and safely re-seal
+  files root-owned to intake inbox, then F #1054 existing verifier checks six
+  Ed25519 signatures from enrolled SPKI keys; D intake verifies & O_EXCL
+  copies exact bytes to F issuer. NEVER infer approval from signer output.
+
+REAL PHYSICAL HOLDS
+  No six independently enrolled credentials/physical origins observed yet.
+  No F original FD200 PRE_STAGE attempt-preannouncement yet.
+  No real B/C/E/F collector binaries enrolled or signed 25+/8092/8093 data.
+  E third failure-domain HEL1 protected restore six classes still 0/6.
+  Recent HEL1 mounted /dev/sdb capacity Oct31 01:10 UTC:
+    free 21916962816B (20.411762GiB), effective 92.788221%,
+    Finish 93.084720%, below original 30GiB/88%/<92% release policy.
+  Owner has NOT approved a volume purchase, root installer, stage or restart.
+
+TEST BOUNDARIES: ephemeral RSA/Ed25519 keypairs generated ONLY inside
+  disposable GitHub CI test tempdirs, never enrolled into HEL1, never called
+  six independent production sources, never authorize web deployment.
+  Source-only tests cannot establish physical evidence.
