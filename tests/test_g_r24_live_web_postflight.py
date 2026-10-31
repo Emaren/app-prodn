@@ -58,6 +58,10 @@ class R25Tests(unittest.TestCase):
         self.assertEqual(g.verify(b,a,"after")["nginx_active_upstream"],3031)
         self.assertTrue(g.verify(b,a,"after")["old_web_service_pid_unchanged"])
         self.assertEqual(g.verify(b,r,"rollback")["nginx_active_upstream"],3030)
+        self.assertEqual(g.verify(b,a,"after")["status"],
+                         "LIVE_PARALLEL_HOST_AND_PUBLIC_MEASURED_REQUIRES_F_STAGE_REVIEW")
+        self.assertEqual(g.verify(b,r,"rollback")["status"],
+                         "PUBLIC_3030_NGINX_ONLY_ROLLBACK_MEASURED")
         self.assertFalse(g.verify(b,a,"after")["public_next_build_id_directly_exposed"])
     def test_23_mutations_and_wrong_phases_hold(self):
         mutations=[
