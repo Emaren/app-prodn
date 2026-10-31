@@ -133,15 +133,15 @@ class OwnerMacCommands(unittest.TestCase):
         self.assertNotIn("campaign=input(",s)
         self.assertIn("open('/dev/tty','r+')",s)
         self.assertIn("tty.readline(160).strip()",s)
-        body=s.split("python3 -B - <<'PY'\\n",1)[1].rsplit('\\nPY',1)[0]
+        body=s.split("python3 -B - <<'PY'\n",1)[1].rsplit('\nPY',1)[0]
         start=body.index("# The Python program itself arrives via a heredoc:")
-        stop=body.index("\\npath='/mnt/HC_Volume_105319120",start)
+        stop=body.index("\npath='/mnt/HC_Volume_105319120",start)
         prompt=body[start:stop]
         campaign="r25-e-20261031T204421Z-276babc395a0a07a32c3"
 
         class FakeTTY(io.StringIO):
             def __init__(self, value):
-                super().__init__(value+"\\n")
+                super().__init__(value+"\n")
                 self.prompts=[]
             def write(self, value):
                 self.prompts.append(value)
