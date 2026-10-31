@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/d-r16-native-producer-inbox-20261030` at `f4b26976efa0d55b448edeb3c5a82bae14bd2f8c`
+Implementation baseline: `review/d-r16-native-producer-inbox-20261030` at `4cf912e93eb707293939bdac4fbc7a39269bd43c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
