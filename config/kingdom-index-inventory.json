@@ -11,8 +11,8 @@
     "pageTemplates": 150,
     "adminTemplates": 31,
     "dynamicTemplates": 20,
-    "publicIndexTemplates": 88,
-    "excludedStaticTemplates": 11,
+    "publicIndexTemplates": 89,
+    "excludedStaticTemplates": 10,
     "routeHandlerTemplates": 278,
     "apiHandlerTemplates": 275,
     "nonApiHandlerTemplates": 3
@@ -429,7 +429,7 @@
     {
       "href": "/kingdom-construction",
       "entrypoint": "app/kingdom-construction/page.tsx",
-      "scope": "excluded-static",
+      "scope": "public-index",
       "assurance": "unverified"
     },
     {
