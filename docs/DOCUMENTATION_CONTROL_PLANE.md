@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r16-controller-docsv2-tests` at `ca0e393202419720529c715b505e7fb40f9d33e3`
+Implementation baseline: `review/d-r17-native-independent-producer-signer` at `ee5db528d5a989662b613dc1690c65d23794db68`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
