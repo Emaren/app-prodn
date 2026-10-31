@@ -30,6 +30,7 @@ class CopyContractTests(unittest.TestCase):
         self.patches=[patch.object(e,'OLD_NEXT',self.old),patch.object(e,'VOLUME',self.volume),
             patch.object(e,'ROLLBACKS',self.rollbacks),
             patch.object(e,'prerequisites',return_value=(self.dev,self.dev)),
+            patch.object(e,'EXPECTED_DEST_UID',os.geteuid()),
             patch.object(e,'old_identity',return_value=self.process),
             patch.object(e,'capacity',return_value={
                 'old_next_allocated_bytes':32768,'old_next_apparent_bytes':512,
