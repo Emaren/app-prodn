@@ -1,0 +1,52 @@
+name: G R25 DocsV2 seal - review branch only
+on:
+  push:
+    branches:
+      - review/g-r24-live-web-finance-rollback-witness-20261031
+    paths:
+      - .github/workflows/g-r25-docsv2-seal.yml
+permissions:
+  contents: write
+concurrency:
+  group: g-r25-seal-once
+  cancel-in-progress: false
+jobs:
+  reviewed-seal:
+    if: github.repository == 'Emaren/app-prodn'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Source-only P0 adversarial tests
+        run: python3 -m unittest discover -s tests -p 'test_g_r24_live_web_postflight.py' -v
+      - name: Generate documented exact implementation baseline
+        run: python3 scripts/docs_v2_check.py --write --refresh-baseline
+      - name: Commit ONLY generated DocsV2 to current G review branch
+        shell: bash
+        run: |
+          git diff --name-only > /tmp/g-generated-files
+          python3 - <<'PY'
+          import pathlib,sys
+          names=set(pathlib.Path("/tmp/g-generated-files").read_text().splitlines())
+          permitted={"docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json","catalog-info.yaml"}
+          unexpected=names-permitted
+          if unexpected:
+              print("HOLD:G_DOCSV2_UNEXPECTED_FILES",sorted(unexpected))
+              sys.exit(2)
+          print("G_DOCSV2_ONLY_GENERATED",sorted(names))
+          PY
+          if test -s /tmp/g-generated-files; then
+            git config user.name "aoe2war-docsv2-review"
+            git config user.email "aoe2war-docsv2-review@users.noreply.github.com"
+            git add -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json catalog-info.yaml
+            git commit -m "docs(G R25): seal exact parallel verifier DocsV2 implementation baseline"
+            git push origin HEAD:refs/heads/review/g-r24-live-web-finance-rollback-witness-20261031
+          fi
+      - name: Recheck generated document stability
+        run: python3 scripts/docs_v2_check.py
