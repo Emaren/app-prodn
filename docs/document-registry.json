@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6811d5c5c313ca5938762b8d3cd1ad58599518776855ce429bca489e5fb2649c",
+      "sha256": "4184c95c9aec2b0b770d3151cc6410e231bf6e01e5cc3795559f8b36692a26ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2462,8 +2462,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r24-e-website-only-storage-rollback-review",
-    "commit": "225fc205966755967e7710eba5e39cb90d64aa7f"
+    "branch": "r25-e-physical-parallel-certificate",
+    "commit": "605191008bae0dc2784c951666315df1049144e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
