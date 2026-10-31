@@ -143,8 +143,8 @@ def project(registry=REGISTRY,bindings=BINDINGS,receipts=None,at=None):
     # Later observations update the rail deterministically, without inventing
     # cumulative completion of earlier steps or a percent-progress bar.
     for x in observations:
-        stale=clock is not None and x["expires_at"] is not None and
-              clock>iso(x["expires_at"])
+        stale=(clock is not None and x["expires_at"] is not None and
+               clock>iso(x["expires_at"]))
         label="STALE" if stale else ("REPORTED_"+x["verdict"])
         if x["phase"]=="LIVE_VERIFIED":
             label="AWAITING_INDEPENDENT_RELEASE_CERTIFICATION" if not stale else "STALE"
