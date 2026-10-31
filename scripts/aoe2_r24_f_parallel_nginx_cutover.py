@@ -27,6 +27,11 @@ OLD_APP=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
 C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
 C_SOURCE_ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
 C_SOURCE_ARCHIVE_SHA256="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+# C #1084 owner HEL1 independent verifier #6547581709: immutable built artifact.
+C_PHYSICAL_TREE_SHA256="5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d"
+C_PHYSICAL_BUILD_ID="-dJl5VyecHu5BKNvfErJe"
+C_PHYSICAL_APP_VERSION="20261031171526-148d3df911"
+C_PHYSICAL_FILES=87038
 B_ROOT_POSTSTART=pathlib.Path("/etc/aoe2war/r24-parallel-web/b-poststart-positive.json")
 E_ROOT_RECOVERY=pathlib.Path("/etc/aoe2war/r24-parallel-web/e-recovery-ready.json")
 # C #1084 root-protected direct child of /var/lib; never use the mutable live /var/www parent.
@@ -312,6 +317,15 @@ def next_build_asset(base,build_id):
         need(resp.status==200 and 0<len(resp.read(65537))<=65536,
              "ACTUAL_NEXT_BUILD_ID_STATIC_ASSET_MISSING")
 
+def require_c_physical_build_identity(built):
+    """Independently bind root receipt to C's physical 87,038-file verification."""
+    need(type(built)==dict and
+         built.get("tree_sha256")==C_PHYSICAL_TREE_SHA256 and
+         built.get("build_id")==C_PHYSICAL_BUILD_ID and
+         built.get("build_version")==C_PHYSICAL_APP_VERSION and
+         built.get("files")==C_PHYSICAL_FILES,
+         "C_PHYSICAL_87038_FILE_TREE_BUILD_ID_MISMATCH")
+
 def stage_identity(j):
     """C's Git archive has no .git. Prove source via sealed C manifests."""
     need(CANDIDATE_STAGE.parent==pathlib.Path("/var/lib") and
@@ -325,6 +339,7 @@ def stage_identity(j):
         return parse(raw)
     source=c_file("SOURCE_STAGED.json","C_source_staged_sha256")
     built=c_file("BUILD_STAGED.json","C_build_staged_sha256")
+    require_c_physical_build_identity(built)
     source_rows=c_file("SOURCE_FILES.json","C_source_files_sha256",33554432)
     build_rows=c_file("BUILD_FILES.json","C_build_files_sha256",67108864)
     need(source.get("status")=="SOURCE_STAGED" and
