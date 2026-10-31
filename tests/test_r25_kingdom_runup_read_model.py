@@ -17,9 +17,10 @@ class KingdomRunup(unittest.TestCase):
         r,bindings,by=m.canonical()
         self.assertEqual(len(by),14)
         self.assertEqual(r["umbrella"]["id"],"aoe2war")
-        self.assertEqual(len(r["supervisory_roles"]),2)
+        self.assertEqual(len(r["supervisory_roles"]),3)
         self.assertNotIn("system-doctor",by)
         self.assertNotIn("system-shepherd",by)
+        self.assertNotIn("system-composer",by)
         self.assertEqual({v["lane"] for v in bindings["bindings"]},set("BCDEFG"))
         self.assertFalse(any(v["independent_live_worker_proven"] for v in by.values()))
     def test_owner_extracted_only_not_built_or_running_or_live(self):
@@ -33,9 +34,11 @@ class KingdomRunup(unittest.TestCase):
         self.assertEqual(a["host_state"],"HOST_NATIVE_UNVERIFIED")
         self.assertEqual(a["live_state"],"LIVE_VERIFIED_NOT_ISSUED")
         self.assertEqual(len(a["os_cards"]),14)
+        self.assertEqual(a["existing_supervisory_ui_roles"],2)
+        self.assertEqual(a["proposed_supervisory_roles"],1)
         self.assertEqual(len(a["assigned_lanes"]),6)
         self.assertEqual({r["role_id"] for r in a["roles"]},
-                         {"system-doctor","system-shepherd"})
+                         {"system-doctor","system-shepherd","system-composer"})
         self.assertTrue(all(c["live_worker_status"]=="UNVERIFIED"
                             and c["live_pid"] is None for c in a["os_cards"]))
         self.assertTrue(all(not x["active_worker_proven"] for x in a["assigned_lanes"]))
