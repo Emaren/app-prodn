@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d2df4d242768ebe0f0a06b7dca487c995be088b18f4d508de7edef42a508e997",
+      "sha256": "3cf5879458dfd93ac0adf5952306f621a1542b9f0ee1d44e6b3ddd1afe217f52",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "repair/g-r13-w1safe-canonical-docsv2-20261031",
-    "commit": "0206e32ed5d2b2e1abfe04c13b685b91f717a9e9"
+    "branch": "r16-w1safe-docsv2-compat",
+    "commit": "f6642587117a529372d73d59e782724015d8fc3d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
