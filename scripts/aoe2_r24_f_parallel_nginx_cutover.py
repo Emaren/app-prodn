@@ -305,15 +305,29 @@ def stage_identity(j):
     need(built["build_id"]==j["candidate_build_id"] and
          built["build_version"]==j["candidate_build_version"],
          "C_BUILD_RECEIPT_VERSIONS_MISMATCH")
-    archive=root_file(C_SOURCE_ARCHIVE,350000000)
-    need(sha(archive)==C_SOURCE_ARCHIVE_SHA256 and
-         len(archive)==293550080,"C_ORIGINAL_GIT_ARCHIVE_PHYSICAL_DIGEST_DRIFT")
-    embedded=cmd(["/usr/bin/git","get-tar-commit-id"],15)
-    # C seals the source via its exact original archived commit. We do not
-    # execute Git against the .git-less extracted candidate as root.
+    ast=os.lstat(C_SOURCE_ARCHIVE)
+    need(stat.S_ISREG(ast.st_mode) and ast.st_uid==0 and
+         not ast.st_mode&0o022 and ast.st_size==293550080,
+         "C_ROOT_SEALED_ARCHIVE_NOT_PRESENT")
+    digest=hashlib.sha256()
+    afd=os.open(C_SOURCE_ARCHIVE,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        with os.fdopen(afd,"rb") as f:
+            for chunk in iter(lambda:f.read(1048576),b""):
+                digest.update(chunk)
+    finally:
+        pass
+    need(digest.hexdigest()==C_SOURCE_ARCHIVE_SHA256,
+         "C_ORIGINAL_GIT_ARCHIVE_PHYSICAL_DIGEST_DRIFT")
+    with C_SOURCE_ARCHIVE.open("rb") as f:
+        tarid=subprocess.run(["/usr/bin/git","get-tar-commit-id"],
+                             stdin=f,capture_output=True,timeout=35)
+    need(tarid.returncode==0 and tarid.stdout.decode().strip()==TARGET,
+         "C_EMBEDDED_GIT_ARCHIVE_COMMIT_ID_NOT_PROVEN")
     need(source["candidate_sha"]==TARGET and
-         source["git_archive_sha256"]==sha(archive),
-         "C_GIT_ARCHIVE_SOURCE_LINK_MISSING")
+         source["git_archive_sha256"]==digest.hexdigest() and
+         j["C_stage_artifact_sha256"]==j["C_build_staged_sha256"],
+         "C_GIT_ARCHIVE_SOURCE_BUILD_APPROVAL_LINK_MISSING")
     def file_in_manifest(rel):
         hits=[x for x in build_rows["rows"]
               if type(x)==dict and x.get("path")==rel and x.get("type")=="file"]
