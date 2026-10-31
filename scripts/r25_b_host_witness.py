@@ -236,9 +236,11 @@ def db_proof(dsn, uid):
             "checked":list(yes),"server_transaction_ro":True}
 
 def http_proof(pid):
+    # Never trust root shell HTTP_PROXY/HTTPS_PROXY for a local host witness.
+    opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
     req=urllib.request.Request(GUARD_HEALTH,headers={"Host":"127.0.0.1:3031"})
     try:
-        with urllib.request.urlopen(req,timeout=4) as f:
+        with opener.open(req,timeout=4) as f:
             payload=f.read(4096)
             if f.status!=200:hold("GUARD_HEALTH_STATUS")
     except (OSError,urllib.error.URLError):hold("GUARD_HEALTH_UNREACHABLE")
@@ -253,7 +255,7 @@ def http_proof(pid):
     mutation=urllib.request.Request(GUARD_HEALTH,data=b"",
            method="POST",headers={"Content-Type":"text/plain"})
     try:
-        urllib.request.urlopen(mutation,timeout=4)
+        opener.open(mutation,timeout=4)
         hold("LOCAL_HTTP_MUTATION_NOT_BLOCKED")
     except urllib.error.HTTPError as e:
         if e.code!=405 or e.headers.get("X-AoE2WAR-R25-B-Guard")!="denied":
