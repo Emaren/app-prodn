@@ -129,6 +129,14 @@ class IntakeTests(unittest.TestCase):
             with self.assertRaisesRegex(m.Hold, "SIX_REAL_SIGNATURES_NOT_VERIFIED"):
                 self.call(Path(td), verifier=lambda _: False)
 
+    def test_broken_canonical_verifier_does_not_escape_hold(self):
+        with tempfile.TemporaryDirectory() as td:
+            self.build(Path(td))
+            def denied(_):
+                raise RuntimeError("signature source unavailable")
+            with self.assertRaisesRegex(m.Hold, "CANONICAL_F_SIGNATURE_VERIFIER_REFUSED"):
+                self.call(Path(td), verifier=denied)
+
     def test_duplicate_property_not_accepted(self):
         with self.assertRaisesRegex(m.Hold, "DUPLICATE_JSON_PROPERTY"):
             m.parse(b'{"a":1,"a":2}')
