@@ -16,10 +16,10 @@ spec.loader.exec_module(b)
 
 class TestMacRepair(unittest.TestCase):
     def test_exact_immutable_source_pins_and_separate_gui_phrase(self):
-        self.assertEqual(b.ROOT_REF, "8afef85ae8bf769109e99bc431f163e127351314")
-        self.assertEqual(b.ROOT_SIZE, 13662)
-        self.assertEqual(b.ROOT_SHA, "aac9ba020ecdd8ed699384453152ed49ef651bcd34898dd9393184a532c47286")
-        self.assertEqual(b.ROOT_BLOB, "1e4e47df6912d6d6e8e02e52c0ead636428df7d9")
+        self.assertEqual(b.ROOT_REF, "79f74e65df99ba7def4a9f529a2ad666c887f89b")
+        self.assertEqual(b.ROOT_SIZE, 14001)
+        self.assertEqual(b.ROOT_SHA, "da0205653ad0f1fb6a39ea8f3973caaa7442c2ce47e9a73491dbe4e49ec7c82b")
+        self.assertEqual(b.ROOT_BLOB, "65c1148fddae15450809a128a8c4ed71e34cb5c8")
         self.assertEqual(b.WITNESS_REF, "d92965fc881e404b57c347ab96d18562ced48f06")
         self.assertEqual(b.WITNESS_SIZE, 22062)
         self.assertEqual(b.WITNESS_SHA, "edf1b42ea7cc8001da83d7076d8aa08f924860fd9a40f97431e60ad8528a30dc")
@@ -87,6 +87,8 @@ class TestMacRepair(unittest.TestCase):
         self.assertNotIn("r25_b_additive_3031_setup.py", source)
         self.assertNotIn("systemctl start", source)
         self.assertNotIn("systemctl reload", source)
+        self.assertIn('ssh = ["/usr/bin/ssh", "-T"', source)
+        self.assertNotIn('ssh = ["ssh", "-T"', source)
         for check in ("StrictHostKeyChecking=yes", "BatchMode=yes",
                       "NumberOfPasswordPrompts=0", "root@hel1",
                       "IMMUTABLE_SOURCE_SIZE_SHA256_OR_GIT_BLOB_DRIFT"):
