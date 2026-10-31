@@ -131,39 +131,75 @@ class TestBHostWitness(unittest.TestCase):
             self.assertTrue(b.reject_postgres_local_trust("app"))
             self.assertEqual(runner.call_count,2)
 
-    def test_nft_exact_egress_only_db_accepts(self):
+    def test_nft_numeric_new_exact_native_hel1_readback(self):
+        # Real '/usr/sbin/nft -n list chain inet aoe2war_r25_b egress'
+        # renders conntrack state NEW (8) as the single hexadecimal 0x8.
         nft="""table inet aoe2war_r25_b {
  chain egress {
   type filter hook output priority -150; policy accept;
-  meta skuid 17251 ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
-  meta skuid 17251 ct state new drop
+  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept
+  meta skuid 993 ct state 0x8 drop
  }
 }
 """
-        with patch.object(b,"run",return_value=nft.encode()):
-            self.assertEqual(len(b.nft_policy(17251)),64)
+        with patch.object(b,"run",return_value=nft.encode()) as runner:
+            self.assertEqual(len(b.nft_policy(993)),64)
+        self.assertEqual(runner.call_args.args[0],
+                         ["/usr/sbin/nft","-n","list","chain","inet","aoe2war_r25_b","egress"])
+        self.assertEqual(runner.call_args.kwargs["max_bytes"],8192)
 
-    def test_nft_port_8092_exception_rejects(self):
-        nft="""table inet aoe2war_r25_b {
+    def test_nft_numeric_state_and_whole_chain_adversarial_fail_closed(self):
+        good="""table inet aoe2war_r25_b {
  chain egress {
   type filter hook output priority -150; policy accept;
-  meta skuid 17251 ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
-  meta skuid 17251 ct state new tcp dport 8092 accept
-  meta skuid 17251 ct state new drop
+  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept
+  meta skuid 993 ct state 0x8 drop
  }
 }
 """
-        with patch.object(b,"run",return_value=nft.encode()):
-            with self.assertRaisesRegex(RuntimeError,"NFT_EGRESS_RULES_NOT_EXACT"):
-                b.nft_policy(17251)
-
-    def test_nft_wrong_uid_rejects(self):
-        nft="""type filter hook output priority -150; policy accept;
-meta skuid 1000 ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
-meta skuid 1000 ct state new drop"""
-        with patch.object(b,"run",return_value=nft.encode()):
-            with self.assertRaisesRegex(RuntimeError,"NFT_EGRESS_RULES_NOT_EXACT"):
-                b.nft_policy(17251)
+        edits={
+            "old symbolic serialization":good.replace("ct state 0x8","ct state new"),
+            "established":good.replace("ct state 0x8","ct state 0x2"),
+            "related":good.replace("ct state 0x8","ct state 0x4"),
+            "compound NEW+established":good.replace("ct state 0x8","ct state 0xa"),
+            "wrong state":good.replace("ct state 0x8","ct state 0x10"),
+            "leading zero":good.replace("ct state 0x8","ct state 0x08"),
+            "wrong UID":good.replace("meta skuid 993","meta skuid 994"),
+            "other loopback":good.replace("127.0.0.1","127.0.0.2"),
+            "widened any IPv4":good.replace("ip daddr 127.0.0.1 ",""),
+            "remote DB":good.replace("127.0.0.1","192.0.2.9"),
+            "wrong DB port":good.replace("dport 5432","dport 5433"),
+            "extra 8092 accept":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 tcp dport 8092 accept\\n  meta skuid 993 ct state 0x8 drop"),
+            "extra unscoped bypass":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  ip daddr 127.0.0.1 accept\\n  meta skuid 993 ct state 0x8 drop"),
+            "extra all-UID bypass":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  accept\\n  meta skuid 993 ct state 0x8 drop"),
+            "extra unrelated UID":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 1 accept\\n  meta skuid 993 ct state 0x8 drop"),
+            "duplicate allow":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept\\n  meta skuid 993 ct state 0x8 drop"),
+            "drop removed":good.replace("  meta skuid 993 ct state 0x8 drop",""),
+            "drop accepts":good.replace("ct state 0x8 drop","ct state 0x8 accept"),
+            "reordered":good.replace(
+              "  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept\\n  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 drop\\n  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept"),
+            "modified priority":good.replace("priority -150","priority 0"),
+            "wrong hook":good.replace("hook output","hook input"),
+            "policy drop":good.replace("policy accept","policy drop"),
+            "table mutated":good.replace("aoe2war_r25_b","other_table"),
+            "chain mutated":good.replace("chain egress","chain ingress"),
+            "extra chain":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 drop\\n  chain bypass { type filter hook output priority -149; policy accept; }"),
+            "counter inserted":good.replace("dport 5432 accept","dport 5432 counter accept"),
+            "handle inserted":good.replace("dport 5432 accept","dport 5432 accept # handle 4"),
+            "extra comment":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  # unexpected token\\n  meta skuid 993 ct state 0x8 drop"),
+        }
+        for label, text in edits.items():
+            with self.subTest(label=label),patch.object(b,"run",return_value=text.encode()):
+                with self.assertRaisesRegex(RuntimeError,"NFT_(EGRESS_RULES_NOT_EXACT|OUTPUT_HOOK_NOT_ENFORCED)"):
+                    b.nft_policy(993)
 
     def test_local_root_http_probe_never_uses_proxy_env(self):
         import inspect
