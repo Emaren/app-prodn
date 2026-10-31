@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""R24 F: parallel old-web preserving nginx-only cutover (root SSH in memory).
+
+This is a NEW source proposal. Original aoe2hdbets-web.service is NEVER
+stopped or restarted: it may run WarGraph financial ticks. Candidate #1061
+must already be physically staged and running on a separate isolated port
+and read-only DB principal, with B/D/E/F/G independently root-bound approval.
+No key enrollment, money operation, migration, repo switch, or 14-helper install.
+"""
+from __future__ import annotations
+import fcntl,hashlib,json,os,pathlib,re,socket,stat,subprocess,sys,urllib.request
+
+HOST="ubuntu-4gb-hel1-11"
+TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
+LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
+LOCK_ID=(2064,6185747,1000,0o644)
+OLD_UNIT="aoe2hdbets-web.service"
+NEW_UNIT="aoe2hdbets-web-r24.service"
+OLD_PORT=3030
+NEW_PORT=3031
+OLD_UPSTREAM=b"proxy_pass http://127.0.0.1:3030;"
+NEW_UPSTREAM=b"proxy_pass http://127.0.0.1:3031;"
+ROOT_APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
+AUDIT_BASE=pathlib.Path("/var/lib/aoe2war-r24-parallel")
+OLD_APP=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
+PUBLIC="https://aoe2war.com"
+B_INDEPENDENT_POSITIVE_RUNTIME_SHA="" # current B #1077 is explicitly negative
+F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA="" # not issued until real E/C stage
+D_REVIEWED_SHA="5ffac4e1a8838024e9bd2025d452a7e93e53c06f"
+C_REVIEWED_PARALLEL_SHA="" # must be C's new source, NOT old stop/swap C #1080
+E_REVIEWED_SHA="" # pin final reviewed E implementation
+G_REVIEWED_SHA="" # pin final reviewed G implementation
+SCHEMA="aoe2war.r24.rootssh.parallel-web-nginx.v1"
+HEX40=re.compile("[0-9a-f]{40}\\Z")
+HEX64=re.compile("[0-9a-f]{64}\\Z")
+NONCE=re.compile("[0-9a-f]{32}\\Z")
+class Hold(Exception):pass
+def need(ok,reason):
+    if not ok:raise Hold(reason)
+def sha(data):return hashlib.sha256(data).hexdigest()
+def canonical(x):return json.dumps(x,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode()
+def no_dupes(pairs):
+    d={}
+    for k,v in pairs:
+        need(k not in d,"DUPLICATE_APPROVAL_FIELD");d[k]=v
+    return d
+def parse(data):return json.loads(data,object_pairs_hook=no_dupes,parse_constant=lambda _:(_ for _ in ()).throw(Hold("NONFINITE_APPROVAL")))
+def cmd(argv,timeout=30):
+    p=subprocess.run(argv,capture_output=True,timeout=timeout)
+    need(p.returncode==0,"PROCESS_FAILED:"+pathlib.Path(argv[0]).name)
+    return p.stdout
+def protected_dir(p,exact=None):
+    for d in (p,*p.parents):
+        st=os.lstat(d)
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,
+             "UNPROTECTED_DIRECTORY:"+str(d))
+    if exact is not None:
+        need(stat.S_IMODE(os.lstat(p).st_mode)==exact,"ROOT_DIRECTORY_MODE")
+def root_file(path,maxbytes):
+    protected_dir(path.parent)
+    st=os.lstat(path)
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022
+         and 0<st.st_size<=maxbytes,"UNTRUSTED_ROOT_FILE")
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        x=os.fstat(fd);raw=os.read(fd,maxbytes+1);y=os.fstat(fd)
+        need(len(raw)==x.st_size and (x.st_dev,x.st_ino,x.st_size,x.st_mtime_ns)==
+             (y.st_dev,y.st_ino,y.st_size,y.st_mtime_ns),"UNSTABLE_ROOT_FILE")
+        return raw
+    finally:os.close(fd)
+def lock_check():
+    s=os.lstat(LOCK)
+    need(stat.S_ISREG(s.st_mode) and
+         (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode))==LOCK_ID,
+         "ORIGINAL_RELEASE_LOCK_DRIFT")
+def approval(raw):
+    j=parse(raw)
+    need(type(j)==dict and set(j)=={"schema","nonce","candidate_sha","previous_sha",
+        "previous_build_id","candidate_build_id","candidate_build_version",
+        "nginx_config","nginx_before_sha256","finance_units","finance_snapshot_sha256",
+        "wolo_snapshot_sha256","old_web_snapshot_sha256","candidate_web_snapshot_sha256",
+        "C_stage_artifact_sha256","E_durable_rollback_sha256","lane_reviews"},
+        "APPROVAL_EXACT_SCHEMA")
+    need(j["schema"]==SCHEMA and j["candidate_sha"]==TARGET and
+         type(j["nonce"])==str and NONCE.fullmatch(j["nonce"]),
+         "SCOPE_OR_NONCE_INVALID")
+    need(type(j["previous_sha"])==str and HEX40.fullmatch(j["previous_sha"]) and
+         j["previous_sha"]!=TARGET,"PREVIOUS_SOURCE_IDENTITY")
+    for f in ("nginx_before_sha256","finance_snapshot_sha256","wolo_snapshot_sha256",
+              "old_web_snapshot_sha256","candidate_web_snapshot_sha256",
+              "C_stage_artifact_sha256","E_durable_rollback_sha256"):
+        need(type(j[f])==str and HEX64.fullmatch(j[f]),"APPROVAL_HASH_MISSING:"+f)
+    for f in ("previous_build_id","candidate_build_id"):
+        need(type(j[f])==str and re.fullmatch("[A-Za-z0-9_-]{8,128}",j[f]),
+             "NEXT_BUILD_ID_INVALID")
+    need(type(j["candidate_build_version"])==str and
+         re.fullmatch("[A-Za-z0-9_-]{8,128}",j["candidate_build_version"]),
+         "APP_BUILD_VERSION_INVALID")
+    need(type(j["nginx_config"])==str and
+         j["nginx_config"].startswith("/etc/nginx/") and
+         not ".." in pathlib.PurePosixPath(j["nginx_config"]).parts,
+         "NGINX_CONFIG_NOT_EXACT_ROOT_SCOPE")
+    units=j["finance_units"]
+    need(type(units)==list and len(units)>=25 and len(units)==len(set(units)) and
+         all(type(u)==str and re.fullmatch("[A-Za-z0-9@_.-]+\\.(?:service|timer|socket)",u)
+             and u not in (OLD_UNIT,NEW_UNIT) for u in units),
+         "B_FINANCE_UNIT_IDENTITY_SET_INCOMPLETE")
+    pins={"B":B_INDEPENDENT_POSITIVE_RUNTIME_SHA,
+          "C":C_REVIEWED_PARALLEL_SHA,"D":D_REVIEWED_SHA,
+          "E":E_REVIEWED_SHA,"F":F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA,
+          "G":G_REVIEWED_SHA}
+    need(type(j["lane_reviews"])==dict and set(j["lane_reviews"])==set(pins),
+         "B_C_D_E_F_G_REVIEWS_REQUIRED")
+    for lane,pin in pins.items():
+        need(bool(HEX40.fullmatch(pin)) and j["lane_reviews"][lane]==pin,
+             "INDEPENDENT_"+lane+"_REVIEW_NOT_APPROVED")
+    return j
+def unit_state(unit):
+    out=cmd(["/usr/bin/systemctl","show",unit,
+       "-p","Id","-p","ActiveState","-p","MainPID",
+       "-p","ExecMainStartTimestampMonotonic","-p","User",
+       "-p","FragmentPath","-p","DropInPaths","-p","ExecStart"],15)
+    return out.decode(errors="replace")
+def snapshots(units):
+    return {"original_web":unit_state(OLD_UNIT),
+            "candidate_web":unit_state(NEW_UNIT),
+            "finance":{u:unit_state(u) for u in units},
+            "wolo":cmd(["/usr/bin/ss","-H","-ltnpe"],15).decode(errors="replace")}
+def listener_lines(raw):
+    out={}
+    for port in ("8092","8093"):
+        hits=[x for x in raw.splitlines() if re.search(":"+port+r"\\s",x)]
+        need(len(hits)==1,"WOLO_PORT_PIDs_NOT_UNIQUE:"+port)
+        out[port]=hits[0]
+    return out
+def prove_preimage(j,s):
+    need("ActiveState=active" in s["original_web"] and
+         "ActiveState=active" in s["candidate_web"],"TWO_INDEPENDENT_WEB_SERVICES_NOT_ACTIVE")
+    need(sha(s["original_web"].encode())==j["old_web_snapshot_sha256"],
+         "OLD_FINANCIAL_WEB_PID_DRIFT")
+    need(sha(s["candidate_web"].encode())==j["candidate_web_snapshot_sha256"],
+         "NEW_CANDIDATE_WEB_PID_DRIFT")
+    need(sha(canonical(s["finance"]))==j["finance_snapshot_sha256"],
+         "B_FINANCIAL_UNITS_DRIFT")
+    need(sha(canonical(listener_lines(s["wolo"])))==j["wolo_snapshot_sha256"],
+         "WOLO_SIGNED_PROCESS_SOCKET_DRIFT")
+def http_version(port):
+    url=f"http://127.0.0.1:{port}/api/deployment-version"
+    with urllib.request.urlopen(urllib.request.Request(url,method="GET"),
+                                timeout=8) as resp:
+        need(resp.status==200,"HTTP_BUILD_VERSION_UNAVAILABLE")
+        obj=parse(resp.read(8193))
+    need(type(obj)==dict and type(obj.get("buildVersion"))==str,
+         "INVALID_VERSION_JSON")
+    return obj["buildVersion"]
+def public_version():
+    with urllib.request.urlopen(
+            urllib.request.Request(PUBLIC+"/api/deployment-version",method="GET"),
+            timeout=10) as resp:
+        need(resp.status==200,"PUBLIC_HTTP_STATUS")
+        obj=parse(resp.read(8193))
+    need(type(obj)==dict and type(obj.get("buildVersion"))==str,
+         "PUBLIC_VERSION_INVALID")
+    return obj["buildVersion"]
+def safe_replace_site(original,chosen):
+    # Approval pins a complete existing nginx file. This limited v1 may only
+    # change a UNIQUE default location upstream; never a finance API location.
+    need(original.count(b"location / {")==1,"UNKNOWN_NGINX_LOCATION_SHAPE")
+    start=original.index(b"location / {")+len(b"location / {")
+    end=original.find(b"}",start)
+    need(end>start,"UNKNOWN_NGINX_BLOCK")
+    block=original[start:end]
+    need(block.count(OLD_UPSTREAM)==1,"UNREVIEWED_OLD_PROXY_UPSTREAM")
+    need(original.count(OLD_UPSTREAM)>=1,"OLD_UPSTREAM_MISSING")
+    need(b"proxy_pass http://127.0.0.1:3031;" not in original,
+         "CANDIDATE_ALREADY_ROUTED")
+    block2=block.replace(OLD_UPSTREAM,chosen)
+    # Explicitly restrict the GENERAL web location; other exact locations and
+    # server actions must be covered by separate real B positive host review.
+    need(b"limit_except" not in block,"EXISTING_NGINX_METHOD_POLICY_UNREVIEWED")
+    block2=b"\\n        limit_except GET HEAD { deny all; }\\n"+block2
+    return original[:start]+block2+original[end:]
+def durable_write(path,raw,mode=0o400):
+    protected_dir(path.parent)
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode)
+    with os.fdopen(fd,"wb") as f:
+        f.write(raw);f.flush();os.fsync(f.fileno())
+def fsyncdir(p):
+    d=os.open(p,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:os.fsync(d)
+    finally:os.close(d)
+def replace_existing(path,raw):
+    tmp=path.parent/(".r24-"+path.name+"-pending")
+    need(not tmp.exists() and not tmp.is_symlink(),"NGINX_PENDING_UNKNOWN")
+    fd=os.open(tmp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,"wb") as f:
+        f.write(raw);f.flush();os.fsync(f.fileno())
+    # mode, uid/gid preserved from the approved original root nginx conf.
+    old=os.lstat(path)
+    os.fchmod(os.open(tmp,os.O_RDONLY|os.O_NOFOLLOW),stat.S_IMODE(old.st_mode))
+    os.replace(tmp,path);fsyncdir(path.parent)
+def nginx_reload():
+    cmd(["/usr/sbin/nginx","-t"],15)
+    cmd(["/usr/bin/systemctl","reload","nginx.service"],25)
+def apply():
+    need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
+         "EXACT_HEL1_ROOT_REQUIRED")
+    lock_check()
+    protected_dir(ROOT_APPROVAL.parent,0o700);j=approval(root_file(ROOT_APPROVAL,16384))
+    config=pathlib.Path(j["nginx_config"])
+    old=root_file(config,131072)
+    need(sha(old)==j["nginx_before_sha256"],"ORIGINAL_NGINX_BYTES_DRIFT")
+    candidate=safe_replace_site(old,NEW_UPSTREAM)
+    s=snapshots(j["finance_units"]);prove_preimage(j,s)
+    need(http_version(OLD_PORT)!=j["candidate_build_version"] and
+         http_version(NEW_PORT)==j["candidate_build_version"],
+         "CANDIDATE_NOT_ISOLATED_FROM_OLD_WEB")
+    need(public_version()==http_version(OLD_PORT),"BEFORE_PUBLIC_NOT_OLD_WEB")
+    nonce=j["nonce"];record=AUDIT_BASE/("r24-"+nonce)
+    protected_dir(AUDIT_BASE,0o700)
+    need(not record.exists() and not record.is_symlink(),"REPLAY_OR_PARTIAL_TRANSACTION")
+    fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        st=os.fstat(fd)
+        need((st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))==LOCK_ID,
+             "RELEASE_FD_DRIFT")
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as exc:raise Hold("RELEASE_LOCK_BUSY") from exc
+        lock_check()
+        need(snapshots(j["finance_units"])==s,"FINANCE_OR_OLD_WEB_DRIFT_AT_SEAM")
+        need(root_file(config,131072)==old,"NGINX_BEFORE_RACE")
+        os.mkdir(record,0o700);protected_dir(record,0o700)
+        durable_write(record/"before-nginx.conf",old)
+        durable_write(record/"intent.json",canonical({"schema":SCHEMA,"nonce":nonce,
+             "candidate_sha":TARGET,"old_unit_pid_unchanged":True,
+             "before_nginx_sha256":sha(old),"after_nginx_sha256":sha(candidate)})+b"\\n")
+        fsyncdir(record);fsyncdir(AUDIT_BASE)
+        try:
+            replace_existing(config,candidate)
+            nginx_reload()
+            need(public_version()==j["candidate_build_version"],
+                 "PUBLIC_CANDIDATE_NOT_ACTIVE")
+            need(snapshots(j["finance_units"])==s,
+                 "FINANCE_OR_OLD_WEB_CHANGED_ON_PROXY_SWITCH")
+            durable_write(record/"commit.json",canonical({
+                "status":"R24_PARALLEL_WEBSITE_LIVE",
+                "candidate_sha":TARGET,"nonce":nonce,
+                "candidate_build_id":j["candidate_build_id"],
+                "candidate_build_version":j["candidate_build_version"],
+                "original_web_still_running":True,
+                "old_nginx_sha256":sha(old),
+                "new_nginx_sha256":sha(candidate)})+b"\\n")
+            fsyncdir(record)
+            print("PASS:R24_PARALLEL_PUBLIC_WEBSITE_CUTOVER; ORIGINAL_WEB_MAINPID_PRESERVED")
+        except BaseException:
+            print("HOLD:R24_PROXY_CUTOVER_FAILED_RESTORING_ORIGINAL_NGINX",
+                  file=sys.stderr)
+            try:
+                replace_existing(config,old);nginx_reload()
+                need(public_version()==http_version(OLD_PORT),
+                     "ORIGINAL_PUBLIC_RESTORE_NOT_VERIFIED")
+            except Exception as err:
+                print("HOLD:R24_PROXY_ROLLBACK_FAILED:"+type(err).__name__,
+                      file=sys.stderr)
+            raise
+    finally:os.close(fd)
+def main():
+    need(sys.argv[1:]==["--root-apply"],"ONLY_REVIEWED_ROOT_APPLY")
+    apply()
+if __name__=="__main__":
+    try:main()
+    except (Hold,OSError,ValueError,subprocess.SubprocessError) as e:
+        print("HOLD:R24_PARALLEL:"+str(e),file=sys.stderr);sys.exit(2)
