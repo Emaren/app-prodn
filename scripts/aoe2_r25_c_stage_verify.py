@@ -10,7 +10,7 @@ import hashlib, json, os, pathlib, re, socket, stat, subprocess, sys
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
 ARCHIVE_HASH="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
 ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
-STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+STAGE=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
 OLD_PID="2625090"
 OLD_SERVICE="aoe2hdbets-web.service"
