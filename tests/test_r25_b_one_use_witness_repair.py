@@ -132,7 +132,7 @@ class TestBOneUseWitnessRepair(unittest.TestCase):
                  patch.object(b, "OLD_SHA", hashlib.sha256(b"old-b-bytes").hexdigest()), \
                  patch.object(b, "NEW_SHA", hashlib.sha256(new).hexdigest()), \
                  patch.object(b, "trusted", side_effect=fake_trusted), \
-                 patch.object(b, "host_admission", return_value=("a"*64, "b"*64)), \
+                 patch.object(b, "host_admission", return_value=(hashlib.sha256(b"started").hexdigest(), hashlib.sha256(b"receipt").hexdigest())), \
                  patch.object(b, "STARTED", setup / "started.json"), \
                  patch.object(b, "RECEIPT", setup / "receipt.json"):
                 (setup / "started.json").write_bytes(b"started")
