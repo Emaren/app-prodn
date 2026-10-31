@@ -32,6 +32,17 @@ ROOT_SSH_USER="root"
 HEX40=re.compile(r"^[0-9a-f]{40}$")
 HEX64=re.compile(r"^[0-9a-f]{64}$")
 UNIT=re.compile(r"^[a-zA-Z0-9@_.-]+\.(?:service|timer|socket)$")
+# F's source-specific release review must be physically reissued on a new
+# F-governed commit AFTER B can establish the host process is genuinely
+# read-only. B's present R24 source result explicitly denies deployment.
+B_RUNTIME_FINANCE_APPROVED_SHA=""
+F_INTEGRATION_APPROVED_SHA=""
+REVIEWED_LANE_SOURCE={
+    "C":"cd0cf8bd880fe9e736e82a84d8941fe56a7bc045",
+    "D":"5ffac4e1a8838024e9bd2025d452a7e93e53c06f",
+    "E":"6ea69b1826fa836cf46b403a60fcbe54b00dc416",
+    "G":"8a0c3733ad7b638ba1d3fc5d670af92fea8baaf6",
+}
 
 class Hold(Exception): pass
 def need(ok,msg):
@@ -97,6 +108,17 @@ def verify_review(approval):
     for lane,sha in approval["reviews"].items():
         need(type(sha)==str and HEX40.fullmatch(sha),
              "REVIEW_COMMIT_SHA_INVALID:"+lane)
+    # A syntactically valid 40-hex "review" is not evidence that B/D/E/G
+    # signed or approved the website-only boundary.
+    need(bool(HEX40.fullmatch(B_RUNTIME_FINANCE_APPROVED_SHA)) and
+         approval["reviews"]["B"]==B_RUNTIME_FINANCE_APPROVED_SHA,
+         "B_RUNTIME_FINANCIAL_ISOLATION_NOT_APPROVED")
+    need(bool(HEX40.fullmatch(F_INTEGRATION_APPROVED_SHA)) and
+         approval["reviews"]["F"]==F_INTEGRATION_APPROVED_SHA,
+         "F_SOURCE_AND_STAGE_RELEASE_POLICY_NOT_APPROVED")
+    for lane, expected in REVIEWED_LANE_SOURCE.items():
+        need(approval["reviews"][lane]==expected,
+             "REVIEWED_SOURCE_DRIFT:"+lane)
     units=approval["financial_units"]
     need(type(units)==list and len(units)>=25 and len(units)==len(set(units))
          and all(type(x)==str and UNIT.fullmatch(x) for x in units),
