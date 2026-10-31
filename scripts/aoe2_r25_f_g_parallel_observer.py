@@ -17,10 +17,12 @@ OLD_PORT=3030
 NEW_PORT=3031
 OLD_REPO=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
 STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
+ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
+ARCHIVE_SHA="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+EXPECTED_OLD_PID=2625090
 APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r24-parallel")
-C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
-C_ARCHIVE_SHA="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
 LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 LOCK_ID=(2064,6185747,1000,0o644)
 PUBLIC="https://aoe2war.com"
@@ -243,41 +245,106 @@ def scope():
          isinstance(x.get("nonce"),str) and NONCE.fullmatch(x["nonce"]),
          "F_ROOT_SCOPE_MISSING_OR_INCOMPLETE")
     return x
+NGINX_SITE=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")
+OLD_PROXY=b"proxy_pass http://127.0.0.1:3030;"
+NEW_PROXY=b"proxy_pass http://127.0.0.1:3031;"
+WEB_LOCATIONS={b"^~ /players/by-name/",b"= /api/kingdom-presence/events",
+               b"^~ /api/",b"= /",b"^~ /download/watcher/",b"/"}
+METHOD_GUARD=b"if ($request_method !~ ^(GET|HEAD)$) { return 405; }"
+def matching_brace(src,at):
+    need(src[at:at+1]==b"{","NGINX_EXPECTED_OPEN_BRACE")
+    depth=0;quote=None;comment=False;esc=False
+    for i in range(at,len(src)):
+        ch=src[i]
+        if comment:
+            if ch==10:comment=False
+            continue
+        if quote is not None:
+            if esc:esc=False
+            elif ch==92:esc=True
+            elif ch==quote:quote=None
+            continue
+        if ch==35:comment=True;continue
+        if ch in (34,39):quote=ch;continue
+        if ch==123:depth+=1
+        elif ch==125:
+            depth-=1
+            if depth==0:return i
+            need(depth>=0,"NGINX_UNBALANCED")
+    raise Hold("NGINX_UNCLOSED_BLOCK")
+def https_body(raw):
+    matches=[];found=[]
+    for m in re.finditer(rb"(?m)^[ \t]*server[ \t]*\{",raw):
+        op=raw.index(b"{",m.start(),m.end())
+        end=matching_brace(raw,op)
+        body=raw[op+1:end]
+        name=re.search(rb"(?m)^[ \t]*server_name[ \t]+([^;]+);",body)
+        need(name is not None and set(name.group(1).split())==
+             {b"aoe2war.com",b"www.aoe2war.com"},"NGINX_VHOST_DOMAIN_DRIFT")
+        https=bool(re.search(rb"(?m)^[ \t]*listen[ \t]+(?:\[::\]:)?443\b",body))
+        http=bool(re.search(rb"(?m)^[ \t]*listen[ \t]+(?:\[::\]:)?80\b",body))
+        need(https != http,"NGINX_VHOST_PORT_AMBIGUOUS")
+        matches.append((https,http))
+        if https:found.append((op+1,end,body))
+    need(len(matches)==2 and len(found)==1,"NGINX_HTTPS_HTTP_VHOST_PAIR_UNKNOWN")
+    return found[0]
+def six_web_upstreams(raw):
+    lo,hi,body=https_body(raw)
+    locations={}
+    for m in re.finditer(rb"(?m)^[ \t]*location[ \t]+([^{}\r\n]+)[ \t]*\{",body):
+        label=b" ".join(m.group(1).split())
+        op=body.index(b"{",m.start(),m.end())
+        close=matching_brace(body,op)
+        inner=body[op+1:close]
+        n_old=inner.count(OLD_PROXY);n_new=inner.count(NEW_PROXY)
+        if n_old+n_new==0:continue
+        need(label in WEB_LOCATIONS and label not in locations and n_old+n_new==1
+             and len(re.findall(rb"(?m)^[ \t]*proxy_pass\b",inner))==1,
+             "NGINX_UNREVIEWED_WEB_PROXY_LOCATION")
+        locations[label]={"old":n_old,"new":n_new,
+                          "method_guard":METHOD_GUARD in inner}
+    need(set(locations)==WEB_LOCATIONS and
+         raw.count(OLD_PROXY)==sum(v["old"] for v in locations.values()) and
+         raw.count(NEW_PROXY)==sum(v["new"] for v in locations.values()),
+         "NGINX_SIX_WEB_PROXY_CENSUS_MISMATCH")
+    count_old=sum(x["old"] for x in locations.values())
+    count_new=sum(x["new"] for x in locations.values())
+    need((count_old,count_new) in ((6,0),(0,6)),
+         "NGINX_MIXED_3030_3031_PUBLIC_ROUTES")
+    if count_new:
+        need(all(x["method_guard"] for x in locations.values()),
+             "NGINX_3031_METHOD_GUARD_MISSING")
+    need(b"proxy_pass http://127.0.0.1:27657" in raw and
+         b"proxy_pass http://127.0.0.1:1318" in raw,
+         "NGINX_WOLO_PROXY_TOPOLOGY_MISSING")
+    return 3030 if count_old else 3031
 def nginx_route(approved):
     config=pathlib.Path(approved["nginx_config"])
-    need(config==pathlib.Path("/etc/nginx/sites-available/aoe2war.com"),
-         "G_UNREVIEWED_NGINX_VHOST")
+    need(config==NGINX_SITE,"F_NGINX_VHOST_SOURCE_MISMATCH")
     conf=root_file(config,131072)
+    port=six_web_upstreams(conf)
     compiled=run(["/usr/sbin/nginx","-T"],timeout=25)
-    sections=re.split(rb"(?m)^# configuration file ([^\r\n]+):[ \t]*\r?\n",compiled)
-    need(len(sections)>=3 and len(sections)%2==1,
-         "ACTIVE_NGINX_T_VHOST_MARKERS_MISSING")
-    selected=0
-    for i in range(1,len(sections),2):
-        try:matches=os.path.samefile(sections[i].decode("utf8","strict"),config)
-        except (FileNotFoundError,OSError):matches=False
-        if matches:
-            need(sections[i+1].rstrip(b"\r\n")==conf.rstrip(b"\r\n"),
-                 "ACTIVE_NGINX_T_VHOST_BYTES_DRIFT")
-            selected+=1
-    need(selected==1 and b"server_name aoe2war.com" in compiled,
-         "ACTIVE_AOE2WAR_NGINX_VHOST_NOT_PROVEN")
-    old=b"proxy_pass http://127.0.0.1:3030;"
-    new=b"proxy_pass http://127.0.0.1:3031;"
-    n_old=conf.count(old);n_new=conf.count(new)
-    need((n_old,n_new) in ((6,0),(0,6)),
-         "G_PARTIAL_SIX_LOCATION_ROUTING_MIXED")
-    expected=b"location ^~ /players/by-name/",b"location = /api/kingdom-presence/events",b"location ^~ /api/",b"location = /",b"location ^~ /download/watcher/",b"location /"
-    need(all(conf.count(e+b" {")==1 for e in expected) and
-         b"proxy_pass http://127.0.0.1:27657" in conf and
-         b"proxy_pass http://127.0.0.1:1318" in conf,
-         "G_WOLO_OR_EXACT_WEB_LOCATION_SET_DRIFT")
-    need(compiled.count(old)==n_old and compiled.count(new)==n_new,
-         "G_NGINX_LOADED_OTHER_PROXY_REFERENCE")
-    return {"upstream_port":3031 if n_new else 3030,
-            "website_locations":6,"selected_file":str(config),
-            "file_sha256":digest(conf),
-            "nginx_compiled_sha256":digest(compiled),"nginx_t_ok":True}
+    need(len(compiled)<=8*1024*1024,"NGINX_LOADED_CONFIG_TOO_LARGE")
+    chunks=re.split(rb"(?m)^# configuration file ([^\r\n]+):[ \t]*\r?\n",compiled)
+    need(len(chunks)>=3 and len(chunks)%2==1,"NGINX_LOADED_SECTION_HEADERS_MISSING")
+    found=0;global_old=0;global_new=0
+    for i in range(1,len(chunks),2):
+        name=chunks[i].decode("utf8","strict")
+        part=chunks[i+1].rstrip(b"\r\n")
+        global_old+=part.count(OLD_PROXY);global_new+=part.count(NEW_PROXY)
+        try:matching=os.path.samefile(name,config)
+        except OSError:matching=False
+        if matching:
+            need(part==conf.rstrip(b"\r\n"),"NGINX_LOADED_VHOST_NOT_ACTUAL_FILES")
+            found+=1
+    need(found==1 and global_old==(6 if port==3030 else 0) and
+         global_new==(6 if port==3031 else 0),
+         "NGINX_UNEXPECTED_ADDITIONAL_WEB_UPSTREAMS")
+    return {"upstream_port":port,"web_locations":6,
+            "selected_file":str(config),"file_sha256":digest(conf),
+            "nginx_compiled_sha256":digest(compiled),
+            "nginx_t_ok":True}
+
 def audit(approved,phase):
     p=AUDIT/("r24-"+approved["nonce"])
     if phase=="before":return {"phase":"before","journal":None}
@@ -289,8 +356,13 @@ def audit(approved,phase):
     original=root_file(p/"before-nginx.conf",131072)
     need(digest(original)==commit.get("old_nginx_sha256"),
          "F_NGINX_ROLLBACK_CONTENT_DRIFT")
+    current=digest(root_file(pathlib.Path(approved["nginx_config"]),131072))
+    need(current==(commit.get("old_nginx_sha256") if phase=="rollback"
+                   else commit.get("new_nginx_sha256")),
+         "F_LOADED_NGINX_DOES_NOT_MATCH_ROOT_COMMIT")
     outcome={"commit_sha256":digest(canon(commit)),
              "root_rollback_nginx_sha256":digest(original),
+             "approved_after_nginx_sha256":commit.get("new_nginx_sha256"),
              "root_rollback_material_verified":True,
              "rollback_exercised":False}
     if phase=="rollback":
@@ -302,41 +374,76 @@ def audit(approved,phase):
         outcome["rollback_receipt_sha256"]=digest(canon(rb))
         outcome["rollback_exercised"]=True
     return outcome
-def stage():
-    need(STAGE.is_dir() and not STAGE.is_symlink(),
-         "PARALLEL_CANDIDATE_NOT_STAGED")
-    approved=scope()
-    src_raw=root_file(C_AUDIT/"SOURCE_STAGED.json",65536)
-    bld_raw=root_file(C_AUDIT/"BUILD_STAGED.json",65536)
-    need(digest(src_raw)==approved.get("C_source_staged_sha256") and
-         digest(bld_raw)==approved.get("C_build_staged_sha256"),
-         "G_C_SOURCE_AND_BUILD_ROOT_DIGEST_NOT_APPROVED")
-    source=parse(src_raw);built=parse(bld_raw)
+def root_sealed_file(p):
+    st=p.lstat()
+    return (stat.S_ISREG(st.st_mode) and st.st_uid==0 and
+            not(st.st_mode&0o022) and st.st_nlink==1)
+def verified_c_archive_source():
+    """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
+    source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
+    built=parse(root_file(C_AUDIT/"BUILD_STAGED.json",65536),65536)
+    srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",33554432),33554432)
+    builtfiles=parse(root_file(C_AUDIT/"BUILD_FILES.json",67108864),67108864)
     need(source.get("status")=="SOURCE_STAGED" and
-         source.get("candidate_sha")==TARGET and
-         source.get("git_archive_sha256")==C_ARCHIVE_SHA and
-         built.get("schema")=="aoe2war.r25.c.full-built-artifact.v1" and
          built.get("status")=="BUILD_STAGED" and
-         built.get("candidate_sha")==TARGET and
-         built.get("source_git_archive_sha256")==C_ARCHIVE_SHA and
-         built.get("root_sealed") is True and
-         built.get("old_web_pid_untouched")==2625090,
-         "G_C_REAL_ARCHIVE_TO_BUILD_PROVENANCE_NOT_PROVED")
+         source.get("candidate_sha")==built.get("candidate_sha")==TARGET and
+         source.get("git_archive_sha256")==built.get("source_git_archive_sha256")==ARCHIVE_SHA,
+         "C_SOURCE_ARCHIVE_NOT_EXACT_FROZEN_IDENTITY")
+    need(srcfiles.get("schema")=="r25-c-source-files.v1" and
+         builtfiles.get("schema")=="aoe2war.r25.c.full-artifact-files.v1" and
+         isinstance(srcfiles.get("rows"),list) and
+         isinstance(builtfiles.get("rows"),list) and
+         digest(canon(srcfiles["rows"]))==source.get("source_manifest_sha256") and
+         digest(canon(builtfiles["rows"]))==built.get("tree_sha256"),
+         "C_ROOT_SOURCE_OR_BUILD_MANIFEST_DIGEST_DRIFT")
+    need(built.get("root_sealed") is True and built.get("financial_writes_authorized") is False
+         and built.get("old_web_pid_untouched")==EXPECTED_OLD_PID,
+         "C_BUILD_RECEIPT_SCOPE_DRIFT")
+    # The archived Git object hash was independently authenticated during owner
+    # transfer. Byte-level readback of all files is checked against C's receipt.
+    for row in builtfiles["rows"]:
+        need(type(row)is dict and type(row.get("path"))is str,
+             "C_TREE_ROW_INVALID")
+        target=(STAGE/row["path"]).resolve()
+        need(target.is_relative_to(STAGE.resolve()) and target.exists(),
+             "C_TREE_ROW_ESCAPE_OR_MISSING")
+        if row.get("type")=="file":
+            need(type(row.get("size"))is int and type(row.get("sha256"))is str,
+                 "C_TREE_FILE_ROW_INVALID")
+            st=target.stat()
+            need(st.st_size==row["size"] and root_sealed_file(target),
+                 "C_ROOT_SEALED_TREE_FILE_DRIFT")
+            h=hashlib.sha256()
+            with target.open("rb") as src:
+                for block in iter(lambda:src.read(1048576),b""):h.update(block)
+            need(h.hexdigest()==row["sha256"],"C_BUILT_FILE_BYTES_CHANGED")
+        elif row.get("type")=="symlink":
+            node=STAGE/row["path"]
+            need(node.is_symlink() and os.readlink(node)==row.get("target") and
+                 node.resolve().is_relative_to(STAGE.resolve()),
+                 "C_STAGE_INTERNAL_SYMLINK_CHANGED")
+        else:raise Hold("C_UNKNOWN_FILE_TYPE")
+    return {"source_git_archive_sha256":ARCHIVE_SHA,
+            "source_manifest_sha256":source["source_manifest_sha256"],
+            "build_manifest_sha256":built["tree_sha256"],
+            "receipt_build_id":built["build_id"],
+            "source_receipt_status":"SOURCE_STAGED",
+            "build_receipt_status":"BUILD_STAGED",
+            "root_manifest_file_count":built.get("files"),
+            "git_directory_absent_by_design":True}
+def stage():
+    need(STAGE.is_dir() and not STAGE.is_symlink(),"PARALLEL_CANDIDATE_NOT_STAGED")
     marker=root_file(STAGE/"r24-source-sha",64).decode().strip()
     need(marker==TARGET,"C_SOURCE_MARKER_MISMATCH")
+    source=verified_c_archive_source()
     build_file=STAGE/".next/BUILD_ID"
-    need(not build_file.is_symlink() and build_file.is_file(),
-         "C_NEXT_BUILD_ID_MISSING")
+    need(not build_file.is_symlink() and build_file.is_file(),"C_NEXT_BUILD_ID_MISSING")
     build=build_file.read_text().strip()
-    need(BUILD.fullmatch(build) and build==built["build_id"],
-         "C_NEXT_BUILD_ID_MALFORMED_OR_DRIFT")
+    need(BUILD.fullmatch(build) and build==source["receipt_build_id"],
+         "C_NEXT_BUILD_ID_NOT_IN_ROOT_BUILT_RECEIPT")
     deps=bounded_tree(STAGE/"node_modules")
     next_tree=bounded_tree(STAGE/".next")
-    return {"source_provenance":"C_ROOT_SEALED_EXACT_GIT_ARCHIVE_NO_DOT_GIT",
-            "archive_sha256":C_ARCHIVE_SHA,
-            "source_manifest_sha256":source["source_manifest_sha256"],
-            "build_tree_manifest_sha256":built["tree_sha256"],
-            "source_marker":marker,"next_build_id":build,
+    return {"source":source,"source_marker":marker,"next_build_id":build,
             "dependencies":deps,"next_build":next_tree,
             "full_dependency_and_build_bytes_measured":True,
             "root_owner_stage_receipt_binding_requires_F":True}
@@ -349,6 +456,8 @@ def root_snapshot(phase):
     need(BUILD.fullmatch(old_build),"OLD_NEXT_BUILD_ID_UNKNOWN")
     candidate=stage()
     units=system_state()
+    need(units[OLD_UNIT]["properties"]["MainPID"]==str(EXPECTED_OLD_PID),
+         "ORIGINAL_SETTLEMENT_CAPABLE_WEB_PID_NOT_2625090")
     need(units[OLD_UNIT]["properties"]["ActiveState"]=="active" and
          units[NEW_UNIT]["properties"]["ActiveState"]=="active" and
          units[OLD_UNIT]["main_process"] and units[NEW_UNIT]["main_process"],
@@ -406,6 +515,12 @@ def verify(before,after,phase):
          "WRONG_BEFORE_OR_POSTFLIGHT_PHASE")
     compare_process_and_finance(before,after)
     need(before["nginx"]["upstream_port"]==3030,"BEFORE_NGINX_NOT_OLD")
+    need(after["release_journal"]["root_rollback_nginx_sha256"]==
+         before["nginx"]["file_sha256"],"F_ROLLBACK_PREIMAGE_NOT_ORIGINAL_NGINX")
+    if phase=="after":
+        need(after["nginx"]["file_sha256"]==
+             after["release_journal"]["approved_after_nginx_sha256"],
+             "F_CUTOVER_NGINX_NOT_ROOT_COMMITTED")
     expected=3031 if phase=="after" else 3030
     need(after["nginx"]["upstream_port"]==expected,"NGINX_NOT_EXPECTED_UPSTREAM")
     need(before["nginx"]["selected_file"]==after["nginx"]["selected_file"],
