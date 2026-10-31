@@ -20,18 +20,39 @@ def need(ok,why):
     if not ok:raise Hold(why)
 def canon(obj):return json.dumps(obj,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode()
 def digest(raw):return hashlib.sha256(raw).hexdigest()
+# The root-sealed full dependency + Next manifest can legitimately exceed
+# 16 MB. Bounded to 128 MiB independently of the 6 MB default JSON receipts.
+# This only changes readback; it never mutates or regenerates BUILD_FILES.json.
+BUILD_MANIFEST_MAX_BYTES=128*1024*1024
+
 def read_root_file(p,max_bytes=6000000):
     st=p.lstat()
-    need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022
-         and 0<st.st_size<=max_bytes,"UNTRUSTED_ROOT_READ:"+str(p))
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,
+         "UNTRUSTED_ROOT_FILE_MODE_OR_OWNER:"+str(p))
+    need(0<st.st_size<=max_bytes,
+         "ROOT_FILE_SIZE_OUTSIDE_BOUND:"+str(p)+
+         ":bytes="+str(st.st_size)+":max="+str(max_bytes))
     fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
     try:
-        before=os.fstat(fd);raw=os.read(fd,max_bytes+1);after=os.fstat(fd)
-        need(len(raw)==before.st_size and
+        before=os.fstat(fd)
+        need(stat.S_ISREG(before.st_mode) and
+             (before.st_dev,before.st_ino,before.st_size)==
+             (st.st_dev,st.st_ino,st.st_size),
+             "ROOT_FILE_REPLACED_DURING_OPEN")
+        parts=[]
+        total=0
+        while total<before.st_size:
+            chunk=os.read(fd,min(1048576,before.st_size-total))
+            need(bool(chunk),"ROOT_FILE_SHORT_READ")
+            total+=len(chunk)
+            need(total<=max_bytes,"ROOT_FILE_READ_EXCEEDED_BOUND")
+            parts.append(chunk)
+        after=os.fstat(fd)
+        need(total==before.st_size and
              (before.st_dev,before.st_ino,before.st_mtime_ns,before.st_size)==
              (after.st_dev,after.st_ino,after.st_mtime_ns,after.st_size),
              "UNSTABLE_ROOT_FILE")
-        return raw
+        return b"".join(parts)
     finally:os.close(fd)
 def safe_root_directory(p):
     for d in (p,*p.parents):
@@ -145,7 +166,7 @@ def main():
          and digest(canon(sourcefiles.get("rows")))==source.get("source_manifest_sha256"),
          "SOURCE_FILE_MANIFEST_DRIFT")
     build=load(AUDIT/"BUILD_STAGED.json",65536)
-    files=load(AUDIT/"BUILD_FILES.json",16000000)
+    files=load(AUDIT/"BUILD_FILES.json",BUILD_MANIFEST_MAX_BYTES)
     rows=check_manifest(source,build,files)
     count=verify_tree(rows)
     build_id=read_root_file(STAGE/".next/BUILD_ID",256).decode().strip()
