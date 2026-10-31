@@ -131,7 +131,7 @@ Storage observatory must separately graph potential cargo, actually shipped ciph
 
 ## 8. Roadmap, delivery gates and division of labor
 
-**P0 now:** F #1008 actual W1 release; B independent finance P0 continuity/HEAD/noninterference; C restricted root installer/SSH; D genuine native signed admission; E physical Intel transport/HEL1 restore/capacity; G independent actual production Chrome and rollback acceptance. One release integrator, no extra root channel. Funded Wolo remains separately HELD.
+**P0 historical plan (superseded by R25 section 11):** F #1008 actual W1 release; B independent finance P0 continuity/HEAD/noninterference; C restricted root installer/SSH; D genuine native signed admission; E physical Intel transport/HEL1 restore/capacity; G independent actual production Chrome and rollback acceptance. One release integrator, no extra root channel. Funded Wolo remains separately HELD.
 
 **P1 post-W1 source:** Add public /kingdom-construction and private swarm/perfection/code-health panels, reusing A1/A3 and existing status readers. G owns visuals, D owns navigation/new bounded code-health source integration, B/C review source trust/privacy, F owns deploy acceptance. New visual editions E4/E5 are additive. Keep separated from immutable W1 and existing post-W1 Storage Transfer draft #1016; get CI/Chrome, independently accepted post-W1 controller deployment.
 
@@ -161,3 +161,39 @@ Every seven days publish a compact source-linked report to the Central evidence 
 - Existing [Central Command OS](CENTRAL_COMMAND_OS.md), [Engineering Memory](ENGINEERING_MEMORY.md), [Kingdom Intelligence](KINGDOM_INTELLIGENCE.md), [Renaissance qualification](RENAISSANCE_PAGE_QUALIFICATION_PROTOCOL.md), scripts/aoe2_code_health.py.
 - [Central #984](https://github.com/Emaren/app-prodn/issues/984) priorities; [#934](https://github.com/Emaren/app-prodn/issues/934) evidence; [F #1008](https://github.com/Emaren/app-prodn/pull/1008) release; [G #1016](https://github.com/Emaren/app-prodn/pull/1016) post-W1 visual; [E VPSSentry #61](https://github.com/Emaren/VPSSentry/pull/61) real physical Intel transport.
 - This document itself is a draft proposal. Source publication, DocsV2 and PR CI do not constitute production installation or permission to use user funds.
+
+## 11. R25 D OS registry reconciliation — source-verified October 31, 2026
+
+**Canonical machine-readable source:** [config/aoe2war-os-registry.v1.json](../config/aoe2war-os-registry.v1.json). **Formal architecture:** [AoE2WAR OS Census](AOE2WAR_OS_CENSUS.md). These are source-level architecture amendments derived from independently reviewed Central [#1090](https://github.com/Emaren/app-prodn/pull/1090); they do not supersede original domain runbooks, introduce live agents or certify deployment. Eight public constellation cards remain the documented Release, Documentation, Storage, Host, Recovery, Workspace, Speed and Replay Truth identities; `System Doctor` is the ninth constellation *role*, not an OS.
+
+### Identity accounting — never force fifteen
+
+| Status/owner scope | Count | Interpretation |
+| --- | ---: | --- |
+| Source-present public constellation OS identities | **8** | From `lib/kingdomIntelligencePublic.ts`; no autonomous worker implied |
+| Existing private Central Command OS | **1** | Separate admin priority/dispatch authority, `docs/CENTRAL_COMMAND_OS.md` |
+| Existing independent Code Health source identity | **1** | `scripts/aoe2_code_health.py` scanner and hashed diagnostics |
+| Draft/proposed identities | **5** | Deployment (#1088), Orchestra (#1060), Agent (#1086), Swarm (#1025), WoloChain (external source) |
+| **Source-normalized subordinate roster** | **15** | Ten source-present, five draft/proposed; *not independently running OS worker count* |
+| Umbrella AoE2WAR OS | **1** | `/aoe2war-os`; taxonomy/integration identity, not an additional subordinate |
+| **Named planning identities including umbrella** | **16** | Identity catalog only; `systemwide_unique_operational_os_total = null` |
+| Diagnostic/coordination roles | **2** | System Doctor and System Shepherd remain non-OS roles |
+
+**Reconciled alias/domain verdict:**
+- **Performance OS → Speed OS**: `docs/PERFORMANCE_OS.md` explicitly describes the same Speed OS V2/V3 route/cohort collector, receipt authority, and optimization workflow. Preserve the existing performance document ID `aoe2war.app-prodn.performance-os` as a separate documentation record; it is not a duplicate operational owner.
+- **Renaissance OS → cross-domain integration facet**, not an independently financed or root-operating OS. `docs/RENAISSANCE_OS.md` explicitly calls itself a read-only integration overlay; `scripts/renaissance.py` and existing 20-criterion qualification protocol remain their own source contracts. Do not erase or rename the existing doc ID `aoe2war.app-prodn.renaissance-os`.
+- **Code Health OS → distinct existing source identity**: the executable `scripts/aoe2_code_health.py`, Code Health output/receipt pipeline and bounded source analysis are not the Central Command dispatch engine. Add `aoe2war.os.code-health` as a source-present subordinate, but do not claim a unique daemon or live heartbeat.
+- **Council OS → composite diagnostics and Central advisory facet**: `scripts/aoe2_council.py` combines Doctor, Host, Release and other evidence; it does not create independent queue or release authority.
+- **Loop Engine and Graph/Provenance engine → cross-cutting primitives** pending distinct reviewed owner, source/permission, execution and value contract. An agent may own feedback control; provenance is cross-domain. Neither automatically adds an OS.
+
+Stable IDs are **append-only**: `aoe2war.os.<short-id>` for subordinate, `aoe2war.os.umbrella` for the umbrella and `aoe2war.role.system-doctor/system-shepherd` for supervisors. Existing short IDs, document frontmatter IDs, release receipts, Git paths and UI routes are never silently repurposed to satisfy a number. Renames become aliases; a new authority requires a separate immutable ID, independent review and new evidence/permission gates.
+
+**Source and execution ownership:** Release OS owns `bin/aoe2war`, `scripts/aoe2_release.py`, `scripts/aoe2_release_ship.py` and protected certified rollback; Deployment OS #1088 is **additive** source-admission policy, not a new release engine. Central Command OS owns owner priorities and human-reviewed six-lane decisions; Orchestra may govern DAG/lease handoffs, Agent bounds single-worker tools/permissions/cost, Swarm only proves multi-agent throughput after measured load and independent reviewer admission. Storage/Recovery own data-preservation and actual restore proofs, Speed/Performance own latency cohort receipts, Documentation owns DocsV2, Host owns native health, Replay Truth owns replay origin, Code Health owns source scan diagnostic receipts. WoloChain health never grants Wolo finance or custody rights.
+
+**Agent → loop → graph → swarm lifecycle:** an agent is one authenticated, least-privilege task lifecycle with real outcome receipts; a loop is bounded repeated observation/action/evaluation with explicit stop/budget; a graph is dependency/source/permission/evidence lineage, not an invented daemon; a swarm is independently observable scheduled coordination with lease fencing, fault containment, cost caps and reviewer throughput. Six owner-relayed ChatGPT lanes are **allocations**, not six autonomously verified agents. Each OS's `value_gate` in the registry declares what observed user/operational value would justify maturity; source-green and decorative naming are insufficient.
+
+**Doctor and Shepherd roles:** Doctor checks health and diagnosis, Shepherd proposes or coordinates bounded work. Neither can auto-authorize stage/activation, fabricate signed finance receipts, redefine original full-finance six-signer gates or count as additional physical workers. Their source routes remain intact.
+
+**R25 P0 invariants supersede historical W1 sequencing in sections 1 and 8:** frozen #1061 `0cee3c836c4b0760478280c145e02e81e470ce0e` goes to a separate nonfinancial 3031 web process. The existing 3030 PID `2625090` may host settlement-capable WarGraph and MUST NOT be stopped/restarted. B server-enforces SELECT-only role, no custody secrets, startup method/GET/rewrite boundary; C supplies exact immutable source/build; E proves actual two-filesystem capacity and usable rollback; F #1083 exclusively executes approved Nginx-only routing with original 3030 rollback; G witnesses public+internal Next BUILD_ID, source and unchanged protected services. This P3 source taxonomy **cannot delay F's P0 transaction or create a new blocker**. Original #1063 full-finance signer/RSA policy remains intact and separate.
+
+**Promotion gate:** Reviewed exact identity source plus full DocsV2 registry/index, existing mandatory CI, domain owner source authority, independent security/financial boundary approval, value-gate evidence, and explicit source/physical/runtime/live state separation. No 16/16 "operational" score without actual receipts. The registry is versioned source proposal until PR #1025 review, CI and merge; it is not a production permit. Workload scaling to 1,000 agents remains P3 and never prerequisites the next website release.
