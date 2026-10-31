@@ -121,6 +121,61 @@ def role_absent(database):
            "-X","-A","-t","-w","-v","ON_ERROR_STOP=1","-d",database,"-c",sql])
     if p.stdout.strip()!=b"0":hold("NEW_DB_ROLE_ALREADY_EXISTS_OR_AMBIGUOUS")
 
+def inherited_public_write_risks(database):
+    """Read-only predictor of PUBLIC privileges the new login would inherit.
+
+    This cannot replace post-creation catalog proof, but rejects known
+    conflicts BEFORE creating the one-use started.json or touching roles.
+    """
+    sql = """
+    SELECT json_build_object(
+      'database_create', (
+        SELECT count(*) FROM pg_database d,
+        LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a
+        WHERE d.datname=current_database() AND a.grantee=0 AND a.privilege_type='CREATE'
+      ),
+      'schema_create', (
+        SELECT count(*) FROM pg_namespace n,
+        LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a
+        WHERE n.nspname NOT LIKE 'pg_temp_%'
+          AND a.grantee=0 AND a.privilege_type='CREATE'
+      ),
+      'table_write', (
+        SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
+        LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a
+        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+          AND c.relkind IN ('r','p','f','v','m')
+          AND a.grantee=0 AND a.privilege_type IN
+            ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
+      ),
+      'sequence_write', (
+        SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
+        LATERAL aclexplode(COALESCE(c.relacl,acldefault('S',c.relowner))) a
+        WHERE n.nspname NOT LIKE 'pg_%' AND c.relkind='S'
+          AND a.grantee=0 AND a.privilege_type IN ('USAGE','UPDATE')
+      ),
+      'unsafe_callable', (
+        SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace,
+        LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
+        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+          AND (p.prosecdef OR p.provolatile='v')
+          AND a.grantee=0 AND a.privilege_type='EXECUTE'
+      )
+    )::text;
+    """
+    p=cmd(["/usr/sbin/runuser","-u","postgres","--","/usr/bin/psql",
+           "-X","-A","-t","-w","-v","ON_ERROR_STOP=1","-d",database,"-c",sql],
+           timeout=25)
+    try: risks=json.loads(p.stdout)
+    except (ValueError,UnicodeError):hold("PUBLIC_PRIVILEGE_PROBE_INVALID")
+    expected={"database_create","schema_create","table_write","sequence_write","unsafe_callable"}
+    if set(risks)!=expected or any(type(risks[k]) is not int or risks[k]<0 for k in expected):
+        hold("PUBLIC_PRIVILEGE_PROBE_MALFORMED")
+    if any(risks.values()):
+        hold("INHERITED_PUBLIC_WRITE_OR_CALLABLE_PRIVILEGES_REVIEW_REQUIRED:"+
+             ",".join(k+"="+str(risks[k]) for k in sorted(expected) if risks[k]))
+    return risks
+
 def check_inputs(args):
     if sys.platform!="linux" or os.geteuid()!=0 or socket.gethostname().split(".")[0]!=HOST:
         hold("ORIGINAL_HEL1_ROOT_REQUIRED")
@@ -146,6 +201,7 @@ def check_inputs(args):
     uid=uid_status()
     nft_tables()
     role_absent(args.database)
+    inherited_public_write_risks(args.database)
     return uid
 
 def c_build_ready():

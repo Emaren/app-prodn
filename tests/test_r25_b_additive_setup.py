@@ -53,6 +53,28 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn("actual_build=c_build_ready()",source)
         self.assertIn('"c_build_id":actual_build',source)
 
+    def test_public_acl_preflight_flags_inherited_unsafe_functions_before_install(self):
+        import types
+        risks={"database_create":0,"schema_create":0,"table_write":0,
+               "sequence_write":0,"unsafe_callable":3}
+        with patch.object(b,"cmd",return_value=types.SimpleNamespace(stdout=json.dumps(risks).encode())):
+            with self.assertRaisesRegex(RuntimeError,"INHERITED_PUBLIC_WRITE_OR_CALLABLE"):
+                b.inherited_public_write_risks("aoe2hd_db")
+
+    def test_public_acl_preflight_accepts_zero_inherited_risks(self):
+        import types
+        risks={"database_create":0,"schema_create":0,"table_write":0,
+               "sequence_write":0,"unsafe_callable":0}
+        with patch.object(b,"cmd",return_value=types.SimpleNamespace(stdout=json.dumps(risks).encode())) as cmd:
+            self.assertEqual(b.inherited_public_write_risks("aoe2hd_db"),risks)
+            self.assertEqual(cmd.call_args.args[0][-3],"aoe2hd_db")
+            self.assertIn("aclexplode",cmd.call_args.args[0][-1])
+
+    def test_public_acl_check_precedes_install_mutations(self):
+        import inspect
+        self.assertIn("inherited_public_write_risks(args.database)",
+                      inspect.getsource(b.check_inputs))
+
     def test_real_b_immutable_bundle_is_accepted(self):
         d=b.decode_bundle(bundle())
         self.assertEqual(b.sha(d["guard"]),b.GUARD_SHA)
