@@ -547,6 +547,26 @@ def manual_rollback(nonce):
         fsyncdir(record)
         print("PASS:R24_OLD_WEB_PROXY_RESTORED; ORIGINAL_WEB_MAINPID_UNCHANGED")
     finally:os.close(lockfd)
+def approved_owner_intent():
+    # This output reveals only nonce + public build identity; the actual
+    # root-only approved.json remains protected and is re-read at activation.
+    need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
+         "EXACT_HEL1_ROOT_REQUIRED")
+    j=approval(root_file(ROOT_APPROVAL,16384))
+    raw=root_file(VHOST,131072)
+    need(sha(raw)==j["nginx_before_sha256"],
+         "ACTUAL_NGINX_REVIEWED_PREIMAGE_DRIFT")
+    nginx_loaded_vhost(raw,VHOST,old_count=6)
+    safe_replace_site(raw,NEW_UPSTREAM)
+    print(canonical({"schema":"aoe2war.r25.f.owner-intent.v1",
+        "nonce":j["nonce"],"candidate_sha":TARGET,
+        "candidate_build_id":j["candidate_build_id"],
+        "candidate_build_version":j["candidate_build_version"],
+        "nginx_before_sha256":j["nginx_before_sha256"],
+        "nginx_config":j["nginx_config"],
+        "financial_review_binding":"ROOT_APPROVAL_REVERIFIED_AT_APPLY",
+        "files_modified":False}).decode())
+
 def plan_vhost():
     # Narrow physical evidence for the exact active AoE2WAR Nginx config.
     need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
@@ -568,6 +588,8 @@ def main():
     need(len(sys.argv)>=2,"EXPLICIT_ROOT_OPERATOR_MODE")
     if sys.argv[1:]==["--root-vhost-plan"]:
         plan_vhost()
+    elif sys.argv[1:]==["--root-owner-intent"]:
+        approved_owner_intent()
     elif sys.argv[1:]==["--root-apply"]:
         apply()
     elif (len(sys.argv)==4 and sys.argv[1]=="--root-rollback" and
