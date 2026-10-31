@@ -10,7 +10,7 @@ script_dir=here.parent/"scripts"
 sys.path.insert(0,str(script_dir if (script_dir/"aoe2_solo_root_install_v2.py").exists() else here))
 import aoe2_solo_root_install_v2 as m
 
-SAFE="95883d4a285d3ff2ddc6a84e1c3946621f0431b9"
+SAFE="ac2443b15e0c9475c34e10b5f0acc60cb9c7295e"
 PREV="33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a"
 SHA="77b27d643aeb8831f9298ec70d010c7ce59e28ea"
 

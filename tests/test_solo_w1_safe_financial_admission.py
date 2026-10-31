@@ -10,7 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"scripts"))
 import aoe2_solo_website_financial_proof as proof
 
-SAFE="95883d4a285d3ff2ddc6a84e1c3946621f0431b9"
+SAFE="ac2443b15e0c9475c34e10b5f0acc60cb9c7295e"
 ORIGINAL="b46a51f1592c9f296839924ae55e722618b10d35"
 
 class PositiveW1SafeCallsiteVerification(unittest.TestCase):
