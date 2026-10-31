@@ -386,9 +386,9 @@ class R25StageTests(unittest.TestCase):
                 self.assertTrue(receipt["timed_out"])
                 self.assertEqual(receipt["exit_code"],124)
                 with mock.patch.object(self.s.subprocess,"run") as runner:
-                    with self.assertRaises(FileExistsError):
+                    with self.assertRaisesRegex(self.s.Hold,"POSTREC_PHASE_ALREADY_ENTERED_NO_REPLAY"):
                         self.s.run_postprebuild_phase(6,"next-build",args,11)
-                    runner.assert_called_once()
+                    runner.assert_not_called()
 
     def test_42_success_records_actual_unit_and_no_network(self):
         unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-01-minimatch"
