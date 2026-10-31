@@ -144,12 +144,13 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn('original_web_restarted',src)
     def test_manual_rollback_does_not_require_failed_candidate_to_run(self):
         s=self.s
+        old="Id=aoe2hdbets-web.service\\nActiveState=active\\nMainPID=2625090\\n"
         a={
-            "old_web_snapshot_sha256":s.sha(b"OLD_ACTIVE_PID"),
+            "old_web_snapshot_sha256":s.sha(old.encode()),
             "finance_snapshot_sha256":s.sha(s.canonical({"protected": "running"})),
             "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"SOCKET_A","8093":"SOCKET_B"}))
         }
-        current={"original_web":"OLD_ACTIVE_PID","candidate_web":"ActiveState=failed",
+        current={"original_web":old,"candidate_web":"ActiveState=failed",
                  "finance":{"protected":"running"},"wolo":"SOCKET_A"}
         with mock.patch.object(s,"listener_lines",return_value={"8092":"SOCKET_A","8093":"SOCKET_B"}):
             s.prove_rollback_preimage(a,current)
