@@ -612,6 +612,39 @@ def recover_dns_build():
     return complete_build(before,sockets,budget,build_account,imported,True,source)
 
 
+def run_postprebuild_phase(i,label,commandline,timeout):
+    """Durable, root-only, write-once redacted evidence even on subprocess failure."""
+    unit=next((v.split("=",1)[1] for v in commandline
+               if v.startswith("--unit=")),None)
+    need(unit is not None and unit.startswith(
+         "aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i),
+         "POSTREC_UNEXPECTED_SYSTEMD_UNIT_NAME")
+    timed_out=False
+    try:
+        p=subprocess.run(commandline,capture_output=True,timeout=timeout)
+        code=p.returncode
+        rawout=p.stdout
+        rawerr=p.stderr
+    except subprocess.TimeoutExpired as exc:
+        timed_out=True
+        code=124
+        rawout=exc.stdout or b""
+        rawerr=exc.stderr or b""
+    out=redacted_diagnostic_tail(rawout,1800)
+    err=redacted_diagnostic_tail(rawerr,1800)
+    write_once(AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i),{
+        "status":"PASS" if code==0 else "HOLD",
+        "unit":unit,"phase":label,"exit_code":code,
+        "timed_out":timed_out,"stdout_redacted_tail":out,
+        "stderr_redacted_tail":err,"candidate_sha":SHA,
+        "build_uid":994,"private_network":True,
+        "finance_access":False})
+    if code:
+        raise Hold("POSTPREBUILD_PHASE_FAILED:"+label+
+                   ":EXIT="+str(code)+
+                   ":STDOUT="+out[-800:]+":STDERR="+err[-800:])
+    return True
+
 def postprebuild_recovery():
     """Exactly one source-preserving recovery from owner-proven prebuild failure.
 
@@ -839,30 +872,7 @@ def postprebuild_recovery():
         unit="aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i+label
         commandline=common+["--unit="+unit]+argv
         print("ENTER:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
-        timed_out=False
-        try:
-            p=subprocess.run(commandline,capture_output=True,timeout=timeout)
-            code=p.returncode
-            rawout=p.stdout
-            rawerr=p.stderr
-        except subprocess.TimeoutExpired as exc:
-            timed_out=True
-            code=124
-            rawout=exc.stdout or b""
-            rawerr=exc.stderr or b""
-        out=redacted_diagnostic_tail(rawout,1800)
-        err=redacted_diagnostic_tail(rawerr,1800)
-        write_once(AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i),{
-            "status":"PASS" if code==0 else "HOLD",
-            "unit":unit,"phase":label,"exit_code":code,
-            "timed_out":timed_out,
-            "stdout_redacted_tail":out,"stderr_redacted_tail":err,
-            "candidate_sha":SHA,"build_uid":994,"private_network":True,
-            "finance_access":False})
-        if code:
-            raise Hold("POSTPREBUILD_PHASE_FAILED:"+label+
-                       ":EXIT="+str(code)+
-                       ":STDOUT="+out[-800:]+":STDERR="+err[-800:])
+        run_postprebuild_phase(i,label,commandline,timeout)
         print("PASS:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
     need(old_identity()==before and boundary_sockets()==sockets,
          "POSTREC_OLD_WEB_OR_WOLO_CHANGED_BEFORE_SEAL")
