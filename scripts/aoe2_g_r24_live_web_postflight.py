@@ -130,7 +130,9 @@ def show(unit):
         obj[k]=v
     need(set(obj)==set(props) and obj["Id"]==unit and
          obj["MainPID"].isdecimal(),"SYSTEMD_UNIT_PROPERTIES_MISSING")
-    result={"properties":obj,"properties_sha256":digest(canon(obj))}
+    result={"properties":obj,"properties_sha256":digest(canon(obj)),
+            "unit_config_sha256":digest(run(["/usr/bin/systemctl","cat",unit,
+                                               "--no-pager"],timeout=12))}
     if int(obj["MainPID"])>1:
         result["main_process"]=proc_identity(int(obj["MainPID"]))
     else:
@@ -138,10 +140,10 @@ def show(unit):
     return result
 def finance_units():
     raw=run(["/usr/bin/systemctl","list-unit-files","--type=service","--type=timer",
-             "--all","--no-legend","--no-pager"],timeout=18).decode()
+             "--type=socket","--all","--no-legend","--no-pager"],timeout=18).decode()
     names=sorted(set(row.split()[0] for row in raw.splitlines() if row.split()
                      and row.split()[0].lower().startswith(FINANCE_PREFIXES)
-                     and row.split()[0].endswith((".service",".timer"))))
+                     and row.split()[0].endswith((".service",".timer",".socket"))))
     need(25<=len(names)<=200 and OLD_UNIT in names and NEW_UNIT in names,
          "ORIGINAL_FINANCIAL_UNIT_SET_NOT_COMPLETE")
     return names
