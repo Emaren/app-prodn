@@ -15,6 +15,8 @@ TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST="ubuntu-4gb-hel1-11"
 REPO=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
 DURABLE=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/rollbacks")
+LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
+EXPECTED_LOCK=(2064,6185747,1000,0o644)
 PORTS=(8092,8093)
 PAGES=("/", "/lobby", "/bets", "/live-games", "/war-chest")
 PREFIXES=("aoe2","wolo","tokenchain","traffic","radio")
@@ -168,6 +170,14 @@ def local_http():
     need(0<len(bytes_)<=2*1024*1024,"ASSET_UNBOUNDED")
     need(sha(get(origin+asset)["body"])==sha(bytes_),"LOCAL_ASSET_DIFFERS_FROM_ACTIVE_BUILD")
     return {"build_version":value,"routes":result,"asset":asset,"asset_sha256":sha(bytes_)}
+def lock_identity():
+    st=LOCK.lstat()
+    need(stat.S_ISREG(st.st_mode) and not stat.S_ISLNK(st.st_mode),
+         "RELEASE_LOCK_NOT_REGULAR")
+    value=(st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))
+    need(value==EXPECTED_LOCK,"ORIGINAL_RELEASE_LOCK_IDENTITY_DRIFT")
+    return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
+            "mode":oct(stat.S_IMODE(st.st_mode))}
 def rollback(path):
     p=pathlib.Path(path)
     need(p.is_absolute() and p.parent==DURABLE and p.name.startswith("activate-"),
@@ -176,6 +186,10 @@ def rollback(path):
         st=x.lstat()
         need(stat.S_ISDIR(st.st_mode) and not stat.S_ISLNK(st.st_mode),
              "ROLLBACK_DIRECTORY_MISSING_OR_LINKED")
+    for name in ("next/BUILD_ID","source-sha","build-version"):
+        node=p/name
+        need(node.is_file() and not node.is_symlink() and
+             node.stat().st_size<=256,"ROLLBACK_MARKER_MISSING_OR_LINKED:"+name)
     build=(p/"next/BUILD_ID").read_text().strip()
     source=(p/"source-sha").read_text().strip()
     version=(p/"build-version").read_text().strip()
@@ -203,6 +217,7 @@ def remote_observe(rollback_path):
     sockets={str(port):identity(listener_pid(port),port) for port in PORTS}
     internal=local_http()
     return {"schema":"aoe2war.g.r24.host-snapshot.v1","host":HOST,
+            "original_release_lock":lock_identity(),
             "source_sha":source,"next_build_id":build,"web":web,"units":names,
             "protected_listeners":sockets,"internal":internal,
             "rollback":rollback(rollback_path) if rollback_path else None,
@@ -252,6 +267,12 @@ def verify(before,after,origin):
          and before.get("host")==after.get("host")==HOST,"SNAPSHOT_HOST_MISMATCH")
     need(before["source_sha"]!=TARGET and after["source_sha"]==TARGET,"NOT_NEW_WEBSITE_LIVE")
     need(before["next_build_id"]!=after["next_build_id"],"NEXT_BUILD_NOT_CHANGED")
+    need(before.get("original_release_lock")==after.get("original_release_lock") and
+         after.get("original_release_lock",{}).get("inode")==EXPECTED_LOCK[1],
+         "RELEASE_LOCK_REPLACED")
+    need((before["web"]["pid"],before["web"]["start_ticks"]) !=
+         (after["web"]["pid"],after["web"]["start_ticks"]),
+         "WEB_MAINPID_NOT_RESTARTED_FOR_NEW_BUILD")
     need(after["web"]["pid"]>1,"WEB_PID_NOT_ACTIVE")
     compare_financial(before,after)
     rb=after.get("rollback")
@@ -269,6 +290,7 @@ def verify(before,after,origin):
             "wolo_8092_8093_process_socket_unchanged":True,
             "public":public,"rollback":rb,
             "rollback_execution_tested":False,
+            "original_release_lock_preserved":True,
             "public_next_build_id_directly_exposed":False,
             "independent_production_chrome_88_routes":"NOT_RUN",
             "finance_signed_receipt":False,"no_financial_writes_executed_by_witness":True}
@@ -278,6 +300,7 @@ def main():
     ap.add_argument("--phase",choices=("before","after"))
     ap.add_argument("--ssh-target")
     ap.add_argument("--before",type=pathlib.Path)
+    ap.add_argument("--before-sha256")
     ap.add_argument("--rollback-path")
     ap.add_argument("--public-origin",default="https://aoe2war.com")
     x=ap.parse_args()
@@ -290,7 +313,11 @@ def main():
             out=ssh_observe(x.ssh_target,x.rollback_path if x.phase=="after" else None)
             if x.phase=="after":
                 need(x.before is not None and x.rollback_path,"AFTER_REQUIRES_BEFORE_AND_REAL_ROLLBACK")
-                before=parsed(x.before.read_bytes())
+                raw_before=x.before.read_bytes()
+                need(type(x.before_sha256)is str and
+                     re.fullmatch(r"[a-f0-9]{64}",x.before_sha256) and
+                     sha(raw_before)==x.before_sha256,"OWNER_BEFORE_RECEIPT_DIGEST_DRIFT")
+                before=parsed(raw_before)
                 # Measure again after external probes; no forged unchanged PID.
                 out=verify(before,out,x.public_origin)
                 recheck=ssh_observe(x.ssh_target,x.rollback_path)
