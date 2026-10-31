@@ -15,14 +15,14 @@ import sys
 import urllib.request
 
 B_SOURCE="87d340314e46032fce68e5cfdcc268b8e6593a82"
-ASSET_REF="1279258b62ec808224ebb11892e5a2ed1a8ee47a"  # immutable new-only witness/cache sources; B_SOURCE still original approved base
-ROOT_REF="f0f731a03e041f9671a5e7d6ab2da4e9d67893f3"
-ROOT_BLOB="8c4eec3dd6e0cda99a4b1b452d042c9f2f0fb8c7"
+ASSET_REF="391523ed3c118e68989403ff8b1e86692a7ae126"  # immutable new-only witness/cache sources; B_SOURCE still original approved base
+ROOT_REF="6ab6bd7817e548106251e355d76fd72b29859243"
+ROOT_BLOB="47309d3807a5aa563d7ab44a388af0ea23b9a882"
 # Root installer exact SHA-verified Git blob; size gate supports bounded updates.
 # Keep this tied to a focused test so future source growth cannot silently HOLD on Mac.
 ROOT_SOURCE_MAX_BYTES=32768
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
-WITNESS_SHA="2639214f39aa088b32edcac20e73cb7a5bc199eaf6f250740c670ea101024bbe"
+WITNESS_SHA="de8981ba8c79c276a1ddd1b6c89efea0eaff8d9f11bd1514a724deacde6fc86a"
 DROPIN_GIT_BLOB="3ae2d1b989b2c90caf904c0b76218a7a58f8872d"
 NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
 BASEUNIT_REF="8bad897bacf99d1a88be27488e55515d3adac915"

@@ -237,8 +237,8 @@ class TestOwnerInstall(unittest.TestCase):
 
     def test_owner_mac_root_and_templates_pinned(self):
         self.assertEqual(mac.B_SOURCE,b.SOURCE_COMMIT)
-        self.assertEqual(mac.ASSET_REF,"1279258b62ec808224ebb11892e5a2ed1a8ee47a")
-        self.assertEqual(mac.ROOT_REF,"f0f731a03e041f9671a5e7d6ab2da4e9d67893f3")
+        self.assertEqual(mac.ASSET_REF,"391523ed3c118e68989403ff8b1e86692a7ae126")
+        self.assertEqual(mac.ROOT_REF,"6ab6bd7817e548106251e355d76fd72b29859243")
         self.assertEqual(mac.GUARD_SHA,b.GUARD_SHA)
         self.assertEqual(mac.WITNESS_SHA,b.WITNESS_SHA)
         self.assertEqual(mac.DROPIN_GIT_BLOB,b.DROPIN_GIT_BLOB)
