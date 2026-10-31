@@ -1,0 +1,232 @@
+name: R19 F frozen site audited with external G observer (not production admission)
+on:
+  push:
+    branches: [r19-f-frozen-site-observer-proof]
+permissions:
+  contents: read
+concurrency:
+  group: r19-f-original-source-observer-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: 0cee3c836c4b0760478280c145e02e81e470ce0e
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0cee3c836c4b0760478280c145e02e81e470ce0e
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Run fail-closed 88-route/overlay/receipt tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          node --check scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          if node scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs >/dev/null 2>&1; then
+            echo "::error::W1SAFE Chrome ran without a real local build and browser identity"; exit 2
+          fi
+          test -z "$(git status --porcelain --untracked-files=no)"
+          python3 -m unittest discover -s tests -p 'test_renaissance_88_factory.py' -v
+          python3 -m unittest discover -s tests -p 'test_renaissance_88_fixture.py' -v
+          python3 -m unittest discover -s tests -p 'test_renaissance_88_a11y_preview.py' -v
+          node --experimental-strip-types --test tests/renaissance-88-factory.test.mts tests/renaissance-88-fixture.test.mts tests/renaissance-88-axe-triage.test.mts tests/renaissance-88-a11y-repairs.test.mts tests/renaissance-88-release-smoke.test.mts
+          mkdir -p renaissance-88-source
+          timeout -k 5s 8m python3 scripts/renaissance_88_plan.py plan --expected-sha "$SOURCE_SHA" --deep --output renaissance-88-source/public88.json
+          python3 scripts/renaissance_88_plan.py impact app/layout.tsx --expected-sha "$SOURCE_SHA" --output renaissance-88-source/impact-global.json
+          node scripts/renaissance_88_release_regression.mjs --plan renaissance-88-source/public88.json --output renaissance-88-source/release-smoke-plan.json
+          python3 scripts/renaissance_88_plan.py matrix --expected-sha "$SOURCE_SHA" --output renaissance-88-source/overlay-matrix.json
+          sha256sum renaissance-88-source/*.json > renaissance-88-source/digests.sha256
+          test -z "$(git status --porcelain --untracked-files=no)"
+          printf 'source=%s\nbuild=UNMEASURED\ncertified=false\n' "$SOURCE_SHA" > renaissance-88-source/identity.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-88-a11y-source-unsealed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: renaissance-88-source/
+          if-no-files-found: warn
+          retention-days: 14
+
+  chrome:
+    needs: source
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SOURCE_SHA: 0cee3c836c4b0760478280c145e02e81e470ce0e
+      DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
+      SESSION_SECRET: isolated-ci-not-production
+      NEXTAUTH_SECRET: isolated-ci-not-production
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      BROWSER_BASE_URL: http://127.0.0.1:3137
+      AOE2WAR_PROD_DB_PREVIEW: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0cee3c836c4b0760478280c145e02e81e470ce0e
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0', cache: yarn }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Pin dependencies and isolated playwright-core
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          timeout -k 5s 4m npm install --prefix "$RUNNER_TEMP/renaissance-88-pw" --no-save --no-package-lock --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
+          npx prisma generate
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Initialize disposable PostgreSQL fixture before expensive Next build
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT
+          REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          printf '%s\n' "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" "REN88_PG_ROOT=$REN88_PG_ROOT" "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
+          mkdir -p renaissance-88-chrome
+          if ! bash scripts/renaissance_88_pg_fixture.sh start > renaissance-88-chrome/fixture-start.txt; then
+            cp "$REN88_PG_ROOT/schema-push.log" renaissance-88-chrome/fixture-schema.log 2>/dev/null || true
+            echo "::error::Isolated schema, seed, or read-only role gate failed"
+            exit 2
+          fi
+          bash scripts/renaissance_88_pg_fixture.sh snapshot > renaissance-88-chrome/fixture-before.txt
+      - name: Build candidate with isolated deterministic generated-manifest quarantine
+        run: |
+          set -euo pipefail
+          timeout -k 10s 30m yarn build
+          test -s .next/BUILD_ID
+          test -s .next/server/app-paths-manifest.json
+          mkdir -p renaissance-88-chrome
+          bash scripts/renaissance_88_preview_manifest_guard.sh \
+            > renaissance-88-chrome/unsealed-policy.txt
+          export REN88_GENERATED_MANIFEST_SHA
+          REN88_GENERATED_MANIFEST_SHA="$(sha256sum lib/pageChangeManifest.generated.ts | cut -d' ' -f1)"
+          printf 'REN88_GENERATED_MANIFEST_SHA=%s\n' "$REN88_GENERATED_MANIFEST_SHA" >> "$GITHUB_ENV"
+          cp .next/BUILD_ID renaissance-88-chrome/BUILD_ID
+          cp .next/server/app-paths-manifest.json renaissance-88-chrome/app-paths-manifest.json
+          # Bind the value copied from the actual built artifact. A valid Next.js
+          # nanoid may start with '-', so separate argv words are unsafe for argparse.
+          BUILD_ID="$(cat .next/BUILD_ID)"
+          if [[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]] || [[ "$(cat renaissance-88-chrome/BUILD_ID)" != "$BUILD_ID" ]]; then
+            echo "::error::Missing, invalid, or changed Next BUILD_ID: preview HOLD"
+            exit 2
+          fi
+          python3 scripts/renaissance_88_plan.py plan --preview-unsealed-generated-policy --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id="$BUILD_ID" --output renaissance-88-chrome/plan.json
+          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$BUILD_ID" > renaissance-88-chrome/identity.txt
+      - name: Actual Chrome desktop/mobile; bounded PR pilot or full scheduled census
+        env:
+          PW_HOME: ${{ runner.temp }}/renaissance-88-pw
+        run: |
+          set -euo pipefail
+          CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          test -n "$CHROME_BIN" && test -x "$CHROME_BIN"
+          export CHROME_BIN
+          test -s renaissance-88-chrome/fixture-before.txt
+          /usr/lib/postgresql/16/bin/pg_isready -h 127.0.0.1 -p 55437 -q ||
+            { echo "::error::Disposable PostgreSQL fixture exited";exit 2; }
+          find public .next/static -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum \
+            > renaissance-88-chrome/assets-before.sha256
+          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > renaissance-88-chrome/next.log 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 80); do
+            kill -0 "$next_pid" 2>/dev/null || { echo "::error::Next start failed"; exit 2; }
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:3137/ || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          if [ "${{ github.event_name }}" = pull_request ]; then cohorts=1; samples=1; deadline=1500000;
+          else cohorts=1; samples=3; deadline=1500000; fi
+          set +e
+          timeout -k 10s 27m node scripts/renaissance_88_browser.cjs \
+            --plan renaissance-88-chrome/plan.json --out "$GITHUB_WORKSPACE/renaissance-88-chrome" \
+            --cohort 0 --cohorts "$cohorts" --samples "$samples" --route-ms 18000 --deadline-ms "$deadline"
+          browser_rc=$?
+          # Genuine isolated Next artifact, exact W1_SAFE routes at 375/768/1440.
+          # This remains candidate-only: not authenticated live/HEL1 acceptance.
+          export BROWSER_BASE_URL=http://127.0.0.1:3137
+          export W1SAFE_CANDIDATE_BUILD_ID="$(cat renaissance-88-chrome/BUILD_ID)"
+          # Runtime was built with clean ORIGINAL website 0cee3c836c4b0760478280c145e02e81e470ce0e, not the harness PR.
+          test "$(git rev-parse HEAD)" = "0cee3c836c4b0760478280c145e02e81e470ce0e"
+          git cat-file -e "3292736b314997b6bc477bcf2e53c6aa03501488:scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs"
+          test "$(git rev-parse 3292736b314997b6bc477bcf2e53c6aa03501488:scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs)" = "2402729ec00508782965d7c5f93feccb6de09526"
+          git show "3292736b314997b6bc477bcf2e53c6aa03501488:scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs" > scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          test "$(git hash-object scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs)" = "2402729ec00508782965d7c5f93feccb6de09526"
+          test "$(git diff --name-only | sort)" = "scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs"
+          printf 'ORIGINAL_SITE_SHA=0cee3c836c4b0760478280c145e02e81e470ce0e\\nG_OBSERVER_COMMIT=3292736b314997b6bc477bcf2e53c6aa03501488\\nG_OBSERVER_BLOB=2402729ec00508782965d7c5f93feccb6de09526\\nNOT_PRODUCTION_ADMISSION=true\\n' > renaissance-88-chrome/r19-observer-identity.txt
+          timeout -k 5s 5m node scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          w1safe_rc=$?
+          set -e
+          # Stop the Next app before snapshot: no background GET callback may race
+          # the final DB/asset fingerprint.
+          kill "$next_pid" 2>/dev/null || true
+          wait "$next_pid" 2>/dev/null || true
+          trap - EXIT
+          blocked="$(grep -cF 'cannot execute INSERT in a read-only transaction' renaissance-88-chrome/next.log || true)"
+          printf 'SERVER_READONLY_DENIED_INSERT_OBSERVATIONS=%s\n' "$blocked" \
+            >> renaissance-88-chrome/identity.txt
+          bash scripts/renaissance_88_pg_fixture.sh verify \
+            > renaissance-88-chrome/fixture-after.txt
+          find public .next/static -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum \
+            > renaissance-88-chrome/assets-after.sha256
+          cmp renaissance-88-chrome/assets-before.sha256 renaissance-88-chrome/assets-after.sha256 || \
+            { echo "::error::Public or built static assets changed during browser GET sweep"; exit 2; }
+          bash scripts/renaissance_88_preview_manifest_guard.sh verify \
+            > renaissance-88-chrome/unsealed-policy-after.txt
+          cat renaissance-88-chrome/fixture-after.txt >> "$GITHUB_STEP_SUMMARY"
+          printf 'UNSEALED PREVIEW ONLY: exact Chrome evidence is NOT Index certification, DocsV2 seal, or release authorization.\n' >> "$GITHUB_STEP_SUMMARY"
+          # Separate independent Chrome checks. A public 88/88 PASS must not
+          # hide a failing exact-width financial/nonmutating browser boundary.
+          printf 'BROWSER_EXIT=%s W1SAFE_R16_EXIT=%s\n' "$browser_rc" "$w1safe_rc" \
+            >> renaissance-88-chrome/identity.txt
+          if [ "$browser_rc" -ne 0 ] || [ "$w1safe_rc" -ne 0 ]; then
+            echo "::error::W1_SAFE_CHROME_HOLD: 88-route=$browser_rc exact-width=$w1safe_rc"
+            exit 2
+          fi
+          test -s renaissance-88-chrome/w1safe-r16/review.json
+          echo "PASS: both 88-route and 375/768/1440 read-only Chrome accepted"
+      - name: Assemble independent per-route statuses; preserve UNMEASURED
+        if: always()
+        run: |
+          set -euo pipefail
+          if test -s renaissance-88-chrome/plan.json; then
+            node scripts/renaissance_88_receipts.mjs --plan renaissance-88-chrome/plan.json \
+              --directory renaissance-88-chrome --out renaissance-88-chrome/coverage.json \
+              --allow-partial "${{ github.event_name == 'pull_request' && 'true' || 'false' }}"
+            if test -s renaissance-88-chrome/route-zodiac.json; then
+              node scripts/renaissance_88_accessibility_triage.mjs \
+                --plan renaissance-88-chrome/plan.json \
+                --directory renaissance-88-chrome \
+                --output renaissance-88-chrome/axe-triage.json
+            fi
+            find renaissance-88-chrome -maxdepth 1 -type f ! -name '*.sha256' -print0 \
+              | sort -z | xargs -0 -r sha256sum > renaissance-88-chrome/file-hashes.sha256
+          fi
+          echo "Candidate-only Chrome/BUILD_ID artifacts; no production score or authority." >> "$GITHUB_STEP_SUMMARY"
+      - name: Stop disposable PostgreSQL daemon
+        if: always()
+        run: |
+          if [ -n "${REN88_PG_ROOT:-}" ]; then
+            bash scripts/renaissance_88_pg_fixture.sh stop || true
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: renaissance-88-a11y-chrome-unsealed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: renaissance-88-chrome/
+          retention-days: 14
+          if-no-files-found: warn
