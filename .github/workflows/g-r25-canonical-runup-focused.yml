@@ -1,0 +1,39 @@
+name: G R25 canonical OS ledger + Run-Up read model
+on:
+  push:
+    branches:
+      - feature/g-r25-canonical-agent-ledger-runup-readmodel-20261031
+  pull_request:
+    branches:
+      - central/r25-os-source-of-truth-census-v1
+permissions:
+  contents: read
+jobs:
+  bounded-projection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate six R25 assignments without phantom activity
+        run: python3 scripts/aoe2_central_agent_ledger.py validate
+      - name: Canonical OS/agent/Run-Up focused tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_central_agent_ledger.py' -v
+          python3 -m unittest discover -s tests -p 'test_r25_kingdom_runup_read_model.py' -v
+      - name: Read-only projections for UI integration
+        run: |
+          python3 scripts/aoe2_r25_kingdom_runup_read_model.py --audience public > /tmp/runup-public.json
+          python3 scripts/aoe2_r25_kingdom_runup_read_model.py --audience admin > /tmp/runup-admin.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open("/tmp/runup-public.json"))
+          a=json.load(open("/tmp/runup-admin.json"))
+          assert p["pipeline"][1]["state"]=="OWNER_REPORTED"
+          assert not p["release_live_verified"]
+          assert a["worker_processes_independently_verified"] is None
+          assert len(a["os_cards"])==14 and len(a["roles"])==2
+          print("PASS:P3_RUNUP_SOURCE_ONLY_UNVERIFIED_NO_POLL")
+          PY
