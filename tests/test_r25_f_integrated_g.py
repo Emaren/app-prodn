@@ -25,13 +25,15 @@ class TestIntegratedG(unittest.TestCase):
             "location ^~ /download/watcher/ {",
             "location / {",
         ]
-        blocks="\n".join(" "+name+"\n  proxy_pass http://127.0.0.1:%d;\n }"%port
+        guard=("  if ($request_method !~ ^(GET|HEAD)$) { return 405; }\n"
+               if not before else "")
+        blocks="\n".join(" "+name+"\n"+guard+"  proxy_pass http://127.0.0.1:%d;\n }"%port
                          for name in names)
         return ("server {\n server_name aoe2war.com www.aoe2war.com;\n"
                 "listen 443 ssl;\n"+blocks+
                 '\nlocation ^~ /rpc/ { proxy_pass http://127.0.0.1:27657/; }\n'
                 'location ^~ /rest/ { proxy_pass http://127.0.0.1:1318/; }\n}\n'
-                'server { server_name aoe2war.com www.aoe2war.com; listen 80; }\n').encode()
+                'server {\n server_name aoe2war.com www.aoe2war.com;\n listen 80;\n }\n').encode()
     def witness(self, data):
         output=b"# configuration file /etc/nginx/sites-available/aoe2war.com:\n"+data
         with mock.patch.object(g,"root_file",return_value=data):
@@ -44,7 +46,7 @@ class TestIntegratedG(unittest.TestCase):
     def test_six_old_web_routes(self):
         state=self.witness(self.nginx(True))
         self.assertEqual(state["upstream_port"],3030)
-        self.assertEqual(state["website_locations"],6)
+        self.assertEqual(state["web_locations"],6)
     def test_six_new_web_routes(self):
         state=self.witness(self.nginx(False))
         self.assertEqual(state["upstream_port"],3031)
