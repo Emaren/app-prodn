@@ -135,7 +135,7 @@ class Journal:
             fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
     def name(self,attempt,phase,kind):
         need(type(attempt) is str and bool(HEX64.fullmatch(attempt)),"bad attempt")
-        need(phase in ("PRE_STAGE","PRE_ACTIVATE") and kind in ("issue","used","staged","observation"),"bad phase")
+        need(phase in ("PRE_STAGE","PRE_ACTIVATE") and kind in ("issue","used","staged","observation","preissue"),"bad phase")
         return self.state/(attempt+"-"+phase+"-"+kind+".json")
     def read(self,attempt,phase,kind):
         p=self.name(attempt,phase,kind);self.secure(p)
@@ -200,6 +200,55 @@ class Journal:
             if parse_time(prior["expires_at"])>now:
                 raise Hold("SOLO_OWNER_LEDGER_HOLD: another unconsumed owner intent")
 
+    def preissue_stage(self,candidate,*,now=None,under_original_lease=False):
+        """Root-only public attempt ID BEFORE external six-class signing.
+
+        Journal reservation is NOT a phase issue, owner permit or authority to
+        dispatch. Only the original FD200 command channel may create it.
+        """
+        now=now or datetime.now(timezone.utc)
+        need(bool(re.fullmatch(r"[0-9a-f]{40}",candidate)),"invalid preissue source")
+        need(under_original_lease or self.test_mode,"original FD200 required")
+        if under_original_lease:self.inherited_lease_fd()
+        with (nullcontext() if under_original_lease else self.exclusive()):
+            self.refuse_unreconciled_phases()
+            self.refuse_parallel_unconsumed_challenges(now)
+            for file in self.state.iterdir():
+                match=re.fullmatch(r"([a-f0-9]{64})-PRE_STAGE-preissue.json",file.name)
+                if not match:continue
+                prior=self.read(match.group(1),"PRE_STAGE","preissue")
+                issued=self.name(match.group(1),"PRE_STAGE","issue")
+                need(not issued.is_symlink(),"linked prior issue marker")
+                if issued.is_file():self.secure(issued);continue
+                need(parse_time(prior["expires_at"])<=now,
+                     "another unexpired root-preissued attempt")
+            attempt=secrets.token_hex(32)
+            reservation={"schema":1,"policy":POLICY,
+                "status":"ROOT_PREISSUED_NOT_AUTHORIZED",
+                "phase":"PRE_STAGE","candidate_sha":candidate,
+                "attempt_id":attempt,"reserved_at":utc(now),
+                "expires_at":utc(now+timedelta(minutes=10)),
+                "financial_release_authorized":False}
+            self.write_once(attempt,"PRE_STAGE","preissue",reservation)
+            return reservation
+    def check_preissue_stage(self,candidate,attempt,now):
+        """No arbitrary attempt may be used at the native issuer boundary."""
+        need(type(attempt)is str and bool(HEX64.fullmatch(attempt)),
+             "PRE_STAGE_PREISSUED_ATTEMPT_REQUIRED")
+        p=self.read(attempt,"PRE_STAGE","preissue")
+        need(type(p)is dict and set(p)=={"schema","policy","status",
+             "phase","candidate_sha","attempt_id","reserved_at","expires_at",
+             "financial_release_authorized"} and
+             p["schema"]==1 and p["policy"]==POLICY and
+             p["status"]=="ROOT_PREISSUED_NOT_AUTHORIZED" and
+             p["phase"]=="PRE_STAGE" and p["candidate_sha"]==candidate and
+             p["attempt_id"]==attempt and
+             p["financial_release_authorized"]is False and
+             parse_time(p["reserved_at"])<=now<parse_time(p["expires_at"]) and
+             parse_time(p["expires_at"])-parse_time(p["reserved_at"])==
+                 timedelta(minutes=10),
+             "PRE_STAGE_ROOT_RESERVATION_INVALID_OR_EXPIRED")
+        return p
     def issue(self,phase,candidate,*,attempt=None,lease=None,stage_sha=None,
               observation=None,now=None,under_original_lease=False):
         now=now or datetime.now(timezone.utc)
@@ -213,12 +262,12 @@ class Journal:
             self.refuse_parallel_unconsumed_challenges(now)
             if phase=="PRE_STAGE":
                 need(lease is None and stage_sha is None,"stage must be fresh")
-                # Root issuer may reserve a random attempt ID for READ-ONLY
-                # independent audit BEFORE a challenge exists. Never accept
-                # an externally supplied attempt at the SSH boundary.
-                need(attempt is None or
-                     (type(attempt) is str and HEX64.fullmatch(attempt)),
-                     "bad root-reserved attempt")
+                # Production PRE_STAGE MUST bind the already root-preissued
+                # attempt. Its exact ID is made available to six independent
+                # signers BEFORE root native audit. Test-mode legacy fixtures
+                # may still ask for an in-memory random test attempt.
+                if attempt is not None or not self.test_mode:
+                    self.check_preissue_stage(candidate,attempt,now)
                 attempt,lease=attempt or secrets.token_hex(32),secrets.token_hex(32)
             else:
                 need(type(lease) is str and HEX64.fullmatch(lease) and
