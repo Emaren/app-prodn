@@ -1,5 +1,5 @@
 """R25 C additive source archive, build and candidate gate tests."""
-import io,importlib.util,os,pathlib,tarfile,tempfile,unittest
+import io,importlib.util,json,os,pathlib,tarfile,tempfile,types,unittest
 from unittest import mock
 
 BASE=pathlib.Path(__file__).resolve().parents[1]
@@ -131,5 +131,62 @@ class R25StageTests(unittest.TestCase):
         self.assertNotIn("owner-private.pem",x)
         self.assertNotIn("root-helper-install-v2",x)
         self.assertNotIn("PRE_ACTIVATE",x)
+    def fake_yarn(self,root,version="1.22.22"):
+        root=pathlib.Path(root)
+        src=root/"yarn-source"
+        (src/"bin").mkdir(parents=True)
+        (src/"lib").mkdir()
+        (src/"package.json").write_text(json.dumps({"name":"yarn","version":version}))
+        (src/"bin/yarn.js").write_text('require("../lib/cli.js");')
+        (src/"lib/cli.js").write_text("console.log('fixture Yarn CLI');")
+        output=root/"root-only-new-stage"
+        output.mkdir()
+        return src,output
+    def test_21_bounded_yarn_ignores_unrelated_package_symlinks(self):
+        with tempfile.TemporaryDirectory() as d:
+            src,dest=self.fake_yarn(d)
+            (src/"unsafe-unneeded-link").symlink_to("/etc/passwd")
+            with mock.patch.object(self.s,"DEST",dest):
+                with mock.patch.object(self.s.pwd,"getpwnam",
+                                       return_value=types.SimpleNamespace(pw_uid=os.getuid())):
+                    rows=self.s.import_yarn_classic_bounded(src)
+            self.assertEqual(set(rows),{"package.json","bin/yarn.js","lib/cli.js"})
+            self.assertEqual((dest/".r25-yarn/lib/cli.js").read_text(),
+                             "console.log('fixture Yarn CLI');")
+    def test_22_yarn_required_symlink_fails_without_stage_write(self):
+        with tempfile.TemporaryDirectory() as d:
+            src,dest=self.fake_yarn(d)
+            (src/"bin/yarn.js").unlink()
+            (src/"bin/yarn.js").symlink_to("/etc/passwd")
+            with mock.patch.object(self.s,"DEST",dest):
+                with mock.patch.object(self.s.pwd,"getpwnam",
+                                       return_value=types.SimpleNamespace(pw_uid=os.getuid())):
+                    with self.assertRaisesRegex(self.s.Hold,
+                                                "YARN_REQUIRED_BUNDLE_NOT_SAFE"):
+                        self.s.import_yarn_classic_bounded(src)
+            self.assertFalse((dest/".r25-yarn").exists())
+    def test_23_yarn_wrong_version_fails_before_root_copy(self):
+        with tempfile.TemporaryDirectory() as d:
+            src,dest=self.fake_yarn(d,"1.22.21")
+            with mock.patch.object(self.s,"DEST",dest):
+                with mock.patch.object(self.s.pwd,"getpwnam",
+                                       return_value=types.SimpleNamespace(pw_uid=os.getuid())):
+                    with self.assertRaisesRegex(self.s.Hold,
+                                                "YARN_COREPACK_NOT_CLASSIC_1_22_22"):
+                        self.s.import_yarn_classic_bounded(src)
+            self.assertFalse((dest/".r25-yarn").exists())
+    def test_24_no_yarn_reimport_after_partial_copy(self):
+        with tempfile.TemporaryDirectory() as d:
+            src,dest=self.fake_yarn(d)
+            (dest/".r25-yarn").mkdir()
+            with mock.patch.object(self.s,"DEST",dest):
+                with self.assertRaisesRegex(self.s.Hold,"YARN_STAGE_ALREADY_EXISTS"):
+                    self.s.import_yarn_classic_bounded(src)
+    def test_25_no_recursive_privileged_yarn_copy(self):
+        source=SRC.read_text()
+        self.assertNotIn("shutil.copytree(",source)
+        self.assertIn("os.O_NOFOLLOW",source)
+        self.assertIn('"SOURCE_FILES.json",8*1024*1024,True',source)
+        self.assertIn('yarn_import":yarn_receipt',source)
 if __name__=="__main__":
     unittest.main()
