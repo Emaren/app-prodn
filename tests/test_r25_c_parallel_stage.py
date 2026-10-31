@@ -188,5 +188,71 @@ class R25StageTests(unittest.TestCase):
         self.assertIn("os.O_NOFOLLOW",source)
         self.assertIn('"SOURCE_FILES.json",8*1024*1024,True',source)
         self.assertIn('yarn_import":yarn_receipt',source)
+    def test_26_recovery_is_separate_one_use_cli(self):
+        worker=SRC.read_text()
+        owner=MAC.read_text()
+        self.assertIn('commands.add_argument("--recover-dns"',worker)
+        self.assertIn('elif a.recover_dns:recover_dns_build()',worker)
+        self.assertIn('"recover-dns":"--recover-dns"',owner)
+        self.assertIn('"recover-dns")',owner)
+        self.assertIn('DNS_RECOVERY_ATTEMPT.json',worker)
+        self.assertIn('old_build_attempt_preserved":True',worker)
+
+    def test_27_recovery_does_not_relax_localhost_finance_isolation(self):
+        worker=SRC.read_text()
+        self.assertIn('IPAddressDeny=localhost',worker)
+        self.assertIn('IPAddressDeny=link-local',worker)
+        self.assertIn('BindReadOnlyPaths=/run/systemd/resolve/resolv.conf:',worker)
+        self.assertIn('/run/systemd/resolve/stub-resolv.conf',worker)
+        self.assertIn('"-dns-recovery1" if recovery else ""',worker)
+        self.assertIn('cache_dir=DEST/(".r25-cache-dns-recovery1"',worker)
+        self.assertNotIn("IPAddressAllow=localhost",worker)
+        self.assertNotIn("systemctl restart",worker)
+        self.assertNotIn("resolvectl dns",worker)
+
+    def test_28_recovery_refuses_before_stage_writes_if_old_web_drifts(self):
+        with mock.patch.object(self.s,"old_identity",
+                               side_effect=self.s.Hold("OLD_WEB_DRIFT")):
+            with mock.patch.object(self.s,"write_once") as write:
+                with mock.patch.object(self.s,"root_storage_capacity") as budget:
+                    with self.assertRaisesRegex(self.s.Hold,"OLD_WEB_DRIFT"):
+                        self.s.recover_dns_build()
+                    write.assert_not_called()
+                    budget.assert_not_called()
+
+    def test_29_recovery_rejects_symlinked_stage_before_writes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=pathlib.Path(temp)
+            actual=root/"original";actual.mkdir()
+            link=root/"stage";link.symlink_to(actual,target_is_directory=True)
+            with mock.patch.object(self.s,"DEST",link):
+                with mock.patch.object(self.s,"old_identity",return_value="old"):
+                    with mock.patch.object(self.s,"boundary_sockets",return_value={}):
+                        with mock.patch.object(self.s,"ensure_not_running_candidate"):
+                            with mock.patch.object(self.s,"protected_root_dir"):
+                                with mock.patch.object(self.s,"write_once") as write:
+                                    with self.assertRaisesRegex(self.s.Hold,
+                                                               "RECOVERY_STAGE_PARENT_DRIFT"):
+                                        self.s.recover_dns_build()
+                                    write.assert_not_called()
+
+    def test_30_recovery_checks_actual_source_and_yarn_digests(self):
+        source=SRC.read_text()
+        self.assertIn('h.hexdigest()==item.get("sha256")',source)
+        self.assertIn('h.hexdigest()==entry["sha256"]',source)
+        self.assertIn('archive_identity(expected_archive)',source)
+        self.assertIn('RECOVERY_PARTIAL_ARTIFACT_OR_DUPLICATE',source)
+        self.assertIn('RECOVERY_BUILD_ATTEMPT_MISMATCH',source)
+        self.assertIn('RECOVERY_UPSTREAM_RESOLVER_SHA_DRIFT',source)
+        self.assertIn('return complete_build(before,sockets,budget,build_account,imported,True)',source)
+
+    def test_31_recovery_and_original_build_use_same_root_seal(self):
+        source=SRC.read_text()
+        self.assertIn('return complete_build(before,sockets,budget,account,yarn_receipt,False)',source)
+        self.assertIn('def complete_build(before,sockets,budget,account,yarn_receipt,recovery)',source)
+        self.assertEqual(source.count('write_once(AUDIT/"BUILD_STAGED.json",manifest)'),1)
+        self.assertEqual(source.count('"schema":"aoe2war.r25.c.full-built-artifact.v1"'),1)
+        self.assertIn('command([ "/usr/bin/chown"',source.replace('command(["/usr/bin/chown"', 'command([ "/usr/bin/chown"'))
+
 if __name__=="__main__":
     unittest.main()
