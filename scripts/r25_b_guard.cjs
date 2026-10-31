@@ -9,7 +9,7 @@ const https = require("node:https");
 const net = require("node:net");
 const GUARD_PATH = "/usr/local/lib/aoe2war-r25/r25_b_guard.cjs";
 const EXPECTED_OPTIONS = "--require=" + GUARD_PATH;
-const DB_USER = "aoe2war_r25_web_ro";
+const DB_USER = "aoe2war-r24-web_ro";
 const REQUIRED = Object.freeze({
   NODE_ENV: "production",
   WARGRAPH_RUNTIME_DISABLED: "true",
@@ -49,8 +49,8 @@ if (!["postgres:", "postgresql:"].includes(db.protocol) ||
     !db.password ||
     db.search !== "" || db.hash !== "" ||
     !db.pathname || db.pathname === "/") hold("DEDICATED_DB_URL_REQUIRED");
-if (process.env.USER !== "aoe2war_r25_web" ||
-    process.env.LOGNAME !== "aoe2war_r25_web") hold("DEDICATED_OS_USER_DECLARATION");
+if (process.env.USER !== "aoe2war-r24-web" ||
+    process.env.LOGNAME !== "aoe2war-r24-web") hold("DEDICATED_OS_USER_DECLARATION");
 if (require.resolve(__filename) !== GUARD_PATH) hold("GUARD_CANONICAL_PATH_DRIFT");
 
 /*
