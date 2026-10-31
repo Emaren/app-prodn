@@ -236,6 +236,32 @@ class RootManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(m.Hold,"NATIVE_INTAKE_ENTRYPOINT_INTERPRETER_DRIFT"):
             m.source_admit(manifest,archive,SHA)
 
+    def test_owner_permit_reencoding_cannot_bypass_durable_replay_marker(self):
+        # Same canonical owner-authorized operation, exact source, manifest and
+        # time interval has ONE identity even if a new envelope uses different
+        # JSON formatting/property order/signature representation.
+        payload={"operation":"install","manifest_sha256":"a"*64,
+                 "controller_commit":SHA,"issued_at":"2026-10-30T00:00:00Z",
+                 "expires_at":"2026-10-30T00:15:00Z"}
+        envelope_a={"schema":"aoe2war.hel1.root-install.permit.v2",
+                    "payload":payload,"signature_base64":"PLACEHOLDER_SIGNATURE_A"}
+        envelope_b={"signature_base64":"PLACEHOLDER_SIGNATURE_B",
+                    "payload":dict(reversed(list(payload.items()))),
+                    "schema":"aoe2war.hel1.root-install.permit.v2"}
+        parsed_a=m.parse(json.dumps(envelope_a,indent=4).encode())
+        parsed_b=m.parse(json.dumps(envelope_b,separators=(",",":")).encode())
+        self.assertNotEqual(
+            m.hash256(json.dumps(envelope_a,indent=4).encode()),
+            m.hash256(json.dumps(envelope_b,separators=(",",":")).encode()))
+        once=m.permit_identity(parsed_a["payload"])
+        self.assertEqual(once,m.permit_identity(parsed_b["payload"]))
+        self.assertEqual(once,m.hash256(m.DOM+m.canonical(payload)))
+        with tempfile.TemporaryDirectory() as td:
+            with mock.patch.object(m,"CONFIG",pathlib.Path(td)),mock.patch.object(m,"protected",return_value=None),mock.patch.object(m.os,"chown",return_value=None):
+                m.consume_permit(once,"install","a"*64)
+                with self.assertRaisesRegex(m.Hold,"OWNER_INSTALL_PERMIT_REPLAY"):
+                    m.consume_permit(m.permit_identity(parsed_b["payload"]),"install","a"*64)
+
     def test_signed_permit_consumption_is_one_time(self):
         with tempfile.TemporaryDirectory() as td:
             with mock.patch.object(m,"CONFIG",pathlib.Path(td)),mock.patch.object(m,"protected",return_value=None),mock.patch.object(m.os,"chown",return_value=None):
