@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r18-f-website-g-cdp-final-seal` at `7a822fc719775530520cb374977a2ccc540ed067`
+Implementation baseline: `r25-b-additive-owner-3031-setup` at `55548db4f2d0dc997126dfb3e800bc85cde6901d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
