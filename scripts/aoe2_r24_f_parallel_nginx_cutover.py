@@ -700,6 +700,11 @@ def approved_owner_intent(rollback=False):
              "ACTUAL_NGINX_REVIEWED_PREIMAGE_DRIFT")
         nginx_loaded_vhost(raw,VHOST,old_count=6)
         safe_replace_site(raw,NEW_UPSTREAM)
+        witness=snapshots(j["finance_units"])
+        prove_preimage(j,witness)
+        stage_identity(j)
+        verified_b_poststart(j,witness)
+        verified_durable_e_rollback(j)
     print(canonical({"schema":"aoe2war.r25.f.owner-intent.v1",
         "nonce":j["nonce"],"candidate_sha":TARGET,
         "candidate_build_id":j["candidate_build_id"],
