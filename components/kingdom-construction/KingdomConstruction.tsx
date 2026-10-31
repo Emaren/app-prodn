@@ -1,5 +1,5 @@
 import Link from "next/link";
-export type KingdomNode={id:string;name:string;domain:string;source:string|null};
+export type KingdomNode={id:string;name:string;domain?:string;source:string|null};
 export default function KingdomConstruction({nodes,roleNames,views,preview}:{nodes:KingdomNode[];roleNames:string[];views:{id:string;name:string}[];preview:"PUBLIC_SOURCE_ONLY"|"ADMIN_DRY_RUN_ONLY"}){
  const ordered=[...nodes].sort((a,b)=>a.id.localeCompare(b.id));
  const center={x:480,y:290},radius=220;
