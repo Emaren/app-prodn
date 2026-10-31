@@ -1,0 +1,53 @@
+name: R24 B Exact Website Isolation Evidence
+on:
+  pull_request:
+    paths:
+      - "scripts/r24_b_website_only_source_boundary.py"
+      - "tests/test_r24_b_website_only_source_boundary.py"
+      - ".github/workflows/r24-b-exact-website-isolation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-source-no-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact frozen source object exists
+        run: |
+          git cat-file -e '0cee3c836c4b0760478280c145e02e81e470ce0e^{commit}'
+          test "$(git rev-parse 0cee3c836c4b0760478280c145e02e81e470ce0e)" = "0cee3c836c4b0760478280c145e02e81e470ce0e"
+      - name: Adversarial source tests
+        run: |
+          python3 -B -m unittest discover -s tests -p 'test_r24_b_website_only_source_boundary.py' -v
+      - name: Inventory immutable source and explicitly refuse host admission
+        run: |
+          python3 -B scripts/r24_b_website_only_source_boundary.py --repo . > "$RUNNER_TEMP/r24-b-evidence.json"
+          python3 -B - "$RUNNER_TEMP/r24-b-evidence.json" <<'PY'
+          import json, sys
+          from pathlib import Path
+          report=json.loads(Path(sys.argv[1]).read_text())
+          assert report["website_sha"]=="0cee3c836c4b0760478280c145e02e81e470ce0e"
+          assert report["api_route_files"]==275, "Exact frozen API tree count changed"
+          assert report["route_export_method_counts"]["POST"]>0
+          assert report["route_export_method_counts"]["DELETE"]>0
+          assert report["source_conditions"]["production_instrumentation_starts_wargraph"]
+          assert report["source_conditions"]["wargraph_has_financial_tick"]
+          assert report["source_conditions"]["wargraph_launch_explicit_disable_supported"]
+          assert report["source_conditions"]["db_preview_transaction_read_only_flag_supported"]
+          assert report["release_authorized"] is False
+          assert report["financial_operations_authorized"] is False
+          assert report["root_host_actual_env_verified"] is False
+          assert report["database_role_privileges_verified"] is False
+          print("B_R24_EXACT_WEBSITE_SOURCE_INVENTORY=PASS")
+          print("B_R24_ROUTES=", report["api_route_files"])
+          print("B_R24_EXPORTED_HTTP_METHOD_COUNTS=",report["route_export_method_counts"])
+          print("B_R24_UNKNOWN_METHOD_EXPORTS=", len(report["route_files_unclassified"]))
+          print("B_R24_PHYSICAL_ISOLATION=HOLD")
+          PY
