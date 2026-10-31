@@ -216,8 +216,7 @@ def reject_postgres_local_trust(dbname):
     """An IP/UID firewall is pointless if localhost PG accepts any DB role."""
     import secrets
     for account in (DB_ROLE,"postgres"):
-        reject_postgres_local_trust(unquote(u.path.lstrip("/")))
-    env={"PATH":"/usr/bin:/bin","PGHOST":"127.0.0.1","PGPORT":"5432",
+        env={"PATH":"/usr/bin:/bin","PGHOST":"127.0.0.1","PGPORT":"5432",
              "PGUSER":account,"PGDATABASE":dbname,
              "PGPASSWORD":"r25-intentionally-wrong-"+secrets.token_hex(24),
              "PGCONNECT_TIMEOUT":"3"}
@@ -239,6 +238,7 @@ def db_proof(dsn, uid):
         or u.hostname!="127.0.0.1" or (u.port or 5432)!=5432
         or not u.password or not u.path.strip("/") or u.query or u.fragment):
         hold("DB_LOGIN_NOT_DEDICATED_RO")
+    reject_postgres_local_trust(unquote(u.path.lstrip("/")))
     env={"PATH":"/usr/bin:/bin","PGHOST":"127.0.0.1","PGPORT":"5432",
          "PGUSER":DB_ROLE,"PGDATABASE":unquote(u.path.lstrip("/")),
          "PGPASSWORD":unquote(u.password),"PGCONNECT_TIMEOUT":"4"}
