@@ -99,6 +99,13 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertNotIn("DROP ROLE",sql)
         self.assertNotIn("DELETE FROM",sql)
 
+    def test_new_pg_role_sql_contains_scram_verifier_not_plaintext(self):
+        password="A"*56
+        sql=b.new_role_sql(password).decode()
+        self.assertIn("SCRAM-SHA-256$",sql)
+        self.assertNotIn(password,sql)
+        self.assertIn("CREATE ROLE aoe2war_r25_web_ro",sql)
+
     def test_sql_password_not_accepted_if_malicious(self):
         with self.assertRaisesRegex(RuntimeError,"GENERATED_PASSWORD_FORMAT"):
             b.new_role_sql("x';DROP TABLE funds; --")
