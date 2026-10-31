@@ -8,10 +8,10 @@
   },
   "policy": "Canonical entrypoint inventory only. Path scopes are classification hints, not authenticated access tests. Dynamic route patterns require separately governed fixtures; APIs require separate domain-owner assignments. No score, dependency completeness, authorization or production certification follows from this file. Never serve detailed protected paths in a public Index response.",
   "counts": {
-    "pageTemplates": 148,
-    "adminTemplates": 30,
+    "pageTemplates": 150,
+    "adminTemplates": 31,
     "dynamicTemplates": 20,
-    "publicIndexTemplates": 88,
+    "publicIndexTemplates": 89,
     "excludedStaticTemplates": 10,
     "routeHandlerTemplates": 278,
     "apiHandlerTemplates": 275,
@@ -63,6 +63,12 @@
     {
       "href": "/admin/clans",
       "entrypoint": "app/admin/clans/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/engineering-os",
+      "entrypoint": "app/admin/engineering-os/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -213,6 +219,12 @@
     {
       "href": "/ai",
       "entrypoint": "app/ai/page.tsx",
+      "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/aoe2war-os/engineering",
+      "entrypoint": "app/aoe2war-os/engineering/page.tsx",
       "scope": "public-index",
       "assurance": "unverified"
     },
