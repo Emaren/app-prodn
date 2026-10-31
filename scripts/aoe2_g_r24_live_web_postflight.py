@@ -245,27 +245,106 @@ def scope():
          isinstance(x.get("nonce"),str) and NONCE.fullmatch(x["nonce"]),
          "F_ROOT_SCOPE_MISSING_OR_INCOMPLETE")
     return x
+NGINX_SITE=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")
+OLD_PROXY=b"proxy_pass http://127.0.0.1:3030;"
+NEW_PROXY=b"proxy_pass http://127.0.0.1:3031;"
+WEB_LOCATIONS={b"^~ /players/by-name/",b"= /api/kingdom-presence/events",
+               b"^~ /api/",b"= /",b"^~ /download/watcher/",b"/"}
+METHOD_GUARD=b"if ($request_method !~ ^(GET|HEAD)$) { return 405; }"
+def matching_brace(src,at):
+    need(src[at:at+1]==b"{","NGINX_EXPECTED_OPEN_BRACE")
+    depth=0;quote=None;comment=False;esc=False
+    for i in range(at,len(src)):
+        ch=src[i]
+        if comment:
+            if ch==10:comment=False
+            continue
+        if quote is not None:
+            if esc:esc=False
+            elif ch==92:esc=True
+            elif ch==quote:quote=None
+            continue
+        if ch==35:comment=True;continue
+        if ch in (34,39):quote=ch;continue
+        if ch==123:depth+=1
+        elif ch==125:
+            depth-=1
+            if depth==0:return i
+            need(depth>=0,"NGINX_UNBALANCED")
+    raise Hold("NGINX_UNCLOSED_BLOCK")
+def https_body(raw):
+    matches=[];found=[]
+    for m in re.finditer(rb"(?m)^[ \t]*server[ \t]*\{",raw):
+        op=raw.index(b"{",m.start(),m.end())
+        end=matching_brace(raw,op)
+        body=raw[op+1:end]
+        name=re.search(rb"(?m)^[ \t]*server_name[ \t]+([^;]+);",body)
+        need(name is not None and set(name.group(1).split())==
+             {b"aoe2war.com",b"www.aoe2war.com"},"NGINX_VHOST_DOMAIN_DRIFT")
+        https=bool(re.search(rb"(?m)^[ \t]*listen[ \t]+(?:\[::\]:)?443\b",body))
+        http=bool(re.search(rb"(?m)^[ \t]*listen[ \t]+(?:\[::\]:)?80\b",body))
+        need(https != http,"NGINX_VHOST_PORT_AMBIGUOUS")
+        matches.append((https,http))
+        if https:found.append((op+1,end,body))
+    need(len(matches)==2 and len(found)==1,"NGINX_HTTPS_HTTP_VHOST_PAIR_UNKNOWN")
+    return found[0]
+def six_web_upstreams(raw):
+    lo,hi,body=https_body(raw)
+    locations={}
+    for m in re.finditer(rb"(?m)^[ \t]*location[ \t]+([^{}\r\n]+)[ \t]*\{",body):
+        label=b" ".join(m.group(1).split())
+        op=body.index(b"{",m.start(),m.end())
+        close=matching_brace(body,op)
+        inner=body[op+1:close]
+        n_old=inner.count(OLD_PROXY);n_new=inner.count(NEW_PROXY)
+        if n_old+n_new==0:continue
+        need(label in WEB_LOCATIONS and label not in locations and n_old+n_new==1
+             and len(re.findall(rb"(?m)^[ \t]*proxy_pass\b",inner))==1,
+             "NGINX_UNREVIEWED_WEB_PROXY_LOCATION")
+        locations[label]={"old":n_old,"new":n_new,
+                          "method_guard":METHOD_GUARD in inner}
+    need(set(locations)==WEB_LOCATIONS and
+         raw.count(OLD_PROXY)==sum(v["old"] for v in locations.values()) and
+         raw.count(NEW_PROXY)==sum(v["new"] for v in locations.values()),
+         "NGINX_SIX_WEB_PROXY_CENSUS_MISMATCH")
+    count_old=sum(x["old"] for x in locations.values())
+    count_new=sum(x["new"] for x in locations.values())
+    need((count_old,count_new) in ((6,0),(0,6)),
+         "NGINX_MIXED_3030_3031_PUBLIC_ROUTES")
+    if count_new:
+        need(all(x["method_guard"] for x in locations.values()),
+             "NGINX_3031_METHOD_GUARD_MISSING")
+    need(b"proxy_pass http://127.0.0.1:27657" in raw and
+         b"proxy_pass http://127.0.0.1:1318" in raw,
+         "NGINX_WOLO_PROXY_TOPOLOGY_MISSING")
+    return 3030 if count_old else 3031
 def nginx_route(approved):
     config=pathlib.Path(approved["nginx_config"])
+    need(config==NGINX_SITE,"F_NGINX_VHOST_SOURCE_MISMATCH")
     conf=root_file(config,131072)
-    # Read actual loaded Nginx configuration; never infer from one of 46 location blocks.
+    port=six_web_upstreams(conf)
     compiled=run(["/usr/sbin/nginx","-T"],timeout=25)
-    needle=("# configuration file "+str(config)+":").encode()
-    need(compiled.count(needle)==1 and b"server_name aoe2war.com" in compiled,
-         "ACTIVE_AOE2WAR_NGINX_VHOST_NOT_PROVEN")
-    marker=b"location / {"
-    need(conf.count(marker)==1,"AMBIGUOUS_DEFAULT_WEB_LOCATION")
-    start=conf.index(marker)+len(marker)
-    end=conf.find(b"}",start)
-    need(end>start,"NGINX_DEFAULT_LOCATION_MALFORMED")
-    region=conf[start:end]
-    old=region.count(b"proxy_pass http://127.0.0.1:3030;")
-    new=region.count(b"proxy_pass http://127.0.0.1:3031;")
-    need(old+new==1,"UNKNOWN_PUBLIC_DEFAULT_UPSTREAM")
-    return {"upstream_port":3031 if new else 3030,"selected_file":str(config),
-            "file_sha256":digest(conf),
+    need(len(compiled)<=8*1024*1024,"NGINX_LOADED_CONFIG_TOO_LARGE")
+    chunks=re.split(rb"(?m)^# configuration file ([^\r\n]+):[ \t]*\r?\n",compiled)
+    need(len(chunks)>=3 and len(chunks)%2==1,"NGINX_LOADED_SECTION_HEADERS_MISSING")
+    found=0;global_old=0;global_new=0
+    for i in range(1,len(chunks),2):
+        name=chunks[i].decode("utf8","strict")
+        part=chunks[i+1].rstrip(b"\r\n")
+        global_old+=part.count(OLD_PROXY);global_new+=part.count(NEW_PROXY)
+        try:matching=os.path.samefile(name,config)
+        except OSError:matching=False
+        if matching:
+            need(part==conf.rstrip(b"\r\n"),"NGINX_LOADED_VHOST_NOT_ACTUAL_FILES")
+            found+=1
+    need(found==1 and global_old==(6 if port==3030 else 0) and
+         global_new==(6 if port==3031 else 0),
+         "NGINX_UNEXPECTED_ADDITIONAL_WEB_UPSTREAMS")
+    return {"upstream_port":port,"web_locations":6,
+            "selected_file":str(config),"file_sha256":digest(conf),
             "nginx_compiled_sha256":digest(compiled),
             "nginx_t_ok":True}
+
 def audit(approved,phase):
     p=AUDIT/("r24-"+approved["nonce"])
     if phase=="before":return {"phase":"before","journal":None}
@@ -294,8 +373,8 @@ def verified_c_archive_source():
     """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
     source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
     built=parse(root_file(C_AUDIT/"BUILD_STAGED.json",65536),65536)
-    srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",1048576),1048576)
-    builtfiles=parse(root_file(C_AUDIT/"BUILD_FILES.json",1048576),1048576)
+    srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",33554432),33554432)
+    builtfiles=parse(root_file(C_AUDIT/"BUILD_FILES.json",67108864),67108864)
     need(source.get("status")=="SOURCE_STAGED" and
          built.get("status")=="BUILD_STAGED" and
          source.get("candidate_sha")==built.get("candidate_sha")==TARGET and
