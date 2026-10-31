@@ -220,6 +220,72 @@ def stage_source(expected):
        "new_candidate_started":False})
     print("PASS:SOURCE_STAGED SHA="+SHA+" ARCHIVE_SHA256="+expected,flush=True)
     return True
+def import_yarn_classic_bounded():
+    """Import ONLY Yarn Classic's bundle and launcher, never recursively as root.
+
+    The existing Corepack cache is operator-owned and may include unrelated
+    symlinks. Treat it as untrusted *input*: O_NOFOLLOW on each exact file,
+    no symlink ancestor, bounded length, and no root execution. Yarn is run
+    later only as dedicated sandboxed BUILD UID with no production secrets.
+    """
+    base=pathlib.Path("/home/tony/.cache/node/corepack/v1/yarn/1.22.22")
+    need(not (DEST/".r25-yarn").exists()
+         and not (DEST/".r25-yarn").is_symlink(),
+         "YARN_STAGE_ALREADY_EXISTS_NO_REPLAY")
+    # Include zero optional/symlinked vendor trees, scripts or node_modules.
+    needed={"package.json":65536,"bin/yarn.js":65536,
+            "lib/cli.js":8*1024*1024}
+    rawfiles={}
+    for name,limit in needed.items():
+        p=base.joinpath(*pathlib.PurePosixPath(name).parts)
+        for parent in reversed(p.parents):
+            st=parent.lstat()
+            need(stat.S_ISDIR(st.st_mode),"YARN_PARENT_SYMLINK_OR_NOT_DIR:"+str(parent))
+        st=p.lstat()
+        need(stat.S_ISREG(st.st_mode) and st.st_uid in (0,pwd.getpwnam("tony").pw_uid)
+             and st.st_size>0 and st.st_size<=limit and not st.st_mode&0o022,
+             "YARN_REQUIRED_BUNDLE_NOT_SAFE:"+name)
+        fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+        try:
+            now=os.fstat(fd)
+            need(stat.S_ISREG(now.st_mode) and
+                 (now.st_dev,now.st_ino,now.st_size)==(st.st_dev,st.st_ino,st.st_size),
+                 "YARN_SOURCE_RACED:"+name)
+            chunks=[];total=0
+            while True:
+                part=os.read(fd,1024*1024)
+                if not part:break
+                total+=len(part)
+                need(total<=limit,"YARN_INPUT_OVER_LIMIT:"+name)
+                chunks.append(part)
+            need(total==st.st_size,"YARN_SOURCE_CHANGED_DURING_READ:"+name)
+            rawfiles[name]=b"".join(chunks)
+        finally:os.close(fd)
+    try:package=json.loads(rawfiles["package.json"])
+    except (ValueError,UnicodeDecodeError) as exc:
+        raise Hold("YARN_PACKAGE_METADATA_INVALID") from exc
+    need(package.get("name")=="yarn" and package.get("version")=="1.22.22",
+         "YARN_COREPACK_NOT_CLASSIC_1_22_22")
+    need(b"../lib/cli" in rawfiles["bin/yarn.js"],
+         "YARN_ENTRYPOINT_UNKNOWN")
+    # Only after entire source validation does root create independent files.
+    target=DEST/".r25-yarn"
+    target.mkdir(mode=0o700)
+    for sub in ("bin","lib"):
+        (target/sub).mkdir(mode=0o700)
+    receipts={}
+    for name,raw in rawfiles.items():
+        dest=target.joinpath(*pathlib.PurePosixPath(name).parts)
+        fd=os.open(dest,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,"wb") as f:
+            f.write(raw);f.flush();os.fsync(f.fileno())
+        receipts[name]={"sha256":sha(raw),"size":len(raw)}
+    for directory in (target/"bin",target/"lib",target):
+        fsyncdir(directory)
+    print("PASS:YARN_CLASSIC_BOUNDED_IMPORT files="+str(len(receipts))
+          +" version=1.22.22 (untrusted owner cache, sandbox execution only)",flush=True)
+    return receipts
+
 def build_source():
     before=old_identity();sockets=boundary_sockets();ensure_not_running_candidate()
     protected_root_dir(AUDIT,0o700)
@@ -229,6 +295,19 @@ def build_source():
     need(DEST.is_dir() and not DEST.is_symlink() and
          (DEST/"r24-source-sha").read_text().strip()==SHA,
          "SOURCE_STAGE_CHANGED")
+    # A BUILD-ONLY resume must independently bind the physical source-file
+    # manifest created by SOURCE_STAGED. No second archive extraction.
+    roots=json.loads(read_no_symlink(AUDIT/"SOURCE_FILES.json",8*1024*1024,True))
+    need(roots.get("schema")=="r25-c-source-files.v1"
+         and type(roots.get("rows")) is list
+         and sha(canonical(roots["rows"]))==record.get("source_manifest_sha256")
+         and record.get("old_web_mainpid")==OLD_PID
+         and record.get("financial_writes_authorized") is False,
+         "ROOT_SOURCE_STAGED_FILES_RECEIPT_MISMATCH")
+    need(record.get("git_archive_sha256")=="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101",
+         "ROOT_SOURCE_ARCHIVE_NOT_EXPECTED")
+    need(DEST.parent==pathlib.Path("/var/lib") and
+         DEST.stat().st_uid==0,"RESUME_BUILD_NOT_ROOT_STAGE")
     need(not (AUDIT/"BUILD_STAGED.json").exists()
          and not (AUDIT/"BUILD_ATTEMPT.json").exists(),"BUILD_ALREADY_ATTEMPTED_OR_PARTIAL")
     budget=root_storage_capacity()
@@ -240,24 +319,17 @@ def build_source():
                  "/usr/sbin/nologin",BUILDER])
         account=pwd.getpwnam(BUILDER)
     need(account.pw_uid not in (0,1000),"BUILD_ACCOUNT_NOT_ISOLATED")
-    yarn=pathlib.Path("/home/tony/.cache/node/corepack/v1/yarn/1.22.22")
-    need(yarn.is_dir() and (yarn/"bin/yarn.js").is_file(),
-         "CANONICAL_YARN_1_22_22_UNAVAILABLE")
-    # The historical Yarn runtime is tony-owned, not a root trust source.
-    # Never follow any operator-writable symlink during privileged copying.
-    for item in (yarn,*yarn.rglob("*")):
-        st=item.lstat()
-        need(not stat.S_ISLNK(st.st_mode)
-             and (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode))
-             and not st.st_mode&0o022, "YARN_SOURCE_NOT_SAFE_FOR_ROOT_COPY")
-    shutil.copytree(yarn,DEST/".r25-yarn",symlinks=True)
+    # Safe bounded import; no privileged recursive copy of operator-owned
+    # Corepack cache and no bypass of source or archive identity.
+    yarn_receipt=import_yarn_classic_bounded()
     for sub in (".r25-home",".r25-cache",".r25-tmp"):
         (DEST/sub).mkdir(mode=0o700)
     command(["/usr/bin/chown","-R",f"{account.pw_uid}:{account.pw_gid}",str(DEST)],timeout=160)
     # One-use marker retained even if any transient sandbox fails: no blind retry.
     write_once(AUDIT/"BUILD_ATTEMPT.json",{"candidate_sha":SHA,
        "status":"BUILD_ATTEMPT_ENTERED","root_source_unchanged":True,
-       "build_uid":account.pw_uid,"financial_credentials_inherited":False})
+       "build_uid":account.pw_uid,"financial_credentials_inherited":False,
+       "yarn_import":yarn_receipt})
     common=["/usr/bin/systemd-run","--wait","--collect","--pipe",
             "--property=User="+BUILDER,"--property=Group="+BUILDER,
             "--property=WorkingDirectory="+str(DEST),
