@@ -1,0 +1,31 @@
+name: R16 protected controller third canonical DocsV2 seal
+on:
+  push:
+    branches: [r16-controller-docsv2-final3]
+permissions:
+  contents: write
+jobs:
+  docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Validate source-reviewed install contract and write canonical docs
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          python3 scripts/docs_v2_check.py
+      - name: Retire generator and publish canonical two-file baseline
+        run: |
+          git config user.name 'aoe2war-docsv2-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/r16-controller-docsv2-final3.yml
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --stat
+          git diff --cached --quiet && exit 1
+          git commit -m 'docs(R16): canonical native controller exact-source baseline'
+          git push origin HEAD:refs/heads/r16-controller-docsv2-final3
