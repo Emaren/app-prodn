@@ -64,26 +64,27 @@ def engine_context(candidate):
           "mixed source controller imports")
     return release,ship,stage,activation,gate
 def root_issue(phase,target,attempt,lease,stage_sha):
-    from aoe2_solo_website_host_observer import (
-        CONFIG_ROOT,KNOWN_HOSTS,host_fingerprint,protected_file
-    )
-    host_fingerprint()
-    key=CONFIG_ROOT/"hel1-command-identity"
-    protected_file(key,private=True)
-    args=["/usr/bin/sudo","-n","/usr/bin/ssh","-T","-n",
-          "-o","BatchMode=yes","-o","IdentitiesOnly=yes",
-          "-o","StrictHostKeyChecking=yes",
-          "-o","GlobalKnownHostsFile=/dev/null",
-          "-o","UserKnownHostsFile="+str(KNOWN_HOSTS),
-          "-o","HostKeyAlgorithms=ssh-ed25519",
-          "-o","ConnectTimeout=8","-i",str(key),
-          HOST,"aoe2war-solo-issue "+
-          " ".join(shlex.quote(x)for x in
-                   ([phase,target]if phase=="PRE_STAGE" else
-                    [phase,target,attempt,lease,stage_sha]))]
-    p=subprocess.run(args,capture_output=True,text=True,timeout=30)
-    check(p.returncode==0,"no real root HEL1 issued phase challenge: "+p.stderr[-500:])
-    item=json.loads(p.stdout)
+    """Issue once UNDER the genuine HEL1 original FD200 command lease.
+
+    The native issuer refuses observations outside FD200. This command uses
+    exactly the root phase helper, never a free-form root SSH command.
+    """
+    from aoe2_solo_website_command_channel import command_lease
+    check(phase in ("PRE_STAGE","PRE_ACTIVATE"),"unsupported issue phase")
+    arguments=[phase,target] if phase=="PRE_STAGE" else [
+        phase,target,attempt,lease,stage_sha]
+    check(all(type(value)is str and bool(value) for value in arguments),
+          "missing issue argument")
+    holder=json.dumps({"policy":POLICY,"phase":"ISSUE_"+phase,
+        "candidate_sha":target,"session":os.urandom(16).hex()},sort_keys=True)
+    command="python3 "+shlex.quote(ROOT_PHASE)+" issue "+" ".join(
+        shlex.quote(value) for value in arguments)
+    with command_lease(LOCK,holder,host=HOST) as runner:
+        answer=runner.run(command,timeout=35)
+        check(answer.returncode==0,
+              "original FD200 root issuance HOLD: "+(answer.stderr or "")[-500:])
+        runner.assert_alive()
+    item=json.loads(answer.stdout)
     check(item.get("status")=="ROOT_ISSUED_NOT_AUTHORIZED",
           "HEL1 challenge not issued")
     return item

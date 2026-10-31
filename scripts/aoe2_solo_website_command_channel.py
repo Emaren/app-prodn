@@ -60,12 +60,21 @@ def run(x):
    raise PermissionError('root phase helper only')
   verb=parts[2]
   sizes={'consume':4,'consumed-proof':6,'mark-staged':6,
-         'complete-activation':6,'reconcile-rollback':5}
-  if verb not in sizes or len(parts)!=sizes[verb]:
+         'complete-activation':6,'reconcile-rollback':5,'issue':None}
+  if verb not in sizes or (verb!='issue' and len(parts)!=sizes[verb]):
    raise PermissionError('unknown protected root verb')
   hex64=re.compile(r'[0-9a-f]{64}\Z')
   hex40=re.compile(r'[0-9a-f]{40}\Z')
-  if verb=='consume':
+  if verb=='issue':
+   if (len(parts) not in (5,8) or
+       parts[3] not in ('PRE_STAGE','PRE_ACTIVATE') or
+       not hex40.fullmatch(parts[4])):
+    raise PermissionError('invalid issuer phase/source')
+   if parts[3]=='PRE_STAGE':
+    if len(parts)!=5:raise PermissionError('stage issue must be fresh')
+   elif len(parts)!=8 or not all(hex64.fullmatch(v) for v in parts[5:]):
+    raise PermissionError('invalid activation issue identity')
+  elif verb=='consume':
    if not re.fullmatch(r'[A-Za-z0-9+/=]{100,350000}',parts[3]):
     raise PermissionError('invalid owner packet encoding')
   else:
@@ -149,7 +158,7 @@ try:
  # A stolen command SSH key alone cannot launch a UID1000 shell.
  # Root must first consume a REAL signed owner phase, then independently
  # verify that same immutable root journal phase before one website action.
- phase=None;phase_verified=False;website_dispatched=False;rollback_dispatched=False
+ phase=None;phase_verified=False;website_dispatched=False;rollback_dispatched=False;issue_dispatched=False
  while True:
   line=sys.stdin.buffer.readline(800000)
   if not line:break
@@ -168,7 +177,13 @@ try:
   else:
    parts=shlex.split(base64.b64decode(x['script'],validate=True).decode('utf-8'))
    verb=parts[2] if len(parts)>=3 else None
-   if verb=='consume':
+   if issue_dispatched:
+    raise PermissionError('issuance-only lease cannot dispatch another operation')
+   if verb=='issue':
+    if phase is not None or website_dispatched:
+     raise PermissionError('issue cannot follow consumed owner phase')
+    issue_dispatched=True  # one issue per original FD200 lease
+   elif verb=='consume':
     if phase is not None:raise PermissionError('owner phase already consumed')
    elif verb=='consumed-proof':
     if phase is None or phase_verified or website_dispatched:

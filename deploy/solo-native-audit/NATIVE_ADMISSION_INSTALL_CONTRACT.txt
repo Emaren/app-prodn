@@ -1,0 +1,168 @@
+AOE2WAR SOLO WEBSITE NATIVE ISSUER — OWNER/C/F INSTALLATION CONTRACT (REVIEW ONLY)
+
+Source target: F draft #1008 exact c3fbb794e77c613b335ad2a7f1c912b71e218f6d
+(R11 reviewed current ABI; final F candidate must be re-pinned before installation).
+F now requires HEAD handler semantics and GET fallback trace, real idle oneshot
+role identities, and six unique Ed25519 public SPKI identities.
+Only additive paths. Do not edit F-owned engine/finance/producer/phase/SSH modules.
+No binary is currently approved/installed. This draft DOES NOT activate service/timer.
+
+1. REVIEW AND ROOT ADMISSION
+  - Independently review exact Git blob and committed SHA of
+      scripts/aoe2_solo_website_native_issuer.py.
+  - C pins the raw executable SHA256 and copied parent root ownership/mode.
+    Install only after approved C root installer under root-owned secure path:
+      /usr/local/libexec/aoe2war/solo-v1-native-admission
+    The script must be a regular, root-owned mode 0755 file with all ancestors
+    root-owned, non-group-writable, no symlinks and no mutable interpreter/venv.
+    Invoked by shebang /usr/bin/python3 -I. Match binary bytes exactly.
+  - Separately owner RSA sign native-audit-approval.json with F's existing
+      APPROVAL_DOMAIN bytes AOE2WAR.SOLO_OWNER.NATIVE_AUDIT_INSTALL.V1\n.
+    F native adapter requires exactly schema:1, policy, payload,
+    signature_base64, payload keys kind/candidate_sha/binary_sha256/approved_at/
+    reviewed_controller_sha256/review_url/finance_release_authorized:false.
+    Owner must sign ONLY approved final frozen F candidate+review URL/actual
+    installed program SHA256, using the existing independently verified owner
+    private signing key OFF the VPS. NEVER invent an RSA signature, owner key,
+    trusted-producers.json, native-audit-approval.json or fake signers.
+  - Root approval protected path:
+      /etc/aoe2war/solo-owner-website-v1/native-audit-approval.json
+    No install command is approved by this document; C alone owns installation,
+    root trust, pin provenance, negative tests and compare-and-restore rollback.
+
+2. SIX DISTINCT ROOT-ENROLLED PRODUCER IDENTITIES
+  - Existing F verifier requires exactly doctor/recovery/finance/host/source/
+    stage under /etc/aoe2war/solo-owner-website-v1/trusted-producers.json.
+    Each maps {public_key_path,public_spki_sha256}. All six root-owned public
+    paths and SPKI fingerprints MUST be distinct, independently reviewed and
+    cryptographically verified with F producer_receipts.verify_all. No signer
+    private keys are generated, bundled, read or stored by the issuer.
+  - Receipt signature domain EXACTLY F's
+      AOE2WAR.SOLO_WEBSITE.NATIVE_PRODUCER_RECEIPT.V1\n
+    over canonical payload (sorted compact ASCII JSON), Ed25519 OpenSSL raw-in.
+    Producer payload exactly producer/candidate_sha/attempt_id/phase/host/
+    observed_at/content_sha256; signatures not reusable across role/phase.
+    On input, source receipt envelope wraps {schema,class,section,receipt};
+    receipt is {payload,signature_base64}.
+  - Immutable root-verified inbound slots (not created by this program):
+      /var/lib/aoe2war-solo-website-v1/native-admission/
+        <64hex attempt>/<PHASE>/<doctor|recovery|finance|host|source|stage>.json
+    One root-owned regular file per class, trusted root ancestry, no links,
+    group-writes or in-place changes. Producer-owned private keys should remain
+    in their own independently enrolled native security domains. C explicitly
+    reviews any copy/ingress service which seals these files. No convenient
+    root-local self-signed "test" producers in production.
+  - Freshness: 0<=now-observed_at<=120s, same observed_at across all six,
+    exact candidate+attempt+phase+HEL1 host, signed SHA256 of source section.
+    For HOST section, signed SHA is hash of mount subobject; its included
+    rollback_sha256 binds exact rollback subobject.
+
+3. INDEPENDENT PHYSICAL SOURCES / OWNERS
+  - B finance: exact F 25 named units (18 services + 7 timers), separate
+    idle oneshot handling (MainPID 0, start_time_ticks 0, executable null),
+    PID/start-time/exe/cgroup/uid for live processes, systemd show files and
+    unit/dropin/env/schedule hashes, all cron/proc/external ingress/database
+    writer surfaces. Closed-world 25-unit minimum, unapproved extra writer
+    and uncovered ingress => HOLD; 8092/8093 plus ALL financial writers and
+    pending/balances/fees/UNKNOWN exposures; never move funds or poke writers.
+  - B+source: exact GET/HEAD/PREWARM route DAG with imported transitive edges;
+    immutable W1 GET and prewarm reach financial writers. Current W1 MUST HOLD
+    until F+B independently repair/contain read-triggered financial effects;
+    never silently reclassify as inert. Source+finance signed DAG digests agree.
+  - C host: actual HEL1 mounted device, fresh statvfs bytes/percentages,
+    currently installed source HEAD+compiled BUILD_ID, signed rollback hash;
+    native reader remeasures same source/mount/BUILD_ID/free-space identity.
+  - Doctor: actual independent signed p0=0 p1=0; no status-only promotion.
+  - E recovery: six REAL APP_DB, TRAFFIC_SQLITE_WAL, WOLO_CONSENSUS_FINANCE,
+    LOOP4_FINANCIAL, WATCHER_REPLAY_MEDIA, RELEASE_ROLLBACK_CONFIG chains.
+    Each requires source+Intel receiver+third separate restore signatures,
+    same bytes/hash/sequence/campaign/cohort, genuine age ciphertext SHA
+    and separate failure domains. Reuses C's signed verifier
+      aoe2_storage_transfer_receipts.py
+    with separately enrolled public keys; no local synthetic restore signs.
+    Current actual restores 0/6 => HOLD, no waiver.
+  - F stage: original root-sealed state receipt
+      /var/lib/aoe2war-solo-website-v1/<attempt>-PRE_STAGE-stage-receipt.json
+    must match stage's release SHA, raw receipt, dependency hashes and BUILD_ID;
+    no fabricated PRE_STAGE artifact. POST_ACTIVATE/POST_ROLLBACK distinct.
+  - Current capacity original policy: attached volume >=30GiB ordinary free,
+    effective used <=88%, Finish used <92%. Local budget alone is NOT release GO.
+
+4. CRITICAL F/C INTEGRATION HOLD — ORIGINAL FD200 (R11)
+  - Root issuer requires inherited original protected release.lock FD200,
+    UID1000 mode0644 matching dev/inode, plus *actual kernel-held exclusive
+    flock on FD200's own open-file description* and contention from a
+    second independently opened OFD. A matching inode alone is insufficient.
+    This is NECESSARY lock liveness, never sufficient original-session,
+    source/attempt continuity or human owner release authorization.
+  - F root_phase.issue currently calls audit() BEFORE protected FD200 exists,
+    then Journal.issue() calls Journal.exclusive() which independently
+    reopens/acquires the release.lock. F/C must refactor under the original
+    dispatcher lease across preflight/native audit/root issue/nonce consumption
+    and subsequent activation failure/reconciliation. Journal.issue should
+    never reacquire a shadow lock impersonating the original session.
+  - F native_audit_adapter.audit currently runs subprocess.run() without
+    pass_fds=(200,). Python child descriptors close by default. The F/C
+    audited subprocess and SSH dispatcher MUST preserve/pass the same
+    original FD200, while independently checking original lease lineage
+    rather than merely accepting fstat(200) or a newly acquired flock.
+  - F/C must test missing FD200, wrong dev/inode/UID/mode, file symlink,
+    same-inode but unlocked FD200, other OFD holding the lock, replacement
+    lease after lost original, stale candidate/attempt/owner phase, expiry,
+    dropped child descriptor, replayed PRE/POST and broken rollback session.
+    Do not disable O_NOFOLLOW, FD200 or flock provenance for green CI.
+  - F's adapter consumes all six current independent Ed25519 producer
+    signatures; source GET/HEAD/PREWARM classification now also requires
+    native HEAD handler semantics and get_fallback_trace_sha256. F's
+    verify_financial_identity accepts zero-PID idle oneshot roles ONLY
+    when bound to real service-unit hashes and last invocation. Do not
+    interpret idle MainPID=0 as an active PID or finance invariance.
+  - F must integrate POST_ACTIVATE and POST_ROLLBACK native audit under
+    the same protected original lease and root journal; source SHA/BUILD_ID,
+    signed finance exposure and independently measured live mount cannot
+    drift. C independently reviews root helper provenance and F owner RSA
+    installation approval for final source bytes, distinct phase permit.
+  - F's host producer signs only mount; D binds root rollback by
+    mount.rollback_sha256 and the exact root-owned original stage journal.
+    B/C/F separately review this ABI dependency before install.
+  - These are F/C-owned integration fixes. D source intentionally does NOT
+    install, reacquire, restart or circumvent the release controller.
+
+5. OWNER READ-ONLY PRE-FLIGHT — HEL1, not INSTALL (after C approval)
+  python3 -B - <<'PY'
+  import os, pathlib, platform, socket, stat
+  p=pathlib.Path('/usr/local/libexec/aoe2war/solo-v1-native-admission')
+  print('HOST=',socket.gethostname(),'OS=',platform.system(),'EUID=',os.geteuid())
+  if socket.gethostname()!='ubuntu-4gb-hel1-11' or os.geteuid()!=1000:
+      print('HOLD: WRONG_HOST_OR_TONY_UID')
+  elif not p.exists():
+      print('HOLD: NATIVE_ADMISSION_BINARY_NOT_INSTALLED')
+  elif p.is_symlink():
+      print('HOLD: UNTRUSTED_BINARY_LINK')
+  else:
+      import hashlib
+      s=p.stat()
+      print('OBSERVED_ONLY: binary SHA256=',hashlib.sha256(p.read_bytes()).hexdigest())
+      print('OWNER_UID=',s.st_uid,'MODE=',oct(stat.S_IMODE(s.st_mode)))
+      print('HOLD: REVIEW_AND_RSA_APPROVAL_STILL_REQUIRED')
+  PY
+  Never run a root installer or this issuer as root from an unreviewed SSH
+  connection. Native production test must be hosted by F+C within original
+  release lease, NEVER user-run outside the owner phase flow.
+
+6. OPTIONAL LIGHTWEIGHT OBSERVER (NOT RELEASE ISSUER)
+  Source templates aoe2war-solo-native-observer.service/.timer (15min),
+  default UNINSTALLED; they read mounted capacity, website process/source and
+  BUILD_ID only, no DB queries, HTTP GET, writer triggers, SSH or disk walks.
+  Journal JSON is explicitly OBSERVATION_ONLY_NOT_ADMITTED; finance/Doctor/
+  restore UNKNOWN, release_authorized=false. Browser GET must consume only
+  C-authenticated stored receipts through G's private read model. No direct
+  root command or new SSH in browser GET. C independently reviews and obtains
+  owner install authorization, with no duplicate timer and retained rollback.
+
+7. NO STATED PHYSICAL ACCEPTANCE
+  No six producer identities/key installation, owner RSA approval, immutable
+  source review, genuine data/crypto signatures, completed 6 physical restores,
+  native FD200 issuance, release stage, act, rollback or live BUILD_ID verified
+  by this code/CI. All UNKNOWN or incomplete MUST print HOLD (exit2).
+  No funds, DB checkpoint, data move, service restart, delete or root install.
