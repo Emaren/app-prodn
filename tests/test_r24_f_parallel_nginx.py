@@ -180,6 +180,21 @@ server { server_name unrelated.example; listen 443 ssl;
         with self.assertRaisesRegex(self.s.Hold,
                                      "CANDIDATE_MUST_USE_DISTINCT_UNPRIVILEGED_UID"):
             self.s.enforce_candidate_runtime("ActiveState=active\nMainPID=1\nUser=root\n")
+    def test_loaded_nginx_vhost_contract_required_for_actual_cutover(self):
+        root=SERVER.read_text()
+        self.assertIn("nginx_loaded_vhost(old,config)",root)
+        self.assertIn("nginx_loaded_vhost(candidate,config,old_count=0)",root)
+        self.assertIn("NGINX_LOADED_SCOPE_INCLUDES_OR_OTHER_SITE_3030_UNRESOLVED",root)
+        self.assertIn("web_new_upstream_locations_after_switch",root)
+    def test_approved_owner_build_and_nonce_are_root_readonly(self):
+        root=SERVER.read_text();mac=MAC.read_text()
+        self.assertIn("def approved_owner_intent(rollback=False):",root)
+        self.assertIn("ROOT_APPROVAL",root)
+        self.assertIn('--root-owner-intent',mac)
+        self.assertIn('--root-rollback-intent',mac)
+        self.assertIn("OWNER_CANNOT_OVERRIDE_SIGNED_ROOT_RELEASE_INTENT",mac)
+        self.assertIn('opts.next_build_id=j.get("candidate_build_id")',mac)
+        self.assertIn('opts.nonce=j.get("nonce")',mac)
     def test_owner_mac_separate_tty_read_write(self):
         mac=MAC.read_text()
         self.assertIn('with open("/dev/tty","w")',mac)
