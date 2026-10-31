@@ -1,0 +1,28 @@
+name: R16 read-only minimatch importer discovery
+on:
+  push:
+    branches: [r16-minimatch-compat-diagnostic]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.22.0'
+          cache: yarn
+      - name: Trace real incompatible importers without modifying dependencies
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          echo '=== MINIMATCH EXPORTS ==='
+          node --input-type=module -e "import('minimatch').then(m=>console.log(Object.keys(m),typeof m.default,typeof m.minimatch))"
+          echo '=== EXACT IMPORT SITES ==='
+          grep -R -n -E "(from ['\" ]minimatch['\"]|require\(['\"]minimatch['\"]\))" node_modules/@typescript-eslint node_modules/eslint-config-next node_modules/eslint-plugin-import node_modules/eslint-import-resolver-typescript node_modules/@eslint node_modules/next 2>/dev/null | head -150 || true
+          echo '=== UPSTREAM REQUIREMENTS ==='
+          yarn why minimatch
+          echo '=== REAL FAIL ==='
+          npx eslint scripts/aoe2_release_prebuild_validation.mjs
