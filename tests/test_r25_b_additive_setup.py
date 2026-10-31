@@ -33,6 +33,26 @@ class TestOwnerInstall(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,"C_PHYSICAL_BUILD_STAGED_REQUIRED"):
             b.c_build_ready()
 
+    def test_exact_physical_build_identity_pins(self):
+        self.assertEqual(b.C_BUILD_ID, "-dJl5VyecHu5BKNvfErJe")
+        self.assertEqual(b.C_BUILD_VERSION, "20261031171526-148d3df911")
+        self.assertEqual(b.C_TREE_SHA, "5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d")
+        self.assertEqual(b.C_VERIFIED_FILES, 87038)
+
+    def test_build_gate_requires_full_receipt_identity(self):
+        import inspect
+        source=inspect.getsource(b.c_build_ready)
+        for clause in ("data.get(\"build_id\")!=C_BUILD_ID",
+                       "data.get(\"tree_sha256\")!=C_TREE_SHA",
+                       "data.get(\"files\")!=C_VERIFIED_FILES"):
+            self.assertIn(clause,source)
+
+    def test_plan_is_build_gated_prior_to_install(self):
+        import inspect
+        source=inspect.getsource(b.main)
+        self.assertIn("actual_build=c_build_ready()",source)
+        self.assertIn('"c_build_id":actual_build',source)
+
     def test_real_b_immutable_bundle_is_accepted(self):
         d=b.decode_bundle(bundle())
         self.assertEqual(b.sha(d["guard"]),b.GUARD_SHA)

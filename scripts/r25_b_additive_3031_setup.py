@@ -35,6 +35,10 @@ RECEIPT=Path("/var/lib/aoe2war-r25-b-setup/receipt.json")
 C_STAGE=Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 C_AUDIT=Path("/var/lib/aoe2war-r25-c-additive")
 C_TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
+C_BUILD_ID="-dJl5VyecHu5BKNvfErJe"
+C_BUILD_VERSION="20261031171526-148d3df911"
+C_TREE_SHA="5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d"
+C_VERIFIED_FILES=87038
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
 DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
@@ -159,7 +163,11 @@ def c_build_ready():
     bid=bidfile.read_text().strip()
     if (data.get("schema")!="aoe2war.r25.c.full-built-artifact.v1" or
         data.get("status")!="BUILD_STAGED" or data.get("candidate_sha")!=C_TARGET or
-        data.get("build_id")!=bid or data.get("root_sealed") is not True or
+        data.get("build_id")!=C_BUILD_ID or bid!=C_BUILD_ID or
+        data.get("build_version")!=C_BUILD_VERSION or
+        data.get("tree_sha256")!=C_TREE_SHA or
+        data.get("files")!=C_VERIFIED_FILES or
+        data.get("root_sealed") is not True or
         data.get("new_service_started") is not False or
         not re.fullmatch(r"[A-Za-z0-9_-]{8,128}",bid)):
         hold("C_BUILD_RECEIPT_OR_REAL_NEXT_ID_MISMATCH")
@@ -332,8 +340,11 @@ def main():
         bundle=decode_bundle(a.bundle_b64)
         uid=check_inputs(a)
         if a.phase=="plan":
+            actual_build=c_build_ready()
             out={"schema":SCHEMA,"status":"PASS_B_INSTALL_PLAN_ONLY_NO_WRITES",
                  "source_commit":SOURCE_COMMIT,"old_web_pid":OLD_PID,
+                 "c_build_id":actual_build,"c_tree_sha256":C_TREE_SHA,
+                 "c_verified_files":C_VERIFIED_FILES,
                  "database_name":a.database,"candidate_uid_existing":uid,
                  "would_create_new_os_user":uid is None,
                  "would_create_new_db_role":NEW_ROLE,
