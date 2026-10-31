@@ -1,0 +1,45 @@
+name: R25 dependency remediation candidate (non-production)
+on:
+  pull_request:
+    paths:
+      - package.json
+      - yarn.lock
+      - .github/workflows/r25-dependency-remediation.yml
+permissions:
+  contents: read
+jobs:
+  dependency-review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Isolated Yarn v1 dependency graph regeneration and immutable output
+        run: |
+          corepack enable
+          yarn install --ignore-scripts --non-interactive
+          python3 - <<'PY'
+          import base64,gzip,pathlib
+          lock=pathlib.Path('yarn.lock').read_bytes()
+          print("LOCKFILE_GZIP_BASE64_BEGIN")
+          print(base64.b64encode(gzip.compress(lock,compresslevel=9,mtime=0)).decode())
+          print("LOCKFILE_GZIP_BASE64_END")
+          print("LOCK_BYTES",len(lock))
+          PY
+      - name: Audit actual regenerated dependency graph with NO waivers
+        run: |
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          python3 scripts/check_dependency_security.py
+      - name: Targeted parser and package compatibility tests
+        run: |
+          python3 -m unittest tests.test_dependency_security
+          node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/central-events.test.mts tests/central-work-ledger.test.mts
