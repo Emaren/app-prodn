@@ -161,7 +161,17 @@ def verify_identity(manifest,uid):
     checked_file(owner_pub,0,limit=16384)
     checked_file(pub,0,limit=16384)
     checked_file(collector,0,limit=262144)
-    checked_file(key,uid,limit=16384,mode=0o600)
+    # Do not read private-key bytes in Python. Prove inode/owner/mode and
+    # delegate key access exclusively to the producer-owned OpenSSL process.
+    need(key.is_absolute(),"RELATIVE_PRIVATE_KEY")
+    for ancestor in key.parents:
+        a=ancestor.lstat()
+        need(stat.S_ISDIR(a.st_mode) and a.st_uid in (0,uid) and
+             not a.st_mode&0o022,"UNPROTECTED_PRIVATE_KEY_ANCESTOR")
+    st=key.lstat()
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==uid and
+         stat.S_IMODE(st.st_mode)==0o600 and 0<st.st_size<=16384,
+         "PRIVATE_KEY_PERMISSION_OR_TYPE")
     owner_der=openssl(["pkey","-pubin","-in",str(owner_pub),"-outform","DER"])
     need(digest(owner_der)==OWNER_RSA_SPKI,"OWNER_RSA_KEY_MISMATCH")
     producer_der=openssl(["pkey","-pubin","-in",str(pub),"-outform","DER"])
@@ -271,12 +281,18 @@ def write_once(destination,content,uid):
          stat.S_IMODE(st.st_mode)==0o700 and not root.is_symlink(),
          "UNPROTECTED_PRODUCER_SPOOL")
     need(not destination.is_symlink(),"SYMLINK_OUTPUT")
-    fd=os.open(destination,os.O_WRONLY|os.O_CREAT|os.O_EXCL|
-               os.O_NOFOLLOW|os.O_CLOEXEC,0o600)
-    with os.fdopen(fd,"wb") as out:
-        out.write(content);out.flush();os.fsync(out.fileno())
-    directory_fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
-    try:os.fsync(directory_fd)
+    # Pin parent inode during creation: no path-follow race or overwrite.
+    directory_fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|
+                         os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        live=os.fstat(directory_fd)
+        need((live.st_dev,live.st_ino,live.st_uid)==
+             (st.st_dev,st.st_ino,uid),"OUTPUT_PARENT_REPLACED")
+        fd=os.open(destination.name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|
+                   os.O_NOFOLLOW|os.O_CLOEXEC,0o600,dir_fd=directory_fd)
+        with os.fdopen(fd,"wb") as out:
+            out.write(content);out.flush();os.fsync(out.fileno())
+        os.fsync(directory_fd)
     finally:os.close(directory_fd)
 
 def main(argv=None):
