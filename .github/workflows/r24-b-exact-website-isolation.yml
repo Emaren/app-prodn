@@ -45,6 +45,8 @@ jobs:
           assert report["financial_operations_authorized"] is False
           assert report["root_host_actual_env_verified"] is False
           assert report["database_role_privileges_verified"] is False
+          assert report["original_old_website_wargraph_runtime_may_be_financial_producer"] is True
+          assert report["parallel_original_service_preservation_verified"] is False
           print("B_R24_EXACT_WEBSITE_SOURCE_INVENTORY=PASS")
           print("B_R24_ROUTES=", report["api_route_files"])
           print("B_R24_EXPORTED_HTTP_METHOD_COUNTS=",report["route_export_method_counts"])
