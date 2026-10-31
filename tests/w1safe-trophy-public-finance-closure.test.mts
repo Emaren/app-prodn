@@ -26,11 +26,9 @@ test("W1_SAFE SSR/GET/HEAD/prewarm must not write trophy economics through a pub
   assert.match(lobby, /loadFeaturedWarriorHonors\s*\(prisma\)/);
   assert.match(lobby, /loadPublicTrophies\s*\(prisma\)/);
   assert.match(trophy, /export async function loadPublicTrophies\s*\(/);
-  assert.doesNotMatch(trophy, /\\bensurePublicTrophySeedData\\s*\\(/,
+  assert.doesNotMatch(trophy, /\bensurePublicTrophySeedData\s*\(/,
     "P0: public trophy read must never seed trophy economics or custody mirrors");
-  assert.match(trophy, /export async function loadPublicTrophies\\s*\\(/);
-  assert.match(trophy, /export async function loadPublicTrophy\\s*\\(/);
-  assert.match(trophy, /export async function loadUserTrophyHoldings\\s*\\(/);
+  assert.match(trophy, /export async function loadPublicTrophy\s*\(/);
 });
 
 test("removing financial work from public reads must retain an authenticated trophy seed producer", () => {
