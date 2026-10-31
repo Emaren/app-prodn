@@ -113,8 +113,15 @@ jobs:
           printf 'REN88_GENERATED_MANIFEST_SHA=%s\n' "$REN88_GENERATED_MANIFEST_SHA" >> "$GITHUB_ENV"
           cp .next/BUILD_ID renaissance-88-chrome/BUILD_ID
           cp .next/server/app-paths-manifest.json renaissance-88-chrome/app-paths-manifest.json
-          python3 scripts/renaissance_88_plan.py plan --preview-unsealed-generated-policy --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" --output renaissance-88-chrome/plan.json
-          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > renaissance-88-chrome/identity.txt
+          # Bind the value copied from the actual built artifact. A valid Next.js
+          # nanoid may start with '-', so separate argv words are unsafe for argparse.
+          BUILD_ID="$(cat .next/BUILD_ID)"
+          if [[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]] || [[ "$(cat renaissance-88-chrome/BUILD_ID)" != "$BUILD_ID" ]]; then
+            echo "::error::Missing, invalid, or changed Next BUILD_ID: preview HOLD"
+            exit 2
+          fi
+          python3 scripts/renaissance_88_plan.py plan --preview-unsealed-generated-policy --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id="$BUILD_ID" --output renaissance-88-chrome/plan.json
+          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$BUILD_ID" > renaissance-88-chrome/identity.txt
       - name: Actual Chrome desktop/mobile; bounded PR pilot or full scheduled census
         env:
           PW_HOME: ${{ runner.temp }}/renaissance-88-pw
