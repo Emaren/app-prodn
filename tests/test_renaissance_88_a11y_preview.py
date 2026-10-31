@@ -102,6 +102,7 @@ class PreviewSourceIsolation(unittest.TestCase):
         script=r"""
 const assert=require("node:assert/strict");
 const base="http://127.0.0.1:3137";
+const backgroundSourceBlobs={}; // Only classification is under test; SHA verification runs in the real runner.
 """ + fragment + r"""
 const url=p=>({origin:base,pathname:p});
 const mk=(path,count=1)=>Array.from({length:count},()=>({
