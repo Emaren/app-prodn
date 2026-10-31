@@ -171,6 +171,23 @@
       "status": "existing-shepherd-orders-ui-concept",
       "reference": "app/kingdom-agents/KingdomAgentsClient.tsx",
       "note": "Not yet independently proven autonomous or independently registered as an OS."
+    },
+    {
+      "id": "system-composer",
+      "name": "System Composer / Kingdom Composer",
+      "kind": "workflow-composition-role",
+      "status": "proposed-source-only",
+      "reference": "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+      "ownership": "Orchestra OS",
+      "responsibility": "Compiles Central-approved goals into versioned dependency graphs, agent/workflow assignments, capability contracts and resource budgets; simulates and validates plan without dispatching work or duplicating Central queue and Orchestra scheduler",
+      "cannot": [
+        "change Central priorities",
+        "run workers directly",
+        "execute releases",
+        "authorize financial transfers",
+        "invent heartbeat/activity"
+      ],
+      "live_worker_proven": false
     }
   ],
   "unreconciled_named_capabilities": [
@@ -211,9 +228,11 @@
     "planned_additional_subordinate_identities": 5,
     "planned_subordinate_os_total": 14,
     "planned_total_including_umbrella": 15,
-    "non_os_supervisory_roles": 2,
+    "non_os_supervisory_roles": 3,
     "verified_autonomous_running_os_workers": null,
-    "systemwide_unique_operational_os_total": null
+    "systemwide_unique_operational_os_total": null,
+    "non_os_supervisory_existing_ui_roles": 2,
+    "non_os_supervisory_proposed_roles": 1
   },
   "rules": [
     "This is a proposed normalized roster, not a census of every branded module across all AoE2WAR repositories.",
@@ -221,6 +240,8 @@
     "Do not count Doctor or Shepherd as OSs. Do not count umbrella as its own subordinate OS.",
     "Public system-agent cards are source projections; unknown worker activity is not running.",
     "New systems reuse existing code, storage and receipts; no deletion/replacement just to rename.",
-    "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate."
+    "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate.",
+    "Kingdom Composer is a proposed role nested in Orchestra workflow planning, not an extra OS identity or new release authority.",
+    "Visual diagrams for graphs, loops, agent armies, swarms and engineering hierarchy must map to evidence records; animations are not telemetry."
   ]
 }
