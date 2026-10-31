@@ -33,6 +33,16 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn("REN88_GENERATED_MANIFEST_SHA",self.guard)
         self.assertIn("INDEX_ADMISSION=HOLD_UNTIL_CENTRAL_SEAL",self.guard)
         self.assertIn("renaissance_88_preview_manifest_guard.sh verify",self.preview)
+    def test_real_next_build_id_is_option_bound_and_fails_closed(self):
+        # Next.js nanoids may begin with '-'; a separate argparse argv token
+        # would be parsed as an option, even though BUILD_ID is nonempty.
+        self.assertIn('BUILD_ID="$(cat .next/BUILD_ID)"', self.preview)
+        self.assertIn('--expected-build-id="$BUILD_ID"', self.preview)
+        self.assertNotIn('--expected-build-id "$(cat .next/BUILD_ID)"', self.preview)
+        self.assertIn('[[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]]', self.preview)
+        self.assertIn('"$(cat renaissance-88-chrome/BUILD_ID)" != "$BUILD_ID"', self.preview)
+        self.assertIn('exit 2', self.preview)
+        self.assertIn('printf \'source=%s\\nbuild=%s\\ncandidate_only=true\\n\' "$SOURCE_SHA" "$BUILD_ID"', self.preview)
     def test_only_plan_from_exact_next_build_can_use_preview(self):
         self.assertIn('o.action!="plan" or o.build_dir is None',self.source)
         self.assertIn("Unsealed preview requires exact built Next",self.source)

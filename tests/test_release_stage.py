@@ -564,7 +564,7 @@ class StageTests(unittest.TestCase):
 
         base_env = {k: v for k, v in os.environ.items() if k not in {"NEXT_DIST_DIR", "AOE2WAR_RELEASE_GATE_RECEIPT"}}
         ordinary = subprocess.run(["node", str(helper), "--print-plan"], cwd=MODULE.ROOT, text=True, stdout=subprocess.PIPE, check=True, env=base_env)
-        expected = [["next", ["lint"]], ["tsc", ["--noEmit"]]]
+        expected = [["eslint", ["app", "pages", "components", "lib", "src", "--no-error-on-unmatched-pattern"]], ["tsc", ["--noEmit"]]]
         self.assertEqual(json.loads(ordinary.stdout), expected)
 
         release_env = {**base_env, "NEXT_DIST_DIR": ".next-release"}
