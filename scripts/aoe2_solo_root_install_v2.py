@@ -102,6 +102,7 @@ def build(repo,sha,out):
     safe=trains.get("W1_SAFE")
     need(type(safe) is tuple and len(safe)==2 and bool(HEX40.fullmatch(safe[0])),"W1_SAFE_NOT_FINAL")
     need(literal(files["aoe2_solo_website_native_issuer.py"],"W1_SAFE")==safe[0],"ISSUER_SAFE_SHA_CONFLICT")
+    need(literal(files["aoe2_solo_website_producer_intake.py"],"W1_SAFE")==safe[0],"INTAKE_SAFE_SHA_CONFLICT")
     need(literal(files["aoe2_solo_website_root_phase.py"],"KEY_FP")==KEY_FP,"OWNER_RSA_PIN_DRIFT")
     archive=bundle_bytes(files)
     targets={dest:hash256(files[name]) for name,dests in MODULES.items() for dest in dests}
@@ -188,6 +189,7 @@ def source_admit(manifest,archive,source_commit):
     safe=trains.get("W1_SAFE")
     need(type(safe)is tuple and list(safe)==[manifest["w1_safe_candidate"],manifest["w1_safe_previous"]],"SAFE_ROOT_PHASE_DRIFT")
     need(literal(files["aoe2_solo_website_native_issuer.py"],"W1_SAFE")==safe[0],"ISSUER_SAFE_DRIFT")
+    need(literal(files["aoe2_solo_website_producer_intake.py"],"W1_SAFE")==safe[0],"INTAKE_SAFE_SHA_CONFLICT")
     need(literal(files["aoe2_solo_website_root_phase.py"],"KEY_FP")==KEY_FP and
          manifest.get("owner_rsa_spki_sha256")==KEY_FP,"OWNER_RSA_PIN_MISMATCH")
     need(manifest.get("original_lock")==list(EXPECTED_LOCK),"LOCK_PIN_DRIFT")
