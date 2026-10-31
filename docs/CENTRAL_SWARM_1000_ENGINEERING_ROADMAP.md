@@ -1,9 +1,9 @@
 ---
 id: "aoe2war.app-prodn.central-swarm-thousand-engineers"
 title: "Central Command — Thousand-Engineer Swarm & Kingdom Construction Observatory"
-type: "roadmap"
-status: "draft-source-only-not-deployed"
-owner: "central-command"
+type: "reference"
+status: "draft"
+owner: "aoe2war-web"
 systems: ["app-prodn","VPSSentry","wolochain","traffic","aoe2-watcher"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "internal"
 ---
 
-# ⚔️ Thousand-Engineer Doctrine
+# Central Command — Thousand-Engineer Swarm & Kingdom Construction Observatory
 
 **North star:** AoE2WAR grows into a distributed engineering organization able to coordinate and independently verify work from up to 1,000 bounded engineering agents. The aim is **verified deployed value** and a more capable kingdom—not merely more tabs, contributions, commits, diagrams or unreviewed output.
 
