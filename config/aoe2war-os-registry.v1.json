@@ -1,0 +1,710 @@
+{
+  "schema": "aoe2war.os.census.v1",
+  "authority": "reviewed-source-taxonomy-not-live-finance-deployment-or-new-service-authorization",
+  "snapshot_date": "2026-10-31",
+  "source_baseline_main": "b46a51f1592c9f296839924ae55e722618b10d35",
+  "umbrella": {
+    "id": "aoe2war",
+    "name": "AoE2WAR OS",
+    "kind": "umbrella",
+    "status": "existing-source-implementation",
+    "ui": "/aoe2war-os",
+    "canonical_id": "aoe2war.os.umbrella",
+    "immutable_id": true,
+    "aliases": [
+      "AoE2WAR"
+    ],
+    "source_authorities": [
+      "app/aoe2war-os/page.tsx",
+      "lib/aoe2Os.ts"
+    ],
+    "authority_domain": "integrated-source-dashboard",
+    "lifecycle": "source-present",
+    "live_deployment_proof": "UNVERIFIED",
+    "value_gate": "Accurate aggregate provenance and per-domain source/physical/live separation"
+  },
+  "subordinate_os": [
+    {
+      "id": "release",
+      "name": "Release OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "lib/kingdomIntelligencePublic.ts",
+      "domain": "release",
+      "responsibility": "release execution, certification and release evidence",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.release",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "protected-release-executor",
+      "source_authorities": [
+        "bin/aoe2war",
+        "scripts/aoe2_release.py",
+        "scripts/aoe2_release_ship.py",
+        "docs/RELEASE_RECOVERY_OS.md"
+      ],
+      "value_gate": "Exact protected deployed SHA + BUILD_ID, original financial unit continuity, certified rollback",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "documentation",
+      "name": "Documentation OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/DOCUMENTATION_OS.md",
+      "domain": "documentation",
+      "responsibility": "docs health, contracts and federation",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.documentation",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "documentation-contract-generator",
+      "source_authorities": [
+        "scripts/docs_v2_check.py",
+        "docs/DOCUMENTATION_OS.md",
+        "docs/document-registry.json"
+      ],
+      "value_gate": "Exact document registry/metadata/implementation baseline and strict DocsV2 PASS",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "storage",
+      "name": "Storage OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/STORAGE_OS.md",
+      "domain": "storage",
+      "responsibility": "storage preservation, capacity, retention and restore evidence",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.storage",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "storage-evidence-and-retention",
+      "source_authorities": [
+        "docs/STORAGE_OS.md",
+        "scripts/aoe2_storage_retention.py"
+      ],
+      "value_gate": "Measured bytes preserved/restored, native reserve and no unapproved deletion",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "host",
+      "name": "Host OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/HOST_MAINTENANCE.md",
+      "domain": "host",
+      "responsibility": "host maintenance, service inventory and native safeguards",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.host",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "native-host-diagnostics",
+      "source_authorities": [
+        "docs/HOST_MAINTENANCE.md",
+        "scripts/aoe2_host.py"
+      ],
+      "value_gate": "Actual bounded systemd/host state with guarded maintenance and no financial restarts",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "recovery",
+      "name": "Recovery OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/RELEASE_RECOVERY_OS.md",
+      "domain": "recovery",
+      "responsibility": "bounded and tested failure recovery and rollback",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.recovery",
+      "immutable_id": true,
+      "aliases": [
+        "Release Recovery OS"
+      ],
+      "authority_domain": "certified-release-rollback",
+      "source_authorities": [
+        "scripts/aoe2_release_rollback.py",
+        "docs/RELEASE_RECOVERY_OS.md"
+      ],
+      "value_gate": "Named immutable backup + independently proved restoration and reversible scope",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "workspace",
+      "name": "Workspace OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "lib/kingdomIntelligencePublic.ts",
+      "domain": "workspace",
+      "responsibility": "workspace and source-state observations",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.workspace",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "git-workspace-diagnostics",
+      "source_authorities": [
+        "lib/kingdomIntelligencePublic.ts",
+        "bin/aoe2war"
+      ],
+      "value_gate": "Source/worktree ownership, clean/dirty provenance and approved non-destructive changes",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "speed",
+      "name": "Speed OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/PERFORMANCE_OS.md",
+      "domain": "speed",
+      "responsibility": "performance/speed measurement and optimization",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.speed",
+      "immutable_id": true,
+      "aliases": [
+        "Performance OS"
+      ],
+      "authority_domain": "performance-measurement-and-receipts",
+      "source_authorities": [
+        "docs/PERFORMANCE_OS.md",
+        "bin/aoe2war"
+      ],
+      "value_gate": "Source-bound actual performance cohorts and budget with stable repeatable evidence",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "replay-truth",
+      "name": "Replay Truth OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/REPLAY_TRUTH_OS.md",
+      "domain": "replay-truth",
+      "responsibility": "replay/parser provenance and result truth",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.replay-truth",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "replay-origin-and-result-truth",
+      "source_authorities": [
+        "docs/REPLAY_TRUTH_OS.md",
+        "lib/kingdomIntelligencePublic.ts"
+      ],
+      "value_gate": "Replay/parser provenance, authenticated winner adjudication and unknown-vs-verified truth",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "central-command",
+      "name": "Central Command OS",
+      "kind": "subordinate-os",
+      "status": "existing-source-implementation",
+      "ui": "/admin/central-command",
+      "reference": "docs/CENTRAL_COMMAND_OS.md",
+      "domain": "priority-and-human-reviewed-dispatch",
+      "responsibility": "human owner delegated queue, evidence, review, priority and six-lane dispatch; never doubles as the runtime agent scheduler",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.central-command",
+      "immutable_id": true,
+      "aliases": [
+        "Central OS"
+      ],
+      "authority_domain": "human-owner-priority-and-dispatch",
+      "source_authorities": [
+        "docs/CENTRAL_COMMAND_OS.md",
+        "app/admin/central-command"
+      ],
+      "value_gate": "Traceable P0-P3 owner-reviewed dispatch decisions with no invented agent heartbeat",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "deployment",
+      "name": "Deployment OS",
+      "kind": "subordinate-os",
+      "status": "draft-source",
+      "reference": "https://github.com/Emaren/app-prodn/pull/1088",
+      "responsibility": "versioned component scope admission and release-phase coordination; Release OS remains actual executor",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.deployment",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "candidate-website-admission-policy",
+      "source_authorities": [
+        "scripts/aoe2_deploy_os_web_parallel.py (PR #1088; non-merged)",
+        "deploy/deployment-os/WEBSITE_ONLY_PARALLEL_POLICY_V1.md (PR #1088)"
+      ],
+      "value_gate": "Owner-consented source-pinned 3031 isolation, reversible nginx route, G live witness",
+      "lifecycle": "draft-unmerged",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "orchestra",
+      "name": "Orchestra OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1060",
+      "responsibility": "workflow DAG planning, leases and handoffs; reuse Central queue, don't create new release authority",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.orchestra",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "proposed-workflow-DAG-scheduler",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1060"
+      ],
+      "value_gate": "Real lease/claim DAG and fencing provenance rather than issue-comment scheduler",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "agent",
+      "name": "Agent OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/pull/1086",
+      "responsibility": "bounded single worker lifecycle, tools, state, sandbox, permissions, verification and expense budgets",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.agent",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "proposed-single-worker-runtime",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/pull/1086"
+      ],
+      "value_gate": "One bounded worker with authenticated tool/permission/budget/receipt lifecycle",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "swarm",
+      "name": "Swarm OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/pull/1025",
+      "responsibility": "coordinated fleet scheduling, isolation and adversarial reviews with measured 6-to-1000 promotion",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.swarm",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "proposed-multiworker-coordination",
+      "source_authorities": [
+        "docs/CENTRAL_SWARM_1000_ENGINEERING_ROADMAP.md (PR #1025)"
+      ],
+      "value_gate": "Measured concurrent worker and reviewer throughput with rollback/containment gates",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "wolochain",
+      "name": "WoloChain OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/wolochain/issues/5",
+      "responsibility": "read-only chain health, RPC/consensus/indexer/bridge lineage and independently proven mainnet reconciliation; custody remains separate",
+      "independent_live_worker_proven": false,
+      "canonical_id": "aoe2war.os.wolochain",
+      "immutable_id": true,
+      "aliases": [],
+      "authority_domain": "proposed-chain-observability",
+      "source_authorities": [
+        "https://github.com/Emaren/wolochain/issues/5"
+      ],
+      "value_gate": "Real mainnet RPC/consensus/indexer evidence, no custody authority",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    },
+    {
+      "id": "code-health",
+      "canonical_id": "aoe2war.os.code-health",
+      "immutable_id": true,
+      "name": "Code Health OS",
+      "kind": "subordinate-os",
+      "status": "existing-source-implementation",
+      "ui": null,
+      "reference": "scripts/aoe2_code_health.py",
+      "domain": "code-quality",
+      "responsibility": "bounded source inventory and hashed diagnostic receipts; no independent release or automatic refactor authority",
+      "independent_live_worker_proven": false,
+      "aliases": [],
+      "authority_domain": "static-source-analysis-and-receipts",
+      "source_authorities": [
+        "scripts/aoe2_code_health.py",
+        "bin/aoe2war"
+      ],
+      "value_gate": "Executed source scan plus hashed receipts and independently reviewed interpretation",
+      "lifecycle": "source-present",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "has_exclusive_financial_authority": false,
+      "taxonomy": "subordinate"
+    }
+  ],
+  "supervisory_roles": [
+    {
+      "id": "system-doctor",
+      "name": "System Doctor",
+      "kind": "diagnostic-role",
+      "status": "existing-source-ui",
+      "reference": "app/kingdom-intelligence/page.tsx",
+      "canonical_id": "aoe2war.role.system-doctor",
+      "immutable_id": true,
+      "not_subordinate_os": true
+    },
+    {
+      "id": "system-shepherd",
+      "name": "System Shepherd",
+      "kind": "coordination-role",
+      "status": "existing-shepherd-orders-ui-concept",
+      "reference": "app/kingdom-agents/KingdomAgentsClient.tsx",
+      "note": "Not yet independently proven autonomous or independently registered as an OS.",
+      "canonical_id": "aoe2war.role.system-shepherd",
+      "immutable_id": true,
+      "not_subordinate_os": true
+    },
+    {
+      "id": "system-composer",
+      "name": "System Composer / Kingdom Composer",
+      "kind": "workflow-composition-role",
+      "status": "proposed-source-only",
+      "reference": "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+      "canonical_id": "aoe2war.role.system-composer",
+      "immutable_id": true,
+      "not_subordinate_os": true,
+      "ownership": "aoe2war.os.orchestra",
+      "authority_domain": "reviewed-dry-run-dependency-graph-planning",
+      "source_authorities": [
+        "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+        "config/aoe2war-os-registry.v1.json"
+      ],
+      "responsibility": "Compose only Central-approved goals into versioned DAGs, owner-reviewed task/edge/lease plans, budgets, conflict checks and immutable simulation receipts; Orchestra alone schedules approved tasks.",
+      "cannot": [
+        "set Central priority or replace queue #984",
+        "dispatch or run workers",
+        "activate, promote or roll back production",
+        "authorize money, signer or custody",
+        "assert a heartbeat from source, CI or visuals"
+      ],
+      "value_gate": "At least one independently reviewed workflow plan with exact source refs, acyclic blocking edges, proven collision detection and fewer duplicate handoffs; throughput and intervention changes measured.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "live_worker_proven": false
+    }
+  ],
+  "unreconciled_named_capabilities": [
+    {
+      "name": "Performance OS",
+      "resolution": "alias",
+      "canonical_os_id": "aoe2war.os.speed",
+      "source_authorities": [
+        "docs/PERFORMANCE_OS.md"
+      ],
+      "evidence": "Shared Speed OS V2/V3 collector and receipts explicitly documented in performance contract; no independent performance release signer"
+    },
+    {
+      "name": "Renaissance OS",
+      "resolution": "integration-facet-not-independent-domain",
+      "canonical_os_id": null,
+      "source_authorities": [
+        "docs/RENAISSANCE_OS.md",
+        "scripts/renaissance.py",
+        "config/renaissance-campaign.json"
+      ],
+      "evidence": "Renaissance contract states read-only integration overlay, not new domain authority; preserve its distinct documentation ID"
+    },
+    {
+      "name": "Code Health OS",
+      "resolution": "distinct-existing-source-subordinate",
+      "canonical_os_id": "aoe2war.os.code-health",
+      "source_authorities": [
+        "scripts/aoe2_code_health.py"
+      ],
+      "evidence": "Dedicated scanner and receipt directory/CLI distinct from Central Command, but no independently proven running worker"
+    },
+    {
+      "name": "Council OS",
+      "resolution": "diagnostic-facet-no-independent-owner",
+      "canonical_os_id": "aoe2war.os.central-command",
+      "source_authorities": [
+        "scripts/aoe2_council.py"
+      ],
+      "evidence": "Read-only diagnostic aggregator reusing Doctor/Release/Storage; title does not grant priority authority"
+    },
+    {
+      "name": "Loop Engine / Loop OS",
+      "resolution": "cross-cutting-engine-not-registered-OS",
+      "canonical_os_id": "aoe2war.os.agent",
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1089"
+      ],
+      "evidence": "A feedback control primitive; no separate evidence of exclusive lifecycle, runtime or production authority"
+    },
+    {
+      "name": "Graph / Provenance OS",
+      "resolution": "cross-cutting-provenance-model-not-registered-OS",
+      "canonical_os_id": null,
+      "source_authorities": [
+        "https://github.com/Emaren/app-prodn/issues/1089"
+      ],
+      "evidence": "Dependency/lineage model spans existing owner domains; standalone OS unsupported"
+    }
+  ],
+  "counts": {
+    "confirmed_constellation_os": 8,
+    "existing_central_os_outside_constellation": 1,
+    "additional_existing_code_health_os_source": 1,
+    "planned_additional_subordinate_identities": 5,
+    "planned_subordinate_os_total": 15,
+    "planned_total_including_umbrella": 16,
+    "non_os_supervisory_roles": 3,
+    "verified_autonomous_running_os_workers": null,
+    "systemwide_unique_operational_os_total": null,
+    "count_scope": "15 subordinate identities (10 source-present + 5 draft/proposed), 1 umbrella; 3 non-OS roles (Doctor, Shepherd, Composer). No verified live-worker census.",
+    "non_os_supervisory_existing_ui_roles": 2,
+    "non_os_supervisory_proposed_roles": 1
+  },
+  "rules": [
+    "This is a proposed normalized roster, not a census of every branded module across all AoE2WAR repositories.",
+    "OS classification requires unique owner, authority, executable contract, evidence, recovery and measured value.",
+    "Do not count Doctor or Shepherd as OSs. Do not count umbrella as its own subordinate OS.",
+    "Public system-agent cards are source projections; unknown worker activity is not running.",
+    "New systems reuse existing code, storage and receipts; no deletion/replacement just to rename.",
+    "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate.",
+    "Code Health has distinct existing source contract; add it to planning roster without claiming separate daemon",
+    "Performance is an alias of Speed, Renaissance integration facet, Council composite diagnostic, Loop and Graph engines are cross-cutting rather than OS",
+    "16 named planning identities includes umbrella; verified live estate remains UNKNOWN; never present 16 as certified operational count",
+    "System Composer is a proposed Orchestra OS role; never a subordinate OS or autonomous production authority.",
+    "Seven visual modes share one evidence projection. Never promote simulation/polling/animation to observed live telemetry.",
+    "P3 visual and composition planning cannot block F #1083 P0 website #1061 or alter Deployment OS #1088."
+  ],
+  "source_input": {
+    "pull_request": 1090,
+    "head_sha": "8b275229c16f67dc65f9d3bd4b500faf11aa72a0",
+    "original_registry_blob": "949c30ffebb6668670d8a59dddec9c89399bf887"
+  },
+  "identity_semantics": {
+    "id": "immutable short key; never reuse after rename",
+    "canonical_id": "immutable aoe2war.os.* namespace",
+    "alias": "lookup label, never a second authority or OS count",
+    "umbrella": "distinct navigation/integration identity but not subordinate",
+    "catalog_count": "identity count including source-only drafts; never worker count",
+    "physical": "UNKNOWN until authenticated actual process/host evidence"
+  },
+  "capability_layers": [
+    "source-contract",
+    "deterministic-script",
+    "timer-trigger",
+    "bounded-agent",
+    "feedback-loop",
+    "dependency-provenance-graph",
+    "governed-swarm"
+  ],
+  "agent_runtime_truth": {
+    "allocated_owner_relays": 6,
+    "observed_autonomous_agents": null,
+    "verified_live_worker_count": null,
+    "source_present_is_live": false
+  },
+  "role_authority_edges": [
+    {
+      "from": "aoe2war.os.central-command",
+      "to": "aoe2war.role.system-composer",
+      "kind": "approved-objective-only"
+    },
+    {
+      "from": "aoe2war.role.system-composer",
+      "to": "aoe2war.os.orchestra",
+      "kind": "dry-run-plan-packet-reviewed-before-scheduling"
+    },
+    {
+      "from": "aoe2war.os.orchestra",
+      "to": "aoe2war.os.agent",
+      "kind": "bounded-task-lease-only"
+    },
+    {
+      "from": "aoe2war.os.agent",
+      "to": "aoe2war.os.swarm",
+      "kind": "verified-multiworker-coordination-only"
+    },
+    {
+      "from": "aoe2war.role.system-doctor",
+      "to": "aoe2war.os.central-command",
+      "kind": "diagnostic-advice-no-approval"
+    },
+    {
+      "from": "aoe2war.role.system-shepherd",
+      "to": "aoe2war.os.central-command",
+      "kind": "escalation-advice-no-approval"
+    }
+  ],
+  "visual_modes": [
+    {
+      "id": "aoe2war.visual.graph",
+      "name": "Neural Dependency Graph",
+      "owner": "aoe2war.os.orchestra",
+      "node_kind": "dependency",
+      "evidence_gate": "pinned typed edges with source/evidence refs",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.loop",
+      "name": "Feedback Loops",
+      "owner": "aoe2war.os.agent",
+      "node_kind": "bounded-control-iteration",
+      "evidence_gate": "observed iteration, stop, budget and receipt",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.swarm",
+      "name": "Authenticated Swarm",
+      "owner": "aoe2war.os.swarm",
+      "node_kind": "multi-agent-lease",
+      "evidence_gate": "independent worker identity and lease/receipt proof",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.army",
+      "name": "Engineering Army Formations",
+      "owner": "aoe2war.os.swarm",
+      "node_kind": "assigned-lane-formation",
+      "evidence_gate": "assigned vs verified-active distinct, cluster at scale",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.hierarchy",
+      "name": "Engineering Hierarchy",
+      "owner": "aoe2war.os.central-command",
+      "node_kind": "authority-structure",
+      "evidence_gate": "explicit approved authority edges and reviewer provenance",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.composer",
+      "name": "Kingdom Composer",
+      "owner": "aoe2war.role.system-composer",
+      "node_kind": "dry-run-workflow-dag",
+      "evidence_gate": "simulated until human-reviewed immutable plan admitted",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.run-up",
+      "name": "Kingdom Run-Up",
+      "owner": "aoe2war.os.deployment",
+      "node_kind": "deployment-state-read-projection",
+      "evidence_gate": "real B/C/E/F/G physical/live receipts before verified lights",
+      "phase": "source-design-only"
+    }
+  ],
+  "composition_contract": {
+    "version": "aoe2war.composer.plan.v1",
+    "draft_only": true,
+    "execution_authorized": false,
+    "input_required": [
+      "central_objective_id",
+      "central_approval_ref",
+      "source_sha",
+      "capability_registry_ref",
+      "constraints",
+      "budget",
+      "independent_review_gate"
+    ],
+    "node_fields": [
+      "immutable_id",
+      "kind",
+      "owner_os_id",
+      "task_ref",
+      "source_ref",
+      "scope",
+      "status",
+      "evidence_kind",
+      "evidence_ref",
+      "observed_at",
+      "confidence"
+    ],
+    "edge_kinds": [
+      "depends-on",
+      "blocks",
+      "leases",
+      "reviews",
+      "produces-receipt",
+      "reads-from",
+      "may-escalate"
+    ],
+    "states": [
+      "PROPOSED",
+      "ASSIGNED",
+      "SOURCE_VALIDATED",
+      "CI_PASS",
+      "HOST_VERIFIED",
+      "RUNNING_VERIFIED",
+      "LIVE_VERIFIED",
+      "HOLD",
+      "STALE",
+      "UNKNOWN"
+    ],
+    "truth_rules": [
+      "unknown is never green",
+      "visual animation is not a worker heartbeat",
+      "source and host do not imply public live",
+      "unreviewed graph is simulation not dispatch",
+      "no cyclic blocking edges or duplicate write leases",
+      "bounded retained receipt, least-privilege visibility"
+    ]
+  }
+}
