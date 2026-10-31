@@ -203,6 +203,7 @@ def stage_source(expected):
     (DEST/"r24-source-sha").write_text(SHA+"\n")
     need(old_identity()==before and boundary_sockets()==sockets,
          "OLD_WEB_OR_WOLO_CHANGED_DURING_SOURCE_STAGE")
+    write_once(AUDIT/"SOURCE_FILES.json",{"schema":"r25-c-source-files.v1","rows":rows})
     write_once(AUDIT/"SOURCE_STAGED.json",{
        "status":"SOURCE_STAGED","candidate_sha":SHA,"git_archive_sha256":expected,
        "archive_bytes":length,"expanded_source_bytes":total,
@@ -211,8 +212,6 @@ def stage_source(expected):
        "budget":budget,"old_web_mainpid":OLD_PID,
        "old_web_untouched":True,"financial_writes_authorized":False,
        "new_candidate_started":False})
-    # Retain full SHA256 manifest separately, root-owned and no overwrite.
-    write_once(AUDIT/"SOURCE_FILES.json",{"schema":"r25-c-source-files.v1","rows":rows})
     print("PASS:SOURCE_STAGED SHA="+SHA+" ARCHIVE_SHA256="+expected,flush=True)
     return True
 def build_source():
@@ -322,24 +321,14 @@ def build_source():
        "files":len(tree_rows),"root_sealed":True,
        "old_web_pid_untouched":OLD_PID,"new_service_started":False,
        "financial_writes_authorized":False,"budget":budget}
-    write_once(AUDIT/"BUILD_STAGED.json",manifest)
     write_once(AUDIT/"BUILD_FILES.json",{"schema":"aoe2war.r25.c.full-artifact-files.v1",
                                       "rows":tree_rows})
+    write_once(AUDIT/"BUILD_STAGED.json",manifest)
     print("PASS:BUILD_STAGED BUILD_ID="+build_id+" BUILD_VERSION="+version,flush=True)
     return True
-def start_candidate():
-    # Do not start until B/F provide independent POSITIVE nonfinancial runtime
-    # admission and host-verified read-only DB/secret/HTTP method isolation.
-    need(bool(HEX64.fullmatch(B_APPROVED_RECEIPT_SHA256)) and
-         bool(HEX40.fullmatch(F_APPROVED_RUNTIME_SOURCE_SHA)),
-         "B_AND_F_INDEPENDENT_POSITIVE_RUNTIME_APPROVAL_NOT_INSTALLED")
-    old_identity()
-    protected_root_dir(B_APPROVAL.parent,0o700)
-    raw=read_no_symlink(B_APPROVAL,65536,True)
-    need(sha(raw)==B_APPROVED_RECEIPT_SHA256,"B_ROOT_SEALED_BYTES_NOT_APPROVED")
-    b=json.loads(raw)
-    need(b.get("schema")=="aoe2war.r25.b.positive-parallel-runtime.v1" and
-         b.get("candidate_sha")==SHA and
+def verified_b_runtime(b,raw):
+    need(type(b)==dict and b.get("schema")=="aoe2war.r25.b.positive-parallel-runtime.v1"
+         and b.get("candidate_sha")==SHA and
          b.get("wargraph_disabled_verified") is True and
          b.get("server_enforced_select_only_pg_role") is True and
          b.get("no_custody_secrets") is True and
@@ -347,12 +336,101 @@ def start_candidate():
          b.get("egress_to_financial_writers_denied") is True and
          b.get("release_authorized") is True,
          "B_RUNTIME_OR_FINANCIAL_ISOLATION_UNVERIFIED")
-    # F must publish its accepted service+ingress implementation before this
-    # stage is promoted into a running app. No bare Next on open localhost.
-    need(UNIT_PATH.is_file() and UNIT_PATH.stat().st_uid==0 and
-         (AUDIT/"BUILD_STAGED.json").is_file(),
-         "F_REVIEWED_SYSTEMD_UNIT_OR_C_BUILD_MISSING")
-    raise Hold("F_RUNTIME_START_INTEGRATION_PENDING_NO_UNREVIEWED_ROOT_START")
+    for name in ("unit_sha256","prestart_sha256","readonly_env_sha256",
+                 "postgres_roles_catalog_sha256","method_guard_proof_sha256"):
+        need(type(b.get(name))==str and HEX64.fullmatch(b[name]),
+             "B_PHYSICAL_REVIEW_DIGEST_MISSING:"+name)
+    need(b.get("candidate_web_user")==WEBUSER and
+         b.get("candidate_port")==3031 and
+         b.get("old_web_pid")==OLD_PID,
+         "B_SEPARATE_WEB_PROCESS_BINDING_MISMATCH")
+def start_candidate():
+    # Never start without independent B PHYSICAL positive financial separation
+    # and F's reviewed prestart ingress+DB proof. A standalone env toggle is
+    # insufficient. These review seals are intentionally EMPTY in C's PR.
+    need(bool(HEX64.fullmatch(B_APPROVED_RECEIPT_SHA256)) and
+         bool(HEX40.fullmatch(F_APPROVED_RUNTIME_SOURCE_SHA)),
+         "B_AND_F_INDEPENDENT_POSITIVE_RUNTIME_APPROVAL_NOT_INSTALLED")
+    before=old_identity();sockets=boundary_sockets();ensure_not_running_candidate()
+    protected_root_dir(AUDIT,0o700)
+    built=json.loads(read_no_symlink(AUDIT/"BUILD_STAGED.json",65536,True))
+    need(built.get("status")=="BUILD_STAGED" and built.get("candidate_sha")==SHA,
+         "C_ROOT_SEALED_FULL_BUILD_ABSENT")
+    need(not (AUDIT/"CANDIDATE_START_ATTEMPT.json").exists()
+         and not (AUDIT/"CANDIDATE_RUNNING.json").exists(),
+         "CANDIDATE_START_ALREADY_ATTEMPTED")
+    need((DEST/".next/BUILD_ID").read_text().strip()==built["build_id"]
+         and (DEST/".aoe2war-build-version").read_text().strip()==built["build_version"],
+         "BUILD_BYTES_CHANGED")
+    protected_root_dir(B_APPROVAL.parent,0o700)
+    raw=read_no_symlink(B_APPROVAL,65536,True)
+    need(sha(raw)==B_APPROVED_RECEIPT_SHA256,"B_ROOT_SEALED_BYTES_NOT_APPROVED")
+    b=json.loads(raw);verified_b_runtime(b,raw)
+    need(b.get("f_reviewed_source_sha")==F_APPROVED_RUNTIME_SOURCE_SHA,
+         "F_FINAL_SOURCE_REVIEW_MISMATCH")
+    prestart=B_APPROVAL.parent/"approved-runtime-prestart.py"
+    runtime=B_APPROVAL.parent/"readonly-runtime.env"
+    for filename,key in ((UNIT_PATH,"unit_sha256"),(prestart,"prestart_sha256"),
+                         (runtime,"readonly_env_sha256")):
+        content=read_no_symlink(filename,65536,True)
+        need(sha(content)==b[key],"B_APPROVED_UNIT_OR_ENV_BYTES_CHANGED")
+    need(stat.S_IMODE(runtime.stat().st_mode)==0o600,
+         "B_RUNTIME_SECRETS_NOT_ROOT_0600")
+    need(b"__WRITER_DATABASE_CREDENTIAL__" not in runtime.read_bytes(),
+         "B_PLACEHOLDER_WRITER_CREDENTIAL")
+    try:account=pwd.getpwnam(WEBUSER)
+    except KeyError:
+        command(["/usr/sbin/useradd","--system","--no-create-home","--shell",
+                 "/usr/sbin/nologin",WEBUSER])
+        account=pwd.getpwnam(WEBUSER)
+    need(account.pw_uid not in (0,1000,pwd.getpwnam(BUILDER).pw_uid),
+         "WEB_RUNTIME_UID_NOT_DISTINCT")
+    # root-owned source must not be writable by web UID after staging.
+    for p in (DEST,DEST/".next",DEST/"node_modules"):
+        st=p.lstat()
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,
+             "CANDIDATE_BUILD_NOT_ROOT_SEALED")
+    write_once(AUDIT/"CANDIDATE_START_ATTEMPT.json",{
+        "status":"START_ATTEMPT","candidate_sha":SHA,"old_web_pid":OLD_PID,
+        "approved_B_sha256":B_APPROVED_RECEIPT_SHA256,
+        "f_review_sha":F_APPROVED_RUNTIME_SOURCE_SHA,"finance_mutation":False})
+    command(["/usr/bin/systemctl","daemon-reload"],timeout=40)
+    started=False
+    try:
+        command(["/usr/bin/systemctl","start",NEW_UNIT],timeout=95)
+        started=True
+        raw=command(["/usr/bin/systemctl","show",NEW_UNIT,
+                     "-p","MainPID","-p","User","-p","ActiveState"]).decode()
+        fields=dict(line.split("=",1) for line in raw.splitlines() if "=" in line)
+        pid=int(fields.get("MainPID","0"))
+        need(pid>1 and fields.get("ActiveState")=="active" and
+             fields.get("User")==WEBUSER,"NEW_WEB_MAINPID_OR_USER_MISMATCH")
+        need(pathlib.Path("/proc",str(pid),"status").read_text().find(
+             "Uid:\t"+str(account.pw_uid))>=0,"NEW_WEB_PID_OS_UID_NOT_ISOLATED")
+        ports=command(["/usr/bin/ss","-H","-ltnp"]).decode()
+        need(any(re.search(r":3031\s",row) for row in ports.splitlines()),
+             "NEW_PORT_3031_NOT_LISTENING")
+        url="http://127.0.0.1:3031/api/deployment-version"
+        with urllib.request.urlopen(urllib.request.Request(url,method="GET"),timeout=10) as response:
+            need(response.status==200,"NEW_BUILD_VERSION_HTTP_NOT_200")
+            version=json.loads(response.read(8192))
+        need(version.get("buildVersion")==built["build_version"],
+             "NEW_CANDIDATE_HTTP_BUILD_VERSION_DRIFT")
+        need(old_identity()==before and boundary_sockets()==sockets,
+             "ORIGINAL_WEB_OR_FINANCE_CHANGED_AFTER_CANDIDATE_START")
+        write_once(AUDIT/"CANDIDATE_RUNNING.json",{
+            "status":"CANDIDATE_RUNNING","candidate_sha":SHA,"next_build_id":built["build_id"],
+            "build_version":built["build_version"],"mainpid":pid,
+            "web_user":WEBUSER,"port":3031,"old_web_mainpid_unchanged":OLD_PID,
+            "financial_writes_authorized":False,"public_nginx_not_changed":True})
+        print("PASS:CANDIDATE_RUNNING 3031 PID="+str(pid)+" BUILD_ID="+built["build_id"])
+    except Exception:
+        if started:
+            # Only the NEW web is ever stopped on failed independent admission.
+            subprocess.run(["/usr/bin/systemctl","stop",NEW_UNIT],
+                           capture_output=True,timeout=45)
+        raise
+
 def main():
     ap=argparse.ArgumentParser()
     commands=ap.add_mutually_exclusive_group(required=True)
