@@ -40,6 +40,8 @@ class TestBOneUseWitnessRepair(unittest.TestCase):
         self.assertNotIn("systemctl", code)
         self.assertIn("os.replace(staging, OLD)", code)
         self.assertIn("os.O_EXCL", inspect.getsource(b.write_new))
+        self.assertLess(code.index("fsync_directory(JOURNAL)"), code.index("os.replace(staging, OLD)"))
+        self.assertLess(code.index("fsync_directory(OLD.parent)  # stage"), code.index("os.replace(staging, OLD)"))
         self.assertIn("JOURNAL.exists()", code)
         self.assertIn("original_receipt()", inspect.getsource(b.host_admission))
         self.assertIn("w.db_proof(", inspect.getsource(b.host_admission))
@@ -129,6 +131,7 @@ class TestBOneUseWitnessRepair(unittest.TestCase):
             fake_trusted = lambda p, **kw: Path(p).read_bytes()
             new = b"new-w-bytes"
             with patch.object(b, "OLD", dest), patch.object(b, "JOURNAL", repair), \
+                 patch.object(b, "SETUP", setup), \
                  patch.object(b, "OLD_SHA", hashlib.sha256(b"old-b-bytes").hexdigest()), \
                  patch.object(b, "NEW_SHA", hashlib.sha256(new).hexdigest()), \
                  patch.object(b, "trusted", side_effect=fake_trusted), \
