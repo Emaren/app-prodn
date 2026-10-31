@@ -101,6 +101,13 @@ class R24BIsolationContractTests(unittest.TestCase):
         self.assertFalse(source["wargraph_launch_explicit_disable_supported"])
         self.assertFalse(source["db_preview_transaction_read_only_flag_supported"])
 
+    def test_old_financial_web_process_continuity_is_explicit(self):
+        import inspect
+        raw = inspect.getsource(b)
+        self.assertIn("original_old_website_wargraph_runtime_may_be_financial_producer", raw)
+        self.assertIn("parallel_original_service_preservation_verified", raw)
+        self.assertIn("old web service MainPID/runtime/WarGraph producer running AFTER public cutover", raw)
+
     def test_no_runtime_file_access_or_security_state_changes(self):
         import inspect
         raw = inspect.getsource(b)
