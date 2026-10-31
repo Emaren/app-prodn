@@ -1,0 +1,68 @@
+{
+  "schema": "aoe2war.central-agent-os-bindings.v1",
+  "version": 1,
+  "source_registry_pr": 1090,
+  "source_registry_sha": "8b275229c16f67dc65f9d3bd4b500faf11aa72a0",
+  "source_ledger_pr": 1086,
+  "source_ledger_sha": "192416ccce25d90e8243d9513c2bc896862f0c3f",
+  "authority": "task-domain-index-only-not-worker-or-release-authorization",
+  "bindings": [
+    {
+      "lane": "B",
+      "os_ids": [
+        "deployment",
+        "release"
+      ],
+      "rationale": "Financially harmless website-only candidate boundary"
+    },
+    {
+      "lane": "C",
+      "os_ids": [
+        "release",
+        "deployment"
+      ],
+      "rationale": "Exact candidate stage/build/parallel runtime"
+    },
+    {
+      "lane": "D",
+      "os_ids": [
+        "deployment",
+        "central-command"
+      ],
+      "rationale": "Scoped admission policy review and existing human authority"
+    },
+    {
+      "lane": "E",
+      "os_ids": [
+        "storage",
+        "recovery"
+      ],
+      "rationale": "Capacity, durable backups and rollback proofs"
+    },
+    {
+      "lane": "F",
+      "os_ids": [
+        "release",
+        "deployment"
+      ],
+      "rationale": "Sole reviewed production cutover execution"
+    },
+    {
+      "lane": "G",
+      "os_ids": [
+        "release",
+        "recovery",
+        "central-command"
+      ],
+      "rationale": "Read-only live postflight, rollback witness and evidence ledger"
+    }
+  ],
+  "rules": [
+    "An assignment is not a running OS worker",
+    "A public OS card is not a process",
+    "Doctor and Shepherd are supervisory roles, not subordinate OS workers",
+    "No duplicate polling, SSH, release authority or financial operations from read model",
+    "Draft OS identities remain planned, not deployed",
+    "P3 must never block website P0"
+  ]
+}
