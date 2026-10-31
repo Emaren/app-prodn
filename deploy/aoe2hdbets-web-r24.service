@@ -9,7 +9,7 @@ Wants=network-online.target
 Type=simple
 User=aoe2war-r24-web
 Group=aoe2war-r24-web
-WorkingDirectory=/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b
+WorkingDirectory=/var/lib/aoe2war-r25-web-0cee3c836c4b
 Environment=NODE_ENV=production
 Environment=WARGRAPH_RUNTIME_DISABLED=true
 Environment=AOE2WAR_PROD_DB_PREVIEW=true
@@ -34,7 +34,7 @@ PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadOnlyPaths=/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b
+ReadOnlyPaths=/var/lib/aoe2war-r25-web-0cee3c836c4b
 InaccessiblePaths=/etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
