@@ -5,6 +5,8 @@ on:
       - review/g-r24-live-web-finance-rollback-witness-20261031
     paths:
       - .github/workflows/g-r25-docsv2-seal.yml
+      - scripts/aoe2_g_r24_live_web_postflight.py
+      - tests/test_g_r24_live_web_postflight.py
 permissions:
   contents: write
 concurrency:
