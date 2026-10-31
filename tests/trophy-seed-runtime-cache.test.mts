@@ -74,6 +74,11 @@ test("public trophy readers project persisted rows without implicit economic wri
   assert.match(publicLoader, /prisma\.trophy\.findUnique/);
   assert.doesNotMatch(publicLoader, /ensure(?:Public)?TrophySeedData\s*\(/);
 });
+const titleState = readFileSync(
+  new URL("../lib/champions/titleState.ts", import.meta.url),
+  "utf8",
+);
+
 test("champions overlaps trophy state with leaderboard and profile reads", () => {
   const loaderStart = titleState.indexOf(
     "export async function loadChampionTitleEconomyState",
