@@ -222,7 +222,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-10-31",
       "sensitivity": "internal",
-      "sha256": "36dbd1ec523e2cba4001d5636dc07665e1075551993caf80c652e4c8654dde8c",
+      "sha256": "5cebba3f230d43a6132bef3a6c0d6cc270dcaac1675abb481419b2a44f8c693c",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -231,7 +231,7 @@
         "vpssentry",
         "aoe2-watcher"
       ],
-      "title": "AoE2WAR OS \u2014 Canonical inventory and capability ownership",
+      "title": "AoE2WAR OS — Canonical inventory and capability ownership",
       "type": "reference"
     },
     {
@@ -303,7 +303,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -411,7 +411,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-10-30",
       "sensitivity": "internal",
-      "sha256": "7b3fdaed37287f5221be1bc264ad1dda5ebfb74771f81622e3326e44bdb87ae8",
+      "sha256": "1c749e1386cfbe4b08a150101fc838e19b64297f6f4c76c0e4f951cf5e92bb81",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -421,7 +421,7 @@
         "traffic",
         "aoe2-watcher"
       ],
-      "title": "Central Command \u2014 Thousand-Engineer Swarm & Kingdom Construction Observatory",
+      "title": "Central Command — Thousand-Engineer Swarm & Kingdom Construction Observatory",
       "type": "reference"
     },
     {
@@ -562,7 +562,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 \u2014 presentation and release contract",
+      "title": "Championship Hall E5 — presentation and release contract",
       "type": "reference"
     },
     {
@@ -714,7 +714,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "82c5c2402e315618da358ce609eff0072640b1ac5e0fd46db5665a06df525425",
+      "sha256": "2ed3e9c2c4dfa0497e0304cc76f675972691c43800805650aae0653ff5c1b6b8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1026,6 +1026,30 @@
         "wolochain"
       ],
       "title": "Kingdom Civic Surfaces",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "visual-workflow-design-not-runtime-or-financial-authorization",
+      "id": "aoe2war.app-prodn.kingdom-composer-visual-architecture",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "3d59a2cadc7394b5fa6c4f34270c351e4eeb73a8c8d5193e99ce258ff852d125",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "vpssentry"
+      ],
+      "title": "Kingdom Composer & Autonomous Engineering Visuals — Draft Contract",
       "type": "reference"
     },
     {
@@ -1413,7 +1437,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1435,7 +1459,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1503,7 +1527,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1550,7 +1574,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1642,7 +1666,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1755,7 +1779,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance 88 \u2014 Repeatable page qualification protocol",
+      "title": "Renaissance 88 — Repeatable page qualification protocol",
       "type": "runbook"
     },
     {
@@ -1777,7 +1801,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance Tab D \u2014 private census forge and Test Forge queue",
+      "title": "Renaissance Tab D — private census forge and Test Forge queue",
       "type": "runbook"
     },
     {
@@ -1825,7 +1849,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -2146,7 +2170,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2371,7 +2395,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2400,7 +2424,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "docs/central-thousand-engineer-doctrine-20261030",
-    "commit": "e60f03477c0030b274964b5edc8c4fec17dcac57"
+    "commit": "bebcbaccd10a30a6bda64e6b2b7815eb2e6ecb73"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

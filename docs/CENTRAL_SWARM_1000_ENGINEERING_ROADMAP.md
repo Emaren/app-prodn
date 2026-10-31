@@ -177,7 +177,7 @@ Every seven days publish a compact source-linked report to the Central evidence 
 | **Source-normalized subordinate roster** | **15** | Ten source-present, five draft/proposed; *not independently running OS worker count* |
 | Umbrella AoE2WAR OS | **1** | `/aoe2war-os`; taxonomy/integration identity, not an additional subordinate |
 | **Named planning identities including umbrella** | **16** | Identity catalog only; `systemwide_unique_operational_os_total = null` |
-| Diagnostic/coordination roles | **2** | System Doctor and System Shepherd remain non-OS roles |
+| Diagnostic/coordination/composition roles | **3** | System Doctor and System Shepherd remain non-OS roles |
 
 **Reconciled alias/domain verdict:**
 - **Performance OS → Speed OS**: `docs/PERFORMANCE_OS.md` explicitly describes the same Speed OS V2/V3 route/cohort collector, receipt authority, and optimization workflow. Preserve the existing performance document ID `aoe2war.app-prodn.performance-os` as a separate documentation record; it is not a duplicate operational owner.
@@ -186,7 +186,7 @@ Every seven days publish a compact source-linked report to the Central evidence 
 - **Council OS → composite diagnostics and Central advisory facet**: `scripts/aoe2_council.py` combines Doctor, Host, Release and other evidence; it does not create independent queue or release authority.
 - **Loop Engine and Graph/Provenance engine → cross-cutting primitives** pending distinct reviewed owner, source/permission, execution and value contract. An agent may own feedback control; provenance is cross-domain. Neither automatically adds an OS.
 
-Stable IDs are **append-only**: `aoe2war.os.<short-id>` for subordinate, `aoe2war.os.umbrella` for the umbrella and `aoe2war.role.system-doctor/system-shepherd` for supervisors. Existing short IDs, document frontmatter IDs, release receipts, Git paths and UI routes are never silently repurposed to satisfy a number. Renames become aliases; a new authority requires a separate immutable ID, independent review and new evidence/permission gates.
+Stable IDs are **append-only**: `aoe2war.os.<short-id>` for subordinate, `aoe2war.os.umbrella` for the umbrella and `aoe2war.role.system-doctor/system-shepherd/system-composer` for supervisors. Existing short IDs, document frontmatter IDs, release receipts, Git paths and UI routes are never silently repurposed to satisfy a number. Renames become aliases; a new authority requires a separate immutable ID, independent review and new evidence/permission gates.
 
 **Source and execution ownership:** Release OS owns `bin/aoe2war`, `scripts/aoe2_release.py`, `scripts/aoe2_release_ship.py` and protected certified rollback; Deployment OS #1088 is **additive** source-admission policy, not a new release engine. Central Command OS owns owner priorities and human-reviewed six-lane decisions; Orchestra may govern DAG/lease handoffs, Agent bounds single-worker tools/permissions/cost, Swarm only proves multi-agent throughput after measured load and independent reviewer admission. Storage/Recovery own data-preservation and actual restore proofs, Speed/Performance own latency cohort receipts, Documentation owns DocsV2, Host owns native health, Replay Truth owns replay origin, Code Health owns source scan diagnostic receipts. WoloChain health never grants Wolo finance or custody rights.
 
@@ -197,3 +197,27 @@ Stable IDs are **append-only**: `aoe2war.os.<short-id>` for subordinate, `aoe2wa
 **R25 P0 invariants supersede historical W1 sequencing in sections 1 and 8:** frozen #1061 `0cee3c836c4b0760478280c145e02e81e470ce0e` goes to a separate nonfinancial 3031 web process. The existing 3030 PID `2625090` may host settlement-capable WarGraph and MUST NOT be stopped/restarted. B server-enforces SELECT-only role, no custody secrets, startup method/GET/rewrite boundary; C supplies exact immutable source/build; E proves actual two-filesystem capacity and usable rollback; F #1083 exclusively executes approved Nginx-only routing with original 3030 rollback; G witnesses public+internal Next BUILD_ID, source and unchanged protected services. This P3 source taxonomy **cannot delay F's P0 transaction or create a new blocker**. Original #1063 full-finance signer/RSA policy remains intact and separate.
 
 **Promotion gate:** Reviewed exact identity source plus full DocsV2 registry/index, existing mandatory CI, domain owner source authority, independent security/financial boundary approval, value-gate evidence, and explicit source/physical/runtime/live state separation. No 16/16 "operational" score without actual receipts. The registry is versioned source proposal until PR #1025 review, CI and merge; it is not a production permit. Workload scaling to 1,000 agents remains P3 and never prerequisites the next website release.
+
+## 12. R25 D Composer and visual engineering hierarchy — source-only P3
+
+Central source [#1090](https://github.com/Emaren/app-prodn/pull/1090) exact `8b275229c16f67dc65f9d3bd4b500faf11aa72a0`; [registry](../config/aoe2war-os-registry.v1.json), [census](AOE2WAR_OS_CENSUS.md), [visual contract](KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md). **No new service, worker, deployment permit, production gate, or financial authority.**
+
+**Non-OS roles (3):** `aoe2war.role.system-doctor` diagnoses, `aoe2war.role.system-shepherd` supervises/escalates, and `aoe2war.role.system-composer` plans workflows **inside `aoe2war.os.orchestra`**. The 15-subordinate-plus-umbrella roster stays 16 named OS planning identities, not 16 running processes. Eight public constellation IDs, private Central, distinct source-present Code Health, five draft/proposed systems; Performance aliases Speed; Renaissance is an integration overlay; Council is a diagnostic facet; Loop and Graph are cross-cutting components.
+
+**Authority flow:** Owner/Central Command approves objectives, queue #984, priority, constraints and scope → Composer produces hashed dry-run dependency DAG, agent capability/budget assignments, cycle and write-lease conflict checks and independent-review gates → Orchestra proposes admitted scheduling/leases → bounded Agent OS workers → Swarm OS multi-agent coordination. Doctor evaluates and Shepherd escalates; neither approves. Release OS executes protected releases; Deployment OS [#1088](https://github.com/Emaren/app-prodn/pull/1088) remains an additive scope/preflight policy. Composer cannot launch, transfer WOLO, authorize a signer, deploy, roll back or fabricate live heartbeat.
+
+### Seven immersive visual surfaces — distinct view identities, not OSs
+
+| Stable ID | Visual mode | Required evidence / measured value |
+| --- | --- | --- |
+| `aoe2war.visual.graph` | Neural dependency graph, typed edges, source-linked topology | Source/receipt-pinned links, cycle/conflict detection, provenance |
+| `aoe2war.visual.loop` | Observe → plan → act → verify → retain → stop/retry ring | Real iteration receipts, bounded stop/cost, verified transitions |
+| `aoe2war.visual.swarm` | Authenticated worker/lease/review fleet | Independently proved worker identity, bounded concurrency, fault isolation |
+| `aoe2war.visual.army` | Six owner-relayed lanes; zoom levels 7→9→12→24→100→250→1000 | Assigned/active/certified distinct; never fake 1,000 running workers |
+| `aoe2war.visual.hierarchy` | Owner/Central/Composer/Orchestra/Agent/Swarm/reviewer tree | Approval/advise/plan/execute edges, immutable owners |
+| `aoe2war.visual.composer` | Visual drag/inspect workflow mixing desk, dry-run DAG | Immutable simulation plan, independent approval; no browser execution |
+| `aoe2war.visual.run-up` | Dual-rail protected 3030 and candidate 3031 release engine | Exact authentic B/C/E/F/G host/public/rollback receipts |
+
+**One observation spine:** typed immutable nodes `(id,kind,owner_os_id,source_ref,evidence_kind,evidence_ref,observed_at,status,confidence)`, edges `depends-on/blocks/leases/reviews/produces-receipt/reads-from/may-escalate`; one shared bounded projection reuses #1086 ledger, #934/#984, existing Doctor/Shepherd/Intelligence read side and #1089 Run-Up, never duplicate polling. Truth states PROPOSED/ASSIGNED/SOURCE_VALIDATED/CI_PASS/HOST_VERIFIED/RUNNING_VERIFIED/LIVE_VERIFIED/HOLD/STALE/UNKNOWN must not collapse. No cosmetic motion counted as telemetry.
+
+**Visual-first acceptance:** expressive minimal-text public sanitized read-only graphs with on-demand evidence drawers; private approved draft plan editor only, never browser-to-root or money transfer; keyboard/touch, high contrast, reduced motion, semantic fallback, 375/768/1440 responsive layouts, cluster/virtualize at high cardinality, measure CPU/network and HEL1 impact. Proof of value = fewer duplicate handoffs/lease collisions, real worker throughput, shorter lead time, up-to-date truth, measured rendering cost. Unknown metrics remain UNKNOWN. Separate future G UI prototype/Chrome/auth/security gate; **this P3 work cannot block sole production integrator F #1083 or frozen #1061 P0**.
