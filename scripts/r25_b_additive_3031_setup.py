@@ -33,6 +33,11 @@ DROPIN=Path("/etc/systemd/system/aoe2hdbets-web-r24.service.d/90-r25-b-isolation
 RECEIPT=Path("/var/lib/aoe2war-r25-b-setup/receipt.json")
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 WITNESS_SHA="c13d42c7de3ab8c9e55a68008ede2a9e2b55375d4aeae735cd47cf368b0a5e80"
+DROPIN_GIT_BLOB="c9dc1999ba5c62f149240e4bab11b579afeb69bc"
+NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
+
+def gitblob(data):
+    return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\x00"+data).hexdigest()
 ASSETS=("guard","witness","dropin","nft")
 MAX_BYTES={"guard":8192,"witness":32768,"dropin":8192,"nft":4096}
 SCHEMA="aoe2war.r25.b.additive-3031-setup.v1"
