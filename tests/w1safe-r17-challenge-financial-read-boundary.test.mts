@@ -48,6 +48,18 @@ test("Challenge contact/thread public read does not wake title or escrow reconci
   assert.doesNotMatch(source, /\breconcileChampionshipEvidence\s*\(/);
 });
 
+test("Challenge Hall and exact challenge GET readers cannot mutate settlement/title state", () => {
+  const detail = section("export async function loadChallengeTileById(", "export async function loadChallengeHubSnapshot(");
+  const hall = challenge.slice(challenge.indexOf("export async function loadChallengeHubSnapshot("));
+  assert.match(detail, /loadScheduledMatchRows\s*\(/);
+  assert.match(hall, /loadChallengeHistoryRows\s*\(/);
+  assert.doesNotMatch(detail, /\bpersistScheduledMatchResults\s*\(/);
+  assert.doesNotMatch(hall, /\bpersistScheduledMatchResults\s*\(/);
+  assert.doesNotMatch(hall, /\breconcileChampionshipEvidence\s*\(/);
+  const allCalls = [...challenge.matchAll(/\bpersistScheduledMatchResults\s*\(/g)];
+  assert.equal(allCalls.length, 2, "only original function definition and authenticated producer may retain this settlement-capable call");
+});
+
 test("authenticated five-minute Challenge POST retains original real replay/title writer", () => {
   assert.match(timer, /OnUnitActiveSec=5min/);
   assert.match(reconcile, /export async function POST\s*\(/);
