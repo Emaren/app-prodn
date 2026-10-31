@@ -187,6 +187,18 @@ def prove_preimage(j,s):
          "B_FINANCIAL_UNITS_DRIFT")
     need(sha(canonical(listener_lines(s["wolo"])))==j["wolo_snapshot_sha256"],
          "WOLO_SIGNED_PROCESS_SOCKET_DRIFT")
+def prove_rollback_preimage(j,s):
+    # Deliberately DO NOT require the new candidate service to be alive:
+    # an unhealthy/crashed candidate is the primary reason to roll back.
+    need("ActiveState=active" in s["original_web"] and
+         sha(s["original_web"].encode())==j["old_web_snapshot_sha256"],
+         "ROLLBACK_ORIGINAL_FINANCIAL_WEB_PID_DRIFT")
+    need(sha(canonical(s["finance"]))==j["finance_snapshot_sha256"],
+         "ROLLBACK_FINANCIAL_UNITS_DRIFT")
+    need(sha(canonical(listener_lines(s["wolo"])))==j["wolo_snapshot_sha256"],
+         "ROLLBACK_WOLO_SOCKET_IDENTITY_DRIFT")
+def protected_continuity(s):
+    return (s["original_web"],s["finance"],listener_lines(s["wolo"]))
 def verified_durable_e_rollback(j):
     # E's content-verification result is a readback receipt, never an
     # invented "rollback exercised" claim. Root custody + F digest bind.
@@ -522,25 +534,28 @@ def manual_rollback(nonce):
     need(sha(old)==commit["old_nginx_sha256"],
          "ORIGINAL_NGINX_ROLLBACK_BYTES_DRIFT")
     config=pathlib.Path(j["nginx_config"])
+    need(config==VHOST,"ROLLBACK_NGINX_DIFFERENT_VHOST_NOT_APPROVED")
     current=root_file(config,131072)
     nginx_loaded_vhost(current,config,old_count=0)
     need(sha(current)==commit["new_nginx_sha256"],
          "LIVE_NGINX_NOT_EXACT_CANDIDATE")
     s=snapshots(j["finance_units"])
-    prove_preimage(j,s)
+    prove_rollback_preimage(j,s)
     lockfd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
     try:
         try:fcntl.flock(lockfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError as err:raise Hold("ROLLBACK_GLOBAL_LOCK_BUSY") from err
         lock_check()
-        need(snapshots(j["finance_units"])==s,
+        need(protected_continuity(snapshots(j["finance_units"]))==
+             protected_continuity(s),
              "FINANCIAL_ORIGINAL_WEB_DRIFT_BEFORE_ROLLBACK")
         replace_existing(config,old)
         nginx_reload()
         nginx_loaded_vhost(old,config,old_count=6)
         need(public_version()==http_version(OLD_PORT),
              "PUBLIC_OLD_VERSION_NOT_RESTORED")
-        need(snapshots(j["finance_units"])==s,
+        need(protected_continuity(snapshots(j["finance_units"]))==
+             protected_continuity(s),
              "FINANCIAL_ORIGINAL_WEB_DRIFT_AFTER_ROLLBACK")
         durable_write(record/"rollback.json",canonical({"status":"OLD_PUBLIC_PROXY_RESTORED",
              "nonce":nonce,"old_config_sha256":sha(old),"original_web_restarted":False})+b"\n")
