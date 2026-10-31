@@ -34,7 +34,7 @@ class R25EParallelCertificate(unittest.TestCase):
         self.durable.mkdir(parents=True)
         self.stagebase = self.home/'staging'
         self.stagebase.mkdir()
-        self.stage = self.stagebase/'app-prodn-r24-w1safe-0cee3c836c4b'
+        self.stage = self.stagebase/'aoe2war-r25-web-0cee3c836c4b'
         self.audit = self.home/'aoe2war-r25-c-additive'
         self.audit.mkdir()
         self.archivebase = self.home/'source-bundles'
@@ -96,9 +96,9 @@ class R25EParallelCertificate(unittest.TestCase):
         self.args.durable_next=str(dest)
         return dest
 
-    def test_c_compile_stage_contract_is_var_www_sibling(self):
+    def test_c_compile_stage_contract_is_new_root_protected_var_lib(self):
         self.assertEqual(str(e.STAGED), str(self.stage))
-        # Runtime site path explicitly differs from old .next, preventing in-place swaps.
+        # Standalone /var/lib root-trust stage avoids mutable live-web ancestry.
         self.assertNotEqual(self.stage, self.web)
         self.assertNotEqual(self.stage, self.old)
 
