@@ -252,7 +252,11 @@ class FrozenReleaseP0Tests(unittest.TestCase):
             with self.assertRaises(root.Hold):
                 root.issue(["PRE_STAGE",root.TRAINS["W1"][0]])
             audit.assert_called_once()
-            ledger.assert_not_called()
+            # R11 genuine FD200 admission happens BEFORE the audit; a
+            # failed native audit still MUST NOT create any nonce/permit.
+            ledger.assert_called_once()
+            ledger.return_value.inherited_lease_fd.assert_called_once()
+            ledger.return_value.issue.assert_not_called()
 
     def test_partial_finance_writers_and_unsigned_reports_refused(self):
         with self.assertRaises(root.Hold):
