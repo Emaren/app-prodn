@@ -249,7 +249,7 @@ def nginx_route(approved):
          "G_UNREVIEWED_NGINX_VHOST")
     conf=root_file(config,131072)
     compiled=run(["/usr/sbin/nginx","-T"],timeout=25)
-    sections=re.split(rb"(?m)^# configuration file ([^\\r\\n]+):[ \\t]*\\r?\\n",compiled)
+    sections=re.split(rb"(?m)^# configuration file ([^\r\n]+):[ \t]*\r?\n",compiled)
     need(len(sections)>=3 and len(sections)%2==1,
          "ACTIVE_NGINX_T_VHOST_MARKERS_MISSING")
     selected=0
@@ -257,7 +257,7 @@ def nginx_route(approved):
         try:matches=os.path.samefile(sections[i].decode("utf8","strict"),config)
         except (FileNotFoundError,OSError):matches=False
         if matches:
-            need(sections[i+1].rstrip(b"\\r\\n")==conf.rstrip(b"\\r\\n"),
+            need(sections[i+1].rstrip(b"\r\n")==conf.rstrip(b"\r\n"),
                  "ACTIVE_NGINX_T_VHOST_BYTES_DRIFT")
             selected+=1
     need(selected==1 and b"server_name aoe2war.com" in compiled,
