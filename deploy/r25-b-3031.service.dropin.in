@@ -2,8 +2,8 @@
 # C must place this as a ROOT-owned 0644 drop-in in that NEW unit only.
 # Never copy into original aoe2hdbets-web.service.
 [Service]
-User=aoe2war_r25_web
-Group=aoe2war_r25_web
+User=aoe2war-r24-web
+Group=aoe2war-r24-web
 Environment=NODE_ENV=production
 Environment=WARGRAPH_RUNTIME_DISABLED=true
 Environment=AOE2WAR_PROD_DB_PREVIEW=true
@@ -11,9 +11,9 @@ Environment=AOE2WAR_R25_ISOLATED_WEB=true
 Environment=NODE_OPTIONS=--require=/usr/local/lib/aoe2war-r25/r25_b_guard.cjs
 Environment=HOSTNAME=127.0.0.1
 Environment=PORT=3031
-Environment=USER=aoe2war_r25_web
-Environment=LOGNAME=aoe2war_r25_web
-EnvironmentFile=/etc/aoe2war/r25-parallel-web/database.env
+Environment=USER=aoe2war-r24-web
+Environment=LOGNAME=aoe2war-r24-web
+EnvironmentFile=/etc/aoe2war/r24-parallel-web/readonly-runtime.env
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
