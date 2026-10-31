@@ -190,7 +190,24 @@ def write_once(path, data):
         os.fsync(f.fileno())
     os.chown(path, 0, 0)
     os.chmod(path, 0o600)
-    os.fsync(os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC))
+    dfd = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    try:
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
+
+def seal_audit(path):
+    """Require Linux immutable inode flag; fail closed if filesystem refuses.
+
+    Root with CAP_LINUX_IMMUTABLE can later deliberately remove this flag;
+    independent off-host receipt replication still required for durable proof.
+    """
+    protected(path, directory=False)
+    subprocess.run(["/usr/bin/chattr", "+i", str(path)], check=True,
+                   capture_output=True, timeout=8)
+    flags = subprocess.run(["/usr/bin/lsattr", "-d", str(path)],
+                           check=True, capture_output=True, timeout=8)
+    need(b"i" in flags.stdout.split(maxsplit=1)[0], "AUDIT_IMMUTABLE_FLAG_NOT_ESTABLISHED")
 
 def require_absent(p):
     need(not p.exists() and not p.is_symlink(), "EXISTING_OR_PARTIAL_RECOVERY_HOLD")
@@ -229,6 +246,9 @@ def apply(envelope):
                    "finance_authorized": False, "helpers_installed": False}
         write_once(NEW / "candidate-receipt.json", canonical(receipt) + b"\n")
         write_once(txn / "commit.json", canonical(receipt) + b"\n")
+        for name in ("intent.json", "original-owner-v4-public.pem",
+                     "new-owner-v6-public.pem", "commit.json"):
+            seal_audit(txn / name)
         need(secure_read(NEW / "owner-public.pem") == pub and
              secure_read(txn / "commit.json") == secure_read(NEW / "candidate-receipt.json")
              and original_state() == old, "POST_COMMIT_VERIFICATION_FAILED")
@@ -244,6 +264,12 @@ def rollback(nonce, consent):
     old = original_state()
     txn = AUDIT / ("r23-v6-" + nonce)
     protected(txn)
+    for name in ("intent.json", "original-owner-v4-public.pem",
+                 "new-owner-v6-public.pem", "commit.json"):
+        protected(txn / name, directory=False)
+        flags = subprocess.run(["/usr/bin/lsattr", "-d", str(txn / name)],
+                               check=True, capture_output=True, timeout=8)
+        need(b"i" in flags.stdout.split(maxsplit=1)[0], "ROLLBACK_AUDIT_NOT_IMMUTABLE")
     receipt = parse(secure_read(txn / "commit.json"))
     need(receipt.get("schema") == SCHEMA + ".receipt" and
          receipt.get("nonce") == nonce and receipt.get("candidate_only") is True,
@@ -267,6 +293,7 @@ def rollback(nonce, consent):
         write_once(txn / "rollback.json", canonical({
             "schema": SCHEMA + ".rollback", "nonce": nonce,
             "original_v4_unchanged": True, "candidate_only": True}) + b"\n")
+        seal_audit(txn / "rollback.json")
         print("PASS:R23_V6_PUBLIC_CANDIDATE_ROLLED_BACK; AUDIT_PRESERVED")
     finally:
         os.close(fd)
