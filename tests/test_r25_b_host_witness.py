@@ -22,7 +22,8 @@ class TestBHostWitness(unittest.TestCase):
 
     def test_role_security_accepts_actual_server_catalog_proof_only(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -37,9 +38,42 @@ class TestBHostWitness(unittest.TestCase):
         self.assertIn("/usr/bin/psql",f.call_args.args[0])
         self.assertNotIn("dummy",repr(f.call_args.args[0]))
 
+    def test_nontrigger_volatile_and_definer_remain_fail_closed(self):
+        import inspect
+        sql=b.SQL
+        self.assertIn("p.prorettype='pg_catalog.trigger'::regtype",sql)
+        self.assertIn('AND NOT (p.prorettype=',sql)
+        self.assertIn("dep.deptype='e'",sql)
+        self.assertIn('p.prosecdef',sql)
+        self.assertIn('no_callable_security_definer',sql)
+        self.assertIn('no_callable_volatile_user_functions',sql)
+        self.assertIn('reviewed_trigger_exclusions',sql)
+
+    def test_role_wrong_trigger_count_fails(self):
+        safe={'session_user':b.DB_ROLE,'current_user':b.DB_ROLE,
+              'database':'app','transaction_read_only':'on',
+              'reviewed_trigger_exclusions':38}
+        for key in ('role_restricted','no_writable_role_membership','no_db_create',
+                    'no_schema_create','no_table_mutation','no_sequence_mutation',
+                    'no_callable_security_definer','no_callable_volatile_user_functions'):
+            safe[key]=True
+        with patch.object(b,'run',return_value=json.dumps(safe).encode()), \
+             patch.object(b,'reject_postgres_local_trust',return_value=True):
+            with self.assertRaisesRegex(RuntimeError,'DB_REVIEWED_TRIGGER_SIGNATURE_COUNT_NOT_39'):
+                b.db_proof('postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app',17251)
+
+    def test_private_cache_write_probe_only_enters_candidate_mount(self):
+        with patch.object(b,'run',return_value=b'PASS_PRIVATE_CACHE_DAC\\n') as runner:
+            self.assertTrue(b.private_cache_write_proof(999,17251,17251))
+            args=runner.call_args.args[0]
+            self.assertEqual(args[:4],['/usr/bin/nsenter','--target','999','--mount'])
+            self.assertIn('os.setuid(17251)',args[-1])
+            self.assertIn("f.unlink()",args[-1])
+
     def test_role_writable_grant_rejects(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -52,7 +86,8 @@ class TestBHostWitness(unittest.TestCase):
 
     def test_role_security_definer_rejects(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -65,7 +100,8 @@ class TestBHostWitness(unittest.TestCase):
 
     def test_role_callable_volatile_function_rejects(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -168,7 +204,10 @@ meta skuid 1000 ct state new drop"""
             if unit==b.OLD_UNIT:return {"ActiveState":"active","MainPID":"2625090"}
             return {"User":b.USER,"WorkingDirectory":str(b.SOURCE),
                     "InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
-                    "ReadWritePaths":str(b.SOURCE/".next"/"cache")}
+                    "ReadWritePaths":str(b.SOURCE/".next"/"cache")+" /var/cache/aoe2war-r25-b-next-cache",
+                    "CacheDirectory":"aoe2war-r25-b-next-cache",
+                    "CacheDirectoryMode":"0700",
+                    "BindPaths":"/var/cache/aoe2war-r25-b-next-cache:"+str(b.SOURCE/".next"/"cache")}
         with patch.object(b.os,"geteuid",return_value=0), \
              patch.object(b.socket,"gethostname",return_value=b.HOST), \
              patch.object(b,"require_root_file",return_value="a"*64), \

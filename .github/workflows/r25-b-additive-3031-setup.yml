@@ -5,6 +5,10 @@ on:
       - "scripts/r25_b_additive_3031_setup.py"
       - "scripts/r25_b_owner_mac_setup.py"
       - "tests/test_r25_b_additive_setup.py"
+      - "scripts/r25_b_host_witness.py"
+      - "tests/test_r25_b_host_witness.py"
+      - "deploy/r25-b-3031.service.dropin.in"
+      - ".github/workflows/r25-b-positive-3031.yml"
       - "deploy/r25-b-reviewed-c-base-3031.service"
       - ".github/workflows/r25-b-additive-3031-setup.yml"
   workflow_dispatch:
@@ -30,6 +34,10 @@ jobs:
               "scripts/r25_b_additive_3031_setup.py",
               "scripts/r25_b_owner_mac_setup.py",
               "tests/test_r25_b_additive_setup.py",
+              "scripts/r25_b_host_witness.py",
+              "tests/test_r25_b_host_witness.py",
+              "deploy/r25-b-3031.service.dropin.in",
+              ".github/workflows/r25-b-positive-3031.yml",
               "deploy/r25-b-reviewed-c-base-3031.service",
               ".github/workflows/r25-b-additive-3031-setup.yml",
           }
@@ -51,9 +59,10 @@ jobs:
           print("PASS:R25_B_SETUP_SYNTAX")
           PY
           python3 -B -m unittest discover -s tests -p test_r25_b_additive_setup.py -v
+          python3 -B -m unittest discover -s tests -p test_r25_b_host_witness.py -v
       - name: Source SHA256 identities for owner and C/F
         run: |
-          sha256sum scripts/r25_b_additive_3031_setup.py scripts/r25_b_owner_mac_setup.py
+          sha256sum scripts/r25_b_additive_3031_setup.py scripts/r25_b_owner_mac_setup.py scripts/r25_b_host_witness.py deploy/r25-b-3031.service.dropin.in
           python3 -B - <<'PY'
           from pathlib import Path
           s=Path("scripts/r25_b_additive_3031_setup.py").read_text()

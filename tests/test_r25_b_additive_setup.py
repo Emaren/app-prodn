@@ -57,7 +57,7 @@ class TestOwnerInstall(unittest.TestCase):
     def test_public_acl_preflight_flags_inherited_unsafe_functions_before_install(self):
         import types
         risks={"database_create":0,"schema_create":0,"table_write":0,
-               "sequence_write":0,"unsafe_callable":3}
+               "sequence_write":0,"unsafe_callable":3,"reviewed_trigger_exclusions":39}
         with patch.object(b,"cmd",return_value=types.SimpleNamespace(stdout=json.dumps(risks).encode())):
             with self.assertRaisesRegex(RuntimeError,"INHERITED_PUBLIC_WRITE_OR_CALLABLE"):
                 b.inherited_public_write_risks("aoe2hd_db")
@@ -65,11 +65,36 @@ class TestOwnerInstall(unittest.TestCase):
     def test_public_acl_preflight_accepts_zero_inherited_risks(self):
         import types
         risks={"database_create":0,"schema_create":0,"table_write":0,
-               "sequence_write":0,"unsafe_callable":0}
+               "sequence_write":0,"unsafe_callable":0,"reviewed_trigger_exclusions":39}
         with patch.object(b,"cmd",return_value=types.SimpleNamespace(stdout=json.dumps(risks).encode())) as cmd:
             self.assertEqual(b.inherited_public_write_risks("aoe2hd_db"),risks)
             self.assertEqual(cmd.call_args.args[0][-3],"aoe2hd_db")
             self.assertIn("aclexplode",cmd.call_args.args[0][-1])
+
+    def test_trigger_exemption_requires_exact_39_and_nontrigger_still_blocks(self):
+        import inspect, types
+        sql=inspect.getsource(b.inherited_public_write_risks)
+        role=b.new_role_sql('a'*48).decode()
+        for source in (sql,role):
+            for marker in ("p.prorettype='pg_catalog.trigger'::regtype",
+                           "p.pronargs=0","p.prokind='f'","NOT p.prosecdef",
+                           "dep.deptype='e'",'AND NOT (p.prorettype='):
+                self.assertIn(marker,source)
+        base={"database_create":0,"schema_create":0,"table_write":0,
+              "sequence_write":0,"unsafe_callable":0,"reviewed_trigger_exclusions":39}
+        for different in ({**base,"reviewed_trigger_exclusions":38},
+                          {**base,"unsafe_callable":1}):
+            with patch.object(b,'cmd',return_value=types.SimpleNamespace(stdout=json.dumps(different).encode())):
+                with self.assertRaises(RuntimeError):
+                    b.inherited_public_write_risks('aoe2hd_db')
+
+    def test_new_service_private_cache_no_sealed_artifact_changes(self):
+        src=(ROOT/'deploy/r25-b-3031.service.dropin.in').read_text()
+        self.assertIn('CacheDirectory=aoe2war-r25-b-next-cache',src)
+        self.assertIn('CacheDirectoryMode=0700',src)
+        self.assertIn('BindPaths=/var/cache/aoe2war-r25-b-next-cache:',src)
+        self.assertNotIn('chown ',src)
+        self.assertNotIn('chmod ',src)
 
     def test_public_acl_check_precedes_install_mutations(self):
         import inspect
@@ -200,6 +225,8 @@ class TestOwnerInstall(unittest.TestCase):
 
     def test_owner_mac_root_and_templates_pinned(self):
         self.assertEqual(mac.B_SOURCE,b.SOURCE_COMMIT)
+        self.assertEqual(mac.ASSET_REF,"1279258b62ec808224ebb11892e5a2ed1a8ee47a")
+        self.assertEqual(mac.ROOT_REF,"f0f731a03e041f9671a5e7d6ab2da4e9d67893f3")
         self.assertEqual(mac.GUARD_SHA,b.GUARD_SHA)
         self.assertEqual(mac.WITNESS_SHA,b.WITNESS_SHA)
         self.assertEqual(mac.DROPIN_GIT_BLOB,b.DROPIN_GIT_BLOB)

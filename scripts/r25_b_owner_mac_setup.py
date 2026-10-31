@@ -15,14 +15,15 @@ import sys
 import urllib.request
 
 B_SOURCE="87d340314e46032fce68e5cfdcc268b8e6593a82"
-ROOT_REF="b71962c6d851bf32643bde374ea51f89b2452019"
-ROOT_BLOB="89587750e67abdc0cbe97027b0f7388bf39a717e"
-# Root installer currently 21,525 bytes. Bound source retrieval above that size.
+ASSET_REF="1279258b62ec808224ebb11892e5a2ed1a8ee47a"  # immutable new-only witness/cache sources; B_SOURCE still original approved base
+ROOT_REF="f0f731a03e041f9671a5e7d6ab2da4e9d67893f3"
+ROOT_BLOB="8c4eec3dd6e0cda99a4b1b452d042c9f2f0fb8c7"
+# Root installer exact SHA-verified Git blob; size gate supports bounded updates.
 # Keep this tied to a focused test so future source growth cannot silently HOLD on Mac.
 ROOT_SOURCE_MAX_BYTES=32768
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
-WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
-DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
+WITNESS_SHA="2639214f39aa088b32edcac20e73cb7a5bc199eaf6f250740c670ea101024bbe"
+DROPIN_GIT_BLOB="3ae2d1b989b2c90caf904c0b76218a7a58f8872d"
 NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
 BASEUNIT_REF="8bad897bacf99d1a88be27488e55515d3adac915"
 BASEUNIT_PATH="deploy/aoe2hdbets-web-r24.service"
@@ -57,7 +58,7 @@ def payloads():
     root=fetch(ROOT_REF,"scripts/r25_b_additive_3031_setup.py",ROOT_SOURCE_MAX_BYTES)
     if gitblob(root)!=ROOT_BLOB:
         hold("ROOT_INSTALLER_EXACT_GIT_BLOB_DRIFT")
-    assets={k:fetch(B_SOURCE,p,32768) for k,p in FILES.items()}
+    assets={k:fetch(ASSET_REF,p,32768) for k,p in FILES.items()}
     assets["baseunit"]=fetch(BASEUNIT_REF,BASEUNIT_PATH,8192)
     if hashlib.sha256(assets["guard"]).hexdigest()!=GUARD_SHA:
         hold("GUARD_EXACT_SHA256_DRIFT")
