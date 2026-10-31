@@ -272,5 +272,43 @@ class R25StageTests(unittest.TestCase):
                         archive.assert_not_called()
                         runner.assert_not_called()
 
+    def test_34_failed_transient_prints_exact_unit_stdout_and_stderr(self):
+        failing=types.SimpleNamespace(
+            returncode=1,
+            stdout=(b"error An unexpected error occurred\n"
+                    b"error getaddrinfo EAI_AGAIN registry.yarnpkg.com\n"),
+            stderr=b"Finished with result: exit-code\n")
+        argv=["/usr/bin/systemd-run",
+              "--unit=aoe2war-r25-deps-0cee3c83-dns-recovery2"]
+        with mock.patch.object(self.s.subprocess,"run",return_value=failing) as run:
+            with self.assertRaises(self.s.Hold) as ctx:
+                self.s.command(argv,timeout=4)
+        message=str(ctx.exception)
+        self.assertIn("UNIT=aoe2war-r25-deps-0cee3c83-dns-recovery2",message)
+        self.assertIn("EAI_AGAIN",message)
+        self.assertIn("exit-code",message)
+        self.assertIn(":EXIT=1",message)
+        self.assertLessEqual(len(message),2700)
+        run.assert_called_once()
+
+    def test_35_bounded_redaction_of_failure_stream(self):
+        raw=(b"error registry https://token:password@example.com/foo?auth=xx\n"
+             b"error Authorization: Bearer KEEPTHISPRIVATE\n"
+             b"error SESSION_SECRET=hidden-value\n"
+             b"error password=topsecret\n"
+             b"error getaddrinfo EAI_AGAIN registry.yarnpkg.com\n")
+        tail=self.s.redacted_diagnostic_tail(raw)
+        for leak in ("KEEPTHISPRIVATE","hidden-value","topsecret","auth=xx"):
+            self.assertNotIn(leak,tail)
+        self.assertIn("EAI_AGAIN",tail)
+        self.assertLessEqual(len(tail),1100)
+
+    def test_36_diagnostics_do_not_run_secondary_processes(self):
+        clean=types.SimpleNamespace(returncode=0,stdout=b"expected-bytes",stderr=b"")
+        with mock.patch.object(self.s.subprocess,"run",return_value=clean) as run:
+            result=self.s.command(["/usr/bin/true"],timeout=8)
+        self.assertEqual(result,b"expected-bytes")
+        run.assert_called_once()
+
 if __name__=="__main__":
     unittest.main()
