@@ -26,7 +26,8 @@ HOST = "ubuntu-4gb-hel1-11"
 OLD_WEB = Path("/var/www/AoE2HDBets/app-prodn")
 VOLUME = Path("/mnt/HC_Volume_105319120")
 ARCHIVE = Path("/var/lib/aoe2war-r24-source-bundles") / (SOURCE + ".tar")
-STAGED = Path("/var/lib/aoe2war-r24-parallel-stage") / SOURCE / "web"
+STAGED = Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+C_AUDIT = Path("/var/lib/aoe2war-r25-c-additive")
 DURABLE = VOLUME / "aoe2war/rollbacks"
 GIB = 1024**3
 ROOT_RESERVE = 4 * GIB
@@ -171,13 +172,13 @@ def internal_dependency(path, rootdev):
     return no_link_regular(target, rootdev)
 
 def stage_evidence(rootdev, maximum):
-    base = STAGED.parent.parent
+    base = STAGED.parent
     if not secure_path(STAGED, base, rootdev, must_exist=False):
         return None
     ensure(stat.S_ISDIR(os.lstat(STAGED).st_mode), 'STAGE_NOT_DIRECTORY')
     ensure(STAGED != OLD_WEB and STAGED != OLD_WEB / '.next', 'INPLACE_STAGE_DENIED')
     st = os.lstat(STAGED)
-    ensure(root_sealed(STAGED), 'STAGE_NOT_ROOT_CONTROLLED')
+    ensure(root_sealed(STAGED) and root_sealed(base), 'STAGE_NOT_ROOT_CONTROLLED')
     allocated = du(STAGED)
     ensure(0 < allocated <= maximum, 'STAGE_EXCEEDS_APPROVED_PEAK_BUDGET')
     essentials = [STAGED / 'package.json',
@@ -186,18 +187,85 @@ def stage_evidence(rootdev, maximum):
         return {'stage_path': str(STAGED), 'bytes_allocated': allocated,
                 'build_complete': False, 'missing_required_evidence':
                 [str(q.relative_to(STAGED)) for q in essentials if not q.exists()]}
+    ensure(root_sealed(STAGED/'.next'), 'C_NEXT_NOT_ROOT_SEALED')
     ensure(stat.S_ISDIR(os.lstat(STAGED/'node_modules').st_mode) and
            stat.S_ISDIR(os.lstat(STAGED/'.next/server').st_mode),
            'NEXT_RUNTIME_DIRECTORIES_INVALID')
     no_link_regular(STAGED/'package.json', rootdev)
     internal_dependency(STAGED/'node_modules/next/package.json', rootdev)
     next_id = old_next_id(STAGED/'.next')
+    source_marker = STAGED/'r24-source-sha'
+    ensure(secure_path(source_marker, base, rootdev), 'C_SOURCE_MARKER_MISSING')
+    ensure(root_sealed(source_marker) and
+           no_link_regular(source_marker, rootdev).st_size <= 128 and
+           source_marker.read_text().strip() == SOURCE,
+           'C_SOURCE_MARKER_WRONG')
+    build_version_file = STAGED/'.aoe2war-build-version'
+    ensure(secure_path(build_version_file, base, rootdev), 'C_BUILD_VERSION_MISSING')
+    ensure(root_sealed(build_version_file) and
+           no_link_regular(build_version_file, rootdev).st_size <= 256,
+           'C_BUILD_VERSION_INVALID')
+    version = build_version_file.read_text().strip()
+    ensure(8 <= len(version) <= 128 and
+           all(c.isalnum() or c in '-_' for c in version),
+           'C_BUILD_VERSION_INVALID')
+    receipt = c_build_receipt(rootdev, next_id, version)
     return {'stage_path': str(STAGED), 'bytes_allocated': allocated,
             'build_complete': True, 'candidate_next_build_id': next_id,
-            'build_source_binding': 'NOT_VERIFIED_BY_E_REQUIRE_C_ATTESTATION',
+            'candidate_build_version': version,
+            'c_build_receipt': receipt,
+            'build_source_binding': 'C_ROOT_SEALED_RECEIPT_CHECKED_E_NOT_INDEPENDENT_BUILD_REPRODUCTION',
             'peak_during_build_bytes': 'NOT_OBSERVED_HISTORICALLY',
             'parallel_service_3031': 'NOT_VERIFIED_BY_E',
             'financial_isolation': 'NOT_VERIFIED_BY_E'}
+
+
+def read_root_receipt(path, rootdev, limit=65536):
+    ensure(secure_path(path, Path('/var/lib'), rootdev), 'C_RECEIPT_PATH_INVALID')
+    ensure(root_sealed(path) and root_sealed(path.parent), 'C_RECEIPT_NOT_ROOT_SEALED')
+    st = no_link_regular(path, rootdev)
+    ensure(0 < st.st_size <= limit, 'C_RECEIPT_SIZE_INVALID')
+    raw = path.read_bytes()
+    ensure(len(raw) == st.st_size, 'C_RECEIPT_CHANGED_DURING_READ')
+    try:
+        obj = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise Hold('C_RECEIPT_JSON_INVALID') from exc
+    ensure(type(obj) is dict, 'C_RECEIPT_JSON_OBJECT_REQUIRED')
+    return obj, hashlib.sha256(raw).hexdigest()
+
+def c_build_receipt(rootdev, build_id, build_version):
+    # Exact C #1084 writes SOURCE_STAGED and BUILD_STAGED root-only under C_AUDIT.
+    # Do not promote a plausible .next folder to a real C build without its receipt.
+    source, source_hash = read_root_receipt(C_AUDIT/'SOURCE_STAGED.json', rootdev)
+    built, built_hash = read_root_receipt(C_AUDIT/'BUILD_STAGED.json', rootdev)
+    ensure(source.get('status') == 'SOURCE_STAGED' and
+           source.get('candidate_sha') == SOURCE and
+           source.get('git_archive_sha256') == ARCHIVE_SHA256 and
+           source.get('old_web_mainpid') == 2625090 and
+           source.get('old_web_untouched') is True and
+           source.get('new_candidate_started') is False,
+           'C_SOURCE_RECEIPT_WRONG')
+    ensure(built.get('schema') == 'aoe2war.r25.c.full-built-artifact.v1' and
+           built.get('status') == 'BUILD_STAGED' and
+           built.get('candidate_sha') == SOURCE and
+           built.get('source_git_archive_sha256') == ARCHIVE_SHA256 and
+           built.get('build_id') == build_id and
+           built.get('build_version') == build_version and
+           built.get('root_sealed') is True and
+           built.get('old_web_pid_untouched') == 2625090 and
+           built.get('new_service_started') is False and
+           built.get('financial_writes_authorized') is False and
+           isinstance(built.get('tree_sha256'),str) and
+           len(built['tree_sha256']) == 64 and
+           all(c in '0123456789abcdef' for c in built['tree_sha256']),
+           'C_BUILD_RECEIPT_WRONG')
+    return {'source_receipt_sha256': source_hash,
+            'build_receipt_sha256': built_hash,
+            'c_tree_manifest_sha256_claim': built['tree_sha256'],
+            'c_build_manifest_independently_rehashed_by_e': False,
+            'c_source_commit': SOURCE, 'c_archive_sha256': ARCHIVE_SHA256,
+            'old_web_pid_in_receipts': 2625090}
 
 def tree_digest(root, dev):
     """File-content, type and path SHA; never accept symlinks or hardlinks."""
@@ -228,6 +296,7 @@ def tree_digest(root, dev):
                 h.update(b'F\0' + name + b'\0' + str(s.st_size).encode() + b'\0')
                 with open(e.path, 'rb', buffering=0) as f:
                     while True:
+                        ensure(time.monotonic()-t0 <= MAX_TREE_SECONDS, 'TREE_TIMEOUT')
                         chunk = f.read(1024*1024)
                         if not chunk:
                             break
@@ -311,6 +380,7 @@ def certify(args):
               'durable_rollback': rollback,
               'storage_admission': 'PASS_E_READONLY_CAPACITY' if enough else 'HOLD_E_CAPACITY',
               'historical_build_peak_proved': False,
+              'c_receipt_source_to_build_binding_checked': bool(stage and stage.get('c_build_receipt')),
               'source_to_build_binding_proved': False,
               'candidate_financial_isolation_proved': False,
               'nginx_or_public_activation_proved': False,
