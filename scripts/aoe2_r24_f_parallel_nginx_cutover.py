@@ -24,7 +24,8 @@ NEW_UPSTREAM=b"proxy_pass http://127.0.0.1:3031;"
 ROOT_APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT_BASE=pathlib.Path("/var/lib/aoe2war-r24-parallel")
 OLD_APP=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
-CANDIDATE_STAGE=pathlib.Path("/var/lib/aoe2war-r24-parallel-stage")/TARGET/"web"
+# Exact E #1078 accepted direct-child parallel runtime path on root filesystem.
+CANDIDATE_STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
 PUBLIC="https://aoe2war.com"
 B_INDEPENDENT_POSITIVE_RUNTIME_SHA="" # current B #1077 is explicitly negative
 F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA="" # not issued until real E/C stage
@@ -243,6 +244,9 @@ def next_build_asset(base,build_id):
              "ACTUAL_NEXT_BUILD_ID_STATIC_ASSET_MISSING")
 
 def stage_identity(j):
+    need(CANDIDATE_STAGE.parent==OLD_APP.parent and
+         CANDIDATE_STAGE.name.startswith("app-prodn-r24-w1safe-"),
+         "E_PHYSICAL_PARALLEL_STAGE_LOCATION_DRIFT")
     need(CANDIDATE_STAGE.is_dir() and not CANDIDATE_STAGE.is_symlink(),
          "C_UNTRUSTED_CANDIDATE_STAGE")
     for p in (CANDIDATE_STAGE.parent,CANDIDATE_STAGE):
