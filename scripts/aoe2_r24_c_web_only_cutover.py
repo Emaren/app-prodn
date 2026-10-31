@@ -125,16 +125,17 @@ def socket_state():
         yield port,rows[0]
 def hash_tree(directory):
     # Matches canonical stage.py deterministic GNU-tar identity over directory bytes.
-    tar=subprocess.Popen(["/usr/bin/tar","--sort=name","--mtime=UTC 1970-01-01",
-                          "--owner=0","--group=0","--numeric-owner","-C",str(directory),
-                          "-cf","-","."],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     h=hashlib.sha256()
-    while True:
-        b=tar.stdout.read(1024*1024)
-        if not b: break
-        h.update(b)
-    tail=tar.stderr.read()
-    need(tar.wait(timeout=180)==0,"STAGE_HASH_FAILED:"+tail.decode(errors="replace")[-120:])
+    with subprocess.Popen(["/usr/bin/tar","--sort=name","--mtime=UTC 1970-01-01",
+                           "--owner=0","--group=0","--numeric-owner","-C",str(directory),
+                           "-cf","-","."],stdout=subprocess.PIPE,stderr=subprocess.PIPE) as tar:
+        while True:
+            b=tar.stdout.read(1024*1024)
+            if not b: break
+            h.update(b)
+        tail=tar.stderr.read()
+        need(tar.wait(timeout=180)==0,
+             "STAGE_HASH_FAILED:"+tail.decode(errors="replace")[-120:])
     return h.hexdigest()
 def check_dir(p):
     s=p.lstat()
