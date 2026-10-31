@@ -227,20 +227,33 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertNotIn('open("/dev/tty","r+")',mac)
         self.assertIn('StrictHostKeyChecking=yes',mac)
     def test_E_physical_receipt_hash_must_match_owner_policy(self):
-        j={"E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
+        j={"E_r25_recovery_sha256":"0"*64,
            "E_durable_rollback_sha256":"0"*64}
         with mock.patch.object(self.s,"root_file",return_value=b'{"status":"PASS"}'):
             with self.assertRaisesRegex(self.s.Hold,
-                                        "E_PHYSICAL_CONTENT_RECEIPT_DIGEST_MISMATCH"):
+                                        "E_R25_ROOT_RECEIPT_DIGEST_MISMATCH"):
                 self.s.verified_durable_e_rollback(j)
     def test_E_physical_success_must_not_claim_rollback_exercise(self):
-        j={"E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-durable-rollback.json"}
-        raw=b'{"schema":"aoe2war.e.r24.website.rollback-content.v1","status":"IMAGINARY_SUCCESS"}'
-        j["E_durable_rollback_sha256"]=self.s.sha(raw)
-        with mock.patch.object(self.s,"root_file",return_value=raw):
+        s=self.s
+        raw=b'{"schema":"aoe2war.e.r25.parallel-website-certificate.v1","phase":"BUILD_STAGED"}'
+        j={"E_r25_recovery_sha256":s.sha(raw),
+           "E_durable_rollback_sha256":s.sha(raw)}
+        with mock.patch.object(s,"root_file",return_value=raw):
+            with self.assertRaisesRegex(s.Hold,"E_R25_REAL_READONLY_RECOVERY_CERTIFICATE_MISSING"):
+                s.verified_durable_e_rollback(j)
+    def test_b_poststart_requires_physical_receipt_not_root_claim(self):
+        j={"B_poststart_sha256":"1"*64}
+        with mock.patch.object(self.s,"root_file",return_value=b'{}'):
             with self.assertRaisesRegex(self.s.Hold,
-                                        "E_CONTENT_VERIFICATION_NOT_GENUINE_OR_SCOPE_DRIFT"):
-                self.s.verified_durable_e_rollback(j)
+                                        "B_INDEPENDENT_ROOT_POSTSTART_DIGEST_MISMATCH"):
+                self.s.verified_b_poststart(j,{"candidate_web":"MainPID=123"})
+    def test_c_full_source_build_manifest_is_required_not_git_checkout(self):
+        src=SERVER.read_text()
+        self.assertNotIn('"-C",str(CANDIDATE_STAGE),"rev-parse","HEAD"',src)
+        for token in ("SOURCE_STAGED.json","BUILD_STAGED.json","SOURCE_FILES.json",
+                      "BUILD_FILES.json","C_EMBEDDED_GIT_ARCHIVE_COMMIT_ID_NOT_PROVEN",
+                      "C_ACTUAL_NEXT_BUILD_ID_NOT_APPROVED"):
+            self.assertIn(token,src)
     def test_no_approval_iff_unreviewed(self):
         j={"schema":self.s.SCHEMA,"nonce":"f"*32,"candidate_sha":self.s.TARGET,
          "previous_sha":"a"*40,"previous_build_id":"oldBuild123",
@@ -250,7 +263,11 @@ server { server_name unrelated.example; listen 443 ssl;
          "finance_snapshot_sha256":"b"*64,"wolo_snapshot_sha256":"c"*64,
          "old_web_snapshot_sha256":"d"*64,"candidate_web_snapshot_sha256":"e"*64,
          "C_stage_artifact_sha256":"f"*64,"E_durable_rollback_sha256":"1"*64,
-         "E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
+         "E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-recovery-ready.json",
+         "E_r25_recovery_sha256":"1"*64,
+         "B_poststart_sha256":"2"*64,
+         "C_source_staged_sha256":"3"*64,"C_build_staged_sha256":"4"*64,
+         "C_source_files_sha256":"5"*64,"C_build_files_sha256":"6"*64,
          "lane_reviews":{lane:"2"*40 for lane in "BCDEFG"}}
         with self.assertRaisesRegex(self.s.Hold,"INDEPENDENT_B_REVIEW_NOT_APPROVED"):
             self.s.approval(self.s.canonical(j))
