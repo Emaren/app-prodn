@@ -130,7 +130,7 @@ def snapshots(units):
 def listener_lines(raw):
     out={}
     for port in ("8092","8093"):
-        hits=[x for x in raw.splitlines() if re.search(":"+port+r"\\s",x)]
+        hits=[x for x in raw.splitlines() if re.search(":"+port+r"\s",x)]
         need(len(hits)==1,"WOLO_PORT_PIDs_NOT_UNIQUE:"+port)
         out[port]=hits[0]
     return out
@@ -211,7 +211,7 @@ def safe_replace_site(original,chosen):
     # Explicitly restrict the GENERAL web location; other exact locations and
     # server actions must be covered by separate real B positive host review.
     need(b"limit_except" not in block,"EXISTING_NGINX_METHOD_POLICY_UNREVIEWED")
-    block2=b"\\n        limit_except GET HEAD { deny all; }\\n"+block2
+    block2=b"\n        limit_except GET HEAD { deny all; }\n"+block2
     return original[:start]+block2+original[end:]
 def durable_write(path,raw,mode=0o400):
     protected_dir(path.parent)
@@ -269,7 +269,7 @@ def apply():
         durable_write(record/"before-nginx.conf",old)
         durable_write(record/"intent.json",canonical({"schema":SCHEMA,"nonce":nonce,
              "candidate_sha":TARGET,"old_unit_pid_unchanged":True,
-             "before_nginx_sha256":sha(old),"after_nginx_sha256":sha(candidate)})+b"\\n")
+             "before_nginx_sha256":sha(old),"after_nginx_sha256":sha(candidate)})+b"\n")
         fsyncdir(record);fsyncdir(AUDIT_BASE)
         try:
             replace_existing(config,candidate)
@@ -286,7 +286,7 @@ def apply():
                 "candidate_build_version":j["candidate_build_version"],
                 "original_web_still_running":True,
                 "old_nginx_sha256":sha(old),
-                "new_nginx_sha256":sha(candidate)})+b"\\n")
+                "new_nginx_sha256":sha(candidate)})+b"\n")
             fsyncdir(record)
             print("PASS:R24_PARALLEL_PUBLIC_WEBSITE_CUTOVER; ORIGINAL_WEB_MAINPID_PRESERVED")
         except BaseException:
