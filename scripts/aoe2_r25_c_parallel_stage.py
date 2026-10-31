@@ -331,9 +331,9 @@ def build_source():
        "status":"BUILD_ATTEMPT_ENTERED","root_source_unchanged":True,
        "build_uid":account.pw_uid,"financial_credentials_inherited":False,
        "yarn_import":yarn_receipt})
-    return complete_build(before,sockets,budget,account,yarn_receipt,False)
+    return complete_build(before,sockets,budget,account,yarn_receipt,False,record)
 
-def complete_build(before,sockets,budget,account,yarn_receipt,recovery):
+def complete_build(before,sockets,budget,account,yarn_receipt,recovery,record):
     unit_tag="-dns-recovery1" if recovery else ""
     cache_dir=DEST/(".r25-cache-dns-recovery1" if recovery else ".r25-cache")
     # Prior DNS-only UID994 sandbox probe physically verified this exact bind.
@@ -566,7 +566,7 @@ def recover_dns_build():
         "upstream_resolver_sha256":sha(raw),
         "isolated_dns_bind_only":True,"localhost_ip_deny_preserved":True,
         "financial_writes_authorized":False,"budget":budget})
-    return complete_build(before,sockets,budget,build_account,imported,True)
+    return complete_build(before,sockets,budget,build_account,imported,True,source)
 
 def verified_b_runtime(b,raw):
     need(type(b)==dict and b.get("schema")=="aoe2war.r25.b.positive-parallel-runtime.v1"
