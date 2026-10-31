@@ -62,6 +62,7 @@ const report = {
           try {
             const response=await page.goto(pathname,{waitUntil:"domcontentloaded",timeout:30000});
             entry.status=response?.status()??null;
+            entry.final_pathname=new URL(page.url()).pathname;
             entry.heading=await page.locator("h1").first().textContent({timeout:10000}).catch(()=>null);
             entry.nav=(await page.locator("header,nav,[role=navigation]").count())>0;
             entry.overflow=await page.evaluate(()=>document.documentElement.scrollWidth >
@@ -82,7 +83,7 @@ const report = {
             ?"home":pathname.slice(1).replace(/[^a-z0-9-]/g,"-"))+".png";
           await page.screenshot({path:path.join(outDir,entry.screenshot),fullPage:false})
             .catch(e=>entry.errors.push("SCREENSHOT_UNMEASURED:"+String(e.message||e).slice(0,100)));
-          entry.verdict=entry.status===200 && Boolean(entry.heading) &&
+          entry.verdict=entry.status===200 && entry.final_pathname===pathname && Boolean(entry.heading) &&
             entry.nav && entry.overflow===false && entry.errors.length===0 &&
             entry.axe_serious_or_critical.length===0 && entry.mutations_blocked===0?"PASS":"HOLD";
           report.pages.push(entry);
