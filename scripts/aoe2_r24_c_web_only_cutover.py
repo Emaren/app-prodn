@@ -27,11 +27,11 @@ SERVICE="aoe2hdbets-web.service"
 LOCK=Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 LOCK_ID=(2064,6185747,1000,0o644)
 APPROVAL=Path("/etc/aoe2war/r24-web-only/approved.json")
-RECEIPTS=Path("/mnt/HC_Volume_105319120/aoe2war/deploy-receipts")
+RECEIPTS=Path("/var/lib/aoe2war-r24-web-only")
 ROOT_SSH_USER="root"
 HEX40=re.compile(r"^[0-9a-f]{40}$")
 HEX64=re.compile(r"^[0-9a-f]{64}$")
-UNIT=re.compile(r"^[a-zA-Z0-9@_.-]+.(?:service|timer|socket)$")
+UNIT=re.compile(r"^[a-zA-Z0-9@_.-]+\.(?:service|timer|socket)$")
 
 class Hold(Exception): pass
 def need(ok,msg):
@@ -183,7 +183,10 @@ def preflight(a):
     need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
          "EXACT_HEL1_ROOT_REQUIRED")
     original_lock()
-    need(REPO.is_dir() and RECEIPTS.is_dir(),"EXPECTED_LIVE_REPOSITORY")
+    need(REPO.is_dir() and RECEIPTS.is_dir() and not RECEIPTS.is_symlink()
+         and RECEIPTS.stat().st_uid==0
+         and stat.S_IMODE(RECEIPTS.stat().st_mode)==0o700,
+         "ROOT_PROTECTED_R24_RECEIPTS_DIR_NOT_PROVISIONED")
     git_state(a["previous_sha"])
     need(service_state()[0]=="active","LIVE_WEB_NOT_ACTIVE")
     need((REPO/".next/BUILD_ID").is_file() and (REPO/"node_modules").is_dir(),
