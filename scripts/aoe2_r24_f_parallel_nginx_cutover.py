@@ -547,17 +547,28 @@ def manual_rollback(nonce):
         fsyncdir(record)
         print("PASS:R24_OLD_WEB_PROXY_RESTORED; ORIGINAL_WEB_MAINPID_UNCHANGED")
     finally:os.close(lockfd)
-def approved_owner_intent():
+def approved_owner_intent(rollback=False):
     # This output reveals only nonce + public build identity; the actual
     # root-only approved.json remains protected and is re-read at activation.
     need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
          "EXACT_HEL1_ROOT_REQUIRED")
     j=approval(root_file(ROOT_APPROVAL,16384))
     raw=root_file(VHOST,131072)
-    need(sha(raw)==j["nginx_before_sha256"],
-         "ACTUAL_NGINX_REVIEWED_PREIMAGE_DRIFT")
-    nginx_loaded_vhost(raw,VHOST,old_count=6)
-    safe_replace_site(raw,NEW_UPSTREAM)
+    if rollback:
+        record=AUDIT_BASE/("r24-"+j["nonce"])
+        commit=parse(root_file(record/"commit.json",8192))
+        need(commit.get("nonce")==j["nonce"] and
+             commit.get("candidate_sha")==TARGET and
+             commit.get("status")=="R24_PARALLEL_WEBSITE_LIVE",
+             "ROLLBACK_INTENT_NOT_COMMITTED")
+        need(sha(raw)==commit["new_nginx_sha256"],
+             "ROLLBACK_INTENT_LIVE_NGINX_DRIFT")
+        nginx_loaded_vhost(raw,VHOST,old_count=0)
+    else:
+        need(sha(raw)==j["nginx_before_sha256"],
+             "ACTUAL_NGINX_REVIEWED_PREIMAGE_DRIFT")
+        nginx_loaded_vhost(raw,VHOST,old_count=6)
+        safe_replace_site(raw,NEW_UPSTREAM)
     print(canonical({"schema":"aoe2war.r25.f.owner-intent.v1",
         "nonce":j["nonce"],"candidate_sha":TARGET,
         "candidate_build_id":j["candidate_build_id"],
@@ -565,6 +576,7 @@ def approved_owner_intent():
         "nginx_before_sha256":j["nginx_before_sha256"],
         "nginx_config":j["nginx_config"],
         "financial_review_binding":"ROOT_APPROVAL_REVERIFIED_AT_APPLY",
+        "operation":"ROLLBACK" if rollback else "APPLY",
         "files_modified":False}).decode())
 
 def plan_vhost():
@@ -590,6 +602,8 @@ def main():
         plan_vhost()
     elif sys.argv[1:]==["--root-owner-intent"]:
         approved_owner_intent()
+    elif sys.argv[1:]==["--root-rollback-intent"]:
+        approved_owner_intent(rollback=True)
     elif sys.argv[1:]==["--root-apply"]:
         apply()
     elif (len(sys.argv)==4 and sys.argv[1]=="--root-rollback" and
