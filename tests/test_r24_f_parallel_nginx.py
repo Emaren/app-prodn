@@ -278,4 +278,14 @@ server { server_name unrelated.example; listen 443 ssl;
          "lane_reviews":{lane:"2"*40 for lane in "BCDEFG"}}
         with self.assertRaisesRegex(self.s.Hold,"INDEPENDENT_B_REVIEW_NOT_APPROVED"):
             self.s.approval(self.s.canonical(j))
+    def test_c_candidate_is_root_sealed_under_var_lib_not_live_web_parent(self):
+        s=self.s
+        self.assertEqual(s.CANDIDATE_STAGE,pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b"))
+        self.assertEqual(s.CANDIDATE_STAGE.parent,pathlib.Path("/var/lib"))
+        self.assertNotEqual(s.CANDIDATE_STAGE.parent,s.OLD_APP.parent)
+        text=SERVER.read_text()
+        self.assertIn('CANDIDATE_STAGE.parent==pathlib.Path("/var/lib")',text)
+        self.assertNotIn('CANDIDATE_STAGE.parent==OLD_APP.parent',text)
+        self.assertNotIn('/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b',text)
+
 if __name__=="__main__":unittest.main()
