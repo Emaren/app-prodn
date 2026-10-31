@@ -91,10 +91,14 @@ def hash_file(p, maximum, seconds=MAX_ARCHIVE_SECONDS):
            'FILE_CHANGED_DURING_HASH')
     return h.hexdigest()
 
+def root_sealed(p):
+    s = os.lstat(p)
+    return s.st_uid == 0 and not (s.st_mode & 0o022)
+
 def archive_identity():
     ensure(secure_path(ARCHIVE, Path('/var/lib')), 'ARCHIVE_MISSING')
     s = no_link_regular(ARCHIVE)
-    ensure(s.st_uid == 0 and not (s.st_mode & 0o022), 'ARCHIVE_NOT_ROOT_SEALED')
+    ensure(root_sealed(ARCHIVE), 'ARCHIVE_NOT_ROOT_SEALED')
     ensure(s.st_size == ARCHIVE_BYTES, 'ARCHIVE_LENGTH_MISMATCH')
     digest = hash_file(ARCHIVE, ARCHIVE_BYTES)
     ensure(digest == ARCHIVE_SHA256, 'ARCHIVE_SHA256_MISMATCH')
@@ -173,7 +177,7 @@ def stage_evidence(rootdev, maximum):
     ensure(stat.S_ISDIR(os.lstat(STAGED).st_mode), 'STAGE_NOT_DIRECTORY')
     ensure(STAGED != OLD_WEB and STAGED != OLD_WEB / '.next', 'INPLACE_STAGE_DENIED')
     st = os.lstat(STAGED)
-    ensure(st.st_uid == 0 and not (st.st_mode & 0o022), 'STAGE_NOT_ROOT_CONTROLLED')
+    ensure(root_sealed(STAGED), 'STAGE_NOT_ROOT_CONTROLLED')
     allocated = du(STAGED)
     ensure(0 < allocated <= maximum, 'STAGE_EXCEEDS_APPROVED_PEAK_BUDGET')
     essentials = [STAGED / 'package.json',
