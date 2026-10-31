@@ -15,7 +15,7 @@ test("ordered phases and intentional independent views",()=>{
 });
 test("public visibility explicitly separates admin, private, invoice and public index",()=>{
  assert.equal(routes.filter((r:string)=>r==="/admin"||r.startsWith("/admin/")).length,31);
- assert.equal(routes.filter((r:string)=>r.includes("[")).length,21);
+ assert.equal(routes.filter((r:string)=>r.includes("[")).length,22);
  const view=readFileSync(new URL("../lib/renaissance/registry.ts",import.meta.url),"utf8");
  assert.match(view,/isRestricted/);assert.match(view,/market\/invoices/);
 });
