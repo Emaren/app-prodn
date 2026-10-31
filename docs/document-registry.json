@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5ad174c752a163de3f3e60538ae7305784941d0e7605ec5d9ea0675faeff3850",
+      "sha256": "d85a55cfa3da6541338991de098c5744415cebb517b329dd65a36aa957835d57",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2371,7 +2371,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/r25-postrelease-b2c-kingdom-progress-20261031",
-    "commit": "4369271470be6058f0ddcf486d2604b7d5fca8c9"
+    "commit": "c02011ee620bb469ded26c97c0625d2d0daa5eb0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

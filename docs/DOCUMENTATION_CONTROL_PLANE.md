@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/r25-postrelease-b2c-kingdom-progress-20261031` at `4369271470be6058f0ddcf486d2604b7d5fca8c9`
+Implementation baseline: `feature/r25-postrelease-b2c-kingdom-progress-20261031` at `c02011ee620bb469ded26c97c0625d2d0daa5eb0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
