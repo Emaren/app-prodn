@@ -164,23 +164,39 @@ def bounded_tree(root,maxbytes=12*1024**3,maxfiles=250000):
     root=pathlib.Path(root)
     need(root.is_dir() and not root.is_symlink(),"DEPENDENCIES_OR_BUILD_MISSING")
     h=hashlib.sha256();count=0;size=0
+    base_resolved=root.resolve(strict=True)
     for base,dirs,files in os.walk(root,followlinks=False):
         dirs.sort();files.sort()
-        for dirname in dirs:
+        # Package managers legitimately use internal links under node_modules.
+        # Hash their target metadata, never follow symlinks to external locations.
+        for dirname in list(dirs):
             p=pathlib.Path(base)/dirname
-            need(not p.is_symlink(),"TREE_DIRECTORY_SYMLINK")
+            if p.is_symlink():
+                dirs.remove(dirname);files.append(dirname)
+        files.sort()
         for name in files:
             p=pathlib.Path(base)/name
             st=p.lstat()
-            need(stat.S_ISREG(st.st_mode) and st.st_nlink==1,
-                 "UNTRUSTED_TREE_FILE_OR_HARDLINK")
+            rel=p.relative_to(root).as_posix().encode()
+            if stat.S_ISLNK(st.st_mode):
+                link=os.readlink(p)
+                need(not pathlib.Path(link).is_absolute() and
+                     p.resolve(strict=True).is_relative_to(base_resolved),
+                     "DEPENDENCY_SYMLINK_ESCAPES_STAGE")
+                payload=link.encode()
+                h.update(b"L"+len(rel).to_bytes(4,"big")+rel+
+                         len(payload).to_bytes(4,"big")+payload)
+                count+=1
+                need(count<=maxfiles,"TREE_MEASUREMENT_TOO_LARGE")
+                continue
+            need(stat.S_ISREG(st.st_mode),"UNTRUSTED_TREE_FILE")
             count+=1;size+=st.st_size
             need(count<=maxfiles and size<=maxbytes,"TREE_MEASUREMENT_TOO_LARGE")
-            rel=p.relative_to(root).as_posix().encode()
-            h.update(len(rel).to_bytes(4,"big")+rel+st.st_size.to_bytes(8,"big"))
-            with p.open("rb") as f:
+            h.update(b"F"+len(rel).to_bytes(4,"big")+rel+
+                     st.st_size.to_bytes(8,"big"))
+            with p.open("rb") as file:
                 while True:
-                    block=f.read(1048576)
+                    block=file.read(1048576)
                     if not block:break
                     h.update(block)
     need(count>0,"TREE_EMPTY")
