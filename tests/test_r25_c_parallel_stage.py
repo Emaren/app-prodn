@@ -196,7 +196,8 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('commands.add_argument("--recover-dns"',worker)
         self.assertIn('elif a.recover_dns:recover_dns_build()',worker)
         self.assertIn('"recover-dns":"--recover-dns"',owner)
-        self.assertIn('"recover-dns")',owner)
+        self.assertIn('"recover-dns":"--recover-dns"',owner)
+        self.assertIn('"recover-prebuild":"--recover-prebuild"',owner)
         self.assertIn('DNS_RECOVERY_ATTEMPT.json',worker)
         self.assertIn('old_build_attempt_preserved":True',worker)
 
