@@ -32,7 +32,7 @@
         "/kingdom-progress",
         "/kingdom-systems",
         "/aoe2war-os",
-        "/aoe2war-os/engineering",
+        "/aoe2war-os/[mode]",
         "/kingdom-recovery",
         "/speed",
         "/admin/aoe2war-os",
