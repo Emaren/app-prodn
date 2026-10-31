@@ -237,6 +237,11 @@ def remote_observe(rollback_path):
              "LIVE_TRACKED_SOURCE_DIRTY")
         provenance="ORIGINAL_GIT_COMMIT"
     else:
+        for node in (F_SLOT,F_SLOT.parent,F_SLOT.parent.parent):
+            st=node.lstat()
+            need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
+                 not(st.st_mode&0o022) and not stat.S_ISLNK(st.st_mode),
+                 "UNTRUSTED_ROOT_SEALED_WEB_SLOT")
         marker=F_SLOT/"r24-source-sha"
         st=marker.lstat()
         need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and
@@ -326,6 +331,8 @@ def verify(before,after,origin):
             "status":"LIVE_SOURCE_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_VERIFIED",
             "live_source_sha":TARGET,"live_next_build_id":after["next_build_id"],
             "source_provenance":after["source_provenance"],
+            "full_candidate_source_tree_independently_hashed":False,
+            "owner_approved_F_stage_digest_required":True,
             "active_working_directory":after["active_working_directory"],
             "web_main_pid":after["web"]["pid"],"previous_source_sha":before["source_sha"],
             "previous_next_build_id":before["next_build_id"],
