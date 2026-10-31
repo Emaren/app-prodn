@@ -137,8 +137,15 @@ def original_lease():
             (held.st_dev, held.st_ino, held.st_uid, stat.S_IMODE(held.st_mode)) ==
             (actual.st_dev, actual.st_ino, 1000, 0o644),
             "ORIGINAL_LOCK_INODE_OR_OWNER_CHANGED")
-    # F's root/command channel owns the exclusive flock lifecycle. Root issuer
-    # cannot manufacture its owner authorization from the presence of an FD.
+    # A valid inode alone is insufficient: another file description could
+    # hold the flock while FD200 is unlocked. Reuse F's original-open-file-
+    # description proof, which verifies contention AND FD200 lock ownership.
+    # This never opens a replacement issuer lease or issues owner consent.
+    from aoe2_solo_website_nonce_ledger import Journal
+    try:
+        Journal().inherited_lease_fd()
+    except Exception as exc:
+        raise Hold("FD200_NOT_ORIGINAL_COMMAND_LEASE_OWNER") from exc
     return (held.st_dev, held.st_ino)
 
 
