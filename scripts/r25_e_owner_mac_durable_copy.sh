@@ -8,9 +8,9 @@ import datetime,hashlib,json,os,pathlib,re,secrets,shlex,subprocess,sys,urllib.r
 def hold(reason): raise SystemExit('HOLD:R25_E_OWNER_COPY:'+reason)
 if sys.platform!='darwin' or os.geteuid()==0:
     hold('ORIGINAL_OWNER_NONROOT_MAC_REQUIRED')
-commit='371b88113a0ee82c0bdee181f13c86c51733593d'
-source_sha='60f8cd06c0e44bb03fbc95c5fc52d07a6922fc743897248f6c00242e8bdf6418'
-source_size=22986
+commit='e217b99c830ebc01aa46c4a4b60b3a6cd14a218f'
+source_sha='55ce776c75734121b4ba3f14a7f5edfbae10d9321d5cd6ac45cf1e568412bc87'
+source_size=23254
 url='https://raw.githubusercontent.com/Emaren/app-prodn/'+commit+'/scripts/aoe2_r25_e_durable_old_next_copy.py'
 try:
     with urllib.request.urlopen(url,timeout=25) as r: worker=r.read(source_size+1)
