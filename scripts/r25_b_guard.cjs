@@ -9,7 +9,7 @@ const https = require("node:https");
 const net = require("node:net");
 const GUARD_PATH = "/usr/local/lib/aoe2war-r25/r25_b_guard.cjs";
 const EXPECTED_OPTIONS = "--require=" + GUARD_PATH;
-const DB_USER = "aoe2war-r24-web_ro";
+const DB_USER = "aoe2war_r25_web_ro";
 const REQUIRED = Object.freeze({
   NODE_ENV: "production",
   WARGRAPH_RUNTIME_DISABLED: "true",
