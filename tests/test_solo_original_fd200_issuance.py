@@ -26,6 +26,6 @@ class OriginalIssue(unittest.TestCase):
                 "web_service":"active"}):
             journal.return_value.inherited_lease_fd.side_effect=phase.Hold("FD200 missing")
             with self.assertRaisesRegex(phase.Hold,"FD200 missing"):
-                phase.issue(["PRE_STAGE",phase.TRAINS["W1"][0]])
+                phase.issue(["PRE_STAGE",phase.TRAINS["W1_SAFE"][0],"a"*64])
 if __name__=="__main__":
     unittest.main()
