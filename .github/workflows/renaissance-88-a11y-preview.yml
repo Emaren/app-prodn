@@ -153,6 +153,12 @@ jobs:
             --plan renaissance-88-chrome/plan.json --out "$GITHUB_WORKSPACE/renaissance-88-chrome" \
             --cohort 0 --cohorts "$cohorts" --samples "$samples" --route-ms 18000 --deadline-ms "$deadline"
           browser_rc=$?
+          # Genuine isolated Next artifact, exact W1_SAFE routes at 375/768/1440.
+          # This remains candidate-only: not authenticated live/HEL1 acceptance.
+          export BROWSER_BASE_URL=http://127.0.0.1:3137
+          export W1SAFE_CANDIDATE_BUILD_ID="$(cat renaissance-88-chrome/BUILD_ID)"
+          timeout -k 5s 5m node scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          w1safe_rc=$?
           set -e
           # Stop the Next app before snapshot: no background GET callback may race
           # the final DB/asset fingerprint.
