@@ -1,5 +1,7 @@
 """Adversarial source-only contract tests. No live service / keys / finance."""
 import importlib.util
+import fcntl
+import os
 import hashlib
 import json
 from pathlib import Path
@@ -27,6 +29,45 @@ class NativeIssuerAdversarialTests(unittest.TestCase):
         with mock.patch.object(m.os, 'fstat', side_effect=OSError('no lease')):
             with self.assertRaisesRegex(m.Hold, 'MISSING_ORIGINAL_FD200'):
                 m.original_lease()
+
+    def test_kernel_fd_lock_absent_rejected_even_with_same_inode(self):
+        with tempfile.TemporaryDirectory() as td:
+            lock = Path(td) / "release.lock"
+            lock.write_bytes(b"lock")
+            fd = os.open(lock, os.O_RDONLY)
+            try:
+                with self.assertRaisesRegex(m.Hold, "FD200_DOES_NOT_OWN_KERNEL_FLOCK"):
+                    m.assert_fd_owns_exclusive_flock(fd, lock)
+            finally:
+                os.close(fd)
+
+    def test_kernel_fd_lock_owned_and_other_ofd_contended(self):
+        with tempfile.TemporaryDirectory() as td:
+            lock = Path(td) / "release.lock"
+            lock.write_bytes(b"lock")
+            fd = os.open(lock, os.O_RDWR)
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                self.assertTrue(m.assert_fd_owns_exclusive_flock(fd, lock))
+                fcntl.flock(fd, fcntl.LOCK_UN)
+                with self.assertRaisesRegex(m.Hold, "FD200_DOES_NOT_OWN_KERNEL_FLOCK"):
+                    m.assert_fd_owns_exclusive_flock(fd, lock)
+            finally:
+                os.close(fd)
+
+    def test_other_process_or_fd_holds_lock_not_substitute_for_fd200(self):
+        with tempfile.TemporaryDirectory() as td:
+            lock = Path(td) / "release.lock"
+            lock.write_bytes(b"lock")
+            holder = os.open(lock, os.O_RDWR)
+            impostor = os.open(lock, os.O_RDONLY)
+            try:
+                fcntl.flock(holder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with self.assertRaisesRegex(m.Hold, "FD200_DOES_NOT_OWN_KERNEL_FLOCK"):
+                    m.assert_fd_owns_exclusive_flock(impostor, lock)
+            finally:
+                os.close(impostor)
+                os.close(holder)
 
     def test_source_timestamp_and_phase_replay(self):
         from datetime import datetime, timezone
