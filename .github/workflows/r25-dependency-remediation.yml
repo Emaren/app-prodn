@@ -30,9 +30,9 @@ jobs:
           python3 - <<'PY'
           import base64,gzip,pathlib
           lock=pathlib.Path('yarn.lock').read_bytes()
-          print("LOCKFILE_GZIP_BASE64_BEGIN")
-          print(base64.b64encode(gzip.compress(lock,compresslevel=9,mtime=0)).decode())
-          print("LOCKFILE_GZIP_BASE64_END")
+          print("LOCKFILE_RAW_BASE64_BEGIN")
+          print(base64.b64encode(lock).decode())
+          print("LOCKFILE_RAW_BASE64_END")
           print("LOCK_BYTES",len(lock))
           PY
       - name: Audit actual regenerated dependency graph with NO waivers
