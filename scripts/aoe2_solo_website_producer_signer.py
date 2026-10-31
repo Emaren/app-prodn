@@ -233,8 +233,12 @@ def measure(collector,role,p,epoch,now):
          output["collector_sha256"]==digest(checked_file(collector,0)),
          "SOURCE_COLLECTOR_REPORT_UNBOUND")
     captured=timestamp(output["collected_at"])
+    # A collector runs AFTER the intent validation. Testing against its
+    # pre-invocation time would reject every honest new measurement.
+    finished=datetime.now(timezone.utc)
     need(abs((captured-epoch).total_seconds())<=15 and
-         timedelta(0)<=now-captured<=timedelta(seconds=90),
+         now-timedelta(seconds=1)<=captured<=finished+timedelta(seconds=1) and
+         timedelta(0)<=finished-captured<=timedelta(seconds=90),
          "MEASUREMENT_TIME_OUTSIDE_SIGNED_EPOCH")
     section=output["section"]
     if role=="host":
