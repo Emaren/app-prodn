@@ -14,7 +14,7 @@ test("ordered phases and intentional independent views",()=>{
  for(const m of data.modules){const target=m.slug==="command"?"../app/renaissance/page.tsx":"../app/renaissance/"+m.slug+"/page.tsx";assert.ok(existsSync(new URL(target,import.meta.url)),m.slug);}
 });
 test("public visibility explicitly separates admin, private, invoice and public index",()=>{
- assert.equal(routes.filter((r:string)=>r==="/admin"||r.startsWith("/admin/")).length,30);
+ assert.equal(routes.filter((r:string)=>r==="/admin"||r.startsWith("/admin/")).length,34);
  assert.equal(routes.filter((r:string)=>r.includes("[")).length,21);
  const view=readFileSync(new URL("../lib/renaissance/registry.ts",import.meta.url),"utf8");
  assert.match(view,/isRestricted/);assert.match(view,/market\/invoices/);
