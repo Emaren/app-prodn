@@ -325,8 +325,8 @@ def stage_identity(j):
         return parse(raw)
     source=c_file("SOURCE_STAGED.json","C_source_staged_sha256")
     built=c_file("BUILD_STAGED.json","C_build_staged_sha256")
-    source_rows=c_file("SOURCE_FILES.json","C_source_files_sha256",16777216)
-    build_rows=c_file("BUILD_FILES.json","C_build_files_sha256",33554432)
+    source_rows=c_file("SOURCE_FILES.json","C_source_files_sha256",33554432)
+    build_rows=c_file("BUILD_FILES.json","C_build_files_sha256",67108864)
     need(source.get("status")=="SOURCE_STAGED" and
          source.get("candidate_sha")==TARGET and
          source.get("git_archive_sha256")==C_SOURCE_ARCHIVE_SHA256,
