@@ -301,9 +301,57 @@ def apply():
                       file=sys.stderr)
             raise
     finally:os.close(fd)
+def manual_rollback(nonce):
+    need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
+         "EXACT_HEL1_ROOT_REQUIRED")
+    need(bool(NONCE.fullmatch(nonce)),"ROLLBACK_NONCE_INVALID")
+    lock_check()
+    protected_dir(ROOT_APPROVAL.parent,0o700)
+    j=approval(root_file(ROOT_APPROVAL,16384))
+    need(j["nonce"]==nonce,"ROLLBACK_OWNER_SCOPE_INVALID")
+    record=AUDIT_BASE/("r24-"+nonce)
+    protected_dir(record,0o700)
+    commit=parse(root_file(record/"commit.json",8192))
+    need(commit["status"]=="R24_PARALLEL_WEBSITE_LIVE" and
+         commit["candidate_sha"]==TARGET and
+         commit["nonce"]==nonce,"ROLLBACK_COMMIT_IDENTITY")
+    need(not (record/"rollback.json").exists(),"ROLLBACK_ALREADY_ATTEMPTED")
+    old=root_file(record/"before-nginx.conf",131072)
+    need(sha(old)==commit["old_nginx_sha256"],
+         "ORIGINAL_NGINX_ROLLBACK_BYTES_DRIFT")
+    config=pathlib.Path(j["nginx_config"])
+    current=root_file(config,131072)
+    need(sha(current)==commit["new_nginx_sha256"],
+         "LIVE_NGINX_NOT_EXACT_CANDIDATE")
+    s=snapshots(j["finance_units"])
+    prove_preimage(j,s)
+    lockfd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        try:fcntl.flock(lockfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as err:raise Hold("ROLLBACK_GLOBAL_LOCK_BUSY") from err
+        lock_check()
+        need(snapshots(j["finance_units"])==s,
+             "FINANCIAL_ORIGINAL_WEB_DRIFT_BEFORE_ROLLBACK")
+        replace_existing(config,old)
+        nginx_reload()
+        need(public_version()==http_version(OLD_PORT),
+             "PUBLIC_OLD_VERSION_NOT_RESTORED")
+        need(snapshots(j["finance_units"])==s,
+             "FINANCIAL_ORIGINAL_WEB_DRIFT_AFTER_ROLLBACK")
+        durable_write(record/"rollback.json",canonical({"status":"OLD_PUBLIC_PROXY_RESTORED",
+             "nonce":nonce,"old_config_sha256":sha(old),"original_web_restarted":False})+b"\n")
+        fsyncdir(record)
+        print("PASS:R24_OLD_WEB_PROXY_RESTORED; ORIGINAL_WEB_MAINPID_UNCHANGED")
+    finally:os.close(lockfd)
 def main():
-    need(sys.argv[1:]==["--root-apply"],"ONLY_REVIEWED_ROOT_APPLY")
-    apply()
+    need(len(sys.argv)>=2,"EXPLICIT_ROOT_OPERATOR_MODE")
+    if sys.argv[1:]==["--root-apply"]:
+        apply()
+    elif len(sys.argv)==4 and sys.argv[1]=="--root-rollback" and
+         sys.argv[2]=="--nonce":
+        manual_rollback(sys.argv[3])
+    else:
+        raise Hold("UNREVIEWED_ROOT_OPERATION")
 if __name__=="__main__":
     try:main()
     except (Hold,OSError,ValueError,subprocess.SubprocessError) as e:
