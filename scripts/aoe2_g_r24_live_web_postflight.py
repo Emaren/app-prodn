@@ -3,7 +3,8 @@
 
 before: python3 script --ssh-target root@<owner-reviewed-HEL1-alias> --phase before > before.json
 after:  python3 script --ssh-target root@<same-alias> --phase after --before before.json \
-           --rollback-path /mnt/HC_Volume_105319120/aoe2war/rollbacks/activate-<real-receipt-id>
+           --rollback-path /mnt/HC_Volume_105319120/aoe2war/rollbacks/activate-<real-receipt-id> \
+           --before-sha256 <sha256-from-original-F-before-capture>
 The root SSH key/known_hosts must be independently verified by the owner/F.
 No ssh host-key bypass, privilege elevation, database operation or write on HEL1.
 """
@@ -293,7 +294,9 @@ def verify(before,after,origin):
             "original_release_lock_preserved":True,
             "public_next_build_id_directly_exposed":False,
             "independent_production_chrome_88_routes":"NOT_RUN",
-            "finance_signed_receipt":False,"no_financial_writes_executed_by_witness":True}
+            "finance_signed_receipt":False,
+            "no_financial_mutation_http_methods_dispatched":True,
+            "SSR_GET_HEAD_financial_side_effects_independently_proven":False}
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--remote",action="store_true")
