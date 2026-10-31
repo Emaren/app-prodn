@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2d3fb49e3aa91bc632fd7075d365156eaf95bc241a0448c952354a764a5f95ed",
+      "sha256": "1218cfd28e9b0fbd37736dabc173cde69d92ea3829b2b8d472caf993de48eda6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/c-storage-signed-freshness-20261029",
-    "commit": "9787cd1795ec682a5dde7697e0e0bb627c3f3d37"
+    "branch": "security/r25-glob-minimatch-remediation-20261031",
+    "commit": "1ce04546ea8098945f9080f930eacfaec5f2b3c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
