@@ -235,16 +235,24 @@ def tcp3031(pid):
     return digest(sockets[0].encode())
 
 def nft_policy(uid):
+    # -n renders conntrack NEW (bit 8) as the *numeric* 0x8. Match the
+    # entire chain, not just skuid lines: an unscoped bypass rule must fail.
     text=run(["/usr/sbin/nft","-n","list","chain","inet",
               "aoe2war_r25_b","egress"],max_bytes=8192).decode()
-    if "type filter hook output priority -150; policy accept;" not in text:
-        hold("NFT_OUTPUT_HOOK_NOT_ENFORCED")
-    lines=[s.strip().rstrip(";") for s in text.splitlines() if "meta skuid" in s]
+    lines=[s.strip() for s in text.splitlines() if s.strip()]
     expected=[
-        f"meta skuid {uid} ct state new ip daddr 127.0.0.1 tcp dport 5432 accept",
-        f"meta skuid {uid} ct state new drop",
+        "table inet aoe2war_r25_b {",
+        "chain egress {",
+        "type filter hook output priority -150; policy accept;",
+        f"meta skuid {uid} ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept",
+        f"meta skuid {uid} ct state 0x8 drop",
+        "}",
+        "}",
     ]
-    if lines!=expected:hold("NFT_EGRESS_RULES_NOT_EXACT")
+    if lines[:3]!=expected[:3]:
+        hold("NFT_OUTPUT_HOOK_NOT_ENFORCED")
+    if lines!=expected:
+        hold("NFT_EGRESS_RULES_NOT_EXACT")
     return digest(text.encode())
 
 def reject_postgres_local_trust(dbname):
