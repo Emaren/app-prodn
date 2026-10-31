@@ -1,0 +1,23 @@
+name: R20 C HEL1 READONLY PLAN (SOURCE ONLY)
+on:
+  pull_request:
+    paths:
+      - 'deploy/solo-native-audit/r20_c_hel1_one_readonly_plan.py'
+      - 'tests/test_r20_c_hel1_one_readonly_plan.py'
+      - '.github/workflows/r20-c-hel1-readonly-plan.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-only-negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile pinned owner root PLAN and negative tests
+        run: python3 -B -m py_compile deploy/solo-native-audit/r20_c_hel1_one_readonly_plan.py tests/test_r20_c_hel1_one_readonly_plan.py
+      - name: Run source-only plan confinement tests
+        run: python3 -B -m unittest discover -s tests -p 'test_r20_c_hel1_one_readonly_plan.py' -v
+      - name: Explicitly deny native authority claims
+        run: |
+          echo 'SOURCE-ONLY. No native HEL1 host, root PLAN, root install, SSH enrollment, stage, finance, activation or reclaim.'
