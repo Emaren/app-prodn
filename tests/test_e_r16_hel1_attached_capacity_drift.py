@@ -43,7 +43,7 @@ class AttachedVolumeAdmission(unittest.TestCase):
             def fake_lstat(p):
                 s=original_lstat(p)
                 if str(p)==str(path):
-                    return SimpleNamespace(st_mode=s.st_mode,st_uid=0,st_size=s.st_size)
+                    return SimpleNamespace(st_mode=s.st_mode & ~0o077,st_uid=0,st_size=s.st_size)
                 return s
             root_disk={"mounted":True,"free_bytes":root_value+delta,
                        "effective_used_pct":80.0,"finish_used_pct":84.0}
