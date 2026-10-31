@@ -382,8 +382,8 @@ def verify(before,after,phase):
              after["release_journal"]["rollback_exercised"] is True,
              "ROLLBACK_CHANGED_MORE_THAN_NGINX_OR_NOT_RECORDED")
     return {"schema":"aoe2war.g.r25.postflight.v1","phase":phase,
-        "status":"LIVE_PARALLEL_PUBLIC_ACTIVE_VERIFIED" if phase=="after" else
-                 "PUBLIC_3030_ROLLBACK_VERIFIED",
+        "status":"LIVE_PARALLEL_HOST_AND_PUBLIC_MEASURED_REQUIRES_F_STAGE_REVIEW"
+                 if phase=="after" else "PUBLIC_3030_NGINX_ONLY_ROLLBACK_MEASURED",
         "frozen_candidate_sha":TARGET,
         "old_web_service_pid_unchanged":True,
         "old_web_source_build_3030_unchanged":True,
@@ -417,6 +417,12 @@ def main():
             snapshot=ssh_snapshot(x.ssh_target,x.phase)
             if x.phase=="before":
                 need(snapshot["nginx"]["upstream_port"]==3030,"PUBLIC_NOT_YET_AT_3030")
+                snapshot["public_before"]=public_check(snapshot)
+                recheck=ssh_snapshot(x.ssh_target,"before")
+                compare_process_and_finance(snapshot,recheck)
+                need(snapshot["nginx"]==recheck["nginx"] and
+                     snapshot["release_journal"]==recheck["release_journal"],
+                     "PUBLIC_OLD_UPSTREAM_DRIFT_DURING_BEFORE")
                 result=snapshot
             else:
                 need(x.before and x.before_sha256 and H64.fullmatch(x.before_sha256),
