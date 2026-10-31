@@ -79,7 +79,7 @@ def validated_policy(raw):
     need(type(o["rollback_source_sha"])==str and
          re.fullmatch(r"[0-9a-f]{40}",o["rollback_source_sha"]),"ROLLBACK_ID_MISSING")
     units=o["finance_units"]
-    need(type(units)==list and len(units)>=6 and len(units)==len(set(units)) and
+    need(type(units)==list and len(units)>=25 and len(units)==len(set(units)) and
          all(type(v)==str and re.fullmatch(r"[a-zA-Z0-9@_.-]+\.service",v) and v!=WEB
              for v in units),"FINANCIAL_SERVICE_WATCH_INCOMPLETE")
     return o
@@ -96,19 +96,20 @@ def source_slot(policy):
     need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,
          "UNTRUSTED_SLOT_PARENT")
     w=os.lstat(SOURCE_DIR)
-    need(stat.S_ISDIR(w.st_mode) and w.st_uid==1000 and not w.st_mode&0o022,
-         "UNTRUSTED_SLOT_SOURCE")
+    need(stat.S_ISDIR(w.st_mode) and w.st_uid==0 and not w.st_mode&0o022,
+         "STAGE_MUST_BE_ROOT_SEALED_READONLY")
     def checked(rel,maxbytes=256):
         path=SOURCE_DIR/rel
-        st=stat_regular(path);need(st.st_uid==1000 and 0<st.st_size<=maxbytes,
+        st=stat_regular(path);need(st.st_uid==0 and 0<st.st_size<=maxbytes,
                                    "STAGED_ARTIFACT_UNTRUSTED:"+rel)
         return path.read_bytes().strip().decode("ascii")
     need(checked("r24-source-sha",64)==CANDIDATE,"STAGED_GIT_IDENTITY")
     need(checked(".next/BUILD_ID",256)==policy["build_id"],"STAGED_BUILD_IDENTITY")
     need(checked(".aoe2war-build-version",256)==policy["build_version"],
          "STAGED_BUILD_VERSION_IDENTITY")
-    need((SOURCE_DIR/"node_modules").is_dir() and
-         not (SOURCE_DIR/"node_modules").is_symlink(),"STAGED_DEPENDENCY_TREE_MISSING")
+    n=os.lstat(SOURCE_DIR/"node_modules")
+    need(stat.S_ISDIR(n.st_mode) and n.st_uid==0 and not n.st_mode&0o022,
+         "STAGED_ROOT_SEALED_DEPENDENCIES_MISSING")
 def snapshot(units):
     items={}
     for u in [WEB]+units:
@@ -116,7 +117,7 @@ def snapshot(units):
             "--property=MainPID,ActiveState,FragmentPath,DropInPaths,ExecStart,WorkingDirectory",
             "--no-pager"])
         items[u]=p.stdout.strip()
-        need("ActiveState=active" in p.stdout,"REQUIRED_UNIT_INACTIVE:"+u)
+        if u==WEB:need("ActiveState=active" in p.stdout,"WEB_SERVICE_NOT_ACTIVE")
     return items
 def listeners():
     p=run(["/usr/bin/ss","-H","-ltn"])
@@ -174,6 +175,12 @@ def activate():
     need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
          "ORIGINAL_HEL1_ROOT_REQUIRED")
     check_original_lock()
+    protected_dir(OLD_PUBLIC.parent);stat_regular(OLD_PUBLIC,root_owner=True)
+    original=subprocess.run(["/usr/bin/openssl","pkey","-pubin",
+            "-in",str(OLD_PUBLIC),"-outform","DER"],
+            capture_output=True,timeout=10)
+    need(original.returncode==0 and sha(original.stdout)==OLD_RSA,
+         "ORIGINAL_ROOT_PUBLIC_RSA_PIN_DRIFT")
     protected_dir(POLICY.parent);stat_regular(POLICY,root_owner=True)
     scope=validated_policy(POLICY.read_bytes())
     source_slot(scope)
