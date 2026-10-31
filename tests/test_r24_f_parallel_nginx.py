@@ -142,6 +142,30 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn('ROLLBACK_ALREADY_ATTEMPTED',src)
         self.assertIn('before-nginx.conf',src)
         self.assertIn('original_web_restarted',src)
+    def test_manual_rollback_does_not_require_failed_candidate_to_run(self):
+        s=self.s
+        a={
+            "old_web_snapshot_sha256":s.sha(b"OLD_ACTIVE_PID"),
+            "finance_snapshot_sha256":s.sha(s.canonical({"protected": "running"})),
+            "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"SOCKET_A","8093":"SOCKET_B"}))
+        }
+        current={"original_web":"OLD_ACTIVE_PID","candidate_web":"ActiveState=failed",
+                 "finance":{"protected":"running"},"wolo":"SOCKET_A"}
+        with mock.patch.object(s,"listener_lines",return_value={"8092":"SOCKET_A","8093":"SOCKET_B"}):
+            s.prove_rollback_preimage(a,current)
+            old=s.protected_continuity(current)
+            current["candidate_web"]="ActiveState=inactive"
+            self.assertEqual(old,s.protected_continuity(current))
+    def test_emergency_rollback_verified_old_web_unchanged(self):
+        s=self.s
+        status={"old_web_snapshot_sha256":s.sha(b"OLD_PID_GOOD"),
+                "finance_snapshot_sha256":s.sha(s.canonical({"finance":"active"})),
+                "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"A","8093":"B"}))}
+        current={"original_web":"NEW_PID_UNEXPECTED","candidate_web":"",
+                 "finance":{"finance":"active"},"wolo":"unused"}
+        with mock.patch.object(s,"listener_lines",return_value={"8092":"A","8093":"B"}):
+            with self.assertRaisesRegex(s.Hold,"ROLLBACK_ORIGINAL_FINANCIAL_WEB_PID_DRIFT"):
+                s.prove_rollback_preimage(status,current)
     def test_exact_original_shared_release_lock(self):
         self.assertEqual(self.s.LOCK_ID,(2064,6185747,1000,0o644))
         self.assertIn("fcntl.LOCK_EX|fcntl.LOCK_NB",SERVER.read_text())
