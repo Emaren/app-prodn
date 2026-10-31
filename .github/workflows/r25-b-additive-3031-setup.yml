@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       - name: Freeze base B implementation and isolate setup-only sources
         run: |
-          git merge-base --is-ancestor 7f365a3d27f56d6321ad10a34706889814fe4131 HEAD
+          git merge-base --is-ancestor 87d340314e46032fce68e5cfdcc268b8e6593a82 HEAD
           python3 -B - <<'PY'
           import subprocess
           allowed={
@@ -33,7 +33,7 @@ jobs:
           }
           changed=subprocess.check_output([
               "git","diff","--name-only",
-              "7f365a3d27f56d6321ad10a34706889814fe4131","HEAD"
+              "87d340314e46032fce68e5cfdcc268b8e6593a82","HEAD"
           ],timeout=25).decode().splitlines()
           assert set(changed)==allowed,("MUTATING_OR_UNREVIEWED_SOURCE_CHANGE",changed)
           print("PASS:R25_B_NEW_ONLY_SOURCE_BOUNDARY")

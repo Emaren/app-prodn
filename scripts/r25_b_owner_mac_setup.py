@@ -14,12 +14,12 @@ import subprocess
 import sys
 import urllib.request
 
-B_SOURCE="7f365a3d27f56d6321ad10a34706889814fe4131"
-ROOT_REF="cebae8d56db5908bdffc5e5a3941bc65a625b854"
-ROOT_BLOB="a82edb8994ab064d6167654ab839d0cd32af54d1"
+B_SOURCE="87d340314e46032fce68e5cfdcc268b8e6593a82"
+ROOT_REF="6fa7fa4fd9ef03d513ddb5112c5810d40b328960"
+ROOT_BLOB="f3d8ccc0d59afd27df30849c045ac7dff3a39adb"
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
-WITNESS_SHA="c13d42c7de3ab8c9e55a68008ede2a9e2b55375d4aeae735cd47cf368b0a5e80"
-DROPIN_GIT_BLOB="c9dc1999ba5c62f149240e4bab11b579afeb69bc"
+WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
+DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
 NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
 CONSENT="INSTALL-R25-B-NEW-ONLY-"+B_SOURCE[:12]
 FILES={
@@ -95,6 +95,10 @@ def host_call(phase,root,bundle,database,consent=""):
     return output
 
 def main():
+    # Default source has NO implicit install. Caller must name an explicit phase.
+    if sys.argv[1:] not in (["--plan-only"],["--install"]):
+        hold("EXPLICIT_PLAN_ONLY_OR_INSTALL_PHASE_REQUIRED")
+    plan_only = sys.argv[1:] == ["--plan-only"]
     if sys.platform!="darwin" or os.geteuid()==0:
         hold("ORIGINAL_OWNER_MAC_NONROOT_REQUIRED")
     root,bundle=payloads()
@@ -106,6 +110,9 @@ def main():
     if plan.get("status")!="PASS_B_INSTALL_PLAN_ONLY_NO_WRITES":
         hold("PHYSICAL_PLAN_NOT_ACCEPTED")
     print(json.dumps(plan,sort_keys=True,indent=2),flush=True)
+    if plan_only:
+        print("PASS:R25_B_PLAN_ONLY_NO_INSTALL_SSH_NO_PRODUCTION_WRITES")
+        return
     print("This will create ONLY a new OS login if absent, new DB role + grants,")
     print("an ADDITIVE uid-scoped nft table, and NEW-only root-owned guard/drop-in.")
     print("No old service restart, no Wolo action, no public cutover.")

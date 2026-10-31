@@ -115,6 +115,14 @@ class TestOwnerInstall(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,"GENERATED_PASSWORD_FORMAT"):
             b.new_role_sql("x';DROP TABLE funds; --")
 
+    def test_owner_mac_default_cannot_offer_install_without_explicit_phase(self):
+        import inspect
+        s=inspect.getsource(mac.main)
+        self.assertIn('["--plan-only"]',s)
+        self.assertIn('["--install"]',s)
+        self.assertIn("EXPLICIT_PLAN_ONLY_OR_INSTALL_PHASE_REQUIRED",s)
+        self.assertIn("PASS:R25_B_PLAN_ONLY_NO_INSTALL_SSH",s)
+
     def test_owner_mac_root_and_templates_pinned(self):
         self.assertEqual(mac.B_SOURCE,b.SOURCE_COMMIT)
         self.assertEqual(mac.GUARD_SHA,b.GUARD_SHA)
