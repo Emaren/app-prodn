@@ -7,7 +7,7 @@ on:
       - "docs/central-agent-ledger/**"
       - "lib/kingdomEngineeringProjection.ts"
       - "components/kingdom-engineering/**"
-      - "app/aoe2war-os/engineering/**"
+      - "app/aoe2war-os/[mode]/**"
       - "app/aoe2war-os/Aoe2warOsDeck.tsx"
       - "app/admin/engineering-os/**"
       - "tests/test_r25_kingdom_visuals.py"
@@ -26,3 +26,7 @@ jobs:
           python-version: "3.12"
       - name: Verify public/admin boundary and six source-based visual modes
         run: python3 -m unittest discover -s tests -p 'test_r25_kingdom_visuals.py' -v
+      - name: Derive canonical route fingerprints for review (not committed)
+        run: |
+          node scripts/kingdom_index_source_audit.mjs --write
+          node --input-type=module -e 'import rows from "./config/kingdom-index-routes.json" with { type:"json" }; for(const row of rows.filter(r=>r.href==="/aoe2war-os")) console.log("PROPOSED_INDEX_SOURCE_TREE="+row.href+"="+row.sourceTree)'
