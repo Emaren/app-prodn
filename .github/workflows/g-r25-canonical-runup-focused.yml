@@ -34,6 +34,6 @@ jobs:
           assert p["pipeline"][1]["state"]=="OWNER_REPORTED"
           assert not p["release_live_verified"]
           assert a["worker_processes_independently_verified"] is None
-          assert len(a["os_cards"])==14 and len(a["roles"])==2
+          assert len(a["os_cards"])==14 and len(a["roles"])==3
           print("PASS:P3_RUNUP_SOURCE_ONLY_UNVERIFIED_NO_POLL")
           PY
