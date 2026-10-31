@@ -198,6 +198,52 @@ meta skuid 1000 ct state new drop"""
         with self.assertRaisesRegex(RuntimeError,"NEW_SERVICE_PRIVATE_CACHE_MOUNT_NOT_PROVEN"):
             b.validate_filesystem_wall(status)
 
+    def test_systemd_normalized_rbind_exact_singleton_is_accepted(self):
+        cache="/var/cache/aoe2war-r25-b-next-cache"
+        target=str(b.SOURCE/".next"/"cache")
+        status={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+                "ReadWritePaths":cache+" "+target,
+                "CacheDirectory":"aoe2war-r25-b-next-cache",
+                "CacheDirectoryMode":"0700",
+                "BindPaths":cache+":"+target+":rbind"}
+        self.assertTrue(b.validate_filesystem_wall(status))
+        # A literal unadorned systemd representation remains equivalent.
+        status["BindPaths"]=cache+":"+target
+        self.assertTrue(b.validate_filesystem_wall(status))
+
+    def test_systemd_bindpaths_normalization_still_fails_closed(self):
+        cache="/var/cache/aoe2war-r25-b-next-cache"
+        target=str(b.SOURCE/".next"/"cache")
+        base={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+              "ReadWritePaths":cache+" "+target,
+              "CacheDirectory":"aoe2war-r25-b-next-cache",
+              "CacheDirectoryMode":"0700",
+              "BindPaths":cache+":"+target+":rbind"}
+        unsafe=[
+            {"BindPaths":cache+":"+target+":bind"},
+            {"BindPaths":cache+":"+target+":ro"},
+            {"BindPaths":cache+":"+target+":rbind:ro"},
+            {"BindPaths":cache+":"+target+":norbind"},
+            {"BindPaths":cache+":"+target+":rbind:extra"},
+            {"BindPaths":cache+":"+target+":rbind "+cache+":/tmp/finance:rbind"},
+            {"BindPaths":cache+":"+target+":rbind "+cache+":"+target+":rbind"},
+            {"BindPaths":target+":"+cache+":rbind"},
+            {"BindPaths":cache+":"+target+"-wrong:rbind"},
+            {"BindPaths":"/tmp/finance:"+target+":rbind"},
+            {"BindPaths":""},
+            {"ReadWritePaths":cache+" "+target+" "+target},
+            {"ReadWritePaths":cache+" "+target+" /tmp/finance"},
+            {"ReadWritePaths":cache},
+            {"CacheDirectory":"another-cache"},
+            {"CacheDirectoryMode":"0755"},
+            {"CacheDirectoryMode":"0700 0700"},
+            {"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets"},
+        ]
+        for changed in unsafe:
+            with self.subTest(changed=changed):
+                with self.assertRaises(RuntimeError):
+                    b.validate_filesystem_wall({**base,**changed})
+
     def test_prestart_negative_without_verified_root_guard(self):
         with patch.object(b.os,"geteuid",return_value=0), \
              patch.object(b.socket,"gethostname",return_value=b.HOST), \
@@ -214,7 +260,7 @@ meta skuid 1000 ct state new drop"""
                     "ReadWritePaths":str(b.SOURCE/".next"/"cache")+" /var/cache/aoe2war-r25-b-next-cache",
                     "CacheDirectory":"aoe2war-r25-b-next-cache",
                     "CacheDirectoryMode":"0700",
-                    "BindPaths":"/var/cache/aoe2war-r25-b-next-cache:"+str(b.SOURCE/".next"/"cache")}
+                    "BindPaths":"/var/cache/aoe2war-r25-b-next-cache:"+str(b.SOURCE/".next"/"cache")+":rbind"}
         with patch.object(b.os,"geteuid",return_value=0), \
              patch.object(b.socket,"gethostname",return_value=b.HOST), \
              patch.object(b,"require_root_file",return_value="a"*64), \
