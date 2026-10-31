@@ -1,5 +1,5 @@
 """R25 C independent read-only SHA manifest and build identity witness tests."""
-import hashlib,importlib.util,json,pathlib,tempfile,unittest
+import hashlib,importlib.util,json,os,pathlib,tempfile,unittest
 from unittest import mock
 VERIFY=pathlib.Path(__file__).resolve().parents[1]/"scripts/aoe2_r25_c_stage_verify.py"
 def load():
@@ -22,36 +22,42 @@ class IndependentStageTests(unittest.TestCase):
             raw=f.read_bytes();rows.append({"path":f.relative_to(p).as_posix(),
               "type":"file","size":len(raw),"sha256":hashlib.sha256(raw).hexdigest()})
         return p,rows
+    def verify_synthetic_as_root(self, stage, rows):
+        # Fixture only: GitHub runner creates files under its normal UID.
+        # Production verifier continues to require st_uid == 0 for ALL files.
+        real_lstat=pathlib.Path.lstat
+        def fake_root_lstat(path):
+            values=list(real_lstat(path))
+            values[4]=0
+            return os.stat_result(values)
+        with mock.patch.object(self.v,"STAGE",stage):
+            with mock.patch.object(pathlib.Path,"lstat",new=fake_root_lstat):
+                return self.v.verify_tree(rows)
     def test_03_manifest_real_bytes(self):
         with tempfile.TemporaryDirectory() as d:
             p,rows=self.fixture(d)
-            with mock.patch.object(self.v,"STAGE",p):
-                self.assertEqual(self.v.verify_tree(rows),3)
+            self.assertEqual(self.verify_synthetic_as_root(p,rows),3)
     def test_04_manifest_mutation_holds(self):
         with tempfile.TemporaryDirectory() as d:
             p,rows=self.fixture(d)
             (p/"hello").write_bytes(b"HELLO")
-            with mock.patch.object(self.v,"STAGE",p):
-                with self.assertRaisesRegex(self.v.Hold,"SHA_CHANGED"):
-                    self.v.verify_tree(rows)
+            with self.assertRaisesRegex(self.v.Hold,"SHA_CHANGED"):
+                self.verify_synthetic_as_root(p,rows)
     def test_05_unlisted_file_holds(self):
         with tempfile.TemporaryDirectory() as d:
             p,rows=self.fixture(d);(p/"extra").write_bytes(b"BAD")
-            with mock.patch.object(self.v,"STAGE",p):
-                with self.assertRaisesRegex(self.v.Hold,"UNLISTED"):
-                    self.v.verify_tree(rows)
+            with self.assertRaisesRegex(self.v.Hold,"UNLISTED"):
+                self.verify_synthetic_as_root(p,rows)
     def test_06_traversal_manifest_holds(self):
         with tempfile.TemporaryDirectory() as d:
             p,rows=self.fixture(d);rows.append({"path":"../escape","type":"file","size":0,"sha256":"0"*64})
-            with mock.patch.object(self.v,"STAGE",p):
-                with self.assertRaisesRegex(self.v.Hold,"BAD_MANIFEST_PATH"):
-                    self.v.verify_tree(rows)
+            with self.assertRaisesRegex(self.v.Hold,"BAD_MANIFEST_PATH"):
+                self.verify_synthetic_as_root(p,rows)
     def test_07_duplicate_holds(self):
         with tempfile.TemporaryDirectory() as d:
             p,rows=self.fixture(d);rows.append(rows[0])
-            with mock.patch.object(self.v,"STAGE",p):
-                with self.assertRaisesRegex(self.v.Hold,"BAD_MANIFEST_PATH_OR_DUPLICATE"):
-                    self.v.verify_tree(rows)
+            with self.assertRaisesRegex(self.v.Hold,"BAD_MANIFEST_PATH_OR_DUPLICATE"):
+                self.verify_synthetic_as_root(p,rows)
     def test_08_build_receipt_fake_status_holds(self):
         source={"status":"SOURCE_STAGED","candidate_sha":self.v.TARGET,
                 "git_archive_sha256":self.v.ARCHIVE_HASH}
