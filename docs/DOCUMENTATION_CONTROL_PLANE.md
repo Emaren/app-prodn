@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r25-b-additive-owner-3031-setup` at `f842be771bf634d3f90907b01970a40001c37e14`
+Implementation baseline: `r25-b-additive-owner-3031-setup` at `49cf965b5c44ffba997e635b55a8e0635ef628a5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
