@@ -106,18 +106,22 @@ def original_shape():
     lock_shape()
     need(public_spki(protected_file(OLD_PUB))==OLD,
          "ORIGINAL_RSA_ROOT_PUBLIC_PIN_CHANGED")
-def validate_envelope(raw):
+def validate_envelope(raw, operation="ENROLL_INACTIVE"):
     need(0<len(raw)<=MAX_ENVELOPE,"ENVELOPE_LENGTH")
     e=parse(raw)
     need(type(e)==dict and set(e)=={"schema","payload","new_public_base64","signature_base64"} and
          e["schema"]==SCHEMA,"RECOVERY_ENVELOPE_SCHEMA")
     b=e["payload"]
     need(type(b)==dict and set(b)=={"operation","host","old_rsa_spki","new_rsa_spki",
-          "nonce","issued_at","expires_at"},"RECOVERY_PAYLOAD_SCHEMA")
-    need(b["operation"]=="ENROLL_INACTIVE" and b["host"]==HOST and b["old_rsa_spki"]==OLD,
+          "nonce","issued_at","expires_at","target_audit_id"},"RECOVERY_PAYLOAD_SCHEMA")
+    need(b["operation"]==operation and b["host"]==HOST and b["old_rsa_spki"]==OLD,
          "RECOVERY_NOT_NEW_SOURCE_OR_WRONG_HOST")
     need(type(b["nonce"])==str and bool(re.fullmatch("[0-9a-f]{32}",b["nonce"])),
          "RECOVERY_NONCE")
+    need(type(b["target_audit_id"])==str and
+         (b["target_audit_id"]=="" if operation=="ENROLL_INACTIVE" else
+          bool(re.fullmatch(r"r23-v1-[0-9a-f]{32}",b["target_audit_id"]))),
+         "RECOVERY_TARGET_AUDIT_SCOPE")
     def utc(x):
         need(type(x)==str and x.endswith("Z"),"RECOVERY_TIMESTAMP")
         return datetime.fromisoformat(x[:-1]+"+00:00")
@@ -164,6 +168,9 @@ def do_enroll(encoded):
         os.mkdir(ROOT_NEW,0o700);protected_dir(ROOT_NEW)
         write_once(ROOT_NEW/"new-owner-public.pem",pem)
         write_once(ROOT_NEW/"new-owner-public.spki.sha256",(pub_id+"\n").encode())
+        write_once(ROOT_NEW/"enrollment.json",canon({"audit_id":aid,
+            "new_rsa_spki":pub_id,"intent_sha256":sha(protected_file(audit/"intent.json")),
+            "status":"INACTIVE_ONLY"})+b"\n")
         sync_dir(ROOT_NEW)
         # Finished receipt is a separate one-use durable commit. An incomplete
         # directory is a forensic HOLD, not a legitimate committed recovery.
@@ -181,7 +188,48 @@ def do_enroll(encoded):
     finally:
         os.close(fd)
 
-def owner_main(private,public,source):
+def do_abort(encoded):
+    original_shape()
+    try:raw=base64.b64decode(encoded,validate=True)
+    except ValueError as exc:raise Hold("ABORT_ENVELOPE_BASE64") from exc
+    b,pem,pub_id=validate_envelope(raw,operation="ABORT_INACTIVE")
+    protected_dir(ROOT_NEW)
+    record=parse(protected_file(ROOT_NEW/"enrollment.json"))
+    need(record.get("audit_id")==b["target_audit_id"] and
+         record.get("new_rsa_spki")==pub_id and record.get("status")=="INACTIVE_ONLY",
+         "ABORT_ENROLLMENT_IDENTITY")
+    need(protected_file(ROOT_NEW/"new-owner-public.pem")==pem,
+         "ABORT_PUBLIC_BYTES_DIFFER")
+    audit=AUDIT_PARENT/b["target_audit_id"];protected_dir(audit)
+    complete=parse(protected_file(audit/"complete.json"))
+    need(complete.get("new_spki")==pub_id and
+         complete.get("status")=="INACTIVE_RECOVERY_PUBLIC_ENROLLED_V1",
+         "ABORT_ORIGINAL_COMMIT_INVALID")
+    need(not (ROOT_NEW/"aborted.json").exists() and
+         not (audit/"aborted.json").exists(),"ABORT_ALREADY_EXECUTED_OR_PARTIAL")
+    fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        a=os.fstat(fd)
+        need((a.st_dev,a.st_ino,a.st_uid,stat.S_IMODE(a.st_mode))==LOCK_ID,
+             "ABORT_LOCK_IDENTITY")
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as exc:raise Hold("ABORT_RELEASE_LEASE_BUSY") from exc
+        original_shape()
+        # Kill the new inactive authority without deleting root-owned proof.
+        # One-use abort marker is checked by all future source consumers.
+        marker=canon({"status":"INACTIVE_RECOVERY_ABORTED_V1",
+            "audit_id":b["target_audit_id"],"new_spki":pub_id,
+            "new_controller_authority":False,"old_trust_unchanged":True,
+            "owner_abort_intent_sha256":sha(DOM+canon(b))})+b"\n"
+        write_once(ROOT_NEW/"aborted.json",marker)
+        sync_dir(ROOT_NEW)
+        write_once(audit/"aborted.json",marker)
+        sync_dir(audit);sync_dir(AUDIT_PARENT)
+        print("PASS: R23_INACTIVE_RECOVERY_ABORTED; IMMUTABLE_AUDIT_PRESERVED")
+        return 0
+    finally:os.close(fd)
+
+def owner_main(private,public,source,operation="ENROLL_INACTIVE",target=""):
     need(sys.platform=="darwin" and os.getuid()!=0,"ORIGINAL_OWNER_MAC_REQUIRED")
     p=pathlib.Path(private).expanduser();pub=pathlib.Path(public).expanduser()
     for f in (p,pub):
@@ -191,9 +239,13 @@ def owner_main(private,public,source):
     pem=pub.read_bytes();new_id=public_spki(pem)
     now=datetime.now(timezone.utc)
     def iso(x):return x.isoformat(timespec="seconds").replace("+00:00","Z")
-    b={"operation":"ENROLL_INACTIVE","host":HOST,"old_rsa_spki":OLD,
+    need(operation in ("ENROLL_INACTIVE","ABORT_INACTIVE"),"OWNER_OPERATION_SCOPE")
+    need(target=="" if operation=="ENROLL_INACTIVE" else
+         bool(re.fullmatch(r"r23-v1-[0-9a-f]{32}",target)),
+         "OWNER_TARGET_AUDIT_ID")
+    b={"operation":operation,"host":HOST,"old_rsa_spki":OLD,
        "new_rsa_spki":new_id,"nonce":uuid.uuid4().hex,"issued_at":iso(now),
-       "expires_at":iso(now+timedelta(minutes=5))}
+       "expires_at":iso(now+timedelta(minutes=5)),"target_audit_id":target}
     with tempfile.TemporaryDirectory(prefix="r23-owner-sign-") as td:
         path=pathlib.Path(td)/"intent"
         path.write_bytes(DOM+canon(b))
@@ -204,8 +256,9 @@ def owner_main(private,public,source):
     verify_possession(pem,b,sig)
     # This is NOT approval by the lost old RSA: authority is the existing root
     # SSH identity plus new-key custody proof plus a distinct human consent.
-    phrase="AUTHORIZE R23 INACTIVE ROOT TRUST "+new_id
-    print("INACTIVE public-only enrollment; original root RSA/controller unchanged.")
+    phrase=("AUTHORIZE R23 INACTIVE ROOT TRUST " if operation=="ENROLL_INACTIVE"
+            else "ABORT R23 INACTIVE ROOT TRUST "+target+" ")+new_id
+    print("R23 "+operation+"; original root RSA/controller remain unchanged.")
     print("No right to install 14 helpers, modify finance, or activate W1_SAFE.")
     with open("/dev/tty","r") as tty,open("/dev/tty","w") as out:
         out.write("Type exactly "+phrase+": ");out.flush()
@@ -222,12 +275,15 @@ def owner_main(private,public,source):
     cmd=["/usr/bin/ssh","-T","-o","BatchMode=yes",
          "-o","StrictHostKeyChecking=yes","-o","NumberOfPasswordPrompts=0",
          "-o","ConnectTimeout=10","root@hel1",
-         "/usr/bin/python3","-I","-B","-","--root-enroll",encoded]
+         "/usr/bin/python3","-I","-B","-",
+         ("--root-enroll" if operation=="ENROLL_INACTIVE" else "--root-abort"),
+         encoded]
     result=subprocess.run(cmd,input=raw,timeout=60,capture_output=True)
     need(result.returncode==0,"REMOTE_RECOVERY_FAILED_OR_UNCERTAIN_NO_RETRY")
     sys.stdout.write(result.stdout.decode(errors="replace"))
-    need(b"PASS: R23_INACTIVE_PUBLIC_TRUST_ENROLLED" in result.stdout,
-         "REMOTE_COMMIT_UNVERIFIED")
+    expected=(b"PASS: R23_INACTIVE_PUBLIC_TRUST_ENROLLED" if operation=="ENROLL_INACTIVE"
+              else b"PASS: R23_INACTIVE_RECOVERY_ABORTED")
+    need(expected in result.stdout,"REMOTE_COMMIT_UNVERIFIED")
     return 0
 
 def main():
@@ -235,17 +291,21 @@ def main():
     g=ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--owner-enroll",action="store_true")
     g.add_argument("--root-enroll",action="store_true")
+    g.add_argument("--owner-abort",action="store_true")
+    g.add_argument("--root-abort",action="store_true")
     ap.add_argument("--private");ap.add_argument("--public")
-    ap.add_argument("--reviewed-source")
+    ap.add_argument("--reviewed-source");ap.add_argument("--recovery-id")
     ap.add_argument("envelope",nargs="?")
     a=ap.parse_args()
-    if a.root_enroll:
-        need(a.envelope is not None and not a.private and not a.public,
-             "ROOT_INPUT_CONTRACT")
-        return do_enroll(a.envelope)
+    if a.root_enroll or a.root_abort:
+        need(a.envelope is not None and not a.private and not a.public and
+             not a.recovery_id,"ROOT_INPUT_CONTRACT")
+        return do_enroll(a.envelope) if a.root_enroll else do_abort(a.envelope)
     need(a.private and a.public and a.reviewed_source and a.envelope is None,
          "OWNER_INPUT_CONTRACT")
-    return owner_main(a.private,a.public,a.reviewed_source)
+    return owner_main(a.private,a.public,a.reviewed_source,
+                      "ABORT_INACTIVE" if a.owner_abort else "ENROLL_INACTIVE",
+                      a.recovery_id or "")
 if __name__=="__main__":
     try:sys.exit(main())
     except (Hold,OSError,ValueError,TypeError,subprocess.TimeoutExpired,
