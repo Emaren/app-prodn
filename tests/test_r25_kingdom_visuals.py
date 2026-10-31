@@ -40,9 +40,11 @@ class VisualContracts(unittest.TestCase):
             self.assertNotIn(forbidden,p)
 
     def test_05_public_route_sanitized(self):
-        p=source("app/aoe2war-os/engineering/page.tsx")
+        p=source("app/aoe2war-os/[mode]/page.tsx")
         self.assertIn('buildEngineeringProjection("public")',p)
-        self.assertIn('"force-static"',p)
+        self.assertIn("dynamicParams = false",p)
+        self.assertIn("notFound()",p)
+        self.assertIn('return [{ mode: "engineering" }]',p)
         proj=source("lib/kingdomEngineeringProjection.ts")
         self.assertIn('if (audience === "admin")',proj)
         self.assertNotIn("process.env",proj)
