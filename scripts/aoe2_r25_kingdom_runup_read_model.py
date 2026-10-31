@@ -73,7 +73,7 @@ def canonical(registry=REGISTRY,bindings=BINDINGS):
               "deployment","orchestra","agent","swarm","wolochain"}
     need(set(by_id)==expected,"CANONICAL_OS_IDS_DRIFT")
     roles=reg.get("supervisory_roles",[])
-    need({r.get("id") for r in roles}=={"system-doctor","system-shepherd"} and
+    need({r.get("id") for r in roles}=={"system-doctor","system-shepherd","system-composer"} and
          all(r.get("kind")!="subordinate-os" for r in roles),
          "SUPERVISORY_ROLE_CONFLATED_WITH_OS")
     bindings_list=cross.get("bindings",[])
@@ -180,7 +180,8 @@ def project(registry=REGISTRY,bindings=BINDINGS,receipts=None,at=None):
            "pipeline":list(stages.values()),
            "observations":observations,
            "os_cards":cards,
-           "roles":supervisory,"assigned_lanes":assignments,
+           "roles":supervisory,"existing_supervisory_ui_roles":2,
+           "proposed_supervisory_roles":1,"assigned_lanes":assignments,
            "source_state":"SOURCE_EXTRACTED_OWNER_REPORTED",
            "host_state":"HOST_NATIVE_UNVERIFIED",
            "public_state":"PUBLIC_ROUTING_UNVERIFIED",
@@ -189,7 +190,7 @@ def project(registry=REGISTRY,bindings=BINDINGS,receipts=None,at=None):
            "evidence_count":len(observations),
            "polling_started":False,"agent_jobs_started":False,
            "deployment_authority_granted":False}
-    need(len(cards)==14 and len(supervisory)==2 and
+    need(len(cards)==14 and len(supervisory)==3 and
          len(assignments)==6,"RUNUP_CANONICAL_PROJECTION_INTEGRITY")
     return {"public":public,"admin":admin}
 def main():
