@@ -261,10 +261,17 @@ def stage_identity(j):
              "C_STAGE_SOURCE_OR_BUILD_NOT_ROOT_SEALED")
         return p.read_text().strip()
     need(small("r24-source-sha")==TARGET,"C_STAGE_GIT_SOURCE_MISMATCH")
+    # Root does not run Git hooks, filters or source in a candidate checkout;
+    # source identity is computed by the separate non-root web UID.
+    candidate_sha=cmd(["/usr/sbin/runuser","-u",NEW_USER,"--",
+        "/usr/bin/git","-c","safe.directory="+str(CANDIDATE_STAGE),
+        "-C",str(CANDIDATE_STAGE),"rev-parse","HEAD"],20).decode().strip()
+    need(candidate_sha==TARGET,"C_ACTUAL_CHECKOUT_SOURCE_SHA_NOT_VERIFIED")
     need(small(".next/BUILD_ID")==j["candidate_build_id"],
          "C_STAGE_NEXT_BUILD_ID_MISMATCH")
     next_build_asset("http://127.0.0.1:3031",j["candidate_build_id"])
-    source=cmd(["/usr/bin/git","-C",str(OLD_APP),"rev-parse","HEAD"],15)
+    source=cmd(["/usr/sbin/runuser","-u","tony","--",
+         "/usr/bin/git","-C",str(OLD_APP),"rev-parse","HEAD"],15)
     need(source.decode().strip()==j["previous_sha"],
          "ORIGINAL_WEB_SOURCE_GIT_DRIFT")
 
