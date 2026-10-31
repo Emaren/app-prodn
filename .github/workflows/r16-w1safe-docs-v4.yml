@@ -1,0 +1,31 @@
+name: R16 source-exact W1_SAFE canonical docs
+on:
+  push:
+    branches: [r16-w1safe-docs-v4]
+permissions:
+  contents: write
+jobs:
+  docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Reseal canonical docs against immutable pre-generator source
+        run: |
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --head 94878f39dae4dc9c5897e30319d8887c34c94f6c --branch r16-w1safe-integrated
+      - name: Self-retire and verify final recorded Git tree
+        run: |
+          git config user.name 'aoe2war-docsv2-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/r16-w1safe-docs-v4.yml
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet && exit 1
+          git commit -m 'docs(R16): exact W1_SAFE integration final-source seal'
+          python3 scripts/docs_v2_check.py
+          git push origin HEAD:refs/heads/r16-w1safe-docs-v4
