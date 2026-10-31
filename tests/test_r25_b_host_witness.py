@@ -25,7 +25,7 @@ class TestBHostWitness(unittest.TestCase):
               "database":"app","transaction_read_only":"on"}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
-                  "no_callable_security_definer"):
+                  "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         dsn="postgresql://aoe2war_r25_web_ro:dummy@127.0.0.1:5432/app"
         with patch.object(b,"run",return_value=json.dumps(safe).encode()) as f:
@@ -41,7 +41,7 @@ class TestBHostWitness(unittest.TestCase):
               "database":"app","transaction_read_only":"on"}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
-                  "no_callable_security_definer"):
+                  "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         safe["no_table_mutation"]=False
         with patch.object(b,"run",return_value=json.dumps(safe).encode()):
@@ -53,9 +53,21 @@ class TestBHostWitness(unittest.TestCase):
               "database":"app","transaction_read_only":"on"}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
-                  "no_callable_security_definer"):
+                  "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         safe["no_callable_security_definer"]=False
+        with patch.object(b,"run",return_value=json.dumps(safe).encode()):
+            with self.assertRaisesRegex(RuntimeError,"DB_SERVER_ENFORCED_SELECT_ONLY"):
+                b.db_proof("postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app",17251)
+
+    def test_role_callable_volatile_function_rejects(self):
+        safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
+              "database":"app","transaction_read_only":"on"}
+        for k in ("role_restricted","no_writable_role_membership","no_db_create",
+                  "no_schema_create","no_table_mutation","no_sequence_mutation",
+                  "no_callable_security_definer","no_callable_volatile_user_functions"):
+            safe[k]=True
+        safe["no_callable_volatile_user_functions"]=False
         with patch.object(b,"run",return_value=json.dumps(safe).encode()):
             with self.assertRaisesRegex(RuntimeError,"DB_SERVER_ENFORCED_SELECT_ONLY"):
                 b.db_proof("postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app",17251)
