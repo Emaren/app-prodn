@@ -223,7 +223,7 @@ server {
             def readfile(p,maxsize=65536):
                 name=pathlib.Path(p).name
                 return g.TARGET.encode() if name=="r24-source-sha" else json.dumps(mapping[name]).encode()
-            with patch.object(g,"STAGE",root),patch.object(g,"root_file",side_effect=readfile),patch.object(g,"root_sealed_file",return_value=True):
+            with patch.object(g,"STAGE",root),patch.object(g,"protected_c_stage_boundary",return_value=None),patch.object(g,"root_file",side_effect=readfile),patch.object(g,"root_sealed_file",return_value=True):
                 self.assertEqual(g.verified_c_archive_source()["receipt_build_id"],
                                  "TrueNextBuild_ABC")
                 built["build_id"]="INVENTED_ID"
