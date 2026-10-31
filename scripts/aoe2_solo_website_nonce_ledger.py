@@ -235,6 +235,8 @@ class Journal:
         """No arbitrary attempt may be used at the native issuer boundary."""
         need(type(attempt)is str and bool(HEX64.fullmatch(attempt)),
              "PRE_STAGE_PREISSUED_ATTEMPT_REQUIRED")
+        need(self.name(attempt,"PRE_STAGE","preissue").is_file(),
+             "PRE_STAGE_ROOT_RESERVATION_MISSING")
         p=self.read(attempt,"PRE_STAGE","preissue")
         need(type(p)is dict and set(p)=={"schema","policy","status",
              "phase","candidate_sha","attempt_id","reserved_at","expires_at",
