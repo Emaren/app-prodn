@@ -30,12 +30,6 @@
     "sourceTree": "src-6185da7d9c23dac3"
   },
   {
-    "href": "/aoe2war-os/engineering",
-    "label": "Engineering Observatory",
-    "district": "citadel",
-    "sourceTree": "src-b1e68bb5787131c4"
-  },
-  {
     "href": "/battle-archive",
     "label": "Battle Archive",
     "district": "forge",
