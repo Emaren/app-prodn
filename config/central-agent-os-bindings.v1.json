@@ -2,7 +2,7 @@
   "schema": "aoe2war.central-agent-os-bindings.v1",
   "version": 1,
   "source_registry_pr": 1090,
-  "source_registry_sha": "076b2b7ccc317ba65b26f5bb390390a379263ca4",
+  "source_registry_sha": "8b275229c16f67dc65f9d3bd4b500faf11aa72a0",
   "source_ledger_pr": 1086,
   "source_ledger_sha": "192416ccce25d90e8243d9513c2bc896862f0c3f",
   "authority": "task-domain-index-only-not-worker-or-release-authorization",
