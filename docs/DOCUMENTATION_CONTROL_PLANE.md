@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r18-f-final-owner-contract-seal` at `9957378044121fdf9cf3dacd5041714d9384a1b8`
+Implementation baseline: `review/f-r23-inactive-root-trust-recovery-v1` at `fb232b278919a986dcbde3e7194029b59f04b9aa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
