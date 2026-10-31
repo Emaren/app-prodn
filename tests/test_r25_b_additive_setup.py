@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pure fixture tests for NEW-only R25 B setup; no HEL1 privileges or writes."""
 import base64
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -27,6 +28,17 @@ def bundle():
     }
     blob={k:base64.b64encode((ROOT/p).read_bytes()).decode() for k,p in paths.items()}
     return base64.b64encode(json.dumps(blob).encode()).decode()
+
+def decode_current_bundle(payload):
+    """Exercise retired one-use installer bundle logic against new fixture bytes.
+
+    The immutable deployed installer pins the *old* witness SHA, by design.
+    Only the test's in-memory hash predicate is rebound for source-tree fixture
+    exercises; production installer/owner constants remain unchanged.
+    """
+    witness=(ROOT/"scripts/r25_b_host_witness.py").read_bytes()
+    with patch.object(b,"WITNESS_SHA",hashlib.sha256(witness).hexdigest()):
+        return b.decode_bundle(payload)
 
 class TestOwnerInstall(unittest.TestCase):
     def test_c_build_staged_gate_denies_before_new_only_install(self):
@@ -124,7 +136,7 @@ class TestOwnerInstall(unittest.TestCase):
         data["baseunit"]=base64.b64encode(b"[Service]\\nExecStart=/bin/false\\n").decode()
         encoded=base64.b64encode(json.dumps(data).encode()).decode()
         with self.assertRaisesRegex(RuntimeError,"B_NEW_ONLY_NFT_OR_SYSTEMD_SOURCE_BLOB_DRIFT"):
-            b.decode_bundle(encoded)
+            decode_current_bundle(encoded)
 
     def test_ipv6_listener_must_be_checked(self):
         import inspect
@@ -136,16 +148,18 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn('create_new(BASEUNIT,bundle["baseunit"],0o644)',s)
         self.assertIn("EXISTING_C_BASE_UNIT_DRIFT_DURING_INSTALL",s)
 
-    def test_real_b_immutable_bundle_is_accepted(self):
-        d=b.decode_bundle(bundle())
+    def test_one_use_installer_bundle_schema_with_current_witness_fixture(self):
+        d=decode_current_bundle(bundle())
         self.assertEqual(b.sha(d["guard"]),b.GUARD_SHA)
-        self.assertEqual(b.sha(d["witness"]),b.WITNESS_SHA)
+        self.assertEqual(b.sha(d["witness"]),hashlib.sha256((ROOT/"scripts/r25_b_host_witness.py").read_bytes()).hexdigest())
+        self.assertNotEqual(b.sha(d["witness"]),b.WITNESS_SHA)
+        self.assertEqual(b.WITNESS_SHA,mac.WITNESS_SHA)  # physical old install pin unchanged
         self.assertIn(b.GUARD_SHA,d["dropin"].decode())
         self.assertEqual(b.gitblob(d["baseunit"]),b.BASEUNIT_GIT_BLOB)
         self.assertNotIn("__B_GUARD_SHA256__",d["dropin"].decode())
 
     def test_nft_exact_template_has_only_two_executable_uid_substitutions(self):
-        d=b.decode_bundle(bundle())
+        d=decode_current_bundle(bundle())
         self.assertEqual(d["nft"].decode().count("__DEDICATED_UID__"),2)
         self.assertNotIn("flush",d["nft"].decode().lower())
         self.assertIn("ct state new drop",d["nft"].decode())
@@ -155,26 +169,26 @@ class TestOwnerInstall(unittest.TestCase):
         package["guard"]=base64.b64encode(b"malicious").decode()
         raw=base64.b64encode(json.dumps(package).encode()).decode()
         with self.assertRaisesRegex(RuntimeError,"B_GUARD_OR_WITNESS_SHA_DRIFT"):
-            b.decode_bundle(raw)
+            decode_current_bundle(raw)
 
     def test_dropin_mutation_rejected_even_with_guard_pin(self):
         package=json.loads(base64.b64decode(bundle()))
         src=base64.b64decode(package["dropin"])+b"\nExecStartPost=/bin/true\n"
         package["dropin"]=base64.b64encode(src).decode()
         with self.assertRaisesRegex(RuntimeError,"B_NEW_ONLY_NFT_OR_SYSTEMD_SOURCE_BLOB_DRIFT"):
-            b.decode_bundle(base64.b64encode(json.dumps(package).encode()).decode())
+            decode_current_bundle(base64.b64encode(json.dumps(package).encode()).decode())
 
     def test_nft_mutation_rejected(self):
         package=json.loads(base64.b64decode(bundle()))
         package["nft"]=base64.b64encode(b"flush ruleset\n").decode()
         with self.assertRaisesRegex(RuntimeError,"B_NEW_ONLY_NFT_OR_SYSTEMD_SOURCE_BLOB_DRIFT"):
-            b.decode_bundle(base64.b64encode(json.dumps(package).encode()).decode())
+            decode_current_bundle(base64.b64encode(json.dumps(package).encode()).decode())
 
     def test_unexpected_bundle_key_rejected(self):
         package=json.loads(base64.b64decode(bundle()))
         package["old_web_secret"]="none"
         with self.assertRaisesRegex(RuntimeError,"EXACT_B_FIVE_ASSETS_REQUIRED"):
-            b.decode_bundle(base64.b64encode(json.dumps(package).encode()).decode())
+            decode_current_bundle(base64.b64encode(json.dumps(package).encode()).decode())
 
     def test_plan_requires_original_root_physical_host(self):
         from types import SimpleNamespace
