@@ -372,6 +372,10 @@ def main(argv=None):
     parser=argparse.ArgumentParser()
     parser.add_argument("action",choices=("enrollment-check","inspect","sign"))
     parser.add_argument("--role",choices=ROLES,required=True)
+    parser.add_argument("--expect-candidate-sha",
+        help="F frozen website SHA; required for local enrollment check only")
+    parser.add_argument("--expect-controller-sha",
+        help="F frozen controller SHA; required for local enrollment check only")
     parser.add_argument("--intent")
     parser.add_argument("--preissue",
         help="C-authenticated F original-FD200 root preissue response")
@@ -388,6 +392,13 @@ def main(argv=None):
         if args.action=="enrollment-check":
             need(args.intent is None and args.preissue is None,
                  "PREFLIGHT_CANNOT_CONSUME_OWNER_OR_ROOT_AUTHORITY")
+            need(type(args.expect_candidate_sha) is str and
+                 bool(HEX40.fullmatch(args.expect_candidate_sha)) and
+                 type(args.expect_controller_sha) is str and
+                 bool(HEX40.fullmatch(args.expect_controller_sha)) and
+                 args.expect_candidate_sha==manifest["candidate_sha"] and
+                 args.expect_controller_sha==manifest["controller_sha"],
+                 "PREFLIGHT_FINAL_SOURCE_IDENTITY_MISMATCH")
             verify_spool(Path(manifest["output_dir"]),uid)
             result={"status":"LOCAL_ENROLLMENT_CHECKED_UNADMITTED",
                     "role":args.role,
@@ -399,6 +410,9 @@ def main(argv=None):
                     "financial_authorized":False}
             print(canonical(result).decode("ascii"))
             return 0
+        need(args.expect_candidate_sha is None and
+             args.expect_controller_sha is None,
+             "PREFLIGHT_SOURCE_FLAGS_ONLY")
         need(bool(args.intent) and bool(args.preissue),
              "ORIGINAL_PREISSUE_AND_SIGNED_INTENT_REQUIRED")
         request=parse(checked_file(Path(args.intent),0,limit=16384))
