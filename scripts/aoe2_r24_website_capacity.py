@@ -98,19 +98,28 @@ def examine(args):
     require(type(budget) is int and 0<budget<=MAX_CANDIDATE_BYTES,
             "EXACT_CANDIDATE_PEAK_BUDGET_REQUIRED")
     rf=free_bytes(WEB);vf=free_bytes(VOLUME)
-    # Old live .next is already allocated. Retain it. Before staging,
-    # budget for TWO new candidate footprints plus a 4GiB root reserve.
+    # Old live web stays running, possibly as a financial producer.
+    # Budget TWO new candidate footprints and 4GiB root reserve.
     root_needed=2*budget+ROOT_RESERVE
     # New durable old-runtime twin is a physically separate device.
     volume_copy_budget=durable_copy_bytes(old)
     volume_needed=volume_copy_budget+VOLUME_RESERVE
     stage=None
     if args.stage=="post-stage":
-        candidate=guard_directory(WEB/".next-release",WEB,rootdev)
+        # B R24: old web may host WarGraph settlement. Do not replace it.
+        # New runtime must be a separate direct child of WEB.parent.
+        candidate=Path(args.parallel_dir)
+        require(candidate.is_absolute() and candidate.parent==WEB.parent and
+                candidate.name.startswith("app-prodn-r24-w1safe-") and
+                candidate!=WEB,"PARALLEL_CANDIDATE_PATH_REQUIRED")
+        guard_directory(candidate,WEB.parent,rootdev)
+        candidate_next=guard_directory(candidate/".next",WEB.parent,rootdev)
         candidate_bytes=allocated_bytes(candidate)
-        require(candidate_bytes<=budget,"STAGED_BUILD_EXCEEDS_PINNED_BUDGET")
+        require(candidate_bytes<=budget,"PARALLEL_RUNTIME_EXCEEDS_PINNED_BUDGET")
         stage=dict(path=str(candidate),allocated_bytes=candidate_bytes,
-                   next_build_id=build_id(candidate))
+                   next_path=str(candidate_next),
+                   next_build_id=build_id(candidate_next),
+                   legacy_website_must_remain_running=True)
         # Candidate is already allocated at this boundary.
         root_needed=ROOT_RESERVE
     good=(rf>=root_needed and vf>=volume_needed)
@@ -127,6 +136,8 @@ def examine(args):
       volume_available_bytes=vf,volume_min_needed_bytes=volume_needed,
       root_reserve_bytes=ROOT_RESERVE,volume_reserve_bytes=VOLUME_RESERVE,
       durable_rollback_parent=str(DURABLE),staged_candidate=stage,
+      legacy_web_mainpid_continuity="NOT_VERIFIED_BY_STORAGE_TOOL",
+      parallel_financial_worker_disabled="NOT_VERIFIED_BY_STORAGE_TOOL",
       storage_verdict=("PASS_STORAGE_FEASIBILITY_NOT_RELEASE_AUTHORIZATION"
                        if good else "HOLD_STORAGE_FEASIBILITY"),
       rollback_content_verified=False,release_authorized=False,
@@ -210,6 +221,8 @@ def main(argv=None):
     for action in ("plan","post-stage"):
         parser=subs.add_parser(action)
         parser.add_argument("--candidate-max-bytes",type=int,required=True)
+        if action=="post-stage":
+            parser.add_argument("--parallel-dir",required=True)
     parser=subs.add_parser("verify-durable")
     parser.add_argument("--durable-next",required=True)
     args=p.parse_args(argv)
