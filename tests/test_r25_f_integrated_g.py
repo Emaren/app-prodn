@@ -83,5 +83,16 @@ class TestIntegratedG(unittest.TestCase):
                          "E_R25_REAL_READONLY_RECOVERY_CERTIFICATE_MISSING"):
             self.assertIn(expected,f)
 
+    def test_g_c_root_stage_exact_and_old_path_disallowed(self):
+        f=importlib.util.spec_from_file_location("r25_f_stage",F_SOURCE)
+        module=importlib.util.module_from_spec(f)
+        f.loader.exec_module(module)
+        expected=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
+        self.assertEqual(g.STAGE,expected)
+        self.assertEqual(module.CANDIDATE_STAGE,expected)
+        self.assertNotEqual(g.STAGE.parent,g.OLD_REPO.parent)
+        self.assertNotIn('/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b',
+                         G_SOURCE.read_text())
+
 if __name__=="__main__":
     unittest.main()
