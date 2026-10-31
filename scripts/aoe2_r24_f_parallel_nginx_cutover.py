@@ -23,6 +23,7 @@ NEW_UPSTREAM=b"proxy_pass http://127.0.0.1:3031;"
 ROOT_APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT_BASE=pathlib.Path("/var/lib/aoe2war-r24-parallel")
 OLD_APP=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
+CANDIDATE_STAGE=pathlib.Path("/var/lib/aoe2war-r24-parallel-stage")/TARGET/"web"
 PUBLIC="https://aoe2war.com"
 B_INDEPENDENT_POSITIVE_RUNTIME_SHA="" # current B #1077 is explicitly negative
 F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA="" # not issued until real E/C stage
@@ -153,6 +154,38 @@ def http_version(port):
     need(type(obj)==dict and type(obj.get("buildVersion"))==str,
          "INVALID_VERSION_JSON")
     return obj["buildVersion"]
+def next_build_asset(base,build_id):
+    need(bool(re.fullmatch("[A-Za-z0-9_-]{8,128}",build_id)),
+         "NEXT_BUILD_ID_NOT_PINNED")
+    url=base+"/_next/static/"+build_id+"/_buildManifest.js"
+    with urllib.request.urlopen(
+            urllib.request.Request(url,method="GET"),
+            timeout=8) as resp:
+        need(resp.status==200 and 0<len(resp.read(65537))<=65536,
+             "ACTUAL_NEXT_BUILD_ID_STATIC_ASSET_MISSING")
+
+def stage_identity(j):
+    need(CANDIDATE_STAGE.is_dir() and not CANDIDATE_STAGE.is_symlink(),
+         "C_UNTRUSTED_CANDIDATE_STAGE")
+    for p in (CANDIDATE_STAGE.parent,CANDIDATE_STAGE):
+        st=os.lstat(p)
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
+             not st.st_mode&0o022,"C_ROOT_SEALED_CANDIDATE_STAGE_MISSING")
+    def small(rel):
+        p=CANDIDATE_STAGE/rel
+        v=os.lstat(p)
+        need(stat.S_ISREG(v.st_mode) and v.st_uid==0 and
+             not v.st_mode&0o022 and 0<v.st_size<256,
+             "C_STAGE_SOURCE_OR_BUILD_NOT_ROOT_SEALED")
+        return p.read_text().strip()
+    need(small("r24-source-sha")==TARGET,"C_STAGE_GIT_SOURCE_MISMATCH")
+    need(small(".next/BUILD_ID")==j["candidate_build_id"],
+         "C_STAGE_NEXT_BUILD_ID_MISMATCH")
+    next_build_asset("http://127.0.0.1:3031",j["candidate_build_id"])
+    source=cmd(["/usr/bin/git","-C",str(OLD_APP),"rev-parse","HEAD"],15)
+    need(source.decode().strip()==j["previous_sha"],
+         "ORIGINAL_WEB_SOURCE_GIT_DRIFT")
+
 def public_version():
     with urllib.request.urlopen(
             urllib.request.Request(PUBLIC+"/api/deployment-version",method="GET"),
@@ -214,6 +247,7 @@ def apply():
     need(sha(old)==j["nginx_before_sha256"],"ORIGINAL_NGINX_BYTES_DRIFT")
     candidate=safe_replace_site(old,NEW_UPSTREAM)
     s=snapshots(j["finance_units"]);prove_preimage(j,s)
+    stage_identity(j)
     need(http_version(OLD_PORT)!=j["candidate_build_version"] and
          http_version(NEW_PORT)==j["candidate_build_version"],
          "CANDIDATE_NOT_ISOLATED_FROM_OLD_WEB")
@@ -242,6 +276,7 @@ def apply():
             nginx_reload()
             need(public_version()==j["candidate_build_version"],
                  "PUBLIC_CANDIDATE_NOT_ACTIVE")
+            next_build_asset(PUBLIC,j["candidate_build_id"])
             need(snapshots(j["finance_units"])==s,
                  "FINANCE_OR_OLD_WEB_CHANGED_ON_PROXY_SWITCH")
             durable_write(record/"commit.json",canonical({
