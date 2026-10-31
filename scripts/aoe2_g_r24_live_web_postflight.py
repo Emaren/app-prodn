@@ -17,6 +17,10 @@ OLD_PORT=3030
 NEW_PORT=3031
 OLD_REPO=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
 STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
+ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
+ARCHIVE_SHA="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+EXPECTED_OLD_PID=2625090
 APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r24-parallel")
 LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
@@ -286,21 +290,73 @@ def audit(approved,phase):
         outcome["rollback_receipt_sha256"]=digest(canon(rb))
         outcome["rollback_exercised"]=True
     return outcome
+def verified_c_archive_source():
+    """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
+    source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
+    built=parse(root_file(C_AUDIT/"BUILD_STAGED.json",65536),65536)
+    srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",1048576),1048576)
+    builtfiles=parse(root_file(C_AUDIT/"BUILD_FILES.json",1048576),1048576)
+    need(source.get("status")=="SOURCE_STAGED" and
+         built.get("status")=="BUILD_STAGED" and
+         source.get("candidate_sha")==built.get("candidate_sha")==TARGET and
+         source.get("git_archive_sha256")==built.get("source_git_archive_sha256")==ARCHIVE_SHA,
+         "C_SOURCE_ARCHIVE_NOT_EXACT_FROZEN_IDENTITY")
+    need(srcfiles.get("schema")=="r25-c-source-files.v1" and
+         builtfiles.get("schema")=="aoe2war.r25.c.full-artifact-files.v1" and
+         isinstance(srcfiles.get("rows"),list) and
+         isinstance(builtfiles.get("rows"),list) and
+         digest(canon(srcfiles["rows"]))==source.get("source_manifest_sha256") and
+         digest(canon(builtfiles["rows"]))==built.get("tree_sha256"),
+         "C_ROOT_SOURCE_OR_BUILD_MANIFEST_DIGEST_DRIFT")
+    need(built.get("root_sealed") is True and built.get("financial_writes_authorized") is False
+         and built.get("old_web_pid_untouched")==EXPECTED_OLD_PID,
+         "C_BUILD_RECEIPT_SCOPE_DRIFT")
+    # The archived Git object hash was independently authenticated during owner
+    # transfer. Byte-level readback of all files is checked against C's receipt.
+    for row in builtfiles["rows"]:
+        need(type(row)is dict and type(row.get("path"))is str,
+             "C_TREE_ROW_INVALID")
+        target=(STAGE/row["path"]).resolve()
+        need(target.is_relative_to(STAGE.resolve()) and target.exists(),
+             "C_TREE_ROW_ESCAPE_OR_MISSING")
+        if row.get("type")=="file":
+            need(type(row.get("size"))is int and type(row.get("sha256"))is str,
+                 "C_TREE_FILE_ROW_INVALID")
+            st=target.stat()
+            need(st.st_size==row["size"] and st.st_uid==0,
+                 "C_ROOT_SEALED_TREE_FILE_DRIFT")
+            h=hashlib.sha256()
+            with target.open("rb") as src:
+                for block in iter(lambda:src.read(1048576),b""):h.update(block)
+            need(h.hexdigest()==row["sha256"],"C_BUILT_FILE_BYTES_CHANGED")
+        elif row.get("type")=="symlink":
+            node=STAGE/row["path"]
+            need(node.is_symlink() and os.readlink(node)==row.get("target") and
+                 node.resolve().is_relative_to(STAGE.resolve()),
+                 "C_STAGE_INTERNAL_SYMLINK_CHANGED")
+        else:raise Hold("C_UNKNOWN_FILE_TYPE")
+    return {"source_git_archive_sha256":ARCHIVE_SHA,
+            "source_manifest_sha256":source["source_manifest_sha256"],
+            "build_manifest_sha256":built["tree_sha256"],
+            "receipt_build_id":built["build_id"],
+            "source_receipt_status":"SOURCE_STAGED",
+            "build_receipt_status":"BUILD_STAGED",
+            "root_manifest_file_count":built.get("files"),
+            "git_directory_absent_by_design":True}
 def stage():
     need(STAGE.is_dir() and not STAGE.is_symlink(),"PARALLEL_CANDIDATE_NOT_STAGED")
-    source=git_source(STAGE,"aoe2war-r24-web")
-    need(source["head"]==TARGET,"PARALLEL_CANDIDATE_SOURCE_DRIFT")
     marker=root_file(STAGE/"r24-source-sha",64).decode().strip()
     need(marker==TARGET,"C_SOURCE_MARKER_MISMATCH")
+    source=verified_c_archive_source()
     build_file=STAGE/".next/BUILD_ID"
     need(not build_file.is_symlink() and build_file.is_file(),"C_NEXT_BUILD_ID_MISSING")
     build=build_file.read_text().strip()
-    need(BUILD.fullmatch(build),"C_NEXT_BUILD_ID_MALFORMED")
+    need(BUILD.fullmatch(build) and build==source["receipt_build_id"],
+         "C_NEXT_BUILD_ID_NOT_IN_ROOT_BUILT_RECEIPT")
     deps=bounded_tree(STAGE/"node_modules")
     next_tree=bounded_tree(STAGE/".next")
-    return {"git":source,"source_marker":marker,"next_build_id":build,
+    return {"source":source,"source_marker":marker,"next_build_id":build,
             "dependencies":deps,"next_build":next_tree,
-            "complete_tracked_source_verified":True,
             "full_dependency_and_build_bytes_measured":True,
             "root_owner_stage_receipt_binding_requires_F":True}
 def root_snapshot(phase):
@@ -312,6 +368,8 @@ def root_snapshot(phase):
     need(BUILD.fullmatch(old_build),"OLD_NEXT_BUILD_ID_UNKNOWN")
     candidate=stage()
     units=system_state()
+    need(units[OLD_UNIT]["properties"]["MainPID"]==str(EXPECTED_OLD_PID),
+         "ORIGINAL_SETTLEMENT_CAPABLE_WEB_PID_NOT_2625090")
     need(units[OLD_UNIT]["properties"]["ActiveState"]=="active" and
          units[NEW_UNIT]["properties"]["ActiveState"]=="active" and
          units[OLD_UNIT]["main_process"] and units[NEW_UNIT]["main_process"],
