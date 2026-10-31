@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "21e1b53f6a8a4e31cee6adc49da61fa9533b75da269dede9d31fc5d75e7ca233",
+      "sha256": "bef2418d3c52d9f35a4e746106738b637aa23e2d5c3dd61c7e5b849e10e2ec69",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2463,7 +2463,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/f-r23-c-v6-owner-source-approved",
-    "commit": "5992f6fb0d495a9c37a6c8bd9d56f5345abfb307"
+    "commit": "b35cd2e0050df4c1a924f920f48b1e76e09d45cc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
