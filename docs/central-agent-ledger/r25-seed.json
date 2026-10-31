@@ -1,0 +1,156 @@
+{
+  "schema": "aoe2war.central-agent-ledger.seed.v1",
+  "version": 1,
+  "dispatch": {
+    "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+    "recorded_at": "2026-10-31T14:37:15Z",
+    "authority": "Central R25 owner dispatch",
+    "active_sessions_verified": false,
+    "candidate_sha": "0cee3c836c4b0760478280c145e02e81e470ce0e",
+    "website_controller_scope": "website-only parallel; original full-finance issuer unchanged"
+  },
+  "decisions": [
+    {
+      "key": "PRESERVE_OLD_3030",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "at": "2026-10-31T14:37:15Z",
+      "statement": "Original aoe2hdbets-web.service on 3030 may run settlements: never stop/restart it for website-only cutover"
+    },
+    {
+      "key": "SEPARATE_3031",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "at": "2026-10-31T14:37:15Z",
+      "statement": "Stage #1061 on distinct nonfinancial 3031 process, with B independently verified server-enforced isolation"
+    },
+    {
+      "key": "NGINX_ONLY_CUTOVER",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "at": "2026-10-31T14:37:15Z",
+      "statement": "F changes only reviewed Nginx public routing, preserving immediate 3030 proxy rollback"
+    },
+    {
+      "key": "P0_BEFORE_P3",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "at": "2026-10-31T14:37:15Z",
+      "statement": "Production release first; the additive orchestration ledger must not block activation"
+    },
+    {
+      "key": "NO_FABRICATED_EVIDENCE",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "at": "2026-10-31T14:37:15Z",
+      "statement": "No signature, CI, BACKUP, physical host or running-session status inferred from source comments"
+    }
+  ],
+  "assignments": [
+    {
+      "lane": "B",
+      "priority": "P0",
+      "capability": "financial-isolation",
+      "assignment": "Prove server-enforced SELECT-only candidate database, disabled WarGraph and custody/egress/HTTP method boundary for #1061 on 3031",
+      "dependency": "F",
+      "next_operation": "Independent root-bound B runtime isolation evidence",
+      "assigned_at": "2026-10-31T14:37:15Z",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "source_sha": null,
+      "ci": null,
+      "evidence_at": null,
+      "deploy_phase": "PRE_ACTIVATION_UNVERIFIED",
+      "result": "ASSIGNED_NOT_CONFIRMED_ACTIVE",
+      "active_session_verified": false,
+      "reviewer": "F"
+    },
+    {
+      "lane": "C",
+      "priority": "P0",
+      "capability": "parallel-deployment",
+      "assignment": "Stage/build exact #1061 as separate 3031 service without restarting original 3030",
+      "dependency": "F",
+      "next_operation": "B positive isolation and E capacity; C root-sealed actual source/build/deps",
+      "assigned_at": "2026-10-31T14:37:15Z",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "source_sha": null,
+      "ci": null,
+      "evidence_at": null,
+      "deploy_phase": "PRE_ACTIVATION_UNVERIFIED",
+      "result": "ASSIGNED_NOT_CONFIRMED_ACTIVE",
+      "active_session_verified": false,
+      "reviewer": "F"
+    },
+    {
+      "lane": "D",
+      "priority": "P0",
+      "capability": "website-only-policy",
+      "assignment": "Review scoped website-only deploy-os admission without altering full-finance six-signer contract",
+      "dependency": "F",
+      "next_operation": "B/C/E/G positive source and F owner policy scope",
+      "assigned_at": "2026-10-31T14:37:15Z",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "source_sha": null,
+      "ci": null,
+      "evidence_at": null,
+      "deploy_phase": "PRE_ACTIVATION_UNVERIFIED",
+      "result": "ASSIGNED_NOT_CONFIRMED_ACTIVE",
+      "active_session_verified": false,
+      "reviewer": "F"
+    },
+    {
+      "lane": "E",
+      "priority": "P0",
+      "capability": "capacity-recovery",
+      "assignment": "Measure two-filesystem 3031 stage and byte-verified rollback, preserving old runtime",
+      "dependency": "F",
+      "next_operation": "Physical stage and durable readback with headroom",
+      "assigned_at": "2026-10-31T14:37:15Z",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "source_sha": null,
+      "ci": null,
+      "evidence_at": null,
+      "deploy_phase": "PRE_ACTIVATION_UNVERIFIED",
+      "result": "ASSIGNED_NOT_CONFIRMED_ACTIVE",
+      "active_session_verified": false,
+      "reviewer": "F"
+    },
+    {
+      "lane": "F",
+      "priority": "P0",
+      "capability": "integration",
+      "assignment": "Sole integrator: root-reviewed 3030→3031 Nginx-only cutover, old PID kept alive, rollback",
+      "dependency": "CENTRAL",
+      "next_operation": "Positive B/C/D/E source/runtime, final G verifier, exact owner consent",
+      "assigned_at": "2026-10-31T14:37:15Z",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "source_sha": null,
+      "ci": null,
+      "evidence_at": null,
+      "deploy_phase": "PRE_ACTIVATION_UNVERIFIED",
+      "result": "ASSIGNED_NOT_CONFIRMED_ACTIVE",
+      "active_session_verified": false,
+      "reviewer": "CENTRAL"
+    },
+    {
+      "lane": "G",
+      "priority": "P0",
+      "capability": "live-postflight",
+      "assignment": "Independently measure before/after/rollback, old+new ports/PIDs, finance, Nginx public bytes; then separate P3 ledger",
+      "dependency": "F",
+      "next_operation": "F true stage/cutover/rollback receipts, real host and public HTTP",
+      "assigned_at": "2026-10-31T14:37:15Z",
+      "source": "https://github.com/Emaren/app-prodn/issues/934#issuecomment-6544802773",
+      "source_sha": null,
+      "ci": null,
+      "evidence_at": null,
+      "deploy_phase": "PRE_ACTIVATION_UNVERIFIED",
+      "result": "ASSIGNED_NOT_CONFIRMED_ACTIVE",
+      "active_session_verified": false,
+      "reviewer": "F"
+    }
+  ],
+  "p3": {
+    "lane": "G",
+    "priority": "P3",
+    "capability": "orchestration-ledger",
+    "scope": "Durable append-only history, source/CI evidence, completion de-duplication, six-to-1000 task queue and reusable prompts",
+    "blocking_p0": false,
+    "status": "ADDITIVE_SOURCE_WORK_ONLY"
+  }
+}
