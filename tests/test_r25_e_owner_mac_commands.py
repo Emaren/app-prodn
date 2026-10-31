@@ -46,6 +46,84 @@ class OwnerMacCommands(unittest.TestCase):
         self.assertIn('d40ec0a55fda7f1484c4f9fa37f7168d56bb19e2',s)
         self.assertIn("'--durable-next',path,'--require-phase','RECOVERY_READY'",s)
         self.assertNotIn("'--phase','copy'",s)
+    def test_06_plan_hash_and_reserve_checks_use_separate_capacity_maps(self):
+        """Regression: plan SHA normalization must not zero the reserve checks."""
+        import hashlib
+        import json
+        import re
+
+        source=self.read(COPY)
+        body=source.split("python3 -B - <<'PY'\\n",1)[1].rsplit('\\nPY',1)[0]
+        start=body.index("plan=parse_result(remote('--phase','plan'),'PLAN')")
+        end=body.index("\\ncampaign=(",start)
+        plan_guard=body[start:end]
+        self.assertIn("hash_cap=dict(cap)",plan_guard)
+        self.assertIn("stable['capacity']=hash_cap",plan_guard)
+        self.assertIn("cap.get('attached_free_before_bytes'",plan_guard)
+        self.assertIn("cap.get('root_free_before_bytes'",plan_guard)
+
+        raw={
+            "schema":"aoe2war.r25.e.old-next-copy-plan.v1",
+            "mutations_authorized":False,
+            "host":"ubuntu-4gb-hel1-11",
+            "original_pid":2625090,
+            "old_build_id":"DQ2jMprNQ_Njq6QM8GHju",
+            "c_build_id":"-dJl5VyecHu5BKNvfErJe",
+            "c_tree_sha256":"5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d",
+            "source":"/var/www/AoE2HDBets/app-prodn/.next",
+            "destination_root":"/mnt/HC_Volume_105319120/aoe2war/rollbacks",
+            "root_device":1,
+            "volume_device":2,
+            "source_entries":10,
+            "source_logical_bytes":114055915,
+            "capacity":{
+                "old_next_allocated_bytes":128811008,
+                "old_next_apparent_bytes":114055915,
+                "copy_budget_bytes":678563020,
+                "attached_free_before_bytes":21765390336,
+                "root_free_before_bytes":59376979968,
+                "reserve_bytes":4*1024**3
+            }
+        }
+        stable=dict(raw)
+        cap=dict(raw['capacity'])
+        cap.pop('attached_free_before_bytes')
+        cap.pop('root_free_before_bytes')
+        stable['capacity']=cap
+        raw['plan_sha256']=hashlib.sha256(
+            json.dumps(stable,sort_keys=True,separators=(',',':')).encode()
+        ).hexdigest()
+
+        def execute(plan):
+            def bad(reason):
+                raise RuntimeError(reason)
+            globals_={
+                "hashlib":hashlib,"json":json,"re":re,
+                "remote":lambda *a:None,
+                "parse_result":lambda *a:plan,
+                "hold":bad,
+                "canonical":lambda v:json.dumps(
+                    v,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False
+                ).encode(),
+            }
+            exec(compile(plan_guard,"pinned-mac-plan-only","exec"),globals_)
+            return globals_
+        verified=execute(raw)
+        self.assertEqual(verified['plan_hash'],raw['plan_sha256'])
+        self.assertEqual(verified['cap']['attached_free_before_bytes'],21765390336)
+        self.assertEqual(verified['cap']['root_free_before_bytes'],59376979968)
+        self.assertNotIn('attached_free_before_bytes',verified['hash_cap'])
+        self.assertNotIn('root_free_before_bytes',verified['hash_cap'])
+
+        low=json.loads(json.dumps(raw))
+        low['capacity']['attached_free_before_bytes']=low['capacity']['copy_budget_bytes']
+        with self.assertRaisesRegex(RuntimeError,"READONLY_PLAN_PROVENANCE_OR_BUDGET_MISMATCH"):
+            execute(low)
+        bad_sha=json.loads(json.dumps(raw))
+        bad_sha['plan_sha256']='0'*64
+        with self.assertRaisesRegex(RuntimeError,"READONLY_PLAN_PROVENANCE_OR_BUDGET_MISMATCH"):
+            execute(bad_sha)
+
     def test_06_different_mac_receipts_and_f_ownership(self):
         a=self.read(COPY);b=self.read(READBACK)
         self.assertIn('COPY_VERIFIED_NOT_RECOVERY_READY',a)
