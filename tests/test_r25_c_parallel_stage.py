@@ -1,5 +1,5 @@
 """R25 C additive source archive, build and candidate gate tests."""
-import io,importlib.util,json,os,pathlib,tarfile,tempfile,types,unittest
+import io,importlib.util,json,os,pathlib,subprocess,tarfile,tempfile,types,unittest
 from unittest import mock
 
 BASE=pathlib.Path(__file__).resolve().parents[1]
@@ -318,6 +318,99 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('command(build,timeout=1900)',src)
         self.assertNotIn('"/bin/sh","-c",scripts',src)
         self.assertIn('"--property=PrivateNetwork=yes"',src)
+
+    def test_38_postprebuild_resume_is_distinct_and_never_installs(self):
+        worker=SRC.read_text()
+        owner=MAC.read_text()
+        self.assertIn('commands.add_argument("--recover-prebuild"',worker)
+        self.assertIn('elif a.recover_prebuild:postprebuild_recovery()',worker)
+        self.assertIn('"recover-prebuild":"--recover-prebuild"',owner)
+        self.assertIn('POSTPREBUILD_RECOVERY_ATTEMPT.json',worker)
+        self.assertIn('POSTPREBUILD_PHASE_%02d.json',worker)
+        section=worker.split('def postprebuild_recovery():',1)[1].split(
+            'def verified_b_runtime(',1)[0]
+        self.assertNotIn('"install"',section)
+        self.assertNotIn('"--offline"',section)
+        self.assertNotIn('recover_dns_build()',section)
+        self.assertIn('return finalize_build(before,sockets,budget,frozen)',section)
+        self.assertIn('"--property=PrivateNetwork=yes"',section)
+        self.assertIn('"--setenv=PRISMA_SCHEMA_ENGINE_BINARY="+str(raw_engine)',section)
+
+    def test_39_postprebuild_refuses_original_pid_drift_without_writes(self):
+        with mock.patch.object(self.s,"old_identity",
+                               side_effect=self.s.Hold("OLD_WEB_PID_DRIFT")):
+            with mock.patch.object(self.s,"write_once") as write:
+                with mock.patch.object(self.s.subprocess,"run") as run:
+                    with self.assertRaisesRegex(self.s.Hold,"OLD_WEB_PID_DRIFT"):
+                        self.s.postprebuild_recovery()
+                    write.assert_not_called()
+                    run.assert_not_called()
+
+    def test_40_failed_step_is_separately_journaled_and_secret_redacted(self):
+        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-04-prisma-generate"
+        args=["/usr/bin/systemd-run","--unit="+unit]
+        failed=types.SimpleNamespace(
+            returncode=1,
+            stdout=b"error Authorization: Bearer NO_LEAK_THIS\nerror PRISMA_SCHEMA_ENGINE_BINARY missing\n",
+            stderr=b"error https://token:pass@example.com/key?password=x\n")
+        with tempfile.TemporaryDirectory() as temp:
+            with mock.patch.object(self.s,"AUDIT",pathlib.Path(temp)):
+                with mock.patch.object(self.s.subprocess,"run",return_value=failed) as run:
+                    with self.assertRaisesRegex(self.s.Hold,
+                                                "POSTPREBUILD_PHASE_FAILED:prisma-generate"):
+                        self.s.run_postprebuild_phase(4,"prisma-generate",args,15)
+                    run.assert_called_once()
+                receipt=json.loads((pathlib.Path(temp)/
+                         "POSTPREBUILD_PHASE_04.json").read_bytes())
+        self.assertEqual(receipt["status"],"HOLD")
+        self.assertEqual(receipt["exit_code"],1)
+        self.assertEqual(receipt["unit"],unit)
+        blob=json.dumps(receipt)
+        self.assertNotIn("NO_LEAK_THIS",blob)
+        self.assertNotIn("password=x",blob)
+        self.assertIn("PRISMA_SCHEMA_ENGINE_BINARY",blob)
+
+    def test_41_timeout_is_journaled_and_cannot_reuse_phase(self):
+        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-06-next-build"
+        args=["/usr/bin/systemd-run","--unit="+unit]
+        exc=subprocess.TimeoutExpired(args,11,
+            output=b"error lint TIMEOUT\n",
+            stderr=b"error timeout\n")
+        with tempfile.TemporaryDirectory() as temp:
+            with mock.patch.object(self.s,"AUDIT",pathlib.Path(temp)):
+                with mock.patch.object(self.s.subprocess,"run",side_effect=exc):
+                    with self.assertRaisesRegex(self.s.Hold,"EXIT=124"):
+                        self.s.run_postprebuild_phase(6,"next-build",args,11)
+                receipt=json.loads((pathlib.Path(temp)/
+                         "POSTPREBUILD_PHASE_06.json").read_bytes())
+                self.assertTrue(receipt["timed_out"])
+                self.assertEqual(receipt["exit_code"],124)
+                with mock.patch.object(self.s.subprocess,"run") as runner:
+                    with self.assertRaises(FileExistsError):
+                        self.s.run_postprebuild_phase(6,"next-build",args,11)
+                    runner.assert_called_once()
+
+    def test_42_success_records_actual_unit_and_no_network(self):
+        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-01-minimatch"
+        args=["/usr/bin/systemd-run","--unit="+unit]
+        okay=types.SimpleNamespace(returncode=0,stdout=b"PASS:compat",stderr=b"")
+        with tempfile.TemporaryDirectory() as temp:
+            with mock.patch.object(self.s,"AUDIT",pathlib.Path(temp)):
+                with mock.patch.object(self.s.subprocess,"run",return_value=okay) as run:
+                    self.assertTrue(self.s.run_postprebuild_phase(1,"minimatch",args,30))
+                    run.assert_called_once()
+                record=json.loads((pathlib.Path(temp)/
+                    "POSTPREBUILD_PHASE_01.json").read_bytes())
+        self.assertEqual(record["status"],"PASS")
+        self.assertTrue(record["private_network"])
+        self.assertFalse(record["finance_access"])
+
+    def test_43_schema_generator_output_is_explicit(self):
+        schema=(BASE/"prisma/schema.prisma").read_text()
+        self.assertIn('output   = "../lib/generated/prisma"',schema)
+        worker=SRC.read_text()
+        self.assertNotIn('POSTREC_REQUIRE_NODE_MODULES_PRISMA_CLIENT',worker)
+        self.assertIn('POSTREC_PRISMA_SEEDED_ENGINE_SHA_DRIFT',worker)
 
 if __name__=="__main__":
     unittest.main()
