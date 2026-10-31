@@ -42,10 +42,42 @@ def need(condition,why):
     if not condition:raise Hold(why)
 def sha(b):return hashlib.sha256(b).hexdigest()
 def canonical(x):return json.dumps(x,sort_keys=True,separators=(",",":"),ensure_ascii=True,allow_nan=False).encode()
+def redacted_diagnostic_tail(raw,limit=1100):
+    """Sanitize terminal errors; never persist raw logs or dump env/credentials."""
+    text=raw[-32768:].decode("utf-8","replace")
+    text=re.sub(r"\\x1b\\[[0-9;]*[A-Za-z]","",text)
+    # A registry URL may carry auth in userinfo or query parameters.
+    text=re.sub(r"(?i)\\b(?:https?|postgres(?:ql)?|redis)://\\S+",
+                "[URL_REDACTED]",text)
+    text=re.sub(r"(?i)\\b(?:authorization|cookie|set-cookie|password|passwd|"
+                r"secret|token|_authToken|api[-_]?key|client[-_]?secret|"
+                r"database_url|nextauth_secret|session_secret)"
+                r"\\s*[:=]\\s*\\S+",
+                "[CREDENTIAL_REDACTED]",text)
+    text=re.sub(r"(?i)\\bBearer\\s+\\S+","[BEARER_REDACTED]",text)
+    lines=[line.strip()[:320] for line in text.splitlines() if line.strip()]
+    # Prefer diagnostic lines and retain a bounded tail for causal context.
+    pattern=re.compile(r"error|failed|fatal|exit|EAI_AGAIN|ENOTFOUND|ENOENT|"
+                       r"EACCES|permission|network|timeout|registry|prisma|"
+                       r"lockfile|integrity|module|not found",re.I)
+    selected=[line for line in lines if pattern.search(line)]
+    return "\\n".join((selected[-12:] or lines[-12:]))[-limit:]
+
 def command(argv,timeout=30,data=None):
-    p=subprocess.run(list(map(str,argv)),input=data,stdout=subprocess.PIPE,
+    args=list(map(str,argv))
+    p=subprocess.run(args,input=data,stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE,timeout=timeout)
-    need(p.returncode==0, "COMMAND_FAILED:"+str(argv[0])+":"+p.stderr.decode(errors="replace")[-200:])
+    if p.returncode:
+        unit=next((v.split("=",1)[1] for v in args
+                   if v.startswith("--unit=")),"none")
+        # Output can be on STDOUT when systemd-run --pipe is used. Include
+        # BOTH bounded streams, the unit name and the actual return code.
+        # Preserve transaction markers; no re-execution or cleanup on HOLD.
+        message=("COMMAND_FAILED:"+args[0]+":UNIT="+unit+
+                 ":EXIT="+str(p.returncode)+
+                 ":STDOUT="+redacted_diagnostic_tail(p.stdout)+
+                 ":STDERR="+redacted_diagnostic_tail(p.stderr))
+        raise Hold(message[:2700])
     return p.stdout
 def read_no_symlink(p,limit=65536,root_only=False):
     st=p.lstat()
@@ -694,6 +726,6 @@ if __name__=="__main__":
     try:main()
     except (Hold,OSError,subprocess.SubprocessError,tarfile.TarError,
             json.JSONDecodeError,ValueError,KeyError,TimeoutError) as exc:
-        print("HOLD:R25_C:"+type(exc).__name__+":"+str(exc)[:350],file=sys.stderr)
+        print("HOLD:R25_C:"+type(exc).__name__+":"+str(exc)[:2850],file=sys.stderr)
         print("NO_RETRY_IF_PARTIAL: preserve any existing stage and audit for independent recovery.",file=sys.stderr)
         sys.exit(2)
