@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/r25-postrelease-b2b-storage-20261031` at `8c90c593efc5c80b4913463f2290e4a9fbbc96ec`
+Implementation baseline: `feature/r25-postrelease-b2b-storage-20261031` at `e481aecdbfdef2373d78c86531740ecd50f8d9c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

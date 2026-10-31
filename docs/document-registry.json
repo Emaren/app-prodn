@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "98f64385da72c083f87676630142e15ef568b63e08e824d941ae59f2561d6807",
+      "sha256": "56e1eb5a85f3231af28e4b2abeca769212d35061c6cd2539300ce3cdda7cb79e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2371,7 +2371,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/r25-postrelease-b2b-storage-20261031",
-    "commit": "8c90c593efc5c80b4913463f2290e4a9fbbc96ec"
+    "commit": "e481aecdbfdef2373d78c86531740ecd50f8d9c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
