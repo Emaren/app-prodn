@@ -1,0 +1,29 @@
+# R25 B scoped ONLY to C's NEW aoe2hdbets-web-r24.service.
+# C must place this as a ROOT-owned 0644 drop-in in that NEW unit only.
+# Never copy into original aoe2hdbets-web.service.
+[Service]
+User=aoe2war_r25_web
+Group=aoe2war_r25_web
+Environment=NODE_ENV=production
+Environment=WARGRAPH_RUNTIME_DISABLED=true
+Environment=AOE2WAR_PROD_DB_PREVIEW=true
+Environment=AOE2WAR_R25_ISOLATED_WEB=true
+Environment=NODE_OPTIONS=--require=/usr/local/lib/aoe2war-r25/r25_b_guard.cjs
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3031
+Environment=USER=aoe2war_r25_web
+Environment=LOGNAME=aoe2war_r25_web
+EnvironmentFile=/etc/aoe2war/r25-parallel-web/database.env
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET
+# C must add ONLY the exact candidate Next cache path as ReadWritePaths.
+# C must use direct node next start, NOT npm/yarn prestart, npm env, cron.
+# C must verify package lock, exact /proc/PID/exe and 3031 listener.
+# Root witness refuses unproven actual process/env/DB/kernel state.
