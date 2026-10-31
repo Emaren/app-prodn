@@ -29,4 +29,10 @@ jobs:
       - name: Execute scoped native producer unit contracts
         run: python3 -m unittest discover -s tests -p 'test_solo_native_producer_intake.py' -v
       - name: Independently verify canonical documentation baseline
-        run: python3 scripts/docs_v2_check.py
+        run: |
+          python3 scripts/docs_v2_check.py || {
+            echo "HOLD: DOCSV2_GENERATED_DIFF_DIAGNOSTIC"
+            python3 scripts/docs_v2_check.py --write
+            git diff -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json | head -160
+            exit 1
+          }
