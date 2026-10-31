@@ -630,6 +630,10 @@ def run_postprebuild_phase(i,label,commandline,timeout):
         code=124
         rawout=exc.stdout or b""
         rawerr=exc.stderr or b""
+    except OSError as exc:
+        code=125
+        rawout=b""
+        rawerr=("systemd-run process spawn "+type(exc).__name__).encode()
     out=redacted_diagnostic_tail(rawout,1800)
     err=redacted_diagnostic_tail(rawerr,1800)
     write_once(AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i),{
