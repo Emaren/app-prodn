@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/g-r24-live-web-finance-rollback-witness-20261031` at `977911263c729221b51fc78937f7a50a70fc5f15`
+Implementation baseline: `review/g-r24-live-web-finance-rollback-witness-20261031` at `52b80b9ef64ee9040d4d791d06e371e15c1e8911`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
