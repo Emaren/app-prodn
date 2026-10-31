@@ -16,16 +16,15 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
-      - name: Reseal canonical docs against immutable pre-generator source
-        run: |
-          python3 scripts/docs_v2_check.py --write --refresh-baseline --head 94878f39dae4dc9c5897e30319d8887c34c94f6c --branch r16-w1safe-integrated
-      - name: Self-retire and verify final recorded Git tree
+      - name: Retire generator first, then seal and verify real final source
         run: |
           git config user.name 'aoe2war-docsv2-bot'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/r16-w1safe-docs-v4.yml
+          git commit -m 'ci(R16): retire temporary DocsV2 generator before source baseline'
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
           git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
           git diff --cached --quiet && exit 1
-          git commit -m 'docs(R16): exact W1_SAFE integration final-source seal'
+          git commit -m 'docs(R16): exact-source W1_SAFE canonical baseline'
           python3 scripts/docs_v2_check.py
           git push origin HEAD:refs/heads/r16-w1safe-docs-v4
