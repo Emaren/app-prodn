@@ -32,11 +32,13 @@
         "/kingdom-progress",
         "/kingdom-systems",
         "/aoe2war-os",
+        "/aoe2war-os/engineering",
         "/kingdom-recovery",
         "/speed",
         "/admin/aoe2war-os",
         "/admin/storage-os",
-        "/admin/central-command"
+        "/admin/central-command",
+        "/admin/engineering-os"
       ]
     },
     {
