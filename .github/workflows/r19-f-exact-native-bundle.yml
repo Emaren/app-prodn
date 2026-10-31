@@ -1,0 +1,59 @@
+name: R19 F exact-controller native bundle reproducibility (NO HEL1)
+on:
+  push:
+    branches: [r19-f-exact-native-bundle-proof]
+permissions:
+  contents: read
+jobs:
+  source-only-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Enter immutable CI-green controller source WITHOUT workflow commit
+        run: |
+          git checkout --detach 18052e01a191b15525664c1a058de80d7a8bc150
+          test "$(git rev-parse HEAD)" = "18052e01a191b15525664c1a058de80d7a8bc150"
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Build twice unprivileged from real immutable Git source
+        run: |
+          mkdir -m 700 "$RUNNER_TEMP/first" "$RUNNER_TEMP/second" "$RUNNER_TEMP/proof"
+          python3 scripts/aoe2_solo_root_install_v2.py build --repo "$GITHUB_WORKSPACE" --controller-sha 18052e01a191b15525664c1a058de80d7a8bc150 --output-dir "$RUNNER_TEMP/first"
+          python3 scripts/aoe2_solo_root_install_v2.py build --repo "$GITHUB_WORKSPACE" --controller-sha 18052e01a191b15525664c1a058de80d7a8bc150 --output-dir "$RUNNER_TEMP/second"
+          cmp "$RUNNER_TEMP/first/root-helpers-v2.tar.gz" "$RUNNER_TEMP/second/root-helpers-v2.tar.gz"
+          cmp "$RUNNER_TEMP/first/root-helpers-v2.manifest.json" "$RUNNER_TEMP/second/root-helpers-v2.manifest.json"
+          python3 - "$RUNNER_TEMP/first" "$RUNNER_TEMP/proof" <<'PY'
+          import json,hashlib,pathlib,sys,shutil
+          src,dest=map(pathlib.Path,sys.argv[1:])
+          raw=(src/"root-helpers-v2.manifest.json").read_bytes()
+          m=json.loads(raw)
+          blob=(src/"root-helpers-v2.tar.gz").read_bytes()
+          assert m["controller_commit"]=="18052e01a191b15525664c1a058de80d7a8bc150"
+          assert m["w1_safe_candidate"]=="0cee3c836c4b0760478280c145e02e81e470ce0e"
+          assert m["financial_release_authorized"] is False
+          assert m["root_install_authorized"] is False
+          assert len(m["source_git_blobs"])==12
+          assert len(m["targets_sha256"])==14
+          assert m["bundle_sha256"]==hashlib.sha256(blob).hexdigest()
+          assert m["owner_rsa_spki_sha256"]=="3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd"
+          digest=hashlib.sha256(raw).hexdigest()
+          for name in ("root-helpers-v2.manifest.json","root-helpers-v2.tar.gz"):
+              shutil.copyfile(src/name,dest/name)
+          receipt={"schema":"aoe2war.r19.f.root-bundle-source-proof.v1","controller_sha":m["controller_commit"],"website_sha":m["w1_safe_candidate"],"manifest_sha256":digest,"bundle_sha256":m["bundle_sha256"],"sources":12,"installed_targets":14,"native_install":"NOT_RUN","owner_approval":False}
+          (dest/"SOURCE_ONLY_PROOF.json").write_text(json.dumps(receipt,sort_keys=True,indent=2)+"\n")
+          print(json.dumps(receipt,sort_keys=True))
+          PY
+          python3 -m unittest discover -s tests -p 'test_aoe2_solo_root_install_v2.py' -v
+          python3 -m unittest discover -s tests -p 'test_r18_f_exact_integrated_identity.py' -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r19-f-source-only-native-root-bundle-no-install
+          path: ${{ runner.temp }}/proof/
+          retention-days: 14
+          if-no-files-found: error
