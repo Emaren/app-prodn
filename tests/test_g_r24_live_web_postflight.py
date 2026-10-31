@@ -84,8 +84,8 @@ class R24GPostflightTests(unittest.TestCase):
         ]
         scenarios.extend([
            lambda a,b:b["original_release_lock"].__setitem__("inode",999),
-           lambda a,b:b["web"].__setitem__("start_ticks",a["web"]["start_ticks"]),
-           lambda a,b:b["web"].__setitem__("pid",a["web"]["pid"]),
+           lambda a,b:b["web"].update({"pid":a["web"]["pid"],
+                                          "start_ticks":a["web"]["start_ticks"]}),
         ])
         for i,edit in enumerate(scenarios):
             with self.subTest(i=i):
