@@ -347,8 +347,8 @@ def main():
     need(len(sys.argv)>=2,"EXPLICIT_ROOT_OPERATOR_MODE")
     if sys.argv[1:]==["--root-apply"]:
         apply()
-    elif len(sys.argv)==4 and sys.argv[1]=="--root-rollback" and
-         sys.argv[2]=="--nonce":
+    elif (len(sys.argv)==4 and sys.argv[1]=="--root-rollback" and
+          sys.argv[2]=="--nonce"):
         manual_rollback(sys.argv[3])
     else:
         raise Hold("UNREVIEWED_ROOT_OPERATION")
