@@ -77,8 +77,17 @@ class R22Tests(unittest.TestCase):
             key=Path(temp)/'synthetic.pem'
             subprocess.run(['openssl','genpkey','-algorithm','RSA','-pkeyopt','rsa_keygen_bits:2048','-out',str(key)],stderr=subprocess.DEVNULL,check=True)
             os.chmod(key,0o600)
-            r=subprocess.run([sys.executable,str(S),'--owner-rsa-private-key',str(key)],capture_output=True,text=True)
-            self.assertEqual(r.returncode,2)
-            self.assertIn('OWNER_RSA_SPKI_SHA256_NOT_PINNED_OWNER',r.stderr)
-            self.assertNotIn('R22_INSTALL_PERMIT_BASE64=',r.stdout)
+            # GitHub CI has no controlling /dev/tty. Mock only this test's
+            # terminal handle: synthetic key is intentionally UNENCRYPTED,
+            # so OpenSSL does not need a passphrase and the real SPKI test
+            # must be reached. Production signer still requires /dev/tty.
+            from unittest import mock
+            original_open = open
+            def local_tty(path,*args,**kwargs):
+                return original_open(os.devnull if path=="/dev/tty" else path,*args,**kwargs)
+            x=module(S)
+            with mock.patch("builtins.open",side_effect=local_tty):
+                with mock.patch.object(sys,"argv",["<synthetic_signer>","--owner-rsa-private-key",str(key)]):
+                    with self.assertRaisesRegex(ValueError,'OWNER_RSA_SPKI_SHA256_NOT_PINNED_OWNER'):
+                        x.main()
 if __name__=='__main__':unittest.main()
