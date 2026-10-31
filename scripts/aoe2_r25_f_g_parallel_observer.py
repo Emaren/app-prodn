@@ -20,6 +20,11 @@ STAGE=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 C_AUDIT=pathlib.Path("/var/lib/aoe2war-r25-c-additive")
 ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".tar")
 ARCHIVE_SHA="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
+# Independent C #1084 actual owner build and full 87,038-file verifier.
+C_PHYSICAL_TREE_SHA256="5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d"
+C_PHYSICAL_BUILD_ID="-dJl5VyecHu5BKNvfErJe"
+C_PHYSICAL_APP_VERSION="20261031171526-148d3df911"
+C_PHYSICAL_FILES=87038
 EXPECTED_OLD_PID=2625090
 APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r24-parallel")
@@ -388,11 +393,20 @@ def protected_c_stage_boundary():
         need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
              not(st.st_mode&0o022), "C_STAGE_ROOT_TRUST_BOUNDARY")
 
+def require_c_physical_build_identity(built):
+    need(type(built)==dict and
+         built.get("tree_sha256")==C_PHYSICAL_TREE_SHA256 and
+         built.get("build_id")==C_PHYSICAL_BUILD_ID and
+         built.get("build_version")==C_PHYSICAL_APP_VERSION and
+         built.get("files")==C_PHYSICAL_FILES,
+         "C_PHYSICAL_87038_FILE_TREE_BUILD_ID_MISMATCH")
+
 def verified_c_archive_source():
     """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
     protected_c_stage_boundary()
     source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
     built=parse(root_file(C_AUDIT/"BUILD_STAGED.json",65536),65536)
+    require_c_physical_build_identity(built)
     srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",33554432),33554432)
     builtfiles=parse(root_file(C_AUDIT/"BUILD_FILES.json",67108864),67108864)
     need(source.get("status")=="SOURCE_STAGED" and
