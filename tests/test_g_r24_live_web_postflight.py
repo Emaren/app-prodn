@@ -57,6 +57,24 @@ def fixture():
     return before,after,rollback
 
 class R25Tests(unittest.TestCase):
+
+    def test_pinned_real_c_build_identity_and_adverse_variants(self):
+        correct={"build_id":"-dJl5VyecHu5BKNvfErJe",
+                 "tree_sha256":"5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d",
+                 "files":87038}
+        g.c_physical_build_identity(correct)
+        for key,value in (("build_id","INVALID_NEXT_BUILD"),
+                          ("tree_sha256","0"*64),
+                          ("files",87037),
+                          ("files",True)):
+            with self.subTest(key=key,value=value):
+                bad=dict(correct);bad[key]=value
+                with self.assertRaisesRegex(g.Hold,"C_INDEPENDENT_PHYSICAL_BUILD"):
+                    g.c_physical_build_identity(bad)
+        # C serializes its full manifest with ensure_ascii=True.
+        self.assertEqual(g.canon({"note":"café"}),b'{"note":"caf\\u00e9"}')
+
+
     def test_c_root_only_stage_matches_new_independent_source(self):
         self.assertEqual(g.STAGE,pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b"))
         self.assertEqual(g.STAGE.parent,pathlib.Path("/var/lib"))
@@ -223,7 +241,7 @@ server {
             def readfile(p,maxsize=65536):
                 name=pathlib.Path(p).name
                 return g.TARGET.encode() if name=="r24-source-sha" else json.dumps(mapping[name]).encode()
-            with patch.object(g,"STAGE",root),patch.object(g,"protected_c_stage_boundary",return_value=None),patch.object(g,"root_file",side_effect=readfile),patch.object(g,"root_sealed_file",return_value=True):
+            with patch.object(g,"STAGE",root),patch.object(g,"protected_c_stage_boundary",return_value=None),patch.object(g,"root_file",side_effect=readfile),patch.object(g,"root_sealed_file",return_value=True),patch.object(g,"EXPECTED_C_TREE_SHA",built["tree_sha256"]),patch.object(g,"EXPECTED_C_NEXT_BUILD_ID",built["build_id"]),patch.object(g,"EXPECTED_C_FILES",1):
                 self.assertEqual(g.verified_c_archive_source()["receipt_build_id"],
                                  "TrueNextBuild_ABC")
                 built["build_id"]="INVENTED_ID"
