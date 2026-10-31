@@ -38,8 +38,13 @@ def main():
         raise ValueError("HOLD: OWNER_PRIVATE_KEY_NOT_OWNED_PRIVATE_0600")
     # OpenSSL parses original owner private key, emits ONLY public DER for pinning.
     # No key bytes emitted or copied into signed envelope.
-    public = subprocess.run(["openssl", "pkey", "-in", str(p), "-pubout", "-outform", "DER"],
-                             stdout=subprocess.PIPE, check=True, timeout=15).stdout
+    # The bootstrap arrives via a shell heredoc, so inherited stdin is EOF.
+    # Explicitly route OpenSSL encrypted-key passphrase prompts to the
+    # genuine local terminal. Never pass passphrases via args, env or logs.
+    with open("/dev/tty", "rb", buffering=0) as owner_tty:
+        public = subprocess.run(["openssl", "pkey", "-in", str(p), "-pubout", "-outform", "DER"],
+                                stdin=owner_tty, stdout=subprocess.PIPE,
+                                check=True, timeout=45).stdout
     if hashlib.sha256(public).hexdigest() != FP:
         raise ValueError("HOLD: OWNER_RSA_SPKI_SHA256_NOT_PINNED_OWNER")
     now = datetime.now(timezone.utc)
@@ -50,8 +55,10 @@ def main():
     with tempfile.TemporaryDirectory(prefix="r22-install-permit-") as tmp:
         msg = Path(tmp) / "owner-intent.bin"
         msg.write_bytes(DOM + canon(body))
-        sig = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(p), str(msg)],
-                             stdout=subprocess.PIPE, check=True, timeout=15).stdout
+        with open("/dev/tty", "rb", buffering=0) as owner_tty:
+            sig = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(p), str(msg)],
+                                 stdin=owner_tty, stdout=subprocess.PIPE,
+                                 check=True, timeout=45).stdout
     envelope = {"schema": "aoe2war.hel1.root-install.permit.v2",
                 "payload": body, "signature_base64": base64.b64encode(sig).decode("ascii")}
     print("PASS: REAL_EXISTING_OWNER_RSA_SPKI_MATCH; INSTALL PERMIT EXPIRES " + body["expires_at"], file=sys.stderr)
