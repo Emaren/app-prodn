@@ -325,6 +325,28 @@ def make_signed_receipt(manifest,intent,section,*,now=None,signer=None):
             "receipt":{"payload":body,"signature_base64":
                        base64.b64encode(raw).decode("ascii")}}
 
+def verify_spool(directory,uid):
+    """Read-only local spool check before original FD200 owner authorization.
+
+    One local pass is never six physically independent enrolled origins.
+    """
+    need(directory.is_absolute(),"RELATIVE_OUTPUT_DIR")
+    before=directory.lstat()
+    need(stat.S_ISDIR(before.st_mode) and before.st_uid==uid and
+         stat.S_IMODE(before.st_mode)==0o700,"UNPROTECTED_PRODUCER_SPOOL")
+    fd=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|
+               os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        current=os.fstat(fd)
+        after=directory.lstat()
+        identity=lambda x:(x.st_dev,x.st_ino,x.st_uid,x.st_mode)
+        need(identity(before)==identity(current)==identity(after),
+             "PRODUCER_SPOOL_REPLACED")
+    finally:
+        os.close(fd)
+    return True
+
+
 def write_once(destination,content,uid):
     root=destination.parent
     st=root.lstat()
@@ -348,10 +370,14 @@ def write_once(destination,content,uid):
 
 def main(argv=None):
     parser=argparse.ArgumentParser()
-    parser.add_argument("action",choices=("inspect","sign"))
+    parser.add_argument("action",choices=("enrollment-check","inspect","sign"))
     parser.add_argument("--role",choices=ROLES,required=True)
-    parser.add_argument("--intent",required=True)
-    parser.add_argument("--preissue",required=True,
+    parser.add_argument("--expect-candidate-sha",
+        help="F frozen website SHA; required for local enrollment check only")
+    parser.add_argument("--expect-controller-sha",
+        help="F frozen controller SHA; required for local enrollment check only")
+    parser.add_argument("--intent")
+    parser.add_argument("--preissue",
         help="C-authenticated F original-FD200 root preissue response")
     args=parser.parse_args(argv)
     try:
@@ -363,6 +389,32 @@ def main(argv=None):
         uid=os.geteuid()
         validate_manifest(manifest,args.role,uid,socket.gethostname().split(".")[0])
         verify_identity(manifest,uid)
+        if args.action=="enrollment-check":
+            need(args.intent is None and args.preissue is None,
+                 "PREFLIGHT_CANNOT_CONSUME_OWNER_OR_ROOT_AUTHORITY")
+            need(type(args.expect_candidate_sha) is str and
+                 bool(HEX40.fullmatch(args.expect_candidate_sha)) and
+                 type(args.expect_controller_sha) is str and
+                 bool(HEX40.fullmatch(args.expect_controller_sha)) and
+                 args.expect_candidate_sha==manifest["candidate_sha"] and
+                 args.expect_controller_sha==manifest["controller_sha"],
+                 "PREFLIGHT_FINAL_SOURCE_IDENTITY_MISMATCH")
+            verify_spool(Path(manifest["output_dir"]),uid)
+            result={"status":"LOCAL_ENROLLMENT_CHECKED_UNADMITTED",
+                    "role":args.role,
+                    "candidate_sha":manifest["candidate_sha"],
+                    "controller_sha":manifest["controller_sha"],
+                    "public_spki_sha256":manifest["public_spki_sha256"],
+                    "collector_sha256":manifest["collector_sha256"],
+                    "receipt_issued":False,"release_authorized":False,
+                    "financial_authorized":False}
+            print(canonical(result).decode("ascii"))
+            return 0
+        need(args.expect_candidate_sha is None and
+             args.expect_controller_sha is None,
+             "PREFLIGHT_SOURCE_FLAGS_ONLY")
+        need(bool(args.intent) and bool(args.preissue),
+             "ORIGINAL_PREISSUE_AND_SIGNED_INTENT_REQUIRED")
         request=parse(checked_file(Path(args.intent),0,limit=16384))
         now=datetime.now(timezone.utc)
         reservation=parse(checked_file(Path(args.preissue),0,limit=16384))

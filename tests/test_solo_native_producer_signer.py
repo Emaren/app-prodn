@@ -289,6 +289,106 @@ class R17SignerTests(unittest.TestCase):
         with self.assertRaisesRegex(m.Hold,"DUPLICATE_JSON_PROPERTY"):
             m.parse(b'{"phase":"a","phase":"b"}')
 
+    def test_r19_enrollment_spool_checked_without_writing(self):
+        with tempfile.TemporaryDirectory() as td:
+            directory=Path(td)
+            os.chmod(directory,0o700)
+            self.assertTrue(m.verify_spool(directory,os.geteuid()))
+            self.assertEqual(list(directory.iterdir()),[])
+            os.chmod(directory,0o755)
+            with self.assertRaisesRegex(m.Hold,"UNPROTECTED_PRODUCER_SPOOL"):
+                m.verify_spool(directory,os.geteuid())
+            os.chmod(directory,0o700)
+            symlink=directory.parent/(directory.name+"-symlink")
+            symlink.symlink_to(directory,target_is_directory=True)
+            try:
+                with self.assertRaisesRegex(m.Hold,"UNPROTECTED_PRODUCER_SPOOL"):
+                    m.verify_spool(symlink,os.geteuid())
+            finally:
+                symlink.unlink()
+
+    def test_r19_local_preflight_no_owner_intent_no_receipt(self):
+        manifest=self.manifest()
+        with mock.patch.object(m.os,"geteuid",return_value=manifest["uid"]), \
+             mock.patch.object(m.os,"environ",{}), \
+             mock.patch.object(m.sys,"platform","linux"), \
+             mock.patch.object(m.socket,"gethostname",return_value=manifest["origin_host"]), \
+             mock.patch.object(m,"checked_file",return_value=m.canonical(manifest)), \
+             mock.patch.object(m,"verify_identity",return_value=True), \
+             mock.patch.object(m,"verify_spool",return_value=True) as spool, \
+             mock.patch.object(m,"signed_intent") as intent, \
+             mock.patch.object(m,"measure") as collect, \
+             mock.patch.object(m,"make_signed_receipt") as sign, \
+             mock.patch.object(m,"write_once") as write, \
+             mock.patch("builtins.print") as out:
+            self.assertEqual(m.main(["enrollment-check","--role","finance",
+                "--expect-candidate-sha",SAFE,
+                "--expect-controller-sha",manifest["controller_sha"]]),0)
+            report=json.loads(out.call_args.args[0])
+            self.assertEqual(report["status"],"LOCAL_ENROLLMENT_CHECKED_UNADMITTED")
+            self.assertEqual(report["candidate_sha"],SAFE)
+            self.assertEqual(report["controller_sha"],manifest["controller_sha"])
+            self.assertFalse(report["receipt_issued"])
+            self.assertFalse(report["financial_authorized"])
+            self.assertFalse(report["release_authorized"])
+            spool.assert_called_once()
+            intent.assert_not_called()
+            collect.assert_not_called()
+            sign.assert_not_called()
+            write.assert_not_called()
+
+    def test_r19_preflight_rejects_authority_inputs_and_sign_without_preissue(self):
+        manifest=self.manifest()
+        with mock.patch.object(m.os,"geteuid",return_value=manifest["uid"]), \
+             mock.patch.object(m.os,"environ",{}), \
+             mock.patch.object(m.sys,"platform","linux"), \
+             mock.patch.object(m.socket,"gethostname",return_value=manifest["origin_host"]), \
+             mock.patch.object(m,"checked_file",return_value=m.canonical(manifest)), \
+             mock.patch.object(m,"verify_identity",return_value=True), \
+             mock.patch.object(m,"verify_spool",return_value=True), \
+             mock.patch.object(m,"measure") as collect, \
+             mock.patch.object(m,"make_signed_receipt") as sign, \
+             mock.patch("builtins.print"):
+            self.assertEqual(m.main(["enrollment-check","--role","finance",
+                                     "--intent","/must-not-be-read",
+                                     "--expect-candidate-sha",SAFE,
+                                     "--expect-controller-sha",manifest["controller_sha"]]),2)
+            self.assertEqual(m.main(["sign","--role","finance"]),2)
+            self.assertEqual(m.main(["inspect","--role","finance"]),2)
+            collect.assert_not_called()
+            sign.assert_not_called()
+
+    def test_r19_local_preflight_rejects_stale_or_missing_f_source_pins(self):
+        manifest=self.manifest()
+        with mock.patch.object(m.os,"geteuid",return_value=manifest["uid"]), \
+             mock.patch.object(m.os,"environ",{}), \
+             mock.patch.object(m.sys,"platform","linux"), \
+             mock.patch.object(m.socket,"gethostname",return_value=manifest["origin_host"]), \
+             mock.patch.object(m,"checked_file",return_value=m.canonical(manifest)), \
+             mock.patch.object(m,"verify_identity",return_value=True), \
+             mock.patch.object(m,"verify_spool") as spool, \
+             mock.patch("builtins.print"):
+            self.assertEqual(m.main(["enrollment-check","--role","finance"]),2)
+            self.assertEqual(m.main(["enrollment-check","--role","finance",
+                "--expect-candidate-sha","a9525f46302edff88ed073743a7dfaed08be9e3e",
+                "--expect-controller-sha",manifest["controller_sha"]]),2)
+            self.assertEqual(m.main(["enrollment-check","--role","finance",
+                "--expect-candidate-sha",SAFE,
+                "--expect-controller-sha","a"*40]),2)
+            spool.assert_not_called()
+
+    def test_r19_local_preflight_wrong_origin_denied(self):
+        manifest=self.manifest()
+        with mock.patch.object(m.os,"geteuid",return_value=manifest["uid"]), \
+             mock.patch.object(m.os,"environ",{}), \
+             mock.patch.object(m.sys,"platform","linux"), \
+             mock.patch.object(m.socket,"gethostname",return_value="unapproved-host"), \
+             mock.patch.object(m,"checked_file",return_value=m.canonical(manifest)), \
+             mock.patch.object(m,"verify_identity") as proof, \
+             mock.patch("builtins.print"):
+            self.assertEqual(m.main(["enrollment-check","--role","finance"]),2)
+            proof.assert_not_called()
+
     def test_main_refuses_root_or_unenrolled_machine(self):
         with mock.patch.object(m.os,"geteuid",return_value=0):
             self.assertEqual(m.main(["inspect","--role","finance",
