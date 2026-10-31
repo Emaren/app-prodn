@@ -144,7 +144,7 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn('original_web_restarted',src)
     def test_manual_rollback_does_not_require_failed_candidate_to_run(self):
         s=self.s
-        old="Id=aoe2hdbets-web.service\\nActiveState=active\\nMainPID=2625090\\n"
+        old="Id=aoe2hdbets-web.service\nActiveState=active\nMainPID=2625090\n"
         a={
             "old_web_snapshot_sha256":s.sha(old.encode()),
             "finance_snapshot_sha256":s.sha(s.canonical({"protected": "running"})),
