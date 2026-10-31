@@ -72,9 +72,13 @@ class RecoveryV6Tests(unittest.TestCase):
         self.assertIn("NO_CONTROLLER_SWITCH", x)
         self.assertIn("OLD_APPROVAL.exists()", x)
 
-    def test_03_source_starts_unapproved(self):
-        # The public branch must hold: independent F must seal a NEW source.
-        self.assertIn('F_REVIEWED_C_SOURCE_SHA = ""', SERVER.read_text())
+    def test_03_source_has_exact_independent_F_review_pin(self):
+        # F's successor branch binds the ORIGINAL immutable C #1074 SHA.
+        # Changing the pinned source requires a fresh F review.
+        self.assertEqual(self.s.F_REVIEWED_C_SOURCE_SHA,
+                         "318bd18a6fef630ea4ea32c2140199975cb3d834")
+        self.assertIn('F_REVIEWED_C_SOURCE_SHA = "318bd18a6fef630ea4ea32c2140199975cb3d834"',
+                      SERVER.read_text())
 
     def test_04_wrong_host_fails(self):
         with mock.patch.object(self.s.socket, "gethostname", return_value="not-hel1"):
