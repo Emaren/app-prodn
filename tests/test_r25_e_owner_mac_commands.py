@@ -124,6 +124,47 @@ class OwnerMacCommands(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,"READONLY_PLAN_PROVENANCE_OR_BUDGET_MISMATCH"):
             execute(bad_sha)
 
+    def test_07_readback_campaign_uses_operator_tty_not_consumed_heredoc_stdin(self):
+        """Exercise the actual campaign prompt with a controlled operator terminal."""
+        import io
+        import re
+
+        s=self.read(READBACK)
+        self.assertNotIn("campaign=input(",s)
+        self.assertIn("open('/dev/tty','r+')",s)
+        self.assertIn("tty.readline(160).strip()",s)
+        body=s.split("python3 -B - <<'PY'\\n",1)[1].rsplit('\\nPY',1)[0]
+        start=body.index("# The Python program itself arrives via a heredoc:")
+        stop=body.index("\\npath='/mnt/HC_Volume_105319120",start)
+        prompt=body[start:stop]
+        campaign="r25-e-20261031T204421Z-276babc395a0a07a32c3"
+
+        class FakeTTY(io.StringIO):
+            def __init__(self, value):
+                super().__init__(value+"\\n")
+                self.prompts=[]
+            def write(self, value):
+                self.prompts.append(value)
+                return len(value)
+
+        def check(value):
+            tty=FakeTTY(value)
+            def fail(msg):
+                raise RuntimeError(msg)
+            g={"open":lambda path,mode: tty,
+               "hold":fail, "re":re}
+            exec(compile(prompt,"e-readback-tty","exec"),g)
+            return g,tty
+
+        good,tty=check(campaign)
+        self.assertEqual(good["campaign"],campaign)
+        self.assertIn("Paste exact NEW campaign",''.join(tty.prompts))
+        with self.assertRaisesRegex(RuntimeError,"NEW_CAMPAIGN_ID_REQUIRED"):
+            check("../r25-e-20261031T204421Z-276babc395a0a07a32c3")
+        with self.assertRaisesRegex(RuntimeError,"NEW_CAMPAIGN_ID_REQUIRED"):
+            check("invalid")
+        self.assertNotIn("'--phase','copy'",prompt)
+
     def test_06_different_mac_receipts_and_f_ownership(self):
         a=self.read(COPY);b=self.read(READBACK)
         self.assertIn('COPY_VERIFIED_NOT_RECOVERY_READY',a)
