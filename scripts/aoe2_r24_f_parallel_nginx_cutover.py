@@ -16,6 +16,7 @@ LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.loc
 LOCK_ID=(2064,6185747,1000,0o644)
 OLD_UNIT="aoe2hdbets-web.service"
 NEW_UNIT="aoe2hdbets-web-r24.service"
+NEW_USER="aoe2war-r24-web"
 OLD_PORT=3030
 NEW_PORT=3031
 OLD_UPSTREAM=b"proxy_pass http://127.0.0.1:3030;"
@@ -122,6 +123,41 @@ def unit_state(unit):
        "-p","ExecMainStartTimestampMonotonic","-p","User",
        "-p","FragmentPath","-p","DropInPaths","-p","ExecStart"],15)
     return out.decode(errors="replace")
+def enforce_candidate_runtime(unit_status):
+    # Independent defense-in-depth gate; does NOT prove server-side PG ACLs.
+    parts=dict(line.split("=",1) for line in unit_status.splitlines() if "=" in line)
+    need(parts.get("User")==NEW_USER and parts.get("ActiveState")=="active",
+         "CANDIDATE_MUST_USE_DISTINCT_UNPRIVILEGED_UID")
+    pid=parts.get("MainPID","")
+    need(pid.isdecimal() and int(pid)>1,"CANDIDATE_MAINPID_MISSING")
+    proc=pathlib.Path("/proc")/pid/"environ"
+    fd=os.open(proc,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        raw=os.read(fd,65537)
+        need(0<len(raw)<=65536 and raw.endswith(b"\\x00"),
+             "CANDIDATE_ENVIRONMENT_MISSING_OR_UNBOUNDED")
+    finally:os.close(fd)
+    variables={}
+    for entry in raw[:-1].split(b"\\x00"):
+        key,sep,val=entry.partition(b"=")
+        need(bool(sep) and key not in variables and
+             bool(re.fullmatch(rb"[A-Za-z_][A-Za-z0-9_]*",key)),
+             "INVALID_CANDIDATE_PROCESS_ENV")
+        variables[key]=val
+    need(variables.get(b"WARGRAPH_RUNTIME_DISABLED")==b"true",
+         "WARGRAPH_SETTLEMENT_RUNTIME_NOT_DISABLED")
+    need(variables.get(b"AOE2WAR_PROD_DB_PREVIEW")==b"true",
+         "CANDIDATE_DB_PREVIEW_DEFENSE_MISSING")
+    need(variables.get(b"NODE_ENV")==b"production",
+         "CANDIDATE_NOT_PRODUCTION_MODE")
+    forbidden=(b"PRIVATE_KEY",b"MNEMONIC",b"SIGNING_KEY",b"SECRET_KEY",
+               b"CUSTODY",b"TREASURY",b"SETTLEMENT_KEY",
+               b"PAYMENT_SECRET",b"WOLO_WALLET",b"STAKING_KEY")
+    need(not any(any(term in name.upper() for term in forbidden)
+                 for name in variables),
+         "CANDIDATE_PROCESS_INHERITED_FINANCIAL_SECRET_ENV")
+    return True
+
 def snapshots(units):
     return {"original_web":unit_state(OLD_UNIT),
             "candidate_web":unit_state(NEW_UNIT),
@@ -137,6 +173,7 @@ def listener_lines(raw):
 def prove_preimage(j,s):
     need("ActiveState=active" in s["original_web"] and
          "ActiveState=active" in s["candidate_web"],"TWO_INDEPENDENT_WEB_SERVICES_NOT_ACTIVE")
+    enforce_candidate_runtime(s["candidate_web"])
     need(sha(s["original_web"].encode())==j["old_web_snapshot_sha256"],
          "OLD_FINANCIAL_WEB_PID_DRIFT")
     need(sha(s["candidate_web"].encode())==j["candidate_web_snapshot_sha256"],
