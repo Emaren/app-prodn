@@ -197,7 +197,8 @@ server {
             mapping={"SOURCE_STAGED.json":source,"BUILD_STAGED.json":built,
                      "SOURCE_FILES.json":files,"BUILD_FILES.json":artifact}
             def readfile(p,maxsize=65536):
-                return json.dumps(mapping[pathlib.Path(p).name]).encode()
+                name=pathlib.Path(p).name
+                return g.TARGET.encode() if name=="r24-source-sha" else json.dumps(mapping[name]).encode()
             with patch.object(g,"STAGE",root),patch.object(g,"root_file",side_effect=readfile),patch.object(g,"root_sealed_file",return_value=True):
                 self.assertEqual(g.verified_c_archive_source()["receipt_build_id"],
                                  "TrueNextBuild_ABC")
