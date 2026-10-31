@@ -360,7 +360,7 @@
       "owner": "aoe2war-web",
       "path": "docs/CENTRAL_COMMAND_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-28",
+      "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
       "sha256": "20cb304f018fbc6a466090a517200611827334639001d86c999ba949df8fd9f2",
       "source_of_truth": "git",
