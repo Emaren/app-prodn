@@ -6,7 +6,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 COPY=ROOT/'scripts/r25_e_owner_mac_durable_copy.sh'
 READBACK=ROOT/'scripts/r25_e_owner_mac_recovery_readback.sh'
-PIN='60f8cd06c0e44bb03fbc95c5fc52d07a6922fc743897248f6c00242e8bdf6418'
+PIN='55ce776c75734121b4ba3f14a7f5edfbae10d9321d5cd6ac45cf1e568412bc87'
 E_PIN='606b899cf51c0edc9140da727b1623792277d318a83e8f63b899604a3bc68184'
 
 class OwnerMacCommands(unittest.TestCase):
@@ -22,8 +22,8 @@ class OwnerMacCommands(unittest.TestCase):
     def test_02_copy_worker_exact_sha_commit_and_size(self):
         s=self.read(COPY)
         self.assertIn(PIN,s)
-        self.assertIn('source_size=22986',s)
-        self.assertIn('371b88113a0ee82c0bdee181f13c86c51733593d',s)
+        self.assertIn('source_size=23254',s)
+        self.assertIn('e217b99c830ebc01aa46c4a4b60b3a6cd14a218f',s)
         self.assertIn('hashlib.sha256(worker).hexdigest()!=source_sha',s)
     def test_03_copy_plan_then_typed_consent_then_copy(self):
         s=self.read(COPY)
