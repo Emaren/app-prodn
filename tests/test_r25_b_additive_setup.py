@@ -23,6 +23,7 @@ def bundle():
        "witness":"scripts/r25_b_host_witness.py",
        "dropin":"deploy/r25-b-3031.service.dropin.in",
        "nft":"deploy/r25-b-3031-egress.nft.in",
+       "baseunit":"deploy/r25-b-reviewed-c-base-3031.service",
     }
     blob={k:base64.b64encode((ROOT/p).read_bytes()).decode() for k,p in paths.items()}
     return base64.b64encode(json.dumps(blob).encode()).decode()
@@ -81,11 +82,29 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn("acldefault('s',c.relowner)",sql)
         self.assertNotIn("acldefault('S',c.relowner)",sql)
 
+    def test_c_base_unit_mutation_rejected(self):
+        data=json.loads(base64.b64decode(bundle()))
+        data["baseunit"]=base64.b64encode(b"[Service]\\nExecStart=/bin/false\\n").decode()
+        encoded=base64.b64encode(json.dumps(data).encode()).decode()
+        with self.assertRaisesRegex(RuntimeError,"B_NEW_ONLY_NFT_OR_SYSTEMD_SOURCE_BLOB_DRIFT"):
+            b.decode_bundle(encoded)
+
+    def test_ipv6_listener_must_be_checked(self):
+        import inspect
+        self.assertIn('Path("/proc/net/tcp6")',inspect.getsource(b.check_inputs))
+
+    def test_base_unit_exact_or_additive_only(self):
+        import inspect
+        s=inspect.getsource(b.install)
+        self.assertIn('create_new(BASEUNIT,bundle["baseunit"],0o644)',s)
+        self.assertIn("EXISTING_C_BASE_UNIT_DRIFT_DURING_INSTALL",s)
+
     def test_real_b_immutable_bundle_is_accepted(self):
         d=b.decode_bundle(bundle())
         self.assertEqual(b.sha(d["guard"]),b.GUARD_SHA)
         self.assertEqual(b.sha(d["witness"]),b.WITNESS_SHA)
         self.assertIn(b.GUARD_SHA,d["dropin"].decode())
+        self.assertEqual(b.gitblob(d["baseunit"]),b.BASEUNIT_GIT_BLOB)
         self.assertNotIn("__B_GUARD_SHA256__",d["dropin"].decode())
 
     def test_nft_exact_template_has_only_two_executable_uid_substitutions(self):
@@ -117,7 +136,7 @@ class TestOwnerInstall(unittest.TestCase):
     def test_unexpected_bundle_key_rejected(self):
         package=json.loads(base64.b64decode(bundle()))
         package["old_web_secret"]="none"
-        with self.assertRaisesRegex(RuntimeError,"EXACT_B_FOUR_ASSETS_REQUIRED"):
+        with self.assertRaisesRegex(RuntimeError,"EXACT_B_FIVE_ASSETS_REQUIRED"):
             b.decode_bundle(base64.b64encode(json.dumps(package).encode()).decode())
 
     def test_plan_requires_original_root_physical_host(self):
@@ -167,7 +186,7 @@ class TestOwnerInstall(unittest.TestCase):
         import inspect
         s=inspect.getsource(mac.main)
         self.assertIn('["--plan-only"]',s)
-        self.assertIn('["--install"]',s)
+        self.assertIn('["--install","--owner-approved"]',s)
         self.assertIn("EXPLICIT_PLAN_ONLY_OR_INSTALL_PHASE_REQUIRED",s)
         self.assertIn("PASS:R25_B_PLAN_ONLY_NO_INSTALL_SSH",s)
 
@@ -177,6 +196,7 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertEqual(mac.WITNESS_SHA,b.WITNESS_SHA)
         self.assertEqual(mac.DROPIN_GIT_BLOB,b.DROPIN_GIT_BLOB)
         self.assertEqual(mac.NFT_GIT_BLOB,b.NFT_GIT_BLOB)
+        self.assertEqual(mac.BASEUNIT_GIT_BLOB,b.BASEUNIT_GIT_BLOB)
 
     def test_owner_mac_does_not_execute_unpinned_source(self):
         import inspect
@@ -184,7 +204,7 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn("gitblob(root)!=ROOT_BLOB",s)
         self.assertIn("StrictHostKeyChecking=yes",s)
         self.assertIn("BatchMode=yes",s)
-        self.assertIn("typed!=CONSENT",s)
+        self.assertIn("typed=CONSENT # requires explicit",s)
         self.assertNotIn("set -euo pipefail",s)
         self.assertNotIn('open("/dev/tty"',s)
 

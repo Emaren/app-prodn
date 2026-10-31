@@ -5,6 +5,7 @@ on:
       - "scripts/r25_b_additive_3031_setup.py"
       - "scripts/r25_b_owner_mac_setup.py"
       - "tests/test_r25_b_additive_setup.py"
+      - "deploy/r25-b-reviewed-c-base-3031.service"
       - ".github/workflows/r25-b-additive-3031-setup.yml"
   workflow_dispatch:
 
@@ -29,6 +30,7 @@ jobs:
               "scripts/r25_b_additive_3031_setup.py",
               "scripts/r25_b_owner_mac_setup.py",
               "tests/test_r25_b_additive_setup.py",
+              "deploy/r25-b-reviewed-c-base-3031.service",
               ".github/workflows/r25-b-additive-3031-setup.yml",
           }
           changed=subprocess.check_output([

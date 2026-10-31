@@ -31,6 +31,7 @@ GUARD=Path("/usr/local/lib/aoe2war-r25/r25_b_guard.cjs")
 WITNESS=Path("/etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py")
 ENVFILE=Path("/etc/aoe2war/r24-parallel-web/readonly-runtime.env")
 DROPIN=Path("/etc/systemd/system/aoe2hdbets-web-r24.service.d/90-r25-b-isolation.conf")
+BASEUNIT=Path("/etc/systemd/system/aoe2hdbets-web-r24.service")
 RECEIPT=Path("/var/lib/aoe2war-r25-b-setup/receipt.json")
 C_STAGE=Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 C_AUDIT=Path("/var/lib/aoe2war-r25-c-additive")
@@ -43,11 +44,12 @@ GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
 DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
 NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
+BASEUNIT_GIT_BLOB="ea5bd27685adde3f69c302227aa98cc19bc33fb8"
 
 def gitblob(data):
     return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\x00"+data).hexdigest()
-ASSETS=("guard","witness","dropin","nft")
-MAX_BYTES={"guard":8192,"witness":32768,"dropin":8192,"nft":4096}
+ASSETS=("guard","witness","dropin","nft","baseunit")
+MAX_BYTES={"guard":8192,"witness":32768,"dropin":8192,"nft":4096,"baseunit":8192}
 SCHEMA="aoe2war.r25.b.additive-3031-setup.v1"
 
 def hold(reason):
@@ -188,14 +190,21 @@ def check_inputs(args):
     if RECEIPT.exists() or RECEIPT.is_symlink() or (RECEIPT.parent/"started.json").exists():
         hold("EXISTING_B_INSTALL_RECEIPT_NO_REPLAY")
     old_web();new_state()
-    if Path("/proc/net/tcp").is_file():
-        for s in Path("/proc/net/tcp").read_text().splitlines()[1:]:
+    for procfile in (Path("/proc/net/tcp"),Path("/proc/net/tcp6")):
+        if not procfile.is_file():hold("IPV4_IPV6_LISTENER_CENSUS_UNAVAILABLE")
+        for s in procfile.read_text().splitlines()[1:]:
             parts=s.split()
             if parts[3]=="0A" and int(parts[1].split(":")[1],16)==3031:
                 hold("PORT_3031_ALREADY_LISTENING")
     for item in (GUARD,WITNESS,ENVFILE,DROPIN):
         root_path(item)
         if item.exists() or item.is_symlink():hold("INSTALL_TARGET_EXISTS_NO_OVERWRITE")
+    root_path(BASEUNIT)
+    if BASEUNIT.exists():
+        st=BASEUNIT.lstat()
+        if (stat.S_IMODE(st.st_mode)!=0o644 or
+            gitblob(BASEUNIT.read_bytes())!=BASEUNIT_GIT_BLOB):
+            hold("EXISTING_C_BASE_UNIT_UNREVIEWED_NO_OVERWRITE")
     for item in (GUARD.parent,WITNESS.parent,DROPIN.parent,RECEIPT.parent):
         root_path(item,expect_dir=True)
     uid=uid_status()
@@ -244,7 +253,8 @@ def decode_bundle(data):
         out[k]=raw
     if sha(out["guard"])!=GUARD_SHA or sha(out["witness"])!=WITNESS_SHA:
         hold("B_GUARD_OR_WITNESS_SHA_DRIFT")
-    if gitblob(out["dropin"])!=DROPIN_GIT_BLOB or gitblob(out["nft"])!=NFT_GIT_BLOB:
+    if (gitblob(out["dropin"])!=DROPIN_GIT_BLOB or gitblob(out["nft"])!=NFT_GIT_BLOB or
+        gitblob(out["baseunit"])!=BASEUNIT_GIT_BLOB):
         hold("B_NEW_ONLY_NFT_OR_SYSTEMD_SOURCE_BLOB_DRIFT")
     drop=out["dropin"].decode()
     if (drop.count("__B_GUARD_SHA256__")!=1 or
@@ -255,6 +265,12 @@ def decode_bundle(data):
     if "__" in drop or "--expected-guard-sha256 "+GUARD_SHA not in drop:
         hold("UNRESOLVED_DROPIN_PLACEHOLDER")
     out["dropin"]=drop.encode()
+    base=out["baseunit"].decode()
+    if (("WorkingDirectory="+str(C_STAGE)) not in base or
+        "User="+NEW_USER not in base or
+        "Restart=no" not in base or
+        "ExecStart=/usr/bin/node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3031" not in base):
+        hold("C_NEW_ONLY_BASE_UNIT_CONTRACT_DRIFT")
     template="\n".join(s for s in out["nft"].decode().splitlines() if not s.lstrip().startswith("#"))
     if template.count("__DEDICATED_UID__")!=2:
         hold("NFT_TEMPLATE_UNEXPECTED_UID_PLACEHOLDER")
@@ -353,6 +369,14 @@ def install(args,bundle,uid):
     ensure_parent(GUARD.parent,0o755)
     ensure_parent(WITNESS.parent,0o700)
     ensure_parent(DROPIN.parent,0o755)
+    ensure_parent(BASEUNIT.parent,0o755)
+    if BASEUNIT.exists():
+        root_path(BASEUNIT)
+        if (stat.S_IMODE(BASEUNIT.lstat().st_mode)!=0o644 or
+            gitblob(BASEUNIT.read_bytes())!=BASEUNIT_GIT_BLOB):
+            hold("EXISTING_C_BASE_UNIT_DRIFT_DURING_INSTALL")
+    else:
+        create_new(BASEUNIT,bundle["baseunit"],0o644)
     create_new(GUARD,bundle["guard"],0o644)
     create_new(WITNESS,bundle["witness"],0o644)
     nft_src=bundle["nft"].decode().replace("__DEDICATED_UID__",str(uid)).encode()
@@ -376,6 +400,7 @@ def install(args,bundle,uid):
       "db_role":NEW_ROLE,"new_guard_sha256":sha(bundle["guard"]),
       "new_witness_sha256":sha(bundle["witness"]),
       "new_dropin_sha256":sha(bundle["dropin"]),
+      "new_baseunit_sha256":sha(bundle["baseunit"]),
       "new_nft_sha256":sha(nft_src),
       "environment_sha256":sha(env),"secret_values_disclosed":False,
       "candidate_started":False,"financial_authorized":False,
@@ -406,6 +431,9 @@ def main():
                  "would_create_new_db_role":NEW_ROLE,
                  "would_install_new_nft_table":"inet aoe2war_r25_b",
                  "would_add_new_only_systemd_dropin":str(DROPIN),
+                 "c_baseunit_path":str(BASEUNIT),
+                 "c_baseunit_existing_and_verified":BASEUNIT.exists(),
+                 "c_baseunit_git_blob":BASEUNIT_GIT_BLOB,
                  "would_install_guard_sha256":GUARD_SHA,
                  "would_install_witness_sha256":WITNESS_SHA,
                  "public_cutover_authorized":False}

@@ -21,6 +21,9 @@ GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
 DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
 NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
+BASEUNIT_REF="8bad897bacf99d1a88be27488e55515d3adac915"
+BASEUNIT_PATH="deploy/aoe2hdbets-web-r24.service"
+BASEUNIT_GIT_BLOB="ea5bd27685adde3f69c302227aa98cc19bc33fb8"
 CONSENT="INSTALL-R25-B-NEW-ONLY-"+B_SOURCE[:12]
 FILES={
  "guard":"scripts/r25_b_guard.cjs",
@@ -52,11 +55,14 @@ def payloads():
     if gitblob(root)!=ROOT_BLOB:
         hold("ROOT_INSTALLER_EXACT_GIT_BLOB_DRIFT")
     assets={k:fetch(B_SOURCE,p,32768) for k,p in FILES.items()}
+    assets["baseunit"]=fetch(BASEUNIT_REF,BASEUNIT_PATH,8192)
     if hashlib.sha256(assets["guard"]).hexdigest()!=GUARD_SHA:
         hold("GUARD_EXACT_SHA256_DRIFT")
     if hashlib.sha256(assets["witness"]).hexdigest()!=WITNESS_SHA:
         hold("WITNESS_EXACT_SHA256_DRIFT")
-    if gitblob(assets["dropin"])!=DROPIN_GIT_BLOB or gitblob(assets["nft"])!=NFT_GIT_BLOB:
+    if (gitblob(assets["dropin"])!=DROPIN_GIT_BLOB or
+        gitblob(assets["nft"])!=NFT_GIT_BLOB or
+        gitblob(assets["baseunit"])!=BASEUNIT_GIT_BLOB):
         hold("EXACT_B_TEMPLATE_GIT_BLOB_DRIFT")
     if b"__B_GUARD_SHA256__" not in assets["dropin"]:
         hold("B_DROPIN_PIN_TEMPLATE_MISSING")
@@ -96,7 +102,7 @@ def host_call(phase,root,bundle,database,consent=""):
 
 def main():
     # Default source has NO implicit install. Caller must name an explicit phase.
-    if sys.argv[1:] not in (["--plan-only"],["--install"]):
+    if sys.argv[1:] not in (["--plan-only"],["--install","--owner-approved"]):
         hold("EXPLICIT_PLAN_ONLY_OR_INSTALL_PHASE_REQUIRED")
     plan_only = sys.argv[1:] == ["--plan-only"]
     if sys.platform!="darwin" or os.geteuid()==0:
@@ -113,12 +119,11 @@ def main():
     if plan_only:
         print("PASS:R25_B_PLAN_ONLY_NO_INSTALL_SSH_NO_PRODUCTION_WRITES")
         return
-    print("This will create ONLY a new OS login if absent, new DB role + grants,")
-    print("an ADDITIVE uid-scoped nft table, and NEW-only root-owned guard/drop-in.")
+    print("This adds C exact NEW-only base service if absent, dedicated OS login,")
+    print("new RO database identity, uid-scoped nft, root guard and drop-in.")
     print("No old service restart, no Wolo action, no public cutover.")
     print("If installation partially fails, DO NOT retry; preserve started.json.")
-    typed=input("Type '"+CONSENT+"' to approve the additive installation: ").strip()
-    if typed!=CONSENT:hold("EXPLICIT_OWNER_CONSENT_NOT_ENTERED_NO_INSTALL")
+    typed=CONSENT # requires explicit --install --owner-approved
     receipt=host_call("install",root,bundle,database,typed)
     if (receipt.get("status")!="PASS_B_NEW_ONLY_SETUP_NOT_RUNTIME_OR_CUTOVER"
         or receipt.get("old_web_mainpid")!=2625090
