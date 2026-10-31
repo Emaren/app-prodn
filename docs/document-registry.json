@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d9ca637661976cb43ca68de7ae0cf423d03e66efa15591c69eb4d60dbe07361e",
+      "sha256": "5791b37ecb90e6f294acaabc177ee66b4c6e1a9bfac3e7afa1670b312cd74197",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2441,8 +2441,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "repair/g-r10-native-fd200-final-docs-20261030",
-    "commit": "d1d4b30dd3a8a0ba95ea876c7c67a13edce27e0b"
+    "branch": "review/d-r16-native-producer-inbox-20261030",
+    "commit": "f4b26976efa0d55b448edeb3c5a82bae14bd2f8c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
