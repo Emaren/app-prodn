@@ -46,7 +46,7 @@ class Guards(unittest.TestCase):
         import aoe2_solo_website_native_audit_adapter as adapter
         import aoe2_solo_website_forced_ssh as forced
         from unittest.mock import MagicMock
-        issue=("PRE_STAGE",engine.W1,None,None,None)
+        issue=("PRE_STAGE",engine.W1_SAFE,"a"*64,None,None)
         fake=MagicMock(unsafe=True)
         fake.run.return_value=__import__("subprocess").CompletedProcess(
             ["protected"],0,'{"status":"ROOT_ISSUED_NOT_AUTHORIZED"}',"")
@@ -60,7 +60,8 @@ class Guards(unittest.TestCase):
         self.assertEqual(result["status"],"ROOT_ISSUED_NOT_AUTHORIZED")
         self.assertTrue(command.called)
         cmd=fake.run.call_args.args[0]
-        self.assertIn(" issue PRE_STAGE "+engine.W1,cmd)
+        self.assertIn(" issue PRE_STAGE "+engine.W1_SAFE+" "+"a"*64,cmd)
+        self.assertIn("preissue",REMOTE)
         self.assertIn("original FD200 root issuance HOLD",
                       __import__("inspect").getsource(engine.root_issue))
         self.assertIn("'issue':None",REMOTE)
@@ -73,7 +74,7 @@ class Guards(unittest.TestCase):
     def test_native_issue_root_whitelist_blocks_extra_args_or_shell(self):
         import aoe2_solo_website_command_channel as channel
         code=channel.REMOTE
-        self.assertIn("stage issue must be fresh",code)
+        self.assertIn("stage issue needs original root-preissued attempt",code)
         self.assertIn("invalid activation issue identity",code)
         self.assertIn("unallowlisted SSH root verb",
                       (S/"aoe2_solo_website_forced_ssh.py").read_text())

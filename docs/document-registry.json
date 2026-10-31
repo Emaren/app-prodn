@@ -154,7 +154,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-31",
       "sensitivity": "restricted",
-      "sha256": "261e6d335f3ab7091e859cd39df1a6e07ec786d9d86587886cdd19b8c7ac8bd2",
+      "sha256": "81614653e446c53b9f5ddcffc811f7137de0da772eb24c2b5e97de9ef02fbc5d",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4697e555dba8a2a57f15b5c05cb425e9f633e0a0bb78f404f50867e3db423739",
+      "sha256": "289c7b241e67099e21c53bb7d351ea742174b58f9ffbbf19b499de5924d83306",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2462,8 +2462,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r16-controller-docsv2-tests",
-    "commit": "ca0e393202419720529c715b505e7fb40f9d33e3"
+    "branch": "r18-f-final-owner-contract-seal",
+    "commit": "9957378044121fdf9cf3dacd5041714d9384a1b8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

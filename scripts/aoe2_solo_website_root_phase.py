@@ -20,7 +20,7 @@ HEX64=re.compile(r"[0-9a-f]{64}\Z")
 HEX40=re.compile(r"[0-9a-f]{40}\Z")
 TRAINS={"W1":("b46a51f1592c9f296839924ae55e722618b10d35",
             "33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a"),
-        "W1_SAFE":("a9525f46302edff88ed073743a7dfaed08be9e3e",
+        "W1_SAFE":("0cee3c836c4b0760478280c145e02e81e470ce0e",
                    "33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a"),
         "POST_W1":("fa5c350b35cba7ace8d4515a7ad52ba4e1534295",
                    "b46a51f1592c9f296839924ae55e722618b10d35")}
@@ -155,6 +155,30 @@ def native_observation_for_owner(report):
       "staged_build_id":stage.get("staged_build_id"),
     }
 
+def preissue_stage(args):
+    """Reserve a phase attempt before any external six-class signers attest.
+
+    This is an original-FD200 journal reservation ONLY. No owner approval,
+    issuer audit, stage command or financial transaction can follow directly.
+    """
+    need(len(args)==1 and bool(HEX40.fullmatch(args[0])) and
+         args[0]==TRAINS["W1_SAFE"][0],
+         "preissue requires exact reviewed W1_SAFE, not frozen W1")
+    current=native()
+    gate_native(current)
+    ledger=Journal()
+    ledger.inherited_lease_fd()
+    reserved=ledger.preissue_stage(args[0],under_original_lease=True)
+    return {"status":"ROOT_PREISSUED_NOT_AUTHORIZED",
+            "candidate_sha":reserved["candidate_sha"],
+            "phase":"PRE_STAGE",
+            "attempt_id":reserved["attempt_id"],
+            "reserved_at":reserved["reserved_at"],
+            "expires_at":reserved["expires_at"],
+            "preissue_sha256":digest(canonical(reserved)),
+            "owner_authorized":False,
+            "financial_release_authorized":False}
+
 def issue(args):
     need(len(args)>=2,"missing candidate or phase")
     phase,candidate=args[:2]
@@ -167,8 +191,9 @@ def issue(args):
     live=native()
     gate_native(live)
     if phase=="PRE_STAGE":
-        need(len(args)==2,"stage requires new random attempt")
-        attempt=secrets.token_hex(32)
+        need(len(args)==3 and args[2] and HEX64.fullmatch(args[2]),
+             "stage requires exact prior root-preissued attempt ID")
+        attempt=args[2]
     else:
         need(len(args)==5 and
              type(args[2]) is str and bool(HEX64.fullmatch(args[2])) and
@@ -177,6 +202,10 @@ def issue(args):
         attempt=args[2]
     ledger=Journal()
     ledger.inherited_lease_fd()  # D native issuer requires SAME original flock
+    if phase=="PRE_STAGE":
+        # A valid preannouncement is NOT itself a signed release permit.
+        # Verify protected original bytes BEFORE demanding six live receipts.
+        ledger.check_preissue_stage(candidate,attempt,datetime.now(timezone.utc))
     # P1: Run the trusted real B/C/E/Doctor/finance audit BEFORE issuing.
     # Failed audit creates NO consumable nonce. The journal seals the native
     # snapshot before it records the phase issue as the final commit marker.
@@ -549,7 +578,8 @@ def main():
         socket.gethostname()!=HOST):raise Hold("wrong physical HEL1 root")
     need(len(sys.argv)>=2,"missing operation")
     action=sys.argv[1];args=sys.argv[2:]
-    if action=="issue":out=issue(args)
+    if action=="preissue":out=preissue_stage(args)
+    elif action=="issue":out=issue(args)
     elif action=="consumed-proof":out=consumed(args)
     elif action=="consume":out=consume(args)
     elif action=="mark-staged":out=mark_staged(args)
