@@ -733,7 +733,7 @@ def postprebuild_recovery():
     marker=AUDIT/"POSTPREBUILD_RECOVERY_ATTEMPT.json"
     need(not marker.exists() and not marker.is_symlink(),
          "POSTREC_ALREADY_ENTERED_NO_RETRY")
-    for number in range(1,7):
+    for number in range(1,8):
         p=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%number)
         need(not p.exists() and not p.is_symlink(),
              "POSTREC_PHASE_JOURNAL_ALREADY_EXISTS")
@@ -839,18 +839,29 @@ def postprebuild_recovery():
         unit="aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i+label
         commandline=common+["--unit="+unit]+argv
         print("ENTER:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
-        p=subprocess.run(commandline,capture_output=True,timeout=timeout)
-        out=redacted_diagnostic_tail(p.stdout,1800)
-        err=redacted_diagnostic_tail(p.stderr,1800)
+        timed_out=False
+        try:
+            p=subprocess.run(commandline,capture_output=True,timeout=timeout)
+            code=p.returncode
+            rawout=p.stdout
+            rawerr=p.stderr
+        except subprocess.TimeoutExpired as exc:
+            timed_out=True
+            code=124
+            rawout=exc.stdout or b""
+            rawerr=exc.stderr or b""
+        out=redacted_diagnostic_tail(rawout,1800)
+        err=redacted_diagnostic_tail(rawerr,1800)
         write_once(AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i),{
-            "status":"PASS" if p.returncode==0 else "HOLD",
-            "unit":unit,"phase":label,"exit_code":p.returncode,
+            "status":"PASS" if code==0 else "HOLD",
+            "unit":unit,"phase":label,"exit_code":code,
+            "timed_out":timed_out,
             "stdout_redacted_tail":out,"stderr_redacted_tail":err,
             "candidate_sha":SHA,"build_uid":994,"private_network":True,
             "finance_access":False})
-        if p.returncode:
+        if code:
             raise Hold("POSTPREBUILD_PHASE_FAILED:"+label+
-                       ":EXIT="+str(p.returncode)+
+                       ":EXIT="+str(code)+
                        ":STDOUT="+out[-800:]+":STDERR="+err[-800:])
         print("PASS:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
     need(old_identity()==before and boundary_sockets()==sockets,
