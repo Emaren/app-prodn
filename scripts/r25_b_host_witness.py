@@ -99,7 +99,15 @@ SELECT json_build_object(
    WHERE p.provolatile='v'
      AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
      AND has_function_privilege(p.oid,'EXECUTE')
- )
+      AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
+ ),
+ 'reviewed_trigger_exclusions', (
+    SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+      AND (p.prosecdef OR p.provolatile='v')
+      AND has_function_privilege(p.oid,'EXECUTE')
+      AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
+  )
 )::text
 """
 def hold(why):
@@ -122,7 +130,7 @@ def systemd(unit):
     raw=run(["/usr/bin/systemctl","show",unit,"--no-pager",
              "--property=Id,LoadState,ActiveState,MainPID,User,Group,"
              "WorkingDirectory,ProtectSystem,ProtectHome,NoNewPrivileges,"
-             "PrivateTmp,CapabilityBoundingSet,InaccessiblePaths,ReadWritePaths,ControlGroup"])
+             "PrivateTmp,CapabilityBoundingSet,InaccessiblePaths,ReadWritePaths,CacheDirectory,CacheDirectoryMode,BindPaths,ControlGroup"])
     return dict(s.split("=",1) for s in raw.decode().splitlines() if "=" in s)
 
 def validate_filesystem_wall(status):
@@ -134,9 +142,29 @@ def validate_filesystem_wall(status):
     if not required.issubset(hidden):
         hold("UNIX_SOCKET_ORIGINAL_FINANCE_PATHS_NOT_HIDDEN")
     rw=status.get("ReadWritePaths","").split()
-    accepted={str(SOURCE/".next"/"cache")}
+    private_cache="/var/cache/aoe2war-r25-b-next-cache"
+    cache_target=str(SOURCE/".next"/"cache")
+    accepted={cache_target,private_cache}
+    if (set(rw)!=accepted or status.get("CacheDirectory")!="aoe2war-r25-b-next-cache"
+        or status.get("CacheDirectoryMode") not in ("0700","448")
+        or status.get("BindPaths","").split()!=[private_cache+":"+cache_target]):
+        hold("NEW_SERVICE_PRIVATE_CACHE_MOUNT_NOT_PROVEN")
     if not set(rw).issubset(accepted):
         hold("NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE")
+    return True
+
+def private_cache_write_proof(pid,uid,gid):
+    """New-service private bind-mount DAC: nonroot O_EXCL write, then unlink."""
+    code=("import os,pathlib,uuid; "
+          "os.setgroups([]);os.setgid("+str(gid)+");os.setuid("+str(uid)+"); "
+          "p=pathlib.Path("+repr(str(SOURCE/".next"/"cache"))+"); "
+          "f=p/('.r25-b-dac-'+uuid.uuid4().hex); "
+          "fd=os.open(f,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); "
+          "os.write(fd,b'R25-B-CACHE-DAC');os.fsync(fd);os.close(fd); "
+          "f.unlink();print('PASS_PRIVATE_CACHE_DAC')")
+    raw=run(['/usr/bin/nsenter','--target',str(pid),'--mount','--',
+             '/usr/bin/python3','-I','-B','-c',code],timeout=8,max_bytes=128)
+    if raw.strip()!=b'PASS_PRIVATE_CACHE_DAC':hold('PRIVATE_CACHE_NONROOT_WRITE_UNPROVEN')
     return True
 
 def proc(pid):
@@ -250,6 +278,8 @@ def db_proof(dsn, uid):
     yes=("role_restricted","no_writable_role_membership","no_db_create",
          "no_schema_create","no_table_mutation","no_sequence_mutation",
          "no_callable_security_definer","no_callable_volatile_user_functions")
+    if type(d.get("reviewed_trigger_exclusions")) is not int or d["reviewed_trigger_exclusions"]!=39:
+        hold("DB_REVIEWED_TRIGGER_SIGNATURE_COUNT_NOT_39")
     if d.get("session_user")!=DB_ROLE or d.get("current_user")!=DB_ROLE or \
        d.get("transaction_read_only")!="on" or any(d.get(k) is not True for k in yes):
         hold("DB_SERVER_ENFORCED_SELECT_ONLY_NOT_PROVEN")
@@ -387,6 +417,7 @@ def observe(expected_guard_sha):
     nft_hash=nft_policy(pw.pw_uid)
     db=db_proof(env.get("DATABASE_URL",""),pw.pw_uid)
     http_proof(pid)
+    private_cache_write_proof(pid,pw.pw_uid,pw.pw_gid)
     # Read source identity without modifying build or files.
     checkout=c_archive_source_identity()
     if checkout!=TARGET:hold("CANDIDATE_SOURCE_DRIFT")

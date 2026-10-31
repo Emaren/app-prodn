@@ -162,6 +162,15 @@ def inherited_public_write_risks(database):
         WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
           AND (p.prosecdef OR p.provolatile='v')
           AND a.grantee=0 AND a.privilege_type='EXECUTE'
+          AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
+      ),
+      'reviewed_trigger_exclusions', (
+        SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace,
+        LATERAL aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a
+        WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+          AND (p.prosecdef OR p.provolatile='v')
+          AND a.grantee=0 AND a.privilege_type='EXECUTE'
+          AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
       )
     )::text;
     """
@@ -170,10 +179,12 @@ def inherited_public_write_risks(database):
            timeout=25)
     try: risks=json.loads(p.stdout)
     except (ValueError,UnicodeError):hold("PUBLIC_PRIVILEGE_PROBE_INVALID")
-    expected={"database_create","schema_create","table_write","sequence_write","unsafe_callable"}
+    expected={"database_create","schema_create","table_write","sequence_write","unsafe_callable","reviewed_trigger_exclusions"}
     if set(risks)!=expected or any(type(risks[k]) is not int or risks[k]<0 for k in expected):
         hold("PUBLIC_PRIVILEGE_PROBE_MALFORMED")
-    if any(risks.values()):
+    if risks['reviewed_trigger_exclusions']!=39:
+        hold('REVIEWED_TRIGGER_SIGNATURE_COUNT_NOT_39')
+    if any(risks[k] for k in expected if k!='reviewed_trigger_exclusions'):
         hold("INHERITED_PUBLIC_WRITE_OR_CALLABLE_PRIVILEGES_REVIEW_REQUIRED:"+
              ",".join(k+"="+str(risks[k]) for k in sorted(expected) if risks[k]))
     return risks
@@ -345,7 +356,13 @@ BEGIN
  OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
     WHERE n.nspname NOT LIKE 'pg_%%' AND n.nspname<>'information_schema'
       AND (p.prosecdef OR p.provolatile='v')
-      AND has_function_privilege('aoe2war_r25_web_ro',p.oid,'EXECUTE'))
+      AND has_function_privilege('aoe2war_r25_web_ro',p.oid,'EXECUTE')
+      AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e')))
+ OR (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname NOT LIKE 'pg_%%' AND n.nspname<>'information_schema'
+      AND (p.prosecdef OR p.provolatile='v')
+      AND has_function_privilege('aoe2war_r25_web_ro',p.oid,'EXECUTE')
+      AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))) <> 39
  THEN RAISE EXCEPTION 'R25_B_NEW_ROLE_WRITABLE_OR_EXECUTE_CAPABILITY'; END IF;
 END $r25$;
 COMMIT;

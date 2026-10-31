@@ -26,7 +26,11 @@ RestrictAddressFamilies=AF_UNIX AF_INET
 # Unix-domain financial sockets can bypass IP/nft fencing. Deny /run entirely.
 # Original finance volume/source also inaccessible. Only web .next/cache writable.
 InaccessiblePaths=/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn
-ReadWritePaths=/var/lib/aoe2war-r25-web-0cee3c836c4b/.next/cache
+CacheDirectory=aoe2war-r25-b-next-cache
+CacheDirectoryMode=0700
+# Private cache bind overlays immutable .next/cache without any host-artifact chmod/chown.
+BindPaths=/var/cache/aoe2war-r25-b-next-cache:/var/lib/aoe2war-r25-web-0cee3c836c4b/.next/cache
+ReadWritePaths=/var/lib/aoe2war-r25-web-0cee3c836c4b/.next/cache /var/cache/aoe2war-r25-b-next-cache
 # C must add ONLY the exact candidate Next cache path as ReadWritePaths.
 # C must use direct node next start, NOT npm/yarn prestart, npm env, cron.
 # C must verify package lock, exact /proc/PID/exe and 3031 listener.
