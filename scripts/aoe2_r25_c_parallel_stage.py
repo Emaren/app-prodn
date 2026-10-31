@@ -619,6 +619,9 @@ def run_postprebuild_phase(i,label,commandline,timeout):
     need(unit is not None and unit.startswith(
          "aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i),
          "POSTREC_UNEXPECTED_SYSTEMD_UNIT_NAME")
+    receipt_path=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i)
+    need(not receipt_path.exists() and not receipt_path.is_symlink(),
+         "POSTREC_PHASE_ALREADY_ENTERED_NO_REPLAY")
     timed_out=False
     try:
         p=subprocess.run(commandline,capture_output=True,timeout=timeout)
@@ -636,7 +639,7 @@ def run_postprebuild_phase(i,label,commandline,timeout):
         rawerr=("systemd-run process spawn "+type(exc).__name__).encode()
     out=redacted_diagnostic_tail(rawout,1800)
     err=redacted_diagnostic_tail(rawerr,1800)
-    write_once(AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i),{
+    write_once(receipt_path,{
         "status":"PASS" if code==0 else "HOLD",
         "unit":unit,"phase":label,"exit_code":code,
         "timed_out":timed_out,"stdout_redacted_tail":out,
