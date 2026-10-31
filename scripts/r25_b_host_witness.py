@@ -63,10 +63,8 @@ SELECT json_build_object(
      FROM pg_roles WHERE rolname=session_user
  ),
  'no_writable_role_membership', NOT EXISTS(
-   SELECT 1 FROM pg_roles r
-   WHERE r.rolname IN ('pg_write_all_data','pg_execute_server_program',
-      'pg_read_server_files','pg_write_server_files','pg_signal_backend')
-   AND pg_has_role(session_user,r.oid,'MEMBER')
+   SELECT 1 FROM pg_auth_members m
+   WHERE m.member=(SELECT oid FROM pg_roles WHERE rolname=session_user)
  ),
  'no_db_create', NOT has_database_privilege(current_database(),'CREATE'),
  'no_schema_create', NOT EXISTS(
@@ -93,6 +91,12 @@ SELECT json_build_object(
  'no_callable_security_definer', NOT EXISTS(
    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
    WHERE p.prosecdef
+     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND has_function_privilege(p.oid,'EXECUTE')
+ ),
+ 'no_callable_volatile_user_functions', NOT EXISTS(
+   SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+   WHERE p.provolatile='v'
      AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
      AND has_function_privilege(p.oid,'EXECUTE')
  )
@@ -210,7 +214,7 @@ def db_proof(dsn, uid):
     except (ValueError,UnicodeError):hold("DB_ROLE_RECEIPT_MALFORMED")
     yes=("role_restricted","no_writable_role_membership","no_db_create",
          "no_schema_create","no_table_mutation","no_sequence_mutation",
-         "no_callable_security_definer")
+         "no_callable_security_definer","no_callable_volatile_user_functions")
     if d.get("session_user")!=DB_ROLE or d.get("current_user")!=DB_ROLE or \
        d.get("transaction_read_only")!="on" or any(d.get(k) is not True for k in yes):
         hold("DB_SERVER_ENFORCED_SELECT_ONLY_NOT_PROVEN")
