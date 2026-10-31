@@ -19,7 +19,8 @@ def fixture():
     ports={str(p):{**proc(1000+p),"port":p,
                    "socket_inode_sha256":g.digest(str(p).encode())}
            for p in (3030,3031,8092,8093)}
-    candidate={"git":{"head":g.TARGET,"tree_sha":"2"*40,"tracked_clean":True},
+    candidate={"source":{"c_build_receipt_sha256":"e"*64},
+       "git":{"head":g.TARGET,"tree_sha":"2"*40,"tracked_clean":True},
        "source_marker":g.TARGET,"next_build_id":"TrueNextBuild_ABC",
        "dependencies":{"sha256":"3"*64,"bytes":100,"files":3},
        "next_build":{"sha256":"4"*64,"bytes":200,"files":4},
@@ -57,6 +58,48 @@ def fixture():
     return before,after,rollback
 
 class R25Tests(unittest.TestCase):
+
+    def test_live_recheck_preserves_probes_without_a_second_tree_scan(self):
+        before,after,_=fixture()
+        full=copy.deepcopy(before)
+        light={
+            "schema":"aoe2war.g.r25.live-recheck.v1",
+            "phase":"before",
+            "old_source":full["old_source"],
+            "old_next_build_id":full["old_next_build_id"],
+            "candidate_next_build_id":full["candidate"]["next_build_id"],
+            "c_build_receipt_sha256":full["candidate"]["source"]["c_build_receipt_sha256"],
+        }
+        for k in ("units","ports","old_http","candidate_http","nginx",
+                  "release_lock","release_journal","approved_scope_sha256"):
+            light[k]=copy.deepcopy(full[k])
+        g.compare_live_recheck(full,light)
+        for field,badvalue in (("candidate_next_build_id","not-the-real-build"),
+                               ("c_build_receipt_sha256","0"*64),
+                               ("phase","after"),
+                               ("units",{}),
+                               ("ports",{}),
+                               ("nginx",{}),
+                               ("release_lock",{}),
+                               ("approved_scope_sha256","0"*64),
+                               ("candidate_http",{})):
+            with self.subTest(field=field):
+                tampered=copy.deepcopy(light);tampered[field]=badvalue
+                with self.assertRaises(g.Hold):
+                    g.compare_live_recheck(full,tampered)
+
+    def test_second_ssh_witness_is_lightweight_but_host_pinned(self):
+        with patch.object(g,"run",return_value=b'{"schema":"aoe2war.g.r25.live-recheck.v1"}') as caller:
+            with patch.object(g.pathlib.Path,"read_bytes",return_value=b"reviewed-source"):
+                g.ssh_snapshot("root@hel1","before",light=True)
+                command=caller.call_args.args[0]
+                self.assertEqual(command[-2:],["--remote-light","before"])
+                self.assertIn("StrictHostKeyChecking=yes",command)
+                self.assertIn("BatchMode=yes",command)
+        code=FILE.read_text()
+        self.assertIn('compare_live_recheck(snapshot,recheck)',code)
+        self.assertIn('compare_live_recheck(snapshot,repeat)',code)
+        self.assertIn('root_live_recheck(x.remote_light)',code)
 
     def test_pinned_real_c_build_identity_and_adverse_variants(self):
         correct={"build_id":"-dJl5VyecHu5BKNvfErJe",
