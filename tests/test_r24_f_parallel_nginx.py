@@ -29,22 +29,96 @@ class ParallelR24(unittest.TestCase):
         self.assertEqual(s.B_INDEPENDENT_POSITIVE_RUNTIME_SHA,"")
         self.assertEqual(s.F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA,"")
         self.assertEqual(s.C_REVIEWED_PARALLEL_SHA,"")
-    def test_proxy_replace_is_narrow_and_denies_writes(self):
-        old=b"server {\n location / {\n  proxy_pass http://127.0.0.1:3030;\n }\n}"
+    @staticmethod
+    def scoped_vhost():
+        # Six actual Oct 28 target location classes, with two Wolo routes
+        # and a distinct unchanged HTTP redirect server.
+        return b"""
+server {
+ server_name aoe2war.com www.aoe2war.com;
+ listen 443 ssl http2;
+ location ^~ /players/by-name/ {
+   if ($request_method !~ ^(GET|HEAD)$) { return 405; }
+   proxy_pass http://127.0.0.1:3030;
+ }
+ location = /api/kingdom-presence/events {
+   proxy_pass http://127.0.0.1:3030;
+ }
+ location ^~ /api/ {
+   proxy_pass http://127.0.0.1:3030;
+ }
+ location = / {
+   if ($request_method !~ ^(GET|HEAD)$) { return 405; }
+   proxy_pass http://127.0.0.1:3030;
+ }
+ location ^~ /download/watcher/ {
+   proxy_pass http://127.0.0.1:3030;
+ }
+ location / {
+   if ($request_method !~ ^(GET|HEAD)$) { return 405; }
+   proxy_pass http://127.0.0.1:3030;
+ }
+ location ^~ /rpc/ {
+   if ($request_method = OPTIONS) {
+     add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+     return 204;
+   }
+   proxy_pass http://127.0.0.1:27657/;
+ }
+ location ^~ /rest/ {
+   proxy_pass http://127.0.0.1:1318/;
+ }
+ include /etc/letsencrypt/options-ssl-nginx.conf;
+}
+server {
+ server_name aoe2war.com www.aoe2war.com;
+ listen 80;
+ location / { return 301 https://$host$request_uri; }
+}
+"""
+    def test_switches_exact_six_website_locations_preserving_wolo_and_http(self):
+        old=self.scoped_vhost()
         result=self.s.safe_replace_site(old,self.s.NEW_UPSTREAM)
-        self.assertIn(b"limit_except GET HEAD { deny all; }",result)
-        self.assertIn(bytes([10])+b"        limit_except GET HEAD",result)
-        self.assertNotIn(bytes([92,110])+b"        limit_except GET HEAD",result)
-        self.assertIn(b"proxy_pass http://127.0.0.1:3031;",result)
-        self.assertNotIn(self.s.OLD_UPSTREAM,result)
-    def test_multiple_default_location_fails(self):
-        x=b"location / { proxy_pass http://127.0.0.1:3030; }\n"*2
-        with self.assertRaisesRegex(self.s.Hold,"UNKNOWN_NGINX_LOCATION_SHAPE"):
-            self.s.safe_replace_site(x,self.s.NEW_UPSTREAM)
-    def test_missing_known_old_proxy_fails(self):
-        with self.assertRaisesRegex(self.s.Hold,"UNREVIEWED_OLD_PROXY_UPSTREAM"):
-            self.s.safe_replace_site(b"location / { proxy_pass http://localhost:3030; }",
-                                     self.s.NEW_UPSTREAM)
+        self.assertEqual(result.count(self.s.NEW_UPSTREAM),6)
+        self.assertEqual(result.count(self.s.OLD_UPSTREAM),0)
+        self.assertEqual(result.count(self.s.METHOD_CHECK),6)
+        self.assertEqual(result.count(b"proxy_pass http://127.0.0.1:27657/;"),1)
+        self.assertEqual(result.count(b"proxy_pass http://127.0.0.1:1318/;"),1)
+        self.assertIn(b"GET, POST, OPTIONS",result)
+        self.assertIn(b"listen 80;",result)
+        self.assertIn(b"return 301 https://$host$request_uri;",result)
+        self.assertIn(b"\n        if ($request_method !~ ^(GET|HEAD)$)",result)
+    def test_missing_one_of_six_holds_before_any_nginx_write(self):
+        bad=self.scoped_vhost().replace(
+            b"location ^~ /download/watcher/ {\n   proxy_pass http://127.0.0.1:3030;",
+            b"location ^~ /download/watcher/ {\n   return 404;")
+        with self.assertRaisesRegex(self.s.Hold,
+                                    "NGINX_EXACT_SIX_OLD_WEB_UPSTREAMS_REQUIRED"):
+            self.s.safe_replace_site(bad,self.s.NEW_UPSTREAM)
+    def test_unrelated_vhost_with_3030_in_same_file_holds(self):
+        bad=self.scoped_vhost()+b"""
+server { server_name unrelated.example; listen 443 ssl;
+ location / { proxy_pass http://127.0.0.1:3030; } }
+"""
+        with self.assertRaisesRegex(self.s.Hold,
+                                    "NGINX_EXACT_SIX_OLD_WEB_UPSTREAMS_REQUIRED|NGINX_UNRELATED_SERVER"):
+            self.s.safe_replace_site(bad,self.s.NEW_UPSTREAM)
+    def test_misnamed_web_proxy_location_holds(self):
+        bad=self.scoped_vhost().replace(
+            b"location ^~ /api/ {",b"location ^~ /unknown-payment-route/ {")
+        with self.assertRaisesRegex(self.s.Hold,"NGINX_UNREVIEWED_WEB_PROXY_LOCATION"):
+            self.s.safe_replace_site(bad,self.s.NEW_UPSTREAM)
+    def test_extra_unreviewed_include_holds(self):
+        bad=self.scoped_vhost().replace(
+            b"include /etc/letsencrypt/options-ssl-nginx.conf;",
+            b"include /etc/nginx/includes/shared-wargraph-routes.conf;")
+        with self.assertRaisesRegex(self.s.Hold,"NGINX_UNREVIEWED_SHARED_INCLUDE"):
+            self.s.safe_replace_site(bad,self.s.NEW_UPSTREAM)
+    def test_unknown_two_servers_same_tls_name_holds(self):
+        bad=self.scoped_vhost().replace(b"listen 80;",b"listen 443 ssl;")
+        with self.assertRaisesRegex(self.s.Hold,
+                                    "NGINX_EXPECTED_HTTPS_AND_HTTP_PAIR"):
+            self.s.safe_replace_site(bad,self.s.NEW_UPSTREAM)
     def test_http_mutations_are_not_probed(self):
         src=SERVER.read_text()
         self.assertIn('method="GET"',src)
