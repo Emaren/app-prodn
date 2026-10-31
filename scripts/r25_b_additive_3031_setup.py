@@ -243,7 +243,7 @@ def decode_bundle(data):
         items=json.loads(base64.b64decode(data,validate=True))
     except (ValueError,TypeError):hold("SOURCE_BUNDLE_DECODE")
     if not isinstance(items,dict) or set(items)!=set(ASSETS):
-        hold("EXACT_B_FOUR_ASSETS_REQUIRED")
+        hold("EXACT_B_FIVE_ASSETS_REQUIRED")
     out={}
     for k in ASSETS:
         try:raw=base64.b64decode(items[k],validate=True)
