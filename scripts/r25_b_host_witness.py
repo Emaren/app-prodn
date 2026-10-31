@@ -212,6 +212,27 @@ def nft_policy(uid):
     if lines!=expected:hold("NFT_EGRESS_RULES_NOT_EXACT")
     return digest(text.encode())
 
+def reject_postgres_local_trust(dbname):
+    """An IP/UID firewall is pointless if localhost PG accepts any DB role."""
+    import secrets
+    for account in (DB_ROLE,"postgres"):
+        reject_postgres_local_trust(unquote(u.path.lstrip("/")))
+    env={"PATH":"/usr/bin:/bin","PGHOST":"127.0.0.1","PGPORT":"5432",
+             "PGUSER":account,"PGDATABASE":dbname,
+             "PGPASSWORD":"r25-intentionally-wrong-"+secrets.token_hex(24),
+             "PGCONNECT_TIMEOUT":"3"}
+        try:
+            p=subprocess.run(["/usr/sbin/runuser","-u",USER,"--",
+                 "/usr/bin/psql","-X","-A","-t","-w",
+                 "-v","ON_ERROR_STOP=1","-c","SELECT 1"],
+                 stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
+                 stderr=subprocess.DEVNULL,env=env,timeout=6,check=False)
+        except (OSError,subprocess.TimeoutExpired):
+            hold("POSTGRES_AUTH_NEGATIVE_PROBE_UNAVAILABLE")
+        if p.returncode==0:
+            hold("POSTGRES_LOCAL_TRUST_OR_UNRESTRICTED_PRIVILEGED_LOGIN")
+    return True
+
 def db_proof(dsn, uid):
     u=urlsplit(dsn)
     if (u.scheme not in ("postgresql","postgres") or unquote(u.username or "")!=DB_ROLE
