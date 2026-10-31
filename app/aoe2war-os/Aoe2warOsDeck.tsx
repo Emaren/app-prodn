@@ -96,6 +96,9 @@ export default function Aoe2warOsDeck({ initial }: { initial: OsPublicSnapshot }
         <span>PUBLIC READ-ONLY TELEMETRY <span className={styles.separator}>/</span> {dateUtc(data.observedAt)}</span>
       </div>
       <nav aria-label="AoE2WAR OS instruments" className="my-4 flex flex-wrap gap-2">
+        <Link href="/aoe2war-os/engineering" className="inline-flex items-center gap-2 rounded-full border border-cyan-200/30 bg-cyan-200/[.09] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-cyan-100 transition hover:border-cyan-100/50">
+          <Network className="h-4 w-4" /> Engineering Observatory <ArrowUpRight className="h-3 w-3" />
+        </Link>
         <Link href="/aoe2war-os/storage-atlas" className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-200/[.07] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-cyan-100 transition hover:border-cyan-100/40 hover:bg-cyan-200/[.12]">
           <HardDrive className="h-4 w-4" /> Storage Atlas <ArrowUpRight className="h-3 w-3" />
         </Link>
