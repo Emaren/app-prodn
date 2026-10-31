@@ -1,0 +1,38 @@
+name: R18 F latest G CDP evidence source seal
+on:
+  push:
+    branches: [r18-f-website-g-cdp-final-seal]
+permissions:
+  contents: write
+jobs:
+  seal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Prove B nonfinancial public source and G actual CDP evidence syntax
+        run: |
+          node --check scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          node --test tests/w1safe-r17-challenge-financial-read-boundary.test.mts
+          python3 -m unittest discover -s tests -p 'test_renaissance_88_a11y_preview.py' -v
+      - name: Self-remove then create new actual immutable canonical DocsV2 baseline
+        run: |
+          git config user.name 'aoe2war-docsv2-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/r18-f-website-g-cdp-final-seal.yml
+          git commit -m 'ci(R18 F): retire CDP source-seal workflow before manifest'
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet && exit 1
+          git commit -m 'docs(R18 F): new exact B finance/G CDP source bound DocsV2 seal'
+          python3 scripts/docs_v2_check.py
+          git push origin HEAD:refs/heads/r18-f-website-g-cdp-final-seal
