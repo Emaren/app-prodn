@@ -215,6 +215,31 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "architecture-census-not-release-or-financial-authorization",
+      "id": "aoe2war.app-prodn.os-architecture-registry-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/AOE2WAR_OS_CENSUS.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "4f447b8696a2cc750ed2969a332738052ea5b4ebb2a311dd004727e5669b6bbe",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "vpssentry",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2WAR OS — Canonical inventory and capability ownership",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "betting-constitution-ratification-candidate",
       "id": "aoe2war.app-prodn.betting-constitution",
       "owner": "aoe2war-web",
@@ -371,6 +396,32 @@
         "wolochain"
       ],
       "title": "Private Central Command OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "roadmap-not-release-or-financial-authorization",
+      "id": "aoe2war.app-prodn.central-swarm-thousand-engineers",
+      "owner": "aoe2war-web",
+      "path": "docs/CENTRAL_SWARM_1000_ENGINEERING_ROADMAP.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-30",
+      "sensitivity": "internal",
+      "sha256": "a389c495f822c9c2d8cb229f8d11f687b99824e81cd1fb71cab59b62a7c002e8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "VPSSentry",
+        "wolochain",
+        "traffic",
+        "aoe2-watcher"
+      ],
+      "title": "Central Command — Thousand-Engineer Swarm & Kingdom Construction Observatory",
       "type": "reference"
     },
     {
@@ -663,7 +714,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2d3fb49e3aa91bc632fd7075d365156eaf95bc241a0448c952354a764a5f95ed",
+      "sha256": "2ed3e9c2c4dfa0497e0304cc76f675972691c43800805650aae0653ff5c1b6b8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -975,6 +1026,30 @@
         "wolochain"
       ],
       "title": "Kingdom Civic Surfaces",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "visual-workflow-design-not-runtime-or-financial-authorization",
+      "id": "aoe2war.app-prodn.kingdom-composer-visual-architecture",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "6949dae7785fb922ba386cfeaa325bbb895084f281b711ee8f4c2a6d591609db",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "vpssentry"
+      ],
+      "title": "Kingdom Composer & Autonomous Engineering Visuals — Draft Contract",
       "type": "reference"
     },
     {
@@ -2348,8 +2423,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/c-storage-signed-freshness-20261029",
-    "commit": "9787cd1795ec682a5dde7697e0e0bb627c3f3d37"
+    "branch": "docs/central-thousand-engineer-doctrine-20261030",
+    "commit": "bebcbaccd10a30a6bda64e6b2b7815eb2e6ecb73"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
