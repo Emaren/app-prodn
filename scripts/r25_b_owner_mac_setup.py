@@ -56,6 +56,8 @@ def payloads():
         hold("GUARD_EXACT_SHA256_DRIFT")
     if hashlib.sha256(assets["witness"]).hexdigest()!=WITNESS_SHA:
         hold("WITNESS_EXACT_SHA256_DRIFT")
+    if gitblob(assets["dropin"])!=DROPIN_GIT_BLOB or gitblob(assets["nft"])!=NFT_GIT_BLOB:
+        hold("EXACT_B_TEMPLATE_GIT_BLOB_DRIFT")
     if b"__B_GUARD_SHA256__" not in assets["dropin"]:
         hold("B_DROPIN_PIN_TEMPLATE_MISSING")
     if b"__DEDICATED_UID__" not in assets["nft"]:
