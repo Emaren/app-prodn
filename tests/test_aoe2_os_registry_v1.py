@@ -96,5 +96,41 @@ class OSRegistryTests(unittest.TestCase):
     def test_priority_preservation(self):
         self.assertTrue(any("P0" in x and "P3" in x for x in self.value["rules"]))
 
+
+    def test_composer_is_nested_role_not_new_os(self):
+        roles={x["id"]:x for x in self.value["supervisory_roles"]}
+        composer=roles["system-composer"]
+        self.assertEqual(composer["canonical_id"],"aoe2war.role.system-composer")
+        self.assertEqual(composer["ownership"],"aoe2war.os.orchestra")
+        self.assertTrue(composer["not_subordinate_os"])
+        self.assertEqual(composer["lifecycle"],"proposed")
+        self.assertEqual(composer["live_deployment_proof"],"UNVERIFIED")
+        self.assertNotIn("system-composer",{x["id"] for x in self.nodes})
+        self.assertEqual(self.value["counts"]["planned_subordinate_os_total"],15)
+        self.assertEqual(self.value["counts"]["non_os_supervisory_roles"],3)
+
+    def test_visual_modes_are_source_only_and_unique(self):
+        modes=self.value["visual_modes"]
+        self.assertEqual(len(modes),7)
+        self.assertEqual(len({x["id"] for x in modes}),7)
+        for mode in modes:
+            self.assertEqual(mode["phase"],"source-design-only")
+            self.assertTrue(mode["evidence_gate"])
+            self.assertTrue(mode["owner"])
+        self.assertEqual({x["id"].split(".")[-1] for x in modes},
+                         {"graph","loop","swarm","army","hierarchy","composer","run-up"})
+
+    def test_composer_plan_cannot_execute_or_invent_telemetry(self):
+        contract=self.value["composition_contract"]
+        self.assertTrue(contract["draft_only"])
+        self.assertFalse(contract["execution_authorized"])
+        self.assertIn("UNKNOWN",contract["states"])
+        self.assertIn("HOLD",contract["states"])
+        self.assertIn("central_approval_ref",contract["input_required"])
+        self.assertIn("source_ref",contract["node_fields"])
+        self.assertIn("depends-on",contract["edge_kinds"])
+        self.assertTrue(any("P3" in rule and "P0" in rule
+                            for rule in self.value["rules"]))
+
 if __name__ == "__main__":
     unittest.main()

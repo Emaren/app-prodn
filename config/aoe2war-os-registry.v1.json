@@ -416,6 +416,35 @@
       "canonical_id": "aoe2war.role.system-shepherd",
       "immutable_id": true,
       "not_subordinate_os": true
+    },
+    {
+      "id": "system-composer",
+      "name": "System Composer / Kingdom Composer",
+      "kind": "workflow-composition-role",
+      "status": "proposed-source-only",
+      "reference": "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+      "canonical_id": "aoe2war.role.system-composer",
+      "immutable_id": true,
+      "not_subordinate_os": true,
+      "ownership": "aoe2war.os.orchestra",
+      "authority_domain": "reviewed-dry-run-dependency-graph-planning",
+      "source_authorities": [
+        "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+        "config/aoe2war-os-registry.v1.json"
+      ],
+      "responsibility": "Compose only Central-approved goals into versioned DAGs, owner-reviewed task/edge/lease plans, budgets, conflict checks and immutable simulation receipts; Orchestra alone schedules approved tasks.",
+      "cannot": [
+        "set Central priority or replace queue #984",
+        "dispatch or run workers",
+        "activate, promote or roll back production",
+        "authorize money, signer or custody",
+        "assert a heartbeat from source, CI or visuals"
+      ],
+      "value_gate": "At least one independently reviewed workflow plan with exact source refs, acyclic blocking edges, proven collision detection and fewer duplicate handoffs; throughput and intervention changes measured.",
+      "lifecycle": "proposed",
+      "native_runtime_proof": "UNVERIFIED",
+      "live_deployment_proof": "UNVERIFIED",
+      "live_worker_proven": false
     }
   ],
   "unreconciled_named_capabilities": [
@@ -483,10 +512,12 @@
     "planned_additional_subordinate_identities": 5,
     "planned_subordinate_os_total": 15,
     "planned_total_including_umbrella": 16,
-    "non_os_supervisory_roles": 2,
+    "non_os_supervisory_roles": 3,
     "verified_autonomous_running_os_workers": null,
     "systemwide_unique_operational_os_total": null,
-    "count_scope": "versioned identity roster; 16 includes 5 proposed/draft names, not running workers"
+    "count_scope": "15 subordinate identities (10 source-present + 5 draft/proposed), 1 umbrella; 3 non-OS roles (Doctor, Shepherd, Composer). No verified live-worker census.",
+    "non_os_supervisory_existing_ui_roles": 2,
+    "non_os_supervisory_proposed_roles": 1
   },
   "rules": [
     "This is a proposed normalized roster, not a census of every branded module across all AoE2WAR repositories.",
@@ -497,12 +528,15 @@
     "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate.",
     "Code Health has distinct existing source contract; add it to planning roster without claiming separate daemon",
     "Performance is an alias of Speed, Renaissance integration facet, Council composite diagnostic, Loop and Graph engines are cross-cutting rather than OS",
-    "16 named planning identities includes umbrella; verified live estate remains UNKNOWN; never present 16 as certified operational count"
+    "16 named planning identities includes umbrella; verified live estate remains UNKNOWN; never present 16 as certified operational count",
+    "System Composer is a proposed Orchestra OS role; never a subordinate OS or autonomous production authority.",
+    "Seven visual modes share one evidence projection. Never promote simulation/polling/animation to observed live telemetry.",
+    "P3 visual and composition planning cannot block F #1083 P0 website #1061 or alter Deployment OS #1088."
   ],
   "source_input": {
     "pull_request": 1090,
-    "head_sha": "076b2b7ccc317ba65b26f5bb390390a379263ca4",
-    "original_registry_blob": "167497080be203241739e8240daab4c34c57293c"
+    "head_sha": "8b275229c16f67dc65f9d3bd4b500faf11aa72a0",
+    "original_registry_blob": "949c30ffebb6668670d8a59dddec9c89399bf887"
   },
   "identity_semantics": {
     "id": "immutable short key; never reuse after rename",
@@ -526,5 +560,151 @@
     "observed_autonomous_agents": null,
     "verified_live_worker_count": null,
     "source_present_is_live": false
+  },
+  "role_authority_edges": [
+    {
+      "from": "aoe2war.os.central-command",
+      "to": "aoe2war.role.system-composer",
+      "kind": "approved-objective-only"
+    },
+    {
+      "from": "aoe2war.role.system-composer",
+      "to": "aoe2war.os.orchestra",
+      "kind": "dry-run-plan-packet-reviewed-before-scheduling"
+    },
+    {
+      "from": "aoe2war.os.orchestra",
+      "to": "aoe2war.os.agent",
+      "kind": "bounded-task-lease-only"
+    },
+    {
+      "from": "aoe2war.os.agent",
+      "to": "aoe2war.os.swarm",
+      "kind": "verified-multiworker-coordination-only"
+    },
+    {
+      "from": "aoe2war.role.system-doctor",
+      "to": "aoe2war.os.central-command",
+      "kind": "diagnostic-advice-no-approval"
+    },
+    {
+      "from": "aoe2war.role.system-shepherd",
+      "to": "aoe2war.os.central-command",
+      "kind": "escalation-advice-no-approval"
+    }
+  ],
+  "visual_modes": [
+    {
+      "id": "aoe2war.visual.graph",
+      "name": "Neural Dependency Graph",
+      "owner": "aoe2war.os.orchestra",
+      "node_kind": "dependency",
+      "evidence_gate": "pinned typed edges with source/evidence refs",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.loop",
+      "name": "Feedback Loops",
+      "owner": "aoe2war.os.agent",
+      "node_kind": "bounded-control-iteration",
+      "evidence_gate": "observed iteration, stop, budget and receipt",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.swarm",
+      "name": "Authenticated Swarm",
+      "owner": "aoe2war.os.swarm",
+      "node_kind": "multi-agent-lease",
+      "evidence_gate": "independent worker identity and lease/receipt proof",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.army",
+      "name": "Engineering Army Formations",
+      "owner": "aoe2war.os.swarm",
+      "node_kind": "assigned-lane-formation",
+      "evidence_gate": "assigned vs verified-active distinct, cluster at scale",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.hierarchy",
+      "name": "Engineering Hierarchy",
+      "owner": "aoe2war.os.central-command",
+      "node_kind": "authority-structure",
+      "evidence_gate": "explicit approved authority edges and reviewer provenance",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.composer",
+      "name": "Kingdom Composer",
+      "owner": "aoe2war.role.system-composer",
+      "node_kind": "dry-run-workflow-dag",
+      "evidence_gate": "simulated until human-reviewed immutable plan admitted",
+      "phase": "source-design-only"
+    },
+    {
+      "id": "aoe2war.visual.run-up",
+      "name": "Kingdom Run-Up",
+      "owner": "aoe2war.os.deployment",
+      "node_kind": "deployment-state-read-projection",
+      "evidence_gate": "real B/C/E/F/G physical/live receipts before verified lights",
+      "phase": "source-design-only"
+    }
+  ],
+  "composition_contract": {
+    "version": "aoe2war.composer.plan.v1",
+    "draft_only": true,
+    "execution_authorized": false,
+    "input_required": [
+      "central_objective_id",
+      "central_approval_ref",
+      "source_sha",
+      "capability_registry_ref",
+      "constraints",
+      "budget",
+      "independent_review_gate"
+    ],
+    "node_fields": [
+      "immutable_id",
+      "kind",
+      "owner_os_id",
+      "task_ref",
+      "source_ref",
+      "scope",
+      "status",
+      "evidence_kind",
+      "evidence_ref",
+      "observed_at",
+      "confidence"
+    ],
+    "edge_kinds": [
+      "depends-on",
+      "blocks",
+      "leases",
+      "reviews",
+      "produces-receipt",
+      "reads-from",
+      "may-escalate"
+    ],
+    "states": [
+      "PROPOSED",
+      "ASSIGNED",
+      "SOURCE_VALIDATED",
+      "CI_PASS",
+      "HOST_VERIFIED",
+      "RUNNING_VERIFIED",
+      "LIVE_VERIFIED",
+      "HOLD",
+      "STALE",
+      "UNKNOWN"
+    ],
+    "truth_rules": [
+      "unknown is never green",
+      "visual animation is not a worker heartbeat",
+      "source and host do not imply public live",
+      "unreviewed graph is simulation not dispatch",
+      "no cyclic blocking edges or duplicate write leases",
+      "bounded retained receipt, least-privilege visibility"
+    ]
   }
 }
