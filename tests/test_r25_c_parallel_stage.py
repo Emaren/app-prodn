@@ -348,7 +348,7 @@ class R25StageTests(unittest.TestCase):
                     run.assert_not_called()
 
     def test_40_failed_step_is_separately_journaled_and_secret_redacted(self):
-        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-04-prisma-generate"
+        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-01-prisma-generate"
         args=["/usr/bin/systemd-run","--unit="+unit]
         failed=types.SimpleNamespace(
             returncode=1,
@@ -359,10 +359,10 @@ class R25StageTests(unittest.TestCase):
                 with mock.patch.object(self.s.subprocess,"run",return_value=failed) as run:
                     with self.assertRaisesRegex(self.s.Hold,
                                                 "POSTPREBUILD_PHASE_FAILED:prisma-generate"):
-                        self.s.run_postprebuild_phase(4,"prisma-generate",args,15)
+                        self.s.run_postprebuild_phase(1,"prisma-generate",args,15)
                     run.assert_called_once()
                 receipt=json.loads((pathlib.Path(temp)/
-                         "POSTPREBUILD_PHASE_04.json").read_bytes())
+                         "POSTPREBUILD_PHASE_01.json").read_bytes())
         self.assertEqual(receipt["status"],"HOLD")
         self.assertEqual(receipt["exit_code"],1)
         self.assertEqual(receipt["unit"],unit)
@@ -372,7 +372,7 @@ class R25StageTests(unittest.TestCase):
         self.assertIn("PRISMA_SCHEMA_ENGINE_BINARY",blob)
 
     def test_41_timeout_is_journaled_and_cannot_reuse_phase(self):
-        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-06-next-build"
+        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-03-next-build"
         args=["/usr/bin/systemd-run","--unit="+unit]
         exc=subprocess.TimeoutExpired(args,11,
             output=b"error lint TIMEOUT\n",
@@ -381,24 +381,24 @@ class R25StageTests(unittest.TestCase):
             with mock.patch.object(self.s,"AUDIT",pathlib.Path(temp)):
                 with mock.patch.object(self.s.subprocess,"run",side_effect=exc):
                     with self.assertRaisesRegex(self.s.Hold,"EXIT=124"):
-                        self.s.run_postprebuild_phase(6,"next-build",args,11)
+                        self.s.run_postprebuild_phase(3,"next-build",args,11)
                 receipt=json.loads((pathlib.Path(temp)/
-                         "POSTPREBUILD_PHASE_06.json").read_bytes())
+                         "POSTPREBUILD_PHASE_03.json").read_bytes())
                 self.assertTrue(receipt["timed_out"])
                 self.assertEqual(receipt["exit_code"],124)
                 with mock.patch.object(self.s.subprocess,"run") as runner:
                     with self.assertRaisesRegex(self.s.Hold,"POSTREC_PHASE_ALREADY_ENTERED_NO_REPLAY"):
-                        self.s.run_postprebuild_phase(6,"next-build",args,11)
+                        self.s.run_postprebuild_phase(3,"next-build",args,11)
                     runner.assert_not_called()
 
     def test_42_success_records_actual_unit_and_no_network(self):
-        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-01-minimatch"
+        unit="aoe2war-r25-postprebuild-"+self.s.SHA[:8]+"-01-prisma-generate"
         args=["/usr/bin/systemd-run","--unit="+unit]
         okay=types.SimpleNamespace(returncode=0,stdout=b"PASS:compat",stderr=b"")
         with tempfile.TemporaryDirectory() as temp:
             with mock.patch.object(self.s,"AUDIT",pathlib.Path(temp)):
                 with mock.patch.object(self.s.subprocess,"run",return_value=okay) as run:
-                    self.assertTrue(self.s.run_postprebuild_phase(1,"minimatch",args,30))
+                    self.assertTrue(self.s.run_postprebuild_phase(1,"prisma-generate",args,30))
                     run.assert_called_once()
                 record=json.loads((pathlib.Path(temp)/
                     "POSTPREBUILD_PHASE_01.json").read_bytes())
@@ -412,6 +412,21 @@ class R25StageTests(unittest.TestCase):
         worker=SRC.read_text()
         self.assertNotIn('POSTREC_REQUIRE_NODE_MODULES_PRISMA_CLIENT',worker)
         self.assertIn('POSTREC_PRISMA_SEEDED_ENGINE_SHA_DRIFT',worker)
+
+    def test_44_preserves_original_prebuild_outputs_and_skips_yarn(self):
+        source=SRC.read_text()
+        section=source.split('def postprebuild_recovery():',1)[1].split(
+            'def verified_b_runtime(',1)[0]
+        self.assertIn('"prior_prebuild_version":version',section)
+        self.assertIn('"build_version_rewritten":False',section)
+        self.assertNotIn('str(DEST/"scripts/write-build-version.mjs")',section)
+        self.assertNotIn('str(DEST/"scripts/generate_page_change_manifest.py")',section)
+        self.assertNotIn('str(DEST/"scripts/ensure-minimatch11-legacy-api.mjs")',section)
+        self.assertIn('for number in range(1,5)',section)
+        self.assertIn('"prisma-generate"',section)
+        self.assertIn('"release-validation"',section)
+        self.assertIn('"next-build"',section)
+        self.assertIn('"postbuild-cache"',section)
 
 if __name__=="__main__":
     unittest.main()
