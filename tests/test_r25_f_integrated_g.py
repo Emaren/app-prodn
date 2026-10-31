@@ -58,7 +58,7 @@ class TestIntegratedG(unittest.TestCase):
         bad=self.nginx(True).replace(
             b"proxy_pass http://127.0.0.1:27657/;",
             b"proxy_pass http://127.0.0.1:3030;")
-        with self.assertRaisesRegex(g.Hold,"NGINX_SIX_WEB_PROXY_CENSUS_MISMATCH"):
+        with self.assertRaisesRegex(g.Hold,"NGINX_UNREVIEWED_WEB_PROXY_LOCATION"):
             self.witness(bad)
     def test_no_git_in_extracted_candidate(self):
         source=G_SOURCE.read_text()
