@@ -26,4 +26,12 @@ RestrictAddressFamilies=AF_UNIX AF_INET
 # C must add ONLY the exact candidate Next cache path as ReadWritePaths.
 # C must use direct node next start, NOT npm/yarn prestart, npm env, cron.
 # C must verify package lock, exact /proc/PID/exe and 3031 listener.
+# C's original ExecStartPre runs as the dedicated web UID and cannot
+# authenticate root-owned nft/pg credentials. Replace ONLY the NEW unit's
+# prestart with a source-SHA-pinned root read-only B preflight. The + prefix
+# runs this SINGLE root-owned, verified source outside web-user sandbox.
+# Replace __B_GUARD_SHA256__ from reviewed CI, NEVER substitute a dummy.
+# C/F must root-pin both prestart source bytes and guard bytes before install.
+ExecStartPre=
+ExecStartPre=+/usr/bin/python3 -I -B /etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py --phase prestart --expected-guard-sha256 __B_GUARD_SHA256__
 # Root witness refuses unproven actual process/env/DB/kernel state.
