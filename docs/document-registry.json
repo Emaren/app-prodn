@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7c81bee31caa79d2428a0dcbc092c509cb344704d3c8a012e467b5b60f9951bc",
+      "sha256": "9852be114a0ba38a30f8235193fa9e47fcee0ef0109de18092e1eaf47520fa98",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/f-r24-parallel-old-web-preserving-nginx",
-    "commit": "94814a3c6ccd17aca33bd1d8f492a8624c823263"
+    "commit": "594afbbe0b5e1383cb211cdb66b9b142bc4ad436"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
