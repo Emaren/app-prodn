@@ -135,7 +135,8 @@ class R17SignerTests(unittest.TestCase):
     def test_preissue_hash_rejects_modified_root_response(self):
         p=self.intent()["payload"]
         preissue=self.preissue()
-        preissue["reserved_at"]=when(AT-timedelta(seconds=10))
+        preissue["reserved_at"]=when(AT-timedelta(seconds=24))
+        preissue["expires_at"]=when(AT+timedelta(minutes=9,seconds=36))
         with self.assertRaisesRegex(m.Hold,"ROOT_PREISSUE_RESERVATION_HASH_MISMATCH"):
             m.require_f_original_preissue(preissue,p,AT)
 
