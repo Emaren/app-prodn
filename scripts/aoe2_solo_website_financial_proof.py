@@ -40,6 +40,7 @@ aoe2war-prewarm.timer
 """.split())
 REQUIRED_UNITS=REQUIRED_SERVICES|REQUIRED_TIMERS
 W1_SHA="b46a51f1592c9f296839924ae55e722618b10d35"
+W1_SAFE_SHA="95883d4a285d3ff2ddc6a84e1c3946621f0431b9"
 # Independently read from the immutable W1 Git tree (not an operator JSON).
 # This is a necessary lower bound, NOT a complete transitive edge graph.
 W1_PUBLIC_FINANCIAL_EDGES=(
@@ -258,6 +259,78 @@ def verify_closed_graph(scope):
            "changed source transitively reaches finance writer: "+origin)
    seen.add(node);stack.extend(adjacency[node]-seen)
  return graph
+
+def verify_w1_safe_public_financial_closure(scope):
+ """Exact safe-source signed CALL-SITE graph, not a classifier exemption.
+
+ The file/module import graph alone is insufficient: /api/bets imports
+ lib/bets.ts to READ a snapshot, but the same module contains settlement
+ routines. B's independently reviewed, root-native recomputed graph MUST
+ include actual callsite nodes and prove public GET/HEAD/prewarm cannot reach
+ financial maintenance or settlement functions. UNKNOWN remains HOLD.
+ """
+ require(type(scope)is dict and scope.get("candidate_sha")==W1_SAFE_SHA,
+         "W1_SAFE_SOURCE_IDENTITY_MISMATCH")
+ graph=verify_closed_graph(scope)
+ require(scope.get("read_side_effect_policy")=={
+         "GET":"AUTHENTICATED_PRODUCER_ONLY_FINANCIAL_DISPATCH",
+         "HEAD":"AUTHENTICATED_PRODUCER_ONLY_FINANCIAL_DISPATCH",
+         "PREWARM":"AUTHENTICATED_PRODUCER_ONLY_FINANCIAL_DISPATCH"},
+         "W1_SAFE_READ_SIDE_EFFECT_POLICY_UNREVIEWED")
+ public={
+  "app/page.tsx",
+  "app/war-chest/page.tsx",
+  "app/api/lobby/route.ts",
+  "app/api/live-games/route.ts",
+  "app/api/bets/route.ts",
+  "app/api/header-summary/route.ts",
+ }
+ prewarm="scripts/prewarm-production.mjs"
+ routes=graph["routes"]
+ require(public<=set(routes["GET"]) and public<=set(routes["HEAD"]) and
+         prewarm in routes["PREWARM"],
+         "W1_SAFE_PUBLIC_GET_HEAD_PREWARM_ROUTE_OMITTED")
+ # Function-specific sink identities are essential. Treating all of
+ # lib/bets.ts as one node cannot prove its legitimate read projection safe.
+ sinks={
+  "lib/bets.ts::ensureBetMarkets",
+  "lib/tournamentProofReconciler.ts::reconcileTournamentMatchProofs",
+  "lib/betMarketEnsureQueue.ts::queueBetMarketEnsure",
+  "lib/bets.ts::settleResolvedMarketWagers",
+  "lib/bets.ts::reconcilePendingCoreBetClaims",
+  "lib/bets.ts::settleFounderBonuses",
+ }
+ require(sinks<=set(graph["writer_nodes"]) and
+         sinks<=set(graph["nodes"]),
+         "W1_SAFE_SETTLEMENT_CALL_SINKS_NOT_ENUMERATED")
+ # The exact public projection calls, including the separate lobby bypass,
+ # must appear as CALLSITE edges, not be omitted to forge a disconnected DAG.
+ required={
+  ("app/page.tsx","lib/lobbySnapshot.ts::loadLobbySnapshot"),
+  ("app/api/lobby/route.ts","lib/lobbySnapshot.ts::loadLobbySnapshot"),
+  ("app/api/live-games/route.ts","lib/liveGamesPublicSnapshot.ts::loadPublicLiveGamesSnapshot"),
+  ("app/api/bets/route.ts","lib/bets.ts::loadBetBoardSnapshot[ensureMarkets=false]"),
+  ("app/api/header-summary/route.ts","lib/liveGames.ts::loadLiveGamesSnapshot"),
+  ("app/war-chest/page.tsx","lib/warChest.ts::loadWarChestSnapshot"),
+  ("scripts/prewarm-production.mjs","app/page.tsx"),
+  ("scripts/prewarm-production.mjs","app/api/lobby/route.ts"),
+  ("scripts/prewarm-production.mjs","app/api/live-games/route.ts"),
+ }
+ edges={tuple(e)for e in graph["edges"]}
+ require(required<=edges,"W1_SAFE_EXPECTED_PUBLIC_CALLSITE_EDGE_MISSING")
+ adjacency={}
+ for a,b in edges:adjacency.setdefault(a,set()).add(b)
+ for origin in sorted(public|{prewarm}):
+  pending=[origin];seen=set()
+  while pending:
+   node=pending.pop()
+   if node in seen:continue
+   require(node not in set(graph["writer_nodes"]),
+           "W1_SAFE_PUBLIC_READ_REACHES_FINANCIAL_WRITER:"+origin+":"+node)
+   seen.add(node)
+   pending.extend(adjacency.get(node,set())-seen)
+ return True
+
 
 def verify_source_closure(report):
  """Validate the auditor's source DAG obligations, BOUND to signed finance."""

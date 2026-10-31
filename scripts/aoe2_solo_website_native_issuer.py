@@ -23,6 +23,7 @@ from datetime import datetime, timezone, timedelta
 HOST = "ubuntu-4gb-hel1-11"
 POLICY = "aoe2war.solo-owner.website.admission.v1"
 FROZEN = "b46a51f1592c9f296839924ae55e722618b10d35"
+W1_SAFE = "95883d4a285d3ff2ddc6a84e1c3946621f0431b9"
 CLASSES = ("doctor", "recovery", "finance", "host", "source", "stage")
 PHASES = ("PRE_STAGE", "PRE_ACTIVATE", "POST_ACTIVATE", "POST_ROLLBACK")
 HEX40 = re.compile(r"[0-9a-f]{40}\Z")
@@ -350,7 +351,15 @@ def classify_financial(finance, source_scope, financial_module):
     # Frozen W1 *does* reach a real financial writer on public GET/prewarm.
     # A reviewer must fix/fence this in F; never classify it as safe to stage.
     if source_scope.get("candidate_sha") == FROZEN:
+        # Keep the immutable original W1 permanently inadmissible: its
+        # GET/HEAD/prewarm handlers genuinely invoke money-capable maintenance.
         raise Hold("W1_PUBLIC_GET_PREWARM_FINANCIAL_WRITER_REACHABLE")
+    if source_scope.get("candidate_sha") == W1_SAFE:
+        # NEW owner-signed release train, never a silent SHA replacement.
+        # Require B's native-recomputed, independently signed, callsite-level
+        # NO-PATH proof for every public read and prewarm entrypoint.
+        # A source flag/status string alone cannot grant noninterference.
+        financial_module.verify_w1_safe_public_financial_closure(source_scope)
     return census
 
 
