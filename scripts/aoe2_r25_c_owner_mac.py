@@ -47,15 +47,15 @@ def run(repo,commit,worker_hash,phase):
     with open("/dev/tty","r") as tty:
         need(tty.readline().rstrip("\r\n")==phrase,"OWNER_STAGE_CONSENT_NOT_ENTERED")
     mode={"source":"--source-stage","build":"--build-stage",
-          "source-build":"--source-build"}[phase]
-    arg=mode+(" --archive-sha256 "+archive if phase!="build" else "")
+          "source-build":"--source-build","recover-dns":"--recover-dns"}[phase]
+    arg=mode+(" --archive-sha256 "+archive if phase not in ("build","recover-dns") else "")
     cmd=["/usr/bin/ssh","-T","-o","BatchMode=yes",
          "-o","StrictHostKeyChecking=yes","-o","NumberOfPasswordPrompts=0",
          "-o","ConnectTimeout=10","-o","ConnectionAttempts=1",
          "root@hel1","/usr/bin/python3 -I -B - "+arg]
     proc=subprocess.run(cmd,input=source,capture_output=True,timeout=4200)
     sys.stdout.buffer.write(proc.stdout);sys.stderr.buffer.write(proc.stderr)
-    target=b"PASS:BUILD_STAGED" if phase in ("build","source-build") else b"PASS:SOURCE_STAGED"
+    target=b"PASS:BUILD_STAGED" if phase in ("build","source-build","recover-dns") else b"PASS:SOURCE_STAGED"
     need(proc.returncode==0 and target in proc.stdout,
          "HEL1_STAGE_OR_BUILD_NOT_PROVEN_NO_BLIND_RETRY")
     print("PASS:R25_OWNER_MAC_STAGE_PHASE="+phase)
@@ -64,7 +64,7 @@ def main():
     p.add_argument("--repo",default="~/projects/AoE2HDBets/app-prodn")
     p.add_argument("--review-commit",required=True)
     p.add_argument("--operator-sha256",required=True)
-    p.add_argument("--phase",choices=["source","build","source-build"],default="source-build")
+    p.add_argument("--phase",choices=["source","build","source-build","recover-dns"],default="source-build")
     a=p.parse_args()
     run(a.repo,a.review_commit,a.operator_sha256,a.phase)
 if __name__=="__main__":
