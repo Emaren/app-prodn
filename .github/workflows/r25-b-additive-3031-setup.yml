@@ -1,0 +1,91 @@
+name: R25 B Additive 3031 Owner Install
+on:
+  pull_request:
+    paths:
+      - "scripts/r25_b_additive_3031_setup.py"
+      - "scripts/r25_b_owner_mac_setup.py"
+      - "tests/test_r25_b_additive_setup.py"
+      - "scripts/r25_b_host_witness.py"
+      - "tests/test_r25_b_host_witness.py"
+      - "tests/test_r25_b_pg_schema_prefix.py"
+      - ".github/workflows/ci.yml"
+      - "deploy/r25-b-3031.service.dropin.in"
+      - ".github/workflows/r25-b-positive-3031.yml"
+      - "deploy/r25-b-reviewed-c-base-3031.service"
+      - ".github/workflows/r25-b-additive-3031-setup.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  additive-owner-install-no-mutation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Freeze base B implementation and isolate setup-only sources
+        run: |
+          git merge-base --is-ancestor 87d340314e46032fce68e5cfdcc268b8e6593a82 HEAD
+          python3 -B - <<'PY'
+          import subprocess
+          allowed={
+              "scripts/r25_b_additive_3031_setup.py",
+              "scripts/r25_b_owner_mac_setup.py",
+              "tests/test_r25_b_additive_setup.py",
+              "scripts/r25_b_host_witness.py",
+              "tests/test_r25_b_host_witness.py",
+              "tests/test_r25_b_pg_schema_prefix.py",
+              ".github/workflows/ci.yml",
+              "docs/DOCUMENTATION_CONTROL_PLANE.md",
+              "docs/document-registry.json",
+              "deploy/r25-b-3031.service.dropin.in",
+              ".github/workflows/r25-b-positive-3031.yml",
+              "deploy/r25-b-reviewed-c-base-3031.service",
+              ".github/workflows/r25-b-additive-3031-setup.yml",
+          }
+          changed=subprocess.check_output([
+              "git","diff","--name-only",
+              "87d340314e46032fce68e5cfdcc268b8e6593a82","HEAD"
+          ],timeout=25).decode().splitlines()
+          assert set(changed)==allowed,("MUTATING_OR_UNREVIEWED_SOURCE_CHANGE",changed)
+          print("PASS:R25_B_NEW_ONLY_SOURCE_BOUNDARY")
+          PY
+      - name: Python source compile and 16+ adversarial tests
+        run: |
+          python3 -B - <<'PY'
+          from pathlib import Path
+          for p in ("scripts/r25_b_additive_3031_setup.py",
+                    "scripts/r25_b_owner_mac_setup.py",
+                    "tests/test_r25_b_additive_setup.py",
+                    "tests/test_r25_b_pg_schema_prefix.py"):
+              compile(Path(p).read_text(),p,"exec")
+          print("PASS:R25_B_SETUP_SYNTAX")
+          PY
+          python3 -B -m unittest discover -s tests -p test_r25_b_additive_setup.py -v
+          python3 -B -m unittest discover -s tests -p test_r25_b_host_witness.py -v
+      - name: Disposable isolated PostgreSQL 16 39-trigger ACL adversarial tests
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16
+          test -x /usr/lib/postgresql/16/bin/initdb
+          RUN_R25_B_ISOLATED_PG=1 python3 -B -m unittest discover -s tests -p test_r25_b_pg_schema_prefix.py -v
+      - name: Source SHA256 identities for owner and C/F
+        run: |
+          sha256sum scripts/r25_b_additive_3031_setup.py scripts/r25_b_owner_mac_setup.py scripts/r25_b_host_witness.py deploy/r25-b-3031.service.dropin.in
+          python3 -B - <<'PY'
+          from pathlib import Path
+          s=Path("scripts/r25_b_additive_3031_setup.py").read_text()
+          assert "aoe2hdbets-web-r24.service" in s
+          assert "aoe2hdbets-web.service" in s
+          assert "INSTALL_STARTED_NOT_CERTIFIED" in s
+          assert "GRANT SELECT ON ALL TABLES" in s
+          assert "new_nft_sha256" in s
+          assert "public_cutover_authorized" in s
+          assert "systemctl\",\"daemon-reload" in s
+          assert "systemctl\",\"restart" not in s
+          print("PASS:R25_B_NO_OLD_UNIT_RESTART_NO_WOLO_TX_NO_PUBLIC_ACTIVATION")
+          PY
