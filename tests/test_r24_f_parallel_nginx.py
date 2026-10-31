@@ -33,6 +33,8 @@ class ParallelR24(unittest.TestCase):
         old=b"server {\n location / {\n  proxy_pass http://127.0.0.1:3030;\n }\n}"
         result=self.s.safe_replace_site(old,self.s.NEW_UPSTREAM)
         self.assertIn(b"limit_except GET HEAD { deny all; }",result)
+        self.assertIn(bytes([10])+b"        limit_except GET HEAD",result)
+        self.assertNotIn(bytes([92,110])+b"        limit_except GET HEAD",result)
         self.assertIn(b"proxy_pass http://127.0.0.1:3031;",result)
         self.assertNotIn(self.s.OLD_UPSTREAM,result)
     def test_multiple_default_location_fails(self):
