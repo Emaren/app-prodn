@@ -123,19 +123,24 @@ server { server_name unrelated.example; listen 443 ssl;
         src=SERVER.read_text()
         self.assertIn('method="GET"',src)
         self.assertNotIn('method="POST"',src)
-    def test_actual_candidate_git_sha_is_read_as_non_root_service_uid(self):
-        text=SERVER.read_text()
-        self.assertIn('"C_ACTUAL_CHECKOUT_SOURCE_SHA_NOT_VERIFIED"',text)
-        self.assertIn('"/usr/sbin/runuser","-u",NEW_USER,"--"',text)
-        self.assertIn('"/usr/sbin/runuser","-u","tony","--"',text)
+    def test_candidate_archive_source_uses_c_root_protected_full_manifests(self):
+        code=SERVER.read_text()
+        for token in ("SOURCE_STAGED.json","SOURCE_FILES.json",
+                      "BUILD_STAGED.json","BUILD_FILES.json",
+                      "C_EMBEDDED_GIT_ARCHIVE_COMMIT_ID_NOT_PROVEN",
+                      "C_BUILT_FILE_CONTENT_NO_LONGER_MATCHES_FULL_MANIFEST"):
+            self.assertIn(token,code)
+        self.assertNotIn('"-C",str(CANDIDATE_STAGE),"rev-parse","HEAD"',code)
+    def test_original_checkout_sha_is_nonroot_read_only(self):
+        self.assertIn('"/usr/sbin/runuser","-u","tony","--"',SERVER.read_text())
     def test_E_durable_rollback_receipt_is_required(self):
         text=SERVER.read_text()
         self.assertIn('"E_durable_receipt_path"',text)
         self.assertIn("verified_durable_e_rollback(j)",text)
-        self.assertIn("E_PHYSICAL_CONTENT_RECEIPT_DIGEST_MISMATCH",text)
+        self.assertIn("E_R25_ROOT_RECEIPT_DIGEST_MISMATCH",text)
     def test_real_G_next_asset_binding(self):
         self.assertIn('"/_next/static/"+build_id+"/_buildManifest.js"',SERVER.read_text())
-        self.assertIn('C_STAGE_NEXT_BUILD_ID_MISMATCH',SERVER.read_text())
+        self.assertIn('C_ACTUAL_NEXT_BUILD_ID_NOT_APPROVED',SERVER.read_text())
     def test_manual_rollback_retains_audit(self):
         src=SERVER.read_text()
         self.assertIn('def manual_rollback(nonce)',src)
