@@ -138,8 +138,10 @@ def archive_identity(expected):
     except BaseException:raise
     need(h.hexdigest()==expected,"MAC_REMOTE_ARCHIVE_SHA256_NOT_EQUAL")
     with SOURCE.open("rb") as f:
-        result=command(["/usr/bin/git","get-tar-commit-id"],timeout=40,data=f.read(1024*1024))
-    need(result.decode().strip()==SHA,"GIT_ARCHIVE_COMMIT_ID_NOT_CANDIDATE")
+        git=subprocess.run(["/usr/bin/git","get-tar-commit-id"],
+                           stdin=f,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=40)
+    need(git.returncode==0 and git.stdout.decode().strip()==SHA,
+         "GIT_ARCHIVE_COMMIT_ID_NOT_CANDIDATE")
     return st.st_size
 def tar_inventory():
     rows=[]; seen=set(); total=0
@@ -222,7 +224,8 @@ def build_source():
     need(DEST.is_dir() and not DEST.is_symlink() and
          (DEST/"r24-source-sha").read_text().strip()==SHA,
          "SOURCE_STAGE_CHANGED")
-    need(not (AUDIT/"BUILD_STAGED.json").exists(),"BUILD_ALREADY_ATTEMPTED")
+    need(not (AUDIT/"BUILD_STAGED.json").exists()
+         and not (AUDIT/"BUILD_ATTEMPT.json").exists(),"BUILD_ALREADY_ATTEMPTED_OR_PARTIAL")
     budget=root_storage_capacity()
     # Never run node package scripts as root or the historical tony web UID.
     try:
@@ -354,11 +357,15 @@ def main():
     ap=argparse.ArgumentParser()
     commands=ap.add_mutually_exclusive_group(required=True)
     commands.add_argument("--source-stage",action="store_true")
+    commands.add_argument("--source-build",action="store_true")
     commands.add_argument("--build-stage",action="store_true")
     commands.add_argument("--candidate-start",action="store_true")
     ap.add_argument("--archive-sha256",default="")
     a=ap.parse_args()
     if a.source_stage:stage_source(a.archive_sha256)
+    elif a.source_build:
+        stage_source(a.archive_sha256)
+        build_source()
     elif a.build_stage:build_source()
     else:start_candidate()
 if __name__=="__main__":
