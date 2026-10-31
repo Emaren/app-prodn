@@ -714,7 +714,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2ed3e9c2c4dfa0497e0304cc76f675972691c43800805650aae0653ff5c1b6b8",
+      "sha256": "1b3a3e7a9f1e6aae1bc3f92265e2e38c618842d408e9aded8cc0b5cdda1cac2e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1576,6 +1576,56 @@
       ],
       "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-route-deployment-evidence-not-production-authorization",
+      "id": "aoe2war.app-prodn.r25-postrelease-deploy-batches",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_POST_RELEASE_DEPLOYMENT_BACKLOG.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "9326f377370b48481b264bc6aadf814a3eb8280795ad1a307785e9274aa03ea5",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "R25 Dependency-Ordered Post-Release Deployment Backlog",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-route-deployment-evidence-not-production-authorization",
+      "id": "aoe2war.app-prodn.r25-deployment-census",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_PRODUCT_ROUTE_DEPLOYMENT_CENSUS.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "ce18f6d47dc1a8097543b4a6dfa1f1254874b4a33f3aae38f71f62dd4a0f9ab9",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "vpssentry",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "R25 Product and Workspace Deployment Census",
+      "type": "reference"
     },
     {
       "audience": [
