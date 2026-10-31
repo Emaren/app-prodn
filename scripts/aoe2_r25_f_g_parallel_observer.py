@@ -249,8 +249,18 @@ def nginx_route(approved):
          "G_UNREVIEWED_NGINX_VHOST")
     conf=root_file(config,131072)
     compiled=run(["/usr/sbin/nginx","-T"],timeout=25)
-    needle=("# configuration file "+str(config)+":").encode()
-    need(compiled.count(needle)==1 and b"server_name aoe2war.com" in compiled,
+    sections=re.split(rb"(?m)^# configuration file ([^\\r\\n]+):[ \\t]*\\r?\\n",compiled)
+    need(len(sections)>=3 and len(sections)%2==1,
+         "ACTIVE_NGINX_T_VHOST_MARKERS_MISSING")
+    selected=0
+    for i in range(1,len(sections),2):
+        try:matches=os.path.samefile(sections[i].decode("utf8","strict"),config)
+        except (FileNotFoundError,OSError):matches=False
+        if matches:
+            need(sections[i+1].rstrip(b"\\r\\n")==conf.rstrip(b"\\r\\n"),
+                 "ACTIVE_NGINX_T_VHOST_BYTES_DRIFT")
+            selected+=1
+    need(selected==1 and b"server_name aoe2war.com" in compiled,
          "ACTIVE_AOE2WAR_NGINX_VHOST_NOT_PROVEN")
     old=b"proxy_pass http://127.0.0.1:3030;"
     new=b"proxy_pass http://127.0.0.1:3031;"
