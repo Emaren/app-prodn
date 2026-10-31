@@ -19,7 +19,7 @@ spec.loader.exec_module(b)
 
 class TestBOneUseWitnessRepair(unittest.TestCase):
     def test_contract_exact_historical_and_new_pins(self):
-        self.assertEqual(b.NEW_SHA, "edf1b42ea7cc8001da83d7076d8aa08f924860fd9a40f97431e60ad8528a30dc")
+        self.assertEqual(b.NEW_SHA, "a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90")
         self.assertEqual(b.OLD_SHA, "de8981ba8c79c276a1ddd1b6c89efea0eaff8d9f11bd1514a724deacde6fc86a")
         self.assertEqual(b.INSTALL_SHA, "41be908123b5f13e349b3ad093ebea7a7908149c9c646041969556d3e0cc1cd2")
         self.assertEqual(b.GUARD_SHA, "dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d")
@@ -27,7 +27,7 @@ class TestBOneUseWitnessRepair(unittest.TestCase):
         self.assertEqual(b.CONSENT, "REPAIR-R25-B-WITNESS-ONLY-87d340314e46")
         self.assertNotEqual(b.CONSENT, "INSTALL-R25-B-NEW-ONLY-87d340314e46")
         new = (ROOT / "scripts" / "r25_b_host_witness.py").read_bytes()
-        self.assertEqual(len(new), 22062)
+        self.assertEqual(len(new), 22310)
         self.assertEqual(hashlib.sha256(new).hexdigest(), b.NEW_SHA)
         self.assertEqual(b.new_witness(new).TARGET, "0cee3c836c4b0760478280c145e02e81e470ce0e")
 
