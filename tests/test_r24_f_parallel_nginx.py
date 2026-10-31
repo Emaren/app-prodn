@@ -65,6 +65,37 @@ class ParallelR24(unittest.TestCase):
         with mock.patch.object(self.s.socket,"gethostname",return_value="not-hel1"):
             with self.assertRaisesRegex(self.s.Hold,"EXACT_HEL1_ROOT_REQUIRED"):
                 self.s.apply()
+    def test_real_candidate_pid_uid_and_safe_environment(self):
+        state="Id=aoe2hdbets-web-r24.service\nActiveState=active\nMainPID=14231\nUser=aoe2war-r24-web\n"
+        good=(b"NODE_ENV=production\x00WARGRAPH_RUNTIME_DISABLED=true\x00"
+              b"AOE2WAR_PROD_DB_PREVIEW=true\x00DATABASE_URL=postgres://reader@localhost/app\x00")
+        with mock.patch.object(self.s.os,"open",return_value=123):
+            with mock.patch.object(self.s.os,"read",return_value=good):
+                with mock.patch.object(self.s.os,"close"):
+                    self.assertTrue(self.s.enforce_candidate_runtime(state))
+    def test_financial_secret_environment_causes_hold(self):
+        state="ActiveState=active\nMainPID=14231\nUser=aoe2war-r24-web\n"
+        bad=(b"NODE_ENV=production\x00WARGRAPH_RUNTIME_DISABLED=true\x00"
+             b"AOE2WAR_PROD_DB_PREVIEW=true\x00SETTLEMENT_KEY=TOP_SECRET\x00")
+        with mock.patch.object(self.s.os,"open",return_value=123):
+            with mock.patch.object(self.s.os,"read",return_value=bad):
+                with mock.patch.object(self.s.os,"close"):
+                    with self.assertRaisesRegex(self.s.Hold,
+                                               "CANDIDATE_PROCESS_INHERITED_FINANCIAL_SECRET_ENV"):
+                        self.s.enforce_candidate_runtime(state)
+    def test_candidate_without_disabled_wargraph_holds(self):
+        state="ActiveState=active\nMainPID=14231\nUser=aoe2war-r24-web\n"
+        bad=b"NODE_ENV=production\x00WARGRAPH_RUNTIME_DISABLED=false\x00"
+        with mock.patch.object(self.s.os,"open",return_value=123):
+            with mock.patch.object(self.s.os,"read",return_value=bad):
+                with mock.patch.object(self.s.os,"close"):
+                    with self.assertRaisesRegex(self.s.Hold,
+                                               "WARGRAPH_SETTLEMENT_RUNTIME_NOT_DISABLED"):
+                        self.s.enforce_candidate_runtime(state)
+    def test_candidate_unprivileged_user_required(self):
+        with self.assertRaisesRegex(self.s.Hold,
+                                     "CANDIDATE_MUST_USE_DISTINCT_UNPRIVILEGED_UID"):
+            self.s.enforce_candidate_runtime("ActiveState=active\nMainPID=1\nUser=root\n")
     def test_owner_mac_separate_tty_read_write(self):
         mac=MAC.read_text()
         self.assertIn('with open("/dev/tty","w")',mac)
