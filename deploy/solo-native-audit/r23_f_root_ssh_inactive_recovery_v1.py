@@ -229,7 +229,7 @@ def do_abort(encoded):
         return 0
     finally:os.close(fd)
 
-def owner_main(private,public,source,operation="ENROLL_INACTIVE",target=""):
+def owner_main(private,public,source,source_sha,operation="ENROLL_INACTIVE",target=""):
     need(sys.platform=="darwin" and os.getuid()!=0,"ORIGINAL_OWNER_MAC_REQUIRED")
     p=pathlib.Path(private).expanduser();pub=pathlib.Path(public).expanduser()
     for f in (p,pub):
@@ -270,7 +270,9 @@ def owner_main(private,public,source,operation="ENROLL_INACTIVE",target=""):
     # of a tony-writable script, no private material in transit.
     src=pathlib.Path(source)
     raw=src.read_bytes()
-    need(len(raw)<=65536,"SOURCE_TOO_LARGE")
+    need(len(raw)<=65536 and len(raw)>0 and
+         bool(re.fullmatch("[0-9a-f]{64}",source_sha)) and sha(raw)==source_sha,
+         "OWNER_REVIEWED_SOURCE_SHA256_DRIFT")
     encoded=base64.b64encode(canon(envelope)).decode("ascii")
     cmd=["/usr/bin/ssh","-T","-o","BatchMode=yes",
          "-o","StrictHostKeyChecking=yes","-o","NumberOfPasswordPrompts=0",
@@ -294,16 +296,18 @@ def main():
     g.add_argument("--owner-abort",action="store_true")
     g.add_argument("--root-abort",action="store_true")
     ap.add_argument("--private");ap.add_argument("--public")
-    ap.add_argument("--reviewed-source");ap.add_argument("--recovery-id")
+    ap.add_argument("--reviewed-source");ap.add_argument("--reviewed-source-sha256")
+    ap.add_argument("--recovery-id")
     ap.add_argument("envelope",nargs="?")
     a=ap.parse_args()
     if a.root_enroll or a.root_abort:
         need(a.envelope is not None and not a.private and not a.public and
              not a.recovery_id,"ROOT_INPUT_CONTRACT")
         return do_enroll(a.envelope) if a.root_enroll else do_abort(a.envelope)
-    need(a.private and a.public and a.reviewed_source and a.envelope is None,
-         "OWNER_INPUT_CONTRACT")
+    need(a.private and a.public and a.reviewed_source and
+         a.reviewed_source_sha256 and a.envelope is None,"OWNER_INPUT_CONTRACT")
     return owner_main(a.private,a.public,a.reviewed_source,
+                      a.reviewed_source_sha256,
                       "ABORT_INACTIVE" if a.owner_abort else "ENROLL_INACTIVE",
                       a.recovery_id or "")
 if __name__=="__main__":
