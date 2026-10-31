@@ -10,6 +10,7 @@ spec.loader.exec_module(g)
 def example():
     before={
       "schema":"aoe2war.g.r24.host-snapshot.v1","host":g.HOST,
+      "original_release_lock":{"device":2064,"inode":6185747,"uid":1000,"mode":"0o644"},
       "source_sha":"33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a",
       "next_build_id":"DQ2jMprNQ_Njq6QM8GHju",
       "web":{"pid":2625090,"start_ticks":1234,"uid":1000},
@@ -47,6 +48,8 @@ class R24GPostflightTests(unittest.TestCase):
         self.assertIn('"no_financial_writes_executed_by_witness":True',code)
         self.assertIn('"public_next_build_id_directly_exposed":False',code)
         self.assertIn('"rollback_execution_tested":False',code)
+        self.assertIn('"original_release_lock_preserved":True',code)
+        self.assertIn('"OWNER_BEFORE_RECEIPT_DIGEST_DRIFT"',code)
         self.assertNotIn('set -euo pipefail',code)
         self.assertNotIn('git reset --hard',code)
         self.assertNotIn('git clean',code)
@@ -67,7 +70,6 @@ class R24GPostflightTests(unittest.TestCase):
 
     def test_protected_finance_host_source_and_build_negative_vectors(self):
         scenarios=[
-           lambda a,b:b["source_sha"].__class__,
            lambda a,b:b.__setitem__("source_sha","0"*40),
            lambda a,b:b.__setitem__("next_build_id",a["next_build_id"]),
            lambda a,b:b["units"]["wolochaind-mainnet.service"].__setitem__("main_pid",12),
@@ -80,7 +82,12 @@ class R24GPostflightTests(unittest.TestCase):
            lambda a,b:b["rollback"].__setitem__("previous_build_version","wrong"),
            lambda a,b:b.__setitem__("host","other-host"),
         ]
-        for i,edit in enumerate(scenarios[1:]):
+        scenarios.extend([
+           lambda a,b:b["original_release_lock"].__setitem__("inode",999),
+           lambda a,b:b["web"].__setitem__("start_ticks",a["web"]["start_ticks"]),
+           lambda a,b:b["web"].__setitem__("pid",a["web"]["pid"]),
+        ])
+        for i,edit in enumerate(scenarios):
             with self.subTest(i=i):
                 a,b=example();edit(a,b)
                 with patch.object(g,"public_check",return_value={}):
