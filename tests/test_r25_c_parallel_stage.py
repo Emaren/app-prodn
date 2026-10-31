@@ -109,11 +109,13 @@ class R25StageTests(unittest.TestCase):
         self.assertIn("IPAddressDeny=localhost",x)
         self.assertIn("root:root",x)
         self.assertIn("BUILD_STAGED.json",x)
-    def test_16_mac_does_not_prompt_using_tty_rplus(self):
+    def test_16_mac_owner_flag_no_tty_prompt(self):
         x=MAC.read_text()
-        self.assertIn('open("/dev/tty","r")',x)
-        self.assertIn('open("/dev/tty","w")',x)
-        self.assertNotIn('open("/dev/tty","r+")',x)
+        self.assertNotIn('open("/dev/tty"',x)
+        self.assertIn('"--owner-approved",action="store_true"',x)
+        self.assertIn('OWNER_APPROVAL_FLAG_REQUIRED',x)
+        self.assertIn('OWNER_APPROVED_NONINTERACTIVE_PHASE=',x)
+
     def test_17_no_archive_sha_from_untrusted_remote(self):
         x=MAC.read_text()
         self.assertIn('"archive","--format=tar",SHA',x)
@@ -259,6 +261,16 @@ class R25StageTests(unittest.TestCase):
         self.assertIn('"source_git_archive_sha256":record["git_archive_sha256"]',source)
         self.assertIn('complete_build(before,sockets,budget,account,yarn_receipt,False,record)',source)
         self.assertIn('complete_build(before,sockets,budget,build_account,imported,True,source)',source)
+
+    def test_33_recovery_owner_requires_explicit_flag_before_archive_or_ssh(self):
+        with mock.patch.object(self.m.sys,"platform","darwin"):
+            with mock.patch.object(self.m.os,"geteuid",return_value=501):
+                with mock.patch.object(self.m,"own_archive_sha") as archive:
+                    with mock.patch.object(self.m.subprocess,"run") as runner:
+                        with self.assertRaisesRegex(self.m.Hold,"OWNER_APPROVAL_FLAG_REQUIRED"):
+                            self.m.run(".", "a"*40, "b"*64,"recover-dns",False)
+                        archive.assert_not_called()
+                        runner.assert_not_called()
 
 if __name__=="__main__":
     unittest.main()
