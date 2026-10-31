@@ -116,7 +116,7 @@ class R20PostflightTests(unittest.TestCase):
             (root/"net"/"tcp").write_text(header+tcp(8092))
             (root/"net"/"tcp6").write_text(header)
             (root/"123"/"fd"/"5").symlink_to("socket:[424242]")
-            (root/"123"/"stat").write_text("123 (daemon worker) S "+" ".join(["1"]*19+["12345"]+["0"]*10)+"\n")
+            (root/"123"/"stat").write_text("123 (daemon worker) S "+" ".join(["1"]*18+["12345"]+["0"]*10)+"\n")
             (root/"123"/"status").write_text("Uid:\t1000\t1000\t1000\t1000\n")
             cgroup=b"0::/system.slice/wolo.service\n"
             (root/"123"/"cgroup").write_bytes(cgroup)
