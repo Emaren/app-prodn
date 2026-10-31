@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4a1f0f3893c001340c6f246f9c31603ba79510fba088fc078c1678664be77a89",
+      "sha256": "55b5956779e0cc4bc3b07da1a1e69f4526631c38014c5db2db58b556e7cef936",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2463,7 +2463,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/d-r17-native-independent-producer-signer",
-    "commit": "6319c5a91a0daed777f8b8dcf31db75d9ee94965"
+    "commit": "ee5db528d5a989662b613dc1690c65d23794db68"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
