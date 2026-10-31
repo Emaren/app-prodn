@@ -182,8 +182,16 @@ jobs:
             > renaissance-88-chrome/unsealed-policy-after.txt
           cat renaissance-88-chrome/fixture-after.txt >> "$GITHUB_STEP_SUMMARY"
           printf 'UNSEALED PREVIEW ONLY: exact Chrome evidence is NOT Index certification, DocsV2 seal, or release authorization.\n' >> "$GITHUB_STEP_SUMMARY"
-          echo "BROWSER_EXIT=$browser_rc" >> renaissance-88-chrome/identity.txt
-          exit "$browser_rc"
+          # Separate independent Chrome checks. A public 88/88 PASS must not
+          # hide a failing exact-width financial/nonmutating browser boundary.
+          printf 'BROWSER_EXIT=%s W1SAFE_R16_EXIT=%s\\n' "$browser_rc" "$w1safe_rc" \\
+            >> renaissance-88-chrome/identity.txt
+          if [ "$browser_rc" -ne 0 ] || [ "$w1safe_rc" -ne 0 ]; then
+            echo "::error::W1_SAFE_CHROME_HOLD: 88-route=$browser_rc exact-width=$w1safe_rc"
+            exit 2
+          fi
+          test -s renaissance-88-chrome/w1safe-r16/review.json
+          echo "PASS: both 88-route and 375/768/1440 read-only Chrome accepted"
       - name: Assemble independent per-route statuses; preserve UNMEASURED
         if: always()
         run: |
