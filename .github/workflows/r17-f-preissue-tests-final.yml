@@ -1,0 +1,35 @@
+name: R17 F final FD200 preissue source control-plane seal
+on:
+  push:
+    branches: [r17-f-preissue-tests-final]
+permissions:
+  contents: write
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Prove new preissue and inherited FD200/P0 negative source contracts
+        run: |
+          python3 -m unittest discover -s tests -p 'test_r17_f_fd200_preissue.py' -v
+          python3 -m unittest discover -s tests -p 'test_solo_original_fd200_issuance.py' -v
+          python3 -m unittest discover -s tests -p 'test_aoe2_solo_website_p0_security.py' -v
+      - name: Retire generator BEFORE source-bound canonical baseline, verify final tree
+        run: |
+          git config user.name 'aoe2war-docsv2-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/r17-f-preissue-tests-final.yml
+          git commit -m 'ci(R17 F): retire preissue test runner before source baseline'
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet && exit 1
+          git commit -m 'docs(R17 F): reseal original FD200 source and negative tests'
+          python3 scripts/docs_v2_check.py
+          git push origin HEAD:refs/heads/r17-f-preissue-tests-final
