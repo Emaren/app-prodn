@@ -1,0 +1,56 @@
+[Unit]
+Description=AoE2WAR R25 isolated W1_SAFE parallel website (3031 only)
+Documentation=https://github.com/Emaren/app-prodn/issues/934
+After=network-online.target
+Wants=network-online.target
+# Deliberately NO Requires/BindsTo/PartOf to original financial web or Wolo.
+
+[Service]
+Type=simple
+User=aoe2war-r24-web
+Group=aoe2war-r24-web
+WorkingDirectory=/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b
+Environment=NODE_ENV=production
+Environment=WARGRAPH_RUNTIME_DISABLED=true
+Environment=AOE2WAR_PROD_DB_PREVIEW=true
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NODE_OPTIONS=--max-old-space-size=2304
+# Only B-approved independently measured SELECT-only runtime secrets.
+# DO NOT copy original /etc/aoe2hdbets or production web EnvironmentFile.
+EnvironmentFile=/etc/aoe2war/r24-parallel-web/readonly-runtime.env
+# Separately installed F/B source-pinned admission MUST verify:
+# host PG grant-only SELECT, no custody, no writer egress, method guard both
+# public and localhost, root-sealed Next stage, and distinct user/cgroup.
+# Missing integration intentionally causes refusal BEFORE Node starts.
+ExecStartPre=/usr/bin/python3 -I -B /etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py
+ExecStart=/usr/bin/node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3031
+Restart=no
+KillMode=control-group
+UMask=0027
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadOnlyPaths=/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b
+InaccessiblePaths=/etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Conservative until B provides a genuine runtime egress policy:
+# B/F must prove selective PostgreSQL read-only and denial of 8092/8093
+# plus all mutation ingress. This unit alone is NOT B financial approval.
+MemoryMax=3G
+TasksMax=256
+TimeoutStartSec=90
+
+[Install]
+WantedBy=multi-user.target
