@@ -106,7 +106,7 @@ class ActualOriginalFlockTests(unittest.TestCase):
         fcntl.flock(original,fcntl.LOCK_EX|fcntl.LOCK_NB)
         result=self.child(other)
         self.assertEqual(result.returncode,2,result.stdout+result.stderr)
-        self.assertIn("FD200 is not the original owning flock",result.stdout)
+        self.assertIn("FD200 is NOT the lock-owning open-file-description",result.stdout)
 
     def test_unlocked_fd_cannot_create_an_original_session(self):
         fresh=self.open_fd()
@@ -121,7 +121,7 @@ class ActualOriginalFlockTests(unittest.TestCase):
         replacement=self.open_fd()
         result=self.child(replacement)
         self.assertEqual(result.returncode,2,result.stdout+result.stderr)
-        self.assertIn("global release lease not held",result.stdout)
+        self.assertIn("kernel original owner evidence unavailable",result.stdout)
 
     def test_cloexec_or_missing_fd200_holds(self):
         original=self.open_fd()
@@ -146,7 +146,8 @@ class ActualOriginalFlockTests(unittest.TestCase):
         self.assertIn("Journal().inherited_lease_fd(owner_depth=2)",source)
         self.assertIn("ORIGINAL_FD200_NOT_OWNED_BY_RELEASE_CHANNEL",source)
         # Never accept a fabricated replacement flock from native issuer.
-        self.assertNotIn("flock(",source)
+        self.assertNotIn("fcntl.flock(",source)
+        self.assertIn("assert_fd_owns_exclusive_flock(200, LOCK)",source)
 
 if __name__=="__main__":
     unittest.main()
