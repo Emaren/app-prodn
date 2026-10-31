@@ -1,5 +1,6 @@
 """Quarantined accessibility preview must never turn into a source-seal bypass."""
 from pathlib import Path
+import subprocess
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -92,6 +93,54 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn('return route.abort()',chrome)
         self.assertNotIn('route.fulfill(',chrome)
         self.assertNotIn('route.continue({ method:',chrome)
+
+    def test_r19_fixture_policy_actual_node_negative_cases(self):
+        # Execute the production classification function without starting Chrome,
+        # importing no financial app modules and dispatching no network requests.
+        chrome=(ROOT/"scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs").read_text()
+        fragment=chrome[chrome.index("const backgroundRules = Object.freeze("):chrome.index("const report = {")]
+        script=r"""
+const assert=require("node:assert/strict");
+const base="http://127.0.0.1:3137";
+""" + fragment + r"""
+const url=p=>({origin:base,pathname:p});
+const mk=(path,count=1)=>Array.from({length:count},()=>({
+  reason:"NON_READ_METHOD",method:"POST",location:url(path),resource_type:"fetch",
+  frame:url("/"),initiator:{type:"script",frames:[{script:url(path==="/api/speed/sample"
+    ?"/_next/static/chunks/app/layout-pinned.js":"/_next/static/chunks/65427.pinned.js")}]},
+}));
+const foreign=(origin,pathname)=>({
+  reason:"FOREIGN_ORIGIN",method:"GET",location:{origin,pathname},
+  resource_type:"script",frame:url("/"),initiator:{type:"script",frames:[]},
+});
+const good=()=>[
+ ...mk("/api/speed/sample",2),...mk("/api/kingdom-presence/anonymous-state"),
+ foreign("https://plausible.io","/js/script.js"),
+ foreign("https://traffic.tokentap.ca","/api/beacon.js"),
+];
+function verdict(v){return classifyBlockedFixture("/",v).verdict;}
+assert.equal(verdict(good()),"PASS_BLOCKED_BACKGROUND_ONLY");
+for(const edit of [
+ v=>v[0].method="DELETE",
+ v=>v[0].location.pathname="/api/bets",
+ v=>v[0].initiator.type="other",
+ v=>v[0].initiator.frames[0].script.pathname="/finance.js",
+ v=>v[0].frame.pathname="/admin",
+ v=>v[0].resource_type="document",
+ v=>v.push(mk("/api/speed/sample")[0]),
+ v=>v.pop(),
+ v=>v[3].location.origin="https://unexpected.invalid",
+ v=>v[4].method="POST",
+ v=>v[2].reason="FOREIGN_ORIGIN",
+]){
+ const v=good();edit(v);
+ assert.equal(verdict(v),"HOLD");
+}
+console.log("R19_BLOCKED_FIXTURE_NODE_NEGATIVE=12/12_PASS");
+"""
+        result=subprocess.run(["node","-e",script],capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn("12/12_PASS",result.stdout)
 
     def test_only_plan_from_exact_next_build_can_use_preview(self):
         self.assertIn('o.action!="plan" or o.build_dir is None',self.source)
