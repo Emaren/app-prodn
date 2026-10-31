@@ -16,14 +16,14 @@ spec.loader.exec_module(b)
 
 class TestMacRepair(unittest.TestCase):
     def test_exact_immutable_source_pins_and_separate_gui_phrase(self):
-        self.assertEqual(b.ROOT_REF, "79f74e65df99ba7def4a9f529a2ad666c887f89b")
+        self.assertEqual(b.ROOT_REF, "4c9d2ec8029bd97f4307823fa1971ef326527adc")
         self.assertEqual(b.ROOT_SIZE, 14001)
-        self.assertEqual(b.ROOT_SHA, "da0205653ad0f1fb6a39ea8f3973caaa7442c2ce47e9a73491dbe4e49ec7c82b")
-        self.assertEqual(b.ROOT_BLOB, "65c1148fddae15450809a128a8c4ed71e34cb5c8")
-        self.assertEqual(b.WITNESS_REF, "d92965fc881e404b57c347ab96d18562ced48f06")
-        self.assertEqual(b.WITNESS_SIZE, 22062)
-        self.assertEqual(b.WITNESS_SHA, "edf1b42ea7cc8001da83d7076d8aa08f924860fd9a40f97431e60ad8528a30dc")
-        self.assertEqual(b.WITNESS_BLOB, "4df1cfcfa517129358ae47836481d90abd7e7054")
+        self.assertEqual(b.ROOT_SHA, "c4301d6faa0d3b9f763168f3883473425c8f2ca6f9b3e6ea03bdfbc079f6e749")
+        self.assertEqual(b.ROOT_BLOB, "5f66cdb87ee44fd91ba2c9e5c1c3e362e46d4f5c")
+        self.assertEqual(b.WITNESS_REF, "73635d328ee7c9c96a5c2e447cc08df8eae2a085")
+        self.assertEqual(b.WITNESS_SIZE, 22310)
+        self.assertEqual(b.WITNESS_SHA, "a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90")
+        self.assertEqual(b.WITNESS_BLOB, "01cb34dcd23a1793fef62d1e49ba6e6f600e8b44")
         self.assertNotIn("INSTALL-R25-B", b.AUTH)
 
     def test_cancel_mismatch_timeout_refuse_before_ssh(self):
