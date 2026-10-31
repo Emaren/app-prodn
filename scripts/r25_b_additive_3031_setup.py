@@ -8,6 +8,7 @@ untouched. No retry after partial commit: preserve sealed receipt and HOLD.
 import argparse
 import base64
 import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
@@ -191,10 +192,24 @@ def create_new(path, data, mode):
     os.chmod(path,mode)
     if sha(path.read_bytes())!=sha(data):hold("WRITTEN_FILE_BYTES_DRIFT")
 
-def new_role_sql(password):
+def scram_verifier(password):
     if not re.fullmatch(r"[a-zA-Z0-9_-]{40,100}",password):
         hold("GENERATED_PASSWORD_FORMAT")
-    # ONE database transaction; fail-closed if inherited PUBLIC/SQL capabilities.
+    # Avoid transmitting a plaintext role password in CREATE ROLE SQL.
+    salt=secrets.token_bytes(16)
+    iterations=8192
+    salted=hashlib.pbkdf2_hmac("sha256",password.encode(),salt,iterations)
+    client=hmac.new(salted,b"Client Key",hashlib.sha256).digest()
+    stored=hashlib.sha256(client).digest()
+    server=hmac.new(salted,b"Server Key",hashlib.sha256).digest()
+    return ("SCRAM-SHA-256$"+str(iterations)+":"+
+        base64.b64encode(salt).decode()+"$"+
+        base64.b64encode(stored).decode()+":"+
+        base64.b64encode(server).decode())
+
+def new_role_sql(password):
+    verifier=scram_verifier(password)
+    # ONE DB transaction; fail-closed if inherited PUBLIC/SQL capabilities.
     return ("""
 BEGIN;
 CREATE ROLE aoe2war_r25_web_ro LOGIN NOINHERIT NOSUPERUSER
@@ -224,7 +239,7 @@ BEGIN
  THEN RAISE EXCEPTION 'R25_B_NEW_ROLE_WRITABLE_OR_EXECUTE_CAPABILITY'; END IF;
 END $r25$;
 COMMIT;
-""" % password).encode()
+""" % verifier).encode()
 
 def install(args,bundle,uid):
     # No attempt to roll back after *any* external mutation; preserve partial
@@ -255,6 +270,8 @@ def install(args,bundle,uid):
     env=("DATABASE_URL=postgresql://"+NEW_ROLE+":"+quote(password,safe="")+
          "@127.0.0.1:5432/"+args.database+"\n").encode()
     create_new(ENVFILE,env,0o600)
+    uid_status()
+    old_web();new_state()
     cmd(["/usr/sbin/nft","-f","-"],data=nft_src)
     create_new(DROPIN,bundle["dropin"],0o644)
     cmd(["/usr/bin/systemctl","daemon-reload"])
