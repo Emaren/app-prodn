@@ -231,7 +231,7 @@ server {
             built={"status":"BUILD_STAGED","candidate_sha":g.TARGET,
                    "source_git_archive_sha256":g.ARCHIVE_SHA,
                    "tree_sha256":g.digest(g.canon(build_rows)),
-                   "build_id":"TrueNextBuild_ABC","root_sealed":True,
+                   "build_id":"TrueNextBuild_ABC","files":1,"root_sealed":True,
                    "financial_writes_authorized":False,
                    "old_web_pid_untouched":g.EXPECTED_OLD_PID}
             files={"schema":"r25-c-source-files.v1","rows":source_rows}
