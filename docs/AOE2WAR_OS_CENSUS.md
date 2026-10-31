@@ -1,9 +1,9 @@
 ---
 id: "aoe2war.app-prodn.os-architecture-registry-v1"
-title: "AoE2WAR OS — Canonical OS Inventory and Architecture Authority Map (reviewed source v1)"
+title: "AoE2WAR OS — Canonical inventory and capability ownership"
 type: "reference"
-status: "draft-source-only-not-deployed"
-owner: "central-command"
+status: "draft"
+owner: "aoe2war-web"
 systems: ["app-prodn","wolochain","vpssentry","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
