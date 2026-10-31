@@ -108,5 +108,17 @@ class TestIntegratedG(unittest.TestCase):
             with self.assertRaisesRegex(g.Hold, "C_STAGE_ROOT_TRUST_BOUNDARY"):
                 g.protected_c_stage_boundary()
 
+    def test_g_independent_c_physical_build_pin_adverse(self):
+        self.assertEqual(g.C_PHYSICAL_FILES,87038)
+        self.assertEqual(g.C_PHYSICAL_BUILD_ID,"-dJl5VyecHu5BKNvfErJe")
+        good={"tree_sha256":g.C_PHYSICAL_TREE_SHA256,"build_id":g.C_PHYSICAL_BUILD_ID,
+              "build_version":g.C_PHYSICAL_APP_VERSION,"files":g.C_PHYSICAL_FILES}
+        g.require_c_physical_build_identity(good)
+        for key,val in (("tree_sha256","a"*64),("build_id","wrong"),
+                        ("build_version","wrong"),("files",87039)):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(g.Hold,"C_PHYSICAL_87038_FILE_TREE_BUILD_ID_MISMATCH"):
+                    g.require_c_physical_build_identity({**good,key:val})
+
 if __name__=="__main__":
     unittest.main()
