@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/f-r23-c-v6-owner-source-approved` at `5992f6fb0d495a9c37a6c8bd9d56f5345abfb307`
+Implementation baseline: `review/f-r23-c-v6-owner-source-approved` at `b35cd2e0050df4c1a924f920f48b1e76e09d45cc`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
