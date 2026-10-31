@@ -57,6 +57,24 @@ def fixture():
     return before,after,rollback
 
 class R25Tests(unittest.TestCase):
+    def test_c_root_only_stage_matches_new_independent_source(self):
+        self.assertEqual(g.STAGE,pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b"))
+        self.assertEqual(g.STAGE.parent,pathlib.Path("/var/lib"))
+        self.assertNotIn("/var/www/",str(g.STAGE))
+        root_dir=type("RootStat",(),{"st_mode":g.stat.S_IFDIR|0o755,"st_uid":0})()
+        writable_dir=type("WritableStat",(),{"st_mode":g.stat.S_IFDIR|0o775,"st_uid":0})()
+        user_dir=type("UserStat",(),{"st_mode":g.stat.S_IFDIR|0o755,"st_uid":1000})()
+        with patch.object(g.pathlib.Path,"lstat",return_value=root_dir):
+            g.protected_c_stage_boundary()
+        for bad in (writable_dir,user_dir):
+            with self.subTest(mode=bad.st_mode,uid=bad.st_uid):
+                with patch.object(g.pathlib.Path,"lstat",return_value=bad):
+                    with self.assertRaisesRegex(g.Hold,"C_STAGE_ROOT_TRUST_BOUNDARY"):
+                        g.protected_c_stage_boundary()
+        with patch.object(g,"STAGE",pathlib.Path("/var/www/AoE2HDBets/stage")):
+            with self.assertRaisesRegex(g.Hold,"C_ROOT_STAGE_PATH_NOT_REVIEWED"):
+                g.protected_c_stage_boundary()
+
     def test_actual_phase_contract_positive(self):
         b,a,r=fixture()
         self.assertEqual(g.verify(b,a,"after")["nginx_active_upstream"],3031)
