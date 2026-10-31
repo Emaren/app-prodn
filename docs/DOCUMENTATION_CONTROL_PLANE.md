@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `repair/g-r10-native-fd200-final-docs-20261030` at `d1d4b30dd3a8a0ba95ea876c7c67a13edce27e0b`
+Implementation baseline: `review/d-r16-native-producer-inbox-20261030` at `f4b26976efa0d55b448edeb3c5a82bae14bd2f8c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
