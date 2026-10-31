@@ -102,6 +102,21 @@ class ParallelR24(unittest.TestCase):
         self.assertIn('with open("/dev/tty","r")',mac)
         self.assertNotIn('open("/dev/tty","r+")',mac)
         self.assertIn('StrictHostKeyChecking=yes',mac)
+    def test_E_physical_receipt_hash_must_match_owner_policy(self):
+        j={"E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
+           "E_durable_rollback_sha256":"0"*64}
+        with mock.patch.object(self.s,"root_file",return_value=b'{"status":"PASS"}'):
+            with self.assertRaisesRegex(self.s.Hold,
+                                        "E_PHYSICAL_CONTENT_RECEIPT_DIGEST_MISMATCH"):
+                self.s.verified_durable_e_rollback(j)
+    def test_E_physical_success_must_not_claim_rollback_exercise(self):
+        j={"E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-durable-rollback.json"}
+        raw=b'{"schema":"aoe2war.e.r24.website.rollback-content.v1","status":"IMAGINARY_SUCCESS"}'
+        j["E_durable_rollback_sha256"]=self.s.sha(raw)
+        with mock.patch.object(self.s,"root_file",return_value=raw):
+            with self.assertRaisesRegex(self.s.Hold,
+                                        "E_CONTENT_VERIFICATION_NOT_GENUINE_OR_SCOPE_DRIFT"):
+                self.s.verified_durable_e_rollback(j)
     def test_no_approval_iff_unreviewed(self):
         j={"schema":self.s.SCHEMA,"nonce":"f"*32,"candidate_sha":self.s.TARGET,
          "previous_sha":"a"*40,"previous_build_id":"oldBuild123",
@@ -111,6 +126,7 @@ class ParallelR24(unittest.TestCase):
          "finance_snapshot_sha256":"b"*64,"wolo_snapshot_sha256":"c"*64,
          "old_web_snapshot_sha256":"d"*64,"candidate_web_snapshot_sha256":"e"*64,
          "C_stage_artifact_sha256":"f"*64,"E_durable_rollback_sha256":"1"*64,
+         "E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
          "lane_reviews":{lane:"2"*40 for lane in "BCDEFG"}}
         with self.assertRaisesRegex(self.s.Hold,"INDEPENDENT_B_REVIEW_NOT_APPROVED"):
             self.s.approval(self.s.canonical(j))
