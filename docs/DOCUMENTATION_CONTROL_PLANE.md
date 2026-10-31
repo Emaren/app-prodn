@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r25-c-additive-parallel-source-build` at `19bd795abf2901d4849eeb04a2e2e9dcae5a6e21`
+Implementation baseline: `r25-c-additive-parallel-source-build` at `f6e9308a568a6311d2523d4c1abe3dcc888729b7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
