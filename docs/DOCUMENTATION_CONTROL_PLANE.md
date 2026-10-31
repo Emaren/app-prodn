@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r18-f-controller-docsv2-seal` at `bf60acf8de2ae373fa99c98c3857f2c5b2177d8c`
+Implementation baseline: `r18-f-controller-final-natives-seal` at `320f9452a0bb4a113786e576f96d1347d84e040a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
