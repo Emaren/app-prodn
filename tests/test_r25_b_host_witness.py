@@ -195,6 +195,11 @@ meta skuid 1000 ct state new drop"""
         self.assertEqual(b.USER,"aoe2war-r24-web")
         self.assertEqual(b.UNIT,"aoe2hdbets-web-r24.service")
 
+    def test_new_c_root_owned_stage_is_exact_and_old_mutable_parent_excluded(self):
+        self.assertEqual(str(b.SOURCE), "/var/lib/aoe2war-r25-web-0cee3c836c4b")
+        self.assertNotIn("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b", str(b.SOURCE))
+        self.assertTrue(str(b.SOURCE/".next"/"cache").startswith(str(b.SOURCE)))
+
     def test_root_witness_rejects_nonroot_before_physical_queries(self):
         with patch.object(b.os,"geteuid",return_value=1000):
             with self.assertRaisesRegex(RuntimeError,"ORIGINAL_HEL1_ROOT_REQUIRED"):

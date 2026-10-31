@@ -28,6 +28,11 @@ def bundle():
     return base64.b64encode(json.dumps(blob).encode()).decode()
 
 class TestOwnerInstall(unittest.TestCase):
+    def test_c_build_staged_gate_denies_before_new_only_install(self):
+        self.assertEqual(str(b.C_STAGE),"/var/lib/aoe2war-r25-web-0cee3c836c4b")
+        with self.assertRaisesRegex(RuntimeError,"C_PHYSICAL_BUILD_STAGED_REQUIRED"):
+            b.c_build_ready()
+
     def test_real_b_immutable_bundle_is_accepted(self):
         d=b.decode_bundle(bundle())
         self.assertEqual(b.sha(d["guard"]),b.GUARD_SHA)

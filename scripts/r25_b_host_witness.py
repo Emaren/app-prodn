@@ -31,7 +31,7 @@ DB_ROLE = "aoe2war_r25_web_ro"
 GUARD = pathlib.Path("/usr/local/lib/aoe2war-r25/r25_b_guard.cjs")
 PORT = 3031
 GUARD_HEALTH = "http://127.0.0.1:3031/__aoe2war_r25_b_isolation"
-SOURCE = pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+SOURCE = pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 ENV_ALLOW = set((
     "NODE_ENV WARGRAPH_RUNTIME_DISABLED AOE2WAR_PROD_DB_PREVIEW "
     "AOE2WAR_R25_ISOLATED_WEB NODE_OPTIONS DATABASE_URL PATH HOME USER "

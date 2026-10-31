@@ -22,7 +22,7 @@ import sys
 from urllib.parse import quote
 
 HOST="ubuntu-4gb-hel1-11"
-SOURCE_COMMIT="7f365a3d27f56d6321ad10a34706889814fe4131"
+SOURCE_COMMIT="87d340314e46032fce68e5cfdcc268b8e6593a82"
 OLD_PID=2625090
 NEW_USER="aoe2war-r24-web"
 NEW_ROLE="aoe2war_r25_web_ro"
@@ -32,9 +32,12 @@ WITNESS=Path("/etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py")
 ENVFILE=Path("/etc/aoe2war/r24-parallel-web/readonly-runtime.env")
 DROPIN=Path("/etc/systemd/system/aoe2hdbets-web-r24.service.d/90-r25-b-isolation.conf")
 RECEIPT=Path("/var/lib/aoe2war-r25-b-setup/receipt.json")
+C_STAGE=Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
+C_AUDIT=Path("/var/lib/aoe2war-r25-c-additive")
+C_TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
 GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
-WITNESS_SHA="c13d42c7de3ab8c9e55a68008ede2a9e2b55375d4aeae735cd47cf368b0a5e80"
-DROPIN_GIT_BLOB="c9dc1999ba5c62f149240e4bab11b579afeb69bc"
+WITNESS_SHA="c26b5a70208af648d0e7e0f329c5760efaca7eefa526e8622f0fc23e58a115ec"
+DROPIN_GIT_BLOB="9729796d09f4d523aff4ee2cced81cfe427f8b64"
 NFT_GIT_BLOB="4b7323c8fe81ef09e8543bf4f9cfc22e3729aaad"
 
 def gitblob(data):
@@ -140,6 +143,27 @@ def check_inputs(args):
     nft_tables()
     role_absent(args.database)
     return uid
+
+def c_build_ready():
+    """Root-owned C build marker gate, not F's full artifact rehash."""
+    receipt=C_AUDIT/"BUILD_STAGED.json"
+    bidfile=C_STAGE/".next"/"BUILD_ID"
+    if not C_STAGE.is_dir() or not C_AUDIT.is_dir() or not receipt.is_file() or not bidfile.is_file():
+        hold("C_PHYSICAL_BUILD_STAGED_REQUIRED_BEFORE_B_INSTALL")
+    for item in (C_STAGE,C_AUDIT): root_path(item,expect_dir=True)
+    for item in (receipt,bidfile): root_path(item)
+    raw=receipt.read_bytes()
+    if not raw or len(raw)>65536: hold("C_BUILD_RECEIPT_BOUNDS")
+    try: data=json.loads(raw)
+    except (ValueError,UnicodeError): hold("C_BUILD_RECEIPT_INVALID")
+    bid=bidfile.read_text().strip()
+    if (data.get("schema")!="aoe2war.r25.c.full-built-artifact.v1" or
+        data.get("status")!="BUILD_STAGED" or data.get("candidate_sha")!=C_TARGET or
+        data.get("build_id")!=bid or data.get("root_sealed") is not True or
+        data.get("new_service_started") is not False or
+        not re.fullmatch(r"[A-Za-z0-9_-]{8,128}",bid)):
+        hold("C_BUILD_RECEIPT_OR_REAL_NEXT_ID_MISMATCH")
+    return bid
 
 def decode_bundle(data):
     try:
@@ -318,7 +342,9 @@ def main():
                  "would_install_guard_sha256":GUARD_SHA,
                  "would_install_witness_sha256":WITNESS_SHA,
                  "public_cutover_authorized":False}
-        else:out=install(a,bundle,uid)
+        else:
+            c_build_ready() # fail BEFORE started.json/user/PG/nft mutations
+            out=install(a,bundle,uid)
         print(json.dumps(out,sort_keys=True))
         return 0
     except (RuntimeError,OSError,ValueError,subprocess.TimeoutExpired) as e:
