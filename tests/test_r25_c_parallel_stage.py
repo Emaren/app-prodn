@@ -124,7 +124,7 @@ class R25StageTests(unittest.TestCase):
         x=SRC.read_text()
         self.assertIn('commands.add_argument("--source-build"',x)
         self.assertIn("stage_source(a.archive_sha256)\n        build_source()",x)
-    def test_20_role_has_no_signed permit fabrication(self):
+    def test_20_role_has_no_signed_permit_fabrication(self):
         x=SRC.read_text()
         self.assertNotIn("owner-private.pem",x)
         self.assertNotIn("root-helper-install-v2",x)
