@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r24-e-website-only-storage-rollback-review` at `225fc205966755967e7710eba5e39cb90d64aa7f`
+Implementation baseline: `r25-e-physical-parallel-certificate` at `605191008bae0dc2784c951666315df1049144e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
