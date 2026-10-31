@@ -1,0 +1,38 @@
+name: R17 F FD200 Preissue Safety + Canonical Source Seal
+on:
+  push:
+    branches: [r17-f-preissue-canonical]
+permissions:
+  contents: write
+jobs:
+  preissue:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Compile bounded original FD200 preissue/source modules
+        run: |
+          python3 -m py_compile scripts/aoe2_solo_website_nonce_ledger.py scripts/aoe2_solo_website_root_phase.py scripts/aoe2_solo_website_engine_v1.py scripts/aoe2_solo_website_command_channel.py
+      - name: Run genuine negative/preissue and original ledger contracts
+        run: |
+          python3 -m unittest discover -s tests -p 'test_r17_f_fd200_preissue.py' -v
+          python3 -m unittest discover -s tests -p 'test_aoe2_solo_website_nonce_ledger.py' -v
+          python3 -m unittest discover -s tests -p 'test_aoe2_solo_website_engine_guards.py' -v
+      - name: Retire disposable workflow first then seal and verify canonical DocsV2
+        run: |
+          git config user.name 'aoe2war-docsv2-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/r17-f-preissue-canonical.yml
+          git commit -m 'ci(R17 F): retire temporary FD200 test runner before DocsV2 source seal'
+          python3 scripts/docs_v2_check.py --write --refresh-baseline
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json
+          git diff --cached --quiet && exit 1
+          git commit -m 'docs(R17 F): source-bound original FD200 preissue review baseline'
+          python3 scripts/docs_v2_check.py
+          git push origin HEAD:refs/heads/r17-f-preissue-canonical
