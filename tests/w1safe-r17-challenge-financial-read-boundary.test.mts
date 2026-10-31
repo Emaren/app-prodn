@@ -16,6 +16,9 @@ const header = read("app/api/header-summary/route.ts");
 const prewarm = read("scripts/prewarm-production.mjs");
 const reconcile = read("app/api/challenges/reconcile/route.ts");
 const timer = read("deploy/aoe2hdbets-challenge-reconcile.timer");
+const service = read("deploy/aoe2hdbets-challenge-reconcile.service");
+const runner = read("scripts/run-challenge-reconciliation.mjs");
+const scripts = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
 const championship = read("lib/championshipChallenges.ts");
 
 function section(start: string, end: string) {
@@ -62,6 +65,14 @@ test("Challenge Hall and exact challenge GET readers cannot mutate settlement/ti
 
 test("authenticated five-minute Challenge POST retains original real replay/title writer", () => {
   assert.match(timer, /OnUnitActiveSec=5min/);
+  assert.match(service, /Type=oneshot/);
+  assert.match(service, /User=tony/);
+  assert.match(service, /ExecStart=\/usr\/bin\/npm run challenge:reconcile/);
+  assert.equal(scripts.scripts["challenge:reconcile"], "node scripts/run-challenge-reconciliation.mjs");
+  assert.match(runner, /CHALLENGE_RECONCILE_TOKEN/);
+  assert.match(runner, /if \(!token\)/);
+  assert.match(runner, /method:\s*"POST"/);
+  assert.match(runner, /new URL\("\/api\/challenges\/reconcile"/);
   assert.match(reconcile, /export async function POST\s*\(/);
   assert.match(reconcile, /tokensEqual\s*\(suppliedToken,\s*runToken\)/);
   assert.match(reconcile, /await requireAdmin\s*\(request\)/);
