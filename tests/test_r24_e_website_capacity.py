@@ -36,7 +36,7 @@ class R24WebsiteCapacity(unittest.TestCase):
                          "PASS_STORAGE_FEASIBILITY_NOT_RELEASE_AUTHORIZATION")
         self.assertEqual(r["root_min_needed_bytes"],6*m.GIB)
         self.assertEqual(r["volume_min_needed_bytes"],
-                         m.allocated_bytes(self.old)+4*m.GIB)
+                         m.durable_copy_bytes(self.old)+4*m.GIB)
         self.assertFalse(r["rollback_content_verified"])
         self.assertFalse(r["release_authorized"])
 
@@ -89,6 +89,22 @@ class R24WebsiteCapacity(unittest.TestCase):
             m.examine(SimpleNamespace(candidate_max_bytes=9*m.GIB,stage="plan"))
         with self.assertRaises(m.Hold):
             m.guard_directory(self.root,self.web,self.dev)
+
+    def test_absolute_dotdot_escape_is_rejected_before_read(self):
+        dangerous=self.durable/".."/".."/"traffic-db"
+        with self.assertRaises(m.Hold):
+            m.guard_directory(dangerous,self.vol,self.dev)
+        with self.assertRaises(m.Hold):
+            m.compare_rollback(str(dangerous))
+
+    def test_sparse_source_requires_full_logical_copy_budget(self):
+        sparse=self.old/"sparse.bin"
+        with open(sparse,"wb") as out:
+            out.truncate(32*1024**2)
+        actual=m.allocated_bytes(self.old)
+        budget=m.durable_copy_bytes(self.old)
+        self.assertGreater(budget,actual+32*1024**2)
+        self.assertGreater(budget,512*1024**2)
 
     def test_no_service_or_finance_mutation_ops(self):
         source=Path(m.__file__).read_text()
