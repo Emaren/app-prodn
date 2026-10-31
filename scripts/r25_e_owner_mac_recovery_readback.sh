@@ -14,7 +14,14 @@ try:
     with urllib.request.urlopen(url,timeout=25) as response:worker=response.read(size+1)
 except Exception as exc:hold('IMMUTABLE_E_SOURCE_FETCH_'+type(exc).__name__)
 if len(worker)!=size or hashlib.sha256(worker).hexdigest()!=sha:hold('EXACT_E_WORKER_SHA_OR_SIZE_MISMATCH')
-campaign=input('Paste exact NEW campaign from COPY_VERIFIED (r25-e-...): ').strip()
+# The Python program itself arrives via a heredoc: sys.stdin is exhausted here.
+# Read the operator's existing terminal explicitly; no server mutation occurs.
+try:
+    with open('/dev/tty','r+') as tty:
+        tty.write('Paste exact NEW campaign from COPY_VERIFIED (r25-e-...): ')
+        tty.flush()
+        campaign=tty.readline(160).strip()
+except OSError as exc:hold('OWNER_TTY_REQUIRED_'+type(exc).__name__)
 if not re.fullmatch(r'r25-e-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{20}',campaign):
     hold('NEW_CAMPAIGN_ID_REQUIRED')
 path='/mnt/HC_Volume_105319120/aoe2war/rollbacks/'+campaign+'/prior-next'
