@@ -24,3 +24,18 @@ Future lanes are individually assigned via a new `ASSIGN` event, bounded to **1,
 ## Review boundaries
 
 The SHA chain detects edits in the local log but is **not an independent cryptographic signature**. Repository Git commit review and source-linked independent evidence are the durable authority. The CLI never operates any external account, GitHub API, web process, signer, financial service, or HEL1 host. No secret values are stored. **P3 must never block F's P0 owner-approved website-only parallel release.**
+
+## Canonical #1090 OS IDs and Kingdom Run-Up (#1089)
+
+The additive [Central OS registry PR #1090](https://github.com/Emaren/app-prodn/pull/1090) supplies **14 subordinate source identities**, plus the AoE2WAR umbrella. The crosswalk `config/central-agent-os-bindings.v1.json` associates the six B–G assignments with existing OS *domains*, never active daemons. **Doctor** and **Shepherd** are existing supervisory UI roles; **Composer** is a proposed workflow-composition supervisory role. None is counted as a separate verified autonomous worker. Seven registered documentation titles are not an OS count.
+
+The pure CLI `scripts/aoe2_r25_kingdom_runup_read_model.py` generates the bounded JSON projection for future public `/aoe2war-os/deployment` and authenticated admin `/admin/deployment-os`. The model does **not** create these routes or a new poller. A future UI reads the same existing materialized release observation feed and renders the eight issue #1089 stages with explicit UNKNOWN, STALE, HOLD, source/owner reported, host reported, public observed and certification-not-issued states. No fabricated progress percentages, status badges promoted from CI, active agent counts inferred from OS cards, or root/control operations from public requests.
+
+```bash
+python3 scripts/aoe2_r25_kingdom_runup_read_model.py --audience public
+python3 scripts/aoe2_r25_kingdom_runup_read_model.py --audience admin
+```
+
+The current stage is **SOURCE_EXTRACTED, OWNER_REPORTED** from [issue #1089](https://github.com/Emaren/app-prodn/issues/1089), **not BUILD_STAGED, PARALLEL_RUNNING or LIVE_VERIFIED**. A supplied `LIVE_VERIFIED` receipt remains `AWAITING_INDEPENDENT_RELEASE_CERTIFICATION`; this reader cannot verify F's native signatures or public live identity. Future authenticated backend integrations, route access control, 375/768/1440 visual acceptance and independent F production approval must be reviewed separately.
+
+One hierarchy, no duplicate mechanisms: Central sets priorities and owner-approved dispatch, Release OS executes, Deployment OS admits the scope, Orchestra/Composer plans approved DAGs, Agent OS may eventually run bounded workers, Recovery OS owns genuine rollback, and Kingdom Run-Up only **reads** receipts. P3 never holds P0.
