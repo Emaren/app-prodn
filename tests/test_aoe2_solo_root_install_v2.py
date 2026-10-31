@@ -206,8 +206,9 @@ class RootManifestTests(unittest.TestCase):
 
     def test_signed_permit_consumption_is_one_time(self):
         with tempfile.TemporaryDirectory() as td:
-            with mock.patch.object(m,"CONFIG",pathlib.Path(td)),mock.patch.object(m,"protected",return_value=None):
-                # Simulate a root-only controlled temp directory for O_EXCL.
+            with mock.patch.object(m,"CONFIG",pathlib.Path(td)),mock.patch.object(m,"protected",return_value=None),mock.patch.object(m.os,"chown",return_value=None):
+                # CI is unprivileged: emulate only root chown after O_EXCL/fsync;
+                # real installer still requires EUID0 and a protected root tree.
                 first=m.consume_permit("a"*64,"install","b"*64)
                 self.assertTrue(first.is_file())
                 with self.assertRaisesRegex(m.Hold,"OWNER_INSTALL_PERMIT_REPLAY"):
