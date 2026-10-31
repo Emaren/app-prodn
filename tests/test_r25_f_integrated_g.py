@@ -36,7 +36,8 @@ class TestIntegratedG(unittest.TestCase):
         output=b"# configuration file /etc/nginx/sites-available/aoe2war.com:\n"+data
         with mock.patch.object(g,"root_file",return_value=data):
             with mock.patch.object(g,"run",return_value=output):
-                return g.nginx_route({"nginx_config":"/etc/nginx/sites-available/aoe2war.com"})
+                with mock.patch.object(g.os.path,"samefile",return_value=True):
+                    return g.nginx_route({"nginx_config":"/etc/nginx/sites-available/aoe2war.com"})
     def test_compile_all_three(self):
         for path in (G_SOURCE,MAC_SOURCE,F_SOURCE):
             ast.parse(path.read_text())
