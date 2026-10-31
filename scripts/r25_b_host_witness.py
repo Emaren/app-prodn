@@ -145,9 +145,16 @@ def validate_filesystem_wall(status):
     private_cache="/var/cache/aoe2war-r25-b-next-cache"
     cache_target=str(SOURCE/".next"/"cache")
     accepted={cache_target,private_cache}
-    if (set(rw)!=accepted or status.get("CacheDirectory")!="aoe2war-r25-b-next-cache"
+    # systemctl show serializes the template's default recursive bind as :rbind.
+    # Accept only the exact single source->destination with the documented
+    # default recursive mode (or its unadorned representation); never accept
+    # other options, additional binds, reordered paths, or duplicate RW paths.
+    bind=private_cache+":"+cache_target
+    binds=status.get("BindPaths","").split()
+    if (len(rw)!=2 or set(rw)!=accepted
+        or status.get("CacheDirectory")!="aoe2war-r25-b-next-cache"
         or status.get("CacheDirectoryMode") not in ("0700","448")
-        or status.get("BindPaths","").split()!=[private_cache+":"+cache_target]):
+        or len(binds)!=1 or binds[0] not in (bind,bind+":rbind")):
         hold("NEW_SERVICE_PRIVATE_CACHE_MOUNT_NOT_PROVEN")
     if not set(rw).issubset(accepted):
         hold("NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE")
