@@ -10,7 +10,7 @@ p=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)
 H="a"*64
 REVIEW={"B_FINANCE_REVIEW_SHA":"b"*40,"C_ROOT_OPERATOR_SHA":"c"*40,
-        "E_CAPACITY_REVIEW_SHA":"d"*40,"F_INTEGRATION_SHA":"e"*40}
+        "E_CAPACITY_REVIEW_SHA":"d"*40,"F_REVIEW_AUTHORITY_SHA":"e"*40}
 
 
 def facts():
