@@ -40,7 +40,8 @@ def check_host():
     return WEB.stat().st_dev,VOLUME.stat().st_dev
 
 def guard_directory(p,ancestor,dev):
-    require(p.is_absolute() and p!=ancestor and p.is_relative_to(ancestor),
+    require(p.is_absolute() and p!=ancestor and p.is_relative_to(ancestor)
+            and ".." not in p.parts,
             "PATH_OUTSIDE_APPROVED_ROOT")
     cur=ancestor
     require(stat.S_ISDIR(os.lstat(cur).st_mode),
@@ -60,6 +61,17 @@ def allocated_bytes(path):
     left,sep,_=r.stdout.partition("\t")
     require(sep and left.isdecimal(),"DU_RESULT_INVALID")
     return int(left)
+
+def durable_copy_bytes(path):
+    """Bound the copy even if sparse files/hardlinks expand on the target."""
+    r=subprocess.run(["/usr/bin/du","-s","-B1","--apparent-size","--count-links",
+                      "--",str(path)],capture_output=True,text=True,
+                     stdin=subprocess.DEVNULL,timeout=25,check=False)
+    require(r.returncode==0,"DU_APPARENT_FAILED")
+    raw,sep,_=r.stdout.partition("\t")
+    require(sep and raw.isdecimal(),"DU_APPARENT_INVALID")
+    size=max(allocated_bytes(path),int(raw))
+    return size+size//10+512*1024**2
 
 def free_bytes(path):
     v=os.statvfs(path)
@@ -90,7 +102,8 @@ def examine(args):
     # budget for TWO new candidate footprints plus a 4GiB root reserve.
     root_needed=2*budget+ROOT_RESERVE
     # New durable old-runtime twin is a physically separate device.
-    volume_needed=old_bytes+VOLUME_RESERVE
+    volume_copy_budget=durable_copy_bytes(old)
+    volume_needed=volume_copy_budget+VOLUME_RESERVE
     stage=None
     if args.stage=="post-stage":
         candidate=guard_directory(WEB/".next-release",WEB,rootdev)
@@ -108,6 +121,7 @@ def examine(args):
       web_path=str(WEB),root_dev=rootdev,volume_path=str(VOLUME),
       volume_dev=voldev,old_next_build_id=old_id,
       old_next_allocated_bytes=old_bytes,
+      prior_next_durable_copy_budget_bytes=volume_copy_budget,
       candidate_build_peak_budget_bytes_owner_or_F_approved=budget,
       root_available_bytes=rf,root_min_needed_bytes=root_needed,
       volume_available_bytes=vf,volume_min_needed_bytes=volume_needed,
@@ -128,7 +142,11 @@ def tree_digest(root,dev):
                 "VERIFY_TIME_BUDGET")
         directory,rel=pending.pop()
         with os.scandir(directory) as scanned:
-            entries=sorted(scanned,key=lambda x:x.name)
+            entries=[]
+            for entry in scanned:
+                require(count+len(entries)<MAX_FILES,"VERIFY_DIRECTORY_ENTRY_BUDGET")
+                entries.append(entry)
+            entries.sort(key=lambda x:x.name)
         for entry in entries:
             count+=1
             require(count<=MAX_FILES,"VERIFY_FILE_BUDGET")
