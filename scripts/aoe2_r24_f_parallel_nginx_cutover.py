@@ -284,24 +284,131 @@ def public_version():
     need(type(obj)==dict and type(obj.get("buildVersion"))==str,
          "PUBLIC_VERSION_INVALID")
     return obj["buildVersion"]
+# The six real web upstreams are separate Nginx locations on HEL1. Wolo
+# /rpc and /rest must keep their independent ports and POST/OPTIONS semantics.
+WEB_LOCATIONS={
+    b"^~ /players/by-name/",
+    b"= /api/kingdom-presence/events",
+    b"^~ /api/",
+    b"= /",
+    b"^~ /download/watcher/",
+    b"/",
+}
+METHOD_CHECK=b"if ($request_method !~ ^(GET|HEAD)$) { return 405; }"
+VHOST=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")
+def match_brace(src,at):
+    """Bound one brace with nested Nginx blocks; never parse from a '}' guess."""
+    need(src[at:at+1]==b"{","NGINX_EXPECTED_OPEN_BRACE")
+    depth=0;quote=None;comment=False;escaped=False
+    for i in range(at,len(src)):
+        ch=src[i]
+        if comment:
+            if ch==10:comment=False
+            continue
+        if quote is not None:
+            if escaped:escaped=False
+            elif ch==92:escaped=True
+            elif ch==quote:quote=None
+            continue
+        if ch==35:comment=True;continue
+        if ch in (34,39):quote=ch;continue
+        if ch==123:depth+=1
+        elif ch==125:
+            depth-=1
+            if depth==0:return i
+            need(depth>=0,"NGINX_UNBALANCED_BRACES")
+    raise Hold("NGINX_UNCLOSED_LOCATION_OR_SERVER")
+def scoped_https(src):
+    """Find exactly one named TLS server in THIS dedicated vhost, no others."""
+    need(len(src)<131072,"NGINX_VHOST_SIZE_UNBOUNDED")
+    results=[];target_https=[]
+    for m in re.finditer(rb"(?m)^[ \t]*server[ \t]*\{",src):
+        op=src.index(b"{",m.start(),m.end())
+        end=match_brace(src,op)
+        body=src[op+1:end]
+        name=re.search(rb"(?m)^[ \t]*server_name[ \t]+([^;]+);",body)
+        if not name:raise Hold("NGINX_UNNAMED_SERVER_IN_DEDICATED_VHOST")
+        names=set(name.group(1).split())
+        need(names=={b"aoe2war.com",b"www.aoe2war.com"},
+             "NGINX_UNRELATED_SERVER_IN_TARGET_FILE")
+        https=bool(re.search(rb"(?m)^[ \t]*listen[ \t]+(?:\[::\]:)?443\b",body))
+        http=bool(re.search(rb"(?m)^[ \t]*listen[ \t]+(?:\[::\]:)?80\b",body))
+        need(https != http,"NGINX_UNKNOWN_VHOST_LISTENER_SHAPE")
+        results.append((m.start(),end,https))
+        if https:target_https.append((op+1,end,body))
+    need(len(results)==2 and len(target_https)==1 and
+         len([x for x in results if x[2]])==1,"NGINX_EXPECTED_HTTPS_AND_HTTP_PAIR")
+    lo,hi,body=target_https[0]
+    # Do not edit included/shared routes or an upstream macro by accident.
+    inc=re.findall(rb"(?m)^[ \t]*include[ \t]+([^;]+);",body)
+    need(all(x==b"/etc/letsencrypt/options-ssl-nginx.conf" for x in inc),
+         "NGINX_UNREVIEWED_SHARED_INCLUDE")
+    return lo,hi,body
 def safe_replace_site(original,chosen):
-    # Approval pins a complete existing nginx file. This limited v1 may only
-    # change a UNIQUE default location upstream; never a finance API location.
-    need(original.count(b"location / {")==1,"UNKNOWN_NGINX_LOCATION_SHAPE")
-    start=original.index(b"location / {")+len(b"location / {")
-    end=original.find(b"}",start)
-    need(end>start,"UNKNOWN_NGINX_BLOCK")
-    block=original[start:end]
-    need(block.count(OLD_UPSTREAM)==1,"UNREVIEWED_OLD_PROXY_UPSTREAM")
-    need(original.count(OLD_UPSTREAM)>=1,"OLD_UPSTREAM_MISSING")
-    need(b"proxy_pass http://127.0.0.1:3031;" not in original,
-         "CANDIDATE_ALREADY_ROUTED")
-    block2=block.replace(OLD_UPSTREAM,chosen)
-    # Explicitly restrict the GENERAL web location; other exact locations and
-    # server actions must be covered by separate real B positive host review.
-    need(b"limit_except" not in block,"EXISTING_NGINX_METHOD_POLICY_UNREVIEWED")
-    block2=b"\n        limit_except GET HEAD { deny all; }\n"+block2
-    return original[:start]+block2+original[end:]
+    """Edit all six exact old web routes, never the Wolo or other vhosts."""
+    need(chosen==NEW_UPSTREAM,"NGINX_ONLY_REVIEWED_CANDIDATE_UPSTREAM")
+    lo,hi,body=scoped_https(original)
+    need(body.count(OLD_UPSTREAM)==6 and
+         original.count(OLD_UPSTREAM)==6 and
+         NEW_UPSTREAM not in original,"NGINX_EXACT_SIX_OLD_WEB_UPSTREAMS_REQUIRED")
+    matches=list(re.finditer(rb"(?m)^[ \t]*location[ \t]+([^{}\r\n]+)[ \t]*\{",body))
+    found={};changes=[]
+    for m in matches:
+        label=b" ".join(m.group(1).split())
+        op=body.index(b"{",m.start(),m.end())
+        end=match_brace(body,op)
+        contents=body[op+1:end]
+        if OLD_UPSTREAM not in contents:continue
+        need(label in WEB_LOCATIONS and label not in found,
+             "NGINX_UNREVIEWED_WEB_PROXY_LOCATION")
+        need(contents.count(OLD_UPSTREAM)==1 and
+             len(re.findall(rb"(?m)^[ \t]*proxy_pass\b",contents))==1,
+             "NGINX_UNREVIEWED_PROXY_LOCATION_DIRECTIVE")
+        found[label]=True
+        revised=contents.replace(OLD_UPSTREAM,chosen)
+        if METHOD_CHECK not in revised:
+            need(b"limit_except" not in revised and
+                 not re.search(rb"(?m)^[ \t]*if[ \t]*\(",revised),
+                 "NGINX_UNREVIEWED_EXISTING_METHOD_GUARD")
+            revised=b"\n        "+METHOD_CHECK+b"\n"+revised
+        changes.append((op+1,end,revised))
+    need(set(found)==WEB_LOCATIONS and len(changes)==6,
+         "NGINX_SIX_WEB_LOCATIONS_NOT_ALL_FOUND")
+    result=bytearray(body)
+    for start,end,data in reversed(changes):
+        result[start:end]=data
+    updated=original[:lo]+bytes(result)+original[hi:]
+    need(OLD_UPSTREAM not in updated and updated.count(NEW_UPSTREAM)==6,
+         "NGINX_INCOMPLETE_WEB_UPSTREAM_SWITCH")
+    need(b"proxy_pass http://127.0.0.1:27657" in updated and
+         b"proxy_pass http://127.0.0.1:1318" in updated,
+         "NGINX_WOLO_ROUTE_UNEXPECTEDLY_ABSENT")
+    return updated
+def nginx_loaded_vhost(expected,config):
+    """Confirm the exact active -T vhost bytes and full loaded 3030 census."""
+    p=subprocess.run(["/usr/sbin/nginx","-T"],capture_output=True,timeout=22)
+    need(p.returncode==0 and 0<len(p.stdout)<=8*1024*1024,
+         "NGINX_LOADED_CONFIG_UNAVAILABLE")
+    sections=re.split(rb"(?m)^# configuration file ([^\r\n]+):[ \t]*\r?\n",p.stdout)
+    need(len(sections)>=3 and len(sections)%2==1,
+         "NGINX_T_SECTION_MARKERS_MISSING")
+    candidates=[]
+    global_old=0
+    for i in range(1,len(sections),2):
+        name=sections[i].decode("utf-8","strict")
+        raw=sections[i+1].rstrip(b"\r\n")
+        global_old+=raw.count(OLD_UPSTREAM)
+        try:
+            matches=os.path.samefile(name,config)
+        except (FileNotFoundError,OSError):
+            matches=False
+        if matches:
+            need(raw==expected.rstrip(b"\r\n"),
+                 "NGINX_LOADED_TARGET_FILE_BYTES_MISMATCH")
+            candidates.append(name)
+    need(len(candidates)==1 and global_old==6,
+         "NGINX_LOADED_SCOPE_INCLUDES_OR_OTHER_SITE_3030_UNRESOLVED")
+    return candidates[0]
 def durable_write(path,raw,mode=0o400):
     protected_dir(path.parent)
     fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode)
@@ -332,8 +439,10 @@ def apply():
     lock_check()
     protected_dir(ROOT_APPROVAL.parent,0o700);j=approval(root_file(ROOT_APPROVAL,16384))
     config=pathlib.Path(j["nginx_config"])
+    need(config==VHOST,"NGINX_DIFFERENT_ACTIVE_VHOST_NOT_APPROVED")
     old=root_file(config,131072)
     need(sha(old)==j["nginx_before_sha256"],"ORIGINAL_NGINX_BYTES_DRIFT")
+    nginx_loaded_vhost(old,config)
     candidate=safe_replace_site(old,NEW_UPSTREAM)
     s=snapshots(j["finance_units"]);prove_preimage(j,s)
     stage_identity(j)
@@ -355,6 +464,7 @@ def apply():
         lock_check()
         need(snapshots(j["finance_units"])==s,"FINANCE_OR_OLD_WEB_DRIFT_AT_SEAM")
         need(root_file(config,131072)==old,"NGINX_BEFORE_RACE")
+        nginx_loaded_vhost(old,config)
         os.mkdir(record,0o700);protected_dir(record,0o700)
         durable_write(record/"before-nginx.conf",old)
         durable_write(record/"intent.json",canonical({"schema":SCHEMA,"nonce":nonce,
