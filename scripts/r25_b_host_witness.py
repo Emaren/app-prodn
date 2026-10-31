@@ -69,12 +69,12 @@ SELECT json_build_object(
  'no_db_create', NOT has_database_privilege(current_database(),'CREATE'),
  'no_schema_create', NOT EXISTS(
    SELECT 1 FROM pg_namespace n WHERE has_schema_privilege(n.oid,'CREATE')
-   AND n.nspname NOT LIKE 'pg_temp_%'
+   AND left(n.nspname, 8) <> 'pg_temp_'
  ),
  'no_table_mutation', NOT EXISTS(
    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE c.relkind IN ('r','p','f','v','m')
-     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
      AND (has_table_privilege(c.oid,'INSERT')
           OR has_table_privilege(c.oid,'UPDATE')
           OR has_table_privilege(c.oid,'DELETE')
@@ -84,22 +84,30 @@ SELECT json_build_object(
  ),
  'no_sequence_mutation', NOT EXISTS(
    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-   WHERE c.relkind='S' AND n.nspname NOT LIKE 'pg_%'
+   WHERE c.relkind='S' AND left(n.nspname, 3) <> 'pg_'
      AND (has_sequence_privilege(c.oid,'UPDATE')
           OR has_sequence_privilege(c.oid,'USAGE'))
  ),
  'no_callable_security_definer', NOT EXISTS(
    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
    WHERE p.prosecdef
-     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
      AND has_function_privilege(p.oid,'EXECUTE')
  ),
  'no_callable_volatile_user_functions', NOT EXISTS(
    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
    WHERE p.provolatile='v'
-     AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+     AND left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
      AND has_function_privilege(p.oid,'EXECUTE')
- )
+      AND NOT (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
+ ),
+ 'reviewed_trigger_exclusions', (
+    SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE left(n.nspname, 3) <> 'pg_' AND n.nspname<>'information_schema'
+      AND (p.prosecdef OR p.provolatile='v')
+      AND has_function_privilege(p.oid,'EXECUTE')
+      AND (p.prorettype='pg_catalog.trigger'::regtype AND p.pronargs=0 AND p.prokind='f' AND NOT p.prosecdef AND NOT EXISTS (SELECT 1 FROM pg_depend dep WHERE dep.classid='pg_proc'::regclass AND dep.objid=p.oid AND dep.deptype='e'))
+  )
 )::text
 """
 def hold(why):
@@ -122,7 +130,7 @@ def systemd(unit):
     raw=run(["/usr/bin/systemctl","show",unit,"--no-pager",
              "--property=Id,LoadState,ActiveState,MainPID,User,Group,"
              "WorkingDirectory,ProtectSystem,ProtectHome,NoNewPrivileges,"
-             "PrivateTmp,CapabilityBoundingSet,InaccessiblePaths,ReadWritePaths,ControlGroup"])
+             "PrivateTmp,CapabilityBoundingSet,InaccessiblePaths,ReadWritePaths,CacheDirectory,CacheDirectoryMode,BindPaths,ControlGroup"])
     return dict(s.split("=",1) for s in raw.decode().splitlines() if "=" in s)
 
 def validate_filesystem_wall(status):
@@ -134,9 +142,36 @@ def validate_filesystem_wall(status):
     if not required.issubset(hidden):
         hold("UNIX_SOCKET_ORIGINAL_FINANCE_PATHS_NOT_HIDDEN")
     rw=status.get("ReadWritePaths","").split()
-    accepted={str(SOURCE/".next"/"cache")}
+    private_cache="/var/cache/aoe2war-r25-b-next-cache"
+    cache_target=str(SOURCE/".next"/"cache")
+    accepted={cache_target,private_cache}
+    # systemctl show serializes the template's default recursive bind as :rbind.
+    # Accept only the exact single source->destination with the documented
+    # default recursive mode (or its unadorned representation); never accept
+    # other options, additional binds, reordered paths, or duplicate RW paths.
+    bind=private_cache+":"+cache_target
+    binds=status.get("BindPaths","").split()
+    if (len(rw)!=2 or set(rw)!=accepted
+        or status.get("CacheDirectory")!="aoe2war-r25-b-next-cache"
+        or status.get("CacheDirectoryMode") not in ("0700","448")
+        or len(binds)!=1 or binds[0] not in (bind,bind+":rbind")):
+        hold("NEW_SERVICE_PRIVATE_CACHE_MOUNT_NOT_PROVEN")
     if not set(rw).issubset(accepted):
         hold("NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE")
+    return True
+
+def private_cache_write_proof(pid,uid,gid):
+    """New-service private bind-mount DAC: nonroot O_EXCL write, then unlink."""
+    code=("import os,pathlib,uuid; "
+          "os.setgroups([]);os.setgid("+str(gid)+");os.setuid("+str(uid)+"); "
+          "p=pathlib.Path("+repr(str(SOURCE/".next"/"cache"))+"); "
+          "f=p/('.r25-b-dac-'+uuid.uuid4().hex); "
+          "fd=os.open(f,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600); "
+          "os.write(fd,b'R25-B-CACHE-DAC');os.fsync(fd);os.close(fd); "
+          "f.unlink();print('PASS_PRIVATE_CACHE_DAC')")
+    raw=run(['/usr/bin/nsenter','--target',str(pid),'--mount','--',
+             '/usr/bin/python3','-I','-B','-c',code],timeout=8,max_bytes=128)
+    if raw.strip()!=b'PASS_PRIVATE_CACHE_DAC':hold('PRIVATE_CACHE_NONROOT_WRITE_UNPROVEN')
     return True
 
 def proc(pid):
@@ -200,16 +235,24 @@ def tcp3031(pid):
     return digest(sockets[0].encode())
 
 def nft_policy(uid):
+    # -n renders conntrack NEW (bit 8) as the *numeric* 0x8. Match the
+    # entire chain, not just skuid lines: an unscoped bypass rule must fail.
     text=run(["/usr/sbin/nft","-n","list","chain","inet",
               "aoe2war_r25_b","egress"],max_bytes=8192).decode()
-    if "type filter hook output priority -150; policy accept;" not in text:
-        hold("NFT_OUTPUT_HOOK_NOT_ENFORCED")
-    lines=[s.strip().rstrip(";") for s in text.splitlines() if "meta skuid" in s]
+    lines=[s.strip() for s in text.splitlines() if s.strip()]
     expected=[
-        f"meta skuid {uid} ct state new ip daddr 127.0.0.1 tcp dport 5432 accept",
-        f"meta skuid {uid} ct state new drop",
+        "table inet aoe2war_r25_b {",
+        "chain egress {",
+        "type filter hook output priority -150; policy accept;",
+        f"meta skuid {uid} ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept",
+        f"meta skuid {uid} ct state 0x8 drop",
+        "}",
+        "}",
     ]
-    if lines!=expected:hold("NFT_EGRESS_RULES_NOT_EXACT")
+    if lines[:3]!=expected[:3]:
+        hold("NFT_OUTPUT_HOOK_NOT_ENFORCED")
+    if lines!=expected:
+        hold("NFT_EGRESS_RULES_NOT_EXACT")
     return digest(text.encode())
 
 def reject_postgres_local_trust(dbname):
@@ -250,6 +293,8 @@ def db_proof(dsn, uid):
     yes=("role_restricted","no_writable_role_membership","no_db_create",
          "no_schema_create","no_table_mutation","no_sequence_mutation",
          "no_callable_security_definer","no_callable_volatile_user_functions")
+    if type(d.get("reviewed_trigger_exclusions")) is not int or d["reviewed_trigger_exclusions"]!=39:
+        hold("DB_REVIEWED_TRIGGER_SIGNATURE_COUNT_NOT_39")
     if d.get("session_user")!=DB_ROLE or d.get("current_user")!=DB_ROLE or \
        d.get("transaction_read_only")!="on" or any(d.get(k) is not True for k in yes):
         hold("DB_SERVER_ENFORCED_SELECT_ONLY_NOT_PROVEN")
@@ -387,6 +432,7 @@ def observe(expected_guard_sha):
     nft_hash=nft_policy(pw.pw_uid)
     db=db_proof(env.get("DATABASE_URL",""),pw.pw_uid)
     http_proof(pid)
+    private_cache_write_proof(pid,pw.pw_uid,pw.pw_gid)
     # Read source identity without modifying build or files.
     checkout=c_archive_source_identity()
     if checkout!=TARGET:hold("CANDIDATE_SOURCE_DRIFT")

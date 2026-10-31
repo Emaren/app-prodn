@@ -153,3 +153,6 @@ jobs:
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
             --test tests/current-watcher-rating-postgres.test.mts
+      - name: R25 B isolated PostgreSQL 39-trigger and pgx privilege coverage
+        run: |
+          RUN_R25_B_ISOLATED_PG=1 python3 -B -m unittest discover -s tests -p test_r25_b_pg_schema_prefix.py -v

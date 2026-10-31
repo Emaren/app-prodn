@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c85dc998b8c7db7a3b0997e71a8ef76f8d5b77cbd635ccad75e7b9ebabcb9745",
+      "sha256": "f1b692e34c9ce64ee173479cb7c14ed0c98e49dbebbb813ecdcb263710045aa3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r18-f-website-g-cdp-final-seal",
-    "commit": "7a822fc719775530520cb374977a2ccc540ed067"
+    "branch": "r25-b-additive-owner-3031-setup",
+    "commit": "df8e3ac85081fca84c8cbdeafcd9dadb15858552"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

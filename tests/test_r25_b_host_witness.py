@@ -22,7 +22,8 @@ class TestBHostWitness(unittest.TestCase):
 
     def test_role_security_accepts_actual_server_catalog_proof_only(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -37,9 +38,49 @@ class TestBHostWitness(unittest.TestCase):
         self.assertIn("/usr/bin/psql",f.call_args.args[0])
         self.assertNotIn("dummy",repr(f.call_args.args[0]))
 
+    def test_literal_pg_prefix_filter_covers_pgx_and_pgfinance(self):
+        self.assertEqual(b.SQL.count("left(n.nspname, 3) <> 'pg_'"),5)
+        self.assertEqual(b.SQL.count("left(n.nspname, 8) <> 'pg_temp_'"),1)
+        self.assertNotIn("n.nspname NOT LIKE 'pg_",b.SQL)
+        self.assertIn("has_function_privilege",b.SQL)
+        self.assertIn("no_callable_security_definer",b.SQL)
+
+    def test_nontrigger_volatile_and_definer_remain_fail_closed(self):
+        import inspect
+        sql=b.SQL
+        self.assertIn("p.prorettype='pg_catalog.trigger'::regtype",sql)
+        self.assertIn('AND NOT (p.prorettype=',sql)
+        self.assertIn("dep.deptype='e'",sql)
+        self.assertIn('p.prosecdef',sql)
+        self.assertIn('no_callable_security_definer',sql)
+        self.assertIn('no_callable_volatile_user_functions',sql)
+        self.assertIn('reviewed_trigger_exclusions',sql)
+
+    def test_role_wrong_trigger_count_fails(self):
+        safe={'session_user':b.DB_ROLE,'current_user':b.DB_ROLE,
+              'database':'app','transaction_read_only':'on',
+              'reviewed_trigger_exclusions':38}
+        for key in ('role_restricted','no_writable_role_membership','no_db_create',
+                    'no_schema_create','no_table_mutation','no_sequence_mutation',
+                    'no_callable_security_definer','no_callable_volatile_user_functions'):
+            safe[key]=True
+        with patch.object(b,'run',return_value=json.dumps(safe).encode()), \
+             patch.object(b,'reject_postgres_local_trust',return_value=True):
+            with self.assertRaisesRegex(RuntimeError,'DB_REVIEWED_TRIGGER_SIGNATURE_COUNT_NOT_39'):
+                b.db_proof('postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app',17251)
+
+    def test_private_cache_write_probe_only_enters_candidate_mount(self):
+        with patch.object(b,'run',return_value=b'PASS_PRIVATE_CACHE_DAC') as runner:
+            self.assertTrue(b.private_cache_write_proof(999,17251,17251))
+            args=runner.call_args.args[0]
+            self.assertEqual(args[:4],['/usr/bin/nsenter','--target','999','--mount'])
+            self.assertIn('os.setuid(17251)',args[-1])
+            self.assertIn("f.unlink()",args[-1])
+
     def test_role_writable_grant_rejects(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -52,7 +93,8 @@ class TestBHostWitness(unittest.TestCase):
 
     def test_role_security_definer_rejects(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -65,7 +107,8 @@ class TestBHostWitness(unittest.TestCase):
 
     def test_role_callable_volatile_function_rejects(self):
         safe={"session_user":b.DB_ROLE,"current_user":b.DB_ROLE,
-              "database":"app","transaction_read_only":"on"}
+              "database":"app","transaction_read_only":"on",
+              "reviewed_trigger_exclusions":39}
         for k in ("role_restricted","no_writable_role_membership","no_db_create",
                   "no_schema_create","no_table_mutation","no_sequence_mutation",
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
@@ -88,39 +131,75 @@ class TestBHostWitness(unittest.TestCase):
             self.assertTrue(b.reject_postgres_local_trust("app"))
             self.assertEqual(runner.call_count,2)
 
-    def test_nft_exact_egress_only_db_accepts(self):
+    def test_nft_numeric_new_exact_native_hel1_readback(self):
+        # Real '/usr/sbin/nft -n list chain inet aoe2war_r25_b egress'
+        # renders conntrack state NEW (8) as the single hexadecimal 0x8.
         nft="""table inet aoe2war_r25_b {
  chain egress {
   type filter hook output priority -150; policy accept;
-  meta skuid 17251 ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
-  meta skuid 17251 ct state new drop
+  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept
+  meta skuid 993 ct state 0x8 drop
  }
 }
 """
-        with patch.object(b,"run",return_value=nft.encode()):
-            self.assertEqual(len(b.nft_policy(17251)),64)
+        with patch.object(b,"run",return_value=nft.encode()) as runner:
+            self.assertEqual(len(b.nft_policy(993)),64)
+        self.assertEqual(runner.call_args.args[0],
+                         ["/usr/sbin/nft","-n","list","chain","inet","aoe2war_r25_b","egress"])
+        self.assertEqual(runner.call_args.kwargs["max_bytes"],8192)
 
-    def test_nft_port_8092_exception_rejects(self):
-        nft="""table inet aoe2war_r25_b {
+    def test_nft_numeric_state_and_whole_chain_adversarial_fail_closed(self):
+        good="""table inet aoe2war_r25_b {
  chain egress {
   type filter hook output priority -150; policy accept;
-  meta skuid 17251 ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
-  meta skuid 17251 ct state new tcp dport 8092 accept
-  meta skuid 17251 ct state new drop
+  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept
+  meta skuid 993 ct state 0x8 drop
  }
 }
 """
-        with patch.object(b,"run",return_value=nft.encode()):
-            with self.assertRaisesRegex(RuntimeError,"NFT_EGRESS_RULES_NOT_EXACT"):
-                b.nft_policy(17251)
-
-    def test_nft_wrong_uid_rejects(self):
-        nft="""type filter hook output priority -150; policy accept;
-meta skuid 1000 ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
-meta skuid 1000 ct state new drop"""
-        with patch.object(b,"run",return_value=nft.encode()):
-            with self.assertRaisesRegex(RuntimeError,"NFT_EGRESS_RULES_NOT_EXACT"):
-                b.nft_policy(17251)
+        edits={
+            "old symbolic serialization":good.replace("ct state 0x8","ct state new"),
+            "established":good.replace("ct state 0x8","ct state 0x2"),
+            "related":good.replace("ct state 0x8","ct state 0x4"),
+            "compound NEW+established":good.replace("ct state 0x8","ct state 0xa"),
+            "wrong state":good.replace("ct state 0x8","ct state 0x10"),
+            "leading zero":good.replace("ct state 0x8","ct state 0x08"),
+            "wrong UID":good.replace("meta skuid 993","meta skuid 994"),
+            "other loopback":good.replace("127.0.0.1","127.0.0.2"),
+            "widened any IPv4":good.replace("ip daddr 127.0.0.1 ",""),
+            "remote DB":good.replace("127.0.0.1","192.0.2.9"),
+            "wrong DB port":good.replace("dport 5432","dport 5433"),
+            "extra 8092 accept":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 tcp dport 8092 accept\n  meta skuid 993 ct state 0x8 drop"),
+            "extra unscoped bypass":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  ip daddr 127.0.0.1 accept\n  meta skuid 993 ct state 0x8 drop"),
+            "extra all-UID bypass":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  accept\n  meta skuid 993 ct state 0x8 drop"),
+            "extra unrelated UID":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 1 accept\n  meta skuid 993 ct state 0x8 drop"),
+            "duplicate allow":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept\n  meta skuid 993 ct state 0x8 drop"),
+            "drop removed":good.replace("  meta skuid 993 ct state 0x8 drop",""),
+            "drop accepts":good.replace("ct state 0x8 drop","ct state 0x8 accept"),
+            "reordered":good.replace(
+              "  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept\n  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 drop\n  meta skuid 993 ct state 0x8 ip daddr 127.0.0.1 tcp dport 5432 accept"),
+            "modified priority":good.replace("priority -150","priority 0"),
+            "wrong hook":good.replace("hook output","hook input"),
+            "policy drop":good.replace("policy accept","policy drop"),
+            "table mutated":good.replace("aoe2war_r25_b","other_table"),
+            "chain mutated":good.replace("chain egress","chain ingress"),
+            "extra chain":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  meta skuid 993 ct state 0x8 drop\n  chain bypass { type filter hook output priority -149; policy accept; }"),
+            "counter inserted":good.replace("dport 5432 accept","dport 5432 counter accept"),
+            "handle inserted":good.replace("dport 5432 accept","dport 5432 accept # handle 4"),
+            "extra comment":good.replace("  meta skuid 993 ct state 0x8 drop",
+              "  # unexpected token\n  meta skuid 993 ct state 0x8 drop"),
+        }
+        for label, text in edits.items():
+            with self.subTest(label=label),patch.object(b,"run",return_value=text.encode()):
+                with self.assertRaisesRegex(RuntimeError,"NFT_(EGRESS_RULES_NOT_EXACT|OUTPUT_HOOK_NOT_ENFORCED)"):
+                    b.nft_policy(993)
 
     def test_local_root_http_probe_never_uses_proxy_env(self):
         import inspect
@@ -152,8 +231,54 @@ meta skuid 1000 ct state new drop"""
     def test_finance_writer_fs_path_outside_cache_fails(self):
         status={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
                 "ReadWritePaths":"/var/lib/aoe2war-finance"}
-        with self.assertRaisesRegex(RuntimeError,"NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE"):
+        with self.assertRaisesRegex(RuntimeError,"NEW_SERVICE_PRIVATE_CACHE_MOUNT_NOT_PROVEN"):
             b.validate_filesystem_wall(status)
+
+    def test_systemd_normalized_rbind_exact_singleton_is_accepted(self):
+        cache="/var/cache/aoe2war-r25-b-next-cache"
+        target=str(b.SOURCE/".next"/"cache")
+        status={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+                "ReadWritePaths":cache+" "+target,
+                "CacheDirectory":"aoe2war-r25-b-next-cache",
+                "CacheDirectoryMode":"0700",
+                "BindPaths":cache+":"+target+":rbind"}
+        self.assertTrue(b.validate_filesystem_wall(status))
+        # A literal unadorned systemd representation remains equivalent.
+        status["BindPaths"]=cache+":"+target
+        self.assertTrue(b.validate_filesystem_wall(status))
+
+    def test_systemd_bindpaths_normalization_still_fails_closed(self):
+        cache="/var/cache/aoe2war-r25-b-next-cache"
+        target=str(b.SOURCE/".next"/"cache")
+        base={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+              "ReadWritePaths":cache+" "+target,
+              "CacheDirectory":"aoe2war-r25-b-next-cache",
+              "CacheDirectoryMode":"0700",
+              "BindPaths":cache+":"+target+":rbind"}
+        unsafe=[
+            {"BindPaths":cache+":"+target+":bind"},
+            {"BindPaths":cache+":"+target+":ro"},
+            {"BindPaths":cache+":"+target+":rbind:ro"},
+            {"BindPaths":cache+":"+target+":norbind"},
+            {"BindPaths":cache+":"+target+":rbind:extra"},
+            {"BindPaths":cache+":"+target+":rbind "+cache+":/tmp/finance:rbind"},
+            {"BindPaths":cache+":"+target+":rbind "+cache+":"+target+":rbind"},
+            {"BindPaths":target+":"+cache+":rbind"},
+            {"BindPaths":cache+":"+target+"-wrong:rbind"},
+            {"BindPaths":"/tmp/finance:"+target+":rbind"},
+            {"BindPaths":""},
+            {"ReadWritePaths":cache+" "+target+" "+target},
+            {"ReadWritePaths":cache+" "+target+" /tmp/finance"},
+            {"ReadWritePaths":cache},
+            {"CacheDirectory":"another-cache"},
+            {"CacheDirectoryMode":"0755"},
+            {"CacheDirectoryMode":"0700 0700"},
+            {"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets"},
+        ]
+        for changed in unsafe:
+            with self.subTest(changed=changed):
+                with self.assertRaises(RuntimeError):
+                    b.validate_filesystem_wall({**base,**changed})
 
     def test_prestart_negative_without_verified_root_guard(self):
         with patch.object(b.os,"geteuid",return_value=0), \
@@ -168,7 +293,10 @@ meta skuid 1000 ct state new drop"""
             if unit==b.OLD_UNIT:return {"ActiveState":"active","MainPID":"2625090"}
             return {"User":b.USER,"WorkingDirectory":str(b.SOURCE),
                     "InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
-                    "ReadWritePaths":str(b.SOURCE/".next"/"cache")}
+                    "ReadWritePaths":str(b.SOURCE/".next"/"cache")+" /var/cache/aoe2war-r25-b-next-cache",
+                    "CacheDirectory":"aoe2war-r25-b-next-cache",
+                    "CacheDirectoryMode":"0700",
+                    "BindPaths":"/var/cache/aoe2war-r25-b-next-cache:"+str(b.SOURCE/".next"/"cache")+":rbind"}
         with patch.object(b.os,"geteuid",return_value=0), \
              patch.object(b.socket,"gethostname",return_value=b.HOST), \
              patch.object(b,"require_root_file",return_value="a"*64), \
