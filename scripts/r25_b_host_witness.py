@@ -122,8 +122,22 @@ def systemd(unit):
     raw=run(["/usr/bin/systemctl","show",unit,"--no-pager",
              "--property=Id,LoadState,ActiveState,MainPID,User,Group,"
              "WorkingDirectory,ProtectSystem,ProtectHome,NoNewPrivileges,"
-             "PrivateTmp,CapabilityBoundingSet,ControlGroup"])
+             "PrivateTmp,CapabilityBoundingSet,InaccessiblePaths,ReadWritePaths,ControlGroup"])
     return dict(s.split("=",1) for s in raw.decode().splitlines() if "=" in s)
+
+def validate_filesystem_wall(status):
+    """No network-unfiltered Unix finance socket or writable finance path."""
+    hidden=set(status.get("InaccessiblePaths","").split())
+    required={"/run","/var/run","/etc/aoe2hdbets",
+              "/mnt/HC_Volume_105319120",
+              "/var/www/AoE2HDBets/app-prodn"}
+    if not required.issubset(hidden):
+        hold("UNIX_SOCKET_ORIGINAL_FINANCE_PATHS_NOT_HIDDEN")
+    rw=status.get("ReadWritePaths","").split()
+    accepted={str(SOURCE/".next"/"cache")}
+    if not set(rw).issubset(accepted):
+        hold("NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE")
+    return True
 
 def proc(pid):
     p=pathlib.Path("/proc")/str(pid)
@@ -280,6 +294,7 @@ def prestart(expected_guard_sha):
     new=systemd(UNIT)
     if new.get("User")!=USER or new.get("WorkingDirectory")!=str(SOURCE):
         hold("NEW_SYSTEMD_UID_OR_SOURCE_WRONG")
+    validate_filesystem_wall(new)
     uid=pwd.getpwnam(USER).pw_uid
     if uid in (0,1000):hold("CANDIDATE_OS_UID_NOT_DISTINCT")
     egress=nft_policy(uid)
@@ -320,6 +335,7 @@ def observe(expected_guard_sha):
         or new.get("PrivateTmp")!="yes"
         or new.get("CapabilityBoundingSet") not in ("", " ")):
         hold("NEW_3031_SYSTEMD_ISOLATION_INCOMPLETE")
+    validate_filesystem_wall(new)
     pw=pwd.getpwnam(USER)
     if pw.pw_uid==0 or pw.pw_uid==1000:hold("CANDIDATE_UID_NOT_DISTINCT")
     p=proc(pid)
