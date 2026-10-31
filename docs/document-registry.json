@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "289c7b241e67099e21c53bb7d351ea742174b58f9ffbbf19b499de5924d83306",
+      "sha256": "6811d5c5c313ca5938762b8d3cd1ad58599518776855ce429bca489e5fb2649c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2462,8 +2462,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r18-f-final-owner-contract-seal",
-    "commit": "9957378044121fdf9cf3dacd5041714d9384a1b8"
+    "branch": "r24-e-website-only-storage-rollback-review",
+    "commit": "225fc205966755967e7710eba5e39cb90d64aa7f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
