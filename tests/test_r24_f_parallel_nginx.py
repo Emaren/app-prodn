@@ -225,8 +225,8 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertNotIn('a.add_argument("--next-build-id"',mac)
         self.assertNotIn('a.add_argument("--nonce"',mac)
         self.assertIn('ROOT_APPROVED_BUILD_ID_OR_NONCE_MISSING',mac)
-        self.assertIn('opts.next_build_id=j.get("candidate_build_id")',mac)
-        self.assertIn('opts.nonce=j.get("nonce")',mac)
+        self.assertIn('bid = approved.get("candidate_build_id")',mac)
+        self.assertIn('nonce = approved.get("nonce")',mac)
     def test_owner_mac_separate_tty_read_write(self):
         mac=MAC.read_text()
         self.assertIn('with open("/dev/tty", "w")',mac)
