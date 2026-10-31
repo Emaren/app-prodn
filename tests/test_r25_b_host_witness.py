@@ -28,7 +28,8 @@ class TestBHostWitness(unittest.TestCase):
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         dsn="postgresql://aoe2war_r25_web_ro:dummy@127.0.0.1:5432/app"
-        with patch.object(b,"run",return_value=json.dumps(safe).encode()) as f:
+        with patch.object(b,"run",return_value=json.dumps(safe).encode()) as f, \
+             patch.object(b,"reject_postgres_local_trust",return_value=True):
             receipt=b.db_proof(dsn,17251)
         self.assertEqual(receipt["role"],b.DB_ROLE)
         self.assertEqual(receipt["server_transaction_ro"],True)
@@ -44,7 +45,8 @@ class TestBHostWitness(unittest.TestCase):
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         safe["no_table_mutation"]=False
-        with patch.object(b,"run",return_value=json.dumps(safe).encode()):
+        with patch.object(b,"run",return_value=json.dumps(safe).encode()), \
+             patch.object(b,"reject_postgres_local_trust",return_value=True):
             with self.assertRaisesRegex(RuntimeError,"DB_SERVER_ENFORCED_SELECT_ONLY"):
                 b.db_proof("postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app",17251)
 
@@ -56,7 +58,8 @@ class TestBHostWitness(unittest.TestCase):
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         safe["no_callable_security_definer"]=False
-        with patch.object(b,"run",return_value=json.dumps(safe).encode()):
+        with patch.object(b,"run",return_value=json.dumps(safe).encode()), \
+             patch.object(b,"reject_postgres_local_trust",return_value=True):
             with self.assertRaisesRegex(RuntimeError,"DB_SERVER_ENFORCED_SELECT_ONLY"):
                 b.db_proof("postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app",17251)
 
@@ -68,9 +71,22 @@ class TestBHostWitness(unittest.TestCase):
                   "no_callable_security_definer","no_callable_volatile_user_functions"):
             safe[k]=True
         safe["no_callable_volatile_user_functions"]=False
-        with patch.object(b,"run",return_value=json.dumps(safe).encode()):
+        with patch.object(b,"run",return_value=json.dumps(safe).encode()), \
+             patch.object(b,"reject_postgres_local_trust",return_value=True):
             with self.assertRaisesRegex(RuntimeError,"DB_SERVER_ENFORCED_SELECT_ONLY"):
                 b.db_proof("postgresql://aoe2war_r25_web_ro:x@127.0.0.1/app",17251)
+
+    def test_postgres_trust_login_with_wrong_password_is_fatal(self):
+        import types
+        with patch.object(b.subprocess,"run",return_value=types.SimpleNamespace(returncode=0)):
+            with self.assertRaisesRegex(RuntimeError,"POSTGRES_LOCAL_TRUST"):
+                b.reject_postgres_local_trust("app")
+
+    def test_postgres_both_bad_passwords_denied_is_accepted(self):
+        import types
+        with patch.object(b.subprocess,"run",return_value=types.SimpleNamespace(returncode=1)) as runner:
+            self.assertTrue(b.reject_postgres_local_trust("app"))
+            self.assertEqual(runner.call_count,2)
 
     def test_nft_exact_egress_only_db_accepts(self):
         nft="""table inet aoe2war_r25_b {
