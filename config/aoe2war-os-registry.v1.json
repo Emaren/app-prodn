@@ -1,0 +1,247 @@
+{
+  "schema": "aoe2war.os.census.v1",
+  "authority": "planning-inventory-not-live-or-financial-authorization",
+  "snapshot_date": "2026-10-31",
+  "source_baseline_main": "b46a51f1592c9f296839924ae55e722618b10d35",
+  "umbrella": {
+    "id": "aoe2war",
+    "name": "AoE2WAR OS",
+    "kind": "umbrella",
+    "status": "existing-source-implementation",
+    "ui": "/aoe2war-os"
+  },
+  "subordinate_os": [
+    {
+      "id": "release",
+      "name": "Release OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "lib/kingdomIntelligencePublic.ts",
+      "domain": "release",
+      "responsibility": "release execution, certification and release evidence",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "documentation",
+      "name": "Documentation OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/DOCUMENTATION_OS.md",
+      "domain": "documentation",
+      "responsibility": "docs health, contracts and federation",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "storage",
+      "name": "Storage OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/STORAGE_OS.md",
+      "domain": "storage",
+      "responsibility": "storage preservation, capacity, retention and restore evidence",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "host",
+      "name": "Host OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/HOST_MAINTENANCE.md",
+      "domain": "host",
+      "responsibility": "host maintenance, service inventory and native safeguards",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "recovery",
+      "name": "Recovery OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/RELEASE_RECOVERY_OS.md",
+      "domain": "recovery",
+      "responsibility": "bounded and tested failure recovery and rollback",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "workspace",
+      "name": "Workspace OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "lib/kingdomIntelligencePublic.ts",
+      "domain": "workspace",
+      "responsibility": "workspace and source-state observations",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "speed",
+      "name": "Speed OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/PERFORMANCE_OS.md",
+      "domain": "speed",
+      "responsibility": "performance/speed measurement and optimization",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "replay-truth",
+      "name": "Replay Truth OS",
+      "kind": "subordinate-os",
+      "status": "existing-ui-identity",
+      "ui": "/kingdom-intelligence",
+      "reference": "docs/REPLAY_TRUTH_OS.md",
+      "domain": "replay-truth",
+      "responsibility": "replay/parser provenance and result truth",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "central-command",
+      "name": "Central Command OS",
+      "kind": "subordinate-os",
+      "status": "existing-source-implementation",
+      "ui": "/admin/central-command",
+      "reference": "docs/CENTRAL_COMMAND_OS.md",
+      "domain": "priority-and-human-reviewed-dispatch",
+      "responsibility": "human owner delegated queue, evidence, review, priority and six-lane dispatch; never doubles as the runtime agent scheduler",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "deployment",
+      "name": "Deployment OS",
+      "kind": "subordinate-os",
+      "status": "draft-source",
+      "reference": "https://github.com/Emaren/app-prodn/pull/1088",
+      "responsibility": "versioned component scope admission and release-phase coordination; Release OS remains actual executor",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "orchestra",
+      "name": "Orchestra OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1060",
+      "responsibility": "workflow DAG planning, leases and handoffs; reuse Central queue, don't create new release authority",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "agent",
+      "name": "Agent OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/pull/1086",
+      "responsibility": "bounded single worker lifecycle, tools, state, sandbox, permissions, verification and expense budgets",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "swarm",
+      "name": "Swarm OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/app-prodn/pull/1025",
+      "responsibility": "coordinated fleet scheduling, isolation and adversarial reviews with measured 6-to-1000 promotion",
+      "independent_live_worker_proven": false
+    },
+    {
+      "id": "wolochain",
+      "name": "WoloChain OS",
+      "kind": "subordinate-os",
+      "status": "proposed",
+      "reference": "https://github.com/Emaren/wolochain/issues/5",
+      "responsibility": "read-only chain health, RPC/consensus/indexer/bridge lineage and independently proven mainnet reconciliation; custody remains separate",
+      "independent_live_worker_proven": false
+    }
+  ],
+  "supervisory_roles": [
+    {
+      "id": "system-doctor",
+      "name": "System Doctor",
+      "kind": "diagnostic-role",
+      "status": "existing-source-ui",
+      "reference": "app/kingdom-intelligence/page.tsx"
+    },
+    {
+      "id": "system-shepherd",
+      "name": "System Shepherd",
+      "kind": "coordination-role",
+      "status": "existing-shepherd-orders-ui-concept",
+      "reference": "app/kingdom-agents/KingdomAgentsClient.tsx",
+      "note": "Not yet independently proven autonomous or independently registered as an OS."
+    },
+    {
+      "id": "system-composer",
+      "name": "System Composer / Kingdom Composer",
+      "kind": "workflow-composition-role",
+      "status": "proposed-source-only",
+      "reference": "docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md",
+      "ownership": "Orchestra OS",
+      "responsibility": "Compiles Central-approved goals into versioned dependency graphs, agent/workflow assignments, capability contracts and resource budgets; simulates and validates plan without dispatching work or duplicating Central queue and Orchestra scheduler",
+      "cannot": [
+        "change Central priorities",
+        "run workers directly",
+        "execute releases",
+        "authorize financial transfers",
+        "invent heartbeat/activity"
+      ],
+      "live_worker_proven": false
+    }
+  ],
+  "unreconciled_named_capabilities": [
+    {
+      "name": "Performance OS",
+      "reference": "docs/PERFORMANCE_OS.md",
+      "issue": "May alias Speed OS; never silently count twice."
+    },
+    {
+      "name": "Renaissance OS",
+      "reference": "docs/RENAISSANCE_OS.md",
+      "issue": "Existing read-only visual integration overlay, separate documented title; decide if subordinate OS or a facet."
+    },
+    {
+      "name": "Code Health OS",
+      "reference": "scripts/aoe2_code_health.py",
+      "issue": "Working scanner module; OS authority needs review."
+    },
+    {
+      "name": "Council OS",
+      "reference": "scripts/aoe2_council.py",
+      "issue": "Existing feature; decide whether belongs to Central Command."
+    },
+    {
+      "name": "Loop Engine / Loop OS",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1089",
+      "issue": "Likely Agent OS feedback control submodule; not yet a separate OS."
+    },
+    {
+      "name": "Graph / Provenance OS",
+      "reference": "https://github.com/Emaren/app-prodn/issues/1089",
+      "issue": "Cross-cutting dependency evidence; not automatically an independent OS."
+    }
+  ],
+  "counts": {
+    "confirmed_constellation_os": 8,
+    "existing_central_os_outside_constellation": 1,
+    "planned_additional_subordinate_identities": 5,
+    "planned_subordinate_os_total": 14,
+    "planned_total_including_umbrella": 15,
+    "non_os_supervisory_roles": 3,
+    "verified_autonomous_running_os_workers": null,
+    "systemwide_unique_operational_os_total": null,
+    "non_os_supervisory_existing_ui_roles": 2,
+    "non_os_supervisory_proposed_roles": 1
+  },
+  "rules": [
+    "This is a proposed normalized roster, not a census of every branded module across all AoE2WAR repositories.",
+    "OS classification requires unique owner, authority, executable contract, evidence, recovery and measured value.",
+    "Do not count Doctor or Shepherd as OSs. Do not count umbrella as its own subordinate OS.",
+    "Public system-agent cards are source projections; unknown worker activity is not running.",
+    "New systems reuse existing code, storage and receipts; no deletion/replacement just to rename.",
+    "Website deployment P0 never waits for this P3 registry. Wolo financial authority remains separate.",
+    "Kingdom Composer is a proposed role nested in Orchestra workflow planning, not an extra OS identity or new release authority.",
+    "Visual diagrams for graphs, loops, agent armies, swarms and engineering hierarchy must map to evidence records; animations are not telemetry."
+  ]
+}
