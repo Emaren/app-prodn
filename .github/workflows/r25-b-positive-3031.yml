@@ -42,6 +42,10 @@ jobs:
           assert set(out)==allowed, ("UNREVIEWED_SOURCE_DRIFT",out)
           print("PASS:R25_B_ONLY_ISOLATION_SRC_TEST_TEMPLATES_NO_RUNTIME_APP_CHANGE")
           PY
+      - name: Immutable B guard and native witness SHA256 for C/F root sealing
+        run: |
+          sha256sum scripts/r25_b_guard.cjs scripts/r25_b_host_witness.py
+          echo "R25_B_GUARD_AND_WITNESS_HASHES_ARE_SOURCE_IDENTITY_NOT_HOST_ADMISSION"
       - name: Actual isolated Node preloader + adversarial HTTP/secret/egress tests
         run: |
           node --check scripts/r25_b_guard.cjs
