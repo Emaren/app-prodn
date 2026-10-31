@@ -26,7 +26,8 @@ HEX40=re.compile(r"[0-9a-f]{40}\Z")
 HEX64=re.compile(r"[0-9a-f]{64}\Z")
 INTENT_DOMAIN=b"AOE2WAR.SOLO_WEBSITE.PRODUCER_INTENT.V1\n"
 RECEIPT_DOMAIN=b"AOE2WAR.SOLO_WEBSITE.NATIVE_PRODUCER_RECEIPT.V1\n"
-W1_SAFE="4eff4b1ad1f90aef35738c25f523998a16174bd8"
+FROZEN_W1="b46a51f1592c9f296839924ae55e722618b10d35"
+ROOT_PREISSUE_POLICY="aoe2war.solo-owner.website.admission.v1"
 OWNER_RSA_SPKI="3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd"
 MANIFEST_ROOT=Path("/etc/aoe2war/solo-producer-v1")
 MAX=262144
@@ -113,7 +114,9 @@ def validate_manifest(manifest,role,uid,hostname):
     need(role in ROLES and manifest["role"]==role and uid>0 and
          type(manifest["uid"]) is int and uid==manifest["uid"] and
          manifest["origin_host"]==hostname and
-         manifest["candidate_sha"]==W1_SAFE and
+         type(manifest["candidate_sha"]) is str and
+         bool(HEX40.fullmatch(manifest["candidate_sha"])) and
+         manifest["candidate_sha"]!=FROZEN_W1 and
          type(manifest["controller_sha"]) is str and
          HEX40.fullmatch(manifest["controller_sha"]) and
          type(manifest["failure_domain_id"]) is str and
@@ -185,16 +188,59 @@ def verify_identity(manifest,uid):
          manifest["collector_sha256"],"COLLECTOR_BINARY_DRIFT")
     return True
 
-def signed_intent(intent,owner_pub,manifest,now):
+def require_f_original_preissue(reply, payload, now):
+    """Bind F's original-FD200 root reservation to separately signed intent.
+
+    The root response is not signed. C MUST authenticate the original lease
+    command channel independently; only the distinct owner RSA signature
+    over preissue_sha256 binds this exact reservation to authorized collection.
+    """
+    need(type(reply) is dict and
+         set(reply)=={"status","candidate_sha","phase","attempt_id",
+                      "reserved_at","expires_at","preissue_sha256",
+                      "owner_authorized","financial_release_authorized"} and
+         reply["status"]=="ROOT_PREISSUED_NOT_AUTHORIZED" and
+         reply["phase"]=="PRE_STAGE" and
+         reply["owner_authorized"] is False and
+         reply["financial_release_authorized"] is False,
+         "ORIGINAL_FD200_PREISSUE_RESPONSE_REQUIRED")
+    need(payload["phase"]=="PRE_STAGE" and
+         all(reply[k]==payload[k] for k in ("candidate_sha","attempt_id","phase")) and
+         type(reply["preissue_sha256"]) is str and
+         bool(HEX64.fullmatch(reply["preissue_sha256"])) and
+         reply["preissue_sha256"]==payload["preissue_sha256"],
+         "PREISSUE_SCOPE_OR_OWNER_HASH_MISMATCH")
+    reserved=timestamp(reply["reserved_at"])
+    expiry=timestamp(reply["expires_at"])
+    issued=timestamp(payload["issued_at"])
+    need(expiry-reserved==timedelta(minutes=10) and
+         reserved<=issued<=now<expiry and
+         timestamp(payload["expires_at"])<=expiry,
+         "ROOT_PREISSUE_EXPIRED_OR_WRONG_EPOCH")
+    reservation={"schema":1,"policy":ROOT_PREISSUE_POLICY,
+                 "status":"ROOT_PREISSUED_NOT_AUTHORIZED",
+                 "phase":"PRE_STAGE","candidate_sha":reply["candidate_sha"],
+                 "attempt_id":reply["attempt_id"],
+                 "reserved_at":reply["reserved_at"],
+                 "expires_at":reply["expires_at"],
+                 "financial_release_authorized":False}
+    need(digest(canonical(reservation))==reply["preissue_sha256"],
+         "ROOT_PREISSUE_RESERVATION_HASH_MISMATCH")
+    return True
+
+
+def signed_intent(intent,owner_pub,manifest,now,preissue):
     need(type(intent) is dict and
          set(intent)=={"schema","payload","signature_base64"} and
          intent["schema"]=="aoe2war.solo.producer-intent.v1" and
          type(intent["payload"]) is dict,"MISSING_F_ORIGINAL_LEASE_INTENT")
     p=intent["payload"]
     need(set(p)=={"candidate_sha","controller_sha","attempt_id","phase","host",
-                 "issued_at","expires_at","finance_authorized","release_authorized"},
+                 "issued_at","expires_at","preissue_sha256",
+                 "finance_authorized","release_authorized"},
          "INTENT_SHAPE")
-    need(p["candidate_sha"]==W1_SAFE and
+    need(p["candidate_sha"]==manifest["candidate_sha"] and
+         p["candidate_sha"]!=FROZEN_W1 and
          p["controller_sha"]==manifest["controller_sha"] and
          p["host"]==HOST and type(p["attempt_id"]) is str and
          HEX64.fullmatch(p["attempt_id"]) and p["phase"] in PHASES and
@@ -213,6 +259,7 @@ def signed_intent(intent,owner_pub,manifest,now):
         signature.write_bytes(sig)
         openssl(["dgst","-sha256","-verify",str(owner_pub),
                  "-signature",str(signature),str(message)])
+    require_f_original_preissue(preissue,p,now)
     return p
 
 def measure(collector,role,p,epoch,now):
@@ -304,6 +351,8 @@ def main(argv=None):
     parser.add_argument("action",choices=("inspect","sign"))
     parser.add_argument("--role",choices=ROLES,required=True)
     parser.add_argument("--intent",required=True)
+    parser.add_argument("--preissue",required=True,
+        help="C-authenticated F original-FD200 root preissue response")
     args=parser.parse_args(argv)
     try:
         need(sys.platform=="linux" and os.geteuid()>0 and
@@ -316,8 +365,9 @@ def main(argv=None):
         verify_identity(manifest,uid)
         request=parse(checked_file(Path(args.intent),0,limit=16384))
         now=datetime.now(timezone.utc)
+        reservation=parse(checked_file(Path(args.preissue),0,limit=16384))
         payload=signed_intent(request,Path(manifest["owner_public_key_path"]),
-                              manifest,now)
+                              manifest,now,reservation)
         if args.action=="inspect":
             result={"status":"SIGNED_INTENT_VALID_UNADMITTED",
                     "producer":args.role,"intent_verified":True,

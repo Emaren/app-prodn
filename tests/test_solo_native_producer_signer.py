@@ -16,6 +16,7 @@ spec=importlib.util.spec_from_file_location("r17_signer",P)
 m=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 AT=datetime(2026,10,31,1,20,tzinfo=timezone.utc)
+SAFE="f"*40  # test fixture, NOT approved for production
 def when(t):
     return t.isoformat(timespec="seconds").replace("+00:00","Z")
 
@@ -34,7 +35,7 @@ class R17SignerTests(unittest.TestCase):
                 "uid":authorities[role]["uid"],"origin_host":authorities[role]["origin_host"],
                 "failure_domain_id":authorities[role]["failure_domain_id"],
                 "controller_sha":"a58e2416415665e2334ce884cebc2c3f64ce75b5",
-                "candidate_sha":m.W1_SAFE,
+                "candidate_sha":SAFE,
                 "owner_public_key_path":"/root/approved-owner.pem",
                 "producer_public_key_path":"/root/approved-role.pem",
                 "private_key_path":"/home/producer/secret.pem",
@@ -44,11 +45,27 @@ class R17SignerTests(unittest.TestCase):
                 "output_dir":"/home/producer/signed-outbox",
                 "authorities":authorities}
 
+    def preissue(self,issued=AT):
+        reserved=issued-timedelta(seconds=25)
+        reservation={"schema":1,"policy":m.ROOT_PREISSUE_POLICY,
+                     "status":"ROOT_PREISSUED_NOT_AUTHORIZED",
+                     "phase":"PRE_STAGE","candidate_sha":SAFE,
+                     "attempt_id":"a"*64,"reserved_at":when(reserved),
+                     "expires_at":when(reserved+timedelta(minutes=10)),
+                     "financial_release_authorized":False}
+        return {"status":reservation["status"],
+                "candidate_sha":SAFE,"phase":"PRE_STAGE","attempt_id":"a"*64,
+                "reserved_at":reservation["reserved_at"],
+                "expires_at":reservation["expires_at"],
+                "preissue_sha256":m.digest(m.canonical(reservation)),
+                "owner_authorized":False,"financial_release_authorized":False}
+
     def intent(self,issued=AT):
         return {"schema":"aoe2war.solo.producer-intent.v1","payload":{
-            "candidate_sha":m.W1_SAFE,"controller_sha":"a58e2416415665e2334ce884cebc2c3f64ce75b5",
+            "candidate_sha":SAFE,"controller_sha":"a58e2416415665e2334ce884cebc2c3f64ce75b5",
             "attempt_id":"a"*64,"phase":"PRE_STAGE","host":m.HOST,
             "issued_at":when(issued),"expires_at":when(issued+timedelta(seconds=60)),
+            "preissue_sha256":self.preissue(issued)["preissue_sha256"],
             "finance_authorized":False,"release_authorized":False},"signature_base64":"to_sign"}
 
     def crypto(self,folder):
@@ -93,11 +110,66 @@ class R17SignerTests(unittest.TestCase):
         with self.assertRaisesRegex(m.Hold,"NOT_ENROLLED"):
             m.validate_manifest(a,"finance",a["uid"],a["origin_host"])
 
+    def test_successor_identity_pinned_in_enrollment_not_stale_website(self):
+        a=self.manifest()
+        self.assertEqual(a["candidate_sha"],SAFE)
+        self.assertNotEqual(SAFE,"a9525f46302edff88ed073743a7dfaed08be9e3e")
+        self.assertTrue(m.validate_manifest(a,"finance",a["uid"],a["origin_host"]))
+
+    def test_preissue_journal_exact_digest_and_owner_intent_binding(self):
+        request=self.intent()
+        self.assertTrue(m.require_f_original_preissue(
+            self.preissue(),request["payload"],AT))
+        preissue=self.preissue()
+        preissue["attempt_id"]="b"*64
+        with self.assertRaisesRegex(m.Hold,"PREISSUE_SCOPE_OR_OWNER_HASH_MISMATCH"):
+            m.require_f_original_preissue(preissue,request["payload"],AT)
+
+    def test_preissue_cannot_cross_successor_source(self):
+        p=self.intent()["payload"]
+        preissue=self.preissue()
+        p["candidate_sha"]="e"*40
+        with self.assertRaisesRegex(m.Hold,"PREISSUE_SCOPE_OR_OWNER_HASH_MISMATCH"):
+            m.require_f_original_preissue(preissue,p,AT)
+
+    def test_preissue_hash_rejects_modified_root_response(self):
+        p=self.intent()["payload"]
+        preissue=self.preissue()
+        preissue["reserved_at"]=when(AT-timedelta(seconds=24))
+        preissue["expires_at"]=when(AT+timedelta(minutes=9,seconds=36))
+        with self.assertRaisesRegex(m.Hold,"ROOT_PREISSUE_RESERVATION_HASH_MISMATCH"):
+            m.require_f_original_preissue(preissue,p,AT)
+
+    def test_preissue_expiry_cannot_be_extended(self):
+        p=self.intent()["payload"]
+        preissue=self.preissue()
+        preissue["expires_at"]=when(AT+timedelta(minutes=11))
+        with self.assertRaisesRegex(m.Hold,"ROOT_PREISSUE_EXPIRED_OR_WRONG_EPOCH"):
+            m.require_f_original_preissue(preissue,p,AT)
+
+    def test_preissue_not_owner_release_authorization(self):
+        p=self.intent()["payload"]
+        preissue=self.preissue()
+        preissue["owner_authorized"]=True
+        with self.assertRaisesRegex(m.Hold,"ORIGINAL_FD200_PREISSUE_RESPONSE_REQUIRED"):
+            m.require_f_original_preissue(preissue,p,AT)
+
+    def test_real_owner_signed_preissue_digest_not_replayable(self):
+        with tempfile.TemporaryDirectory() as td:
+            folder=Path(td);rsa,pub,_,_=self.crypto(folder)
+            request=self.sign_intent(folder,rsa,self.intent())
+            self.assertEqual(m.signed_intent(
+                request,pub,self.manifest(),AT,self.preissue())["attempt_id"],"a"*64)
+            modified=self.preissue()
+            modified["preissue_sha256"]="0"*64
+            with self.assertRaisesRegex(m.Hold,"PREISSUE_SCOPE_OR_OWNER_HASH_MISMATCH"):
+                m.signed_intent(request,pub,self.manifest(),AT,modified)
+
     def test_rsa_signed_owner_preintent_real_crypto(self):
         with tempfile.TemporaryDirectory() as td:
             folder=Path(td);rsa,pub,ed,ep=self.crypto(folder)
             request=self.sign_intent(folder,rsa,self.intent())
-            self.assertEqual(m.signed_intent(request,pub,self.manifest(),AT)["attempt_id"],"a"*64)
+            self.assertEqual(m.signed_intent(request,pub,self.manifest(),AT,self.preissue())["attempt_id"],"a"*64)
 
     def test_owner_intent_wrong_source_cannot_be_resigned_into_acceptance(self):
         with tempfile.TemporaryDirectory() as td:
@@ -106,7 +178,7 @@ class R17SignerTests(unittest.TestCase):
             request["payload"]["candidate_sha"]="b46a51f1592c9f296839924ae55e722618b10d35"
             request=self.sign_intent(folder,rsa,request)
             with self.assertRaisesRegex(m.Hold,"FOREIGN_OR_UNSAFE_OWNER_INTENT"):
-                m.signed_intent(request,pub,self.manifest(),AT)
+                m.signed_intent(request,pub,self.manifest(),AT,self.preissue())
 
     def test_owner_intent_signature_tamper_denied(self):
         with tempfile.TemporaryDirectory() as td:
@@ -114,7 +186,7 @@ class R17SignerTests(unittest.TestCase):
             request=self.sign_intent(folder,rsa,self.intent())
             request["payload"]["attempt_id"]="b"*64
             with self.assertRaisesRegex(m.Hold,"CRYPTO_VERIFY_FAILED"):
-                m.signed_intent(request,pub,self.manifest(),AT)
+                m.signed_intent(request,pub,self.manifest(),AT,self.preissue())
 
     def test_owner_phase_consent_cannot_cross_over_from_preintent(self):
         with tempfile.TemporaryDirectory() as td:
@@ -133,10 +205,10 @@ class R17SignerTests(unittest.TestCase):
             folder=Path(td);rsa,pub,_,_=self.crypto(folder)
             request=self.sign_intent(folder,rsa,self.intent(AT-timedelta(seconds=91)))
             with self.assertRaisesRegex(m.Hold,"INTENT_EXPIRED_OR_FUTURE"):
-                m.signed_intent(request,pub,self.manifest(),AT)
+                m.signed_intent(request,pub,self.manifest(),AT,self.preissue())
             request=self.sign_intent(folder,rsa,self.intent(AT+timedelta(seconds=2)))
             with self.assertRaisesRegex(m.Hold,"INTENT_EXPIRED_OR_FUTURE"):
-                m.signed_intent(request,pub,self.manifest(),AT)
+                m.signed_intent(request,pub,self.manifest(),AT,self.preissue())
 
     def test_owner_intent_no_finance_or_release_permission(self):
         with tempfile.TemporaryDirectory() as td:
@@ -144,7 +216,7 @@ class R17SignerTests(unittest.TestCase):
             request=self.intent();request["payload"]["release_authorized"]=True
             request=self.sign_intent(folder,rsa,request)
             with self.assertRaisesRegex(m.Hold,"FOREIGN_OR_UNSAFE_OWNER_INTENT"):
-                m.signed_intent(request,pub,self.manifest(),AT)
+                m.signed_intent(request,pub,self.manifest(),AT,self.preissue())
 
     def test_real_ephemeral_ed25519_producer_signature_matches_f_domain(self):
         with tempfile.TemporaryDirectory() as td:
@@ -220,7 +292,7 @@ class R17SignerTests(unittest.TestCase):
     def test_main_refuses_root_or_unenrolled_machine(self):
         with mock.patch.object(m.os,"geteuid",return_value=0):
             self.assertEqual(m.main(["inspect","--role","finance",
-                                     "--intent","/not/needed"]),2)
+                                     "--intent","/not/needed","--preissue","/not/needed"]),2)
 
 if __name__=="__main__":
     unittest.main()

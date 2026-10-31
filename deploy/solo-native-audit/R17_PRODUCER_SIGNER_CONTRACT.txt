@@ -1,6 +1,6 @@
 AOE2WAR R17 — PER-ORIGIN INDEPENDENT NATIVE PRODUCER SIGNER
-BASE: protected F #1054 a58e2416415665e2334ce884cebc2c3f64ce75b5
-WEBSITE: W1_SAFE #1053 a9525f46302edff88ed073743a7dfaed08be9e3e
+BASE: F original FD200 preissue source #1059 d2afe6a86143d66aecc89a4fc482cf4d99320f37 (3/3 CI).
+WEBSITE: #1053 a9525f46302edff88ed073743a7dfaed08be9e3e IS SUPERSEDED by B #1056. No old signed preissue/producer receipt can authorize F's future successor. New SHA must be frozen by F and separately pinned in C's root-enrollment manifest.
 STATUS: SOURCE ONLY. NO ROOT INSTALL / OWNER CONSENT / PRE_STAGE HERE.
 
 Source executable:
@@ -45,11 +45,30 @@ F/C PROTECTED ORIGINAL FD200 PREISSUE REQUIREMENT (NOT PROVIDED BY THIS FILE):
   a UNIQUE random 64hex attempt in an authenticated original-lease
   command/owner-intent, carry through the SAME original FD200 and nonce
   journal. No second lock, no guessed attempt, no synthetic signed GO.
-  Owner *separately* approves a producer-collection INTENT under domain
+  Root preissue-stage output F #1059 has exact keys:
+    status=ROOT_PREISSUED_NOT_AUTHORIZED, candidate_sha, phase=PRE_STAGE,
+    attempt_id (64hex), reserved_at, expires_at (10 minutes),
+    preissue_sha256, owner_authorized=false, financial_release_authorized=false.
+  It is NOT a cryptographically signed artifact on its own; C independently
+  authenticates the SSH forced original-FD200 reservation channel. Owner
+  independently checks that preissue_sha256 hashes F's exact journal fields:
+    schema=1, policy=aoe2war.solo-owner.website.admission.v1,
+    status, phase, candidate_sha, attempt_id, reserved_at, expires_at,
+    financial_release_authorized=false.
+  Owner *separately* approves an INTENT under signature domain
     AOE2WAR.SOLO_WEBSITE.PRODUCER_INTENT.V1\n
-  (distinct from owner RSA phase-authorization and binary-install domains),
-  with payload exactly candidate_sha,controller_sha,attempt_id,phase,host,
-  issued_at,expires_at,finance_authorized=false,release_authorized=false.
+  (distinct from RSA PRE_STAGE release permit and native-install domains).
+  Exact intent payload:
+    candidate_sha,controller_sha,attempt_id,phase=PRE_STAGE,host,
+    issued_at,expires_at,preissue_sha256,
+    finance_authorized=false,release_authorized=false.
+  This signed preissue_sha256 links the *original* F root reservation to
+  exactly one generation of six fresh producer signatures. Owner RSA intent
+  lasts at most 90 seconds and cannot exceed the original F 10min expiry.
+  A newly finalized B/F source requires an entirely NEW reservation and
+  separately signed intent/receipts; old #1053/#1054 cannot be silently
+  substituted. D signer accepts only manifest-pinned candidate+controller
+  reviewed by C/F, and always denies original frozen W1.
   Owner public key DER fingerprint remains pinned to existing original
     3ac8653650acd9c545f4ffa5d007db981bd634ab2f94fa08e687fed92948f1fd
   C must approve signed intent transport to each remote independent origin.
@@ -58,8 +77,9 @@ F/C PROTECTED ORIGINAL FD200 PREISSUE REQUIREMENT (NOT PROVIDED BY THIS FILE):
 
 EXECUTABLE SIGNER CONTRACT (after C physical enrollment and F preissue):
   /usr/bin/python3 -I /usr/local/libexec/aoe2war/solo-v1-producer-signer
-    inspect --role <one of six> --intent /root-provisioned/signed-intent.json
-  Same with "sign" instead of "inspect" writes ONLY a new role UID-owned
+    inspect --role <one of six> --intent /root-provisioned/signed-intent.json --preissue /root-provisioned/F-original-preissue.json
+  Same with "sign" instead of "inspect" and the SAME two signed/pinned inputs
+  writes ONLY a new role UID-owned
   0600 output envelope under output_dir (pre-created role UID 0700):
       <attempt>-<PHASE>-<role>.json
   O_EXCL, O_NOFOLLOW, pinned output-directory FD, fsync; repeat request
@@ -87,6 +107,43 @@ EXECUTABLE SIGNER CONTRACT (after C physical enrollment and F preissue):
   files root-owned to intake inbox, then F #1054 existing verifier checks six
   Ed25519 signatures from enrolled SPKI keys; D intake verifies & O_EXCL
   copies exact bytes to F issuer. NEVER infer approval from signer output.
+
+FINITE C/F/D ENROLLMENT & PHYSICAL AUTHENTICITY SEQUENCE (NO LIVE GO)
+  1. F freezes NEW W1_SAFE successor SHA AFTER B #1056 + full CI and exact
+     controller source pin. All six role manifests must pin that SAME SHA;
+     F separately commits positive source/finance DAG, not a path classifier.
+  2. C inspects SIX physically distinct role identities, UID/private-key
+     custody, filesystem permission and domain/host split, all six DER Ed25519
+     SPKI fingerprints (no duplicated UID/identity/private-key access).
+     Root protects manifests, producer public keys, exact reviewed per-role
+     collector hashes and the existing intake/issuer binaries. F and C must
+     approve a finite original-FD200 ingress protocol; user cannot copy
+     arbitrary JSON into root trust.
+  3. Separately owner-approved C read-only PLAN measures HEL1 true mounted
+     volume, financial 25+ units/cron/8092/8093 and physical 6/6 recovery.
+     If disk/finance/restore FAIL, stop; do not manufacture producer receipts.
+  4. Under original protected release.lock FD200, F #1059 preissue-stage
+     reserves ONE 64hex attempt; C authenticates the response's root-command
+     lineage and the 10-minute journal, no second lock.
+  5. Only owner explicitly signs a separate INTENT over original
+     preissue_sha256 + FINAL source/controller/attempt/phase/host/time, no
+     release or finance permission. C root-provisions the signed intent and
+     the immutable original preissue response to six physical origins.
+     D signer reads both root-only files; neither alone suffices.
+  6. Six independently pinned read-only collectors observe real Doctor,
+     B finance/source, C host, E physical recovery and F stage evidence
+     in the <=15-sec common cohort; D signs real F-domain Ed25519 sections
+     with per-origin nonroot identity. Missing/UNKNOWN => HOLD, never OK.
+  7. C approves secure inbound receipt transfer: validate six F signatures
+     and origin SPKIs, same attempt/phase/sha/fresh UTC and no symlink,
+     then invoke F's existing producer-intake verify/seal once O_EXCL/fsync.
+     A test signed envelope is NOT physical receipt admission.
+  8. Under original F protected owner channel issue-stage --attempt-id
+     SAME preissued attempt, with all native source/finance/host/recovery gates.
+     Owner PRE_STAGE RSA phase consent is a DIFFERENT signed packet.
+     F never proceeds without C/E/B genuine evidence and E actual capacity.
+  Every stage gives typed HOLD on missing inputs; no root installer/finance
+  operation/phase command is authorized by this source document.
 
 REAL PHYSICAL HOLDS
   No six independently enrolled credentials/physical origins observed yet.
