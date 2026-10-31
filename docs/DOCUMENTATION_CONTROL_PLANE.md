@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `repair/g-r10-native-fd200-final-docs-20261030` at `d1d4b30dd3a8a0ba95ea876c7c67a13edce27e0b`
+Implementation baseline: `r16-controller-docsv2-tests` at `ca0e393202419720529c715b505e7fb40f9d33e3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **106**
+- Authoritative repository documents: **107**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 63
-- `runbook`: 24
+- `runbook`: 25
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 83
-- `draft`: 7
+- `draft`: 8
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -58,6 +58,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [app-prodn](../README.md) | `reference` | `active` | `repository-entrypoint` |
 | [AoE2HDBets](../WORKSPACE.md) | `reference` | `active` | `workspace-reference` |
 | [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `superseded` | `operational-procedure` |
+| [R16 C — W1_SAFE deterministic HEL1 root helper/issuer installation v2](../deploy/solo-native-audit/HEL1_ROOT_INSTALL_V2_CONTRACT.md) | `runbook` | `draft` | `source-review-only-not-an-install-permit` |
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |

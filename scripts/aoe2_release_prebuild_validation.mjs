@@ -26,7 +26,7 @@ export function hasBoundReleaseGateProof(env = process.env, cwd = process.cwd())
 
 export function validationPlan(env = process.env, cwd = process.cwd()) {
   if (hasBoundReleaseGateProof(env, cwd)) return [];
-  return [["next", ["lint"]], ["tsc", ["--noEmit"]]];
+  return [["eslint", ["app", "pages", "components", "lib", "src", "--no-error-on-unmatched-pattern"]], ["tsc", ["--noEmit"]]];
 }
 
 const plan = validationPlan();
