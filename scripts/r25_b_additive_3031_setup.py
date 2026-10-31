@@ -150,7 +150,7 @@ def inherited_public_write_risks(database):
       ),
       'sequence_write', (
         SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
-        LATERAL aclexplode(COALESCE(c.relacl,acldefault('S',c.relowner))) a
+        LATERAL aclexplode(COALESCE(c.relacl,acldefault('s',c.relowner))) a
         WHERE n.nspname NOT LIKE 'pg_%' AND c.relkind='S'
           AND a.grantee=0 AND a.privilege_type IN ('USAGE','UPDATE')
       ),

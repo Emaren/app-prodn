@@ -75,6 +75,12 @@ class TestOwnerInstall(unittest.TestCase):
         self.assertIn("inherited_public_write_risks(args.database)",
                       inspect.getsource(b.check_inputs))
 
+    def test_postgres_sequence_acl_symbol_is_lowercase_s(self):
+        import inspect
+        sql=inspect.getsource(b.inherited_public_write_risks)
+        self.assertIn("acldefault('s',c.relowner)",sql)
+        self.assertNotIn("acldefault('S',c.relowner)",sql)
+
     def test_real_b_immutable_bundle_is_accepted(self):
         d=b.decode_bundle(bundle())
         self.assertEqual(b.sha(d["guard"]),b.GUARD_SHA)
