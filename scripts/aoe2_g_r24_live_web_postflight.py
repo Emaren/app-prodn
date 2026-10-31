@@ -328,7 +328,7 @@ def verify(before,after,origin):
          rb.get("dependencies_present")is True,"PREVIOUS_RELEASE_ROLLBACK_MISMATCH")
     public=public_check(after,origin)
     return {"schema":"aoe2war.g.r24.postflight.v1",
-            "status":"LIVE_SOURCE_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_VERIFIED",
+            "status":"LIVE_HOST_MARKER_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_OBSERVED",
             "live_source_sha":TARGET,"live_next_build_id":after["next_build_id"],
             "source_provenance":after["source_provenance"],
             "full_candidate_source_tree_independently_hashed":False,
