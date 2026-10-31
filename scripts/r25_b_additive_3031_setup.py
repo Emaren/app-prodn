@@ -231,7 +231,13 @@ BEGIN
       AND (has_table_privilege('aoe2war_r25_web_ro',c.oid,'INSERT')
        OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'UPDATE')
        OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'DELETE')
+       OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'TRUNCATE')
+       OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'REFERENCES')
        OR has_table_privilege('aoe2war_r25_web_ro',c.oid,'TRIGGER')))
+ OR EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname NOT LIKE 'pg_%%' AND c.relkind='S'
+      AND (has_sequence_privilege('aoe2war_r25_web_ro',c.oid,'USAGE')
+       OR has_sequence_privilege('aoe2war_r25_web_ro',c.oid,'UPDATE')))
  OR EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
     WHERE n.nspname NOT LIKE 'pg_%%' AND n.nspname<>'information_schema'
       AND (p.prosecdef OR p.provolatile='v')
