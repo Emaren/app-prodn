@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r16-w1safe-final-docsv2` at `0d6219ae74587c08867723f8ed0dbbabc4be53bd`
+Implementation baseline: `r16-w1safe-docsv2-post-tests` at `54604d008cb306e0b77c01902e8e45b3d8753a05`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
