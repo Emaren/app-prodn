@@ -49,6 +49,16 @@ class ParallelR24(unittest.TestCase):
         src=SERVER.read_text()
         self.assertIn('method="GET"',src)
         self.assertNotIn('method="POST"',src)
+    def test_actual_candidate_git_sha_is_read_as_non_root_service_uid(self):
+        text=SERVER.read_text()
+        self.assertIn('"C_ACTUAL_CHECKOUT_SOURCE_SHA_NOT_VERIFIED"',text)
+        self.assertIn('"/usr/sbin/runuser","-u",NEW_USER,"--"',text)
+        self.assertIn('"/usr/sbin/runuser","-u","tony","--"',text)
+    def test_E_durable_rollback_receipt_is_required(self):
+        text=SERVER.read_text()
+        self.assertIn('"E_durable_receipt_path"',text)
+        self.assertIn("verified_durable_e_rollback(j)",text)
+        self.assertIn("E_PHYSICAL_CONTENT_RECEIPT_DIGEST_MISMATCH",text)
     def test_real_G_next_asset_binding(self):
         self.assertIn('"/_next/static/"+build_id+"/_buildManifest.js"',SERVER.read_text())
         self.assertIn('C_STAGE_NEXT_BUILD_ID_MISMATCH',SERVER.read_text())
