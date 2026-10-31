@@ -15,10 +15,10 @@ import subprocess
 import sys
 import urllib.request
 
-ROOT_REF = "8afef85ae8bf769109e99bc431f163e127351314"
-ROOT_SIZE = 13662
-ROOT_SHA = "aac9ba020ecdd8ed699384453152ed49ef651bcd34898dd9393184a532c47286"
-ROOT_BLOB = "1e4e47df6912d6d6e8e02e52c0ead636428df7d9"
+ROOT_REF = "79f74e65df99ba7def4a9f529a2ad666c887f89b"
+ROOT_SIZE = 14001
+ROOT_SHA = "da0205653ad0f1fb6a39ea8f3973caaa7442c2ce47e9a73491dbe4e49ec7c82b"
+ROOT_BLOB = "65c1148fddae15450809a128a8c4ed71e34cb5c8"
 WITNESS_REF = "d92965fc881e404b57c347ab96d18562ced48f06"
 WITNESS_SIZE = 22062
 WITNESS_SHA = "edf1b42ea7cc8001da83d7076d8aa08f924860fd9a40f97431e60ad8528a30dc"
@@ -73,7 +73,7 @@ def root_call(root, witness, phase, *, approved=False):
     if phase == "repair" and approved:
         cmd += ["--consent", AUTH]
     remote = " ".join(shlex.quote(part) for part in cmd)
-    ssh = ["ssh", "-T", "-o", "BatchMode=yes",
+    ssh = ["/usr/bin/ssh", "-T", "-o", "BatchMode=yes",
            "-o", "StrictHostKeyChecking=yes",
            "-o", "NumberOfPasswordPrompts=0",
            "-o", "ConnectTimeout=10", "root@hel1", remote]
