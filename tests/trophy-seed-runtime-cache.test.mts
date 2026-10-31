@@ -10,45 +10,20 @@ const service = readFileSync(
   "utf8",
 );
 
-test("public trophy seed reconciliation is retained per Prisma client", () => {
-  assert.match(
-    service,
-    /new WeakMap<PrismaClient, Promise<void>>\(\)/,
-  );
-  assert.match(
-    service,
-    /publicTrophySeedEnsureByClient\.get\(prisma\)/,
-  );
-  assert.match(
-    service,
-    /publicTrophySeedEnsureByClient\.set\(\s*prisma,\s*run,/s,
-  );
-  assert.match(
-    service,
-    /ensureTrophySeedData\(prisma\)/,
-  );
+test("public trophy readers carry no memoized economic writer state", () => {
+  assert.doesNotMatch(service, /new WeakMap<PrismaClient, Promise<void>>\(\)/);
+  assert.doesNotMatch(service, /publicTrophySeedEnsureByClient/);
+  assert.doesNotMatch(service, /function ensurePublicTrophySeedData/);
 });
-
-test("read-only production preview skips trophy seed writes", () => {
-  const publicEnsureBlock = service.slice(
-    service.indexOf(
-      "function ensurePublicTrophySeedData",
-    ),
-    service.indexOf(
-      "async function loadRatings",
-    ),
+test("public trophy reads never dispatch seed writes in preview or production", () => {
+  const publicLoader = service.slice(
+    service.indexOf("export async function loadPublicTrophies"),
+    service.indexOf("export async function recordNationalityChange"),
   );
-
-  assert.match(
-    publicEnsureBlock,
-    /AOE2WAR_PROD_DB_PREVIEW === "true"/,
-  );
-  assert.match(
-    publicEnsureBlock,
-    /return Promise\.resolve\(\)/,
-  );
+  assert.match(publicLoader, /prisma\.trophy\.findMany/);
+  assert.doesNotMatch(publicLoader, /ensure(?:Public)?TrophySeedData\s*\(/);
+  assert.doesNotMatch(publicLoader, /prisma\.trophy\.(?:create|upsert|update)\s*\(/);
 });
-
 test("RM ELO bootstrap uses all five canonical custody ids", () => {
   assert.match(service, /\.\.\.eloTitles\.map/);
   assert.match(service, /trophyId: definition\.id/);
@@ -59,37 +34,20 @@ test("RM ELO bootstrap uses all five canonical custody ids", () => {
   assert.doesNotMatch(service, /trophyId: "veteran_champion_rm"/);
 });
 
-test("failed public seed reconciliation is evicted and remains retryable", () => {
-  const publicEnsureBlock = service.slice(
-    service.indexOf(
-      "function ensurePublicTrophySeedData",
-    ),
-    service.indexOf(
-      "async function loadRatings",
-    ),
-  );
-
-  assert.match(
-    publicEnsureBlock,
-    /\.catch\(\(error\) =>/,
-  );
-  assert.match(
-    publicEnsureBlock,
-    /publicTrophySeedEnsureByClient\.delete\(prisma\)/,
-  );
-  assert.match(
-    publicEnsureBlock,
-    /throw error/,
-  );
+test("authenticated Trophy Command retains retryable canonical maintenance", () => {
+  const admin = readFileSync(new URL("../app/api/admin/trophies/route.ts", import.meta.url), "utf8");
+  assert.match(admin, /requireAdmin\(request\)/);
+  assert.match(admin, /await ensureTrophySeedData\(gate\.prisma\)/);
+  assert.match(service, /export async function ensureTrophySeedData\s*\(/);
+  assert.doesNotMatch(service, /publicTrophySeedEnsureByClient/);
 });
-
 test("canonical operator seed ensure remains fully re-runnable", () => {
   const canonicalEnsure = service.slice(
     service.indexOf(
       "export async function ensureTrophySeedData",
     ),
     service.indexOf(
-      "const publicTrophySeedEnsureByClient",
+      "async function loadRatings",
     ),
   );
 
@@ -107,38 +65,15 @@ test("canonical operator seed ensure remains fully re-runnable", () => {
   );
 });
 
-test("public trophy reads use the retained bootstrap wrapper", () => {
+test("public trophy readers project persisted rows without implicit economic writes", () => {
   const publicLoader = service.slice(
-    service.indexOf(
-      "export async function loadPublicTrophies",
-    ),
-    service.indexOf(
-      "export async function loadUserTrophyHoldings",
-    ),
+    service.indexOf("export async function loadPublicTrophies"),
+    service.indexOf("export async function loadUserTrophyHoldings"),
   );
-
-  assert.match(
-    publicLoader,
-    /await ensurePublicTrophySeedData\(prisma\)/,
-  );
-  assert.match(
-    publicLoader,
-    /prisma\.trophy\.findMany/,
-  );
-  assert.doesNotMatch(
-    publicLoader,
-    /await ensureTrophySeedData\(prisma\)/,
-  );
+  assert.match(publicLoader, /prisma\.trophy\.findMany/);
+  assert.match(publicLoader, /prisma\.trophy\.findUnique/);
+  assert.doesNotMatch(publicLoader, /ensure(?:Public)?TrophySeedData\s*\(/);
 });
-
-const titleState = readFileSync(
-  new URL(
-    "../lib/champions/titleState.ts",
-    import.meta.url,
-  ),
-  "utf8",
-);
-
 test("champions overlaps trophy state with leaderboard and profile reads", () => {
   const loaderStart = titleState.indexOf(
     "export async function loadChampionTitleEconomyState",
