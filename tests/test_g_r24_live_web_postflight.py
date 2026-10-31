@@ -13,7 +13,7 @@ def fixture():
                     "WorkingDirectory":"/var/www","ExecStart":"pinned",
                     "FragmentPath":"/etc/systemd/"+name,"DropInPaths":""}
         return {"properties":properties,"properties_sha256":g.digest(g.canon(properties)),
-                "main_process":proc(pid)}
+                "unit_config_sha256":g.digest(name.encode()),"main_process":proc(pid)}
     units={g.OLD_UNIT:unit(g.OLD_UNIT,111),g.NEW_UNIT:unit(g.NEW_UNIT,222),
            "wolo-chain.service":unit("wolo-chain.service",333)}
     ports={str(p):{**proc(1000+p),"port":p,
@@ -68,6 +68,7 @@ class R25Tests(unittest.TestCase):
           lambda a:a["units"][g.OLD_UNIT]["main_process"].__setitem__("pid",999),
           lambda a:a["units"][g.NEW_UNIT]["main_process"].__setitem__("start_ticks",999),
           lambda a:a["units"]["wolo-chain.service"]["properties"].__setitem__("MainPID","0"),
+          lambda a:a["units"]["wolo-chain.service"].__setitem__("unit_config_sha256","0"*64),
           lambda a:a["ports"]["3030"].__setitem__("pid",999),
           lambda a:a["ports"]["3031"].__setitem__("socket_inode_sha256","x"*64),
           lambda a:a["ports"]["8092"].__setitem__("exe_sha256","x"*64),
