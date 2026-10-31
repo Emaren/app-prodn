@@ -122,6 +122,38 @@ meta skuid 1000 ct state new drop"""
         self.assertIn("2625090",Path(__file__).read_text() if False else
                       __import__("inspect").getsource(b.observe))
 
+    def test_prestart_negative_without_verified_root_guard(self):
+        with patch.object(b.os,"geteuid",return_value=0), \
+             patch.object(b.socket,"gethostname",return_value=b.HOST), \
+             patch.object(b,"require_root_file",return_value="f"*64):
+            with self.assertRaisesRegex(RuntimeError,"ROOT_INSTALLED_GUARD_SHA_MISMATCH"):
+                b.prestart("e"*64)
+
+    def test_prestart_positive_is_only_not_live_admission(self):
+        import types
+        def status(unit):
+            if unit==b.OLD_UNIT:return {"ActiveState":"active","MainPID":"2625090"}
+            return {"User":b.USER,"WorkingDirectory":str(b.SOURCE)}
+        with patch.object(b.os,"geteuid",return_value=0), \
+             patch.object(b.socket,"gethostname",return_value=b.HOST), \
+             patch.object(b,"require_root_file",return_value="a"*64), \
+             patch.object(b,"systemd",side_effect=status), \
+             patch.object(b.pwd,"getpwnam",return_value=types.SimpleNamespace(pw_uid=17251)), \
+             patch.object(b,"nft_policy",return_value="b"*64), \
+             patch.object(b,"root_db_envfile",return_value="dedicated_ro_dsn"), \
+             patch.object(b,"db_proof",return_value={"role":b.DB_ROLE,"checked":["role_restricted"]}), \
+             patch.object(b,"run",return_value=(b.TARGET+"\n").encode()), \
+             patch.object(b.pathlib.Path,"is_file",return_value=True), \
+             patch.object(b.pathlib.Path,"is_symlink",return_value=False), \
+             patch.object(b.pathlib.Path,"read_text",return_value="real-build-id"):
+            v=b.prestart("a"*64)
+        self.assertEqual(v["status"],"PASS_B_PRESTART_FINANCIAL_CONTROLS_NOT_LIVE_NOT_RELEASE_AUTHORITY")
+        self.assertEqual(v["release_authorized"],False)
+
+    def test_new_c_service_os_principal_is_exact(self):
+        self.assertEqual(b.USER,"aoe2war-r24-web")
+        self.assertEqual(b.UNIT,"aoe2hdbets-web-r24.service")
+
     def test_root_witness_rejects_nonroot_before_physical_queries(self):
         with patch.object(b.os,"geteuid",return_value=1000):
             with self.assertRaisesRegex(RuntimeError,"ORIGINAL_HEL1_ROOT_REQUIRED"):
