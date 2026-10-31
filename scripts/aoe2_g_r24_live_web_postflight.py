@@ -15,6 +15,7 @@ from urllib.request import Request, build_opener, HTTPRedirectHandler
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST="ubuntu-4gb-hel1-11"
 REPO=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
+F_SLOT=pathlib.Path("/var/lib/aoe2war-r24-webonly")/TARGET/"web"
 DURABLE=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/rollbacks")
 LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 EXPECTED_LOCK=(2064,6185747,1000,0o644)
@@ -124,7 +125,7 @@ def units():
     out={}
     for name in names:
         raw=run(["/usr/bin/systemctl","show",name,"--no-pager","--property",
-                 "Id,ActiveState,MainPID,UnitFileState,FragmentPath"],timeout=6).decode()
+                 "Id,ActiveState,MainPID,UnitFileState,FragmentPath,WorkingDirectory"],timeout=6).decode()
         pairs={}
         for line in raw.splitlines():
             k,sep,v=line.partition("=")
@@ -136,6 +137,8 @@ def units():
         config=run(["/usr/bin/systemctl","cat",name,"--no-pager"],timeout=6)
         out[name]={"active":pairs["ActiveState"],"main_pid":int(pairs["MainPID"]),
                    "unit_file_state":pairs["UnitFileState"],"config_sha256":sha(config)}
+        if name=="aoe2hdbets-web.service":
+            out[name]["working_directory"]=pairs.get("WorkingDirectory","")
     need("aoe2hdbets-web.service" in out,"WEB_UNIT_MISSING")
     return out
 class NoRedirect(HTTPRedirectHandler):
@@ -148,7 +151,7 @@ def get(url,method="GET",limit=2*1024*1024):
         data=result.read(limit+1) if method=="GET" else b""
         need(len(data)<=limit,"HTTP_BODY_TOO_LARGE")
         return {"status":result.status,"body":data,"cache":result.headers.get("Cache-Control","")}
-def local_http():
+def local_http(active_repo):
     origin="http://127.0.0.1:3030"
     version=get(origin+"/api/deployment-version")
     doc=parsed(version["body"])
@@ -164,8 +167,8 @@ def local_http():
     assets=sorted(set(ASSET.findall(html.unescape(html_root))))
     need(bool(assets),"LOCAL_NEXT_ASSETS_NOT_EXPOSED")
     asset=assets[0]
-    file=(REPO/".next"/asset[len("/_next/"):]).resolve(strict=True)
-    need(file.is_file() and file.is_relative_to((REPO/".next/static").resolve(strict=True)),
+    file=(active_repo/".next"/asset[len("/_next/"):]).resolve(strict=True)
+    need(file.is_file() and file.is_relative_to((active_repo/".next/static").resolve(strict=True)),
          "ASSET_NOT_ACTIVE_NEXT_STATIC")
     bytes_=file.read_bytes()
     need(0<len(bytes_)<=2*1024*1024,"ASSET_UNBOUNDED")
@@ -180,6 +183,24 @@ def lock_identity():
     return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
             "mode":oct(stat.S_IMODE(st.st_mode))}
 def rollback(path):
+    if pathlib.Path(path)==REPO:
+        need(REPO.is_dir() and not REPO.is_symlink(),"ORIGINAL_SLOT_MISSING")
+        source=run(["/usr/bin/git","-C",str(REPO),"rev-parse","HEAD"]).decode().strip()
+        need(bool(HEX40.fullmatch(source)) and
+             not run(["/usr/bin/git","-C",str(REPO),"status","--porcelain","--untracked-files=no"]).strip(),
+             "ORIGINAL_SLOT_GIT_DIRTY_OR_INVALID")
+        for p in (REPO/".next/BUILD_ID",REPO/".aoe2war-build-version"):
+            need(p.is_file() and not p.is_symlink() and p.stat().st_size<=256,
+                 "ORIGINAL_SLOT_BUILD_OR_VERSION_UNTRUSTED")
+        build=(REPO/".next/BUILD_ID").read_text().strip()
+        version=(REPO/".aoe2war-build-version").read_text().strip()
+        node=REPO/"node_modules"
+        need(node.is_dir() and not node.is_symlink() and any(node.iterdir()),
+             "ORIGINAL_SLOT_DEPENDENCIES_MISSING")
+        return {"path":str(REPO),"previous_build_id":build,
+                "previous_source_sha":source,"previous_build_version":version,
+                "dependencies_present":True,"rollback_kind":"PRESERVED_BLUE_GREEN_ORIGINAL_SLOT",
+                "fully_restore_tested":False}
     p=pathlib.Path(path)
     need(p.is_absolute() and p.parent==DURABLE and p.name.startswith("activate-"),
          "ROLLBACK_NOT_CANONICAL")
@@ -203,23 +224,39 @@ def rollback(path):
 def remote_observe(rollback_path):
     need(sys.platform=="linux" and socket.gethostname().split(".")[0]==HOST and
          os.geteuid()==0,"NOT_VERIFIED_ROOT_HEL1")
-    source=run(["/usr/bin/git","-C",str(REPO),"rev-parse","HEAD"]).decode().strip()
-    need(bool(HEX40.fullmatch(source)),"LIVE_GIT_SHA_INVALID")
-    dirty=run(["/usr/bin/git","-C",str(REPO),"status","--porcelain","--untracked-files=no"]).strip()
-    need(not dirty,"LIVE_TRACKED_SOURCE_DIRTY")
-    build_file=REPO/".next/BUILD_ID"
+    names=units()
+    service=names["aoe2hdbets-web.service"]
+    wd=service.get("working_directory","")
+    # Before: original tracked checkout. After: F root-owned immutable blue/green slot.
+    active=pathlib.Path(wd) if wd else REPO
+    need(active in (REPO,F_SLOT) and active.is_dir() and not active.is_symlink(),
+         "UNREVIEWED_ACTIVE_WEB_DIRECTORY")
+    if active==REPO:
+        source=run(["/usr/bin/git","-C",str(REPO),"rev-parse","HEAD"]).decode().strip()
+        need(not run(["/usr/bin/git","-C",str(REPO),"status","--porcelain","--untracked-files=no"]).strip(),
+             "LIVE_TRACKED_SOURCE_DIRTY")
+        provenance="ORIGINAL_GIT_COMMIT"
+    else:
+        marker=F_SLOT/"r24-source-sha"
+        st=marker.lstat()
+        need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and
+             not st.st_mode&0o022 and st.st_size<=64,
+             "ROOT_SEALED_CANDIDATE_SOURCE_MARKER_MISSING")
+        source=marker.read_text().strip()
+        provenance="F_ROOT_SEALED_SOURCE_MARKER_REQUIRES_STAGE_HASH_BINDING"
+    need(bool(HEX40.fullmatch(source)),"LIVE_SOURCE_IDENTITY_INVALID")
+    build_file=active/".next/BUILD_ID"
     need(not build_file.is_symlink(),"LIVE_BUILD_ID_SYMLINK")
     build=build_file.read_text().strip()
     need(bool(BUILD.fullmatch(build)),"LIVE_NEXT_BUILD_ID_INVALID")
-    names=units()
-    service=names["aoe2hdbets-web.service"]
     need(service["active"]=="active" and service["main_pid"]>1,"WEB_SERVICE_NOT_ACTIVE")
     web=identity(service["main_pid"])
     sockets={str(port):identity(listener_pid(port),port) for port in PORTS}
-    internal=local_http()
+    internal=local_http(active)
     return {"schema":"aoe2war.g.r24.host-snapshot.v1","host":HOST,
             "original_release_lock":lock_identity(),
-            "source_sha":source,"next_build_id":build,"web":web,"units":names,
+            "source_sha":source,"source_provenance":provenance,
+            "active_working_directory":str(active),"next_build_id":build,"web":web,"units":names,
             "protected_listeners":sockets,"internal":internal,
             "rollback":rollback(rollback_path) if rollback_path else None,
             "authority":"ROOT_SSH_HOST_AUTHENTICATED_NOT_SIGNED_FINANCIAL_AUDIT"}
@@ -267,6 +304,9 @@ def verify(before,after,origin):
     need(before.get("schema")==after.get("schema")=="aoe2war.g.r24.host-snapshot.v1"
          and before.get("host")==after.get("host")==HOST,"SNAPSHOT_HOST_MISMATCH")
     need(before["source_sha"]!=TARGET and after["source_sha"]==TARGET,"NOT_NEW_WEBSITE_LIVE")
+    need(before["active_working_directory"]==str(REPO) and
+         after["active_working_directory"] in (str(REPO),str(F_SLOT)),
+         "UNEXPECTED_WEB_WORKING_DIRECTORY_CUTOVER")
     need(before["next_build_id"]!=after["next_build_id"],"NEXT_BUILD_NOT_CHANGED")
     need(before.get("original_release_lock")==after.get("original_release_lock") and
          after.get("original_release_lock",{}).get("inode")==EXPECTED_LOCK[1],
@@ -285,6 +325,8 @@ def verify(before,after,origin):
     return {"schema":"aoe2war.g.r24.postflight.v1",
             "status":"LIVE_SOURCE_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_VERIFIED",
             "live_source_sha":TARGET,"live_next_build_id":after["next_build_id"],
+            "source_provenance":after["source_provenance"],
+            "active_working_directory":after["active_working_directory"],
             "web_main_pid":after["web"]["pid"],"previous_source_sha":before["source_sha"],
             "previous_next_build_id":before["next_build_id"],
             "protected_financial_units_checked":len(before["units"])-1,
@@ -326,6 +368,7 @@ def main():
                 recheck=ssh_observe(x.ssh_target,x.rollback_path)
                 compare_financial(before,recheck)
                 need(recheck["source_sha"]==TARGET and
+                     recheck["active_working_directory"]==out["active_working_directory"] and
                      recheck["next_build_id"]==out["live_next_build_id"] and
                      recheck["web"]==out["web"] and
                      recheck["rollback"]==out["rollback"],"HOST_DRIFT_DURING_PUBLIC_POSTFLIGHT")
