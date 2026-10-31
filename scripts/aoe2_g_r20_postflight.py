@@ -335,11 +335,15 @@ def postflight(owner_envelope):
     version=public_get()
     need(live_identity(build,after)==identity,"HOST_PID_CHANGED_DURING_PUBLIC_GET")
     return {"schema":"aoe2war.g.r20.postflight.v1",
-            "status":"SIGNED_POST_ACTIVATE_SOURCE_FINANCE_PID_PUBLIC_VERIFIED_BROWSER_PENDING",
+            "status":"ROOT_SIGNED_HOST_FINANCE_PUBLIC_HTTP_CONSISTENCY_BROWSER_PENDING",
             "website_sha":CANDIDATE,"controller_review_sha":CONTROLLER,
             "attempt_id":attempt,"next_build_id":build,
             "application_build_version":version,"host":HOST,"service":identity,
-            "six_independent_producer_signatures_verified":True,
+            "six_distinct_enrolled_producer_signatures_valid":True,
+            "six_independent_signer_failure_domains_verified":False,
+            "public_build_version_agrees":True,
+            "public_next_build_id_cryptographically_attested":False,
+            "8092_8093_socket_inodes_bound_to_signed_pids":True,
             "financial_exposure_changed":False,
             "rollback_root_signed_preserved":True,"G_rollback_drill_performed":False,
             "production_browser_375_768_1440":"NOT_RUN",
