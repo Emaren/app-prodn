@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/"scripts"))
 from aoe2_solo_website_nonce_ledger import Journal,Hold,sha
 
-SOURCE="a9525f46302edff88ed073743a7dfaed08be9e3e"
+SOURCE="4eff4b1ad1f90aef35738c25f523998a16174bd8"
 WHEN=datetime(2026,10,31,1,0,tzinfo=timezone.utc)
 
 class RootPreissueContract(unittest.TestCase):

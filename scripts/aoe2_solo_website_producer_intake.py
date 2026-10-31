@@ -19,7 +19,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 HOST = "ubuntu-4gb-hel1-11"
-W1_SAFE = "a9525f46302edff88ed073743a7dfaed08be9e3e"
+W1_SAFE = "4eff4b1ad1f90aef35738c25f523998a16174bd8"
 FROZEN_W1 = "b46a51f1592c9f296839924ae55e722618b10d35"
 CLASSES = ("doctor", "recovery", "finance", "host", "source", "stage")
 PHASES = ("PRE_STAGE", "PRE_ACTIVATE", "POST_ACTIVATE", "POST_ROLLBACK")

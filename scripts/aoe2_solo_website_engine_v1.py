@@ -16,7 +16,7 @@ from contextlib import redirect_stdout
 ROOT=Path(__file__).resolve().parents[1]
 HERE=Path(__file__).resolve().parent
 W1="b46a51f1592c9f296839924ae55e722618b10d35"
-W1_SAFE="a9525f46302edff88ed073743a7dfaed08be9e3e"
+W1_SAFE="4eff4b1ad1f90aef35738c25f523998a16174bd8"
 POST="fa5c350b35cba7ace8d4515a7ad52ba4e1534295"
 POLICY="aoe2war.solo-owner.website.admission.v1"
 HOST="root@157.180.114.124"

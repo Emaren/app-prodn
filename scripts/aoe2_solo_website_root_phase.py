@@ -20,7 +20,7 @@ HEX64=re.compile(r"[0-9a-f]{64}\Z")
 HEX40=re.compile(r"[0-9a-f]{40}\Z")
 TRAINS={"W1":("b46a51f1592c9f296839924ae55e722618b10d35",
             "33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a"),
-        "W1_SAFE":("a9525f46302edff88ed073743a7dfaed08be9e3e",
+        "W1_SAFE":("4eff4b1ad1f90aef35738c25f523998a16174bd8",
                    "33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a"),
         "POST_W1":("fa5c350b35cba7ace8d4515a7ad52ba4e1534295",
                    "b46a51f1592c9f296839924ae55e722618b10d35")}
