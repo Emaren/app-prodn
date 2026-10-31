@@ -29,8 +29,8 @@ C_SOURCE_ARCHIVE=pathlib.Path("/var/lib/aoe2war-r24-source-bundles")/(TARGET+".t
 C_SOURCE_ARCHIVE_SHA256="c906c75d18ca56871bfdb9fbcdb6173e2c7643ae8f58e5f44735103c530f0101"
 B_ROOT_POSTSTART=pathlib.Path("/etc/aoe2war/r24-parallel-web/b-poststart-positive.json")
 E_ROOT_RECOVERY=pathlib.Path("/etc/aoe2war/r24-parallel-web/e-recovery-ready.json")
-# Exact E #1078 accepted direct-child parallel runtime path on root filesystem.
-CANDIDATE_STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+# C #1084 root-protected direct child of /var/lib; never use the mutable live /var/www parent.
+CANDIDATE_STAGE=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 PUBLIC="https://aoe2war.com"
 B_INDEPENDENT_POSITIVE_RUNTIME_SHA="" # current B #1077 is explicitly negative
 F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA="" # not issued until real E/C stage
@@ -314,8 +314,8 @@ def next_build_asset(base,build_id):
 
 def stage_identity(j):
     """C's Git archive has no .git. Prove source via sealed C manifests."""
-    need(CANDIDATE_STAGE.parent==OLD_APP.parent and
-         CANDIDATE_STAGE.name=="app-prodn-r24-w1safe-0cee3c836c4b",
+    need(CANDIDATE_STAGE.parent==pathlib.Path("/var/lib") and
+         CANDIDATE_STAGE.name=="aoe2war-r25-web-0cee3c836c4b",
          "E_PHYSICAL_PARALLEL_STAGE_LOCATION_DRIFT")
     for p in (CANDIDATE_STAGE.parent,CANDIDATE_STAGE,C_AUDIT):
         protected_dir(p)
