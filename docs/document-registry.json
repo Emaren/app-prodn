@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "daa1b300fb644bca8d68c8618839fa0a0a6c849314be93a8572703c2c8266a19",
+      "sha256": "40b33d2f13613ad1605a29062bcc62939e65ac99c64ea122ad079cf879a0e707",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "r25-c-additive-parallel-source-build",
-    "commit": "7898ea7a01894b07e940bd9948eeba708fcfb49d"
+    "commit": "1488cdf9aee34cec898da40c5203b64deed7dd8d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
