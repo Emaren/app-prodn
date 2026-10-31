@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "77ecabf5b559bb0c2d3d1036d7919903c8375461097ecf778439bd27b2086023",
+      "sha256": "44be4dadd9bb36f70180562bd2438d83fcee878ad71c169e0d6e06f63f843e87",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2442,7 +2442,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "review/d-r16-native-producer-inbox-20261030",
-    "commit": "98c3c96d16903e54ad6c08386b51141b1800380f"
+    "commit": "88fe48d19ee684173fa1ed4a18bcfd51a85c10b8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
