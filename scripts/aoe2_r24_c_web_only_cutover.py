@@ -302,13 +302,15 @@ def cutover(a):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--apply",action="store_true")
+    p.add_argument("--owner-build-id",default="")
     args=p.parse_args()
     need(args.apply,"MUTATION_REQUIRES_EXPLICIT_APPLY")
     a=protected_file(APPROVAL)
     verify_review(a)
+    need(args.owner_build_id==a["candidate_build_id"],"OWNER_BUILD_ID_NOT_APPROVED")
     cutover(a)
 if __name__=="__main__":
     try: main()
-    except (Hold,Exception) as exc:
+    except Exception as exc:
         print("HOLD:R24_WEB_ONLY:"+type(exc).__name__+":"+str(exc)[:240],file=sys.stderr)
         sys.exit(2)
