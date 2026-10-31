@@ -81,7 +81,8 @@ def approval(raw):
         "previous_build_id","candidate_build_id","candidate_build_version",
         "nginx_config","nginx_before_sha256","finance_units","finance_snapshot_sha256",
         "wolo_snapshot_sha256","old_web_snapshot_sha256","candidate_web_snapshot_sha256",
-        "C_stage_artifact_sha256","E_durable_rollback_sha256","lane_reviews"},
+        "C_stage_artifact_sha256","E_durable_rollback_sha256",
+        "E_durable_receipt_path","lane_reviews"},
         "APPROVAL_EXACT_SCHEMA")
     need(j["schema"]==SCHEMA and j["candidate_sha"]==TARGET and
          type(j["nonce"])==str and NONCE.fullmatch(j["nonce"]),
@@ -92,6 +93,9 @@ def approval(raw):
               "old_web_snapshot_sha256","candidate_web_snapshot_sha256",
               "C_stage_artifact_sha256","E_durable_rollback_sha256"):
         need(type(j[f])==str and HEX64.fullmatch(j[f]),"APPROVAL_HASH_MISSING:"+f)
+    need(j["E_durable_receipt_path"]==
+         "/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
+         "E_ROOT_SEALED_RECEIPT_PATH_NOT_PINNED")
     for f in ("previous_build_id","candidate_build_id"):
         need(type(j[f])==str and re.fullmatch("[A-Za-z0-9_-]{8,128}",j[f]),
              "NEXT_BUILD_ID_INVALID")
@@ -182,6 +186,43 @@ def prove_preimage(j,s):
          "B_FINANCIAL_UNITS_DRIFT")
     need(sha(canonical(listener_lines(s["wolo"])))==j["wolo_snapshot_sha256"],
          "WOLO_SIGNED_PROCESS_SOCKET_DRIFT")
+def verified_durable_e_rollback(j):
+    # E's content-verification result is a readback receipt, never an
+    # invented "rollback exercised" claim. Root custody + F digest bind.
+    raw=root_file(pathlib.Path(j["E_durable_receipt_path"]),16384)
+    need(sha(raw)==j["E_durable_rollback_sha256"],
+         "E_PHYSICAL_CONTENT_RECEIPT_DIGEST_MISMATCH")
+    e=parse(raw)
+    need(type(e)==dict and
+         e.get("schema")=="aoe2war.e.r24.website.rollback-content.v1" and
+         e.get("status")=="PASS_DURABLE_COPY_CONTENT_MATCH_NOT_ROLLBACK_EXERCISE" and
+         e.get("finance_touched") is False and
+         e.get("web_service_stopped") is False and
+         e.get("release_authorized") is False,
+         "E_CONTENT_VERIFICATION_NOT_GENUINE_OR_SCOPE_DRIFT")
+    need(e.get("old_live_next")==str(OLD_APP/".next") and
+         e.get("old_build_id")==j["previous_build_id"],
+         "E_OLD_WEB_BUILD_ROLLBACK_IDENTITY_INVALID")
+    d=e.get("durable_next")
+    base=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/rollbacks")
+    need(type(d)==str,"E_DURABLE_PATH_NOT_PRESENT")
+    d=pathlib.Path(d)
+    need(d.is_relative_to(base) and d!=base and
+         d.name=="prior-next" and not d.is_symlink(),
+         "E_DURABLE_ROLLBACK_LOCATION_UNAPPROVED")
+    old=OLD_APP/".next"
+    need(d.is_dir() and old.is_dir() and
+         os.stat(d).st_dev!=os.stat(old).st_dev,
+         "E_DURABLE_ROLLBACK_NOT_INDEPENDENT_DEVICE")
+    need((d/"BUILD_ID").read_text().strip()==j["previous_build_id"] and
+         (old/"BUILD_ID").read_text().strip()==j["previous_build_id"],
+         "E_OLD_AND_DURABLE_NEXT_BUILD_ID_DRIFT")
+    a=e.get("old_content");b=e.get("durable_content")
+    need(type(a)==dict and a==b and type(a.get("sha256"))==str and
+         bool(HEX64.fullmatch(a["sha256"])),
+         "E_FULL_CONTENT_DIGEST_MISMATCH")
+    return True
+
 def http_version(port):
     url=f"http://127.0.0.1:{port}/api/deployment-version"
     with urllib.request.urlopen(urllib.request.Request(url,method="GET"),
@@ -285,6 +326,7 @@ def apply():
     candidate=safe_replace_site(old,NEW_UPSTREAM)
     s=snapshots(j["finance_units"]);prove_preimage(j,s)
     stage_identity(j)
+    verified_durable_e_rollback(j)
     need(http_version(OLD_PORT)!=j["candidate_build_version"] and
          http_version(NEW_PORT)==j["candidate_build_version"],
          "CANDIDATE_NOT_ISOLATED_FROM_OLD_WEB")
