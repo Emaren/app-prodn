@@ -1,389 +1,436 @@
 #!/usr/bin/env python3
-"""R24 G authenticated, read-only HEL1 website witness. Mac controller; no install.
+"""R25 G: parallel 3030/3031 root-SSH BEFORE/AFTER/ROLLBACK witness.
 
-before: python3 script --ssh-target root@<owner-reviewed-HEL1-alias> --phase before > before.json
-after:  python3 script --ssh-target root@<same-alias> --phase after --before before.json \
-           --rollback-path /mnt/HC_Volume_105319120/aoe2war/rollbacks/activate-<real-receipt-id> \
-           --before-sha256 <sha256-from-original-F-before-capture>
-The root SSH key/known_hosts must be independently verified by the owner/F.
-No ssh host-key bypass, privilege elevation, database operation or write on HEL1.
+Root host collector is read-only, delivered over already authenticated SSH stdin.
+F controls the single owner-authorized deployment transaction. Never run this
+against a candidate lacking B's positive read-only/egress/method admission.
 """
 from __future__ import annotations
-import argparse, hashlib, html, json, os, pathlib, re, socket, stat, subprocess, sys
+import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST="ubuntu-4gb-hel1-11"
-REPO=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
-F_SLOT=pathlib.Path("/var/lib/aoe2war-r24-webonly")/TARGET/"web"
-DURABLE=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/rollbacks")
+OLD_UNIT="aoe2hdbets-web.service"
+NEW_UNIT="aoe2hdbets-web-r24.service"
+OLD_PORT=3030
+NEW_PORT=3031
+OLD_REPO=pathlib.Path("/var/www/AoE2HDBets/app-prodn")
+STAGE=pathlib.Path("/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b")
+APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
+AUDIT=pathlib.Path("/var/lib/aoe2war-r24-parallel")
 LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
-EXPECTED_LOCK=(2064,6185747,1000,0o644)
-PORTS=(8092,8093)
-PAGES=("/", "/lobby", "/bets", "/live-games", "/war-chest")
-PREFIXES=("aoe2","wolo","tokenchain","traffic","radio")
-HEX40=re.compile(r"[0-9a-f]{40}\Z")
-BUILD=re.compile(r"[A-Za-z0-9_-]{10,128}\Z")
-ASSET=re.compile(r'(?:(?:src|href)=["\x27])(/_next/static/[A-Za-z0-9_./-]+\.(?:js|css))(?:["\x27])')
+LOCK_ID=(2064,6185747,1000,0o644)
+PUBLIC="https://aoe2war.com"
+PAGES=("/","/lobby","/bets","/live-games","/war-chest")
+FINANCE_PREFIXES=("aoe2","wolo","tokenchain","traffic","radio")
+H40=re.compile(r"[a-f0-9]{40}\Z")
+H64=re.compile(r"[a-f0-9]{64}\Z")
+BUILD=re.compile(r"[A-Za-z0-9_-]{8,128}\Z")
+NONCE=re.compile(r"[a-f0-9]{32}\Z")
 class Hold(Exception): pass
 def need(ok,why):
-    if not ok:raise Hold(why)
-def sha(data):return hashlib.sha256(data).hexdigest()
-def unique(pairs):
-    obj={}
+    if not ok: raise Hold(why)
+def digest(b):return hashlib.sha256(b).hexdigest()
+def canon(x):return json.dumps(x,sort_keys=True,separators=(",",":"),allow_nan=False).encode()
+def pairs_unique(pairs):
+    out={}
     for k,v in pairs:
-        need(k not in obj,"DUPLICATE_JSON_KEY")
-        obj[k]=v
-    return obj
-def parsed(raw):
-    need(len(raw)<=1024*1024,"REPORT_TOO_LARGE")
-    return json.loads(raw,object_pairs_hook=unique,
-                      parse_constant=lambda _:(_ for _ in ()).throw(Hold("INVALID_JSON_NUMBER")))
-def run(argv,*,timeout=12,input=None):
-    p=subprocess.run(argv,input=input,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=timeout)
-    need(p.returncode==0,"COMMAND_FAILED:"+pathlib.Path(argv[0]).name)
+        need(k not in out,"DUPLICATE_JSON_PROPERTY")
+        out[k]=v
+    return out
+def parse(raw,max_size=1048576):
+    need(0<len(raw)<=max_size,"JSON_SIZE")
+    return json.loads(raw,object_pairs_hook=pairs_unique,
+        parse_constant=lambda _ : (_ for _ in ()).throw(Hold("NONFINITE_JSON")))
+def run(cmd,timeout=20,stdin=None):
+    p=subprocess.run(cmd,input=stdin,capture_output=True,timeout=timeout)
+    need(p.returncode==0,"READ_ONLY_COMMAND_FAILED:"+pathlib.Path(cmd[0]).name)
     return p.stdout
-def proc_start(pid):
-    raw=(pathlib.Path("/proc")/str(pid)/"stat").read_text()
-    end=raw.rfind(")")
-    need(end>0,"PROC_STAT_MALFORMED")
-    parts=raw[end+2:].split()
-    need(len(parts)>19,"PROC_STAT_TRUNCATED")
-    return int(parts[19])
-def identity(pid,port=None):
+def root_file(p,maxsize=131072):
+    p=pathlib.Path(p)
+    st=p.lstat()
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and
+         not st.st_mode&0o022 and 0<st.st_size<=maxsize,"ROOT_FILE_UNTRUSTED")
+    fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        st2=os.fstat(fd)
+        need((st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns)==
+             (st2.st_dev,st2.st_ino,st2.st_size,st2.st_mtime_ns),
+             "ROOT_FILE_RACE")
+        raw=os.read(fd,maxsize+1)
+        need(len(raw)==st.st_size,"ROOT_FILE_CHANGED")
+        return raw
+    finally:os.close(fd)
+def proc_ticks(pid):
+    s=(pathlib.Path("/proc")/str(pid)/"stat").read_text()
+    p=s.rfind(")")
+    need(p>=0,"PROC_STAT_MALFORMED")
+    f=s[p+2:].split()
+    need(len(f)>19,"PROC_STAT_MISSING_START")
+    return int(f[19])
+def proc_identity(pid):
     need(type(pid)is int and pid>1,"INVALID_PID")
-    base=pathlib.Path("/proc")/str(pid)
-    start=proc_start(pid)
-    uid=int(next(v for v in (base/"status").read_text().splitlines() if v.startswith("Uid:")).split()[1])
-    cgroup=sha((base/"cgroup").read_bytes())
-    # Hash the actual executable bytes; no command-line or environment is returned.
+    root=pathlib.Path("/proc")/str(pid)
+    start=proc_ticks(pid)
+    uid=int(next(x for x in (root/"status").read_text().splitlines()
+                 if x.startswith("Uid:")).split()[1])
+    cg=digest((root/"cgroup").read_bytes())
     h=hashlib.sha256()
-    with (base/"exe").open("rb") as fd:
+    with (root/"exe").open("rb") as exe:
         while True:
-            b=fd.read(1024*1024)
+            b=exe.read(1048576)
             if not b:break
             h.update(b)
-    executable=h.hexdigest()
-    result={"pid":pid,"start_ticks":start,"uid":uid,"cgroup_sha256":cgroup,
-            "executable_sha256":executable}
-    if port is not None:
-        inodes=[]
-        for family in ("tcp","tcp6"):
-            raw=(pathlib.Path("/proc/net")/family).read_text().splitlines()
-            need(raw and "local_address" in raw[0],"TCP_HEADER_MISSING")
-            for line in raw[1:]:
-                f=line.split()
-                need(len(f)>=10,"TCP_ROW_MALFORMED")
-                if f[3]=="0A" and int(f[1].rsplit(":",1)[1],16)==port:
-                    need(f[9].isdecimal() and int(f[9])>0,"LISTENER_BAD_INODE")
-                    inodes.append(f[9])
-        need(len(inodes)==1,"PORT_NOT_EXACTLY_ONE_LISTENER:"+str(port))
-        inode=inodes[0]
-        matches=0
-        for i,fd in enumerate((base/"fd").iterdir()):
-            need(i<8192,"TOO_MANY_PROCESS_DESCRIPTORS")
-            try: target=os.readlink(fd)
-            except FileNotFoundError:continue
-            if target=="socket:["+inode+"]":matches+=1
-        need(matches>=1,"SOCKET_NOT_OWNED_BY_SIGNED_PROCESS:"+str(port))
-        result["socket_inode_sha256"]=sha(inode.encode())
-        result["port"]=port
-    need(proc_start(pid)==start,"PID_REUSED_DURING_CAPTURE")
-    return result
-def listener_pid(port):
-    """Find socket owner in /proc. Exactly one PID may own each protected LISTEN inode."""
-    inodes=[]
-    for family in ("tcp","tcp6"):
-        lines=(pathlib.Path("/proc/net")/family).read_text().splitlines()
-        for line in lines[1:]:
-            a=line.split()
-            need(len(a)>=10,"TCP_ROW_MALFORMED")
-            if a[3]=="0A" and int(a[1].rsplit(":",1)[1],16)==port:
-                inodes.append(a[9])
-    need(len(inodes)==1 and inodes[0].isdigit() and int(inodes[0])>0,
-         "UNIQUE_LISTENER_NOT_MEASURED:"+str(port))
-    match=set()
-    needle="socket:["+inodes[0]+"]"
+    need(proc_ticks(pid)==start,"PID_REUSED_DURING_OBSERVATION")
+    return {"pid":pid,"start_ticks":start,"uid":uid,
+            "cgroup_sha256":cg,"exe_sha256":h.hexdigest()}
+def listening_socket(port):
+    found=[]
+    for table in ("tcp","tcp6"):
+        records=(pathlib.Path("/proc/net")/table).read_text().splitlines()
+        need(records and "local_address" in records[0],"SOCKET_TABLE_HEADER")
+        for rec in records[1:]:
+            fields=rec.split()
+            need(len(fields)>=10,"SOCKET_TABLE_MALFORMED")
+            if fields[3]=="0A" and int(fields[1].rsplit(":",1)[1],16)==port:
+                need(fields[9].isdecimal() and int(fields[9])>0,"SOCKET_INODE_UNKNOWN")
+                found.append(fields[9])
+    need(len(found)==1,"NOT_EXACTLY_ONE_LISTENER:"+str(port))
+    inode=found[0]
+    needle="socket:["+inode+"]"
+    owners=set()
     for p in pathlib.Path("/proc").iterdir():
         if not p.name.isdecimal():continue
-        fd_dir=p/"fd"
-        try: fds=list(fd_dir.iterdir())
+        try: fds=(p/"fd").iterdir()
+        except (OSError,PermissionError):continue
+        n=0
+        try:
+            for fd in fds:
+                n+=1
+                need(n<=8192,"PROCESS_FD_BOUND_EXCEEDED")
+                try:
+                    if os.readlink(fd)==needle:owners.add(int(p.name));break
+                except (FileNotFoundError,PermissionError,ProcessLookupError):continue
         except (FileNotFoundError,PermissionError,ProcessLookupError):continue
-        for fd in fds[:8192]:
-            try:
-                if os.readlink(fd)==needle:match.add(int(p.name));break
-            except (FileNotFoundError,PermissionError,ProcessLookupError):continue
-    need(len(match)==1,"SOCKET_TO_ONE_PID_UNKNOWN:"+str(port))
-    return next(iter(match))
-def units():
-    listing=run(["/usr/bin/systemctl","list-unit-files","--all","--type=service",
-                 "--type=timer","--no-pager","--no-legend"],timeout=15).decode()
-    names=sorted(set(s.split()[0] for s in listing.splitlines()
-                     if s.split() and s.split()[0].lower().startswith(PREFIXES)
-                     and s.split()[0].endswith((".service",".timer"))))
-    need(25<=len(names)<=200,"FINANCIAL_UNIT_INVENTORY_UNKNOWN")
-    out={}
-    for name in names:
-        raw=run(["/usr/bin/systemctl","show",name,"--no-pager","--property",
-                 "Id,ActiveState,MainPID,UnitFileState,FragmentPath,WorkingDirectory"],timeout=6).decode()
-        pairs={}
-        for line in raw.splitlines():
-            k,sep,v=line.partition("=")
-            need(sep and k not in pairs,"UNIT_SHOW_MALFORMED")
-            pairs[k]=v
-        need(pairs.get("Id")==name and "ActiveState" in pairs and
-             "MainPID" in pairs and "UnitFileState" in pairs,"UNIT_IDENTITY_MISSING")
-        # unit and drop-in configuration hash; do not disclose possible secrets.
-        config=run(["/usr/bin/systemctl","cat",name,"--no-pager"],timeout=6)
-        out[name]={"active":pairs["ActiveState"],"main_pid":int(pairs["MainPID"]),
-                   "unit_file_state":pairs["UnitFileState"],"config_sha256":sha(config)}
-        if name=="aoe2hdbets-web.service":
-            out[name]["working_directory"]=pairs.get("WorkingDirectory","")
-    need("aoe2hdbets-web.service" in out,"WEB_UNIT_MISSING")
-    return out
-class NoRedirect(HTTPRedirectHandler):
-    def redirect_request(self,*args,**kwargs): return None
-def get(url,method="GET",limit=2*1024*1024):
-    req=Request(url,method=method,headers={"Cache-Control":"no-cache",
-         "User-Agent":"aoe2war-g-r24-readonly-witness"})
-    with build_opener(NoRedirect).open(req,timeout=9) as result:
-        need(result.status==200,"HTTP_STATUS_NOT_200:"+url)
-        data=result.read(limit+1) if method=="GET" else b""
-        need(len(data)<=limit,"HTTP_BODY_TOO_LARGE")
-        return {"status":result.status,"body":data,"cache":result.headers.get("Cache-Control","")}
-def local_http(active_repo):
-    origin="http://127.0.0.1:3030"
-    version=get(origin+"/api/deployment-version")
-    doc=parsed(version["body"])
-    value=doc.get("buildVersion")
-    need(type(value)is str and value not in ("","unknown","development"),"LOCAL_APP_VERSION_UNKNOWN")
-    result={}
-    for page in PAGES:
-        html_body=get(origin+page)["body"]
-        head=get(origin+page,"HEAD")
-        need(head["status"]==200 and bool(html_body),"LOCAL_GET_OR_HEAD_HOLD:"+page)
-        result[page]={"get":200,"head":200}
-    html_root=get(origin+"/")["body"].decode("utf8","strict")
-    assets=sorted(set(ASSET.findall(html.unescape(html_root))))
-    need(bool(assets),"LOCAL_NEXT_ASSETS_NOT_EXPOSED")
-    asset=assets[0]
-    file=(active_repo/".next"/asset[len("/_next/"):]).resolve(strict=True)
-    need(file.is_file() and file.is_relative_to((active_repo/".next/static").resolve(strict=True)),
-         "ASSET_NOT_ACTIVE_NEXT_STATIC")
-    bytes_=file.read_bytes()
-    need(0<len(bytes_)<=2*1024*1024,"ASSET_UNBOUNDED")
-    need(sha(get(origin+asset)["body"])==sha(bytes_),"LOCAL_ASSET_DIFFERS_FROM_ACTIVE_BUILD")
-    return {"build_version":value,"routes":result,"asset":asset,"asset_sha256":sha(bytes_)}
-def lock_identity():
-    st=LOCK.lstat()
-    need(stat.S_ISREG(st.st_mode) and not stat.S_ISLNK(st.st_mode),
-         "RELEASE_LOCK_NOT_REGULAR")
-    value=(st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))
-    need(value==EXPECTED_LOCK,"ORIGINAL_RELEASE_LOCK_IDENTITY_DRIFT")
-    return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
-            "mode":oct(stat.S_IMODE(st.st_mode))}
-def rollback(path):
-    if pathlib.Path(path)==REPO:
-        need(REPO.is_dir() and not REPO.is_symlink(),"ORIGINAL_SLOT_MISSING")
-        source=run(["/usr/bin/git","-C",str(REPO),"rev-parse","HEAD"]).decode().strip()
-        need(bool(HEX40.fullmatch(source)) and
-             not run(["/usr/bin/git","-C",str(REPO),"status","--porcelain","--untracked-files=no"]).strip(),
-             "ORIGINAL_SLOT_GIT_DIRTY_OR_INVALID")
-        for p in (REPO/".next/BUILD_ID",REPO/".aoe2war-build-version"):
-            need(p.is_file() and not p.is_symlink() and p.stat().st_size<=256,
-                 "ORIGINAL_SLOT_BUILD_OR_VERSION_UNTRUSTED")
-        build=(REPO/".next/BUILD_ID").read_text().strip()
-        version=(REPO/".aoe2war-build-version").read_text().strip()
-        node=REPO/"node_modules"
-        need(node.is_dir() and not node.is_symlink() and any(node.iterdir()),
-             "ORIGINAL_SLOT_DEPENDENCIES_MISSING")
-        return {"path":str(REPO),"previous_build_id":build,
-                "previous_source_sha":source,"previous_build_version":version,
-                "dependencies_present":True,"rollback_kind":"PRESERVED_BLUE_GREEN_ORIGINAL_SLOT",
-                "fully_restore_tested":False}
-    p=pathlib.Path(path)
-    need(p.is_absolute() and p.parent==DURABLE and p.name.startswith("activate-"),
-         "ROLLBACK_NOT_CANONICAL")
-    for x in (p,p/"next",p/"node_modules"):
-        st=x.lstat()
-        need(stat.S_ISDIR(st.st_mode) and not stat.S_ISLNK(st.st_mode),
-             "ROLLBACK_DIRECTORY_MISSING_OR_LINKED")
-    for name in ("next/BUILD_ID","source-sha","build-version"):
-        node=p/name
-        need(node.is_file() and not node.is_symlink() and
-             node.stat().st_size<=256,"ROLLBACK_MARKER_MISSING_OR_LINKED:"+name)
-    build=(p/"next/BUILD_ID").read_text().strip()
-    source=(p/"source-sha").read_text().strip()
-    version=(p/"build-version").read_text().strip()
-    need(bool(BUILD.fullmatch(build)) and bool(HEX40.fullmatch(source)) and version,
-         "ROLLBACK_LINEAGE_MISSING")
-    need(any((p/"node_modules").iterdir()),"ROLLBACK_DEPENDENCIES_EMPTY")
-    return {"path":str(p),"previous_build_id":build,"previous_source_sha":source,
-            "previous_build_version":version,"dependencies_present":True,
-            "fully_restore_tested":False}
-def remote_observe(rollback_path):
-    need(sys.platform=="linux" and socket.gethostname().split(".")[0]==HOST and
-         os.geteuid()==0,"NOT_VERIFIED_ROOT_HEL1")
-    names=units()
-    service=names["aoe2hdbets-web.service"]
-    wd=service.get("working_directory","")
-    # Before: original tracked checkout. After: F root-owned immutable blue/green slot.
-    active=pathlib.Path(wd) if wd else REPO
-    need(active in (REPO,F_SLOT) and active.is_dir() and not active.is_symlink(),
-         "UNREVIEWED_ACTIVE_WEB_DIRECTORY")
-    if active==REPO:
-        source=run(["/usr/bin/git","-C",str(REPO),"rev-parse","HEAD"]).decode().strip()
-        need(not run(["/usr/bin/git","-C",str(REPO),"status","--porcelain","--untracked-files=no"]).strip(),
-             "LIVE_TRACKED_SOURCE_DIRTY")
-        provenance="ORIGINAL_GIT_COMMIT"
+    need(len(owners)==1,"LISTENER_OWNER_NOT_UNIQUE:"+str(port))
+    result=proc_identity(next(iter(owners)))
+    result["socket_inode_sha256"]=digest(inode.encode())
+    result["port"]=port
+    return result
+def show(unit):
+    props=["Id","ActiveState","MainPID","ExecMainStartTimestampMonotonic",
+           "User","WorkingDirectory","ExecStart","FragmentPath","DropInPaths"]
+    raw=run(["/usr/bin/systemctl","show",unit,"--no-pager"]+
+            [z for x in props for z in ("-p",x)],timeout=12).decode()
+    obj={}
+    for line in raw.splitlines():
+        k,sep,v=line.partition("=")
+        need(sep and k not in obj,"SYSTEMD_DUPLICATE_PROPERTY")
+        obj[k]=v
+    need(set(obj)==set(props) and obj["Id"]==unit and
+         obj["MainPID"].isdecimal(),"SYSTEMD_UNIT_PROPERTIES_MISSING")
+    result={"properties":obj,"properties_sha256":digest(canon(obj))}
+    if int(obj["MainPID"])>1:
+        result["main_process"]=proc_identity(int(obj["MainPID"]))
     else:
-        for node in (F_SLOT,F_SLOT.parent,F_SLOT.parent.parent):
-            st=node.lstat()
-            need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and
-                 not(st.st_mode&0o022) and not stat.S_ISLNK(st.st_mode),
-                 "UNTRUSTED_ROOT_SEALED_WEB_SLOT")
-        marker=F_SLOT/"r24-source-sha"
-        st=marker.lstat()
-        need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and
-             not st.st_mode&0o022 and st.st_size<=64,
-             "ROOT_SEALED_CANDIDATE_SOURCE_MARKER_MISSING")
-        source=marker.read_text().strip()
-        provenance="F_ROOT_SEALED_SOURCE_MARKER_REQUIRES_STAGE_HASH_BINDING"
-    need(bool(HEX40.fullmatch(source)),"LIVE_SOURCE_IDENTITY_INVALID")
-    build_file=active/".next/BUILD_ID"
-    need(not build_file.is_symlink(),"LIVE_BUILD_ID_SYMLINK")
-    build=build_file.read_text().strip()
-    need(bool(BUILD.fullmatch(build)),"LIVE_NEXT_BUILD_ID_INVALID")
-    need(service["active"]=="active" and service["main_pid"]>1,"WEB_SERVICE_NOT_ACTIVE")
-    web=identity(service["main_pid"])
-    sockets={str(port):identity(listener_pid(port),port) for port in PORTS}
-    internal=local_http(active)
-    return {"schema":"aoe2war.g.r24.host-snapshot.v1","host":HOST,
-            "original_release_lock":lock_identity(),
-            "source_sha":source,"source_provenance":provenance,
-            "active_working_directory":str(active),"next_build_id":build,"web":web,"units":names,
-            "protected_listeners":sockets,"internal":internal,
-            "rollback":rollback(rollback_path) if rollback_path else None,
-            "authority":"ROOT_SSH_HOST_AUTHENTICATED_NOT_SIGNED_FINANCIAL_AUDIT"}
-def ssh_observe(target,rollback_path):
-    need(target.startswith("root@") and len(target)<190 and
-         re.fullmatch(r"root@[A-Za-z0-9._-]+",target),"ROOT_SSH_TARGET_INVALID")
-    args=["/usr/bin/ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes",
-          "-o","ConnectTimeout=8",target,
-          "/usr/bin/python3","-I","-B","-","--remote"]
-    if rollback_path:args+=["--rollback-path",rollback_path]
-    b=pathlib.Path(__file__).read_bytes()
-    return parsed(run(args,input=b,timeout=90))
-def compare_financial(before,after):
-    a,b=before["units"],after["units"]
-    need(set(a)==set(b),"PROTECTED_UNIT_SET_CHANGED")
-    for name in sorted(a):
-        if name=="aoe2hdbets-web.service":continue
-        need(a[name]==b[name],"FINANCIAL_OR_OTHER_UNIT_DRIFT:"+name)
-    for port in ("8092","8093"):
-        need(before["protected_listeners"][port]==after["protected_listeners"][port],
-             "WOLO_LISTENER_PROCESS_OR_SOCKET_CHANGED:"+port)
-def public_check(after,origin):
-    need(origin=="https://aoe2war.com","PUBLIC_ORIGIN_NOT_PINNED")
-    value=parsed(get(origin+"/api/deployment-version")["body"]).get("buildVersion")
-    need(value==after["internal"]["build_version"],"PUBLIC_APP_VERSION_NOT_ACTIVE_RUNTIME")
-    paths={}
+        result["main_process"]=None
+    return result
+def finance_units():
+    raw=run(["/usr/bin/systemctl","list-unit-files","--type=service","--type=timer",
+             "--all","--no-legend","--no-pager"],timeout=18).decode()
+    names=sorted(set(row.split()[0] for row in raw.splitlines() if row.split()
+                     and row.split()[0].lower().startswith(FINANCE_PREFIXES)
+                     and row.split()[0].endswith((".service",".timer"))))
+    need(25<=len(names)<=200 and OLD_UNIT in names and NEW_UNIT in names,
+         "ORIGINAL_FINANCIAL_UNIT_SET_NOT_COMPLETE")
+    return names
+def system_state():
+    names=finance_units()
+    return {name:show(name) for name in names}
+def git_source(repo,user):
+    # Only inspect tracked source; no checkout, reset, clean or Git hooks.
+    prefix=["/usr/sbin/runuser","-u",user,"--","/usr/bin/git",
+            "-c","safe.directory="+str(repo),"-C",str(repo)]
+    head=run(prefix+["rev-parse","HEAD"],timeout=18).decode().strip()
+    need(H40.fullmatch(head),"GIT_HEAD_UNKNOWN")
+    tree=run(prefix+["rev-parse","HEAD^{tree}"],timeout=18).decode().strip()
+    need(H40.fullmatch(tree),"GIT_TREE_UNKNOWN")
+    status=run(prefix+["status","--porcelain","--untracked-files=no"],timeout=35)
+    need(not status,"TRACKED_SOURCE_NOT_CLEAN:"+str(repo))
+    return {"head":head,"tree_sha":tree,"tracked_clean":True}
+def bounded_tree(root,maxbytes=12*1024**3,maxfiles=250000):
+    """Streaming exact file-content hash; symlinks/unknown filesystem nodes HOLD."""
+    root=pathlib.Path(root)
+    need(root.is_dir() and not root.is_symlink(),"DEPENDENCIES_OR_BUILD_MISSING")
+    h=hashlib.sha256();count=0;size=0
+    for base,dirs,files in os.walk(root,followlinks=False):
+        dirs.sort();files.sort()
+        for dirname in dirs:
+            p=pathlib.Path(base)/dirname
+            need(not p.is_symlink(),"TREE_DIRECTORY_SYMLINK")
+        for name in files:
+            p=pathlib.Path(base)/name
+            st=p.lstat()
+            need(stat.S_ISREG(st.st_mode) and st.st_nlink==1,
+                 "UNTRUSTED_TREE_FILE_OR_HARDLINK")
+            count+=1;size+=st.st_size
+            need(count<=maxfiles and size<=maxbytes,"TREE_MEASUREMENT_TOO_LARGE")
+            rel=p.relative_to(root).as_posix().encode()
+            h.update(len(rel).to_bytes(4,"big")+rel+st.st_size.to_bytes(8,"big"))
+            with p.open("rb") as f:
+                while True:
+                    block=f.read(1048576)
+                    if not block:break
+                    h.update(block)
+    need(count>0,"TREE_EMPTY")
+    return {"sha256":h.hexdigest(),"files":count,"bytes":size}
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self,*args,**kwargs):return None
+def http(origin,path,method="GET",limit=524288):
+    url=origin+path
+    req=Request(url,method=method,headers={"Cache-Control":"no-cache",
+                                         "User-Agent":"aoe2war-g-r25-no-write"})
+    with build_opener(NoRedirect).open(req,timeout=10) as res:
+        need(res.status==200,"HTTP_NOT_200:"+path)
+        b=res.read(limit+1) if method=="GET" else b""
+        need(len(b)<=limit,"HTTP_RESPONSE_TOO_LARGE")
+        return b
+def http_site(origin,build):
+    ver=parse(http(origin,"/api/deployment-version"),8192).get("buildVersion")
+    need(type(ver)is str and ver not in ("","unknown","development"),"APP_VERSION_UNKNOWN")
     for p in PAGES:
-        page=get(origin+p)
-        head=get(origin+p,"HEAD")
-        need(head["status"]==200,"PUBLIC_HEAD_HOLD:"+p)
-        paths[p]={"get":page["status"],"head":head["status"]}
-    root_page=get(origin+"/")["body"].decode("utf8","strict")
-    assets=set(ASSET.findall(html.unescape(root_page)))
-    asset=after["internal"]["asset"]
-    need(asset in assets,"PUBLIC_HTML_NOT_ACTIVE_STATIC_ASSET")
-    need(sha(get(origin+asset)["body"])==after["internal"]["asset_sha256"],
-         "PUBLIC_ASSET_BYTES_NOT_ACTIVE_BUILD")
-    # Build ID is a private Next runtime value; asset equality binds public
-    # bytes to the live runtime, without inventing an exposed public BUILD_ID.
-    return {"routes":paths,"app_build_version":value,
-            "active_asset":asset,"asset_sha256":after["internal"]["asset_sha256"],
-            "public_bytes_bound_to_active_build":True,
-            "public_next_build_id_directly_exposed":False}
-def verify(before,after,origin):
-    need(before.get("schema")==after.get("schema")=="aoe2war.g.r24.host-snapshot.v1"
-         and before.get("host")==after.get("host")==HOST,"SNAPSHOT_HOST_MISMATCH")
-    need(before["source_sha"]!=TARGET and after["source_sha"]==TARGET,"NOT_NEW_WEBSITE_LIVE")
-    need(before["active_working_directory"]==str(REPO) and
-         after["active_working_directory"] in (str(REPO),str(F_SLOT)),
-         "UNEXPECTED_WEB_WORKING_DIRECTORY_CUTOVER")
-    need(before["next_build_id"]!=after["next_build_id"],"NEXT_BUILD_NOT_CHANGED")
-    need(before.get("original_release_lock")==after.get("original_release_lock") and
-         after.get("original_release_lock",{}).get("inode")==EXPECTED_LOCK[1],
-         "RELEASE_LOCK_REPLACED")
-    need((before["web"]["pid"],before["web"]["start_ticks"]) !=
-         (after["web"]["pid"],after["web"]["start_ticks"]),
-         "WEB_MAINPID_NOT_RESTARTED_FOR_NEW_BUILD")
-    need(after["web"]["pid"]>1,"WEB_PID_NOT_ACTIVE")
-    compare_financial(before,after)
-    rb=after.get("rollback")
-    need(type(rb)is dict and rb.get("previous_source_sha")==before["source_sha"] and
-         rb.get("previous_build_id")==before["next_build_id"] and
-         rb.get("previous_build_version")==before["internal"]["build_version"] and
-         rb.get("dependencies_present")is True,"PREVIOUS_RELEASE_ROLLBACK_MISMATCH")
-    public=public_check(after,origin)
-    return {"schema":"aoe2war.g.r24.postflight.v1",
-            "status":"LIVE_HOST_MARKER_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_OBSERVED",
-            "live_source_sha":TARGET,"live_next_build_id":after["next_build_id"],
-            "source_provenance":after["source_provenance"],
-            "full_candidate_source_tree_independently_hashed":False,
-            "owner_approved_F_stage_digest_required":True,
-            "active_working_directory":after["active_working_directory"],
-            "web_main_pid":after["web"]["pid"],"previous_source_sha":before["source_sha"],
-            "previous_next_build_id":before["next_build_id"],
-            "protected_financial_units_checked":len(before["units"])-1,
-            "wolo_8092_8093_process_socket_unchanged":True,
-            "public":public,"rollback":rb,
-            "rollback_execution_tested":False,
-            "original_release_lock_preserved":True,
-            "public_next_build_id_directly_exposed":False,
-            "independent_production_chrome_88_routes":"NOT_RUN",
-            "finance_signed_receipt":False,
-            "no_financial_mutation_http_methods_dispatched":True,
-            "SSR_GET_HEAD_financial_side_effects_independently_proven":False}
+        need(http(origin,p), "HTTP_PAGE_EMPTY:"+p)
+        http(origin,p,"HEAD")
+    manifest="/_next/static/"+build+"/_buildManifest.js"
+    static=http(origin,manifest)
+    need(static,"NEXT_BUILD_MANIFEST_EMPTY")
+    return {"app_build_version":ver,"next_build_id_from_host_not_http":build,
+            "manifest":manifest,"manifest_sha256":digest(static),
+            "route_get_head_count":len(PAGES)*2,"http_methods_sent":"GET_HEAD_ONLY"}
+def lock_state():
+    st=LOCK.lstat()
+    got=(st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))
+    need(stat.S_ISREG(st.st_mode) and got==LOCK_ID,"ORIGINAL_RELEASE_LOCK_DRIFT")
+    return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
+            "mode":stat.S_IMODE(st.st_mode)}
+def scope():
+    x=parse(root_file(APPROVAL,16384),16384)
+    need(x.get("schema")=="aoe2war.r24.rootssh.parallel-web-nginx.v1" and
+         x.get("candidate_sha")==TARGET and
+         isinstance(x.get("nginx_config"),str) and
+         x["nginx_config"].startswith("/etc/nginx/") and
+         isinstance(x.get("nonce"),str) and NONCE.fullmatch(x["nonce"]),
+         "F_ROOT_SCOPE_MISSING_OR_INCOMPLETE")
+    return x
+def nginx_route(approved):
+    config=pathlib.Path(approved["nginx_config"])
+    conf=root_file(config,131072)
+    # Read actual loaded Nginx configuration; never infer from one of 46 location blocks.
+    compiled=run(["/usr/sbin/nginx","-T"],timeout=25)
+    needle=("# configuration file "+str(config)+":").encode()
+    need(compiled.count(needle)==1 and b"server_name aoe2war.com" in compiled,
+         "ACTIVE_AOE2WAR_NGINX_VHOST_NOT_PROVEN")
+    marker=b"location / {"
+    need(conf.count(marker)==1,"AMBIGUOUS_DEFAULT_WEB_LOCATION")
+    start=conf.index(marker)+len(marker)
+    end=conf.find(b"}",start)
+    need(end>start,"NGINX_DEFAULT_LOCATION_MALFORMED")
+    region=conf[start:end]
+    old=region.count(b"proxy_pass http://127.0.0.1:3030;")
+    new=region.count(b"proxy_pass http://127.0.0.1:3031;")
+    need(old+new==1,"UNKNOWN_PUBLIC_DEFAULT_UPSTREAM")
+    return {"upstream_port":3031 if new else 3030,"selected_file":str(config),
+            "file_sha256":digest(conf),
+            "nginx_compiled_sha256":digest(compiled),
+            "nginx_t_ok":True}
+def audit(approved,phase):
+    p=AUDIT/("r24-"+approved["nonce"])
+    if phase=="before":return {"phase":"before","journal":None}
+    need(p.is_dir() and not p.is_symlink(),"F_ROOT_CUTOVER_JOURNAL_MISSING")
+    commit=parse(root_file(p/"commit.json",8192),8192)
+    need(commit.get("status")=="R24_PARALLEL_WEBSITE_LIVE" and
+         commit.get("candidate_sha")==TARGET and
+         commit.get("nonce")==approved["nonce"],"F_CUTOVER_COMMIT_MISMATCH")
+    original=root_file(p/"before-nginx.conf",131072)
+    need(digest(original)==commit.get("old_nginx_sha256"),
+         "F_NGINX_ROLLBACK_CONTENT_DRIFT")
+    outcome={"commit_sha256":digest(canon(commit)),
+             "root_rollback_nginx_sha256":digest(original),
+             "root_rollback_material_verified":True,
+             "rollback_exercised":False}
+    if phase=="rollback":
+        rb=parse(root_file(p/"rollback.json",8192),8192)
+        need(rb.get("status")=="OLD_PUBLIC_PROXY_RESTORED" and
+             rb.get("nonce")==approved["nonce"] and
+             rb.get("original_web_restarted") is False,
+             "F_ROLLBACK_JOURNAL_INVALID")
+        outcome["rollback_receipt_sha256"]=digest(canon(rb))
+        outcome["rollback_exercised"]=True
+    return outcome
+def stage():
+    need(STAGE.is_dir() and not STAGE.is_symlink(),"PARALLEL_CANDIDATE_NOT_STAGED")
+    source=git_source(STAGE,"aoe2war-r24-web")
+    need(source["head"]==TARGET,"PARALLEL_CANDIDATE_SOURCE_DRIFT")
+    marker=root_file(STAGE/"r24-source-sha",64).decode().strip()
+    need(marker==TARGET,"C_SOURCE_MARKER_MISMATCH")
+    build_file=STAGE/".next/BUILD_ID"
+    need(not build_file.is_symlink() and build_file.is_file(),"C_NEXT_BUILD_ID_MISSING")
+    build=build_file.read_text().strip()
+    need(BUILD.fullmatch(build),"C_NEXT_BUILD_ID_MALFORMED")
+    deps=bounded_tree(STAGE/"node_modules")
+    next_tree=bounded_tree(STAGE/".next")
+    return {"git":source,"source_marker":marker,"next_build_id":build,
+            "dependencies":deps,"next_build":next_tree,
+            "complete_tracked_source_verified":True,
+            "full_dependency_and_build_bytes_measured":True,
+            "root_owner_stage_receipt_binding_requires_F":True}
+def root_snapshot(phase):
+    need(sys.platform=="linux" and os.geteuid()==0 and
+         socket.gethostname().split(".")[0]==HOST,"NOT_ROOT_ORIGINAL_HEL1")
+    need(phase in ("before","after","rollback"),"PHASE_INVALID")
+    original=git_source(OLD_REPO,"tony")
+    old_build=(OLD_REPO/".next/BUILD_ID").read_text().strip()
+    need(BUILD.fullmatch(old_build),"OLD_NEXT_BUILD_ID_UNKNOWN")
+    candidate=stage()
+    units=system_state()
+    need(units[OLD_UNIT]["properties"]["ActiveState"]=="active" and
+         units[NEW_UNIT]["properties"]["ActiveState"]=="active" and
+         units[OLD_UNIT]["main_process"] and units[NEW_UNIT]["main_process"],
+         "BOTH_WEBS_MUST_BE_RUNNING")
+    ports={str(p):listening_socket(p) for p in (3030,3031,8092,8093)}
+    old_http=http_site("http://127.0.0.1:3030",old_build)
+    new_http=http_site("http://127.0.0.1:3031",candidate["next_build_id"])
+    need(old_http["app_build_version"]!=new_http["app_build_version"],
+         "OLD_AND_NEW_APP_BUILD_VERSION_AMBIGUOUS")
+    # Public probe deliberately performed only once on Mac side, not on HEL1 root.
+    approved=scope()
+    route=nginx_route(approved)
+    history=audit(approved,phase)
+    return {"schema":"aoe2war.g.r25.parallel-host.v1","phase":phase,"host":HOST,
+        "old_source":original,"old_next_build_id":old_build,
+        "candidate":candidate,"units":units,"ports":ports,
+        "old_http":old_http,"candidate_http":new_http,
+        "nginx":route,"release_lock":lock_state(),"release_journal":history,
+        "approved_scope_sha256":digest(root_file(APPROVAL,16384)),
+        "proof":"ROOT_SSH_MEASURED_NOT_FINANCE_SIGNED"}
+def ssh_snapshot(target,phase):
+    need(re.fullmatch(r"root@[A-Za-z0-9._-]{1,140}",target),"UNREVIEWED_SSH_TARGET")
+    payload=pathlib.Path(__file__).read_bytes()
+    argv=["/usr/bin/ssh","-T","-o","BatchMode=yes",
+          "-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",
+          target,"/usr/bin/python3","-I","-B","-","--remote",phase]
+    return parse(run(argv,timeout=380,stdin=payload))
+def public_check(expected):
+    result=http_site(PUBLIC,expected["candidate"]["next_build_id"]
+                     if expected["phase"]=="after" else expected["old_next_build_id"])
+    live=expected["candidate_http"] if expected["phase"]=="after" else expected["old_http"]
+    need(result["app_build_version"]==live["app_build_version"] and
+         result["manifest_sha256"]==live["manifest_sha256"] and
+         result["manifest"]==live["manifest"],
+         "PUBLIC_BYTES_OR_VERSION_NOT_SELECTED_INTERNAL_WEB")
+    return result
+def compare_process_and_finance(before,after):
+    need(before["host"]==after["host"]==HOST and
+         before["release_lock"]==after["release_lock"] and
+         before["old_source"]==after["old_source"] and
+         before["old_next_build_id"]==after["old_next_build_id"],
+         "ORIGINAL_WEB_SOURCE_BUILD_OR_LOCK_CHANGED")
+    # Both original and new web processes are preserved through nginx-only cutover.
+    need(before["units"]==after["units"],"ANY_WEB_OR_FINANCIAL_UNIT_CHANGED")
+    need(before["ports"]==after["ports"],"ANY_3030_3031_8092_8093_LISTENER_CHANGED")
+    need(before["candidate"]==after["candidate"],"CANDIDATE_SOURCE_BUILD_DEPENDENCY_DRIFT")
+    need(before["old_http"]==after["old_http"] and
+         before["candidate_http"]==after["candidate_http"],
+         "ORIGINAL_OR_CANDIDATE_RUNTIME_HTTP_CHANGED")
+    need(before["approved_scope_sha256"]==after["approved_scope_sha256"],
+         "OWNER_APPROVAL_CHANGED_DURING_CUTOVER")
+def verify(before,after,phase):
+    need(before.get("schema")==after.get("schema")=="aoe2war.g.r25.parallel-host.v1"
+         and before.get("phase")=="before" and after.get("phase")==phase,
+         "WRONG_BEFORE_OR_POSTFLIGHT_PHASE")
+    compare_process_and_finance(before,after)
+    need(before["nginx"]["upstream_port"]==3030,"BEFORE_NGINX_NOT_OLD")
+    expected=3031 if phase=="after" else 3030
+    need(after["nginx"]["upstream_port"]==expected,"NGINX_NOT_EXPECTED_UPSTREAM")
+    need(before["nginx"]["selected_file"]==after["nginx"]["selected_file"],
+         "NGINX_SELECTED_VHOST_CHANGED")
+    if phase=="after":
+        need(after["release_journal"]["root_rollback_material_verified"] is True and
+             after["release_journal"]["rollback_exercised"] is False,
+             "F_ROLLBACK_PREIMAGE_NOT_PRESERVED")
+        need(before["nginx"]["file_sha256"]!=after["nginx"]["file_sha256"],
+             "NO_NGINX_CUTOVER_OCCURRED")
+    else:
+        need(after["nginx"]["file_sha256"]==before["nginx"]["file_sha256"] and
+             after["release_journal"]["rollback_exercised"] is True,
+             "ROLLBACK_CHANGED_MORE_THAN_NGINX_OR_NOT_RECORDED")
+    return {"schema":"aoe2war.g.r25.postflight.v1","phase":phase,
+        "status":"LIVE_PARALLEL_PUBLIC_ACTIVE_VERIFIED" if phase=="after" else
+                 "PUBLIC_3030_ROLLBACK_VERIFIED",
+        "frozen_candidate_sha":TARGET,
+        "old_web_service_pid_unchanged":True,
+        "old_web_source_build_3030_unchanged":True,
+        "new_candidate_source_build_dependency_3031_unchanged":True,
+        "financial_units_and_wolo_8092_8093_unchanged":True,
+        "original_release_lock_unchanged":True,
+        "nginx_active_upstream":expected,
+        "next_build_id_measured_on_HOST_not_public":after["candidate"]["next_build_id"],
+        "public_next_build_id_directly_exposed":False,
+        "rollback_proven":"NGINX_ONLY_RESTORED" if phase=="rollback" else
+                          "ROOT_OWNED_NGINX_PREIMAGE_PRESERVED",
+        "finance_signed_receipt":False,
+        "independent_live_browser_88_routes":"NOT_RUN",
+        "postflight_GET_HEAD_cannot_certify_SSR_write_safety":True}
 def main():
-    ap=argparse.ArgumentParser()
-    ap.add_argument("--remote",action="store_true")
-    ap.add_argument("--phase",choices=("before","after"))
-    ap.add_argument("--ssh-target")
-    ap.add_argument("--before",type=pathlib.Path)
-    ap.add_argument("--before-sha256")
-    ap.add_argument("--rollback-path")
-    ap.add_argument("--public-origin",default="https://aoe2war.com")
-    x=ap.parse_args()
+    a=argparse.ArgumentParser()
+    a.add_argument("--remote",choices=("before","after","rollback"))
+    a.add_argument("--phase",choices=("before","after","rollback"))
+    a.add_argument("--ssh-target")
+    a.add_argument("--before",type=pathlib.Path)
+    a.add_argument("--before-sha256")
+    a.add_argument("--after",type=pathlib.Path)
+    a.add_argument("--after-sha256")
+    x=a.parse_args()
     try:
         if x.remote:
-            need(not x.phase and not x.ssh_target and not x.before,"REMOTE_ARGS_INVALID")
-            out=remote_observe(x.rollback_path)
+            need(not x.phase and not x.ssh_target and not x.before,"REMOTE_ARG_COLLISION")
+            result=root_snapshot(x.remote)
         else:
-            need(x.phase and x.ssh_target,"LOCAL_PHASE_AND_SSH_REQUIRED")
-            out=ssh_observe(x.ssh_target,x.rollback_path if x.phase=="after" else None)
-            if x.phase=="after":
-                need(x.before is not None and x.rollback_path,"AFTER_REQUIRES_BEFORE_AND_REAL_ROLLBACK")
-                raw_before=x.before.read_bytes()
-                need(type(x.before_sha256)is str and
-                     re.fullmatch(r"[a-f0-9]{64}",x.before_sha256) and
-                     sha(raw_before)==x.before_sha256,"OWNER_BEFORE_RECEIPT_DIGEST_DRIFT")
-                before=parsed(raw_before)
-                # Measure again after external probes; no forged unchanged PID.
-                out=verify(before,out,x.public_origin)
-                recheck=ssh_observe(x.ssh_target,x.rollback_path)
-                compare_financial(before,recheck)
-                need(recheck["source_sha"]==TARGET and
-                     recheck["active_working_directory"]==out["active_working_directory"] and
-                     recheck["next_build_id"]==out["live_next_build_id"] and
-                     recheck["web"]==out["web"] and
-                     recheck["rollback"]==out["rollback"],"HOST_DRIFT_DURING_PUBLIC_POSTFLIGHT")
-        print(json.dumps(out,sort_keys=True,separators=(",",":")))
+            need(x.phase and x.ssh_target,"LOCAL_SSH_AND_PHASE_REQUIRED")
+            snapshot=ssh_snapshot(x.ssh_target,x.phase)
+            if x.phase=="before":
+                need(snapshot["nginx"]["upstream_port"]==3030,"PUBLIC_NOT_YET_AT_3030")
+                result=snapshot
+            else:
+                need(x.before and x.before_sha256 and H64.fullmatch(x.before_sha256),
+                     "ORIGINAL_BEFORE_DIGEST_REQUIRED")
+                raw=x.before.read_bytes()
+                need(digest(raw)==x.before_sha256,"OWNER_BEFORE_RECEIPT_SHA256_DRIFT")
+                before=parse(raw)
+                if x.phase=="rollback":
+                    need(x.after and x.after_sha256 and H64.fullmatch(x.after_sha256),
+                         "ORIGINAL_AFTER_DIGEST_REQUIRED_FOR_ROLLBACK")
+                    after_raw=x.after.read_bytes()
+                    need(digest(after_raw)==x.after_sha256,"OWNER_AFTER_RECEIPT_SHA256_DRIFT")
+                    after_snapshot=parse(after_raw)
+                    compare_process_and_finance(before,after_snapshot)
+                    need(after_snapshot["phase"]=="after" and
+                         after_snapshot["nginx"]["upstream_port"]==3031,
+                         "PRE_ROLLBACK_AFTER_RECEIPT_INVALID")
+                result=verify(before,snapshot,x.phase)
+                public=public_check(snapshot)
+                result["public"]=public
+                repeat=ssh_snapshot(x.ssh_target,x.phase)
+                compare_process_and_finance(snapshot,repeat)
+                need(repeat["nginx"]==snapshot["nginx"] and
+                     repeat["release_journal"]==snapshot["release_journal"],
+                     "NGINX_OR_ROOT_JOURNAL_CHANGED_DURING_PUBLIC_PROBE")
+        print(json.dumps(result,sort_keys=True,separators=(",",":")))
         return 0
-    except (Hold,OSError,ValueError,KeyError,IndexError,TypeError,StopIteration,
-            subprocess.TimeoutExpired) as exc:
-        print("R24_G_POSTFLIGHT_HOLD:"+
-              (str(exc) if isinstance(exc,Hold) else type(exc).__name__),file=sys.stderr)
+    except (Hold,KeyError,ValueError,TypeError,IndexError,StopIteration,
+            OSError,subprocess.TimeoutExpired) as e:
+        print("HOLD:G_R25_PARALLEL_POSTFLIGHT:"+
+              (str(e) if isinstance(e,Hold) else type(e).__name__),file=sys.stderr)
         return 2
 if __name__=="__main__":raise SystemExit(main())
