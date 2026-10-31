@@ -55,6 +55,12 @@ As of the source snapshot 2026-10-31:
 
 Renaissance OS, Performance OS, Code Health OS, Council OS, Loop/Graph engines and other named capabilities are in the machine-readable `unreconciled_named_capabilities` section. They are **not deleted or assumed identical**. D must decide whether each is a distinct domain OS, existing alias or cross-cutting submodule. Therefore the final target may exceed 15: the goal is accurate ontology, not a pleasing number.
 
+## Kingdom Composer and six living visual systems (proposed P3)
+
+The owner has proposed **Kingdom Composer / System Composer** as a workflow-composition **role**, not a new subordinate OS or a third release authority. Its home is Orchestra OS: convert Central-approved priorities into typed, reviewed dependency graphs, resource-aware lane placements, collision checks and immutable plan receipts. Central decides *why/what/priority*; Composer composes *how the tasks connect*; Orchestra schedules *when/by whom*; Agent OS executes individual bounded work; Swarm OS coordinates authenticated multi-worker groups. Doctor evaluates; Shepherd supervises policy and escalation. The three supervisory/composition roles (Doctor, Shepherd and proposed Composer) remain **outside the 15-name OS planning count**.
+
+**Required visual surfaces:** neural dependency graphs, feedback loops/engine cycles, authenticated swarm formations and “engineering armies,” organization command maps, Composer workflow mixing desk and rig-style Kingdom Run-Up. These must be rich interactive diagrams using real receipts and terse labels, not prose-dominated pages. See [`docs/KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md`](KINGDOM_COMPOSER_VISUAL_ARCHITECTURE.md) for routes, ownership, provenance, public/admin separation, responsive/reduced-motion targets, resource budgets and fail-closed UNKNOWN/STALE rules. D/G own source and UI deliverables *after P0*; no new daemon, polling source or fabricated active agent identity.
+
 ## Hierarchy: capability, not a decorative staircase
 
 `Documentation → executable scripts → scheduled/event-driven services → bounded agents → feedback loops → dependency/provenance graphs → multi-agent swarms`
