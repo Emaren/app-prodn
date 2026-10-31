@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
 import { reconcileChallengeLifecycle } from "@/lib/challengeReconciler";
+import { reconcileScheduledMatchResultsForAuthorizedProducer } from "@/lib/challenges";
 import { getPrisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -50,12 +51,17 @@ export async function POST(request: NextRequest) {
   };
 
   try {
+    // R17: the original replay/title result persistence is now an authenticated
+    // five-minute maintenance producer, never a consequence of GET/HEAD/SSR.
+    // Run before lifecycle expiry so a verified replay cannot be forfeited by
+    // a simultaneous scheduled deadline.
+    const scheduledResults = await reconcileScheduledMatchResultsForAuthorizedProducer(prisma);
     const result = await reconcileChallengeLifecycle(prisma, {
       executeRefunds: payload.executeRefunds === true,
       actorUserId,
       take: payload.take,
     });
-    return NextResponse.json({ ok: true, ...result });
+    return NextResponse.json({ ok: true, ...result, scheduledResults });
   } catch (error) {
     console.error("Challenge reconciliation failed:", error);
     return NextResponse.json(
