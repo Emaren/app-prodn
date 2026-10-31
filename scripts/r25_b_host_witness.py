@@ -246,6 +246,60 @@ def http_proof(pid):
             hold("LOCAL_HTTP_GUARD_NOT_EXACT")
     return True
 
+def root_db_envfile():
+    envfile=pathlib.Path("/etc/aoe2war/r24-parallel-web/readonly-runtime.env")
+    if not envfile.is_absolute():hold("RUNTIME_ENV_NOT_ABSOLUTE")
+    for item in [envfile,*envfile.parents]:
+        st=item.lstat()
+        if st.st_uid!=0 or st.st_mode & 0o022 or stat.S_ISLNK(st.st_mode):
+            hold("RUNTIME_ENV_NOT_ROOT_SEALED")
+    st=envfile.stat()
+    if not stat.S_ISREG(st.st_mode) or stat.S_IMODE(st.st_mode)!=0o600 or st.st_size>8192:
+        hold("RUNTIME_ENV_PERMISSIONS")
+    raw=envfile.read_bytes()
+    if b"\x00" in raw:hold("RUNTIME_ENV_NUL")
+    lines=[x.strip() for x in raw.decode("utf8").splitlines() if x.strip()]
+    if len(lines)!=1 or not lines[0].startswith("DATABASE_URL="):
+        hold("RUNTIME_ENV_ONLY_DEDICATED_DB_ALLOWED")
+    value=lines[0][len("DATABASE_URL="):]
+    if not value or value[0] in ("'",'"') or any(x.isspace() for x in value):
+        hold("RUNTIME_DB_ENV_UNSUPPORTED_ENCODING")
+    return value
+
+def prestart(expected_guard_sha):
+    """Separately approved C root-only ExecStartPre gate BEFORE Node startup."""
+    if sys.platform!="linux" or os.geteuid()!=0 or socket.gethostname().split(".")[0]!=HOST:
+        hold("ORIGINAL_HEL1_ROOT_REQUIRED")
+    if not re.fullmatch(r"[0-9a-f]{64}",expected_guard_sha):
+        hold("EXPECTED_GUARD_SHA256_REQUIRED")
+    digest_guard=require_root_file(GUARD)
+    if digest_guard!=expected_guard_sha:hold("ROOT_INSTALLED_GUARD_SHA_MISMATCH")
+    old=systemd(OLD_UNIT)
+    if old.get("ActiveState")!="active" or int(old.get("MainPID") or 0)!=2625090:
+        hold("ORIGINAL_WEB_FINANCIAL_PID_CHANGED")
+    new=systemd(UNIT)
+    if new.get("User")!=USER or new.get("WorkingDirectory")!=str(SOURCE):
+        hold("NEW_SYSTEMD_UID_OR_SOURCE_WRONG")
+    uid=pwd.getpwnam(USER).pw_uid
+    if uid in (0,1000):hold("CANDIDATE_OS_UID_NOT_DISTINCT")
+    egress=nft_policy(uid)
+    db=db_proof(root_db_envfile(),uid)
+    source=run(["/usr/bin/git","-C",str(SOURCE),"rev-parse","HEAD"]).decode().strip()
+    if source!=TARGET:hold("PRESTART_EXACT_SOURCE_MISSING")
+    build=SOURCE/".next"/"BUILD_ID"
+    if not build.is_file() or build.is_symlink() or not build.read_text().strip():
+        hold("PRESTART_REAL_BUILD_MISSING")
+    return {
+        "schema":"aoe2war.r25.b.hel1.positive-prestart-gate.v1",
+        "status":"PASS_B_PRESTART_FINANCIAL_CONTROLS_NOT_LIVE_NOT_RELEASE_AUTHORITY",
+        "old_web_pid":2625090, "target_sha":TARGET,
+        "new_service":UNIT,"new_uid":uid,"guard_sha256":digest_guard,
+        "pg_role":db["role"],"pg_catalog_controls":db["checked"],
+        "nft_egress_sha256":egress,
+        "release_authorized":False,
+        "no_financial_operation_executed":True,
+    }
+
 def observe(expected_guard_sha):
     if sys.platform!="linux" or os.geteuid()!=0 or socket.gethostname().split(".")[0]!=HOST:
         hold("ORIGINAL_HEL1_ROOT_REQUIRED")
@@ -308,9 +362,12 @@ def observe(expected_guard_sha):
 def main():
     parser=argparse.ArgumentParser()
     parser.add_argument("--expected-guard-sha256",required=True)
+    parser.add_argument("--phase",choices=("prestart","poststart"),required=True)
     args=parser.parse_args()
     try:
-        print(json.dumps(observe(args.expected_guard_sha256),sort_keys=True))
+        output=(prestart(args.expected_guard_sha256) if args.phase=="prestart"
+                else observe(args.expected_guard_sha256))
+        print(json.dumps(output,sort_keys=True))
     except (RuntimeError,OSError,ValueError,IndexError,KeyError,StopIteration) as e:
         print(json.dumps({"schema":"aoe2war.r25.b.hel1.positive-isolation-witness.v1",
                           "status":"HOLD","reason":str(e)[:160],
