@@ -4,8 +4,8 @@ from pathlib import Path
 import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
-COPY=ROOT/'OWNER_MAC_R25_E_COPY_AUTHORIZED.sh'
-READBACK=ROOT/'OWNER_MAC_R25_E_INDEPENDENT_RECOVERY.sh'
+COPY=ROOT/'scripts/r25_e_owner_mac_durable_copy.sh'
+READBACK=ROOT/'scripts/r25_e_owner_mac_recovery_readback.sh'
 PIN='60f8cd06c0e44bb03fbc95c5fc52d07a6922fc743897248f6c00242e8bdf6418'
 E_PIN='606b899cf51c0edc9140da727b1623792277d318a83e8f63b899604a3bc68184'
 
