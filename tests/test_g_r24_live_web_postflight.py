@@ -11,6 +11,7 @@ def example():
     before={
       "schema":"aoe2war.g.r24.host-snapshot.v1","host":g.HOST,
       "original_release_lock":{"device":2064,"inode":6185747,"uid":1000,"mode":"0o644"},
+      "active_working_directory":str(g.REPO),"source_provenance":"ORIGINAL_GIT_COMMIT",
       "source_sha":"33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a",
       "next_build_id":"DQ2jMprNQ_Njq6QM8GHju",
       "web":{"pid":2625090,"start_ticks":1234,"uid":1000},
@@ -25,6 +26,8 @@ def example():
     }
     after=json.loads(json.dumps(before))
     after["source_sha"]=g.TARGET
+    after["active_working_directory"]=str(g.F_SLOT)
+    after["source_provenance"]="F_ROOT_SEALED_SOURCE_MARKER_REQUIRES_STAGE_HASH_BINDING"
     after["next_build_id"]="NEWNextBuildABCD123"
     after["web"]={"pid":2626000,"start_ticks":2234,"uid":1000}
     after["units"]["aoe2hdbets-web.service"]["main_pid"]=2626000
@@ -85,6 +88,7 @@ class R24GPostflightTests(unittest.TestCase):
         ]
         scenarios.extend([
            lambda a,b:b["original_release_lock"].__setitem__("inode",999),
+           lambda a,b:b.__setitem__("active_working_directory","/tmp/unreviewed-site"),
            lambda a,b:b["web"].update({"pid":a["web"]["pid"],
                                           "start_ticks":a["web"]["start_ticks"]}),
         ])
