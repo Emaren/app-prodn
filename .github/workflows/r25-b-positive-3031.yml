@@ -1,0 +1,79 @@
+name: R25 B Positive 3031 Isolation Runtime
+on:
+  pull_request:
+    paths:
+      - "scripts/r25_b_guard.cjs"
+      - "scripts/r25_b_host_witness.py"
+      - "tests/r25_b_guard.test.cjs"
+      - "tests/test_r25_b_host_witness.py"
+      - "deploy/r25-b-3031-*"
+      - ".github/workflows/r25-b-positive-3031.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  positive-runtime-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exact frozen #1061 ancestry and changed path confinement
+        run: |
+          git cat-file -e '0cee3c836c4b0760478280c145e02e81e470ce0e^{commit}'
+          git merge-base --is-ancestor 0cee3c836c4b0760478280c145e02e81e470ce0e HEAD
+          python3 -B - <<'PY'
+          import subprocess
+          allowed={
+            "scripts/r25_b_guard.cjs",
+            "scripts/r25_b_host_witness.py",
+            "tests/r25_b_guard.test.cjs",
+            "tests/test_r25_b_host_witness.py",
+            "deploy/r25-b-3031-select-only.sql",
+            "deploy/r25-b-3031-egress.nft.in",
+            "deploy/r25-b-3031.service.dropin.in",
+            ".github/workflows/r25-b-positive-3031.yml",
+          }
+          out=subprocess.check_output([
+            "git","diff","--name-only","0cee3c836c4b0760478280c145e02e81e470ce0e","HEAD"
+          ],timeout=20).decode().splitlines()
+          assert set(out)==allowed, ("UNREVIEWED_SOURCE_DRIFT",out)
+          print("PASS:R25_B_ONLY_ISOLATION_SRC_TEST_TEMPLATES_NO_RUNTIME_APP_CHANGE")
+          PY
+      - name: Immutable B guard and native witness SHA256 for C/F root sealing
+        run: |
+          sha256sum scripts/r25_b_guard.cjs scripts/r25_b_host_witness.py
+          echo "R25_B_GUARD_AND_WITNESS_HASHES_ARE_SOURCE_IDENTITY_NOT_HOST_ADMISSION"
+      - name: Actual isolated Node preloader + adversarial HTTP/secret/egress tests
+        run: |
+          node --check scripts/r25_b_guard.cjs
+          node --test tests/r25_b_guard.test.cjs
+      - name: Native HEL1 root witness negative/positive mock tests
+        run: |
+          python3 -B - <<'PY'
+          from pathlib import Path
+          for path in ("scripts/r25_b_host_witness.py","tests/test_r25_b_host_witness.py"):
+              compile(Path(path).read_text(),path,"exec")
+          print("PASS:R25_B_NATIVE_PYTHON_SYNTAX")
+          PY
+          python3 -B -m unittest discover -s tests -p 'test_r25_b_host_witness.py' -v
+      - name: Verify test source cannot operate finance or attest live host
+        run: |
+          python3 -B - <<'PY'
+          from pathlib import Path
+          guard=Path("scripts/r25_b_guard.cjs").read_text()
+          witness=Path("scripts/r25_b_host_witness.py").read_text()
+          assert "Server.prototype.emit" in guard
+          assert "NODE_OUTBOUND_EGRESS_DENIED" in guard
+          assert "WARGRAPH_RUNTIME_DISABLED" in guard
+          assert "server_enforced_db_and_kernel_egress_proven: false" in guard
+          assert 'aoe2hdbets-web-r24.service' in witness
+          assert 'aoe2hdbets-web.service' in witness
+          assert 'no_callable_security_definer' in witness
+          assert 'NATIVE_PROBE_UNAVAILABLE' in witness
+          assert 'public_cutover_authorized":False' in witness
+          assert "nft_policy" in witness
+          print("PASS:R25_B_DEFENSE_IN_DEPTH_NOT_NATIVE_DEPLOYMENT_AUTHORIZATION")
+          PY

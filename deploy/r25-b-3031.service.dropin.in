@@ -1,0 +1,41 @@
+# R25 B scoped ONLY to C's NEW aoe2hdbets-web-r24.service.
+# C must place this as a ROOT-owned 0644 drop-in in that NEW unit only.
+# Never copy into original aoe2hdbets-web.service.
+[Service]
+User=aoe2war-r24-web
+Group=aoe2war-r24-web
+Environment=NODE_ENV=production
+Environment=WARGRAPH_RUNTIME_DISABLED=true
+Environment=AOE2WAR_PROD_DB_PREVIEW=true
+Environment=AOE2WAR_R25_ISOLATED_WEB=true
+Environment=NODE_OPTIONS=--require=/usr/local/lib/aoe2war-r25/r25_b_guard.cjs
+Environment=HOSTNAME=127.0.0.1
+Environment=PORT=3031
+Environment=USER=aoe2war-r24-web
+Environment=LOGNAME=aoe2war-r24-web
+EnvironmentFile=/etc/aoe2war/r24-parallel-web/readonly-runtime.env
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET
+# Unix-domain financial sockets can bypass IP/nft fencing. Deny /run entirely.
+# Original finance volume/source also inaccessible. Only web .next/cache writable.
+InaccessiblePaths=/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn
+ReadWritePaths=/var/lib/aoe2war-r25-web-0cee3c836c4b/.next/cache
+# C must add ONLY the exact candidate Next cache path as ReadWritePaths.
+# C must use direct node next start, NOT npm/yarn prestart, npm env, cron.
+# C must verify package lock, exact /proc/PID/exe and 3031 listener.
+# C's original ExecStartPre runs as the dedicated web UID and cannot
+# authenticate root-owned nft/pg credentials. Replace ONLY the NEW unit's
+# prestart with a source-SHA-pinned root read-only B preflight. The + prefix
+# runs this SINGLE root-owned, verified source outside web-user sandbox.
+# Replace dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d from reviewed CI, NEVER substitute a dummy.
+# C/F must root-pin both prestart source bytes and guard bytes before install.
+ExecStartPre=
+ExecStartPre=+/usr/bin/python3 -I -B /etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py --phase prestart --expected-guard-sha256 __B_GUARD_SHA256__
+# Root witness refuses unproven actual process/env/DB/kernel state.

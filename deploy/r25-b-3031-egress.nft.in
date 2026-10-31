@@ -1,0 +1,12 @@
+# R25 B additive, separately owner-authorized kernel egress fence template.
+# Replace __DEDICATED_UID__ with the *real* stable new OS UID. Verify nonroot,
+# different from 0, 1000, and original web UID. Do NOT use DynamicUser.
+# Requires an isolated, not-yet-used nft table name. No flush or delete.
+# Verify via nft -c -f <rendered file> BEFORE an owner-approved nft -f.
+table inet aoe2war_r25_b {
+ chain egress {
+  type filter hook output priority -150; policy accept;
+  meta skuid __DEDICATED_UID__ ct state new ip daddr 127.0.0.1 tcp dport 5432 accept
+  meta skuid __DEDICATED_UID__ ct state new drop
+ }
+}
