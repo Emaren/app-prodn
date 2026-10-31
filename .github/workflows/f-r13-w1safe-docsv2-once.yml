@@ -1,0 +1,57 @@
+name: F R13 W1-safe one-shot canonical DocsV2
+on:
+  push:
+    branches:
+      - repair/g-r13-w1safe-canonical-docsv2-20261031
+    paths:
+      - .github/workflows/f-r13-w1safe-docsv2-once.yml
+permissions:
+  contents: write
+jobs:
+  canonical-seal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Exact-source one-shot, retire workflow, canonical seal and strict verify
+        run: |
+          python3 - <<'PY'
+          import subprocess,sys
+          expected="fb20e0f2f57d29d385003c1909584de80164f3cf"
+          current=subprocess.check_output(["git","rev-parse","HEAD^"],text=True).strip()
+          if current!=expected:
+              print("HOLD: MOVING_SOURCE_BASE",current,flush=True)
+              sys.exit(2)
+          print("PASS: EXACT_W1_SAFE_SOURCE_BASE",current,flush=True)
+          PY
+          git config user.name "aoe2war-docsv2-github-actions"
+          git config user.email "aoe2war-docsv2@users.noreply.github.com"
+          git rm .github/workflows/f-r13-w1safe-docsv2-once.yml || exit 2
+          git commit -m "chore(R13): retire one-shot DocsV2 generator" || exit 2
+          python3 - <<'PY'
+          import subprocess,sys
+          base="fb20e0f2f57d29d385003c1909584de80164f3cf"
+          drift=subprocess.check_output(["git","diff","--name-only",base,"HEAD"],text=True).strip()
+          if drift:
+              print("HOLD: POST_RETIRE_IMPLEMENTATION_DRIFT",drift,flush=True)
+              sys.exit(2)
+          print("PASS: ONE_SHOT_WORKFLOW_REMOVED",flush=True)
+          PY
+          python3 scripts/docs_v2_check.py --write --refresh-baseline --branch repair/g-r13-w1safe-canonical-docsv2-20261031 --head "$(git rev-parse HEAD)" || exit 2
+          python3 scripts/docs_v2_check.py || exit 2
+          git add docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json || exit 2
+          python3 - <<'PY'
+          import subprocess,sys
+          changed=subprocess.check_output(["git","diff","--cached","--name-only"],text=True).splitlines()
+          expected={"docs/DOCUMENTATION_CONTROL_PLANE.md","docs/document-registry.json"}
+          if set(changed)!=expected:
+              print("HOLD: NONCANONICAL_OUTPUT_PATHS",changed,flush=True)
+              sys.exit(2)
+          print("PASS: TWO_GENERATED_DOCS_ONLY",flush=True)
+          PY
+          git commit -m "docs(R13): canonical W1-safe source+three-reviewed-docs baseline" || exit 2
+          git push origin HEAD:refs/heads/repair/g-r13-w1safe-canonical-docsv2-20261031 || exit 2
+          echo "PASS: CANONICAL_DOCS_GENERATED_WORKFLOW_RETIRED"
