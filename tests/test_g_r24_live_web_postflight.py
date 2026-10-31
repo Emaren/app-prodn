@@ -1,5 +1,5 @@
 """R25 G synthetic parallel web postflight regression (not real host evidence)."""
-import copy, importlib.util, pathlib, unittest
+import copy, importlib.util, pathlib, tempfile, unittest
 from unittest.mock import patch
 FILE=pathlib.Path(__file__).resolve().parents[1]/"scripts/aoe2_g_r24_live_web_postflight.py"
 spec=importlib.util.spec_from_file_location("g_r25",FILE)
@@ -121,6 +121,23 @@ class R25Tests(unittest.TestCase):
                 self.assertEqual(args[-2:],["--remote","after"])
         for target in ("tony@hel1","root@bad;whoami","root@foo bar",""):
             with self.assertRaises(g.Hold):g.ssh_snapshot(target,"after")
+    def test_full_tree_bytes_internal_links_and_escape_holds(self):
+        with tempfile.TemporaryDirectory() as home:
+            root=pathlib.Path(home)/"source"
+            root.mkdir()
+            (root/"code.js").write_bytes(b"safe")
+            (root/"linked.js").symlink_to("code.js")
+            digest=g.bounded_tree(root)
+            self.assertEqual(digest["files"],2)
+            self.assertEqual(digest["bytes"],4)
+            first=digest["sha256"]
+            (root/"code.js").write_bytes(b"changed")
+            self.assertNotEqual(g.bounded_tree(root)["sha256"],first)
+            (root/"linked.js").unlink()
+            (root/"linked.js").symlink_to("../outside")
+            (pathlib.Path(home)/"outside").write_bytes(b"outside")
+            with self.assertRaises(g.Hold):g.bounded_tree(root)
+
     def test_no_false_public_build_and_duplicate_json(self):
         code=FILE.read_text()
         self.assertIn("public_next_build_id_directly_exposed",code)
