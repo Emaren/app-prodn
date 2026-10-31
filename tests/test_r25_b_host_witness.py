@@ -188,7 +188,7 @@ meta skuid 1000 ct state new drop"""
     def test_finance_writer_fs_path_outside_cache_fails(self):
         status={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
                 "ReadWritePaths":"/var/lib/aoe2war-finance"}
-        with self.assertRaisesRegex(RuntimeError,"NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE"):
+        with self.assertRaisesRegex(RuntimeError,"NEW_SERVICE_PRIVATE_CACHE_MOUNT_NOT_PROVEN"):
             b.validate_filesystem_wall(status)
 
     def test_prestart_negative_without_verified_root_guard(self):
