@@ -148,7 +148,10 @@ def verify_six(candidate, phase, attempt, *, source=INBOX, verifier=None, now=No
     if verifier is None:
         # The canonical installed F verifier authenticates real Ed25519 SPKIs,
         # six unique root-enrolled identities and all six signed payloads.
-        from aoe2_solo_website_producer_receipts import verify_all as verifier
+        try:
+            from aoe2_solo_website_producer_receipts import verify_all as verifier
+        except ImportError as exc:
+            raise Hold("CANONICAL_F_VERIFIER_NOT_INSTALLED") from exc
     report = {
         "candidate_sha": candidate, "phase": phase, "attempt_id": attempt,
         "doctor": sections["doctor"], "recovery": sections["recovery"],
@@ -156,7 +159,11 @@ def verify_six(candidate, phase, attempt, *, source=INBOX, verifier=None, now=No
         "source_scope": sections["source"], "stage": sections["stage"],
         "receipt_provenance": {"signed_producers": signatures},
     }
-    need(verifier(report) is True, "SIX_REAL_SIGNATURES_NOT_VERIFIED")
+    try:
+        valid = verifier(report)
+    except Exception as exc:
+        raise Hold("CANONICAL_F_SIGNATURE_VERIFIER_REFUSED") from exc
+    need(valid is True, "SIX_REAL_SIGNATURES_NOT_VERIFIED")
     return raw_files
 
 def fsync_dir(path):
