@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r18-f-website-g-cdp-final-seal` at `7a822fc719775530520cb374977a2ccc540ed067`
+Implementation baseline: `review/g-r24-live-web-finance-rollback-witness-20261031` at `36c538d9f94c0d265b69040b0d15cde777d0aa26`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
