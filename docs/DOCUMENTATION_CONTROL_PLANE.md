@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/r25-postrelease-b4-kingdom-graph-20261031` at `b266048179d0759ea531851998c75473b13ae4bc`
+Implementation baseline: `feature/r25-postrelease-b4-kingdom-graph-20261031` at `82beba9b1ca179dfd4e5bd7376a774050c6ede72`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "839a720f4987b7623604f89165d125354f899812f1dc0404df6a66f918810fc0",
+      "sha256": "20ca06631d7f5589006f1e484f693786be8c0c7fbfd06ebba0fc0535392b37aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2371,7 +2371,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/r25-postrelease-b4-kingdom-graph-20261031",
-    "commit": "b266048179d0759ea531851998c75473b13ae4bc"
+    "commit": "82beba9b1ca179dfd4e5bd7376a774050c6ede72"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
