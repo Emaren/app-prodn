@@ -94,5 +94,19 @@ class TestIntegratedG(unittest.TestCase):
         self.assertNotIn('/var/www/AoE2HDBets/app-prodn-r24-w1safe-0cee3c836c4b',
                          G_SOURCE.read_text())
 
+    def test_g_rejects_mutable_and_unapproved_stage_root_before_receipt(self):
+        with mock.patch.object(g, "STAGE",
+                               pathlib.Path("/var/www/AoE2HDBets/unsafe-new-candidate")):
+            with self.assertRaisesRegex(g.Hold, "C_ROOT_STAGE_PATH_NOT_REVIEWED"):
+                g.protected_c_stage_boundary()
+        original_lstat=pathlib.Path.lstat
+        def wrong_mode(path):
+            if str(path)==str(g.STAGE):
+                return type("FakeStat",(),{"st_uid":1000,"st_mode":0o40777})()
+            return original_lstat(path)
+        with mock.patch.object(pathlib.Path,"lstat",wrong_mode):
+            with self.assertRaisesRegex(g.Hold, "C_STAGE_ROOT_TRUST_BOUNDARY"):
+                g.protected_c_stage_boundary()
+
 if __name__=="__main__":
     unittest.main()
