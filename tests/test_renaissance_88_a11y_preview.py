@@ -43,6 +43,13 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn('"$(cat renaissance-88-chrome/BUILD_ID)" != "$BUILD_ID"', self.preview)
         self.assertIn('exit 2', self.preview)
         self.assertIn('printf \'source=%s\\nbuild=%s\\ncandidate_only=true\\n\' "$SOURCE_SHA" "$BUILD_ID"', self.preview)
+    def test_r17_exact_width_chrome_hold_cannot_be_hidden_by_88_route_pass(self):
+        self.assertIn('w1safe_rc=$?', self.preview)
+        self.assertIn('BROWSER_EXIT=%s W1SAFE_R16_EXIT=%s', self.preview)
+        self.assertIn('if [ "$browser_rc" -ne 0 ] || [ "$w1safe_rc" -ne 0 ]; then', self.preview)
+        self.assertIn('W1_SAFE_CHROME_HOLD:', self.preview)
+        self.assertIn('test -s renaissance-88-chrome/w1safe-r16/review.json', self.preview)
+        self.assertNotIn('exit "$browser_rc"', self.preview)
     def test_only_plan_from_exact_next_build_can_use_preview(self):
         self.assertIn('o.action!="plan" or o.build_dir is None',self.source)
         self.assertIn("Unsealed preview requires exact built Next",self.source)
