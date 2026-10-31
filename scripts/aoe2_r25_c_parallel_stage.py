@@ -220,7 +220,7 @@ def stage_source(expected):
        "new_candidate_started":False})
     print("PASS:SOURCE_STAGED SHA="+SHA+" ARCHIVE_SHA256="+expected,flush=True)
     return True
-def import_yarn_classic_bounded():
+def import_yarn_classic_bounded(base=None):
     """Import ONLY Yarn Classic's bundle and launcher, never recursively as root.
 
     The existing Corepack cache is operator-owned and may include unrelated
@@ -228,7 +228,8 @@ def import_yarn_classic_bounded():
     no symlink ancestor, bounded length, and no root execution. Yarn is run
     later only as dedicated sandboxed BUILD UID with no production secrets.
     """
-    base=pathlib.Path("/home/tony/.cache/node/corepack/v1/yarn/1.22.22")
+    base=(pathlib.Path(base) if base is not None else
+          pathlib.Path("/home/tony/.cache/node/corepack/v1/yarn/1.22.22"))
     need(not (DEST/".r25-yarn").exists()
          and not (DEST/".r25-yarn").is_symlink(),
          "YARN_STAGE_ALREADY_EXISTS_NO_REPLAY")
