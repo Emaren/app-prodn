@@ -122,6 +122,17 @@ meta skuid 1000 ct state new drop"""
         self.assertIn("2625090",Path(__file__).read_text() if False else
                       __import__("inspect").getsource(b.observe))
 
+    def test_unix_finance_socket_visible_fails(self):
+        with self.assertRaisesRegex(RuntimeError,"UNIX_SOCKET_ORIGINAL_FINANCE_PATHS_NOT_HIDDEN"):
+            b.validate_filesystem_wall({"InaccessiblePaths":"/etc/aoe2hdbets",
+                                        "ReadWritePaths":""})
+
+    def test_finance_writer_fs_path_outside_cache_fails(self):
+        status={"InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+                "ReadWritePaths":"/var/lib/aoe2war-finance"}
+        with self.assertRaisesRegex(RuntimeError,"NEW_WEB_WRITABLE_PATH_OUTSIDE_CANDIDATE_CACHE"):
+            b.validate_filesystem_wall(status)
+
     def test_prestart_negative_without_verified_root_guard(self):
         with patch.object(b.os,"geteuid",return_value=0), \
              patch.object(b.socket,"gethostname",return_value=b.HOST), \
@@ -133,7 +144,9 @@ meta skuid 1000 ct state new drop"""
         import types
         def status(unit):
             if unit==b.OLD_UNIT:return {"ActiveState":"active","MainPID":"2625090"}
-            return {"User":b.USER,"WorkingDirectory":str(b.SOURCE)}
+            return {"User":b.USER,"WorkingDirectory":str(b.SOURCE),
+                    "InaccessiblePaths":"/run /var/run /etc/aoe2hdbets /mnt/HC_Volume_105319120 /var/www/AoE2HDBets/app-prodn",
+                    "ReadWritePaths":str(b.SOURCE/".next"/"cache")}
         with patch.object(b.os,"geteuid",return_value=0), \
              patch.object(b.socket,"gethostname",return_value=b.HOST), \
              patch.object(b,"require_root_file",return_value="a"*64), \
