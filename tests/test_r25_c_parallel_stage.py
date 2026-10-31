@@ -310,5 +310,14 @@ class R25StageTests(unittest.TestCase):
         self.assertEqual(result,b"expected-bytes")
         run.assert_called_once()
 
+    def test_37_network_disabled_offline_install_and_next_build_are_distinct(self):
+        src=SRC.read_text()
+        self.assertIn('"--unit=aoe2war-r25-offline-"+SHA[:8]+unit_tag',src)
+        self.assertIn('"--unit=aoe2war-r25-next-build-"+SHA[:8]+unit_tag',src)
+        self.assertIn('command(offline,timeout=1500)',src)
+        self.assertIn('command(build,timeout=1900)',src)
+        self.assertNotIn('"/bin/sh","-c",scripts',src)
+        self.assertIn('"--property=PrivateNetwork=yes"',src)
+
 if __name__=="__main__":
     unittest.main()
