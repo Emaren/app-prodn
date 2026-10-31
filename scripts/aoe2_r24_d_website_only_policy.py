@@ -19,12 +19,12 @@ OLD_LOCK = (2064, 6185747, 1000, 0o644)
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 
-# EXACT reviewed Git SHAs to be filled in one new F-governed integration.
-# Empty means HOLD; callers cannot substitute permits, CLI flags or dummy keys.
+# EXACT prior independently reviewed Git SHAs to be sealed by later F integration.
+# No self-referential final commit SHA: F review must predate integration. Empty HOLD.
 B_FINANCE_REVIEW_SHA = ""
 C_ROOT_OPERATOR_SHA = ""
 E_CAPACITY_REVIEW_SHA = ""
-F_INTEGRATION_SHA = ""
+F_REVIEW_AUTHORITY_SHA = ""
 
 
 class Hold(ValueError):
@@ -59,7 +59,7 @@ def digest(x):
 
 def source_seals():
     seals = (B_FINANCE_REVIEW_SHA, C_ROOT_OPERATOR_SHA,
-             E_CAPACITY_REVIEW_SHA, F_INTEGRATION_SHA)
+             E_CAPACITY_REVIEW_SHA, F_REVIEW_AUTHORITY_SHA)
     need(all(h40(x) for x in seals) and len(set(seals)) == 4,
          "INDEPENDENT_REVIEW_SOURCE_SEALS_ABSENT")
     return seals
