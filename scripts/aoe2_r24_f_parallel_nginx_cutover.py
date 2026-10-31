@@ -279,7 +279,7 @@ def verified_b_poststart(j,ss):
          ).get("MainPID","0")),
          "B_CERTIFICATE_CANDIDATE_PROCESS_PID_DRIFT")
     db=b.get("candidate_readonly_pg")
-    need(type(db)==dict and db.get("role")=="aoe2war-r24-web_ro" and
+    need(type(db)==dict and db.get("role")=="aoe2war_r25_web_ro" and
          db.get("server_transaction_ro") is True and
          type(b.get("kernel_uid_egress_sha256"))==str and
          HEX64.fullmatch(b["kernel_uid_egress_sha256"]) and
