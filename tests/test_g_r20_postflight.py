@@ -1,5 +1,5 @@
 """G R20 tests: synthetic negative fixtures are NOT native release evidence."""
-import copy, importlib.util, pathlib, subprocess, sys, tempfile, unittest
+import copy, hashlib, importlib.util, os, pathlib, subprocess, sys, tempfile, unittest
 
 SCRIPT=pathlib.Path(__file__).resolve().parents[1]/"scripts/aoe2_g_r20_postflight.py"
 spec=importlib.util.spec_from_file_location("g_r20_postflight",SCRIPT)
@@ -97,6 +97,59 @@ class R20PostflightTests(unittest.TestCase):
         self.assertNotIn('method="POST"',code)
         self.assertEqual(g.CANDIDATE,"0cee3c836c4b0760478280c145e02e81e470ce0e")
         self.assertEqual(g.CONTROLLER,"18052e01a191b15525664c1a058de80d7a8bc150")
+
+    def test_r21_kernel_listener_to_signed_process_identity_and_adversarial_sockets(self):
+        # Synthetic /proc fixture only; no HEL1 process, privilege or money touched.
+        with tempfile.TemporaryDirectory() as tmp:
+            root=pathlib.Path(tmp)
+            (root/"net").mkdir()
+            (root/"123"/"fd").mkdir(parents=True)
+            header="  sl  local_address rem_address   st tx_queue:rx_queue tr:tm->when retrnsmt uid timeout inode\n"
+            def tcp(port,inode="424242"):
+                return ("   0: 00000000:%04X 00000000:0000 0A "
+                        "00000000:00000000 00:00000000 00000000 100 0 %s\n")%(port,inode)
+            (root/"net"/"tcp").write_text(header+tcp(8092))
+            (root/"net"/"tcp6").write_text(header)
+            (root/"123"/"fd"/"5").symlink_to("socket:[424242]")
+            (root/"123"/"stat").write_text("123 (daemon worker) S "+" ".join(["1"]*19+["12345"]+["0"]*10)+"\n")
+            (root/"123"/"status").write_text("Uid:\t1000\t1000\t1000\t1000\n")
+            cgroup=b"0::/system.slice/wolo.service\n"
+            (root/"123"/"cgroup").write_bytes(cgroup)
+            (root/"123"/"exe").symlink_to(sys.executable)
+            with open(sys.executable,"rb") as exe:
+                exe_sha=hashlib.sha256(exe.read()).hexdigest()
+            record={"pid":123,"start_time_ticks":12345,"uid":1000,
+                    "cgroup_sha256":hashlib.sha256(cgroup).hexdigest(),
+                    "executable_sha256":exe_sha}
+            previous=g.PROC_ROOT
+            g.PROC_ROOT=root
+            try:
+                self.assertEqual(g.listener_socket_inode(8092),"424242")
+                identity=g.process_id(8092,record)
+                self.assertEqual(identity["socket_inode_sha256"],
+                                 hashlib.sha256(b"424242").hexdigest())
+                self.assertEqual(identity["executable_sha256"],exe_sha)
+                self.assertEqual(identity["cgroup_sha256"],record["cgroup_sha256"])
+                # Original process exists but does not own the port.
+                (root/"123"/"fd"/"5").unlink()
+                with self.assertRaises(g.Hold):g.process_id(8092,record)
+                (root/"123"/"fd"/"5").symlink_to("socket:[424242]")
+                with self.assertRaises(g.Hold):g.process_id(8093,record)
+                (root/"net"/"tcp6").write_text(header+tcp(8092,"999999"))
+                with self.assertRaises(g.Hold):g.process_id(8092,record)
+                (root/"net"/"tcp6").write_text(header)
+                other=dict(record,cgroup_sha256="a"*64)
+                with self.assertRaises(g.Hold):g.process_id(8092,other)
+                other=dict(record,executable_sha256="b"*64)
+                with self.assertRaises(g.Hold):g.process_id(8092,other)
+                other=dict(record,start_time_ticks=12346)
+                with self.assertRaises(g.Hold):g.process_id(8092,other)
+                other=dict(record,uid=0)
+                with self.assertRaises(g.Hold):g.process_id(8092,other)
+                (root/"net"/"tcp").write_text(header+tcp(8092,"0"))
+                with self.assertRaises(g.Hold):g.process_id(8092,record)
+            finally:
+                g.PROC_ROOT=previous
 
     def test_untrusted_json_duplicates_and_nonfinite_rejected(self):
         with self.assertRaises(g.Hold):g.parse(b'{"a":1,"a":2}')
