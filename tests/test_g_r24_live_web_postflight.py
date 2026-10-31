@@ -1,141 +1,135 @@
-"""R24 G negative tests: no real HEL1 connection, finance read or deployment."""
-import importlib.util, json, pathlib, subprocess, sys, unittest
+"""R25 G synthetic parallel web postflight regression (not real host evidence)."""
+import copy, importlib.util, pathlib, unittest
 from unittest.mock import patch
-
 FILE=pathlib.Path(__file__).resolve().parents[1]/"scripts/aoe2_g_r24_live_web_postflight.py"
-spec=importlib.util.spec_from_file_location("aoe2_g_r24_live",FILE)
-g=importlib.util.module_from_spec(spec)
-spec.loader.exec_module(g)
+spec=importlib.util.spec_from_file_location("g_r25",FILE)
+g=importlib.util.module_from_spec(spec);spec.loader.exec_module(g)
+def fixture():
+    proc=lambda pid:{"pid":pid,"start_ticks":pid*10,"uid":1000,"exe_sha256":"a"*64,
+                     "cgroup_sha256":"b"*64}
+    def unit(name,pid):
+        properties={"Id":name,"ActiveState":"active","MainPID":str(pid),
+                    "ExecMainStartTimestampMonotonic":str(pid*10),"User":"pinned",
+                    "WorkingDirectory":"/var/www","ExecStart":"pinned",
+                    "FragmentPath":"/etc/systemd/"+name,"DropInPaths":""}
+        return {"properties":properties,"properties_sha256":g.digest(g.canon(properties)),
+                "main_process":proc(pid)}
+    units={g.OLD_UNIT:unit(g.OLD_UNIT,111),g.NEW_UNIT:unit(g.NEW_UNIT,222),
+           "wolo-chain.service":unit("wolo-chain.service",333)}
+    ports={str(p):{**proc(1000+p),"port":p,
+                   "socket_inode_sha256":g.digest(str(p).encode())}
+           for p in (3030,3031,8092,8093)}
+    candidate={"git":{"head":g.TARGET,"tree_sha":"2"*40,"tracked_clean":True},
+       "source_marker":g.TARGET,"next_build_id":"TrueNextBuild_ABC",
+       "dependencies":{"sha256":"3"*64,"bytes":100,"files":3},
+       "next_build":{"sha256":"4"*64,"bytes":200,"files":4},
+       "complete_tracked_source_verified":True,
+       "full_dependency_and_build_bytes_measured":True,
+       "root_owner_stage_receipt_binding_requires_F":True}
+    def http(build,version):
+        return {"app_build_version":version,"next_build_id_from_host_not_http":build,
+                "manifest":"/_next/static/"+build+"/_buildManifest.js",
+                "manifest_sha256":g.digest(build.encode()),"route_get_head_count":10,
+                "http_methods_sent":"GET_HEAD_ONLY"}
+    before={"schema":"aoe2war.g.r25.parallel-host.v1","phase":"before","host":g.HOST,
+            "old_source":{"head":"33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a",
+                          "tree_sha":"1"*40,"tracked_clean":True},
+            "old_next_build_id":"DQ2jMprNQ_Njq6QM8GHju",
+            "candidate":candidate,"units":units,"ports":ports,
+            "old_http":http("DQ2jMprNQ_Njq6QM8GHju","old-version"),
+            "candidate_http":http("TrueNextBuild_ABC","new-version"),
+            "nginx":{"upstream_port":3030,"selected_file":"/etc/nginx/site",
+                     "file_sha256":"a"*64,"nginx_compiled_sha256":"b"*64,"nginx_t_ok":True},
+            "release_lock":{"device":2064,"inode":6185747,"uid":1000,"mode":420},
+            "release_journal":{"phase":"before","journal":None},
+            "approved_scope_sha256":"c"*64,"proof":"ROOT_SSH_MEASURED_NOT_FINANCE_SIGNED"}
+    after=copy.deepcopy(before);after["phase"]="after"
+    after["nginx"].update(upstream_port=3031,file_sha256="d"*64)
+    after["release_journal"]={"root_rollback_material_verified":True,
+                             "rollback_exercised":False,"commit_sha256":"f"*64}
+    rollback=copy.deepcopy(before);rollback["phase"]="rollback"
+    rollback["release_journal"]={"root_rollback_material_verified":True,
+                  "rollback_exercised":True,"rollback_receipt_sha256":"e"*64}
+    return before,after,rollback
 
-def example():
-    before={
-      "schema":"aoe2war.g.r24.host-snapshot.v1","host":g.HOST,
-      "original_release_lock":{"device":2064,"inode":6185747,"uid":1000,"mode":"0o644"},
-      "active_working_directory":str(g.REPO),"source_provenance":"ORIGINAL_GIT_COMMIT",
-      "source_sha":"33e0f42b3d34d324b6cbab6c0347d4f5aff6fb8a",
-      "next_build_id":"DQ2jMprNQ_Njq6QM8GHju",
-      "web":{"pid":2625090,"start_ticks":1234,"uid":1000},
-      "units":{"aoe2hdbets-web.service":{"active":"active","main_pid":2625090},
-               "wolochaind-mainnet.service":{"active":"active","main_pid":412}},
-      "protected_listeners":{
-         "8092":{"pid":512,"start_ticks":456,"uid":1000,"socket_inode_sha256":"a"*64},
-         "8093":{"pid":513,"start_ticks":457,"uid":1000,"socket_inode_sha256":"b"*64}},
-      "internal":{"build_version":"old-app-version","routes":{},"asset":"/_next/static/chunks/old.js",
-                  "asset_sha256":"0"*64},
-      "rollback":None
-    }
-    after=json.loads(json.dumps(before))
-    after["source_sha"]=g.TARGET
-    after["active_working_directory"]=str(g.F_SLOT)
-    after["source_provenance"]="F_ROOT_SEALED_SOURCE_MARKER_REQUIRES_STAGE_HASH_BINDING"
-    after["next_build_id"]="NEWNextBuildABCD123"
-    after["web"]={"pid":2626000,"start_ticks":2234,"uid":1000}
-    after["units"]["aoe2hdbets-web.service"]["main_pid"]=2626000
-    after["internal"]["build_version"]="new-app-version"
-    after["internal"]["asset"]="/_next/static/chunks/new.js"
-    after["internal"]["asset_sha256"]="f"*64
-    after["rollback"]={"path":str(g.DURABLE/"activate-RELEASEID"),
-      "previous_source_sha":before["source_sha"],
-      "previous_build_id":before["next_build_id"],
-      "previous_build_version":before["internal"]["build_version"],
-      "dependencies_present":True,"fully_restore_tested":False}
-    return before,after
-
-class R24GPostflightTests(unittest.TestCase):
-    def test_r24_exact_candidate_and_non_mutating_root_ssh(self):
-        code=FILE.read_text()
-        self.assertEqual(g.TARGET,"0cee3c836c4b0760478280c145e02e81e470ce0e")
-        self.assertIn('"StrictHostKeyChecking=yes"',code)
-        self.assertIn('"BatchMode=yes"',code)
-        self.assertIn('"--remote"',code)
-        self.assertIn('"no_financial_mutation_http_methods_dispatched":True',code)
-        self.assertIn('"SSR_GET_HEAD_financial_side_effects_independently_proven":False',code)
-        self.assertIn('"public_next_build_id_directly_exposed":False',code)
-        self.assertIn('"rollback_execution_tested":False',code)
-        self.assertIn('"original_release_lock_preserved":True',code)
-        self.assertIn('"UNTRUSTED_ROOT_SEALED_WEB_SLOT"',code)
-        self.assertIn('"full_candidate_source_tree_independently_hashed":False',code)
-        self.assertIn('"owner_approved_F_stage_digest_required":True',code)
-        self.assertIn('"OWNER_BEFORE_RECEIPT_DIGEST_DRIFT"',code)
-        self.assertNotIn('set -euo pipefail',code)
-        self.assertNotIn('git reset --hard',code)
-        self.assertNotIn('git clean',code)
-        self.assertNotIn('method="POST"',code)
-        r=subprocess.run([sys.executable,str(FILE),"--remote"],
-                         capture_output=True,text=True,timeout=5)
-        self.assertEqual(r.returncode,2)
-        self.assertIn("R24_G_POSTFLIGHT_HOLD:",r.stderr)
-
-    def test_good_financial_socket_and_rollback_lineage(self):
-        a,b=example()
-        with patch.object(g,"public_check",return_value={"asset_sha256":"f"*64}):
-            result=g.verify(a,b,"https://aoe2war.com")
-        self.assertEqual(result["status"],"LIVE_HOST_MARKER_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_OBSERVED")
-        self.assertEqual(result["live_next_build_id"],b["next_build_id"])
-        self.assertEqual(result["protected_financial_units_checked"],1)
-        self.assertFalse(result["rollback_execution_tested"])
-
-    def test_protected_finance_host_source_and_build_negative_vectors(self):
-        scenarios=[
-           lambda a,b:b.__setitem__("source_sha","0"*40),
-           lambda a,b:b.__setitem__("next_build_id",a["next_build_id"]),
-           lambda a,b:b["units"]["wolochaind-mainnet.service"].__setitem__("main_pid",12),
-           lambda a,b:b["units"].pop("wolochaind-mainnet.service"),
-           lambda a,b:b["protected_listeners"]["8092"].__setitem__("start_ticks",999),
-           lambda a,b:b["protected_listeners"]["8093"].__setitem__("socket_inode_sha256","0"*64),
-           lambda a,b:b["rollback"].__setitem__("previous_build_id","fake"),
-           lambda a,b:b["rollback"].__setitem__("previous_source_sha","1"*40),
-           lambda a,b:b["rollback"].__setitem__("dependencies_present",False),
-           lambda a,b:b["rollback"].__setitem__("previous_build_version","wrong"),
-           lambda a,b:b.__setitem__("host","other-host"),
+class R25Tests(unittest.TestCase):
+    def test_actual_phase_contract_positive(self):
+        b,a,r=fixture()
+        self.assertEqual(g.verify(b,a,"after")["nginx_active_upstream"],3031)
+        self.assertTrue(g.verify(b,a,"after")["old_web_service_pid_unchanged"])
+        self.assertEqual(g.verify(b,r,"rollback")["nginx_active_upstream"],3030)
+        self.assertFalse(g.verify(b,a,"after")["public_next_build_id_directly_exposed"])
+    def test_23_mutations_and_wrong_phases_hold(self):
+        mutations=[
+          lambda a:a["units"][g.OLD_UNIT]["main_process"].__setitem__("pid",999),
+          lambda a:a["units"][g.NEW_UNIT]["main_process"].__setitem__("start_ticks",999),
+          lambda a:a["units"]["wolo-chain.service"]["properties"].__setitem__("MainPID","0"),
+          lambda a:a["ports"]["3030"].__setitem__("pid",999),
+          lambda a:a["ports"]["3031"].__setitem__("socket_inode_sha256","x"*64),
+          lambda a:a["ports"]["8092"].__setitem__("exe_sha256","x"*64),
+          lambda a:a["ports"]["8093"].__setitem__("cgroup_sha256","x"*64),
+          lambda a:a.__setitem__("old_next_build_id","fake"),
+          lambda a:a["old_source"].__setitem__("head","0"*40),
+          lambda a:a["candidate"]["git"].__setitem__("head","0"*40),
+          lambda a:a["candidate"]["dependencies"].__setitem__("sha256","0"*64),
+          lambda a:a["candidate"]["next_build"].__setitem__("sha256","0"*64),
+          lambda a:a["candidate"]["next_build"].__setitem__("bytes",1234),
+          lambda a:a["release_lock"].__setitem__("inode",0),
+          lambda a:a.__setitem__("approved_scope_sha256","0"*64),
+          lambda a:a["nginx"].__setitem__("upstream_port",3030),
+          lambda a:a["nginx"].__setitem__("selected_file","/tmp/site"),
+          lambda a:a["release_journal"].__setitem__("root_rollback_material_verified",False),
+          lambda a:a.__setitem__("phase","rollback"),
+          lambda a:a["old_http"].__setitem__("app_build_version","changed"),
+          lambda a:a["candidate_http"].__setitem__("manifest_sha256","0"*64),
+          lambda a:a["units"].pop(g.NEW_UNIT),
+          lambda a:a["ports"].pop("8093"),
         ]
-        scenarios.extend([
-           lambda a,b:b["original_release_lock"].__setitem__("inode",999),
-           lambda a,b:b.__setitem__("active_working_directory","/tmp/unreviewed-site"),
-           lambda a,b:b["web"].update({"pid":a["web"]["pid"],
-                                          "start_ticks":a["web"]["start_ticks"]}),
-        ])
-        for i,edit in enumerate(scenarios):
+        for i,edit in enumerate(mutations):
             with self.subTest(i=i):
-                a,b=example();edit(a,b)
-                with patch.object(g,"public_check",return_value={}):
-                    with self.assertRaises(g.Hold):g.verify(a,b,"https://aoe2war.com")
-
-    def test_no_blanket_public_identity_and_get_head_consistency(self):
-        a,b=example()
-        with patch.object(g,"get") as get:
-            def reply(url,method="GET",limit=2097152):
-                if url.endswith("deployment-version"):
-                    return {"status":200,"body":b'{"buildVersion":"new-app-version"}',"cache":"no-store"}
-                if url.endswith("chunks/new.js"):
-                    return {"status":200,"body":b"REAL_ASSET","cache":""}
-                if url=="https://aoe2war.com/":
-                    return {"status":200,"body":b'<script src="/_next/static/chunks/new.js"></script>',"cache":""}
-                return {"status":200,"body":b"ok","cache":""}
-            get.side_effect=reply
-            b["internal"]["asset_sha256"]=g.sha(b"REAL_ASSET")
-            self.assertTrue(g.public_check(b,"https://aoe2war.com")["public_bytes_bound_to_active_build"])
-            with self.assertRaises(g.Hold):
-                g.public_check(b,"https://evil.example")
-            b["internal"]["asset_sha256"]="f"*64
-            with self.assertRaises(g.Hold):
-                g.public_check(b,"https://aoe2war.com")
-
-    def test_ssh_target_rejects_unreviewed_hosts_and_keeps_host_key_checks(self):
-        with patch.object(g,"run",return_value=b'{"ok":true}') as runner:
-            with patch.object(g.pathlib.Path,"read_bytes",return_value=b"source"):
-                self.assertEqual(g.ssh_observe("root@reviewed-hel1",None),{"ok":True})
-                argv=runner.call_args.args[0]
-                self.assertIn("StrictHostKeyChecking=yes",argv)
-                self.assertIn("BatchMode=yes",argv)
-                self.assertIn("-T",argv)
-                self.assertIn("--remote",argv)
-        for target in ("tony@hel1","root@host;touch /tmp/x","root@host name",""):
-            with self.subTest(target=target):
-                with self.assertRaises(g.Hold):g.ssh_observe(target,None)
-
-    def test_json_duplicate_rejected(self):
-        with self.assertRaises(g.Hold):g.parsed(b'{"a":1,"a":2}')
-        with self.assertRaises(g.Hold):g.parsed(b'{"x":NaN}')
+                b,a,_=fixture();edit(a)
+                with self.assertRaises(g.Hold):g.verify(b,a,"after")
+    def test_rollback_only_public_upstream_may_change(self):
+        mutations=[
+          lambda r:r["nginx"].__setitem__("upstream_port",3031),
+          lambda r:r["nginx"].__setitem__("file_sha256","0"*64),
+          lambda r:r["release_journal"].__setitem__("rollback_exercised",False),
+          lambda r:r["units"][g.OLD_UNIT]["main_process"].__setitem__("pid",99),
+          lambda r:r["ports"]["3031"].__setitem__("pid",99),
+        ]
+        for edit in mutations:
+            b,_,r=fixture();edit(r)
+            with self.assertRaises(g.Hold):g.verify(b,r,"rollback")
+    def test_public_manifest_bytes_version_and_method_gate(self):
+        b,a,_=fixture();build=a["candidate"]["next_build_id"]
+        def fake(url,path,method="GET",limit=524288):
+            if path=="/api/deployment-version":return b'{"buildVersion":"new-version"}'
+            if path=="/_next/static/"+build+"/_buildManifest.js":return b"real-manifest"
+            return b"page" if method=="GET" else b""
+        with patch.object(g,"http",side_effect=fake):
+            a["candidate_http"]["manifest_sha256"]=g.digest(b"real-manifest")
+            self.assertEqual(g.public_check(a)["route_get_head_count"],10)
+            a["candidate_http"]["manifest_sha256"]="f"*64
+            with self.assertRaises(g.Hold):g.public_check(a)
+    def test_strict_ssh_no_remote_file_install(self):
+        with patch.object(g,"run",return_value=b'{"ok":true}') as caller:
+            with patch.object(g.pathlib.Path,"read_bytes",return_value=b"reviewed-source"):
+                self.assertEqual(g.ssh_snapshot("root@hel1","after"),{"ok":True})
+                args=caller.call_args.args[0]
+                self.assertIn("StrictHostKeyChecking=yes",args)
+                self.assertIn("BatchMode=yes",args)
+                self.assertEqual(args[-2:],["--remote","after"])
+        for target in ("tony@hel1","root@bad;whoami","root@foo bar",""):
+            with self.assertRaises(g.Hold):g.ssh_snapshot(target,"after")
+    def test_no_false_public_build_and_duplicate_json(self):
+        code=FILE.read_text()
+        self.assertIn("public_next_build_id_directly_exposed",code)
+        self.assertIn("OWNER_AFTER_RECEIPT_SHA256_DRIFT",code)
+        self.assertIn("OWNER_BEFORE_RECEIPT_SHA256_DRIFT",code)
+        self.assertNotIn("git reset --hard",code)
+        self.assertNotIn("git clean",code)
+        self.assertNotIn('method="POST"',code)
+        with self.assertRaises(g.Hold):g.parse(b'{"a":1,"a":2}')
+        with self.assertRaises(g.Hold):g.parse(b'{"x":NaN}')
 
 if __name__=="__main__":unittest.main()
