@@ -684,7 +684,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e3526c40f28cd61cde0f78bf41b59586f8bfc82388a2655480bd852788a5da0d",
+      "sha256": "8ab1aa34c9c1432e6b617bf7164380ca180e570cc4fefd8803f9b07a900066b2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2463,7 +2463,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "r25-e-physical-parallel-certificate",
-    "commit": "5f73195470f68f6c4e2e6b538f54e9bdd101c2bf"
+    "commit": "88394b0a7425ffcee0b3194e3fd97d6138294d05"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
