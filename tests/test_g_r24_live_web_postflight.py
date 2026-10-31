@@ -70,7 +70,7 @@ class R24GPostflightTests(unittest.TestCase):
         a,b=example()
         with patch.object(g,"public_check",return_value={"asset_sha256":"f"*64}):
             result=g.verify(a,b,"https://aoe2war.com")
-        self.assertEqual(result["status"],"LIVE_SOURCE_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_VERIFIED")
+        self.assertEqual(result["status"],"LIVE_HOST_MARKER_BUILD_HTTP_FINANCE_SOCKET_ROLLBACK_MATERIAL_OBSERVED")
         self.assertEqual(result["live_next_build_id"],b["next_build_id"])
         self.assertEqual(result["protected_financial_units_checked"],1)
         self.assertFalse(result["rollback_execution_tested"])
