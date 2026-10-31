@@ -155,6 +155,8 @@ def decode_bundle(data):
         out[k]=raw
     if sha(out["guard"])!=GUARD_SHA or sha(out["witness"])!=WITNESS_SHA:
         hold("B_GUARD_OR_WITNESS_SHA_DRIFT")
+    if gitblob(out["dropin"])!=DROPIN_GIT_BLOB or gitblob(out["nft"])!=NFT_GIT_BLOB:
+        hold("B_NEW_ONLY_NFT_OR_SYSTEMD_SOURCE_BLOB_DRIFT")
     drop=out["dropin"].decode()
     if (drop.count("__B_GUARD_SHA256__")!=1 or
         "User="+NEW_USER not in drop or "ExecStartPre=+" not in drop or
