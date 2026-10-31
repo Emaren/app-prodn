@@ -1,6 +1,6 @@
 ---
 id: "aoe2war.app-prodn.deploy-solo-native-audit-hel1-root-install-v2-contract"
-title: "R16 HEL1 root-helper and native issuer installation contract"
+title: "R16 C — W1_SAFE deterministic HEL1 root helper/issuer installation v2"
 type: "runbook"
 status: "draft"
 owner: "aoe2war-web"
