@@ -34,7 +34,9 @@ class R25EParallelCertificate(unittest.TestCase):
         self.durable.mkdir(parents=True)
         self.stagebase = self.home/'staging'
         self.stagebase.mkdir()
-        self.stage = self.stagebase/e.SOURCE/'web'
+        self.stage = self.stagebase/'app-prodn-r24-w1safe-0cee3c836c4b'
+        self.audit = self.home/'aoe2war-r25-c-additive'
+        self.audit.mkdir()
         self.archivebase = self.home/'source-bundles'
         self.archivebase.mkdir()
         self.archive = self.archivebase/(e.SOURCE+'.tar')
@@ -47,6 +49,8 @@ class R25EParallelCertificate(unittest.TestCase):
                         patch.object(e, 'VOLUME', self.vol),
                         patch.object(e, 'DURABLE', self.durable),
                         patch.object(e, 'STAGED', self.stage),
+                        patch.object(e, 'C_AUDIT', self.audit),
+                        patch.object(e, 'read_root_receipt', side_effect=self.read_fixture_receipt),
                         patch.object(e, 'ARCHIVE', self.archive),
                         patch.object(e, 'host_devices',return_value=(self.dev,self.dev)),
                         patch.object(e,'old_process',return_value={
@@ -59,6 +63,10 @@ class R25EParallelCertificate(unittest.TestCase):
             p.start()
             self.addCleanup(p.stop)
 
+    def read_fixture_receipt(self, path, dev, limit=65536):
+        raw=path.read_bytes()
+        return json.loads(raw),e.hashlib.sha256(raw).hexdigest()
+
     def built_stage(self):
         p = self.stage/'.next/server'
         p.mkdir(parents=True)
@@ -66,6 +74,19 @@ class R25EParallelCertificate(unittest.TestCase):
         (self.stage/'node_modules/next').mkdir(parents=True)
         (self.stage/'node_modules/next/package.json').write_text('{"name":"next"}')
         (self.stage/'package.json').write_text('{"name":"aoe2war"}')
+        (self.stage/'r24-source-sha').write_text(e.SOURCE+'\n')
+        (self.stage/'.aoe2war-build-version').write_text('NEW_VERSION_DEF456')
+        source={'status':'SOURCE_STAGED','candidate_sha':e.SOURCE,
+                'git_archive_sha256':e.ARCHIVE_SHA256,'old_web_mainpid':2625090,
+                'old_web_untouched':True,'new_candidate_started':False}
+        build={'schema':'aoe2war.r25.c.full-built-artifact.v1',
+               'status':'BUILD_STAGED','candidate_sha':e.SOURCE,
+               'source_git_archive_sha256':e.ARCHIVE_SHA256,
+               'build_id':'NEW_BUILD_DEF456','build_version':'NEW_VERSION_DEF456',
+               'tree_sha256':'a'*64,'root_sealed':True,'old_web_pid_untouched':2625090,
+               'new_service_started':False,'financial_writes_authorized':False}
+        (self.audit/'SOURCE_STAGED.json').write_text(json.dumps(source))
+        (self.audit/'BUILD_STAGED.json').write_text(json.dumps(build))
 
     def copied_old(self):
         dest = self.durable/'R25-campaign/prior-next'
@@ -74,6 +95,12 @@ class R25EParallelCertificate(unittest.TestCase):
             shutil.copy2(f,dest/f.name)
         self.args.durable_next=str(dest)
         return dest
+
+    def test_c_compile_stage_contract_is_var_www_sibling(self):
+        self.assertEqual(str(e.STAGED), str(self.stage))
+        # Runtime site path explicitly differs from old .next, preventing in-place swaps.
+        self.assertNotEqual(self.stage, self.web)
+        self.assertNotEqual(self.stage, self.old)
 
     def test_real_source_bundle_only_is_source_staged(self):
         r=e.certify(self.args)
@@ -99,6 +126,7 @@ class R25EParallelCertificate(unittest.TestCase):
         self.assertEqual(r['candidate']['candidate_next_build_id'],'NEW_BUILD_DEF456')
         self.assertEqual(r['root']['required_free_bytes'],4*e.GIB)
         self.assertFalse(r['source_to_build_binding_proved'])
+        self.assertTrue(r['c_receipt_source_to_build_binding_checked'])
         self.assertFalse(r['candidate_financial_isolation_proved'])
 
     def test_verified_external_byte_copy_gives_recovery_ready(self):
@@ -156,6 +184,34 @@ class R25EParallelCertificate(unittest.TestCase):
         (deps/'next').symlink_to(real_next.relative_to(deps).as_posix())
         r=e.certify(self.args)
         self.assertEqual(r['phase'],'BUILD_STAGED')
+
+    def test_full_build_without_c_receipt_is_not_admitted(self):
+        self.built_stage()
+        (self.audit/'BUILD_STAGED.json').unlink()
+        with self.assertRaises(FileNotFoundError):
+            e.certify(self.args)
+
+    def test_forged_c_build_receipt_build_id_holds(self):
+        self.built_stage()
+        file=self.audit/'BUILD_STAGED.json'
+        value=json.loads(file.read_text());value['build_id']='WRONG_BUILD_XYZ999'
+        file.write_text(json.dumps(value))
+        with self.assertRaisesRegex(e.Hold,'C_BUILD_RECEIPT_WRONG'):
+            e.certify(self.args)
+
+    def test_forged_c_build_receipt_source_holds(self):
+        self.built_stage()
+        file=self.audit/'SOURCE_STAGED.json'
+        value=json.loads(file.read_text());value['git_archive_sha256']='0'*64
+        file.write_text(json.dumps(value))
+        with self.assertRaisesRegex(e.Hold,'C_SOURCE_RECEIPT_WRONG'):
+            e.certify(self.args)
+
+    def test_full_build_without_c_sidecar_is_not_admitted(self):
+        self.built_stage()
+        (self.stage/'r24-source-sha').unlink()
+        with self.assertRaises(FileNotFoundError):
+            e.certify(self.args)
 
     def test_root_volume_headroom_both_independent(self):
         with patch.object(e,'disk_free',side_effect=[21*e.GIB,3*e.GIB]):
