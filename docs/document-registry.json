@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "958082771660d1f5c233e8ded4f25ff5e93465a44eda2a6b456bae71b8ffa5eb",
+      "sha256": "3bd8ebe3774c09b0a87e038e735bc730f5aae76899e308c8545efff289c983d1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "r25-b-additive-owner-3031-setup",
-    "commit": "67e27b1c05d104f1f36dd5040384039c4f4f1a33"
+    "commit": "18c041287ff36f682d9f0817f020324915222988"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
