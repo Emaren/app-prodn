@@ -190,4 +190,38 @@ class CopyContractTests(unittest.TestCase):
         self.assertEqual((self.old/'server/index.js').read_bytes(),old)
         self.assertEqual((self.dir()/'prior-next/server/index.js').read_bytes(),old)
 
+    def test_30_full_source_restore_metadata_receipt(self):
+        r=self.run_copy()
+        info=json.loads((self.dir()/'COPY_SOURCE_METADATA.json').read_text())
+        self.assertEqual(info['source_content_sha256'],r['source_content_sha256'])
+        self.assertEqual(info['source_metadata_sha256'],r['source_metadata_sha256'])
+        self.assertEqual(e.digest(info),r['source_restore_metadata_receipt_sha256'])
+        self.assertTrue(any(x['path']=='server/index.js' and x['metadata']['uid']==os.geteuid()
+                            for x in info['entries']))
+    def test_31_post_copy_reserve_failure_keeps_partial(self):
+        real=e.os.statvfs
+        def low(path):
+            if path==self.volume:return SimpleNamespace(f_bavail=0,f_frsize=4096)
+            return real(path)
+        with patch.object(e.os,'statvfs',side_effect=low):
+            with self.assertRaisesRegex(e.Hold,'AFTER_COPY_4G_RESERVE_VIOLATED'):
+                self.run_copy()
+        self.assertTrue((self.dir()/'COPY_HOLD.json').exists())
+        self.assertFalse((self.dir()/'COPY_VERIFIED.json').exists())
+    def test_32_free_space_drift_not_source_identity_drift(self):
+        plan=self.plan(); changed=json.loads(json.dumps(plan))
+        changed['capacity']['attached_free_before_bytes']-=4096
+        changed['capacity']['root_free_before_bytes']-=8192
+        self.assertEqual(e.plan_authorization_sha(plan),e.plan_authorization_sha(changed))
+    def test_33_internal_directory_symlink_denied(self):
+        (self.old/'cache').rename(self.old/'cache-real')
+        (self.old/'cache').symlink_to(self.old/'cache-real',target_is_directory=True)
+        with self.assertRaisesRegex(e.Hold,'TREE_SYMLINK'):self.plan()
+    def test_34_metadata_source_mutated_after_plan_before_first_write(self):
+        plan=self.plan()
+        (self.old/'server/index.js').chmod(0o700)
+        with self.assertRaisesRegex(e.Hold,'OWNER_APPROVED_PLAN_DRIFT_BEFORE_WRITE'):
+            e.perform_copy(CAMPAIGN,e.plan_authorization_sha(plan))
+        self.assertFalse(self.dir().exists())
+
 if __name__=='__main__':unittest.main()
