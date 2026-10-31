@@ -134,11 +134,11 @@ def enforce_candidate_runtime(unit_status):
     fd=os.open(proc,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
     try:
         raw=os.read(fd,65537)
-        need(0<len(raw)<=65536 and raw.endswith(b"\\x00"),
+        need(0<len(raw)<=65536 and raw.endswith(b"\x00"),
              "CANDIDATE_ENVIRONMENT_MISSING_OR_UNBOUNDED")
     finally:os.close(fd)
     variables={}
-    for entry in raw[:-1].split(b"\\x00"):
+    for entry in raw[:-1].split(b"\x00"):
         key,sep,val=entry.partition(b"=")
         need(bool(sep) and key not in variables and
              bool(re.fullmatch(rb"[A-Za-z_][A-Za-z0-9_]*",key)),
