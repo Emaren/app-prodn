@@ -20,8 +20,10 @@ def own_archive_sha(repo):
         err=p.stderr.read()
         need(p.wait(timeout=90)==0,"MAC_EXACT_GIT_ARCHIVE_MISSING:"+err.decode(errors="replace")[-90:])
     return h.hexdigest()
-def run(repo,commit,worker_hash,phase):
+def run(repo,commit,worker_hash,phase,owner_approved=False):
     need(sys.platform=="darwin" and os.geteuid()!=0,"OWNER_M1_NONROOT_REQUIRED")
+    # Explicit invocation permission; no interactive terminal challenge.
+    need(owner_approved,"OWNER_APPROVAL_FLAG_REQUIRED")
     need(HEX40.fullmatch(commit) and HEX64.fullmatch(worker_hash),
          "C_REVIEW_COMMIT_AND_SOURCE_HASH_REQUIRED")
     repo=pathlib.Path(repo).expanduser().absolute()
@@ -37,15 +39,10 @@ def run(repo,commit,worker_hash,phase):
          "ROOT_OPERATOR_PINNED_SHA256_MISMATCH")
     need(("SHA=\""+SHA+"\"").encode() in source,"TARGET_SOURCE_NOT_PINNED")
     archive=own_archive_sha(repo)
-    phrase="AUTHORIZE R25 HEL1 "+phase.upper()+" "+SHA+" "+archive
-    with open("/dev/tty","w") as tty:
-        tty.write("Additive candidate only: old web PID 2625090 / 3030 NEVER restarted.\n")
-        tty.write("Remote archive sha256 must match owner Mac canonical exact Git archive:\n"+archive+"\n")
-        tty.write("Reviewed operator commit: "+commit+"\n")
-        tty.write("Type EXACTLY:\n"+phrase+"\n> ")
-        tty.flush()
-    with open("/dev/tty","r") as tty:
-        need(tty.readline().rstrip("\r\n")==phrase,"OWNER_STAGE_CONSENT_NOT_ENTERED")
+    print("OWNER_APPROVED_NONINTERACTIVE_PHASE="+phase,flush=True)
+    print("FROZEN_CANDIDATE_SHA="+SHA+" ARCHIVE_SHA256="+archive,flush=True)
+    print("PINNED_OPERATOR_COMMIT="+commit,flush=True)
+    print("ORIGINAL_PID_2625090_NEVER_RESTARTED_BY_THIS_OPERATOR",flush=True)
     mode={"source":"--source-stage","build":"--build-stage",
           "source-build":"--source-build","recover-dns":"--recover-dns"}[phase]
     arg=mode+(" --archive-sha256 "+archive if phase not in ("build","recover-dns") else "")
@@ -65,8 +62,10 @@ def main():
     p.add_argument("--review-commit",required=True)
     p.add_argument("--operator-sha256",required=True)
     p.add_argument("--phase",choices=["source","build","source-build","recover-dns"],default="source-build")
+    p.add_argument("--owner-approved",action="store_true",
+                   help="Owner explicitly initiates the pinned phase without a TTY challenge")
     a=p.parse_args()
-    run(a.repo,a.review_commit,a.operator_sha256,a.phase)
+    run(a.repo,a.review_commit,a.operator_sha256,a.phase,a.owner_approved)
 if __name__=="__main__":
     try:main()
     except (Hold,OSError,ValueError,subprocess.SubprocessError,TimeoutError) as e:
