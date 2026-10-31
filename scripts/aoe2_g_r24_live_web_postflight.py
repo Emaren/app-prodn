@@ -369,6 +369,10 @@ def audit(approved,phase):
         outcome["rollback_receipt_sha256"]=digest(canon(rb))
         outcome["rollback_exercised"]=True
     return outcome
+def root_sealed_file(p):
+    st=p.lstat()
+    return (stat.S_ISREG(st.st_mode) and st.st_uid==0 and
+            not(st.st_mode&0o022) and st.st_nlink==1)
 def verified_c_archive_source():
     """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
     source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
@@ -402,7 +406,7 @@ def verified_c_archive_source():
             need(type(row.get("size"))is int and type(row.get("sha256"))is str,
                  "C_TREE_FILE_ROW_INVALID")
             st=target.stat()
-            need(st.st_size==row["size"] and st.st_uid==0,
+            need(st.st_size==row["size"] and root_sealed_file(target),
                  "C_ROOT_SEALED_TREE_FILE_DRIFT")
             h=hashlib.sha256()
             with target.open("rb") as src:
