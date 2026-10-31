@@ -16,7 +16,7 @@ from contextlib import redirect_stdout
 ROOT=Path(__file__).resolve().parents[1]
 HERE=Path(__file__).resolve().parent
 W1="b46a51f1592c9f296839924ae55e722618b10d35"
-W1_SAFE="a9525f46302edff88ed073743a7dfaed08be9e3e"
+W1_SAFE="0cee3c836c4b0760478280c145e02e81e470ce0e"
 POST="fa5c350b35cba7ace8d4515a7ad52ba4e1534295"
 POLICY="aoe2war.solo-owner.website.admission.v1"
 HOST="root@157.180.114.124"
@@ -64,6 +64,29 @@ def engine_context(candidate):
               (release,ship,stage,activation,gate)),
           "mixed source controller imports")
     return release,ship,stage,activation,gate
+def root_preissue_stage(target):
+    """Original FD200 command, no owner packet or website mutation."""
+    from aoe2_solo_website_command_channel import command_lease
+    check(target==W1_SAFE,"only protected new W1_SAFE may preannounce")
+    holder=json.dumps({"policy":POLICY,"phase":"PREISSUE_PRE_STAGE",
+        "candidate_sha":target,"session":os.urandom(16).hex()},sort_keys=True)
+    command="python3 "+shlex.quote(ROOT_PHASE)+" preissue "+shlex.quote(target)
+    with command_lease(LOCK,holder,host=HOST) as runner:
+        answer=runner.run(command,timeout=25)
+        check(answer.returncode==0,
+              "original FD200 root preissue HOLD: "+(answer.stderr or "")[-500:])
+        runner.assert_alive()
+    item=json.loads(answer.stdout)
+    check(item.get("status")=="ROOT_PREISSUED_NOT_AUTHORIZED" and
+          item.get("candidate_sha")==target and
+          item.get("phase")=="PRE_STAGE" and
+          type(item.get("attempt_id"))is str and
+          len(item["attempt_id"])==64 and
+          item.get("owner_authorized")is False and
+          item.get("financial_release_authorized")is False,
+          "root preissue identity or nonauthorization invalid")
+    return item
+
 def root_issue(phase,target,attempt,lease,stage_sha):
     """Issue once UNDER the genuine HEL1 original FD200 command lease.
 
@@ -72,7 +95,7 @@ def root_issue(phase,target,attempt,lease,stage_sha):
     """
     from aoe2_solo_website_command_channel import command_lease
     check(phase in ("PRE_STAGE","PRE_ACTIVATE"),"unsupported issue phase")
-    arguments=[phase,target] if phase=="PRE_STAGE" else [
+    arguments=[phase,target,attempt] if phase=="PRE_STAGE" else [
         phase,target,attempt,lease,stage_sha]
     check(all(type(value)is str and bool(value) for value in arguments),
           "missing issue argument")
@@ -250,7 +273,7 @@ def dispatch(phase,candidate,signed,receipt_path):
         os.close(fd)
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("mode",choices=["issue-stage","issue-activation","stage","activate"])
+    ap.add_argument("mode",choices=["preissue-stage","issue-stage","issue-activation","stage","activate"])
     ap.add_argument("--candidate",required=True,type=Path)
     ap.add_argument("--signed-packet",type=Path)
     ap.add_argument("--stage-receipt",type=Path)
@@ -259,8 +282,14 @@ def main():
     ap.add_argument("--stage-sha256")
     a=ap.parse_args()
     candidate,sha=exact_candidate(a.candidate)
-    if a.mode.startswith("issue-"):
+    if a.mode=="preissue-stage":
+        x=root_preissue_stage(sha)
+    elif a.mode.startswith("issue-"):
         phase="PRE_STAGE"if a.mode=="issue-stage"else"PRE_ACTIVATE"
+        if phase=="PRE_STAGE":
+            check(type(a.attempt_id)is str and len(a.attempt_id)==64 and
+                  all(ch in "0123456789abcdef" for ch in a.attempt_id),
+                  "issue-stage requires genuine earlier root preissue attempt")
         x=root_issue(phase,sha,a.attempt_id,a.lease_id,a.stage_sha256)
     else:
         check(a.signed_packet is not None,"no explicit signed owner permit")

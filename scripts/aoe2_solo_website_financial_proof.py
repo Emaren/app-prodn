@@ -40,7 +40,7 @@ aoe2war-prewarm.timer
 """.split())
 REQUIRED_UNITS=REQUIRED_SERVICES|REQUIRED_TIMERS
 W1_SHA="b46a51f1592c9f296839924ae55e722618b10d35"
-W1_SAFE_SHA="a9525f46302edff88ed073743a7dfaed08be9e3e"
+W1_SAFE_SHA="0cee3c836c4b0760478280c145e02e81e470ce0e"
 # Independently read from the immutable W1 Git tree (not an operator JSON).
 # This is a necessary lower bound, NOT a complete transitive edge graph.
 W1_PUBLIC_FINANCIAL_EDGES=(

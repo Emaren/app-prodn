@@ -1,0 +1,32 @@
+name: R17 Independent Native Producer Signer
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/aoe2_solo_website_producer_signer.py'
+      - 'tests/test_solo_native_producer_signer.py'
+      - 'deploy/solo-native-audit/R17_PRODUCER_SIGNER_CONTRACT.txt'
+      - '.github/workflows/r17-native-producer-signer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-source-real-crypto:
+    name: RSA intent and per-origin Ed25519 signer negative tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Compile exact source and 17 adversarial tests
+        run: python3 -m py_compile scripts/aoe2_solo_website_producer_signer.py tests/test_solo_native_producer_signer.py
+      - name: Exercise original-domain RSA and genuine ephemeral Ed25519 signatures
+        run: python3 -m unittest discover -s tests -p 'test_solo_native_producer_signer.py' -v
+      - name: Verify canonical DocsV2 source baseline
+        run: python3 scripts/docs_v2_check.py
