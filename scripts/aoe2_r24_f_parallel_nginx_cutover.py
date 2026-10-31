@@ -105,9 +105,8 @@ def approval(raw):
               "C_source_files_sha256","C_build_files_sha256",
               "B_poststart_sha256","E_r25_recovery_sha256"):
         need(type(j[f])==str and HEX64.fullmatch(j[f]),"APPROVAL_HASH_MISSING:"+f)
-    need(j["E_durable_receipt_path"]==
-         "/etc/aoe2war/r24-parallel-web/e-durable-rollback.json",
-         "E_ROOT_SEALED_RECEIPT_PATH_NOT_PINNED")
+    need(j["E_durable_receipt_path"]==str(E_ROOT_RECOVERY),
+         "E_R25_ROOT_SEALED_RECEIPT_PATH_NOT_PINNED")
     for f in ("previous_build_id","candidate_build_id"):
         need(type(j[f])==str and re.fullmatch("[A-Za-z0-9_-]{8,128}",j[f]),
              "NEXT_BUILD_ID_INVALID")
@@ -211,40 +210,87 @@ def prove_rollback_preimage(j,s):
 def protected_continuity(s):
     return (s["original_web"],s["finance"],listener_lines(s["wolo"]))
 def verified_durable_e_rollback(j):
-    # E's content-verification result is a readback receipt, never an
-    # invented "rollback exercised" claim. Root custody + F digest bind.
-    raw=root_file(pathlib.Path(j["E_durable_receipt_path"]),16384)
-    need(sha(raw)==j["E_durable_rollback_sha256"],
-         "E_PHYSICAL_CONTENT_RECEIPT_DIGEST_MISMATCH")
-    e=parse(raw)
-    need(type(e)==dict and
-         e.get("schema")=="aoe2war.e.r24.website.rollback-content.v1" and
-         e.get("status")=="PASS_DURABLE_COPY_CONTENT_MATCH_NOT_ROLLBACK_EXERCISE" and
-         e.get("finance_touched") is False and
-         e.get("web_service_stopped") is False and
-         e.get("release_authorized") is False,
-         "E_CONTENT_VERIFICATION_NOT_GENUINE_OR_SCOPE_DRIFT")
-    need(e.get("old_live_next")==str(OLD_APP/".next") and
-         e.get("old_build_id")==j["previous_build_id"],
-         "E_OLD_WEB_BUILD_ROLLBACK_IDENTITY_INVALID")
-    d=e.get("durable_next")
+    """E R25 physical content certificate; it never signs release authority."""
+    raw=root_file(E_ROOT_RECOVERY,65536)
+    need(sha(raw)==j["E_r25_recovery_sha256"]==
+         j["E_durable_rollback_sha256"],
+         "E_R25_ROOT_RECEIPT_DIGEST_MISMATCH")
+    receipt=parse(raw)
+    must={"schema":"aoe2war.e.r25.parallel-website-certificate.v1",
+          "host":HOST,"phase":"RECOVERY_READY","source_sha":TARGET,
+          "storage_admission":"PASS_E_READONLY_CAPACITY",
+          "release_authorized":False,"operations_performed":"READ_ONLY",
+          "source_to_build_binding_proved":False,
+          "candidate_financial_isolation_proved":False,
+          "nginx_or_public_activation_proved":False}
+    need(type(receipt)==dict and all(receipt.get(k)==v for k,v in must.items()),
+         "E_R25_REAL_READONLY_RECOVERY_CERTIFICATE_MISSING")
+    cert_hash=receipt.get("certificate_sha256")
+    need(type(cert_hash)==str and HEX64.fullmatch(cert_hash) and
+         cert_hash==sha(canonical({k:v for k,v in receipt.items()
+                                if k!="certificate_sha256"})),
+         "E_R25_SELF_CHECKED_REPORT_DIGEST_WRONG")
+    rb=receipt.get("durable_rollback")
+    candidate=receipt.get("candidate")
+    old=receipt.get("old_web")
+    need(type(rb)==dict and rb.get("content_matched") is True and
+         rb.get("rollback_exercised") is False and
+         rb.get("build_id")==j["previous_build_id"] and
+         type(rb.get("old_and_durable_tree_sha256"))==str and
+         bool(HEX64.fullmatch(rb["old_and_durable_tree_sha256"])) and
+         type(candidate)==dict and candidate.get("build_complete") is True and
+         candidate.get("candidate_next_build_id")==j["candidate_build_id"] and
+         candidate.get("stage_path")==str(CANDIDATE_STAGE) and
+         type(old)==dict and old.get("next_build_id")==j["previous_build_id"],
+         "E_R25_REAL_PREVIOUS_BUILD_CONTENT_OR_CANDIDATE_DRIFT")
+    durable=pathlib.Path(rb["path"])
     base=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/rollbacks")
-    need(type(d)==str,"E_DURABLE_PATH_NOT_PRESENT")
-    d=pathlib.Path(d)
-    need(d.is_relative_to(base) and d!=base and
-         d.name=="prior-next" and not d.is_symlink(),
-         "E_DURABLE_ROLLBACK_LOCATION_UNAPPROVED")
-    old=OLD_APP/".next"
-    need(d.is_dir() and old.is_dir() and
-         os.stat(d).st_dev!=os.stat(old).st_dev,
-         "E_DURABLE_ROLLBACK_NOT_INDEPENDENT_DEVICE")
-    need((d/"BUILD_ID").read_text().strip()==j["previous_build_id"] and
-         (old/"BUILD_ID").read_text().strip()==j["previous_build_id"],
-         "E_OLD_AND_DURABLE_NEXT_BUILD_ID_DRIFT")
-    a=e.get("old_content");b=e.get("durable_content")
-    need(type(a)==dict and a==b and type(a.get("sha256"))==str and
-         bool(HEX64.fullmatch(a["sha256"])),
-         "E_FULL_CONTENT_DIGEST_MISMATCH")
+    need(durable.is_relative_to(base) and durable!=base and
+         durable.name=="prior-next" and durable.is_dir() and
+         not durable.is_symlink() and
+         durable.stat().st_dev!= (OLD_APP/".next").stat().st_dev and
+         (durable/"BUILD_ID").read_text().strip()==j["previous_build_id"],
+         "E_R25_DURABLE_OLD_NEXT_NOT_INDEPENDENT_OR_MISSING")
+    # E signed nothing: the independent file digest is authorized by F.
+    # Re-computing the whole durable tree remains E's responsibility.
+    return True
+
+def verified_b_poststart(j,ss):
+    """B's actual root-owned poststart proof of PG, kernel and HTTP guard."""
+    raw=root_file(B_ROOT_POSTSTART,65536)
+    need(sha(raw)==j["B_poststart_sha256"],
+         "B_INDEPENDENT_ROOT_POSTSTART_DIGEST_MISMATCH")
+    b=parse(raw)
+    need(type(b)==dict and
+         b.get("schema")=="aoe2war.r25.b.hel1.positive-isolation-witness.v1" and
+         b.get("status")=="POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY" and
+         b.get("target_sha")==TARGET and
+         b.get("old_web_pid")==2625090 and
+         b.get("source_sha")==TARGET and
+         b.get("source_provenance")=="C_ROOT_SEALED_ARCHIVE_SIDECAR_F_SEPARATELY_ATTESTS_TREE" and
+         b.get("build_id")==j["candidate_build_id"] and
+         b.get("guard_wargraph_disabled_before_node") is True and
+         b.get("guard_local_http") is True and
+         b.get("no_financial_operation_executed") is True and
+         b.get("public_cutover_authorized") is False,
+         "B_POSTSTART_PHYSICAL_POSITIVE_ISOLATION_NOT_PROVED")
+    need(b.get("candidate_pid")==int(dict(
+         x.split("=",1) for x in ss["candidate_web"].splitlines() if "=" in x
+         ).get("MainPID","0")),
+         "B_CERTIFICATE_CANDIDATE_PROCESS_PID_DRIFT")
+    db=b.get("candidate_readonly_pg")
+    need(type(db)==dict and db.get("role")=="aoe2war-r24-web_ro" and
+         db.get("server_transaction_ro") is True and
+         type(b.get("kernel_uid_egress_sha256"))==str and
+         HEX64.fullmatch(b["kernel_uid_egress_sha256"]) and
+         type(b.get("guard_sha256"))==str and
+         HEX64.fullmatch(b["guard_sha256"]),
+         "B_SERVER_ENFORCED_SELECT_ONLY_AND_NFT_NOT_PROVEN")
+    report_hash=b.get("report_sha256")
+    need(type(report_hash)==str and HEX64.fullmatch(report_hash) and
+         report_hash==sha(canonical({k:v for k,v in b.items()
+                                    if k!="report_sha256"})),
+         "B_WITNESS_ORIGIN_CONTENT_DIGEST_DRIFT")
     return True
 
 def http_version(port):
@@ -527,6 +573,7 @@ def apply():
     candidate=safe_replace_site(old,NEW_UPSTREAM)
     s=snapshots(j["finance_units"]);prove_preimage(j,s)
     stage_identity(j)
+    verified_b_poststart(j,s)
     verified_durable_e_rollback(j)
     need(http_version(OLD_PORT)!=j["candidate_build_version"] and
          http_version(NEW_PORT)==j["candidate_build_version"],
