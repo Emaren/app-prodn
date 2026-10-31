@@ -612,14 +612,16 @@ def recover_dns_build():
     return complete_build(before,sockets,budget,build_account,imported,True,source)
 
 
-def run_postprebuild_phase(i,label,commandline,timeout):
+def run_postprebuild_phase(i,label,commandline,timeout,
+                           unit_prefix="aoe2war-r25-postprebuild",
+                           receipt_prefix="POSTPREBUILD_PHASE"):
     """Durable, root-only, write-once redacted evidence even on subprocess failure."""
     unit=next((v.split("=",1)[1] for v in commandline
                if v.startswith("--unit=")),None)
     need(unit is not None and unit.startswith(
-         "aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i),
+         unit_prefix+"-"+SHA[:8]+"-%02d-"%i),
          "POSTREC_UNEXPECTED_SYSTEMD_UNIT_NAME")
-    receipt_path=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%i)
+    receipt_path=AUDIT/(receipt_prefix+"_%02d.json"%i)
     need(not receipt_path.exists() and not receipt_path.is_symlink(),
          "POSTREC_PHASE_ALREADY_ENTERED_NO_REPLAY")
     timed_out=False
@@ -652,7 +654,7 @@ def run_postprebuild_phase(i,label,commandline,timeout):
                    ":STDOUT="+out[-800:]+":STDERR="+err[-800:])
     return True
 
-def postprebuild_recovery():
+def postprebuild_recovery(resume_oom=False):
     """Exactly one source-preserving recovery from owner-proven prebuild failure.
 
     No dependency fetch, install, yarn lifecycle reinstall, node_modules rewrite,
@@ -766,17 +768,69 @@ def postprebuild_recovery():
         need(stat.S_ISDIR(st.st_mode) and st.st_uid==994 and
              not st.st_mode&0o022,
              "POSTREC_BUILD_DIR_DRIFT:"+name)
-    for name in (".next","BUILD_STAGED.json","BUILD_FILES.json"):
+    for name in (".next",".next-release","BUILD_STAGED.json","BUILD_FILES.json"):
         p=(AUDIT/name if name.endswith(".json") else DEST/name)
         need(not p.exists() and not p.is_symlink(),
              "POSTREC_UNEXPECTED_BUILD_ARTIFACT:"+name)
     marker=AUDIT/"POSTPREBUILD_RECOVERY_ATTEMPT.json"
-    need(not marker.exists() and not marker.is_symlink(),
-         "POSTREC_ALREADY_ENTERED_NO_RETRY")
-    for number in range(1,5):
-        p=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%number)
-        need(not p.exists() and not p.is_symlink(),
-             "POSTREC_PHASE_JOURNAL_ALREADY_EXISTS")
+    oom_marker=AUDIT/"POSTOOM_RECOVERY_ATTEMPT.json"
+    if resume_oom:
+        previous=json.loads(read_no_symlink(marker,65536,True))
+        need(previous.get("status")=="POSTPREBUILD_RECOVERY_ATTEMPT_ENTERED"
+             and previous.get("candidate_sha")==SHA
+             and previous.get("build_uid")==994
+             and previous.get("old_web_mainpid")==OLD_PID
+             and previous.get("original_attempts_preserved")==2
+             and previous.get("network_enabled_for_build") is False
+             and previous.get("financial_writes_authorized") is False,
+             "POSTOOM_PREVIOUS_JOURNAL_NOT_EXACT")
+        one=json.loads(read_no_symlink(
+            AUDIT/"POSTPREBUILD_PHASE_01.json",65536,True))
+        two=json.loads(read_no_symlink(
+            AUDIT/"POSTPREBUILD_PHASE_02.json",65536,True))
+        need(one.get("status")=="PASS" and one.get("phase")=="prisma-generate"
+             and one.get("exit_code")==0 and
+             one.get("unit")=="aoe2war-r25-postprebuild-"+SHA[:8]+
+                 "-01-prisma-generate" and
+             one.get("candidate_sha")==SHA and one.get("build_uid")==994
+             and one.get("private_network") is True
+             and one.get("finance_access") is False,
+             "POSTOOM_PRISMA_SUCCESS_NOT_PHYSICALLY_SEALED")
+        oomdiagnostic=two.get("stderr_redacted_tail")
+        need(two.get("status")=="HOLD" and
+             two.get("phase")=="release-validation" and
+             two.get("unit")=="aoe2war-r25-postprebuild-"+SHA[:8]+
+                 "-02-release-validation" and
+             two.get("exit_code")==1 and
+             two.get("candidate_sha")==SHA and two.get("build_uid")==994
+             and two.get("private_network") is True
+             and two.get("finance_access") is False and
+             type(oomdiagnostic) is str and
+             "javascript heap out of memory" in oomdiagnostic.lower(),
+             "POSTOOM_PREVIOUS_FAILURE_NOT_EXACT_HEAP_OOM")
+        for number in (3,4):
+            p=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%number)
+            need(not p.exists() and not p.is_symlink(),
+                 "POSTOOM_PRIOR_LATER_PHASE_ENTERED")
+        need(not oom_marker.exists() and not oom_marker.is_symlink(),
+             "POSTOOM_ALREADY_ENTERED_NO_RETRY")
+        for number in (1,2):
+            p=AUDIT/("POSTOOM_PHASE_%02d.json"%number)
+            need(not p.exists() and not p.is_symlink(),
+                 "POSTOOM_PHASE_JOURNAL_ALREADY_EXISTS")
+        # Prisma's generator writes here, NOT node_modules/.prisma/client.
+        generated_client=DEST/"lib/generated/prisma"
+        need(generated_client.is_dir() and
+             not generated_client.is_symlink() and
+             generated_client.lstat().st_uid==994,
+             "POSTOOM_PRISMA_CLIENT_OUTPUT_MISSING")
+    else:
+        need(not marker.exists() and not marker.is_symlink(),
+             "POSTREC_ALREADY_ENTERED_NO_RETRY")
+        for number in range(1,5):
+            p=AUDIT/("POSTPREBUILD_PHASE_%02d.json"%number)
+            need(not p.exists() and not p.is_symlink(),
+                 "POSTREC_PHASE_JOURNAL_ALREADY_EXISTS")
     version=read_no_symlink(DEST/".aoe2war-build-version",128).decode().strip()
     need(bool(re.fullmatch(r"20[0-9]{12}-[0-9a-f]{10}",version)),
          "POSTREC_PREBUILD_VERSION_NOT_PROVEN")
@@ -831,21 +885,40 @@ def postprebuild_recovery():
     budget=root_storage_capacity()
     need(old_identity()==before and boundary_sockets()==sockets,
          "POSTREC_ORIGINAL_CHANGED_BEFORE_ENTRY")
-    # No old attempt is overwritten. This exclusive marker precedes ALL
-    # new sandbox process execution; a new failure requires new review.
-    write_once(marker,{
-        "status":"POSTPREBUILD_RECOVERY_ATTEMPT_ENTERED",
-        "candidate_sha":SHA,"original_attempts_preserved":2,
-        "original_root_source_archive_sha256":expected_archive,
-        "build_uid":994,"old_web_mainpid":OLD_PID,
-        "dependency_fetch_repeated":False,
-        "offline_install_repeated":False,
-        "prisma_engine_sha256":meta["engine_sha256"],
-        "prior_prebuild_version":version,
-        "build_version_rewritten":False,
-        "financial_writes_authorized":False,
-        "network_enabled_for_build":False,"budget":budget})
-    print("PASS:POSTPREBUILD_RECOVERY_ENTERED_NO_REPLAY",flush=True)
+    # Every recovery has an independent root O_EXCL journal; both old attempt
+    # receipts and the first prebuild's PASS/HOLD receipts remain immutable.
+    if resume_oom:
+        write_once(oom_marker,{
+            "status":"POSTOOM_RECOVERY_ATTEMPT_ENTERED",
+            "candidate_sha":SHA,"build_uid":994,
+            "old_web_mainpid":OLD_PID,
+            "prior_root_attempts_preserved":3,
+            "prior_prisma_pass":True,
+            "prior_release_validation_heap_oom":True,
+            "type_lint_admission":"EXACT_HEAD_CI_41226935019_SUCCESS",
+            "ci_implementation_head":
+                "2191fec34dd0c0d324096a4cfa465a9529a06867",
+            "upstream_candidate_archive_sha256":expected_archive,
+            "seed_engine_sha256":meta["engine_sha256"],
+            "prior_prebuild_version":version,
+            "previous_output_rewritten":False,
+            "financial_writes_authorized":False,
+            "network_enabled_for_build":False,"budget":budget})
+        print("PASS:POSTOOM_RECOVERY_ENTERED_NO_REPLAY",flush=True)
+    else:
+        write_once(marker,{
+            "status":"POSTPREBUILD_RECOVERY_ATTEMPT_ENTERED",
+            "candidate_sha":SHA,"original_attempts_preserved":2,
+            "original_root_source_archive_sha256":expected_archive,
+            "build_uid":994,"old_web_mainpid":OLD_PID,
+            "dependency_fetch_repeated":False,
+            "offline_install_repeated":False,
+            "prisma_engine_sha256":meta["engine_sha256"],
+            "prior_prebuild_version":version,
+            "build_version_rewritten":False,
+            "financial_writes_authorized":False,
+            "network_enabled_for_build":False,"budget":budget})
+        print("PASS:POSTPREBUILD_RECOVERY_ENTERED_NO_REPLAY",flush=True)
     common=["/usr/bin/systemd-run","--wait","--collect","--pipe",
        "--property=User="+BUILDER,"--property=Group="+BUILDER,
        "--property=WorkingDirectory="+str(DEST),
@@ -867,21 +940,68 @@ def postprebuild_recovery():
        "--setenv=AOE2WAR_PROD_DB_PREVIEW=true",
        "--setenv=NEXT_TELEMETRY_DISABLED=1",
        "--setenv=NODE_OPTIONS=--max-old-space-size=2304"]
-    # The owner-observed .aoe2war-build-version was created after
-    # minimatch + page-manifest stages of the original prebuild. Preserve
-    # those exact bytes and avoid rerunning already completed first-party work.
-    steps=[
-       ("prisma-generate",["/usr/bin/node",str(DEST/"node_modules/prisma/build/index.js"),"generate"],500),
-       ("release-validation",["/usr/bin/node",str(DEST/"scripts/aoe2_release_prebuild_validation.mjs")],1100),
-       ("next-build",["/usr/bin/node",str(DEST/"node_modules/next/dist/bin/next"),"build"],1900),
-       ("postbuild-cache",["/usr/bin/node",str(DEST/"scripts/prepare-runtime-cache.mjs")],120)
-    ]
-    for i,(label,argv,timeout) in enumerate(steps,1):
-        unit="aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i+label
-        commandline=common+["--unit="+unit]+argv
-        print("ENTER:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
-        run_postprebuild_phase(i,label,commandline,timeout)
-        print("PASS:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
+    # Original Next config gates ESLint+TypeScript behind NEXT_DIST_DIR.
+    # The exact frozen source passed independent CI #41226935019 3/3; skip
+    # duplicate on-host lint/type after physically proven Node heap OOM.
+    # Build the same source offline into the designated release distDir, then
+    # atomically rename only this fresh candidate output into .next.
+    if resume_oom:
+        build=[
+           "/usr/bin/node",str(DEST/"node_modules/next/dist/bin/next"),"build"]
+        prefix="aoe2war-r25-postoom"
+        unit=prefix+"-"+SHA[:8]+"-01-next-release-build"
+        commandline=common+[
+            "--unit="+unit,"--setenv=NEXT_DIST_DIR=.next-release"]+build
+        print("ENTER:POSTOOM_PHASE_01:next-release-build",flush=True)
+        run_postprebuild_phase(1,"next-release-build",commandline,1900,
+            unit_prefix=prefix,receipt_prefix="POSTOOM_PHASE")
+        print("PASS:POSTOOM_PHASE_01:next-release-build",flush=True)
+        release=DEST/".next-release"
+        build_id=release/"BUILD_ID"
+        need(release.is_dir() and not release.is_symlink() and
+             build_id.is_file() and
+             re.fullmatch(r"[A-Za-z0-9_-]{8,128}",
+                          build_id.read_text().strip()),
+             "POSTOOM_RELEASE_BUILD_ID_NOT_REAL")
+        need(not (DEST/".next").exists() and
+             not (DEST/".next").is_symlink(),
+             "POSTOOM_NEXT_ALREADY_PRESENT")
+        need(old_identity()==before and boundary_sockets()==sockets,
+             "POSTOOM_ORIGINAL_CHANGED_BEFORE_PROMOTION")
+        # No deletion or release tree copy. Atomic rename makes .next a real
+        # directory for E/F parity and Next runtime, with a backwards symlink
+        # for any bundled release-distDir references.
+        os.rename(release,DEST/".next")
+        os.symlink(".next",release)
+        fsyncdir(DEST)
+        write_once(AUDIT/"POSTOOM_PROMOTION.json",{
+            "status":"PASS","candidate_sha":SHA,"build_id":build_id.read_text().strip(),
+            "next_is_real_directory":True,
+            "release_alias_is_internal_symlink":True,
+            "old_web_pid_untouched":OLD_PID,
+            "financial_writes_authorized":False})
+        print("PASS:POSTOOM_ATOMIC_CANDIDATE_PROMOTION",flush=True)
+        unit=prefix+"-"+SHA[:8]+"-02-postbuild-cache"
+        commandline=common+["--unit="+unit,
+            "/usr/bin/node",str(DEST/"scripts/prepare-runtime-cache.mjs")]
+        print("ENTER:POSTOOM_PHASE_02:postbuild-cache",flush=True)
+        run_postprebuild_phase(2,"postbuild-cache",commandline,120,
+            unit_prefix=prefix,receipt_prefix="POSTOOM_PHASE")
+        print("PASS:POSTOOM_PHASE_02:postbuild-cache",flush=True)
+    else:
+        # First post-prebuild attempt; existing source stage and version stay.
+        steps=[
+           ("prisma-generate",["/usr/bin/node",str(DEST/"node_modules/prisma/build/index.js"),"generate"],500),
+           ("release-validation",["/usr/bin/node",str(DEST/"scripts/aoe2_release_prebuild_validation.mjs")],1100),
+           ("next-build",["/usr/bin/node",str(DEST/"node_modules/next/dist/bin/next"),"build"],1900),
+           ("postbuild-cache",["/usr/bin/node",str(DEST/"scripts/prepare-runtime-cache.mjs")],120)
+        ]
+        for i,(label,argv,timeout) in enumerate(steps,1):
+            unit="aoe2war-r25-postprebuild-"+SHA[:8]+"-%02d-"%i+label
+            commandline=common+["--unit="+unit]+argv
+            print("ENTER:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
+            run_postprebuild_phase(i,label,commandline,timeout)
+            print("PASS:POSTPREBUILD_PHASE_%02d:"%i+label,flush=True)
     need(old_identity()==before and boundary_sockets()==sockets,
          "POSTREC_OLD_WEB_OR_WOLO_CHANGED_BEFORE_SEAL")
     return finalize_build(before,sockets,budget,frozen)
@@ -999,6 +1119,7 @@ def main():
     commands.add_argument("--build-stage",action="store_true")
     commands.add_argument("--recover-dns",action="store_true")
     commands.add_argument("--recover-prebuild",action="store_true")
+    commands.add_argument("--recover-oom",action="store_true")
     commands.add_argument("--candidate-start",action="store_true")
     ap.add_argument("--archive-sha256",default="")
     a=ap.parse_args()
@@ -1009,6 +1130,7 @@ def main():
     elif a.build_stage:build_source()
     elif a.recover_dns:recover_dns_build()
     elif a.recover_prebuild:postprebuild_recovery()
+    elif a.recover_oom:postprebuild_recovery(resume_oom=True)
     else:start_candidate()
 if __name__=="__main__":
     try:main()
