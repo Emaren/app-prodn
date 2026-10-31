@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r18-f-website-g-cdp-final-seal` at `7a822fc719775530520cb374977a2ccc540ed067`
+Implementation baseline: `feature/r25-postrelease-b2b-storage-20261031` at `e481aecdbfdef2373d78c86531740ecd50f8d9c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **102**
+- Authoritative repository documents: **103**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 62
+- `reference`: 63
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 5
+- `draft`: 6
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -116,6 +116,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Player Identity Wave 2 — Deterministic Discovery V2](PLAYER_IDENTITY_DISCOVERY_WAVE2.md) | `reference` | `active` | `implementation-contract` |
 | [Player War Archive Operations](PLAYER_WAR_ARCHIVE_OPERATIONS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Production Parity Seal — 2026-07-26](PRODUCTION_PARITY_2026-07-26.md) | `historical` | `historical` | `historical-evidence` |
+| [R25 B2b — Private Storage Signed Freshness Release](R25_B2B_STORAGE_FRESHNESS_RELEASE.md) | `reference` | `draft` | `post-r25-reviewed-source-not-production-admission` |
 | [Radio WOLO](RADIO_WOLO.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Realtime Truth Contract](REALTIME_TRUTH_CONTRACT.md) | `reference` | `active` | `architecture-contract` |
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
