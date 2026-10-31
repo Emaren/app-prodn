@@ -184,6 +184,14 @@ def write_new(path, data, mode):
         os.close(fd)
 
 
+def fsync_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
 def seal(path, payload):
     data = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode() + b"\n"
     write_new(path, data, 0o600)
@@ -201,6 +209,7 @@ def repair(w, data):
     # Atomic one-use directory creation is the first persistent mutation.
     os.mkdir(JOURNAL, mode=0o700)
     os.chmod(JOURNAL, 0o700)
+    fsync_directory(SETUP)  # durable journal directory entry before any replacement
     seal(JOURNAL / "started.json", {
         "schema": "aoe2war.r25.b.witness-repair.v1",
         "status": "STARTED_DO_NOT_RETRY", "old_sha256": OLD_SHA,
@@ -211,10 +220,12 @@ def repair(w, data):
     write_new(JOURNAL / "old-witness.py", old_data, 0o600)
     if sha(trusted(JOURNAL / "old-witness.py", mode=0o600)) != OLD_SHA:
         hold("OLD_WITNESS_BACKUP_MISMATCH")
+    fsync_directory(JOURNAL)  # preserve BOTH started marker and old bytes before rename
     staging = OLD.parent / ".r25-b-witness-repair-v1.stage"
     write_new(staging, data, 0o644)
     if sha(trusted(staging, mode=0o644)) != NEW_SHA:
         hold("NEW_WITNESS_STAGED_MISMATCH")
+    fsync_directory(OLD.parent)  # stage is durable before atomic replace
     now = OLD.lstat()
     if (now.st_ino != old_stat.st_ino or now.st_dev != old_stat.st_dev
         or now.st_size != old_stat.st_size or now.st_mtime_ns != old_stat.st_mtime_ns
@@ -222,11 +233,7 @@ def repair(w, data):
         hold("OLD_WITNESS_RACED")
     # ONLY replacement target: the already installed NEW service witness.
     os.replace(staging, OLD)
-    dirfd = os.open(OLD.parent, os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(dirfd)
-    finally:
-        os.close(dirfd)
+    fsync_directory(OLD.parent)
     if sha(trusted(OLD, mode=0o644)) != NEW_SHA:
         hold("ATOMIC_WITNESS_READBACK_MISMATCH")
     # Preserve the original root installation records byte-for-byte.
@@ -248,6 +255,7 @@ def repair(w, data):
     }
     report["report_sha256"] = canonical_sha(report)
     seal(JOURNAL / "receipt.json", report)
+    fsync_directory(JOURNAL)
     return report
 
 
