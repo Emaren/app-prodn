@@ -28,7 +28,7 @@ SETUP = Path("/var/lib/aoe2war-r25-b-setup")
 JOURNAL = SETUP / "witness-repair-v1"
 RECEIPT = SETUP / "receipt.json"
 STARTED = SETUP / "started.json"
-NEW_SHA = "edf1b42ea7cc8001da83d7076d8aa08f924860fd9a40f97431e60ad8528a30dc"
+NEW_SHA = "a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90"
 OLD_SHA = "de8981ba8c79c276a1ddd1b6c89efea0eaff8d9f11bd1514a724deacde6fc86a"
 GUARD_SHA = "dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 DROPIN_SHA = "43ac0aca8fd68ec04851c19ea6cde913cef9c104db1557d5d0b1d8464ac0e9fd"
@@ -113,7 +113,7 @@ def original_receipt():
 
 
 def new_witness(data):
-    if len(data) != 22062 or sha(data) != NEW_SHA:
+    if len(data) != 22310 or sha(data) != NEW_SHA:
         hold("REVIEWED_NEW_WITNESS_SHA_OR_SIZE_MISMATCH")
     try:
         compile(data, "reviewed-r25-b-witness", "exec")
