@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `r25-e-physical-parallel-certificate` at `371b88113a0ee82c0bdee181f13c86c51733593d`
+Implementation baseline: `r25-e-physical-parallel-certificate` at `1aa75ac0becc8d7491f4665a655b9a0f100590a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
