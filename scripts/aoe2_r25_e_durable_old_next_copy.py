@@ -34,14 +34,18 @@ C_STAGE = Path('/var/lib/aoe2war-r25-web-0cee3c836c4b')
 C_RECEIPT = Path('/var/lib/aoe2war-r25-c-additive/BUILD_STAGED.json')
 GIB = 1024**3
 RESERVE = 4*GIB
+EXPECTED_DEST_UID = 0  # Root-only HEL1; nonroot fixtures explicitly override.
 MAX_TREE_ENTRIES = 160000
 MAX_TREE_BYTES = 16*GIB
 MAX_SINGLE_FILE_BYTES = 8*GIB
 MAX_DEPTH = 48
 MAX_SCAN_SECONDS = 360
 CAMPAIGN_PATTERN = re.compile(r'r25-e-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{20}\Z')
-REGULAR_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | getattr(os, 'O_NOATIME', 0)
-DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC | getattr(os, 'O_NOATIME', 0)
+# Only privileged HEL1 root can safely request O_NOATIME on files owned by
+# another UID. Hosted unprivileged fixture runners must not request it.
+NOATIME = getattr(os, 'O_NOATIME', 0) if os.geteuid() == 0 else 0
+REGULAR_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | NOATIME
+DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC | NOATIME
 
 class Hold(Exception): pass
 
@@ -357,7 +361,7 @@ def copy_tree(source, destination, device, expected_plan):
                     os.fsync(fd)
                     destst=os.fstat(fd)
                     need(destst.st_size==before.st_size and destst.st_nlink==1 and
-                         destst.st_uid==0 and destst.st_dev==device,
+                         destst.st_uid==EXPECTED_DEST_UID and destst.st_dev==device,
                          'DESTINATION_FILE_SIZE_OR_ROOT_SEAL_CHANGED')
                 finally:
                     os.close(reader)
