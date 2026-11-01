@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "wallet-read-model-contract"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-10-31"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -22,7 +22,7 @@ AoE2HDBets reads that truth and controls how it is associated with app identity
 and presented. Holder discovery or a page rendering defect is not evidence for
 a consensus upgrade.
 
-All reads in this contract require `wolo-1`, `uwolo`, six display decimals, a
+Mainnet reads in this contract require `wolo-1`, `uwolo`, six display decimals, a
 valid `wolo1` Bech32 account address, bounded response bytes, and bounded
 timeouts. REST identity is verified before its balance is trusted; the local
 CLI fallback is also pinned to the expected chain ID.
@@ -53,14 +53,17 @@ unknown reserve balance as executable.
 ## Holder discovery
 
 `GET /api/wolo/holders` builds one bounded projection whose membership comes
-only from live paginated Cosmos `denom_owners`: every listed row is a current
-nonzero `uwolo` owner. Other sources enrich those current owners; they do not
-admit historical zero-balance addresses into the public address book:
+from the union of live paginated Cosmos `denom_owners` and app-recorded active
+staking positions. A listed address can have zero liquid bank balance while
+an app staking position remains active. Those positions are an app read model,
+not independent proof of signed custody or chain settlement. Historical
+transfers alone do not admit zero-balance addresses into this holder census:
 
 - live paginated Cosmos `denom_owners` for every current nonzero `uwolo` owner;
 - the indexed mainnet transfer ledger for discovery timestamps and provenance
   attached to a current owner;
-- app user wallet links and active staking positions for identity/classification;
+- app user wallet links for identity/classification, plus active staking
+  positions for membership and the ranking amount;
 - the governed Wolo network-account and operator alias registries.
 
 The scan validates chain ID, denom, pagination keys, unique addresses, account
@@ -122,8 +125,9 @@ The normal public response is `view: "public"` and
 - protocol/system/module accounts include exact balances;
 - player and unclassified accounts include addresses and classification but
   every balance representation is `null`;
-- every current funded owner is ranked by its exact live minimal-denom balance,
-  descending, with address as the deterministic tie-breaker;
+- holder rows are ranked by liquid bank balance plus app-recorded active stake,
+  descending, with address as the deterministic tie-breaker; displayed balance
+  fields are liquid bank balances, not that combined ranking amount;
 - hidden player and unclassified values render as an intentionally blank balance
   cell rather than a `Private` label. Their relative rank remains visible, but
   the amount is not published by this bulk app projection;
@@ -138,7 +142,7 @@ GET /api/wolo/holders?view=operator
 It requires the normal admin session before any chain scan. It returns
 `balancePolicy: "admin_all_current"`, minimal and display-denom balances,
 identity candidates, classification, first/last indexed observation, and
-discovery sources for every current funded row. Responses are private and no-store.
+discovery sources for every liquid-or-active-stake row. Responses are private and no-store.
 This is an operator diagnostic view, not a public player-balance leaderboard.
 
 The address-specific balance route remains intentionally available because a
@@ -152,4 +156,27 @@ Malformed chain identity, denom, owner address, amount, pagination, or oversized
 input fails the complete projection. Failure does not return a partial list
 labeled as current. If indexed-transfer discovery alone is unavailable, the
 response says so explicitly while preserving the independently verified live
-denom-owner membership, balance ranking, and privacy projection.
+denom-owner membership and privacy projection. Staking enrichment errors are
+logged and return an empty staking map, so a response may omit stake-only rows
+and rank by liquid balance alone. The response does not currently expose a
+separate staking-enrichment availability flag; do not claim complete stake
+membership from a successful HTTP response alone.
+
+## October 31, 2026 app source review
+
+Reviewed frozen website source
+`0cee3c836c4b0760478280c145e02e81e470ce0e`: the balance and holder routes,
+`lib/woloRuntime.ts`, `lib/woloBalanceRead.ts`, `hooks/useWoloBalance.ts`,
+the historic directory, incident annotations, and their existing tests. The
+holder route constructs a liquid-owner/active-stake union and ranks their sum;
+this review corrects the former liquid-only description. The operator guard
+precedes the chain scan; public bulk amounts remain governed by
+`protocol_system_only`.
+
+Mainnet identity values agree with WoloChain's source template
+`mainnet-prep/config/wolo-1-values.env.example` at
+`98f781d61fa6b35d2cc09b48f84605a617efc2c4`. This is a source-boundary check,
+not proof that a running node, REST endpoint, or deployed website uses those
+values. App environment overrides select the expected chain identity for
+non-mainnet development. No balance query, financial operation, chain change,
+or deployment certification was performed by this document review.
