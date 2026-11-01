@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5336f543ba403026f904b221017c2e8d80e68f9a91fd76edc6803f18906251c3",
+      "sha256": "63e3f616a913984a080cb6485386e4cc849f6decc132d149c07e89f4bbd257a8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-v3-host-mount-prestart-20261101",
-    "commit": "2738024a276f192c5ba3c9388c23c26bbb3add17"
+    "commit": "2f6b5dd7fa1f6b9ee2e20d7f144413315c0f2657"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
