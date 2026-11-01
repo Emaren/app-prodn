@@ -86,7 +86,7 @@ class EvidenceAdmissionTests(unittest.TestCase):
     def helper_for_native(self, b):
         helper = mock.Mock()
         helper.BUILD_ID = "real-build-pin"
-        helper.root_file.return_value = b"x" * 22310
+        helper.root_file.return_value = b"x" * self.r.B_SIZE
         helper.run.return_value = self.r.canonical(b)
         return helper
 
@@ -95,7 +95,7 @@ class EvidenceAdmissionTests(unittest.TestCase):
         helper = self.helper_for_native(b)
         real_sha = self.r.sha
         def digest(data):
-            return self.r.B_SHA if data == b"x" * 22310 else real_sha(data)
+            return self.r.B_SHA if data == b"x" * self.r.B_SIZE else real_sha(data)
         with mock.patch.object(self.r, "sha", side_effect=digest):
             actual, stable = self.r.native_poststart(helper)
         self.assertEqual(actual, b)
@@ -114,9 +114,59 @@ class EvidenceAdmissionTests(unittest.TestCase):
             b["report_sha256"] = self.r.sha(self.r.canonical(b))
             helper = self.helper_for_native(b)
             real_sha = self.r.sha
-            with mock.patch.object(self.r, "sha", side_effect=lambda data: self.r.B_SHA if data == b"x" * 22310 else real_sha(data)):
+            with mock.patch.object(self.r, "sha", side_effect=lambda data: self.r.B_SHA if data == b"x" * self.r.B_SIZE else real_sha(data)):
                 with self.assertRaisesRegex(self.r.Hold, "GENUINE_NATIVE_B_POSTSTART"):
                     self.r.native_poststart(helper)
+
+    def test_v2_start_requires_both_consumed_v1_and_real_running_v2_receipts(self):
+        c="7"*40
+        helper=mock.Mock()
+        helper.BUILD_ID="real-build-pin"
+        prior_start={"status":"START_ENTERED_DO_NOT_RETRY",
+                     "plan":{"source_sha":self.r.C_V1_SOURCE}}
+        prior_hold={"status":"HOLD_NO_REPLAY",
+                    "reason_type":"ProcessLookupError","public_cutover_authorized":False}
+        p1=self.r.canonical(prior_start)
+        p2=self.r.canonical(prior_hold)
+        started={"status":"START_ENTERED_DO_NOT_RETRY","plan_sha256":"a"*64,
+                 "nonce":"f"*32,
+                 "plan":{"source_sha":c,
+                         "prior_v1_started_sha256":self.r.sha(p1),
+                         "prior_v1_hold_sha256":self.r.sha(p2)}}
+        running={"schema":"aoe2war.r25.c.started-3031.v2",
+                 "status":"STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT",
+                 "candidate_sha":self.r.TARGET,
+                 "candidate_uid":993,
+                 "build_id":helper.BUILD_ID,
+                 "public_cutover_authorized":False,
+                 "plan_sha256":"a"*64,"nonce":"f"*32}
+        documents={
+          ("start-3031-v1","started.json"):p1,
+          ("start-3031-v1","hold.json"):p2,
+          ("start-3031-v2","started.json"):self.r.canonical(started),
+          ("start-3031-v2","running.json"):self.r.canonical(running),
+        }
+        helper.root_file.side_effect=lambda path,*args:documents[(path.parent.name,path.name)]
+        review={"lane_sources":{"C":c}}
+        live, parsed, receipts=self.r.authenticated_v2_start_journals(helper,review)
+        self.assertEqual(parsed,running)
+        self.assertEqual(live,self.r.canonical(running))
+        self.assertEqual(len(receipts),3)
+        # A valid v2 running receipt cannot erase or alter original v1 evidence.
+        cases=[
+          (("start-3031-v1","hold.json"),{**prior_hold,"reason_type":"Unknown"}),
+          (("start-3031-v1","started.json"),{**prior_start,"plan":{"source_sha":"0"*40}}),
+          (("start-3031-v2","running.json"),{**running,"schema":"aoe2war.r25.c.started-3031.v1"}),
+          (("start-3031-v2","running.json"),{**running,"nonce":"0"*32}),
+          (("start-3031-v2","started.json"),{**started,"plan":{"source_sha":"0"*40}}),
+        ]
+        for key,bad in cases:
+            with self.subTest(key=key):
+                good=documents[key]
+                documents[key]=self.r.canonical(bad)
+                with self.assertRaises(self.r.Hold):
+                    self.r.authenticated_v2_start_journals(helper,review)
+                documents[key]=good
 
     def test_capture_stability_ignores_only_native_timestamp_not_security(self):
         a = {"B_native": {"at": "old"}, "B_stable_sha256": "proof", "candidate_pid": 555, "capture_sha256": "old"}

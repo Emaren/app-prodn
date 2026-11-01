@@ -25,7 +25,7 @@ H64 = re.compile(r"[a-f0-9]{64}\Z")
 NAMES = {"engine": "scripts/aoe2_r24_f_parallel_nginx_cutover.py",
     "owner": "scripts/aoe2_r24_f_parallel_nginx_mac.py", "g": "scripts/aoe2_r25_f_g_parallel_observer.py",
     "admission_root": "scripts/r25_f_evidence_admission_root.py",
-    "admission_mac": "scripts/r25_f_evidence_admission_mac.py", "c_helper": "scripts/r25_c_start_root.py"}
+    "admission_mac": "scripts/r25_f_evidence_admission_mac.py", "c_helper": "scripts/r25_c_start_recovery_v2_root.py"}
 
 def need(ok, why):
     if not ok:

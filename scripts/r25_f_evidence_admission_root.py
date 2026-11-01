@@ -25,9 +25,12 @@ TARGET = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST = "ubuntu-4gb-hel1-11"
 BASE = Path("/etc/aoe2war/r24-parallel-web")
 JOURNAL = Path("/var/lib/aoe2war-r25-f-evidence-admission-v1")
-C_START = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v1")
-B_WITNESS = Path("/etc/aoe2war/r24-parallel-web/approved-runtime-prestart.py")
-B_SHA = "a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90"
+C_START = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v2")
+C_V1_FAILED = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v1")
+C_V1_SOURCE = "166fbdd0733d6c5c6ecbc9d895058ad584df3331"
+B_WITNESS = Path("/etc/aoe2war/r24-parallel-web/approved-runtime-namespace-v2.py")
+B_SHA = "8f6a30172a089aca7de4b5941791c1d1301a40486e872cc8b6efadc386acccda"
+B_SIZE = 23853
 GUARD_SHA = "dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
 SOURCE_SCOPE = "F_SOURCE_AND_EVIDENCE_ADMISSION"
 RUNTIME_SCOPE = "C_RUNTIME_SECURITY_ACCEPT"
@@ -36,7 +39,7 @@ FILE_NAMES = {"engine": "scripts/aoe2_r24_f_parallel_nginx_cutover.py",
     "g": "scripts/aoe2_r25_f_g_parallel_observer.py",
     "admission_root": "scripts/r25_f_evidence_admission_root.py",
     "admission_mac": "scripts/r25_f_evidence_admission_mac.py",
-    "c_helper": "scripts/r25_c_start_root.py"}
+    "c_helper": "scripts/r25_c_start_recovery_v2_root.py"}
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 
@@ -126,7 +129,7 @@ def sources(payload):
 
 def native_poststart(helper):
     source = helper.root_file(B_WITNESS, 32768, 0o644)
-    need(len(source) == 22310 and sha(source) == B_SHA, "INSTALLED_B_WITNESS_PIN_REQUIRED")
+    need(len(source) == B_SIZE and sha(source) == B_SHA, "INSTALLED_B_WITNESS_PIN_REQUIRED")
     raw = helper.run(["/usr/bin/python3", "-I", "-B", str(B_WITNESS), "--phase", "poststart",
                       "--expected-guard-sha256", GUARD_SHA], timeout=40, maximum=32768)
     b = parse(raw)
@@ -147,20 +150,44 @@ def native_poststart(helper):
     stable = {k: v for k, v in b.items() if k not in ("at", "report_sha256")}
     return b, sha(canonical(stable))
 
+def authenticated_v2_start_journals(helper, review):
+    """F requires both immutable consumed-v1 evidence and true v2 running proof."""
+    v1_started_raw = helper.root_file(C_V1_FAILED / "started.json", 131072, 0o600)
+    v1_hold_raw = helper.root_file(C_V1_FAILED / "hold.json", 32768, 0o600)
+    prior_started, prior_hold = parse(v1_started_raw), parse(v1_hold_raw)
+    need(prior_started.get("status") == "START_ENTERED_DO_NOT_RETRY"
+         and prior_started.get("plan", {}).get("source_sha") == C_V1_SOURCE
+         and prior_hold.get("status") == "HOLD_NO_REPLAY"
+         and prior_hold.get("reason_type") == "ProcessLookupError"
+         and prior_hold.get("public_cutover_authorized") is False,
+         "CONSUMED_V1_START_HISTORY_REQUIRED")
+    running_raw = helper.root_file(C_START / "running.json", 32768, 0o600)
+    started_raw = helper.root_file(C_START / "started.json", 131072, 0o600)
+    started, running = parse(started_raw), parse(running_raw)
+    need(started.get("status") == "START_ENTERED_DO_NOT_RETRY"
+         and started.get("plan", {}).get("source_sha") == review["lane_sources"]["C"]
+         and started.get("plan", {}).get("prior_v1_started_sha256") == sha(v1_started_raw)
+         and started.get("plan", {}).get("prior_v1_hold_sha256") == sha(v1_hold_raw)
+         and running.get("schema") == "aoe2war.r25.c.started-3031.v2"
+         and running.get("status") == "STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT"
+         and running.get("candidate_sha") == TARGET
+         and running.get("candidate_uid") == 993
+         and running.get("build_id") == helper.BUILD_ID
+         and running.get("public_cutover_authorized") is False
+         and running.get("plan_sha256") == started.get("plan_sha256")
+         and running.get("nonce") == started.get("nonce"),
+         "GENUINE_RECOVERY_V2_STARTED_JOURNAL_REQUIRED")
+    return running_raw, running, {"C_v1_started_file_sha256":sha(v1_started_raw),
+        "C_v1_hold_file_sha256":sha(v1_hold_raw),
+        "C_v2_started_file_sha256":sha(started_raw)}
+
 def capture(payload):
     need(sys.platform == "linux" and os.geteuid() == 0 and socket.gethostname().split(".")[0] == HOST,
          "EXACT_HEL1_ROOT_REQUIRED")
     review, files, helper, engine = sources(payload)
     helper.c_build()
     helper.e_rollback(payload["e_certificate"])
-    running_raw = helper.root_file(C_START / "running.json", 32768, 0o600)
-    started = parse(helper.root_file(C_START / "started.json", 131072, 0o600))
-    running = parse(running_raw)
-    need(running.get("status") == "STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT"
-         and running.get("candidate_sha") == TARGET and running.get("candidate_uid") == 993
-         and running.get("build_id") == helper.BUILD_ID and running.get("public_cutover_authorized") is False
-         and started.get("plan", {}).get("source_sha") == review["lane_sources"]["C"],
-         "REAL_C_STARTED_JOURNAL_REQUIRED")
+    running_raw, running, recovery_receipts = authenticated_v2_start_journals(helper, review)
     b, stable = native_poststart(helper)
     need(b.get("candidate_pid") == running.get("candidate_pid")
          and b.get("candidate_start_ticks") == running.get("candidate_start_ticks"),
@@ -187,7 +214,7 @@ def capture(payload):
         "source_sha": review["source_sha"], "source_review_body_sha256": payload["source_review"]["body_sha256"],
         "candidate_pid": b["candidate_pid"], "candidate_start_ticks": b["candidate_start_ticks"],
         "B_native": b, "B_stable_sha256": stable, "C_running_file_sha256": sha(running_raw),
-        "C_receipt_hashes": c_hashes, "E_certificate_sha256": helper.E_CERT_SHA,
+        "C_receipt_hashes": {**c_hashes, **recovery_receipts}, "E_certificate_sha256": helper.E_CERT_SHA,
         "E_copy_sha256": helper.E_COPY_SHA, "protected": protected, "snapshot": snapshot,
         "finance_units": units, "old_source_sha": old_sha, "old_build_id": helper.OLD_BUILD_ID,
         "candidate_build_id": helper.BUILD_ID, "candidate_build_version": helper.VERSION,
