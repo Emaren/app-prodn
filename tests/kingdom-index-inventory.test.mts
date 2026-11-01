@@ -10,8 +10,8 @@ const indexed = publicIndex.map(row=>row.href);
 test("all 150 exact page templates and 278 handler templates match Git HEAD",()=>{
   const actual=census(gitHeadPaths(),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
-    pageTemplates:150,adminTemplates:31,dynamicTemplates:20,publicIndexTemplates:89,
-    excludedStaticTemplates:10,routeHandlerTemplates:278,apiHandlerTemplates:275,nonApiHandlerTemplates:3
+    pageTemplates:150,adminTemplates:31,dynamicTemplates:20,publicIndexTemplates:88,
+    excludedStaticTemplates:11,routeHandlerTemplates:278,apiHandlerTemplates:275,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
@@ -34,6 +34,7 @@ test("path scope is not an authorization claim or public detail disclosure",()=>
   assert.equal(inventory.pages.find(p=>p.href==="/admin/living-kingdom/[uid]")?.assurance,"unverified");
   assert.equal(inventory.handlers.filter(h=>h.entrypoint.startsWith("app/api/admin/living-kingdom/")).length,2);
   assert.equal(inventory.pages.find(p=>p.href==="/wallet")?.scope,"excluded-static");
+  assert.equal(inventory.pages.find(p=>p.href==="/kingdom-construction")?.scope,"excluded-static");
   assert.equal(inventory.policy.includes("not authenticated access tests"),true);
   const lib=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
   assert.match(lib,/inventory\.counts/);
