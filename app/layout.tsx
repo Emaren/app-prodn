@@ -84,16 +84,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className="bg-[#050814] text-white min-h-screen flex flex-col"
         suppressHydrationWarning
       >
-        <Script
-          strategy="lazyOnload"
-          data-domain="aoe2war.com"
-          src="https://plausible.io/js/script.js"
-        />
-        <Script
-          strategy="lazyOnload"
-          src="https://traffic.tokentap.ca/api/beacon.js"
-          data-project="aoe2hdbets"
-        />
+        {process.env.NEXT_PUBLIC_REN88_READONLY_PREVIEW !== "1" && (
+          <>
+            <Script
+              strategy="lazyOnload"
+              data-domain="aoe2war.com"
+              src="https://plausible.io/js/script.js"
+            />
+            <Script
+              strategy="lazyOnload"
+              src="https://traffic.tokentap.ca/api/beacon.js"
+              data-project="aoe2hdbets"
+            />
+          </>
+        )}
         <AppShell>{children}</AppShell>
         <PwaRegister />
         <DeploymentVersionGuard />
