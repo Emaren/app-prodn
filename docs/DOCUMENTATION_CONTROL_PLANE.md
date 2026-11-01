@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-owner-only-release-governance-20261101` at `3b77475404f66f0993ff4bf9b2877fac864b7fa5`
+Implementation baseline: `codex/r25-v3-host-mount-prestart-20261101` at `e0d5430d7724d794920234201671d4701b242177`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
