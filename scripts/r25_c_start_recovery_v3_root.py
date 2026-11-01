@@ -296,14 +296,13 @@ def b_prestart(payload):
                      "runtime_env_sha256": sha(root_file(repair.OLD.parent / "readonly-runtime.env", 8192, 0o600))}
 
 def b_recovery_historical_admission(payload):
-    """V1 B evidence under failed 3031, before private-/run v2 is installed.
+    """Sealed v1 B provenance, but verify the presently effective v2 wall.
 
-    Original B positive PRESTART and repair.host_admission both require
-    ActiveState=inactive, which is impossible with the genuine v1 failed
-    systemd receipt. Do not fake the v1 PRESTART result or reset-failed here.
-    Preserve independent historical receipts, actual old isolation bytes,
-    finance network/database controls, and the candidate failed state.
-    New B v2 PRESTART runs natively AFTER reviewed v2 overlay installation.
+    Historical original-B witnesses checked a now-replaced /run layout.
+    Preserve original receipts, signed source, finance network and database
+    evidence without applying superseded filesystem assumptions to a live unit.
+    A separate exact-pinned v2 witness enforces the current private /run:ro
+    wall. V3 positive PRESTART still requires native proof after installation.
     """
     repair = pinned_module(payload["b_repair_b64"], B_REPAIR_SHA, 14001, "reviewed_b_repair")
     witness = pinned_module(payload["b_witness_b64"], B_WITNESS_SHA, 22310, "reviewed_b_witness")
@@ -334,8 +333,15 @@ def b_recovery_historical_admission(payload):
     need(new.get("LoadState") == "loaded" and new.get("ActiveState") == "failed"
          and new.get("MainPID") == "0" and new.get("User") == USER
          and new.get("WorkingDirectory") == str(STAGE), "B_V1_FAILED_UNIT_STATE_REQUIRED")
-    witness.validate_filesystem_wall(new)  # Original installed B wall is still pinned.
-    effective = effective_unit(witness)
+    # The original B witness is retained for immutable historical receipts,
+    # finance egress and SQL checks, NOT for validating today's candidate wall.
+    # Its old /run InaccessiblePaths contract is incompatible with the
+    # separately reviewed v2 private read-only tmpfs, causing a false HOLD.
+    # Validate the live unit using the exact source-pinned v2 witness instead.
+    current_witness = pinned_module(payload["v2_witness_b64"],
+                                    V2_WITNESS_SHA, V2_WITNESS_SIZE,
+                                    "reviewed_b_v2_historical_current_wall")
+    effective = effective_unit_v2(current_witness)
     repair.port_free()
     need(repair.C_PATH.is_file() and not repair.C_PATH.is_symlink()
          and repair.C_PATH.read_text().strip() == repair.C_BUILD,
@@ -351,7 +357,7 @@ def b_recovery_historical_admission(payload):
             "B_repair_report_sha256":rec["report_sha256"],
             "original_started_sha256":roots[0],"original_receipt_sha256":roots[1],
             "old_web_pid":OLD_PID,"new_uid":UID,"target_sha":TARGET,
-            "old_wall_effective_sha256":effective, "pg_role":db["role"],
+            "current_v2_wall_effective_sha256":effective, "pg_role":db["role"],
             "pg_proof_sha256":sha(canonical(db)), "kernel_uid_egress_sha256":nft,
             "positive_v2_prestart_executed":False, "public_cutover_authorized":False,
             "financial_authorized":False}
