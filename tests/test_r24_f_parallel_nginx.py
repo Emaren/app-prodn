@@ -123,6 +123,29 @@ server { server_name unrelated.example; listen 443 ssl;
         src=SERVER.read_text()
         self.assertIn('method="GET"',src)
         self.assertNotIn('method="POST"',src)
+    def test_public_and_internal_probes_identify_verifier_without_changing_gets(self):
+        # Actual HEL1 Cloudflare rejects Python's default UA with error1010.
+        # It serves the declared verifier UA; keep status and byte checks intact.
+        s=self.s
+        requests=[]
+        response=mock.MagicMock()
+        response.__enter__.return_value=response
+        response.status=200
+        response.read.return_value=b'{"buildVersion":"expected-version"}'
+        def opened(request,timeout):
+            requests.append(request)
+            return response
+        with mock.patch.object(s.urllib.request,"urlopen",side_effect=opened):
+            self.assertEqual(s.public_version(),"expected-version")
+            self.assertEqual(s.http_version(3031),"expected-version")
+            s.next_build_asset(s.PUBLIC,"-dJl5VyecHu5BKNvfErJe")
+        self.assertEqual(len(requests),3)
+        for request in requests:
+            self.assertEqual(request.get_method(),"GET")
+            self.assertEqual(request.get_header("User-agent"),"aoe2war-release-verifier/1")
+            self.assertEqual(request.get_header("Cache-control"),"no-cache")
+        self.assertEqual(requests[0].full_url,s.PUBLIC+"/api/deployment-version")
+        self.assertIn('/_next/static/-dJl5VyecHu5BKNvfErJe/_buildManifest.js',requests[2].full_url)
     def test_candidate_archive_source_uses_c_root_protected_full_manifests(self):
         code=SERVER.read_text()
         for token in ("SOURCE_STAGED.json","SOURCE_FILES.json",

@@ -37,6 +37,7 @@ E_ROOT_RECOVERY=pathlib.Path("/etc/aoe2war/r24-parallel-web/e-recovery-ready.jso
 # C #1084 root-protected direct child of /var/lib; never use the mutable live /var/www parent.
 CANDIDATE_STAGE=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 PUBLIC="https://aoe2war.com"
+HTTP_HEADERS={"User-Agent":"aoe2war-release-verifier/1","Cache-Control":"no-cache"}
 B_INDEPENDENT_POSITIVE_RUNTIME_SHA="" # current B #1077 is explicitly negative
 F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA="" # not issued until real E/C stage
 D_REVIEWED_SHA="5ffac4e1a8838024e9bd2025d452a7e93e53c06f"
@@ -300,7 +301,7 @@ def verified_b_poststart(j,ss):
 
 def http_version(port):
     url=f"http://127.0.0.1:{port}/api/deployment-version"
-    with urllib.request.urlopen(urllib.request.Request(url,method="GET"),
+    with urllib.request.urlopen(urllib.request.Request(url,method="GET",headers=HTTP_HEADERS),
                                 timeout=8) as resp:
         need(resp.status==200,"HTTP_BUILD_VERSION_UNAVAILABLE")
         obj=parse(resp.read(8193))
@@ -312,7 +313,7 @@ def next_build_asset(base,build_id):
          "NEXT_BUILD_ID_NOT_PINNED")
     url=base+"/_next/static/"+build_id+"/_buildManifest.js"
     with urllib.request.urlopen(
-            urllib.request.Request(url,method="GET"),
+            urllib.request.Request(url,method="GET",headers=HTTP_HEADERS),
             timeout=8) as resp:
         need(resp.status==200 and 0<len(resp.read(65537))<=65536,
              "ACTUAL_NEXT_BUILD_ID_STATIC_ASSET_MISSING")
@@ -419,7 +420,7 @@ def stage_identity(j):
          "ORIGINAL_WEB_SOURCE_GIT_DRIFT")
 def public_version():
     with urllib.request.urlopen(
-            urllib.request.Request(PUBLIC+"/api/deployment-version",method="GET"),
+            urllib.request.Request(PUBLIC+"/api/deployment-version",method="GET",headers=HTTP_HEADERS),
             timeout=10) as resp:
         need(resp.status==200,"PUBLIC_HTTP_STATUS")
         obj=parse(resp.read(8193))
