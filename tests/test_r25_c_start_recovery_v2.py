@@ -74,6 +74,43 @@ class RecoveryV2Tests(unittest.TestCase):
                     s.admit(payload)
                 mkdir.assert_not_called()
 
+    def test_no_v2_journal_for_missing_or_incorrect_fresh_owner_consent(self):
+        plan={"protected_before":{"old":2625090},"schema":"aoe2war.r25.c.start-plan.v2"}
+        digest=s.sha(s.canonical(plan))
+        nonce="f"*32
+        approved="RECOVER-START-R25-3031-V2 "+nonce+" "+digest
+        common={"plan_sha256":digest,"nonce":nonce,"owner_consent":approved}
+        for mutation in ({"plan_sha256":"b"*64},
+                         {"owner_consent":"v1 authorization is enough"},
+                         {"nonce":"bad"}):
+            payload={**common,**mutation}
+            with self.subTest(mutation=mutation), \
+                 mock.patch.object(s,"admit",return_value=("historical-witness",plan)), \
+                 mock.patch.object(s.os,"mkdir") as mkdir, \
+                 mock.patch.object(s,"run") as run:
+                with self.assertRaises(s.Hold):
+                    s.start(payload)
+                mkdir.assert_not_called()
+                run.assert_not_called()
+
+    def test_v1_review_record_cannot_authorize_v2(self):
+        legacy={"schema":"aoe2war.r25.c.start-source-review.v1",
+                "decision":"ACCEPT","scope":"START_3031_ONLY",
+                "independent_review":True,"reviewer":"/root/start_fix_review",
+                "publisher_is_reviewer_identity":False,"source_sha":"a"*40,
+                "operator_sha256":"b"*64,"operator_size":40000,"operator_blob":"c"*40,
+                "exact_head_ci":{"run_id":123,"head_sha":"a"*40,"conclusion":"success",
+                                 "all_three_jobs_success":True}}
+        body="R25_START_INDEPENDENT_REVIEW\n```json\n"+json.dumps(legacy)+"\n```"
+        payload={"review_body":body,"review_body_sha256":s.sha(body.encode()),
+                 "source_sha":"a"*40,"operator_sha256":"b"*64,
+                 "operator_size":40000,"operator_blob":"c"*40,
+                 "review_author":"Emaren",
+                 "review_issue_url":"https://api.github.com/repos/Emaren/app-prodn/issues/1084",
+                 "review_url":"https://github.com/Emaren/app-prodn/pull/1084#issuecomment-1"}
+        with self.assertRaisesRegex(s.Hold,"REVIEW_MANIFEST_FORMAT"):
+            s.reviewed(payload)
+
     def test_exact_scope_does_not_claim_public_or_financial_authority(self):
         text=(ROOT/"scripts/r25_c_start_recovery_v2_root.py").read_text()
         self.assertIn("public_cutover_authorized",text)
