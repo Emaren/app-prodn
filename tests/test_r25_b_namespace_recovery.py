@@ -55,6 +55,8 @@ class TestNamespaceRecovery(unittest.TestCase):
         overlay=(ROOT/"deploy/r25-b-3031.namespace-recovery.dropin.conf").read_text()
         self.assertIn("TemporaryFileSystem=/run:ro",overlay)
         self.assertIn("InaccessiblePaths=\n",overlay)
+        self.assertIn("ExecStartPre=+/usr/bin/python3 -I -B /etc/aoe2war/r24-parallel-web/approved-runtime-namespace-v2.py",overlay)
+        self.assertIn("--expected-guard-sha256 dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d",overlay)
         self.assertNotIn("ExecStart=",overlay)
         self.assertNotIn("User=",overlay)
         self.assertNotIn("EnvironmentFile=",overlay)
