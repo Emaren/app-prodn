@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `security/r25-glob-minimatch-remediation-20261031` at `e1472e217ef1bbdbab46b0ffd96d7672fb66d322`
+Implementation baseline: `docs/ai-source-reuse-onboarding-20261101` at `ffba5a78e836fa3b3bdbfa2c88392cf10132c051`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **102**
+- Authoritative repository documents: **103**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 62
+- `reference`: 63
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 81
+- `active`: 82
 - `draft`: 5
 - `generated`: 1
 - `historical`: 12
@@ -52,6 +52,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 | Document | Type | Status | Authority |
 | --- | --- | --- | --- |
+| [AoE2WAR AI Engineering Entry Point](../AGENTS.md) | `reference` | `active` | `repository-entrypoint` |
 | [app-prodn Architecture](../ARCHITECTURE.md) | `explanation` | `active` | `architecture-explanation` |
 | [app-prodn Deploy](../DEPLOY.md) | `runbook` | `active` | `operational-procedure` |
 | [app-prodn Product State](../PRODUCT_STATE.md) | `historical` | `historical` | `historical-evidence` |
