@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1218cfd28e9b0fbd37736dabc173cde69d92ea3829b2b8d472caf993de48eda6",
+      "sha256": "66c2c438695985533a99cd24453982ae7f9106bc617c5cb7cdfa700ccf30f26c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "security/r25-glob-minimatch-remediation-20261031",
-    "commit": "1ce04546ea8098945f9080f930eacfaec5f2b3c3"
+    "commit": "e1472e217ef1bbdbab46b0ffd96d7672fb66d322"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
