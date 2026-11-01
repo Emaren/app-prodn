@@ -24,11 +24,11 @@ class ParallelR24(unittest.TestCase):
             self.assertNotIn(name,src)
         self.assertIn("OLD_FINANCIAL_WEB_PID_DRIFT",src)
         self.assertIn("FINANCE_OR_OLD_WEB_DRIFT_AT_SEAM",src)
-    def test_negative_B_F_and_new_C_pins(self):
+    def test_missing_genuine_admission_cannot_authorize_cutover(self):
         s=self.s
-        self.assertEqual(s.B_INDEPENDENT_POSITIVE_RUNTIME_SHA,"")
-        self.assertEqual(s.F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA,"")
-        self.assertEqual(s.C_REVIEWED_PARALLEL_SHA,"")
+        with mock.patch.object(s,"root_file",side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(s.Hold,"REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED"):
+                s.admitted_evidence()
     @staticmethod
     def scoped_vhost():
         # Six actual Oct 28 target location classes, with two Wolo routes
@@ -176,10 +176,12 @@ server { server_name unrelated.example; listen 443 ssl;
         a={
             "old_web_snapshot_sha256":s.sha(old.encode()),
             "finance_snapshot_sha256":s.sha(s.canonical({"protected": "running"})),
-            "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"SOCKET_A","8093":"SOCKET_B"}))
+            "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"SOCKET_A","8093":"SOCKET_B"})),
+            "native_protected_sha256":s.sha(s.canonical({"original":"unchanged"}))
         }
         current={"original_web":old,"candidate_web":"ActiveState=failed",
-                 "finance":{"protected":"running"},"wolo":"SOCKET_A"}
+                 "finance":{"protected":"running"},"wolo":"SOCKET_A",
+                 "native_protected":{"original":"unchanged"}}
         with mock.patch.object(s,"listener_lines",return_value={"8092":"SOCKET_A","8093":"SOCKET_B"}):
             s.prove_rollback_preimage(a,current)
             old=s.protected_continuity(current)
@@ -304,11 +306,13 @@ server { server_name unrelated.example; listen 443 ssl;
          "E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-recovery-ready.json",
          "E_r25_recovery_sha256":"1"*64,
          "B_poststart_sha256":"2"*64,
+         "native_protected_sha256":"7"*64,
          "C_source_staged_sha256":"3"*64,"C_build_staged_sha256":"4"*64,
          "C_source_files_sha256":"5"*64,"C_build_files_sha256":"6"*64,
          "lane_reviews":{lane:"2"*40 for lane in "BCDEFG"}}
-        with self.assertRaisesRegex(self.s.Hold,"INDEPENDENT_B_REVIEW_NOT_APPROVED"):
-            self.s.approval(self.s.canonical(j))
+        with mock.patch.object(self.s,"root_file",side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(self.s.Hold,"REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED"):
+                self.s.approval(self.s.canonical(j))
     def test_c_candidate_is_root_sealed_under_var_lib_not_live_web_parent(self):
         s=self.s
         self.assertEqual(s.CANDIDATE_STAGE,pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b"))

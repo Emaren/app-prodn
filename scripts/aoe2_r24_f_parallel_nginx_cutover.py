@@ -8,7 +8,7 @@ and read-only DB principal, with B/D/E/F/G independently root-bound approval.
 No key enrollment, money operation, migration, repo switch, or 14-helper install.
 """
 from __future__ import annotations
-import fcntl,hashlib,json,os,pathlib,re,socket,stat,subprocess,sys,urllib.request
+import fcntl,hashlib,json,os,pathlib,re,socket,stat,subprocess,sys,types,urllib.request
 
 HOST="ubuntu-4gb-hel1-11"
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
@@ -38,12 +38,9 @@ E_ROOT_RECOVERY=pathlib.Path("/etc/aoe2war/r24-parallel-web/e-recovery-ready.jso
 CANDIDATE_STAGE=pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b")
 PUBLIC="https://aoe2war.com"
 HTTP_HEADERS={"User-Agent":"aoe2war-release-verifier/1","Cache-Control":"no-cache"}
-B_INDEPENDENT_POSITIVE_RUNTIME_SHA="" # current B #1077 is explicitly negative
-F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA="" # not issued until real E/C stage
-D_REVIEWED_SHA="5ffac4e1a8838024e9bd2025d452a7e93e53c06f"
-C_REVIEWED_PARALLEL_SHA="" # must be C's new source, NOT old stop/swap C #1080
-E_REVIEWED_SHA="" # pin final reviewed E implementation
-G_REVIEWED_SHA="" # pin final reviewed G implementation
+ADMISSION_RECEIPT=ROOT_APPROVAL.parent/"f-admission.json"
+STATE_READER=ROOT_APPROVAL.parent/"runtime-state-reader.py"
+ADMISSION_JOURNAL=pathlib.Path("/var/lib/aoe2war-r25-f-evidence-admission-v1")
 SCHEMA="aoe2war.r24.rootssh.parallel-web-nginx.v1"
 HEX40=re.compile("[0-9a-f]{40}\\Z")
 HEX64=re.compile("[0-9a-f]{64}\\Z")
@@ -97,7 +94,7 @@ def approval(raw):
         "E_durable_receipt_path",
         "C_source_staged_sha256","C_build_staged_sha256",
         "C_source_files_sha256","C_build_files_sha256",
-        "B_poststart_sha256","E_r25_recovery_sha256","lane_reviews"},
+        "B_poststart_sha256","E_r25_recovery_sha256","native_protected_sha256","lane_reviews"},
         "APPROVAL_EXACT_SCHEMA")
     need(j["schema"]==SCHEMA and j["candidate_sha"]==TARGET and
          type(j["nonce"])==str and NONCE.fullmatch(j["nonce"]),
@@ -109,7 +106,7 @@ def approval(raw):
               "C_stage_artifact_sha256","E_durable_rollback_sha256",
               "C_source_staged_sha256","C_build_staged_sha256",
               "C_source_files_sha256","C_build_files_sha256",
-              "B_poststart_sha256","E_r25_recovery_sha256"):
+              "B_poststart_sha256","E_r25_recovery_sha256","native_protected_sha256"):
         need(type(j[f])==str and HEX64.fullmatch(j[f]),"APPROVAL_HASH_MISSING:"+f)
     need(j["E_durable_receipt_path"]==str(E_ROOT_RECOVERY),
          "E_R25_ROOT_SEALED_RECEIPT_PATH_NOT_PINNED")
@@ -128,22 +125,84 @@ def approval(raw):
          all(type(u)==str and re.fullmatch("[A-Za-z0-9@_.-]+\\.(?:service|timer|socket)",u)
              and u not in (OLD_UNIT,NEW_UNIT) for u in units),
          "B_FINANCE_UNIT_IDENTITY_SET_INCOMPLETE")
-    pins={"B":B_INDEPENDENT_POSITIVE_RUNTIME_SHA,
-          "C":C_REVIEWED_PARALLEL_SHA,"D":D_REVIEWED_SHA,
-          "E":E_REVIEWED_SHA,"F":F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA,
-          "G":G_REVIEWED_SHA}
-    need(type(j["lane_reviews"])==dict and set(j["lane_reviews"])==set(pins),
+    need(type(j["lane_reviews"])==dict and set(j["lane_reviews"])==set("BCDEFG"),
          "B_C_D_E_F_G_REVIEWS_REQUIRED")
-    for lane,pin in pins.items():
-        need(bool(HEX40.fullmatch(pin)) and j["lane_reviews"][lane]==pin,
-             "INDEPENDENT_"+lane+"_REVIEW_NOT_APPROVED")
+    record=admitted_evidence(raw)
+    need(j["lane_reviews"]==record["lane_reviews"],"ACTUAL_REVIEWED_LANE_SOURCE_DRIFT")
+    need(not (ADMISSION_JOURNAL/"hold.json").exists(),"F_ADMISSION_HOLD_PRESERVE_NO_CUTOVER")
+    complete=parse(root_file(ADMISSION_JOURNAL/"complete.json",8192))
+    need(complete.get("status")=="APPROVAL_WRITTEN_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+         and complete.get("approved_json_sha256")==sha(raw),"F_ADMISSION_NOT_COMPLETE")
     return j
+
+def admitted_evidence(approved_raw=None):
+    """Actual one-use native capture + independent review; no placeholder pins."""
+    try:record=parse(root_file(ADMISSION_RECEIPT,131072))
+    except OSError as exc:raise Hold("REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED") from exc
+    report=dict(record);digest=report.pop("report_sha256",None)
+    need(record.get("schema")=="aoe2war.r25.f.admitted-evidence.v1"
+         and record.get("status")=="APPROVAL_WRITTEN_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+         and digest==sha(canonical(report))
+         and record.get("public_cutover_authorized") is False,
+         "REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED")
+    if approved_raw is not None:
+        need(record.get("approved_json_sha256")==sha(approved_raw),"APPROVED_BYTES_NOT_ADMITTED")
+    for kind,scope in (("source_review","F_SOURCE_AND_EVIDENCE_ADMISSION"),
+                       ("runtime_review","C_RUNTIME_SECURITY_ACCEPT")):
+        envelope=record.get(kind,{})
+        body=envelope.get("body","")
+        need(envelope.get("author")=="Emaren" and
+             envelope.get("issue_url")=="https://api.github.com/repos/Emaren/app-prodn/issues/1083"
+             and re.fullmatch(r"https://github.com/Emaren/app-prodn/pull/1083#issuecomment-[0-9]+",envelope.get("url","")) is not None
+             and type(body)==str and sha(body.encode())==envelope.get("body_sha256"),
+             "AUTHENTICATED_REVIEW_ENVELOPE_REQUIRED")
+        match=re.fullmatch(r"R25_F_INDEPENDENT_REVIEW\n```json\n(.+)\n```\n?",body,re.S)
+        need(match is not None,"REAL_F_REVIEW_MANIFEST_REQUIRED")
+        review=parse(match[1])
+        need(review.get("schema")=="aoe2war.r25.f.evidence-review.v1"
+             and review.get("decision")=="ACCEPT" and review.get("scope")==scope
+             and review.get("independent_review") is True
+             and review.get("publisher_is_reviewer_identity") is False
+             and review.get("reviewer") in ("/root/security_review","/root/start_fix_review"),
+             "INDEPENDENT_SOURCE_AND_RUNTIME_REVIEW_REQUIRED")
+        if kind=="source_review":
+            need(review.get("lane_sources")==record.get("lane_reviews")
+                 and review.get("source_sha")==record["lane_reviews"].get("F"),
+                 "REVIEWED_LANE_SOURCES_NOT_BOUND")
+            need(review.get("role_decisions")==dict.fromkeys("BCDEFG","ACCEPT"),
+                 "ACTUAL_WEBSITE_REVIEW_ROLE_DECISIONS_REQUIRED")
+            ci=review.get("exact_head_ci",{})
+            need(type(ci.get("run_id")) is int and ci["run_id"]>0
+                 and ci.get("head_sha")==review["source_sha"] and ci.get("conclusion")=="success"
+                 and ci.get("all_three_jobs_success") is True,"F_EXACT_HEAD_CI_REQUIRED")
+            files=review.get("files",{})
+            need(files.get("c_helper",{}).get("sha256")==record.get("reader_sha256")
+                 and files.get("engine",{}).get("sha256")==record.get("engine_sha256"),
+                 "REVIEWED_EXECUTABLE_PINS_REQUIRED")
+        else:
+            need(review.get("capture_sha256")==record.get("reviewed_capture_sha256")
+                 and review.get("B_stable_sha256")==record.get("B_stable_sha256")
+                 and review.get("candidate_pid")==record.get("candidate_pid")
+                 and review.get("candidate_start_ticks")==record.get("candidate_start_ticks"),
+                 "ACTUAL_INDEPENDENT_C_RUNTIME_ACCEPT_REQUIRED")
+    return record
+
+def native_state_reader():
+    record=admitted_evidence()
+    source=root_file(STATE_READER,65536)
+    need(sha(source)==record["reader_sha256"],"REVIEWED_RUNTIME_READER_BYTES_CHANGED")
+    module=types.ModuleType("reviewed_r25_native_state_reader")
+    exec(compile(source,"reviewed-runtime-state-reader","exec"),module.__dict__)
+    return module
 def unit_state(unit):
-    out=cmd(["/usr/bin/systemctl","show",unit,
-       "-p","Id","-p","ActiveState","-p","MainPID",
-       "-p","ExecMainStartTimestampMonotonic","-p","User",
-       "-p","FragmentPath","-p","DropInPaths","-p","ExecStart"],15)
-    return out.decode(errors="replace")
+    reader=native_state_reader()
+    if re.search(r"@\.(?:service|timer|socket)$",unit):
+        return "Id="+unit+"\nTemplateConfigSHA256="+sha(cmd(["/usr/bin/systemctl","cat",unit,"--no-pager"],15))+"\n"
+    state=reader.unit_state(unit)
+    fields=dict(state["properties"])
+    fields["ProcStartTicks"]=str(state["start_ticks"])
+    fields["UnitConfigSHA256"]=state["unit_config_sha256"]
+    return "".join(k+"="+str(v)+"\n" for k,v in sorted(fields.items()))
 def enforce_candidate_runtime(unit_status):
     # Independent defense-in-depth gate; does NOT prove server-side PG ACLs.
     parts=dict(line.split("=",1) for line in unit_status.splitlines() if "=" in line)
@@ -180,21 +239,31 @@ def enforce_candidate_runtime(unit_status):
     return True
 
 def snapshots(units):
+    reader=native_state_reader()
+    protected=reader.protected_snapshot()
+    actual=sorted(set(protected["unit_names"])-{OLD_UNIT,NEW_UNIT})
+    need(actual==sorted(units),"COMPLETE_NATIVE_FINANCE_UNIT_SET_DRIFT")
+    sockets=cmd(["/usr/bin/ss","-H","-ltnpe"],15).decode(errors="replace")
+    stable_sockets="\n".join("LISTEN 0 0 "+" ".join(row.split()[3:]) for row in sockets.splitlines()
+        if any(re.search(":"+str(port)+r"\s",row) for port in (8092,8093,5432)))
     return {"original_web":unit_state(OLD_UNIT),
             "candidate_web":unit_state(NEW_UNIT),
             "finance":{u:unit_state(u) for u in units},
-            "wolo":cmd(["/usr/bin/ss","-H","-ltnpe"],15).decode(errors="replace")}
+            "native_protected":protected,"wolo":stable_sockets}
 def listener_lines(raw):
     out={}
     for port in ("8092","8093"):
         hits=[x for x in raw.splitlines() if re.search(":"+port+r"\s",x)]
         need(len(hits)==1,"WOLO_PORT_PIDs_NOT_UNIQUE:"+port)
-        out[port]=hits[0]
+        # Ignore volatile queue counters; preserve address/process/inode/cgroup.
+        out[port]=" ".join(hits[0].split()[3:])
     return out
 def prove_preimage(j,s):
     need("ActiveState=active" in s["original_web"] and
          "ActiveState=active" in s["candidate_web"],"TWO_INDEPENDENT_WEB_SERVICES_NOT_ACTIVE")
     enforce_candidate_runtime(s["candidate_web"])
+    need(sha(canonical(s["native_protected"]))==j["native_protected_sha256"],
+         "NATIVE_PROTECTED_PROCESS_OR_POSTGRES_SOCKET_DRIFT")
     need(sha(s["original_web"].encode())==j["old_web_snapshot_sha256"],
          "OLD_FINANCIAL_WEB_PID_DRIFT")
     need(sha(s["candidate_web"].encode())==j["candidate_web_snapshot_sha256"],
@@ -213,8 +282,10 @@ def prove_rollback_preimage(j,s):
          "ROLLBACK_FINANCIAL_UNITS_DRIFT")
     need(sha(canonical(listener_lines(s["wolo"])))==j["wolo_snapshot_sha256"],
          "ROLLBACK_WOLO_SOCKET_IDENTITY_DRIFT")
+    need(sha(canonical(s["native_protected"]))==j["native_protected_sha256"],
+         "ROLLBACK_NATIVE_PROTECTED_IDENTITY_DRIFT")
 def protected_continuity(s):
-    return (s["original_web"],s["finance"],listener_lines(s["wolo"]))
+    return (s["original_web"],s["finance"],listener_lines(s["wolo"]),s["native_protected"])
 def verified_durable_e_rollback(j):
     """E R25 physical content certificate; it never signs release authority."""
     raw=root_file(E_ROOT_RECOVERY,65536)
@@ -722,6 +793,7 @@ def approved_owner_intent(rollback=False):
         verified_b_poststart(j,witness)
         verified_durable_e_rollback(j)
     print(canonical({"schema":"aoe2war.r25.f.owner-intent.v1",
+        "engine_source_sha256":admitted_evidence()["engine_sha256"],
         "nonce":j["nonce"],"candidate_sha":TARGET,
         "candidate_build_id":j["candidate_build_id"],
         "candidate_build_version":j["candidate_build_version"],
