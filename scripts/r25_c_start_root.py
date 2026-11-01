@@ -317,7 +317,7 @@ def unit_state(unit):
              and pairs.get("ActiveState") == "inactive"
              and pairs.get("MainPID") == "0", "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
         command = pairs.get("ExecStart", "")
-        stable = re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*?;\s*ignore_errors=(?:yes|no)\s*;", command, re.S)
+        stable = re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*;\s*ignore_errors=(?:yes|no)\s*;\s*(?=start_time=)", command, re.S)
         need(stable is not None and command.count("{ path=") == 1,
              "MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED")
         pairs["ExecStart_command_sha256"] = sha(stable.group(0).encode())

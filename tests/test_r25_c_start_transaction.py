@@ -201,6 +201,17 @@ class StartTests(unittest.TestCase):
         with mock.patch.object(self.s,"run",side_effect=[raw,b"config"]):
             with self.assertRaisesRegex(self.s.Hold,"MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED"):
                 self.s.unit_state(unit)
+
+    def test_shell_argv_marker_cannot_hide_a_changed_command_tail(self):
+        def sample(tail,stamp):
+            raw=("Id=traffic-watchdog.service\nType=oneshot\nTriggeredBy=traffic-watchdog.timer\n"
+                 "ActiveState=inactive\nMainPID=0\nNeedDaemonReload=no\nResult=success\n"
+                 "ExecStart={ path=/bin/sh ; argv[]=/bin/sh -c echo ; ignore_errors=no ; "+tail+
+                 " ; ignore_errors=no ; start_time=["+str(stamp)+"] ; stop_time=[] ; pid=0 ; code=exited ; status=0 }\n").encode()
+            with mock.patch.object(self.s,"run",side_effect=[raw,b"same config"]):
+                return self.s.unit_state("traffic-watchdog.service")
+        self.assertEqual(sample("safe",100),sample("safe",200))
+        self.assertNotEqual(sample("safe",100),sample("changed",100))
     def test_unlisted_oneshot_keeps_strict_runtime_binding(self):
         def sample(n):
             raw = ("Id=wolo-example.service\nType=oneshot\nMainPID=0\n" +
