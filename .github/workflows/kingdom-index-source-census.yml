@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           node scripts/kingdom_index_full_inventory.mjs --check | tee kingdom-index-full-inventory.json
           node --experimental-strip-types --test tests/kingdom-index-inventory.test.mts
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: kingdom-index-source-census
@@ -102,7 +102,7 @@ jobs:
               for source, href, count, missing, dynamic, state in rows:
                   out.write(f"| {source} | {href} | {count} | {missing} | {dynamic} | {state} |\n")
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: kingdom-index-dependency-evidence

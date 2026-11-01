@@ -42,7 +42,7 @@ jobs:
           sha256sum renaissance-88-source/*.json > renaissance-88-source/digests.sha256
           test -z "$(git status --porcelain --untracked-files=no)"
           printf 'source=%s\nbuild=UNMEASURED\ncertified=false\n' "$SOURCE_SHA" > renaissance-88-source/identity.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: renaissance-88-a11y-source-unsealed-${{ github.run_id }}-${{ github.run_attempt }}
@@ -191,7 +191,7 @@ jobs:
           if [ -n "${REN88_PG_ROOT:-}" ]; then
             bash scripts/renaissance_88_pg_fixture.sh stop || true
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: renaissance-88-a11y-chrome-unsealed-${{ github.run_id }}-${{ github.run_attempt }}
