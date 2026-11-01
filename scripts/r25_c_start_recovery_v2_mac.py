@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Original Mac: authenticated read-only plan, distinct GUI consent, one START.
 
-Requires an actual independently published review comment of these exact bytes.
+Requires an authenticated owner-only nonfinancial release acceptance on exact bytes.
+Optional future independent reviews need separately appointed real contributors.
 No placeholder approval is supplied; source CI and native B repair/PRESTART must
 already pass. C/E sealed artifacts are consumed, never rebuilt or recopied.
 """
@@ -34,6 +35,10 @@ V2_DROPIN_SHA = "f24656b3120484327e17c59f449ad0125f7014869fa8018fe1c4c05d26f65f7
 V2_DROPIN_BLOB = "f8fdb2afd416022e44dc3e3db26829c1eeb30588"
 E_CERT_SHA = "9a4b8b441d87556bd0ed8b9fb50916aff91da7c6975096ae7e1edc6f84290b2d"
 REVIEWERS = ("/root/security_review", "/root/start_fix_review")
+OWNER_LOGIN = "Emaren"
+OWNER_SCHEMA = "aoe2war.r25.c.owner-nonfinancial-release.v1"
+OWNER_HEADER = "R25_START_V2_OWNER_NONFINANCIAL_ACCEPT"
+REVIEW_VERDICT_SCHEMA = "aoe2war.r25.c.independent-github-verdict.v2"
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 
@@ -77,19 +82,90 @@ def review_comment(comment_id, expected_sha, source_sha, root, mac):
          and comment.get("user", {}).get("login") == "Emaren", "REVIEW_AUTHOR_REPOSITORY_OR_COMMENT_DRIFT")
     body = comment.get("body", "")
     need(isinstance(body, str) and sha(body.encode()) == expected_sha, "REVIEW_BODY_PIN_DRIFT")
-    block = re.fullmatch(r"R25_START_V2_INDEPENDENT_REVIEW\n```json\n(.+)\n```\n?", body, re.S)
-    need(bool(block), "REVIEW_MANIFEST_FORMAT")
+    owner_mode = body.startswith(OWNER_HEADER + "\n")
+    header = OWNER_HEADER if owner_mode else "R25_START_V2_INDEPENDENT_REVIEW"
+    block = re.fullmatch(re.escape(header) + r"\n" + re.escape('```') +
+                         r"json\n(.+)\n" + re.escape('```') + r"\n?", body, re.S)
+    need(bool(block), "OWNER_OR_OPTIONAL_REVIEW_MANIFEST_FORMAT")
     record = json.loads(block[1])
-    need(record.get("schema") == "aoe2war.r25.c.start-source-review.v2"
-         and record.get("decision") == "ACCEPT" and record.get("scope") == "RECOVERY_START_3031_V2_ONLY"
-         and record.get("independent_review") is True and record.get("reviewer") in REVIEWERS
-         and record.get("publisher_is_reviewer_identity") is False
-         and record.get("source_sha") == source_sha,
-         "GENUINE_INDEPENDENT_REVIEW_REQUIRED")
+    need(record.get("decision") == "ACCEPT"
+         and record.get("scope") == "RECOVERY_START_3031_V2_ONLY"
+         and record.get("source_sha") == source_sha, "EXACT_RELEASE_SOURCE_SCOPE_REQUIRED")
+    if owner_mode:
+        need(record.get("schema") == OWNER_SCHEMA
+             and record.get("owner_login") == OWNER_LOGIN
+             and record.get("release_authority") == "OWNER_ONLY_NONFINANCIAL"
+             and record.get("independent_review") is False
+             and record.get("owner_accepts_no_independent_review") is True
+             and record.get("nonfinancial_only") is True
+             and record.get("public_cutover_authorized") is False
+             and record.get("financial_authorized") is False
+             and "github_review_provenance" not in record
+             and "reviewer" not in record, "AUTHENTIC_OWNER_NONFINANCIAL_RELEASE_REQUIRED")
+    else:
+        need(record.get("schema") == "aoe2war.r25.c.start-source-review.v2"
+             and record.get("independent_review") is True
+             and record.get("reviewer") in REVIEWERS
+             and record.get("publisher_is_reviewer_identity") is False,
+             "OPTIONAL_INDEPENDENT_REVIEW_REQUIRED")
     for prefix, data in (("operator", root), ("mac", mac)):
         need(record.get(prefix + "_size") == len(data)
              and record.get(prefix + "_sha256") == sha(data)
              and record.get(prefix + "_blob") == blob(data), "REVIEW_SOURCE_BYTES_MISMATCH")
+    if owner_mode:
+        # The owner-only path NEVER purports to be an independent review.
+        proof = {"mode": "OWNER_ONLY_NONFINANCIAL",
+                 "owner_login": OWNER_LOGIN,
+                 "owner_comment_sha256": sha(body.encode()),
+                 "review_commit": source_sha}
+    else:
+        # Optional future contributors: an appointed reviewer must be real,
+        # distinct from the owner and the authentic exact-head GitHub approver.
+        pin = record.get("github_review_provenance", {})
+        designated = pin.get("reviewer_login") if isinstance(pin, dict) else None
+        need(isinstance(designated, str)
+             and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", designated))
+             and designated != OWNER_LOGIN
+             and type(pin.get("review_id")) is int and pin["review_id"] > 0
+             and bool(H64.fullmatch(str(pin.get("review_body_sha256", "")))),
+             "REAL_APPOINTED_INDEPENDENT_REVIEW_REFERENCE_REQUIRED")
+        review_reply = subprocess.run(
+            [gh, "api", "repos/Emaren/app-prodn/pulls/1110/reviews/" + str(pin["review_id"])],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=25, check=False)
+        need(review_reply.returncode == 0 and len(review_reply.stdout) <= 65536,
+             "AUTHENTIC_INDEPENDENT_GITHUB_REVIEW_FETCH_FAILED")
+        review = json.loads(review_reply.stdout)
+        need(review.get("id") == pin["review_id"] and review.get("state") == "APPROVED"
+             and review.get("commit_id") == source_sha
+             and review.get("user", {}).get("login") == designated
+             and review.get("user", {}).get("login") != comment.get("user", {}).get("login")
+             and review.get("html_url", "").startswith("https://github.com/Emaren/app-prodn/pull/1110#pullrequestreview-")
+             and isinstance(review.get("submitted_at"), str) and len(review["submitted_at"]) >= 20
+             and review["submitted_at"] <= str(comment.get("created_at", ""))
+             and review.get("author_association") in ("COLLABORATOR", "MEMBER", "OWNER"),
+             "ACTUAL_INDEPENDENT_EXACT_HEAD_APPROVAL_REQUIRED")
+        review_body = review.get("body")
+        need(isinstance(review_body, str) and len(review_body.encode()) <= 32768
+             and sha(review_body.encode()) == pin["review_body_sha256"],
+             "INDEPENDENT_REVIEW_BODY_PIN_DRIFT")
+        marker = "R25_START_V2_SOURCE_REVIEW_ACCEPT\n" + '```' + "json\n"
+        need(review_body.startswith(marker) and review_body.rstrip().endswith('```'),
+             "INDEPENDENT_REVIEW_VERDICT_FORMAT")
+        verdict = json.loads(review_body[len(marker):review_body.rfind("\n"+'```')])
+        need(verdict.get("schema") == REVIEW_VERDICT_SCHEMA and verdict.get("decision") == "ACCEPT"
+             and verdict.get("scope") == "RECOVERY_START_3031_V2_ONLY"
+             and verdict.get("source_sha") == source_sha,
+             "INDEPENDENT_VERDICT_SOURCE_SCOPE_DRIFT")
+        for prefix, data in (("operator", root), ("mac", mac)):
+            need(verdict.get(prefix + "_size") == len(data)
+                 and verdict.get(prefix + "_sha256") == sha(data)
+                 and verdict.get(prefix + "_blob") == blob(data),
+                 "INDEPENDENT_VERDICT_SOURCE_BYTES_DRIFT")
+        proof = {"mode": "OPTIONAL_INDEPENDENT_REVIEW",
+                 "review_id": review["id"], "reviewer_login": designated,
+                 "review_body_sha256": sha(review_body.encode()),
+                 "review_commit": source_sha,
+                 "review_submitted_at": review["submitted_at"]}
     ci = record.get("exact_head_ci", {})
     need(type(ci.get("run_id")) is int and ci["run_id"] > 0 and ci.get("head_sha") == source_sha
          and ci.get("conclusion") == "success" and ci.get("all_three_jobs_success") is True,
@@ -110,7 +186,7 @@ def review_comment(comment_id, expected_sha, source_sha, root, mac):
          and {j.get("name") for j in jobs["jobs"]} == expected_names
          and all(j.get("status") == "completed" and j.get("conclusion") == "success" for j in jobs["jobs"]),
          "EXACT_HEAD_FULL_THREE_JOB_CI_NOT_PASS")
-    return body, url
+    return body, url, proof
 
 def root_call(root, payload, phase):
     loader = "import base64;exec(compile(base64.b64decode(" + repr(base64.b64encode(root).decode()) + "),'reviewed-r25-c-recovery-v2','exec'))"
@@ -155,7 +231,7 @@ def main():
     root = fetch(args.review_commit, "scripts/r25_c_start_recovery_v2_root.py", args.operator_size,
                  args.operator_sha256, args.operator_blob)
     mac = Path(__file__).read_bytes()
-    body, url = review_comment(args.review_comment, args.review_comment_sha256, args.review_commit, root, mac)
+    body, url, review_proof = review_comment(args.review_comment, args.review_comment_sha256, args.review_commit, root, mac)
     # Prove this source commit also contains these exact reviewed Mac bytes.
     fetch(args.review_commit, "scripts/r25_c_start_recovery_v2_mac.py", len(mac), sha(mac), blob(mac))
     epath = Path(args.e_certificate).expanduser()
@@ -177,7 +253,7 @@ def main():
         "source_sha": args.review_commit, "operator_size": len(root),
         "operator_sha256": sha(root), "operator_blob": blob(root),
         "review_body": body, "review_body_sha256": args.review_comment_sha256,
-        "review_url": url, "e_certificate": certificate,
+        "review_url": url, "github_review_proof": review_proof, "e_certificate": certificate,
         "review_author": "Emaren", "review_issue_url": "https://api.github.com/repos/Emaren/app-prodn/issues/1110",
         "b_repair_b64": base64.b64encode(broot).decode(),
         "b_witness_b64": base64.b64encode(bwitness).decode()}
@@ -194,6 +270,13 @@ def main():
     nonce = secrets.token_hex(16)
     phrase = "RECOVER-START-R25-3031-V2 " + nonce + " " + planned["plan_sha256"]
     owner_approval(phrase)
+    # An independent review can be dismissed between PLAN and GUI consent.
+    # Live recheck BEFORE any mutating root call; a revoked review cannot
+    # authorize the one-use journal simply because it was approved earlier.
+    latest_body, latest_url, latest_proof = review_comment(
+        args.review_comment, args.review_comment_sha256, args.review_commit, root, mac)
+    need(latest_body == body and latest_url == url and latest_proof == review_proof,
+         "OWNER_OR_OPTIONAL_REVIEW_REVOKED_AFTER_GUI_CONSENT")
     payload.update({"plan_sha256": planned["plan_sha256"], "nonce": nonce, "owner_consent": phrase})
     result = root_call(root, payload, "start")
     need(result.get("status") == "STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT"

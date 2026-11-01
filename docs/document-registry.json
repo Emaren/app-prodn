@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "78bc551b9908d01b0c25d30b52599f542a860c23b24ae52613050c2f687b9390",
+      "sha256": "ce5ac2905faf4a5c296914786e2ccfe0945c8a9a17ba5562603c20f4e22cd1db",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
+      "sha256": "d40152abbe6840a8ec2e6dc2298c1f7bfadea17021a7ad08d7fb7241f049f454",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/r25-start-v2-recovery-20261101",
-    "commit": "97f046c39e481407af5efe403159de129ccc8d5c"
+    "branch": "codex/r25-owner-only-release-governance-20261101",
+    "commit": "3b77475404f66f0993ff4bf9b2877fac864b7fa5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
