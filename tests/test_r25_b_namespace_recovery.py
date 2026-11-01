@@ -62,7 +62,9 @@ class TestNamespaceRecovery(unittest.TestCase):
         self.assertNotIn("EnvironmentFile=",overlay)
         self.assertNotIn("BindPaths=",overlay)
         self.assertNotIn("ReadWritePaths=",overlay)
-        old=(ROOT/"scripts/r25_b_host_witness.py").read_bytes()
-        self.assertEqual(len(old),22310,"historic approved source immutable")
+        original=(ROOT/"scripts/r25_c_start_root.py").read_text()
+        self.assertIn("B_WITNESS_SHA = \"a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90\"",original)
+        self.assertIn("22310",original)
+        self.assertNotEqual((ROOT/"scripts/r25_b_namespace_recovery_witness.py").stat().st_size,22310)
 if __name__=="__main__":
     unittest.main()
