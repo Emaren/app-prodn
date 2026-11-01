@@ -7,7 +7,7 @@
     "cert": "mkcert -install && mkcert localhost 127.0.0.1 ::1",
     "dev": "npm run kill-ports && npm run cert && node server.js",
     "prebuild": "python3 scripts/generate_page_change_manifest.py && node scripts/write-build-version.mjs && prisma generate && node scripts/aoe2_release_prebuild_validation.mjs",
-    "build": "next build",
+    "build": "python3 -B scripts/patch_eslintrc_minimatch11.py && next build",
     "postbuild": "node scripts/prepare-runtime-cache.mjs",
     "prestart": "node scripts/prepare-runtime-cache.mjs",
     "start": "next start --hostname 127.0.0.1 --port 3030",
