@@ -177,10 +177,10 @@ def reviewed(payload):
          bool(H40.fullmatch(payload["operator_blob"])) and
          1000 < payload["operator_size"] < 65536,
          "EXACT_REVIEWED_SOURCE_PIN_REQUIRED")
-    need(re.fullmatch(r"https://github.com/Emaren/app-prodn/pull/1109#issuecomment-[0-9]+",
+    need(re.fullmatch(r"https://github.com/Emaren/app-prodn/pull/1110#issuecomment-[0-9]+",
                       payload["review_url"]) is not None, "REVIEW_RECORD_LOCATION")
     need(payload.get("review_author") == "Emaren"
-         and payload.get("review_issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1109",
+         and payload.get("review_issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1110",
          "AUTHENTICATED_MAC_REVIEW_METADATA_REQUIRED")
     ci = record.get("exact_head_ci", {})
     need(type(ci.get("run_id")) is int and ci["run_id"] > 0

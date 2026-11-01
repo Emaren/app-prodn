@@ -71,9 +71,9 @@ def review_comment(comment_id, expected_sha, source_sha, root, mac):
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=25, check=False)
     need(result.returncode == 0 and len(result.stdout) <= 65536, "AUTHENTICATED_REVIEW_FETCH_FAILED")
     comment = json.loads(result.stdout)
-    url = "https://github.com/Emaren/app-prodn/pull/1109#issuecomment-" + comment_id
+    url = "https://github.com/Emaren/app-prodn/pull/1110#issuecomment-" + comment_id
     need(comment.get("id") == int(comment_id) and comment.get("html_url") == url
-         and comment.get("issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1109"
+         and comment.get("issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1110"
          and comment.get("user", {}).get("login") == "Emaren", "REVIEW_AUTHOR_REPOSITORY_OR_COMMENT_DRIFT")
     body = comment.get("body", "")
     need(isinstance(body, str) and sha(body.encode()) == expected_sha, "REVIEW_BODY_PIN_DRIFT")
@@ -178,7 +178,7 @@ def main():
         "operator_sha256": sha(root), "operator_blob": blob(root),
         "review_body": body, "review_body_sha256": args.review_comment_sha256,
         "review_url": url, "e_certificate": certificate,
-        "review_author": "Emaren", "review_issue_url": "https://api.github.com/repos/Emaren/app-prodn/issues/1109",
+        "review_author": "Emaren", "review_issue_url": "https://api.github.com/repos/Emaren/app-prodn/issues/1110",
         "b_repair_b64": base64.b64encode(broot).decode(),
         "b_witness_b64": base64.b64encode(bwitness).decode()}
     # This is an actual, distinct, authenticated native B PRESTART/read-only plan.
