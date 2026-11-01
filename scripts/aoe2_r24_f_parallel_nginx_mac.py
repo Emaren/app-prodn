@@ -87,7 +87,10 @@ def g_witness(source_path, phase, before=None):
              result.get("old_web_service_pid_unchanged") is True and
              result.get("financial_units_and_wolo_8092_8093_unchanged") is True and
              result.get("original_release_lock_unchanged") is True and
-             result.get("new_candidate_source_build_dependency_3031_unchanged") is True,
+             result.get("new_candidate_source_build_identity_3031_unchanged") is True and
+             result.get("accepted_dependency_manifest_sha256") ==
+                  "5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d" and
+             result.get("dependency_bytes_rehashed_in_this_witness") is False,
              "G_REAL_LIVE_PUBLIC_SOURCE_STATIC_FINANCE_WITNESS_NOT_ACCEPTED")
     return p.stdout
 
