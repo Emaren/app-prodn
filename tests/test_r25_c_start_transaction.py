@@ -142,6 +142,43 @@ class StartTests(unittest.TestCase):
         self.assertIsNone(result["start_ticks"])
         self.assertNotIn("MainPID", result["properties"])
 
+    def test_exact_monitored_oneshot_timer_runtime_churn_is_stable(self):
+        # Actual HEL1 drift observed 2026-11-01: only these three timer
+        # oneshots change ExecStart runtime counters / last-run timestamps.
+        for unit, timer in self.s.MONITOR_ONESHOT_TIMERS.items():
+            def sample(ticks, command, config=b"same-reviewed-config"):
+                raw = ("Id=" + unit + "\nType=oneshot\nTriggeredBy=" + timer +
+                       "\nActiveState=inactive\nMainPID=0\n" +
+                       "ExecMainStartTimestampMonotonic=" + str(ticks) + "\n" +
+                       "ExecStart=" + command + "\n").encode()
+                with mock.patch.object(self.s, "run", side_effect=[raw, config]):
+                    return self.s.unit_state(unit)
+            first = sample(100, "path=/usr/bin/monitor; start_time=100")
+            later = sample(200, "path=/usr/bin/monitor; start_time=200")
+            self.assertEqual(first, later, unit)
+            self.assertNotIn("ExecStart", first["properties"])
+            self.assertNotIn("ExecMainStartTimestampMonotonic", first["properties"])
+            self.assertNotEqual(first, sample(300, "path=/usr/bin/monitor", b"changed-config"))
+            active = ("Id=" + unit + "\nType=oneshot\nTriggeredBy=" + timer +
+                      "\nActiveState=activating\nMainPID=0\nExecStart=foo\n").encode()
+            with mock.patch.object(self.s, "run", side_effect=[active, b"same-reviewed-config"]):
+                with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
+                    self.s.unit_state(unit)
+            wrong_timer = active.replace(b"ActiveState=activating", b"ActiveState=inactive").replace(
+                timer.encode(), b"unexpected.timer")
+            with mock.patch.object(self.s, "run", side_effect=[wrong_timer, b"same-reviewed-config"]):
+                with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
+                    self.s.unit_state(unit)
+
+    def test_unlisted_oneshot_keeps_strict_runtime_binding(self):
+        def sample(n):
+            raw = ("Id=wolo-example.service\nType=oneshot\nMainPID=0\n" +
+                   "ExecMainStartTimestampMonotonic=" + str(n) +
+                   "\nExecStart=last-run-" + str(n) + "\n").encode()
+            with mock.patch.object(self.s, "run", side_effect=[raw, b"unit config"]):
+                return self.s.unit_state("wolo-example.service")
+        self.assertNotEqual(sample(100), sample(200))
+
     def test_finance_argv_redacted_to_digest(self):
         raw = b"Id=wolo-example.service\nMainPID=0\nExecStart=secret-in-argv\n"
         with mock.patch.object(self.s, "run", side_effect=[raw, b"unit config"]):

@@ -53,6 +53,13 @@ OLD_BUILD_ID = "DQ2jMprNQ_Njq6QM8GHju"
 LOCK = Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 PREFIXES = ("aoe2", "wolo", "tokenchain", "traffic", "radio", "postgresql", "postgres")
+# Three existing monitored timer/oneshot jobs: never conflate their last execution
+# metadata with immutable command/config identity. All finance writers remain strict.
+MONITOR_ONESHOT_TIMERS = {
+    "aoe2-wolo-transfer-heartbeat.service": "aoe2-wolo-transfer-heartbeat.timer",
+    "traffic-watchdog.service": "traffic-watchdog.timer",
+    "wolo-mainnet-health.service": "wolo-mainnet-health.timer",
+}
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 
@@ -286,12 +293,23 @@ def ticks(pid):
     return int(raw[raw.rfind(")") + 2:].split()[19])
 
 def unit_state(unit):
-    props = "Id,ActiveState,MainPID,ExecMainStartTimestampMonotonic,User,WorkingDirectory,ExecStart,FragmentPath,DropInPaths"
+    props = "Id,Type,TriggeredBy,ActiveState,MainPID,ExecMainStartTimestampMonotonic,User,WorkingDirectory,ExecStart,FragmentPath,DropInPaths"
     data = run(["/usr/bin/systemctl", "show", unit, "--no-pager", "--property=" + props], maximum=65536)
     pairs = dict(line.split("=", 1) for line in data.decode().splitlines() if "=" in line)
     need(pairs.get("Id") == unit, "SYSTEMD_STATE_UNKNOWN")
-    # Never disclose finance argv: preserve its digest for exact continuity.
-    if "ExecStart" in pairs:
+    # Timer-triggered monitoring oneshots naturally refresh systemd last-run
+    # timestamp and ExecStart runtime counters. Only three EXACT named known
+    # timers may omit those volatile fields, and only while inactive.
+    # The loaded systemctl-cat hash and identity/Type/TriggeredBy remain pinned.
+    if unit in MONITOR_ONESHOT_TIMERS:
+        need(pairs.get("Type") == "oneshot"
+             and pairs.get("TriggeredBy") == MONITOR_ONESHOT_TIMERS[unit]
+             and pairs.get("ActiveState") == "inactive"
+             and pairs.get("MainPID") == "0", "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
+        pairs.pop("ExecMainStartTimestampMonotonic", None)
+        pairs.pop("ExecStart", None)
+    elif "ExecStart" in pairs:
+        # Never disclose protected finance argv: preserve digest for all others.
         pairs["ExecStart_sha256"] = sha(pairs.pop("ExecStart").encode())
     if unit.endswith(".service"):
         need(pairs.get("MainPID", "").isdecimal(), "SYSTEMD_SERVICE_PID_UNKNOWN")
