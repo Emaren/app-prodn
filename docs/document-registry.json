@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "82ae45fe9fb0ea2d6c86464465fe698b90b5ab59f5697e7f220c7f480308b1d3",
+      "sha256": "11deab0056b0367692a3b55ca2059e96ebc66ef8ccde05ce809d10c754c9d58e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2371,7 +2371,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-b4-browser-fix-20261101",
-    "commit": "db2a7281"
+    "commit": "db2a7281281e387fd404170b6475b0074f67401f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
