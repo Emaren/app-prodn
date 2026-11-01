@@ -643,6 +643,20 @@ def main() -> int:
         return 0
 
     if index_path.read_text(errors="replace") != expected_index:
+        # Diagnostics only: never self-heal, bypass, or mutate the canonical index
+        # in CI. Bounded diff tells reviewers whether the mismatch is generated
+        # metadata, input ordering, branch context, or actual source divergence.
+        import difflib
+        actual = index_path.read_text(errors="replace")
+        delta = list(difflib.unified_diff(
+            actual.splitlines(), expected_index.splitlines(),
+            fromfile="committed-doc-index", tofile="expected-doc-index",
+            lineterm=""
+        ))
+        print("DOC_INDEX_BOUNDED_DIFF_BEGIN")
+        for line in delta[:45]:
+            print(line[:260])
+        print("DOC_INDEX_BOUNDED_DIFF_END")
         raise ValueError(
             "generated repository documentation index drift; run "
             "python3 scripts/docs_v2_check.py --write"
