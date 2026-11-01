@@ -25,7 +25,8 @@ TARGET = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST = "ubuntu-4gb-hel1-11"
 BASE = Path("/etc/aoe2war/r24-parallel-web")
 JOURNAL = Path("/var/lib/aoe2war-r25-f-evidence-admission-v1")
-C_START = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v2")
+C_START = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v3")
+C_V2_FAILED = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v2")
 C_V1_FAILED = Path("/var/lib/aoe2war-r25-c-additive/start-3031-v1")
 C_V1_SOURCE = "166fbdd0733d6c5c6ecbc9d895058ad584df3331"
 B_WITNESS = Path("/etc/aoe2war/r24-parallel-web/approved-runtime-namespace-v2.py")
@@ -39,7 +40,7 @@ FILE_NAMES = {"engine": "scripts/aoe2_r24_f_parallel_nginx_cutover.py",
     "g": "scripts/aoe2_r25_f_g_parallel_observer.py",
     "admission_root": "scripts/r25_f_evidence_admission_root.py",
     "admission_mac": "scripts/r25_f_evidence_admission_mac.py",
-    "c_helper": "scripts/r25_c_start_recovery_v2_root.py"}
+    "c_helper": "scripts/r25_c_start_recovery_v3_root.py"}
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 
@@ -150,36 +151,74 @@ def native_poststart(helper):
     stable = {k: v for k, v in b.items() if k not in ("at", "report_sha256")}
     return b, sha(canonical(stable))
 
-def authenticated_v2_start_journals(helper, review):
-    """F requires both immutable consumed-v1 evidence and true v2 running proof."""
-    v1_started_raw = helper.root_file(C_V1_FAILED / "started.json", 131072, 0o600)
-    v1_hold_raw = helper.root_file(C_V1_FAILED / "hold.json", 32768, 0o600)
-    prior_started, prior_hold = parse(v1_started_raw), parse(v1_hold_raw)
-    need(prior_started.get("status") == "START_ENTERED_DO_NOT_RETRY"
-         and prior_started.get("plan", {}).get("source_sha") == C_V1_SOURCE
-         and prior_hold.get("status") == "HOLD_NO_REPLAY"
-         and prior_hold.get("reason_type") == "ProcessLookupError"
-         and prior_hold.get("public_cutover_authorized") is False,
-         "CONSUMED_V1_START_HISTORY_REQUIRED")
-    running_raw = helper.root_file(C_START / "running.json", 32768, 0o600)
+def authenticated_v3_start_journals(helper, review):
+    """Bind genuine v3 success to immutable failed v1/v2 receipts, never simulate a v2 success."""
+    need(helper.JOURNAL == C_START and helper.PREV_JOURNAL == C_V2_FAILED
+         and helper.V1_JOURNAL == C_V1_FAILED
+         and helper.V1_STARTED_SHA == "cbb0e36523991cf39a8b7562268141ed8fbde5109d60d59abdcf16923e783a53"
+         and helper.V2_HOLD_SHA == "1ad48d5a0419ed9c09e37b04653192386dbd044049b1553774668b23b6709863",
+         "EXACT_REVIEWED_C_V3_HELPER_REQUIRED")
+    history = (
+        (C_V1_FAILED / "started.json", "C_v1_started_file_sha256", helper.V1_STARTED_SHA, 131072),
+        (C_V1_FAILED / "hold.json", "C_v1_hold_file_sha256", helper.V1_HOLD_SHA, 32768),
+        (C_V2_FAILED / "started.json", "C_v2_started_file_sha256", helper.V2_STARTED_SHA, 131072),
+        (C_V2_FAILED / "staged.json", "C_v2_staged_file_sha256", helper.V2_STAGED_SHA, 32768),
+        (C_V2_FAILED / "hold.json", "C_v2_hold_file_sha256", helper.V2_HOLD_SHA, 32768),
+    )
+    receipts, contents = {}, {}
+    for path, key, expected, limit in history:
+        raw = helper.root_file(path, limit, 0o600)
+        need(sha(raw) == expected, "CONSUMED_V1_V2_RECEIPT_HASH_DRIFT")
+        receipts[key] = sha(raw)
+        contents[key] = parse(raw)
+    v1_started = contents["C_v1_started_file_sha256"]
+    v1_hold = contents["C_v1_hold_file_sha256"]
+    v2_started = contents["C_v2_started_file_sha256"]
+    v2_staged = contents["C_v2_staged_file_sha256"]
+    v2_hold = contents["C_v2_hold_file_sha256"]
+    need(v1_started.get("status") == "START_ENTERED_DO_NOT_RETRY"
+         and v1_started.get("plan", {}).get("source_sha") == C_V1_SOURCE
+         and v1_hold.get("status") == "HOLD_NO_REPLAY"
+         and v1_hold.get("reason_type") == "ProcessLookupError"
+         and v1_hold.get("public_cutover_authorized") is False
+         and v2_started.get("status") == "START_ENTERED_DO_NOT_RETRY"
+         and v2_started.get("public_cutover_authorized") is not True
+         and v2_staged.get("status") == "V2_REVIEWED_WALL_STAGED_NOT_STARTED"
+         and v2_staged.get("v2_witness_sha256") == helper.V2_WITNESS_SHA
+         and v2_staged.get("v2_dropin_sha256") == helper.V2_DROPIN_SHA
+         and v2_hold.get("status") == "HOLD_NO_REPLAY"
+         and v2_hold.get("reason_type") == "Hold"
+         and v2_hold.get("only_new_service_stop_attempted") is True
+         and v2_hold.get("public_cutover_authorized") is False
+         and not (C_V2_FAILED / "running.json").exists(),
+         "EXACT_CONSUMED_V1_V2_FAILURE_HISTORY_REQUIRED")
     started_raw = helper.root_file(C_START / "started.json", 131072, 0o600)
+    running_raw = helper.root_file(C_START / "running.json", 32768, 0o600)
     started, running = parse(started_raw), parse(running_raw)
+    plan = started.get("plan", {})
     need(started.get("status") == "START_ENTERED_DO_NOT_RETRY"
-         and started.get("plan", {}).get("source_sha") == review["lane_sources"]["C"]
-         and started.get("plan", {}).get("prior_v1_started_sha256") == sha(v1_started_raw)
-         and started.get("plan", {}).get("prior_v1_hold_sha256") == sha(v1_hold_raw)
-         and running.get("schema") == "aoe2war.r25.c.started-3031.v2"
+         and plan.get("schema") == "aoe2war.r25.c.start-plan.v3"
+         and plan.get("source_sha") == review["lane_sources"]["C"]
+         and plan.get("prior_v1_started_sha256") == receipts["C_v1_started_file_sha256"]
+         and plan.get("prior_v1_hold_sha256") == receipts["C_v1_hold_file_sha256"]
+         and plan.get("prior_v2_started_sha256") == receipts["C_v2_started_file_sha256"]
+         and plan.get("prior_v2_staged_sha256") == receipts["C_v2_staged_file_sha256"]
+         and plan.get("prior_v2_hold_sha256") == receipts["C_v2_hold_file_sha256"]
+         and plan.get("v3_dropin_sha256") == helper.V3_DROPIN_SHA
+         and plan.get("public_cutover_authorized") is False
+         and plan.get("financial_authorized") is False
+         and running.get("schema") == "aoe2war.r25.c.started-3031.v3"
          and running.get("status") == "STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT"
          and running.get("candidate_sha") == TARGET
          and running.get("candidate_uid") == 993
          and running.get("build_id") == helper.BUILD_ID
          and running.get("public_cutover_authorized") is False
+         and running.get("financial_authorized") is False
          and running.get("plan_sha256") == started.get("plan_sha256")
          and running.get("nonce") == started.get("nonce"),
-         "GENUINE_RECOVERY_V2_STARTED_JOURNAL_REQUIRED")
-    return running_raw, running, {"C_v1_started_file_sha256":sha(v1_started_raw),
-        "C_v1_hold_file_sha256":sha(v1_hold_raw),
-        "C_v2_started_file_sha256":sha(started_raw)}
+         "GENUINE_RECOVERY_V3_STARTED_JOURNAL_REQUIRED")
+    receipts["C_v3_started_file_sha256"] = sha(started_raw)
+    return running_raw, running, receipts
 
 def capture(payload):
     need(sys.platform == "linux" and os.geteuid() == 0 and socket.gethostname().split(".")[0] == HOST,
@@ -187,7 +226,7 @@ def capture(payload):
     review, files, helper, engine = sources(payload)
     helper.c_build()
     helper.e_rollback(payload["e_certificate"])
-    running_raw, running, recovery_receipts = authenticated_v2_start_journals(helper, review)
+    running_raw, running, recovery_receipts = authenticated_v3_start_journals(helper, review)
     b, stable = native_poststart(helper)
     need(b.get("candidate_pid") == running.get("candidate_pid")
          and b.get("candidate_start_ticks") == running.get("candidate_start_ticks"),
