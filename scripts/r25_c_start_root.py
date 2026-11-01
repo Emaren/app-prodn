@@ -8,6 +8,7 @@ Read-only plan authenticates the native repaired B PRESTART and accepted E FINAL
 from __future__ import annotations
 import argparse
 import base64
+import errno
 import fcntl
 import hashlib
 import json
@@ -21,6 +22,7 @@ import sys
 import time
 import types
 import urllib.request
+import urllib.error
 
 TARGET = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST = "ubuntu-4gb-hel1-11"
@@ -371,6 +373,53 @@ def seal(path, obj):
         os.fsync(f.fileno())
     fsync_directory(path.parent)
 
+def candidate_port_present():
+    for name in ("tcp", "tcp6"):
+        rows = (Path("/proc/net") / name).read_text().splitlines()
+        need(rows and "local_address" in rows[0], "SOCKET_TABLE_UNAVAILABLE")
+        for row in rows[1:]:
+            fields = row.split()
+            need(len(fields) >= 10, "SOCKET_TABLE_MALFORMED")
+            if fields[3] == "0A" and int(fields[1].split(":")[1], 16) == 3031:
+                return True
+    return False
+
+def ready_http(witness, pid, expected_ticks, deadline):
+    """Type=simple can become active before Next binds; retry only absence/IO."""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    while True:
+        state = witness.systemd(NEW_UNIT)
+        need(state.get("ActiveState") == "active" and state.get("MainPID") == str(pid),
+             "NEW_PID_CHANGED_WHILE_AWAITING_READINESS")
+        proc = witness.proc(pid)
+        need(proc["start_ticks"] == expected_ticks and proc["uid"] == UID
+             and proc["cwd"] == str(STAGE) and proc["exe"] == "/usr/bin/node",
+             "NEW_PROCESS_CHANGED_WHILE_AWAITING_READINESS")
+        group = "/system.slice/" + NEW_UNIT
+        need(state.get("ControlGroup") == group and
+             (Path("/proc") / str(pid) / "cgroup").read_text().splitlines() == ["0::" + group],
+             "NEW_CGROUP_CHANGED_WHILE_AWAITING_READINESS")
+        if candidate_port_present():
+            # A conflicting/wildcard/IPv6/other-owned listener is never retried.
+            socket_sha = witness.tcp3031(pid)
+            try:
+                with opener.open("http://127.0.0.1:3031/api/deployment-version", timeout=4) as response:
+                    need(response.status == 200, "NEW_VERSION_GET_NOT_200")
+                    data = response.read(8193)
+                    need(len(data) <= 8192, "NEW_VERSION_REPLY_UNBOUNDED")
+                    version = parse(data)
+                need(version.get("buildVersion") == VERSION, "NEW_HTTP_VERSION_DRIFT")
+                return socket_sha
+            except urllib.error.HTTPError:
+                raise Hold("NEW_VERSION_HTTP_ERROR")
+            except (urllib.error.URLError, TimeoutError, socket.timeout) as exc:
+                reason = getattr(exc, "reason", exc)
+                need(isinstance(reason, (TimeoutError, socket.timeout))
+                     or isinstance(reason, OSError) and reason.errno == errno.ECONNREFUSED,
+                     "NEW_VERSION_NONTRANSIENT_IO_FAILURE")
+        need(time.monotonic() < deadline, "NEW_READINESS_DEADLINE")
+        time.sleep(0.2)
+
 def start(payload):
     witness, plan = admit(payload)
     need(payload.get("plan_sha256") == sha(canonical(plan)), "APPROVED_PLAN_CHANGED")
@@ -421,16 +470,8 @@ def start(payload):
         expected_group = "/system.slice/" + NEW_UNIT
         need(state.get("ControlGroup") == expected_group
              and cgroup.splitlines() == ["0::" + expected_group], "NEW_PROCESS_CGROUP_DRIFT")
-        socket_sha = witness.tcp3031(pid)
+        socket_sha = ready_http(witness, pid, proc["start_ticks"], deadline)
         nft_sha = witness.nft_policy(UID)
-        # Only GETs here. B's distinct POSTSTART owns runtime denial/DB/cache proof.
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        with opener.open("http://127.0.0.1:3031/api/deployment-version", timeout=8) as response:
-            need(response.status == 200, "NEW_VERSION_GET_NOT_200")
-            data = response.read(8193)
-            need(len(data) <= 8192, "NEW_VERSION_REPLY_UNBOUNDED")
-            version = parse(data)
-        need(version.get("buildVersion") == VERSION, "NEW_HTTP_VERSION_DRIFT")
         need(root_file(STAGE / ".next/BUILD_ID", 256).strip().decode() == BUILD_ID,
              "NEW_BUILD_ID_DRIFT")
         need(protected_snapshot() == plan["protected_before"], "PROTECTED_CONTINUITY_FAILED")

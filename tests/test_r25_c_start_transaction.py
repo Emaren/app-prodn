@@ -276,6 +276,47 @@ class StartTests(unittest.TestCase):
             with self.assertRaisesRegex(self.s.Hold, "EXACT_HEAD_FULL_CI"):
                 self.s.reviewed(p)
 
+    def readiness_fixture(self):
+        witness = mock.Mock()
+        witness.systemd.return_value = {"ActiveState": "active", "MainPID": "555",
+            "ControlGroup": "/system.slice/" + self.s.NEW_UNIT}
+        witness.proc.return_value = {"start_ticks": 123, "uid": 993, "cwd": str(self.s.STAGE), "exe": "/usr/bin/node"}
+        witness.tcp3031.return_value = "a" * 64
+        response = mock.MagicMock()
+        response.__enter__.return_value.status = 200
+        response.__enter__.return_value.read.return_value = json.dumps({"buildVersion": self.s.VERSION}).encode()
+        opener = mock.Mock()
+        opener.open.return_value = response
+        return witness, opener
+
+    def test_active_pid_before_socket_then_real_readiness_succeeds(self):
+        witness, opener = self.readiness_fixture()
+        with mock.patch.object(self.s, "candidate_port_present", side_effect=[False, True]), mock.patch.object(self.s.time, "monotonic", return_value=0), mock.patch.object(self.s.time, "sleep") as sleep, mock.patch.object(self.s.Path, "read_text", return_value="0::/system.slice/" + self.s.NEW_UNIT + "\n"), mock.patch.object(self.s.urllib.request, "build_opener", return_value=opener):
+            actual = self.s.ready_http(witness, 555, 123, 30)
+        self.assertEqual(actual, "a" * 64)
+        self.assertEqual(sleep.call_count, 1)
+        witness.tcp3031.assert_called_once_with(555)
+
+    def test_readiness_deadline_and_conflicting_listener_fail_closed(self):
+        witness, opener = self.readiness_fixture()
+        with mock.patch.object(self.s, "candidate_port_present", return_value=False), mock.patch.object(self.s.time, "monotonic", return_value=31), mock.patch.object(self.s.Path, "read_text", return_value="0::/system.slice/" + self.s.NEW_UNIT + "\n"):
+            with self.assertRaisesRegex(self.s.Hold, "READINESS_DEADLINE"):
+                self.s.ready_http(witness, 555, 123, 30)
+        witness.tcp3031.side_effect = RuntimeError("R25_B_HOST_HOLD:3031_LISTENER_NOT_OWNED_BY_NEW_MAINPID")
+        with mock.patch.object(self.s, "candidate_port_present", return_value=True), mock.patch.object(self.s.Path, "read_text", return_value="0::/system.slice/" + self.s.NEW_UNIT + "\n"):
+            with self.assertRaisesRegex(RuntimeError, "NOT_OWNED"):
+                self.s.ready_http(witness, 555, 123, 30)
+
+    def test_readiness_connection_refused_is_retried_but_http_error_is_not(self):
+        witness, opener = self.readiness_fixture()
+        response = opener.open.return_value
+        opener.open.side_effect = [self.s.urllib.error.URLError(ConnectionRefusedError(61, "refused")), response]
+        # errno is the platform's ECONNREFUSED; do not assume a Linux literal on Mac.
+        opener.open.side_effect = [self.s.urllib.error.URLError(ConnectionRefusedError(self.s.errno.ECONNREFUSED, "refused")), response]
+        with mock.patch.object(self.s, "candidate_port_present", return_value=True), mock.patch.object(self.s.time, "monotonic", return_value=0), mock.patch.object(self.s.time, "sleep"), mock.patch.object(self.s.Path, "read_text", return_value="0::/system.slice/" + self.s.NEW_UNIT + "\n"), mock.patch.object(self.s.urllib.request, "build_opener", return_value=opener):
+            self.assertEqual(self.s.ready_http(witness, 555, 123, 30), "a" * 64)
+        self.assertEqual(opener.open.call_count, 2)
+
     def test_finance_census_includes_loaded_postgres_instance_and_template_without_show(self):
         names = [self.s.OLD_UNIT, self.s.NEW_UNIT, "postgresql.service", "postgresql@.service"]
         names += ["wolo-test-%d.timer" % n for n in range(22)]
@@ -307,7 +348,7 @@ class StartTests(unittest.TestCase):
             "WorkingDirectory": str(self.s.STAGE), "ProtectSystem": "strict", "ProtectHome": "yes",
             "NoNewPrivileges": "yes", "PrivateTmp": "yes", "CapabilityBoundingSet": "",
             "ControlGroup": "/system.slice/" + self.s.NEW_UNIT}
-        witness.systemd.side_effect = [state, {"ActiveState": "inactive", "MainPID": "0"}]
+        witness.systemd.return_value = state
         witness.ENV_ALLOW = {"safe"}
         witness.EXPECTED = {"safe": "true"}
         proc = {"uid": 993, "cwd": str(self.s.STAGE), "exe": "/usr/bin/node", "env": {"safe": "true"},
@@ -329,7 +370,7 @@ class StartTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             audit = Path(d)
             journal = audit / "once"
-            with mock.patch.object(self.s, "C_AUDIT", audit), mock.patch.object(self.s, "JOURNAL", journal), mock.patch.object(self.s, "admit", return_value=(witness, plan)), mock.patch.object(self.s, "protected_snapshot", return_value=plan["protected_before"]), mock.patch.object(self.s, "effective_unit"), mock.patch.object(self.s, "run") as run, mock.patch.object(self.s.Path, "read_text", read), mock.patch.object(self.s, "root_file", return_value=self.s.BUILD_ID.encode()), mock.patch.object(self.s.urllib.request, "build_opener", return_value=opener):
+            with mock.patch.object(self.s, "C_AUDIT", audit), mock.patch.object(self.s, "JOURNAL", journal), mock.patch.object(self.s, "admit", return_value=(witness, plan)), mock.patch.object(self.s, "protected_snapshot", return_value=plan["protected_before"]), mock.patch.object(self.s, "effective_unit"), mock.patch.object(self.s, "candidate_port_present", return_value=True), mock.patch.object(self.s, "run") as run, mock.patch.object(self.s.Path, "read_text", read), mock.patch.object(self.s, "root_file", return_value=self.s.BUILD_ID.encode()), mock.patch.object(self.s.urllib.request, "build_opener", return_value=opener):
                 try:
                     result = self.s.start(payload)
                     return result, run.call_args_list
