@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-c-start-transaction` at `66d87371e8c2499e533e443bbcea8a797b5f68ff`
+Implementation baseline: `codex/r25-c-start-transaction` at `e8b4f89cb548b701c44657e2821f17e917229a49`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
