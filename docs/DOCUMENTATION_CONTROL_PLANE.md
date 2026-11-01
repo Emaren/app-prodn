@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/r25-b4-ci-repair-20261101` at `02deb5244496e19138508022af61d867245e1ccf`
+Implementation baseline: `fix/r25-b4-ci-repair-20261101` at `ca9d759e492a6dab602f81296c16c9e1e3c92e78`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

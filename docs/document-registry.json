@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "85ce56dfed6131a7b16f69805ae5deb707928bb83bd799516070883b8f605fe9",
+      "sha256": "b6398ec272bdf87cf589e5d62c827f36c06a28264abe710682fc7ceead222b67",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2371,7 +2371,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/r25-b4-ci-repair-20261101",
-    "commit": "02deb5244496e19138508022af61d867245e1ccf"
+    "commit": "ca9d759e492a6dab602f81296c16c9e1e3c92e78"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
