@@ -27,7 +27,7 @@ B_WITNESS_SIZE = 22310
 B_WITNESS_SHA = "a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90"
 B_WITNESS_BLOB = "01cb34dcd23a1793fef62d1e49ba6e6f600e8b44"
 E_CERT_SHA = "9a4b8b441d87556bd0ed8b9fb50916aff91da7c6975096ae7e1edc6f84290b2d"
-REVIEWER = "/root/security_review"
+REVIEWERS = ("/root/security_review", "/root/start_fix_review")
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 
@@ -76,7 +76,7 @@ def review_comment(comment_id, expected_sha, source_sha, root, mac):
     record = json.loads(block[1])
     need(record.get("schema") == "aoe2war.r25.c.start-source-review.v1"
          and record.get("decision") == "ACCEPT" and record.get("scope") == "START_3031_ONLY"
-         and record.get("independent_review") is True and record.get("reviewer") == REVIEWER
+         and record.get("independent_review") is True and record.get("reviewer") in REVIEWERS
          and record.get("publisher_is_reviewer_identity") is False
          and record.get("source_sha") == source_sha,
          "GENUINE_INDEPENDENT_REVIEW_REQUIRED")

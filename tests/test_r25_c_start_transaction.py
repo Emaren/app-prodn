@@ -62,6 +62,24 @@ class StartTests(unittest.TestCase):
                 with self.assertRaises(self.s.Hold):
                     self.s.reviewed(p)
 
+    def test_only_actual_named_independent_reviewers_are_admitted(self):
+        self.assertEqual(set(self.s.INDEPENDENT_REVIEWERS),set(self.m.REVIEWERS))
+        for reviewer in ("/root/start_fix_review","/root","/root/arbitrary"):
+            p=self.payload()
+            record=json.loads(p["review_body"].split("```json\n")[1].split("\n```")[0])
+            record["reviewer"]=reviewer
+            p["review_body"]="R25_START_INDEPENDENT_REVIEW\n```json\n"+json.dumps(record)+"\n```"
+            p["review_body_sha256"]=self.s.sha(p["review_body"].encode())
+            if reviewer=="/root/start_fix_review":
+                self.s.reviewed(p)
+            else:
+                with self.assertRaisesRegex(self.s.Hold,"INDEPENDENT_SOURCE_REVIEW_REQUIRED"):
+                    self.s.reviewed(p)
+                with mock.patch.object(self.m.Path,"is_file",return_value=True),mock.patch.object(
+                        self.m.subprocess,"run",return_value=types.SimpleNamespace(returncode=0,stdout=json.dumps(self.comment(p)).encode())):
+                    with self.assertRaisesRegex(RuntimeError,"GENUINE_INDEPENDENT_REVIEW_REQUIRED"):
+                        self.m.review_comment("123",p["review_body_sha256"],"a"*40,b"root",b"mac")
+
     def test_review_rejects_duplicate_json_and_nonfinite(self):
         for raw in ('{"a":1,"a":2}', '{"a":NaN}'):
             with self.assertRaises(self.s.Hold):
@@ -143,22 +161,28 @@ class StartTests(unittest.TestCase):
         self.assertNotIn("MainPID", result["properties"])
 
     def test_exact_monitored_oneshot_timer_runtime_churn_is_stable(self):
-        # Actual HEL1 drift observed 2026-11-01: only these three timer
-        # oneshots change ExecStart runtime counters / last-run timestamps.
+        # Compare the saved first plan with a later genuine read-only plan;
+        # this is not a reconstruction of the unrecorded rejected second plan.
         for unit, timer in self.s.MONITOR_ONESHOT_TIMERS.items():
-            def sample(ticks, command, config=b"same-reviewed-config"):
+            def sample(ticks, command="/usr/bin/monitor", config=b"same-reviewed-config", result="success", reload="no"):
                 raw = ("Id=" + unit + "\nType=oneshot\nTriggeredBy=" + timer +
-                       "\nActiveState=inactive\nMainPID=0\n" +
+                       "\nActiveState=inactive\nMainPID=0\nNeedDaemonReload="+reload+"\nResult="+result+"\n" +
                        "ExecMainStartTimestampMonotonic=" + str(ticks) + "\n" +
-                       "ExecStart=" + command + "\n").encode()
+                       "ExecStart={ path="+command+" ; argv[]="+command+" ; ignore_errors=no ; " +
+                       "start_time=["+str(ticks)+"] ; stop_time=[] ; pid="+str(ticks)+" ; code=exited ; status=0 }\n").encode()
                 with mock.patch.object(self.s, "run", side_effect=[raw, config]):
                     return self.s.unit_state(unit)
-            first = sample(100, "path=/usr/bin/monitor; start_time=100")
-            later = sample(200, "path=/usr/bin/monitor; start_time=200")
+            first = sample(100)
+            later = sample(200)
             self.assertEqual(first, later, unit)
             self.assertNotIn("ExecStart", first["properties"])
             self.assertNotIn("ExecMainStartTimestampMonotonic", first["properties"])
-            self.assertNotEqual(first, sample(300, "path=/usr/bin/monitor", b"changed-config"))
+            self.assertIn("ExecStart_command_sha256",first["properties"])
+            self.assertNotEqual(first, sample(300, config=b"changed-config"))
+            self.assertNotEqual(first, sample(300, command="/usr/bin/changed"))
+            self.assertNotEqual(first, sample(300, result="exit-code"))
+            with self.assertRaisesRegex(self.s.Hold,"MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
+                sample(100,reload="yes")
             active = ("Id=" + unit + "\nType=oneshot\nTriggeredBy=" + timer +
                       "\nActiveState=activating\nMainPID=0\nExecStart=foo\n").encode()
             with mock.patch.object(self.s, "run", side_effect=[active, b"same-reviewed-config"]):
@@ -170,6 +194,13 @@ class StartTests(unittest.TestCase):
                 with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
                     self.s.unit_state(unit)
 
+    def test_unknown_effective_oneshot_command_shape_is_not_normalized(self):
+        unit="traffic-watchdog.service"
+        raw=("Id="+unit+"\nType=oneshot\nTriggeredBy=traffic-watchdog.timer\n"
+             "ActiveState=inactive\nMainPID=0\nNeedDaemonReload=no\nResult=success\nExecStart=unexpected\n").encode()
+        with mock.patch.object(self.s,"run",side_effect=[raw,b"config"]):
+            with self.assertRaisesRegex(self.s.Hold,"MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED"):
+                self.s.unit_state(unit)
     def test_unlisted_oneshot_keeps_strict_runtime_binding(self):
         def sample(n):
             raw = ("Id=wolo-example.service\nType=oneshot\nMainPID=0\n" +

@@ -53,13 +53,22 @@ OLD_BUILD_ID = "DQ2jMprNQ_Njq6QM8GHju"
 LOCK = Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 PREFIXES = ("aoe2", "wolo", "tokenchain", "traffic", "radio", "postgresql", "postgres")
-# Three existing monitored timer/oneshot jobs: never conflate their last execution
-# metadata with immutable command/config identity. All finance writers remain strict.
+# Exact existing timer/oneshot pairs observed in the saved/current read-only
+# plans. Their completed-run metadata is not loaded command/config authority.
+# Active jobs and all unlisted units retain strict runtime identity checks.
 MONITOR_ONESHOT_TIMERS = {
     "aoe2-wolo-transfer-heartbeat.service": "aoe2-wolo-transfer-heartbeat.timer",
+    "aoe2hdbets-bet-stake-reconcile.service": "aoe2hdbets-bet-stake-reconcile.timer",
+    "aoe2hdbets-challenge-reconcile.service": "aoe2hdbets-challenge-reconcile.timer",
+    "aoe2hdbets-replay-auto-recovery.service": "aoe2hdbets-replay-auto-recovery.timer",
+    "aoe2war-prewarm.service": "aoe2war-prewarm.timer",
+    "traffic-ingest.service": "traffic-ingest.timer",
+    "traffic-project-daily-rollups-aoe2hdbets.service": "traffic-project-daily-rollups-aoe2hdbets.timer",
+    "traffic-v2-forward-ledger-aoe2hdbets.service": "traffic-v2-forward-ledger-aoe2hdbets.timer",
     "traffic-watchdog.service": "traffic-watchdog.timer",
     "wolo-mainnet-health.service": "wolo-mainnet-health.timer",
 }
+INDEPENDENT_REVIEWERS = ("/root/security_review", "/root/start_fix_review")
 H64 = re.compile(r"[a-f0-9]{64}\Z")
 H40 = re.compile(r"[a-f0-9]{40}\Z")
 
@@ -149,7 +158,7 @@ def reviewed(payload):
          and record.get("decision") == "ACCEPT"
          and record.get("scope") == "START_3031_ONLY"
          and record.get("independent_review") is True
-         and record.get("reviewer") == "/root/security_review"
+         and record.get("reviewer") in INDEPENDENT_REVIEWERS
          and record.get("publisher_is_reviewer_identity") is False,
          "INDEPENDENT_SOURCE_REVIEW_REQUIRED")
     need(bool(H40.fullmatch(payload["source_sha"])) and
@@ -293,19 +302,25 @@ def ticks(pid):
     return int(raw[raw.rfind(")") + 2:].split()[19])
 
 def unit_state(unit):
-    props = "Id,Type,TriggeredBy,ActiveState,MainPID,ExecMainStartTimestampMonotonic,User,WorkingDirectory,ExecStart,FragmentPath,DropInPaths"
+    props = "Id,Type,TriggeredBy,NeedDaemonReload,Result,ActiveState,MainPID,ExecMainStartTimestampMonotonic,User,WorkingDirectory,ExecStart,FragmentPath,DropInPaths"
     data = run(["/usr/bin/systemctl", "show", unit, "--no-pager", "--property=" + props], maximum=65536)
     pairs = dict(line.split("=", 1) for line in data.decode().splitlines() if "=" in line)
     need(pairs.get("Id") == unit, "SYSTEMD_STATE_UNKNOWN")
-    # Timer-triggered monitoring oneshots naturally refresh systemd last-run
-    # timestamp and ExecStart runtime counters. Only three EXACT named known
-    # timers may omit those volatile fields, and only while inactive.
-    # The loaded systemctl-cat hash and identity/Type/TriggeredBy remain pinned.
+    # Completed timer oneshots naturally refresh last-run timestamps/counters.
+    # Only these exact inactive pairs normalize them. Preserve the effective
+    # loaded command, disk config, Result and every other native property.
     if unit in MONITOR_ONESHOT_TIMERS:
         need(pairs.get("Type") == "oneshot"
              and pairs.get("TriggeredBy") == MONITOR_ONESHOT_TIMERS[unit]
+             and pairs.get("NeedDaemonReload") == "no"
+             and type(pairs.get("Result")) is str and bool(pairs["Result"])
              and pairs.get("ActiveState") == "inactive"
              and pairs.get("MainPID") == "0", "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
+        command = pairs.get("ExecStart", "")
+        stable = re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*?;\s*ignore_errors=(?:yes|no)\s*;", command, re.S)
+        need(stable is not None and command.count("{ path=") == 1,
+             "MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED")
+        pairs["ExecStart_command_sha256"] = sha(stable.group(0).encode())
         pairs.pop("ExecMainStartTimestampMonotonic", None)
         pairs.pop("ExecStart", None)
     elif "ExecStart" in pairs:

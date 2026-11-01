@@ -1374,3 +1374,13 @@ The result remains `STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT`.
 Separate authentic B POSTSTART and independent C runtime security acceptance
 remain mandatory before F's separately authorized six-selector Nginx cutover.
 This START result is never public `LIVE_VERIFIED` or financial authority.
+
+The November 1 interrupted launch refused `APPROVED_PLAN_CHANGED` before any
+attempt journal or service call. The saved first plan and a later read-only
+plan show completed-run metadata changing for ten explicitly named existing
+timer/oneshot pairs; the rejected second plan was not retained. For only those
+exact pairs, admission requires inactive/MainPID0, matching timer, `oneshot`,
+and no pending daemon reload. It binds the loaded executable/arguments/error
+policy, on-disk configuration and native `Result`, while excluding completed
+execution timestamps/counters. A changed command, outcome, timer, active state
+or configuration still fails; all unlisted units remain strictly compared.
