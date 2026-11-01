@@ -43,7 +43,7 @@ jobs:
           test -z "$(git status --porcelain --untracked-files=no)"
           sha256sum tabd-*.json > tabd-digests.txt
           printf 'source=%s\ncandidate_only=true\ncertified=false\n' "$EXPECTED_SHA" > tabd-identity.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: renaissance-tabd-source-${{ github.run_id }}-${{ github.run_attempt }}
@@ -93,7 +93,7 @@ jobs:
           test -z "$(git status --porcelain --untracked-files=no)"
           printf 'source=%s\nbuild_id=%s\ncandidate_only=true\ncertified=false\n' \
             "$EXPECTED_SHA" "$(cat .next/BUILD_ID)" > tabd-built-identity.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: renaissance-tabd-built-${{ github.run_id }}-${{ github.run_attempt }}
