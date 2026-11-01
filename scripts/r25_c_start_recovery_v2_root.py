@@ -245,6 +245,67 @@ def b_prestart(payload):
                      "original_install_report_sha256": repair.INSTALL_SHA,
                      "runtime_env_sha256": sha(root_file(repair.OLD.parent / "readonly-runtime.env", 8192, 0o600))}
 
+def b_recovery_historical_admission(payload):
+    """V1 B evidence under failed 3031, before private-/run v2 is installed.
+
+    Original B positive PRESTART and repair.host_admission both require
+    ActiveState=inactive, which is impossible with the genuine v1 failed
+    systemd receipt. Do not fake the v1 PRESTART result or reset-failed here.
+    Preserve independent historical receipts, actual old isolation bytes,
+    finance network/database controls, and the candidate failed state.
+    New B v2 PRESTART runs natively AFTER reviewed v2 overlay installation.
+    """
+    repair = pinned_module(payload["b_repair_b64"], B_REPAIR_SHA, 14001, "reviewed_b_repair")
+    witness = pinned_module(payload["b_witness_b64"], B_WITNESS_SHA, 22310, "reviewed_b_witness")
+    roots = repair.original_receipt()
+    rec = repair.json_root(repair.JOURNAL / "receipt.json")
+    need(rec.get("status") == "WITNESS_ONLY_REPAIR_COMPLETE_NOT_PRESTART_AUTHORITY"
+         and rec.get("report_sha256") == repair.canonical_sha(rec)
+         and rec.get("report_sha256") == B_PHYSICAL_REPAIR_REPORT_SHA
+         and rec.get("installed_witness_sha256") == B_WITNESS_SHA
+         and rec.get("original_install_report_sha256") == repair.INSTALL_SHA
+         and (rec.get("original_started_file_sha256"), rec.get("original_receipt_file_sha256")) == roots
+         and sha(repair.trusted(repair.JOURNAL / "old-witness.py", mode=0o600)) == repair.OLD_SHA
+         and rec.get("new_service_started") is False
+         and rec.get("public_cutover_authorized") is False
+         and rec.get("no_installer_rerun") is True, "AUTHENTIC_B_HISTORICAL_RECEIPTS_REQUIRED")
+    need(repair.pwd.getpwnam(repair.USER).pw_uid == UID, "B_DEDICATED_UID_CHANGED")
+    for file, expected, mode in ((repair.GUARD, repair.GUARD_SHA, None),
+                                (repair.DROPIN, repair.DROPIN_SHA, 0o644),
+                                (repair.BASE, repair.BASE_SHA, 0o644),
+                                (repair.OLD, B_WITNESS_SHA, 0o644)):
+        raw = (repair.trusted(file, mode=mode, max_size=32768)
+               if mode is not None else repair.trusted(file, max_size=8192))
+        need(sha(raw) == expected, "B_INSTALLED_SOURCE_PIN_DRIFT")
+    old, new = witness.systemd(OLD_UNIT), witness.systemd(NEW_UNIT)
+    need(old.get("ActiveState") == "active" and old.get("MainPID") == str(OLD_PID)
+         and Path("/proc/2625090").is_dir(),
+         "B_ORIGINAL_WEB_FINANCIAL_PID_CHANGED")
+    need(new.get("LoadState") == "loaded" and new.get("ActiveState") == "failed"
+         and new.get("MainPID") == "0" and new.get("User") == USER
+         and new.get("WorkingDirectory") == str(STAGE), "B_V1_FAILED_UNIT_STATE_REQUIRED")
+    witness.validate_filesystem_wall(new)  # Original installed B wall is still pinned.
+    effective = effective_unit(witness)
+    repair.port_free()
+    need(repair.C_PATH.is_file() and not repair.C_PATH.is_symlink()
+         and repair.C_PATH.read_text().strip() == repair.C_BUILD,
+         "B_C_SEALED_BUILD_DRIFT")
+    need(witness.c_archive_source_identity() == TARGET, "B_STAGE_SOURCE_DRIFT")
+    nft = witness.nft_policy(UID)
+    db = witness.db_proof(witness.root_db_envfile(), UID)
+    need(db.get("role") == "aoe2war_r25_web_ro"
+         and db.get("server_transaction_ro") is True,
+         "B_SELECT_ONLY_DATABASE_ROLE_UNPROVEN")
+    return {"status":"PASS_B_HISTORICAL_V1_RECEIPTS_AND_FAILED_UNIT_PREPARED_FOR_V2",
+            "original_install_report_sha256":repair.INSTALL_SHA,
+            "B_repair_report_sha256":rec["report_sha256"],
+            "original_started_sha256":roots[0],"original_receipt_sha256":roots[1],
+            "old_web_pid":OLD_PID,"new_uid":UID,"target_sha":TARGET,
+            "old_wall_effective_sha256":effective, "pg_role":db["role"],
+            "pg_proof_sha256":sha(canonical(db)), "kernel_uid_egress_sha256":nft,
+            "positive_v2_prestart_executed":False, "public_cutover_authorized":False,
+            "financial_authorized":False}
+
 def c_build():
     source = root_file(C_AUDIT / "SOURCE_STAGED.json", mode=0o600)
     built = root_file(C_AUDIT / "BUILD_STAGED.json", mode=0o600)
@@ -401,13 +462,13 @@ def admit(payload):
          and unit.get("Result") == "exit-code" and not candidate_port_present(),
          "NEW_SERVICE_NOT_FAILED_OR_3031_PRESENT")
     approved_v2_sources(payload)
-    witness, b = b_prestart(payload)
+    b = b_recovery_historical_admission(payload)
     c = c_build()
     e = e_rollback(payload["e_certificate"])
     snapshot = protected_snapshot()
     directory(C_AUDIT)
     need(stat.S_IMODE(C_AUDIT.stat().st_mode) == 0o700, "C_AUDIT_NOT_PRIVATE")
-    return witness, {"schema": "aoe2war.r25.c.start-plan.v2", "candidate_sha": TARGET,
+    return None, {"schema": "aoe2war.r25.c.start-plan.v2", "candidate_sha": TARGET,
         "prior_v1_started_sha256": sha(root_file(PREV_JOURNAL / "started.json", 131072, 0o600)),
         "prior_v1_hold_sha256": sha(root_file(PREV_JOURNAL / "hold.json", 32768, 0o600)),
         "v2_witness_sha256": V2_WITNESS_SHA, "v2_dropin_sha256": V2_DROPIN_SHA,
