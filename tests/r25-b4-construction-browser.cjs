@@ -27,7 +27,7 @@ async function run(){
    await page.getByRole("heading",{name:"Kingdom Construction · Source Graph"}).waitFor();
    const graph=page.getByRole("img",{name:/Graph of planned named OS responsibilities/});
    assert.equal(await graph.count(),1,"accessible SVG graph");
-   assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED").count(),15,"all nodes UNKNOWN");
+   assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED",{exact:true}).count(),15,"all nodes UNKNOWN");
    assert.equal(await page.getByText(/Plans are nonexecuting/).count(),1,"nonexecution status");
    assert.equal(await page.locator("main").getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0,"forbidden action");
    const layout=await page.evaluate(()=>({viewport:innerWidth,doc:document.documentElement.scrollWidth}));
@@ -63,7 +63,7 @@ async function run(){
    assert.equal(res.status(),200,"signed admin response");
    await page.getByRole("heading",{name:/System Composer · Reviewed Dry-Run/}).waitFor();
    assert.equal(new URL(page.url()).pathname,"/admin/system-composer");
-   assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED").count(),15);
+   assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED",{exact:true}).count(),15);
    assert.equal(await page.getByText(/Plans are nonexecuting/).count(),1);
    assert.equal(await page.locator("main").getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0);
    assert.deepEqual(errors,[]);
