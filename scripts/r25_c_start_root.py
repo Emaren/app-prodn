@@ -330,7 +330,9 @@ def protected_snapshot():
                  "POSTGRESQL_LISTENER_UNAVAILABLE")
         else:
             need(len(rows) == 1, "PROTECTED_LISTENER_NOT_UNIQUE")
-        ports[str(port)] = sorted(rows)
+        # Queue counters change under legitimate traffic. Bind stable listener
+        # address, process/UID, socket inode and cgroup, never backlog counters.
+        ports[str(port)] = sorted(" ".join(row.split()[3:]) for row in rows)
     return {"units": states, "template_config_sha256": templates,
             "unit_names": names, "protected_sockets": ports}
 
