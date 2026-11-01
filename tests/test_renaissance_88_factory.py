@@ -27,10 +27,14 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
         self.assertIsNone(p["score"])
-    def test_b4_graph_is_in_public_index_but_outside_legacy_88_factory(self):
+    def test_b4_requires_separate_assurance_without_rewriting_historical_88(self):
         index=json.loads((ROOT/"config/kingdom-index-routes.json").read_text())
-        self.assertEqual(len(index),89)
-        self.assertEqual(sum(r.get("href")=="/kingdom-construction" for r in index),1)
+        inventory=json.loads((ROOT/"config/kingdom-index-inventory.json").read_text())
+        self.assertEqual(len(index),88)
+        self.assertNotIn("/kingdom-construction",[r["href"] for r in index])
+        graph=[r for r in inventory["pages"] if r["href"]=="/kingdom-construction"]
+        self.assertEqual(len(graph),1)
+        self.assertEqual(graph[0]["scope"],"excluded-static")
         self.assertNotIn("/kingdom-construction",[r["route"] for r in self.plan["routes"]])
 
     def test_canonical_redirects_are_determined_from_source_not_guessed(self):
