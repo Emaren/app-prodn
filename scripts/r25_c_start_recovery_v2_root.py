@@ -182,6 +182,22 @@ def reviewed(payload):
     need(payload.get("review_author") == "Emaren"
          and payload.get("review_issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1110",
          "AUTHENTICATED_MAC_REVIEW_METADATA_REQUIRED")
+    # Root checks the exact review identity and provenance digest admitted by
+    # the SHA-reviewed Mac launcher. Merely setting independent_review=true in
+    # the owner-authored comment is no longer sufficient. The actual GitHub
+    # author and live APPROVED state are verified by the Mac at invocation.
+    pin = record.get("github_review_provenance", {})
+    proof = payload.get("github_review_proof", {})
+    need(isinstance(pin, dict) and isinstance(proof, dict)
+         and type(pin.get("review_id")) is int and pin["review_id"] > 0
+         and proof.get("review_id") == pin["review_id"]
+         and pin.get("reviewer_login") == proof.get("reviewer_login") == "Timed-AutoMaton"
+         and bool(H64.fullmatch(str(pin.get("review_body_sha256", ""))))
+         and proof.get("review_body_sha256") == pin["review_body_sha256"]
+         and proof.get("review_commit") == payload["source_sha"]
+         and isinstance(proof.get("review_submitted_at"), str)
+         and len(proof["review_submitted_at"]) >= 20,
+         "AUTHENTIC_INDEPENDENT_GITHUB_REVIEW_PROOF_REQUIRED")
     ci = record.get("exact_head_ci", {})
     need(type(ci.get("run_id")) is int and ci["run_id"] > 0
          and ci.get("head_sha") == payload["source_sha"]
