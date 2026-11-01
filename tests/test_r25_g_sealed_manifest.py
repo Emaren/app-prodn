@@ -71,10 +71,11 @@ class AcceptedManifest(unittest.TestCase):
             self.verify(contents,tree,source_sha,build_sha)
 
 class NativeUnits(unittest.TestCase):
-    def monitor(self,stamp,command="/usr/bin/monitor",state="inactive",reload="no"):
+    def monitor(self,stamp,command="/usr/bin/monitor",state="inactive",reload="no",result="success"):
         unit="wolo-mainnet-health.service"
         raw=("Id="+unit+"\nType=oneshot\nTriggeredBy=wolo-mainnet-health.timer\n"
              "MainPID=0\nActiveState="+state+"\nNeedDaemonReload="+reload+"\n"
+             "Result="+result+"\n"
              "FragmentPath=/etc/systemd/system/"+unit+"\nDropInPaths=\n"
              "ExecMainStartTimestampMonotonic="+str(stamp)+"\n"
              "ExecStart={ path="+command+" ; argv[]="+command+" ; ignore_errors=no ; "
@@ -85,6 +86,7 @@ class NativeUnits(unittest.TestCase):
     def test_monitor_run_metadata_changes_without_losing_effective_command(self):
         self.assertEqual(self.monitor(100),self.monitor(200))
         self.assertNotEqual(self.monitor(100),self.monitor(100,command="/usr/bin/changed"))
+        self.assertNotEqual(self.monitor(100),self.monitor(100,result="exit-code"))
 
     def test_active_or_unloaded_monitor_fails_closed(self):
         for kw in ({"state":"activating"},{"reload":"yes"}):

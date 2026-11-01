@@ -37,6 +37,13 @@ PAGES=("/","/lobby","/bets","/live-games","/war-chest")
 FINANCE_PREFIXES=("aoe2","wolo","tokenchain","traffic","radio","postgresql","postgres")
 MONITOR_ONESHOT_TIMERS={
     "aoe2-wolo-transfer-heartbeat.service":"aoe2-wolo-transfer-heartbeat.timer",
+    "aoe2hdbets-bet-stake-reconcile.service":"aoe2hdbets-bet-stake-reconcile.timer",
+    "aoe2hdbets-challenge-reconcile.service":"aoe2hdbets-challenge-reconcile.timer",
+    "aoe2hdbets-replay-auto-recovery.service":"aoe2hdbets-replay-auto-recovery.timer",
+    "aoe2war-prewarm.service":"aoe2war-prewarm.timer",
+    "traffic-ingest.service":"traffic-ingest.timer",
+    "traffic-project-daily-rollups-aoe2hdbets.service":"traffic-project-daily-rollups-aoe2hdbets.timer",
+    "traffic-v2-forward-ledger-aoe2hdbets.service":"traffic-v2-forward-ledger-aoe2hdbets.timer",
     "traffic-watchdog.service":"traffic-watchdog.timer",
     "wolo-mainnet-health.service":"wolo-mainnet-health.timer",
 }
@@ -137,7 +144,7 @@ def listening_socket(port):
 def show(unit):
     props=["Id","ActiveState","MainPID","ExecMainStartTimestampMonotonic",
            "User","WorkingDirectory","ExecStart","FragmentPath","DropInPaths",
-           "Type","TriggeredBy","NeedDaemonReload"]
+           "Type","TriggeredBy","NeedDaemonReload","Result"]
     config=digest(run(["/usr/bin/systemctl","cat",unit,"--no-pager"],timeout=12))
     if re.search(r"@\.(?:service|timer|socket)$",unit):
         return {"template":True,"unit_config_sha256":config}
@@ -161,9 +168,10 @@ def show(unit):
     if unit in MONITOR_ONESHOT_TIMERS:
         need(obj.get("Type")=="oneshot" and obj.get("TriggeredBy")==MONITOR_ONESHOT_TIMERS[unit]
              and obj.get("NeedDaemonReload")=="no" and obj.get("ActiveState")=="inactive"
+             and type(obj.get("Result")) is str and bool(obj["Result"])
              and pid==0,"MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
         command=obj.get("ExecStart","")
-        stable=re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*?;\s*ignore_errors=(?:yes|no)\s*;",command,re.S)
+        stable=re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*;\s*ignore_errors=(?:yes|no)\s*;\s*(?=start_time=)",command,re.S)
         need(stable is not None and command.count("{ path=")==1,
              "MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED")
         obj["ExecStart_command_sha256"]=digest(stable.group(0).encode())
