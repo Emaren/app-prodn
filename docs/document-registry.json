@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e49889cb511a0e8d43815b3723505950a5960c2b34a651a4d3c08babe5e3c73d",
+      "sha256": "2f78e5148f2e54f71e91f684f59115a10c6d2a4c3e781261f399756ab41f7ceb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-f-evidence-admission",
-    "commit": "4f56c6da97e52a75d8a8cdaa3e845686911c4cd8"
+    "commit": "2f02d7d43cc6e9923e535096f3ef9479acda0cf1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
