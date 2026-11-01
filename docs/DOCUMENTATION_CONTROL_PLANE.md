@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-f-evidence-admission` at `4b3ac5fc7d98ea895b712c8482b6f843545c432a`
+Implementation baseline: `codex/r25-f-evidence-admission` at `b972a480215b6e73d5fa6316a11858fee401ae1c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
