@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **99**
+- Authoritative repository documents: **102**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,17 +36,17 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 61
-- `runbook`: 19
+- `reference`: 62
+- `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 79
+- `active`: 80
 - `draft`: 6
 - `generated`: 1
 - `historical`: 12
-- `superseded`: 1
+- `superseded`: 3
 
 ## Documents
 
@@ -57,6 +57,8 @@ This page is generated from the validated front matter in this repository. Cross
 | [app-prodn Product State](../PRODUCT_STATE.md) | `historical` | `historical` | `historical-evidence` |
 | [app-prodn](../README.md) | `reference` | `active` | `repository-entrypoint` |
 | [AoE2HDBets](../WORKSPACE.md) | `reference` | `active` | `workspace-reference` |
+| [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `superseded` | `operational-procedure` |
+| [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [AoE2WAR Betting Constitution](BETTING_CONSTITUTION.md) | `reference` | `active` | `betting-constitution-ratification-candidate` |
@@ -150,6 +152,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands
 
