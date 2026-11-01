@@ -1329,3 +1329,58 @@ aoe2war finish --preserve-context-history
 This does **not** bypass the release lane. It still captures and verifies fresh context, runs the normal gate/deploy/certification/audit/Doctor sequence, and leaves Wolo observe-only. It disables only context-archive pruning for that finish transaction. Independent cache-only storage retention and certified rollback retention remain governed by their existing policies.
 
 The dry-run reports `evidence_retention` and `automatic_mutation_boundaries`, including whether context pruning and cache retention are expected. Use `--preserve-context-history` when historical context itself is part of the evidence being protected; do not use it as a substitute for Storage OS or Recovery OS.
+
+## R25 isolated 3031 START admission
+
+The frozen R25 archive is `0cee3c836c4b0760478280c145e02e81e470ce0e`,
+staged BUILD_ID `-dJl5VyecHu5BKNvfErJe`. Its source/build and E prior-Next
+rollback are already physically sealed. Preserve those bytes and the accepted
+E campaign `r25-e-20261031T204421Z-276babc395a0a07a32c3`; do not rebuild,
+recopy, or repeat their full-tree scans for startup.
+
+`scripts/r25_c_start_owner_mac.py` and `scripts/r25_c_start_root.py` implement
+a distinct one-use START transaction. The older C `--candidate-start` remains
+closed and must not be used: its positive-runtime predecessor cannot exist
+before startup. The new transaction admits the genuine repaired B **PRESTART**,
+which explicitly has `release_authorized=false`. It authenticates the original
+B installation and atomic repair journals, executes the installed source-pinned
+native B preflight, verifies the exact C root receipts/manifest and accepted E
+certificate/copy receipt, then reads old PID/start ticks, PostgreSQL and financial
+units, protected sockets, effective loaded unit, guard, read-only role and nft
+policy. Timers/sockets and PostgreSQL template/instance units retain their actual
+types; no invented MainPID is assigned to a timer or unit template.
+
+Admission requires an actual independent review comment on #1084, fetched through
+the owner's authenticated GitHub CLI. Its canonical review manifest pins both
+root and Mac source SHA256, byte size, Git blob and immutable commit. The comment
+publisher is the owner's GitHub account; the independent Codex reviewer task is
+identified separately. No placeholder review or empty approval hash authorizes
+execution. Full exact-head CI must pass before an owner executable is issued.
+
+The Mac first executes an authenticated read-only plan containing actual native
+B PRESTART. Only afterward can a separate typed native GUI authorize the exact
+plan digest and random nonce for **3031 START only**. The root rechecks the plan,
+holds the existing release lock without changing its bytes, exclusively creates
+and fsyncs `start-3031-v1/started.json`, and starts only
+`aoe2hdbets-web-r24.service`. No daemon reload, old-service restart, Nginx,
+PostgreSQL, Wolo or financial write is performed. Any start failure, including
+a timeout after possible service activation, stops only the new service and
+preserves the no-replay HOLD journal.
+
+Successful startup checks the real new PID, all UID993 fields, exact Node path,
+systemd cgroup, one owned loopback 3031 socket, effective sandbox, safe environment,
+GET version and BUILD_ID, plus unchanged original 3030/finance/PostgreSQL/Wolo.
+The result remains `STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT`.
+Separate authentic B POSTSTART and independent C runtime security acceptance
+remain mandatory before F's separately authorized six-selector Nginx cutover.
+This START result is never public `LIVE_VERIFIED` or financial authority.
+
+The November 1 interrupted launch refused `APPROVED_PLAN_CHANGED` before any
+attempt journal or service call. The saved first plan and a later read-only
+plan show completed-run metadata changing for ten explicitly named existing
+timer/oneshot pairs; the rejected second plan was not retained. For only those
+exact pairs, admission requires inactive/MainPID0, matching timer, `oneshot`,
+and no pending daemon reload. It binds the loaded executable/arguments/error
+policy, on-disk configuration and native `Result`, while excluding completed
+execution timestamps/counters. A changed command, outcome, timer, active state
+or configuration still fails; all unlisted units remain strictly compared.

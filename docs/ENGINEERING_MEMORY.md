@@ -3576,3 +3576,39 @@ The clean canonical Wolo source checkout `40a01cc8` contains C4 and C5,
 but this source merge is **not evidence of VPS binary promotion**. The
 current VPS settlement implementation remains on its own protected
 source/build authority pending explicit financial certification.
+
+
+## 2026-11-01 — R25 owner sole release-governance correction
+
+The product owner explicitly rescinded the inadvertent appointment of
+`Timed-AutoMaton` (Moldy Boars, an AoE2 player with historic repository
+access) as a mandatory security reviewer. The person never agreed to
+participate in security reviews. **GitHub collaborator or WRITE permission
+does not constitute appointment, independence, acceptance or authority.**
+There is no mandatory third-party approval for the owner's narrowly
+nonfinancial isolated R25 3031 START.
+
+The owner explicitly selected an OWNER_ONLY_NONFINANCIAL policy for this
+release. The corrected C v2 launcher and HEL1 root verifier require the
+authenticated Emaren-authored `R25_START_V2_OWNER_NONFINANCIAL_ACCEPT`
+comment on existing PR #1110, exact root/Mac size-SHA256-Git blob and the
+full matching GitHub 3/3 CI. The machine-checkable owner record declares
+`independent_review:false`, `nonfinancial_only:true`,
+`public_cutover_authorized:false`, `financial_authorized:false` and
+`owner_accepts_no_independent_review:true`. It is **never labeled an
+independent review**, and cannot authorize a public cutover or money movement.
+The Mac fetches this owner decision again *after* the independent GUI START
+consent, before any host write. The HEL1 root repeats all identity and
+source checks. Real B/C/E security admission, zero replay of v1 journal,
+uid993, private finance confinement, namespace, E rollback, fresh 25 GiB
+APFS floor, old 3030 PID continuity and explicit START nonce still apply.
+
+The old independent-review verification source remains an *optional* future
+path only for genuinely owner-appointed, available developers who submit
+real external GitHub approval. No named collaborator is automatically a
+required security officer. Owner may initiate the optional path in a
+future separately authorized policy change. This rule changes only A01
+nonfinancial source admission. WOLO custody, funded canary, signed reserve,
+third-party financial evidence and physical acceptance standards are
+**unchanged**. AI may implement, test and present code, but must never
+forge owner account intent, owner GUI consent or production receipts.

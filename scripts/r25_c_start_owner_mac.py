@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+"""Original Mac: authenticated read-only plan, distinct GUI consent, one START.
+
+Requires an actual independently published review comment of these exact bytes.
+No placeholder approval is supplied; source CI and native B repair/PRESTART must
+already pass. C/E sealed artifacts are consumed, never rebuilt or recopied.
+"""
+import argparse
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import shlex
+import subprocess
+import sys
+import urllib.request
+
+B_ROOT_REF = "4c9d2ec8029bd97f4307823fa1971ef326527adc"
+B_ROOT_SIZE = 14001
+B_ROOT_SHA = "c4301d6faa0d3b9f763168f3883473425c8f2ca6f9b3e6ea03bdfbc079f6e749"
+B_ROOT_BLOB = "5f66cdb87ee44fd91ba2c9e5c1c3e362e46d4f5c"
+B_WITNESS_REF = "73635d328ee7c9c96a5c2e447cc08df8eae2a085"
+B_WITNESS_SIZE = 22310
+B_WITNESS_SHA = "a72f96668bc6beeaacc90d089cbd7b3a3815caca7b69d4ef7e7be68da6c6ef90"
+B_WITNESS_BLOB = "01cb34dcd23a1793fef62d1e49ba6e6f600e8b44"
+E_CERT_SHA = "9a4b8b441d87556bd0ed8b9fb50916aff91da7c6975096ae7e1edc6f84290b2d"
+REVIEWERS = ("/root/security_review", "/root/start_fix_review")
+H40 = re.compile(r"[a-f0-9]{40}\Z")
+H64 = re.compile(r"[a-f0-9]{64}\Z")
+
+def hold(why):
+    raise RuntimeError("R25_C_OWNER_START:" + why)
+
+def need(ok, why):
+    if not ok:
+        hold(why)
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+def canonical(obj):
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+
+def blob(data):
+    return hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
+
+def fetch(ref, path, size, digest, gitblob):
+    need(bool(H40.fullmatch(ref)) and bool(H64.fullmatch(digest))
+         and bool(H40.fullmatch(gitblob)) and 0 < size < 65536, "SOURCE_PIN_FORMAT")
+    url = "https://raw.githubusercontent.com/Emaren/app-prodn/" + ref + "/" + path
+    with urllib.request.urlopen(url, timeout=25) as response:
+        data = response.read(size + 1)
+    need(len(data) == size and sha(data) == digest and blob(data) == gitblob,
+         "IMMUTABLE_SOURCE_SIZE_SHA256_BLOB_DRIFT")
+    return data
+
+def review_comment(comment_id, expected_sha, source_sha, root, mac):
+    need(comment_id.isdecimal() and bool(H64.fullmatch(expected_sha)), "REVIEW_COMMENT_PIN_FORMAT")
+    gh = next((p for p in ("/opt/homebrew/bin/gh", "/usr/local/bin/gh") if Path(p).is_file()), None)
+    need(gh is not None, "EXISTING_AUTHENTICATED_GITHUB_CLI_REQUIRED")
+    result = subprocess.run([gh, "api", "repos/Emaren/app-prodn/issues/comments/" + comment_id],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=25, check=False)
+    need(result.returncode == 0 and len(result.stdout) <= 65536, "AUTHENTICATED_REVIEW_FETCH_FAILED")
+    comment = json.loads(result.stdout)
+    url = "https://github.com/Emaren/app-prodn/pull/1084#issuecomment-" + comment_id
+    need(comment.get("id") == int(comment_id) and comment.get("html_url") == url
+         and comment.get("issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1084"
+         and comment.get("user", {}).get("login") == "Emaren", "REVIEW_AUTHOR_REPOSITORY_OR_COMMENT_DRIFT")
+    body = comment.get("body", "")
+    need(isinstance(body, str) and sha(body.encode()) == expected_sha, "REVIEW_BODY_PIN_DRIFT")
+    block = re.fullmatch(r"R25_START_INDEPENDENT_REVIEW\n```json\n(.+)\n```\n?", body, re.S)
+    need(bool(block), "REVIEW_MANIFEST_FORMAT")
+    record = json.loads(block[1])
+    need(record.get("schema") == "aoe2war.r25.c.start-source-review.v1"
+         and record.get("decision") == "ACCEPT" and record.get("scope") == "START_3031_ONLY"
+         and record.get("independent_review") is True and record.get("reviewer") in REVIEWERS
+         and record.get("publisher_is_reviewer_identity") is False
+         and record.get("source_sha") == source_sha,
+         "GENUINE_INDEPENDENT_REVIEW_REQUIRED")
+    for prefix, data in (("operator", root), ("mac", mac)):
+        need(record.get(prefix + "_size") == len(data)
+             and record.get(prefix + "_sha256") == sha(data)
+             and record.get(prefix + "_blob") == blob(data), "REVIEW_SOURCE_BYTES_MISMATCH")
+    ci = record.get("exact_head_ci", {})
+    need(type(ci.get("run_id")) is int and ci["run_id"] > 0 and ci.get("head_sha") == source_sha
+         and ci.get("conclusion") == "success" and ci.get("all_three_jobs_success") is True,
+         "REVIEW_EXACT_HEAD_CI_REQUIRED")
+    run_id = str(ci["run_id"])
+    def github(endpoint):
+        result = subprocess.run([gh, "api", "repos/Emaren/app-prodn/" + endpoint],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=25, check=False)
+        need(result.returncode == 0 and len(result.stdout) <= 262144, "EXACT_HEAD_CI_READ_FAILED")
+        return json.loads(result.stdout)
+    actual = github("actions/runs/" + run_id)
+    jobs = github("actions/runs/" + run_id + "/jobs?filter=latest&per_page=100")
+    expected_names = {"Release and documentation control plane", "Type, contract, and production build",
+                      "Isolated Steam-rating PostgreSQL chronology"}
+    need(actual.get("head_sha") == source_sha and actual.get("status") == "completed"
+         and actual.get("conclusion") == "success" and actual.get("name") == "AoE2WAR CI"
+         and jobs.get("total_count") == 3 and len(jobs.get("jobs", [])) == 3
+         and {j.get("name") for j in jobs["jobs"]} == expected_names
+         and all(j.get("status") == "completed" and j.get("conclusion") == "success" for j in jobs["jobs"]),
+         "EXACT_HEAD_FULL_THREE_JOB_CI_NOT_PASS")
+    return body, url
+
+def root_call(root, payload, phase):
+    loader = "import base64;exec(compile(base64.b64decode(" + repr(base64.b64encode(root).decode()) + "),'reviewed-r25-c-start','exec'))"
+    remote = " ".join(shlex.quote(x) for x in ["/usr/bin/python3", "-I", "-B", "-c", loader, "--phase", phase])
+    ssh = ["/usr/bin/ssh", "-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+           "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=10", "-o", "ConnectionAttempts=1", "root@hel1", remote]
+    result = subprocess.run(ssh, input=canonical(payload), stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, timeout=240, check=False)
+    need(len(result.stdout) <= 131072, "ROOT_REPLY_UNBOUNDED")
+    reply = json.loads(result.stdout)
+    need(result.returncode == 0 and reply.get("status") != "HOLD",
+         "ROOT_HOLD_NO_BLIND_RETRY:" + str(reply.get("reason", "NATIVE_FAILURE"))[:140])
+    return reply
+
+def owner_approval(phrase):
+    # The earlier SSH plan was read-only. No mutating SSH until this exact phrase.
+    script = ('set answerRecord to display dialog ' +
+        json.dumps("Type the separate one-use START authorization. Only new 3031 starts; public Nginx stays unchanged.\n\n" + phrase) +
+        ' default answer "" buttons {"Cancel", "Authorize START"} default button "Cancel"\n'
+        'return text returned of answerRecord')
+    result = subprocess.run(["/usr/bin/osascript", "-e", script], capture_output=True,
+                            text=True, timeout=180, check=False)
+    need(result.returncode == 0 and result.stdout.rstrip("\r\n") == phrase,
+         "FRESH_EXACT_START_ONLY_GUI_CONSENT_NOT_GRANTED")
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--review-commit", required=True)
+    ap.add_argument("--operator-size", type=int, required=True)
+    ap.add_argument("--operator-sha256", required=True)
+    ap.add_argument("--operator-blob", required=True)
+    ap.add_argument("--review-comment", required=True)
+    ap.add_argument("--review-comment-sha256", required=True)
+    ap.add_argument("--e-certificate", default="~/Downloads/r25-e-recovery-9a4b8b441d87556bd0.json")
+    modes = ap.add_mutually_exclusive_group(required=True)
+    modes.add_argument("--plan-only", action="store_true")
+    modes.add_argument("--start", action="store_true")
+    args = ap.parse_args()
+    need(sys.platform == "darwin" and os.geteuid() != 0, "ORIGINAL_NONROOT_MAC_REQUIRED")
+    fs = os.statvfs(Path.home())
+    need(fs.f_bavail * fs.f_frsize >= 25 * 1024 ** 3, "M1_25_GIB_FLOOR")
+    root = fetch(args.review_commit, "scripts/r25_c_start_root.py", args.operator_size,
+                 args.operator_sha256, args.operator_blob)
+    mac = Path(__file__).read_bytes()
+    body, url = review_comment(args.review_comment, args.review_comment_sha256, args.review_commit, root, mac)
+    # Prove this source commit also contains these exact reviewed Mac bytes.
+    fetch(args.review_commit, "scripts/r25_c_start_owner_mac.py", len(mac), sha(mac), blob(mac))
+    epath = Path(args.e_certificate).expanduser()
+    es = epath.lstat()
+    need(es.st_uid == os.geteuid() and es.st_mode & 0o077 == 0 and not epath.is_symlink()
+         and 0 < es.st_size <= 65536, "ORIGINAL_PRIVATE_E_CERTIFICATE_REQUIRED")
+    certificate = json.loads(epath.read_bytes())
+    ebase = dict(certificate)
+    need(ebase.pop("certificate_sha256", None) == E_CERT_SHA and sha(canonical(ebase)) == E_CERT_SHA,
+         "ACCEPTED_E_FINAL_CERTIFICATE_DRIFT")
+    broot = fetch(B_ROOT_REF, "scripts/r25_b_one_use_witness_repair_root.py", B_ROOT_SIZE, B_ROOT_SHA, B_ROOT_BLOB)
+    bwitness = fetch(B_WITNESS_REF, "scripts/r25_b_host_witness.py", B_WITNESS_SIZE, B_WITNESS_SHA, B_WITNESS_BLOB)
+    payload = {"source_sha": args.review_commit, "operator_size": len(root),
+        "operator_sha256": sha(root), "operator_blob": blob(root),
+        "review_body": body, "review_body_sha256": args.review_comment_sha256,
+        "review_url": url, "e_certificate": certificate,
+        "review_author": "Emaren", "review_issue_url": "https://api.github.com/repos/Emaren/app-prodn/issues/1084",
+        "b_repair_b64": base64.b64encode(broot).decode(),
+        "b_witness_b64": base64.b64encode(bwitness).decode()}
+    # This is an actual, distinct, authenticated native B PRESTART/read-only plan.
+    planned = root_call(root, payload, "plan")
+    need(planned.get("status") == "PASS_START_PLAN_READ_ONLY_NOT_START_AUTHORITY"
+         and planned.get("plan_sha256") == sha(canonical(planned.get("plan"))),
+         "REAL_NATIVE_PRESTART_AND_PLAN_REQUIRED")
+    print(json.dumps(planned, sort_keys=True), flush=True)
+    if args.plan_only:
+        return 0
+    nonce = secrets.token_hex(16)
+    phrase = "START-R25-3031-ONLY " + nonce + " " + planned["plan_sha256"]
+    owner_approval(phrase)
+    payload.update({"plan_sha256": planned["plan_sha256"], "nonce": nonce, "owner_consent": phrase})
+    result = root_call(root, payload, "start")
+    need(result.get("status") == "STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT"
+         and result.get("plan_sha256") == planned["plan_sha256"]
+         and result.get("nonce") == nonce and result.get("candidate_uid") == 993
+         and result.get("public_cutover_authorized") is False,
+         "START_RECEIPT_NOT_ADMITTED_NO_BLIND_RETRY")
+    print(json.dumps(result, sort_keys=True), flush=True)
+    return 0
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (RuntimeError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
+        print(json.dumps({"status": "HOLD", "reason": str(exc)[:180],
+                          "no_blind_retry": True, "public_cutover_authorized": False}, sort_keys=True))
+        sys.exit(2)
