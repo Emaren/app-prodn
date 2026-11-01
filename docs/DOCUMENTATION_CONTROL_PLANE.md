@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-b4-browser-fix-20261101` at `db2a7281281e387fd404170b6475b0074f67401f`
+Implementation baseline: `codex/r25-b4-browser-fix-20261101` at `a8ee3c07871de3bda639cc9b6d25d2a1b23cf0a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
