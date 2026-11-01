@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `candidate/r25-postlive-b2-nonfinancial-20261031` at `6c64e84e6a9d185f19f71089d1c7578e61b1066d`
+Implementation baseline: `codex/r25-b2-b3-b4-additive-20261101` at `38da12aa52f9bf100fd8b588941a9cc331aaef46`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **102**
+- Authoritative repository documents: **104**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 62
+- `reference`: 64
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 5
+- `draft`: 7
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -116,6 +116,8 @@ This page is generated from the validated front matter in this repository. Cross
 | [Player Identity Wave 2 — Deterministic Discovery V2](PLAYER_IDENTITY_DISCOVERY_WAVE2.md) | `reference` | `active` | `implementation-contract` |
 | [Player War Archive Operations](PLAYER_WAR_ARCHIVE_OPERATIONS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Production Parity Seal — 2026-07-26](PRODUCTION_PARITY_2026-07-26.md) | `historical` | `historical` | `historical-evidence` |
+| [R25 B3 — Authenticated Operational Evidence Interfaces](R25_B3_OPERATOR_EVIDENCE_RELEASE.md) | `reference` | `draft` | `post-r25-reviewed-read-only-product-source` |
+| [R25 B4 — Kingdom Construction Source Graph Release](R25_B4_KINGDOM_GRAPH_RELEASE.md) | `reference` | `draft` | `post-r25-source-only-visual-no-runtime` |
 | [Radio WOLO](RADIO_WOLO.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Realtime Truth Contract](REALTIME_TRUTH_CONTRACT.md) | `reference` | `active` | `architecture-contract` |
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
