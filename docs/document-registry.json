@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f8266d6c18a54a6b6a332b595aacfcb5fad18543c443da540f409c39b710f024",
+      "sha256": "622fe5b806ba153e50f885e6d50694aaac5d05f74f5e14c9ff98d95153a24f3b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2371,7 +2371,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/r25-postrelease-b3-operator-evidence-20261031",
-    "commit": "ada188822cba767234bb3499a145f9e74fae1704"
+    "commit": "bfdb641b3313f99f3ea5b9dc263c907430f21e38"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
