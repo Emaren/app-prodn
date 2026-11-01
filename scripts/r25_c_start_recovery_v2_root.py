@@ -158,16 +158,32 @@ def reviewed(payload):
     body = payload["review_body"]
     need(isinstance(body, str) and len(body.encode()) <= 32768 and
          sha(body.encode()) == payload["review_body_sha256"], "REVIEW_BODY_DIGEST")
-    block = re.fullmatch(r"R25_START_V2_INDEPENDENT_REVIEW\n```json\n(.+)\n```\n?", body, re.S)
-    need(bool(block), "REVIEW_MANIFEST_FORMAT")
+    owner_mode = body.startswith("R25_START_V2_OWNER_NONFINANCIAL_ACCEPT\n")
+    header = "R25_START_V2_OWNER_NONFINANCIAL_ACCEPT" if owner_mode else "R25_START_V2_INDEPENDENT_REVIEW"
+    block = re.fullmatch(re.escape(header) + r"\n" + re.escape('```') +
+                         r"json\n(.+)\n" + re.escape('```') + r"\n?", body, re.S)
+    need(bool(block), "OWNER_OR_OPTIONAL_REVIEW_MANIFEST_FORMAT")
     record = parse(block[1])
-    need(record.get("schema") == "aoe2war.r25.c.start-source-review.v2"
-         and record.get("decision") == "ACCEPT"
-         and record.get("scope") == "RECOVERY_START_3031_V2_ONLY"
-         and record.get("independent_review") is True
-         and record.get("reviewer") in INDEPENDENT_REVIEWERS
-         and record.get("publisher_is_reviewer_identity") is False,
-         "INDEPENDENT_SOURCE_REVIEW_REQUIRED")
+    need(record.get("decision") == "ACCEPT"
+         and record.get("scope") == "RECOVERY_START_3031_V2_ONLY",
+         "EXACT_RELEASE_SCOPE_REQUIRED")
+    if owner_mode:
+        need(record.get("schema") == "aoe2war.r25.c.owner-nonfinancial-release.v1"
+             and record.get("release_authority") == "OWNER_ONLY_NONFINANCIAL"
+             and record.get("owner_login") == "Emaren"
+             and record.get("owner_accepts_no_independent_review") is True
+             and record.get("independent_review") is False
+             and record.get("nonfinancial_only") is True
+             and record.get("public_cutover_authorized") is False
+             and record.get("financial_authorized") is False
+             and "reviewer" not in record and "github_review_provenance" not in record,
+             "AUTHENTIC_OWNER_NONFINANCIAL_RELEASE_REQUIRED")
+    else:
+        need(record.get("schema") == "aoe2war.r25.c.start-source-review.v2"
+             and record.get("independent_review") is True
+             and record.get("reviewer") in INDEPENDENT_REVIEWERS
+             and record.get("publisher_is_reviewer_identity") is False,
+             "OPTIONAL_INDEPENDENT_SOURCE_REVIEW_REQUIRED")
     need(bool(H40.fullmatch(payload["source_sha"])) and
          record.get("source_sha") == payload["source_sha"] and
          record.get("operator_sha256") == payload["operator_sha256"] and
@@ -182,22 +198,31 @@ def reviewed(payload):
     need(payload.get("review_author") == "Emaren"
          and payload.get("review_issue_url") == "https://api.github.com/repos/Emaren/app-prodn/issues/1110",
          "AUTHENTICATED_MAC_REVIEW_METADATA_REQUIRED")
-    # Root checks the exact review identity and provenance digest admitted by
-    # the SHA-reviewed Mac launcher. Merely setting independent_review=true in
-    # the owner-authored comment is no longer sufficient. The actual GitHub
-    # author and live APPROVED state are verified by the Mac at invocation.
-    pin = record.get("github_review_provenance", {})
     proof = payload.get("github_review_proof", {})
-    need(isinstance(pin, dict) and isinstance(proof, dict)
-         and type(pin.get("review_id")) is int and pin["review_id"] > 0
-         and proof.get("review_id") == pin["review_id"]
-         and pin.get("reviewer_login") == proof.get("reviewer_login") == "Timed-AutoMaton"
-         and bool(H64.fullmatch(str(pin.get("review_body_sha256", ""))))
-         and proof.get("review_body_sha256") == pin["review_body_sha256"]
-         and proof.get("review_commit") == payload["source_sha"]
-         and isinstance(proof.get("review_submitted_at"), str)
-         and len(proof["review_submitted_at"]) >= 20,
-         "AUTHENTIC_INDEPENDENT_GITHUB_REVIEW_PROOF_REQUIRED")
+    if owner_mode:
+        need(isinstance(proof, dict)
+             and proof.get("mode") == "OWNER_ONLY_NONFINANCIAL"
+             and proof.get("owner_login") == "Emaren"
+             and proof.get("owner_comment_sha256") == sha(body.encode())
+             and proof.get("review_commit") == payload["source_sha"],
+             "OWNER_NONFINANCIAL_GITHUB_PROOF_REQUIRED")
+    else:
+        pin = record.get("github_review_provenance", {})
+        designated = pin.get("reviewer_login") if isinstance(pin, dict) else None
+        need(isinstance(pin, dict) and isinstance(proof, dict)
+             and proof.get("mode") == "OPTIONAL_INDEPENDENT_REVIEW"
+             and isinstance(designated, str)
+             and bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}", designated))
+             and designated != "Emaren"
+             and type(pin.get("review_id")) is int and pin["review_id"] > 0
+             and proof.get("review_id") == pin["review_id"]
+             and proof.get("reviewer_login") == designated
+             and bool(H64.fullmatch(str(pin.get("review_body_sha256", ""))))
+             and proof.get("review_body_sha256") == pin["review_body_sha256"]
+             and proof.get("review_commit") == payload["source_sha"]
+             and isinstance(proof.get("review_submitted_at"), str)
+             and len(proof["review_submitted_at"]) >= 20,
+             "AUTHENTIC_OPTIONAL_INDEPENDENT_GITHUB_REVIEW_PROOF_REQUIRED")
     ci = record.get("exact_head_ci", {})
     need(type(ci.get("run_id")) is int and ci["run_id"] > 0
          and ci.get("head_sha") == payload["source_sha"]

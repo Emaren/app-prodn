@@ -76,7 +76,7 @@ class A01ReviewProvenance(unittest.TestCase):
                  "github_review_proof":proof}
         self.assertEqual(root.reviewed(payload)["source_sha"],data[0])
         payload["github_review_proof"]={**proof,"reviewer_login":"Emaren"}
-        with self.assertRaisesRegex(root.Hold,"AUTHENTIC_INDEPENDENT_GITHUB_REVIEW_PROOF_REQUIRED"):
+        with self.assertRaisesRegex(root.Hold,"AUTHENTIC_OPTIONAL_INDEPENDENT_GITHUB_REVIEW_PROOF_REQUIRED"):
             root.reviewed(payload)
 
     def test_owner_only_claim_without_independent_review_never_suffices(self):
@@ -84,7 +84,7 @@ class A01ReviewProvenance(unittest.TestCase):
         manifest=json.loads(data[3]["body"].split(FENCE+"json\n")[1].split("\n"+FENCE)[0])
         del manifest["github_review_provenance"]
         data[3]["body"]="R25_START_V2_INDEPENDENT_REVIEW\n"+FENCE+"json\n"+json.dumps(manifest)+"\n"+FENCE
-        with self.assertRaisesRegex(RuntimeError,"AUTHENTIC_INDEPENDENT_GITHUB_REVIEW_REFERENCE_REQUIRED"):
+        with self.assertRaisesRegex(RuntimeError,"REAL_APPOINTED_INDEPENDENT_REVIEW_REFERENCE_REQUIRED"):
             self.verify(data)
 
     def test_wrong_author_dismissed_wrong_sha_unbound_body_late_review_fail(self):
