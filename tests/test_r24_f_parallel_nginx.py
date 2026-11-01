@@ -250,12 +250,20 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn('ROOT_APPROVED_BUILD_ID_OR_NONCE_MISSING',mac)
         self.assertIn('bid = approved.get("candidate_build_id")',mac)
         self.assertIn('nonce = approved.get("nonce")',mac)
-    def test_owner_mac_separate_tty_read_write(self):
+    def test_owner_mac_native_gui_requires_personal_exact_phrase(self):
         mac=MAC.read_text()
-        self.assertIn('with open("/dev/tty", "w")',mac)
-        self.assertIn('with open("/dev/tty", "r")',mac)
-        self.assertNotIn('open("/dev/tty","r+")',mac)
+        self.assertIn('"/usr/bin/osascript"',mac)
+        self.assertIn('default button "Cancel"',mac)
+        self.assertNotIn('"/dev/tty"',mac)
         self.assertIn('StrictHostKeyChecking=yes',mac)
+        module=load(MAC)
+        for code,answer in ((0,"exact phrase\n"),(0,"different"),(1,"exact phrase")):
+            with mock.patch.object(module.subprocess,"run",return_value=type("Reply",(),{"returncode":code,"stdout":answer})()):
+                if code==0 and answer=="exact phrase\n":
+                    module.owner_consent("exact phrase","a"*64,False)
+                else:
+                    with self.assertRaisesRegex(module.Hold,"OWNER_TYPED_CONSENT_DENIED"):
+                        module.owner_consent("exact phrase","a"*64,False)
     def test_E_physical_receipt_hash_must_match_owner_policy(self):
         j={"E_r25_recovery_sha256":"0"*64,
            "E_durable_rollback_sha256":"0"*64}

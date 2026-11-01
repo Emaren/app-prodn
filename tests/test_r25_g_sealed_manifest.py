@@ -76,6 +76,7 @@ class NativeUnits(unittest.TestCase):
         raw=("Id="+unit+"\nType=oneshot\nTriggeredBy=wolo-mainnet-health.timer\n"
              "MainPID=0\nActiveState="+state+"\nNeedDaemonReload="+reload+"\n"
              "Result="+result+"\n"
+             "User=\nWorkingDirectory=\n"
              "FragmentPath=/etc/systemd/system/"+unit+"\nDropInPaths=\n"
              "ExecMainStartTimestampMonotonic="+str(stamp)+"\n"
              "ExecStart={ path="+command+" ; argv[]="+command+" ; ignore_errors=no ; "
@@ -105,6 +106,17 @@ class NativeUnits(unittest.TestCase):
             obj=g.show("postgresql@.service")
         self.assertIs(obj["template"],True)
         self.assertEqual(runner.call_count,1)
+
+    def test_persistent_service_cannot_omit_loaded_command_or_user(self):
+        fields={"Id":"wolochain-mainnet-settlement.service","ActiveState":"active","MainPID":"1012",
+                "ExecMainStartTimestampMonotonic":"123","User":"root","WorkingDirectory":"/var/www/WoloChain-wolo-1",
+                "ExecStart":"native-command","FragmentPath":"/etc/systemd/system/wolochain-mainnet-settlement.service",
+                "DropInPaths":"","Type":"simple","TriggeredBy":"","NeedDaemonReload":"no","Result":"success"}
+        for omitted in ("ExecStart","User","ExecMainStartTimestampMonotonic"):
+            raw="\n".join(k+"="+v for k,v in fields.items() if k!=omitted).encode()
+            with self.subTest(omitted=omitted),mock.patch.object(g,"run",side_effect=[b"same config",raw]):
+                with self.assertRaisesRegex(g.Hold,"SYSTEMD_SERVICE_PROPERTIES_MISSING"):
+                    g.show(fields["Id"])
 
     def test_census_includes_loaded_postgres_instance(self):
         installed=("\n".join([g.OLD_UNIT,g.NEW_UNIT,"postgresql@.service"]+

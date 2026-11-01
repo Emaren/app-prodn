@@ -159,6 +159,10 @@ def show(unit):
          all(k in obj for k in ("ActiveState","FragmentPath","DropInPaths")),
          "SYSTEMD_UNIT_PROPERTIES_MISSING")
     if unit.endswith(".service"):
+        required={"Id","ActiveState","MainPID","ExecMainStartTimestampMonotonic",
+                  "User","WorkingDirectory","ExecStart","FragmentPath","DropInPaths",
+                  "Type","TriggeredBy","NeedDaemonReload","Result"}
+        need(required.issubset(obj),"SYSTEMD_SERVICE_PROPERTIES_MISSING")
         need(obj.get("MainPID","").isdecimal(),"SYSTEMD_SERVICE_PID_MISSING")
         pid=int(obj["MainPID"])
     else:
