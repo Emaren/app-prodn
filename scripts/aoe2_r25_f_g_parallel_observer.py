@@ -25,6 +25,8 @@ C_PHYSICAL_TREE_SHA256="5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f2
 C_PHYSICAL_BUILD_ID="-dJl5VyecHu5BKNvfErJe"
 C_PHYSICAL_APP_VERSION="20261031171526-148d3df911"
 C_PHYSICAL_FILES=87038
+C_SOURCE_RECEIPT_SHA256="f16aafea49903202df5d8a96720d83d2c7ba4d537fc1854d14b26a8936fea757"
+C_BUILD_RECEIPT_SHA256="17352fe0eb046a985c07c17220435c68095c46710e27b52474a7dadba1b64a20"
 EXPECTED_OLD_PID=2625090
 APPROVAL=pathlib.Path("/etc/aoe2war/r24-parallel-web/approved.json")
 AUDIT=pathlib.Path("/var/lib/aoe2war-r24-parallel")
@@ -32,7 +34,19 @@ LOCK=pathlib.Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.loc
 LOCK_ID=(2064,6185747,1000,0o644)
 PUBLIC="https://aoe2war.com"
 PAGES=("/","/lobby","/bets","/live-games","/war-chest")
-FINANCE_PREFIXES=("aoe2","wolo","tokenchain","traffic","radio")
+FINANCE_PREFIXES=("aoe2","wolo","tokenchain","traffic","radio","postgresql","postgres")
+MONITOR_ONESHOT_TIMERS={
+    "aoe2-wolo-transfer-heartbeat.service":"aoe2-wolo-transfer-heartbeat.timer",
+    "aoe2hdbets-bet-stake-reconcile.service":"aoe2hdbets-bet-stake-reconcile.timer",
+    "aoe2hdbets-challenge-reconcile.service":"aoe2hdbets-challenge-reconcile.timer",
+    "aoe2hdbets-replay-auto-recovery.service":"aoe2hdbets-replay-auto-recovery.timer",
+    "aoe2war-prewarm.service":"aoe2war-prewarm.timer",
+    "traffic-ingest.service":"traffic-ingest.timer",
+    "traffic-project-daily-rollups-aoe2hdbets.service":"traffic-project-daily-rollups-aoe2hdbets.timer",
+    "traffic-v2-forward-ledger-aoe2hdbets.service":"traffic-v2-forward-ledger-aoe2hdbets.timer",
+    "traffic-watchdog.service":"traffic-watchdog.timer",
+    "wolo-mainnet-health.service":"wolo-mainnet-health.timer",
+}
 H40=re.compile(r"[a-f0-9]{40}\Z")
 H64=re.compile(r"[a-f0-9]{64}\Z")
 BUILD=re.compile(r"[A-Za-z0-9_-]{8,128}\Z")
@@ -129,7 +143,11 @@ def listening_socket(port):
     return result
 def show(unit):
     props=["Id","ActiveState","MainPID","ExecMainStartTimestampMonotonic",
-           "User","WorkingDirectory","ExecStart","FragmentPath","DropInPaths"]
+           "User","WorkingDirectory","ExecStart","FragmentPath","DropInPaths",
+           "Type","TriggeredBy","NeedDaemonReload","Result"]
+    config=digest(run(["/usr/bin/systemctl","cat",unit,"--no-pager"],timeout=12))
+    if re.search(r"@\.(?:service|timer|socket)$",unit):
+        return {"template":True,"unit_config_sha256":config}
     raw=run(["/usr/bin/systemctl","show",unit,"--no-pager"]+
             [z for x in props for z in ("-p",x)],timeout=12).decode()
     obj={}
@@ -137,20 +155,48 @@ def show(unit):
         k,sep,v=line.partition("=")
         need(sep and k not in obj,"SYSTEMD_DUPLICATE_PROPERTY")
         obj[k]=v
-    need(set(obj)==set(props) and obj["Id"]==unit and
-         obj["MainPID"].isdecimal(),"SYSTEMD_UNIT_PROPERTIES_MISSING")
+    need(set(obj).issubset(props) and obj.get("Id")==unit and
+         all(k in obj for k in ("ActiveState","FragmentPath","DropInPaths")),
+         "SYSTEMD_UNIT_PROPERTIES_MISSING")
+    if unit.endswith(".service"):
+        required={"Id","ActiveState","MainPID","ExecMainStartTimestampMonotonic",
+                  "User","WorkingDirectory","ExecStart","FragmentPath","DropInPaths",
+                  "Type","TriggeredBy","NeedDaemonReload","Result"}
+        need(required.issubset(obj),"SYSTEMD_SERVICE_PROPERTIES_MISSING")
+        need(obj.get("MainPID","").isdecimal(),"SYSTEMD_SERVICE_PID_MISSING")
+        pid=int(obj["MainPID"])
+    else:
+        need(unit.endswith((".timer",".socket")) and "MainPID" not in obj,
+             "SYSTEMD_NONPROCESS_UNIT_IDENTITY")
+        pid=0
+    if unit in MONITOR_ONESHOT_TIMERS:
+        need(obj.get("Type")=="oneshot" and obj.get("TriggeredBy")==MONITOR_ONESHOT_TIMERS[unit]
+             and obj.get("NeedDaemonReload")=="no" and obj.get("ActiveState")=="inactive"
+             and type(obj.get("Result")) is str and bool(obj["Result"])
+             and pid==0,"MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
+        command=obj.get("ExecStart","")
+        stable=re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*;\s*ignore_errors=(?:yes|no)\s*;\s*(?=start_time=)",command,re.S)
+        need(stable is not None and command.count("{ path=")==1,
+             "MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED")
+        obj["ExecStart_command_sha256"]=digest(stable.group(0).encode())
+        obj.pop("ExecMainStartTimestampMonotonic",None)
+    if "ExecStart" in obj:
+        if unit not in MONITOR_ONESHOT_TIMERS:
+            obj["ExecStart_sha256"]=digest(obj["ExecStart"].encode())
+        obj.pop("ExecStart")
     result={"properties":obj,"properties_sha256":digest(canon(obj)),
-            "unit_config_sha256":digest(run(["/usr/bin/systemctl","cat",unit,
-                                               "--no-pager"],timeout=12))}
-    if int(obj["MainPID"])>1:
-        result["main_process"]=proc_identity(int(obj["MainPID"]))
+            "unit_config_sha256":config}
+    if pid>1:
+        result["main_process"]=proc_identity(pid)
     else:
         result["main_process"]=None
     return result
 def finance_units():
     raw=run(["/usr/bin/systemctl","list-unit-files","--type=service","--type=timer",
              "--type=socket","--all","--no-legend","--no-pager"],timeout=18).decode()
-    names=sorted(set(row.split()[0] for row in raw.splitlines() if row.split()
+    loaded=run(["/usr/bin/systemctl","list-units","--type=service","--type=timer",
+                "--type=socket","--all","--plain","--no-legend","--no-pager"],timeout=18).decode()
+    names=sorted(set(row.split()[0] for row in (raw+"\n"+loaded).splitlines() if row.split()
                      and row.split()[0].lower().startswith(FINANCE_PREFIXES)
                      and row.split()[0].endswith((".service",".timer",".socket"))))
     need(25<=len(names)<=200 and OLD_UNIT in names and NEW_UNIT in names,
@@ -158,7 +204,11 @@ def finance_units():
     return names
 def system_state():
     names=finance_units()
-    return {name:show(name) for name in names}
+    state={name:show(name) for name in names}
+    need(any(name.startswith(("postgresql","postgres")) and
+             obj.get("properties",{}).get("ActiveState")=="active" and obj.get("main_process")
+             for name,obj in state.items()),"ACTIVE_POSTGRESQL_INSTANCE_MISSING")
+    return state
 def git_source(repo,user):
     # Only inspect tracked source; no checkout, reset, clean or Git hooks.
     prefix=["/usr/sbin/runuser","-u",user,"--","/usr/bin/git",
@@ -404,8 +454,12 @@ def require_c_physical_build_identity(built):
 def verified_c_archive_source():
     """C's Git archive has NO .git: trust exact pinned archive + source manifests."""
     protected_c_stage_boundary()
-    source=parse(root_file(C_AUDIT/"SOURCE_STAGED.json",65536),65536)
-    built=parse(root_file(C_AUDIT/"BUILD_STAGED.json",65536),65536)
+    source_raw=root_file(C_AUDIT/"SOURCE_STAGED.json",65536)
+    built_raw=root_file(C_AUDIT/"BUILD_STAGED.json",65536)
+    need(digest(source_raw)==C_SOURCE_RECEIPT_SHA256 and
+         digest(built_raw)==C_BUILD_RECEIPT_SHA256,"C_ACCEPTED_ROOT_RECEIPT_BYTES_CHANGED")
+    source=parse(source_raw,65536)
+    built=parse(built_raw,65536)
     require_c_physical_build_identity(built)
     srcfiles=parse(root_file(C_AUDIT/"SOURCE_FILES.json",33554432),33554432)
     builtfiles=parse(root_file(C_AUDIT/"BUILD_FILES.json",67108864),67108864)
@@ -424,30 +478,27 @@ def verified_c_archive_source():
     need(built.get("root_sealed") is True and built.get("financial_writes_authorized") is False
          and built.get("old_web_pid_untouched")==EXPECTED_OLD_PID,
          "C_BUILD_RECEIPT_SCOPE_DRIFT")
-    # The archived Git object hash was independently authenticated during owner
-    # transfer. Byte-level readback of all files is checked against C's receipt.
-    for row in builtfiles["rows"]:
-        need(type(row)is dict and type(row.get("path"))is str,
-             "C_TREE_ROW_INVALID")
-        target=(STAGE/row["path"]).resolve()
-        need(target.is_relative_to(STAGE.resolve()) and target.exists(),
-             "C_TREE_ROW_ESCAPE_OR_MISSING")
-        if row.get("type")=="file":
-            need(type(row.get("size"))is int and type(row.get("sha256"))is str,
-                 "C_TREE_FILE_ROW_INVALID")
-            st=target.stat()
-            need(st.st_size==row["size"] and root_sealed_file(target),
-                 "C_ROOT_SEALED_TREE_FILE_DRIFT")
-            h=hashlib.sha256()
-            with target.open("rb") as src:
-                for block in iter(lambda:src.read(1048576),b""):h.update(block)
-            need(h.hexdigest()==row["sha256"],"C_BUILT_FILE_BYTES_CHANGED")
-        elif row.get("type")=="symlink":
-            node=STAGE/row["path"]
-            need(node.is_symlink() and os.readlink(node)==row.get("target") and
-                 node.resolve().is_relative_to(STAGE.resolve()),
-                 "C_STAGE_INTERNAL_SYMLINK_CHANGED")
-        else:raise Hold("C_UNKNOWN_FILE_TYPE")
+    need(len(builtfiles["rows"])==C_PHYSICAL_FILES,"C_FULL_MANIFEST_COUNT_CHANGED")
+    # C already independently rehashed all87,038 files. Consume that accepted
+    # root-sealed manifest; do not repeat it and two overlapping tree scans for
+    # every BEFORE/AFTER recheck. Re-read only the actual release identity and
+    # static witness bytes, each bound to its accepted manifest row.
+    static_rel=".next/static/"+C_PHYSICAL_BUILD_ID+"/_buildManifest.js"
+    identities={"r24-source-sha":TARGET,".next/BUILD_ID":C_PHYSICAL_BUILD_ID,
+                ".aoe2war-build-version":C_PHYSICAL_APP_VERSION}
+    chosen={**identities,static_rel:None}
+    measured={}
+    for rel,expected in chosen.items():
+        hits=[row for row in builtfiles["rows"] if type(row)is dict and row.get("path")==rel]
+        need(len(hits)==1 and hits[0].get("type")=="file", "C_WITNESS_FILE_NOT_IN_MANIFEST")
+        row=hits[0];target=STAGE/rel
+        need(root_sealed_file(target),"C_ROOT_SEALED_WITNESS_FILE_DRIFT")
+        raw=root_file(target,65536)
+        need(len(raw)==row.get("size") and digest(raw)==row.get("sha256"),
+             "C_BUILT_FILE_BYTES_CHANGED")
+        if expected is not None:
+            need(raw.strip().decode("ascii")==expected,"C_RELEASE_IDENTITY_CHANGED")
+        measured[rel]=digest(raw)
     return {"source_git_archive_sha256":ARCHIVE_SHA,
             "source_manifest_sha256":source["source_manifest_sha256"],
             "build_manifest_sha256":built["tree_sha256"],
@@ -455,7 +506,9 @@ def verified_c_archive_source():
             "source_receipt_status":"SOURCE_STAGED",
             "build_receipt_status":"BUILD_STAGED",
             "root_manifest_file_count":built.get("files"),
-            "git_directory_absent_by_design":True}
+            "git_directory_absent_by_design":True,
+            "accepted_full_tree_rehash_repeated":False,
+            "static_manifest_file_sha256":measured[static_rel]}
 def stage():
     need(STAGE.is_dir() and not STAGE.is_symlink(),"PARALLEL_CANDIDATE_NOT_STAGED")
     marker=root_file(STAGE/"r24-source-sha",64).decode().strip()
@@ -466,11 +519,13 @@ def stage():
     build=build_file.read_text().strip()
     need(BUILD.fullmatch(build) and build==source["receipt_build_id"],
          "C_NEXT_BUILD_ID_NOT_IN_ROOT_BUILT_RECEIPT")
-    deps=bounded_tree(STAGE/"node_modules")
-    next_tree=bounded_tree(STAGE/".next")
+    for directory in (STAGE/"node_modules",STAGE/".next"):
+        st=directory.lstat()
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,
+             "C_DEPENDENCY_BUILD_ROOT_SEAL_CHANGED")
     return {"source":source,"source_marker":marker,"next_build_id":build,
-            "dependencies":deps,"next_build":next_tree,
-            "full_dependency_and_build_bytes_measured":True,
+            "full_dependency_and_build_bytes_measured":False,
+            "prior_independent_full_tree_sha256":C_PHYSICAL_TREE_SHA256,
             "root_owner_stage_receipt_binding_requires_F":True}
 def root_snapshot(phase):
     need(sys.platform=="linux" and os.geteuid()==0 and
@@ -490,6 +545,8 @@ def root_snapshot(phase):
     ports={str(p):listening_socket(p) for p in (3030,3031,8092,8093)}
     old_http=http_site("http://127.0.0.1:3030",old_build)
     new_http=http_site("http://127.0.0.1:3031",candidate["next_build_id"])
+    need(new_http["manifest_sha256"]==candidate["source"]["static_manifest_file_sha256"],
+         "RUNNING_STATIC_BYTES_NOT_ACCEPTED_C_ARTIFACT")
     need(old_http["app_build_version"]!=new_http["app_build_version"],
          "OLD_AND_NEW_APP_BUILD_VERSION_AMBIGUOUS")
     # Public probe deliberately performed only once on Mac side, not on HEL1 root.
@@ -566,7 +623,9 @@ def verify(before,after,phase):
         "frozen_candidate_sha":TARGET,
         "old_web_service_pid_unchanged":True,
         "old_web_source_build_3030_unchanged":True,
-        "new_candidate_source_build_dependency_3031_unchanged":True,
+        "new_candidate_source_build_identity_3031_unchanged":True,
+        "accepted_dependency_manifest_sha256":C_PHYSICAL_TREE_SHA256,
+        "dependency_bytes_rehashed_in_this_witness":False,
         "financial_units_and_wolo_8092_8093_unchanged":True,
         "original_release_lock_unchanged":True,
         "nginx_active_upstream":expected,

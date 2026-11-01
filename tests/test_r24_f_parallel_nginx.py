@@ -24,11 +24,11 @@ class ParallelR24(unittest.TestCase):
             self.assertNotIn(name,src)
         self.assertIn("OLD_FINANCIAL_WEB_PID_DRIFT",src)
         self.assertIn("FINANCE_OR_OLD_WEB_DRIFT_AT_SEAM",src)
-    def test_negative_B_F_and_new_C_pins(self):
+    def test_missing_genuine_admission_cannot_authorize_cutover(self):
         s=self.s
-        self.assertEqual(s.B_INDEPENDENT_POSITIVE_RUNTIME_SHA,"")
-        self.assertEqual(s.F_APPROVED_CANDIDATE_STAGE_AND_POLICY_SHA,"")
-        self.assertEqual(s.C_REVIEWED_PARALLEL_SHA,"")
+        with mock.patch.object(s,"root_file",side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(s.Hold,"REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED"):
+                s.admitted_evidence()
     @staticmethod
     def scoped_vhost():
         # Six actual Oct 28 target location classes, with two Wolo routes
@@ -123,6 +123,29 @@ server { server_name unrelated.example; listen 443 ssl;
         src=SERVER.read_text()
         self.assertIn('method="GET"',src)
         self.assertNotIn('method="POST"',src)
+    def test_public_and_internal_probes_identify_verifier_without_changing_gets(self):
+        # Actual HEL1 Cloudflare rejects Python's default UA with error1010.
+        # It serves the declared verifier UA; keep status and byte checks intact.
+        s=self.s
+        requests=[]
+        response=mock.MagicMock()
+        response.__enter__.return_value=response
+        response.status=200
+        response.read.return_value=b'{"buildVersion":"expected-version"}'
+        def opened(request,timeout):
+            requests.append(request)
+            return response
+        with mock.patch.object(s.urllib.request,"urlopen",side_effect=opened):
+            self.assertEqual(s.public_version(),"expected-version")
+            self.assertEqual(s.http_version(3031),"expected-version")
+            s.next_build_asset(s.PUBLIC,"-dJl5VyecHu5BKNvfErJe")
+        self.assertEqual(len(requests),3)
+        for request in requests:
+            self.assertEqual(request.get_method(),"GET")
+            self.assertEqual(request.get_header("User-agent"),"aoe2war-release-verifier/1")
+            self.assertEqual(request.get_header("Cache-control"),"no-cache")
+        self.assertEqual(requests[0].full_url,s.PUBLIC+"/api/deployment-version")
+        self.assertIn('/_next/static/-dJl5VyecHu5BKNvfErJe/_buildManifest.js',requests[2].full_url)
     def test_candidate_archive_source_uses_c_root_protected_full_manifests(self):
         code=SERVER.read_text()
         for token in ("SOURCE_STAGED.json","SOURCE_FILES.json",
@@ -153,10 +176,12 @@ server { server_name unrelated.example; listen 443 ssl;
         a={
             "old_web_snapshot_sha256":s.sha(old.encode()),
             "finance_snapshot_sha256":s.sha(s.canonical({"protected": "running"})),
-            "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"SOCKET_A","8093":"SOCKET_B"}))
+            "wolo_snapshot_sha256":s.sha(s.canonical({"8092":"SOCKET_A","8093":"SOCKET_B"})),
+            "native_protected_sha256":s.sha(s.canonical({"original":"unchanged"}))
         }
         current={"original_web":old,"candidate_web":"ActiveState=failed",
-                 "finance":{"protected":"running"},"wolo":"SOCKET_A"}
+                 "finance":{"protected":"running"},"wolo":"SOCKET_A",
+                 "native_protected":{"original":"unchanged"}}
         with mock.patch.object(s,"listener_lines",return_value={"8092":"SOCKET_A","8093":"SOCKET_B"}):
             s.prove_rollback_preimage(a,current)
             old=s.protected_continuity(current)
@@ -227,12 +252,20 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn('ROOT_APPROVED_BUILD_ID_OR_NONCE_MISSING',mac)
         self.assertIn('bid = approved.get("candidate_build_id")',mac)
         self.assertIn('nonce = approved.get("nonce")',mac)
-    def test_owner_mac_separate_tty_read_write(self):
+    def test_owner_mac_native_gui_requires_personal_exact_phrase(self):
         mac=MAC.read_text()
-        self.assertIn('with open("/dev/tty", "w")',mac)
-        self.assertIn('with open("/dev/tty", "r")',mac)
-        self.assertNotIn('open("/dev/tty","r+")',mac)
+        self.assertIn('"/usr/bin/osascript"',mac)
+        self.assertIn('default button "Cancel"',mac)
+        self.assertNotIn('"/dev/tty"',mac)
         self.assertIn('StrictHostKeyChecking=yes',mac)
+        module=load(MAC)
+        for code,answer in ((0,"exact phrase\n"),(0,"different"),(1,"exact phrase")):
+            with mock.patch.object(module.subprocess,"run",return_value=type("Reply",(),{"returncode":code,"stdout":answer})()):
+                if code==0 and answer=="exact phrase\n":
+                    module.owner_consent("exact phrase","a"*64,False)
+                else:
+                    with self.assertRaisesRegex(module.Hold,"OWNER_TYPED_CONSENT_DENIED"):
+                        module.owner_consent("exact phrase","a"*64,False)
     def test_E_physical_receipt_hash_must_match_owner_policy(self):
         j={"E_r25_recovery_sha256":"0"*64,
            "E_durable_rollback_sha256":"0"*64}
@@ -273,11 +306,13 @@ server { server_name unrelated.example; listen 443 ssl;
          "E_durable_receipt_path":"/etc/aoe2war/r24-parallel-web/e-recovery-ready.json",
          "E_r25_recovery_sha256":"1"*64,
          "B_poststart_sha256":"2"*64,
+         "native_protected_sha256":"7"*64,
          "C_source_staged_sha256":"3"*64,"C_build_staged_sha256":"4"*64,
          "C_source_files_sha256":"5"*64,"C_build_files_sha256":"6"*64,
          "lane_reviews":{lane:"2"*40 for lane in "BCDEFG"}}
-        with self.assertRaisesRegex(self.s.Hold,"INDEPENDENT_B_REVIEW_NOT_APPROVED"):
-            self.s.approval(self.s.canonical(j))
+        with mock.patch.object(self.s,"root_file",side_effect=FileNotFoundError):
+            with self.assertRaisesRegex(self.s.Hold,"REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED"):
+                self.s.approval(self.s.canonical(j))
     def test_c_candidate_is_root_sealed_under_var_lib_not_live_web_parent(self):
         s=self.s
         self.assertEqual(s.CANDIDATE_STAGE,pathlib.Path("/var/lib/aoe2war-r25-web-0cee3c836c4b"))

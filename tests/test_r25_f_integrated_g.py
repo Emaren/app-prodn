@@ -74,6 +74,9 @@ class TestIntegratedG(unittest.TestCase):
                          "G_REAL_LIVE_PUBLIC_SOURCE_STATIC_FINANCE_WITNESS_NOT_ACCEPTED",
                          "HOLD:G_AFTER_FAILED"):
             self.assertIn(expected,text)
+        self.assertIn('"accepted_dependency_manifest_sha256"',text)
+        self.assertIn('"dependency_bytes_rehashed_in_this_witness"',text)
+        self.assertNotIn('"new_candidate_source_build_dependency_3031_unchanged"',text)
     def test_b_e_stage_positive_guard_relevant(self):
         f=F_SOURCE.read_text()
         for expected in ("verified_b_poststart(j,s)",

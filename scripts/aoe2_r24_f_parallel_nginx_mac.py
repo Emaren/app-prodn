@@ -51,16 +51,18 @@ def ssh_source(source, operation, timeout=450):
                           timeout=timeout, check=False)
 
 def owner_consent(phrase, root_hash, rollback):
-    with open("/dev/tty", "w") as out:
-        out.write("R25 parallel website ONLY. Original PID 2625090 on 3030 remains running.\n")
-        out.write("No Wolo, custody, original source, release.lock or old web service changes.\n")
-        if not rollback:
-            out.write("Consent includes automatic Nginx-only rollback if G AFTER fails.\n")
-        out.write("Reviewed root SHA256: " + root_hash + "\n")
-        out.write("Type exactly " + phrase + ": ")
-        out.flush()
-    with open("/dev/tty", "r") as inp:
-        need(inp.readline().rstrip("\r\n") == phrase, "OWNER_TYPED_CONSENT_DENIED")
+    message="R25 Nginx-only public website transaction. Original PID2625090/3030 remains running.\n"
+    message+="No Wolo, custody, original source, release.lock or old service changes.\n"
+    if not rollback:
+        message+="Includes automatic Nginx-only rollback if G AFTER fails.\n"
+    message+="Reviewed root SHA256: "+root_hash+"\n\nType the exact owner phrase:\n"+phrase
+    script=('set answerRecord to display dialog '+json.dumps(message)+
+            ' default answer "" buttons {"Cancel", "Authorize"} default button "Cancel"\n'
+            'return text returned of answerRecord')
+    answer=subprocess.run(["/usr/bin/osascript","-e",script],capture_output=True,
+                          text=True,timeout=180,check=False)
+    need(answer.returncode==0 and answer.stdout.rstrip("\r\n")==phrase,
+         "OWNER_TYPED_CONSENT_DENIED")
 
 def g_witness(source_path, phase, before=None):
     args = [sys.executable, "-B", str(source_path),
@@ -87,7 +89,10 @@ def g_witness(source_path, phase, before=None):
              result.get("old_web_service_pid_unchanged") is True and
              result.get("financial_units_and_wolo_8092_8093_unchanged") is True and
              result.get("original_release_lock_unchanged") is True and
-             result.get("new_candidate_source_build_dependency_3031_unchanged") is True,
+             result.get("new_candidate_source_build_identity_3031_unchanged") is True and
+             result.get("accepted_dependency_manifest_sha256") ==
+                  "5b0de1da545447f64cd1021839692060f5cf308210c19dbd7153f2f25090056d" and
+             result.get("dependency_bytes_rehashed_in_this_witness") is False,
              "G_REAL_LIVE_PUBLIC_SOURCE_STATIC_FINANCE_WITNESS_NOT_ACCEPTED")
     return p.stdout
 
@@ -128,6 +133,8 @@ def main():
          approved.get("operation") == ("ROLLBACK" if opts.rollback else "APPLY") and
          approved.get("files_modified") is False,
          "ROOT_APPROVED_INTENT_SCOPE_DRIFT")
+    need(approved.get("engine_source_sha256")==opts.root_source_sha256,
+         "ROOT_APPROVED_ENGINE_SOURCE_DRIFT")
     bid = approved.get("candidate_build_id")
     nonce = approved.get("nonce")
     need(type(bid) is str and BUILD.fullmatch(bid) and

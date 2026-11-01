@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `review/f-r24-parallel-old-web-preserving-nginx` at `2a2924394e35b02573a76b850e46bf1c4e195ae8`
+Implementation baseline: `codex/r25-f-evidence-admission` at `2f02d7d43cc6e9923e535096f3ef9479acda0cf1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
