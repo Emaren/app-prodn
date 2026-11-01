@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fec6625b2d205b9d5a3b57cf394ad934dc21a6ce73ad40ba8d587d69f0a1d93b",
+      "sha256": "1740b2aa74b2c4fba5c95e7852951e35daee3d7de6cdc3466c9eac62eefc5409",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2322,6 +2322,28 @@
       ],
       "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "schema-reference",
+      "id": "aoe2war.app-prodn.prisma-readme",
+      "owner": "aoe2war-web",
+      "path": "prisma/README.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-09-22",
+      "sensitivity": "internal",
+      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Prisma Schema and Migration Reference",
+      "type": "reference"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",

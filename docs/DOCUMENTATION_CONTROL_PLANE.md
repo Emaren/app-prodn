@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **101**
+- Authoritative repository documents: **102**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 61
+- `reference`: 62
 - `runbook`: 21
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 80
+- `active`: 81
 - `draft`: 5
 - `generated`: 1
 - `historical`: 12
@@ -152,6 +152,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands
 
