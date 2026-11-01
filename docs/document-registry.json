@@ -123,6 +123,49 @@
     },
     {
       "audience": [
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.deploy-aoe2-access-logging-phase1",
+      "owner": "aoe2war-web",
+      "path": "deploy/aoe2-access-logging-phase1.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-08-26",
+      "sensitivity": "internal",
+      "sha256": "ca60fe42d9aea4eb2b0942f9f57cd73f5ef738db914cdf496e72a44e114e6a59",
+      "source_of_truth": "git",
+      "status": "superseded",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "AoE2 Access Logging Phase 1",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.deploy-vps-upgrade-checklist",
+      "owner": "aoe2war-web",
+      "path": "deploy/vps-upgrade-checklist.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-08-26",
+      "sensitivity": "internal",
+      "sha256": "2fe2c56102d6562812284bf3fd57bfdbcfc436c3663484a95cf89cc8052d4273",
+      "source_of_truth": "git",
+      "status": "superseded",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "VPS Upgrade Checklist (AoE2HDBets)",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -620,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d27342af1c436ffed7c86e712d7c5f6ca6c36bf0ef2d76faf20b133f34997769",
+      "sha256": "66c2c438695985533a99cd24453982ae7f9106bc617c5cb7cdfa700ccf30f26c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2279,6 +2322,28 @@
       ],
       "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "schema-reference",
+      "id": "aoe2war.app-prodn.prisma-readme",
+      "owner": "aoe2war-web",
+      "path": "prisma/README.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-09-22",
+      "sensitivity": "internal",
+      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Prisma Schema and Migration Reference",
+      "type": "reference"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
