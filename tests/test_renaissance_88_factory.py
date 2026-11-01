@@ -21,12 +21,22 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(len(set(x["route"] for x in p["routes"])),88)
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
-        self.assertEqual(p["actual_templates"],148)
+        self.assertEqual(p["actual_templates"],150)
         self.assertEqual(p["actual_handlers"],278)
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])
         self.assertIsNone(p["score"])
+    def test_b4_requires_separate_assurance_without_rewriting_historical_88(self):
+        index=json.loads((ROOT/"config/kingdom-index-routes.json").read_text())
+        inventory=json.loads((ROOT/"config/kingdom-index-inventory.json").read_text())
+        self.assertEqual(len(index),88)
+        self.assertNotIn("/kingdom-construction",[r["href"] for r in index])
+        graph=[r for r in inventory["pages"] if r["href"]=="/kingdom-construction"]
+        self.assertEqual(len(graph),1)
+        self.assertEqual(graph[0]["scope"],"excluded-static")
+        self.assertNotIn("/kingdom-construction",[r["route"] for r in self.plan["routes"]])
+
     def test_canonical_redirects_are_determined_from_source_not_guessed(self):
         rows={x["route"]:x for x in self.plan["routes"]}
         expected={"/about":"/requests","/belts":"/champions",
