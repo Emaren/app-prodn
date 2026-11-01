@@ -1,6 +1,9 @@
 import type { SpeedSample } from "@/lib/speed/types";
 
 export async function postSpeedSample(sample: SpeedSample) {
+  // Only the isolated Renaissance 88 read-only browser fixture sets this
+  // build-time flag. Production telemetry behavior remains unchanged.
+  if (process.env.NEXT_PUBLIC_REN88_READONLY_PREVIEW === "1") return;
   try {
     await fetch("/api/speed/sample", {
       method: "POST",

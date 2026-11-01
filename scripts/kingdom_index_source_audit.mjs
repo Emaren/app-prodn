@@ -26,7 +26,19 @@ function discover(dir=path.join(root,"app"),parts=[]) {
  }
  return result.sort();
 }
-const inventory=discover();
+// Separate B4 source-only route: not one of the historical 88 scored Index cards.
+// Fail closed if either source entrypoint or independent census registration drifts.
+const independentRoute="/kingdom-construction";
+const independentInventory=JSON.parse(readFileSync(path.join(root,"config/kingdom-index-inventory.json"),"utf8"));
+const independentPage=independentInventory.pages.filter(p=>p.href===independentRoute);
+if(independentPage.length!==1 || independentPage[0].entrypoint!=="app/kingdom-construction/page.tsx" ||
+   independentPage[0].scope!=="excluded-static" || independentPage[0].assurance!=="unverified" ||
+   !readdirSync(path.join(root,"app/kingdom-construction")).includes("page.tsx") ||
+   current.some(row=>row.href===independentRoute)) {
+ console.error("KINGDOM INDEX B4 SEPARATE ROUTE ASSURANCE HOLD");
+ process.exit(2);
+}
+const inventory=discover().filter(href=>href!==independentRoute);
 const actual=current.map(row=>row.href).sort();
 const missing=inventory.filter(href=>!actual.includes(href));
 const obsolete=actual.filter(href=>!inventory.includes(href));

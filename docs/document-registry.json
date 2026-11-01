@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cc934faa5214904a8b6992dac42ded396e4f48206eaa119e2bdc5501ef20ac7c",
+      "sha256": "5c26ae7e4f22de2e1192a8a6522c00ecf6beb3c7e8c886a31d813b87b6935196",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1527,6 +1527,28 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "post-r25-source-only-visual-no-runtime",
+      "id": "aoe2war.app-prodn.r25-b4-kingdom-graph",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_B4_KINGDOM_GRAPH_RELEASE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "cb474ce970f5eda4dcb5b56aefac512e308023c4c7b4d34548dafad5242ccce0",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "R25 B4 \u2014 Kingdom Construction Source Graph Release",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -2370,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-b2-b3-additive-20261101",
-    "commit": "31bb53b25083086c9c4a1fa0eef3e3ed80356fcc"
+    "branch": "codex/r25-b2-b3-b4-additive-20261101",
+    "commit": "22cb70299d34ce855e328994e79e157c687e7504"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
