@@ -80,13 +80,14 @@ def make_plan(root:Path,build:Path|None=None,expected_sha:str|None=None,
     phases=read_json(root/"config/renaissance-campaign.json")
     profiles=read_json(root/"config/kingdom-index-assurance-profiles.json")
     rubric=read_json(root/"config/kingdom-index-quality-rubric.json")
-    # The new public graph is deliberately outside the historical 88-route certified factory.
-    # The Index itself has 89 cards; B4 requires its own G browser evidence.
-    if not isinstance(index,list) or len(index)!=89:raise ValueError("Expected exact 89 Index cards including the B4 source graph")
-    graph=[r for r in index if isinstance(r,dict) and r.get("href")=="/kingdom-construction"]
-    if len(graph)!=1:raise ValueError("B4 graph Index entry missing or duplicated")
-    index=[r for r in index if isinstance(r,dict) and r.get("href")!="/kingdom-construction"]
-    if len(index)!=88:raise ValueError("Historical 88-route factory cohort changed")
+    # The B4 graph is independently routed, not automatically enrolled in the
+    # historical 88-route candidate certification/score factory.
+    if not isinstance(index,list) or len(index)!=88:raise ValueError("Historical 88-route Index cohort changed")
+    if any(not isinstance(r,dict) or r.get("href")=="/kingdom-construction" for r in index):
+        raise ValueError("Unreviewed B4 graph Index enrollment")
+    graph=[p for p in inventory.get("pages",[]) if p.get("href")=="/kingdom-construction"]
+    if len(graph)!=1 or graph[0].get("scope")!="excluded-static" or graph[0].get("entrypoint")!="app/kingdom-construction/page.tsx":
+        raise ValueError("B4 independent public route missing")
     routes=[r["href"] for r in index]
     if len(set(routes))!=88 or any(not isinstance(r,str) or not r.startswith("/") or
           r=="/admin" or r.startswith(PRIVATE_PATHS) or "[" in r for r in routes):
