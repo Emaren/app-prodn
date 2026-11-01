@@ -109,15 +109,15 @@ def measure(repo, sha, target_sha, branch, worktree_path, prs):
     return result
 
 
-def collect(repo, target, limit):
+def collect(repo, target, limit, pr_limit=200):
     root = command(["git", "rev-parse", "--show-toplevel"], cwd=repo)
     target_sha = command(["git", "rev-parse", "--verify", f"{target}^{{commit}}"], cwd=repo)
     worktrees_raw = command(["git", "worktree", "list", "--porcelain"], cwd=repo)
     if not root or not target_sha or worktrees_raw is None:
         raise RuntimeError("UNVERIFIED_REPOSITORY_OR_TARGET")
     slug = command(["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], cwd=repo)
-    raw = command(["gh", "pr", "list", "--repo", slug, "--state", "all", "--limit", "1000", "--json",
-                   "number,state,isDraft,headRefName,baseRefName,url,updatedAt,mergedAt,statusCheckRollup,body"],
+    raw = command(["gh", "pr", "list", "--repo", slug, "--state", "all", "--limit", str(pr_limit), "--json",
+                   "number,state,isDraft,headRefName,baseRefName,url,updatedAt,mergedAt,statusCheckRollup"],
                   cwd=repo, timeout=30) if slug else None
     try:
         prs = pr_index(json.loads(raw)) if raw else {}
@@ -150,7 +150,7 @@ def collect(repo, target, limit):
             "target_sha": target_sha, "observed_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
             "remote_tracking_is_cached": True, "github_pr_inventory": "OBSERVED" if raw else "UNKNOWN",
             "worktree_count": len(worktrees), "remote_refs_seen": total_remote,
-            "remote_output_limit": limit, "worktrees": worktrees, "remote_only": remote,
+            "remote_output_limit": limit, "github_pr_limit": pr_limit, "worktrees": worktrees, "remote_only": remote,
             "disclaimer": "Read-only discovery; UNKNOWN is not abandoned. No source, CI, runtime or funded acceptance granted."}
 
 
@@ -159,11 +159,14 @@ def main():
     p.add_argument("--repo", type=Path, default=Path("."))
     p.add_argument("--target", default="origin/main")
     p.add_argument("--remote-limit", type=int, default=300)
+    p.add_argument("--pr-limit", type=int, default=200)
     a = p.parse_args()
     if a.remote_limit < 0 or a.remote_limit > 2000:
         p.error("--remote-limit must be between 0 and 2000")
+    if a.pr_limit < 0 or a.pr_limit > 1000:
+        p.error("--pr-limit must be between 0 and 1000")
     try:
-        print(json.dumps(collect(a.repo.resolve(), a.target, a.remote_limit), indent=2, sort_keys=True))
+        print(json.dumps(collect(a.repo.resolve(), a.target, a.remote_limit, a.pr_limit), indent=2, sort_keys=True))
     except RuntimeError as err:
         print("HOLD_SOURCE_INVENTORY: " + str(err), file=sys.stderr)
         return 2

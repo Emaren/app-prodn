@@ -13,7 +13,7 @@ review_interval_days: 60
 sensitivity: "internal"
 ---
 
-# AI engineering entry point — discover before developing
+# AoE2WAR AI Engineering Entry Point
 
 This document is a **pointer and operating contract**, not a second release
 register, source map or authorization mechanism. Never turn a historical SHA,
