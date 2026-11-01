@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/r25-postrelease-b3-operator-evidence-20261031` at `ada188822cba767234bb3499a145f9e74fae1704`
+Implementation baseline: `feature/r25-postrelease-b3-operator-evidence-20261031` at `bfdb641b3313f99f3ea5b9dc263c907430f21e38`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
