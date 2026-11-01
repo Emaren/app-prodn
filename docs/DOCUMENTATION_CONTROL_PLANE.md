@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `security/r25-glob-minimatch-remediation-20261031` at `1ce04546ea8098945f9080f930eacfaec5f2b3c3`
+Implementation baseline: `security/r25-glob-minimatch-remediation-20261031` at `e1472e217ef1bbdbab46b0ffd96d7672fb66d322`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
