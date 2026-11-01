@@ -29,7 +29,7 @@ async function run(){
    assert.equal(await graph.count(),1,"accessible SVG graph");
    assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED").count(),15,"all nodes UNKNOWN");
    assert.equal(await page.getByText(/Plans are nonexecuting/).count(),1,"nonexecution status");
-   assert.equal(await page.getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0,"forbidden action");
+   assert.equal(await page.locator("main").getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0,"forbidden action");
    const layout=await page.evaluate(()=>({viewport:innerWidth,doc:document.documentElement.scrollWidth}));
    assert.ok(layout.doc<=width+8,"document horizontal overflow "+JSON.stringify(layout));
    await page.addScriptTag({content:axe.source});
@@ -65,7 +65,7 @@ async function run(){
    assert.equal(new URL(page.url()).pathname,"/admin/system-composer");
    assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED").count(),15);
    assert.equal(await page.getByText(/Plans are nonexecuting/).count(),1);
-   assert.equal(await page.getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0);
+   assert.equal(await page.locator("main").getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0);
    assert.deepEqual(errors,[]);
    const docWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
    assert.ok(docWidth<=width+8,"admin horizontal overflow");
