@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd940-native-ingest-placeholders-20261101` at `fe15b020c8c26c5765fbc15dd340915627ee6262`
+Implementation baseline: `fix/hd940-native-ingest-placeholders-20261101` at `641155519f39b7f6ba36807e2562405bd61032bb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

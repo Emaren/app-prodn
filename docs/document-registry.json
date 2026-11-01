@@ -596,7 +596,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ea9a25d257e5d84bfb3ced310ea47f191df16fd69f4d0ffe69d333da15d664a1",
+      "sha256": "3cce104adee6f686b14f149b2d1056082a8b470d5ad0b72ca15a33ed615be7ca",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2283,7 +2283,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/hd940-native-ingest-placeholders-20261101",
-    "commit": "fe15b020c8c26c5765fbc15dd340915627ee6262"
+    "commit": "641155519f39b7f6ba36807e2562405bd61032bb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
