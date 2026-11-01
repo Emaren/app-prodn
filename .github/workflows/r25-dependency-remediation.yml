@@ -69,6 +69,12 @@ jobs:
           }
           console.log('MINIMATCH_V11_IMPORTER_DIAGNOSTIC',JSON.stringify({checked,hits}));
           JS
+      - name: Strict secure-major ESLint importer behavior and adversarial negatives
+        run: |
+          node --test tests/r25-secure-minimatch-adapter.test.cjs
+          node scripts/r25_secure_minimatch_eslint_adapter.cjs
+          node --input-type=module -e "await import('@eslint/config-array'); await import('@eslint/eslintrc'); console.log('PASS:ESLINT_NAMED_IMPORTS_AND_LOAD')"
+          node scripts/r25_secure_minimatch_eslint_adapter.cjs
       - name: Targeted parser and package compatibility tests
         run: |
           python3 -m unittest tests.test_dependency_security
