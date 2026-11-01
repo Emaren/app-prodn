@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "78bc551b9908d01b0c25d30b52599f542a860c23b24ae52613050c2f687b9390",
+      "sha256": "fec6625b2d205b9d5a3b57cf394ad934dc21a6ce73ad40ba8d587d69f0a1d93b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2322,34 +2322,12 @@
       ],
       "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "schema-reference",
-      "id": "aoe2war.app-prodn.prisma-readme",
-      "owner": "aoe2war-web",
-      "path": "prisma/README.md",
-      "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
-      "sensitivity": "internal",
-      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn"
-      ],
-      "title": "Prisma Schema and Migration Reference",
-      "type": "reference"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/r25-start-v2-recovery-20261101",
-    "commit": "97f046c39e481407af5efe403159de129ccc8d5c"
+    "branch": "fix/r25-v2-authenticated-review-provenance-20261101",
+    "commit": "a924eac33751c3257508dd5717054700bc12d315"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
