@@ -22,3 +22,16 @@ test("composer view inherits admin guard and cannot grant release authority",()=
  assert.match(source,/Plans are nonexecuting/);
  assert.doesNotMatch(source,/submit|signTransaction|POST/);
 });
+
+test("new graph is a separate unscored source route pending explicit browser admission",()=>{
+ const routes=JSON.parse(read("config/kingdom-index-routes.json"));
+ const inventory=JSON.parse(read("config/kingdom-index-inventory.json"));
+ const campaign=JSON.parse(read("config/renaissance-campaign.json"));
+ assert.equal(routes.length,88);
+ assert.equal(routes.some((r:{href:string})=>r.href==="/kingdom-construction"),false);
+ const graph=inventory.pages.find((r:{href:string})=>r.href==="/kingdom-construction");
+ assert.equal(graph?.entrypoint,"app/kingdom-construction/page.tsx");
+ assert.equal(graph?.scope,"excluded-static");
+ assert.equal(graph?.assurance,"unverified");
+ assert.ok(campaign.phases.some((p:{routes:string[]})=>p.routes.includes("/kingdom-construction")));
+});
