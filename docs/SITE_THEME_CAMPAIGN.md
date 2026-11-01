@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "presentation-policy"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-11-01"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -28,6 +28,8 @@ The first campaign is **October Blackout 2026**:
 - seeded enabled;
 - active window: 2026-10-01 00:00 MDT through 2026-11-01 00:00 MDT
   (06:00 UTC boundaries);
+- as of 2026-11-01, this campaign window has ended; a still-enabled
+  configuration flag must not activate the expired campaign;
 - after the window ends, the campaign stops automatically even if the enabled
   switch remains true.
 

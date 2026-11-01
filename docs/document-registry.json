@@ -123,49 +123,6 @@
     },
     {
       "audience": [
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "operational-procedure",
-      "id": "aoe2war.app-prodn.deploy-aoe2-access-logging-phase1",
-      "owner": "aoe2war-web",
-      "path": "deploy/aoe2-access-logging-phase1.md",
-      "review_interval_days": 0,
-      "reviewed_at": "2026-08-26",
-      "sensitivity": "internal",
-      "sha256": "ca60fe42d9aea4eb2b0942f9f57cd73f5ef738db914cdf496e72a44e114e6a59",
-      "source_of_truth": "git",
-      "status": "superseded",
-      "systems": [
-        "app-prodn"
-      ],
-      "title": "AoE2 Access Logging Phase 1",
-      "type": "runbook"
-    },
-    {
-      "audience": [
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "operational-procedure",
-      "id": "aoe2war.app-prodn.deploy-vps-upgrade-checklist",
-      "owner": "aoe2war-web",
-      "path": "deploy/vps-upgrade-checklist.md",
-      "review_interval_days": 0,
-      "reviewed_at": "2026-08-26",
-      "sensitivity": "internal",
-      "sha256": "2fe2c56102d6562812284bf3fd57bfdbcfc436c3663484a95cf89cc8052d4273",
-      "source_of_truth": "git",
-      "status": "superseded",
-      "systems": [
-        "app-prodn",
-        "api-prodn"
-      ],
-      "title": "VPS Upgrade Checklist (AoE2HDBets)",
-      "type": "runbook"
-    },
-    {
-      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -278,7 +235,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -455,9 +412,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "358d990355e1050a36699ac3c9fe6b8f819b9fb480f1434878f913be01775897",
+      "sha256": "6a4b8c99dc3ba02ccbe2dfe026e444cdfb2433e157d34c5edf0fc8ed8ec631d1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -511,7 +468,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 — presentation and release contract",
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
       "type": "reference"
     },
     {
@@ -663,7 +620,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "66c2c438695985533a99cd24453982ae7f9106bc617c5cb7cdfa700ccf30f26c",
+      "sha256": "d27342af1c436ffed7c86e712d7c5f6ca6c36bf0ef2d76faf20b133f34997769",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1362,7 +1319,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1384,7 +1341,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1452,7 +1409,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1499,7 +1456,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1591,7 +1548,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1704,7 +1661,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance 88 — Repeatable page qualification protocol",
+      "title": "Renaissance 88 \u2014 Repeatable page qualification protocol",
       "type": "runbook"
     },
     {
@@ -1726,7 +1683,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Renaissance Tab D — private census forge and Test Forge queue",
+      "title": "Renaissance Tab D \u2014 private census forge and Test Forge queue",
       "type": "runbook"
     },
     {
@@ -1774,7 +1731,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1833,9 +1790,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SCHEDULED_MATCH_SETTLEMENTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "restricted",
-      "sha256": "58a36ec555e63af97b1bab873ef3415198f564feebd414ee22fcc47c001fffa1",
+      "sha256": "54c098c31e2af1fc4cd157d2d43e6a6958916c382a4db073b722041601832894",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1880,9 +1837,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SITE_THEME_CAMPAIGN.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "76d4c17477764175e4055afb272dc419797f030f7572753cee32ece06b389374",
+      "sha256": "19f6b7197525bcbcb62fff3269909fe1f1275191cbbc9ad29a2f66577b8fb277",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1949,9 +1906,9 @@
       "owner": "aoe2war-web",
       "path": "docs/TELEVISION_WOLO.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "sha256": "1b0bca6fe7f138119337f85fb718cdb81a3d7475f98c43acb439c3c66f1302d3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2095,7 +2052,7 @@
         "app-prodn",
         "aoe2-watcher"
       ],
-      "title": "The Watcher — Kingdom Index Desktop Companion Certification",
+      "title": "The Watcher \u2014 Kingdom Index Desktop Companion Certification",
       "type": "reference"
     },
     {
@@ -2179,9 +2136,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_FAUCET_SECURITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "restricted",
-      "sha256": "9be52f24cdcd5d8c84479a70b9dbedc712af549485b1ef5e9e988643cdcbae28",
+      "sha256": "efd97dcd3b6ad78c3bbad4f61c8bad50d7c5aab76b5628d8e9320260635b3f50",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2224,9 +2181,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "848e624f3164978117067fa097ca40e0fbe567c5a81c78f6e349293200ddff4d",
+      "sha256": "53d13ebb6717ff519b99341fa2b6b35ea4356b49ffe72d2002f02933f990d002",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2320,30 +2277,8 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "schema-reference",
-      "id": "aoe2war.app-prodn.prisma-readme",
-      "owner": "aoe2war-web",
-      "path": "prisma/README.md",
-      "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
-      "sensitivity": "internal",
-      "sha256": "44cba20b85a96681e941b79147f95321ca1da19f721ededf572b0306f4a3ddde",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn"
-      ],
-      "title": "Prisma Schema and Migration Reference",
-      "type": "reference"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
