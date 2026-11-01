@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-11-01"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Scheduled Match Escrow Settlements
 
-Implementation review: 2026-09-30
+Implementation/source-contract review: 2026-11-01
 
 New `championship_v2` Challenges follow the
 [Belt Constitution](./CHAMPIONSHIP_BELT_CONSTITUTION.md). Team funding uses
@@ -65,7 +65,15 @@ On mainnet, grouped settlement can execute only through `http://127.0.0.1:8092`
 after `/settlement/v1/health` reports `ok=true` and `chain_id=wolo-1`. If health
 reports `PAYOUT_FEE_HEADROOM_TOO_LOW`, `ESCROW_BALANCE_TOO_LOW`, or any other
 non-ok state, the app should surface a blocked dry-run and must not retry
-against `127.0.0.1:8091`.
+against 127.0.0.1:8091.
+
+**2026-11-01 source-contract review:** The existing grouped 8092 settlement
+description is a historical app contract, NOT authorization for the new
+protected escrow-return boundary at 8094. Do not route custody returns through
+8092, infer 8094 readiness from existing 8092 health, or execute new funded
+returns before independent custody enrollment, bank proofs, reserve coverage,
+reviewed recovery and separately authorized financial deployment. A source
+test or dry-run is not chain transfer proof.
 
 ## What Is Settled Here
 

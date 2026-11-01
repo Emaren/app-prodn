@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "domain-contract"
-reviewed_at: "2026-08-28"
+reviewed_at: "2026-11-01"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -145,7 +145,10 @@ creating a second side bet.
 
 ## Deployment
 
-Before application code that queries this ledger is restarted in production:
+Before application code that queries this ledger is activated in production,
+use the separately authorized release controller and its physical receipts.
+The steps below are required checks inside that controlled release, NOT
+permission to run an ad hoc production migration or restart:
 
 1. deploy migration `20260722203000_add_replay_desync_incidents` with
    `npx prisma migrate deploy`;
