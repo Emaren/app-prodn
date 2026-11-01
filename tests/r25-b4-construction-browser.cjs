@@ -28,10 +28,11 @@ async function run(){
    await heading.waitFor();
    const surface=heading.locator("xpath=ancestor::main[1]");
    assert.equal(await surface.count(),1,"one construction content surface");
-   const graph=page.getByRole("img",{name:/Graph of planned named OS responsibilities/});
+   const graph=surface.getByRole("img",{name:/Graph of planned named OS responsibilities/});
    assert.equal(await graph.count(),1,"accessible SVG graph");
-   assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED").count(),15,"all nodes UNKNOWN");
-   assert.equal(await page.getByText(/Plans are nonexecuting/).count(),1,"nonexecution status");
+   assert.equal(await surface.getByRole("heading",{level:3}).count(),15,"all public source nodes");
+   assert.equal(await surface.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED",{exact:true}).count(),15,"all public nodes UNKNOWN at "+width);
+   assert.equal(await surface.getByText(/Plans are nonexecuting/).count(),1,"nonexecution status");
    assert.equal(await surface.getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0,"forbidden construction action");
    const layout=await page.evaluate(()=>({viewport:innerWidth,doc:document.documentElement.scrollWidth}));
    assert.ok(layout.doc<=width+8,"document horizontal overflow "+JSON.stringify(layout));
@@ -69,8 +70,9 @@ async function run(){
    const surface=heading.locator("xpath=ancestor::main[1]");
    assert.equal(await surface.count(),1,"one composer content surface");
    assert.equal(new URL(page.url()).pathname,"/admin/system-composer");
-   assert.equal(await page.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED").count(),15);
-   assert.equal(await page.getByText(/Plans are nonexecuting/).count(),1);
+   assert.equal(await surface.getByRole("heading",{level:3}).count(),15,"all admin source nodes");
+   assert.equal(await surface.getByText("Runtime: UNKNOWN · Workers: UNVERIFIED",{exact:true}).count(),15,"all admin nodes UNKNOWN at "+width);
+   assert.equal(await surface.getByText(/Plans are nonexecuting/).count(),1);
    assert.equal(await surface.getByRole("button",{name:/deploy|launch|approve|transfer|sign/i}).count(),0,"forbidden composer action");
    assert.deepEqual(errors,[]);
    const docWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
