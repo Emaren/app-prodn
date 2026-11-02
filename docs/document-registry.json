@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "041e0a7dc036eca31835903c7a8739bcbfd56a76a1959f1195d408651b168d71",
+      "sha256": "73938cbcad55520b60f763c6277e93b36bb6328a7b42111f3ee379c086ad7a2a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-v4-nameerror-recovery-20261101",
-    "commit": "aba5a568c052510aa045081e4b0d9f043316934a"
+    "branch": "codex/r25-v5-inactive-resetfix-20261101",
+    "commit": "0550eac4f0445522eccc3fa91c2f22dae3834f7b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
