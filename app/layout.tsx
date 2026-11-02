@@ -78,22 +78,30 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Bound to the DISPOSABLE exact-source Chrome artifact at build time.
+  // Production builds do not set this variable and retain both analytics.
+  const isolatedGetOnlyPreview =
+    process.env.NEXT_PUBLIC_AOE2WAR_ISOLATED_GET_ONLY === "1";
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className="bg-[#050814] text-white min-h-screen flex flex-col"
         suppressHydrationWarning
       >
-        <Script
-          strategy="lazyOnload"
-          data-domain="aoe2war.com"
-          src="https://plausible.io/js/script.js"
-        />
-        <Script
-          strategy="lazyOnload"
-          src="https://traffic.tokentap.ca/api/beacon.js"
-          data-project="aoe2hdbets"
-        />
+        {!isolatedGetOnlyPreview && (
+          <>
+            <Script
+              strategy="lazyOnload"
+              data-domain="aoe2war.com"
+              src="https://plausible.io/js/script.js"
+            />
+            <Script
+              strategy="lazyOnload"
+              src="https://traffic.tokentap.ca/api/beacon.js"
+              data-project="aoe2hdbets"
+            />
+          </>
+        )}
         <AppShell>{children}</AppShell>
         <PwaRegister />
         <DeploymentVersionGuard />
