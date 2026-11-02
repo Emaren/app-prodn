@@ -97,8 +97,10 @@ async function main(){
    assert.equal(await atlas.getByRole("status").first().innerText(),"37 of 37 source routes · LIVE STATUS UNVERIFIED");
    const input=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await input.fill("storage");
-   assert.equal(await atlas.locator('a[data-atlas-href]').count(),1,"route search must filter exactly");
-   assert.ok((await atlas.locator('a[data-atlas-href]').first().getAttribute("href")).includes("/admin/storage-os"));
+   const storageHrefs=await atlas.locator('a[data-atlas-href]').evaluateAll(
+     nodes=>nodes.map(node=>node.getAttribute("data-atlas-href")).sort());
+   assert.deepEqual(storageHrefs,["/admin/storage-os","/admin/storage-transfer"],
+     "storage search must show only the two exact source-backed private pages");
    await input.fill("");
    const people=atlas.getByRole("button",{name:"People",exact:true});
    await people.focus();await page.keyboard.press("Enter");
