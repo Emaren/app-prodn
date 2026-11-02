@@ -25,7 +25,7 @@ H64 = re.compile(r"[a-f0-9]{64}\Z")
 NAMES = {"engine": "scripts/aoe2_r24_f_parallel_nginx_cutover.py",
     "owner": "scripts/aoe2_r24_f_parallel_nginx_mac.py", "g": "scripts/aoe2_r25_f_g_parallel_observer.py",
     "admission_root": "scripts/r25_f_evidence_admission_root.py",
-    "admission_mac": "scripts/r25_f_evidence_admission_mac.py", "c_helper": "scripts/r25_c_start_recovery_v2_root.py"}
+    "admission_mac": "scripts/r25_f_evidence_admission_mac.py", "c_helper": "scripts/r25_c_start_recovery_v8_root.py"}
 
 def need(ok, why):
     if not ok:
@@ -55,14 +55,31 @@ def review(comment_id, expected_sha, scope):
          "REVIEW_ID_REPOSITORY_AUTHOR_DRIFT")
     body = obj.get("body", "")
     need(isinstance(body, str) and sha(body.encode()) == expected_sha, "ACTUAL_REVIEW_BODY_PIN_DRIFT")
-    match = re.fullmatch(r"R25_F_INDEPENDENT_REVIEW\n```json\n(.+)\n```\n?", body, re.S)
-    need(match is not None, "REAL_REVIEW_FORMAT")
-    manifest = json.loads(match[1])
-    need(manifest.get("schema") == "aoe2war.r25.f.evidence-review.v1" and manifest.get("scope") == scope
-         and manifest.get("decision") == "ACCEPT" and manifest.get("independent_review") is True
-         and manifest.get("publisher_is_reviewer_identity") is False
-         and manifest.get("reviewer") in ("/root/security_review", "/root/start_fix_review"),
-         "GENUINE_INDEPENDENT_REVIEW_REQUIRED")
+    marker="\n" + chr(96)*3 + "json\n"
+    suffix="\n" + chr(96)*3
+    owner_mode=body.startswith("R25_F_OWNER_NONFINANCIAL_ACCEPT"+marker)
+    need(body.startswith(("R25_F_OWNER_NONFINANCIAL_ACCEPT"+marker,
+                          "R25_F_INDEPENDENT_REVIEW"+marker))
+         and body.rstrip().endswith(suffix), "REAL_REVIEW_MANIFEST_REQUIRED")
+    review_text=body.split(marker,1)[1].rsplit(suffix,1)[0]
+    manifest=json.loads(review_text)
+    if owner_mode:
+        need(manifest.get("schema")=="aoe2war.r25.f.owner-nonfinancial-review.v1"
+             and manifest.get("decision")=="ACCEPT" and manifest.get("scope")==scope
+             and manifest.get("owner_login")=="Emaren"
+             and manifest.get("release_authority")=="OWNER_ONLY_NONFINANCIAL"
+             and manifest.get("owner_accepts_no_independent_review") is True
+             and manifest.get("independent_review") is False
+             and manifest.get("financial_authorized") is False
+             and manifest.get("public_cutover_authorized") is False,
+             "AUTHENTIC_OWNER_ONLY_NONFINANCIAL_ACCEPTANCE_REQUIRED")
+    else:
+        need(manifest.get("schema")=="aoe2war.r25.f.evidence-review.v1"
+             and manifest.get("decision")=="ACCEPT" and manifest.get("scope")==scope
+             and manifest.get("independent_review") is True
+             and manifest.get("publisher_is_reviewer_identity") is False
+             and manifest.get("reviewer") in ("/root/security_review","/root/start_fix_review"),
+             "GENUINE_INDEPENDENT_REVIEW_REQUIRED")
     return {"body": body, "body_sha256": expected_sha, "author": "Emaren", "url": url, "issue_url": issue}, manifest
 
 def source_files(manifest):

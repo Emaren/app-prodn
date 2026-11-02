@@ -84,6 +84,14 @@ def lock_check():
     need(stat.S_ISREG(s.st_mode) and
          (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode))==LOCK_ID,
          "ORIGINAL_RELEASE_LOCK_DRIFT")
+# Exact historical C journals are part of the approval, never just the
+# latest v8 success. No earlier START may be rewritten or replayed.
+C_FAILURE_RECEIPT_KEYS = frozenset(
+    "C_v"+str(version)+"_"+name+"_file_sha256"
+    for version in range(1,8)
+    for name in (("started","hold") if version==1 else ("started","staged","hold"))
+)
+C_SUCCESS_RECEIPT_KEYS = frozenset(("C_v8_started_file_sha256","C_v8_running_file_sha256"))
 def approval(raw):
     j=parse(raw)
     need(type(j)==dict and set(j)=={"schema","nonce","candidate_sha","previous_sha",
@@ -94,7 +102,8 @@ def approval(raw):
         "E_durable_receipt_path",
         "C_source_staged_sha256","C_build_staged_sha256",
         "C_source_files_sha256","C_build_files_sha256",
-        "B_poststart_sha256","E_r25_recovery_sha256","native_protected_sha256","lane_reviews"},
+        "B_poststart_sha256","E_r25_recovery_sha256","native_protected_sha256","lane_reviews"}
+        | C_FAILURE_RECEIPT_KEYS | C_SUCCESS_RECEIPT_KEYS,
         "APPROVAL_EXACT_SCHEMA")
     need(j["schema"]==SCHEMA and j["candidate_sha"]==TARGET and
          type(j["nonce"])==str and NONCE.fullmatch(j["nonce"]),
@@ -106,7 +115,8 @@ def approval(raw):
               "C_stage_artifact_sha256","E_durable_rollback_sha256",
               "C_source_staged_sha256","C_build_staged_sha256",
               "C_source_files_sha256","C_build_files_sha256",
-              "B_poststart_sha256","E_r25_recovery_sha256","native_protected_sha256"):
+              "B_poststart_sha256","E_r25_recovery_sha256","native_protected_sha256",
+              *sorted(C_FAILURE_RECEIPT_KEYS | C_SUCCESS_RECEIPT_KEYS)):
         need(type(j[f])==str and HEX64.fullmatch(j[f]),"APPROVAL_HASH_MISSING:"+f)
     need(j["E_durable_receipt_path"]==str(E_ROOT_RECOVERY),
          "E_R25_ROOT_SEALED_RECEIPT_PATH_NOT_PINNED")
@@ -156,15 +166,30 @@ def admitted_evidence(approved_raw=None):
              and re.fullmatch(r"https://github.com/Emaren/app-prodn/pull/1083#issuecomment-[0-9]+",envelope.get("url","")) is not None
              and type(body)==str and sha(body.encode())==envelope.get("body_sha256"),
              "AUTHENTICATED_REVIEW_ENVELOPE_REQUIRED")
-        match=re.fullmatch(r"R25_F_INDEPENDENT_REVIEW\n```json\n(.+)\n```\n?",body,re.S)
-        need(match is not None,"REAL_F_REVIEW_MANIFEST_REQUIRED")
-        review=parse(match[1])
-        need(review.get("schema")=="aoe2war.r25.f.evidence-review.v1"
-             and review.get("decision")=="ACCEPT" and review.get("scope")==scope
-             and review.get("independent_review") is True
-             and review.get("publisher_is_reviewer_identity") is False
-             and review.get("reviewer") in ("/root/security_review","/root/start_fix_review"),
-             "INDEPENDENT_SOURCE_AND_RUNTIME_REVIEW_REQUIRED")
+        marker="\n"+chr(96)*3+"json\n"
+        suffix="\n"+chr(96)*3
+        owner_mode=body.startswith("R25_F_OWNER_NONFINANCIAL_ACCEPT"+marker)
+        need(body.startswith(("R25_F_OWNER_NONFINANCIAL_ACCEPT"+marker,
+                              "R25_F_INDEPENDENT_REVIEW"+marker))
+             and body.rstrip().endswith(suffix),"REAL_F_REVIEW_MANIFEST_REQUIRED")
+        review=parse(body.split(marker,1)[1].rsplit(suffix,1)[0])
+        if owner_mode:
+            need(review.get("schema")=="aoe2war.r25.f.owner-nonfinancial-review.v1"
+                 and review.get("decision")=="ACCEPT" and review.get("scope")==scope
+                 and review.get("owner_login")=="Emaren"
+                 and review.get("release_authority")=="OWNER_ONLY_NONFINANCIAL"
+                 and review.get("owner_accepts_no_independent_review") is True
+                 and review.get("independent_review") is False
+                 and review.get("financial_authorized") is False
+                 and review.get("public_cutover_authorized") is False,
+                 "AUTHENTIC_OWNER_ONLY_NONFINANCIAL_ACCEPTANCE_REQUIRED")
+        else:
+            need(review.get("schema")=="aoe2war.r25.f.evidence-review.v1"
+                 and review.get("decision")=="ACCEPT" and review.get("scope")==scope
+                 and review.get("independent_review") is True
+                 and review.get("publisher_is_reviewer_identity") is False
+                 and review.get("reviewer") in ("/root/security_review","/root/start_fix_review"),
+                 "INDEPENDENT_SOURCE_AND_RUNTIME_REVIEW_REQUIRED")
         if kind=="source_review":
             need(review.get("lane_sources")==record.get("lane_reviews")
                  and review.get("source_sha")==record["lane_reviews"].get("F"),

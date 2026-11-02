@@ -310,6 +310,8 @@ server { server_name unrelated.example; listen 443 ssl;
          "C_source_staged_sha256":"3"*64,"C_build_staged_sha256":"4"*64,
          "C_source_files_sha256":"5"*64,"C_build_files_sha256":"6"*64,
          "lane_reviews":{lane:"2"*40 for lane in "BCDEFG"}}
+        j.update({key:"8"*64 for key in
+                  self.s.C_FAILURE_RECEIPT_KEYS | self.s.C_SUCCESS_RECEIPT_KEYS})
         with mock.patch.object(self.s,"root_file",side_effect=FileNotFoundError):
             with self.assertRaisesRegex(self.s.Hold,"REAL_ONE_USE_F_ADMISSION_RECEIPT_REQUIRED"):
                 self.s.approval(self.s.canonical(j))
