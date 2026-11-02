@@ -2179,9 +2179,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_FAUCET_SECURITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-11-01",
+      "reviewed_at": "2026-11-02",
       "sensitivity": "restricted",
-      "sha256": "efd97dcd3b6ad78c3bbad4f61c8bad50d7c5aab76b5628d8e9320260635b3f50",
+      "sha256": "7396af3a3a1dae35848b3edd132f6d3e5e1980a47dfb9aaf80edfac84a888255",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

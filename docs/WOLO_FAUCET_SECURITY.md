@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "security-contract"
-reviewed_at: "2026-11-01"
+reviewed_at: "2026-11-02"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -107,6 +107,39 @@ Recovery procedure:
 Never hard-fork WoloChain or rewrite chain history merely to recover ordinary
 faucet losses. Any chain-level intervention requires separate explicit
 governance.
+
+## November 2, 2026 source-bound security review
+
+This review was performed as an owner-delegated, AI-assisted source audit; it
+is **not** an independent human security approval and does not authorize any
+faucet transfer, hot-wallet action or production activation.
+
+The reviewed exact repository route `app/api/wolo/faucet/claim/route.ts` has
+SHA256 `f44aba8da83fbbefa08b208996b61de4c2fd64a358935d9c84d014bb81a2f2af`.
+The source at this security PR and the checked-out application production
+repository had identical bytes at review time. Source inspection independently
+confirmed these boundaries in the actual handler:
+
+- `getSessionUid(request)` supplies the account identity; a missing session
+  returns HTTP 401, and the Prisma user lookup requires a linked `steamId`.
+- The handler reads both account and recipient-address claim ledgers, passes
+  them to `evaluateFaucetClaimPolicy`, and checks the durable circuit breaker.
+- It records an account reservation before calling `sendFaucetTransfer`; a
+  broadcast with an unknown outcome is not treated as permission to retry.
+- A one-use application lock uses exclusive `wx` file creation, and ledger
+  replacement uses rename. The policy distinguishes confirmed transactions
+  from unconfirmed reservations when calculating global claim ceilings.
+- Recovery still requires operator examination of the chain transactions,
+  hot wallet and breaker evidence. This review does **not** certify current
+  account ledger contents, an open breaker, wallet funds or bank solvency.
+
+Verification: the source-identical full application tree executed
+`node --test tests/wolo-faucet-sybil-hardening.test.mts tests/wolo-faucet-policy.test.mts`
+with **17/17 PASS** on November 2, 2026. The security-remediation PR's own
+GitHub checks also passed, but those CI jobs do not replace review of the
+runtime authority and do not imply a live financial payout was exercised.
+The retained August 18 Sybil incident data does not establish a defensive
+block at a hypothetical 654th claim; that historical UNKNOWN remains UNKNOWN.
 
 ## Security invariants
 
