@@ -1190,6 +1190,9 @@ def session_plan(payload):
     need(normalized_g['properties'].get('ExecStart_sha256')==historical['observed_execstart_sha256'],
          'SESSION_G_EXECSTART_OBSERVATION_DRIFT')
     normalized_g['properties']['ExecStart_sha256']=SESSION_HISTORICAL_EXECSTART_SHA
+    normalized_g['properties_sha256']=sha(canonical(normalized_g['properties']))
+    need(normalized_g['properties_sha256']=='1befbb077ff60cead6df69edb9e3a373430d3930a0723cd1456b7c48b80020eb',
+         'SESSION_HISTORICAL_G_PROPERTY_DIGEST_DRIFT')
     need(sha(canonical(normalized_g))==SESSION_G_UNIT_BEFORE_SHA and
          sha(canonical(g_listener))==SESSION_G_LISTENER_BEFORE_SHA,
          'IMMUTABLE_A04_CANDIDATE_ONLY_BASELINE_DRIFT')
