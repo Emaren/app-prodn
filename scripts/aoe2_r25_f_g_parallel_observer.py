@@ -963,6 +963,29 @@ def compare_process_and_finance(before,after):
          "ORIGINAL_OR_CANDIDATE_RUNTIME_HTTP_CHANGED")
     need(before["approved_scope_sha256"]==after["approved_scope_sha256"],
          "OWNER_APPROVAL_CHANGED_DURING_CUTOVER")
+def compare_repeated_postflight(first,repeat):
+    """Verify two current-state G snapshots, never replay historical PID migration.
+
+    G's original compare_process_and_finance(before,after) proves the frozen
+    A04 PID 1118556 -> C-accepted PID 1483304 migration exactly ONCE.
+    The independent second AFTER snapshot verifies no *new* drift, so both
+    sides are current PID 1483304. Re-running historical migration here would
+    necessarily fail. Require STRICT byte-equivalent structured observations
+    across both samples for every source, unit, listener, finance and signer.
+    """
+    need(first.get("phase")==repeat.get("phase") and
+         first.get("phase") in ("after","rollback"),
+         "G_REPEATED_POSTFLIGHT_PHASE_MISMATCH")
+    for field in ("old_source","old_next_build_id","candidate",
+                  "units","ports","old_http","candidate_http",
+                  "approved_scope_sha256","transaction_scope",
+                  "candidate_runtime_lineage"):
+        need(field in first and field in repeat and
+             first[field]==repeat[field],
+             "G_REPEATED_POSTFLIGHT_DRIFT:"+field.upper())
+    # The selected Nginx config and root transaction journal are compared
+    # separately, verbatim, immediately after this call; no caches or labels.
+
 def verify(before,after,phase):
     need(before.get("schema")==after.get("schema")=="aoe2war.g.r25.parallel-host.v1"
          and before.get("phase")=="before" and after.get("phase")==phase,
@@ -1089,7 +1112,7 @@ def main():
                 public=public_check(snapshot)
                 result["public"]=public
                 repeat=ssh_snapshot(x.ssh_target,x.phase)
-                compare_process_and_finance(snapshot,repeat)
+                compare_repeated_postflight(snapshot,repeat)
                 need(repeat["nginx"]==snapshot["nginx"] and
                      repeat["release_journal"]==snapshot["release_journal"],
                      "NGINX_OR_ROOT_JOURNAL_CHANGED_DURING_PUBLIC_PROBE")
