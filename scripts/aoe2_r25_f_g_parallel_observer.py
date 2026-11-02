@@ -6,7 +6,7 @@ F controls the single owner-authorized deployment transaction. Never run this
 against a candidate lacking B's positive read-only/egress/method admission.
 """
 from __future__ import annotations
-import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys
+import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys, time
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
@@ -55,6 +55,9 @@ H40=re.compile(r"[a-f0-9]{40}\Z")
 H64=re.compile(r"[a-f0-9]{64}\Z")
 BUILD=re.compile(r"[A-Za-z0-9_-]{8,128}\Z")
 NONCE=re.compile(r"[a-f0-9]{32}\Z")
+TRANSACTION_NONCE=None
+A04_BEFORE_SHA256="6de56e39c813069ebcebf0674ae6142f78bd7b839e6ad2fea5c8c4c99e8d12b7"
+A04_APPROVAL_SHA256="f8855882d7112fc24b1facb8f8df6721ac5c2bffc58c43d021e4773721be956b"
 class Hold(Exception): pass
 def need(ok,why):
     if not ok: raise Hold(why)
@@ -213,6 +216,22 @@ def system_state():
              obj.get("properties",{}).get("ActiveState")=="active" and obj.get("main_process")
              for name,obj in state.items()),"ACTIVE_POSTGRESQL_INSTANCE_MISSING")
     return state
+def stable_system_state_during_timer_quiescence(maximum_seconds=24):
+    """Retain all strict native G unit checks; retry only an in-flight oneshot.
+
+    Finance services are scheduled independently. A real timer may transiently
+    be active without changing its configured command, process wall or role.
+    No other security/financial runtime failure qualifies for retry.
+    """
+    deadline=time.monotonic()+maximum_seconds
+    while True:
+        try:return system_state()
+        except Hold as error:
+            if (str(error)!="MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"
+                or time.monotonic()>=deadline):
+                raise
+            time.sleep(.2)
+
 def git_source(repo,user):
     # Only inspect tracked source; no checkout, reset, clean or Git hooks.
     prefix=["/usr/sbin/runuser","-u",user,"--","/usr/bin/git",
@@ -281,7 +300,11 @@ def http_site(origin,build):
     ver=parse(http(origin,"/api/deployment-version"),8192).get("buildVersion")
     need(type(ver)is str and ver not in ("","unknown","development"),"APP_VERSION_UNKNOWN")
     for p in PAGES:
-        need(http(origin,p), "HTTP_PAGE_EMPTY:"+p)
+        # Real 3030 and 3031 /war-chest HTML is 1,560,144 bytes.
+        # Widen only this reviewed route; keep every other page bounded
+        # to 512 KiB and retain a strict 2 MiB cap even for /war-chest.
+        page_limit=2097152 if p=="/war-chest" else 524288
+        need(http(origin,p,limit=page_limit), "HTTP_PAGE_EMPTY:"+p)
         http(origin,p,"HEAD")
     manifest="/_next/static/"+build+"/_buildManifest.js"
     static=http(origin,manifest)
@@ -296,14 +319,203 @@ def lock_state():
     return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
             "mode":stat.S_IMODE(st.st_mode)}
 def scope():
-    x=parse(root_file(APPROVAL,16384),16384)
+    base_raw=root_file(APPROVAL,16384)
+    x=parse(base_raw,16384)
     need(x.get("schema")=="aoe2war.r24.rootssh.parallel-web-nginx.v1" and
          x.get("candidate_sha")==TARGET and
          isinstance(x.get("nginx_config"),str) and
          x["nginx_config"].startswith("/etc/nginx/") and
          isinstance(x.get("nonce"),str) and NONCE.fullmatch(x["nonce"]),
          "F_ROOT_SCOPE_MISSING_OR_INCOMPLETE")
-    return x
+    if TRANSACTION_NONCE is None:
+        return x
+    return transaction_scope(base_raw,x)[0]
+
+def transaction_scope(base_raw,base):
+    """Select a new authorized journal without rewriting the accepted A04 scope."""
+    need(type(TRANSACTION_NONCE)is str and NONCE.fullmatch(TRANSACTION_NONCE)
+         and TRANSACTION_NONCE!=base.get("nonce"),"NEW_TRANSACTION_NONCE_REQUIRED")
+    need(digest(base_raw)==A04_APPROVAL_SHA256,"ORIGINAL_A04_APPROVAL_BYTES_CHANGED")
+    folder=AUDIT/("r24-"+TRANSACTION_NONCE)
+    approved_raw=root_file(folder/"approval.json",16384)
+    approved=parse(approved_raw,16384)
+    record=parse(root_file(folder/"owner-authorization.json",262144),262144)
+    need(record.get("schema")=="aoe2war.r25.f.owner-transaction-authorization.v1",
+         "NEW_TRANSACTION_AUTHORIZATION_REQUIRED")
+    envelope=record.get("envelope",{})
+    body=envelope.get("body","")
+    cid=envelope.get("id")
+    need(type(cid)is int and cid>0 and envelope.get("author")=="Emaren"
+         and envelope.get("author_id")==15059910
+         and type(envelope.get("created_at"))is str
+         and envelope["created_at"]==envelope.get("updated_at")
+         and envelope.get("issue_url")=="https://api.github.com/repos/Emaren/app-prodn/issues/1108"
+         and envelope.get("url")=="https://github.com/Emaren/app-prodn/issues/1108#issuecomment-"+str(cid)
+         and type(body)is str and digest(body.encode())==envelope.get("body_sha256"),
+         "ACTUAL_OWNER_AUTHORIZATION_ENVELOPE_REQUIRED")
+    block=re.fullmatch(r"R25_F_OWNER_TRANSACTION_GRANT\n```json\n(.+)\n```\n?",body,re.S)
+    need(block is not None,"OWNER_TRANSACTION_GRANT_FORMAT")
+    manifest=parse(block[1].encode(),65536)
+    need(manifest==record.get("manifest") and manifest.get("schema")=="aoe2war.r25.f.owner-transaction-grant.v1"
+         and manifest.get("scope")=="A05_NGINX_ONLY_PUBLIC_CUTOVER"
+         and manifest.get("decision")=="AUTHORIZE" and manifest.get("owner_login")=="Emaren"
+         and manifest.get("release_authority")=="OWNER_ONLY_NONFINANCIAL"
+         and manifest.get("owner_delegated_decisions")is True
+         and manifest.get("delegated_ai_authorship_disclosed")is True
+         and manifest.get("independent_review")is False and manifest.get("financial_authorized")is False
+         and manifest.get("public_cutover_authorized")is True
+         and manifest.get("rollback_authorized")is True
+         and type(manifest.get("max_uses"))is int and manifest["max_uses"]==1,
+         "EXACT_OWNER_DELEGATED_NONFINANCIAL_GRANT_REQUIRED")
+    plan=record.get("plan",{})
+    need(record.get("plan_sha256")==digest(canon(plan))==manifest.get("plan_sha256"),
+         "ACTUAL_TRANSACTION_PLAN_DIGEST_REQUIRED")
+    previous=plan.get("consumed_previous_transaction",{})
+    old_folder=AUDIT/("r24-"+base["nonce"])
+    need(previous.get("nonce")==base["nonce"] and previous.get("no_commit")is True
+         and previous.get("current_exact_original_config")is True
+         and previous.get("intent_sha256")==digest(root_file(old_folder/"intent.json",8192))
+         and previous.get("before_nginx_sha256")==digest(root_file(old_folder/"before-nginx.conf",131072))
+         and not (old_folder/"commit.json").exists() and not (old_folder/"commit.json").is_symlink(),
+         "CONSUMED_PREVIOUS_TRANSACTION_CHANGED")
+    for field,value in (("nonce",TRANSACTION_NONCE),("base_approved_sha256",digest(base_raw)),
+                        ("before_witness_sha256",A04_BEFORE_SHA256),("candidate_sha",TARGET),
+                        ("candidate_build_id",base["candidate_build_id"]),
+                        ("candidate_build_version",base["candidate_build_version"]),
+                        ("nginx_before_sha256",base["nginx_before_sha256"])):
+        need(manifest.get(field)==value and plan.get(field)==value,"AUTHORIZED_TRANSACTION_BINDING_DRIFT:"+field)
+    for field,pattern in (("source_sha",H40),("engine_source_sha256",H64),("owner_source_sha256",H64),("g_source_sha256",H64),
+                          ("nginx_after_sha256",H64)):
+        need(type(manifest.get(field))is str and pattern.fullmatch(manifest[field])
+             and plan.get(field)==manifest[field],"AUTHORIZED_TRANSACTION_SOURCE_DRIFT:"+field)
+    lineage=runtime_lineage(base,plan)
+    expected=dict(base);expected["nonce"]=TRANSACTION_NONCE
+    if lineage is not None:
+        if lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
+            expected["candidate_web_snapshot_sha256"]=F_CANDIDATE_SESSION_V3_UNIT_SHA
+            # Original B historical A04 SHA stays original. A new current B
+            # physical witness was executed inside runtime_lineage_v3.
+        else:
+            expected.update(candidate_web_snapshot_sha256=lineage["f_candidate_after_sha256"],
+                            B_poststart_sha256=lineage["b_poststart"]["sha256"])
+    need(approved==expected,"NEW_APPROVAL_MUST_CHANGE_ONLY_NONCE_OR_QUALIFIED_AUTH_RUNTIME")
+    context={"nonce":TRANSACTION_NONCE,"base_approved_sha256":digest(base_raw),
+             "before_witness_sha256":A04_BEFORE_SHA256,"new_approval_sha256":digest(approved_raw),
+             "owner_authorization_body_sha256":digest(body.encode()),
+             "source_sha":manifest["source_sha"],"engine_source_sha256":manifest["engine_source_sha256"],
+             "owner_source_sha256":manifest["owner_source_sha256"],
+             "g_source_sha256":manifest["g_source_sha256"]}
+    if lineage is not None:
+        for key in ("runtime_requalification_path","runtime_requalification_sha256"):
+            need(manifest.get(key)==plan[key],"OWNER_AUTH_RUNTIME_BINDING_DRIFT")
+            context[key]=plan[key]
+    return approved,context
+
+C_SESSION_REPAIR_SOURCE_SHA="0f7829a2eb0cae2a01039ed768cba22ffae2ea1d"
+C_SESSION_GUARD_V3_SOURCE_SHA="b8f690c637b0796249265e28e226f4442d1e6f9a"
+C_SESSION_GUARD_V3_SOURCE_BYTES_SHA="0a1e1c583d79e24ea63a1e107ade0f5135601e5a0b1a235991637b07de790f00"
+C_SESSION_GUARD_V3_GUARD_SHA="192d36d75aede69e85e1d7599d58daf13d9dc96bb2aa49a15d9bd9596b8daac5"
+F_CANDIDATE_SESSION_V3_UNIT_SHA="06238a9425a3ea3c47f55ec0f645f10d3a6da047c361265c80e44470df7ab437"
+
+def runtime_lineage_v3(base,path,expected_sha):
+    need(type(path)is str and re.fullmatch(
+         r"/var/lib/aoe2war-r25-c-additive/session-guard-v3-[0-9a-f]{32}/complete\.json",path)
+         and type(expected_sha)is str and H64.fullmatch(expected_sha),
+         "G_C_GUARD_V3_EXACT_ROOT_PATH_REQUIRED")
+    raw=root_file(pathlib.Path(path),32768)
+    need(digest(raw)==expected_sha,"G_C_GUARD_V3_RECEIPT_HASH_DRIFT")
+    rec=parse(raw,32768)
+    first=rec.get("candidate_before",{});last=rec.get("candidate_after",{})
+    need(rec.get("schema")=="aoe2war.r25.session-guard-release.v3"
+         and rec.get("status")=="ISOLATED_3031_SESSION_GUARD_NATIVE_ACCEPT"
+         and rec.get("source_sha")==C_SESSION_GUARD_V3_SOURCE_SHA
+         and rec.get("candidate_guard_sha256")==C_SESSION_GUARD_V3_GUARD_SHA
+         and first.get("candidate_pid")==1465429
+         and first.get("candidate_start_ticks")==148192915
+         and first.get("guard_sha256")=="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
+         and last.get("candidate_pid")==1483304 and last.get("candidate_start_ticks")==148446193
+         and last.get("guard_sha256")==C_SESSION_GUARD_V3_GUARD_SHA
+         and last.get("native_b_status")=="POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+         and last.get("native_b_physical_checks_performed")is True
+         and last.get("public_pid")==EXPECTED_OLD_PID
+         and last.get("build_version")==base["candidate_build_version"]
+         and rec.get("session_key_equal_original")is True
+         and rec.get("only_symmetric_signing_key")is True
+         and rec.get("replayed_previous_nonces")is False
+         and rec.get("financial_authorized")is False and rec.get("public_cutover_authorized")is False,
+         "G_C_GUARD_V3_SEALED_NATIVE_ACCEPT_REQUIRED")
+    grant=rec.get("owner_grant",{})
+    need(type(grant.get("comment_id"))is int and grant["comment_id"]>0
+         and type(grant.get("body_sha256"))is str and H64.fullmatch(grant["body_sha256"])
+         and type(grant.get("ci_run"))is int and grant["ci_run"]>0,
+         "G_GUARD_V3_GITHUB_OWNER_GRANT_REQUIRED")
+    owner=parse(run(["/usr/bin/gh","api","repos/Emaren/app-prodn/issues/comments/"+str(grant["comment_id"])],timeout=25),262144)
+    need(owner.get("user",{}).get("login")=="Emaren"
+         and owner.get("user",{}).get("id")==15059910
+         and owner.get("created_at")==owner.get("updated_at")
+         and digest(owner.get("body","").encode())==grant["body_sha256"],
+         "G_GUARD_V3_OWNER_GRANT_CHANGED")
+    source=parse(run(["/usr/bin/gh","api","repos/Emaren/app-prodn/contents/scripts/r25_session_guard_release_v3.py?ref="+C_SESSION_GUARD_V3_SOURCE_SHA],timeout=25),262144)
+    need(source.get("type")=="file" and source.get("encoding")=="base64",
+         "G_GUARD_V3_SOURCE_NOT_GITHUB_VERIFIED")
+    import base64
+    code=base64.b64decode("".join(source.get("content","").split()),validate=True)
+    need(0<len(code)<=131072 and digest(code)==C_SESSION_GUARD_V3_SOURCE_BYTES_SHA,
+         "G_GUARD_V3_SOURCE_BYTES_CHANGED")
+    # Re-run C's physical read-only B/C qualification; no mutation permitted.
+    namespace={"__name__":"readonly_g_requalification"}
+    exec(compile(code,"immutable_guard_v3","exec"),namespace)
+    physical=namespace["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)
+    need(physical==last and digest(root_file(pathlib.Path("/usr/local/lib/aoe2war-r25/r25_b_guard_session_v2.cjs"),16384))==C_SESSION_GUARD_V3_GUARD_SHA,
+         "G_GUARD_V3_CURRENT_NATIVE_B_C_PROOF_DRIFT")
+    actual_unit=show(NEW_UNIT)
+    proc=actual_unit.get("main_process",{})
+    need(type(proc)is dict and proc.get("pid")==1483304
+         and proc.get("start_ticks")==148446193 and proc.get("uid")==993,
+         "G_GUARD_V3_CURRENT_SYSTEMD_IDENTITY_DRIFT")
+    return rec
+
+def runtime_lineage(base,plan):
+    path=plan.get("runtime_requalification_path");expected_sha=plan.get("runtime_requalification_sha256")
+    if path is None and expected_sha is None:return None
+    if type(path)is str and "/session-guard-v3-" in path:
+        return runtime_lineage_v3(base,path,expected_sha)
+    need(type(path)is str and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",path)
+         and type(expected_sha)is str and H64.fullmatch(expected_sha),"EXACT_AUTH_RUNTIME_LINEAGE_REQUIRED")
+    raw=root_file(pathlib.Path(path),32768)
+    need(digest(raw)==expected_sha,"AUTH_RUNTIME_LINEAGE_BYTES_CHANGED")
+    r=parse(raw,32768)
+    need(r.get("schema")=="aoe2war.r25.c.session-continuity-repair.v1"
+         and r.get("status")=="SESSION_CONTINUITY_REPAIRED_AND_REQUALIFIED"
+         and type(r.get("nonce"))is str and NONCE.fullmatch(r["nonce"])
+         and pathlib.Path(path).parent.name=="session-repair-"+r["nonce"]
+         and r.get("source_sha")==C_SESSION_REPAIR_SOURCE_SHA
+         and r.get("base_approved_sha256")==A04_APPROVAL_SHA256
+         and r.get("before_witness_sha256")==A04_BEFORE_SHA256
+         and r.get("candidate_sha")==TARGET and r.get("candidate_build_id")==C_PHYSICAL_BUILD_ID
+         and r.get("candidate_build_version")==C_PHYSICAL_APP_VERSION
+         and r.get("original_pid")==EXPECTED_OLD_PID and r.get("original_start_ticks")==103836850
+         and r.get("previous_candidate_pid")==1118556 and r.get("previous_candidate_start_ticks")==142541543
+         and type(r.get("candidate_pid"))is int and r["candidate_pid"]>1
+         and r["candidate_pid"] not in (EXPECTED_OLD_PID,1118556)
+         and type(r.get("candidate_start_ticks"))is int and r["candidate_start_ticks"]>0
+         and r.get("candidate_uid")==993,"QUALIFIED_CANDIDATE_AUTH_RUNTIME_REQUIRED")
+    need(all(r.get(k)is True for k in ("signer_present","signer_equal_original","db_env_unchanged",
+         "nft_unchanged","guard_unchanged","finance_unchanged","old_web_unchanged"))
+         and r.get("secret_values_disclosed")is False and r.get("financial_authorized")is False,
+         "AUTH_RUNTIME_SECURITY_NOT_PROVEN")
+    need(r.get("f_candidate_before_sha256")==base.get("candidate_web_snapshot_sha256"),
+         "AUTH_RUNTIME_NOT_BOUND_TO_A04")
+    for key in ("f_candidate_after_sha256","g_candidate_unit_before_sha256","g_candidate_unit_after_sha256",
+                "g_candidate_listener_before_sha256","g_candidate_listener_after_sha256"):
+        need(type(r.get(key))is str and H64.fullmatch(r[key]),"AUTH_RUNTIME_NATIVE_HASH_REQUIRED")
+    for key,name in (("b_poststart","b-poststart.json"),("c_security","c-runtime.json")):
+        evidence=r.get(key,{})
+        need(type(evidence)is dict and evidence.get("path")==str(pathlib.Path(path).parent/name)
+             and type(evidence.get("sha256"))is str and H64.fullmatch(evidence["sha256"])
+             and digest(root_file(pathlib.Path(evidence["path"]),65536))==evidence["sha256"],
+             "AUTH_RUNTIME_B_C_NATIVE_EVIDENCE_CHANGED")
+    return r
 NGINX_SITE=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")
 OLD_PROXY=b"proxy_pass http://127.0.0.1:3030;"
 NEW_PROXY=b"proxy_pass http://127.0.0.1:3031;"
@@ -412,6 +624,11 @@ def audit(approved,phase):
     need(commit.get("status")=="R24_PARALLEL_WEBSITE_LIVE" and
          commit.get("candidate_sha")==TARGET and
          commit.get("nonce")==approved["nonce"],"F_CUTOVER_COMMIT_MISMATCH")
+    if TRANSACTION_NONCE is not None:
+        base_raw=root_file(APPROVAL,16384)
+        _,context=transaction_scope(base_raw,parse(base_raw,16384))
+        for key,value in context.items():
+            need(commit.get(key)==value,"COMMIT_AUTHORIZED_TRANSACTION_DRIFT:"+key)
     original=root_file(p/"before-nginx.conf",131072)
     need(digest(original)==commit.get("old_nginx_sha256"),
          "F_NGINX_ROLLBACK_CONTENT_DRIFT")
@@ -539,7 +756,7 @@ def root_snapshot(phase):
     old_build=(OLD_REPO/".next/BUILD_ID").read_text().strip()
     need(BUILD.fullmatch(old_build),"OLD_NEXT_BUILD_ID_UNKNOWN")
     candidate=stage()
-    units=system_state()
+    units=stable_system_state_during_timer_quiescence()
     need(units[OLD_UNIT]["properties"]["MainPID"]==str(EXPECTED_OLD_PID),
          "ORIGINAL_SETTLEMENT_CAPABLE_WEB_PID_NOT_2625090")
     need(units[OLD_UNIT]["properties"]["ActiveState"]=="active" and
@@ -557,20 +774,40 @@ def root_snapshot(phase):
     approved=scope()
     route=nginx_route(approved)
     history=audit(approved,phase)
-    return {"schema":"aoe2war.g.r25.parallel-host.v1","phase":phase,"host":HOST,
+    result={"schema":"aoe2war.g.r25.parallel-host.v1","phase":phase,"host":HOST,
         "old_source":original,"old_next_build_id":old_build,
         "candidate":candidate,"units":units,"ports":ports,
         "old_http":old_http,"candidate_http":new_http,
         "nginx":route,"release_lock":lock_state(),"release_journal":history,
         "approved_scope_sha256":digest(root_file(APPROVAL,16384)),
         "proof":"ROOT_SSH_MEASURED_NOT_FINANCE_SIGNED"}
+    if TRANSACTION_NONCE is not None:
+        need(phase in ("after","rollback"),"NO_NEW_BEFORE_FOR_EXISTING_TRANSACTION_BASE")
+        raw=root_file(APPROVAL,16384)
+        base=parse(raw,16384)
+        context=transaction_scope(raw,base)[1]
+        result["transaction_scope"]=context
+        if context.get("runtime_requalification_path") is not None:
+            result["candidate_runtime_lineage"]=runtime_lineage(base,context)
+    return result
 def ssh_snapshot(target,phase):
     need(re.fullmatch(r"root@[A-Za-z0-9._-]{1,140}",target),"UNREVIEWED_SSH_TARGET")
     payload=pathlib.Path(__file__).read_bytes()
     argv=["/usr/bin/ssh","-T","-o","BatchMode=yes",
           "-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",
           target,"/usr/bin/python3","-I","-B","-","--remote",phase]
-    return parse(run(argv,timeout=380,stdin=payload))
+    if TRANSACTION_NONCE is not None:
+        argv.extend(("--transaction-nonce",TRANSACTION_NONCE))
+    reply=subprocess.run(argv,input=payload,capture_output=True,timeout=380)
+    if reply.returncode:
+        # The remote G source uses a fixed HOLD prefix and symbolic predicates.
+        # Surface ONLY a tightly bounded uppercase predicate, never arbitrary
+        # stderr, HTTP bodies or financial environment values.
+        failure=reply.stderr.decode("ascii",errors="replace")
+        match=re.search(r"HOLD:G_R25_PARALLEL_POSTFLIGHT:([A-Z0-9_:.]{1,128})",failure)
+        if match:raise Hold("G_REMOTE_NATIVE_HOLD:"+match.group(1))
+        raise Hold("G_REMOTE_SSH_OR_UNCLASSIFIED_RUNTIME_FAILURE")
+    return parse(reply.stdout)
 def public_check(expected):
     result=http_site(PUBLIC,expected["candidate"]["next_build_id"]
                      if expected["phase"]=="after" else expected["old_next_build_id"])
@@ -587,8 +824,41 @@ def compare_process_and_finance(before,after):
          before["old_next_build_id"]==after["old_next_build_id"],
          "ORIGINAL_WEB_SOURCE_BUILD_OR_LOCK_CHANGED")
     # Both original and new web processes are preserved through nginx-only cutover.
-    need(before["units"]==after["units"],"ANY_WEB_OR_FINANCIAL_UNIT_CHANGED")
-    need(before["ports"]==after["ports"],"ANY_3030_3031_8092_8093_LISTENER_CHANGED")
+    lineage=after.get("candidate_runtime_lineage")
+    if lineage is None:
+        need(before["units"]==after["units"],"ANY_WEB_OR_FINANCIAL_UNIT_CHANGED")
+        need(before["ports"]==after["ports"],"ANY_3030_3031_8092_8093_LISTENER_CHANGED")
+    elif lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
+        # Historical G BEFORE stays immutable at original A04 candidate PID;
+        # C v3 really measured the intervening 1465429 process and the
+        # current 1483304 process, each with authentic original B confinement.
+        for field,selected in (("units",NEW_UNIT),("ports","3031")):
+            old=dict(before[field]);new=dict(after[field])
+            pre=old.pop(selected);post=new.pop(selected)
+            need(old==new,"GUARD_V3_MODIFIED_OLD_WEB_OR_FINANCE")
+            a=pre["main_process"] if field=="units" else pre
+            b=post["main_process"] if field=="units" else post
+            need(a["pid"]==1118556 and a["start_ticks"]==142541543
+                 and b["pid"]==lineage["candidate_after"]["candidate_pid"]
+                 and b["start_ticks"]==lineage["candidate_after"]["candidate_start_ticks"]
+                 and a["uid"]==b["uid"]==993
+                 and a["exe_sha256"]==b["exe_sha256"]
+                 and a["cgroup_sha256"]==b["cgroup_sha256"],
+                 "GUARD_V3_ORIGINAL_VS_NEW_PROCESS_LINEAGE_NOT_PROVEN")
+    else:
+        for field,selected,old_key,new_key in (("units",NEW_UNIT,"g_candidate_unit_before_sha256","g_candidate_unit_after_sha256"),
+              ("ports","3031","g_candidate_listener_before_sha256","g_candidate_listener_after_sha256")):
+            old=dict(before[field]);new=dict(after[field])
+            old_candidate=old.pop(selected);new_candidate=new.pop(selected)
+            need(old==new,"AUTH_REPAIR_CHANGED_ORIGINAL_OR_FINANCIAL_RUNTIME")
+            need(digest(canon(old_candidate))==lineage[old_key] and digest(canon(new_candidate))==lineage[new_key],
+                 "AUTH_REPAIR_CANDIDATE_DELTA_NOT_ROOT_QUALIFIED")
+            a=old_candidate["main_process"] if field=="units" else old_candidate
+            b=new_candidate["main_process"] if field=="units" else new_candidate
+            need(a["pid"]==lineage["previous_candidate_pid"] and a["start_ticks"]==lineage["previous_candidate_start_ticks"]
+                 and b["pid"]==lineage["candidate_pid"] and b["start_ticks"]==lineage["candidate_start_ticks"]
+                 and a["uid"]==b["uid"]==993 and a["exe_sha256"]==b["exe_sha256"]
+                 and a["cgroup_sha256"]==b["cgroup_sha256"],"AUTH_REPAIR_PROCESS_LINEAGE_DRIFT")
     need(before["candidate"]==after["candidate"],"CANDIDATE_SOURCE_BUILD_DEPENDENCY_DRIFT")
     need(before["old_http"]==after["old_http"] and
          before["candidate_http"]==after["candidate_http"],
@@ -600,6 +870,27 @@ def verify(before,after,phase):
          and before.get("phase")=="before" and after.get("phase")==phase,
          "WRONG_BEFORE_OR_POSTFLIGHT_PHASE")
     compare_process_and_finance(before,after)
+    context=after.get("transaction_scope")
+    if TRANSACTION_NONCE is not None:
+        need(type(context)is dict and context.get("nonce")==TRANSACTION_NONCE
+             and context.get("before_witness_sha256")==A04_BEFORE_SHA256
+             and context.get("base_approved_sha256")==before["approved_scope_sha256"],
+             "NEW_TRANSACTION_NOT_BOUND_TO_ORIGINAL_BEFORE")
+        lineage=after.get("candidate_runtime_lineage")
+        need((lineage is not None)==(context.get("runtime_requalification_path") is not None),
+             "AUTH_RUNTIME_LINEAGE_CONTEXT_MISSING")
+        if lineage is not None:
+            if lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
+                need(lineage.get("source_sha")==C_SESSION_GUARD_V3_SOURCE_SHA
+                     and lineage.get("candidate_after",{}).get("candidate_pid")==1483304
+                     and context.get("before_witness_sha256")==A04_BEFORE_SHA256
+                     and context.get("base_approved_sha256")==before["approved_scope_sha256"],
+                     "GUARD_V3_ROOT_OWNER_TRANSACTION_CONTEXT_DRIFT")
+            else:
+                need(lineage.get("source_sha")==context["source_sha"]
+                     and lineage.get("before_witness_sha256")==A04_BEFORE_SHA256
+                     and lineage.get("base_approved_sha256")==before["approved_scope_sha256"],
+                     "AUTH_RUNTIME_LINEAGE_CONTEXT_DRIFT")
     need(before["nginx"]["upstream_port"]==3030,"BEFORE_NGINX_NOT_OLD")
     need(after["release_journal"]["root_rollback_nginx_sha256"]==
          before["nginx"]["file_sha256"],"F_ROLLBACK_PREIMAGE_NOT_ORIGINAL_NGINX")
@@ -621,7 +912,7 @@ def verify(before,after,phase):
         need(after["nginx"]["file_sha256"]==before["nginx"]["file_sha256"] and
              after["release_journal"]["rollback_exercised"] is True,
              "ROLLBACK_CHANGED_MORE_THAN_NGINX_OR_NOT_RECORDED")
-    return {"schema":"aoe2war.g.r25.postflight.v1","phase":phase,
+    result={"schema":"aoe2war.g.r25.postflight.v1","phase":phase,
         "status":"LIVE_PARALLEL_HOST_AND_PUBLIC_MEASURED_REQUIRES_F_STAGE_REVIEW"
                  if phase=="after" else "PUBLIC_3030_NGINX_ONLY_ROLLBACK_MEASURED",
         "frozen_candidate_sha":TARGET,
@@ -640,7 +931,14 @@ def verify(before,after,phase):
         "finance_signed_receipt":False,
         "independent_live_browser_88_routes":"NOT_RUN",
         "postflight_GET_HEAD_cannot_certify_SSR_write_safety":True}
+    if context is not None:
+        result["transaction_scope"]=context
+        if after.get("candidate_runtime_lineage") is not None:
+            result["candidate_process_requalified_before_cutover"]=True
+            result["session_continuity_requalification_sha256"]=context["runtime_requalification_sha256"]
+    return result
 def main():
+    global TRANSACTION_NONCE
     a=argparse.ArgumentParser()
     a.add_argument("--remote",choices=("before","after","rollback"))
     a.add_argument("--phase",choices=("before","after","rollback"))
@@ -649,8 +947,13 @@ def main():
     a.add_argument("--before-sha256")
     a.add_argument("--after",type=pathlib.Path)
     a.add_argument("--after-sha256")
+    a.add_argument("--transaction-nonce")
     x=a.parse_args()
     try:
+        if x.transaction_nonce is not None:
+            need(NONCE.fullmatch(x.transaction_nonce) and (x.remote or x.phase)in("after","rollback"),
+                 "EXPLICIT_NEW_TRANSACTION_AFTER_OR_ROLLBACK_ONLY")
+            TRANSACTION_NONCE=x.transaction_nonce
         if x.remote:
             need(not x.phase and not x.ssh_target and not x.before,"REMOTE_ARG_COLLISION")
             result=root_snapshot(x.remote)
@@ -671,6 +974,8 @@ def main():
                      "ORIGINAL_BEFORE_DIGEST_REQUIRED")
                 raw=x.before.read_bytes()
                 need(digest(raw)==x.before_sha256,"OWNER_BEFORE_RECEIPT_SHA256_DRIFT")
+                if TRANSACTION_NONCE is not None:
+                    need(x.before_sha256==A04_BEFORE_SHA256,"ORIGINAL_A04_BEFORE_MUST_BE_REUSED")
                 before=parse(raw)
                 if x.phase=="rollback":
                     need(x.after and x.after_sha256 and H64.fullmatch(x.after_sha256),
