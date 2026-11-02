@@ -1010,6 +1010,11 @@ SESSION_BEFORE_SHA = '6de56e39c813069ebcebf0674ae6142f78bd7b839e6ad2fea5c8c4c99e
 SESSION_BASE_APPROVAL_SHA = 'f8855882d7112fc24b1facb8f8df6721ac5c2bffc58c43d021e4773721be956b'
 SESSION_G_UNIT_BEFORE_SHA = 'd50b3d9f584fb38a5dd47154c9da89a2d5dc5c16ef26c1e5f53d594dd273ecf1'
 SESSION_G_LISTENER_BEFORE_SHA = '11ac63c78d166db59089fa895a063a34188868b3f0aa1453606da8b515f70d1e'
+SESSION_HISTORICAL_EXECSTART_SHA = 'dde5c09d3b3c92a0cd4df29e76e55691730ea7441150720099209c1a371a5938'
+SESSION_HISTORICAL_STABLE_PROPERTIES_SHA = 'b136d567d1e56463dd1d5eb9ede2fe38e47bc56f701b1a260cb379dee1483d4a'
+SESSION_HISTORICAL_UNIT_CONFIG_SHA = '6a0ee402f7c01bb808a42c797d780b5def4060b04eace95669b48ff933b2b9a8'
+SESSION_A04_CANDIDATE_SHA = '2c6de3fbfac7da6f2e7cdea59bc499d7281682e1355dfd086e234008db35bc47'
+
 
 def session_original_secret():
     """Read only the actual original process's effective symmetric session key."""
@@ -1026,6 +1031,36 @@ def session_original_secret():
          'ORIGINAL_EFFECTIVE_SESSION_KEY_UNSUPPORTED_ENCODING')
     need(ticks(OLD_PID)==OLD_TICKS,'ORIGINAL_SESSION_PROCESS_REUSED')
     return secret
+
+def session_verified_original_candidate_after_daemon_reload():
+    # The failed isolated transaction called daemon-reload, not service
+    # restart. Validate the only changed serialized field against actual static
+    # argv, sealed G baseline and the unchanged real process/config identity.
+    state=unit_state(NEW_UNIT);props=dict(state['properties'])
+    observed_hash=props.get('ExecStart_sha256')
+    need(type(observed_hash)is str and H64.fullmatch(observed_hash)
+         and state['unit_config_sha256']==SESSION_HISTORICAL_UNIT_CONFIG_SHA
+         and state['start_ticks']==SESSION_OLD_TICKS
+         and props.get('MainPID')==str(SESSION_OLD_PID),
+         'SESSION_STATIC_UNIT_OR_PID_DRIFT')
+    cmdline=run(['/usr/bin/systemctl','show',NEW_UNIT,'--property=ExecStart','--value'],maximum=4096).decode().strip()
+    start='{ path=/usr/bin/node ; argv[]=/usr/bin/node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3031 ; ignore_errors=no ; '
+    need(cmdline.startswith(start)
+         and re.fullmatch(r'start_time=\[[^\]\n]{1,64}\] ; stop_time=\[[^\]\n]{1,64}\] ; pid=[0-9]+ ; code=\(null\) ; status=0/0 }',cmdline[len(start):]) is not None
+         and sha(cmdline.encode())==observed_hash,
+         'SESSION_EXECSTART_STATIC_COMMAND_OR_SERIALIZATION_DRIFT')
+    stable=dict(props);stable.pop('ExecStart_sha256')
+    need(sha(canonical(stable))==SESSION_HISTORICAL_STABLE_PROPERTIES_SHA,
+         'SESSION_UNRELATED_SYSTEMD_PROPERTY_DRIFT')
+    historical=dict(props);historical['ExecStart_sha256']=SESSION_HISTORICAL_EXECSTART_SHA
+    historical['ProcStartTicks']=str(state['start_ticks'])
+    historical['UnitConfigSHA256']=state['unit_config_sha256']
+    snapshot=''.join(k+'='+str(v)+'\n' for k,v in sorted(historical.items()))
+    need(sha(snapshot.encode())==SESSION_A04_CANDIDATE_SHA,
+         'SESSION_SEALED_A04_CANDIDATE_SNAPSHOT_DRIFT')
+    return {'observed_execstart_sha256':observed_hash,
+            'historical_a04_sha256':SESSION_A04_CANDIDATE_SHA,
+            'only_systemd_serialization_changed':True}
 
 def session_unit_text():
     state=unit_state(NEW_UNIT);properties=dict(state['properties'])
@@ -1140,21 +1175,30 @@ def session_plan(payload):
     need(bool(secret),'ORIGINAL_SESSION_KEY_REQUIRED')
     protected=protected_snapshot();unit=session_unit_text()
     base_raw=root_file(Path('/etc/aoe2war/r24-parallel-web/approved.json'),16384,0o600)
-    need(sha(base_raw)==SESSION_BASE_APPROVAL_SHA and sha(unit.encode())==parse(base_raw).get('candidate_web_snapshot_sha256'),
+    historical=session_verified_original_candidate_after_daemon_reload()
+    need(sha(base_raw)==SESSION_BASE_APPROVAL_SHA and
+         historical['historical_a04_sha256']==parse(base_raw).get('candidate_web_snapshot_sha256'),
          'IMMUTABLE_A04_CANDIDATE_UNIT_DRIFT')
     original_witness=session_v4_module(payload)
     original_prestart=original_witness.prestart(B_GUARD_SHA)
     envfiles=run(['/usr/bin/systemctl','show',NEW_UNIT,'--property=EnvironmentFiles','--value'],maximum=8192).decode()
     session_exact_database_envfiles(envfiles)
     g=session_g_module(payload);g_unit=g.show(NEW_UNIT);g_listener=g.listening_socket(3031)
-    need(sha(canonical(g_unit))==SESSION_G_UNIT_BEFORE_SHA and sha(canonical(g_listener))==SESSION_G_LISTENER_BEFORE_SHA,
+    # Keep the original sealed G source binding; normalize only a volatile
+    # ExecStart display value after proving unchanged static command/process.
+    normalized_g=dict(g_unit);normalized_g['properties']=dict(g_unit['properties'])
+    need(normalized_g['properties'].get('ExecStart_sha256')==historical['observed_execstart_sha256'],
+         'SESSION_G_EXECSTART_OBSERVATION_DRIFT')
+    normalized_g['properties']['ExecStart_sha256']=SESSION_HISTORICAL_EXECSTART_SHA
+    need(sha(canonical(normalized_g))==SESSION_G_UNIT_BEFORE_SHA and
+         sha(canonical(g_listener))==SESSION_G_LISTENER_BEFORE_SHA,
          'IMMUTABLE_A04_CANDIDATE_ONLY_BASELINE_DRIFT')
     plan={'schema':'aoe2war.r25.c.session-continuity-plan.v1','scope':SESSION_SCOPE,'nonce':nonce,
         'source_sha':payload['source_sha'],**{n+'_sha256':payload[n+'_sha256'] for n in ('operator','mac','witness','g')},
         'original_pid':OLD_PID,'original_start_ticks':OLD_TICKS,'previous_candidate_pid':SESSION_OLD_PID,
         'previous_candidate_start_ticks':state['start_ticks'],'candidate_uid':UID,'candidate_sha':TARGET,
         'build_id':BUILD_ID,'build_version':VERSION,'tree_sha256':TREE_SHA,
-        'previous_candidate_unit_sha256':sha(unit.encode()),'protected_snapshot_sha256':sha(canonical(protected)),
+        'previous_candidate_unit_sha256':sha(unit.encode()),'historical_a04_candidate_sha256':SESSION_A04_CANDIDATE_SHA,'execstart_requalification':historical,'protected_snapshot_sha256':sha(canonical(protected)),
         'nft_sha256':original_prestart['nft_egress_sha256'],'guard_sha256':B_GUARD_SHA,
         'nginx_sha256':SESSION_NGINX_SHA,'session_env_path':str(SESSION_ENV),'session_dropin_sha256':sha(session_dropin(journal)),
         'database_env_fingerprint_published':False,
@@ -1315,7 +1359,7 @@ def session_repair(payload):
             'signer_present':True,'signer_equal_original':True,'secret_values_disclosed':False,
             'db_env_unchanged':True,'nft_unchanged':True,'guard_unchanged':True,'finance_unchanged':True,'old_web_unchanged':True,
             'protected_snapshot_sha256':plan['protected_snapshot_sha256'],'before_witness_sha256':SESSION_BEFORE_SHA,
-            'base_approved_sha256':SESSION_BASE_APPROVAL_SHA,'f_candidate_before_sha256':sha(previous_unit.encode()),
+            'base_approved_sha256':SESSION_BASE_APPROVAL_SHA,'f_candidate_before_sha256':SESSION_A04_CANDIDATE_SHA,'f_candidate_actual_before_sha256':sha(previous_unit.encode()),
             'f_candidate_after_sha256':sha(new_unit.encode()),'g_candidate_unit_before_sha256':SESSION_G_UNIT_BEFORE_SHA,
             'g_candidate_unit_after_sha256':sha(canonical(g_unit_after)),'g_candidate_listener_before_sha256':SESSION_G_LISTENER_BEFORE_SHA,
             'g_candidate_listener_after_sha256':sha(canonical(g_listener_after)),
