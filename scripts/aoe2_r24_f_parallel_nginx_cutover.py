@@ -53,6 +53,11 @@ CONSUMED_INTENT_SHA="bf4fe7bd568b8916b5a562394a558d97d2532d9115d0c915a03303bb479
 CONSUMED_BEFORE_SHA="d8f55532ae9a1b8463ed6f0998f8a92343677e442218d1bdaef1b6e547478ad8"
 BASE_APPROVED_SHA="f8855882d7112fc24b1facb8f8df6721ac5c2bffc58c43d021e4773721be956b"
 C_SESSION_REPAIR_SOURCE_SHA="0f7829a2eb0cae2a01039ed768cba22ffae2ea1d"
+C_SESSION_GUARD_V3_SOURCE_SHA="b8f690c637b0796249265e28e226f4442d1e6f9a"
+C_SESSION_GUARD_V3_SOURCE_BYTES_SHA="0a1e1c583d79e24ea63a1e107ade0f5135601e5a0b1a235991637b07de790f00"
+B_GUARD_SHA="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
+C_SESSION_GUARD_V3_GUARD_SHA="192d36d75aede69e85e1d7599d58daf13d9dc96bb2aa49a15d9bd9596b8daac5"
+
 RUNTIME_REQUALIFICATION=None
 class Hold(Exception):pass
 def need(ok,reason):
@@ -393,6 +398,11 @@ def verified_durable_e_rollback(j):
 
 def verified_b_poststart(j,ss):
     """B's actual root-owned poststart proof of PG, kernel and HTTP guard."""
+    if (type(RUNTIME_REQUALIFICATION)is dict and
+        RUNTIME_REQUALIFICATION.get("schema")=="aoe2war.r25.session-guard-release.v3"):
+        need(reread_c_session_guard_v3()==RUNTIME_REQUALIFICATION["candidate_after"],
+             "C_GUARD_V3_NEW_B_POSTSTART_DRIFT")
+        return True
     path=B_ROOT_POSTSTART if RUNTIME_REQUALIFICATION is None else pathlib.Path(RUNTIME_REQUALIFICATION["b_poststart"]["path"])
     raw=root_file(path,65536)
     need(sha(raw)==j["B_poststart_sha256"],
@@ -952,9 +962,80 @@ def consumed_previous(base,old):
             "before_nginx_sha256":CONSUMED_BEFORE_SHA,"no_commit":True,
             "current_exact_original_config":True}
 
+def reread_c_session_guard_v3():
+    """Rerun original B v4 and C protected host checks without mutations."""
+    result=github_read("contents/scripts/r25_session_guard_release_v3.py?ref="+C_SESSION_GUARD_V3_SOURCE_SHA)
+    need(result.get("type")=="file" and result.get("encoding")=="base64",
+         "C_GUARD_V3_GITHUB_SOURCE_UNAVAILABLE")
+    raw=base64.b64decode(result.get("content","").replace("\n",""),validate=True)
+    need(0<len(raw)<=131072 and sha(raw)==C_SESSION_GUARD_V3_SOURCE_BYTES_SHA,
+         "C_GUARD_V3_SOURCE_BYTES_DRIFT")
+    module={"__name__":"r25_c_guard_readonly"}
+    exec(compile(raw,"immutable_r25_guard_v3","exec"),module)
+    native=module["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)
+    need(native.get("native_b_status")=="POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+         and native.get("native_b_physical_checks_performed")is True
+         and native.get("public_pid")==2625090 and native.get("financial_authorized")is False,
+         "C_GUARD_V3_CURRENT_B_C_PHYSICAL_PROOF_MISSING")
+    return native
+
+def qualified_runtime_v3(base,path,expected_digest):
+    global RUNTIME_REQUALIFICATION
+    need(type(path)is str and re.fullmatch(
+         r"/var/lib/aoe2war-r25-c-additive/session-guard-v3-[0-9a-f]{32}/complete\.json",path)
+         and type(expected_digest)is str and HEX64.fullmatch(expected_digest),
+         "C_GUARD_V3_SEALED_ROOT_RECEIPT_PATH_REQUIRED")
+    raw=root_file(pathlib.Path(path),32768)
+    need(sha(raw)==expected_digest,"C_GUARD_V3_RECEIPT_SHA_MISMATCH")
+    rec=parse(raw);before=rec.get("candidate_before",{});after=rec.get("candidate_after",{})
+    need(rec.get("schema")=="aoe2war.r25.session-guard-release.v3"
+         and rec.get("status")=="ISOLATED_3031_SESSION_GUARD_NATIVE_ACCEPT"
+         and type(rec.get("nonce"))is str and NONCE.fullmatch(rec["nonce"])
+         and pathlib.Path(path).parent.name=="session-guard-v3-"+rec["nonce"]
+         and rec.get("source_sha")==C_SESSION_GUARD_V3_SOURCE_SHA
+         and rec.get("candidate_guard_sha256")==C_SESSION_GUARD_V3_GUARD_SHA
+         and before.get("candidate_pid")==1465429
+         and before.get("candidate_start_ticks")==148192915
+         and before.get("guard_sha256")==B_GUARD_SHA
+         and after.get("guard_sha256")==C_SESSION_GUARD_V3_GUARD_SHA
+         and after.get("native_b_status")=="POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+         and after.get("native_b_physical_checks_performed")is True
+         and after.get("public_pid")==2625090
+         and after.get("build_version")==base["candidate_build_version"]
+         and type(after.get("candidate_pid"))is int and
+             after["candidate_pid"] not in (2625090,1465429)
+         and type(after.get("candidate_start_ticks"))is int and after["candidate_start_ticks"]>0
+         and rec.get("session_key_equal_original")is True
+         and rec.get("only_symmetric_signing_key")is True
+         and rec.get("replayed_previous_nonces")is False
+         and rec.get("financial_authorized")is False
+         and rec.get("public_cutover_authorized")is False,
+         "C_GUARD_V3_REAL_NATIVE_SUCCESS_RECEIPT_REQUIRED")
+    grant=rec.get("owner_grant",{})
+    need(type(grant.get("comment_id"))is int and grant["comment_id"]>0
+         and type(grant.get("body_sha256"))is str and HEX64.fullmatch(grant["body_sha256"])
+         and type(grant.get("ci_run"))is int and grant["ci_run"]>0,
+         "C_GUARD_V3_ONE_USE_OWNER_GRANT_MISSING")
+    owner=github_read("issues/comments/"+str(grant["comment_id"]))
+    need(owner.get("user",{}).get("login")=="Emaren"
+         and owner.get("user",{}).get("id")==15059910
+         and owner.get("created_at")==owner.get("updated_at")
+         and sha(owner.get("body","").encode())==grant["body_sha256"],
+         "C_GUARD_V3_OWNER_GRANT_CHANGED")
+    need(sha(root_file(pathlib.Path("/usr/local/lib/aoe2war-r25/r25_b_guard_session_v2.cjs"),16384))
+         ==C_SESSION_GUARD_V3_GUARD_SHA,"C_GUARD_V3_INSTALLED_PROTECTION_CHANGED")
+    observed=reread_c_session_guard_v3()
+    need(observed==after,"C_GUARD_V3_PHYSICAL_CURRENT_VS_SIGNED_RECEIPT_DRIFT")
+    RUNTIME_REQUALIFICATION=rec
+    effective=dict(base)
+    effective["candidate_web_snapshot_sha256"]=sha(unit_state(NEW_UNIT).encode())
+    return effective
+
 def qualified_runtime(base,path,digest):
     """Accept only an additive, root-sealed candidate-auth repair lineage."""
     global RUNTIME_REQUALIFICATION
+    if type(path)is str and "/session-guard-v3-" in path:
+        return qualified_runtime_v3(base,path,digest)
     need(type(path)is str and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",path)
          and type(digest)is str and HEX64.fullmatch(digest),"EXACT_RUNTIME_REQUALIFICATION_REQUIRED")
     raw=root_file(pathlib.Path(path),32768)
