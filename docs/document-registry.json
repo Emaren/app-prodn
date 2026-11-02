@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a8ae47706ec5e7531fde7c20fe8d035fedeb4af4e702f41cc63315e0da87c224",
+      "sha256": "02438ab2b43595abf43b9b3b846076fb7ec3ce757b5763507e615615464a7577",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-v8-timer-identity-20261101",
-    "commit": "a2b49229fa831cb2780ab39482e55fc0d4e78d60"
+    "branch": "codex/r25-c-session-continuity-20261102",
+    "commit": "05b5fe538d7b1b359562c95d0f6c54894acf7ae6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

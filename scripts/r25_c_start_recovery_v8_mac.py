@@ -221,7 +221,65 @@ def owner_approval(phrase):
     need(result.returncode == 0 and result.stdout.rstrip("\r\n") == phrase,
          "FRESH_EXACT_START_ONLY_GUI_CONSENT_NOT_GRANTED")
 
+def session_auth_main():
+    """Exact owner-delegated repair; existing START GUI contract is unchanged."""
+    ap=argparse.ArgumentParser()
+    ap.add_argument('operation',choices=('session-auth-plan','session-auth-repair'))
+    ap.add_argument('--review-commit',required=True)
+    for name in ('operator-sha256','witness-sha256','g-sha256','nonce','plan-file'):
+        ap.add_argument('--'+name,required=True)
+    ap.add_argument('--grant-comment');ap.add_argument('--grant-sha256')
+    args=ap.parse_args(sys.argv[2:])
+    need(sys.platform=='darwin' and os.geteuid()!=0,'ORIGINAL_NONROOT_OWNER_MAC_REQUIRED')
+    need(H40.fullmatch(args.review_commit) and re.fullmatch('[a-f0-9]{32}',args.nonce),'SESSION_SOURCE_NONCE_REQUIRED')
+    sources={}
+    for name,path,digest in (('operator','scripts/r25_c_start_recovery_v8_root.py',args.operator_sha256),
+                             ('witness','scripts/r25_b_session_continuity_witness_v1.py',args.witness_sha256),
+                             ('g','scripts/aoe2_r25_f_g_parallel_observer.py',args.g_sha256)):
+        need(H64.fullmatch(digest),'SESSION_SOURCE_HASH_REQUIRED')
+        with urllib.request.urlopen('https://raw.githubusercontent.com/Emaren/app-prodn/'+args.review_commit+'/'+path,timeout=25) as response:
+            raw=response.read(131073)
+        need(0<len(raw)<=131072 and sha(raw)==digest,'SESSION_IMMUTABLE_SOURCE_BYTES_MISMATCH')
+        sources[name]=raw
+    mac=Path(__file__).read_bytes()
+    with urllib.request.urlopen('https://raw.githubusercontent.com/Emaren/app-prodn/'+args.review_commit+'/scripts/r25_c_start_recovery_v8_mac.py',timeout=25) as response:
+        need(response.read(len(mac)+1)==mac,'SESSION_MAC_SOURCE_COMMIT_MISMATCH')
+    payload={'source_sha':args.review_commit,'nonce':args.nonce,'operator_sha256':sha(sources['operator']),
+             'mac_sha256':sha(mac),'witness_sha256':sha(sources['witness']),'g_sha256':sha(sources['g']),
+             'session_witness_b64':base64.b64encode(sources['witness']).decode()}
+    plan_path=Path(args.plan_file).expanduser()
+    if args.operation=='session-auth-plan':
+        result=root_call(sources['operator'],payload,'session-auth-plan')
+        need(result.get('status')=='PASS_SESSION_CONTINUITY_PLAN_READ_ONLY_NOT_AUTHORITY'
+             and result.get('plan_sha256')==sha(canonical(result.get('plan'))),'SESSION_NATIVE_PLAN_NOT_PROVEN')
+        fd=os.open(plan_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as handle:
+            handle.write(canonical(result)+b'\n');handle.flush();os.fsync(handle.fileno())
+        print(json.dumps(result,sort_keys=True));return 0
+    need(args.grant_comment and args.grant_comment.isdecimal() and args.grant_sha256 and H64.fullmatch(args.grant_sha256),
+         'SESSION_EXACT_OWNER_GRANT_REQUIRED')
+    st=plan_path.lstat()
+    need(st.st_uid==os.getuid() and not st.st_mode&0o077 and not plan_path.is_symlink() and 0<st.st_size<=131072,'SESSION_PRIVATE_PLAN_REQUIRED')
+    envelope=json.loads(plan_path.read_bytes())
+    need(envelope.get('plan',{}).get('nonce')==args.nonce and envelope.get('plan',{}).get('source_sha')==args.review_commit
+         and envelope.get('plan_sha256')==sha(canonical(envelope.get('plan'))),'SESSION_LOCAL_PLAN_DRIFT')
+    gh=next((p for p in ('/opt/homebrew/bin/gh','/usr/local/bin/gh') if Path(p).is_file()),None)
+    need(gh is not None,'EXISTING_AUTHENTICATED_GITHUB_CLI_REQUIRED')
+    got=subprocess.run([gh,'api','repos/Emaren/app-prodn/issues/comments/'+args.grant_comment],capture_output=True,timeout=25,check=False)
+    need(got.returncode==0 and 0<len(got.stdout)<=131072,'SESSION_AUTHENTICATED_OWNER_GRANT_UNAVAILABLE')
+    owner=json.loads(got.stdout)
+    need(owner.get('user',{}).get('login')=='Emaren' and owner.get('user',{}).get('id')==15059910
+         and sha(owner.get('body','').encode())==args.grant_sha256 and owner.get('created_at')==owner.get('updated_at'),
+         'SESSION_ACTUAL_OWNER_GRANT_DRIFT')
+    # Root independently re-fetches exact owner identity, complete plan, expiry,
+    # full CI and all four immutable sources while holding the release lock.
+    payload.update({'plan_sha256':envelope['plan_sha256'],'grant_comment':args.grant_comment,'grant_sha256':args.grant_sha256})
+    result=root_call(sources['operator'],payload,'session-auth-repair')
+    need(result.get('status')=='SESSION_CONTINUITY_REPAIRED_AND_REQUALIFIED','SESSION_REPAIR_NOT_PHYSICALLY_PROVEN')
+    print(json.dumps(result,sort_keys=True));return 0
+
 def main():
+    if len(sys.argv)>1 and sys.argv[1]=='--session-auth':return session_auth_main()
     ap = argparse.ArgumentParser()
     ap.add_argument("--review-commit", required=True)
     ap.add_argument("--operator-size", type=int, required=True)
