@@ -37,7 +37,7 @@ class SessionContinuity(unittest.TestCase):
         self.base = types.SimpleNamespace(OLD_UNIT="old.service", UNIT="new.service", ENV_ALLOW={"DATABASE_URL"},
             systemd=mock.Mock(side_effect=lambda unit: {"ActiveState": "active", "MainPID": str(w.OLD_PID if unit == "old.service" else 1234)}),
             proc=mock.Mock(side_effect=lambda pid: self.old if pid == w.OLD_PID else self.candidate),
-            run=mock.Mock(return_value=(str(w.DB_ENV) + " (ignore_errors=no) " + str(w.SESSION_ENV) + " (ignore_errors=no)\n").encode()),
+            run=mock.Mock(return_value=(str(w.DB_ENV) + " (ignore_errors=no)" + chr(10) + str(w.DB_ENV) + " (ignore_errors=no)" + chr(10) + str(w.SESSION_ENV) + " (ignore_errors=no)" + chr(10)).encode()),
             root_db_envfile=mock.Mock(return_value=self.db),
             prestart=mock.Mock(return_value={"status": "NATIVE_B_PRESTART"}),
             observe=mock.Mock(side_effect=lambda _: {"candidate_pid": 1234, "candidate_start_ticks": 456,
@@ -131,7 +131,7 @@ class SessionContinuity(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "DEDICATED_DB_ENV_CHANGED"):
             self.proof()
         self.base.run.return_value = (str(w.SESSION_ENV) + " (ignore_errors=no)\n").encode()
-        with self.assertRaisesRegex(RuntimeError, "EXACT_SEPARATE_DATABASE_AND_SESSION_ENVFILES"):
+        with self.assertRaisesRegex(RuntimeError, "EXACT_TWO_DATABASE_AND_ONE_SESSION_ENVFILES"):
             self.proof()
 
     def test_session_journal_and_installed_witness_are_exact_pinned_scope(self):

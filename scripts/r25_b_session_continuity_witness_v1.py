@@ -23,7 +23,7 @@ BASE_WITNESS_SHA256 = "8f6a30172a089aca7de4b5941791c1d1301a40486e872cc8b6efadc38
 BASE_WITNESS_SIZE = 23853
 RECOVERED_BASE_SHA256 = "437e87fbd91073d157fc1ca15f58a4e9d5aa4f144b7c8d04ae1549132ac3c522"
 RECOVERED_BASE_SIZE = 23869
-WITNESS = pathlib.Path("/etc/aoe2war/r24-parallel-web/approved-runtime-session-v1.py")
+WITNESS = pathlib.Path("/etc/aoe2war/r24-parallel-web/approved-runtime-session-v2.py")
 SESSION_ENV = pathlib.Path("/etc/aoe2war/r24-parallel-web/session-runtime.env")
 DB_ENV = pathlib.Path("/etc/aoe2war/r24-parallel-web/readonly-runtime.env")
 JOURNAL_ROOT = pathlib.Path("/var/lib/aoe2war-r25-c-additive")
@@ -140,10 +140,11 @@ def configured_session(base, journal):
     original = original_effective_secret(base)
     if not hmac.compare_digest(configured, original):
         hold("SESSION_ENV_DOES_NOT_MATCH_ORIGINAL_EFFECTIVE_SECRET")
-    expected = str(DB_ENV) + " (ignore_errors=no) " + str(SESSION_ENV) + " (ignore_errors=no)"
-    actual = base.run(["/usr/bin/systemctl", "show", base.UNIT, "--value", "--property=EnvironmentFiles"]).decode().strip()
-    if actual != expected:
-        hold("EXACT_SEPARATE_DATABASE_AND_SESSION_ENVFILES_REQUIRED")
+    db = str(DB_ENV) + " (ignore_errors=no)"
+    session = str(SESSION_ENV) + " (ignore_errors=no)"
+    actual = base.run(["/usr/bin/systemctl", "show", base.UNIT, "--value", "--property=EnvironmentFiles"]).decode().splitlines()
+    if actual != [db, db, session]:
+        hold("EXACT_TWO_DATABASE_AND_ONE_SESSION_ENVFILES_REQUIRED")
     base.root_db_envfile()  # Retains the original strict one-DATABASE_URL format.
     return configured, record
 

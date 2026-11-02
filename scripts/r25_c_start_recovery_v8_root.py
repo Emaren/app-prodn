@@ -991,13 +991,19 @@ def start(payload):
         raise
 
 SESSION_ENV = Path('/etc/aoe2war/r24-parallel-web/session-runtime.env')
-SESSION_WITNESS = Path('/etc/aoe2war/r24-parallel-web/approved-runtime-session-v1.py')
+SESSION_WITNESS = Path('/etc/aoe2war/r24-parallel-web/approved-runtime-session-v2.py')
 SESSION_DROPIN = Path('/etc/systemd/system/aoe2hdbets-web-r24.service.d/98-r25-session-continuity.conf')
 SESSION_DB_ENV = Path('/etc/aoe2war/r24-parallel-web/readonly-runtime.env')
 SESSION_SCOPE = 'R25_CANDIDATE_SESSION_CONTINUITY_REPAIR'
 SESSION_OLD_PID = 1118556
 SESSION_OLD_TICKS = 142541543
 SESSION_V8_RECEIPT_SHA = '2917699b248708582dc7ffc75c4309f5fe2802366608e751a1cf75566d263032'
+SESSION_PRIOR_NONCE = 'e0c3ab9b595e5e3d2d539d0f3668240d'
+SESSION_PRIOR_STAGED_SHA = '8a0a1b06fd6c27627b06cb49a6361c323af5583506f8758053893fe26fea1ffc'
+SESSION_PRIOR_HOLD_SHA = '27f5cd27d36378c2864512259d5b68856be40ee47ded5544a5a0b0e196444b90'
+SESSION_PRIOR_GRANT_SHA = 'fc4e7636f9591aedb63330bdb11c5f2b0e0c90842876fbaf7d075456a46d0bb8'
+SESSION_PRIOR_WITNESS_SHA = '2f15a2764fe470974b3e3b1e8a2be69847902c3aeab6f1ab10b6705d0657a2e5'
+SESSION_PRIOR_WITNESS = Path('/etc/aoe2war/r24-parallel-web/approved-runtime-session-v1.py')
 SESSION_NGINX = Path('/etc/nginx/sites-available/aoe2war.com')
 SESSION_NGINX_SHA = 'd8f55532ae9a1b8463ed6f0998f8a92343677e442218d1bdaef1b6e547478ad8'
 SESSION_BEFORE_SHA = '6de56e39c813069ebcebf0674ae6142f78bd7b839e6ad2fea5c8c4c99e8d12b7'
@@ -1040,6 +1046,59 @@ def session_payload_sources(payload):
     need(0<len(raw)<=65536 and sha(raw)==payload['witness_sha256'],'SESSION_WITNESS_BYTES_DRIFT')
     return raw
 
+def session_original_held_staging():
+    # A separate authenticated one-use transaction failed *before* restarting
+    # the candidate. Its evidence is immutable. Never delete/rewrite the
+    # original file or silently treat arbitrary preexisting credentials as ours.
+    prior=C_AUDIT/('session-repair-'+SESSION_PRIOR_NONCE)
+    directory(prior)
+    receipts=(('staged.json',SESSION_PRIOR_STAGED_SHA),
+              ('hold.json',SESSION_PRIOR_HOLD_SHA),
+              ('owner-authorization.json',SESSION_PRIOR_GRANT_SHA))
+    records={}
+    for name,expected in receipts:
+        raw=root_file(prior/name,32768,0o600)
+        need(sha(raw)==expected,'SESSION_PREVIOUS_CONSUMED_RECEIPT_DRIFT:'+name)
+        if name!='owner-authorization.json':records[name]=parse(raw)
+    previous=records['staged.json'];held=records['hold.json']
+    need(previous.get('schema')=='aoe2war.r25.c.session-continuity.v1'
+         and previous.get('status')=='SESSION_AUTH_STAGED_NOT_STARTED'
+         and previous.get('nonce')==SESSION_PRIOR_NONCE
+         and previous.get('source_sha')=='f4d4949ea4c3111558c5fafc2cb7621fba5bea86'
+         and previous.get('witness_sha256')==SESSION_PRIOR_WITNESS_SHA
+         and previous.get('session_env_path')==str(SESSION_ENV)
+         and previous.get('only_session_secret')is True and previous.get('financial_authorized')is False
+         and previous.get('previous_candidate_pid')==SESSION_OLD_PID
+         and previous.get('previous_candidate_start_ticks')==SESSION_OLD_TICKS,
+         'SESSION_PREVIOUS_STAGING_IDENTITY_DRIFT')
+    rollback=held.get('rollback',{})
+    need(held.get('status')=='HOLD_NO_REPLAY'
+         and held.get('failure_type')=='Hold'
+         and rollback.get('status')=='ORIGINAL_CANDIDATE_CONFIG_RESTORED'
+         and rollback.get('original_pid_unchanged')is True
+         and rollback.get('candidate_pid')==SESSION_OLD_PID
+         and rollback.get('session_authentication_restored')is False,
+         'SESSION_PREVIOUS_FAILED_ROLLBACK_UNPROVEN')
+    need(sha(root_file(SESSION_PRIOR_WITNESS,65536,0o644))==SESSION_PRIOR_WITNESS_SHA,
+         'SESSION_PREVIOUS_WITNESS_BYTES_DRIFT')
+    raw=root_file(SESSION_ENV,8192,0o600)
+    prefix=b'SESSION_SECRET='
+    need(raw.startswith(prefix) and raw.endswith(b'\n')
+         and re.fullmatch(rb'[A-Za-z0-9_./+=:-]{32,4096}',raw[len(prefix):-1]),
+         'SESSION_RETAINED_ENV_FORMAT_INVALID')
+    import hmac
+    need(hmac.compare_digest(raw[len(prefix):-1],session_original_secret()),
+         'SESSION_RETAINED_KEY_NOT_ORIGINAL_EFFECTIVE_IDENTITY')
+    need(not SESSION_DROPIN.exists() and not SESSION_DROPIN.is_symlink(),
+         'SESSION_PREVIOUS_DROPIN_ROLLBACK_NOT_RESTORED')
+    need(sha(root_file(prior/'rolled-back-dropin.conf',8192,0o644))
+         == '271e0b47037827ae8590b33704f5ac111b7710834803009f06b0ac45a202e45f',
+         'SESSION_PRIOR_DROPIN_NOT_ARCHIVED')
+    return {'prior_nonce':SESSION_PRIOR_NONCE,
+            'prior_staged_sha256':SESSION_PRIOR_STAGED_SHA,
+            'prior_hold_sha256':SESSION_PRIOR_HOLD_SHA,
+            'key_preserved_and_equal_original':True}
+
 def session_exact_database_envfiles(observed):
     # HEL1's sealed original unit/drop-in emits the same DB-only file twice.
     # An extra file, replacement path, changed ignore policy or missing entry
@@ -1056,7 +1115,8 @@ def session_plan(payload):
     journal=C_AUDIT/('session-repair-'+nonce)
     directory(C_AUDIT)
     need(not journal.exists() and not journal.is_symlink(),'SESSION_NONCE_CONSUMED_NO_REPLAY')
-    for path in (SESSION_ENV,SESSION_WITNESS,SESSION_DROPIN):
+    lineage=session_original_held_staging()
+    for path in (SESSION_WITNESS,SESSION_DROPIN):
         need(not path.exists() and not path.is_symlink(),'SESSION_CONFIG_ALREADY_EXISTS_REVIEW_LINEAGE')
         directory(path.parent)
     witness=session_payload_sources(payload)
@@ -1099,7 +1159,8 @@ def session_plan(payload):
         'nginx_sha256':SESSION_NGINX_SHA,'session_env_path':str(SESSION_ENV),'session_dropin_sha256':sha(session_dropin(journal)),
         'database_env_fingerprint_published':False,
         'original_signer_present':True,'candidate_signer_absent':True,'session_secret_fingerprint_published':False,
-        'only_session_secret':True,'financial_authorized':False,'public_cutover_authorized':False}
+        'only_session_secret':True,'financial_authorized':False,'public_cutover_authorized':False,
+        'prior_consumed_failed_staging':lineage}
     return {'status':'PASS_SESSION_CONTINUITY_PLAN_READ_ONLY_NOT_AUTHORITY','plan':plan,'plan_sha256':sha(canonical(plan))},unit
 
 def session_github(endpoint):
@@ -1184,8 +1245,10 @@ def session_repair(payload):
     created_dropin=False;restarted=False
     try:
         need(datetime.now(timezone.utc)<=session_utc(authority['manifest']['expires_at']),'SESSION_GRANT_EXPIRED_BEFORE_WRITE')
-        secret=session_original_secret()
-        session_create(SESSION_ENV,b'SESSION_SECRET='+secret+b'\n',0o600)
+        # Reuse the exact previously sealed session-only key file; never
+        # overwrite, recopy, weaken permissions or print its secret.
+        need(session_original_held_staging()==plan['prior_consumed_failed_staging'],
+             'SESSION_RETAINED_STAGING_CHANGED_AT_WRITE')
         session_create(SESSION_WITNESS,session_payload_sources(payload),0o644)
         staged={'schema':'aoe2war.r25.c.session-continuity.v1','status':'SESSION_AUTH_STAGED_NOT_STARTED','nonce':nonce,
             'original_pid':OLD_PID,'original_start_ticks':OLD_TICKS,'session_env_path':str(SESSION_ENV),
@@ -1283,7 +1346,7 @@ def session_repair(payload):
             rollback['candidate_pid']=restored.get('candidate_pid')
             rollback['session_authentication_restored']=False
         except BaseException as restore_error:rollback['reason_type']=type(restore_error).__name__
-        try:seal(journal/'hold.json',{'status':'HOLD_NO_REPLAY','failure_type':type(error).__name__,'rollback':rollback})
+        try:seal(journal/'hold.json',{'status':'HOLD_NO_REPLAY','failure_type':type(error).__name__,'predicate':str(error)[:120] if type(error)is Hold and re.fullmatch('[A-Z0-9_:.-]{1,120}',str(error)) else 'UNCLASSIFIED','rollback':rollback})
         except Exception:pass # Journal storage failure never blocks protection.
         raise
 

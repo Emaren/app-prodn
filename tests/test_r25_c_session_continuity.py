@@ -41,6 +41,18 @@ class SecretIdentity(unittest.TestCase):
                      [good,good.replace('ignore_errors=no','ignore_errors=yes')]):
             with self.subTest(rows=rows),self.assertRaisesRegex(s.Hold,'ORIGINAL_EXACT_DUPLICATED_DATABASE_ENVFILES_REQUIRED'):
                 s.session_exact_database_envfiles(chr(10).join(rows)+chr(10))
+    def test_consumed_staging_is_never_accepted_without_exact_sealed_receipts(self):
+        # A partial prior attempt is not permission to reuse its key file.
+        with mock.patch.object(s,'directory'), mock.patch.object(s,'root_file',return_value=b'forged'):
+            with self.assertRaisesRegex(s.Hold,'SESSION_PREVIOUS_CONSUMED_RECEIPT_DRIFT'):
+                s.session_original_held_staging()
+    def test_recovery_uses_new_witness_and_preserves_prior_root_artifacts(self):
+        self.assertNotEqual(s.SESSION_WITNESS,s.SESSION_PRIOR_WITNESS)
+        self.assertTrue(s.SESSION_WITNESS.name.endswith('-v2.py'))
+        self.assertEqual(s.SESSION_PRIOR_NONCE,'e0c3ab9b595e5e3d2d539d0f3668240d')
+        dropin=s.session_dropin(s.C_AUDIT/('session-repair-'+'f'*32))
+        self.assertIn(str(s.SESSION_WITNESS).encode(),dropin)
+        self.assertNotIn(str(s.SESSION_PRIOR_WITNESS).encode(),dropin)
     def test_write_once_preserves_existing_secret_file(self):
         with tempfile.TemporaryDirectory() as directory:
             path=pathlib.Path(directory)/'session.env';path.write_bytes(b'original')
