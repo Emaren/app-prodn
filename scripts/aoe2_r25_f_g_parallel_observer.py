@@ -46,6 +46,10 @@ MONITOR_ONESHOT_TIMERS={
     "traffic-v2-forward-ledger-aoe2hdbets.service":"traffic-v2-forward-ledger-aoe2hdbets.timer",
     "traffic-watchdog.service":"traffic-watchdog.timer",
     "wolo-mainnet-health.service":"wolo-mainnet-health.timer",
+    # Two additional exact HEL1 inactive successful timer oneshots are
+    # independently witnessed; preserve static unit command/config hashes.
+    "aoe2hdbets-staking-rewards.service":"aoe2hdbets-staking-rewards.timer",
+    "aoe2hdbets-trophy-tributes.service":"aoe2hdbets-trophy-tributes.timer",
 }
 H40=re.compile(r"[a-f0-9]{40}\Z")
 H64=re.compile(r"[a-f0-9]{64}\Z")

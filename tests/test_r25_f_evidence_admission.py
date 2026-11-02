@@ -47,6 +47,51 @@ class EvidenceAdmissionTests(unittest.TestCase):
             with self.assertRaises(self.r.Hold):
                 self.r.reviewed(env, self.r.SOURCE_SCOPE)
 
+    def test_owner_only_nonfinancial_scope_is_transparent_and_fail_closed(self):
+        base={"schema":"aoe2war.r25.f.owner-nonfinancial-review.v1",
+              "scope":self.r.SOURCE_SCOPE,"decision":"ACCEPT",
+              "owner_login":"Emaren","release_authority":"OWNER_ONLY_NONFINANCIAL",
+              "owner_accepts_no_independent_review":True,
+              "independent_review":False,"financial_authorized":False,
+              "public_cutover_authorized":False}
+        marker="\n"+chr(96)*3+"json\n"
+        suffix="\n"+chr(96)*3
+        def envelope(changes=None):
+            manifest={**base,**(changes or {})}
+            body="R25_F_OWNER_NONFINANCIAL_ACCEPT"+marker+json.dumps(manifest,sort_keys=True)+suffix
+            return {"body":body,"body_sha256":self.r.sha(body.encode()),
+                    "author":"Emaren",
+                    "url":"https://github.com/Emaren/app-prodn/pull/1083#issuecomment-123",
+                    "issue_url":"https://api.github.com/repos/Emaren/app-prodn/issues/1083"}
+        good=envelope()
+        self.assertEqual(self.r.reviewed(good,self.r.SOURCE_SCOPE),base)
+        response={"id":123,"html_url":good["url"],"issue_url":good["issue_url"],
+                  "user":{"login":"Emaren"},"body":good["body"]}
+        with mock.patch.object(self.m,"github",return_value=response):
+            env,manifest=self.m.review("123",good["body_sha256"],self.r.SOURCE_SCOPE)
+        self.assertEqual(env,good)
+        self.assertEqual(manifest,base)
+        for update in ({"decision":"HOLD"},{"owner_login":"different"},
+                       {"independent_review":True},{"financial_authorized":True},
+                       {"public_cutover_authorized":True},
+                       {"owner_accepts_no_independent_review":False},
+                       {"release_authority":"INDEPENDENT"}):
+            bad=envelope(update)
+            with self.subTest(update=update):
+                with self.assertRaises(self.r.Hold):
+                    self.r.reviewed(bad,self.r.SOURCE_SCOPE)
+                forged_response={**response,"body":bad["body"]}
+                with mock.patch.object(self.m,"github",return_value=forged_response):
+                    with self.assertRaises(RuntimeError):
+                        self.m.review("123",bad["body_sha256"],self.r.SOURCE_SCOPE)
+        spoof={**good,"author":"someone-else"}
+        with self.assertRaises(self.r.Hold):
+            self.r.reviewed(spoof,self.r.SOURCE_SCOPE)
+        # Arbitrary second human reviewer fields do not elevate owner authority.
+        owner_with_fake_peer=envelope({"reviewer":"/root/security_review"})
+        with self.assertRaises(self.r.Hold):
+            self.r.reviewed(owner_with_fake_peer,self.r.RUNTIME_SCOPE)
+
     def test_review_body_digest_and_duplicate_fields_fail(self):
         env = self.envelope()
         env["body"] += "altered"
@@ -118,97 +163,69 @@ class EvidenceAdmissionTests(unittest.TestCase):
                 with self.assertRaisesRegex(self.r.Hold, "GENUINE_NATIVE_B_POSTSTART"):
                     self.r.native_poststart(helper)
 
-    def test_v3_requires_genuine_running_receipt_and_both_consumed_failures(self):
-        # Synthetic fixtures: exact legacy hash pins are simulated, never passed off as host evidence.
-        c = "7" * 40
-        helper = mock.Mock()
-        helper.JOURNAL = self.r.C_START
-        helper.PREV_JOURNAL = self.r.C_V2_FAILED
-        helper.V1_JOURNAL = self.r.C_V1_FAILED
-        helper.V1_STARTED_SHA = "cbb0e36523991cf39a8b7562268141ed8fbde5109d60d59abdcf16923e783a53"
-        helper.V1_HOLD_SHA = "55a8d3310361330cf04b0070caaf844ce9f7f7160019d0bf88f111bf571a1e22"
-        helper.V2_STARTED_SHA = "b584ce8a73097b1aa9cd575c96ffdbf2ee10eb61aed0cb9719dd65a80e060232"
-        helper.V2_STAGED_SHA = "10685b859e9638eba82b17d3811ffc273a3fd0c1d4a0538a8e70e1f210afd4da"
-        helper.V2_HOLD_SHA = "1ad48d5a0419ed9c09e37b04653192386dbd044049b1553774668b23b6709863"
-        helper.V2_WITNESS_SHA = "e" * 64
-        helper.V2_DROPIN_SHA = "d" * 64
-        helper.V3_DROPIN_SHA = "c" * 64
-        helper.BUILD_ID = "real-build-pin"
-
-        v1_started = {"status":"START_ENTERED_DO_NOT_RETRY",
-                      "plan":{"source_sha":self.r.C_V1_SOURCE}}
-        v1_hold = {"status":"HOLD_NO_REPLAY","reason_type":"ProcessLookupError",
-                   "public_cutover_authorized":False}
-        v2_started = {"status":"START_ENTERED_DO_NOT_RETRY",
-                      "public_cutover_authorized":False}
-        v2_staged = {"status":"V2_REVIEWED_WALL_STAGED_NOT_STARTED",
-                     "v2_witness_sha256":helper.V2_WITNESS_SHA,
-                     "v2_dropin_sha256":helper.V2_DROPIN_SHA}
-        v2_hold = {"status":"HOLD_NO_REPLAY","reason_type":"Hold",
-                   "only_new_service_stop_attempted":True,
-                   "public_cutover_authorized":False}
-        old = [v1_started, v1_hold, v2_started, v2_staged, v2_hold]
-        old_raw = [self.r.canonical(obj) for obj in old]
-        old_pins = [helper.V1_STARTED_SHA, helper.V1_HOLD_SHA,
-                    helper.V2_STARTED_SHA, helper.V2_STAGED_SHA, helper.V2_HOLD_SHA]
-        plan = {"schema":"aoe2war.r25.c.start-plan.v3","source_sha":c,
-                "prior_v1_started_sha256":old_pins[0],
-                "prior_v1_hold_sha256":old_pins[1],
-                "prior_v2_started_sha256":old_pins[2],
-                "prior_v2_staged_sha256":old_pins[3],
-                "prior_v2_hold_sha256":old_pins[4],
-                "v3_dropin_sha256":helper.V3_DROPIN_SHA,
-                "public_cutover_authorized":False,"financial_authorized":False}
-        started = {"status":"START_ENTERED_DO_NOT_RETRY","plan":plan,
-                   "plan_sha256":"a"*64,"nonce":"f"*32}
-        running = {"schema":"aoe2war.r25.c.started-3031.v3",
-                   "status":"STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT",
-                   "candidate_sha":self.r.TARGET,"candidate_uid":993,
-                   "build_id":helper.BUILD_ID,"public_cutover_authorized":False,
-                   "financial_authorized":False,
-                   "plan_sha256":"a"*64,"nonce":"f"*32}
-        documents = dict(zip([
-            ("start-3031-v1","started.json"),("start-3031-v1","hold.json"),
-            ("start-3031-v2","started.json"),("start-3031-v2","staged.json"),
-            ("start-3031-v2","hold.json")], old_raw))
-        documents[("start-3031-v3","started.json")] = self.r.canonical(started)
-        documents[("start-3031-v3","running.json")] = self.r.canonical(running)
-        helper.root_file.side_effect = lambda path,*args: documents[(path.parent.name,path.name)]
-        digest = self.r.sha
-        pins = dict(zip(old_raw,old_pins))
-        def synthetic_hash(raw):
-            return pins.get(raw,digest(raw))
-        review = {"lane_sources":{"C":c}}
-        with mock.patch.object(self.r,"sha",side_effect=synthetic_hash):
-            raw,parsed,receipts = self.r.authenticated_v3_start_journals(helper,review)
+    def test_v8_requires_exact_success_and_all_seven_failed_no_replay_journals(self):
+        c="c078f3041acab718e1d42d400c2534e4f0297457"
+        helper=types.SimpleNamespace()
+        helper.BUILD_ID="-dJl5VyecHu5BKNvfErJe"
+        helper.JOURNAL=self.r.C_START
+        records={}
+        values={}
+        for v in range(1,8):
+            journal=Path("/var/lib/aoe2war-r25-c-additive/start-3031-v"+str(v))
+            setattr(helper,("PREV_JOURNAL" if v==7 else "V"+str(v)+"_JOURNAL"),journal)
+            for name in (("started","hold") if v==1 else ("started","staged","hold")):
+                key=(journal.name,name+".json")
+                obj={"status":"START_ENTERED_DO_NOT_RETRY" if name=="started"
+                    else "HOLD_NO_REPLAY" if name=="hold" else "REVIEWED_STAGED_NOT_RUNNING",
+                    "synthetic_version":v,"synthetic_name":name,
+                    "public_cutover_authorized":False}
+                raw=self.r.canonical(obj)
+                digest=self.r.sha(raw)
+                if v==1 and name=="started":digest="cbb0e36523991cf39a8b7562268141ed8fbde5109d60d59abdcf16923e783a53"
+                if v==7 and name=="hold":digest="5fc2d25827fc281b2a9623dcf838c3de96f2630dc47b3b9ba7a94f31d768bd72"
+                setattr(helper,"V"+str(v)+"_"+name.upper()+"_SHA",digest)
+                records[key]=raw
+                values[key]=digest
+        hist={journal+"_"+name:digest for (journal,name),digest in values.items()}
+        plan={"schema":"aoe2war.r25.c.start-plan.v8","source_sha":c,
+              "historical_receipts":hist,"financial_authorized":False,
+              "public_cutover_authorized":False}
+        started={"status":"START_ENTERED_DO_NOT_RETRY","plan":plan,
+                 "plan_sha256":"a"*64,"nonce":"b"*32}
+        running={"schema":"aoe2war.r25.c.started-3031.v8",
+                 "status":"STARTED_3031_PENDING_B_POSTSTART_C_RUNTIME_ACCEPT",
+                 "candidate_sha":self.r.TARGET,"candidate_uid":993,"candidate_pid":1118556,
+                 "old_web_pid":2625090,"candidate_start_ticks":12345,
+                 "build_id":helper.BUILD_ID,"public_cutover_authorized":False,
+                 "financial_authorized":False,"plan_sha256":"a"*64,"nonce":"b"*32}
+        records[("start-3031-v8","started.json")]=self.r.canonical(started)
+        records[("start-3031-v8","running.json")]=self.r.canonical(running)
+        def read(path,*_):return records[(path.parent.name,path.name)]
+        helper.root_file=read
+        original_hash=self.r.sha
+        by_raw={records[k]:v for k,v in values.items()}
+        by_raw[records[("start-3031-v8","started.json")]]="909bcd14f4b69c623a411ffef60422b6ba9f87be3fde9d931178ab50183d70fe"
+        by_raw[records[("start-3031-v8","running.json")]]="2917699b248708582dc7ffc75c4309f5fe2802366608e751a1cf75566d263032"
+        digest=lambda raw:by_raw.get(raw,original_hash(raw))
+        with mock.patch.object(self.r,"sha",side_effect=digest):
+            raw,parsed,receipts=self.r.authenticated_v8_start_journals(
+                helper,{"lane_sources":{"C":c}})
         self.assertEqual(parsed,running)
-        self.assertEqual(raw,documents[("start-3031-v3","running.json")])
-        self.assertEqual(len(receipts),6)
-        self.assertEqual(receipts["C_v2_hold_file_sha256"],helper.V2_HOLD_SHA)
-
-        alterations = [
-            (("start-3031-v1","hold.json"),{**v1_hold,"reason_type":"Other"}),
-            (("start-3031-v2","hold.json"),{**v2_hold,"only_new_service_stop_attempted":False}),
-            (("start-3031-v2","staged.json"),{**v2_staged,"v2_dropin_sha256":"wrong"}),
-            (("start-3031-v3","running.json"),{**running,"schema":"aoe2war.r25.c.started-3031.v2"}),
-            (("start-3031-v3","running.json"),{**running,"financial_authorized":True}),
-            (("start-3031-v3","running.json"),{**running,"nonce":"0"*32}),
-            (("start-3031-v3","started.json"),{**started,"plan":{**plan,"source_sha":"0"*40}}),
-            (("start-3031-v3","started.json"),{**started,"plan":{**plan,"prior_v2_hold_sha256":"0"*64}}),
-        ]
-        for key,bad in alterations:
-            with self.subTest(key=key,change=bad):
-                previous=documents[key]
-                documents[key]=self.r.canonical(bad)
-                with mock.patch.object(self.r,"sha",side_effect=synthetic_hash):
-                    with self.assertRaises(self.r.Hold):
-                        self.r.authenticated_v3_start_journals(helper,review)
-                documents[key]=previous
-
-        helper.V2_HOLD_SHA="0"*64
-        with mock.patch.object(self.r,"sha",side_effect=synthetic_hash):
-            with self.assertRaisesRegex(self.r.Hold,"EXACT_REVIEWED_C_V3_HELPER_REQUIRED"):
-                self.r.authenticated_v3_start_journals(helper,review)
+        self.assertEqual(raw,records[("start-3031-v8","running.json")])
+        self.assertEqual(len(receipts),22)
+        self.assertEqual(receipts["C_v7_hold_file_sha256"],helper.V7_HOLD_SHA)
+        # Changed bytes, new PID or unqualified financial authority fail closed.
+        for key,mutation in [
+            (("start-3031-v6","hold.json"),{"status":"FORGED_SUCCESS"}),
+            (("start-3031-v8","running.json"),{**running,"candidate_pid":0}),
+            (("start-3031-v8","running.json"),{**running,"financial_authorized":True}),
+            (("start-3031-v8","started.json"),{**started,"plan":{**plan,"source_sha":"0"*40}})]:
+            previous=records[key]
+            records[key]=self.r.canonical(mutation)
+            with mock.patch.object(self.r,"sha",side_effect=digest):
+                with self.assertRaises(self.r.Hold):
+                    self.r.authenticated_v8_start_journals(helper,{"lane_sources":{"C":c}})
+            records[key]=previous
 
     def test_capture_stability_ignores_only_native_timestamp_not_security(self):
         a = {"B_native": {"at": "old"}, "B_stable_sha256": "proof", "candidate_pid": 555, "capture_sha256": "old"}
