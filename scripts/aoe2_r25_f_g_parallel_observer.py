@@ -860,7 +860,19 @@ def root_snapshot(phase):
         context=transaction_scope(raw,base,phase)[1]
         result["transaction_scope"]=context
         if context.get("runtime_requalification_path") is not None:
-            result["candidate_runtime_lineage"]=runtime_lineage(base,context,phase)
+            # transaction_scope() already checked the exact, GitHub-authored
+            # OWNER PLAN and its nginx_after_sha256. Its returned context is a
+            # commit-journal binding, not a full copy of the owner plan. Read
+            # the signed-off F commit's already verified after-image hash,
+            # rather than silently accepting an absent expected hash.
+            need(type(history.get("approved_after_nginx_sha256"))is str and
+                 H64.fullmatch(history["approved_after_nginx_sha256"]),
+                 "F_POSTFLIGHT_APPROVED_AFTER_HASH_MISSING")
+            lineage_plan={
+                "runtime_requalification_path":context["runtime_requalification_path"],
+                "runtime_requalification_sha256":context["runtime_requalification_sha256"],
+                "nginx_after_sha256":history["approved_after_nginx_sha256"]}
+            result["candidate_runtime_lineage"]=runtime_lineage(base,lineage_plan,phase)
     return result
 def ssh_snapshot(target,phase):
     need(re.fullmatch(r"root@[A-Za-z0-9._-]{1,140}",target),"UNREVIEWED_SSH_TARGET")
