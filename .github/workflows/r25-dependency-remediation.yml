@@ -1,0 +1,81 @@
+name: R25 dependency remediation candidate (non-production)
+on:
+  pull_request:
+    paths:
+      - package.json
+      - yarn.lock
+      - .github/workflows/r25-dependency-remediation.yml
+permissions:
+  contents: read
+jobs:
+  dependency-review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Isolated Yarn v1 dependency graph regeneration and immutable output
+        run: |
+          corepack enable
+          yarn install --ignore-scripts --non-interactive
+          python3 - <<'PY'
+          import base64,gzip,pathlib
+          lock=pathlib.Path('yarn.lock').read_bytes()
+          print("LOCKFILE_RAW_BASE64_BEGIN")
+          print(base64.b64encode(lock).decode())
+          print("LOCKFILE_RAW_BASE64_END")
+          print("LOCK_BYTES",len(lock))
+          PY
+      - name: Audit actual regenerated dependency graph with NO waivers
+        run: |
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          python3 scripts/check_dependency_security.py
+      - name: Diagnose minimatch v11 default-import consumers (read-only)
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.resolve('node_modules');
+          const pattern = /\bimport\s+[A-Za-z_$][\w$]*\s+from\s*['"]minimatch['"]|\brequire\s*\(\s*['"]minimatch['"]\s*\)\.default|\bimport\s*\(\s*['"]minimatch['"]\s*\)\.then\s*\(/g;
+          const hits = [];
+          let checked=0;
+          const todo=[root];
+          while(todo.length && checked<70000) {
+            const dir=todo.pop();
+            for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
+              if(entry.isSymbolicLink() || ['.bin','.cache','.git','test','tests','fixtures','__tests__'].includes(entry.name))continue;
+              const name=path.join(dir,entry.name);
+              if(entry.isDirectory()){todo.push(name);continue;}
+              if(!entry.isFile() || !/\.(?:js|mjs|cjs)$/.test(entry.name))continue;
+              const st=fs.statSync(name);
+              if(st.size>1000000)continue;
+              checked++;
+              const source=fs.readFileSync(name,'utf8');
+              const match=pattern.exec(source);
+              pattern.lastIndex=0;
+              if(match)hits.push({file:path.relative(process.cwd(),name),snippet:source.slice(Math.max(0,match.index-75),match.index+160).replace(/\s+/g,' ').slice(0,240)});
+              if(hits.length>=70)break;
+            }
+            if(hits.length>=70)break;
+          }
+          console.log('MINIMATCH_V11_IMPORTER_DIAGNOSTIC',JSON.stringify({checked,hits}));
+          JS
+      - name: Strict secure-major ESLint importer behavior and adversarial negatives
+        run: |
+          node --test tests/r25-secure-minimatch-adapter.test.cjs
+          node scripts/r25_secure_minimatch_eslint_adapter.cjs
+          node --input-type=module -e "await import('@eslint/config-array'); await import('@eslint/eslintrc'); console.log('PASS:ESLINT_NAMED_IMPORTS_AND_LOAD')"
+          node scripts/r25_secure_minimatch_eslint_adapter.cjs
+      - name: Targeted parser and package compatibility tests
+        run: |
+          python3 -m unittest tests.test_dependency_security
+          node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/central-events.test.mts tests/central-work-ledger.test.mts
