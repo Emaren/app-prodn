@@ -6,7 +6,7 @@ F controls the single owner-authorized deployment transaction. Never run this
 against a candidate lacking B's positive read-only/egress/method admission.
 """
 from __future__ import annotations
-import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys
+import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys, time
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
@@ -216,6 +216,22 @@ def system_state():
              obj.get("properties",{}).get("ActiveState")=="active" and obj.get("main_process")
              for name,obj in state.items()),"ACTIVE_POSTGRESQL_INSTANCE_MISSING")
     return state
+def stable_system_state_during_timer_quiescence(maximum_seconds=24):
+    """Retain all strict native G unit checks; retry only an in-flight oneshot.
+
+    Finance services are scheduled independently. A real timer may transiently
+    be active without changing its configured command, process wall or role.
+    No other security/financial runtime failure qualifies for retry.
+    """
+    deadline=time.monotonic()+maximum_seconds
+    while True:
+        try:return system_state()
+        except Hold as error:
+            if (str(error)!="MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"
+                or time.monotonic()>=deadline):
+                raise
+            time.sleep(.2)
+
 def git_source(repo,user):
     # Only inspect tracked source; no checkout, reset, clean or Git hooks.
     prefix=["/usr/sbin/runuser","-u",user,"--","/usr/bin/git",
@@ -740,7 +756,7 @@ def root_snapshot(phase):
     old_build=(OLD_REPO/".next/BUILD_ID").read_text().strip()
     need(BUILD.fullmatch(old_build),"OLD_NEXT_BUILD_ID_UNKNOWN")
     candidate=stage()
-    units=system_state()
+    units=stable_system_state_during_timer_quiescence()
     need(units[OLD_UNIT]["properties"]["MainPID"]==str(EXPECTED_OLD_PID),
          "ORIGINAL_SETTLEMENT_CAPABLE_WEB_PID_NOT_2625090")
     need(units[OLD_UNIT]["properties"]["ActiveState"]=="active" and
@@ -782,7 +798,16 @@ def ssh_snapshot(target,phase):
           target,"/usr/bin/python3","-I","-B","-","--remote",phase]
     if TRANSACTION_NONCE is not None:
         argv.extend(("--transaction-nonce",TRANSACTION_NONCE))
-    return parse(run(argv,timeout=380,stdin=payload))
+    reply=subprocess.run(argv,input=payload,capture_output=True,timeout=380)
+    if reply.returncode:
+        # The remote G source uses a fixed HOLD prefix and symbolic predicates.
+        # Surface ONLY a tightly bounded uppercase predicate, never arbitrary
+        # stderr, HTTP bodies or financial environment values.
+        failure=reply.stderr.decode("ascii",errors="replace")
+        match=re.search(r"HOLD:G_R25_PARALLEL_POSTFLIGHT:([A-Z0-9_:.]{1,128})",failure)
+        if match:raise Hold("G_REMOTE_NATIVE_HOLD:"+match.group(1))
+        raise Hold("G_REMOTE_SSH_OR_UNCLASSIFIED_RUNTIME_FAILURE")
+    return parse(reply.stdout)
 def public_check(expected):
     result=http_site(PUBLIC,expected["candidate"]["next_build_id"]
                      if expected["phase"]=="after" else expected["old_next_build_id"])
