@@ -88,9 +88,16 @@ def seal(path,value,mode=0o600):
     try:os.write(fd,raw);os.fsync(fd)
     finally:os.close(fd)
     need(digest(root_file(path,max(len(raw),8192),mode))==digest(raw),"SEALED_RECEIPT_WRITE")
+def parse_start_ticks(proc_stat):
+    # Linux comm inside parentheses may itself contain spaces and parentheses,
+    # e.g. "(next-server (v1)". Never split the whole /proc stat record.
+    close=proc_stat.rfind(")")
+    need(close>0 and proc_stat[close+1:close+2]==" ","PROC_STAT_COMM_BOUNDARY")
+    fields=proc_stat[close+2:].split()
+    need(len(fields)>=20 and fields[19].isdecimal(),"PROC_START_TICKS_MISSING")
+    return int(fields[19])
 def ticks(pid):
-    parts=(pathlib.Path("/proc")/str(pid)/"stat").read_text().split()
-    return int(parts[21])
+    return parse_start_ticks((pathlib.Path("/proc")/str(pid)/"stat").read_text())
 def status(unit):
     obj={}
     raw=call(["/usr/bin/systemctl","show",unit,"-p","MainPID","-p","ActiveState",
