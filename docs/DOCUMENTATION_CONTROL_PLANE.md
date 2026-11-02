@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-v5-inactive-resetfix-20261101` at `0550eac4f0445522eccc3fa91c2f22dae3834f7b`
+Implementation baseline: `codex/r25-v6-node-exec-readiness-20261101` at `77720bfcb02cc3d9e12e37169064080a97ec0802`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
