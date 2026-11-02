@@ -23,6 +23,7 @@ import time
 import types
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 
 TARGET = "0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST = "ubuntu-4gb-hel1-11"
@@ -989,9 +990,306 @@ def start(payload):
             "only_new_service_stop_attempted": attempted, "public_cutover_authorized": False})
         raise
 
+SESSION_ENV = Path('/etc/aoe2war/r24-parallel-web/session-runtime.env')
+SESSION_WITNESS = Path('/etc/aoe2war/r24-parallel-web/approved-runtime-session-v1.py')
+SESSION_DROPIN = Path('/etc/systemd/system/aoe2hdbets-web-r24.service.d/98-r25-session-continuity.conf')
+SESSION_DB_ENV = Path('/etc/aoe2war/r24-parallel-web/readonly-runtime.env')
+SESSION_SCOPE = 'R25_CANDIDATE_SESSION_CONTINUITY_REPAIR'
+SESSION_OLD_PID = 1118556
+SESSION_OLD_TICKS = 142541543
+SESSION_V8_RECEIPT_SHA = '2917699b248708582dc7ffc75c4309f5fe2802366608e751a1cf75566d263032'
+SESSION_NGINX = Path('/etc/nginx/sites-available/aoe2war.com')
+SESSION_NGINX_SHA = 'd8f55532ae9a1b8463ed6f0998f8a92343677e442218d1bdaef1b6e547478ad8'
+SESSION_BEFORE_SHA = '6de56e39c813069ebcebf0674ae6142f78bd7b839e6ad2fea5c8c4c99e8d12b7'
+SESSION_BASE_APPROVAL_SHA = 'f8855882d7112fc24b1facb8f8df6721ac5c2bffc58c43d021e4773721be956b'
+SESSION_G_UNIT_BEFORE_SHA = 'd50b3d9f584fb38a5dd47154c9da89a2d5dc5c16ef26c1e5f53d594dd273ecf1'
+SESSION_G_LISTENER_BEFORE_SHA = '11ac63c78d166db59089fa895a063a34188868b3f0aa1453606da8b515f70d1e'
+
+def session_original_secret():
+    """Read only the actual original process's effective symmetric session key."""
+    need(ticks(OLD_PID)==OLD_TICKS,'ORIGINAL_SESSION_PROCESS_IDENTITY_CHANGED')
+    raw=(Path('/proc')/str(OLD_PID)/'environ').read_bytes()
+    need(0<len(raw)<=65536,'ORIGINAL_ENVIRONMENT_BOUND')
+    fields={}
+    for row in raw.rstrip(b'\0').split(b'\0'):
+        key,sep,value=row.partition(b'=')
+        need(sep and key not in fields,'ORIGINAL_ENVIRONMENT_INVALID')
+        fields[key]=value
+    secret=fields.get(b'SESSION_SECRET') or fields.get(b'NEXTAUTH_SECRET')
+    need(type(secret)is bytes and re.fullmatch(rb'[A-Za-z0-9_./+=:-]{32,4096}',secret),
+         'ORIGINAL_EFFECTIVE_SESSION_KEY_UNSUPPORTED_ENCODING')
+    need(ticks(OLD_PID)==OLD_TICKS,'ORIGINAL_SESSION_PROCESS_REUSED')
+    return secret
+
+def session_unit_text():
+    state=unit_state(NEW_UNIT);properties=dict(state['properties'])
+    properties['ProcStartTicks']=str(state['start_ticks'])
+    properties['UnitConfigSHA256']=state['unit_config_sha256']
+    return ''.join(k+'='+str(v)+'\n' for k,v in sorted(properties.items()))
+
+def session_dropin(journal):
+    return ('[Service]\nEnvironmentFile='+str(SESSION_ENV)+'\nExecStartPre=\n'
+        'ExecStartPre=+/usr/bin/nsenter --target 1 --mount -- /usr/bin/python3 -I -B '+str(SESSION_WITNESS)+
+        ' --phase prestart --expected-guard-sha256 '+B_GUARD_SHA+' --session-auth-journal '+str(journal)+'\n').encode()
+
+def session_payload_sources(payload):
+    need(type(payload.get('source_sha'))is str and H40.fullmatch(payload['source_sha']), 'SESSION_SOURCE_COMMIT_REQUIRED')
+    for name in ('operator','mac','witness','g'):
+        need(type(payload.get(name+'_sha256'))is str and H64.fullmatch(payload[name+'_sha256']), 'SESSION_SOURCE_HASH_REQUIRED')
+    raw=base64.b64decode(payload.get('session_witness_b64',''),validate=True)
+    need(0<len(raw)<=65536 and sha(raw)==payload['witness_sha256'],'SESSION_WITNESS_BYTES_DRIFT')
+    return raw
+
+def session_exact_database_envfiles(observed):
+    # HEL1's sealed original unit/drop-in emits the same DB-only file twice.
+    # An extra file, replacement path, changed ignore policy or missing entry
+    # may introduce finance credentials and must never be normalized away.
+    expected=str(SESSION_DB_ENV)+' (ignore_errors=no)'
+    need(type(observed)is str and observed.splitlines()==[expected,expected],
+         'ORIGINAL_EXACT_DUPLICATED_DATABASE_ENVFILES_REQUIRED')
+    return True
+
+def session_plan(payload):
+    need(sys.platform=='linux' and socket.gethostname()==HOST and os.geteuid()==0,'EXACT_HEL1_ROOT_ONLY')
+    nonce=payload.get('nonce','')
+    need(type(nonce)is str and re.fullmatch('[a-f0-9]{32}',nonce),'SESSION_FRESH_NONCE_REQUIRED')
+    journal=C_AUDIT/('session-repair-'+nonce)
+    directory(C_AUDIT)
+    need(not journal.exists() and not journal.is_symlink(),'SESSION_NONCE_CONSUMED_NO_REPLAY')
+    for path in (SESSION_ENV,SESSION_WITNESS,SESSION_DROPIN):
+        need(not path.exists() and not path.is_symlink(),'SESSION_CONFIG_ALREADY_EXISTS_REVIEW_LINEAGE')
+        directory(path.parent)
+    witness=session_payload_sources(payload)
+    started_raw=root_file(JOURNAL/'running.json',131072,0o600)
+    need(sha(started_raw)==SESSION_V8_RECEIPT_SHA,'ORIGINAL_V8_RUNNING_RECEIPT_DRIFT')
+    started=parse(started_raw)
+    need(started.get('candidate_pid')==SESSION_OLD_PID and started.get('candidate_start_ticks')==SESSION_OLD_TICKS
+         and started.get('build_id')==BUILD_ID and started.get('candidate_uid')==UID,'ORIGINAL_V8_PROCESS_BINDING_DRIFT')
+    need(sha(root_file(SESSION_NGINX,131072))==SESSION_NGINX_SHA,'PUBLIC_NGINX_MUST_REMAIN_ORIGINAL')
+    build=c_build();state=unit_state(NEW_UNIT)
+    need(state['properties'].get('ActiveState')=='active' and state['properties'].get('MainPID')==str(SESSION_OLD_PID),
+         'ORIGINAL_ISOLATED_CANDIDATE_PID_CHANGED')
+    need(state['properties'].get('User')==USER and state['properties'].get('WorkingDirectory')==str(STAGE),'SESSION_CANDIDATE_SOURCE_UID_DRIFT')
+    need(state['start_ticks']==ticks(SESSION_OLD_PID)==SESSION_OLD_TICKS,'SESSION_CANDIDATE_PID_REUSED')
+    # Original B remains pinned and unmodified; its native PRESTART is read only.
+    need(sha(root_file(V2_WITNESS_PATH,65536,0o644))==V2_WITNESS_SHA,'INSTALLED_B_V2_DRIFT')
+    secret=session_original_secret()
+    candidate=(Path('/proc')/str(SESSION_OLD_PID)/'environ').read_bytes()
+    names={row.partition(b'=')[0] for row in candidate.rstrip(b'\0').split(b'\0')}
+    need(b'SESSION_SECRET' not in names and b'NEXTAUTH_SECRET' not in names,'CANDIDATE_AUTH_ALREADY_CONFIGURED')
+    need(bool(secret),'ORIGINAL_SESSION_KEY_REQUIRED')
+    protected=protected_snapshot();unit=session_unit_text()
+    base_raw=root_file(Path('/etc/aoe2war/r24-parallel-web/approved.json'),16384,0o600)
+    need(sha(base_raw)==SESSION_BASE_APPROVAL_SHA and sha(unit.encode())==parse(base_raw).get('candidate_web_snapshot_sha256'),
+         'IMMUTABLE_A04_CANDIDATE_UNIT_DRIFT')
+    original_witness=session_v4_module(payload)
+    original_prestart=original_witness.prestart(B_GUARD_SHA)
+    envfiles=run(['/usr/bin/systemctl','show',NEW_UNIT,'--property=EnvironmentFiles','--value'],maximum=8192).decode()
+    session_exact_database_envfiles(envfiles)
+    g=session_g_module(payload);g_unit=g.show(NEW_UNIT);g_listener=g.listening_socket(3031)
+    need(sha(canonical(g_unit))==SESSION_G_UNIT_BEFORE_SHA and sha(canonical(g_listener))==SESSION_G_LISTENER_BEFORE_SHA,
+         'IMMUTABLE_A04_CANDIDATE_ONLY_BASELINE_DRIFT')
+    plan={'schema':'aoe2war.r25.c.session-continuity-plan.v1','scope':SESSION_SCOPE,'nonce':nonce,
+        'source_sha':payload['source_sha'],**{n+'_sha256':payload[n+'_sha256'] for n in ('operator','mac','witness','g')},
+        'original_pid':OLD_PID,'original_start_ticks':OLD_TICKS,'previous_candidate_pid':SESSION_OLD_PID,
+        'previous_candidate_start_ticks':state['start_ticks'],'candidate_uid':UID,'candidate_sha':TARGET,
+        'build_id':BUILD_ID,'build_version':VERSION,'tree_sha256':TREE_SHA,
+        'previous_candidate_unit_sha256':sha(unit.encode()),'protected_snapshot_sha256':sha(canonical(protected)),
+        'nft_sha256':original_prestart['nft_egress_sha256'],'guard_sha256':B_GUARD_SHA,
+        'nginx_sha256':SESSION_NGINX_SHA,'session_env_path':str(SESSION_ENV),'session_dropin_sha256':sha(session_dropin(journal)),
+        'database_env_fingerprint_published':False,
+        'original_signer_present':True,'candidate_signer_absent':True,'session_secret_fingerprint_published':False,
+        'only_session_secret':True,'financial_authorized':False,'public_cutover_authorized':False}
+    return {'status':'PASS_SESSION_CONTINUITY_PLAN_READ_ONLY_NOT_AUTHORITY','plan':plan,'plan_sha256':sha(canonical(plan))},unit
+
+def session_github(endpoint):
+    raw=run(['/usr/bin/gh','api','repos/Emaren/app-prodn/'+endpoint],timeout=25,maximum=262144)
+    return parse(raw)
+
+def session_g_module(payload):
+    source=session_github('contents/scripts/aoe2_r25_f_g_parallel_observer.py?ref='+payload['source_sha'])
+    need(source.get('type')=='file' and source.get('encoding')=='base64','SESSION_G_SOURCE_REQUIRED')
+    raw=base64.b64decode(source.get('content','').replace('\n',''),validate=True)
+    need(0<len(raw)<=65536 and sha(raw)==payload['g_sha256'],'SESSION_G_BYTES_DRIFT')
+    return pinned_module(base64.b64encode(raw).decode(),payload['g_sha256'],len(raw),'session_g_readonly')
+
+def session_v4_module(payload):
+    source=session_github('contents/scripts/r25_b_namespace_recovery_witness_v4.py?ref='+payload['source_sha'])
+    need(source.get('type')=='file' and source.get('encoding')=='base64','SESSION_ORIGINAL_V4_SOURCE_REQUIRED')
+    raw=base64.b64decode(source.get('content','').replace('\n',''),validate=True)
+    return pinned_module(base64.b64encode(raw).decode(),V4_WITNESS_SHA,V4_WITNESS_SIZE,'session_original_b_v4')
+
+def session_utc(value):
+    need(type(value)is str and re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,6})?Z',value),'SESSION_GRANT_UTC_REQUIRED')
+    return datetime.fromisoformat(value[:-1]+'+00:00')
+
+def session_owner_grant(payload,envelope):
+    cid=payload.get('grant_comment','');body_hash=payload.get('grant_sha256','')
+    need(type(cid)is str and cid.isdecimal() and 0<int(cid)<10**20 and type(body_hash)is str and H64.fullmatch(body_hash),'SESSION_OWNER_COMMENT_PIN_REQUIRED')
+    obj=session_github('issues/comments/'+str(int(cid)));body=obj.get('body','')
+    need(obj.get('id')==int(cid) and obj.get('html_url')=='https://github.com/Emaren/app-prodn/issues/1108#issuecomment-'+cid
+        and obj.get('issue_url')=='https://api.github.com/repos/Emaren/app-prodn/issues/1108'
+        and obj.get('user',{}).get('login')=='Emaren' and obj.get('user',{}).get('id')==15059910
+        and type(body)is str and sha(body.encode())==body_hash and obj.get('created_at')==obj.get('updated_at'),
+        'ACTUAL_UNEDITED_OWNER_SESSION_GRANT_REQUIRED')
+    block=re.fullmatch(r'R25_C_SESSION_CONTINUITY_GRANT\n```json\n(.+)\n```\n?',body,re.S)
+    need(block is not None,'SESSION_OWNER_GRANT_FORMAT');grant=parse(block[1])
+    need(grant.get('schema')=='aoe2war.r25.c.session-continuity-grant.v1' and grant.get('scope')==SESSION_SCOPE
+        and grant.get('decision')=='AUTHORIZE' and grant.get('owner_login')=='Emaren'
+        and grant.get('release_authority')=='OWNER_ONLY_NONFINANCIAL' and grant.get('owner_delegated_decisions')is True
+        and grant.get('delegated_ai_authorship_disclosed')is True and grant.get('independent_review')is False
+        and grant.get('financial_authorized')is False and grant.get('public_cutover_authorized')is False
+        and grant.get('rollback_authorized')is True and type(grant.get('max_uses'))is int and grant['max_uses']==1,
+        'EXACT_OWNER_SESSION_ONLY_GRANT_REQUIRED')
+    issued,expires=session_utc(grant.get('issued_at')),session_utc(grant.get('expires_at'))
+    need(0<(expires-issued).total_seconds()<=600 and issued<=session_utc(obj.get('created_at'))<=datetime.now(timezone.utc)<=expires,'SESSION_GRANT_EXPIRED_OR_FUTURE')
+    need(grant.get('plan_sha256')==envelope['plan_sha256'] and grant.get('plan')==envelope['plan'],'SESSION_GRANT_EXACT_PLAN_DRIFT')
+    plan=envelope['plan'];ci=grant.get('exact_head_ci',{})
+    need(type(ci.get('run_id'))is int and ci['run_id']>0 and ci.get('head_sha')==plan['source_sha'] and ci.get('all_three_jobs_success')is True,'SESSION_EXACT_HEAD_CI_REQUIRED')
+    actual=session_github('actions/runs/'+str(ci['run_id']));jobs=session_github('actions/runs/'+str(ci['run_id'])+'/jobs?filter=latest&per_page=100')
+    expected={'Release and documentation control plane','Type, contract, and production build','Isolated Steam-rating PostgreSQL chronology'}
+    need(actual.get('head_sha')==plan['source_sha'] and actual.get('name')=='AoE2WAR CI' and actual.get('status')=='completed' and actual.get('conclusion')=='success'
+        and jobs.get('total_count')==3 and len(jobs.get('jobs',[]))==3 and {j.get('name') for j in jobs['jobs']}==expected
+        and all(j.get('status')=='completed' and j.get('conclusion')=='success' for j in jobs['jobs']),'SESSION_ACTUAL_THREE_JOB_CI_NOT_PASS')
+    for name,path in (('operator','scripts/r25_c_start_recovery_v8_root.py'),('mac','scripts/r25_c_start_recovery_v8_mac.py'),('witness','scripts/r25_b_session_continuity_witness_v1.py'),('g','scripts/aoe2_r25_f_g_parallel_observer.py')):
+        source=session_github('contents/'+path+'?ref='+plan['source_sha'])
+        need(source.get('type')=='file' and source.get('encoding')=='base64','SESSION_SOURCE_CONTENT_REQUIRED')
+        raw=base64.b64decode(source.get('content','').replace('\n',''),validate=True)
+        need(0<len(raw)<=131072 and sha(raw)==plan[name+'_sha256'],'SESSION_SOURCE_COMMIT_BYTES_DRIFT')
+    need(datetime.now(timezone.utc)<=expires,'SESSION_GRANT_EXPIRED_DURING_CHECK')
+    return {'comment_id':int(cid),'url':obj['html_url'],'body':body,'body_sha256':body_hash,'manifest':grant}
+
+def session_create(path,raw,mode):
+    directory(path.parent)
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode)
+    with os.fdopen(fd,'wb') as handle:
+        handle.write(raw);handle.flush();os.fsync(handle.fileno())
+    fsync_directory(path.parent)
+
+def session_repair(payload):
+    envelope,previous_unit=session_plan(payload)
+    need(payload.get('plan_sha256')==envelope['plan_sha256'],'SESSION_APPROVED_PLAN_CHANGED')
+    authority=session_owner_grant(payload,envelope);plan=envelope['plan'];nonce=plan['nonce']
+    journal=C_AUDIT/('session-repair-'+nonce);before=protected_snapshot()
+    database_before=root_file(SESSION_DB_ENV,8192,0o600)
+    baseline_witness=session_v4_module(payload)
+    g_reader=session_g_module(payload)
+    need(sha(canonical(before))==plan['protected_snapshot_sha256'],'SESSION_PROTECTED_STATE_CHANGED')
+    # Re-fetch the authentic, unchanged owner record at the locked write seam.
+    need(session_owner_grant(payload,envelope)==authority,'SESSION_OWNER_GRANT_CHANGED_AT_SEAM')
+    need(session_unit_text()==previous_unit and ticks(SESSION_OLD_PID)==plan['previous_candidate_start_ticks'],'SESSION_CANDIDATE_CHANGED_AT_SEAM')
+    os.mkdir(journal,0o700);fsync_directory(C_AUDIT)
+    seal(journal/'owner-authorization.json',authority)
+    seal(journal/'started.json',{'schema':'aoe2war.r25.c.session-continuity-transaction.v1','status':'CONSUMED_DO_NOT_REPLAY','plan':plan,'plan_sha256':envelope['plan_sha256'],'owner_authorization':authority})
+    created_dropin=False;restarted=False
+    try:
+        need(datetime.now(timezone.utc)<=session_utc(authority['manifest']['expires_at']),'SESSION_GRANT_EXPIRED_BEFORE_WRITE')
+        secret=session_original_secret()
+        session_create(SESSION_ENV,b'SESSION_SECRET='+secret+b'\n',0o600)
+        session_create(SESSION_WITNESS,session_payload_sources(payload),0o644)
+        staged={'schema':'aoe2war.r25.c.session-continuity.v1','status':'SESSION_AUTH_STAGED_NOT_STARTED','nonce':nonce,
+            'original_pid':OLD_PID,'original_start_ticks':OLD_TICKS,'session_env_path':str(SESSION_ENV),
+            'readonly_db_env_path':str(SESSION_DB_ENV),
+            'only_session_secret':True,'financial_authorized':False,'source_sha':plan['source_sha'],
+            'witness_sha256':plan['witness_sha256'],'session_dropin_sha256':plan['session_dropin_sha256'],
+            'plan_sha256':envelope['plan_sha256'],'previous_candidate_pid':SESSION_OLD_PID,
+            'previous_candidate_start_ticks':plan['previous_candidate_start_ticks']}
+        seal(journal/'staged.json',staged)
+        session_create(SESSION_DROPIN,session_dropin(journal),0o644);created_dropin=True
+        run(['/usr/bin/systemctl','daemon-reload'],timeout=40)
+        pre=run(['/usr/bin/python3','-I','-B',str(SESSION_WITNESS),'--phase','prestart','--expected-guard-sha256',B_GUARD_SHA,'--session-auth-journal',str(journal)],timeout=50)
+        seal(journal/'b-prestart.json',parse(pre))
+        need(protected_snapshot()==before,'SESSION_PROTECTED_DRIFT_BEFORE_RESTART')
+        need(datetime.now(timezone.utc)<=session_utc(authority['manifest']['expires_at']),'SESSION_GRANT_EXPIRED_BEFORE_RESTART')
+        restarted=True
+        run(['/usr/bin/systemctl','restart',NEW_UNIT],timeout=95)
+        installed=baseline_witness
+        ready_state=installed.systemd(NEW_UNIT);ready_pid=int(ready_state.get('MainPID','0'))
+        need(ready_pid>1 and ready_pid!=SESSION_OLD_PID,'SESSION_NEW_MAINPID_NOT_ASSIGNED')
+        deadline=time.monotonic()+30
+        wait_for_node_exec(installed,ready_pid,deadline)
+        ready_ticks=ticks(ready_pid)
+        ready_http(installed,ready_pid,ready_ticks,deadline)
+        # Separate genuine B poststart process; original B and receipts remain.
+        post=run(['/usr/bin/python3','-I','-B',str(SESSION_WITNESS),'--phase','poststart','--expected-guard-sha256',B_GUARD_SHA,'--session-auth-journal',str(journal)],timeout=70)
+        b=parse(post);seal(journal/'b-poststart.json',b)
+        need(b.get('status')=='POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY','SESSION_GENUINE_B_POSTSTART_REQUIRED')
+        current=unit_state(NEW_UNIT);pid=int(current['properties'].get('MainPID','0'))
+        need(pid==ready_pid and b.get('candidate_pid')==pid and current['start_ticks']==ticks(pid)==ready_ticks,'SESSION_NEW_PID_LINEAGE_INVALID')
+        need(b.get('candidate_uid')==UID and b.get('build_id')==BUILD_ID and b.get('guard_sha256')==B_GUARD_SHA,'SESSION_CANDIDATE_SECURITY_BINDING_DRIFT')
+        # Distinct C observations corroborate B without self-certifying a human.
+        proc=installed.proc(pid);installed.runtime_private_run(pid)
+        nft=installed.nft_policy(UID);pg=installed.db_proof(installed.root_db_envfile(),UID)
+        installed.validate_filesystem_wall(installed.systemd(NEW_UNIT))
+        need(installed.require_root_file(installed.GUARD)==B_GUARD_SHA and nft==b.get('kernel_uid_egress_sha256')==plan['nft_sha256'],
+             'SESSION_C_NATIVE_KERNEL_GUARD_DRIFT')
+        need(proc['uid']==UID and proc['cwd']==str(STAGE) and proc['exe']=='/usr/bin/node','SESSION_C_NATIVE_UID_SOURCE_DRIFT')
+        need(set(proc['env'])<=installed.ENV_ALLOW|{'SESSION_SECRET'} and
+             all(proc['env'].get(k)==v for k,v in installed.EXPECTED.items()),'SESSION_C_NATIVE_ENVIRONMENT_DRIFT')
+        need(proc['env'].get('SESSION_SECRET','').encode()==session_original_secret() and 'NEXTAUTH_SECRET' not in proc['env'],'SESSION_C_NATIVE_EFFECTIVE_KEY_DRIFT')
+        need(proc['env'].get('DATABASE_URL')==installed.root_db_envfile(),'SESSION_C_NATIVE_DATABASE_ENV_DRIFT')
+        need(protected_snapshot()==before and sha(root_file(SESSION_NGINX,131072))==SESSION_NGINX_SHA,'SESSION_PROTECTED_OR_PUBLIC_CHANGED')
+        need(root_file(SESSION_DB_ENV,8192,0o600)==database_before,'SESSION_DATABASE_ENV_CHANGED')
+        build=c_build();new_unit=session_unit_text()
+        g_unit_after=g_reader.show(NEW_UNIT);g_listener_after=g_reader.listening_socket(3031)
+        c={'schema':'aoe2war.r25.c.session-runtime-security.v1','status':'CONFINEMENT_AND_SESSION_IDENTITY_NATIVE_PASS',
+            'candidate_pid':pid,'candidate_start_ticks':current['start_ticks'],'candidate_uid':UID,
+            'signer_present':True,'signer_equal_original':True,'pg_select_only':True,'nft_unchanged':True,
+            'guard_unchanged':True,'finance_unchanged':True,'old_web_unchanged':True,'db_env_unchanged':True,
+            'protected_snapshot_sha256':plan['protected_snapshot_sha256'],'native_pg':pg,'native_nft_sha256':nft,
+            'native_pg_proof_sha256':sha(canonical(pg)),'native_guard_sha256':B_GUARD_SHA,
+            'independent_human_review':False,'financial_authorized':False}
+        seal(journal/'c-runtime.json',c)
+        report={'schema':'aoe2war.r25.c.session-continuity-repair.v1','status':'SESSION_CONTINUITY_REPAIRED_AND_REQUALIFIED',
+            'nonce':nonce,'source_sha':plan['source_sha'],'original_pid':OLD_PID,'original_start_ticks':OLD_TICKS,
+            'previous_candidate_pid':SESSION_OLD_PID,'previous_candidate_start_ticks':plan['previous_candidate_start_ticks'],
+            'candidate_pid':pid,'candidate_start_ticks':current['start_ticks'],'candidate_uid':UID,
+            'candidate_sha':TARGET,'candidate_build_id':BUILD_ID,'candidate_build_version':VERSION,'tree_sha256':TREE_SHA,
+            'previous_candidate_unit':previous_unit,'previous_candidate_unit_sha256':sha(previous_unit.encode()),
+            'candidate_unit':new_unit,'candidate_unit_sha256':sha(new_unit.encode()),'guard_sha256':B_GUARD_SHA,
+            'b_poststart':{'path':str(journal/'b-poststart.json'),'sha256':sha(canonical(b)+b'\n')},
+            'c_security':{'path':str(journal/'c-runtime.json'),'sha256':sha(canonical(c)+b'\n')},
+            'signer_present':True,'signer_equal_original':True,'secret_values_disclosed':False,
+            'db_env_unchanged':True,'nft_unchanged':True,'guard_unchanged':True,'finance_unchanged':True,'old_web_unchanged':True,
+            'protected_snapshot_sha256':plan['protected_snapshot_sha256'],'before_witness_sha256':SESSION_BEFORE_SHA,
+            'base_approved_sha256':SESSION_BASE_APPROVAL_SHA,'f_candidate_before_sha256':sha(previous_unit.encode()),
+            'f_candidate_after_sha256':sha(new_unit.encode()),'g_candidate_unit_before_sha256':SESSION_G_UNIT_BEFORE_SHA,
+            'g_candidate_unit_after_sha256':sha(canonical(g_unit_after)),'g_candidate_listener_before_sha256':SESSION_G_LISTENER_BEFORE_SHA,
+            'g_candidate_listener_after_sha256':sha(canonical(g_listener_after)),
+            'plan_sha256':envelope['plan_sha256'],'owner_grant_body_sha256':payload['grant_sha256'],
+            'financial_authorized':False,'public_cutover_authorized':False}
+        seal(journal/'complete.json',report)
+        return report
+    except BaseException as error:
+        try:original_unchanged=ticks(OLD_PID)==OLD_TICKS
+        except Exception:original_unchanged=False
+        rollback={'status':'ROLLBACK_NOT_PROVEN','reason_type':type(error).__name__,'original_pid_unchanged':original_unchanged}
+        try:
+            if created_dropin:
+                need(root_file(SESSION_DROPIN,8192,0o644)==session_dropin(journal),'SESSION_UNKNOWN_DROPIN_DURING_ROLLBACK')
+                os.rename(SESSION_DROPIN,journal/'rolled-back-dropin.conf');fsync_directory(SESSION_DROPIN.parent);fsync_directory(journal)
+                run(['/usr/bin/systemctl','daemon-reload'],timeout=40)
+            if restarted:run(['/usr/bin/systemctl','restart',NEW_UNIT],timeout=95)
+            rollback_witness=baseline_witness
+            rollback_pid=int(rollback_witness.systemd(NEW_UNIT).get('MainPID','0'))
+            rollback_deadline=time.monotonic()+30
+            wait_for_node_exec(rollback_witness,rollback_pid,rollback_deadline)
+            ready_http(rollback_witness,rollback_pid,ticks(rollback_pid),rollback_deadline)
+            restored=rollback_witness.observe(B_GUARD_SHA)
+            need(restored.get('status')=='POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY',
+                 'SESSION_ORIGINAL_RUNTIME_ROLLBACK_NOT_PROVEN')
+            need(protected_snapshot()==before and root_file(SESSION_DB_ENV,8192,0o600)==database_before,'SESSION_PROTECTED_ROLLBACK_DRIFT')
+            rollback['status']='ORIGINAL_CANDIDATE_CONFIG_RESTORED'
+            rollback['candidate_pid']=restored.get('candidate_pid')
+            rollback['session_authentication_restored']=False
+        except BaseException as restore_error:rollback['reason_type']=type(restore_error).__name__
+        try:seal(journal/'hold.json',{'status':'HOLD_NO_REPLAY','failure_type':type(error).__name__,'rollback':rollback})
+        except Exception:pass # Journal storage failure never blocks protection.
+        raise
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", choices=("plan", "start"), required=True)
+    ap.add_argument("--phase", choices=("plan", "start", "session-auth-plan", "session-auth-repair"), required=True)
     args = ap.parse_args()
     raw = sys.stdin.buffer.read(131073)
     need(0 < len(raw) <= 131072, "INPUT_SIZE")
@@ -1005,7 +1303,11 @@ def main():
         opened = os.fstat(fd)
         need((opened.st_dev, opened.st_ino) == (s.st_dev, s.st_ino), "RELEASE_LOCK_OPEN_RACE")
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        if args.phase == "plan":
+        if args.phase == 'session-auth-plan':
+            report=session_plan(payload)[0]
+        elif args.phase == 'session-auth-repair':
+            report=session_repair(payload)
+        elif args.phase == "plan":
             _, report = admit(payload)
             report = {"status": "PASS_START_PLAN_READ_ONLY_NOT_START_AUTHORITY",
                       "plan": report, "plan_sha256": sha(canonical(report))}
