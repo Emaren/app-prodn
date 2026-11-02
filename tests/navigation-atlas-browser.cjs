@@ -90,11 +90,11 @@ async function main(){
    }
    // A streamed App Router shell may expose the heading before all cards
    // commit. Wait for actual DOM count; never infer coverage from the title.
-   await page.waitForFunction(() => (()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),
+   await page.waitForFunction(() => (()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===37&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===37;})(),
      null, {timeout:20000});
    const routeCount=await atlas.locator('a[data-atlas-href]').count();
-   assert.equal(routeCount,32,"must show every source-backed private route");
-   assert.equal(await atlas.getByRole("status").first().innerText(),"32 of 32 source routes · LIVE STATUS UNVERIFIED");
+   assert.equal(routeCount,37,"must show every source-backed private route");
+   assert.equal(await atlas.getByRole("status").first().innerText(),"37 of 37 source routes · LIVE STATUS UNVERIFIED");
    const input=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await input.fill("storage");
    assert.equal(await atlas.locator('a[data-atlas-href]').count(),1,"route search must filter exactly");
@@ -105,7 +105,7 @@ async function main(){
    assert.equal(await people.getAttribute("aria-pressed"),"true","keyboard cluster filter");
    assert.ok(await atlas.locator('a[data-atlas-href]').count()>0);
    await atlas.getByRole("button",{name:"All chambers"}).click();
-   assert.equal(await atlas.locator('a[data-atlas-href]').count(),32);
+   assert.equal(await atlas.locator('a[data-atlas-href]').count(),37);
    const boardEntry = atlas.locator('a[data-atlas-href="/admin/central-command/job-board"]');
    assert.equal(await boardEntry.count(),1,"new accepted Job Exchange must be linked exactly once");
    const boardSearch=atlas.getByRole("searchbox",{name:"Find a chamber"});
@@ -191,7 +191,7 @@ async function main(){
    // G owns both components. The endpoint stays UNKNOWN with no pretend wake,
    // and these checks operate against an isolated database + browser only.
    await page.goto("/admin/aoe2war-os#navigation-atlas",{waitUntil:"domcontentloaded",timeout:45000});
-   await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),null,{timeout:20000});
+   await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===37&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===37;})(),null,{timeout:20000});
    for (const [href,heading,file,coreCount] of [
      ["/admin/central-command/work-board",/THE WORK BOARD/,"work-board",0],
      ["/admin/central-command/lanes",/THE EVIDENCE LEDGER/,"six-lanes",6]
@@ -241,20 +241,20 @@ async function main(){
      await page.screenshot({path:path.join(output,file+"-linked-"+width+".png"),fullPage:true});
      await page.unroute("**/api/admin/central-command/work-ledger");
      await page.goto("/admin/aoe2war-os#navigation-atlas",{waitUntil:"domcontentloaded",timeout:45000});
-     await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===32&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===32;})(),null,{timeout:20000});
+     await page.waitForFunction(()=>(()=>{const nodes=[...document.querySelectorAll('#navigation-atlas a[data-atlas-href]')];return nodes.length===37&&new Set(nodes.map(n=>n.getAttribute('data-atlas-href'))).size===37;})(),null,{timeout:20000});
    }
    if(width===1440){
      const tower=await page.goto("/admin/user-list",{waitUntil:"domcontentloaded",timeout:45000});
      assert.equal(tower.status(),200);
      await page.getByRole("navigation",{name:"Admin sections"}).waitFor({timeout:25000});
      const menu=page.getByRole("navigation",{name:"Admin sections"});
-     assert.equal(await menu.locator("a").count(),32,"Command Tower incomplete");
+     assert.equal(await menu.locator("a").count(),37,"Command Tower incomplete");
      await page.getByRole("link",{name:/Navigation Atlas · All Command Links/}).first().focus();
      await page.keyboard.press("Enter");
      await page.waitForURL("**/admin/aoe2war-os#navigation-atlas",{timeout:20000});
      assert.equal(await page.locator("#navigation-atlas").count(),1);
    }
-   report.results.push({width,privateAdmin200:true,adminNodes:32,jobExchangeLinked:true,workBoardLinked:true,lanesLinked:true,
+   report.results.push({width,privateAdmin200:true,adminNodes:37,jobExchangeLinked:true,workBoardLinked:true,lanesLinked:true,
      gSixBrains:6,brainUnobstructed:true,jobBoardDockSuppressed:true,jobBoardAxeSerious:0,jobBoardAxeCritical:0,
      workBoardDockSuppressed:true,lanesDockSuppressed:true,search:true,keyboardFilter:true,axeSerious:0,axeCritical:0,privacyRedirect:true});
    await context.close();
