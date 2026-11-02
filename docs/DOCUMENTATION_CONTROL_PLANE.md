@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-g-after-classified-ssh-20261102` at `c3f8533160b5093fc84edc81d5130b529dac236c`
+Implementation baseline: `codex/r25-g-after-classified-ssh-20261102` at `0216bb19b235ff1b5d309e80a7250a95e865ac8a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
