@@ -2,6 +2,31 @@
   "documents": [
     {
       "audience": [
+        "ai-agents",
+        "developers",
+        "operators"
+      ],
+      "authority": "repository-entrypoint",
+      "id": "aoe2war.app-prodn.agents",
+      "owner": "aoe2war-web",
+      "path": "AGENTS.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-11-01",
+      "sensitivity": "internal",
+      "sha256": "87e0cdd4b5a71acb6934bcd093250dfe3dd4c2f2b702b14b01c67738a2624fe3",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "wolochain",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2WAR AI Engineering Entry Point",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -663,7 +688,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "66c2c438695985533a99cd24453982ae7f9106bc617c5cb7cdfa700ccf30f26c",
+      "sha256": "ff8b0049967ae4cd97348884106f05f6f9faec42b631a2b7398ff27b2d91e5e0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -707,7 +732,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
+      "sha256": "5770820220a7385cc76a59b250590f73ced4e343d9da9369e9642f18bb646bee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2373,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "security/r25-glob-minimatch-remediation-20261031",
-    "commit": "e1472e217ef1bbdbab46b0ffd96d7672fb66d322"
+    "branch": "docs/ai-source-reuse-onboarding-20261101",
+    "commit": "ffba5a78e836fa3b3bdbfa2c88392cf10132c051"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

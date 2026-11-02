@@ -15,6 +15,25 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## November 1, 2026 — discover the actual source before developing again
+
+AoE2WAR has qualified source spread across open, draft, merged, closed,
+detached and dirty local worktrees. A missing file in the current checkout
+never proves an implementation is missing. Start at the canonical owning
+issue/PR, inspect live Git ancestry and exact source, and preserve unique
+uncommitted work. Reuse the most complete qualified implementation before
+writing code. A branch with unknown ownership or uniqueness is UNKNOWN,
+never abandoned because it is old.
+
+The repo-root `AGENTS.md` is the portable entrypoint, not an alternate
+mutable release register. Its `scripts/ai_branch_inventory.py` reports
+read-only cached-local Git/GitHub evidence; it cannot approve financial
+authority or claim LIVE_VERIFIED. This builds on this Engineering Memory and
+`docs/DOCUMENTATION_OS.md`, with the live master issue #1108 and WOLO #5
+remaining the only release/financial status authorities. Ownership, runtime
+identity, approvals and branch disposition require fresh independent proof.
+During an active release this discipline is not a new deployment gate.
+
 ## October 21, 2026 — do not downgrade new financial file families
 
 When War Satchel and Mecha introduced new filenames, the release classifier
