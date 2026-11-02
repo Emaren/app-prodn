@@ -207,11 +207,27 @@ server { server_name unrelated.example; listen 443 ssl;
     def test_real_candidate_pid_uid_and_safe_environment(self):
         state="Id=aoe2hdbets-web-r24.service\nActiveState=active\nMainPID=14231\nUser=aoe2war-r24-web\n"
         good=(b"NODE_ENV=production\x00WARGRAPH_RUNTIME_DISABLED=true\x00"
-              b"AOE2WAR_PROD_DB_PREVIEW=true\x00DATABASE_URL=postgres://reader@localhost/app\x00")
+              b"AOE2WAR_PROD_DB_PREVIEW=true\x00DATABASE_URL=postgres://reader@localhost/app\x00"
+              b"SESSION_SECRET=test-fixture-only\x00")
         with mock.patch.object(self.s.os,"open",return_value=123):
             with mock.patch.object(self.s.os,"read",return_value=good):
-                with mock.patch.object(self.s.os,"close"):
+                with mock.patch.object(self.s.os,"close"),mock.patch.object(self.s,"original_session_identity",return_value=True) as identity:
                     self.assertTrue(self.s.enforce_candidate_runtime(state))
+                    identity.assert_called_once()
+    def test_missing_or_different_session_identity_cannot_authorize_cutover(self):
+        original={b"SESSION_SECRET":b"test-original-signing-identity"}
+        for candidate,reason in (({},"CANDIDATE_SESSION_SIGNER_MISSING"),
+                                 ({b"SESSION_SECRET":b"different-test-identity"},"CANDIDATE_SESSION_SIGNING_IDENTITY_MISMATCH")):
+            with self.subTest(reason=reason),self.assertRaisesRegex(self.s.Hold,reason):
+                self.s.matching_session_identity(candidate,original)
+    def test_session_identity_preserves_exact_bytes_and_fallback_priority(self):
+        original={b"SESSION_SECRET":b"test key with trailing space ",b"NEXTAUTH_SECRET":b"unused"}
+        self.assertTrue(self.s.matching_session_identity({b"SESSION_SECRET":original[b"SESSION_SECRET"]},original))
+        self.assertTrue(self.s.matching_session_identity({b"NEXTAUTH_SECRET":original[b"SESSION_SECRET"]},original))
+        with self.assertRaisesRegex(self.s.Hold,"CANDIDATE_SESSION_SIGNING_IDENTITY_MISMATCH"):
+            self.s.matching_session_identity({b"SESSION_SECRET":b"test key with trailing space"},original)
+        with self.assertRaisesRegex(self.s.Hold,"CANDIDATE_SESSION_SIGNING_IDENTITY_MISMATCH"):
+            self.s.matching_session_identity({b"SESSION_SECRET":b"unused"},original)
     def test_financial_secret_environment_causes_hold(self):
         state="ActiveState=active\nMainPID=14231\nUser=aoe2war-r24-web\n"
         bad=(b"NODE_ENV=production\x00WARGRAPH_RUNTIME_DISABLED=true\x00"
@@ -340,3 +356,15 @@ server { server_name unrelated.example; listen 443 ssl;
                     s.require_c_physical_build_identity({**good,key:val})
 
 if __name__=="__main__":unittest.main()
+
+class DistinctSessionSourcePins(unittest.TestCase):
+    def test_distinct_c_session_source_is_not_f_release_source(self):
+        parent=pathlib.Path(__file__).resolve().parents[1]
+        f=(parent/'scripts/aoe2_r24_f_parallel_nginx_cutover.py').read_text()
+        g=(parent/'scripts/aoe2_r25_f_g_parallel_observer.py').read_text()
+        correct='0f7829a2eb0cae2a01039ed768cba22ffae2ea1d'
+        self.assertIn('C_SESSION_REPAIR_SOURCE_SHA="'+correct+'"',f)
+        self.assertIn('C_SESSION_REPAIR_SOURCE_SHA="'+correct+'"',g)
+        self.assertIn('rec["source_sha"]==C_SESSION_REPAIR_SOURCE_SHA',f)
+        self.assertIn('r.get("source_sha")==C_SESSION_REPAIR_SOURCE_SHA',g)
+        self.assertNotIn('options.source_sha',f[f.index('def qualified_runtime('):f.index('def cutover_plan(')])

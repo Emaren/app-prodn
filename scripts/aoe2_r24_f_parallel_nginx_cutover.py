@@ -8,7 +8,7 @@ and read-only DB principal, with B/D/E/F/G independently root-bound approval.
 No key enrollment, money operation, migration, repo switch, or 14-helper install.
 """
 from __future__ import annotations
-import argparse,base64,fcntl,hashlib,http.client,json,os,pathlib,re,select,signal,socket,ssl,stat,subprocess,sys,time,types,urllib.request
+import argparse,base64,fcntl,hashlib,hmac,http.client,json,os,pathlib,re,select,signal,socket,ssl,stat,subprocess,sys,time,types,urllib.request
 from datetime import datetime,timezone
 
 HOST="ubuntu-4gb-hel1-11"
@@ -52,6 +52,8 @@ CONSUMED_NONCE="3cadeb4aac1f217783effc0c25f49fac"
 CONSUMED_INTENT_SHA="bf4fe7bd568b8916b5a562394a558d97d2532d9115d0c915a03303bb479e72cc"
 CONSUMED_BEFORE_SHA="d8f55532ae9a1b8463ed6f0998f8a92343677e442218d1bdaef1b6e547478ad8"
 BASE_APPROVED_SHA="f8855882d7112fc24b1facb8f8df6721ac5c2bffc58c43d021e4773721be956b"
+C_SESSION_REPAIR_SOURCE_SHA="0f7829a2eb0cae2a01039ed768cba22ffae2ea1d"
+RUNTIME_REQUALIFICATION=None
 class Hold(Exception):pass
 def need(ok,reason):
     if not ok:raise Hold(reason)
@@ -235,6 +237,30 @@ def unit_state(unit):
     fields["ProcStartTicks"]=str(state["start_ticks"])
     fields["UnitConfigSHA256"]=state["unit_config_sha256"]
     return "".join(k+"="+str(v)+"\n" for k,v in sorted(fields.items()))
+def matching_session_identity(candidate,original):
+    # HS256 is symmetric: this proves the original session identity, not a
+    # verification-only capability. Never serialize either secret or its hash.
+    new=candidate.get(b"SESSION_SECRET") or candidate.get(b"NEXTAUTH_SECRET")
+    old=original.get(b"SESSION_SECRET") or original.get(b"NEXTAUTH_SECRET")
+    need(type(new)is bytes and bool(new),"CANDIDATE_SESSION_SIGNER_MISSING")
+    need(type(old)is bytes and bool(old),"ORIGINAL_SESSION_SIGNER_MISSING")
+    need(hmac.compare_digest(new,old),"CANDIDATE_SESSION_SIGNING_IDENTITY_MISMATCH")
+    return True
+def original_session_identity(candidate):
+    root=pathlib.Path("/proc/2625090")
+    def ticks():
+        raw=(root/"stat").read_text();return int(raw[raw.rfind(")")+2:].split()[19])
+    need(ticks()==103836850,"ORIGINAL_SESSION_PROCESS_IDENTITY_DRIFT")
+    raw=(root/"environ").read_bytes()
+    need(0<len(raw)<=65536 and raw.endswith(b"\x00"),"ORIGINAL_SESSION_ENVIRONMENT_UNBOUNDED")
+    original={}
+    for row in raw[:-1].split(b"\x00"):
+        key,sep,value=row.partition(b"=")
+        need(bool(sep) and key not in original,"ORIGINAL_SESSION_ENVIRONMENT_INVALID")
+        original[key]=value
+    matching_session_identity(candidate,original)
+    need(ticks()==103836850,"ORIGINAL_SESSION_PROCESS_CHANGED_DURING_CHECK")
+    return True
 def enforce_candidate_runtime(unit_status):
     # Independent defense-in-depth gate; does NOT prove server-side PG ACLs.
     parts=dict(line.split("=",1) for line in unit_status.splitlines() if "=" in line)
@@ -268,6 +294,7 @@ def enforce_candidate_runtime(unit_status):
     need(not any(any(term in name.upper() for term in forbidden)
                  for name in variables),
          "CANDIDATE_PROCESS_INHERITED_FINANCIAL_SECRET_ENV")
+    original_session_identity(variables)
     return True
 
 def snapshots(units):
@@ -366,7 +393,8 @@ def verified_durable_e_rollback(j):
 
 def verified_b_poststart(j,ss):
     """B's actual root-owned poststart proof of PG, kernel and HTTP guard."""
-    raw=root_file(B_ROOT_POSTSTART,65536)
+    path=B_ROOT_POSTSTART if RUNTIME_REQUALIFICATION is None else pathlib.Path(RUNTIME_REQUALIFICATION["b_poststart"]["path"])
+    raw=root_file(path,65536)
     need(sha(raw)==j["B_poststart_sha256"],
          "B_INDEPENDENT_ROOT_POSTSTART_DIGEST_MISMATCH")
     b=parse(raw)
@@ -924,7 +952,67 @@ def consumed_previous(base,old):
             "before_nginx_sha256":CONSUMED_BEFORE_SHA,"no_commit":True,
             "current_exact_original_config":True}
 
+def qualified_runtime(base,path,digest):
+    """Accept only an additive, root-sealed candidate-auth repair lineage."""
+    global RUNTIME_REQUALIFICATION
+    need(type(path)is str and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",path)
+         and type(digest)is str and HEX64.fullmatch(digest),"EXACT_RUNTIME_REQUALIFICATION_REQUIRED")
+    raw=root_file(pathlib.Path(path),32768)
+    need(sha(raw)==digest,"RUNTIME_REQUALIFICATION_BYTES_CHANGED")
+    rec=parse(raw)
+    need(rec.get("schema")=="aoe2war.r25.c.session-continuity-repair.v1"
+         and rec.get("status")=="SESSION_CONTINUITY_REPAIRED_AND_REQUALIFIED"
+         and type(rec.get("nonce"))is str and NONCE.fullmatch(rec["nonce"])
+         and pathlib.Path(path).parent.name=="session-repair-"+rec["nonce"],"AUTH_REPAIR_NATIVE_COMPLETION_REQUIRED")
+    need(rec.get("base_approved_sha256")==BASE_APPROVED_SHA
+         and rec.get("before_witness_sha256")==PRESERVED_BEFORE_SHA
+         and rec.get("candidate_sha")==TARGET
+         and rec.get("candidate_build_id")==base["candidate_build_id"]
+         and rec.get("candidate_build_version")==base["candidate_build_version"]
+         and rec.get("original_pid")==2625090 and rec.get("original_start_ticks")==103836850
+         and rec.get("previous_candidate_pid")==1118556 and rec.get("previous_candidate_start_ticks")==142541543
+         and type(rec.get("candidate_pid"))is int and rec["candidate_pid"]>1
+         and rec["candidate_pid"] not in (2625090,1118556)
+         and type(rec.get("candidate_start_ticks"))is int and rec["candidate_start_ticks"]>0
+         and rec.get("candidate_uid")==993,"AUTH_REPAIR_EXACT_RUNTIME_LINEAGE_REQUIRED")
+    need(type(rec.get("source_sha"))is str and HEX40.fullmatch(rec["source_sha"])
+         and rec["source_sha"]==C_SESSION_REPAIR_SOURCE_SHA,"AUTH_REPAIR_SOURCE_IDENTITY_DRIFT")
+    need(all(rec.get(key)is True for key in ("signer_present","signer_equal_original","db_env_unchanged",
+         "nft_unchanged","guard_unchanged","finance_unchanged","old_web_unchanged"))
+         and rec.get("secret_values_disclosed")is False and rec.get("financial_authorized")is False,
+         "AUTH_REPAIR_SESSION_OR_CONFINEMENT_NOT_PROVEN")
+    need(rec.get("f_candidate_before_sha256")==base["candidate_web_snapshot_sha256"]
+         and rec.get("g_candidate_unit_before_sha256")=="d50b3d9f584fb38a5dd47154c9da89a2d5dc5c16ef26c1e5f53d594dd273ecf1"
+         and rec.get("g_candidate_listener_before_sha256")=="11ac63c78d166db59089fa895a063a34188868b3f0aa1453606da8b515f70d1e",
+         "AUTH_REPAIR_NOT_BOUND_TO_IMMUTABLE_A04_RUNTIME")
+    for key in ("f_candidate_after_sha256","g_candidate_unit_after_sha256","g_candidate_listener_after_sha256"):
+        need(type(rec.get(key))is str and HEX64.fullmatch(rec[key]),"AUTH_REPAIR_NATIVE_SNAPSHOT_HASH_REQUIRED")
+    folder=pathlib.Path(path).parent
+    for key,filename in (("b_poststart","b-poststart.json"),("c_security","c-runtime.json")):
+        evidence=rec.get(key,{})
+        need(type(evidence)is dict and evidence.get("path")==str(folder/filename)
+             and type(evidence.get("sha256"))is str and HEX64.fullmatch(evidence["sha256"]),
+             "AUTH_REPAIR_SEPARATE_B_C_RECEIPTS_REQUIRED")
+        data=root_file(folder/filename,65536)
+        need(sha(data)==evidence["sha256"],"AUTH_REPAIR_B_C_RECEIPT_BYTES_CHANGED")
+        if key=="c_security":
+            c=parse(data)
+            need(c.get("schema")=="aoe2war.r25.c.session-runtime-security.v1"
+                 and c.get("status")=="CONFINEMENT_AND_SESSION_IDENTITY_NATIVE_PASS"
+                 and c.get("candidate_pid")==rec["candidate_pid"]
+                 and c.get("candidate_uid")==993 and c.get("candidate_start_ticks")==rec["candidate_start_ticks"]
+                 and all(c.get(k)is True for k in ("signer_present","signer_equal_original","pg_select_only",
+                     "nft_unchanged","guard_unchanged","finance_unchanged","old_web_unchanged","db_env_unchanged"))
+                 and c.get("financial_authorized")is False,"AUTH_REPAIR_C_NATIVE_SECURITY_REQUIRED")
+    RUNTIME_REQUALIFICATION=rec
+    effective=dict(base)
+    effective.update(candidate_web_snapshot_sha256=rec["f_candidate_after_sha256"],
+                     B_poststart_sha256=rec["b_poststart"]["sha256"])
+    return effective
+
 def cutover_plan(options):
+    global RUNTIME_REQUALIFICATION
+    RUNTIME_REQUALIFICATION=None
     need(sys.platform=="linux" and socket.gethostname()==HOST and os.geteuid()==0,
          "EXACT_HEL1_ROOT_REQUIRED")
     need(type(options.new_nonce)is str and NONCE.fullmatch(options.new_nonce) and
@@ -937,6 +1025,8 @@ def cutover_plan(options):
     base_raw=root_file(ROOT_APPROVAL,16384)
     need(sha(base_raw)==BASE_APPROVED_SHA,"IMMUTABLE_A04_APPROVAL_DRIFT")
     base=approval(base_raw)
+    if getattr(options,"runtime_requalification_receipt",None) or getattr(options,"runtime_requalification_sha256",None):
+        base=qualified_runtime(base,options.runtime_requalification_receipt,options.runtime_requalification_sha256)
     record=AUDIT_BASE/("r24-"+options.new_nonce)
     protected_dir(AUDIT_BASE,0o700)
     need(not record.exists() and not record.is_symlink(),"REPLAY_OR_PARTIAL_TRANSACTION")
@@ -966,6 +1056,9 @@ def cutover_plan(options):
           "candidate_pid":int(new_fields["MainPID"]),"candidate_start_ticks":int(new_fields["ProcStartTicks"]),
           "protected_snapshot_sha256":sha(canonical(state)),"consumed_previous_transaction":previous,
           "public_cutover_authorized":False,"financial_authorized":False}
+    if RUNTIME_REQUALIFICATION is not None:
+        plan.update(runtime_requalification_path=options.runtime_requalification_receipt,
+                    runtime_requalification_sha256=options.runtime_requalification_sha256)
     return {"schema":"aoe2war.r25.f.cutover-plan-envelope.v1",
             "status":"PASS_READ_ONLY_CUTOVER_PLAN_NOT_AUTHORITY","plan":plan,"plan_sha256":sha(canonical(plan))},base
 
@@ -1001,6 +1094,8 @@ def validate_owner_grant(comment_id,body_sha,envelope,now=None):
                 "base_approved_sha256","before_witness_sha256","candidate_sha","candidate_build_id",
                 "candidate_build_version","nginx_before_sha256","nginx_after_sha256"):
         need(grant.get(key)==plan[key],"OWNER_GRANT_TRANSACTION_DRIFT:"+key)
+    for key in ("runtime_requalification_path","runtime_requalification_sha256"):
+        need(grant.get(key)==plan.get(key),"OWNER_GRANT_RUNTIME_REQUALIFICATION_DRIFT:"+key)
     ci=grant.get("exact_head_ci",{})
     need(type(ci)is dict and type(ci.get("run_id"))is int and ci["run_id"]>0 and
          ci.get("head_sha")==plan["source_sha"] and ci.get("conclusion")=="success" and
@@ -1040,6 +1135,9 @@ def apply_owner_grant(options):
               ("base_approved_sha256","before_witness_sha256","source_sha","engine_source_sha256","owner_source_sha256","g_source_sha256")}
     bindings.update({"new_approval_sha256":sha(canonical(new_approval)+b"\n"),
                      "owner_authorization_body_sha256":options.grant_sha256})
+    if RUNTIME_REQUALIFICATION is not None:
+        bindings.update(runtime_requalification_path=envelope["plan"]["runtime_requalification_path"],
+                        runtime_requalification_sha256=envelope["plan"]["runtime_requalification_sha256"])
     def refresh():
         actual=validate_owner_grant(options.grant_comment,options.grant_sha256,envelope)
         need(actual==owner_record,"OWNER_GRANT_REVOKED_OR_CHANGED_AT_SEAM")
@@ -1154,14 +1252,27 @@ def manual_rollback(nonce,transaction=False):
         need(sha(base_raw)==BASE_APPROVED_SHA and NONCE.fullmatch(nonce) and nonce!=CONSUMED_NONCE,
              "ROLLBACK_TRANSACTION_BASE_DRIFT")
         new_raw=root_file(record/"approval.json",16384)
-        expected=dict(j);expected["nonce"]=nonce
-        need(parse(new_raw)==expected,"ROLLBACK_NEW_APPROVAL_SCOPE_DRIFT")
         owner=parse(root_file(record/"owner-authorization.json",262144))
         need(owner.get("schema")=="aoe2war.r25.f.owner-transaction-authorization.v1" and
              owner.get("manifest",{}).get("rollback_authorized")is True and
              owner.get("manifest",{}).get("nonce")==nonce and
              owner.get("manifest",{}).get("financial_authorized")is False,
              "RECORDED_TRANSACTION_ROLLBACK_AUTHORITY_REQUIRED")
+        plan=owner.get("plan",{})
+        if plan.get("runtime_requalification_path"):
+            # A successful sealed commit already authorized restoration. Do
+            # not require a healthy candidate, unexpired grant or separate
+            # runtime evidence file to protect the original public service.
+            selected=parse(new_raw)
+            for field in ("candidate_web_snapshot_sha256","B_poststart_sha256"):
+                need(type(selected.get(field))is str and HEX64.fullmatch(selected[field]),
+                     "ROLLBACK_RECORDED_RUNTIME_BINDING_INVALID")
+                j[field]=selected[field]
+            for field in ("runtime_requalification_path","runtime_requalification_sha256"):
+                need(owner.get("manifest",{}).get(field)==plan.get(field),
+                     "ROLLBACK_RECORDED_RUNTIME_AUTHORITY_DRIFT")
+        expected=dict(j);expected["nonce"]=nonce
+        need(parse(new_raw)==expected,"ROLLBACK_NEW_APPROVAL_SCOPE_DRIFT")
         j=expected
     need(j["nonce"]==nonce,"ROLLBACK_OWNER_SCOPE_INVALID")
     protected_dir(record,0o700)
@@ -1294,6 +1405,8 @@ def main():
             parser.add_argument("--"+name,required=True)
         for name in ("grant-comment","grant-sha256","plan-sha256"):
             parser.add_argument("--"+name,required=sys.argv[1]=="--root-apply-owner-grant")
+        parser.add_argument("--runtime-requalification-receipt")
+        parser.add_argument("--runtime-requalification-sha256")
         opts=parser.parse_args(sys.argv[2:])
         if sys.argv[1]=="--root-cutover-plan":print(canonical(cutover_plan(opts)[0]).decode())
         else:apply_owner_grant(opts)

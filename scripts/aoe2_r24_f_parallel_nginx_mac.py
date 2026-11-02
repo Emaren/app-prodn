@@ -150,6 +150,12 @@ def cutover_plan(path, root_sha, g_sha, owner_sha):
          and plan.get("financial_authorized") is False, "NATIVE_CUTOVER_PLAN_SCOPE_DRIFT")
     for key in ("base_approved_sha256", "nginx_before_sha256", "nginx_after_sha256", "protected_snapshot_sha256"):
         need(type(plan.get(key)) is str and H64.fullmatch(plan[key]), "NATIVE_CUTOVER_PLAN_HASH_REQUIRED")
+    if plan.get("runtime_requalification_path") is not None or plan.get("runtime_requalification_sha256") is not None:
+        need(type(plan.get("runtime_requalification_path")) is str
+             and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",
+                              plan["runtime_requalification_path"])
+             and type(plan.get("runtime_requalification_sha256")) is str
+             and H64.fullmatch(plan["runtime_requalification_sha256"]), "EXACT_NATIVE_RUNTIME_REQUALIFICATION_REQUIRED")
     previous = plan.get("consumed_previous_transaction", {})
     need(type(previous) is dict and previous.get("nonce") == CONSUMED_NONCE
          and previous.get("no_commit") is True and previous.get("current_exact_original_config") is True
@@ -203,6 +209,8 @@ def owner_grant(comment_id, expected_sha, envelope, root_sha, g_sha, owner_sha, 
     for key in ("source_sha", "nonce", "base_approved_sha256", "before_witness_sha256", "candidate_sha",
                 "candidate_build_id", "candidate_build_version", "nginx_before_sha256", "nginx_after_sha256"):
         need(grant.get(key) == plan[key], "OWNER_GRANT_TRANSACTION_DRIFT:" + key)
+    for key in ("runtime_requalification_path", "runtime_requalification_sha256"):
+        need(grant.get(key) == plan.get(key), "OWNER_GRANT_RUNTIME_REQUALIFICATION_DRIFT:" + key)
     return obj, grant
 
 def pinned_file(path, expected, maximum=65536):
@@ -321,6 +329,9 @@ def apply_owner_grant(opts, root, g_path, g_source):
                + " --owner-source-sha256 " + opts.owner_source_sha256
                + " --g-source-sha256 " + opts.g_source_sha256
                + " --before-witness-sha256 " + BEFORE_WITNESS_SHA256)
+    if plan.get("runtime_requalification_path") is not None:
+        binding += (" --runtime-requalification-receipt " + plan["runtime_requalification_path"]
+                    + " --runtime-requalification-sha256 " + plan["runtime_requalification_sha256"])
     fresh = ssh_source(root, "--root-cutover-plan" + binding, timeout=450)
     need(fresh.returncode == 0 and 0 < len(fresh.stdout) <= 16384,
          "FRESH_ROOT_CUTOVER_PLAN_UNAVAILABLE")
