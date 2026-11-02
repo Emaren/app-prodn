@@ -332,6 +332,9 @@ def transaction_scope(base_raw,base):
     body=envelope.get("body","")
     cid=envelope.get("id")
     need(type(cid)is int and cid>0 and envelope.get("author")=="Emaren"
+         and envelope.get("author_id")==15059910
+         and type(envelope.get("created_at"))is str
+         and envelope["created_at"]==envelope.get("updated_at")
          and envelope.get("issue_url")=="https://api.github.com/repos/Emaren/app-prodn/issues/1108"
          and envelope.get("url")=="https://github.com/Emaren/app-prodn/issues/1108#issuecomment-"+str(cid)
          and type(body)is str and digest(body.encode())==envelope.get("body_sha256"),
@@ -344,8 +347,11 @@ def transaction_scope(base_raw,base):
          and manifest.get("decision")=="AUTHORIZE" and manifest.get("owner_login")=="Emaren"
          and manifest.get("release_authority")=="OWNER_ONLY_NONFINANCIAL"
          and manifest.get("owner_delegated_decisions")is True
+         and manifest.get("delegated_ai_authorship_disclosed")is True
          and manifest.get("independent_review")is False and manifest.get("financial_authorized")is False
-         and manifest.get("rollback_authorized")is True and manifest.get("max_uses")==1,
+         and manifest.get("public_cutover_authorized")is True
+         and manifest.get("rollback_authorized")is True
+         and type(manifest.get("max_uses"))is int and manifest["max_uses"]==1,
          "EXACT_OWNER_DELEGATED_NONFINANCIAL_GRANT_REQUIRED")
     plan=record.get("plan",{})
     need(record.get("plan_sha256")==digest(canon(plan))==manifest.get("plan_sha256"),
@@ -364,7 +370,7 @@ def transaction_scope(base_raw,base):
                         ("candidate_build_version",base["candidate_build_version"]),
                         ("nginx_before_sha256",base["nginx_before_sha256"])):
         need(manifest.get(field)==value and plan.get(field)==value,"AUTHORIZED_TRANSACTION_BINDING_DRIFT:"+field)
-    for field,pattern in (("source_sha",H40),("engine_source_sha256",H64),("g_source_sha256",H64),
+    for field,pattern in (("source_sha",H40),("engine_source_sha256",H64),("owner_source_sha256",H64),("g_source_sha256",H64),
                           ("nginx_after_sha256",H64)):
         need(type(manifest.get(field))is str and pattern.fullmatch(manifest[field])
              and plan.get(field)==manifest[field],"AUTHORIZED_TRANSACTION_SOURCE_DRIFT:"+field)
@@ -372,6 +378,7 @@ def transaction_scope(base_raw,base):
              "before_witness_sha256":A04_BEFORE_SHA256,"new_approval_sha256":digest(approved_raw),
              "owner_authorization_body_sha256":digest(body.encode()),
              "source_sha":manifest["source_sha"],"engine_source_sha256":manifest["engine_source_sha256"],
+             "owner_source_sha256":manifest["owner_source_sha256"],
              "g_source_sha256":manifest["g_source_sha256"]}
     return approved,context
 NGINX_SITE=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")

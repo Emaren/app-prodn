@@ -166,7 +166,7 @@ server { server_name unrelated.example; listen 443 ssl;
         self.assertIn('C_ACTUAL_NEXT_BUILD_ID_NOT_APPROVED',SERVER.read_text())
     def test_manual_rollback_retains_audit(self):
         src=SERVER.read_text()
-        self.assertIn('def manual_rollback(nonce)',src)
+        self.assertIn('def manual_rollback(nonce,transaction=False)',src)
         self.assertIn('ROLLBACK_ALREADY_ATTEMPTED',src)
         self.assertIn('before-nginx.conf',src)
         self.assertIn('original_web_restarted',src)

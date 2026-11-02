@@ -167,7 +167,7 @@ class ContinuedTransaction(unittest.TestCase):
               "nginx_config":"/etc/nginx/sites-available/aoe2war.com","nginx_before_sha256":g.digest(old)}
         raw=g.canon(base)+b"\n";nonce="2"*32
         plan={"nonce":nonce,"base_approved_sha256":g.digest(raw),"before_witness_sha256":g.A04_BEFORE_SHA256,
-              "source_sha":"3"*40,"engine_source_sha256":"4"*64,"g_source_sha256":"5"*64,
+              "source_sha":"3"*40,"engine_source_sha256":"4"*64,"g_source_sha256":"5"*64,"owner_source_sha256":"6"*64,
               "candidate_sha":g.TARGET,"candidate_build_id":g.C_PHYSICAL_BUILD_ID,
               "candidate_build_version":g.C_PHYSICAL_APP_VERSION,
               "nginx_before_sha256":g.digest(old),"nginx_after_sha256":g.digest(new)}
@@ -176,11 +176,13 @@ class ContinuedTransaction(unittest.TestCase):
             "before_nginx_sha256":g.digest(old),"no_commit":True,"current_exact_original_config":True}
         manifest={**plan,"schema":"aoe2war.r25.f.owner-transaction-grant.v1","scope":"A05_NGINX_ONLY_PUBLIC_CUTOVER",
                   "decision":"AUTHORIZE","owner_login":"Emaren","release_authority":"OWNER_ONLY_NONFINANCIAL",
-                  "owner_delegated_decisions":True,"independent_review":False,"financial_authorized":False,
+                  "owner_delegated_decisions":True,"delegated_ai_authorship_disclosed":True,
+                  "public_cutover_authorized":True,"independent_review":False,"financial_authorized":False,
                   "rollback_authorized":True,"max_uses":1,"plan_sha256":g.digest(g.canon(plan))}
         body="R25_F_OWNER_TRANSACTION_GRANT\n```json\n"+g.canon(manifest).decode()+"\n```"
         record={"schema":"aoe2war.r25.f.owner-transaction-authorization.v1","manifest":manifest,
                 "plan":plan,"plan_sha256":g.digest(g.canon(plan)),"envelope":{"id":123,"author":"Emaren",
+                "author_id":15059910,"created_at":"2026-11-02T04:00:00Z","updated_at":"2026-11-02T04:00:00Z",
                 "issue_url":"https://api.github.com/repos/Emaren/app-prodn/issues/1108",
                 "url":"https://github.com/Emaren/app-prodn/issues/1108#issuecomment-123",
                 "body":body,"body_sha256":g.digest(body.encode())}}
@@ -222,13 +224,28 @@ class ContinuedTransaction(unittest.TestCase):
             with self.subTest(kind=kind),self.assertRaises(g.Hold):
                 self.read_scope(raw,nonce,contents)
 
+    def test_journal_requires_actual_owner_and_disclosed_single_use_authority(self):
+        for field,value in (("author_id",123),("updated_at","2026-11-02T04:00:01Z"),
+                            ("public_cutover_authorized",False),("max_uses",True),
+                            ("delegated_ai_authorship_disclosed",False)):
+            base,raw,nonce,folder,contents,record=self.fixture()
+            if field in ("author_id","updated_at"):
+                record["envelope"][field]=value
+            else:
+                record["manifest"][field]=value
+                body="R25_F_OWNER_TRANSACTION_GRANT\n```json\n"+g.canon(record["manifest"]).decode()+"\n```"
+                record["envelope"].update(body=body,body_sha256=g.digest(body.encode()))
+            contents[folder/"owner-authorization.json"]=g.canon(record)
+            with self.subTest(field=field),self.assertRaises(g.Hold):
+                self.read_scope(raw,nonce,contents)
+
     def test_commit_must_bind_actual_new_authorization_and_original_before(self):
         base,raw,nonce,folder,contents,record=self.fixture()
         commit={"status":"R24_PARALLEL_WEBSITE_LIVE","candidate_sha":g.TARGET,"nonce":nonce,
                 "base_approved_sha256":g.digest(raw),"before_witness_sha256":g.A04_BEFORE_SHA256,
                 "new_approval_sha256":g.digest(contents[folder/"approval.json"]),
                 "owner_authorization_body_sha256":"0"*64,
-                "source_sha":"3"*40,"engine_source_sha256":"4"*64,"g_source_sha256":"5"*64}
+                "source_sha":"3"*40,"engine_source_sha256":"4"*64,"g_source_sha256":"5"*64,"owner_source_sha256":"6"*64}
         contents[folder/"commit.json"]=g.canon(commit)
         with mock.patch.multiple(g,TRANSACTION_NONCE=nonce,A04_APPROVAL_SHA256=g.digest(raw)):
             with mock.patch.object(g.pathlib.Path,"is_dir",return_value=True),mock.patch.object(g.pathlib.Path,"is_symlink",return_value=False):
