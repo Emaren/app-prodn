@@ -15,7 +15,7 @@ test("Trophy ids resolve through current-season forced vacancy policy", () => {
   assert.equal(trophyIsPubliclyForcedVacant(null), false);
 });
 
-test("profile holdings use public bootstrap and exclude forced-vacant historical custody", () => {
+test("profile holdings read stored public projections without triggering economic bootstrap", () => {
   const service = readFileSync(
     new URL("../lib/trophies/service.ts", import.meta.url),
     "utf8"
@@ -27,7 +27,7 @@ test("profile holdings use public bootstrap and exclude forced-vacant historical
   assert.ok(end > start);
 
   const holdings = service.slice(start, end);
-  assert.match(holdings, /await ensurePublicTrophySeedData\(prisma\)/);
+  assert.doesNotMatch(holdings, /ensure(?:Public)?TrophySeedData\(prisma\)/);
   assert.doesNotMatch(holdings, /await ensureTrophySeedData\(prisma\)/);
   assert.match(holdings,/await loadPublicTrophies\(prisma\)/);
   assert.match(holdings,/championshipRoster\?\.some\(member=>member\.userId === userId\)/);

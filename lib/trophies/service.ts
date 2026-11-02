@@ -1389,49 +1389,8 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
   await reconcileChampionshipBeltHonorMirrors(prisma);
 }
 
-const publicTrophySeedEnsureByClient =
-  new WeakMap<PrismaClient, Promise<void>>();
-
-/**
- * Public trophy reads keep lazy bootstrap safety without paying the seed
- * reconciliation transaction on every request.
- *
- * The canonical ensureTrophySeedData() function above deliberately remains
- * fully re-runnable for admin/operator repair paths. Only public reads retain
- * one successful reconciliation promise per production Prisma client.
- */
-function ensurePublicTrophySeedData(prisma: PrismaClient) {
-  if (process.env.AOE2WAR_PROD_DB_PREVIEW === "true") {
-    return Promise.resolve();
-  }
-
-  const existing =
-    publicTrophySeedEnsureByClient.get(prisma);
-
-  if (existing) {
-    return existing;
-  }
-
-  const run =
-    ensureTrophySeedData(prisma)
-      .catch((error) => {
-        if (
-          publicTrophySeedEnsureByClient.get(prisma) ===
-          run
-        ) {
-          publicTrophySeedEnsureByClient.delete(prisma);
-        }
-        throw error;
-      });
-
-  publicTrophySeedEnsureByClient.set(
-    prisma,
-    run,
-  );
-
-  return run;
-}
-
+// Public trophy projections are strictly read-only. Seed/repair is owned by
+// authenticated Trophy Command maintenance, never SSR, GET, HEAD or prewarm.
 async function loadRatings(prisma: PrismaClient) {
   const ratings = new Map<string, number>();
   try {
@@ -2012,7 +1971,6 @@ export async function loadTrophyCommandSnapshot(
 }
 
 export async function loadPublicTrophies(prisma: PrismaClient) {
-  await ensurePublicTrophySeedData(prisma);
   const trophies = await prisma.trophy.findMany({
     include: {
       currentHolder: {
@@ -2040,7 +1998,6 @@ export async function loadPublicTrophy(
   prisma: PrismaClient,
   trophyId: string
 ) {
-  await ensurePublicTrophySeedData(prisma);
   const trophy = await prisma.trophy.findUnique({
     where: { trophyId },
     include: {
@@ -2066,7 +2023,6 @@ export async function loadUserTrophyHoldings(
   prisma: PrismaClient,
   userId: number
 ): Promise<TrophyHolding[]> {
-  await ensurePublicTrophySeedData(prisma);
   const trophies = (await loadPublicTrophies(prisma)).filter(trophy=>["held","active"].includes(trophy.status) && (trophy.hasExplicitChampionshipCustody ? trophy.championshipRoster?.some(member=>member.userId === userId) : trophy.currentHolderUserId === userId));
   return trophies
     .filter((trophy) => trophy.hasExplicitChampionshipCustody || !trophyIsPubliclyForcedVacant(trophy.trophyId))

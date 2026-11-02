@@ -1,5 +1,6 @@
 import { internalApiKeyMatches } from "@/lib/internalApiKeyAuth";
 import "server-only";
+import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 
 import {
   extname,
@@ -920,6 +921,12 @@ export async function POST(
   const totalFailed =
     failed +
     reconciliationFailed;
+
+  // Internal-key-authenticated terminal adjudication owns the market wakeup;
+  // public GET/HEAD, SSR and prewarm never dispatch financial maintenance.
+  if (succeeded + reconciliationSucceeded > 0) {
+    queueBetMarketEnsure(prisma, 0);
+  }
 
   return NextResponse.json({
     ok:

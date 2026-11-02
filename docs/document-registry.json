@@ -455,9 +455,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-11-01",
+      "reviewed_at": "2026-10-31",
       "sensitivity": "internal",
-      "sha256": "6a4b8c99dc3ba02ccbe2dfe026e444cdfb2433e157d34c5edf0fc8ed8ec631d1",
+      "sha256": "69a6562dabe733c24b3a183406dabed56805982895a10624b9854f9dbf5a51db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "66c2c438695985533a99cd24453982ae7f9106bc617c5cb7cdfa700ccf30f26c",
+      "sha256": "ea1563f83a6913ff7d11816dcedb0fe942d1a42f05af130068d063702f09d0a2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1505,6 +1505,50 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "post-r25-reviewed-read-only-product-source",
+      "id": "aoe2war.app-prodn.r25-b3-operator-evidence",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "eaca0b09af2ff9c5ccc456c80b77b37bd7f7052305fc421061829bfaf38f6d54",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "R25 B3 \u2014 Authenticated Operational Evidence Interfaces",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "post-r25-source-only-visual-no-runtime",
+      "id": "aoe2war.app-prodn.r25-b4-kingdom-graph",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_B4_KINGDOM_GRAPH_RELEASE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "cb474ce970f5eda4dcb5b56aefac512e308023c4c7b4d34548dafad5242ccce0",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "R25 B4 \u2014 Kingdom Construction Source Graph Release",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -1833,9 +1877,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SCHEDULED_MATCH_SETTLEMENTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-11-01",
+      "reviewed_at": "2026-10-31",
       "sensitivity": "restricted",
-      "sha256": "54c098c31e2af1fc4cd157d2d43e6a6958916c382a4db073b722041601832894",
+      "sha256": "10f308c3607477deec8bea42c35fabc796a91eab0fd95bee54d3ef6d09b64997",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1949,9 +1993,9 @@
       "owner": "aoe2war-web",
       "path": "docs/TELEVISION_WOLO.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-11-01",
+      "reviewed_at": "2026-10-31",
       "sensitivity": "internal",
-      "sha256": "1b0bca6fe7f138119337f85fb718cdb81a3d7475f98c43acb439c3c66f1302d3",
+      "sha256": "5ee83b5a678ead8603841cc19e680e6c5e799efe6d31ef8e7d9095d62cd9004a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "security/r25-glob-minimatch-remediation-20261031",
-    "commit": "e1472e217ef1bbdbab46b0ffd96d7672fb66d322"
+    "branch": "codex/r25-postw1-integrated-release-20261102",
+    "commit": "84ba68816634f586ae975e3fba7ea03d96dd7c60"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

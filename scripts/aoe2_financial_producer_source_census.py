@@ -22,30 +22,48 @@ class Evidence:
     edge: str
     classification: str
 
-# These are source-linked *observations*, not a guessed dynamic call graph.
-# All strings are anchored to currently reviewed app/main at e6bd62f7.
+# Candidate-specific SOURCE observations only. A successful source census
+# is not full dependency-graph, runtime financial, physical restore or deployment
+# authorization. Original frozen b46a51f remains an unsafe separate SHA.
 EVIDENCE = (
-    Evidence("app/page.tsx", "loadLobbySnapshot(", "SSR / -> loadLobbySnapshot", "read_to_async_financial_producer"),
-    Evidence("app/api/lobby/route.ts", "export async function GET(", "GET /api/lobby -> loadLobbySnapshot", "read_to_async_financial_producer"),
-    Evidence("app/api/lobby/route.ts", "loadLobbySnapshot(", "GET /api/lobby -> loadLobbySnapshot", "read_to_async_financial_producer"),
-    Evidence("lib/lobbySnapshot.ts", "queueLobbyMaintenance(prisma);", "loadLobbySnapshotFresh -> queueLobbyMaintenance", "read_to_async_financial_producer"),
-    Evidence("lib/lobbySnapshot.ts", ".then(() => reconcileTournamentMatchProofs(prisma))", "lobby maintenance -> tournament proof reconciliation", "mutation_capable_async_work"),
-    Evidence("lib/lobbySnapshot.ts", ".then(() => ensureBetMarkets(prisma))", "lobby maintenance -> ensureBetMarkets", "settlement_capable_async_work"),
-    Evidence("app/api/live-games/route.ts", "export async function GET(", "GET /api/live-games route", "read_to_async_financial_producer"),
-    Evidence("app/api/live-games/route.ts", "queueBetMarketEnsure(prisma, 0);", "GET /api/live-games -> timed market ensure", "read_to_async_financial_producer"),
-    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsureTimer = setTimeout(() => {", "market ensure queue -> detached timer", "process_local_timer"),
-    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsurePromise = ensureBetMarkets(prisma)", "timer -> ensureBetMarkets", "settlement_capable_async_work"),
-    Evidence("lib/betMarketEnsureQueue.ts", 'process.env.AOE2WAR_PROD_DB_PREVIEW === "true"', "one queue preview flag only", "insufficient_global_fence"),
-    Evidence("lib/bets.ts", "export async function ensureBetMarkets(prisma: PrismaClient)", "financial reconciliation entry", "settlement_capable_work"),
+    Evidence("app/page.tsx", "loadLobbySnapshot(", "SSR / -> lobby read projection", "public_read"),
+    Evidence("app/api/lobby/route.ts", "loadLobbySnapshot(", "GET/HEAD /api/lobby -> read projection", "public_read"),
+    Evidence("lib/lobbySnapshot.ts", "const woloPromise = loadWoloDevSnapshot();", "lobby snapshot performs concurrent observed projections", "public_read"),
+    Evidence("lib/lobbySnapshot.ts", "loadPublicPresenceSnapshot(prisma)", "lobby presentation reads persisted user presence", "public_read"),
+    Evidence("app/api/live-games/route.ts", "loadPublicLiveGamesSnapshot(prisma)", "GET/HEAD /api/live-games -> persisted live snapshot", "public_read"),
+    Evidence("app/api/live-games/route.ts", "withLiveProofCounts(publicSnapshot", "GET/HEAD lives summary retains pure count projection", "public_read"),
+    Evidence("app/api/header-summary/route.ts", "loadLiveGamesSnapshot(prisma)", "GET/HEAD header summary -> persisted live snapshot", "public_read"),
+    Evidence("app/api/bets/route.ts", "ensureMarkets: false,", "GET/HEAD /api/bets explicitly opts out of ensure", "explicit_read_mode_exception"),
+    Evidence("lib/warChest.ts", "ensureMarkets: false,", "SSR War Chest -> no bet-market ensure", "public_read"),
+    Evidence("app/api/replay/post-ingest/route.ts", "if (!authorized(request))", "authenticated producer rejects before database work", "authenticated_producer"),
+    Evidence("app/api/replay/post-ingest/route.ts", "coordinateReplayPostIngest({", "authorized producer preserves replay reconciliation", "authenticated_producer"),
+    Evidence("app/api/replay/post-ingest/route.ts", "queueBetMarketEnsure(prisma, 0);", "authorized replay producer -> maintenance queue", "authenticated_producer"),
+    Evidence("lib/betMarketEnsureQueue.ts", "backgroundEnsurePromise = ensureBetMarkets(prisma)", "authorized producer -> settlement-capable queue", "financial_writer"),
+    Evidence("scripts/reconcile-replay-post-ingest.mts", "await ensureBetMarkets(prisma);", "explicit confirmed replay-reconciliation apply producer", "financial_writer"),
     Evidence("lib/bets.ts", "await settleResolvedMarketWagers(prisma);", "market ensure -> settlement", "money_moving_possible"),
-    Evidence("lib/bets.ts", "await reconcilePendingCoreBetClaims(prisma);", "market ensure -> claim reconciliation", "money_moving_possible"),
-    Evidence("lib/bets.ts", "await settleFounderBonuses(prisma);", "market ensure -> founder bonus settlement", "money_moving_possible"),
-    Evidence("lib/bets.ts", "let betMarketEnsurePromise: Promise<void> | null = null;", "single-flight is process-local", "insufficient_global_fence"),
-    Evidence("scripts/prewarm-production.mjs", '"/",', "prewarm -> /", "indirect_financial_wakeup"),
-    Evidence("scripts/prewarm-production.mjs", '"/api/lobby",', "prewarm -> GET /api/lobby", "indirect_financial_wakeup"),
-    Evidence("scripts/prewarm-production.mjs", '"/api/live-games",', "prewarm -> GET /api/live-games", "indirect_financial_wakeup"),
-    Evidence("app/api/bets/route.ts", "export async function GET(", "GET /api/bets", "explicit_read_mode_exception"),
-    Evidence("app/api/bets/route.ts", "ensureMarkets: false,", "GET /api/bets explicitly opts out of ensure", "explicit_read_mode_exception"),
+    Evidence("lib/bets.ts", "await reconcilePendingCoreBetClaims(prisma);", "market ensure -> claims", "money_moving_possible"),
+    Evidence("lib/bets.ts", "await settleFounderBonuses(prisma);", "market ensure -> founder bonuses", "money_moving_possible"),
+    Evidence("scripts/prewarm-production.mjs", '"/",', "prewarm -> SSR / public projection", "public_read"),
+    Evidence("scripts/prewarm-production.mjs", '"/api/lobby",', "prewarm -> GET /api/lobby projection", "public_read"),
+    Evidence("scripts/prewarm-production.mjs", '"/api/live-games",', "prewarm -> GET /api/live-games projection", "public_read"),
+)
+
+# Explicitly refuse source-go if any of the known public read surfaces regain
+# one of the old financial-maintenance ingress calls. This is not a substitute
+# for B's complete source graph and real signed 25+ unit/non-systemd evidence.
+FORBIDDEN_READ_DISPATCH = (
+    "queueBetMarketEnsure(",
+    "queueLobbyMaintenance(",
+    "ensureBetMarkets(",
+    "reconcileTournamentMatchProofs(",
+)
+PUBLIC_READ_FILES = (
+    "app/api/lobby/route.ts",
+    "app/api/bets/route.ts",
+    "app/api/live-games/route.ts",
+    "app/api/header-summary/route.ts",
+    "lib/lobbySnapshot.ts",
+    "lib/warChest.ts",
 )
 
 EXTERNAL_OWNERS_NOT_AUTHENTICATED = (
@@ -90,11 +108,38 @@ def inspect(root: Path) -> dict:
             "line": matching[0] if matching else None,
             "source_sha256": fingerprint,
         })
-    complete_known = all(o["status"] == "SOURCE_OBSERVED" for o in observations)
+    forbidden = []
+    for name in PUBLIC_READ_FILES:
+        actual = cache.get(name)
+        if actual is None:
+            p = root / name
+            if p.is_file() and not p.is_symlink():
+                data = p.read_bytes()
+                try:
+                    actual = (data.decode("utf-8").splitlines(),
+                              hashlib.sha256(data).hexdigest())
+                except UnicodeDecodeError:
+                    actual = None
+        if actual is None:
+            forbidden.append({"path": name, "reason": "UNKNOWN_SOURCE"})
+            continue
+        lines, _ = actual
+        for needle in FORBIDDEN_READ_DISPATCH:
+            for line_no, line in enumerate(lines, 1):
+                # A source comment is not executable code; source closure
+                # must still be validated independently by B's AST graph.
+                if needle in line and not line.lstrip().startswith("//"):
+                    forbidden.append({"path": name, "line": line_no,
+                                      "reason": "FINANCIAL_READ_DISPATCH", "needle": needle})
+    complete_known = (
+        all(o["status"] == "SOURCE_OBSERVED" for o in observations)
+        and not forbidden
+    )
     return {
         "schema": "aoe2war.app.financial_producer_source_census.v1",
         "classification": "SOURCE_OBSERVATION_ONLY",
         "known_source_edges_intact": complete_known,
+        "known_public_read_financial_dispatches": forbidden,
         "all_financial_producers_isolated": False,
         "safe_to_deploy": False,
         "cross_repo_runtime_attestation": "UNKNOWN",

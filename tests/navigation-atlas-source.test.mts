@@ -26,8 +26,8 @@ const WORK_BOARD = "/admin/central-command/work-board";
 const LANES = "/admin/central-command/lanes";
 const AUTHORIZED_NESTED_ROUTES = [JOB_EXCHANGE, WORK_BOARD, LANES] as const;
 
-test("all 32 approved static admin pages have an exact authenticated navigation edge", () => {
-  assert.equal(topLevel.length, 28, "Unexpected top-level admin source changes must be reviewed");
+test("all 37 approved static admin pages have an exact authenticated navigation edge", () => {
+  assert.equal(topLevel.length, 33, "Unexpected top-level admin source changes must be reviewed");
   assert.ok(existsSync(new URL("app/admin/central-command/job-board/page.tsx", root)),
     "Accepted G Job Exchange source must exist");
   for (const href of AUTHORIZED_NESTED_ROUTES) {
@@ -38,7 +38,15 @@ test("all 32 approved static admin pages have an exact authenticated navigation 
       "Every new private source page requires its own admin gate: " + href);
   }
   const approvedStaticRoutes = ["/admin",...topLevel,...AUTHORIZED_NESTED_ROUTES].sort();
-  assert.equal(approvedStaticRoutes.length, 32);
+  assert.equal(approvedStaticRoutes.length, 37);
+  for(const href of ["/admin/backup-os","/admin/code-health","/admin/documents-os",
+                      "/admin/storage-transfer","/admin/system-composer"]) {
+    assert.ok(staticAdminPaths.includes(href), "real B3/B4 source page missing: "+href);
+    assert.ok(ADMIN_ATLAS_ROUTES.some(row=>row.href===href && row.visibility==="admin"),
+      "private Navigation Atlas orphaned new protected source route: "+href);
+  }
+  assert.match(src("app/admin/layout.tsx"),/await requireServerAdmin\(\)/,
+    "all B3/B4 new top-level admin pages must inherit server auth");
   assert.deepEqual(staticAdminPaths, approvedStaticRoutes,
     "No missing, invented or orphaned nested static admin page; investigate route policy first");
   assert.deepEqual(ADMIN_ATLAS_ROUTES.map(route=>route.href).sort(), approvedStaticRoutes,

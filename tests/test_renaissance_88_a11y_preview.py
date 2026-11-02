@@ -33,6 +33,41 @@ class PreviewSourceIsolation(unittest.TestCase):
         self.assertIn("REN88_GENERATED_MANIFEST_SHA",self.guard)
         self.assertIn("INDEX_ADMISSION=HOLD_UNTIL_CENTRAL_SEAL",self.guard)
         self.assertIn("renaissance_88_preview_manifest_guard.sh verify",self.preview)
+    def test_real_next_build_id_is_option_bound_and_fails_closed(self):
+        # Next.js nanoids may begin with '-'; a separate argparse argv token
+        # would be parsed as an option, even though BUILD_ID is nonempty.
+        self.assertIn('BUILD_ID="$(cat .next/BUILD_ID)"', self.preview)
+        self.assertIn('--expected-build-id="$BUILD_ID"', self.preview)
+        self.assertNotIn('--expected-build-id "$(cat .next/BUILD_ID)"', self.preview)
+        self.assertIn('[[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]]', self.preview)
+        self.assertIn('"$(cat renaissance-88-chrome/BUILD_ID)" != "$BUILD_ID"', self.preview)
+        self.assertIn('exit 2', self.preview)
+        self.assertIn('printf \'source=%s\\nbuild=%s\\ncandidate_only=true\\n\' "$SOURCE_SHA" "$BUILD_ID"', self.preview)
+    def test_r17_exact_width_chrome_hold_cannot_be_hidden_by_88_route_pass(self):
+        self.assertIn('w1safe_rc=$?', self.preview)
+        self.assertIn('BROWSER_EXIT=%s W1SAFE_R16_EXIT=%s', self.preview)
+        self.assertIn('if [ "$browser_rc" -ne 0 ] || [ "$w1safe_rc" -ne 0 ]; then', self.preview)
+        self.assertIn('W1_SAFE_CHROME_HOLD:', self.preview)
+        self.assertIn('test -s renaissance-88-chrome/w1safe-r16/review.json', self.preview)
+        self.assertNotIn('exit "$browser_rc"', self.preview)
+    def test_r18_blocked_requests_keep_sanitized_origin_path_and_cdp_initiator(self):
+        chrome=(ROOT/"scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs").read_text()
+        self.assertIn('const cdp = await context.newCDPSession(page)',chrome)
+        self.assertIn('Network.requestWillBeSent',chrome)
+        self.assertIn('initiator:{type:"CDP_PENDING",frames:[]}',chrome)
+        self.assertIn('location:where(req.url())',chrome)
+        self.assertIn('method:req.method()',chrome)
+        self.assertIn('resource_type:req.resourceType()',chrome)
+        self.assertIn('frame,',chrome)
+        self.assertIn('return route.abort()',chrome)
+        self.assertIn('W1SAFE_R18_BLOCKED_REQUESTS',chrome)
+        self.assertIn('u.pathname.slice(0,240)',chrome)
+        self.assertNotIn('u.search',chrome)
+        self.assertNotIn('u.hash',chrome)
+        self.assertNotIn('req.postData()',chrome)
+        self.assertNotIn('req.headers()',chrome)
+        self.assertIn('entry.mutations_blocked===0?',chrome)
+
     def test_only_plan_from_exact_next_build_can_use_preview(self):
         self.assertIn('o.action!="plan" or o.build_dir is None',self.source)
         self.assertIn("Unsealed preview requires exact built Next",self.source)
