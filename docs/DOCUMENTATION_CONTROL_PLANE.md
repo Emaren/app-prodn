@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-v7-systemd-env-admission-20261101` at `52fff92691c930048950c27dc01d075179294044`
+Implementation baseline: `codex/r25-v8-timer-identity-20261101` at `a2b49229fa831cb2780ab39482e55fc0d4e78d60`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
