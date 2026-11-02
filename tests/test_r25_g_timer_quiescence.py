@@ -40,7 +40,29 @@ class GTimer(unittest.TestCase):
         with mock.patch.object(g.subprocess,"run",return_value=result(
                 b"PASSWORD=DO_NOT_DISCLOSE")):
             with mock.patch.object(g.pathlib.Path,"read_bytes",return_value=b"source"):
-                with self.assertRaisesRegex(g.Hold,"G_REMOTE_SSH_OR_UNCLASSIFIED_RUNTIME_FAILURE") as exc:
+                with self.assertRaisesRegex(g.Hold,"G_REMOTE_UNCLASSIFIED_EXIT_2") as exc:
                     g.ssh_snapshot("root@hel1","after")
                 self.assertNotIn("PASSWORD",str(exc.exception))
+    def test_ssh_transport_exit_classified_without_disclosure_or_retry(self):
+        response=subprocess.CompletedProcess([],255,b"",b"ssh: connection lost; TOKEN=NEVER_ECHO")
+        with mock.patch.object(g.subprocess,"run",return_value=response) as call:
+            with mock.patch.object(g.pathlib.Path,"read_bytes",return_value=b"source"):
+                with self.assertRaisesRegex(g.Hold,"G_REMOTE_SSH_TRANSPORT_EXIT_255") as e:
+                    g.ssh_snapshot("root@hel1","after")
+                self.assertNotIn("TOKEN",str(e.exception))
+        self.assertEqual(call.call_count,1)
+    def test_unhandled_remote_python_class_is_sanitized_but_fails_closed(self):
+        response=subprocess.CompletedProcess([],1,b"",b'Traceback (most recent call last):\n  File "/root/secret", line 1\nNameError: PASSWORD=NEVER_ECHO\n')
+        with mock.patch.object(g.subprocess,"run",return_value=response) as call:
+            with mock.patch.object(g.pathlib.Path,"read_bytes",return_value=b"source"):
+                with self.assertRaisesRegex(g.Hold,"G_REMOTE_PYTHON_EXCEPTION_NAMEERROR") as e:
+                    g.ssh_snapshot("root@hel1","after")
+                self.assertNotIn("PASSWORD",str(e.exception))
+        self.assertEqual(call.call_count,1)
+    def test_native_hold_is_not_converted_to_ssh_transport(self):
+        response=subprocess.CompletedProcess([],2,b"",b"HOLD:G_R25_PARALLEL_POSTFLIGHT:F_LOADED_NGINX_DOES_NOT_MATCH_ROOT_COMMIT")
+        with mock.patch.object(g.subprocess,"run",return_value=response):
+            with mock.patch.object(g.pathlib.Path,"read_bytes",return_value=b"source"):
+                with self.assertRaisesRegex(g.Hold,"G_REMOTE_NATIVE_HOLD:F_LOADED_NGINX_DOES_NOT_MATCH_ROOT_COMMIT"):
+                    g.ssh_snapshot("root@hel1","after")
 if __name__=="__main__":unittest.main()

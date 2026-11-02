@@ -806,7 +806,21 @@ def ssh_snapshot(target,phase):
         failure=reply.stderr.decode("ascii",errors="replace")
         match=re.search(r"HOLD:G_R25_PARALLEL_POSTFLIGHT:([A-Z0-9_:.]{1,128})",failure)
         if match:raise Hold("G_REMOTE_NATIVE_HOLD:"+match.group(1))
-        raise Hold("G_REMOTE_SSH_OR_UNCLASSIFIED_RUNTIME_FAILURE")
+        # Classify only fixed transport/exception predicates. Never disclose
+        # SSH stderr, traceback bodies, host paths, credentials or JSON data.
+        # A nonzero read-only witness ALWAYS fails closed and rolls F back.
+        if reply.returncode==255:
+            raise Hold("G_REMOTE_SSH_TRANSPORT_EXIT_255")
+        if reply.returncode<0:
+            raise Hold("G_REMOTE_TERMINATED_SIGNAL_"+str(-reply.returncode))
+        exception=re.search(
+            r"(?m)^([A-Za-z][A-Za-z0-9_.]{0,75}(?:Error|Exception)):",failure)
+        if exception:
+            safe=exception.group(1).split(".")[-1]
+            raise Hold("G_REMOTE_PYTHON_EXCEPTION_"+safe.upper())
+        if "usage:" in failure and "error:" in failure:
+            raise Hold("G_REMOTE_ARGUMENT_CONTRACT_EXIT_"+str(reply.returncode))
+        raise Hold("G_REMOTE_UNCLASSIFIED_EXIT_"+str(reply.returncode))
     return parse(reply.stdout)
 def public_check(expected):
     result=http_site(PUBLIC,expected["candidate"]["next_build_id"]
