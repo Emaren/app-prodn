@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "84180cee2b88222a1c160ec26eb5df6a00fba1b7ab6367a2a906a2d3f8545422",
+      "sha256": "5de65d4415f41d70dbdd56a04fb7b97a3b3e83d23159d5e43b14d805a6bfbc27",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-postw1-integrated-release-20261102",
-    "commit": "1f648f4b17a80eff2adcc867f207cbdf66064219"
+    "commit": "e11de3b42c0fdde7a6d52ad64113d0e50ec12f26"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
