@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b652e6bf996de2ad9a925b917df5513c8896853f7f3407fb7c70f390aa514b1f",
+      "sha256": "b074255c2761a2141774c56ac330e02b8083996b26709cef910726cbafe287e5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-g-after-classified-ssh-20261102",
-    "commit": "3094d1412e6f831f0fcb9c341034dacd98517514"
+    "commit": "c3f8533160b5093fc84edc81d5130b529dac236c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
