@@ -71,7 +71,9 @@ async function acceptedSourceGates(scope: ApprovedScope, signal: AbortSignal, no
           !object(run.repository) || run.repository.full_name !== scope.repo ||
           !["pull_request", "push"].includes(String(run.event)) ||
           typeof run.path !== "string" ||
-          !/\.github\/workflows\/(?:ci|kingdom-index-source-census|renaissance-88-factory|renaissance-88-a11y-preview)\.yml@/.test(run.path) ||
+          // The Actions REST run response returns a repository-relative path,
+          // without the @ref suffix used by some workflow identity strings.
+          !/^\.github\/workflows\/(?:ci|kingdom-index-source-census|renaissance-88-factory|renaissance-88-a11y-preview)\.yml$/.test(run.path) ||
           !safeCodeDate(run.created_at, now)) return;
       // The owner-approved versioned gate is backed by a successful, SHA-matched
       // source CI receipt. A code CI never certifies live/financial milestones.
