@@ -192,7 +192,8 @@ def c_baseline(guard_sha=OLD_GUARD_SHA,session=False):
     need(has(8092) and has(8093) and not has(8094) and not has(8095),
          "WOLO_CUSTODY_LISTENERS_CHANGED")
     return {"candidate_pid":pid,"candidate_start_ticks":ticks(pid),
-            "native_b_report_sha256":before.get("report_sha256"),
+            "native_b_status":"POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY",
+            "native_b_physical_checks_performed":True,
             "guard_sha256":guard_sha,"build_version":EXPECTED_VERSION,
             "public_pid":OLD_PID,"wolo_legacy_untouched":True,
             "financial_authorized":False}
