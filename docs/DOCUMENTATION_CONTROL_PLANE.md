@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-v8-timer-identity-20261101` at `a2b49229fa831cb2780ab39482e55fc0d4e78d60`
+Implementation baseline: `codex/r25-c-session-continuity-20261102` at `cbec0958c0aba0165e00dd3e7b6a6a0cebf70a12`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
