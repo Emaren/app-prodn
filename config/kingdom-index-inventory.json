@@ -12,7 +12,7 @@
     "adminTemplates": 38,
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
-    "excludedStaticTemplates": 10,
+    "excludedStaticTemplates": 11,
     "routeHandlerTemplates": 282,
     "apiHandlerTemplates": 279,
     "nonApiHandlerTemplates": 3
@@ -201,6 +201,12 @@
     {
       "href": "/admin/storage-transfer",
       "entrypoint": "app/admin/storage-transfer/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/system-composer",
+      "entrypoint": "app/admin/system-composer/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -460,6 +466,12 @@
       "href": "/kingdom-brain",
       "entrypoint": "app/kingdom-brain/page.tsx",
       "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-construction",
+      "entrypoint": "app/kingdom-construction/page.tsx",
+      "scope": "excluded-static",
       "assurance": "unverified"
     },
     {
@@ -946,18 +958,6 @@
       "href": "/zodiac",
       "entrypoint": "app/zodiac/page.tsx",
       "scope": "public-index",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/admin/system-composer",
-      "entrypoint": "app/admin/system-composer/page.tsx",
-      "scope": "admin-path",
-      "assurance": "unverified"
-    },
-    {
-      "href": "/kingdom-construction",
-      "entrypoint": "app/kingdom-construction/page.tsx",
-      "scope": "excluded-static",
       "assurance": "unverified"
     }
   ],
