@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-f-origin-readiness-20261102` at `a020a74c0b0a8bafd1fc1322838687cf686919a6`
+Implementation baseline: `codex/r25-f-origin-readiness-20261102` at `d1a73245ce708c02f8413c040728f2479c438353`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
