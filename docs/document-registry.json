@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "541d342929339efd81eafabde1343ebd54894eb99f50e230e9694adf8bd9df99",
+      "sha256": "02438ab2b43595abf43b9b3b846076fb7ec3ce757b5763507e615615464a7577",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-c-session-continuity-20261102",
-    "commit": "9d08e903911a2424f2b2e288404ddca1f55e35eb"
+    "commit": "05b5fe538d7b1b359562c95d0f6c54894acf7ae6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
