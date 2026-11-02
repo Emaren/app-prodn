@@ -281,7 +281,11 @@ def http_site(origin,build):
     ver=parse(http(origin,"/api/deployment-version"),8192).get("buildVersion")
     need(type(ver)is str and ver not in ("","unknown","development"),"APP_VERSION_UNKNOWN")
     for p in PAGES:
-        need(http(origin,p), "HTTP_PAGE_EMPTY:"+p)
+        # Real 3030 and 3031 /war-chest HTML is 1,560,144 bytes.
+        # Widen only this reviewed route; keep every other page bounded
+        # to 512 KiB and retain a strict 2 MiB cap even for /war-chest.
+        page_limit=2097152 if p=="/war-chest" else 524288
+        need(http(origin,p,limit=page_limit), "HTTP_PAGE_EMPTY:"+p)
         http(origin,p,"HEAD")
     manifest="/_next/static/"+build+"/_buildManifest.js"
     static=http(origin,manifest)

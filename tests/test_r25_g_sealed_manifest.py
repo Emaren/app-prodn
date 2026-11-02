@@ -43,6 +43,39 @@ class AcceptedManifest(unittest.TestCase):
                     with mock.patch.object(g,"root_file",side_effect=lambda path,limit:contents[path]) as reader:
                         return g.verified_c_archive_source(),reader.call_args_list
 
+    def test_only_war_chest_get_has_2mib_limit_while_all_others_stay_512kib(self):
+        import json
+        calls=[]
+        def fake_http(origin,path,method="GET",limit=524288):
+            calls.append((path,method,limit))
+            if path=="/api/deployment-version":
+                return json.dumps({"buildVersion":g.C_PHYSICAL_APP_VERSION}).encode()
+            if method=="HEAD":return b""
+            return b"valid-current-html"
+        with mock.patch.object(g,"http",side_effect=fake_http):
+            report=g.http_site("http://127.0.0.1:3031",g.C_PHYSICAL_BUILD_ID)
+        self.assertEqual(report["route_get_head_count"],10)
+        for route in g.PAGES:
+            expected=2097152 if route=="/war-chest" else 524288
+            self.assertIn((route,"GET",expected),calls)
+            self.assertIn((route,"HEAD",524288),calls)
+        self.assertIn(("/api/deployment-version","GET",524288),calls)
+        self.assertEqual(calls[-1][2],524288)
+
+    def test_even_war_chest_response_over_2mib_refuses(self):
+        import types
+        class TooLarge:
+            status=200
+            def __enter__(self):return self
+            def __exit__(self,*args):pass
+            def read(self,n):return b"x"*n
+        opener=types.SimpleNamespace(open=lambda *_args,**_kwargs:TooLarge())
+        with mock.patch.object(g,"build_opener",return_value=opener):
+            with self.assertRaisesRegex(g.Hold,"HTTP_RESPONSE_TOO_LARGE"):
+                g.http("http://127.0.0.1:3031","/war-chest",limit=2097152)
+            with self.assertRaisesRegex(g.Hold,"HTTP_RESPONSE_TOO_LARGE"):
+                g.http("http://127.0.0.1:3031","/lobby",limit=524288)
+
     def test_reads_only_receipts_and_four_manifest_bound_witnesses(self):
         contents,static,tree,source_sha,build_sha=self.fixture()
         result,calls=self.verify(contents,tree,source_sha,build_sha)
