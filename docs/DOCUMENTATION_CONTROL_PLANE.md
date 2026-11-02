@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-v3-host-mount-prestart-20261101` at `e0d5430d7724d794920234201671d4701b242177`
+Implementation baseline: `codex/r25-v4-nameerror-recovery-20261101` at `aba5a568c052510aa045081e4b0d9f043316934a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
