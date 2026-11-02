@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-postlive-b2-b3-b4-20261102` at `e8dc1199994490ed8c29eec02db5e9744ab02da3`
+Implementation baseline: `codex/r25-postlive-b2-b3-b4-20261102` at `ab2731cc742562e44f1e0621fe9c2737d5f8f4df`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
