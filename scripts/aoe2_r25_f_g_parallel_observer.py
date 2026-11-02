@@ -55,6 +55,9 @@ H40=re.compile(r"[a-f0-9]{40}\Z")
 H64=re.compile(r"[a-f0-9]{64}\Z")
 BUILD=re.compile(r"[A-Za-z0-9_-]{8,128}\Z")
 NONCE=re.compile(r"[a-f0-9]{32}\Z")
+TRANSACTION_NONCE=None
+A04_BEFORE_SHA256="6de56e39c813069ebcebf0674ae6142f78bd7b839e6ad2fea5c8c4c99e8d12b7"
+A04_APPROVAL_SHA256="f8855882d7112fc24b1facb8f8df6721ac5c2bffc58c43d021e4773721be956b"
 class Hold(Exception): pass
 def need(ok,why):
     if not ok: raise Hold(why)
@@ -300,14 +303,77 @@ def lock_state():
     return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
             "mode":stat.S_IMODE(st.st_mode)}
 def scope():
-    x=parse(root_file(APPROVAL,16384),16384)
+    base_raw=root_file(APPROVAL,16384)
+    x=parse(base_raw,16384)
     need(x.get("schema")=="aoe2war.r24.rootssh.parallel-web-nginx.v1" and
          x.get("candidate_sha")==TARGET and
          isinstance(x.get("nginx_config"),str) and
          x["nginx_config"].startswith("/etc/nginx/") and
          isinstance(x.get("nonce"),str) and NONCE.fullmatch(x["nonce"]),
          "F_ROOT_SCOPE_MISSING_OR_INCOMPLETE")
-    return x
+    if TRANSACTION_NONCE is None:
+        return x
+    return transaction_scope(base_raw,x)[0]
+
+def transaction_scope(base_raw,base):
+    """Select a new authorized journal without rewriting the accepted A04 scope."""
+    need(type(TRANSACTION_NONCE)is str and NONCE.fullmatch(TRANSACTION_NONCE)
+         and TRANSACTION_NONCE!=base.get("nonce"),"NEW_TRANSACTION_NONCE_REQUIRED")
+    need(digest(base_raw)==A04_APPROVAL_SHA256,"ORIGINAL_A04_APPROVAL_BYTES_CHANGED")
+    folder=AUDIT/("r24-"+TRANSACTION_NONCE)
+    approved_raw=root_file(folder/"approval.json",16384)
+    approved=parse(approved_raw,16384)
+    expected=dict(base);expected["nonce"]=TRANSACTION_NONCE
+    need(approved==expected,"NEW_APPROVAL_MUST_CHANGE_ONLY_NONCE")
+    record=parse(root_file(folder/"owner-authorization.json",262144),262144)
+    need(record.get("schema")=="aoe2war.r25.f.owner-transaction-authorization.v1",
+         "NEW_TRANSACTION_AUTHORIZATION_REQUIRED")
+    envelope=record.get("envelope",{})
+    body=envelope.get("body","")
+    cid=envelope.get("id")
+    need(type(cid)is int and cid>0 and envelope.get("author")=="Emaren"
+         and envelope.get("issue_url")=="https://api.github.com/repos/Emaren/app-prodn/issues/1108"
+         and envelope.get("url")=="https://github.com/Emaren/app-prodn/issues/1108#issuecomment-"+str(cid)
+         and type(body)is str and digest(body.encode())==envelope.get("body_sha256"),
+         "ACTUAL_OWNER_AUTHORIZATION_ENVELOPE_REQUIRED")
+    block=re.fullmatch(r"R25_F_OWNER_TRANSACTION_GRANT\n```json\n(.+)\n```\n?",body,re.S)
+    need(block is not None,"OWNER_TRANSACTION_GRANT_FORMAT")
+    manifest=parse(block[1].encode(),65536)
+    need(manifest==record.get("manifest") and manifest.get("schema")=="aoe2war.r25.f.owner-transaction-grant.v1"
+         and manifest.get("scope")=="A05_NGINX_ONLY_PUBLIC_CUTOVER"
+         and manifest.get("decision")=="AUTHORIZE" and manifest.get("owner_login")=="Emaren"
+         and manifest.get("release_authority")=="OWNER_ONLY_NONFINANCIAL"
+         and manifest.get("owner_delegated_decisions")is True
+         and manifest.get("independent_review")is False and manifest.get("financial_authorized")is False
+         and manifest.get("rollback_authorized")is True and manifest.get("max_uses")==1,
+         "EXACT_OWNER_DELEGATED_NONFINANCIAL_GRANT_REQUIRED")
+    plan=record.get("plan",{})
+    need(record.get("plan_sha256")==digest(canon(plan))==manifest.get("plan_sha256"),
+         "ACTUAL_TRANSACTION_PLAN_DIGEST_REQUIRED")
+    previous=plan.get("consumed_previous_transaction",{})
+    old_folder=AUDIT/("r24-"+base["nonce"])
+    need(previous.get("nonce")==base["nonce"] and previous.get("no_commit")is True
+         and previous.get("current_exact_original_config")is True
+         and previous.get("intent_sha256")==digest(root_file(old_folder/"intent.json",8192))
+         and previous.get("before_nginx_sha256")==digest(root_file(old_folder/"before-nginx.conf",131072))
+         and not (old_folder/"commit.json").exists() and not (old_folder/"commit.json").is_symlink(),
+         "CONSUMED_PREVIOUS_TRANSACTION_CHANGED")
+    for field,value in (("nonce",TRANSACTION_NONCE),("base_approved_sha256",digest(base_raw)),
+                        ("before_witness_sha256",A04_BEFORE_SHA256),("candidate_sha",TARGET),
+                        ("candidate_build_id",base["candidate_build_id"]),
+                        ("candidate_build_version",base["candidate_build_version"]),
+                        ("nginx_before_sha256",base["nginx_before_sha256"])):
+        need(manifest.get(field)==value and plan.get(field)==value,"AUTHORIZED_TRANSACTION_BINDING_DRIFT:"+field)
+    for field,pattern in (("source_sha",H40),("engine_source_sha256",H64),("g_source_sha256",H64),
+                          ("nginx_after_sha256",H64)):
+        need(type(manifest.get(field))is str and pattern.fullmatch(manifest[field])
+             and plan.get(field)==manifest[field],"AUTHORIZED_TRANSACTION_SOURCE_DRIFT:"+field)
+    context={"nonce":TRANSACTION_NONCE,"base_approved_sha256":digest(base_raw),
+             "before_witness_sha256":A04_BEFORE_SHA256,"new_approval_sha256":digest(approved_raw),
+             "owner_authorization_body_sha256":digest(body.encode()),
+             "source_sha":manifest["source_sha"],"engine_source_sha256":manifest["engine_source_sha256"],
+             "g_source_sha256":manifest["g_source_sha256"]}
+    return approved,context
 NGINX_SITE=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")
 OLD_PROXY=b"proxy_pass http://127.0.0.1:3030;"
 NEW_PROXY=b"proxy_pass http://127.0.0.1:3031;"
@@ -416,6 +482,11 @@ def audit(approved,phase):
     need(commit.get("status")=="R24_PARALLEL_WEBSITE_LIVE" and
          commit.get("candidate_sha")==TARGET and
          commit.get("nonce")==approved["nonce"],"F_CUTOVER_COMMIT_MISMATCH")
+    if TRANSACTION_NONCE is not None:
+        base_raw=root_file(APPROVAL,16384)
+        _,context=transaction_scope(base_raw,parse(base_raw,16384))
+        for key,value in context.items():
+            need(commit.get(key)==value,"COMMIT_AUTHORIZED_TRANSACTION_DRIFT:"+key)
     original=root_file(p/"before-nginx.conf",131072)
     need(digest(original)==commit.get("old_nginx_sha256"),
          "F_NGINX_ROLLBACK_CONTENT_DRIFT")
@@ -561,19 +632,26 @@ def root_snapshot(phase):
     approved=scope()
     route=nginx_route(approved)
     history=audit(approved,phase)
-    return {"schema":"aoe2war.g.r25.parallel-host.v1","phase":phase,"host":HOST,
+    result={"schema":"aoe2war.g.r25.parallel-host.v1","phase":phase,"host":HOST,
         "old_source":original,"old_next_build_id":old_build,
         "candidate":candidate,"units":units,"ports":ports,
         "old_http":old_http,"candidate_http":new_http,
         "nginx":route,"release_lock":lock_state(),"release_journal":history,
         "approved_scope_sha256":digest(root_file(APPROVAL,16384)),
         "proof":"ROOT_SSH_MEASURED_NOT_FINANCE_SIGNED"}
+    if TRANSACTION_NONCE is not None:
+        need(phase in ("after","rollback"),"NO_NEW_BEFORE_FOR_EXISTING_TRANSACTION_BASE")
+        raw=root_file(APPROVAL,16384)
+        result["transaction_scope"]=transaction_scope(raw,parse(raw,16384))[1]
+    return result
 def ssh_snapshot(target,phase):
     need(re.fullmatch(r"root@[A-Za-z0-9._-]{1,140}",target),"UNREVIEWED_SSH_TARGET")
     payload=pathlib.Path(__file__).read_bytes()
     argv=["/usr/bin/ssh","-T","-o","BatchMode=yes",
           "-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",
           target,"/usr/bin/python3","-I","-B","-","--remote",phase]
+    if TRANSACTION_NONCE is not None:
+        argv.extend(("--transaction-nonce",TRANSACTION_NONCE))
     return parse(run(argv,timeout=380,stdin=payload))
 def public_check(expected):
     result=http_site(PUBLIC,expected["candidate"]["next_build_id"]
@@ -604,6 +682,12 @@ def verify(before,after,phase):
          and before.get("phase")=="before" and after.get("phase")==phase,
          "WRONG_BEFORE_OR_POSTFLIGHT_PHASE")
     compare_process_and_finance(before,after)
+    context=after.get("transaction_scope")
+    if TRANSACTION_NONCE is not None:
+        need(type(context)is dict and context.get("nonce")==TRANSACTION_NONCE
+             and context.get("before_witness_sha256")==A04_BEFORE_SHA256
+             and context.get("base_approved_sha256")==before["approved_scope_sha256"],
+             "NEW_TRANSACTION_NOT_BOUND_TO_ORIGINAL_BEFORE")
     need(before["nginx"]["upstream_port"]==3030,"BEFORE_NGINX_NOT_OLD")
     need(after["release_journal"]["root_rollback_nginx_sha256"]==
          before["nginx"]["file_sha256"],"F_ROLLBACK_PREIMAGE_NOT_ORIGINAL_NGINX")
@@ -625,7 +709,7 @@ def verify(before,after,phase):
         need(after["nginx"]["file_sha256"]==before["nginx"]["file_sha256"] and
              after["release_journal"]["rollback_exercised"] is True,
              "ROLLBACK_CHANGED_MORE_THAN_NGINX_OR_NOT_RECORDED")
-    return {"schema":"aoe2war.g.r25.postflight.v1","phase":phase,
+    result={"schema":"aoe2war.g.r25.postflight.v1","phase":phase,
         "status":"LIVE_PARALLEL_HOST_AND_PUBLIC_MEASURED_REQUIRES_F_STAGE_REVIEW"
                  if phase=="after" else "PUBLIC_3030_NGINX_ONLY_ROLLBACK_MEASURED",
         "frozen_candidate_sha":TARGET,
@@ -644,7 +728,11 @@ def verify(before,after,phase):
         "finance_signed_receipt":False,
         "independent_live_browser_88_routes":"NOT_RUN",
         "postflight_GET_HEAD_cannot_certify_SSR_write_safety":True}
+    if context is not None:
+        result["transaction_scope"]=context
+    return result
 def main():
+    global TRANSACTION_NONCE
     a=argparse.ArgumentParser()
     a.add_argument("--remote",choices=("before","after","rollback"))
     a.add_argument("--phase",choices=("before","after","rollback"))
@@ -653,8 +741,13 @@ def main():
     a.add_argument("--before-sha256")
     a.add_argument("--after",type=pathlib.Path)
     a.add_argument("--after-sha256")
+    a.add_argument("--transaction-nonce")
     x=a.parse_args()
     try:
+        if x.transaction_nonce is not None:
+            need(NONCE.fullmatch(x.transaction_nonce) and (x.remote or x.phase)in("after","rollback"),
+                 "EXPLICIT_NEW_TRANSACTION_AFTER_OR_ROLLBACK_ONLY")
+            TRANSACTION_NONCE=x.transaction_nonce
         if x.remote:
             need(not x.phase and not x.ssh_target and not x.before,"REMOTE_ARG_COLLISION")
             result=root_snapshot(x.remote)
@@ -675,6 +768,8 @@ def main():
                      "ORIGINAL_BEFORE_DIGEST_REQUIRED")
                 raw=x.before.read_bytes()
                 need(digest(raw)==x.before_sha256,"OWNER_BEFORE_RECEIPT_SHA256_DRIFT")
+                if TRANSACTION_NONCE is not None:
+                    need(x.before_sha256==A04_BEFORE_SHA256,"ORIGINAL_A04_BEFORE_MUST_BE_REUSED")
                 before=parse(raw)
                 if x.phase=="rollback":
                     need(x.after and x.after_sha256 and H64.fullmatch(x.after_sha256),

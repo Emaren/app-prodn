@@ -158,5 +158,83 @@ class NativeUnits(unittest.TestCase):
             names=g.finance_units()
         self.assertIn("postgresql@16-main.service",names)
 
+class ContinuedTransaction(unittest.TestCase):
+    def fixture(self):
+        old=b"original six-selector config";new=b"candidate six-selector config"
+        base={"schema":"aoe2war.r24.rootssh.parallel-web-nginx.v1","nonce":"1"*32,
+              "candidate_sha":g.TARGET,"candidate_build_id":g.C_PHYSICAL_BUILD_ID,
+              "candidate_build_version":g.C_PHYSICAL_APP_VERSION,
+              "nginx_config":"/etc/nginx/sites-available/aoe2war.com","nginx_before_sha256":g.digest(old)}
+        raw=g.canon(base)+b"\n";nonce="2"*32
+        plan={"nonce":nonce,"base_approved_sha256":g.digest(raw),"before_witness_sha256":g.A04_BEFORE_SHA256,
+              "source_sha":"3"*40,"engine_source_sha256":"4"*64,"g_source_sha256":"5"*64,
+              "candidate_sha":g.TARGET,"candidate_build_id":g.C_PHYSICAL_BUILD_ID,
+              "candidate_build_version":g.C_PHYSICAL_APP_VERSION,
+              "nginx_before_sha256":g.digest(old),"nginx_after_sha256":g.digest(new)}
+        old_intent=b"immutable consumed intent"
+        plan["consumed_previous_transaction"]={"nonce":base["nonce"],"intent_sha256":g.digest(old_intent),
+            "before_nginx_sha256":g.digest(old),"no_commit":True,"current_exact_original_config":True}
+        manifest={**plan,"schema":"aoe2war.r25.f.owner-transaction-grant.v1","scope":"A05_NGINX_ONLY_PUBLIC_CUTOVER",
+                  "decision":"AUTHORIZE","owner_login":"Emaren","release_authority":"OWNER_ONLY_NONFINANCIAL",
+                  "owner_delegated_decisions":True,"independent_review":False,"financial_authorized":False,
+                  "rollback_authorized":True,"max_uses":1,"plan_sha256":g.digest(g.canon(plan))}
+        body="R25_F_OWNER_TRANSACTION_GRANT\n```json\n"+g.canon(manifest).decode()+"\n```"
+        record={"schema":"aoe2war.r25.f.owner-transaction-authorization.v1","manifest":manifest,
+                "plan":plan,"plan_sha256":g.digest(g.canon(plan)),"envelope":{"id":123,"author":"Emaren",
+                "issue_url":"https://api.github.com/repos/Emaren/app-prodn/issues/1108",
+                "url":"https://github.com/Emaren/app-prodn/issues/1108#issuecomment-123",
+                "body":body,"body_sha256":g.digest(body.encode())}}
+        approved={**base,"nonce":nonce}
+        folder=g.AUDIT/("r24-"+nonce)
+        contents={g.APPROVAL:raw,folder/"approval.json":g.canon(approved)+b"\n",
+                  folder/"owner-authorization.json":g.canon(record),
+                  g.AUDIT/("r24-"+base["nonce"])/"intent.json":old_intent,
+                  g.AUDIT/("r24-"+base["nonce"])/"before-nginx.conf":old}
+        return base,raw,nonce,folder,contents,record
+
+    def read_scope(self,raw,nonce,contents):
+        with mock.patch.multiple(g,TRANSACTION_NONCE=nonce,A04_APPROVAL_SHA256=g.digest(raw)):
+            with mock.patch.object(g,"root_file",side_effect=lambda path,limit:contents[path]):
+                return g.scope()
+
+    def test_new_scope_changes_only_nonce_and_preserves_original_receipt(self):
+        base,raw,nonce,folder,contents,record=self.fixture()
+        selected=self.read_scope(raw,nonce,contents)
+        self.assertEqual(selected,{**base,"nonce":nonce})
+        self.assertEqual(contents[g.APPROVAL],raw)
+        self.assertEqual(record["manifest"]["before_witness_sha256"],g.A04_BEFORE_SHA256)
+
+    def test_old_consumed_nonce_and_unreviewed_approval_changes_fail(self):
+        base,raw,nonce,folder,contents,record=self.fixture()
+        with self.assertRaisesRegex(g.Hold,"NEW_TRANSACTION_NONCE_REQUIRED"):
+            self.read_scope(raw,base["nonce"],contents)
+        changed={**base,"nonce":nonce,"candidate_sha":"0"*40}
+        contents[folder/"approval.json"]=g.canon(changed)
+        with self.assertRaisesRegex(g.Hold,"NEW_APPROVAL_MUST_CHANGE_ONLY_NONCE"):
+            self.read_scope(raw,nonce,contents)
+
+    def test_changed_owner_body_or_plan_cannot_reuse_original_hash(self):
+        for kind in ("body","plan"):
+            base,raw,nonce,folder,contents,record=self.fixture()
+            if kind=="body":record["envelope"]["body"]+=" "
+            else:record["plan"]["candidate_sha"]="0"*40
+            contents[folder/"owner-authorization.json"]=g.canon(record)
+            with self.subTest(kind=kind),self.assertRaises(g.Hold):
+                self.read_scope(raw,nonce,contents)
+
+    def test_commit_must_bind_actual_new_authorization_and_original_before(self):
+        base,raw,nonce,folder,contents,record=self.fixture()
+        commit={"status":"R24_PARALLEL_WEBSITE_LIVE","candidate_sha":g.TARGET,"nonce":nonce,
+                "base_approved_sha256":g.digest(raw),"before_witness_sha256":g.A04_BEFORE_SHA256,
+                "new_approval_sha256":g.digest(contents[folder/"approval.json"]),
+                "owner_authorization_body_sha256":"0"*64,
+                "source_sha":"3"*40,"engine_source_sha256":"4"*64,"g_source_sha256":"5"*64}
+        contents[folder/"commit.json"]=g.canon(commit)
+        with mock.patch.multiple(g,TRANSACTION_NONCE=nonce,A04_APPROVAL_SHA256=g.digest(raw)):
+            with mock.patch.object(g.pathlib.Path,"is_dir",return_value=True),mock.patch.object(g.pathlib.Path,"is_symlink",return_value=False):
+                with mock.patch.object(g,"root_file",side_effect=lambda path,limit:contents[path]):
+                    with self.assertRaisesRegex(g.Hold,"COMMIT_AUTHORIZED_TRANSACTION_DRIFT:owner_authorization_body_sha256"):
+                        g.audit({**base,"nonce":nonce},"after")
+
 if __name__=="__main__":
     unittest.main()
