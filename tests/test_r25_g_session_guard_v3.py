@@ -27,7 +27,7 @@ class V3G(unittest.TestCase):
                 g.runtime_lineage_v3({},path,"a"*64)
     def test_v3_receipt_never_becomes_financial_or_browser_authority(self):
         code=(ROOT/"scripts/aoe2_r25_f_g_parallel_observer.py").read_text()
-        self.assertIn('native=namespace["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)',code)
+        self.assertIn('physical=namespace["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)',code)
         self.assertIn('and rec.get("financial_authorized")is False',code)
         self.assertIn('and rec.get("public_cutover_authorized")is False',code)
         self.assertIn('GUARD_V3_MODIFIED_OLD_WEB_OR_FINANCE',code)
