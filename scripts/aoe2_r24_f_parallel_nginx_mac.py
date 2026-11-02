@@ -152,7 +152,7 @@ def cutover_plan(path, root_sha, g_sha, owner_sha):
         need(type(plan.get(key)) is str and H64.fullmatch(plan[key]), "NATIVE_CUTOVER_PLAN_HASH_REQUIRED")
     if plan.get("runtime_requalification_path") is not None or plan.get("runtime_requalification_sha256") is not None:
         need(type(plan.get("runtime_requalification_path")) is str
-             and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",
+             and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/(?:session-repair|session-guard-v3)-[0-9a-f]{32}/complete\.json",
                               plan["runtime_requalification_path"])
              and type(plan.get("runtime_requalification_sha256")) is str
              and H64.fullmatch(plan["runtime_requalification_sha256"]), "EXACT_NATIVE_RUNTIME_REQUALIFICATION_REQUIRED")

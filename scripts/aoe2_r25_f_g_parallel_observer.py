@@ -375,8 +375,13 @@ def transaction_scope(base_raw,base):
     lineage=runtime_lineage(base,plan)
     expected=dict(base);expected["nonce"]=TRANSACTION_NONCE
     if lineage is not None:
-        expected.update(candidate_web_snapshot_sha256=lineage["f_candidate_after_sha256"],
-                        B_poststart_sha256=lineage["b_poststart"]["sha256"])
+        if lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
+            expected["candidate_web_snapshot_sha256"]=F_CANDIDATE_SESSION_V3_UNIT_SHA
+            # Original B historical A04 SHA stays original. A new current B
+            # physical witness was executed inside runtime_lineage_v3.
+        else:
+            expected.update(candidate_web_snapshot_sha256=lineage["f_candidate_after_sha256"],
+                            B_poststart_sha256=lineage["b_poststart"]["sha256"])
     need(approved==expected,"NEW_APPROVAL_MUST_CHANGE_ONLY_NONCE_OR_QUALIFIED_AUTH_RUNTIME")
     context={"nonce":TRANSACTION_NONCE,"base_approved_sha256":digest(base_raw),
              "before_witness_sha256":A04_BEFORE_SHA256,"new_approval_sha256":digest(approved_raw),
@@ -391,9 +396,74 @@ def transaction_scope(base_raw,base):
     return approved,context
 
 C_SESSION_REPAIR_SOURCE_SHA="0f7829a2eb0cae2a01039ed768cba22ffae2ea1d"
+C_SESSION_GUARD_V3_SOURCE_SHA="b8f690c637b0796249265e28e226f4442d1e6f9a"
+C_SESSION_GUARD_V3_SOURCE_BYTES_SHA="0a1e1c583d79e24ea63a1e107ade0f5135601e5a0b1a235991637b07de790f00"
+C_SESSION_GUARD_V3_GUARD_SHA="192d36d75aede69e85e1d7599d58daf13d9dc96bb2aa49a15d9bd9596b8daac5"
+F_CANDIDATE_SESSION_V3_UNIT_SHA="06238a9425a3ea3c47f55ec0f645f10d3a6da047c361265c80e44470df7ab437"
+
+def runtime_lineage_v3(base,path,expected_sha):
+    need(type(path)is str and re.fullmatch(
+         r"/var/lib/aoe2war-r25-c-additive/session-guard-v3-[0-9a-f]{32}/complete\.json",path)
+         and type(expected_sha)is str and H64.fullmatch(expected_sha),
+         "G_C_GUARD_V3_EXACT_ROOT_PATH_REQUIRED")
+    raw=root_file(pathlib.Path(path),32768)
+    need(digest(raw)==expected_sha,"G_C_GUARD_V3_RECEIPT_HASH_DRIFT")
+    rec=parse(raw,32768)
+    first=rec.get("candidate_before",{});last=rec.get("candidate_after",{})
+    need(rec.get("schema")=="aoe2war.r25.session-guard-release.v3"
+         and rec.get("status")=="ISOLATED_3031_SESSION_GUARD_NATIVE_ACCEPT"
+         and rec.get("source_sha")==C_SESSION_GUARD_V3_SOURCE_SHA
+         and rec.get("candidate_guard_sha256")==C_SESSION_GUARD_V3_GUARD_SHA
+         and first.get("candidate_pid")==1465429
+         and first.get("candidate_start_ticks")==148192915
+         and first.get("guard_sha256")=="dead2815b3f20b311ede29dfd99086cbb81dfd6a73f1a71f2b7b57ccd74e809d"
+         and last.get("candidate_pid")==1483304 and last.get("candidate_start_ticks")==148446193
+         and last.get("guard_sha256")==C_SESSION_GUARD_V3_GUARD_SHA
+         and last.get("native_b_status")=="POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+         and last.get("native_b_physical_checks_performed")is True
+         and last.get("public_pid")==EXPECTED_OLD_PID
+         and last.get("build_version")==base["candidate_build_version"]
+         and rec.get("session_key_equal_original")is True
+         and rec.get("only_symmetric_signing_key")is True
+         and rec.get("replayed_previous_nonces")is False
+         and rec.get("financial_authorized")is False and rec.get("public_cutover_authorized")is False,
+         "G_C_GUARD_V3_SEALED_NATIVE_ACCEPT_REQUIRED")
+    grant=rec.get("owner_grant",{})
+    need(type(grant.get("comment_id"))is int and grant["comment_id"]>0
+         and type(grant.get("body_sha256"))is str and H64.fullmatch(grant["body_sha256"])
+         and type(grant.get("ci_run"))is int and grant["ci_run"]>0,
+         "G_GUARD_V3_GITHUB_OWNER_GRANT_REQUIRED")
+    owner=parse(run(["/usr/bin/gh","api","repos/Emaren/app-prodn/issues/comments/"+str(grant["comment_id"])],timeout=25),262144)
+    need(owner.get("user",{}).get("login")=="Emaren"
+         and owner.get("user",{}).get("id")==15059910
+         and owner.get("created_at")==owner.get("updated_at")
+         and digest(owner.get("body","").encode())==grant["body_sha256"],
+         "G_GUARD_V3_OWNER_GRANT_CHANGED")
+    source=parse(run(["/usr/bin/gh","api","repos/Emaren/app-prodn/contents/scripts/r25_session_guard_release_v3.py?ref="+C_SESSION_GUARD_V3_SOURCE_SHA],timeout=25),262144)
+    need(source.get("type")=="file" and source.get("encoding")=="base64",
+         "G_GUARD_V3_SOURCE_NOT_GITHUB_VERIFIED")
+    import base64
+    code=base64.b64decode("".join(source.get("content","").split()),validate=True)
+    need(0<len(code)<=131072 and digest(code)==C_SESSION_GUARD_V3_SOURCE_BYTES_SHA,
+         "G_GUARD_V3_SOURCE_BYTES_CHANGED")
+    # Re-run C's physical read-only B/C qualification; no mutation permitted.
+    namespace={"__name__":"readonly_g_requalification"}
+    exec(compile(code,"immutable_guard_v3","exec"),namespace)
+    physical=namespace["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)
+    need(physical==last and digest(root_file(pathlib.Path("/usr/local/lib/aoe2war-r25/r25_b_guard_session_v2.cjs"),16384))==C_SESSION_GUARD_V3_GUARD_SHA,
+         "G_GUARD_V3_CURRENT_NATIVE_B_C_PROOF_DRIFT")
+    actual_unit=show(NEW_UNIT)
+    proc=actual_unit.get("main_process",{})
+    need(type(proc)is dict and proc.get("pid")==1483304
+         and proc.get("start_ticks")==148446193 and proc.get("uid")==993,
+         "G_GUARD_V3_CURRENT_SYSTEMD_IDENTITY_DRIFT")
+    return rec
+
 def runtime_lineage(base,plan):
     path=plan.get("runtime_requalification_path");expected_sha=plan.get("runtime_requalification_sha256")
     if path is None and expected_sha is None:return None
+    if type(path)is str and "/session-guard-v3-" in path:
+        return runtime_lineage_v3(base,path,expected_sha)
     need(type(path)is str and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",path)
          and type(expected_sha)is str and H64.fullmatch(expected_sha),"EXACT_AUTH_RUNTIME_LINEAGE_REQUIRED")
     raw=root_file(pathlib.Path(path),32768)
@@ -733,6 +803,23 @@ def compare_process_and_finance(before,after):
     if lineage is None:
         need(before["units"]==after["units"],"ANY_WEB_OR_FINANCIAL_UNIT_CHANGED")
         need(before["ports"]==after["ports"],"ANY_3030_3031_8092_8093_LISTENER_CHANGED")
+    elif lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
+        # Historical G BEFORE stays immutable at original A04 candidate PID;
+        # C v3 really measured the intervening 1465429 process and the
+        # current 1483304 process, each with authentic original B confinement.
+        for field,selected in (("units",NEW_UNIT),("ports","3031")):
+            old=dict(before[field]);new=dict(after[field])
+            pre=old.pop(selected);post=new.pop(selected)
+            need(old==new,"GUARD_V3_MODIFIED_OLD_WEB_OR_FINANCE")
+            a=pre["main_process"] if field=="units" else pre
+            b=post["main_process"] if field=="units" else post
+            need(a["pid"]==1118556 and a["start_ticks"]==142541543
+                 and b["pid"]==lineage["candidate_after"]["candidate_pid"]
+                 and b["start_ticks"]==lineage["candidate_after"]["candidate_start_ticks"]
+                 and a["uid"]==b["uid"]==993
+                 and a["exe_sha256"]==b["exe_sha256"]
+                 and a["cgroup_sha256"]==b["cgroup_sha256"],
+                 "GUARD_V3_ORIGINAL_VS_NEW_PROCESS_LINEAGE_NOT_PROVEN")
     else:
         for field,selected,old_key,new_key in (("units",NEW_UNIT,"g_candidate_unit_before_sha256","g_candidate_unit_after_sha256"),
               ("ports","3031","g_candidate_listener_before_sha256","g_candidate_listener_after_sha256")):
@@ -768,10 +855,17 @@ def verify(before,after,phase):
         need((lineage is not None)==(context.get("runtime_requalification_path") is not None),
              "AUTH_RUNTIME_LINEAGE_CONTEXT_MISSING")
         if lineage is not None:
-            need(lineage.get("source_sha")==context["source_sha"]
-                 and lineage.get("before_witness_sha256")==A04_BEFORE_SHA256
-                 and lineage.get("base_approved_sha256")==before["approved_scope_sha256"],
-                 "AUTH_RUNTIME_LINEAGE_CONTEXT_DRIFT")
+            if lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
+                need(lineage.get("source_sha")==C_SESSION_GUARD_V3_SOURCE_SHA
+                     and lineage.get("candidate_after",{}).get("candidate_pid")==1483304
+                     and context.get("before_witness_sha256")==A04_BEFORE_SHA256
+                     and context.get("base_approved_sha256")==before["approved_scope_sha256"],
+                     "GUARD_V3_ROOT_OWNER_TRANSACTION_CONTEXT_DRIFT")
+            else:
+                need(lineage.get("source_sha")==context["source_sha"]
+                     and lineage.get("before_witness_sha256")==A04_BEFORE_SHA256
+                     and lineage.get("base_approved_sha256")==before["approved_scope_sha256"],
+                     "AUTH_RUNTIME_LINEAGE_CONTEXT_DRIFT")
     need(before["nginx"]["upstream_port"]==3030,"BEFORE_NGINX_NOT_OLD")
     need(after["release_journal"]["root_rollback_nginx_sha256"]==
          before["nginx"]["file_sha256"],"F_ROLLBACK_PREIMAGE_NOT_ORIGINAL_NGINX")
