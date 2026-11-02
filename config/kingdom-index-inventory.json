@@ -8,8 +8,8 @@
   },
   "policy": "Canonical entrypoint inventory only. Path scopes are classification hints, not authenticated access tests. Dynamic route patterns require separately governed fixtures; APIs require separate domain-owner assignments. No score, dependency completeness, authorization or production certification follows from this file. Never serve detailed protected paths in a public Index response.",
   "counts": {
-    "pageTemplates": 155,
-    "adminTemplates": 37,
+    "pageTemplates": 157,
+    "adminTemplates": 38,
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 10,
@@ -946,6 +946,18 @@
       "href": "/zodiac",
       "entrypoint": "app/zodiac/page.tsx",
       "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/system-composer",
+      "entrypoint": "app/admin/system-composer/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-construction",
+      "entrypoint": "app/kingdom-construction/page.tsx",
+      "scope": "excluded-static",
       "assurance": "unverified"
     }
   ],
