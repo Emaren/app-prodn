@@ -314,6 +314,24 @@ def snapshots(units):
             "candidate_web":unit_state(NEW_UNIT),
             "finance":{u:unit_state(u) for u in units},
             "native_protected":protected,"wolo":stable_sockets}
+def snapshots_during_bounded_timer_quiescence(units,maximum_seconds=25):
+    """Never accept an active timer as inactive; wait for real native completion.
+
+    HEL1's legitimate financial health one-shots can be active for seconds.
+    The original native reader, PG, nft and every other financial invariant
+    remain unchanged. Only this exact transient refusal is retried.
+    """
+    deadline=time.monotonic()+maximum_seconds
+    while True:
+        try:
+            return snapshots(units)
+        except Exception as error:
+            if (type(error).__name__!="Hold"
+                or str(error)!="MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"
+                or time.monotonic()>=deadline):
+                raise
+            time.sleep(.2)
+
 def listener_lines(raw):
     out={}
     for port in ("8092","8093"):
@@ -1116,7 +1134,7 @@ def cutover_plan(options):
     previous=consumed_previous(base,old)
     nginx_loaded_vhost(old,VHOST,old_count=6)
     candidate=safe_replace_site(old,NEW_UPSTREAM)
-    state=snapshots(base["finance_units"]);prove_preimage(base,state)
+    state=snapshots_during_bounded_timer_quiescence(base["finance_units"]);prove_preimage(base,state)
     stage_identity(base);verified_b_poststart(base,state);verified_durable_e_rollback(base)
     need(http_version(OLD_PORT)==PRESERVED_PREVIOUS_VERSION and
          http_version(NEW_PORT)==base["candidate_build_version"],"EXACT_WEB_RUNTIME_VERSIONS_REQUIRED")
@@ -1222,7 +1240,7 @@ def apply_owner_grant(options):
     def refresh():
         actual=validate_owner_grant(options.grant_comment,options.grant_sha256,envelope)
         need(actual==owner_record,"OWNER_GRANT_REVOKED_OR_CHANGED_AT_SEAM")
-        need(sha(canonical(snapshots(base["finance_units"])))==envelope["plan"]["protected_snapshot_sha256"],
+        need(sha(canonical(snapshots_during_bounded_timer_quiescence(base["finance_units"])))==envelope["plan"]["protected_snapshot_sha256"],
              "OWNER_APPROVED_PROTECTED_STATE_CHANGED")
         need(datetime.now(timezone.utc)<=grant_timestamp(owner_record["manifest"]["expires_at"]),
              "OWNER_GRANT_EXPIRED_AT_MUTATION_SEAM")
@@ -1243,7 +1261,7 @@ def apply(authorized=None):
     need(sha(old)==j["nginx_before_sha256"],"ORIGINAL_NGINX_BYTES_DRIFT")
     nginx_loaded_vhost(old,config)
     candidate=safe_replace_site(old,NEW_UPSTREAM)
-    s=snapshots(j["finance_units"]);prove_preimage(j,s)
+    s=snapshots_during_bounded_timer_quiescence(j["finance_units"]);prove_preimage(j,s)
     candidate_asset=stage_identity(j)
     verified_b_poststart(j,s)
     verified_durable_e_rollback(j)
@@ -1262,7 +1280,7 @@ def apply(authorized=None):
         try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError as exc:raise Hold("RELEASE_LOCK_BUSY") from exc
         lock_check()
-        need(snapshots(j["finance_units"])==s,"FINANCE_OR_OLD_WEB_DRIFT_AT_SEAM")
+        need(snapshots_during_bounded_timer_quiescence(j["finance_units"])==s,"FINANCE_OR_OLD_WEB_DRIFT_AT_SEAM")
         need(root_file(config,131072)==old,"NGINX_BEFORE_RACE")
         nginx_loaded_vhost(old,config)
         if authorized is not None:authorized["refresh"]()
@@ -1287,10 +1305,10 @@ def apply(authorized=None):
             nginx_loaded_vhost(candidate,config,old_count=0)
             def candidate_guard():
                 nginx_loaded_vhost(candidate,config,old_count=0)
-                need(snapshots(j["finance_units"])==s,"FINANCE_OR_OLD_WEB_CHANGED_ON_PROXY_SWITCH")
+                need(snapshots_during_bounded_timer_quiescence(j["finance_units"])==s,"FINANCE_OR_OLD_WEB_CHANGED_ON_PROXY_SWITCH")
             readiness=wait_runtime(j["candidate_build_version"],previous_version,candidate_asset,candidate_guard)
             durable_write(record/"readiness.json",canonical(readiness)+b"\n");fsyncdir(record)
-            need(snapshots(j["finance_units"])==s,
+            need(snapshots_during_bounded_timer_quiescence(j["finance_units"])==s,
                  "FINANCE_OR_OLD_WEB_CHANGED_ON_PROXY_SWITCH")
             durable_write(record/"commit.json",canonical({
                 "status":"R24_PARALLEL_WEBSITE_LIVE",
@@ -1314,7 +1332,7 @@ def apply(authorized=None):
                 nginx_loaded_vhost(old,config,old_count=6)
                 def original_guard():
                     nginx_loaded_vhost(old,config,old_count=6)
-                    need(protected_continuity(snapshots(j["finance_units"]))==protected_continuity(s),
+                    need(protected_continuity(snapshots_during_bounded_timer_quiescence(j["finance_units"]))==protected_continuity(s),
                          "PROTECTED_IDENTITY_DRIFT_DURING_ROLLBACK")
                 return wait_runtime(previous_version,j["candidate_build_version"],previous_asset,original_guard)
             record_failed_cutover(record,error,restore)
@@ -1378,14 +1396,14 @@ def manual_rollback(nonce,transaction=False):
     nginx_loaded_vhost(current,config,old_count=0)
     need(sha(current)==commit["new_nginx_sha256"],
          "LIVE_NGINX_NOT_EXACT_CANDIDATE")
-    s=snapshots(j["finance_units"])
+    s=snapshots_during_bounded_timer_quiescence(j["finance_units"])
     prove_rollback_preimage(j,s)
     lockfd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
     try:
         try:fcntl.flock(lockfd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError as err:raise Hold("ROLLBACK_GLOBAL_LOCK_BUSY") from err
         lock_check()
-        need(protected_continuity(snapshots(j["finance_units"]))==
+        need(protected_continuity(snapshots_during_bounded_timer_quiescence(j["finance_units"]))==
              protected_continuity(s),
              "FINANCIAL_ORIGINAL_WEB_DRIFT_BEFORE_ROLLBACK")
         try:
@@ -1400,11 +1418,11 @@ def manual_rollback(nonce,transaction=False):
         nginx_loaded_vhost(old,config,old_count=6)
         def original_guard():
             nginx_loaded_vhost(old,config,old_count=6)
-            need(protected_continuity(snapshots(j["finance_units"]))==protected_continuity(s),
+            need(protected_continuity(snapshots_during_bounded_timer_quiescence(j["finance_units"]))==protected_continuity(s),
                  "FINANCIAL_ORIGINAL_WEB_DRIFT_AFTER_ROLLBACK")
         readiness=wait_runtime(PRESERVED_PREVIOUS_VERSION,j["candidate_build_version"],
                                previous_build_asset(j),original_guard)
-        need(protected_continuity(snapshots(j["finance_units"]))==
+        need(protected_continuity(snapshots_during_bounded_timer_quiescence(j["finance_units"]))==
              protected_continuity(s),
              "FINANCIAL_ORIGINAL_WEB_DRIFT_AFTER_ROLLBACK")
         durable_write(record/"rollback.json",canonical({"status":"OLD_PUBLIC_PROXY_RESTORED",
@@ -1444,7 +1462,7 @@ def approved_owner_intent(rollback=False):
              "ACTUAL_NGINX_REVIEWED_PREIMAGE_DRIFT")
         nginx_loaded_vhost(raw,VHOST,old_count=6)
         safe_replace_site(raw,NEW_UPSTREAM)
-        witness=snapshots(j["finance_units"])
+        witness=snapshots_during_bounded_timer_quiescence(j["finance_units"])
         prove_preimage(j,witness)
         stage_identity(j)
         verified_b_poststart(j,witness)
