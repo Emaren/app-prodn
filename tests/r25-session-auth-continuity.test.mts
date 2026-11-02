@@ -19,7 +19,7 @@ const raw = {
 const fixtureKey = "fixture-only-symmetric-session-key-abcdefghijklmnopqrstuvwxyz0123456789";
 
 function compiledModule(code: string, env: Record<string, string>, imported: Record<string, unknown>) {
-  const exports: Record<string, any> = {};
+  const exports: Record<string, unknown> = {};
   const compiled = ts.transpileModule(code, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
