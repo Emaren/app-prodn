@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8a011fc5bd8476c9a53b351283a25d6779562f8b098fc032742a94c66e0d7ff7",
+      "sha256": "4b3f47e518ddb01679e1dd8aabc445b3344ebd8c409d75fcb58b877e447842b7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-v6-node-exec-readiness-20261101",
-    "commit": "77720bfcb02cc3d9e12e37169064080a97ec0802"
+    "branch": "codex/r25-v7-systemd-env-admission-20261101",
+    "commit": "52fff92691c930048950c27dc01d075179294044"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

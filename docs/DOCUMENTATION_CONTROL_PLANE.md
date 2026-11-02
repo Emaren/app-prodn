@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-v6-node-exec-readiness-20261101` at `77720bfcb02cc3d9e12e37169064080a97ec0802`
+Implementation baseline: `codex/r25-v7-systemd-env-admission-20261101` at `52fff92691c930048950c27dc01d075179294044`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
