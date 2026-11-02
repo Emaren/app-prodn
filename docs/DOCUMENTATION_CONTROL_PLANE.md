@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-g-war-chest-route-bound-20261102` at `142a5052f748d2c053a10de784cd6c35e83024df`
+Implementation baseline: `codex/r25-f-origin-readiness-20261102` at `bad9f42919a22872b982c7a6ec4f72569ace9df9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
