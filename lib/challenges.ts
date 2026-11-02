@@ -3578,18 +3578,39 @@ function buildChallengeRecordSummary(
   return summary;
 }
 
+/**
+ * Only authenticated Challenge reconciliation may persist replay/title/escrow
+ * outcomes. Public Live Games, GET/HEAD, SSR and prewarm observe existing
+ * persisted state; they must not drive these financial-authority transitions.
+ *
+ * This reuses the original persisted-result machinery and its replay locks;
+ * it does not introduce a second settlement writer or new money endpoint.
+ */
+export async function reconcileScheduledMatchResultsForAuthorizedProducer(
+  prisma: PrismaClient
+): Promise<{ scannedCount: number; projectedCount: number }> {
+  const [rows, sessions] = await Promise.all([
+    loadScheduledMatchRows(prisma),
+    loadLiveSessionSnapshot(prisma),
+  ]);
+  const projected = await persistScheduledMatchResults(
+    prisma,
+    rows,
+    sessions.activeSessions,
+    sessions.recentlyCompletedSessions
+  );
+  return { scannedCount: rows.length, projectedCount: projected.length };
+}
+
 export async function loadScheduledMatchTilesForLiveBoard(
   prisma: PrismaClient,
   activeSessions: ComparableSession[],
   recentlyCompletedSessions: ComparableSession[]
 ) {
   const rows = await loadScheduledMatchRows(prisma);
-  const reconciledRows = await persistScheduledMatchResults(
-    prisma,
-    rows,
-    activeSessions,
-    recentlyCompletedSessions
-  );
+  // R17: observe durable outcomes only. Authenticated Challenge reconcile POST
+  // owns persistScheduledMatchResults, including trophy/custody/escrow mutations.
+  const reconciledRows = rows;
   const now = new Date();
   const activeSnapshot = deriveScheduledMatchTiles(
     reconciledRows,
@@ -3638,12 +3659,9 @@ export async function loadChallengeThreadTiles(
     loadLiveSessionSnapshot(prisma),
   ]);
 
-  const reconciledRows = await persistScheduledMatchResults(
-    prisma,
-    rows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  // R17: contact/thread readers also observe durable state. Their GET/HEAD
+  // must never settle a result or transfer app championship custody.
+  const reconciledRows = rows;
 
   /*
    * An embedded Match Room names one exact ledger record, including terminal
@@ -3747,19 +3765,12 @@ export async function loadChallengeTileById(
   prisma: PrismaClient,
   challengeId: number
 ): Promise<ScheduledMatchTile | null> {
-  const [rows, sessionSnapshot] = await Promise.all([
-    loadScheduledMatchRows(prisma, {
-      challengeId,
-      includeResolved: true,
-    }),
-    loadLiveSessionSnapshot(prisma),
-  ]);
-  const reconciledRows = await persistScheduledMatchResults(
-    prisma,
-    rows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  // Even a participant/admin-facing GET observes the persisted match result.
+  // The authenticated challenge reconciliation POST owns custody transitions.
+  const reconciledRows = await loadScheduledMatchRows(prisma, {
+    challengeId,
+    includeResolved: true,
+  });
   const projections=await loadChampionshipProjectionMap(prisma,[challengeId]);
   return buildComparableChallengeTiles(reconciledRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).find(
     (tile) => tile.id === challengeId
@@ -3846,12 +3857,9 @@ export async function loadChallengeHubSnapshot(
     ]),
   );
 
-  const reconciledRows = await persistScheduledMatchResults(
-    prisma,
-    historySnapshot.rows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  // Challenge Hall loads may be triggered on GET/SSR. Do not reconcile
+  // scheduled payouts, title custody or replay authority from a page read.
+  const reconciledRows = historySnapshot.rows;
 
   const preferenceRows =
     reconciledRows.length > 0

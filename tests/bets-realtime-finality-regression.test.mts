@@ -605,7 +605,9 @@ test(
       betsPageSource,
       /window\.addEventListener\("focus", handleForegroundRefresh\)/
     );
-    assert.match(
+    // R13: public board refresh must NOT wake financial maintenance.
+    // Only independently authenticated writer producers may trigger it.
+    assert.doesNotMatch(
       betsRouteSource,
       /queueBetMarketEnsure\(prisma, 0\)/
     );

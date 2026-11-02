@@ -29,6 +29,10 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          node --check scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          if node scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs >/dev/null 2>&1; then
+            echo "::error::W1SAFE Chrome ran without a real local build and browser identity"; exit 2
+          fi
           test -z "$(git status --porcelain --untracked-files=no)"
           python3 -m unittest discover -s tests -p 'test_renaissance_88_factory.py' -v
           python3 -m unittest discover -s tests -p 'test_renaissance_88_fixture.py' -v
@@ -63,6 +67,9 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3137
       BROWSER_BASE_URL: http://127.0.0.1:3137
       AOE2WAR_PROD_DB_PREVIEW: 'false'
+      # Explicit CI build-only mode: suppress background telemetry/presence
+      # rather than weakening the GET-only interceptor or faking browser PASS.
+      NEXT_PUBLIC_AOE2WAR_ISOLATED_GET_ONLY: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -113,8 +120,15 @@ jobs:
           printf 'REN88_GENERATED_MANIFEST_SHA=%s\n' "$REN88_GENERATED_MANIFEST_SHA" >> "$GITHUB_ENV"
           cp .next/BUILD_ID renaissance-88-chrome/BUILD_ID
           cp .next/server/app-paths-manifest.json renaissance-88-chrome/app-paths-manifest.json
-          python3 scripts/renaissance_88_plan.py plan --preview-unsealed-generated-policy --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id "$(cat .next/BUILD_ID)" --output renaissance-88-chrome/plan.json
-          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > renaissance-88-chrome/identity.txt
+          # Bind the value copied from the actual built artifact. A valid Next.js
+          # nanoid may start with '-', so separate argv words are unsafe for argparse.
+          BUILD_ID="$(cat .next/BUILD_ID)"
+          if [[ ! "$BUILD_ID" =~ ^[A-Za-z0-9_-]{10,128}$ ]] || [[ "$(cat renaissance-88-chrome/BUILD_ID)" != "$BUILD_ID" ]]; then
+            echo "::error::Missing, invalid, or changed Next BUILD_ID: preview HOLD"
+            exit 2
+          fi
+          python3 scripts/renaissance_88_plan.py plan --preview-unsealed-generated-policy --expected-sha "$SOURCE_SHA" --build-dir .next --expected-build-id="$BUILD_ID" --output renaissance-88-chrome/plan.json
+          printf 'source=%s\nbuild=%s\ncandidate_only=true\n' "$SOURCE_SHA" "$BUILD_ID" > renaissance-88-chrome/identity.txt
       - name: Actual Chrome desktop/mobile; bounded PR pilot or full scheduled census
         env:
           PW_HOME: ${{ runner.temp }}/renaissance-88-pw
@@ -146,6 +160,12 @@ jobs:
             --plan renaissance-88-chrome/plan.json --out "$GITHUB_WORKSPACE/renaissance-88-chrome" \
             --cohort 0 --cohorts "$cohorts" --samples "$samples" --route-ms 18000 --deadline-ms "$deadline"
           browser_rc=$?
+          # Genuine isolated Next artifact, exact W1_SAFE routes at 375/768/1440.
+          # This remains candidate-only: not authenticated live/HEL1 acceptance.
+          export BROWSER_BASE_URL=http://127.0.0.1:3137
+          export W1SAFE_CANDIDATE_BUILD_ID="$(cat renaissance-88-chrome/BUILD_ID)"
+          timeout -k 5s 5m node scripts/aoe2_release_r16_w1safe_disposable_chrome.cjs
+          w1safe_rc=$?
           set -e
           # Stop the Next app before snapshot: no background GET callback may race
           # the final DB/asset fingerprint.
@@ -165,8 +185,16 @@ jobs:
             > renaissance-88-chrome/unsealed-policy-after.txt
           cat renaissance-88-chrome/fixture-after.txt >> "$GITHUB_STEP_SUMMARY"
           printf 'UNSEALED PREVIEW ONLY: exact Chrome evidence is NOT Index certification, DocsV2 seal, or release authorization.\n' >> "$GITHUB_STEP_SUMMARY"
-          echo "BROWSER_EXIT=$browser_rc" >> renaissance-88-chrome/identity.txt
-          exit "$browser_rc"
+          # Separate independent Chrome checks. A public 88/88 PASS must not
+          # hide a failing exact-width financial/nonmutating browser boundary.
+          printf 'BROWSER_EXIT=%s W1SAFE_R16_EXIT=%s\n' "$browser_rc" "$w1safe_rc" \
+            >> renaissance-88-chrome/identity.txt
+          if [ "$browser_rc" -ne 0 ] || [ "$w1safe_rc" -ne 0 ]; then
+            echo "::error::W1_SAFE_CHROME_HOLD: 88-route=$browser_rc exact-width=$w1safe_rc"
+            exit 2
+          fi
+          test -s renaissance-88-chrome/w1safe-r16/review.json
+          echo "PASS: both 88-route and 375/768/1440 read-only Chrome accepted"
       - name: Assemble independent per-route statuses; preserve UNMEASURED
         if: always()
         run: |

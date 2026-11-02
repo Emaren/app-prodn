@@ -1,5 +1,4 @@
 import { PrismaClient } from "@/lib/generated/prisma";
-import { ensureBetMarkets } from "@/lib/bets";
 import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
@@ -15,18 +14,12 @@ import {
   type LobbySnapshot,
 } from "@/lib/lobby";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
-import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 import { featuredWarriorHonorLabel } from "@/lib/featuredWarriorPresentation";
 import { loadPublicTrophies, trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
 
 const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 8;
-const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
-
-let lastLobbyMaintenanceAt = 0;
-let lobbyMaintenancePromise: Promise<void> | null = null;
-
 async function loadFeaturedWarriorHonors(
   prisma: PrismaClient
 ) {
@@ -79,33 +72,6 @@ async function loadFeaturedWarriorHonors(
   }
 }
 
-function queueLobbyMaintenance(prisma: PrismaClient) {
-  const now = Date.now();
-
-  if (
-    lobbyMaintenancePromise ||
-    now - lastLobbyMaintenanceAt <
-      LOBBY_MAINTENANCE_INTERVAL_MS
-  ) {
-    return;
-  }
-
-  lastLobbyMaintenanceAt = now;
-
-  lobbyMaintenancePromise = Promise.resolve()
-    .then(() => reconcileTournamentMatchProofs(prisma))
-    .then(() => ensureBetMarkets(prisma))
-    .catch((error) => {
-      console.warn(
-        "Background lobby maintenance failed:",
-        error
-      );
-    })
-    .finally(() => {
-      lobbyMaintenancePromise = null;
-    });
-}
-
 async function loadLobbySnapshotFresh(
   prisma: PrismaClient,
   viewerUid?: string | null,
@@ -142,8 +108,6 @@ async function loadLobbySnapshotFresh(
       guestSessionId: guestReactionSessionId,
     }),
   );
-
-  queueLobbyMaintenance(prisma);
 
   try {
     const [

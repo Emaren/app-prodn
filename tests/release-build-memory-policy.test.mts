@@ -57,7 +57,7 @@ test("release build bounds aggregate Next memory without dropping validation", (
       env: releaseEnv,
     })
   );
-  assert.deepEqual(releasePlan, [["next", ["lint"]], ["tsc", ["--noEmit"]]]);
+  assert.deepEqual(releasePlan, [["eslint", ["app", "pages", "components", "lib", "src", "--no-error-on-unmatched-pattern"]], ["tsc", ["--noEmit"]]]);
 
   const ordinaryEnv = { ...process.env };
   delete ordinaryEnv.NEXT_DIST_DIR;
@@ -68,7 +68,7 @@ test("release build bounds aggregate Next memory without dropping validation", (
       env: ordinaryEnv,
     })
   );
-  assert.deepEqual(ordinaryPlan, [["next", ["lint"]], ["tsc", ["--noEmit"]]]);
+  assert.deepEqual(ordinaryPlan, [["eslint", ["app", "pages", "components", "lib", "src", "--no-error-on-unmatched-pattern"]], ["tsc", ["--noEmit"]]]);
 });
 
 test("ordinary builds keep Next built-in validation enabled", () => {

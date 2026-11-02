@@ -37,6 +37,7 @@
 /kingdom-bettors
 /kingdom-agents
 /kingdom-brain
+/kingdom-construction
 /kingdom-intelligence
 /kingdom-progress
 /kingdom-recovery

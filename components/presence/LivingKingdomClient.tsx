@@ -274,6 +274,9 @@ export default function LivingKingdomClient() {
   }, [authLoading, uid]);
 
   const presencePublisher = React.useMemo(() => {
+    // No synthetic presence publication in disposable read-only Chrome.
+    // Live builds omit the explicit isolated build-time variable.
+    if (process.env.NEXT_PUBLIC_AOE2WAR_ISOLATED_GET_ONLY === "1") return null;
     if (authLoading) return null;
     if (uid) {
       return {

@@ -96,7 +96,7 @@ test("ordinary public Trophy projection leaves current rows untouched", () => {
   assert.equal(projected.currentHolderUserId, 30);
 });
 
-test("public collection and metadata use the same retained projection path", () => {
+test("public collection and metadata use the same read-only projection path", () => {
   const service = readFileSync(
     new URL("../lib/trophies/service.ts", import.meta.url),
     "utf8"
@@ -113,7 +113,7 @@ test("public collection and metadata use the same retained projection path", () 
   assert.match(publicLoaders, /return projectPublicTrophy\(\{\.\.\.trophy, hasExplicitChampionshipCustody/);
   assert.doesNotMatch(publicLoaders, /\.filter\(\(trophy\)/);
   assert.match(publicLoaders, /export async function loadPublicTrophy/);
-  assert.match(publicLoaders, /await ensurePublicTrophySeedData\(prisma\)/);
+  assert.doesNotMatch(publicLoaders, /ensure(?:Public)?TrophySeedData\(prisma\)/);
 
   assert.match(metadata, /loadPublicTrophy\(getPrisma\(\), trophyId\)/);
   assert.doesNotMatch(metadata, /ensureTrophySeedData/);
