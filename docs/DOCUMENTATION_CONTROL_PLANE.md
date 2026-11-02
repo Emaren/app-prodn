@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-postw1-integrated-release-20261102` at `6aa7a74612acf633e9b0fdf7e6eca3b7c3bc99c5`
+Implementation baseline: `codex/r25-postw1-integrated-release-20261102` at `84ba68816634f586ae975e3fba7ea03d96dd7c60`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
