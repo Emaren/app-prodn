@@ -197,7 +197,7 @@ class ContinuedTransaction(unittest.TestCase):
     def read_scope(self,raw,nonce,contents):
         with mock.patch.multiple(g,TRANSACTION_NONCE=nonce,A04_APPROVAL_SHA256=g.digest(raw)):
             with mock.patch.object(g,"root_file",side_effect=lambda path,limit:contents[path]):
-                return g.scope()
+                return g.scope("after")
 
     def test_new_scope_changes_only_nonce_and_preserves_original_receipt(self):
         base,raw,nonce,folder,contents,record=self.fixture()

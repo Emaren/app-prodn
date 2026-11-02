@@ -6,7 +6,7 @@ F controls the single owner-authorized deployment transaction. Never run this
 against a candidate lacking B's positive read-only/egress/method admission.
 """
 from __future__ import annotations
-import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys, time
+import argparse, hashlib, hmac, json, os, pathlib, re, socket, stat, subprocess, sys, time
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
@@ -318,7 +318,7 @@ def lock_state():
     need(stat.S_ISREG(st.st_mode) and got==LOCK_ID,"ORIGINAL_RELEASE_LOCK_DRIFT")
     return {"device":st.st_dev,"inode":st.st_ino,"uid":st.st_uid,
             "mode":stat.S_IMODE(st.st_mode)}
-def scope():
+def scope(phase):
     base_raw=root_file(APPROVAL,16384)
     x=parse(base_raw,16384)
     need(x.get("schema")=="aoe2war.r24.rootssh.parallel-web-nginx.v1" and
@@ -329,9 +329,9 @@ def scope():
          "F_ROOT_SCOPE_MISSING_OR_INCOMPLETE")
     if TRANSACTION_NONCE is None:
         return x
-    return transaction_scope(base_raw,x)[0]
+    return transaction_scope(base_raw,x,phase)[0]
 
-def transaction_scope(base_raw,base):
+def transaction_scope(base_raw,base,phase):
     """Select a new authorized journal without rewriting the accepted A04 scope."""
     need(type(TRANSACTION_NONCE)is str and NONCE.fullmatch(TRANSACTION_NONCE)
          and TRANSACTION_NONCE!=base.get("nonce"),"NEW_TRANSACTION_NONCE_REQUIRED")
@@ -388,7 +388,7 @@ def transaction_scope(base_raw,base):
                           ("nginx_after_sha256",H64)):
         need(type(manifest.get(field))is str and pattern.fullmatch(manifest[field])
              and plan.get(field)==manifest[field],"AUTHORIZED_TRANSACTION_SOURCE_DRIFT:"+field)
-    lineage=runtime_lineage(base,plan)
+    lineage=runtime_lineage(base,plan,phase)
     expected=dict(base);expected["nonce"]=TRANSACTION_NONCE
     if lineage is not None:
         if lineage.get("schema")=="aoe2war.r25.session-guard-release.v3":
@@ -417,7 +417,68 @@ C_SESSION_GUARD_V3_SOURCE_BYTES_SHA="0a1e1c583d79e24ea63a1e107ade0f5135601e5a0b1
 C_SESSION_GUARD_V3_GUARD_SHA="192d36d75aede69e85e1d7599d58daf13d9dc96bb2aa49a15d9bd9596b8daac5"
 F_CANDIDATE_SESSION_V3_UNIT_SHA="06238a9425a3ea3c47f55ec0f645f10d3a6da047c361265c80e44470df7ab437"
 
-def runtime_lineage_v3(base,path,expected_sha):
+def c_after_native_requalification(namespace, guard_sha, expected_nginx_sha, nginx_path):
+    """Repeat exact C's private identity and signer checks after a legal 3031 flip.
+
+    The reviewed C c_baseline() is a PRE-switch verifier because it calls
+    frozen_public() which insists on 3030. Do not monkeypatch that function.
+    Require the source-bound 3031 nginx bytes, then explicitly repeat its
+    remaining candidate process, signed session, B and financial listener checks.
+    """
+    need(type(expected_nginx_sha)is str and H64.fullmatch(expected_nginx_sha),
+         "G_AFTER_EXACT_NGINX_SHA_REQUIRED")
+    need(type(nginx_path)is str and nginx_path.startswith("/etc/nginx/"),
+         "G_AFTER_APPROVED_NGINX_PATH_REQUIRED")
+    config=root_file(pathlib.Path(nginx_path),131072)
+    need(digest(config)==expected_nginx_sha and
+         config.count(b"proxy_pass http://127.0.0.1:3031;")==6 and
+         config.count(b"proxy_pass http://127.0.0.1:3030;")==0,
+         "G_AFTER_PUBLIC_3031_EXACT_NGINX_REQUIRED")
+    try:
+        need(namespace["actual_guard_sha"]()==namespace["OLD_GUARD_SHA"],
+             "G_AFTER_C_ORIGINAL_GUARD_DRIFT")
+        current=namespace["status"](namespace["UNIT"])
+        need(current.get("ActiveState")=="active" and
+             current.get("User")=="aoe2war-r24-web" and
+             current.get("WorkingDirectory")==str(STAGE) and
+             current.get("NeedDaemonReload")=="no",
+             "G_AFTER_C_SYSTEMD_IDENTITY_DRIFT")
+        pid=int(current.get("MainPID","0"))
+        need(pid==1483304 and namespace["ticks"](pid)==148446193,
+             "G_AFTER_C_CANDIDATE_PROCESS_DRIFT")
+        need(namespace["health"](3031).get("buildVersion")==C_PHYSICAL_APP_VERSION,
+             "G_AFTER_C_CANDIDATE_BUILD_DRIFT")
+        env=namespace["read_environment"](pid)
+        original_session=namespace["session_identity"]()
+        need(env.get("NODE_OPTIONS")==
+             ("--require="+str(namespace["GUARD"])).encode() and
+             type(env.get("SESSION_SECRET"))is bytes and
+             hmac.compare_digest(env["SESSION_SECRET"],original_session) and
+             "NEXTAUTH_SECRET" not in env,
+             "G_AFTER_C_SESSION_SIGNING_IDENTITY_DRIFT")
+        b=namespace["b_observe"](guard_sha,session=True)
+        need(b.get("status")=="POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY"
+             and b.get("candidate_uid")==993 and b.get("build_id")==C_PHYSICAL_BUILD_ID
+             and b.get("old_web_pid")==EXPECTED_OLD_PID
+             and b.get("candidate_pid")==pid,
+             "G_AFTER_C_NATIVE_B_CONFINEMENT_DRIFT")
+        listeners=namespace["call"](["/usr/bin/ss","-H","-lnt"],maximum=32768).decode().splitlines()
+        has=lambda port:any(re.search(r":"+str(port)+r"\s",line) for line in listeners)
+        need(has(8092) and has(8093) and not has(8094) and not has(8095),
+             "G_AFTER_C_CUSTODY_PORT_FENCE_DRIFT")
+        return {"candidate_pid":pid,"candidate_start_ticks":namespace["ticks"](pid),
+                "native_b_status":"POSITIVE_ISOLATED_3031_NOT_PUBLIC_DEPLOYMENT_AUTHORITY",
+                "native_b_physical_checks_performed":True,"guard_sha256":guard_sha,
+                "build_version":C_PHYSICAL_APP_VERSION,
+                "public_pid":EXPECTED_OLD_PID,"wolo_legacy_untouched":True,
+                "financial_authorized":False}
+    except namespace["Hold"] as exc:
+        reason=str(exc)
+        need(re.fullmatch(r"[A-Z0-9_:.]{1,120}",reason)is not None,
+             "G_AFTER_C_NATIVE_UNSAFE_EXCEPTION_TEXT")
+        raise Hold("G_AFTER_C_NATIVE_HOLD:"+reason) from None
+
+def runtime_lineage_v3(base,path,expected_sha,phase,after_sha256=None):
     need(type(path)is str and re.fullmatch(
          r"/var/lib/aoe2war-r25-c-additive/session-guard-v3-[0-9a-f]{32}/complete\.json",path)
          and type(expected_sha)is str and H64.fullmatch(expected_sha),
@@ -465,7 +526,18 @@ def runtime_lineage_v3(base,path,expected_sha):
     # Re-run C's physical read-only B/C qualification; no mutation permitted.
     namespace={"__name__":"readonly_g_requalification"}
     exec(compile(code,"immutable_guard_v3","exec"),namespace)
-    physical=namespace["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)
+    need(phase in ("after","rollback"),"G_C_GUARD_V3_EXPLICIT_RELEASE_PHASE_REQUIRED")
+    if phase=="after":
+        physical=c_after_native_requalification(
+            namespace,C_SESSION_GUARD_V3_GUARD_SHA,after_sha256,base["nginx_config"])
+    else:
+        # Rollback must restore original 3030, so full C frozen_public is valid.
+        try:physical=namespace["c_baseline"](C_SESSION_GUARD_V3_GUARD_SHA,session=True)
+        except namespace["Hold"] as exc:
+            reason=str(exc)
+            need(re.fullmatch(r"[A-Z0-9_:.]{1,120}",reason)is not None,
+                 "G_C_ROLLBACK_NATIVE_UNSAFE_EXCEPTION_TEXT")
+            raise Hold("G_C_ROLLBACK_NATIVE_HOLD:"+reason) from None
     need(physical==last and digest(root_file(pathlib.Path("/usr/local/lib/aoe2war-r25/r25_b_guard_session_v2.cjs"),16384))==C_SESSION_GUARD_V3_GUARD_SHA,
          "G_GUARD_V3_CURRENT_NATIVE_B_C_PROOF_DRIFT")
     actual_unit=show(NEW_UNIT)
@@ -475,11 +547,11 @@ def runtime_lineage_v3(base,path,expected_sha):
          "G_GUARD_V3_CURRENT_SYSTEMD_IDENTITY_DRIFT")
     return rec
 
-def runtime_lineage(base,plan):
+def runtime_lineage(base,plan,phase):
     path=plan.get("runtime_requalification_path");expected_sha=plan.get("runtime_requalification_sha256")
     if path is None and expected_sha is None:return None
     if type(path)is str and "/session-guard-v3-" in path:
-        return runtime_lineage_v3(base,path,expected_sha)
+        return runtime_lineage_v3(base,path,expected_sha,phase,plan.get("nginx_after_sha256"))
     need(type(path)is str and re.fullmatch(r"/var/lib/aoe2war-r25-c-additive/session-repair-[0-9a-f]{32}/complete\.json",path)
          and type(expected_sha)is str and H64.fullmatch(expected_sha),"EXACT_AUTH_RUNTIME_LINEAGE_REQUIRED")
     raw=root_file(pathlib.Path(path),32768)
@@ -626,7 +698,7 @@ def audit(approved,phase):
          commit.get("nonce")==approved["nonce"],"F_CUTOVER_COMMIT_MISMATCH")
     if TRANSACTION_NONCE is not None:
         base_raw=root_file(APPROVAL,16384)
-        _,context=transaction_scope(base_raw,parse(base_raw,16384))
+        _,context=transaction_scope(base_raw,parse(base_raw,16384),phase)
         for key,value in context.items():
             need(commit.get(key)==value,"COMMIT_AUTHORIZED_TRANSACTION_DRIFT:"+key)
     original=root_file(p/"before-nginx.conf",131072)
@@ -771,7 +843,7 @@ def root_snapshot(phase):
     need(old_http["app_build_version"]!=new_http["app_build_version"],
          "OLD_AND_NEW_APP_BUILD_VERSION_AMBIGUOUS")
     # Public probe deliberately performed only once on Mac side, not on HEL1 root.
-    approved=scope()
+    approved=scope(phase)
     route=nginx_route(approved)
     history=audit(approved,phase)
     result={"schema":"aoe2war.g.r25.parallel-host.v1","phase":phase,"host":HOST,
@@ -785,10 +857,10 @@ def root_snapshot(phase):
         need(phase in ("after","rollback"),"NO_NEW_BEFORE_FOR_EXISTING_TRANSACTION_BASE")
         raw=root_file(APPROVAL,16384)
         base=parse(raw,16384)
-        context=transaction_scope(raw,base)[1]
+        context=transaction_scope(raw,base,phase)[1]
         result["transaction_scope"]=context
         if context.get("runtime_requalification_path") is not None:
-            result["candidate_runtime_lineage"]=runtime_lineage(base,context)
+            result["candidate_runtime_lineage"]=runtime_lineage(base,context,phase)
     return result
 def ssh_snapshot(target,phase):
     need(re.fullmatch(r"root@[A-Za-z0-9._-]{1,140}",target),"UNREVIEWED_SSH_TARGET")
