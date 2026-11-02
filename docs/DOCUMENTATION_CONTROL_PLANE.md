@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-c-session-continuity-20261102` at `15255e35c94dcefec3b21c2aa8da9586798a702d`
+Implementation baseline: `codex/r25-c-session-continuity-20261102` at `d4a91bcd8b80cf5c3b859e5f6fb08527a69e682c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
