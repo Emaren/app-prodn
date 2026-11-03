@@ -15,7 +15,7 @@ const source=readFileSync(corePath,"utf8");
 // Isolated loader exposes private verification kernels only in this test.
 // No production API, environment flag or transport can replace the authority.
 function kernel(build:unknown=null){
-  const fixtureSource=source.replace('const BUILD=typeof __AOE2WAR_HD_FINANCIAL_BUILD__ === "undefined" ? null : __AOE2WAR_HD_FINANCIAL_BUILD__;',`const BUILD=${JSON.stringify(build)};`)+"\nexport {withConfiguredLease,assertRuntime,authorize};";
+  const fixtureSource=source.replace('const BUILD=typeof __AOE2WAR_HD_FINANCIAL_BUILD__ === "undefined" ? null : __AOE2WAR_HD_FINANCIAL_BUILD__;',`const BUILD=${JSON.stringify(build)};`)+"\nexport {withConfiguredLease,assertRuntime,authorize,verifiedLease};";
   const m=new Module(corePath,import.meta as never);m.filename=corePath;
   // @ts-expect-error Node's private loader is used only for a disposable test module.
   m.paths=Module._nodeModulePaths(path.dirname(corePath));
@@ -40,6 +40,61 @@ test("raw Node and environment claims cannot open financial admission",async()=>
   try {await assert.rejects(withHdFinancialLease(input,async()=>++sends),/HD_FINANCIAL_FENCE_HELD/);assert.equal(sends,0);}
   finally {delete process.env.AOE2WAR_HD_FINANCIAL_SOURCE;delete process.env.AOE2WAR_HD_FINANCIAL_DEPLOYMENT;}
 });
+test("verified active lease reuses exact scope/wallet/producer without second connection or permission",async()=>{
+  const k=kernel(identity);
+  const controller=new AbortController();
+  const context={...input,signal:controller.signal,live:true,nestedActive:false,nestedConsumed:false};
+  let sends=0;
+  await k.verifiedLease.run(context,async()=>{
+    const result=await k.withHdFinancialLease(input,async(signal:AbortSignal)=>{
+      assert.strictEqual(signal,controller.signal);sends++;return "native-8094-execute";
+    });
+    assert.equal(result,"native-8094-execute");assert.equal(sends,1);
+    await assert.rejects(k.withHdFinancialLease(input,async()=>++sends),/nested_lease_invalid_or_busy/);
+    for(const changed of [
+      {...input,scope:"hd-satchel"},
+      {...input,producer:"different-producer"},
+      {...input,wallet:"wolo1"+"q".repeat(38)},
+    ])await assert.rejects(k.withHdFinancialLease(changed,async()=>++sends),/nested_lease_invalid_or_busy/);
+    assert.equal(sends,1);
+    // New synthetic admission context only for parallel-conflict regression.
+    // Production can never mint this context without policy authentication.
+    const parallel={...input,signal:controller.signal,live:true,nestedActive:false,nestedConsumed:false};
+    await k.verifiedLease.run(parallel,async()=>{
+    let release!:()=>void,signalEntered!:()=>void;
+    const started=new Promise<void>(resolve=>signalEntered=resolve);
+    const finished=new Promise<void>(resolve=>release=resolve);
+    const admitted=k.withHdFinancialLease(input,async()=>{signalEntered();await finished;return "first";});
+    await started;
+    await assert.rejects(k.withHdFinancialLease(input,async()=>++sends),/nested_lease_invalid_or_busy/);
+    release();assert.equal(await admitted,"first");
+    });
+    context.live=false;
+    await assert.rejects(k.withHdFinancialLease(input,async()=>++sends),/nested_lease_invalid_or_busy/);
+    context.live=true;controller.abort(Error("lease_expired"));
+    await assert.rejects(k.withHdFinancialLease(input,async()=>++sends),/nested_lease_invalid_or_busy/);
+    assert.equal(sends,1);
+  });
+  await assert.rejects(k.withHdFinancialLease(input,async()=>++sends),/HD_FINANCIAL_FENCE_HELD/);
+  assert.equal(sends,1);
+});
+
+test("a nested transport failure remains noncrediting UNKNOWN and context does not leak",async()=>{
+  const k=kernel(identity),controller=new AbortController();
+  const context={...input,signal:controller.signal,live:true,nestedActive:false,nestedConsumed:false};
+  let calls=0;
+  await k.verifiedLease.run(context,async()=>{
+    await assert.rejects(k.withHdFinancialLease(input,async()=>{
+      calls++;throw Error("simulated-lost-HTTP-acknowledgement");
+    }),/HD_FINANCIAL_FENCE_OUTCOME_UNKNOWN/);
+    assert.equal(calls,1);
+    assert.equal(context.nestedActive,false);
+    assert.equal(context.nestedConsumed,true);
+    await assert.rejects(k.withHdFinancialLease(input,async()=>"illegal-retry"),/nested_lease_invalid_or_busy/);
+  });
+  assert.equal(calls,1);
+});
+
 test("old compiled process cannot adopt a newly rotated authority identity",()=>{
   const k=kernel(identity);k.assertRuntime(authority);
   assert.throws(()=>k.assertRuntime({...authority,source:"c".repeat(40)}),/runtime_identity_mismatch/);
@@ -102,6 +157,19 @@ test("durable independent policy and active admission leases in real private Pos
       await assert.rejects(run(),/closed_or_unavailable/);assert.equal(sends,0);
       await set(true);await run();assert.equal(sends,1);
       await set(false);await assert.rejects(run(),/closed_or_unavailable/);assert.equal(sends,1);
+    });
+    await t.test("native 8094 inherits exactly one signed PostgreSQL lease under its original scope",async()=>{
+      await set(true);
+      let parent:AbortSignal|undefined;
+      const result=await run(async signal=>{
+        parent=signal;
+        return k.withHdFinancialLease(input,async inherited=>{
+          assert.strictEqual(inherited,parent);
+          return "only-one-signed-lease";
+        });
+      });
+      assert.equal(result,"only-one-signed-lease");
+      assert.ok(parent);
     });
     await t.test("forgeries expiry wrong-owner scope and source never invoke transport",async()=>{
       for(const patch of [{expires_at:Math.floor(Date.now()/1000)-1,issued_at:Math.floor(Date.now()/1000)-5},{source:"c".repeat(40)},
