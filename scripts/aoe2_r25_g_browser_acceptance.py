@@ -371,13 +371,15 @@ def production_pair(after_path):
             or item.get("nginx",{}).get("upstream_port")!=(3030 if phase=="before" else 3032)
             or item.get("nginx",{}).get("selectors")!=6):
             raise ValueError("Production native G receipt contract failed")
-        for key in ("source_sha","build_id","build_version","profile_sha256","manifest_sha256",
+        for key in ("source_sha","controller_source_sha","build_id","build_version","profile_sha256","manifest_sha256",
                     "native_admission_sha256","candidate_pid","candidate_start_ticks",
                     "protected_units_sha256","ports","release_lock","old_http","candidate_http"):
             if not item.get(key) or item[key]!=before.get(key):
                 raise ValueError("Production pair identity/continuity mismatch: "+key)
         if not re.fullmatch(r"[0-9a-f]{40}",str(item["source_sha"])):
             raise ValueError("Production exact source required")
+        if not re.fullmatch(r"[0-9a-f]{40}",str(item["controller_source_sha"])):
+            raise ValueError("Separately qualified controller source required")
         for key in ("profile_sha256","manifest_sha256","native_admission_sha256","protected_units_sha256"):
             if not SHA64.fullmatch(str(item[key])):raise ValueError("Production receipt digest required")
         if set(map(str,item["ports"]))!={"3030","3031","3032","8092","8093"}:
@@ -418,6 +420,22 @@ def production_identity(context,after,expected_role):
     user=session.json().get("user",{})
     return bool(user.get("uid")) and user.get("isAdmin") is (expected_role=="admin") and "token" not in user
 
+def application_source_equivalent(root,candidate,controller):
+    """Controller-only descendants may observe an older exact tested artifact.
+
+    Every application, asset, dependency and runtime configuration path must
+    stay identical. A new control tool does not relabel the installed build.
+    """
+    import subprocess
+    if not all(re.fullmatch(r"[0-9a-f]{40}",sha) for sha in (candidate,controller)):
+        raise ValueError("Exact artifact and controller commits required")
+    subprocess.run(["git","-C",str(root),"merge-base","--is-ancestor",candidate,controller],check=True,
+                   stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    changes=subprocess.check_output(["git","-C",str(root),"diff","--no-renames","--name-only",candidate,controller,"--"],text=True).splitlines()
+    if any(not path.startswith(("scripts/","tests/","docs/",".github/")) for path in changes):
+        raise ValueError("Installed application differs from qualified controller source")
+    return True
+
 def production_main():
     global BUILD_ID,APP_VERSION,FROZEN,PUBLIC,ADMIN
     import subprocess
@@ -433,9 +451,10 @@ def production_main():
     root=pathlib.Path(__file__).resolve().parents[1]
     source=subprocess.check_output(["git","-C",str(root),"rev-parse","HEAD"],text=True).strip()
     dirty=subprocess.check_output(["git","-C",str(root),"status","--porcelain","--untracked-files=no"],text=True)
-    if source!=after["source_sha"] or dirty:ap.error("Exact clean CI-qualified source required")
+    if source!=after["controller_source_sha"] or dirty:ap.error("Exact clean CI-qualified controller source required")
+    application_source_equivalent(root,after["source_sha"],source)
     PUBLIC,ADMIN=production_routes(root)
-    BUILD_ID=after["build_id"];APP_VERSION=after["build_version"];FROZEN=source
+    BUILD_ID=after["build_id"];APP_VERSION=after["build_version"];FROZEN=after["source_sha"]
     for state in (opts.admin_storage_state,opts.nonadmin_storage_state):private_json(state)
     output=opts.out.expanduser();output.mkdir(mode=0o700,parents=True,exist_ok=True)
     if output.is_symlink() or output.stat().st_mode&0o077:ap.error("Private0700 output required")
@@ -474,7 +493,8 @@ def production_main():
     expected=(len(PUBLIC)+len(ADMIN))*len(VIEWPORTS)*3
     holds=sum(not row["status"].startswith("PASS") for row in rows)
     passed=identity and all(roles.values()) and len(roles)==3 and len(rows)==expected and holds==0
-    result={"schema":"aoe2war.g.app-production.browser.v1","source_sha":source,"build_id":BUILD_ID,
+    result={"schema":"aoe2war.g.app-production.browser.v1","source_sha":FROZEN,"controller_source_sha":source,
+            "application_source_unchanged":True,"build_id":BUILD_ID,
             "build_version":APP_VERSION,"nonce":after["nonce"],"g_before_sha256":before_sha,"g_after_sha256":after_sha,
             "real_role_probes":roles,"public_static_parity":identity,"historical_public_routes":88,
             "independent_public_routes":1,"protected_routes":37,"viewports":[v[0] for v in VIEWPORTS],
