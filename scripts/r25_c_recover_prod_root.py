@@ -248,7 +248,7 @@ def recover(p):
     root["seal"](journal/"entered.json",{"schema":"aoe2war.app.recovery-entered.v1",
        "status":"CONSUMED_NO_REPLAY","plan":planned,"grant":approved,
        "public_cutover_authorized":False,"financial_authorized":False})
-    started=False;timer=False;enabled=False
+    started=False;timer=False
     try:
         addresses=refresh(root)
         ready={"source_sha":OLD,"build_id":old["artifact"]["build_id"],
@@ -296,9 +296,6 @@ def recover(p):
                      "aoe2war-steam-egress-refresh.timer"],timeout=30)
         require(root["sha"](root["canonical"](root["production_protected"]()))==
                 planned["current_protected_sha256"],"ORIGINAL_SERVICES_CHANGED")
-        enabled=True
-        root["run"](["/usr/bin/systemctl","enable",root["PROD_UNIT"],
-                     "aoe2war-steam-egress-refresh.timer"],timeout=30)
         result={"schema":"aoe2war.app.production-recovery-complete.v1",
            "status":"PRODUCTION_3032_ADMITTED_NOT_PUBLIC",
            "source_sha":OLD,"recovery_source_sha":p["recovery_source_sha"],
@@ -306,14 +303,11 @@ def recover(p):
            "candidate_start_ticks":ticks,"witness":witness,
            "original_failed_nonce_remains_consumed":True,
            "completed_user_steam_login":False,"public_cutover_authorized":False,
+           "persistent_start_authorized":False,
            "financial_authorized":False}
         root["seal"](journal/"complete.json",result)
         return result
     except BaseException as exc:
-        if enabled:
-            try:root["run"](["/usr/bin/systemctl","disable",root["PROD_UNIT"],
-                            "aoe2war-steam-egress-refresh.timer"],timeout=30)
-            except BaseException:pass
         if timer:
             try:root["run"](["/usr/bin/systemctl","stop",
                             "aoe2war-steam-egress-refresh.timer"],timeout=30)

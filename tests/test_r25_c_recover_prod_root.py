@@ -150,6 +150,8 @@ class RecoveryRefusal(unittest.TestCase):
         self.assertIn('root["production_witness"]',source)
         self.assertIn('"PRODUCTION_3032_ADMITTED_NOT_PUBLIC"',source)
         self.assertNotIn("systemctl restart",source)
+        self.assertNotIn('"/usr/bin/systemctl","enable"',source)
+        self.assertIn('"persistent_start_authorized":False',source)
         self.assertNotIn("DROP ROLE",source)
         self.assertNotIn("DELETE FROM",source)
         self.assertNotIn("public_cutover_authorized\":True",source)
