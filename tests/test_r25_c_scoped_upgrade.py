@@ -1,6 +1,8 @@
 """Native 3032-only repair guards. Never grants production custody authority."""
 import importlib.util
 import pathlib
+import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -55,27 +57,95 @@ class Upgrade(unittest.TestCase):
                 with self.assertRaisesRegex(m.Hold,"CANDIDATE_PUBLISHED_EVENT_MISSING"):
                     m.candidate_content()
             with mock.patch.object(m,"page",side_effect=[
-                "Monday Night Mayhem","Monday Night Mayhem","No published completed-day Traffic report is available"
+                "Monday Night Mayhem","Monday Night Mayhem","LAST PUBLISHED UTC DAY: 2026-10-19",
+                "LAST PUBLISHED UTC DAY: 2026-10-19 Loading provisional observed activity"
             ]):
                 with self.assertRaisesRegex(m.Hold,"CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING"):
                     m.candidate_content()
 
-    def test_execute_is_nonpublic_and_journalled_before_mutation(self):
-        source=PATH.read_text()
-        self.assertIn('seal(journal/"entered.json"',source)
-        self.assertLess(source.index('seal(journal/"entered.json"'),source.index('invoke("/usr/bin/systemctl","stop",new.PROD_UNIT'))
-        self.assertIn('need(not journal.exists(),"NONCE_ALREADY_USED")',source)
-        self.assertIn('no_public_cutover":True',source)
-        self.assertIn('financial_authorized":False',source)
-        self.assertIn('seal(journal/"rollback.json"',source)
-        self.assertIn('rollback_witness_dir=journal/"rollback-requalification"',source)
-        self.assertIn('seal(rollback_witness_dir/"runtime-admission.json"',source)
-        self.assertIn('prior["journal_path"]=str(rollback_witness_dir)',source)
-        self.assertNotIn('seal(journal/"runtime-admission.json",restore_admission)',source)
-        self.assertIn("new.production_witness(",source)
-        self.assertIn("old.production_witness(",source)
-        self.assertNotIn('systemctl","restart","aoe2hdbets-web.service"',source)
-        self.assertNotIn('systemctl","stop","aoe2hdbets-web.service"',source)
+    def test_consumed_failed_upgrade_is_never_replayed(self):
+        with mock.patch.object(m, "prepare") as prepare:
+            with self.assertRaisesRegex(m.Hold, "NONCE_ALREADY_USED"):
+                m.upgrade(SimpleNamespace(nonce=m.FAILED_NONCE))
+            prepare.assert_not_called()
+
+    def test_altered_failed_receipt_is_rejected_before_any_mutation(self):
+        with mock.patch.object(m, "safe_bytes", return_value=b"changed"):
+            with self.assertRaisesRegex(m.Hold, "CONSUMED_UPGRADE_JOURNAL_DRIFT"):
+                m.prior_failure({})
+
+    def test_stopped_candidate_rejects_an_unowned_listener(self):
+        with mock.patch.object(m, "unit_properties", side_effect=[
+            {"ActiveState": "inactive", "MainPID": "0"},
+            {"ActiveState": "inactive"}, {"ActiveState": "failed"},
+        ]), mock.patch.object(m, "invoke", return_value=b"LISTEN 127.0.0.1:3032"):
+            with self.assertRaisesRegex(m.Hold, "ISOLATED_3032_LISTENER_STILL_PRESENT"):
+                m.stopped_candidate(m.UNIT.name)
+
+    def test_steam_refresh_requires_qualified_successes_beyond_original_ttl(self):
+        clock = SimpleNamespace(now=0)
+        def sleep(seconds):
+            clock.now += seconds
+        with mock.patch.object(m.time, "monotonic", side_effect=lambda: clock.now), \
+             mock.patch.object(m.time, "sleep", side_effect=sleep), \
+             mock.patch.object(m, "refresh_invocation", return_value={"InvocationID": "old"}), \
+             mock.patch.object(m, "invoke") as command, \
+             mock.patch.object(m, "unit_properties", return_value={"ActiveState": "active"}), \
+             mock.patch.object(m, "check_refresh_success", side_effect=lambda _: (
+                 (str(clock.now), clock.now != 60) if clock.now % 60 == 0 else None
+             )), mock.patch.object(m, "steam_elements", return_value=[{"elem": "present"}]):
+            result = m.soak_refresh()
+        self.assertGreater(result["elapsed_seconds"], 300)
+        self.assertIn("60", result["monitor_holds"])
+        self.assertFalse(result["persistent_start_authorized"])
+        command.assert_called_once_with("/usr/bin/systemctl", "start", m.TIMER, timeout=45)
+
+    def test_timer_set_expiry_is_a_hold(self):
+        with mock.patch.object(m, "refresh_invocation", return_value={"InvocationID": "old"}), \
+             mock.patch.object(m, "invoke"), \
+             mock.patch.object(m, "unit_properties", return_value={"ActiveState": "active"}), \
+             mock.patch.object(m, "check_refresh_success", return_value=None), \
+             mock.patch.object(m, "steam_elements", return_value=[]):
+            with self.assertRaisesRegex(m.Hold, "STEAM_DESTINATIONS_EXPIRED_DURING_SOAK"):
+                m.soak_refresh()
+
+    def test_failed_bootstrap_consumes_nonce_and_restores_stopped_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            journals = pathlib.Path(tmp)
+            args = SimpleNamespace(nonce="ab" * 16, protected_sha256="p", ci_run=5)
+            before = {key: m.digest(b"original") for key in m.FILES}
+            plan = {"before_policy_bytes": before, "source_bytes_sha256": before,
+                    "public_nginx_sha256": m.digest(b"original")}
+            args.plan_hash = m.digest(m.canonical({**plan, "ci_artifact": {"run_id": 5}}))
+            old = mock.Mock()
+            new = mock.Mock()
+            new.production_proxy_bytes.return_value = b"proxy"
+            new.production_unit_bytes.return_value = b"unit"
+            new.production_runtime_environment.return_value = ({}, "db", "fixture")
+            new.production_database_witness.return_value = {"read_acl_sha256": "new"}
+            plan["before_read_acl_sha256"] = "old"
+            args.plan_hash = m.digest(m.canonical({**plan, "ci_artifact": {"run_id": 5}}))
+            journal = journals / ("upgrade-" + args.nonce)
+            def fail_bootstrap():
+                self.assertTrue((journal / "entered.json").is_file())
+                raise m.Hold("failed fixture bootstrap")
+            new.production_admission_steam_refresh.side_effect = fail_bootstrap
+            with mock.patch.multiple(m, JOURNALS=journals,
+                prepare=mock.Mock(return_value=(old, new, {}, plan)), bind_plan=mock.Mock(return_value=plan),
+                qualify=mock.Mock(return_value={"comment_id": 42}), assert_protected=mock.Mock(),
+                stopped_candidate=mock.Mock(), steam_elements=mock.Mock(return_value=[]),
+                safe_bytes=mock.Mock(return_value=b"original"), atomic=mock.Mock(), invoke=mock.Mock(),
+                native_sql=mock.Mock(), restore_stopped=mock.Mock()):
+                with self.assertRaisesRegex(m.Hold, "failed fixture bootstrap"):
+                    m.upgrade(args)
+                self.assertNotIn(mock.call("/usr/bin/systemctl", "start", new.PROD_UNIT, timeout=90),
+                                 m.invoke.call_args_list)
+                m.restore_stopped.assert_called_once()
+                self.assertTrue(m.restore_stopped.call_args.args[-1])
+                self.assertIn("PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED",
+                              (journal / "rollback.json").read_text())
+                with self.assertRaisesRegex(m.Hold, "NONCE_ALREADY_USED"):
+                    m.upgrade(args)
 
 if __name__=="__main__":
     unittest.main()

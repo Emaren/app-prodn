@@ -5,9 +5,10 @@ Exact signed artifact, source-pinned policy, typed ACL delta, durable preimages,
 new native process/DB admission and fail-closed rollback. No funding privileges.
 """
 from __future__ import annotations
-import argparse, fcntl, hashlib, http.client, importlib.util, json, os
+import argparse, base64, fcntl, hashlib, http.client, json, os, socket, stat, types
 from pathlib import Path
-import re, shutil, subprocess, sys, time, urllib.error, urllib.request, uuid
+import re, subprocess, sys, time, urllib.request, uuid
+from datetime import date
 from html.parser import HTMLParser
 
 SOURCE = "175e896c59bf48eda44c15d664d940f5ac40b436"
@@ -42,6 +43,22 @@ FILES = {
 }
 ARTIFACT_ID = 13275067671
 RUN_ID = 41726585039
+FAILED_NONCE = "1536a06e035ced3e2ed60e4f522570ab"
+FAILED_ENTERED = "e72d21eccc3ac025d8381b346056105ed18fff0a26ca7187e96113a94a36a163"
+FAILED_ROLLBACK = "2c3f7713540e27d269ae649ff0b86dcbb95778655eafc688db5998d3f009190b"
+TRAFFIC_ROOT = Path("/var/lib/aoe2war-traffic-r60-20261103")
+TRAFFIC_RECEIPTS = {
+    "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
+    "commit.json": "e4e11e78599652cbf06685982714df1ebe6b235f9a5a4cb70f23bc75af2acd5a",
+}
+TRAFFIC_SHA = "4d0e6196f5b4f5653d4062e3494619360ef77de6"
+REFRESH = "aoe2war-steam-egress-refresh.service"
+TIMER = "aoe2war-steam-egress-refresh.timer"
+PUBLIC_NGINX = Path("/etc/nginx/sites-available/aoe2war.com")
+SCOPE = "UPGRADE_STOPPED_NONFINANCIAL_3032_ONLY"
+SOURCE_PATH = "scripts/r25_c_scoped_upgrade_v1.py"
+LOCK_ID = (2064, 6185747, 1000, 0o644)
+
 
 class Hold(RuntimeError):
     pass
@@ -60,12 +77,14 @@ def invoke(*args,timeout=35,input=None):
     need(p.returncode==0,"NATIVE_COMMAND_FAILED:"+args[0]+":"+p.stderr[-180:].decode(errors="replace"))
     return p.stdout
 
-def module(path,name):
-    need(path.is_file() and not path.is_symlink(),"CONTROLLER_SOURCE_ABSENT")
-    spec=importlib.util.spec_from_file_location(name,path)
-    result=importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(result)
+def module(path, name, expected):
+    raw = safe_bytes(path)
+    need(digest(raw) == expected, "CONTROLLER_SOURCE_BYTES_CHANGED")
+    result = types.ModuleType(name)
+    result.__file__ = str(path)
+    exec(compile(raw, str(path), "exec"), result.__dict__)
     return result
+
 
 def safe_bytes(path):
     st=path.lstat()
@@ -94,7 +113,15 @@ def seal(path,obj):
     fd=os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY|os.O_NOFOLLOW,0o600)
     with os.fdopen(fd,"wb") as f:
         f.write(raw);f.flush();os.fsync(f.fileno())
+    fsync_directory(path.parent)
     return digest(raw)
+
+def fsync_directory(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 def native_sql(sql):
     return invoke("/usr/sbin/runuser","-u","postgres","--",
@@ -144,20 +171,85 @@ def candidate_content():
     need(bool(title) and title in page(3030,"/"),"ORIGINAL_PUBLISHED_EVENT_NOT_VERIFIED")
     home=page(3032,"/")
     need(title in home,"CANDIDATE_PUBLISHED_EVENT_MISSING")
-    traffic=page(3032,"/traffic")
-    need("2026-10-19" in traffic and
-         "Observed" in traffic and "Provisional" in traffic and
-         "No published completed-day Traffic report is available" not in traffic,
+    old_traffic = page(3030, "/traffic")
+    traffic = page(3032, "/traffic")
+    def last_published(value):
+        match = re.search(r"LAST PUBLISHED UTC DAY:\s*(\d{4}-\d{2}-\d{2})", value)
+        need(match is not None and
+             "No published completed-day Traffic report is available" not in value,
+             "CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING")
+        return date.fromisoformat(match[1])
+    certified = last_published(traffic)
+    observed = re.search(r"Latest observed UTC day\s+(\d{4}-\d{2}-\d{2})", traffic)
+    need(certified >= last_published(old_traffic) and observed is not None and
+         date.fromisoformat(observed[1]) > certified and "Provisional · unverified" in traffic and
+         "Qualifying IPs · not people" in traffic and "Filtered page GETs · not sessions" in traffic,
          "CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING")
     with urllib.request.urlopen("http://127.0.0.1:3032/api/deployment-version",timeout=5) as r:
         version=json.load(r)["buildVersion"]
     return {"event_title_sha256":digest(title.encode()),
-            "candidate_build_version":version,"certified_and_provisional_traffic_visible":True}
+            "candidate_build_version":version,"certified_and_provisional_traffic_visible":True,
+            "last_certified_utc_day": certified.isoformat(), "last_observed_utc_day": observed[1]}
 
-def prepare():
-    need(os.geteuid()==0,"ROOT_REQUIRED")
-    old=module(OLD_CONTROLLER,"original_r25")
-    new=module(SOURCES/"scripts/r25_c_start_root.py","upgraded_r25")
+def unit_properties(unit, fields):
+    raw = invoke("/usr/bin/systemctl", "show", unit, "--property=" + fields, timeout=12)
+    return dict(line.split("=", 1) for line in raw.decode().splitlines())
+
+
+def stopped_candidate(unit):
+    need(unit_properties(unit, "ActiveState,MainPID") ==
+         {"ActiveState": "inactive", "MainPID": "0"}, "CANDIDATE_NOT_STOPPED")
+    need(unit_properties(TIMER, "ActiveState") == {"ActiveState": "inactive"},
+         "STEAM_TIMER_NOT_STOPPED")
+    need(unit_properties(REFRESH, "ActiveState").get("ActiveState") in ("inactive", "failed"),
+         "STEAM_REFRESH_IN_FLIGHT")
+    need(not invoke("/usr/bin/ss", "-H", "-ltn", "sport = :3032").strip(),
+         "ISOLATED_3032_LISTENER_STILL_PRESENT")
+
+
+def steam_elements():
+    rows = json.loads(invoke("/usr/sbin/nft", "-j", "list", "table", "inet",
+                             "aoe2war_web_prod"))["nftables"]
+    sets = {row["set"]["name"]: row["set"] for row in rows if "set" in row}
+    need(set(sets) == {"steam4", "steam6"} and
+         all(row.get("timeout") == 300 for row in sets.values()), "STEAM_SET_TTL_DRIFT")
+    return [entry for row in sets.values() for entry in row.get("elem", [])]
+
+
+def prior_failure(actual):
+    journal = JOURNALS / ("upgrade-" + FAILED_NONCE)
+    entered = safe_bytes(journal / "entered.json")
+    rollback = safe_bytes(journal / "rollback_hold.json")
+    need(digest(entered) == FAILED_ENTERED and digest(rollback) == FAILED_ROLLBACK,
+         "CONSUMED_UPGRADE_JOURNAL_DRIFT")
+    failed = json.loads(entered)
+    need(failed["nonce"] == FAILED_NONCE and failed["one_use"] is True and
+         failed["financial_authorized"] is False and failed["public_cutover_authorized"] is False and
+         json.loads(rollback)["status"] == "CRITICAL_ROLLBACK_INCOMPLETE",
+         "UNEXPECTED_PRIOR_UPGRADE_STATE")
+    need(actual == failed["plan"]["before_policy_bytes"] and
+         all(digest(safe_bytes(journal / (key + ".before"))) == value
+             for key, value in actual.items()), "FAILED_UPGRADE_PREIMAGES_NOT_RESTORED")
+    return failed["plan"]
+
+
+def traffic_receipts():
+    for name, expected in TRAFFIC_RECEIPTS.items():
+        need(digest(safe_bytes(TRAFFIC_ROOT / name)) == expected, "TRAFFIC_R60_RECEIPT_DRIFT")
+    git = ("/usr/bin/git", "-C", "/var/www/Traffic/traffic-api")
+    need(invoke(*git, "rev-parse", "HEAD").strip().decode() == TRAFFIC_SHA and
+         not invoke(*git, "status", "--porcelain", "--untracked-files=no").strip(),
+         "TRAFFIC_R60_CHECKOUT_NOT_EXACT")
+
+
+def prepare(protected_sha):
+    need(sys.platform == "linux" and os.geteuid() == 0 and
+         socket.gethostname().split(".")[0] == "ubuntu-4gb-hel1-11", "EXACT_HEL1_ROOT_REQUIRED")
+    actual={key:digest(safe_bytes(path)) for key,(path,_,_) in FILES.items()}
+    failed = prior_failure(actual)
+    old=module(OLD_CONTROLLER,"original_r25",actual["controller"])
+    new=module(SOURCES/"scripts/r25_c_start_root.py","upgraded_r25",
+               failed["source_bytes_sha256"]["controller"])
     need(new.PROD_READ_TABLES[-6:]==TABLES,"SOURCE_SCOPED_TABLES_DRIFT")
     need({t:tuple(new.PROD_COLUMN_READS[t]) for t in COLUMNS}==COLUMNS,
          "SOURCE_SCOPED_COLUMNS_DRIFT")
@@ -166,20 +258,12 @@ def prepare():
     policy=json.loads(safe_bytes(POLICY))
     need(policy["source_sha"]==OLD_SOURCE and policy["stage"]=="/var/lib/aoe2war-web-prod-"+OLD_SOURCE[:12],
          "OLD_PROFILE_IDENTITY_CHANGED")
-    # The original sealed protected digest predates the independently recorded
-    # Traffic API R60 deployment. Requalify the original PID, bytes, ACL and
-    # protected services from real host state; never claim the old seal passed.
-    traffic_receipt=json.loads(safe_bytes(Path("/var/lib/aoe2war-traffic-r60-20261103/commit.json")))
-    need(traffic_receipt["result"]=="PASS_TRAFFIC_PROVISIONAL_API_LIVE" and
-         traffic_receipt["new_sha"]=="4d0e6196f5b4f5653d4062e3494619360ef77de6" and
-         traffic_receipt["certified_archive_unchanged_sha256"]==
-             "5dd2fdee1a1ddc14503ed5ba157120f46a4281a26f104b5ccc39986f10c07807" and
-         traffic_receipt["financial_authorized"] is False,"TRAFFIC_CHANGE_NOT_INDEPENDENTLY_RECORDED")
-    need(invoke("/usr/bin/git","-C","/var/www/Traffic/traffic-api","rev-parse","HEAD").strip().decode()==
-         traffic_receipt["new_sha"],"TRAFFIC_SOURCE_NOT_PINNED")
-    need(invoke("/usr/bin/systemctl","is-active",new.PROD_UNIT).strip()==b"active","OLD_CANDIDATE_ABSENT")
-    oldpid,oldticks=old.production_wait(policy,seconds=15)
-    prior={"candidate_pid":oldpid,"candidate_start_ticks":oldticks}
+    traffic_receipts()
+    stopped_candidate(new.PROD_UNIT)
+    need(not steam_elements(), "STEAM_PREIMAGE_NOT_EMPTY")
+    need(old.production_nft_shape()==new.production_nft_shape()==policy["nft_shape_sha256"] and
+         old.production_refresh_unit_identity()==new.production_refresh_unit_identity()==policy["refresh_units"],
+         "SEALED_NFT_OR_REFRESH_UNITS_CHANGED")
     need(digest(safe_bytes(UNIT))==policy["unit_sha256"] and
          digest(safe_bytes(OLD_CONTROLLER))==policy["controller_sha256"] and
          digest(safe_bytes(PROXY))==policy["private_proxy_sha256"] and
@@ -189,18 +273,21 @@ def prepare():
     old_admission=safe_bytes(Path(policy["journal_path"])/"runtime-admission.json")
     native_old=json.loads(old_admission)
     need(digest(old_admission)==policy["admission_sha256"] and
-         native_old["candidate_pid"]==oldpid and
-         native_old["candidate_start_ticks"]==oldticks and
+         native_old["candidate_pid"]==failed["old_process_pid"] and
+         native_old["candidate_start_ticks"]==failed["old_process_ticks"] and
          native_old["source_sha"]==OLD_SOURCE and
          native_old["status"]=="NATIVE_PRODUCTION_ADMISSION_PASS",
-         "OLD_NATIVE_ADMISSION_NOT_INTACT")
-    old_service=invoke("/usr/bin/systemctl","show",new.PROD_UNIT,"--property=WorkingDirectory","--value").strip().decode()
-    need(old_service==policy["stage"],"OLD_RUNNING_STAGE_CHANGED")
+         "HISTORICAL_NATIVE_ADMISSION_NOT_INTACT")
+    old_service=unit_properties(new.PROD_UNIT, "WorkingDirectory")["WorkingDirectory"]
+    need(old_service==policy["stage"],"STOPPED_STAGE_CHANGED")
     original_version=json.loads(urllib.request.urlopen("http://127.0.0.1:3030/api/deployment-version",timeout=5).read())["buildVersion"]
     need(original_version=="20261028134227-6c0f6d7531","PUBLIC_3030_VERSION_DRIFT")
-    public=safe_bytes(Path("/etc/nginx/sites-available/aoe2war.com"))
-    need(public.count(b"proxy_pass http://127.0.0.1:3030;")==6,"PUBLIC_PROXY_NOT_ALL_3030")
-    need(new.production_protected()==old.production_protected(),"PROTECTED_SNAPSHOT_DIVERGENCE")
+    public=safe_bytes(PUBLIC_NGINX)
+    need(digest(public)==failed["public_nginx_sha256"] and
+         public.count(b"proxy_pass http://127.0.0.1:3030;")==6,"PUBLIC_PROXY_NOT_ALL_3030")
+    before = new.production_protected()
+    need(digest(canonical(before)) == protected_sha and old.production_protected() == before,
+         "EXACT_REVIEWED_PROTECTED_SNAPSHOT_REQUIRED")
     artifact=json.loads(__import__("zipfile").ZipFile(ARTIFACT).read("artifact.json"))
     need(artifact["source_sha"]==SOURCE and artifact["build_id"]==(STAGE/".next/BUILD_ID").read_text().strip() and
          artifact["build_version"]==(STAGE/".aoe2war-build-version").read_text().strip() and
@@ -209,36 +296,40 @@ def prepare():
     need(new.production_ci_zip({"source_sha":SOURCE,"artifact":artifact,
          "ci_artifact":{"id":ARTIFACT_ID,"run_id":RUN_ID,"archive_path":str(ARTIFACT)}},
          ARTIFACT)["id"]==ARTIFACT_ID,"ARTIFACT_GITHUB_PROVENANCE_HOLD")
-    actual={key:digest(safe_bytes(path)) for key,(path,_,_) in FILES.items()}
     source={key:digest(safe_bytes(path)) for key,(_,path,_) in FILES.items() if path}
+    need(source == failed["source_bytes_sha256"] and
+         artifact["manifest_sha256"] == failed["new_manifest_sha256"], "QUALIFIED_UPGRADE_BYTES_DRIFT")
     new_guard=source["guard"]
     new_sql=source["auth_sql"]
     proxy=digest(new.production_proxy_bytes())
     unit=digest(new.production_unit_bytes(STAGE))
+    need(proxy == failed["new_proxy_sha256"] and unit == failed["new_unit_sha256"],
+         "QUALIFIED_UPGRADE_UNIT_OR_PROXY_DRIFT")
     need(all(source[k]!=actual[k] for k in ("controller","guard","auth_sql")),"SOURCE_ALREADY_MIGRATED")
     need(all((STAGE/p).is_file() for p in ("package.json",".next/BUILD_ID")),"NEW_RUNTIME_INCOMPLETE")
-    env,database,password=new.production_runtime_environment()
+    _,database,password=new.production_runtime_environment()
     old_db=old.production_database_witness(database,password)
     old_read=old_db["read_acl_sha256"]
-    need(old_read==native_old["catalog"]["read_acl_sha256"] and
+    need(old_read==native_old["catalog"]["read_acl_sha256"]==failed["before_read_acl_sha256"] and
          old_db["definer_identity_sha256"]==native_old["catalog"]["definer_identity_sha256"],
          "OLD_ROLE_CATALOG_NOT_NATIVE_ATTESTED")
     need(old_db["no_unreviewed_table_select"] and old_db["no_direct_table_mutation"] and
          old_db["no_users_secret_select"],"BEFORE_DB_SCOPE_INCORRECT")
-    evidence={"schema":"aoe2war.a05.3032-scoped-upgrade-plan.v1",
+    evidence={"schema":"aoe2war.a05.3032-stopped-upgrade-plan.v2",
       "old_source_sha":OLD_SOURCE,"new_source_sha":SOURCE,
-      "old_process_pid":prior["candidate_pid"],"old_process_ticks":prior["candidate_start_ticks"],
-      "old_profile_sha256":digest(safe_bytes(POLICY)),
-      "historical_seal_superseded_by_pinned_traffic_r60":True,
+      "old_process_running":False,"old_profile_sha256":actual["policy"],
       "historical_protected_sha256":policy["protected_snapshot_sha256"],
-      "requalified_current_protected_sha256":digest(canonical(new.production_protected())),
-      "before_read_acl_sha256":old_read,"before_policy_bytes":actual,
+      "failed_upgrade_protected_sha256":failed["protected_sha256"],
+      "prior_entered_sha256":FAILED_ENTERED,"prior_rollback_hold_sha256":FAILED_ROLLBACK,
+      "traffic_r60_receipts":TRAFFIC_RECEIPTS,"steam_set_preimage_empty":True,
+      "before_read_acl_sha256":old_read,"before_definer_sha256":old_db["definer_identity_sha256"],
+      "nft_shape_sha256":policy["nft_shape_sha256"],"before_policy_bytes":actual,
       "source_bytes_sha256":source,
       "new_guard_sha256":new_guard,"new_sql_sha256":new_sql,
       "new_proxy_sha256":proxy,"new_unit_sha256":unit,
       "new_manifest_sha256":artifact["manifest_sha256"],
       "public_nginx_sha256":digest(public),
-      "protected_sha256":digest(canonical(new.production_protected())),
+      "protected_sha256":protected_sha,
       "no_public_cutover":True,"financial_authorized":False}
     return old,new,policy,evidence
 
@@ -246,42 +337,151 @@ def restart(unit):
     invoke("/usr/bin/systemctl","daemon-reload",timeout=20)
     invoke("/usr/bin/systemctl","start",unit,timeout=90)
 
-def upgrade(nonce,expected):
-    need(re.fullmatch(r"[0-9a-f]{32}",nonce) is not None,"EXACT_NONCE_REQUIRED")
-    old,new,old_policy,plan=prepare()
-    need(digest(canonical(plan))==expected,"EXACT_APPROVED_PLAN_HASH_CHANGED")
+def qualify(old, args, plan):
+    raw = safe_bytes(Path(__file__))
+    item = old.production_github("contents/" + SOURCE_PATH + "?ref=" + args.release_ref)
+    need(item.get("type") == "file" and item.get("encoding") == "base64" and
+         base64.b64decode(item["content"].replace("\n", ""), validate=True) == raw,
+         "EXACT_UPGRADE_CONTROLLER_SOURCE_REQUIRED")
+    checks = old.production_github("commits/" + args.release_ref + "/check-runs?filter=latest&per_page=100")
+    security = [row for row in checks["check_runs"] if row["name"] == "GitGuardian Security Checks"
+                and row["app"]["slug"] == "gitguardian"]
+    need(len(security) == 1 and security[0]["status"] == "completed" and
+         security[0]["conclusion"] == "success", "EXACT_UPGRADE_SOURCE_SECURITY_REQUIRED")
+    # Reuse the native owner grant contract with a distinct, narrower scope.
+    old.PROD_SCOPE = SCOPE
+    grant_plan = {**plan, "ci_artifact": {"run_id": args.ci_run}}
+    return old.production_grant({"source_sha": args.release_ref, "nonce": args.nonce,
+        "owner_comment_id": args.comment_id, "owner_comment_sha256": args.comment_sha256}, grant_plan)
+
+
+def assert_protected(new, plan):
+    need(digest(canonical(new.production_protected())) == plan["protected_sha256"] and
+         digest(safe_bytes(PUBLIC_NGINX)) == plan["public_nginx_sha256"],
+         "PROTECTED_SERVICES_OR_PUBLIC_SELECTORS_CHANGED")
+
+
+def refresh_invocation():
+    return unit_properties(REFRESH, "InvocationID,ExecMainExitTimestampMonotonic,Result,ExecMainStatus,ActiveState")
+
+
+def check_refresh_success(before):
+    current = refresh_invocation()
+    invocation = current["InvocationID"]
+    if (invocation == before or not re.fullmatch(r"[a-f0-9]{32}", invocation) or
+            current["ActiveState"] not in ("inactive", "failed")):
+        return None
+    log = invoke("/usr/bin/journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID=" + invocation)
+    reports = [json.loads(line) for line in log.decode().splitlines() if line.startswith("{")]
+    # Known in-flight monitoring can hold a single refresh. The existing
+    # validated allowlist must stay nonempty and later timer cycles must PASS.
+    if (current["Result"] == "exit-code" and current["ExecMainStatus"] == "2" and
+            any(row.get("status") == "HOLD" and
+                row.get("reason") == "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT" for row in reports)):
+        return invocation, False
+    need(current["Result"] == "success" and current["ExecMainStatus"] == "0",
+         "SANDBOXED_STEAM_REFRESH_FAILED")
+    need(any(row.get("status") == "VALIDATED_STEAM_IP_SETS_REFRESHED" and
+             row.get("timeout_seconds") == 300 and row.get("addresses", 0) > 0 and
+             row.get("financial_authorized") is False for row in reports), "SANDBOXED_STEAM_REFRESH_RECEIPT_ABSENT")
+    return invocation, True
+
+
+def soak_refresh():
+    last = refresh_invocation()["InvocationID"]
+    started = time.monotonic()
+    invoke("/usr/bin/systemctl", "start", TIMER, timeout=45)
+    completed = []
+    monitor_holds = []
+    while time.monotonic() - started < 390:
+        need(unit_properties(TIMER, "ActiveState")["ActiveState"] == "active", "STEAM_TIMER_STOPPED")
+        result = check_refresh_success(last)
+        if result:
+            last, passed = result
+            (completed if passed else monitor_holds).append(last)
+        need(steam_elements(), "STEAM_DESTINATIONS_EXPIRED_DURING_SOAK")
+        if len(completed) >= 3 and time.monotonic() - started > 300:
+            return {"invocations": completed, "elapsed_seconds": int(time.monotonic() - started),
+                    "monitor_holds": monitor_holds, "element_ttl_seconds": 300,
+                    "persistent_start_authorized": False}
+        time.sleep(6)
+    raise Hold("STEAM_TIMER_TTL_SOAK_TIMEOUT")
+
+
+def restore_stopped(old, new, plan, backups, changed_steam):
+    invoke("/usr/bin/systemctl", "stop", TIMER, REFRESH, new.PROD_UNIT, timeout=55)
+    stopped_candidate(old.PROD_UNIT)
+    native_sql(acl_delta(False))
+    for key, (path, _, mode) in FILES.items():
+        atomic(path, backups[key], mode)
+    invoke("/usr/bin/systemctl", "daemon-reload", timeout=20)
+    invoke("/usr/sbin/nginx", "-t", timeout=15)
+    invoke("/usr/bin/systemctl", "reload", "nginx", timeout=20)
+    if changed_steam:
+        need(old.production_nft_shape() == plan["nft_shape_sha256"], "ROLLBACK_NFT_SHAPE_DRIFT")
+        invoke("/usr/sbin/nft", "-f", "-", input=(
+            b"flush set inet aoe2war_web_prod steam4\nflush set inet aoe2war_web_prod steam6\n"))
+    _, db, password = old.production_runtime_environment()
+    catalog = old.production_database_witness(db, password)
+    need(catalog["read_acl_sha256"] == plan["before_read_acl_sha256"] and
+         catalog["definer_identity_sha256"] == plan["before_definer_sha256"] and
+         all(digest(safe_bytes(path)) == plan["before_policy_bytes"][key]
+             for key, (path, _, _) in FILES.items()) and
+         old.production_nft_shape() == plan["nft_shape_sha256"] and not steam_elements(),
+         "ROLLBACK_EXACT_STOPPED_PREIMAGE_NOT_RESTORED")
+    stopped_candidate(old.PROD_UNIT)
+    assert_protected(old, plan)
+
+
+def upgrade(args):
+    nonce = args.nonce
+    need(nonce != FAILED_NONCE and not (JOURNALS / ("upgrade-" + nonce)).exists(), "NONCE_ALREADY_USED")
+    old,new,old_policy,plan=prepare(args.protected_sha256)
+    plan = bind_plan(plan, args)
+    grant = qualify(old, args, plan)
+    approved = {**plan, "ci_artifact": {"run_id": args.ci_run}}
+    expected = digest(canonical(approved))
+    need(expected == args.plan_hash,"EXACT_APPROVED_PLAN_HASH_CHANGED")
     journal=JOURNALS/("upgrade-"+nonce)
     need(not journal.exists(),"NONCE_ALREADY_USED")
     JOURNALS.mkdir(mode=0o700,parents=True,exist_ok=True)
     journal.mkdir(mode=0o700)
-    seal(journal/"entered.json",{"nonce":nonce,"plan":plan,"financial_authorized":False,
-             "public_cutover_authorized":False,"one_use":True})
+    fsync_directory(JOURNALS)
+    seal(journal/"entered.json",{"nonce":nonce,"plan":approved,"owner_grant":grant,
+             "financial_authorized":False,"public_cutover_authorized":False,"one_use":True})
     backups={}
     for key,(path,_,_) in FILES.items():
         backups[key]=safe_bytes(path)
         atomic(journal/(key+".before"),backups[key],0o600)
     changed=False
+    changed_steam=False
     try:
-        need(digest(safe_bytes(POLICY))==plan["old_profile_sha256"],"PRESTART_POLICY_DRIFT")
-        need(digest(canonical(new.production_protected()))==plan["protected_sha256"],"PROTECTED_PRESTART_CHANGED")
-        changed=True  # Any partial stop requires full transactional restoration.
-        invoke("/usr/bin/systemctl","stop",new.PROD_UNIT,timeout=55)
-        need(invoke("/usr/bin/systemctl","show",new.PROD_UNIT,"-p","ActiveState","--value").strip()==b"inactive",
-             "OLD_3032_STILL_ACTIVE")
+        need(all(digest(raw) == plan["before_policy_bytes"][key] for key, raw in backups.items()),
+             "PRESTART_PREIMAGE_DRIFT")
+        assert_protected(new, plan)
+        stopped_candidate(new.PROD_UNIT)
+        need(not steam_elements(), "PRESTART_STEAM_SET_DRIFT")
+        changed=True
         native_sql(acl_delta(True))
         env,db,password=new.production_runtime_environment()
         native=new.production_database_witness(db,password)
         need(native["read_acl_sha256"]!=plan["before_read_acl_sha256"],"NEW_ACL_NOT_ADMITTED")
         for key in ("controller","guard","auth_sql"):
             target,source,mode=FILES[key]
-            atomic(target,safe_bytes(source),mode)
+            raw = safe_bytes(source)
+            need(digest(raw) == plan["source_bytes_sha256"][key], "UPGRADE_SOURCE_CHANGED_BEFORE_INSTALL")
+            atomic(target,raw,mode)
         atomic(PROXY,new.production_proxy_bytes(),0o644)
         atomic(UNIT,new.production_unit_bytes(STAGE),0o644)
         invoke("/usr/sbin/nginx","-t",timeout=15)
         need(digest(safe_bytes(Path("/etc/nginx/sites-available/aoe2war.com")))==plan["public_nginx_sha256"],
              "PUBLIC_SELECTORS_CHANGED")
         invoke("/usr/bin/systemctl","reload","nginx",timeout=20)
-        restart(new.PROD_UNIT)
+        invoke("/usr/bin/systemctl", "daemon-reload", timeout=20)
+        assert_protected(new, plan)
+        changed_steam=True
+        steam_addresses = new.production_admission_steam_refresh()
+        invoke("/usr/bin/systemctl", "start", new.PROD_UNIT, timeout=90)
         profile={"schema":"aoe2war.app.approved-production-profile.v1",
             "profile":new.PROD_PROFILE,"source_sha":SOURCE,
             "build_id":(STAGE/".next/BUILD_ID").read_text().strip(),
@@ -296,9 +496,9 @@ def upgrade(nonce,expected):
             "private_proxy_sha256":plan["new_proxy_sha256"],
             "sql_sha256":plan["new_sql_sha256"],
             "protected_snapshot_sha256":plan["protected_sha256"],
-            "native_plan_sha256":digest(canonical(plan)),"journal_path":str(journal),
+            "native_plan_sha256":expected,"journal_path":str(journal),
             "controller_sha256":plan["source_bytes_sha256"]["controller"],
-            "steam_addresses":old_policy["steam_addresses"],
+            "steam_addresses":steam_addresses,
             "refresh_units":new.production_refresh_unit_identity(),
             "critical_runtime":new.production_critical_runtime(STAGE),
             "published_assets":old_policy["published_assets"],
@@ -315,53 +515,27 @@ def upgrade(nonce,expected):
         seal(journal/"runtime-admission.json",admission)
         profile["admission_sha256"]=digest(safe_bytes(journal/"runtime-admission.json"))
         atomic(POLICY,canonical(profile)+b"\n",0o400)
+        refresh = soak_refresh()
         witness=new.production_witness({"profile_path":str(POLICY)})
+        need(new.production_wait(profile, seconds=15) == (pid, ticks), "CANDIDATE_PID_CHANGED_DURING_SOAK")
+        new.production_steam_probe(env, STAGE)
         contents=candidate_content()
         need(contents["candidate_build_version"]==profile["build_version"],"BUILT_VERSION_DRIFT")
-        need(digest(canonical(new.production_protected()))==plan["protected_sha256"],
-             "ORIGINAL_SITE_OR_WOLO_CHANGED")
+        assert_protected(new, plan)
         seal(journal/"complete.json",{"status":"PASS_NEW_3032_ADMITTED_NOT_PUBLIC",
           "source_sha":SOURCE,"pid":pid,"ticks":ticks,
           "profile_sha256":witness["profile_sha256"],"read_acl_sha256":admission["catalog"]["read_acl_sha256"],
-          "content":contents,"financial_authorized":False,
+          "content":contents,"steam_refresh":refresh,"financial_authorized":False,
           "public_cutover_authorized":False,"browser_roles_verified":False})
         return {"status":"PASS_NEW_3032_ADMITTED_NOT_PUBLIC","pid":pid,"content":contents}
     except BaseException as err:
         if changed:
             try:
-                subprocess.run(["/usr/bin/systemctl","stop",new.PROD_UNIT],
-                               stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=45)
-                native_sql(acl_delta(False))
-                for key,(path,_,mode) in FILES.items():
-                    if key!="policy":atomic(path,backups[key],mode)
-                invoke("/usr/sbin/nginx","-t",timeout=15)
-                invoke("/usr/bin/systemctl","reload","nginx",timeout=20)
-                restart(old.PROD_UNIT)
-                prior=dict(old_policy)
-                prior["protected_snapshot_sha256"]=plan["protected_sha256"]
-                oldpid,oldticks=old.production_wait(prior,seconds=65)
-                env,db,password=old.production_runtime_environment()
-                restore_admission={"schema":"aoe2war.app.production-admission.v1",
-                  "status":"NATIVE_PRODUCTION_ADMISSION_PASS","source_sha":OLD_SOURCE,
-                  "candidate_pid":oldpid,"candidate_start_ticks":oldticks,
-                  "postgres":old.production_database_admission(db,password),
-                  "catalog":old.production_database_witness(db,password),
-                  "kernel":old.production_kernel_probe(prior["steam_addresses"]),
-                  "steam":old.production_steam_probe(env,Path(prior["stage"])),
-                  "financial_authorized":False,"public_cutover_authorized":False}
-                # Never overwrite a partially completed forward admission.
-                # The rolled-back candidate has a NEW PID and requires an
-                # independent native admission in its own immutable namespace.
-                rollback_witness_dir=journal/"rollback-requalification"
-                rollback_witness_dir.mkdir(mode=0o700)
-                seal(rollback_witness_dir/"runtime-admission.json",restore_admission)
-                prior["journal_path"]=str(rollback_witness_dir)
-                prior["admission_sha256"]=digest(safe_bytes(rollback_witness_dir/"runtime-admission.json"))
-                atomic(POLICY,canonical(prior)+b"\n",0o400)
-                restored=old.production_witness({"profile_path":str(POLICY)})
-                seal(journal/"rollback.json",{"status":"PASS_OLD_3032_RESTORED_NOT_PUBLIC",
-                  "reason":str(err)[:160],"pid":oldpid,
-                  "profile_sha256":restored["profile_sha256"],
+                restore_stopped(old, new, plan, backups, changed_steam)
+                seal(journal/"rollback.json",{
+                  "status":"PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED",
+                  "reason":str(err)[:160],"old_3032_running":False,
+                  "historical_admission_reused":False,
                   "financial_authorized":False,"public_cutover_authorized":False})
             except BaseException as rollback:
                 seal(journal/"rollback_hold.json",{"status":"CRITICAL_ROLLBACK_INCOMPLETE",
@@ -369,26 +543,47 @@ def upgrade(nonce,expected):
                   "financial_authorized":False,"public_cutover_authorized":False})
         raise
 
+def bind_plan(plan, args):
+    return {**plan, "nonce": args.nonce, "release_ref": args.release_ref,
+            "upgrade_controller_sha256": digest(safe_bytes(Path(__file__)))}
+
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--phase",choices=("plan","execute"),required=True)
     ap.add_argument("--nonce")
     ap.add_argument("--plan-hash")
+    ap.add_argument("--release-ref", required=True)
+    ap.add_argument("--ci-run", type=int, required=True)
+    ap.add_argument("--protected-sha256", required=True)
+    ap.add_argument("--comment-id", type=int)
+    ap.add_argument("--comment-sha256")
     args=ap.parse_args()
+    need(re.fullmatch(r"[0-9a-f]{32}", args.nonce or "") and args.nonce != FAILED_NONCE and
+         re.fullmatch(r"[0-9a-f]{40}", args.release_ref) and args.ci_run > 0 and
+         re.fullmatch(r"[0-9a-f]{64}", args.protected_sha256), "EXACT_FRESH_TRANSACTION_REQUIRED")
     st=LOCK.lstat()
-    need(st.st_uid==1000 and st.st_mode & 0o777==0o644,"ORIGINAL_RELEASE_LOCK_CHANGED")
+    need(stat.S_ISREG(st.st_mode) and (st.st_dev, st.st_ino, st.st_uid, stat.S_IMODE(st.st_mode)) ==
+         LOCK_ID, "ORIGINAL_RELEASE_LOCK_CHANGED")
     fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
     try:
+        opened=os.fstat(fd)
+        need((opened.st_dev, opened.st_ino) == LOCK_ID[:2], "ORIGINAL_RELEASE_LOCK_OPEN_RACE")
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         if args.phase=="plan":
-            need(args.nonce is None and args.plan_hash is None,"PLAN_MUST_NOT_AUTHORIZE_EXECUTION")
-            _,_,_,plan=prepare()
+            need(args.plan_hash is None and args.comment_id is None and args.comment_sha256 is None,
+                 "PLAN_MUST_NOT_AUTHORIZE_EXECUTION")
+            need(not (JOURNALS / ("upgrade-" + args.nonce)).exists(), "NONCE_ALREADY_USED")
+            _,_,_,plan=prepare(args.protected_sha256)
+            plan = {**bind_plan(plan, args), "ci_artifact": {"run_id": args.ci_run}}
             print(json.dumps({"status":"PASS_SCOPED_PROFILE_PLAN_READ_ONLY",
                 "plan":plan,"plan_sha256":digest(canonical(plan)),
                 "public_cutover_authorized":False},sort_keys=True))
         else:
-            need(args.nonce and args.plan_hash,"EXACT_ONE_USE_APPROVAL_REQUIRED")
-            print(json.dumps(upgrade(args.nonce,args.plan_hash),sort_keys=True))
+            need(re.fullmatch(r"[0-9a-f]{64}", args.plan_hash or "") and
+                 re.fullmatch(r"[0-9a-f]{64}", args.comment_sha256 or "") and
+                 args.comment_id and args.comment_id > 0, "EXACT_ONE_USE_APPROVAL_REQUIRED")
+            print(json.dumps(upgrade(args),sort_keys=True))
     finally:
         os.close(fd)
 
