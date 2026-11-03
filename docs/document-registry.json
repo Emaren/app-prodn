@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "afca5a21f95a1803776723dd45b917a66576e7435ec51c95023fbbacc282ff41",
+      "sha256": "e9e2c662c264442b108e54116b6a6fff5e73ca369de2cdf5657bd6aca0aa3088",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-auth-datasource-admission-thirdlane-20261102",
-    "commit": "4a4ccd49c8f7fa8f9f09bdb255bdcbcd1bfdd7dc"
+    "commit": "00df4462e58cc5da0d577986550b488550b655a1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

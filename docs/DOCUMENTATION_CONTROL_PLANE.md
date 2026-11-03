@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-auth-datasource-admission-thirdlane-20261102` at `4a4ccd49c8f7fa8f9f09bdb255bdcbcd1bfdd7dc`
+Implementation baseline: `codex/r25-auth-datasource-admission-thirdlane-20261102` at `00df4462e58cc5da0d577986550b488550b655a1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
