@@ -125,3 +125,26 @@ The implementation must preserve these invariants:
 - Explicit user theme clicks remain authoritative.
 - Academy, Kingdom Statistics, Traffic, and Speed remain excluded.
 - The October date boundary shuts the campaign off automatically.
+
+
+## Source review — 2026-11-01 UTC
+
+AoE2WAR app engineering reviewed this presentation contract against source
+`496fd11ca95a23ad8488df0349b4f0872c1e2b09` on 2026-11-01 UTC.
+The review inspected `lib/siteThemeCampaign.ts`, the public campaign GET,
+admin campaign GET/POST, authenticated user override POST,
+`LobbyAppearanceContext`, `SiteThemeCampaignPanel`, and the original additive
+migration. All six existing `tests/site-theme-campaign.test.mts` checks passed.
+
+The source still uses an inclusive start and exclusive end, preserves the
+underlying saved preference, excludes the four listed route families, refreshes
+viewer state every 60 seconds and admin census every 20 seconds, and restricts
+control changes to the existing admin guard. The public GET degrades to no
+campaign when its input is unavailable; the stored `enabled` value alone is
+therefore neither proof that the campaign is active nor proof of live database
+health.
+
+This is a source/document review. No current production campaign configuration,
+migration application, browser behavior, financial state, or deployed release
+was certified by it. The date-window statements above describe the seeded
+October contract; the bounded admin control may change its window explicitly.
