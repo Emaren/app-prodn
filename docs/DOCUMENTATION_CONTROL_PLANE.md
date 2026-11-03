@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/a05-public-visual-cutover-hold-20261103` at `6cb199017e5c79312337a5e7b3bd0b94d8d21c83`
+Implementation baseline: `codex/r25-nonfinancial-content-readonly-20261103` at `ac7a0c0dc25e4170ede4474ac937db7225aec0cf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

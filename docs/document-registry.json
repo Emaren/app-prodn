@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "28b0489f978e31901987da8c81caaf897bbfcf259fdb3a729d7241e014b1cca7",
+      "sha256": "c6ccfa5997302ad493183aceb1283f1b32b72a6e4ec8367fce12bf88da9880eb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/a05-public-visual-cutover-hold-20261103",
-    "commit": "6cb199017e5c79312337a5e7b3bd0b94d8d21c83"
+    "branch": "codex/r25-nonfinancial-content-readonly-20261103",
+    "commit": "ac7a0c0dc25e4170ede4474ac937db7225aec0cf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
