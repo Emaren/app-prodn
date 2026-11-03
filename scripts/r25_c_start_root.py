@@ -688,6 +688,16 @@ server {
   proxy_method GET;
   proxy_pass http://127.0.0.1:3330/api/chain-id?;
  }
+ location = /api/projects/aoe2hdbets/public-audience-series {
+  if ($request_method != GET) { return 405; }
+  proxy_pass_request_body off;
+  proxy_set_header Content-Length "";
+  proxy_set_header Cookie "";
+  proxy_set_header Authorization "";
+  proxy_method GET;
+  proxy_read_timeout 5s;
+  proxy_pass http://127.0.0.1:3345/api/projects/aoe2hdbets/public-audience-series?;
+ }
  location / { return 403; }
 }
 '''
@@ -741,7 +751,7 @@ def production_unit_bytes(stage):
       "[Service]\nType=simple\nUser=" + PROD_USER + "\nGroup=" + PROD_USER + "\nWorkingDirectory=" + str(stage) +
       "\nEnvironmentFile=" + str(PROD_ENV) + "\nEnvironment=NODE_ENV=production WARGRAPH_RUNTIME_DISABLED=true "
       "AOE2WAR_RUNTIME_PROFILE=" + PROD_PROFILE + " AOE2WAR_R25_ISOLATED_WEB=true AOE2WAR_PROD_DB_PREVIEW=false "
-      "AOE2_BACKEND_UPSTREAM=http://127.0.0.1:3331 HOSTNAME=127.0.0.1 PORT=3032 NEXT_TELEMETRY_DISABLED=1 "
+      "AOE2_BACKEND_UPSTREAM=http://127.0.0.1:3331 TRAFFIC_API_BASE=http://127.0.0.1:3331 HOSTNAME=127.0.0.1 PORT=3032 NEXT_TELEMETRY_DISABLED=1 "
       "NODE_OPTIONS=--require=" + str(PROD_GUARD) +
       "\nUnsetEnvironment=HTTP_PROXY HTTPS_PROXY ALL_PROXY NODE_TLS_REJECT_UNAUTHORIZED NODE_EXTRA_CA_CERTS "
       "NEXTAUTH_SECRET CACHE_DIRECTORY MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE\n"
