@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { randomInt } from "node:crypto";
 
 import HomePageClient from "@/app/HomePageClient";
 import { loadPublishedHeroPlaylist } from "@/lib/hero/service";
@@ -27,6 +28,7 @@ export default async function LobbyPage() {
     <HomePageClient
       initialLobby={initialLobby}
       initialHeroPlaylist={initialHeroPlaylist}
+      initialWarriorSeed={randomInt(0, 0x1_0000_0000)}
       speedRoute="/lobby"
     />
   );
