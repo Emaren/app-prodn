@@ -401,7 +401,7 @@ class StartTests(unittest.TestCase):
         names += ["wolo-test-%d.timer" % n for n in range(22)]
         installed = ("\n".join(name + " enabled" for name in names)).encode()
         loaded = b"postgresql@16-main.service loaded active running PostgreSQL\n"
-        sockets = "\n".join("LISTEN 0 128 127.0.0.1:%d 0.0.0.0:*" % port for port in (3030, 8092, 8093, 5432)).encode()
+        sockets = "\n".join("LISTEN 0 128 127.0.0.1:%d 0.0.0.0:* ino:%d sk:1 cgroup:/system.slice/test.service <->" % (port, port) for port in (3030, 8092, 8093, 5432)).encode()
         def native(argv, **kwargs):
             if "list-unit-files" in argv:
                 return installed
