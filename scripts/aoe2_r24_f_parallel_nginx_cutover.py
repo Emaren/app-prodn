@@ -932,9 +932,9 @@ def nginx_reload():
     cmd(["/usr/sbin/nginx","-t"],15)
     cmd(["/usr/bin/systemctl","reload","nginx.service"],25)
 
-def record_failed_cutover(record,error,restore):
+def record_failed_cutover(record,error,restore,production=False):
     """Keep immutable failure AND rollback outcome even when rollback fails."""
-    failure={"schema":"aoe2war.r25.f.failed-cutover.v1","status":"FAILED_NOT_COMMITTED",
+    failure={"schema":"aoe2war.app.production-failed-cutover.v1" if production else "aoe2war.r25.f.failed-cutover.v1","status":"FAILED_NOT_COMMITTED",
              "reason_type":type(error).__name__,"reason":str(error)[:160],
              "readiness_samples":getattr(error,"readiness_observations",[])}
     def persist(name,obj):
@@ -945,7 +945,7 @@ def record_failed_cutover(record,error,restore):
             print("HOLD:R24_FAILURE_RECEIPT_UNAVAILABLE:"+type(exc).__name__,file=sys.stderr)
     persist("failure.json",failure)
     persist("automatic-rollback-attempt.json",{"status":"ORIGINAL_NGINX_RESTORE_ENTERED"})
-    outcome={"schema":"aoe2war.r25.f.automatic-rollback.v1","original_web_restarted":False}
+    outcome={"schema":"aoe2war.app.production-automatic-rollback.v1" if production else "aoe2war.r25.f.automatic-rollback.v1","original_web_restarted":False}
     try:
         proof=restore()
         outcome.update({"status":"ORIGINAL_PROXY_RUNTIME_RESTORED","readiness":proof})
@@ -1495,9 +1495,261 @@ def plan_vhost():
         "unrelated_vhosts_modified":False,
         "wolo_proxy_routes_modified":False,
         "files_modified":False,"release_authorized":False}).decode())
+# Separate successor profile: never reinterpret a frozen R25 preview receipt.
+PRODUCTION_POLICY=pathlib.Path('/etc/aoe2war/web-prod-v1/approved-profile.json')
+PRODUCTION_AUDIT=pathlib.Path('/var/lib/aoe2war-app-production-f')
+PRODUCTION_UPSTREAM=b'proxy_pass http://127.0.0.1:3032;'
+PRODUCTION_METHOD_CHECK=(b'set $aoe2war_prod_method "$request_method:$uri";\n        '
+ b'if ($aoe2war_prod_method !~ "^(GET|HEAD):/|^POST:/api/(auth/session|user/ping)$|^DELETE:/api/auth/session$") { return 405; }')
+# Exact GET handlers independently shown to seed or pay financial records.
+# This honest temporary HOLD ends only with reviewed read-only route source.
+PRODUCTION_FINANCIAL_GET_HOLD=(b'if ($uri ~ "^/api/admin/(trophies|users)/?$") { return 503; }')
+
+def production_replace_site(original):
+    lo,hi,body=scoped_https(original)
+    need(original.count(OLD_UPSTREAM)==6 and b'proxy_pass http://127.0.0.1:3031;' not in original and PRODUCTION_UPSTREAM not in original,
+         'PRODUCTION_EXACT_SIX_OLD_SELECTORS_REQUIRED')
+    found=set();changes=[]
+    for match in re.finditer(rb'(?m)^[ \t]*location[ \t]+([^{}\r\n]+)[ \t]*\{',body):
+        label=b' '.join(match.group(1).split());op=body.index(b'{',match.start(),match.end());end=match_brace(body,op)
+        contents=body[op+1:end]
+        if OLD_UPSTREAM not in contents:continue
+        need(label in WEB_LOCATIONS and label not in found and contents.count(OLD_UPSTREAM)==1 and
+             len(re.findall(rb'(?m)^[ \t]*proxy_pass\b',contents))==1,'PRODUCTION_UNREVIEWED_WEB_LOCATION')
+        need(contents.count(METHOD_CHECK)<=1,'PRODUCTION_DUPLICATED_EXISTING_GUARD')
+        contents=contents.replace(METHOD_CHECK,b'')
+        need(b'limit_except' not in contents and not re.search(rb'(?m)^[ \t]*if[ \t]*\(',contents),'PRODUCTION_UNREVIEWED_EXISTING_GUARD')
+        found.add(label);guard=PRODUCTION_METHOD_CHECK if label==b'^~ /api/' else METHOD_CHECK
+        if label==b'^~ /api/':guard+=b'\n        '+PRODUCTION_FINANCIAL_GET_HOLD
+        changes.append((op+1,end,b'\n        '+guard+b'\n'+contents.replace(OLD_UPSTREAM,PRODUCTION_UPSTREAM)))
+    need(found==WEB_LOCATIONS and len(changes)==6,'PRODUCTION_SIX_SELECTORS_NOT_ALL_FOUND')
+    updated=bytearray(body)
+    for start,end,value in reversed(changes):updated[start:end]=value
+    output=original[:lo]+bytes(updated)+original[hi:]
+    need(output.count(PRODUCTION_UPSTREAM)==6 and OLD_UPSTREAM not in output and
+         b'proxy_pass http://127.0.0.1:27657' in output and b'proxy_pass http://127.0.0.1:1318' in output,
+         'PRODUCTION_SELECTOR_OR_WOLO_ROUTE_DRIFT')
+    return output
+
+def production_load_g(raw,expected,path='<reviewed-production-G>'):
+    need(0<len(raw)<=196608 and sha(raw)==expected,'PRODUCTION_G_SOURCE_PIN')
+    module=types.ModuleType('aoe2war_production_g_native');module.__file__=str(path)
+    exec(compile(raw,str(path),'exec'),module.__dict__)
+    need(callable(getattr(module,'production_native_snapshot',None)),'PRODUCTION_REVIEWED_G_MODE_REQUIRED')
+    return module
+
+def production_before(raw,expected,nonce):
+    need(0<len(raw)<=65536 and sha(raw)==expected,'PRODUCTION_EXACT_G_BEFORE_BYTES_REQUIRED')
+    before=parse(raw)
+    need(before.get('schema')=='aoe2war.g.app-production.v1' and before.get('phase')=='before' and
+         before.get('nonce')==nonce and before.get('status')=='PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER' and
+         before.get('nginx',{}).get('upstream_port')==3030 and before.get('nginx',{}).get('selectors')==6 and
+         before.get('mac_public')==before.get('old_http') and before.get('financial_authorized') is False,
+         'PRODUCTION_G_BEFORE_REAL_MAC_PUBLIC_PROOF_REQUIRED')
+    return before
+
+def production_protected(g):
+    units=g.stable_system_state_during_timer_quiescence()
+    units={name:value for name,value in units.items() if name not in g.PRODUCTION_OWNED_UNITS}
+    need(units[OLD_UNIT]['properties']['MainPID']=='2625090' and units[NEW_UNIT]['properties']['MainPID']=='1483304',
+         'PRODUCTION_ORIGINAL_OR_PREVIEW_PID_DRIFT')
+    ports={str(port):g.listening_socket(port) for port in (3030,3031,8092,8093)}
+    need(ports['3030']['pid']==2625090 and ports['3031']['pid']==1483304,'PRODUCTION_PROTECTED_LISTENER_DRIFT')
+    return {'protected_units_sha256':g.digest(g.canon(units)),'ports':ports,'release_lock':g.lock_state()}
+
+def production_require_protected(g,before):
+    actual=production_protected(g)
+    expected={key:before[key] for key in ('protected_units_sha256','release_lock')}
+    expected['ports']={str(port):before['ports'][str(port)] for port in (3030,3031,8092,8093)}
+    need(actual==expected,'PRODUCTION_FINANCE_OR_ORIGINAL_PREVIEW_CONTINUITY_DRIFT')
+
+def production_record(nonce):
+    need(type(nonce)is str and NONCE.fullmatch(nonce),'PRODUCTION_FRESH_NONCE_FORMAT')
+    need(nonce!=CONSUMED_NONCE and not (AUDIT_BASE/('r24-'+nonce)).exists() and not (AUDIT_BASE/('r24-'+nonce)).is_symlink(),
+         'PRODUCTION_HISTORIC_CONSUMED_NONCE_MUST_NOT_BE_REUSED')
+    return PRODUCTION_AUDIT/('cutover-'+nonce)
+
+def production_inputs(options):
+    need(sys.platform=='linux' and socket.gethostname().split('.')[0]==HOST and os.geteuid()==0,'PRODUCTION_EXACT_HEL1_ROOT')
+    need(HEX40.fullmatch(options.source_sha or '') and all(HEX64.fullmatch(getattr(options,key,'') or '') for key in
+         ('engine_source_sha256','owner_source_sha256','g_source_sha256','before_witness_sha256')),'PRODUCTION_EXACT_SOURCE_PINS')
+    need(len(options.before_witness_b64)<=90000 and re.fullmatch(r'[A-Za-z0-9+/=]+',options.before_witness_b64 or ''),
+         'PRODUCTION_BOUND_BEFORE_ENCODING')
+    before_raw=base64.b64decode(options.before_witness_b64,validate=True)
+    before=production_before(before_raw,options.before_witness_sha256,options.new_nonce)
+    record=production_record(options.new_nonce)
+    need(not record.exists() and not record.is_symlink(),'PRODUCTION_CONSUMED_OR_PARTIAL_TRANSACTION')
+    if PRODUCTION_AUDIT.exists():protected_dir(PRODUCTION_AUDIT,0o700)
+    else:protected_dir(PRODUCTION_AUDIT.parent)
+    lock_check();policy_raw=root_file(PRODUCTION_POLICY,32768);policy=parse(policy_raw)
+    need(policy.get('schema')=='aoe2war.app.approved-production-profile.v1' and policy.get('source_sha')==options.source_sha and
+         policy.get('profile')=='nonfinancial-production-v1' and policy.get('port')==3032 and policy.get('uid')==990,
+         'PRODUCTION_C_PROFILE_SCOPE')
+    stage=pathlib.Path(policy.get('stage',''))
+    need(stage==pathlib.Path('/var/lib/aoe2war-web-prod-'+options.source_sha[:12]),'PRODUCTION_C_STAGE_PATH')
+    graw=root_file(stage/'scripts/aoe2_r25_f_g_parallel_observer.py',196608);g=production_load_g(graw,options.g_source_sha256,stage/'scripts/aoe2_r25_f_g_parallel_observer.py')
+    # F's own fresh native observations compare the independently retained G
+    # BEFORE. They do not replace, fabricate, or publish a second G receipt.
+    current=g.production_native_snapshot('before',options.new_nonce);g.production_compare(before,current)
+    need(before['source_sha']==options.source_sha and before['profile_sha256']==sha(policy_raw),'PRODUCTION_BEFORE_PROFILE_BINDING')
+    old=root_file(VHOST,131072);candidate=production_replace_site(old)
+    need(sha(old)==before['nginx']['sha256'],'PRODUCTION_BEFORE_NGINX_PREIMAGE_DRIFT')
+    nginx_loaded_vhost(old,VHOST,old_count=6)
+    production_require_protected(g,before)
+    runtime_sample(before['old_http']['build_version'],policy['build_version'],before['old_http']['asset'],time.monotonic()+15,{})
+    plan={'schema':'aoe2war.app.production-cutover-plan.v1','nonce':options.new_nonce,'source_sha':options.source_sha,
+      'engine_source_sha256':options.engine_source_sha256,'owner_source_sha256':options.owner_source_sha256,'g_source_sha256':options.g_source_sha256,
+      'before_witness_sha256':options.before_witness_sha256,'profile_sha256':sha(policy_raw),
+      'manifest_sha256':policy['manifest_sha256'],'candidate_build_id':policy['build_id'],'candidate_build_version':policy['build_version'],
+      'candidate_pid':before['candidate_pid'],'candidate_start_ticks':before['candidate_start_ticks'],
+      'old_web_pid':2625090,'preview_pid':1483304,'nginx_before_sha256':sha(old),'nginx_after_sha256':sha(candidate),
+      'protected_units_sha256':before['protected_units_sha256'],'financial_authorized':False,'public_cutover_authorized':False}
+    envelope={'schema':'aoe2war.app.production-cutover-plan-envelope.v1','status':'PASS_READ_ONLY_PRODUCTION_CUTOVER_PLAN_NOT_AUTHORITY',
+              'plan':plan,'plan_sha256':sha(canonical(plan))}
+    return envelope,{'before':before,'before_raw':before_raw,'policy':policy,'old':old,'candidate':candidate,'g':g,'graw':graw,'record':record}
+
+def production_grant(comment_id,body_sha,envelope,now=None):
+    need(re.fullmatch(r'[0-9]{1,20}',comment_id or '') and HEX64.fullmatch(body_sha or ''),'PRODUCTION_EXACT_OWNER_GRANT_PIN')
+    obj=github_read('issues/comments/'+str(int(comment_id)))
+    need(obj.get('id')==int(comment_id) and obj.get('user',{}).get('login')=='Emaren' and obj.get('user',{}).get('id')==15059910 and
+         obj.get('html_url')=='https://github.com/Emaren/app-prodn/issues/1108#issuecomment-'+str(int(comment_id)) and
+         obj.get('issue_url')=='https://api.github.com/repos/Emaren/app-prodn/issues/1108','PRODUCTION_ACTUAL_OWNER_IDENTITY_REQUIRED')
+    body=obj.get('body','');need(type(body)is str and sha(body.encode())==body_sha and obj.get('created_at')==obj.get('updated_at'),
+         'PRODUCTION_OWNER_GRANT_CHANGED_OR_EDITED')
+    match=re.fullmatch(r'APP_PRODUCTION_CUTOVER_GRANT\n```json\n(.+)\n```\n?',body,re.S);need(match is not None,'PRODUCTION_OWNER_GRANT_FORMAT')
+    grant=parse(match[1]);plan=envelope['plan'];instant=now or datetime.now(timezone.utc)
+    need(grant.get('schema')=='aoe2war.app.production-cutover-grant.v1' and grant.get('scope')=='A05_NGINX_ONLY_PRODUCTION_3032' and
+         grant.get('decision')=='AUTHORIZE' and grant.get('owner_login')=='Emaren' and
+         grant.get('release_authority')=='OWNER_ONLY_NONFINANCIAL' and grant.get('owner_delegated_decisions') is True and
+         grant.get('delegated_ai_authorship_disclosed') is True and grant.get('independent_review') is False and
+         grant.get('financial_authorized') is False and grant.get('public_cutover_authorized') is True and
+         grant.get('rollback_authorized') is True and type(grant.get('max_uses'))is int and grant['max_uses']==1,
+         'PRODUCTION_EXACT_NONFINANCIAL_DELEGATED_AUTHORITY_REQUIRED')
+    issued=grant_timestamp(grant.get('issued_at'));expires=grant_timestamp(grant.get('expires_at'));created=grant_timestamp(obj.get('created_at'))
+    need(0<(expires-issued).total_seconds()<=600 and issued<=created<=instant<=expires,'PRODUCTION_GRANT_EXPIRED_OR_INVALID_TTL')
+    need(grant.get('plan_sha256')==envelope['plan_sha256'],'PRODUCTION_GRANT_EXACT_PLAN')
+    for key,value in plan.items():
+        if key not in ('schema','public_cutover_authorized'):need(grant.get(key)==value,'PRODUCTION_GRANT_TRANSACTION_DRIFT:'+key)
+    ci=grant.get('exact_head_ci',{})
+    need(type(ci.get('run_id'))is int and ci['run_id']>0 and ci.get('head_sha')==plan['source_sha'] and ci.get('conclusion')=='success' and
+         ci.get('all_three_jobs_success') is True,'PRODUCTION_EXACT_HEAD_CI_BINDING')
+    run=github_read('actions/runs/'+str(ci['run_id']));jobs=github_read('actions/runs/'+str(ci['run_id'])+'/jobs?filter=latest&per_page=100')
+    expected={'Release and documentation control plane','Type, contract, and production build','Isolated Steam-rating PostgreSQL chronology'}
+    need(run.get('head_sha')==plan['source_sha'] and run.get('name')=='AoE2WAR CI' and run.get('status')=='completed' and run.get('conclusion')=='success' and
+         jobs.get('total_count')==3 and len(jobs.get('jobs',[]))==3 and {job.get('name') for job in jobs['jobs']}==expected and
+         all(job.get('status')=='completed' and job.get('conclusion')=='success' for job in jobs['jobs']),'PRODUCTION_ACTUAL_FULL_CI_REQUIRED')
+    for name,path in (('engine','scripts/aoe2_r24_f_parallel_nginx_cutover.py'),('owner','scripts/aoe2_r24_f_parallel_nginx_mac.py'),('g','scripts/aoe2_r25_f_g_parallel_observer.py')):
+        source=github_read('contents/'+path+'?ref='+plan['source_sha'])
+        need(source.get('type')=='file' and source.get('encoding')=='base64' and type(source.get('content'))is str,'PRODUCTION_IMMUTABLE_SOURCE_REQUIRED')
+        data=base64.b64decode(source['content'].replace('\n',''),validate=True)
+        need(0<len(data)<=196608 and sha(data)==plan[name+'_source_sha256'],'PRODUCTION_QUALIFIED_SOURCE_BYTES_DRIFT:'+name)
+    if now is None:need(datetime.now(timezone.utc)<=expires,'PRODUCTION_GRANT_EXPIRED_DURING_ADMISSION')
+    return {'schema':'aoe2war.app.production-cutover-authority.v1','comment_id':int(comment_id),'url':obj['html_url'],
+            'body':body,'body_sha256':body_sha,'created_at':obj['created_at'],'manifest':grant,'plan_sha256':envelope['plan_sha256']}
+
+def production_guard(context,selected):
+    expected=context['candidate'] if selected==3032 else context['old']
+    need(root_file(VHOST,131072)==expected,'PRODUCTION_NGINX_CURRENT_BYTES_DRIFT')
+    need(context['g'].production_loaded_nginx(expected)==selected,'PRODUCTION_MIXED_SELECTORS')
+    production_require_protected(context['g'],context['before'])
+    if selected==3032:
+        live=context['g'].listening_socket(3032)
+        need(live==context['before']['ports']['3032'],'PRODUCTION_CANDIDATE_SAME_PID_SOCKET_REQUIRED')
+        need(sha(root_file(PRODUCTION_POLICY,32768))==context['before']['profile_sha256'],'PRODUCTION_NATIVE_PROFILE_DRIFT')
+
+def production_restore(context):
+    actual=root_file(VHOST,131072)
+    need(actual in (context['candidate'],context['old']),'PRODUCTION_ROLLBACK_UNKNOWN_NGINX_BYTES_HOLD')
+    if actual!=context['old']:replace_existing(VHOST,context['old']);nginx_reload()
+    return wait_runtime(context['before']['old_http']['build_version'],context['policy']['build_version'],context['before']['old_http']['asset'],
+                        lambda:production_guard(context,3030))
+
+def production_apply(options):
+    envelope,context=production_inputs(options)
+    need(envelope['plan_sha256']==options.plan_sha256,'PRODUCTION_OWNER_APPROVED_PLAN_CHANGED')
+    authority=production_grant(options.grant_comment,options.grant_sha256,envelope)
+    fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        st=os.fstat(fd);need((st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))==LOCK_ID,'PRODUCTION_RELEASE_LOCK_FD_DRIFT')
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as error:raise Hold('PRODUCTION_RELEASE_LOCK_BUSY') from error
+        lock_check();production_guard(context,3030)
+        refreshed=production_grant(options.grant_comment,options.grant_sha256,envelope)
+        need(refreshed==authority,'PRODUCTION_OWNER_AUTHORITY_CHANGED_AT_SEAM')
+        if not PRODUCTION_AUDIT.exists():os.mkdir(PRODUCTION_AUDIT,0o700);fsyncdir(PRODUCTION_AUDIT.parent)
+        protected_dir(PRODUCTION_AUDIT,0o700)
+        # Atomic mkdir is consumption. Every later failure keeps this journal.
+        os.mkdir(context['record'],0o700);fsyncdir(PRODUCTION_AUDIT)
+        record=context['record']
+        for name,data in (('owner-authorization.json',canonical(authority)+b'\n'),('plan.json',canonical(envelope)+b'\n'),
+                          ('g-before.json',context['before_raw']),('before-nginx.conf',context['old']),('candidate-nginx.conf',context['candidate']),
+                          ('reviewed-g.py',context['graw'])):durable_write(record/name,data)
+        durable_write(record/'intent.json',canonical({'schema':'aoe2war.app.production-cutover-intent.v1','nonce':options.new_nonce,
+            'plan_sha256':envelope['plan_sha256'],'before_witness_sha256':options.before_witness_sha256,'financial_authorized':False})+b'\n');fsyncdir(record)
+        try:
+            need(datetime.now(timezone.utc)<=grant_timestamp(authority['manifest']['expires_at']),'PRODUCTION_OWNER_GRANT_EXPIRED_AT_WRITE')
+            replace_existing(VHOST,context['candidate']);nginx_reload();production_guard(context,3032)
+            readiness=wait_runtime(context['policy']['build_version'],context['before']['old_http']['build_version'],context['before']['candidate_http']['asset'],
+                                   lambda:production_guard(context,3032))
+            # A separate current C read-only security observation follows HTTP
+            # convergence, rather than treating loaded Nginx config as proof.
+            policy,profile_sha,witness=context['g'].production_profile()
+            need(profile_sha==envelope['plan']['profile_sha256'] and witness['candidate_pid']==envelope['plan']['candidate_pid'],
+                 'PRODUCTION_C_POST_CUTOVER_ADMISSION_DRIFT')
+            durable_write(record/'readiness.json',canonical(readiness)+b'\n')
+            durable_write(record/'commit.json',canonical({'schema':'aoe2war.app.production-cutover-commit.v1',
+                'status':'PUBLIC_PENDING_REAL_STEAM_AND_BROWSER_ACCEPTANCE','nonce':options.new_nonce,'source_sha':options.source_sha,
+                'build_id':policy['build_id'],'build_version':policy['build_version'],'plan_sha256':envelope['plan_sha256'],
+                'readiness_sha256':sha(canonical(readiness)),'original_web_pid':2625090,'preview_pid':1483304,
+                'authenticated_browser_roles_verified':False,'financial_authorized':False})+b'\n');fsyncdir(record)
+            print(canonical({'status':'PRODUCTION_PUBLIC_CUTOVER_PENDING_G_AFTER_AND_REAL_AUTHENTICATED_BROWSER','journal':str(record),
+                'source_sha':options.source_sha,'build_id':policy['build_id'],'build_version':policy['build_version']}).decode())
+        except BaseException as error:
+            record_failed_cutover(record,error,lambda:production_restore(context),production=True);raise
+    finally:os.close(fd)
+
+def production_rollback(nonce):
+    need(sys.platform=='linux' and socket.gethostname().split('.')[0]==HOST and os.geteuid()==0,'PRODUCTION_EXACT_HEL1_ROOT')
+    record=production_record(nonce);protected_dir(record,0o700)
+    authority=parse(root_file(record/'owner-authorization.json',131072));envelope=parse(root_file(record/'plan.json',32768));plan=envelope['plan']
+    need(authority.get('manifest',{}).get('rollback_authorized') is True and authority.get('plan_sha256')==envelope['plan_sha256'] and
+         sha(canonical(plan))==envelope['plan_sha256'] and plan.get('nonce')==nonce,'PRODUCTION_PRIOR_AUTHORIZED_ROLLBACK_REQUIRED')
+    need(not (record/'rollback.json').exists(),'PRODUCTION_ROLLBACK_ALREADY_RECORDED_NO_REPLAY')
+    before_raw=root_file(record/'g-before.json',65536);before=production_before(before_raw,plan['before_witness_sha256'],nonce)
+    old=root_file(record/'before-nginx.conf',131072);candidate=root_file(record/'candidate-nginx.conf',131072)
+    need(sha(old)==plan['nginx_before_sha256'] and sha(candidate)==plan['nginx_after_sha256'] and production_replace_site(old)==candidate,
+         'PRODUCTION_ROLLBACK_PREIMAGE_PIN')
+    g=production_load_g(root_file(record/'reviewed-g.py',196608),plan['g_source_sha256'])
+    context={'before':before,'old':old,'candidate':candidate,'g':g,'policy':{'build_version':plan['candidate_build_version']}}
+    lock_check();fd=os.open(LOCK,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        st=os.fstat(fd);need((st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))==LOCK_ID,'PRODUCTION_ROLLBACK_LOCK_FD_DRIFT')
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError as error:raise Hold('PRODUCTION_ROLLBACK_RELEASE_LOCK_BUSY') from error
+        # Expired forward authority never disables an already-authorized rollback.
+        readiness=production_restore(context)
+        durable_write(record/'rollback.json',canonical({'schema':'aoe2war.app.production-rollback.v1','status':'OLD_PUBLIC_3030_RESTORED',
+             'nonce':nonce,'original_web_pid':2625090,'preview_pid':1483304,'nginx_sha256':sha(old),'readiness':readiness,'financial_authorized':False})+b'\n');fsyncdir(record)
+        print('PASS:APP_PRODUCTION_ORIGINAL_3030_PROXY_RESTORED_NO_SERVICE_RESTART')
+    finally:os.close(fd)
+
+def production_dispatch(mode,argv):
+    parser=argparse.ArgumentParser()
+    if mode=='--root-production-rollback':
+        parser.add_argument('--nonce',required=True);options=parser.parse_args(argv);return production_rollback(options.nonce)
+    for name in ('new-nonce','source-sha','engine-source-sha256','owner-source-sha256','g-source-sha256','before-witness-sha256','before-witness-b64'):
+        parser.add_argument('--'+name,required=True)
+    for name in ('grant-comment','grant-sha256','plan-sha256'):parser.add_argument('--'+name,required=mode=='--root-production-apply')
+    options=parser.parse_args(argv)
+    if mode=='--root-production-plan':print(canonical(production_inputs(options)[0]).decode())
+    else:production_apply(options)
+
+
 def main():
     need(len(sys.argv)>=2,"EXPLICIT_ROOT_OPERATOR_MODE")
-    if sys.argv[1] in ("--root-cutover-plan","--root-apply-owner-grant"):
+    if sys.argv[1] in ("--root-production-plan","--root-production-apply","--root-production-rollback"):
+        production_dispatch(sys.argv[1],sys.argv[2:])
+    elif sys.argv[1] in ("--root-cutover-plan","--root-apply-owner-grant"):
         parser=argparse.ArgumentParser()
         for name in ("new-nonce","source-sha","engine-source-sha256","owner-source-sha256",
                      "g-source-sha256","before-witness-sha256"):

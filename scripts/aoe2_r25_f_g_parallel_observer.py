@@ -6,8 +6,9 @@ F controls the single owner-authorized deployment transaction. Never run this
 against a candidate lacking B's positive read-only/egress/method admission.
 """
 from __future__ import annotations
-import argparse, hashlib, json, os, pathlib, re, socket, stat, subprocess, sys, time
+import argparse, hashlib, json, os, pathlib, re, socket, ssl, stat, subprocess, sys, time
 from urllib.request import Request, build_opener, HTTPRedirectHandler
+import http.client as production_http_client
 
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
 HOST="ubuntu-4gb-hel1-11"
@@ -937,8 +938,219 @@ def verify(before,after,phase):
             result["candidate_process_requalified_before_cutover"]=True
             result["session_continuity_requalification_sha256"]=context["runtime_requalification_sha256"]
     return result
+# Separate successor production profile. Frozen 3031 receipts above remain immutable.
+PRODUCTION_POLICY=pathlib.Path("/etc/aoe2war/web-prod-v1/approved-profile.json")
+PRODUCTION_CONTROLLER=pathlib.Path("/usr/local/lib/aoe2war-web-prod/r25_c_start_root.py")
+PRODUCTION_UNIT="aoe2hdbets-web-prod.service"
+PRODUCTION_OWNED_UNITS={PRODUCTION_UNIT,"aoe2war-steam-egress-refresh.service","aoe2war-steam-egress-refresh.timer"}
+PRODUCTION_VHOST=pathlib.Path("/etc/nginx/sites-available/aoe2war.com")
+PRODUCTION_WEB_LOCATIONS={b"^~ /players/by-name/",b"= /api/kingdom-presence/events",b"^~ /api/",b"= /",b"^~ /download/watcher/",b"/"}
+
+def production_root_file(path,maximum=131072):
+    path=pathlib.Path(path)
+    for parent in path.parents:
+        st=parent.lstat()
+        need(stat.S_ISDIR(st.st_mode) and st.st_uid==0 and not st.st_mode&0o022,"PRODUCTION_ROOT_PARENT_UNTRUSTED")
+    return root_file(path,maximum)
+
+def production_profile():
+    raw=production_root_file(PRODUCTION_POLICY,32768);policy=parse(raw,32768)
+    need(policy.get("schema")=="aoe2war.app.approved-production-profile.v1" and
+         policy.get("profile")=="nonfinancial-production-v1" and policy.get("uid")==990 and policy.get("gid")==984 and
+         policy.get("unit")==PRODUCTION_UNIT and policy.get("port")==3032 and H40.fullmatch(policy.get("source_sha","")) and
+         BUILD.fullmatch(policy.get("build_id","")),"PRODUCTION_PROFILE_SCOPE")
+    need(policy.get("stage")=="/var/lib/aoe2war-web-prod-"+policy["source_sha"][:12],"PRODUCTION_STAGE_PATH")
+    need(digest(production_root_file(PRODUCTION_CONTROLLER,196608))==policy.get("controller_sha256"),"PRODUCTION_C_CONTROLLER_PIN")
+    witness=parse(run(["/usr/bin/python3","-I","-B",str(PRODUCTION_CONTROLLER),"--phase","production-witness"],timeout=45,
+                      stdin=canon({"profile_path":str(PRODUCTION_POLICY)})),131072)
+    need(witness.get("schema")=="aoe2war.app.production-witness.v1" and witness.get("status")=="NATIVE_PRODUCTION_PROFILE_PASS" and
+         witness.get("financial_authorized") is False and witness.get("read_only_observation") is True and H64.fullmatch(witness.get("admission_sha256","")),"PRODUCTION_C_NATIVE_READ_ONLY_WITNESS_REQUIRED")
+    for key in ("source_sha","build_id","build_version","stage","uid","gid","unit","port","manifest_sha256","protected_snapshot_sha256"):
+        need(witness.get(key)==policy.get(key),"PRODUCTION_C_PROFILE_DRIFT:"+key)
+    return policy,digest(raw),witness
+
+def production_selectors(raw):
+    # Parse lexical location braces independently from F. Six uniform selectors
+    # are required; includes, other routes and mixed old/new ports fail closed.
+    lo,hi,body=https_body(raw);found={}
+    for match in re.finditer(rb"(?m)^[ \t]*location[ \t]+([^{}\r\n]+)[ \t]*\{",body):
+        label=b" ".join(match.group(1).split());op=body.index(b"{",match.start(),match.end())
+        contents=body[op+1:matching_brace(body,op)]
+        web=re.findall(rb"proxy_pass[ \t]+http://127\.0\.0\.1:(3030|3031|3032);",contents)
+        if not web:continue
+        need(label in PRODUCTION_WEB_LOCATIONS and label not in found and len(web)==1,"PRODUCTION_UNREVIEWED_SELECTOR")
+        found[label]=int(web[0])
+    need(set(found)==PRODUCTION_WEB_LOCATIONS and len(set(found.values()))==1,"PRODUCTION_MIXED_OR_MISSING_SIX_SELECTORS")
+    return next(iter(found.values()))
+
+def production_loaded_nginx(raw):
+    loaded=run(["/usr/sbin/nginx","-T"],timeout=22)
+    need(0<len(loaded)<=8388608,"PRODUCTION_NGINX_LOADED_BOUND")
+    sections=re.split(rb"(?m)^# configuration file ([^\r\n]+):[ \t]*\r?\n",loaded)
+    found=[];counts={3030:0,3031:0,3032:0}
+    for index in range(1,len(sections),2):
+        if index+1>=len(sections):raise Hold("PRODUCTION_NGINX_SECTION_MARKERS")
+        data=sections[index+1].rstrip(b"\r\n")
+        for port in counts:counts[port]+=data.count(("proxy_pass http://127.0.0.1:%d;"%port).encode())
+        try:equal=os.path.samefile(sections[index].decode(),PRODUCTION_VHOST)
+        except OSError:equal=False
+        if equal:
+            need(data==raw.rstrip(b"\r\n"),"PRODUCTION_NGINX_ACTIVE_FILE_DISAGREEMENT");found.append(True)
+    port=production_selectors(raw)
+    need(len(found)==1 and counts=={p:(6 if p==port else 0) for p in counts},"PRODUCTION_NGINX_GLOBAL_SELECTOR_SCOPE")
+    return port
+
+def production_http_identity(origin,build):
+    version=parse(http(origin,"/api/deployment-version"),8192).get("buildVersion")
+    need(type(version)is str and version not in ("","unknown","development"),"PRODUCTION_HTTP_VERSION_UNKNOWN")
+    path="/_next/static/"+build+"/_buildManifest.js";data=http(origin,path,limit=65536)
+    need(bool(data),"PRODUCTION_STATIC_EMPTY")
+    return {"build_version":version,"asset":{"path":path,"bytes":len(data),"sha256":digest(data)}}
+
+def production_verified_https(surface,expected):
+    need(surface in ("origin","public"),"PRODUCTION_G_HTTPS_SURFACE")
+    evidence=[];data_rows=[]
+    for path,maximum in (("/api/deployment-version",8192),(expected["asset"]["path"],65536)):
+        context=ssl.create_default_context();need(context.check_hostname and context.verify_mode==ssl.CERT_REQUIRED,"PRODUCTION_G_TLS_VERIFICATION")
+        conn=production_http_client.HTTPSConnection("aoe2war.com",443,timeout=5,context=context)
+        try:
+            if surface=="origin":
+                raw=socket.create_connection(("127.0.0.1",443),5)
+                try:conn.sock=context.wrap_socket(raw,server_hostname="aoe2war.com")
+                except BaseException:raw.close();raise
+            conn.request("GET",path,headers={"Host":"aoe2war.com","Cache-Control":"no-cache","Connection":"close","User-Agent":"aoe2war-g-app-production/1"})
+            peer=conn.sock.getpeername()[:2];reply=conn.getresponse()
+            need(reply.status==200,"PRODUCTION_G_HTTPS_STATUS")
+            if surface=="public":need(peer[0] not in ("127.0.0.1","::1") and (reply.getheader("server") or "").lower()=="cloudflare" and
+                re.fullmatch(r"[A-Za-z0-9-]{1,128}",reply.getheader("cf-ray") or ""),"PRODUCTION_G_REAL_CLOUDFLARE_PROVENANCE")
+            data=reply.read(maximum+1);need(0<len(data)<=maximum,"PRODUCTION_G_HTTPS_RESPONSE_BOUND");data_rows.append(data)
+            evidence.append({"surface":surface,"url":PUBLIC+path,"host":"aoe2war.com","tls_server_name":"aoe2war.com","peer":list(peer),
+                "fresh_verified_connection":True,"redirects_followed":False,"status":reply.status,
+                "server":reply.getheader("server"),"cf_ray":reply.getheader("cf-ray"),"cf_cache_status":reply.getheader("cf-cache-status")})
+        finally:conn.close()
+    need(parse(data_rows[0],8192).get("buildVersion")==expected["build_version"] and len(data_rows[1])==expected["asset"]["bytes"] and
+         digest(data_rows[1])==expected["asset"]["sha256"],"PRODUCTION_G_HTTPS_BUILD_STATIC_DISAGREEMENT")
+    return {"identity":expected,"requests":evidence,"http_methods_sent":"GET_ONLY"}
+
+PRODUCTION_ROUTE_PROBES=(("players-by-name","/players/by-name/Emaren"),("presence-events","/api/kingdom-presence/events"),
+    ("api","/api/deployment-version"),("exact-root","/"),("watcher-download","/download/watcher/windows-installer"),("web-fallback","/kingdom-index"))
+
+def production_route_heads(surface,identity=None):
+    need(surface in ("old-loopback","candidate-loopback","origin","public"),"PRODUCTION_G_ROUTE_SURFACE")
+    rows=[]
+    for selector,path in PRODUCTION_ROUTE_PROBES:
+        if surface.endswith("loopback"):
+            conn=production_http_client.HTTPConnection("127.0.0.1",3030 if surface=="old-loopback" else 3032,timeout=5)
+        else:
+            context=ssl.create_default_context();need(context.check_hostname and context.verify_mode==ssl.CERT_REQUIRED,"PRODUCTION_G_ROUTE_TLS")
+            conn=production_http_client.HTTPSConnection("aoe2war.com",443,timeout=5,context=context)
+            if surface=="origin":
+                raw=socket.create_connection(("127.0.0.1",443),5)
+                try:conn.sock=context.wrap_socket(raw,server_hostname="aoe2war.com")
+                except BaseException:raw.close();raise
+        try:
+            conn.request("HEAD",path,headers={"Host":"aoe2war.com","Cache-Control":"no-cache","Connection":"close","User-Agent":"aoe2war-g-six-selectors/1"})
+            peer=conn.sock.getpeername()[:2];reply=conn.getresponse()
+            need(reply.status in (200,204,301,302,307,308,400,401,403,404,405),"PRODUCTION_G_SELECTOR_HTTP_FAILURE:"+selector)
+            if selector in ("api","exact-root","watcher-download","web-fallback"):
+                need(reply.status==200,"PRODUCTION_G_REQUIRED_ROUTE_NOT_200:"+selector)
+            if surface=="public":need(peer[0] not in ("127.0.0.1","::1") and (reply.getheader("server") or "").lower()=="cloudflare" and
+                re.fullmatch(r"[A-Za-z0-9-]{1,128}",reply.getheader("cf-ray") or ""),"PRODUCTION_G_SELECTOR_CLOUDFLARE_PROVENANCE")
+            source=reply.getheader("x-aoe2war-source");build=reply.getheader("x-aoe2war-build-id");pid=reply.getheader("x-aoe2war-process")
+            if identity is not None:need(source==identity["source_sha"] and build==identity["build_id"] and pid==str(identity["candidate_pid"]),
+                "PRODUCTION_G_SELECTOR_NOT_EXACT_CANDIDATE:"+selector)
+            length=reply.getheader("content-length")
+            if selector=="watcher-download":need(length is not None and length.isdecimal() and 0<int(length)<=536870912 and
+                (reply.getheader("content-type") or "").split(";",1)[0]=="application/octet-stream","PRODUCTION_G_WATCHER_BINARY_HEAD_REQUIRED")
+            # HEAD only: do not read a large binary or open a presence stream.
+            rows.append({"selector":selector,"path":path,"method":"HEAD","status":reply.status,"content_type":reply.getheader("content-type"),
+                "content_length":length,"source_sha":source,"build_id":build,"process_pid":pid,
+                "candidate_identity_proven":identity is not None,"fresh_connection":True,"redirects_followed":False})
+        finally:conn.close()
+    return rows
+
+def production_native_snapshot(phase,nonce):
+    need(sys.platform=="linux" and os.geteuid()==0 and socket.gethostname().split(".")[0]==HOST,"PRODUCTION_G_EXACT_HOST")
+    need(phase in ("before","after","rollback") and NONCE.fullmatch(nonce or ""),"PRODUCTION_G_PHASE_NONCE")
+    policy,policy_sha,witness=production_profile()
+    state=stable_system_state_during_timer_quiescence()
+    protected={name:value for name,value in state.items() if name not in PRODUCTION_OWNED_UNITS}
+    need(protected[OLD_UNIT]["properties"]["MainPID"]=="2625090" and protected[NEW_UNIT]["properties"]["MainPID"]=="1483304",
+         "PRODUCTION_ORIGINAL_OR_PREVIEW_PID_DRIFT")
+    ports={str(port):listening_socket(port) for port in (3030,3031,3032,8092,8093)}
+    need(ports["3030"]["pid"]==2625090 and ports["3031"]["pid"]==1483304 and ports["3032"]["pid"]==witness.get("candidate_pid") and
+         ports["3032"]["uid"]==990,"PRODUCTION_LISTENER_IDENTITY")
+    old_build=(OLD_REPO/".next/BUILD_ID").read_text().strip();need(BUILD.fullmatch(old_build),"PRODUCTION_OLD_BUILD_ID")
+    old=production_http_identity("http://127.0.0.1:3030",old_build)
+    candidate=production_http_identity("http://127.0.0.1:3032",policy["build_id"])
+    need(candidate["build_version"]==policy["build_version"] and candidate["build_version"]!=old["build_version"],"PRODUCTION_HTTP_CANDIDATE_BUILD")
+    stage=pathlib.Path(policy["stage"])
+    asset=production_root_file(stage/".next"/candidate["asset"]["path"].removeprefix("/_next/"),65536)
+    need(digest(asset)==candidate["asset"]["sha256"],"PRODUCTION_RUNTIME_STATIC_NOT_SEALED_ARTIFACT")
+    nginx=production_root_file(PRODUCTION_VHOST);port=production_loaded_nginx(nginx)
+    need(port==(3032 if phase=="after" else 3030),"PRODUCTION_G_UNEXPECTED_PUBLIC_SELECTOR")
+    selected=candidate if phase=="after" else old
+    origin_proof=production_verified_https("origin",selected)
+    identity={"source_sha":policy["source_sha"],"build_id":policy["build_id"],"candidate_pid":witness["candidate_pid"]}
+    local_heads={"old":production_route_heads("old-loopback"),"candidate":production_route_heads("candidate-loopback",identity)}
+    origin_heads=production_route_heads("origin",identity if phase=="after" else None)
+    # This compact receipt retains hashes of all native rows; no credentials or
+    # raw financial state is serialized, and F can bind its exact fresh bytes.
+    return {"schema":"aoe2war.g.app-production.v1","phase":phase,"nonce":nonce,"host":HOST,
+       "source_sha":policy["source_sha"],"build_id":policy["build_id"],"build_version":policy["build_version"],
+       "observed_at":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"profile_sha256":policy_sha,"manifest_sha256":policy["manifest_sha256"],
+       "native_admission_sha256":witness.get("admission_sha256"),
+       "candidate_pid":witness["candidate_pid"],"candidate_start_ticks":witness["candidate_start_ticks"],
+       "protected_units_sha256":digest(canon(protected)),"ports":ports,"release_lock":lock_state(),
+       "nginx":{"sha256":digest(nginx),"upstream_port":port,"selectors":6},
+       "old_http":old,"candidate_http":candidate,"origin_https":origin_proof,"local_route_heads":local_heads,"origin_route_heads":origin_heads,"http_methods_sent":"GET_HEAD_ONLY",
+       "financial_authorized":False,"authenticated_browser_roles_verified":False,
+       "proof":"SEPARATE_NATIVE_G_OBSERVATION_NOT_HUMAN_REVIEW"}
+
+def production_compare(before,after):
+    need(before.get("schema")==after.get("schema")=="aoe2war.g.app-production.v1" and before.get("phase")=="before", "PRODUCTION_G_BEFORE_SCHEMA")
+    production_same_runtime(before,after)
+
+def production_same_runtime(before,after):
+    for key in ("nonce","source_sha","build_id","build_version","profile_sha256","manifest_sha256","native_admission_sha256",
+                "candidate_pid","candidate_start_ticks","protected_units_sha256","ports","release_lock","old_http","candidate_http","local_route_heads"):
+        need(before.get(key)==after.get(key),"PRODUCTION_G_CONTINUITY_DRIFT:"+key)
+
+def production_main(argv):
+    a=argparse.ArgumentParser();a.add_argument("--production-remote",choices=("before","after","rollback"));a.add_argument("--production-phase",choices=("before","after","rollback"))
+    a.add_argument("--nonce",required=True);a.add_argument("--ssh-target");a.add_argument("--before",type=pathlib.Path);a.add_argument("--before-sha256")
+    x=a.parse_args(argv)
+    need(NONCE.fullmatch(x.nonce),"PRODUCTION_G_EXACT_NONCE")
+    if x.production_remote:
+        need(not x.production_phase and not x.ssh_target and not x.before,"PRODUCTION_G_REMOTE_ARGS")
+        return production_native_snapshot(x.production_remote,x.nonce)
+    need(x.production_phase and x.ssh_target=="root@hel1","PRODUCTION_G_LOCAL_ARGS")
+    source=pathlib.Path(__file__).read_bytes()
+    result=run(["/usr/bin/ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",x.ssh_target,
+        "/usr/bin/python3","-I","-B","-","--production-remote",x.production_phase,"--nonce",x.nonce],timeout=180,stdin=source)
+    snapshot=parse(result,131072)
+    if x.production_phase!="before":
+        need(x.before and H64.fullmatch(x.before_sha256 or ""),"PRODUCTION_G_EXACT_BEFORE_REQUIRED")
+        raw=x.before.read_bytes();need(digest(raw)==x.before_sha256,"PRODUCTION_G_BEFORE_PIN")
+        production_compare(parse(raw,131072),snapshot)
+    chosen=snapshot["candidate_http"] if x.production_phase=="after" else snapshot["old_http"]
+    proof=production_verified_https("public",chosen)
+    identity={"source_sha":snapshot["source_sha"],"build_id":snapshot["build_id"],"candidate_pid":snapshot["candidate_pid"]} if x.production_phase=="after" else None
+    route_proof=production_route_heads("public",identity)
+    repeat=parse(run(["/usr/bin/ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",x.ssh_target,
+        "/usr/bin/python3","-I","-B","-","--production-remote",x.production_phase,"--nonce",x.nonce],timeout=180,stdin=source),131072)
+    production_same_runtime(snapshot,repeat)
+    need(snapshot["nginx"]==repeat["nginx"] and snapshot["phase"]==repeat["phase"],"PRODUCTION_G_NATIVE_DRIFT_DURING_MAC_PUBLIC_PROBE")
+    snapshot["mac_public"]=proof["identity"];snapshot["mac_https"]=proof;snapshot["mac_route_heads"]=route_proof;snapshot["status"]="PRODUCTION_G_"+x.production_phase.upper()+"_PASS_PENDING_REAL_AUTHENTICATED_BROWSER"
+    return snapshot
+
 def main():
     global TRANSACTION_NONCE
+    if any(x.startswith("--production-") for x in sys.argv[1:]):
+        try:
+            print(json.dumps(production_main(sys.argv[1:]),sort_keys=True,separators=(",",":")));return 0
+        except (Hold,KeyError,ValueError,TypeError,OSError,subprocess.SubprocessError) as error:
+            print("HOLD:G_APP_PRODUCTION:"+(str(error) if isinstance(error,Hold) else type(error).__name__),file=sys.stderr);return 2
     a=argparse.ArgumentParser()
     a.add_argument("--remote",choices=("before","after","rollback"))
     a.add_argument("--phase",choices=("before","after","rollback"))

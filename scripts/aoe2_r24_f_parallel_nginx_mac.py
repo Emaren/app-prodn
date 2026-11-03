@@ -390,7 +390,124 @@ def apply_owner_grant(opts, root, g_path, g_source):
         print("PASS:ORIGINAL_PUBLIC_3030_NGINX_RESTORED", flush=True)
         raise
 
+def production_g_witness(g_path,phase,nonce,before=None,before_sha=None):
+    command=['/usr/bin/python3','-I','-B',str(g_path),'--production-phase',phase,'--nonce',nonce,'--ssh-target','root@hel1']
+    if before is not None:command+=['--before',str(before),'--before-sha256',before_sha]
+    result=subprocess.run(command,capture_output=True,timeout=480,check=False)
+    need(result.returncode==0 and 0<len(result.stdout)<=65536,'PRODUCTION_G_'+phase.upper()+'_NATIVE_HOLD')
+    reply=strict_json(result.stdout)
+    need(reply.get('schema')=='aoe2war.g.app-production.v1' and reply.get('nonce')==nonce and reply.get('phase')==phase and
+         reply.get('status')=='PRODUCTION_G_'+phase.upper()+'_PASS_PENDING_REAL_AUTHENTICATED_BROWSER','PRODUCTION_G_EXACT_PHASE_RECEIPT')
+    return reply
+
+def production_comment(comment_id,expected_sha,envelope):
+    need(re.fullmatch(r'[0-9]{1,20}',comment_id or '') and H64.fullmatch(expected_sha or ''),'PRODUCTION_OWNER_COMMENT_PIN')
+    obj=github_read('issues/comments/'+str(int(comment_id)))
+    need(obj.get('id')==int(comment_id) and obj.get('html_url')=='https://github.com/Emaren/app-prodn/issues/1108#issuecomment-'+str(int(comment_id)) and
+         obj.get('issue_url')=='https://api.github.com/repos/Emaren/app-prodn/issues/1108' and obj.get('user',{}).get('login')=='Emaren' and
+         obj.get('user',{}).get('id')==15059910 and obj.get('created_at')==obj.get('updated_at'),'PRODUCTION_ACTUAL_UNEDITED_EMAREN_AUTHORITY')
+    body=obj.get('body','');need(type(body)is str and hashlib.sha256(body.encode()).hexdigest()==expected_sha,'PRODUCTION_OWNER_COMMENT_CHANGED')
+    match=re.fullmatch(r'APP_PRODUCTION_CUTOVER_GRANT\n```json\n(.+)\n```\n?',body,re.S);need(match is not None,'PRODUCTION_OWNER_GRANT_FORMAT')
+    grant=strict_json(match[1].encode());plan=envelope['plan']
+    need(grant.get('schema')=='aoe2war.app.production-cutover-grant.v1' and grant.get('scope')=='A05_NGINX_ONLY_PRODUCTION_3032' and
+         grant.get('decision')=='AUTHORIZE' and grant.get('owner_login')=='Emaren' and grant.get('release_authority')=='OWNER_ONLY_NONFINANCIAL' and
+         grant.get('owner_delegated_decisions') is True and grant.get('delegated_ai_authorship_disclosed') is True and
+         grant.get('independent_review') is False and grant.get('financial_authorized') is False and grant.get('public_cutover_authorized') is True and
+         grant.get('rollback_authorized') is True and type(grant.get('max_uses'))is int and grant['max_uses']==1,'PRODUCTION_OWNER_SCOPE')
+    issued=utc_timestamp(grant.get('issued_at'));expires=utc_timestamp(grant.get('expires_at'));created=utc_timestamp(obj.get('created_at'))
+    need(0<(expires-issued).total_seconds()<=600 and issued<=created<=datetime.now(timezone.utc)<=expires,'PRODUCTION_OWNER_GRANT_EXPIRED_OR_INVALID')
+    need(grant.get('plan_sha256')==envelope['plan_sha256'],'PRODUCTION_OWNER_EXACT_PLAN')
+    for key,value in plan.items():
+        if key not in ('schema','public_cutover_authorized'):need(grant.get(key)==value,'PRODUCTION_OWNER_TRANSACTION_DRIFT:'+key)
+    return obj,grant
+
+def production_protective_rollback(root,nonce,receipt_path):
+    # Local evidence storage is secondary to the already-authorized protective
+    # restoration. Disk-full must never prevent either SSH or proof validation.
+    result=ssh_source(root,'--root-production-rollback --nonce '+nonce,timeout=450)
+    proven=(result.returncode==0 and b'PASS:APP_PRODUCTION_ORIGINAL_3030_PROXY_RESTORED_NO_SERVICE_RESTART' in result.stdout)
+    try:
+        owner_receipt(receipt_path,{'returncode':result.returncode,'stdout':result.stdout.decode(errors='replace'),'stderr':result.stderr.decode(errors='replace'),
+             'original_public_restoration_proven':proven})
+    except (OSError,Hold):
+        print('HOLD:PRODUCTION_LOCAL_ROLLBACK_RECEIPT_UNAVAILABLE_NATIVE_RESULT_CHECKED',file=sys.stderr,flush=True)
+    need(proven,'PRODUCTION_G_AFTER_FAILED_ROLLBACK_UNCERTAIN')
+    return result
+
+def production_owner_main(argv):
+    a=argparse.ArgumentParser();a.add_argument('--production-mode',choices=('before','plan','apply','rollback'),required=True)
+    a.add_argument('--nonce',required=True);a.add_argument('--source-sha');a.add_argument('--reviewed-root-file',required=True);a.add_argument('--root-source-sha256',required=True)
+    a.add_argument('--reviewed-g-file');a.add_argument('--g-source-sha256');a.add_argument('--owner-source-sha256');a.add_argument('--existing-before');a.add_argument('--existing-before-sha256')
+    a.add_argument('--production-plan');a.add_argument('--owner-grant-comment');a.add_argument('--owner-grant-sha256')
+    opts=a.parse_args(argv)
+    need(sys.platform=='darwin' and os.geteuid()!=0,'PRODUCTION_ORIGINAL_OWNER_MAC_NONROOT_REQUIRED')
+    need(NONCE.fullmatch(opts.nonce or ''),'PRODUCTION_EXACT_NONCE_REQUIRED')
+    _,root=pinned_file(opts.reviewed_root_file,opts.root_source_sha256,maximum=196608)
+    need(b'def production_apply(' in root and b'def production_rollback(' in root,'PRODUCTION_REVIEWED_F_MODES_REQUIRED')
+    receipts=pathlib.Path.home()/'.config/aoe2war/app-production-f'
+    if opts.production_mode=='rollback':
+        result=ssh_source(root,'--root-production-rollback --nonce '+opts.nonce,timeout=450)
+        owner_receipt(receipts/(opts.nonce+'-rollback-result.json'),{'returncode':result.returncode,'stdout':result.stdout.decode(errors='replace'),'stderr':result.stderr.decode(errors='replace')})
+        need(result.returncode==0 and b'PASS:APP_PRODUCTION_ORIGINAL_3030_PROXY_RESTORED_NO_SERVICE_RESTART' in result.stdout,'PRODUCTION_NATIVE_ROLLBACK_UNCERTAIN')
+        print('PASS:APP_PRODUCTION_ORIGINAL_3030_PUBLIC_RESTORED');return
+    need(opts.reviewed_g_file and H64.fullmatch(opts.g_source_sha256 or ''),'PRODUCTION_REVIEWED_G_REQUIRED')
+    g_path,g_source=pinned_file(opts.reviewed_g_file,opts.g_source_sha256,maximum=196608)
+    if opts.production_mode=='before':
+        path=receipts/(opts.nonce+'-g-before.json');need(not path.exists() and not path.is_symlink(),'PRODUCTION_BEFORE_ALREADY_RECORDED_NO_REPLAY')
+        witness=production_g_witness(g_path,'before',opts.nonce)
+        owner_receipt(path,witness)
+        print(canonical({'status':'PRODUCTION_G_BEFORE_SAVED','path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}).decode());return
+    need(H40.fullmatch(opts.source_sha or '') and H64.fullmatch(opts.owner_source_sha256 or '') and opts.existing_before and H64.fullmatch(opts.existing_before_sha256 or ''),
+         'PRODUCTION_COMPLETE_PLAN_BINDINGS_REQUIRED')
+    _,owner_source=pinned_file(__file__,opts.owner_source_sha256,maximum=196608)
+    before_path,before_raw=private_bytes(opts.existing_before,maximum=65536)
+    need(hashlib.sha256(before_raw).hexdigest()==opts.existing_before_sha256,'PRODUCTION_BEFORE_PRIVATE_FILE_PIN')
+    before=strict_json(before_raw)
+    need(before.get('schema')=='aoe2war.g.app-production.v1' and before.get('phase')=='before' and before.get('nonce')==opts.nonce and
+         before.get('source_sha')==opts.source_sha and before.get('status')=='PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER',
+         'PRODUCTION_ACTUAL_G_BEFORE_REQUIRED')
+    encoded=base64.b64encode(before_raw).decode();need(len(encoded)<=90000,'PRODUCTION_BEFORE_BOUND')
+    binding=(' --new-nonce '+opts.nonce+' --source-sha '+opts.source_sha+' --engine-source-sha256 '+opts.root_source_sha256+
+             ' --owner-source-sha256 '+opts.owner_source_sha256+' --g-source-sha256 '+opts.g_source_sha256+
+             ' --before-witness-sha256 '+opts.existing_before_sha256+' --before-witness-b64 '+encoded)
+    fresh=ssh_source(root,'--root-production-plan'+binding,timeout=450)
+    need(fresh.returncode==0 and 0<len(fresh.stdout)<=32768,'PRODUCTION_NATIVE_READ_ONLY_PLAN_HOLD')
+    envelope=strict_json(fresh.stdout)
+    need(envelope.get('schema')=='aoe2war.app.production-cutover-plan-envelope.v1' and envelope.get('status')=='PASS_READ_ONLY_PRODUCTION_CUTOVER_PLAN_NOT_AUTHORITY' and
+         hashlib.sha256(canonical(envelope.get('plan'))).hexdigest()==envelope.get('plan_sha256'),'PRODUCTION_NATIVE_PLAN_SCHEMA')
+    if opts.production_mode=='plan':
+        path=receipts/(opts.nonce+'-plan.json');owner_receipt(path,envelope)
+        print(canonical({'status':'PRODUCTION_READ_ONLY_PLAN_SAVED_NOT_AUTHORITY','path':str(path),'plan_sha256':envelope['plan_sha256']}).decode());return
+    need(opts.production_plan,'PRODUCTION_REVIEWED_NATIVE_PLAN_REQUIRED')
+    _,approved_raw=private_bytes(opts.production_plan,maximum=32768);approved=strict_json(approved_raw)
+    need(approved==envelope,'PRODUCTION_OWNER_APPROVED_NATIVE_PLAN_DRIFT')
+    _,grant=production_comment(opts.owner_grant_comment,opts.owner_grant_sha256,envelope)
+    qualified_ci(grant);qualified_sources(grant,{'engine':root,'owner':owner_source,'g':g_source})
+    submission=receipts/(opts.nonce+'-owner-submission.json')
+    need(not submission.exists() and not submission.is_symlink(),'PRODUCTION_OWNER_SUBMISSION_ALREADY_CONSUMED_NO_REPLAY')
+    production_comment(opts.owner_grant_comment,opts.owner_grant_sha256,envelope)
+    owner_receipt(submission,{'schema':'aoe2war.app.production-cutover-submission.v1','status':'SUBMITTED_NOT_PROOF_OF_HOST_EXECUTION',
+        'comment_id':opts.owner_grant_comment,'body_sha256':opts.owner_grant_sha256,'plan_sha256':envelope['plan_sha256']})
+    try:
+        result=ssh_source(root,'--root-production-apply'+binding+' --grant-comment '+opts.owner_grant_comment+' --grant-sha256 '+opts.owner_grant_sha256+
+                          ' --plan-sha256 '+envelope['plan_sha256'],timeout=600)
+        need(len(result.stdout)<=131072 and len(result.stderr)<=131072,'PRODUCTION_ROOT_OUTPUT_BOUND')
+        owner_receipt(receipts/(opts.nonce+'-root-result.json'),{'returncode':result.returncode,'stdout':result.stdout.decode(errors='replace'),'stderr':result.stderr.decode(errors='replace')})
+        need(result.returncode==0,'PRODUCTION_CUTOVER_UNCERTAIN_INSPECT_JOURNAL_NO_BLIND_RETRY')
+        reply=strict_json(result.stdout)
+        need(reply.get('status')=='PRODUCTION_PUBLIC_CUTOVER_PENDING_G_AFTER_AND_REAL_AUTHENTICATED_BROWSER','PRODUCTION_NATIVE_CUTOVER_RECEIPT_REQUIRED')
+        _,recheck=pinned_file(g_path,opts.g_source_sha256,maximum=196608);need(recheck==g_source,'PRODUCTION_G_SOURCE_CHANGED')
+        after=production_g_witness(g_path,'after',opts.nonce,before_path,opts.existing_before_sha256)
+        owner_receipt(receipts/(opts.nonce+'-g-after.json'),after)
+        print(canonical({'status':'PRODUCTION_G_AFTER_PASS_STEAM_AND_AUTHENTICATED_BROWSER_STILL_PENDING','source_sha':opts.source_sha,
+                         'build_id':after['build_id'],'build_version':after['build_version'],'receipt':str(receipts/(opts.nonce+'-g-after.json'))}).decode())
+    except BaseException:
+        production_protective_rollback(root,opts.nonce,receipts/(opts.nonce+'-automatic-rollback-result.json'))
+        raise
+
+
 def main():
+    if "--production-mode" in sys.argv[1:]:return production_owner_main(sys.argv[1:])
     a = argparse.ArgumentParser()
     a.add_argument("--reviewed-root-file", required=True)
     a.add_argument("--root-source-sha256", required=True)
