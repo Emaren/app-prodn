@@ -149,6 +149,7 @@ class RealBrowserTransport(unittest.TestCase):
         import http.server,threading
         from playwright.sync_api import sync_playwright
         requests=[]
+        home_mode={"count":0,"shuffle":True,"cache_hit":False,"traffic_separate":True}
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 requests.append((self.command,self.path))
@@ -163,8 +164,27 @@ class RealBrowserTransport(unittest.TestCase):
                 if self.path in locations:self.send_header("Location",locations[self.path])
                 if self.path=="/provider" and self.headers.get("Cookie"):
                     raise AssertionError("cross-site provider received site cookies")
-                body=json.dumps({"cookie_received":"fixture-only-invalid-auth" in self.headers.get("Cookie","")}).encode()
-                self.send_header("Content-Type","application/json");self.send_header("Content-Length",str(len(body)));self.end_headers();self.wfile.write(body)
+                if self.path=="/":
+                    home_mode["count"]+=1
+                    start=home_mode["count"] if home_mode["shuffle"] else 0
+                    cards="".join(f'<a href="/players/{n}"><div data-featured-warrior-image-buffer="0" style="opacity:1"><img src="/api/media-assets/avatar/{n}?edgev=fixture"></div></a>'
+                                  for n in range(start,start+4))
+                    body=cards.encode();content_type="text/html"
+                    self.send_header("CF-Cache-Status","HIT" if home_mode["cache_hit"] else "DYNAMIC")
+                elif self.path.startswith("/api/media-assets/avatar/"):
+                    body=b'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32"/></svg>'
+                    content_type="image/svg+xml"
+                elif self.path=="/traffic":
+                    day="2024-10-20" if home_mode["traffic_separate"] else "2024-10-19"
+                    body=(f'<p>LAST PUBLISHED UTC DAY: 2024-10-19</p><button>Confirmed Humans</button>'
+                          '<section aria-label="Provisional, unverified daily web activity">'
+                          '<p>Qualifying IPs · not people</p><p>Filtered page GETs · not sessions</p>'
+                          f'<div role="img" style="width:32px;height:32px" aria-label="{day}: 12 qualifying IPs"></div></section>').encode()
+                    content_type="text/html; charset=utf-8"
+                else:
+                    body=json.dumps({"cookie_received":"fixture-only-invalid-auth" in self.headers.get("Cookie","")}).encode()
+                    content_type="application/json"
+                self.send_header("Content-Type",content_type);self.send_header("Content-Length",str(len(body)));self.end_headers();self.wfile.write(body)
             def do_POST(self):self.do_GET()
             def log_message(self,*args):pass
         server=http.server.ThreadingHTTPServer(("127.0.0.1",0),Handler)
@@ -201,6 +221,20 @@ class RealBrowserTransport(unittest.TestCase):
                     unattached=context.new_page()
                     with self.assertRaisesRegex(Error,"ERR_NAME_NOT_RESOLVED"):
                         unattached.goto("https://aoe2war.com/",wait_until="domcontentloaded",timeout=5000)
+                    content=g.modern_public_content(page,admission_fixture()["witness"])
+                    self.assertEqual(content["distinct_server_openings"],5)
+                    self.assertEqual(content["decoded_fallback_portraits"],0)
+                    self.assertEqual(content["last_certified_utc_day"],"2024-10-19")
+                    self.assertEqual(content["observed_only_utc_days"],["2024-10-20"])
+                    home_mode["shuffle"]=False
+                    with self.assertRaisesRegex(g.BrowserContentHold,"INSUFFICIENT_SERVER_VARIATION"):
+                        g.modern_public_content(page,admission_fixture()["witness"])
+                    home_mode["shuffle"]=True;home_mode["cache_hit"]=True
+                    with self.assertRaisesRegex(g.BrowserContentHold,"MODERN_CONTENT_SHARED_CACHE"):
+                        g.modern_public_content(page,admission_fixture()["witness"])
+                    home_mode["cache_hit"]=False;home_mode["traffic_separate"]=False
+                    with self.assertRaisesRegex(g.BrowserContentHold,"TRAFFIC_DISTINCT_OBSERVED_DATES"):
+                        g.modern_public_content(page,admission_fixture()["witness"])
                 finally:browser.close()
         finally:server.shutdown();server.server_close();thread.join(timeout=2)
 

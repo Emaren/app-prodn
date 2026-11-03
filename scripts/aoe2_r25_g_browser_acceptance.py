@@ -639,6 +639,93 @@ def candidate_session_state(context):
         raise ValueError("Expected one secure purpose-created session")
     return {"cookies":sessions,"origins":[]}
 
+class BrowserContentHold(ValueError):
+    """Public content failure codes contain no URLs, bodies or credentials."""
+
+def modern_public_content(page,witness):
+    """Measure SSR shuffle, decoded portraits and separate Traffic data rails."""
+    page.set_viewport_size({"width":1440,"height":900})
+    cache=page.context.new_cdp_session(page)
+    cache.send("Network.enable")
+    cache.send("Network.setCacheDisabled",{"cacheDisabled":True})
+
+    def checked(response):
+        if response is None or response.status!=200:
+            raise BrowserContentHold("MODERN_CONTENT_HTTP")
+        headers=response.headers
+        if any(headers.get(name)!=value for name,value in (
+            ("x-aoe2war-source",witness["source_sha"]),("x-aoe2war-build-id",witness["build_id"]),
+            ("x-aoe2war-process",str(witness["candidate_pid"]))
+        )):raise BrowserContentHold("MODERN_CONTENT_RUNTIME_IDENTITY")
+        if (headers.get("cf-cache-status","").upper() in ("HIT","STALE","UPDATING","REVALIDATED")
+            or headers.get("age","0")!="0"):
+            raise BrowserContentHold("MODERN_CONTENT_SHARED_CACHE")
+        return headers
+
+    shots=[];lineups=set()
+    try:
+        for attempt in range(5):
+            response=(page.goto(ORIGIN+"/",wait_until="domcontentloaded",timeout=20000) if attempt==0
+                      else page.reload(wait_until="domcontentloaded",timeout=20000))
+            headers=checked(response)
+            opening=page.evaluate("""source => {
+                const doc=new DOMParser().parseFromString(source,'text/html');
+                return [...doc.querySelectorAll('[data-featured-warrior-image-buffer="0"] img')].map(image=>{
+                    const path=image.closest('a')?.getAttribute('href');
+                    return path?.startsWith('/')&&!path.startsWith('//') ? path.split(/[?#]/)[0] : null;
+                });
+            }""",response.text())
+            if len(opening)!=4 or any(not route for route in opening):
+                raise BrowserContentHold("FEATURED_WARRIORS_SERVER_OPENING_MISSING")
+            lineups.add(tuple(opening))
+            page.wait_for_function("""() => {
+                const images=[...document.querySelectorAll('[data-featured-warrior-image-buffer] img')]
+                    .filter(image=>image.parentElement.style.opacity==='1');
+                return images.length===4&&images.every(image=>image.complete&&image.naturalWidth>0);
+            }""",timeout=10000)
+            loaded=page.evaluate("""async () => {
+                const images=[...document.querySelectorAll('[data-featured-warrior-image-buffer] img')]
+                    .filter(image=>image.parentElement.style.opacity==='1');
+                const portraits=await Promise.race([Promise.all(images.map(async image=>{
+                    await image.decode();
+                    const url=new URL(image.currentSrc||image.src);
+                    return {path:url.pathname, same_origin:url.origin===location.origin,
+                            edge_versioned:!!url.searchParams.get('edgev'), width:image.naturalWidth};
+                })),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portrait decode deadline')),5000))]);
+                const nav=performance.getEntriesByType('navigation')[0];
+                return {portraits, ttfb_ms:Math.round(nav.responseStart),
+                        dom_content_loaded_ms:Math.round(nav.domContentLoadedEventEnd)};
+            }""")
+            if (len(loaded["portraits"])!=4 or any(not p["same_origin"] or p["width"]<=0
+                or (p["path"].startswith("/api/media-assets/avatar/") and not p["edge_versioned"])
+                for p in loaded["portraits"])):
+                raise BrowserContentHold("FEATURED_WARRIORS_PORTRAIT_IDENTITY")
+            shots.append({"opening":opening,**loaded,"cache_control":headers.get("cache-control"),
+                          "edge_cache_status":headers.get("cf-cache-status")})
+        fallback_count=sum("/silhouette" in p["path"] for shot in shots for p in shot["portraits"])
+        if len(lineups)<3 or fallback_count==len(shots)*4:
+            raise BrowserContentHold("FEATURED_WARRIORS_INSUFFICIENT_SERVER_VARIATION_OR_PORTRAITS")
+
+        checked(page.goto(ORIGIN+"/traffic",wait_until="domcontentloaded",timeout=20000))
+        published=page.get_by_text(re.compile(r"^LAST PUBLISHED UTC DAY: \d{4}-\d{2}-\d{2}$"))
+        published.wait_for(state="visible",timeout=20000)
+        last_certified=dt.date.fromisoformat(published.inner_text().rsplit(" ",1)[-1])
+        page.get_by_role("button",name="Confirmed Humans",exact=True).wait_for(state="visible",timeout=20000)
+        provisional=page.get_by_role("region",name="Provisional, unverified daily web activity")
+        chart=provisional.get_by_role("img")
+        chart.wait_for(state="visible",timeout=20000)
+        rows=re.findall(r"(\d{4}-\d{2}-\d{2}): (\d+) qualifying IPs",chart.get_attribute("aria-label") or "")
+        dates=[dt.date.fromisoformat(day) for day,_ in rows]
+        today=dt.datetime.now(dt.timezone.utc).date()
+        if (not dates or dates!=sorted(set(dates)) or not last_certified<dates[0]<=dates[-1]<=today
+            or not provisional.get_by_text("Qualifying IPs · not people",exact=True).is_visible()
+            or not provisional.get_by_text("Filtered page GETs · not sessions",exact=True).is_visible()):
+            raise BrowserContentHold("TRAFFIC_DISTINCT_OBSERVED_DATES_OR_LABELS_MISSING")
+        return {"independent_home_responses":len(shots),"distinct_server_openings":len(lineups),
+                "decoded_fallback_portraits":fallback_count,"home_samples":shots,
+                "last_certified_utc_day":last_certified.isoformat(),"observed_only_utc_days":[day for day,_ in rows]}
+    finally:cache.detach()
+
 def candidate_auth_main():
     """Keep genuine owner sessions in memory across the separately governed cutover."""
     import subprocess,time,shutil
@@ -682,6 +769,7 @@ def candidate_auth_main():
                 or guard.get("build_id")!=witness["build_id"] or guard.get("financial_authorized") is not False):raise ValueError("Actual candidate guard identity failed")
             if not candidate_static_probe(page,before["candidate_http"]["asset"]):raise ValueError("Candidate browser static bytes differ")
             if not candidate_browser_probe(page,"guest")["guest_denied"]:raise ValueError("Candidate guest denial failed")
+            candidate_content=modern_public_content(page,witness)
             results["guest"]={"denial_proven":True}
             for role in ("admin","nonadmin"):
                 context=browser.new_context(ignore_https_errors=False,service_workers="block");contexts[role]=context
@@ -723,7 +811,8 @@ def candidate_auth_main():
                  "native_admission_receipt_sha256":opts.candidate_auth_receipt_sha256,"native_admission_sha256":witness["native_admission_sha256"],
                  "g_before_sha256":opts.candidate_g_before_sha256,"candidate_static_parity":True,
                  "profile_sha256":witness["profile_sha256"],"roles":results,"transport":"OWNER_LOCAL_SSH_FORWARD_HTTP_TO_3032",
-                 "public_tls_verified":False,"authentication_state_saved":False,"financial_authorized":False}
+                 "modern_public_content":candidate_content,"public_tls_verified":False,
+                 "authentication_state_saved":False,"financial_authorized":False}
             pre_sha=dump_new(campaign/"candidate-auth.json",pre)
             print(json.dumps({"status":pre["status"],"receipt":str(campaign/"candidate-auth.json"),"sha256":pre_sha}),flush=True)
             print('WAITING_FOR_GOVERNED_PUBLIC_CUTOVER: send one JSON line {"g_after":"/absolute/nonce-g-after.json","sha256":"exact digest"}; no service or cutover is executed by this runner.',flush=True)
@@ -735,7 +824,7 @@ def candidate_auth_main():
             if (after_sha!=command["sha256"] or before_sha!=opts.candidate_g_before_sha256 or after["source_sha"]!=witness["source_sha"]
                 or after["controller_source_sha"]!=source or after["profile_sha256"]!=witness["profile_sha256"]):
                 raise ValueError("Public cutover differs from authenticated candidate")
-            rows=[];public,private=production_routes(root)
+            rows=[];public,private=production_routes(root);public_content=None
             # A new unmodified Chromium reaches actual public HTTPS. Only the
             # dedicated session cookie crosses in memory; no profile is saved.
             states={role:candidate_session_state(context) if role!="guest" else None for role,context in contexts.items()}
@@ -751,6 +840,9 @@ def candidate_auth_main():
                     if (version.status!=200 or version.json().get("buildVersion")!=witness["build_version"] or static.status!=200
                         or hashlib.sha256(static.body()).hexdigest()!=after["candidate_http"]["asset"]["sha256"]):
                         raise ValueError("Public browser build/static parity failed")
+                    content_page=context.new_page()
+                    try:public_content=modern_public_content(content_page,witness)
+                    finally:content_page.close()
                 for path in public:
                     for viewport in VIEWPORTS:
                         row=site_probe(context,path,viewport,"anonymous-public",campaign,False,"NOT_APPLICABLE",
@@ -772,7 +864,8 @@ def candidate_auth_main():
                     "historical_public_routes":88,"independent_public_routes":1,"protected_routes":37,"viewports":[v[0] for v in VIEWPORTS],
                     "expected_cases":expected,"executed_cases":len(rows),"holds":holds,"rows":rows,"financial_authorized":False,
                     "real_steam_login_asserted_by_census":True,"authentication_state_saved":False,
-                    "public_static_parity":True,"valid_expired_jwt_runtime_verified":False,
+                    "public_static_parity":True,"modern_public_content":public_content,
+                    "valid_expired_jwt_runtime_verified":False,
                     "status":"BROWSER_CENSUS_PASS_REQUIRES_F_FINAL_ACCEPT" if len(rows)==expected and holds==0 else "HOLD_BROWSER_CENSUS"}
             digest=dump_new(campaign/"ledger.json",result)
             print(json.dumps({"status":result["status"],"receipt":str(campaign/"ledger.json"),"sha256":digest,"holds":holds}),flush=True)
@@ -781,6 +874,7 @@ def candidate_auth_main():
             hold={"schema":"aoe2war.g.candidate-auth.v1","status":"HOLD_CANDIDATE_OR_PUBLIC_BROWSER","failure_type":type(error).__name__,
                   "roles_completed":results,"source_sha":witness["source_sha"],"candidate_pid":witness["candidate_pid"],
                   "public_deployment_asserted":False,"financial_authorized":False,"authentication_state_saved":False}
+            if isinstance(error,BrowserContentHold):hold["failure_code"]=str(error)
             digest=dump_new(campaign/"hold.json",hold)
             print(json.dumps({"status":hold["status"],"receipt":str(campaign/"hold.json"),"sha256":digest}),flush=True)
             return 2
