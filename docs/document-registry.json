@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "46e63a1e0a82d7a1ba35f68463cf03f3000391ce0e7a41ee4b0b88651268c17c",
+      "sha256": "28b0489f978e31901987da8c81caaf897bbfcf259fdb3a729d7241e014b1cca7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-parity-integrated-20261103",
-    "commit": "e48547a907b61c369d9d75621df7a9ae3e0ea3ab"
+    "branch": "codex/a05-public-visual-cutover-hold-20261103",
+    "commit": "6cb199017e5c79312337a5e7b3bd0b94d8d21c83"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

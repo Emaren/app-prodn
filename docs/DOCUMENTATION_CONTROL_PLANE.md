@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-parity-integrated-20261103` at `e48547a907b61c369d9d75621df7a9ae3e0ea3ab`
+Implementation baseline: `codex/a05-public-visual-cutover-hold-20261103` at `6cb199017e5c79312337a5e7b3bd0b94d8d21c83`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
