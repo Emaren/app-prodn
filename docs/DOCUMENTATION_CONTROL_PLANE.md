@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-node-guard-synthetic-fixture-20261103` at `56df0374de1e472f5dd7b1238e50531dfb843864`
+Implementation baseline: `fix/a05-native-steam-cwd-probe-20261103` at `8691c4605c1c2ce1b8ad0c7308c0ff4e4cf81b2f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
