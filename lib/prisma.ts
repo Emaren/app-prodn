@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/lib/generated/prisma";
+import { requireNonfinancialAuthDatasource } from "@/lib/nonfinancialRuntimeAdmission";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -14,6 +15,11 @@ function createPrismaClient() {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required for Prisma user routes");
   }
+
+  // A05: read-only R25 preview and protected production authentication
+  // cannot coexist. Enforce the exact local, nonfinancial DB role before
+  // constructing a pool; no connection is opened on a configuration HOLD.
+  requireNonfinancialAuthDatasource(databaseUrl, process.env);
 
   const prodDataPreview =
     process.env.AOE2WAR_PROD_DB_PREVIEW === "true";
