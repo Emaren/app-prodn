@@ -65,9 +65,12 @@ def verify(p):
     require(root["unit_state"](root["PROD_UNIT"])["properties"]["ActiveState"]=="inactive" and
             root["unit_state"]("aoe2war-steam-egress-refresh.timer")["properties"]["ActiveState"]=="inactive",
             "FAILED_3032_NOT_QUIESCED")
-    require(plan["stage"]=="/var/lib/aoe2war-web-prod-"+OLD[:12] and
-            root["sha"](root["canonical"](root["production_protected"]()))==
-            plan["protected_snapshot_sha256"],"PROTECTED_ORIGINAL_STATE_CHANGED")
+    require(plan["stage"]=="/var/lib/aoe2war-web-prod-"+OLD[:12],
+            "RECOVER_ONLY_EXACT_STAGED_CANDIDATE")
+    # The original protected SHA remains immutable historical evidence.
+    # Ordinary monitored units may legitimately change state across hours.
+    # Every *new* admission binds a fresh protected snapshot instead.
+    require(root["production_protected"](),"FRESH_PROTECTED_STATE_UNAVAILABLE")
     require(root["sha"](root["root_file"](Path("/etc/nginx/sites-available/aoe2war.com"),131072))==
             root["PROD_NGINX_PREIMAGE"],"PUBLIC_PROXY_CHANGED")
     require(root["production_nft_shape"](),"UID990_FIREWALL_BOUNDARY_MISSING")
@@ -87,11 +90,16 @@ def verify(p):
             root["root_file"](stage/".aoe2war-source-sha",128).strip()==OLD.encode(),
             "EXACT_STAGED_ARTIFACT_CHANGED")
     require(root["production_critical_runtime"](stage),"STAGE_CRITICAL_BYTES_CHANGED")
+    config=root["parse"](root["root_file"](LIB/"nonfinancial-production-watcher-assets.json",32768,0o400))
+    require(root["production_published_assets"](config,plan["published_assets"]),
+            "PUBLISHED_ASSET_INODES_OR_HASHES_CHANGED")
     env,dbname,password=root["production_runtime_environment"]()
     require(root["production_database_witness"](dbname,password),"AUTH_DB_ROLE_NOT_RESTRICTED")
     return plan,stage
 def make_plan(p):
     old,stage=verify(p)
+    root=m()
+    current=root["sha"](root["canonical"](root["production_protected"]()))
     return {"schema":"aoe2war.app.failed-start-recovery-plan.v1",
             "nonce":p["nonce"],"recovery_source_sha":p["recovery_source_sha"],
             "source_file_sha256":p["source_file_sha256"],
@@ -100,6 +108,7 @@ def make_plan(p):
             "prior_source_sha":OLD,"stage":str(stage),
             "source_artifact_sha256":old["artifact"]["sha256"],
             "original_protected_sha256":old["protected_snapshot_sha256"],
+            "current_protected_sha256":current,
             "previous_attempt_immutable":True,"public_cutover_authorized":False,
             "financial_authorized":False}
 def grant(p,planned):
@@ -174,6 +183,8 @@ def recover(p):
     planned=make_plan(p)
     approved=grant(p,planned)
     root=m();old,stage=verify(p)
+    require(root["sha"](root["canonical"](root["production_protected"]()))==
+            planned["current_protected_sha256"],"FRESH_PROTECTED_PRESTART_CHANGED")
     journal=AUDIT/("recover-"+p["nonce"])
     journal.mkdir(mode=0o700)
     root["fsync_directory"](AUDIT)
@@ -211,7 +222,7 @@ def recover(p):
           "nft_shape_sha256":root["production_nft_shape"](),
           "private_proxy_sha256":old["private_proxy_sha256"],
           "sql_sha256":old["source_hashes"]["config/nonfinancial-production-auth.sql"],
-          "protected_snapshot_sha256":old["protected_snapshot_sha256"],
+          "protected_snapshot_sha256":planned["current_protected_sha256"],
           "native_plan_sha256":digest(root["canonical"](old)),
           "journal_path":str(journal),
           "controller_sha256":old["source_hashes"]["scripts/r25_c_start_root.py"],
@@ -227,7 +238,7 @@ def recover(p):
         root["run"](["/usr/bin/systemctl","start",
                      "aoe2war-steam-egress-refresh.timer"],timeout=30)
         require(root["sha"](root["canonical"](root["production_protected"]()))==
-                old["protected_snapshot_sha256"],"ORIGINAL_SERVICES_CHANGED")
+                planned["current_protected_sha256"],"ORIGINAL_SERVICES_CHANGED")
         enabled=True
         root["run"](["/usr/bin/systemctl","enable",root["PROD_UNIT"],
                      "aoe2war-steam-egress-refresh.timer"],timeout=30)

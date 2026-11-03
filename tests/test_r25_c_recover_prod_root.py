@@ -30,8 +30,14 @@ class RecoveryRefusal(unittest.TestCase):
                  "source_file_sha256":"3"*64,
                  "prior_entered_sha256":"4"*64,
                  "prior_hold_sha256":"5"*64}
-        with mock.patch.object(r,"verify",return_value=(old,Path("/tmp/held"))):
+        current={"old_pid":2625090,"preview_pid":1483304,"financial":"unmodified"}
+        safe={"sha":r.digest,"canonical":r.canonical,
+              "production_protected":lambda:current}
+        with mock.patch.object(r,"verify",return_value=(old,Path("/tmp/held"))),\
+             mock.patch.object(r,"m",return_value=safe):
             p=r.make_plan(payload)
+        self.assertEqual(p["current_protected_sha256"],r.digest(r.canonical(current)))
+        self.assertEqual(p["original_protected_sha256"],old["protected_snapshot_sha256"])
         self.assertEqual(p["prior_source_sha"],r.OLD)
         self.assertEqual(p["public_cutover_authorized"],False)
         self.assertEqual(p["financial_authorized"],False)
