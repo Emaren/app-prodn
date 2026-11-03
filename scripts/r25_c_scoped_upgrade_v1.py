@@ -181,6 +181,7 @@ def prepare():
     oldpid,oldticks=old.production_wait(policy,seconds=15)
     prior={"candidate_pid":oldpid,"candidate_start_ticks":oldticks}
     need(digest(safe_bytes(UNIT))==policy["unit_sha256"] and
+         digest(safe_bytes(OLD_CONTROLLER))==policy["controller_sha256"] and
          digest(safe_bytes(PROXY))==policy["private_proxy_sha256"] and
          digest(safe_bytes(LIB/"r25_b_guard_production_v1.cjs"))==policy["guard_sha256"] and
          digest(safe_bytes(LIB/"nonfinancial-production-auth.sql"))==policy["sql_sha256"],
