@@ -238,11 +238,20 @@ async function run(){
         (databaseFixture==="UNAVAILABLE"||view.api_503>0||record.resource.external_blocked>0);
       if(errs.length)record.errors.push(viewport.name+" uncaught: "+errs.join("; "));
       // Actual keyboard interaction, not a claimed screen-reader WCAG audit.
-      await page.keyboard.press("Tab");
-      const keyboard=await page.evaluate(()=>{
+      const readActualKeyboardFocus=()=>page.evaluate(()=>{
        const focus=document.activeElement;
-       return focus&&focus!==document.body&&focus!==document.documentElement;
+       return !!focus&&focus!==document.body&&focus!==document.documentElement;
       });
+      await page.keyboard.press("Tab");
+      let keyboard=await readActualKeyboardFocus();
+      // Client redirects sometimes return between navigation and first focus.
+      // Retry one genuine Tab interaction after a bounded settle, never fake
+      // keyboard success or substitute a DOM query for actual focus.
+      if(!keyboard && route.redirect_to && observed.pathname===route.redirect_to){
+       await page.waitForTimeout(250);
+       await page.keyboard.press("Tab");
+       keyboard=await readActualKeyboardFocus();
+      }
       view.keyboardFocus=keyboard;
       if(attempt===0){
        const safeName=route.route==="/"? "root":route.route.slice(1).replace(/[^A-Za-z0-9_-]/g,"_");
