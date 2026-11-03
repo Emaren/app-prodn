@@ -7,6 +7,7 @@ import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribu
 import { verifySatchelSignedV2Return } from "./warSatchelSignedV2Return.ts";
 import type { ExpectedWarSatchelClaimReturn } from "./warSatchelAuthenticatedClaimReturn.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
+import { claimMatchesPlayerNames } from "./pendingWoloClaims.ts";
 
 const HASH = /^[A-F0-9]{64}$/;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
@@ -39,22 +40,28 @@ export type DurableSatchelClaimReturn = Readonly<{
 }>;
 type DB = Prisma.TransactionClient;
 
-async function independentlyExpected(
+export type SatchelClaimReturnEconomics = Omit<ExpectedWarSatchelClaimReturn,"txHash"|"contextFingerprint">;
+/** Same original-ticket validation for a pending execution review and a paid
+ * credit. Pending review never invents or accepts a future transaction hash. */
+export async function loadSatchelClaimReturnEconomics(
   db: DB, owner: SatchelReturnOwner,
   review: {approval: unknown; entitlementId: string},
-): Promise<DurableSatchelClaimReturn> {
+  stage:"pending"|"claimed"="claimed",
+): Promise<SatchelClaimReturnEconomics> {
   if (!positive(owner.claimId) || owner.claimId === 889 || !positive(owner.ownerUserId) ||
       !/^[a-zA-Z0-9_.:-]{1,100}$/.test(owner.ownerUid) ||
       !ADDRESS.test(owner.vault) || !ADDRESS.test(owner.escrow) || owner.vault === owner.escrow ||
       typeof review.entitlementId !== "string" || !review.entitlementId.length || review.entitlementId.length > 160)
     refuse("invalid_owner_or_protected_claim");
-  const user = await db.user.findUnique({where: {id: owner.ownerUserId}, select: {uid: true}});
+  const user = await db.user.findUnique({where: {id: owner.ownerUserId}, select: {uid: true,inGameName:true,steamPersonaName:true}});
   const claim = await db.pendingWoloClaim.findUnique({where: {id: owner.claimId}});
   if (!user || user.uid !== owner.ownerUid || !claim || claim.id === 889 ||
-      claim.status !== "claimed" || claim.claimedByUserId !== owner.ownerUserId ||
+      claim.status !== stage ||
+      (stage==="claimed" ? claim.claimedByUserId !== owner.ownerUserId || !claim.payoutTxHash || !HASH.test(claim.payoutTxHash.toUpperCase()) :
+        claim.claimedByUserId!==null || claim.payoutTxHash!==null || !claimMatchesPlayerNames(claim,[user.inGameName,user.steamPersonaName])) ||
       !positive(claim.sourceMarketId ?? 0) ||
       (claim.claimKind !== "bet_payout" && claim.claimKind !== "bet_refund") ||
-      !positive(claim.amountWolo) || !claim.payoutTxHash || !HASH.test(claim.payoutTxHash.toUpperCase()))
+      !positive(claim.amountWolo))
     refuse("claim_not_final_owner_bound_wager");
   const marketId = claim.sourceMarketId!;
   const wagers = await db.betWager.findMany({
@@ -100,16 +107,24 @@ async function independentlyExpected(
     amountUwolo: String(attributed.amountUwolo), principalUwolo: String(attributed.principalUwolo),
     stakeUwolo: String(attributed.principalUwolo), fundedAmountUwolo: String(original.amountUwolo),
     escrowAddress: owner.escrow, vaultAddress: owner.vault,
-    txHash: claim.payoutTxHash.toUpperCase(), approval,
+    approval,
   } as const;
   verifySatchelSignedV2Return({
     approval, expected: unsigned,
     independentOperatorPublicKeyHex: process.env.WAR_SATCHEL_RETURN_APPROVAL_PUBLIC_KEY_HEX || "",
   });
+  return Object.freeze(unsigned);
+}
+
+async function independentlyExpected(db:DB,owner:SatchelReturnOwner,review:{approval:unknown;entitlementId:string}):Promise<DurableSatchelClaimReturn>{
+  const economics=await loadSatchelClaimReturnEconomics(db,owner,review);
+  const claim=await db.pendingWoloClaim.findUnique({where:{id:owner.claimId}});
+  if(!claim?.payoutTxHash||!HASH.test(claim.payoutTxHash.toUpperCase()))refuse("claim_not_final_owner_bound_wager");
+  const unsigned={...economics,txHash:claim.payoutTxHash.toUpperCase()};
   const contextFingerprint = satchelReturnContextFingerprint(unsigned);
   return Object.freeze({
     claimId: owner.claimId, ownerUserId: owner.ownerUserId, ownerUid: owner.ownerUid,
-    sourceMarketId: marketId, expected: Object.freeze({...unsigned, contextFingerprint}), contextFingerprint,
+    sourceMarketId: Number(economics.marketId), expected: Object.freeze({...unsigned, contextFingerprint}), contextFingerprint,
   });
 }
 

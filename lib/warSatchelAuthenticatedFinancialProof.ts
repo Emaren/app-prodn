@@ -273,14 +273,15 @@ export function verifiedBankReceiptMetadata(
  * This returns authenticated assets only, never complete solvency authority. */
 export async function collectAndVerifyPinnedWarSatchelBankProof(
   vault:string, reader:typeof fetch=fetch, canceled?:AbortSignal,
+  accountRole:"vault"|"escrow"="vault",
 ):Promise<VerifiedWarSatchelBankObservation>{
   if(!ADDRESS.test(vault)||active>=4)stop("bank_verifier_unavailable");
   active++;
   const signal=AbortSignal.any([AbortSignal.timeout(30_000),...(canceled?[canceled]:[])]);
   try{
     signal.throwIfAborted();
-    const cfg=requireConfiguration({vault,kind:"bank"});
-    const response=await reader(ENDPOINT+"/satchel/v1/proofs/bank",{
+    const cfg=requireConfiguration({vault:accountRole==="escrow"?process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS||"":vault,kind:"bank"});
+    const response=await reader(ENDPOINT+(accountRole==="escrow"?"/satchel/v1/proofs/escrow-bank":"/satchel/v1/proofs/bank"),{
       method:"POST",redirect:"error",cache:"no-store",
       headers:{Authorization:"Bearer "+cfg.token,"Content-Type":"application/json",Accept:"application/json"},
       body:JSON.stringify({protocol:1}),signal,
@@ -306,7 +307,7 @@ export async function collectAndVerifyPinnedWarSatchelBankProof(
       await writeFile(proofPath,exported,{mode:0o600,flag:"wx"});
       await snapshotBinary(cfg.binary,binaryPath,cfg.digest,signal);
       const {stdout}=await invoke(binaryPath,["verify-bank-proof","--authority",cfg.authority,
-        "--height",String(height),"--proof",proofPath],{timeout:25_000,maxBuffer:16384,windowsHide:true,signal});
+        "--height",String(height),"--proof",proofPath,...(accountRole==="escrow"?["--account-role","escrow"]:[])],{timeout:25_000,maxBuffer:16384,windowsHide:true,signal});
       signal.throwIfAborted();
       return verifiedBankReceiptMetadata(JSON.parse(stdout) as unknown,vault,height);
     }finally{await rm(directory,{recursive:true,force:true});}

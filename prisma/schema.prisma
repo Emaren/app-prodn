@@ -5700,6 +5700,41 @@ model SatchelWithdrawalPhysicalConsumption {
   @@map("war_satchel_withdrawal_physical_consumptions")
 }
 
+/// Immutable approval of a pending canonical claim; no future return hash exists.
+model SatchelClaimReturnExecutionReview {
+  claimId Int @id @map("claim_id")
+  ownerUserId Int @map("owner_user_id")
+  ownerUid String @map("owner_uid") @db.VarChar(100)
+  entitlementId String @map("entitlement_id") @db.VarChar(160)
+  allocationDigest String @map("allocation_digest") @db.VarChar(64)
+  economicsJson Json @map("economics_json")
+  reserveReviewJson Json @map("reserve_review_json")
+  reviewDigest String @map("review_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@unique([allocationDigest,entitlementId],map:"uq_satchel_return_execution_entitlement")
+  @@map("war_satchel_claim_return_execution_reviews")
+}
+/// INSERT commits UNKNOWN before the first mutating network call. Never deleted.
+model SatchelClaimReturnExecutionAttempt {
+  claimId Int @id @map("claim_id")
+  runId String @unique @map("run_id") @db.VarChar(128)
+  requestJson Json @map("request_json")
+  requestDigest String @map("request_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_claim_return_execution_attempts")
+}
+/// Append-only UNKNOWN or native-authenticated confirmation; HTTP hashes alone
+/// cannot populate txHash or mark the canonical claim paid.
+model SatchelClaimReturnExecutionObservation {
+  id BigInt @id @default(autoincrement())
+  claimId Int @map("claim_id")
+  state String @db.VarChar(24)
+  txHash String? @map("tx_hash") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@index([claimId,createdAt],map:"ix_satchel_return_execution_observations")
+  @@map("war_satchel_claim_return_execution_observations")
+}
+
 /// Immutable review request built from the existing funded reservation; no parallel ledger.
 model SatchelWagerAuthorization {
   operationId String @id @map("operation_id") @db.VarChar(128)
