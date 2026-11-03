@@ -69,6 +69,17 @@ class ProductionAuthPostgres(unittest.TestCase):
                 INSERT INTO public.game_stats VALUES (1, 'Actual persisted fixture winner');
                 CREATE TABLE public.api_keys(id integer PRIMARY KEY, key_hash text);
                 CREATE TABLE public.war_satchel_ledger_postings(id integer PRIMARY KEY, amount numeric);
+                CREATE TABLE public.replay_result_adjudications (
+                  id integer, game_stats_id integer, idempotency_key text, decision_status text,
+                  affects_stats boolean, affects_bets boolean, actor_display_name_snapshot text,
+                  actor_role text, team_assignments jsonb, winning_team_key text,
+                  winning_player_keys jsonb, reason text, evidence jsonb, source_replay_hash text,
+                  source_parse_iteration integer, source_roster_hash text,
+                  source_proposition_hash text, created_at timestamp,
+                  market_snapshot jsonb, raw_parser_snapshot jsonb
+                );
+                CREATE TABLE public.workshop_entries(id integer, body text, visibility text);
+                CREATE TABLE public.workshop_artifacts(id integer, storage_key text);
             """)
             cls.sql("BEGIN;\n" + SQL.read_text() + "\nCOMMIT;")
         except BaseException:
@@ -222,6 +233,48 @@ class ProductionAuthPostgres(unittest.TestCase):
         finally:
             self.sql("REVOKE CREATE ON SCHEMA public FROM PUBLIC;")
 
+    def test_native_c_catalog_and_admission_use_exact_sql_and_reject_owner_or_routine_drift(self):
+        # This is the integrated candidate's actual C SQL, not copied predicates
+        # or a mocked catalog result. Only its connection transport is replaced.
+        import importlib.util
+        from unittest import mock
+        controller_path = ROOT / "scripts/r25_c_start_root.py"
+        self.assertTrue(controller_path.is_file(), "Final candidate must include its native C controller")
+        spec = importlib.util.spec_from_file_location("native_c_auth_catalog", controller_path)
+        controller = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(controller)
+
+        def isolated_transport(database, statement, password=None, maximum=262144):
+            return self.sql(statement, "aoe2war_web_prod" if password is not None else "auth_fixture").stdout.encode()
+
+        with mock.patch.object(controller, "production_psql", side_effect=isolated_transport):
+            before = controller.production_database_witness("postgres", "fixture-only")
+            admission = controller.production_database_admission("postgres", "fixture-only")
+            self.assertTrue(all(admission.values()))
+            self.assertEqual(self.sql("SELECT count(*) FROM public.users;").stdout.strip(), "0")
+            self.sql("ALTER ROLE aoe2war_auth_owner LOGIN;")
+            try:
+                with self.assertRaises(controller.Hold):
+                    controller.production_database_witness("postgres", "fixture-only")
+            finally:
+                self.sql("ALTER ROLE aoe2war_auth_owner NOLOGIN;")
+
+            original = self.sql("SELECT pg_get_functiondef('aoe2war_auth_v1.touch_session(text,text)'::regprocedure);").stdout
+            try:
+                self.sql("""CREATE OR REPLACE FUNCTION aoe2war_auth_v1.touch_session(p_uid text,p_email text DEFAULT NULL)
+                  RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog
+                  AS $$BEGIN RETURN false; END$$;""")
+                changed = controller.production_database_witness("postgres", "fixture-only")
+                self.assertNotEqual(changed["definer_identity_sha256"], before["definer_identity_sha256"])
+                self.sql("ALTER FUNCTION aoe2war_auth_v1.touch_session(text,text) SET search_path=public;")
+                with self.assertRaises(controller.Hold):
+                    controller.production_database_witness("postgres", "fixture-only")
+            finally:
+                self.sql(original)
+            restored = controller.production_database_witness("postgres", "fixture-only")
+            self.assertEqual(restored["definer_identity_sha256"], before["definer_identity_sha256"])
+            self.assertEqual(restored["read_acl_sha256"], before["read_acl_sha256"])
+
     def test_persisted_public_game_reads_work_without_secret_or_financial_authority(self):
         result = self.sql("SELECT id,winner FROM public.game_stats;", "aoe2war_web_prod")
         self.assertEqual(result.stdout.strip(), "1|Actual persisted fixture winner")
@@ -231,6 +284,19 @@ class ProductionAuthPostgres(unittest.TestCase):
             "SELECT * FROM public.api_keys LIMIT 0;",
             "SELECT * FROM public.pending_wolo_claims LIMIT 0;",
             "SELECT * FROM public.war_satchel_ledger_postings LIMIT 0;",
+        ):
+            with self.subTest(statement=statement):
+                result = self.sql(statement, "aoe2war_web_prod", check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("permission denied", result.stderr)
+
+    def test_public_result_projection_cannot_read_captured_markets_or_private_drafts(self):
+        self.sql("SELECT id,winning_team_key,winning_player_keys FROM public.replay_result_adjudications LIMIT 0;", "aoe2war_web_prod")
+        for statement in (
+            "SELECT market_snapshot FROM public.replay_result_adjudications LIMIT 0;",
+            "SELECT raw_parser_snapshot FROM public.replay_result_adjudications LIMIT 0;",
+            "SELECT body FROM public.workshop_entries LIMIT 0;",
+            "SELECT storage_key FROM public.workshop_artifacts LIMIT 0;",
         ):
             with self.subTest(statement=statement):
                 result = self.sql(statement, "aoe2war_web_prod", check=False)
