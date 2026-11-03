@@ -349,9 +349,14 @@ def upgrade(nonce,expected):
                   "kernel":old.production_kernel_probe(prior["steam_addresses"]),
                   "steam":old.production_steam_probe(env,Path(prior["stage"])),
                   "financial_authorized":False,"public_cutover_authorized":False}
-                seal(journal/"runtime-admission.json",restore_admission)
-                prior["journal_path"]=str(journal)
-                prior["admission_sha256"]=digest(safe_bytes(journal/"runtime-admission.json"))
+                # Never overwrite a partially completed forward admission.
+                # The rolled-back candidate has a NEW PID and requires an
+                # independent native admission in its own immutable namespace.
+                rollback_witness_dir=journal/"rollback-requalification"
+                rollback_witness_dir.mkdir(mode=0o700)
+                seal(rollback_witness_dir/"runtime-admission.json",restore_admission)
+                prior["journal_path"]=str(rollback_witness_dir)
+                prior["admission_sha256"]=digest(safe_bytes(rollback_witness_dir/"runtime-admission.json"))
                 atomic(POLICY,canonical(prior)+b"\n",0o400)
                 restored=old.production_witness({"profile_path":str(POLICY)})
                 seal(journal/"rollback.json",{"status":"PASS_OLD_3032_RESTORED_NOT_PUBLIC",
