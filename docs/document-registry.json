@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7ba7d4699f1bdf7826fa4ca6e076f84e54122d70a8e688b86e29e74cf3bd5780",
+      "sha256": "f0a28da3d7a663f1cda824287a15eea637754b3e31f5a07a1bfc12ee3ffdcf46",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/r25-provisional-traffic-20261103",
-    "commit": "fd3d98df745a8c59959b55ea72162843c2a77767"
+    "commit": "6ac2241ebe9754be0253db36a81ccd45ecfed1e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
