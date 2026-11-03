@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-native-steam-cwd-probe-20261103` at `0d85281a62634496f019bd486ac7a90aa7800fb7`
+Implementation baseline: `fix/a05-journaled-3032-recovery-20261103` at `7484faab6820804b84fdbdcdc647cdf5a423c113`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
