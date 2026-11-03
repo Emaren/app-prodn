@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/a05-3032-scoped-atomic-upgrade-20261103` at `e978bd9da351b0ae55850d366f53065621a74299`
+Implementation baseline: `codex/a05-3032-scoped-atomic-upgrade-20261103` at `eb3e809edd4f9e271d83ff1c319e724875828136`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

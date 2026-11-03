@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6d54dba03184da51d4bc7f628274841f37195d9849b12e0ab1d1c0f845f0836c",
+      "sha256": "f95d3b084b2eaf4138d27c953c8cdaa277be0213c66eb8b90a6afe57e3691912",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/a05-3032-scoped-atomic-upgrade-20261103",
-    "commit": "e978bd9da351b0ae55850d366f53065621a74299"
+    "commit": "eb3e809edd4f9e271d83ff1c319e724875828136"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
