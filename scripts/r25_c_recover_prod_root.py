@@ -39,9 +39,13 @@ def m():
                                     run_name="exact_prior_3032_recovery"))
     return CACHE
 def verify(p):
-    require(type(p)==dict and set(p)=={"nonce","recovery_source_sha","source_file_sha256",
-                                      "prior_entered_sha256","prior_hold_sha256"},
+    base={"nonce","recovery_source_sha","source_file_sha256",
+          "prior_entered_sha256","prior_hold_sha256"}
+    require(type(p)==dict and set(p) in (base,base|{"owner_comment_id"}),
             "RECOVERY_PACKET_FIELDS")
+    if "owner_comment_id" in p:
+        require(type(p["owner_comment_id"]) is int and p["owner_comment_id"]>0,
+                "OWNER_RECOVERY_COMMENT_ID_INVALID")
     require(type(p["nonce"]) is str and re.fullmatch("[a-f0-9]{32}",p["nonce"]) and
             p["nonce"]!=OLD_NONCE and re.fullmatch("[a-f0-9]{40}",p["recovery_source_sha"]) and
             HEX.fullmatch(p["source_file_sha256"]) and HEX.fullmatch(p["prior_entered_sha256"]) and

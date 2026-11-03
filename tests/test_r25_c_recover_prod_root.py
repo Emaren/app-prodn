@@ -43,6 +43,22 @@ class RecoveryRefusal(unittest.TestCase):
         self.assertEqual(p["financial_authorized"],False)
         self.assertTrue(p["previous_attempt_immutable"])
 
+    def test_plan_and_recover_packets_allow_only_one_authenticated_comment_field(self):
+        packet={"nonce":"a"*32,"recovery_source_sha":"b"*40,
+                "source_file_sha256":"c"*64,"prior_entered_sha256":"d"*64,
+                "prior_hold_sha256":"e"*64}
+        # Exercise the packet-level shape while holding file inspection prior to
+        # authenticated source validation. All other keys are refused.
+        with mock.patch.object(r,"root_bytes",side_effect=r.Hold("PREIMAGE_REQUIRED")):
+            for candidate in (packet,{**packet,"owner_comment_id":123}):
+                with self.assertRaisesRegex(r.Hold,"PREIMAGE_REQUIRED"):
+                    r.verify(candidate)
+            for candidate in ({**packet,"owner_comment_id":0},
+                              {**packet,"owner_comment_id":True},
+                              {**packet,"owner_comment_id":123,"arbitrary_field":0}):
+                with self.assertRaisesRegex(r.Hold,"PACKET_FIELDS|COMMENT_ID_INVALID"):
+                    r.verify(candidate)
+
     def test_recovery_grant_is_owner_authenticated_and_nonfinancial(self):
         payload={"nonce":"a"*32,"recovery_source_sha":"b"*40,
                  "source_file_sha256":"c"*64,"owner_comment_id":33}
