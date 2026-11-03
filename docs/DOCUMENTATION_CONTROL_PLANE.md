@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/app-public-finality-20261103` at `0558538cb8884b0ea648700dd5304c84dd8f7252`
+Implementation baseline: `codex/r25-steam-refresh-cap-snapshot-20261103` at `b73818e70b5a01dfd6f82ea15492d5676aa25e1b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
