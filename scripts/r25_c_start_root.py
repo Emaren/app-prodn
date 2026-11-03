@@ -353,7 +353,7 @@ def production_socket_identity(row):
     unit MainPID/start_ticks. Preserve bound address, uid when emitted,
     socket inode, sk and exact cgroup. Never drop an actual socket change.
     """
-    clean = re.sub(r"\\s+users:\\(\\(.*\\)\\)\\s+(?=(?:uid:|ino:))", " ", row)
+    clean = re.sub(r"\s+users:\(\(.*\)\)\s+(?=(?:uid:|ino:))", " ", row)
     parts = clean.split()
     need(len(parts) >= 8 and parts[0] == "LISTEN" and
          any(part.startswith("ino:") for part in parts) and
