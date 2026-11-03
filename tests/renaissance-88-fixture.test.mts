@@ -37,6 +37,11 @@ test("no method escalation, external egress, invalid URI or cross-origin API",()
 test("redirect title waits for genuine browser title without bypassing render gate",()=>{
  const fs=require("node:fs"),source=fs.readFileSync(new URL("../scripts/renaissance_88_browser.cjs",import.meta.url),"utf8");
  assert.match(source,/route\.redirect_to && observed\.pathname===route\.redirect_to/);
+ assert.match(source,/const readActualKeyboardFocus=\(\)=>page\.evaluate/);
+ assert.match(source,/if\(!keyboard && route\.redirect_to && observed\.pathname===route\.redirect_to\)/);
+ assert.match(source,/await page\.keyboard\.press\("Tab"\)/);
+ assert.match(source,/keyboard=await readActualKeyboardFocus\(\)/);
+
  assert.match(source,/page\.waitForFunction\(\(\)=>document\.title\.trim\(\)\.length>0/);
  assert.match(source,/null,\{timeout:1800\}/);
  assert.match(source,/redirect title still absent after bounded wait/);
