@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/a05-traffic-narrow-read-20261103` at `aac7241dc84f5ff3d506cc8510530cd4688fe745`
+Implementation baseline: `codex/a05-traffic-narrow-read-20261103` at `7418c9127a28f9b7c19974e4c5409bd113ceb85f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
