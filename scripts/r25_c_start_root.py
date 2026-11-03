@@ -346,6 +346,23 @@ def unit_state(unit):
     return {"properties": pairs, "start_ticks": ticks(pid) if pid is not None and pid > 1 else None,
             "unit_config_sha256": sha(run(["/usr/bin/systemctl", "cat", unit, "--no-pager"], maximum=131072))}
 
+def production_socket_identity(row):
+    """Stable listener identity under full-root and CAP_NET_ADMIN-only ss.
+
+    The process annotation varies with CAP_SYS_PTRACE; it is redundant with
+    unit MainPID/start_ticks. Preserve bound address, uid when emitted,
+    socket inode, sk and exact cgroup. Never drop an actual socket change.
+    """
+    clean = re.sub(r"\\s+users:\\(\\(.*\\)\\)\\s+(?=(?:uid:|ino:))", " ", row)
+    parts = clean.split()
+    need(len(parts) >= 8 and parts[0] == "LISTEN" and
+         any(part.startswith("ino:") for part in parts) and
+         any(part.startswith("sk:") for part in parts) and
+         any(part.startswith("cgroup:") for part in parts),
+         "PROTECTED_LISTENER_IDENTITY_INCOMPLETE")
+    return " ".join(parts[3:])
+
+
 def protected_snapshot():
     raw = run(["/usr/bin/systemctl", "list-unit-files", "--type=service", "--type=timer",
                "--type=socket", "--all", "--no-legend", "--no-pager"])
@@ -376,9 +393,11 @@ def protected_snapshot():
                  "POSTGRESQL_LISTENER_UNAVAILABLE")
         else:
             need(len(rows) == 1, "PROTECTED_LISTENER_NOT_UNIQUE")
-        # Queue counters change under legitimate traffic. Bind stable listener
-        # address, process/UID, socket inode and cgroup, never backlog counters.
-        ports[str(port)] = sorted(" ".join(row.split()[3:]) for row in rows)
+        # systemd's CAP_NET_ADMIN-only refresh has no CAP_SYS_PTRACE:
+        # ss omits its observational users:((process,pid,fd)) annotation.
+        # Normalize only that capability-dependent annotation. Native unit
+        # MainPID/start_ticks and the listener inode/cgroup remain pinned.
+        ports[str(port)] = sorted(production_socket_identity(row) for row in rows)
     return {"units": states, "template_config_sha256": templates,
             "unit_names": names, "protected_sockets": ports}
 
