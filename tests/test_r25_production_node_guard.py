@@ -13,7 +13,7 @@ const guard='/usr/local/lib/aoe2war-web-prod/r25_b_guard_production_v1.cjs';
 const source=fs.readFileSync(process.argv[1],'utf8');
 const env={NODE_ENV:'production',WARGRAPH_RUNTIME_DISABLED:'true',AOE2WAR_RUNTIME_PROFILE:'nonfinancial-production-v1',
  AOE2WAR_R25_ISOLATED_WEB:'true',AOE2WAR_PROD_DB_PREVIEW:'false',NODE_OPTIONS:'--require='+guard,HOSTNAME:'127.0.0.1',PORT:'3032',
- USER:'aoe2war-web-prod',LOGNAME:'aoe2war-web-prod',AOE2_BACKEND_UPSTREAM:'http://127.0.0.1:3331',
+ USER:'aoe2war-web-prod',LOGNAME:'aoe2war-web-prod',AOE2_BACKEND_UPSTREAM:'http://127.0.0.1:3331',TRAFFIC_API_BASE:'http://127.0.0.1:3331',
  [['SESSION','SECRET'].join('_')]:'A'.repeat(64),[['DATABASE','URL'].join('_')]:('postgresql://' + 'aoe2war_web_prod:' + 't'.repeat(32) + '@127.0.0.1:5432/test')};
 function setup(changes={}) {
  class Server {emit(){return 'passed';} listen(){return 'listening';}}
@@ -35,11 +35,14 @@ const {scope,http,https,tls,net,dns}=setup();
 assert.equal(scope.fetch('https://steamcommunity.com/openid/login',{method:'POST',body:'openid.mode=check_authentication'}).init.redirect,'error');
 assert.equal(scope.fetch('https://steamcommunity.com/profiles/76561198000000000?xml=1').init.redirect,'error');
 assert.equal(scope.fetch('http://127.0.0.1:3331/api/health').init.redirect,'error');
+assert.equal(scope.fetch('http://127.0.0.1:3331/api/projects/aoe2hdbets/public-audience-series').init.redirect,'error');
 for (const [url,init] of [
  ['https://example.com/',{}],['https://steamcommunity.com/openid/login',{}],
  ['https://steamcommunity.com/openid/login',{method:'POST',body:'openid.mode=check_authentication&evil=1'}],
  ['https://steamcommunity.com/openid/login',{method:'POST',body:'openid.mode=check_authentication',redirect:'follow'}],
  ['http://127.0.0.1:3330/api/health',{}],['http://127.0.0.1:3331/api/parse_replay',{}],
+ ['http://127.0.0.1:3345/api/projects/aoe2hdbets/public-audience-series',{}],
+ ['http://127.0.0.1:3331/api/projects/aoe2hdbets/public-audience-series',{method:'POST'}],
  ['http://127.0.0.1:3331/api/health',{method:'POST'}],['https://steamcommunity.com/profiles/76561198000000000?xml=1',{dispatcher:{}}]
 ])assert.throws(()=>scope.fetch(url,init),/AOE2WAR_PRODUCTION_HOLD/);
 assert.equal(new http.Server().listen({port:3032,host:'127.0.0.1'}),'listening');
