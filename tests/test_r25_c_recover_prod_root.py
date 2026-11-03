@@ -1,10 +1,17 @@
 """Refusal-first tests for the one-use, existing-source-only 3032 recovery."""
 import datetime
+import base64
+import fcntl
 import importlib.util
 import ipaddress
 import json
 from pathlib import Path
 import re
+import os
+import stat
+import subprocess
+import sys
+import tempfile
 import unittest
 from unittest import mock
 
@@ -34,6 +41,7 @@ class RecoveryRefusal(unittest.TestCase):
         safe={"sha":r.digest,"canonical":r.canonical,
               "production_protected":lambda:current}
         with mock.patch.object(r,"verify",return_value=(old,Path("/tmp/held"))),\
+             mock.patch.object(r,"qualified_source",return_value={"ci_run_id":1}),\
              mock.patch.object(r,"m",return_value=safe):
             p=r.make_plan(payload)
         self.assertEqual(p["current_protected_sha256"],r.digest(r.canonical(current)))
@@ -76,6 +84,8 @@ class RecoveryRefusal(unittest.TestCase):
         def response(fields,login="Emaren"):
             return mock.Mock(returncode=0,stdout=json.dumps({
                "user":{"login":login,"id":15059910},
+               "id":33,"issue_url":"https://api.github.com/repos/Emaren/app-prodn/issues/1108",
+               "html_url":"https://github.com/Emaren/app-prodn/issues/1108#issuecomment-33",
                "created_at":"t","updated_at":"t",
                "body":"APP_PRODUCTION_3032_RECOVERY_GRANT\n"+json.dumps(fields)}))
         with mock.patch.object(r.subprocess,"run",return_value=response(grant)):
@@ -144,6 +154,55 @@ class RecoveryRefusal(unittest.TestCase):
         self.assertNotIn("DELETE FROM",source)
         self.assertNotIn("public_cutover_authorized\":True",source)
         self.assertNotIn("financial_authorized\":True",source)
+
+    def test_real_release_lock_blocks_competing_process_and_releases_on_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/"release.lock";path.touch(mode=0o644)
+            st=path.stat()
+            fixture={"LOCK":path,"LOCK_ID":(st.st_dev,st.st_ino,st.st_uid,stat.S_IMODE(st.st_mode))}
+            probe="import fcntl,sys; f=open(sys.argv[1]); fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)"
+            with mock.patch.object(r,"m",return_value=fixture):
+                with self.assertRaisesRegex(RuntimeError,"deliberate failure"):
+                    with r.release_lock():
+                        other=subprocess.run([sys.executable,"-c",probe,str(path)],capture_output=True)
+                        self.assertNotEqual(other.returncode,0)
+                        self.assertIn(b"BlockingIOError",other.stderr)
+                        raise RuntimeError("deliberate failure")
+                self.assertEqual(subprocess.run([sys.executable,"-c",probe,str(path)],capture_output=True).returncode,0)
+                path.chmod(0o666)
+                with self.assertRaisesRegex(r.Hold,"ORIGINAL_RELEASE_LOCK_CHANGED"):
+                    with r.release_lock():self.fail("changed lock admitted")
+
+    def test_owner_assertion_cannot_substitute_for_exact_source_ci_or_scanner(self):
+        raw=b"reviewed recovery fixture only\n"
+        packet={"recovery_source_sha":"a"*40,"source_file_sha256":r.digest(raw)}
+        names=["Release and documentation control plane","Type, contract, and production build",
+               "Isolated Steam-rating PostgreSQL chronology"]
+        records={"source":{"type":"file","encoding":"base64","content":base64.b64encode(raw).decode()+"\n"},
+          "runs":{"workflow_runs":[{"id":123,"head_sha":packet["recovery_source_sha"],"name":"AoE2WAR CI","status":"completed","conclusion":"success"}]},
+          "jobs":{"total_count":3,"jobs":[{"name":n,"status":"completed","conclusion":"success"} for n in names]},
+          "checks":{"check_runs":[{"id":456,"name":"GitGuardian Security Checks","app":{"slug":"gitguardian"},"status":"completed","conclusion":"success"}]}}
+        def github(endpoint):
+            if endpoint.startswith("contents/"):return records["source"]
+            if "/jobs?" in endpoint:return records["jobs"]
+            if endpoint.startswith("actions/workflows/"):return records["runs"]
+            if endpoint.startswith("commits/"):return records["checks"]
+            self.fail("Unexpected source qualification endpoint")
+        with mock.patch.object(r,"m",return_value={"production_github":github}):
+            self.assertEqual(r.qualified_source(packet)["ci_run_id"],123)
+            for section,field,value in (("source","content",base64.b64encode(b"unreviewed").decode()),
+                                         ("jobs","total_count",2),("checks","check_runs",[])):
+                original=records[section][field];records[section][field]=value
+                try:
+                    with self.assertRaises(r.Hold):r.qualified_source(packet)
+                finally:records[section][field]=original
+            for row,field,value in ((records["runs"]["workflow_runs"][0],"head_sha","f"*40),
+                                    (records["jobs"]["jobs"][0],"conclusion","failure"),
+                                    (records["checks"]["check_runs"][0],"conclusion","failure")):
+                original=row[field];row[field]=value
+                try:
+                    with self.assertRaises(r.Hold):r.qualified_source(packet)
+                finally:row[field]=original
 
 if __name__=="__main__":
     unittest.main()
