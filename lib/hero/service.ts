@@ -149,7 +149,9 @@ export function serializeForumThreadSource(
 }
 
 export function serializeMediaAssetSource(
-  asset: ManagedMediaAsset
+  asset: Pick<ManagedMediaAsset,
+    "id" | "kind" | "target" | "label" | "url" | "alt" |
+    "mimeType" | "sizeBytes" | "active" | "updatedAt">
 ): HeroMediaAssetSource {
   return {
     id: asset.id,
@@ -329,11 +331,29 @@ export async function hydrateHeroSnapshot(
         })
       : Promise.resolve(null as EventWithRelations | null),
     threadIds.length
-      ? prisma.forumThread.findMany({ where: { id: { in: threadIds } } })
-      : Promise.resolve([] as ForumThread[]),
+      ? prisma.forumThread.findMany({
+          where: { id: { in: threadIds } },
+          select: {
+            id: true, slug: true, channel: true, tag: true, title: true,
+            excerpt: true, authorLabel: true, authorRole: true,
+            createdAt: true, updatedAt: true,
+          },
+        })
+      : Promise.resolve([] as Array<Pick<ForumThread,
+          "id" | "slug" | "channel" | "tag" | "title" | "excerpt" |
+          "authorLabel" | "authorRole" | "createdAt" | "updatedAt">>),
     mediaIds.length
-      ? prisma.managedMediaAsset.findMany({ where: { id: { in: mediaIds } } })
-      : Promise.resolve([] as ManagedMediaAsset[]),
+      ? prisma.managedMediaAsset.findMany({
+          where: { id: { in: mediaIds } },
+          select: {
+            id: true, kind: true, target: true, label: true, url: true,
+            alt: true, mimeType: true, sizeBytes: true, active: true,
+            updatedAt: true,
+          },
+        })
+      : Promise.resolve([] as Array<Pick<ManagedMediaAsset,
+          "id" | "kind" | "target" | "label" | "url" | "alt" |
+          "mimeType" | "sizeBytes" | "active" | "updatedAt">>),
   ]);
 
   const activeEventTile = activeEvent
