@@ -57,7 +57,7 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
 
   assert.match(home, /function BufferedFeaturedWarriorImage/);
   assert.match(home, /import \{ preload \} from "react-dom"/);
-  assert.match(home, /const openingLineup = curatedFeaturedWarriorOpening\(pool, false\)/);
+  assert.match(home, /const openingLineup = curatedFeaturedWarriorOpening\(pool, true, openingSeed\)/);
   assert.match(home, /openingPreloadSrcRef = useRef<string \| null>\(null\)/);
   assert.match(home, /openingPreloadSrcRef\.current = featuredWarriorImageSrc\(openingLineup\[0\]\)/);
   assert.match(
