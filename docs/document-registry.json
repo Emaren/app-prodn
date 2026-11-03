@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "da201f640b31f2b800ef388afc2f7e325d979e0098a3af44bf6f164b57ca2225",
+      "sha256": "2836cd758b4b72519e3d3dc09517508e6f9d71f5e64bb73cd10a955f516eea6f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/a05-steam-policy-migration-20261103",
-    "commit": "3c8817e4"
+    "branch": "codex/featured-warriors-random-assets-20261103",
+    "commit": "b8e1a8b6e053f5fc75e0c163c3ea43ece2e4d154"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
