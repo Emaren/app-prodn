@@ -1384,14 +1384,16 @@ print(json.dumps(result))
     need(all(value is True for value in proof.values()) and len(proof) == 10, "PRODUCTION_NATIVE_UID_EGRESS_BOUNDARY_FAILED")
     return proof
 
-def production_steam_probe(environment):
+def production_steam_probe(environment, stage):
+    need(isinstance(stage, Path) and re.fullmatch(r"/var/lib/aoe2war-web-prod-[a-f0-9]{12}", str(stage)),
+         "PRODUCTION_STEAM_SEALED_STAGE_REQUIRED")
     probe = "fetch('https://steamcommunity.com/openid/login',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'openid.mode=check_authentication',redirect:'error',signal:AbortSignal.timeout(10000)}).then(async r=>{const s=await r.text();if(r.status!==200||!/^is_valid:false$/m.test(s))process.exit(2);console.log(JSON.stringify({steam_tls_verification_reachable:true,unauthenticated_probe_rejected:true,completed_user_sign_in:false}));}).catch(()=>process.exit(3));"
     env = {"PATH": "/usr/bin:/bin", "HOME": "/nonexistent", "LANG": "C.UTF-8", "USER": PROD_USER, "LOGNAME": PROD_USER,
       "NODE_ENV": "production", "WARGRAPH_RUNTIME_DISABLED": "true", "AOE2WAR_RUNTIME_PROFILE": PROD_PROFILE,
       "AOE2WAR_R25_ISOLATED_WEB": "true", "AOE2WAR_PROD_DB_PREVIEW": "false", "AOE2_BACKEND_UPSTREAM": "http://127.0.0.1:3331", "HOSTNAME": "127.0.0.1",
       "PORT": "3032", "NODE_OPTIONS": "--require=" + str(PROD_GUARD), **environment}
     result = subprocess.run(["/usr/sbin/runuser", "-u", PROD_USER, "--", "/usr/bin/node", "-e", probe],
-        env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=False)
+        env=env, cwd=str(stage), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=False)
     need(result.returncode == 0 and len(result.stdout) < 8192, "PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED")
     proof = parse(result.stdout)
     need(proof == {"steam_tls_verification_reachable": True, "unauthenticated_probe_rejected": True, "completed_user_sign_in": False},
@@ -1568,7 +1570,7 @@ def production_start(payload):
         admission = {"schema": "aoe2war.app.production-admission.v1", "status": "NATIVE_PRODUCTION_ADMISSION_PASS",
             "source_sha": payload["source_sha"], "candidate_pid": pid, "candidate_start_ticks": start_ticks,
             "postgres": production_database_admission(database, password), "users_identity_sequence_may_advance": True, "catalog": production_database_witness(database, password),
-            "kernel": production_kernel_probe(plan["steam_addresses"]), "steam": production_steam_probe(environment),
+            "kernel": production_kernel_probe(plan["steam_addresses"]), "steam": production_steam_probe(environment, Path(plan["stage"])),
             "financial_authorized": False, "public_cutover_authorized": False}
         request = urllib.request.Request("http://127.0.0.1:3331/api/health", method="POST", data=b"")
         try: urllib.request.urlopen(request, timeout=3); raise Hold("PRODUCTION_PRIVATE_PROXY_POST_ACCEPTED")

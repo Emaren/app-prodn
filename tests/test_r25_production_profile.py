@@ -190,6 +190,26 @@ class ProductionProfile(unittest.TestCase):
                 with self.assertRaisesRegex(c.Hold,"AUTHENTICATED_CI_ZIP_DIGEST"):
                     c.production_ci_zip({**payload,"artifact":metadata2},path)
 
+    def test_real_steam_node_probe_runs_under_exact_sealed_stage(self):
+        # Reproduces the HEL1 one-use HOLD: the preloader verifies process.cwd()
+        # before any network fetch. The controller must not inherit root /root.
+        sealed=pathlib.Path("/var/lib/aoe2war-web-prod-"+"a"*12)
+        proof={"steam_tls_verification_reachable":True,"unauthenticated_probe_rejected":True,
+               "completed_user_sign_in":False}
+        process=mock.Mock(returncode=0,stdout=c.canonical(proof))
+        with mock.patch.object(c.subprocess,"run",return_value=process) as node:
+            self.assertEqual(c.production_steam_probe({},sealed),proof)
+        self.assertEqual(node.call_args.kwargs["cwd"],str(sealed))
+        self.assertEqual(node.call_args.args[0][:4],["/usr/sbin/runuser","-u",c.PROD_USER,"--"])
+        self.assertIn("--require="+str(c.PROD_GUARD),node.call_args.kwargs["env"]["NODE_OPTIONS"])
+        for unsafe in (pathlib.Path("/root"),pathlib.Path("/var/lib/aoe2war-web-prod-XYZ")):
+            with mock.patch.object(c.subprocess,"run") as node:
+                with self.assertRaisesRegex(c.Hold,"PRODUCTION_STEAM_SEALED_STAGE_REQUIRED"):
+                    c.production_steam_probe({},unsafe)
+            node.assert_not_called()
+        source=(ROOT/"scripts/r25_c_start_root.py").read_text()
+        self.assertIn('production_steam_probe(environment, Path(plan["stage"]))',source)
+
     def test_current_steam_requires_nonexpired_set_and_current_uid_tls(self):
         base={"nftables":[{"set":{"name":"steam4","elem":[{"elem":{"val":"23.1.2.3","expires":90000,"timeout":300000}}]}},
                            {"set":{"name":"steam6","elem":[]}}]}
