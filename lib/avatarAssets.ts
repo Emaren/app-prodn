@@ -448,10 +448,14 @@ export function featuredAvatarCardUrlForUser(
     return profileFallback;
   }
 
-  const url = managedAvatarUrl(
-    `user-${normalizedUid}-featured`,
-    profileFallback,
-    { size: "card" }
+  const url = appendQueryParam(
+    managedAvatarUrl(
+      `user-${normalizedUid}-featured`,
+      profileFallback,
+      { size: "card" }
+    ),
+    "edgev",
+    "20261103-featured-1"
   );
 
   return revision == null
