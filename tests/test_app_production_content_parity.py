@@ -11,7 +11,8 @@ spec.loader.exec_module(f)
 
 TITLE='Monday Night Mayhem'
 OLD_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: 2026-10-19 Traffic Total Traffic</body></html>'
-CAND_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: 2026-10-20 Traffic Total Traffic</body></html>'
+OBSERVED='<p>Latest observed UTC day 2026-11-03</p><p>Provisional · unverified</p>'
+CAND_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: 2026-10-20 Traffic Total Traffic'+OBSERVED+'</body></html>'
 EMPTY_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: UNAVAILABLE No published completed-day Traffic report is available.</body></html>'
 
 class ReleaseContentGate(unittest.TestCase):
@@ -30,7 +31,7 @@ class ReleaseContentGate(unittest.TestCase):
         self.assertEqual(len(p['published_event_title_sha256']),64)
 
     def test_same_day_nonregression_is_allowed(self):
-        p=self.check(new_traffic=OLD_TRAFFIC)
+        p=self.check(new_traffic=OLD_TRAFFIC.replace('</body>',OBSERVED+'</body>'))
         self.assertEqual(p['candidate_published_day'],p['original_published_day'])
 
     def test_old_event_or_stale_new_event_hold_before_plan(self):
@@ -55,6 +56,18 @@ class ReleaseContentGate(unittest.TestCase):
         spoof='<html><body><script>LAST PUBLISHED UTC DAY: 2030-01-01</script><p>unavailable</p></body></html>'
         with self.assertRaisesRegex(f.Hold,'CONTENT_PARITY_PUBLISHED_DAY_MISSING'):
             self.check(new_traffic=spoof)
+
+    def test_missing_or_overlapping_observed_data_is_hold(self):
+        for bad in (CAND_TRAFFIC.replace(OBSERVED, ''), CAND_TRAFFIC.replace('2026-11-03', '2026-10-20')):
+            with self.subTest(bad=bad), self.assertRaisesRegex(f.Hold, 'CONTENT_PARITY_OBSERVED_TRAFFIC_ABSENT'):
+                self.check(new_traffic=bad)
+
+    def test_existing_browser_observed_aggregate_cannot_regress(self):
+        old = OLD_TRAFFIC.replace('</body>', '<p>BROWSER OBSERVED</p></body>')
+        with self.assertRaisesRegex(f.Hold, 'CONTENT_PARITY_OBSERVED_BROWSER_INSIGHTS_LOST'):
+            self.check(old_traffic=old)
+        passed = self.check(old_traffic=old, new_traffic=CAND_TRAFFIC.replace('</body>', '<p>BROWSER OBSERVED</p></body>'))
+        self.assertTrue(passed['candidate_observed_browser_insights'])
 
     def test_release_controller_calls_parity_before_authorization(self):
         source=(ROOT/'scripts/aoe2_r24_f_parallel_nginx_cutover.py').read_text()
