@@ -591,11 +591,18 @@ PROD_DEFINERS = ["aoe2war_auth_v1.complete_steam_login", "aoe2war_auth_v1.read_u
 PROD_READ_TABLES = ("game_stats", "replay_player_snapshots", "replay_player_metrics", "replay_game_metrics",
     "replay_player_metric_aggregates", "replay_player_identity_projections", "player_identity_aliases", "warriors", "platform_accounts",
     "platform_name_observations", "warrior_platform_links", "tournaments", "tournament_entries", "tournament_matches", "chat_messages",
-    "chat_message_reactions", "game_watch_streams", "game_watch_retained_demo", "page_change_revisions")
+    "chat_message_reactions", "game_watch_streams", "game_watch_retained_demo", "page_change_revisions",
+    "event_tiles", "hero_playlists", "hero_playlist_items",
+    "hero_playlist_publications", "hero_screens", "chat_rooms")
 PROD_COLUMN_READS = {
     "users": ("id", "uid", "in_game_name", "verified", "lock_name", "created_at", "last_seen", "steam_id", "steam_persona_name",
         "verification_level", "verification_method", "verified_at", "preferred_language", "twitch_stream_url", "represented_country",
         "represented_country_updated_at", "gender_division", "gender_division_updated_at"),
+    "trophies": ("id", "display_name"),
+    "forum_threads": ("id", "slug", "channel", "tag", "title", "excerpt",
+        "author_label", "author_role", "created_at", "updated_at"),
+    "managed_media_assets": ("id", "kind", "target", "label", "url", "alt",
+        "mime_type", "size_bytes", "active", "updated_at"),
     "replay_result_adjudications": ("id", "game_stats_id", "idempotency_key", "decision_status", "affects_stats", "affects_bets",
         "actor_display_name_snapshot", "actor_role", "team_assignments", "winning_team_key", "winning_player_keys", "reason", "evidence",
         "source_replay_hash", "source_parse_iteration", "source_roster_hash", "source_proposition_hash", "created_at")}
