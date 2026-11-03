@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-nonfinancial-content-readonly-20261103` at `ac7a0c0dc25e4170ede4474ac937db7225aec0cf`
+Implementation baseline: `codex/r25-provisional-traffic-20261103` at `e7e5363d06d33ad2618278c2009393e6f231d9d5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

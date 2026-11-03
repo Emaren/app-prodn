@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c6ccfa5997302ad493183aceb1283f1b32b72a6e4ec8367fce12bf88da9880eb",
+      "sha256": "96511c71fe797271d81e75458ea4cbe4dbb57766733c47654781dd31c36fc508",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-nonfinancial-content-readonly-20261103",
-    "commit": "ac7a0c0dc25e4170ede4474ac937db7225aec0cf"
+    "branch": "codex/r25-provisional-traffic-20261103",
+    "commit": "e7e5363d06d33ad2618278c2009393e6f231d9d5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

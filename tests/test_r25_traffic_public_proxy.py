@@ -26,7 +26,19 @@ class TrafficBoundary(unittest.TestCase):
                      "proxy_pass http://127.0.0.1:3345" + path + "?;"):
             self.assertIn(line, segment)
         self.assertIn("location / { return 403; }", conf)
-        self.assertEqual(conf.count("3345"), 1)
+        self.assertEqual(conf.count("3345"), 2)
+        provisional = "/api/projects/aoe2hdbets/observed-daily-series"
+        self.assertEqual(conf.count("location = " + provisional + " {"), 1)
+        block = conf.split("location = " + provisional + " {",1)[1].split("\n }",1)[0]
+        for line in ("if ($request_method != GET) { return 405; }",
+                     "proxy_pass_request_body off;",
+                     'proxy_set_header Cookie "";',
+                     'proxy_set_header Authorization "";',
+                     'proxy_set_header Content-Length "";',
+                     "proxy_method GET;",
+                     "proxy_read_timeout 5s;",
+                     "proxy_pass http://127.0.0.1:3345" + provisional + "?;"):
+            self.assertIn(line, block)
 
     def test_guard_and_unit_pin_existing_3331_transport(self):
         guard = (ROOT / "scripts/r25_b_guard_production_v1.cjs").read_text()
@@ -49,11 +61,16 @@ const b=text.indexOf("const fetchOriginal =",a);
 if(a<0||b<=a)process.exit(3);
 const checker=vm.runInNewContext(text.slice(a,b)+"\nreadonlyBackend;",{URL});
 const path="/api/projects/aoe2hdbets/public-audience-series";
+const observed="/api/projects/aoe2hdbets/observed-daily-series";
 const accepted=[
+ ["http://127.0.0.1:3331"+observed,{},true],
  ["http://127.0.0.1:3331"+path,{},true],
  ["http://127.0.0.1:3331/api/health",{method:"GET"},true],
  ["http://127.0.0.1:3331/api/chain-id",{method:"HEAD"},true]];
 const denied=[
+ ["http://127.0.0.1:3331"+observed,{method:"HEAD"},false],
+ ["http://127.0.0.1:3331"+observed,{method:"POST"},false],
+ ["http://127.0.0.1:3331"+observed+"?raw=true",{},false],
  ["http://127.0.0.1:3331"+path,{method:"HEAD"},false],
  ["http://127.0.0.1:3331"+path,{method:"POST"},false],
  ["http://127.0.0.1:3331"+path,{body:"x"},false],
@@ -78,7 +95,7 @@ console.log(JSON.stringify({accepted:accepted.length,denied:denied.length}));
         p = subprocess.run(["node", "-e", javascript, str(guard)], capture_output=True,
                            text=True, timeout=5)
         self.assertEqual(p.returncode, 0, p.stderr[-900:])
-        self.assertEqual(json.loads(p.stdout), {"accepted":3,"denied":14})
+        self.assertEqual(json.loads(p.stdout), {"accepted":4,"denied":17})
 
 if __name__ == "__main__":
     unittest.main()

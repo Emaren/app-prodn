@@ -705,6 +705,17 @@ server {
   proxy_read_timeout 5s;
   proxy_pass http://127.0.0.1:3345/api/projects/aoe2hdbets/public-audience-series?;
  }
+ # Separate provisional activity, never substituted for human-certified history.
+ location = /api/projects/aoe2hdbets/observed-daily-series {
+  if ($request_method != GET) { return 405; }
+  proxy_pass_request_body off;
+  proxy_set_header Content-Length "";
+  proxy_set_header Cookie "";
+  proxy_set_header Authorization "";
+  proxy_method GET;
+  proxy_read_timeout 5s;
+  proxy_pass http://127.0.0.1:3345/api/projects/aoe2hdbets/observed-daily-series?;
+ }
  location / { return 403; }
 }
 '''
