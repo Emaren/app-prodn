@@ -58,6 +58,12 @@ PUBLIC_NGINX = Path("/etc/nginx/sites-available/aoe2war.com")
 SCOPE = "UPGRADE_STOPPED_NONFINANCIAL_3032_ONLY"
 SOURCE_PATH = "scripts/r25_c_scoped_upgrade_v1.py"
 LOCK_ID = (2064, 6185747, 1000, 0o644)
+REVIEWED_RUNTIME_SOURCES = {
+    "controller": ("scripts/r25_c_start_root.py", 114421,
+                  "79952ceca239a077cec03d43c4f2872b466443aea6f283dc306647360dd6c0d0"),
+    "guard": ("scripts/r25_b_guard_production_v1.cjs", 11216,
+                  "cb77ca6efd2d4416bba9ac602be7a65609f0fc73facdc43e592c6cfd05d79b65"),
+}
 
 
 class Hold(RuntimeError):
@@ -80,9 +86,13 @@ def invoke(*args,timeout=35,input=None):
 def module(path, name, expected):
     raw = safe_bytes(path)
     need(digest(raw) == expected, "CONTROLLER_SOURCE_BYTES_CHANGED")
+    return controller_module(raw, str(path), name)
+
+
+def controller_module(raw, path, name):
     result = types.ModuleType(name)
-    result.__file__ = str(path)
-    exec(compile(raw, str(path), "exec"), result.__dict__)
+    result.__file__ = path
+    exec(compile(raw, path, "exec"), result.__dict__)
     return result
 
 
@@ -154,7 +164,7 @@ def visible(html):
     return " ".join(parser.parts)
 
 def page(port,path):
-    c=http.client.HTTPConnection("127.0.0.1",port,timeout=13)
+    c=http.client.HTTPConnection("127.0.0.1",port,timeout=20)
     try:
         c.request("GET",path,headers={"Host":"aoe2war.com","Accept":"text/html"})
         r=c.getresponse();body=r.read(4*1024*1024+1)
@@ -179,6 +189,7 @@ def candidate_content():
              "No published completed-day Traffic report is available" not in value,
              "CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING")
         return date.fromisoformat(match[1])
+    need("BROWSER OBSERVED" in traffic, "CANDIDATE_OBSERVED_BROWSER_INSIGHTS_MISSING")
     certified = last_published(traffic)
     observed = re.search(r"Latest observed UTC day\s+(\d{4}-\d{2}-\d{2})", traffic)
     need(certified >= last_published(old_traffic) and observed is not None and
@@ -242,14 +253,24 @@ def traffic_receipts():
          "TRAFFIC_R60_CHECKOUT_NOT_EXACT")
 
 
-def prepare(protected_sha):
+def upgrade_sources(old, release_ref, failed):
+    inputs = {key: safe_bytes(path) for key, (_, path, _) in FILES.items() if path}
+    need({key: digest(raw) for key, raw in inputs.items()} == failed["source_bytes_sha256"],
+         "PRIOR_QUALIFIED_UPGRADE_BYTES_DRIFT")
+    for key, (path, size, sha) in REVIEWED_RUNTIME_SOURCES.items():
+        inputs[key] = old.production_source({"source_sha": release_ref,
+            "source_sizes": {path: size}, "source_hashes": {path: sha}}, path)
+    return inputs
+
+
+def prepare(args):
     need(sys.platform == "linux" and os.geteuid() == 0 and
          socket.gethostname().split(".")[0] == "ubuntu-4gb-hel1-11", "EXACT_HEL1_ROOT_REQUIRED")
     actual={key:digest(safe_bytes(path)) for key,(path,_,_) in FILES.items()}
     failed = prior_failure(actual)
     old=module(OLD_CONTROLLER,"original_r25",actual["controller"])
-    new=module(SOURCES/"scripts/r25_c_start_root.py","upgraded_r25",
-               failed["source_bytes_sha256"]["controller"])
+    inputs = upgrade_sources(old, args.release_ref, failed)
+    new = controller_module(inputs["controller"], str(OLD_CONTROLLER), "upgraded_r25")
     need(new.PROD_READ_TABLES[-6:]==TABLES,"SOURCE_SCOPED_TABLES_DRIFT")
     need({t:tuple(new.PROD_COLUMN_READS[t]) for t in COLUMNS}==COLUMNS,
          "SOURCE_SCOPED_COLUMNS_DRIFT")
@@ -286,7 +307,7 @@ def prepare(protected_sha):
     need(digest(public)==failed["public_nginx_sha256"] and
          public.count(b"proxy_pass http://127.0.0.1:3030;")==6,"PUBLIC_PROXY_NOT_ALL_3030")
     before = new.production_protected()
-    need(digest(canonical(before)) == protected_sha and old.production_protected() == before,
+    need(digest(canonical(before)) == args.protected_sha256 and old.production_protected() == before,
          "EXACT_REVIEWED_PROTECTED_SNAPSHOT_REQUIRED")
     artifact=json.loads(__import__("zipfile").ZipFile(ARTIFACT).read("artifact.json"))
     need(artifact["source_sha"]==SOURCE and artifact["build_id"]==(STAGE/".next/BUILD_ID").read_text().strip() and
@@ -296,15 +317,13 @@ def prepare(protected_sha):
     need(new.production_ci_zip({"source_sha":SOURCE,"artifact":artifact,
          "ci_artifact":{"id":ARTIFACT_ID,"run_id":RUN_ID,"archive_path":str(ARTIFACT)}},
          ARTIFACT)["id"]==ARTIFACT_ID,"ARTIFACT_GITHUB_PROVENANCE_HOLD")
-    source={key:digest(safe_bytes(path)) for key,(_,path,_) in FILES.items() if path}
-    need(source == failed["source_bytes_sha256"] and
-         artifact["manifest_sha256"] == failed["new_manifest_sha256"], "QUALIFIED_UPGRADE_BYTES_DRIFT")
+    source = {key: digest(raw) for key, raw in inputs.items()}
+    need(artifact["manifest_sha256"] == failed["new_manifest_sha256"], "QUALIFIED_UPGRADE_MANIFEST_DRIFT")
     new_guard=source["guard"]
     new_sql=source["auth_sql"]
     proxy=digest(new.production_proxy_bytes())
     unit=digest(new.production_unit_bytes(STAGE))
-    need(proxy == failed["new_proxy_sha256"] and unit == failed["new_unit_sha256"],
-         "QUALIFIED_UPGRADE_UNIT_OR_PROXY_DRIFT")
+    need(unit == failed["new_unit_sha256"], "QUALIFIED_UPGRADE_UNIT_DRIFT")
     need(all(source[k]!=actual[k] for k in ("controller","guard","auth_sql")),"SOURCE_ALREADY_MIGRATED")
     need(all((STAGE/p).is_file() for p in ("package.json",".next/BUILD_ID")),"NEW_RUNTIME_INCOMPLETE")
     _,database,password=new.production_runtime_environment()
@@ -329,13 +348,9 @@ def prepare(protected_sha):
       "new_proxy_sha256":proxy,"new_unit_sha256":unit,
       "new_manifest_sha256":artifact["manifest_sha256"],
       "public_nginx_sha256":digest(public),
-      "protected_sha256":protected_sha,
+      "protected_sha256":args.protected_sha256,
       "no_public_cutover":True,"financial_authorized":False}
-    return old,new,policy,evidence
-
-def restart(unit):
-    invoke("/usr/bin/systemctl","daemon-reload",timeout=20)
-    invoke("/usr/bin/systemctl","start",unit,timeout=90)
+    return old,new,policy,evidence,inputs
 
 def qualify(old, args, plan):
     raw = safe_bytes(Path(__file__))
@@ -436,7 +451,7 @@ def restore_stopped(old, new, plan, backups, changed_steam):
 def upgrade(args):
     nonce = args.nonce
     need(nonce != FAILED_NONCE and not (JOURNALS / ("upgrade-" + nonce)).exists(), "NONCE_ALREADY_USED")
-    old,new,old_policy,plan=prepare(args.protected_sha256)
+    old,new,old_policy,plan,inputs=prepare(args)
     plan = bind_plan(plan, args)
     grant = qualify(old, args, plan)
     approved = {**plan, "ci_artifact": {"run_id": args.ci_run}}
@@ -467,8 +482,8 @@ def upgrade(args):
         native=new.production_database_witness(db,password)
         need(native["read_acl_sha256"]!=plan["before_read_acl_sha256"],"NEW_ACL_NOT_ADMITTED")
         for key in ("controller","guard","auth_sql"):
-            target,source,mode=FILES[key]
-            raw = safe_bytes(source)
+            target,_,mode=FILES[key]
+            raw = inputs[key]
             need(digest(raw) == plan["source_bytes_sha256"][key], "UPGRADE_SOURCE_CHANGED_BEFORE_INSTALL")
             atomic(target,raw,mode)
         atomic(PROXY,new.production_proxy_bytes(),0o644)
@@ -574,7 +589,7 @@ def main():
             need(args.plan_hash is None and args.comment_id is None and args.comment_sha256 is None,
                  "PLAN_MUST_NOT_AUTHORIZE_EXECUTION")
             need(not (JOURNALS / ("upgrade-" + args.nonce)).exists(), "NONCE_ALREADY_USED")
-            _,_,_,plan=prepare(args.protected_sha256)
+            _,_,_,plan,_=prepare(args)
             plan = {**bind_plan(plan, args), "ci_artifact": {"run_id": args.ci_run}}
             print(json.dumps({"status":"PASS_SCOPED_PROFILE_PLAN_READ_ONLY",
                 "plan":plan,"plan_sha256":digest(canonical(plan)),

@@ -58,10 +58,16 @@ class Upgrade(unittest.TestCase):
                     m.candidate_content()
             with mock.patch.object(m,"page",side_effect=[
                 "Monday Night Mayhem","Monday Night Mayhem","LAST PUBLISHED UTC DAY: 2026-10-19",
-                "LAST PUBLISHED UTC DAY: 2026-10-19 Loading provisional observed activity"
+                "LAST PUBLISHED UTC DAY: 2026-10-19 BROWSER OBSERVED Loading provisional observed activity"
             ]):
                 with self.assertRaisesRegex(m.Hold,"CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING"):
                     m.candidate_content()
+
+    def test_runtime_source_pins_match_committed_controller_and_guard(self):
+        for _, (path, size, sha) in m.REVIEWED_RUNTIME_SOURCES.items():
+            raw = (ROOT / path).read_bytes()
+            self.assertEqual(len(raw), size)
+            self.assertEqual(m.digest(raw), sha)
 
     def test_consumed_failed_upgrade_is_never_replayed(self):
         with mock.patch.object(m, "prepare") as prepare:
@@ -131,7 +137,8 @@ class Upgrade(unittest.TestCase):
                 raise m.Hold("failed fixture bootstrap")
             new.production_admission_steam_refresh.side_effect = fail_bootstrap
             with mock.patch.multiple(m, JOURNALS=journals,
-                prepare=mock.Mock(return_value=(old, new, {}, plan)), bind_plan=mock.Mock(return_value=plan),
+                prepare=mock.Mock(return_value=(old, new, {}, plan, {key: b"original" for key in m.FILES})),
+                bind_plan=mock.Mock(return_value=plan),
                 qualify=mock.Mock(return_value={"comment_id": 42}), assert_protected=mock.Mock(),
                 stopped_candidate=mock.Mock(), steam_elements=mock.Mock(return_value=[]),
                 safe_bytes=mock.Mock(return_value=b"original"), atomic=mock.Mock(), invoke=mock.Mock(),
