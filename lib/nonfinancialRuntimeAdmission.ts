@@ -16,10 +16,22 @@ export function requireNonfinancialAuthDatasource(
   rawDatabaseUrl: string,
   env: AdmissionEnvironment,
 ): void {
+  // An R25 candidate may remain a read-only preview, or become a reviewed
+  // nonfinancial production-auth candidate. No unlabeled third state.
+  // A typo/omission must never silently restore legacy broad DB behavior.
+  if (env.NODE_ENV === "production" &&
+      env.AOE2WAR_R25_ISOLATED_WEB === "true" &&
+      env.AOE2WAR_PROD_DB_PREVIEW !== "true" &&
+      env.AOE2WAR_RUNTIME_PROFILE !== PROFILE) {
+    throw new Error("A05_AUTH_R25_PROFILE_REQUIRED");
+  }
   if (env.AOE2WAR_RUNTIME_PROFILE !== PROFILE) return;
 
   if (env.NODE_ENV !== "production") {
     throw new Error("A05_AUTH_PRODUCTION_NODE_MODE_REQUIRED");
+  }
+  if (env.AOE2WAR_R25_ISOLATED_WEB !== "true") {
+    throw new Error("A05_AUTH_CANDIDATE_ONLY_PROFILE_REQUIRED");
   }
   if (env.WARGRAPH_RUNTIME_DISABLED !== "true") {
     throw new Error("A05_AUTH_FINANCIAL_RUNTIME_FENCE_REQUIRED");

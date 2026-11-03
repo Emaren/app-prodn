@@ -10,6 +10,7 @@ const url = "postgresql://aoe2war_web_prod:fixture-no-real-secret@127.0.0.1:5432
 const profile = {
   NODE_ENV: "production",
   AOE2WAR_RUNTIME_PROFILE: "nonfinancial-production-v1",
+  AOE2WAR_R25_ISOLATED_WEB: "true",
   WARGRAPH_RUNTIME_DISABLED: "true",
   AOE2WAR_PROD_DB_PREVIEW: "false",
 };
@@ -27,6 +28,31 @@ test("A05 allows only explicit local nonfinancial web-auth DB role with finance 
 test("A05 fails before pool creation if read-only preview environment is inherited", () => {
   assert.throws(admission({ ...profile, AOE2WAR_PROD_DB_PREVIEW: "true" }),
     /A05_AUTH_PREVIEW_READ_ONLY_DB_CONFLICT/);
+});
+
+test("isolated R25 must choose exactly read-only preview or scoped production-auth profile", () => {
+  for (const runtimeProfile of [undefined, "", "legacy", "nonfinancial-production-v2"]) {
+    assert.throws(admission({ ...profile,
+      AOE2WAR_RUNTIME_PROFILE: runtimeProfile,
+      AOE2WAR_PROD_DB_PREVIEW: "false",
+    }), /A05_AUTH_R25_PROFILE_REQUIRED/);
+    assert.throws(admission({ ...profile,
+      AOE2WAR_RUNTIME_PROFILE: runtimeProfile,
+      AOE2WAR_PROD_DB_PREVIEW: undefined,
+    }), /A05_AUTH_R25_PROFILE_REQUIRED/);
+  }
+
+  assert.doesNotThrow(admission({ ...profile,
+    AOE2WAR_RUNTIME_PROFILE: undefined,
+    AOE2WAR_PROD_DB_PREVIEW: "true",
+  }, "postgresql://legacy:any@remote.example.invalid/db"));
+});
+
+test("scoped nonfinancial profile cannot accidentally run on old 3030 web", () => {
+  for (const isolated of [undefined, "false", ""]) {
+    assert.throws(admission({ ...profile, AOE2WAR_R25_ISOLATED_WEB: isolated }),
+      /A05_AUTH_CANDIDATE_ONLY_PROFILE_REQUIRED/);
+  }
 });
 
 test("A05 rejects missing production/financial runtime isolation", () => {
@@ -78,7 +104,7 @@ test("nonproduction and existing isolated release profiles stay unchanged", () =
   for (const env of [
     {},
     { NODE_ENV: "production", AOE2WAR_PROD_DB_PREVIEW: "true" },
-    { ...profile, AOE2WAR_RUNTIME_PROFILE: "isolated-w1-readonly-preview" },
+    { ...profile, AOE2WAR_RUNTIME_PROFILE: "isolated-w1-readonly-preview", AOE2WAR_PROD_DB_PREVIEW: "true" },
   ]) {
     assert.doesNotThrow(admission(env, "postgresql://legacy:any@remote.example.invalid/db"));
   }
