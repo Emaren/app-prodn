@@ -6,6 +6,7 @@ import {constants} from "node:fs";
 import {open,realpath} from "node:fs/promises";
 import {dirname,isAbsolute} from "node:path";
 import {createPublicKey,verify} from "node:crypto";
+import {AsyncLocalStorage} from "node:async_hooks";
 import pg from "pg";
 
 export type HdFinancialScope="hd-legacy"|"hd-satchel";
@@ -27,6 +28,14 @@ const scopes={"hd-legacy":48,"hd-satchel":49} as const;
 // substitute one. A source/build tuple is not a custody or global-drain seal.
 declare const __AOE2WAR_HD_FINANCIAL_BUILD__: Readonly<{source:string;deployment:string}> | null;
 const BUILD=typeof __AOE2WAR_HD_FINANCIAL_BUILD__ === "undefined" ? null : __AOE2WAR_HD_FINANCIAL_BUILD__;
+type VerifiedLeaseContext={
+  scope:HdFinancialScope;producer:string;wallet:string;
+  signal:AbortSignal;live:boolean;nestedActive:boolean;nestedConsumed:boolean;
+};
+// Private to this module; only the actual authenticated PostgreSQL policy
+// transaction can install a context. A caller-supplied AbortSignal can never
+// impersonate an admitted lease or bypass the four-lease capacity budget.
+const verifiedLease=new AsyncLocalStorage<VerifiedLeaseContext>();
 let active=0;
 function held(reason:string):never{throw Error("HD_FINANCIAL_FENCE_HELD:"+reason);}
 function record(value:unknown):Record<string,unknown>{
@@ -129,12 +138,37 @@ async function withConfiguredLease<T>(client:Client,a:Authority,input:HdFinancia
     // Do not race this callback against a timer and release its lease while a
     // delayed send is still executing. Transports must honor the signal and
     // their existing bounded timeout. Lost connections remain UNKNOWN.
-    const result=await action(cancel.signal);cancel.signal.throwIfAborted();
+    const context:VerifiedLeaseContext={scope:input.scope,producer:input.producer,
+      wallet:input.wallet,signal:cancel.signal,live:true,nestedActive:false,nestedConsumed:false};
+    let result:T;
+    try{result=await verifiedLease.run(context,()=>action(cancel.signal));}
+    finally{context.live=false;}
+    cancel.signal.throwIfAborted();
     await client.query("COMMIT");return result;
   }finally{if(expiry)clearTimeout(expiry);await client.query("ROLLBACK").catch(()=>{});await client.end().catch(()=>{});}
 }
 export async function withHdFinancialLease<T>(input:HdFinancialAdmission,action:(signal:AbortSignal)=>Promise<T>):Promise<T>{
-  if(!input||(input.scope!=="hd-legacy"&&input.scope!=="hd-satchel")||typeof input.producer!=="string"||!ID.test(input.producer)||typeof input.wallet!=="string"||!WALLET.test(input.wallet)||active>=4)held("invalid_or_busy");
+  if(!input||(input.scope!=="hd-legacy"&&input.scope!=="hd-satchel")||typeof input.producer!=="string"||!ID.test(input.producer)||typeof input.wallet!=="string"||!WALLET.test(input.wallet))held("invalid_or_busy");
+  // Only the *same* signed scope/producer/wallet may inherit the active
+  // transaction. Another wallet/producer, expired context, parallel nested
+  // transport, or detached work after lease closure is always a hard HOLD.
+  const inherited=verifiedLease.getStore();
+  if(inherited){
+    if(!inherited.live||inherited.signal.aborted||inherited.nestedActive||inherited.nestedConsumed||
+      inherited.scope!==input.scope||inherited.producer!==input.producer||
+      inherited.wallet!==input.wallet)held("nested_lease_invalid_or_busy");
+    // Exactly one inherited finance action per authenticated PostgreSQL lease.
+    // A failed/lost acknowledgement permanently consumes this in-memory permit.
+    inherited.nestedActive=true;inherited.nestedConsumed=true;
+    try{
+      inherited.signal.throwIfAborted();
+      const result=await action(inherited.signal);
+      inherited.signal.throwIfAborted();
+      return result;
+    }catch{throw Error("HD_FINANCIAL_FENCE_OUTCOME_UNKNOWN:inherited_action_or_connection_failed");}
+    finally{inherited.nestedActive=false;}
+  }
+  if(active>=4)held("invalid_or_busy");
   active++;let entered=false;
   try{
     if(!BUILD||!SHA.test(BUILD.source)||!KEY.test(BUILD.deployment))held("compiled_runtime_identity_missing");
