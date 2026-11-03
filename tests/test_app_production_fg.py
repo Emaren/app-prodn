@@ -50,9 +50,33 @@ class Selectors(unittest.TestCase):
         self.assertNotEqual(f.PRODUCTION_AUDIT,f.AUDIT_BASE)
 
 class BeforeAndContinuity(unittest.TestCase):
+    def test_controller_only_descendant_can_govern_unchanged_installed_application(self):
+        candidate,controller='a'*40,'b'*40
+        tree_ids={candidate:'c'*40,controller:'d'*40}
+        trees={sha:[{'path':'app','mode':'040000','type':'tree','sha':'e'*40},
+                    {'path':'scripts','mode':'040000','type':'tree','sha':sha}] for sha in tree_ids.values()}
+        def github(endpoint):
+            kind,sha=endpoint.rsplit('/',1)
+            if kind=='git/commits':return {'sha':sha,'tree':{'sha':tree_ids[sha]}}
+            if kind=='git/trees':return {'sha':sha,'truncated':False,'tree':trees[sha]}
+            self.fail('Unexpected Git source endpoint')
+        with mock.patch.object(f,'github_read',side_effect=github):
+            self.assertRegex(f.production_application_tree(candidate,controller),r'^[a-f0-9]{64}$')
+            trees[tree_ids[controller]][0]['sha']='f'*40
+            with self.assertRaisesRegex(f.Hold,'INSTALLED_APPLICATION_DIFFERS'):
+                f.production_application_tree(candidate,controller)
+    def test_g_bytes_come_from_exact_controller_commit_without_editing_staged_artifact(self):
+        raw=b'def production_native_snapshot(*args): return {}\n'
+        reply={'type':'file','encoding':'base64','content':base64.b64encode(raw).decode()}
+        with mock.patch.object(f,'github_read',return_value=reply) as github:
+            loaded,module=f.production_qualified_g('b'*40,f.sha(raw))
+            self.assertEqual(loaded,raw)
+            self.assertEqual(module.production_native_snapshot('before','nonce','source'),{})
+            self.assertIn('?ref='+'b'*40,github.call_args.args[0])
+            with self.assertRaisesRegex(f.Hold,'SOURCE_PIN'):f.production_qualified_g('b'*40,'0'*64)
     def before(self):
         return {'schema':'aoe2war.g.app-production.v1','phase':'before','nonce':'b'*32,'status':'PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER',
-          'source_sha':'a'*40,'build_id':'build12345','build_version':'version1','profile_sha256':'c'*64,'manifest_sha256':'d'*64,
+          'source_sha':'a'*40,'controller_source_sha':'9'*40,'build_id':'build12345','build_version':'version1','profile_sha256':'c'*64,'manifest_sha256':'d'*64,
           'native_admission_sha256':'e'*64,'candidate_pid':234,'candidate_start_ticks':89,'protected_units_sha256':'f'*64,
           'ports':{'3030':{'pid':2625090},'3031':{'pid':1483304},'3032':{'pid':234},'8092':{'pid':1012},'8093':{'pid':1010}},
           'release_lock':{'inode':6185747},'nginx':{'upstream_port':3030,'selectors':6,'sha256':'1'*64},
@@ -67,7 +91,7 @@ class BeforeAndContinuity(unittest.TestCase):
     def test_after_requires_every_process_and_artifact_identity_unchanged(self):
         before=self.before();after=dict(before,phase='after',nginx={'upstream_port':3032})
         g.production_compare(before,after)
-        for key in ('nonce','source_sha','build_id','build_version','profile_sha256','manifest_sha256','native_admission_sha256',
+        for key in ('nonce','source_sha','controller_source_sha','build_id','build_version','profile_sha256','manifest_sha256','native_admission_sha256',
                     'candidate_pid','candidate_start_ticks','protected_units_sha256','ports','release_lock','old_http','candidate_http'):
             changed=dict(after);changed[key]='changed'
             with self.assertRaisesRegex(g.Hold,'CONTINUITY_DRIFT'):g.production_compare(before,changed)
@@ -109,6 +133,8 @@ class OwnerGrant(unittest.TestCase):
     def body(self):
         return 'APP_PRODUCTION_CUTOVER_GRANT\n```json\n'+json.dumps(self.grant)+'\n```\n'
     def api(self,path):
+        if path.startswith('commits/'):
+            return {'check_runs':[{'name':'GitGuardian Security Checks','app':{'slug':'gitguardian'},'status':'completed','conclusion':'success'}]}
         if path=='issues/comments/123':return dict(self.comment,body=self.body())
         if path=='actions/runs/321':return {'head_sha':'a'*40,'name':'AoE2WAR CI','status':'completed','conclusion':'success'}
         if path.startswith('actions/runs/321/jobs'):return {'total_count':3,'jobs':[{'name':name,'status':'completed','conclusion':'success'} for name in
@@ -130,13 +156,15 @@ class OwnerGrant(unittest.TestCase):
             with mock.patch.object(f,'github_read',side_effect=self.api):
                 with self.assertRaises(f.Hold):f.production_grant('123',f.sha(self.body().encode()),self.envelope,now=self.now)
     def test_changed_author_edited_comment_and_failed_actual_ci_are_denied(self):
-        for change in ('author','edited','ci'):
+        for change in ('author','edited','ci','security'):
             self.setup_grant()
             if change=='author':self.comment['user']={'login':'Other','id':123}
             if change=='edited':self.comment['updated_at']='2026-11-03T09:59:03Z'
             def api(path):
                 answer=self.api(path)
                 if change=='ci' and path=='actions/runs/321':answer={**answer,'conclusion':'failure'}
+                if change=='security' and path.startswith('commits/'):
+                    answer={'check_runs':[{**answer['check_runs'][0],'conclusion':'failure'}]}
                 return answer
             with mock.patch.object(f,'github_read',side_effect=api):
                 with self.assertRaises(f.Hold):f.production_grant('123',f.sha(self.body().encode()),self.envelope,now=self.now)
@@ -178,7 +206,7 @@ class MacTransportRollback(unittest.TestCase):
         nonce='b'*32;source='a'*40;plan={'source_sha':source,'nonce':nonce}
         envelope={'schema':'aoe2war.app.production-cutover-plan-envelope.v1','status':'PASS_READ_ONLY_PRODUCTION_CUTOVER_PLAN_NOT_AUTHORITY',
                   'plan':plan,'plan_sha256':f.sha(m.canonical(plan))}
-        before={'schema':'aoe2war.g.app-production.v1','phase':'before','nonce':nonce,'source_sha':source,'status':'PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER'}
+        before={'schema':'aoe2war.g.app-production.v1','phase':'before','nonce':nonce,'source_sha':'c'*40,'controller_source_sha':source,'status':'PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER'}
         before_raw=m.canonical(before)+b'\n';plan_raw=m.canonical(envelope)+b'\n'
         root=b'def production_apply( def production_rollback(';graw=b'g';owner=b'owner'
         def pinned(path,sha,maximum=65536):
@@ -198,7 +226,7 @@ class MacTransportRollback(unittest.TestCase):
              mock.patch.object(m,'private_bytes',side_effect=private),mock.patch.object(m,'production_comment',return_value=({},{})),\
              mock.patch.object(m,'qualified_ci'),mock.patch.object(m,'qualified_sources'),mock.patch.object(m,'owner_receipt',side_effect=record),\
              mock.patch.object(m,'ssh_source',side_effect=responses) as ssh,mock.patch.object(m,'production_g_witness') as after:
-            args=['--production-mode','apply','--nonce',nonce,'--source-sha',source,'--reviewed-root-file','root.py','--root-source-sha256','1'*64,
+            args=['--production-mode','apply','--nonce',nonce,'--source-sha',source,'--candidate-source-sha','c'*40,'--reviewed-root-file','root.py','--root-source-sha256','1'*64,
                   '--reviewed-g-file','g.py','--g-source-sha256','2'*64,'--owner-source-sha256','3'*64,'--existing-before','before.json',
                   '--existing-before-sha256',f.sha(before_raw),'--production-plan','plan.json','--owner-grant-comment','123','--owner-grant-sha256','4'*64]
             expected=m.Hold if rollback_failure else (m.subprocess.TimeoutExpired if timeout else OSError)
@@ -211,7 +239,7 @@ class MacTransportRollback(unittest.TestCase):
     def test_disk_full_cannot_hide_failed_native_rollback(self):self.exercise(disk_full=True,rollback_failure=True)
 
 class SixPhysicalSelectors(unittest.TestCase):
-    identity={'source_sha':'a'*40,'build_id':'qualifiedBuild','candidate_pid':2345}
+    identity={'source_sha':'a'*40,'controller_source_sha':'9'*40,'build_id':'qualifiedBuild','candidate_pid':2345}
     def connection(self,headers=None,status=200,public=False):
         conn=mock.Mock();conn.sock.getpeername.return_value=('104.21.1.2' if public else '127.0.0.1',443)
         reply=conn.getresponse.return_value;reply.status=status

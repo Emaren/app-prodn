@@ -1544,7 +1544,8 @@ def production_before(raw,expected,nonce):
     need(before.get('schema')=='aoe2war.g.app-production.v1' and before.get('phase')=='before' and
          before.get('nonce')==nonce and before.get('status')=='PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER' and
          before.get('nginx',{}).get('upstream_port')==3030 and before.get('nginx',{}).get('selectors')==6 and
-         before.get('mac_public')==before.get('old_http') and before.get('financial_authorized') is False,
+         before.get('mac_public')==before.get('old_http') and before.get('financial_authorized') is False and
+         HEX40.fullmatch(before.get('source_sha','')) and HEX40.fullmatch(before.get('controller_source_sha','')),
          'PRODUCTION_G_BEFORE_REAL_MAC_PUBLIC_PROOF_REQUIRED')
     return before
 
@@ -1569,9 +1570,30 @@ def production_record(nonce):
          'PRODUCTION_HISTORIC_CONSUMED_NONCE_MUST_NOT_BE_REUSED')
     return PRODUCTION_AUDIT/('cutover-'+nonce)
 
+def production_qualified_g(source_sha,g_sha256):
+    committed=github_read('contents/scripts/aoe2_r25_f_g_parallel_observer.py?ref='+source_sha)
+    need(committed.get('type')=='file' and committed.get('encoding')=='base64','PRODUCTION_COMMITTED_G_SOURCE_REQUIRED')
+    raw=base64.b64decode(committed.get('content','').replace('\n',''),validate=True)
+    return raw,production_load_g(raw,g_sha256)
+
+def production_application_tree(candidate,controller):
+    # Four small authenticated Git-object reads replace any full-tree scan.
+    # Tooling-only descendants may govern an unchanged installed application.
+    def app_tree(commit):
+        item=github_read('git/commits/'+commit)
+        need(item.get('sha')==commit and HEX40.fullmatch(item.get('tree',{}).get('sha','')),'PRODUCTION_GIT_COMMIT_TREE_REQUIRED')
+        tree=github_read('git/trees/'+item['tree']['sha'])
+        need(tree.get('sha')==item['tree']['sha'] and tree.get('truncated') is False and
+             type(tree.get('tree'))is list and 0<len(tree['tree'])<=1000,'PRODUCTION_COMPLETE_ROOT_TREE_REQUIRED')
+        return {row['path']:{k:row[k] for k in ('mode','type','sha')} for row in tree['tree']
+                if row['path'] not in ('scripts','tests','docs','.github')}
+    candidate_tree,controller_tree=app_tree(candidate),app_tree(controller)
+    need(candidate_tree==controller_tree,'PRODUCTION_INSTALLED_APPLICATION_DIFFERS_FROM_CONTROLLER_SOURCE')
+    return sha(canonical(candidate_tree))
+
 def production_inputs(options):
     need(sys.platform=='linux' and socket.gethostname().split('.')[0]==HOST and os.geteuid()==0,'PRODUCTION_EXACT_HEL1_ROOT')
-    need(HEX40.fullmatch(options.source_sha or '') and all(HEX64.fullmatch(getattr(options,key,'') or '') for key in
+    need(HEX40.fullmatch(options.source_sha or '') and HEX40.fullmatch(options.candidate_source_sha or '') and all(HEX64.fullmatch(getattr(options,key,'') or '') for key in
          ('engine_source_sha256','owner_source_sha256','g_source_sha256','before_witness_sha256')),'PRODUCTION_EXACT_SOURCE_PINS')
     need(len(options.before_witness_b64)<=90000 and re.fullmatch(r'[A-Za-z0-9+/=]+',options.before_witness_b64 or ''),
          'PRODUCTION_BOUND_BEFORE_ENCODING')
@@ -1582,22 +1604,28 @@ def production_inputs(options):
     if PRODUCTION_AUDIT.exists():protected_dir(PRODUCTION_AUDIT,0o700)
     else:protected_dir(PRODUCTION_AUDIT.parent)
     lock_check();policy_raw=root_file(PRODUCTION_POLICY,32768);policy=parse(policy_raw)
-    need(policy.get('schema')=='aoe2war.app.approved-production-profile.v1' and policy.get('source_sha')==options.source_sha and
+    need(policy.get('schema')=='aoe2war.app.approved-production-profile.v1' and policy.get('source_sha')==options.candidate_source_sha and
          policy.get('profile')=='nonfinancial-production-v1' and policy.get('port')==3032 and policy.get('uid')==990,
          'PRODUCTION_C_PROFILE_SCOPE')
     stage=pathlib.Path(policy.get('stage',''))
-    need(stage==pathlib.Path('/var/lib/aoe2war-web-prod-'+options.source_sha[:12]),'PRODUCTION_C_STAGE_PATH')
-    graw=root_file(stage/'scripts/aoe2_r25_f_g_parallel_observer.py',196608);g=production_load_g(graw,options.g_source_sha256,stage/'scripts/aoe2_r25_f_g_parallel_observer.py')
+    need(stage==pathlib.Path('/var/lib/aoe2war-web-prod-'+options.candidate_source_sha[:12]),'PRODUCTION_C_STAGE_PATH')
+    # The immutable website artifact predates these controller-only repairs.
+    # Authenticate G from its own qualified source; never alter the staged app.
+    app_tree_sha256=production_application_tree(options.candidate_source_sha,options.source_sha)
+    graw,g=production_qualified_g(options.source_sha,options.g_source_sha256)
     # F's own fresh native observations compare the independently retained G
     # BEFORE. They do not replace, fabricate, or publish a second G receipt.
-    current=g.production_native_snapshot('before',options.new_nonce);g.production_compare(before,current)
-    need(before['source_sha']==options.source_sha and before['profile_sha256']==sha(policy_raw),'PRODUCTION_BEFORE_PROFILE_BINDING')
+    current=g.production_native_snapshot('before',options.new_nonce,options.source_sha);g.production_compare(before,current)
+    need(before['source_sha']==options.candidate_source_sha and before['controller_source_sha']==options.source_sha and
+         before['profile_sha256']==sha(policy_raw),'PRODUCTION_BEFORE_PROFILE_BINDING')
     old=root_file(VHOST,131072);candidate=production_replace_site(old)
     need(sha(old)==before['nginx']['sha256'],'PRODUCTION_BEFORE_NGINX_PREIMAGE_DRIFT')
     nginx_loaded_vhost(old,VHOST,old_count=6)
     production_require_protected(g,before)
     runtime_sample(before['old_http']['build_version'],policy['build_version'],before['old_http']['asset'],time.monotonic()+15,{})
     plan={'schema':'aoe2war.app.production-cutover-plan.v1','nonce':options.new_nonce,'source_sha':options.source_sha,
+      'controller_source_sha':options.source_sha,'candidate_source_sha':options.candidate_source_sha,
+      'application_tree_sha256':app_tree_sha256,
       'engine_source_sha256':options.engine_source_sha256,'owner_source_sha256':options.owner_source_sha256,'g_source_sha256':options.g_source_sha256,
       'before_witness_sha256':options.before_witness_sha256,'profile_sha256':sha(policy_raw),
       'manifest_sha256':policy['manifest_sha256'],'candidate_build_id':policy['build_id'],'candidate_build_version':policy['build_version'],
@@ -1643,6 +1671,11 @@ def production_grant(comment_id,body_sha,envelope,now=None):
         need(source.get('type')=='file' and source.get('encoding')=='base64' and type(source.get('content'))is str,'PRODUCTION_IMMUTABLE_SOURCE_REQUIRED')
         data=base64.b64decode(source['content'].replace('\n',''),validate=True)
         need(0<len(data)<=196608 and sha(data)==plan[name+'_source_sha256'],'PRODUCTION_QUALIFIED_SOURCE_BYTES_DRIFT:'+name)
+    checks=github_read('commits/'+plan['source_sha']+'/check-runs?filter=latest&per_page=100')
+    security=[check for check in checks.get('check_runs',[]) if check.get('name')=='GitGuardian Security Checks' and
+              check.get('app',{}).get('slug')=='gitguardian']
+    need(len(security)==1 and security[0].get('status')=='completed' and security[0].get('conclusion')=='success',
+         'PRODUCTION_ACTUAL_SECURITY_CHECK_REQUIRED')
     if now is None:need(datetime.now(timezone.utc)<=expires,'PRODUCTION_GRANT_EXPIRED_DURING_ADMISSION')
     return {'schema':'aoe2war.app.production-cutover-authority.v1','comment_id':int(comment_id),'url':obj['html_url'],
             'body':body,'body_sha256':body_sha,'created_at':obj['created_at'],'manifest':grant,'plan_sha256':envelope['plan_sha256']}
@@ -1698,12 +1731,14 @@ def production_apply(options):
                  'PRODUCTION_C_POST_CUTOVER_ADMISSION_DRIFT')
             durable_write(record/'readiness.json',canonical(readiness)+b'\n')
             durable_write(record/'commit.json',canonical({'schema':'aoe2war.app.production-cutover-commit.v1',
-                'status':'PUBLIC_PENDING_REAL_STEAM_AND_BROWSER_ACCEPTANCE','nonce':options.new_nonce,'source_sha':options.source_sha,
+                'status':'PUBLIC_PENDING_REAL_STEAM_AND_BROWSER_ACCEPTANCE','nonce':options.new_nonce,
+                'source_sha':options.candidate_source_sha,'controller_source_sha':options.source_sha,
                 'build_id':policy['build_id'],'build_version':policy['build_version'],'plan_sha256':envelope['plan_sha256'],
                 'readiness_sha256':sha(canonical(readiness)),'original_web_pid':2625090,'preview_pid':1483304,
                 'authenticated_browser_roles_verified':False,'financial_authorized':False})+b'\n');fsyncdir(record)
             print(canonical({'status':'PRODUCTION_PUBLIC_CUTOVER_PENDING_G_AFTER_AND_REAL_AUTHENTICATED_BROWSER','journal':str(record),
-                'source_sha':options.source_sha,'build_id':policy['build_id'],'build_version':policy['build_version']}).decode())
+                'source_sha':options.candidate_source_sha,'controller_source_sha':options.source_sha,
+                'build_id':policy['build_id'],'build_version':policy['build_version']}).decode())
         except BaseException as error:
             record_failed_cutover(record,error,lambda:production_restore(context),production=True);raise
     finally:os.close(fd)
@@ -1737,7 +1772,7 @@ def production_dispatch(mode,argv):
     parser=argparse.ArgumentParser()
     if mode=='--root-production-rollback':
         parser.add_argument('--nonce',required=True);options=parser.parse_args(argv);return production_rollback(options.nonce)
-    for name in ('new-nonce','source-sha','engine-source-sha256','owner-source-sha256','g-source-sha256','before-witness-sha256','before-witness-b64'):
+    for name in ('new-nonce','source-sha','candidate-source-sha','engine-source-sha256','owner-source-sha256','g-source-sha256','before-witness-sha256','before-witness-b64'):
         parser.add_argument('--'+name,required=True)
     for name in ('grant-comment','grant-sha256','plan-sha256'):parser.add_argument('--'+name,required=mode=='--root-production-apply')
     options=parser.parse_args(argv)

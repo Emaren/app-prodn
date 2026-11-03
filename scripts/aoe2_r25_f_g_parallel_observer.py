@@ -1069,9 +1069,10 @@ def production_route_heads(surface,identity=None):
         finally:conn.close()
     return rows
 
-def production_native_snapshot(phase,nonce):
+def production_native_snapshot(phase,nonce,controller_source_sha):
     need(sys.platform=="linux" and os.geteuid()==0 and socket.gethostname().split(".")[0]==HOST,"PRODUCTION_G_EXACT_HOST")
     need(phase in ("before","after","rollback") and NONCE.fullmatch(nonce or ""),"PRODUCTION_G_PHASE_NONCE")
+    need(H40.fullmatch(controller_source_sha or ""),"PRODUCTION_G_CONTROLLER_SOURCE_REQUIRED")
     policy,policy_sha,witness=production_profile()
     state=stable_system_state_during_timer_quiescence()
     protected={name:value for name,value in state.items() if name not in PRODUCTION_OWNED_UNITS}
@@ -1097,7 +1098,8 @@ def production_native_snapshot(phase,nonce):
     # This compact receipt retains hashes of all native rows; no credentials or
     # raw financial state is serialized, and F can bind its exact fresh bytes.
     return {"schema":"aoe2war.g.app-production.v1","phase":phase,"nonce":nonce,"host":HOST,
-       "source_sha":policy["source_sha"],"build_id":policy["build_id"],"build_version":policy["build_version"],
+       "source_sha":policy["source_sha"],"controller_source_sha":controller_source_sha,
+       "build_id":policy["build_id"],"build_version":policy["build_version"],
        "observed_at":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"profile_sha256":policy_sha,"manifest_sha256":policy["manifest_sha256"],
        "native_admission_sha256":witness.get("admission_sha256"),
        "candidate_pid":witness["candidate_pid"],"candidate_start_ticks":witness["candidate_start_ticks"],
@@ -1112,22 +1114,24 @@ def production_compare(before,after):
     production_same_runtime(before,after)
 
 def production_same_runtime(before,after):
-    for key in ("nonce","source_sha","build_id","build_version","profile_sha256","manifest_sha256","native_admission_sha256",
+    for key in ("nonce","source_sha","controller_source_sha","build_id","build_version","profile_sha256","manifest_sha256","native_admission_sha256",
                 "candidate_pid","candidate_start_ticks","protected_units_sha256","ports","release_lock","old_http","candidate_http","local_route_heads"):
         need(before.get(key)==after.get(key),"PRODUCTION_G_CONTINUITY_DRIFT:"+key)
 
 def production_main(argv):
     a=argparse.ArgumentParser();a.add_argument("--production-remote",choices=("before","after","rollback"));a.add_argument("--production-phase",choices=("before","after","rollback"))
     a.add_argument("--nonce",required=True);a.add_argument("--ssh-target");a.add_argument("--before",type=pathlib.Path);a.add_argument("--before-sha256")
+    a.add_argument("--controller-source-sha",required=True)
     x=a.parse_args(argv)
-    need(NONCE.fullmatch(x.nonce),"PRODUCTION_G_EXACT_NONCE")
+    need(NONCE.fullmatch(x.nonce) and H40.fullmatch(x.controller_source_sha),"PRODUCTION_G_EXACT_NONCE_AND_CONTROLLER")
     if x.production_remote:
         need(not x.production_phase and not x.ssh_target and not x.before,"PRODUCTION_G_REMOTE_ARGS")
-        return production_native_snapshot(x.production_remote,x.nonce)
+        return production_native_snapshot(x.production_remote,x.nonce,x.controller_source_sha)
     need(x.production_phase and x.ssh_target=="root@hel1","PRODUCTION_G_LOCAL_ARGS")
     source=pathlib.Path(__file__).read_bytes()
     result=run(["/usr/bin/ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",x.ssh_target,
-        "/usr/bin/python3","-I","-B","-","--production-remote",x.production_phase,"--nonce",x.nonce],timeout=180,stdin=source)
+        "/usr/bin/python3","-I","-B","-","--production-remote",x.production_phase,"--nonce",x.nonce,
+        "--controller-source-sha",x.controller_source_sha],timeout=180,stdin=source)
     snapshot=parse(result,131072)
     if x.production_phase!="before":
         need(x.before and H64.fullmatch(x.before_sha256 or ""),"PRODUCTION_G_EXACT_BEFORE_REQUIRED")
@@ -1138,7 +1142,8 @@ def production_main(argv):
     identity={"source_sha":snapshot["source_sha"],"build_id":snapshot["build_id"],"candidate_pid":snapshot["candidate_pid"]} if x.production_phase=="after" else None
     route_proof=production_route_heads("public",identity)
     repeat=parse(run(["/usr/bin/ssh","-T","-o","BatchMode=yes","-o","StrictHostKeyChecking=yes","-o","ConnectTimeout=8",x.ssh_target,
-        "/usr/bin/python3","-I","-B","-","--production-remote",x.production_phase,"--nonce",x.nonce],timeout=180,stdin=source),131072)
+        "/usr/bin/python3","-I","-B","-","--production-remote",x.production_phase,"--nonce",x.nonce,
+        "--controller-source-sha",x.controller_source_sha],timeout=180,stdin=source),131072)
     production_same_runtime(snapshot,repeat)
     need(snapshot["nginx"]==repeat["nginx"] and snapshot["phase"]==repeat["phase"],"PRODUCTION_G_NATIVE_DRIFT_DURING_MAC_PUBLIC_PROBE")
     snapshot["mac_public"]=proof["identity"];snapshot["mac_https"]=proof;snapshot["mac_route_heads"]=route_proof;snapshot["status"]="PRODUCTION_G_"+x.production_phase.upper()+"_PASS_PENDING_REAL_AUTHENTICATED_BROWSER"

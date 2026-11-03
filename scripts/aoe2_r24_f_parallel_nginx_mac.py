@@ -390,8 +390,10 @@ def apply_owner_grant(opts, root, g_path, g_source):
         print("PASS:ORIGINAL_PUBLIC_3030_NGINX_RESTORED", flush=True)
         raise
 
-def production_g_witness(g_path,phase,nonce,before=None,before_sha=None):
-    command=['/usr/bin/python3','-I','-B',str(g_path),'--production-phase',phase,'--nonce',nonce,'--ssh-target','root@hel1']
+def production_g_witness(g_path,phase,nonce,before=None,before_sha=None,controller_source_sha=None):
+    need(H40.fullmatch(controller_source_sha or ''),'PRODUCTION_G_QUALIFIED_CONTROLLER_SOURCE_REQUIRED')
+    command=['/usr/bin/python3','-I','-B',str(g_path),'--production-phase',phase,'--nonce',nonce,'--ssh-target','root@hel1',
+             '--controller-source-sha',controller_source_sha]
     if before is not None:command+=['--before',str(before),'--before-sha256',before_sha]
     result=subprocess.run(command,capture_output=True,timeout=480,check=False)
     need(result.returncode==0 and 0<len(result.stdout)<=65536,'PRODUCTION_G_'+phase.upper()+'_NATIVE_HOLD')
@@ -436,7 +438,7 @@ def production_protective_rollback(root,nonce,receipt_path):
 
 def production_owner_main(argv):
     a=argparse.ArgumentParser();a.add_argument('--production-mode',choices=('before','plan','apply','rollback'),required=True)
-    a.add_argument('--nonce',required=True);a.add_argument('--source-sha');a.add_argument('--reviewed-root-file',required=True);a.add_argument('--root-source-sha256',required=True)
+    a.add_argument('--nonce',required=True);a.add_argument('--source-sha');a.add_argument('--candidate-source-sha');a.add_argument('--reviewed-root-file',required=True);a.add_argument('--root-source-sha256',required=True)
     a.add_argument('--reviewed-g-file');a.add_argument('--g-source-sha256');a.add_argument('--owner-source-sha256');a.add_argument('--existing-before');a.add_argument('--existing-before-sha256')
     a.add_argument('--production-plan');a.add_argument('--owner-grant-comment');a.add_argument('--owner-grant-sha256')
     opts=a.parse_args(argv)
@@ -452,9 +454,13 @@ def production_owner_main(argv):
         print('PASS:APP_PRODUCTION_ORIGINAL_3030_PUBLIC_RESTORED');return
     need(opts.reviewed_g_file and H64.fullmatch(opts.g_source_sha256 or ''),'PRODUCTION_REVIEWED_G_REQUIRED')
     g_path,g_source=pinned_file(opts.reviewed_g_file,opts.g_source_sha256,maximum=196608)
+    need(H40.fullmatch(opts.source_sha or '') and H40.fullmatch(opts.candidate_source_sha or ''),
+         'PRODUCTION_SEPARATE_CONTROLLER_AND_ARTIFACT_SOURCES_REQUIRED')
     if opts.production_mode=='before':
         path=receipts/(opts.nonce+'-g-before.json');need(not path.exists() and not path.is_symlink(),'PRODUCTION_BEFORE_ALREADY_RECORDED_NO_REPLAY')
-        witness=production_g_witness(g_path,'before',opts.nonce)
+        witness=production_g_witness(g_path,'before',opts.nonce,controller_source_sha=opts.source_sha)
+        need(witness.get('source_sha')==opts.candidate_source_sha and witness.get('controller_source_sha')==opts.source_sha,
+             'PRODUCTION_BEFORE_ARTIFACT_CONTROLLER_BINDING')
         owner_receipt(path,witness)
         print(canonical({'status':'PRODUCTION_G_BEFORE_SAVED','path':str(path),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}).decode());return
     need(H40.fullmatch(opts.source_sha or '') and H64.fullmatch(opts.owner_source_sha256 or '') and opts.existing_before and H64.fullmatch(opts.existing_before_sha256 or ''),
@@ -464,10 +470,11 @@ def production_owner_main(argv):
     need(hashlib.sha256(before_raw).hexdigest()==opts.existing_before_sha256,'PRODUCTION_BEFORE_PRIVATE_FILE_PIN')
     before=strict_json(before_raw)
     need(before.get('schema')=='aoe2war.g.app-production.v1' and before.get('phase')=='before' and before.get('nonce')==opts.nonce and
-         before.get('source_sha')==opts.source_sha and before.get('status')=='PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER',
+         before.get('source_sha')==opts.candidate_source_sha and before.get('controller_source_sha')==opts.source_sha and
+         before.get('status')=='PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER',
          'PRODUCTION_ACTUAL_G_BEFORE_REQUIRED')
     encoded=base64.b64encode(before_raw).decode();need(len(encoded)<=90000,'PRODUCTION_BEFORE_BOUND')
-    binding=(' --new-nonce '+opts.nonce+' --source-sha '+opts.source_sha+' --engine-source-sha256 '+opts.root_source_sha256+
+    binding=(' --new-nonce '+opts.nonce+' --source-sha '+opts.source_sha+' --candidate-source-sha '+opts.candidate_source_sha+' --engine-source-sha256 '+opts.root_source_sha256+
              ' --owner-source-sha256 '+opts.owner_source_sha256+' --g-source-sha256 '+opts.g_source_sha256+
              ' --before-witness-sha256 '+opts.existing_before_sha256+' --before-witness-b64 '+encoded)
     fresh=ssh_source(root,'--root-production-plan'+binding,timeout=450)
@@ -497,9 +504,10 @@ def production_owner_main(argv):
         reply=strict_json(result.stdout)
         need(reply.get('status')=='PRODUCTION_PUBLIC_CUTOVER_PENDING_G_AFTER_AND_REAL_AUTHENTICATED_BROWSER','PRODUCTION_NATIVE_CUTOVER_RECEIPT_REQUIRED')
         _,recheck=pinned_file(g_path,opts.g_source_sha256,maximum=196608);need(recheck==g_source,'PRODUCTION_G_SOURCE_CHANGED')
-        after=production_g_witness(g_path,'after',opts.nonce,before_path,opts.existing_before_sha256)
+        after=production_g_witness(g_path,'after',opts.nonce,before_path,opts.existing_before_sha256,controller_source_sha=opts.source_sha)
         owner_receipt(receipts/(opts.nonce+'-g-after.json'),after)
-        print(canonical({'status':'PRODUCTION_G_AFTER_PASS_STEAM_AND_AUTHENTICATED_BROWSER_STILL_PENDING','source_sha':opts.source_sha,
+        print(canonical({'status':'PRODUCTION_G_AFTER_PASS_STEAM_AND_AUTHENTICATED_BROWSER_STILL_PENDING',
+                         'source_sha':opts.candidate_source_sha,'controller_source_sha':opts.source_sha,
                          'build_id':after['build_id'],'build_version':after['build_version'],'receipt':str(receipts/(opts.nonce+'-g-after.json'))}).decode())
     except BaseException:
         production_protective_rollback(root,opts.nonce,receipts/(opts.nonce+'-automatic-rollback-result.json'))
