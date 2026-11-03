@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """One-use recovery of the exact prior A05 3032 HOLD. Never cut over public or finance."""
 import datetime
+import base64
+import contextlib
+import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import runpy
+import stat
 import subprocess
 import sys
 
@@ -103,18 +107,64 @@ def verify(p):
 def make_plan(p):
     old,stage=verify(p)
     root=m()
+    qualification=qualified_source(p)
     current=root["sha"](root["canonical"](root["production_protected"]()))
     return {"schema":"aoe2war.app.failed-start-recovery-plan.v1",
             "nonce":p["nonce"],"recovery_source_sha":p["recovery_source_sha"],
             "source_file_sha256":p["source_file_sha256"],
             "prior_entered_sha256":p["prior_entered_sha256"],
             "prior_hold_sha256":p["prior_hold_sha256"],
+            "source_qualification":qualification,
             "prior_source_sha":OLD,"stage":str(stage),
             "source_artifact_sha256":old["artifact"]["sha256"],
             "original_protected_sha256":old["protected_snapshot_sha256"],
             "current_protected_sha256":current,
             "previous_attempt_immutable":True,"public_cutover_authorized":False,
             "financial_authorized":False}
+def qualified_source(p):
+    """Authenticate reviewed bytes and actual CI, independently of owner text."""
+    github=m()["production_github"]
+    source=github("contents/scripts/r25_c_recover_prod_root.py?ref="+p["recovery_source_sha"])
+    require(source.get("type")=="file" and source.get("encoding")=="base64",
+            "RECOVERY_COMMITTED_SOURCE_REQUIRED")
+    raw=base64.b64decode(source.get("content","").replace("\n",""),validate=True)
+    require(0<len(raw)<=196608 and digest(raw)==p["source_file_sha256"],
+            "RECOVERY_AUTHENTICATED_SOURCE_MISMATCH")
+    runs=github("actions/workflows/ci.yml/runs?head_sha="+p["recovery_source_sha"]+"&per_page=20")
+    matches=[v for v in runs.get("workflow_runs",[]) if v.get("head_sha")==p["recovery_source_sha"]
+             and v.get("name")=="AoE2WAR CI" and v.get("status")=="completed" and v.get("conclusion")=="success"]
+    require(bool(matches),"RECOVERY_EXACT_HEAD_CI_NOT_PASS")
+    run_id=matches[0].get("id")
+    require(type(run_id) is int and run_id>0,"RECOVERY_CI_RUN_ID_REQUIRED")
+    jobs=github("actions/runs/"+str(run_id)+"/jobs?filter=latest&per_page=100")
+    names={"Release and documentation control plane","Type, contract, and production build",
+           "Isolated Steam-rating PostgreSQL chronology"}
+    require(jobs.get("total_count")==3 and len(jobs.get("jobs",[]))==3 and
+            {j.get("name") for j in jobs["jobs"]}==names and
+            all(j.get("status")=="completed" and j.get("conclusion")=="success" for j in jobs["jobs"]),
+            "RECOVERY_COMPLETE_THREE_JOB_CI_REQUIRED")
+    checks=github("commits/"+p["recovery_source_sha"]+"/check-runs?filter=latest&per_page=100")
+    security=[v for v in checks.get("check_runs",[]) if v.get("name")=="GitGuardian Security Checks"
+              and v.get("app",{}).get("slug")=="gitguardian"]
+    require(len(security)==1 and security[0].get("status")=="completed" and
+            security[0].get("conclusion")=="success","RECOVERY_ACTUAL_SECURITY_CHECK_NOT_PASS")
+    return {"source_sha":p["recovery_source_sha"],"file_sha256":p["source_file_sha256"],
+            "ci_run_id":run_id,"security_check_run_id":security[0]["id"]}
+
+@contextlib.contextmanager
+def release_lock():
+    """Serialize the entire plan/admission/failure path with existing releases."""
+    root=m();path=root["LOCK"];before=path.lstat()
+    require(stat.S_ISREG(before.st_mode) and
+            (before.st_dev,before.st_ino,before.st_uid,stat.S_IMODE(before.st_mode))==root["LOCK_ID"],
+            "RECOVERY_ORIGINAL_RELEASE_LOCK_CHANGED")
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        opened=os.fstat(fd)
+        require((opened.st_dev,opened.st_ino)==(before.st_dev,before.st_ino),"RECOVERY_RELEASE_LOCK_OPEN_RACE")
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        yield
+    finally:os.close(fd)
 def grant(p,planned):
     comment=p.get("owner_comment_id")
     require(type(comment) is int and comment>0,"OWNER_RECOVERY_CONSENT_MISSING")
@@ -124,7 +174,10 @@ def grant(p,planned):
     require(r.returncode==0,"AUTHENTICATED_OWNER_GRANT_UNAVAILABLE")
     item=json.loads(r.stdout)
     require(item["user"]["login"]=="Emaren" and item["user"]["id"]==15059910 and
-            item["created_at"]==item["updated_at"],"OWNER_RECOVERY_IDENTITY_UNTRUSTED")
+            item["created_at"]==item["updated_at"] and item.get("id")==comment and
+            item.get("issue_url")=="https://api.github.com/repos/Emaren/app-prodn/issues/1108" and
+            item.get("html_url")=="https://github.com/Emaren/app-prodn/issues/1108#issuecomment-"+str(comment),
+            "OWNER_RECOVERY_IDENTITY_UNTRUSTED")
     text=item["body"];prefix="APP_PRODUCTION_3032_RECOVERY_GRANT\n"
     require(text.startswith(prefix),"OWNER_RECOVERY_FORMAT")
     approved=json.loads(text[len(prefix):])
@@ -195,7 +248,7 @@ def recover(p):
     root["seal"](journal/"entered.json",{"schema":"aoe2war.app.recovery-entered.v1",
        "status":"CONSUMED_NO_REPLAY","plan":planned,"grant":approved,
        "public_cutover_authorized":False,"financial_authorized":False})
-    started=False;timer=False;enabled=False
+    started=False;timer=False
     try:
         addresses=refresh(root)
         ready={"source_sha":OLD,"build_id":old["artifact"]["build_id"],
@@ -243,9 +296,6 @@ def recover(p):
                      "aoe2war-steam-egress-refresh.timer"],timeout=30)
         require(root["sha"](root["canonical"](root["production_protected"]()))==
                 planned["current_protected_sha256"],"ORIGINAL_SERVICES_CHANGED")
-        enabled=True
-        root["run"](["/usr/bin/systemctl","enable",root["PROD_UNIT"],
-                     "aoe2war-steam-egress-refresh.timer"],timeout=30)
         result={"schema":"aoe2war.app.production-recovery-complete.v1",
            "status":"PRODUCTION_3032_ADMITTED_NOT_PUBLIC",
            "source_sha":OLD,"recovery_source_sha":p["recovery_source_sha"],
@@ -253,14 +303,11 @@ def recover(p):
            "candidate_start_ticks":ticks,"witness":witness,
            "original_failed_nonce_remains_consumed":True,
            "completed_user_steam_login":False,"public_cutover_authorized":False,
+           "persistent_start_authorized":False,
            "financial_authorized":False}
         root["seal"](journal/"complete.json",result)
         return result
     except BaseException as exc:
-        if enabled:
-            try:root["run"](["/usr/bin/systemctl","disable",root["PROD_UNIT"],
-                            "aoe2war-steam-egress-refresh.timer"],timeout=30)
-            except BaseException:pass
         if timer:
             try:root["run"](["/usr/bin/systemctl","stop",
                             "aoe2war-steam-egress-refresh.timer"],timeout=30)
@@ -279,11 +326,12 @@ def recover(p):
 def main():
     require(len(sys.argv)==2 and sys.argv[1] in ("--plan","--recover"),"EXPLICIT_PHASE")
     payload=json.loads(sys.stdin.buffer.read(16385))
-    if sys.argv[1]=="--plan":
-        p=make_plan(payload)
-        result={"status":"PASS_READONLY_RECOVERY_PLAN_NOT_START_AUTHORITY",
-                "plan":p,"plan_sha256":digest(canonical(p))}
-    else:result=recover(payload)
+    with release_lock():
+        if sys.argv[1]=="--plan":
+            p=make_plan(payload)
+            result={"status":"PASS_READONLY_RECOVERY_PLAN_NOT_START_AUTHORITY",
+                    "plan":p,"plan_sha256":digest(canonical(p))}
+        else:result=recover(payload)
     print(json.dumps(result,sort_keys=True))
 if __name__=="__main__":
     try:main()
