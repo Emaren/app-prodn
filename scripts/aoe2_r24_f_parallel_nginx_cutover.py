@@ -9,6 +9,7 @@ No key enrollment, money operation, migration, repo switch, or 14-helper install
 """
 from __future__ import annotations
 import argparse,base64,fcntl,hashlib,hmac,http.client,json,os,pathlib,re,select,signal,socket,ssl,stat,subprocess,sys,time,types,urllib.request
+from html.parser import HTMLParser
 from datetime import datetime,timezone
 
 HOST="ubuntu-4gb-hel1-11"
@@ -1591,6 +1592,79 @@ def production_application_tree(candidate,controller):
     need(candidate_tree==controller_tree,'PRODUCTION_INSTALLED_APPLICATION_DIFFERS_FROM_CONTROLLER_SOURCE')
     return sha(canonical(candidate_tree))
 
+class _PublicVisibleText(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.hidden = 0
+        self.parts = []
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style", "template", "noscript"): self.hidden += 1
+    def handle_endtag(self, tag):
+        if tag in ("script", "style", "template", "noscript") and self.hidden: self.hidden -= 1
+    def handle_data(self, data):
+        if not self.hidden and data.strip(): self.parts.append(data.strip())
+
+def production_content_html(port, route):
+    # Origin-only, anonymous, GET-only. No session/cookie or CDN cache required.
+    need(port in (3030,3032) and route in ("/", "/traffic"), "CONTENT_PARITY_UNREVIEWED_ROUTE")
+    con = http.client.HTTPConnection("127.0.0.1", port, timeout=9)
+    try:
+        con.request("GET", route, headers={"Host":"aoe2war.com",
+            "User-Agent":"aoe2war-release-content-parity/1",
+            "Accept":"text/html", "Cache-Control":"no-cache"})
+        res = con.getresponse()
+        need(res.status == 200 and (res.getheader("content-type") or "").lower().startswith("text/html"),
+             "CONTENT_PARITY_ROUTE_NOT_HTML_200")
+        data = res.read(4*1024*1024+1)
+        need(3000 < len(data) <= 4*1024*1024,"CONTENT_PARITY_INVALID_HTML_SIZE")
+        return data.decode("utf-8",errors="replace")
+    finally: con.close()
+
+def production_published_event_title():
+    # A bounded actual SELECT from the existing canonical content DB.
+    query = ("BEGIN READ ONLY; "
+        "SELECT title FROM public.event_tiles WHERE is_published AND is_active "
+        "AND status <> 'archived' ORDER BY priority DESC, published_at DESC NULLS LAST, "
+        "updated_at DESC LIMIT 1; COMMIT;")
+    raw = cmd(["/usr/sbin/runuser","-u","postgres","--","/usr/bin/psql",
+        "-X","-A","-t","-v","ON_ERROR_STOP=1","-d","aoe2hd_db","-c",query],timeout=9)
+    lines = [value.strip() for value in raw.decode("utf-8","strict").splitlines()
+             if value.strip() not in ("BEGIN","COMMIT") and value.strip()]
+    need(len(lines)==1 and 0 < len(lines[0]) <= 240,"CONTENT_PARITY_PUBLISHED_EVENT_AMBIGUOUS")
+    return lines[0]
+
+def production_content_parity():
+    # This witness is REQUIRED BEFORE any root-owned 3030->3032 selector switch.
+    # A healthy listener/build ID cannot substitute for real published content.
+    title = production_published_event_title()
+    old_home = production_content_html(3030,"/")
+    new_home = production_content_html(3032,"/")
+    need(title in old_home, "CONTENT_PARITY_ORIGINAL_EVENT_NOT_OBSERVED")
+    need(title in new_home, "CONTENT_PARITY_CANDIDATE_PUBLISHED_EVENT_MISSING")
+    old_traffic = production_content_html(3030,"/traffic")
+    new_traffic = production_content_html(3032,"/traffic")
+    def published_day(value):
+        parser = _PublicVisibleText()
+        parser.feed(value)
+        text = " ".join(parser.parts)
+        need("No published completed-day Traffic report is available." not in text,
+             "CONTENT_PARITY_EMPTY_TRAFFIC_REPORT")
+        match = re.search(r"LAST\s+PUBLISHED\s+UTC\s+DAY\s*:\s*(\d{4}-\d{2}-\d{2})",text,re.I)
+        need(match is not None,"CONTENT_PARITY_PUBLISHED_DAY_MISSING")
+        from datetime import date
+        try: result = date.fromisoformat(match.group(1))
+        except ValueError as error: raise Hold("CONTENT_PARITY_PUBLISHED_DAY_INVALID") from error
+        return result
+    original_day = published_day(old_traffic)
+    candidate_day = published_day(new_traffic)
+    need(candidate_day >= original_day,"CONTENT_PARITY_TRAFFIC_ARCHIVE_REGRESSION")
+    return {"schema":"aoe2war.app.content-parity.v1",
+        "status":"PUBLIC_EVENT_AND_CERTIFIED_TRAFFIC_CONTENT_PARITY_OBSERVED",
+        "published_event_title_sha256":sha(title.encode()),
+        "original_published_day":original_day.isoformat(),
+        "candidate_published_day":candidate_day.isoformat(),
+        "anonymous_get_only":True,"financial_authorized":False}
+
 def production_inputs(options):
     need(sys.platform=='linux' and socket.gethostname().split('.')[0]==HOST and os.geteuid()==0,'PRODUCTION_EXACT_HEL1_ROOT')
     need(HEX40.fullmatch(options.source_sha or '') and HEX40.fullmatch(options.candidate_source_sha or '') and all(HEX64.fullmatch(getattr(options,key,'') or '') for key in
@@ -1623,6 +1697,7 @@ def production_inputs(options):
     nginx_loaded_vhost(old,VHOST,old_count=6)
     production_require_protected(g,before)
     runtime_sample(before['old_http']['build_version'],policy['build_version'],before['old_http']['asset'],time.monotonic()+15,{})
+    content_parity=production_content_parity()
     plan={'schema':'aoe2war.app.production-cutover-plan.v1','nonce':options.new_nonce,'source_sha':options.source_sha,
       'controller_source_sha':options.source_sha,'candidate_source_sha':options.candidate_source_sha,
       'application_tree_sha256':app_tree_sha256,
@@ -1631,7 +1706,8 @@ def production_inputs(options):
       'manifest_sha256':policy['manifest_sha256'],'candidate_build_id':policy['build_id'],'candidate_build_version':policy['build_version'],
       'candidate_pid':before['candidate_pid'],'candidate_start_ticks':before['candidate_start_ticks'],
       'old_web_pid':2625090,'preview_pid':1483304,'nginx_before_sha256':sha(old),'nginx_after_sha256':sha(candidate),
-      'protected_units_sha256':before['protected_units_sha256'],'financial_authorized':False,'public_cutover_authorized':False}
+      'protected_units_sha256':before['protected_units_sha256'],'content_parity':content_parity,
+      'financial_authorized':False,'public_cutover_authorized':False}
     envelope={'schema':'aoe2war.app.production-cutover-plan-envelope.v1','status':'PASS_READ_ONLY_PRODUCTION_CUTOVER_PLAN_NOT_AUTHORITY',
               'plan':plan,'plan_sha256':sha(canonical(plan))}
     return envelope,{'before':before,'before_raw':before_raw,'policy':policy,'old':old,'candidate':candidate,'g':g,'graw':graw,'record':record}
