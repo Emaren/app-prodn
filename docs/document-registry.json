@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ebaaabd505b844720e6b6608499c28590c483855a5aca58e714a4d49857ead4f",
+      "sha256": "9161e5151508b53e7067e310699f9ffde0ab15776b46082f36625d4cdb5f3efd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-journaled-3032-recovery-20261103",
-    "commit": "22eac04e77f460d9d13e6b4dc957c81a7b275493"
+    "commit": "7e817ae6c50ca86398ec1d7b73ba53a8c885ff51"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
