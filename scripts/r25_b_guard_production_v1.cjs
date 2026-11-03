@@ -18,6 +18,7 @@ const required = Object.freeze({
   NODE_OPTIONS: "--require=" + GUARD, HOSTNAME: "127.0.0.1", PORT: "3032",
   USER: "aoe2war-web-prod", LOGNAME: "aoe2war-web-prod",
   AOE2_BACKEND_UPSTREAM: "http://127.0.0.1:3331",
+  TRAFFIC_API_BASE: "http://127.0.0.1:3331",
 });
 const allowed = new Set([...Object.keys(required), "DATABASE_URL", "SESSION_SECRET",
   "PATH", "HOME", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TERM",
@@ -81,7 +82,9 @@ function readonlyBackend(input, init = {}) {
   const method = String(init.method || input?.method || "GET").toUpperCase();
   return url.protocol === "http:" && url.hostname === "127.0.0.1" && url.port === "3331" &&
     !url.username && !url.password && !url.search && !url.hash && ["GET", "HEAD"].includes(method) &&
-    ["/api/health", "/api/chain-id"].includes(url.pathname);
+    (["/api/health", "/api/chain-id"].includes(url.pathname) ||
+      (method === "GET" && !init.body && !init.headers &&
+        url.pathname === "/api/projects/aoe2hdbets/public-audience-series"));
 }
 const fetchOriginal = globalThis.fetch;
 globalThis.fetch = function (input, init = {}) {
