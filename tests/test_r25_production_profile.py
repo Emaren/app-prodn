@@ -190,6 +190,55 @@ class ProductionProfile(unittest.TestCase):
                 with self.assertRaisesRegex(c.Hold,"AUTHENTICATED_CI_ZIP_DIGEST"):
                     c.production_ci_zip({**payload,"artifact":metadata2},path)
 
+    def test_admission_revalidates_only_steam_tls_destination_sets(self):
+        # No broad 443 rule, no change to public/legacy/financial service state.
+        shape="7"*64;protected={"app":"original-still-pinned","wolo":"protected"}
+        commands=[]
+        with mock.patch.object(c,"production_nft_shape",return_value=shape),\
+             mock.patch.object(c,"production_protected",return_value=protected),\
+             mock.patch.object(c,"production_steam_addresses",return_value=["95.100.176.225"]),\
+             mock.patch.object(c,"run",side_effect=lambda argv,**kw:commands.append((argv,kw)) or b""):
+            self.assertEqual(c.production_admission_steam_refresh(),["95.100.176.225"])
+        self.assertEqual(len(commands),1)
+        self.assertEqual(commands[0][0],["/usr/sbin/nft","-f","-"])
+        policy=commands[0][1]["data"].decode()
+        self.assertIn("flush set inet aoe2war_web_prod steam4",policy)
+        self.assertIn("flush set inet aoe2war_web_prod steam6",policy)
+        self.assertIn("95.100.176.225 timeout 300s",policy)
+        self.assertNotIn("flush table",policy)
+        self.assertNotIn("meta skuid",policy)
+        self.assertNotIn("0.0.0.0",policy)
+        self.assertNotIn("8092",policy)
+        source=(ROOT/"scripts/r25_c_start_root.py").read_text()
+        self.assertLess(source.index("current_steam_addresses = production_admission_steam_refresh()"),
+                        source.index('"steam": production_steam_probe(environment, Path(plan["stage"]))'))
+        with mock.patch.object(c,"production_nft_shape",side_effect=[shape,"8"*64]),\
+             mock.patch.object(c,"production_protected",return_value=protected),\
+             mock.patch.object(c,"production_steam_addresses",return_value=["95.100.176.225"]),\
+             mock.patch.object(c,"run",return_value=b""):
+            with self.assertRaisesRegex(c.Hold,"STEAM_REFRESH_CHANGED_OTHER_STATE"):
+                c.production_admission_steam_refresh()
+
+    def test_real_steam_node_probe_runs_under_exact_sealed_stage(self):
+        # Reproduces the HEL1 one-use HOLD: the preloader verifies process.cwd()
+        # before any network fetch. The controller must not inherit root /root.
+        sealed=pathlib.Path("/var/lib/aoe2war-web-prod-"+"a"*12)
+        proof={"steam_tls_verification_reachable":True,"unauthenticated_probe_rejected":True,
+               "completed_user_sign_in":False}
+        process=mock.Mock(returncode=0,stdout=c.canonical(proof))
+        with mock.patch.object(c.subprocess,"run",return_value=process) as node:
+            self.assertEqual(c.production_steam_probe({},sealed),proof)
+        self.assertEqual(node.call_args.kwargs["cwd"],str(sealed))
+        self.assertEqual(node.call_args.args[0][:4],["/usr/sbin/runuser","-u",c.PROD_USER,"--"])
+        self.assertIn("--require="+str(c.PROD_GUARD),node.call_args.kwargs["env"]["NODE_OPTIONS"])
+        for unsafe in (pathlib.Path("/root"),pathlib.Path("/var/lib/aoe2war-web-prod-XYZ")):
+            with mock.patch.object(c.subprocess,"run") as node:
+                with self.assertRaisesRegex(c.Hold,"PRODUCTION_STEAM_SEALED_STAGE_REQUIRED"):
+                    c.production_steam_probe({},unsafe)
+            node.assert_not_called()
+        source=(ROOT/"scripts/r25_c_start_root.py").read_text()
+        self.assertIn('production_steam_probe(environment, Path(plan["stage"]))',source)
+
     def test_current_steam_requires_nonexpired_set_and_current_uid_tls(self):
         base={"nftables":[{"set":{"name":"steam4","elem":[{"elem":{"val":"23.1.2.3","expires":90000,"timeout":300000}}]}},
                            {"set":{"name":"steam6","elem":[]}}]}
