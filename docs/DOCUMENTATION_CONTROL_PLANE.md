@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-thirdlane-a05-c-integrated-20261103` at `d48e2a579e90aa923fd57a01f2d2fa5620f026f8`
+Implementation baseline: `fix/a05-node-guard-synthetic-fixture-20261103` at `56df0374de1e472f5dd7b1238e50531dfb843864`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
