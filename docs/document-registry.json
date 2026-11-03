@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9e282d882b7e6547093b393d4ec63e2366871442bf6d8c68363fb7e2b18e83c5",
+      "sha256": "da201f640b31f2b800ef388afc2f7e325d979e0098a3af44bf6f164b57ca2225",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-steam-refresh-cap-snapshot-20261103",
-    "commit": "b73818e70b5a01dfd6f82ea15492d5676aa25e1b"
+    "branch": "codex/a05-steam-policy-migration-20261103",
+    "commit": "3c8817e4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
