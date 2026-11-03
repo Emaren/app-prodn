@@ -216,3 +216,28 @@ $function$;
 ALTER FUNCTION aoe2war_auth_v1.read_user(text) OWNER TO aoe2war_auth_owner;
 REVOKE ALL ON FUNCTION aoe2war_auth_v1.read_user(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION aoe2war_auth_v1.read_user(text) TO aoe2war_web_prod;
+
+-- Public game, replay, tournament and community presentation only. Optional
+-- historical tables are not created here. No default privileges or wildcard
+-- grants: later tables require another source-reviewed admission.
+DO $public_reads$
+DECLARE v_table text;
+BEGIN
+  FOREACH v_table IN ARRAY ARRAY[
+    'game_stats', 'replay_result_adjudications', 'replay_player_snapshots',
+    'replay_player_metrics', 'replay_game_metrics', 'replay_player_metric_aggregates',
+    'replay_player_identity_projections', 'player_identity_aliases', 'warriors',
+    'platform_accounts', 'platform_name_observations', 'warrior_platform_links',
+    'tournaments', 'tournament_entries', 'tournament_matches',
+    'chat_messages', 'chat_message_reactions', 'game_watch_streams',
+    'game_watch_retained_demo', 'page_change_revisions', 'workshop_status',
+    'workshop_entries', 'workshop_artifacts', 'workshop_streams'
+  ] LOOP
+    IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c
+      JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = v_table AND c.relkind IN ('r', 'p')) THEN
+      EXECUTE pg_catalog.format('GRANT SELECT ON TABLE public.%I TO aoe2war_web_prod', v_table);
+    END IF;
+  END LOOP;
+END
+$public_reads$;

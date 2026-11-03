@@ -65,6 +65,10 @@ class ProductionAuthPostgres(unittest.TestCase):
                 );
                 CREATE TABLE public.pending_wolo_claims(id serial PRIMARY KEY, amount numeric NOT NULL DEFAULT 0);
                 INSERT INTO public.pending_wolo_claims(amount) VALUES (500);
+                CREATE TABLE public.game_stats(id integer PRIMARY KEY, winner text);
+                INSERT INTO public.game_stats VALUES (1, 'Actual persisted fixture winner');
+                CREATE TABLE public.api_keys(id integer PRIMARY KEY, key_hash text);
+                CREATE TABLE public.war_satchel_ledger_postings(id integer PRIMARY KEY, amount numeric);
             """)
             cls.sql("BEGIN;\n" + SQL.read_text() + "\nCOMMIT;")
         except BaseException:
@@ -217,6 +221,21 @@ class ProductionAuthPostgres(unittest.TestCase):
             self.assertIn("AUTH_RUNTIME_SCHEMA_CREATE_AUTHORITY", result.stderr)
         finally:
             self.sql("REVOKE CREATE ON SCHEMA public FROM PUBLIC;")
+
+    def test_persisted_public_game_reads_work_without_secret_or_financial_authority(self):
+        result = self.sql("SELECT id,winner FROM public.game_stats;", "aoe2war_web_prod")
+        self.assertEqual(result.stdout.strip(), "1|Actual persisted fixture winner")
+        for statement in (
+            "UPDATE public.game_stats SET winner='forbidden' WHERE false;",
+            "INSERT INTO public.game_stats VALUES (2,'forbidden');",
+            "SELECT * FROM public.api_keys LIMIT 0;",
+            "SELECT * FROM public.pending_wolo_claims LIMIT 0;",
+            "SELECT * FROM public.war_satchel_ledger_postings LIMIT 0;",
+        ):
+            with self.subTest(statement=statement):
+                result = self.sql(statement, "aoe2war_web_prod", check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("permission denied", result.stderr)
 
 
 if __name__ == "__main__":
