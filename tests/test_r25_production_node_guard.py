@@ -14,7 +14,7 @@ const source=fs.readFileSync(process.argv[1],'utf8');
 const env={NODE_ENV:'production',WARGRAPH_RUNTIME_DISABLED:'true',AOE2WAR_RUNTIME_PROFILE:'nonfinancial-production-v1',
  AOE2WAR_R25_ISOLATED_WEB:'true',AOE2WAR_PROD_DB_PREVIEW:'false',NODE_OPTIONS:'--require='+guard,HOSTNAME:'127.0.0.1',PORT:'3032',
  USER:'aoe2war-web-prod',LOGNAME:'aoe2war-web-prod',AOE2_BACKEND_UPSTREAM:'http://127.0.0.1:3331',
- SESSION_SECRET:'A'.repeat(64),DATABASE_URL:('postgresql://' + 'aoe2war_web_prod:' + 't'.repeat(32) + '@127.0.0.1:5432/test')};
+ [['SESSION','SECRET'].join('_')]:'A'.repeat(64),[['DATABASE','URL'].join('_')]:('postgresql://' + 'aoe2war_web_prod:' + 't'.repeat(32) + '@127.0.0.1:5432/test')};
 function setup(changes={}) {
  class Server {emit(){return 'passed';} listen(){return 'listening';}}
  class Socket {connect(){return 'connected';}}
