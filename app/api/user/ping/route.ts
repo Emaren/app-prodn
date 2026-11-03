@@ -18,6 +18,7 @@ import {
   userOnlineLastSeenPersister,
 } from "@/lib/userOnlinePresenceGuards";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
+import { touchProductionSession, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -348,6 +349,9 @@ export async function POST(request: NextRequest) {
     uid,
     heartbeatAt.getTime(),
     async () => {
+      if (usesNonfinancialProductionAuth()) {
+        return await touchProductionSession(prisma, uid) ? 1 : 0;
+      }
       const result = await prisma.user.updateMany({
         where: { uid },
         data: { lastSeen: heartbeatAt },
@@ -368,7 +372,10 @@ export async function POST(request: NextRequest) {
     status: "deferred",
   };
 
-  if (body.report_traffic_identity !== false) {
+  if (usesNonfinancialProductionAuth()) {
+    // This profile has no Traffic ingest credential or outbound grant.
+    trafficIdentity = { status: "disabled" };
+  } else if (body.report_traffic_identity !== false) {
     const trafficUser = await prisma.user.findUnique({
       where: { uid },
       select: {

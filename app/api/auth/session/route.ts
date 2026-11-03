@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi, type UserCoreRow } from "@/lib/userDto";
 import {
   getPreviewIdentity,
@@ -17,9 +16,9 @@ import {
 import {
   allowUserOnlineSession,
   forceUserOnlineOffline,
-  userOnlineSessionIsForcedOffline,
 } from "@/lib/userOnlinePresence";
 import { livingKingdomHub } from "@/lib/livingKingdom/hub";
+import { isProductionAuthMutationOrigin, readProductionUser, touchProductionSession, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,39 +100,45 @@ export async function GET(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-  let user = await prisma.user.findUnique({ where: { uid } });
-
-  if (user && !userOnlineSessionIsForcedOffline(uid)) {
-    // Publish arrival before optional Steam hydration can add network latency.
-    await prisma.user.update({
-      where: { uid },
-      data: { lastSeen: new Date() },
-    });
+  if (usesNonfinancialProductionAuth()) {
+    const user = await readProductionUser(prisma, uid);
+    if (!user) return NextResponse.json({ detail: "User not found" }, { status: 401 });
+    return NextResponse.json({ uid, user }, { headers: {
+      "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie",
+    } });
   }
-
-  let verification = user ? await fetchUserVerification(prisma, uid) : null;
-  if (user && verification?.steamId) {
-    const hydration = await hydrateSteamIdentity(prisma, uid);
-    verification = hydration.verification;
-    if (hydration.seededPlayableName) {
-      user = await prisma.user.findUnique({ where: { uid } });
-    }
-  }
+  const user = await prisma.user.findUnique({ where: { uid } });
+  // GET and the automatically supported HEAD are observations. Arrival and
+  // optional identity changes belong to the verified callback or explicit POST.
+  const verification = user ? await fetchUserVerification(prisma, uid) : null;
 
   return NextResponse.json({
     uid,
     user: user
       ? toUserApi(user as unknown as UserCoreRow, verification)
       : null,
-  });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" } });
 }
 
 export async function POST(request: NextRequest) {
-  const prisma = getPrisma();
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const providedEmail = normalizeEmail(body.email);
 
   let uid = await getSessionUid(request);
+  const prisma = getPrisma();
+  if (usesNonfinancialProductionAuth()) {
+    if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
+    if (!isProductionAuthMutationOrigin(request)) {
+      return NextResponse.json({ detail: "Origin not allowed" }, { status: 403 });
+    }
+    if (!await touchProductionSession(prisma, uid, providedEmail)) {
+      return NextResponse.json({ detail: "User not found" }, { status: 401 });
+    }
+    const user = await readProductionUser(prisma, uid);
+    return NextResponse.json({ uid, user }, { headers: {
+      "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie",
+    } });
+  }
   if (!uid) {
     if (!ALLOW_GUEST_SESSIONS) {
       return NextResponse.json(
@@ -201,6 +206,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (usesNonfinancialProductionAuth() && !isProductionAuthMutationOrigin(request)) {
+    return NextResponse.json({ detail: "Origin not allowed" }, { status: 403 });
+  }
   const uid = await getSessionUid(request);
   let presenceCleared = false;
 

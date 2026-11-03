@@ -2,8 +2,8 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
-import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi } from "@/lib/userDto";
+import { readProductionUser, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import { loadPendingWoloClaimSummaryForUser } from "@/lib/pendingWoloClaims";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 import { validateWoloAddress } from "@/lib/woloBetSettlement";
@@ -355,6 +355,19 @@ export async function GET(request: NextRequest) {
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
   const prisma = getPrisma();
+  if (usesNonfinancialProductionAuth()) {
+    const user = await readProductionUser(prisma, uid);
+    if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
+    return NextResponse.json({
+      ...user,
+      // Financial/trophy projections can seed or pay records. Their absence is
+      // UNKNOWN, never a manufactured zero balance or a claim of no holdings.
+      financialStatus: "unavailable", profilePresentationStatus: "unavailable",
+      pendingClaimAmountWolo: null, pendingClaimCount: null, pendingClaimLatestCreatedAt: null,
+      avatarUrl: "/champions/players/silhouette.webp", featuredAvatarUrl: null,
+      avatarOptions: [], belts: [], artifacts: [], earningWoloPerDay: null,
+    }, { headers: { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" } });
+  }
   const user = await prisma.user.findUnique({
     where: { uid },
     select: USER_SELECT,
@@ -362,37 +375,9 @@ export async function GET(request: NextRequest) {
 
   if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
 
-  let verification = await fetchUserVerification(prisma, uid);
-  if (verification.steamId) {
-    const hydration = await hydrateSteamIdentity(prisma, uid);
-    verification = hydration.verification;
-    if (hydration.seededPlayableName) {
-      const refreshedUser = await prisma.user.findUnique({
-        where: { uid },
-        select: USER_SELECT,
-      });
-
-      if (refreshedUser) {
-        const claimSummary = await loadPendingWoloClaimSummaryForUser(prisma, {
-          id: refreshedUser.id,
-          inGameName: refreshedUser.inGameName,
-          steamPersonaName: verification.steamPersonaName ?? null,
-        });
-        const presentation = await buildProfilePresentation(
-          prisma,
-          refreshedUser,
-          verification.steamPersonaName ?? null
-        );
-        return NextResponse.json({
-          ...toUserApi(refreshedUser, verification),
-          ...presentation,
-          pendingClaimAmountWolo: claimSummary.pendingAmountWolo,
-          pendingClaimCount: claimSummary.pendingCount,
-          pendingClaimLatestCreatedAt: claimSummary.latestCreatedAt,
-        });
-      }
-    }
-  }
+  // Reading a profile never hydrates Steam or changes the user's identity.
+  // The verified login callback owns those explicit authentication mutations.
+  const verification = await fetchUserVerification(prisma, uid);
 
   const claimSummary = await loadPendingWoloClaimSummaryForUser(prisma, {
     id: user.id,
@@ -411,7 +396,7 @@ export async function GET(request: NextRequest) {
     pendingClaimAmountWolo: claimSummary.pendingAmountWolo,
     pendingClaimCount: claimSummary.pendingCount,
     pendingClaimLatestCreatedAt: claimSummary.latestCreatedAt,
-  });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" } });
 }
 
 export async function POST(request: NextRequest) {

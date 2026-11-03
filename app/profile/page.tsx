@@ -96,8 +96,8 @@ type ProfileResponse = {
   steamPersonaName: string | null;
   verificationLevel: number;
   verificationMethod: string;
-  pendingClaimAmountWolo: number;
-  pendingClaimCount: number;
+  pendingClaimAmountWolo: number | null;
+  pendingClaimCount: number | null;
   pendingClaimLatestCreatedAt: string | null;
   avatarUrl: string;
   featuredAvatarUrl: string | null;
@@ -112,8 +112,29 @@ type ProfileResponse = {
   }>;
   belts: ProfileTitleHolding[];
   artifacts: ProfileTitleHolding[];
-  earningWoloPerDay: number;
+  earningWoloPerDay: number | null;
+  financialStatus?: "unavailable";
+  profilePresentationStatus?: "unavailable";
 };
+
+function profileClaimAmount(profile: ProfileResponse | null) {
+  return profile?.financialStatus === "unavailable" ? "Unavailable" : `${profile?.pendingClaimAmountWolo ?? 0} WOLO`;
+}
+
+function profileClaimCount(profile: ProfileResponse | null) {
+  return profile?.financialStatus === "unavailable" ? "Count unavailable" : `${profile?.pendingClaimCount ?? 0} pending`;
+}
+
+function profileEarnings(profile: ProfileResponse | null) {
+  return profile?.financialStatus === "unavailable" ? "Earnings unavailable" : `${profile?.earningWoloPerDay ?? 0} WOLO/day`;
+}
+
+function ProfileAvailability({ profile }: { profile: ProfileResponse | null }) {
+  if (profile?.financialStatus !== "unavailable") return null;
+  return <p role="status" className="rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
+    Steam identity is available. Financial claims, title holdings and profile changes are unavailable in this release. Existing records are preserved.
+  </p>;
+}
 
 type ProfileTitleHolding = {
   id: string;
@@ -302,6 +323,7 @@ function ProfilePageContent() {
   const hasPendingClaim = (profile?.pendingClaimAmountWolo ?? 0) > 0;
 
   const claimStatusMessage = useMemo(() => {
+    if (profile?.financialStatus === "unavailable") return "Financial claims are unavailable. Existing records are preserved.";
     if (!profile || !hasPendingClaim) return "";
     const amount = profile.pendingClaimAmountWolo;
     const count = profile.pendingClaimCount;
@@ -316,7 +338,7 @@ function ProfilePageContent() {
         browserTimeZone,
       }
     );
-    return count > 1
+    return (count ?? 0) > 1
       ? `${amount} WOLO waiting across ${count} claims · latest ${latest}`
       : `${amount} WOLO waiting · latest ${latest}`;
   }, [browserTimeZone, hasPendingClaim, profile, timeClockMode]);
@@ -804,6 +826,7 @@ function ProfilePageContent() {
   if (profileFamily === "extreme") {
     return (
       <div className="space-y-6">
+      <ProfileAvailability profile={profile} />
       <ExtremeProfileView
         profile={profile}
         uid={uid}
@@ -860,6 +883,7 @@ function ProfilePageContent() {
 
   return (
     <div className={`mx-auto w-full min-w-0 space-y-6 py-8 text-white ${isBasicProfileView ? "max-w-5xl" : "max-w-7xl"}`}>
+      <ProfileAvailability profile={profile} />
       <div className="relative z-40 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur sm:px-5">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Profile view</div>
@@ -900,7 +924,7 @@ function ProfilePageContent() {
                         </span>
                       ) : null}
                       <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
-                        {profile?.earningWoloPerDay ?? 0} WOLO/day
+                        {profileEarnings(profile)}
                       </span>
                     </div>
                   </div>
@@ -1071,10 +1095,12 @@ function ProfilePageContent() {
                     Claim $WOLO
                   </div>
                   <div className="mt-3 text-4xl font-semibold tracking-normal text-white">
-                    {profile?.pendingClaimAmountWolo ?? 0} WOLO
+                    {profileClaimAmount(profile)}
                   </div>
                   <div className="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/88">
-                    {hasPendingClaim
+                    {profile?.financialStatus === "unavailable"
+                      ? claimStatusMessage
+                      : hasPendingClaim
                       ? claimStatusMessage
                       : "No claimable WOLO is waiting on this profile right now. When app-side rewards or payouts land, this tile becomes the front-door claim rail."}
                   </div>
@@ -1092,7 +1118,7 @@ function ProfilePageContent() {
 
                 <div className="flex shrink-0 flex-col items-end gap-3">
                   <div className="rounded-full border border-emerald-300/24 bg-emerald-500/12 px-3 py-1 text-xs text-emerald-100">
-                    {profile?.pendingClaimCount ?? 0} pending
+                    {profileClaimCount(profile)}
                   </div>
                   <button
                     type="button"
@@ -1100,7 +1126,7 @@ function ProfilePageContent() {
                     disabled={claimingWolo || !hasPendingClaim}
                     className="rounded-full border border-amber-200/16 bg-[linear-gradient(135deg,#fde68a_0%,#f5c95f_28%,#d7a73e_72%,#8c5e10_100%)] px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-55"
                   >
-                    {claimingWolo ? "Claiming..." : hasPendingClaim ? "Claim $WOLO" : "Nothing To Claim"}
+                    {profile?.financialStatus === "unavailable" ? "Claims unavailable" : claimingWolo ? "Claiming..." : hasPendingClaim ? "Claim $WOLO" : "Nothing To Claim"}
                   </button>
                 </div>
               </div>
@@ -1910,7 +1936,7 @@ function ExtremeProfileView({
     null;
 
   const profileTitle =
-    featuredBelt?.shortName ||
+    profile?.profilePresentationStatus === "unavailable" ? "Holdings unavailable" : featuredBelt?.shortName ||
     (
       earningWoloPerDay > 0
         ? "Active tribute"
@@ -2021,7 +2047,7 @@ function ExtremeProfileView({
                 icon={
                   Coins
                 }
-                label={`${earningWoloPerDay} WOLO/day`}
+                label={profileEarnings(profile)}
                 tone="amber"
               />
             </div>
@@ -2077,7 +2103,7 @@ function ExtremeProfileView({
               <ExtremeStat
                 icon={Coins}
                 label="Pending"
-                value={`${profile?.pendingClaimAmountWolo ?? 0} WOLO`}
+                value={profileClaimAmount(profile)}
               />
             </div>
 
@@ -3441,24 +3467,20 @@ function ExtremeBroadcastAndClaim({
         </div>
 
         <div className="mt-4 text-4xl font-semibold text-white">
-          {profile
-            ?.pendingClaimAmountWolo ??
-            0}{" "}
-          WOLO
+          {profileClaimAmount(profile)}
         </div>
 
         <p className="mt-3 text-sm leading-6 text-emerald-50/65">
-          {hasPendingClaim
+          {profile?.financialStatus === "unavailable"
+            ? claimStatusMessage
+            : hasPendingClaim
             ? claimStatusMessage
             : "Nothing waiting right now."}
         </p>
 
         <div className="mt-5 flex items-center justify-between gap-3">
           <span className="text-xs text-slate-500">
-            {profile
-              ?.pendingClaimCount ??
-              0}{" "}
-            pending
+            {profileClaimCount(profile)}
           </span>
 
           <button

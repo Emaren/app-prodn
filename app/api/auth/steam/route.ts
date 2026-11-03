@@ -13,9 +13,12 @@ import {
   getAppBaseUrl,
   requestLooksLikeSteamCallback,
   sanitizeReturnTo,
+  newSteamAuthState,
+  STEAM_AUTH_STATE_COOKIE,
   verifySteamCallback,
 } from "@/lib/steamAuth";
 import { allowUserOnlineSession } from "@/lib/userOnlinePresence";
+import { completeProductionSteamLogin, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,7 +32,9 @@ type SteamIdentityRow = {
 
 function makeRedirect(request: NextRequest, path: string) {
   const url = new URL(path, getAppBaseUrl(request));
-  return NextResponse.redirect(url);
+  const response = NextResponse.redirect(url);
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  return response;
 }
 
 function buildFailurePath(request: NextRequest, detail: string) {
@@ -40,16 +45,47 @@ function buildFailurePath(request: NextRequest, detail: string) {
   return target.toString();
 }
 
+function clearSteamState(response: NextResponse) {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  response.cookies.set(STEAM_AUTH_STATE_COOKIE, "", {
+    httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 0,
+  });
+  return response;
+}
+
+export async function HEAD() {
+  // Next otherwise dispatches HEAD through GET, including its callback writes.
+  return new NextResponse(null, { status: 405, headers: { Allow: "GET" } });
+}
+
 export async function GET(request: NextRequest) {
   if (!requestLooksLikeSteamCallback(request)) {
     const returnTo = sanitizeReturnTo(request.nextUrl.searchParams.get("returnTo"));
-    return NextResponse.redirect(buildSteamAuthUrl(request, returnTo));
+    const state = newSteamAuthState();
+    const response = NextResponse.redirect(buildSteamAuthUrl(request, returnTo, state));
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    response.cookies.set(STEAM_AUTH_STATE_COOKIE, state, {
+      httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 300,
+    });
+    return response;
   }
 
   try {
     const steamId = await verifySteamCallback(request);
     const profile = await fetchSteamProfile(steamId);
     const prisma = getPrisma();
+    if (usesNonfinancialProductionAuth()) {
+      const uid = await completeProductionSteamLogin(prisma, {
+        steamId, sessionUid: await getSessionUid(request), newUid: newSessionUid(),
+        personaName: profile.personaName,
+        responseNonce: request.nextUrl.searchParams.get("openid.response_nonce") ?? "",
+      });
+      allowUserOnlineSession(uid);
+      const token = await signSession(uid);
+      const response = makeRedirect(request, sanitizeReturnTo(request.nextUrl.searchParams.get("returnTo")));
+      setSessionCookie(response, token);
+      return clearSteamState(response);
+    }
 
     const existingBySteamRows = await prisma.$queryRaw<SteamIdentityRow[]>`
       SELECT uid, steam_id, verification_level, verification_method
@@ -135,9 +171,9 @@ export async function GET(request: NextRequest) {
     const returnTo = sanitizeReturnTo(request.nextUrl.searchParams.get("returnTo"));
     const response = makeRedirect(request, returnTo);
     setSessionCookie(response, token);
-    return response;
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "Steam sign-in failed";
-    return NextResponse.redirect(buildFailurePath(request, detail));
+    return clearSteamState(response);
+  } catch {
+    // Database/provider exceptions can contain private query or redirect data.
+    return clearSteamState(NextResponse.redirect(buildFailurePath(request, "STEAM_SIGN_IN_FAILED")));
   }
 }

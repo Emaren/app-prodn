@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid, SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
+import { readProductionUser, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 async function loadAdminUserByUid(uid: string | null) {
   if (!uid) {
@@ -10,7 +11,7 @@ async function loadAdminUserByUid(uid: string | null) {
   }
 
   const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
+  const user = usesNonfinancialProductionAuth() ? await readProductionUser(prisma, uid) : await prisma.user.findUnique({
     where: { uid },
     select: { id: true, uid: true, isAdmin: true },
   });
