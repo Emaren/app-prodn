@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-provisional-traffic-20261103` at `6ac2241ebe9754be0253db36a81ccd45ecfed1e2`
+Implementation baseline: `codex/r25-provisional-traffic-20261103` at `e7e5363d06d33ad2618278c2009393e6f231d9d5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
