@@ -24,7 +24,7 @@ test("typed recent activity is provisional, independent and cannot backdate a ce
   assert.deepEqual(actual.points.map(x => x.date), ["2026-10-20", "2026-11-03"]);
   assert.equal(actual.points[1].utcDayComplete, false);
   assert.equal(actual.points[0].observedGetEvents, 93);
-  assert.equal((actual.points[0] as any).confirmedHuman, undefined);
+  assert.equal((actual.points[0] as unknown as Record<string, unknown>).confirmedHuman, undefined);
 });
 
 test("unknown authority, inflated counters, partial/complete mismatch fail closed", () => {
@@ -41,7 +41,7 @@ test("unknown authority, inflated counters, partial/complete mismatch fail close
     p => { p.points[1].utc_day_complete = true; },
     p => { p.points[1].date = "2026-10-20"; },
     p => { p.last_certified_day = "2026-11-03"; },
-    p => { p.points = Array.from({length:46},(_,i)=>({...p.points[0],date:"2026-10-20"})); },
+    p => { p.points = Array.from({length:46},()=>({...p.points[0],date:"2026-10-20"})); },
   ];
   for(const change of changes) {
     const candidate = good();change(candidate);
