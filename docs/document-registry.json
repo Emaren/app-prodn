@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2836cd758b4b72519e3d3dc09517508e6f9d71f5e64bb73cd10a955f516eea6f",
+      "sha256": "3c9e04b99f35bf6149d01df56264c6ed5abb55eff11bc6ee3b674c5a45e43975",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/featured-warriors-random-assets-20261103",
-    "commit": "b8e1a8b6e053f5fc75e0c163c3ea43ece2e4d154"
+    "commit": "0fb35c2992fdfe52d4e80ea1c12d22013b59179a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
