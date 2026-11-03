@@ -6,6 +6,7 @@ import {constants} from "node:fs";
 import {open,realpath} from "node:fs/promises";
 import {dirname,isAbsolute} from "node:path";
 import {createPublicKey,verify} from "node:crypto";
+import {AsyncLocalStorage} from "node:async_hooks";
 import pg from "pg";
 
 export type HdFinancialScope="hd-legacy"|"hd-satchel";
@@ -27,6 +28,14 @@ const scopes={"hd-legacy":48,"hd-satchel":49} as const;
 // substitute one. A source/build tuple is not a custody or global-drain seal.
 declare const __AOE2WAR_HD_FINANCIAL_BUILD__: Readonly<{source:string;deployment:string}> | null;
 const BUILD=typeof __AOE2WAR_HD_FINANCIAL_BUILD__ === "undefined" ? null : __AOE2WAR_HD_FINANCIAL_BUILD__;
+type VerifiedLeaseContext={
+  scope:HdFinancialScope;producer:string;wallet:string;
+  signal:AbortSignal;live:boolean;nestedActive:boolean;nestedConsumed:boolean;
+};
+// Private to this module; only the actual authenticated PostgreSQL policy
+// transaction can install a context. A caller-supplied AbortSignal can never
+// impersonate an admitted lease or bypass the four-lease capacity budget.
+const verifiedLease=new AsyncLocalStorage<VerifiedLeaseContext>();
 let active=0;
 const admittedLeases = new WeakMap<AbortSignal, Readonly<{
   admission: HdFinancialAdmission;
@@ -137,11 +146,14 @@ async function withConfiguredLease<T>(client:Client,a:Authority,input:HdFinancia
     // Do not race this callback against a timer and release its lease while a
     // delayed send is still executing. Transports must honor the signal and
     // their existing bounded timeout. Lost connections remain UNKNOWN.
-    let result: T;
-    try {
-      result = await action(cancel.signal);
+    const context:VerifiedLeaseContext={scope:input.scope,producer:input.producer,
+      wallet:input.wallet,signal:cancel.signal,live:true,nestedActive:false,nestedConsumed:false};
+    let result:T;
+    try{
+      result=await verifiedLease.run(context,()=>action(cancel.signal));
       cancel.signal.throwIfAborted();
-    } finally {
+    }finally{
+      context.live=false;
       admittedLeases.delete(cancel.signal);
       cancel.abort(Error("financial_admission_ended"));
     }
@@ -149,21 +161,39 @@ async function withConfiguredLease<T>(client:Client,a:Authority,input:HdFinancia
   }finally{if(expiry)clearTimeout(expiry);await client.query("ROLLBACK").catch(()=>{});await client.end().catch(()=>{});}
 }
 export async function withHdFinancialLease<T>(
-  input: HdFinancialAdmission,
-  action: (signal: AbortSignal) => Promise<T>,
-  existing?: AbortSignal,
-): Promise<T> {
+  input:HdFinancialAdmission,
+  action:(signal:AbortSignal)=>Promise<T>,
+  existing?:AbortSignal,
+):Promise<T>{
   if(!input||(input.scope!=="hd-legacy"&&input.scope!=="hd-satchel")||typeof input.producer!=="string"||!ID.test(input.producer)||typeof input.wallet!=="string"||!WALLET.test(input.wallet))held("invalid_or_busy");
-  // An exact admitted callback can use its held lock for transport. An
-  // arbitrary cancellation signal cannot stand in for an authenticated lease.
-  if (existing !== undefined) {
-    const lease = admittedLeases.get(existing);
-    if (!lease || existing.aborted || performance.now() >= lease.deadline ||
-        lease.admission.scope !== input.scope || lease.admission.producer !== input.producer ||
-        lease.admission.wallet !== input.wallet) held("existing_admission_invalid");
-    return action(existing);
+  // Both an explicitly forwarded AbortSignal and implicit nested calls must
+  // originate inside the SAME authenticated PostgreSQL transaction. A forged,
+  // detached or expired signal cannot manufacture a lease.
+  const inherited=verifiedLease.getStore();
+  if(existing!==undefined){
+    const lease=admittedLeases.get(existing);
+    if(!lease||!inherited||existing!==inherited.signal||existing.aborted||
+      performance.now()>=lease.deadline||
+      lease.admission.scope!==input.scope||lease.admission.producer!==input.producer||
+      lease.admission.wallet!==input.wallet)held("existing_admission_invalid");
   }
-  if (active >= 4) held("invalid_or_busy");
+  if(inherited){
+    if(!inherited.live||inherited.signal.aborted||inherited.nestedActive||inherited.nestedConsumed||
+      inherited.scope!==input.scope||inherited.producer!==input.producer||
+      inherited.wallet!==input.wallet)held(existing!==undefined?"existing_admission_invalid":"nested_lease_invalid_or_busy");
+    // The one additional network operation permanently consumes its nested
+    // capability even after timeout, lost ACK or an interrupted send.
+    inherited.nestedActive=true;inherited.nestedConsumed=true;
+    try{
+      inherited.signal.throwIfAborted();
+      const result=await action(inherited.signal);
+      inherited.signal.throwIfAborted();
+      return result;
+    }catch{throw Error("HD_FINANCIAL_FENCE_OUTCOME_UNKNOWN:inherited_action_or_connection_failed");}
+    finally{inherited.nestedActive=false;}
+  }
+  if(existing!==undefined)held("existing_admission_invalid");
+  if(active>=4)held("invalid_or_busy");
   active++;let entered=false;
   try{
     if(!BUILD||!SHA.test(BUILD.source)||!KEY.test(BUILD.deployment))held("compiled_runtime_identity_missing");
