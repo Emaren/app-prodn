@@ -1,0 +1,39 @@
+{
+  "directory": "/mnt/HC_Volume_105319120/aoe2-downloads",
+  "files": [
+    {
+      "bytes": 108077776,
+      "path": "AoE2HDBets Watcher Setup 1.6.5.exe",
+      "sha256": "342aa600e2b4027617f416b66b25c3ae21e771cb2e228518d43829c4ed7c6985"
+    },
+    {
+      "bytes": 107815104,
+      "path": "AoE2HDBets Watcher 1.6.5.exe",
+      "sha256": "49695dbc45f9d14a3d31bd6be9d840a96c92179f081e60d93df23d4de7186312"
+    },
+    {
+      "bytes": 129213289,
+      "path": "AoE2HDBets Watcher-1.6.5-arm64.dmg",
+      "sha256": "274daf6f0f5405dd5d3e508c27cc1a84890564cf1b2be1282d767c4397b2e653"
+    },
+    {
+      "bytes": 127472622,
+      "path": "aoe2hdbets-watcher-direct.zip",
+      "sha256": "fc30617a39e610d534e5204891cc8542c6d6d8d905738f3bef25361e42d99d84"
+    },
+    {
+      "bytes": 134067137,
+      "path": "AoE2HDBets Watcher-1.6.5.AppImage",
+      "sha256": "d700f598bf9edab535332c53093fa254b83b286b9772662ae3f4c5577a3c1e49"
+    }
+  ],
+  "publisher_manifest": {
+    "bytes": 2284,
+    "path": "/mnt/HC_Volume_105319120/aoe2-downloads/watcher-release-manifest-1.6.5.json",
+    "sha256": "12229ba489278597a6226f55c79c73de3673a13d135f7c54a9f710a3ccd80014"
+  },
+  "publisher_source_sha": "b49f31bb69fea629378072faa22220cdfcc2f1ef",
+  "runtime_source_sha": "8d8a5faf9e92cb51e79aeef2df450df703d5f59c",
+  "schema": "aoe2war.app.published-watcher-assets.v1",
+  "version": "1.6.5"
+}
