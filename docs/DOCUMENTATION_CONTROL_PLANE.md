@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-journaled-3032-recovery-20261103` at `7484faab6820804b84fdbdcdc647cdf5a423c113`
+Implementation baseline: `codex/app-public-finality-20261103` at `db6564725ec515f71176602b745ea4a00f70da95`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
