@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2690325c41d6e6e91bc1e00faf01b10a304cc813d3b1c3085ee348303fc7097d",
+      "sha256": "e4503ba427d241d7d1bde9e693ea0740cc1f4fa8fa1a562b7c019c1b731567b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-postlive-b2-b3-b4-20261102",
-    "commit": "29d2d894bcf4c616abb513a597dc32aa4f86d438"
+    "branch": "codex/central-thirdlane-a05-c-integrated-20261103",
+    "commit": "d48e2a579e90aa923fd57a01f2d2fa5620f026f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
