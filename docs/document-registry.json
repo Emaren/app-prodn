@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e4503ba427d241d7d1bde9e693ea0740cc1f4fa8fa1a562b7c019c1b731567b9",
+      "sha256": "e857f97db1f83177df7a8c012f4d01b53f87d2d468f8c4a4481421b78d84b296",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/central-thirdlane-a05-c-integrated-20261103",
-    "commit": "d48e2a579e90aa923fd57a01f2d2fa5620f026f8"
+    "branch": "fix/a05-node-guard-synthetic-fixture-20261103",
+    "commit": "56df0374de1e472f5dd7b1238e50531dfb843864"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
