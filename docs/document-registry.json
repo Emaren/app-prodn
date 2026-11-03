@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a4f99185d5a090130bb31a4a42affef0271bf5812d9e8cb20389957312943eee",
+      "sha256": "7f4f8b05ea037964a5640e92a14783fc1c33bc7ea02a06c97d2c739522abd992",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/a05-resume-stopped-3032-20261103",
-    "commit": "f9b62feef91b71e3910834bc280e47c50e878969"
+    "commit": "e86e07b6188a0ce817ef8ad26a5125643b85a5db"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
