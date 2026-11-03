@@ -90,3 +90,13 @@ test("the actual Prisma pool constructor invokes this guard before client creati
   const pool = text.indexOf("new Pool(");
   assert.ok(guard > 0 && pool > guard);
 });
+
+test("Next startup rejects the production profile before invoking any runtime services", () => {
+  const text = readFileSync(join(root, "instrumentation.node.ts"), "utf8");
+  const guard = text.indexOf(
+    'requireNonfinancialAuthDatasource(process.env.DATABASE_URL ?? "", process.env)');
+  const diagnostics = text.indexOf("installRuntimeCrashDiagnostics();");
+  const wargraph = text.indexOf("startWarGraphRuntime();");
+  assert.ok(guard > 0 && diagnostics > guard && wargraph > guard);
+  assert.match(text, /if \(process\.env\.NODE_ENV === "production"\)/);
+});
