@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/featured-warriors-random-assets-20261103` at `0fb35c2992fdfe52d4e80ea1c12d22013b59179a`
+Implementation baseline: `codex/featured-warriors-random-assets-20261103` at `203b532c7c30f02d9302a999d703f19bfc4d6951`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
