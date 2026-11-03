@@ -17,6 +17,34 @@ spec = importlib.util.spec_from_file_location("production_profile", ROOT/"script
 c = importlib.util.module_from_spec(spec); spec.loader.exec_module(c)
 
 class ProductionProfile(unittest.TestCase):
+    def test_protected_socket_capability_normalization_preserves_identity(self):
+        base = "LISTEN 0 4096 127.0.0.1:8092 0.0.0.0:* "
+        full = base + 'users:(("wolochaind-main",pid=1012,fd=3)) ' + (
+            "ino:9674 sk:1 cgroup:/system.slice/wolochain-mainnet-settlement.service <->")
+        confined = base + "ino:9674 sk:1 cgroup:/system.slice/wolochain-mainnet-settlement.service <->"
+        self.assertEqual(c.production_socket_identity(full), c.production_socket_identity(confined))
+        self.assertNotIn("pid=", c.production_socket_identity(full))
+        self.assertIn("ino:9674", c.production_socket_identity(confined))
+        self.assertIn("cgroup:/system.slice/wolochain-mainnet-settlement.service",
+                      c.production_socket_identity(confined))
+        user_full = ("LISTEN 0 511 127.0.0.1:3030 0.0.0.0:* "
+                     'users:(("next-server",pid=2625090,fd=21)) uid:1000 '
+                     "ino:63268813 sk:2ddac cgroup:/system.slice/aoe2hdbets-web.service <->")
+        user_confined = user_full.replace(
+            'users:(("next-server",pid=2625090,fd=21)) ', "")
+        self.assertEqual(c.production_socket_identity(user_full), c.production_socket_identity(user_confined))
+        for changed in ("ino:9675", "cgroup:/system.slice/other.service",
+                        "127.0.0.1:8093", "sk:2"):
+            corrupt = confined.replace(
+                {"ino:9675":"ino:9674", "cgroup:/system.slice/other.service":
+                 "cgroup:/system.slice/wolochain-mainnet-settlement.service",
+                 "127.0.0.1:8093":"127.0.0.1:8092", "sk:2":"sk:1"}[changed],
+                changed)
+            self.assertNotEqual(c.production_socket_identity(confined),
+                                c.production_socket_identity(corrupt))
+        with self.assertRaisesRegex(c.Hold, "PROTECTED_LISTENER_IDENTITY_INCOMPLETE"):
+            c.production_socket_identity(base + "sk:1 cgroup:/system.slice/finance.service <->")
+
     def test_same_ci_export_import_accepts_bin_symlink_and_rehashes_all_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             root, source = RuntimeExport().fixture(temporary)
