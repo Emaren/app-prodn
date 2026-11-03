@@ -190,6 +190,35 @@ class ProductionProfile(unittest.TestCase):
                 with self.assertRaisesRegex(c.Hold,"AUTHENTICATED_CI_ZIP_DIGEST"):
                     c.production_ci_zip({**payload,"artifact":metadata2},path)
 
+    def test_admission_revalidates_only_steam_tls_destination_sets(self):
+        # No broad 443 rule, no change to public/legacy/financial service state.
+        shape="7"*64;protected={"app":"original-still-pinned","wolo":"protected"}
+        commands=[]
+        with mock.patch.object(c,"production_nft_shape",return_value=shape),\
+             mock.patch.object(c,"production_protected",return_value=protected),\
+             mock.patch.object(c,"production_steam_addresses",return_value=["95.100.176.225"]),\
+             mock.patch.object(c,"run",side_effect=lambda argv,**kw:commands.append((argv,kw)) or b""):
+            self.assertEqual(c.production_admission_steam_refresh(),["95.100.176.225"])
+        self.assertEqual(len(commands),1)
+        self.assertEqual(commands[0][0],["/usr/sbin/nft","-f","-"])
+        policy=commands[0][1]["data"].decode()
+        self.assertIn("flush set inet aoe2war_web_prod steam4",policy)
+        self.assertIn("flush set inet aoe2war_web_prod steam6",policy)
+        self.assertIn("95.100.176.225 timeout 300s",policy)
+        self.assertNotIn("flush table",policy)
+        self.assertNotIn("meta skuid",policy)
+        self.assertNotIn("0.0.0.0",policy)
+        self.assertNotIn("8092",policy)
+        source=(ROOT/"scripts/r25_c_start_root.py").read_text()
+        self.assertLess(source.index("current_steam_addresses = production_admission_steam_refresh()"),
+                        source.index('"steam": production_steam_probe(environment, Path(plan["stage"]))'))
+        with mock.patch.object(c,"production_nft_shape",side_effect=[shape,"8"*64]),\
+             mock.patch.object(c,"production_protected",return_value=protected),\
+             mock.patch.object(c,"production_steam_addresses",return_value=["95.100.176.225"]),\
+             mock.patch.object(c,"run",return_value=b""):
+            with self.assertRaisesRegex(c.Hold,"STEAM_REFRESH_CHANGED_OTHER_STATE"):
+                c.production_admission_steam_refresh()
+
     def test_real_steam_node_probe_runs_under_exact_sealed_stage(self):
         # Reproduces the HEL1 one-use HOLD: the preloader verifies process.cwd()
         # before any network fetch. The controller must not inherit root /root.

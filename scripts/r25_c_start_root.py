@@ -1124,6 +1124,28 @@ def production_refresh():
     return {"schema": "aoe2war.app.steam-egress-refresh.v1", "status": "VALIDATED_STEAM_IP_SETS_REFRESHED",
             "addresses": len(addresses), "timeout_seconds": 300, "financial_authorized": False}
 
+def production_admission_steam_refresh():
+    """Revalidate exact Steam TLS endpoints just before the real Node POST.
+
+    The first one-use 3032 START failed while its destination set was absent;
+    the ordinary timer cannot run until the complete production profile is
+    admitted. Only isolated UID990 Steam sets may change during this refresh.
+    """
+    before_shape = production_nft_shape()
+    before_protected = sha(canonical(production_protected()))
+    addresses = production_steam_addresses()
+    commands = ["flush set inet aoe2war_web_prod steam4", "flush set inet aoe2war_web_prod steam6"]
+    for version in (4, 6):
+        members = [a for a in addresses if ipaddress.ip_address(a).version == version]
+        if members:
+            commands.append("add element inet aoe2war_web_prod steam%d { %s }" %
+                            (version, ", ".join(a + " timeout 300s" for a in members)))
+    run(["/usr/sbin/nft", "-f", "-"], data=("\n".join(commands) + "\n").encode(), maximum=8192)
+    need(production_nft_shape() == before_shape and
+         sha(canonical(production_protected())) == before_protected,
+         "PRODUCTION_ADMISSION_STEAM_REFRESH_CHANGED_OTHER_STATE")
+    return addresses
+
 def production_refresh_units():
     service = ("[Unit]\nDescription=Validate Steam TLS destinations for isolated app profile\n"
       "[Service]\nType=oneshot\nUser=root\nExecStart=/usr/bin/python3 -I -B " + str(PROD_LIB / "r25_c_start_root.py") +
@@ -1567,10 +1589,11 @@ def production_start(payload):
         run(["/usr/bin/systemctl", "start", PROD_UNIT], timeout=95)
         pid, start_ticks = production_wait(policy)
         environment, database, password = production_runtime_environment()
+        current_steam_addresses = production_admission_steam_refresh()
         admission = {"schema": "aoe2war.app.production-admission.v1", "status": "NATIVE_PRODUCTION_ADMISSION_PASS",
             "source_sha": payload["source_sha"], "candidate_pid": pid, "candidate_start_ticks": start_ticks,
             "postgres": production_database_admission(database, password), "users_identity_sequence_may_advance": True, "catalog": production_database_witness(database, password),
-            "kernel": production_kernel_probe(plan["steam_addresses"]), "steam": production_steam_probe(environment, Path(plan["stage"])),
+            "kernel": production_kernel_probe(current_steam_addresses), "steam": production_steam_probe(environment, Path(plan["stage"])),
             "financial_authorized": False, "public_cutover_authorized": False}
         request = urllib.request.Request("http://127.0.0.1:3331/api/health", method="POST", data=b"")
         try: urllib.request.urlopen(request, timeout=3); raise Hold("PRODUCTION_PRIVATE_PROXY_POST_ACCEPTED")
