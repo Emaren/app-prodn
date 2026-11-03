@@ -360,9 +360,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CENTRAL_COMMAND_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-28",
+      "reviewed_at": "2026-10-29",
       "sensitivity": "internal",
-      "sha256": "2f7d28ab453346b21cf47d3a6b99044a00a6956540a2020e1d53a05de04fa245",
+      "sha256": "20cb304f018fbc6a466090a517200611827334639001d86c999ba949df8fd9f2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c85dc998b8c7db7a3b0997e71a8ef76f8d5b77cbd635ccad75e7b9ebabcb9745",
+      "sha256": "2690325c41d6e6e91bc1e00faf01b10a304cc813d3b1c3085ee348303fc7097d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1505,6 +1505,50 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "post-r25-reviewed-read-only-product-source",
+      "id": "aoe2war.app-prodn.r25-b3-operator-evidence",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "eaca0b09af2ff9c5ccc456c80b77b37bd7f7052305fc421061829bfaf38f6d54",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "R25 B3 \u2014 Authenticated Operational Evidence Interfaces",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "post-r25-source-only-visual-no-runtime",
+      "id": "aoe2war.app-prodn.r25-b4-kingdom-graph",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_B4_KINGDOM_GRAPH_RELEASE.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-10-31",
+      "sensitivity": "internal",
+      "sha256": "cb474ce970f5eda4dcb5b56aefac512e308023c4c7b4d34548dafad5242ccce0",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "R25 B4 \u2014 Kingdom Construction Source Graph Release",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -1880,9 +1924,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SITE_THEME_CAMPAIGN.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "76d4c17477764175e4055afb272dc419797f030f7572753cee32ece06b389374",
+      "sha256": "19f6b7197525bcbcb62fff3269909fe1f1275191cbbc9ad29a2f66577b8fb277",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2179,9 +2223,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_FAUCET_SECURITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "restricted",
-      "sha256": "9be52f24cdcd5d8c84479a70b9dbedc712af549485b1ef5e9e988643cdcbae28",
+      "sha256": "efd97dcd3b6ad78c3bbad4f61c8bad50d7c5aab76b5628d8e9320260635b3f50",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2224,9 +2268,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "848e624f3164978117067fa097ca40e0fbe567c5a81c78f6e349293200ddff4d",
+      "sha256": "53d13ebb6717ff519b99341fa2b6b35ea4356b49ffe72d2002f02933f990d002",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "r18-f-website-g-cdp-final-seal",
-    "commit": "7a822fc719775530520cb374977a2ccc540ed067"
+    "branch": "codex/r25-postlive-b2-b3-b4-20261102",
+    "commit": "29d2d894bcf4c616abb513a597dc32aa4f86d438"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

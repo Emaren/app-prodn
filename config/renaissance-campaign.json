@@ -3,7 +3,7 @@
   "version": "2026-10-21-v2",
   "sourceBaselineSha": "16c31d6e000ffb26a820e79499f36c0b3218b231",
   "kind": "aoe2war-renaissance-planning-order",
-  "policy": "Priority and phases are planning metadata only. Source inventory, domain authority, actual PR claims, CI checks, production certification and financial release have separate owners. No score or deployed claim follows from this file. The twelve Renaissance instrument page templates are now explicitly part of Phase I's 144-entry queue, while modules remain their separate visual grouping.",
+  "policy": "Priority and phases are planning metadata only. Source inventory, domain authority, actual PR claims, CI checks, production certification and financial release have separate owners. No score or deployed claim follows from this file. The twelve Renaissance instrument page templates are now explicitly part of Phase I's 157-entry queue, while modules remain their separate visual grouping.",
   "phases": [
     {
       "id": "I",
@@ -36,7 +36,16 @@
         "/speed",
         "/admin/aoe2war-os",
         "/admin/storage-os",
-        "/admin/central-command"
+        "/admin/central-command",
+        "/admin/central-command/job-board",
+        "/admin/central-command/lanes",
+        "/admin/central-command/work-board",
+        "/admin/backup-os",
+        "/admin/code-health",
+        "/admin/storage-transfer",
+        "/admin/documents-os",
+        "/kingdom-construction",
+        "/admin/system-composer"
       ]
     },
     {

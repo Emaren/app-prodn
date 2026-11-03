@@ -8,13 +8,13 @@
   },
   "policy": "Canonical entrypoint inventory only. Path scopes are classification hints, not authenticated access tests. Dynamic route patterns require separately governed fixtures; APIs require separate domain-owner assignments. No score, dependency completeness, authorization or production certification follows from this file. Never serve detailed protected paths in a public Index response.",
   "counts": {
-    "pageTemplates": 148,
-    "adminTemplates": 30,
+    "pageTemplates": 157,
+    "adminTemplates": 38,
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
-    "excludedStaticTemplates": 10,
-    "routeHandlerTemplates": 278,
-    "apiHandlerTemplates": 275,
+    "excludedStaticTemplates": 11,
+    "routeHandlerTemplates": 282,
+    "apiHandlerTemplates": 279,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -49,8 +49,26 @@
       "assurance": "unverified"
     },
     {
+      "href": "/admin/backup-os",
+      "entrypoint": "app/admin/backup-os/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
       "href": "/admin/bounties",
       "entrypoint": "app/admin/bounties/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/central-command/job-board",
+      "entrypoint": "app/admin/central-command/job-board/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/central-command/lanes",
+      "entrypoint": "app/admin/central-command/lanes/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -61,8 +79,26 @@
       "assurance": "unverified"
     },
     {
+      "href": "/admin/central-command/work-board",
+      "entrypoint": "app/admin/central-command/work-board/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
       "href": "/admin/clans",
       "entrypoint": "app/admin/clans/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/code-health",
+      "entrypoint": "app/admin/code-health/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/documents-os",
+      "entrypoint": "app/admin/documents-os/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -159,6 +195,18 @@
     {
       "href": "/admin/storage-os",
       "entrypoint": "app/admin/storage-os/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/storage-transfer",
+      "entrypoint": "app/admin/storage-transfer/page.tsx",
+      "scope": "admin-path",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/admin/system-composer",
+      "entrypoint": "app/admin/system-composer/page.tsx",
       "scope": "admin-path",
       "assurance": "unverified"
     },
@@ -418,6 +466,12 @@
       "href": "/kingdom-brain",
       "entrypoint": "app/kingdom-brain/page.tsx",
       "scope": "public-index",
+      "assurance": "unverified"
+    },
+    {
+      "href": "/kingdom-construction",
+      "entrypoint": "app/kingdom-construction/page.tsx",
+      "scope": "excluded-static",
       "assurance": "unverified"
     },
     {
@@ -964,7 +1018,17 @@
       "ownership": "unassigned"
     },
     {
+      "entrypoint": "app/api/admin/central-command/events/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
       "entrypoint": "app/api/admin/central-command/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/central-command/work-ledger/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
@@ -1205,6 +1269,11 @@
     },
     {
       "entrypoint": "app/api/admin/site-theme-campaign/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/admin/storage-os/freshness/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
@@ -1600,6 +1669,11 @@
     },
     {
       "entrypoint": "app/api/kingdom-presence/state/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/kingdom-progress/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

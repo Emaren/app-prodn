@@ -1,0 +1,94 @@
+name: Kingdom Progress Q12 real Chrome acceptance (post-W1)
+on:
+  pull_request:
+    paths:
+      - 'app/kingdom-progress/**'
+      - 'app/api/kingdom-progress/**'
+      - 'lib/kingdomProgressProjection.ts'
+      - 'tests/kingdom-progress-*'
+      - '.github/workflows/kingdom-progress-browser.yml'
+permissions:
+  contents: read
+concurrency:
+  group: kingdom-progress-q12-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  chrome:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      DATABASE_URL: postgresql://renaissance_reader:local_fixture_only@127.0.0.1:55437/renaissance88
+      SESSION_SECRET: isolated-q12-ci-not-production
+      NEXTAUTH_SECRET: isolated-q12-ci-not-production
+      NEXTAUTH_URL: http://127.0.0.1:3137
+      BROWSER_BASE_URL: http://127.0.0.1:3137
+      AOE2WAR_PROD_DB_PREVIEW: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: '22.22.0', cache: yarn }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.13' }
+      - name: Install pinned isolated browser runner and dependencies
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          corepack enable
+          NODE_ENV=development YARN_PRODUCTION=false yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          npm install --prefix "$RUNNER_TEMP/q12-pw" --no-save --no-package-lock --ignore-scripts playwright-core@1.57.0 axe-core@4.10.3
+          npx prisma generate
+          echo "PW_HOME=$RUNNER_TEMP/q12-pw" >> "$GITHUB_ENV"
+      - name: Run public projection tests
+        run: node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/kingdom-progress-public-projection.test.mts
+      - name: Start disposable read-only PostgreSQL fixture
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16 postgresql-client-16
+          export AOE2WAR_TEST_PG_BIN=/usr/lib/postgresql/16/bin
+          export REN88_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/renaissance88-q12-XXXXXX")"
+          export RENAISSANCE_88_FIXTURE_ALLOWED=1
+          echo "AOE2WAR_TEST_PG_BIN=$AOE2WAR_TEST_PG_BIN" >> "$GITHUB_ENV"
+          echo "REN88_PG_ROOT=$REN88_PG_ROOT" >> "$GITHUB_ENV"
+          echo "RENAISSANCE_88_FIXTURE_ALLOWED=1" >> "$GITHUB_ENV"
+          bash scripts/renaissance_88_pg_fixture.sh start
+      - name: Build exact candidate and verify generated source cleanliness
+        run: |
+          yarn build
+          test -s .next/BUILD_ID
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo "BUILD_ID=$(cat .next/BUILD_ID)" >> "$GITHUB_ENV"
+      - name: Accept 375 768 1440 Chrome keyboard sort and a11y
+        run: |
+          export CHROME_BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -x "$CHROME_BIN"
+          mkdir -p kingdom-progress-browser
+          node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3137 > kingdom-progress-browser/next.log 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true; wait "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 80); do
+            kill -0 "$next_pid" 2>/dev/null || exit 2
+            code="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:3137/ || true)"
+            if [ "$code" != 000 ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          Q12_OUT=kingdom-progress-browser node tests/kingdom-progress-browser.cjs
+          printf 'source=%s\nbuild=%s\nproduction_certified=false\n' "$SOURCE_SHA" "$BUILD_ID" > kingdom-progress-browser/identity.txt
+          test -z "$(git status --porcelain --untracked-files=no)"
+      - name: Stop isolated fixture
+        if: always()
+        run: |
+          if [ -n "${REN88_PG_ROOT:-}" ]; then bash scripts/renaissance_88_pg_fixture.sh stop || true; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kingdom-progress-q12-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: kingdom-progress-browser/
+          if-no-files-found: warn
+          retention-days: 14

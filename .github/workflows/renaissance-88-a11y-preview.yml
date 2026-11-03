@@ -67,6 +67,9 @@ jobs:
       NEXTAUTH_URL: http://127.0.0.1:3137
       BROWSER_BASE_URL: http://127.0.0.1:3137
       AOE2WAR_PROD_DB_PREVIEW: 'false'
+      # Explicit CI build-only mode: suppress background telemetry/presence
+      # rather than weakening the GET-only interceptor or faking browser PASS.
+      NEXT_PUBLIC_AOE2WAR_ISOLATED_GET_ONLY: '1'
     steps:
       - uses: actions/checkout@v4
         with:

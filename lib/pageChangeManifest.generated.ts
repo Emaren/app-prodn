@@ -120,7 +120,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/speed",
     label: "Speed",
-    version: "src-0e7cf93e3df8758e54ac",
+    version: "src-e18c3f60660a9138306c",
   },
   {
     href: "/aoe2war-os",
