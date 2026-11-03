@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b49c80c59945b178a45c40939e79e28f169c4a119d328df86daccc13bd41fd33",
+      "sha256": "ebaaabd505b844720e6b6608499c28590c483855a5aca58e714a4d49857ead4f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-native-steam-cwd-probe-20261103",
-    "commit": "0d85281a62634496f019bd486ac7a90aa7800fb7"
+    "branch": "fix/a05-journaled-3032-recovery-20261103",
+    "commit": "22eac04e77f460d9d13e6b4dc957c81a7b275493"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
