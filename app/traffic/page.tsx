@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import TrafficSensors from "@/components/traffic/TrafficSensors";
+import ProvisionalActivity from "@/components/traffic/ProvisionalActivity";
+import { loadProvisionalTraffic } from "@/lib/provisionalTraffic";
 import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
@@ -61,6 +63,27 @@ async function ObservedTrafficSensors({
   );
 }
 
+// A second, independent observational rail. Never merge these observed
+// IP/GET counts with the canonical human/session curve above.
+async function RecentObservedActivity({
+  lastPublishedDay,
+}: {
+  lastPublishedDay: string | null;
+}) {
+  try {
+    const response = await loadProvisionalTraffic(lastPublishedDay);
+    return <ProvisionalActivity points={response.points} />;
+  } catch (error) {
+    console.warn("Provisional observed activity unavailable:", error);
+    return (
+      <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-slate-400">
+        Recent observed activity is temporarily unavailable.
+        The certified historical Traffic chart remains independent.
+      </section>
+    );
+  }
+}
+
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let failed = false;
@@ -101,6 +124,14 @@ export default async function TrafficPage() {
         ) : (
           <div className="flex min-h-[40vh] items-center justify-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025] px-6 text-sm text-slate-400">No published completed-day Traffic report is available.</div>
         )}
+
+        <Suspense fallback={
+          <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-amber-200">
+            Loading provisional observed activity — never human-certified.
+          </section>
+        }>
+          <RecentObservedActivity lastPublishedDay={lastPublishedDay} />
+        </Suspense>
 
         <Suspense fallback={
           <section aria-live="polite" className="mt-6 rounded-2xl border border-sky-300/15 bg-sky-300/[0.035] p-6 font-mono text-sm text-sky-200">
