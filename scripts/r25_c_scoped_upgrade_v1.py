@@ -54,6 +54,11 @@ THIRD_ENTERED = "849b35646b995090a0ce72de9307b1164c4b06972f549c658c94a40ea484e28
 THIRD_ROLLBACK_HOLD = "c1ab78b2a8ba1f9922a62bce7e7ca3154cab97c671851e5e48b6e05b5f093916"
 THIRD_ROLLBACK_RECOVERED = "1429e489d1f27c8025c6d314366c1c30d7995675a2f99df08483b02166dafc6d"
 THIRD_CONTROLLER_SHA = "90d8361083b8a268c419c44c6d22eba68e3b24fa00bd11916cc5fb73a54e8692"
+FOURTH_NONCE = "464a942c053aabf57166eb8e372be677"
+FOURTH_ENTERED = "912f7c209310758f5e553588c944fca2a74bbb35d9ee0cdb9e4f8826219349ca"
+FOURTH_ROLLBACK_HOLD = "e2922ba6504c6c26146fe6f1135477f7a60a7173ee5f8ed8ad17d1a7fda4b2f8"
+FOURTH_RECOVERED = "8bac6e4b3a65eca0cd35f5aadbcab76be7f5c5c2b68454f388973ece4ccb28b1"
+FOURTH_RECOVERY_SOURCE = "73765f30840d2d036d057a1f740ee6a05b3b0ffe7c868002b231f3fcf9ebe6ed"
 TRAFFIC_ROOT = Path("/var/lib/aoe2war-traffic-r60-20261103")
 TRAFFIC_RECEIPTS = {
     "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
@@ -74,8 +79,8 @@ SCOPE = "UPGRADE_STOPPED_NONFINANCIAL_3032_ONLY"
 SOURCE_PATH = "scripts/r25_c_scoped_upgrade_v1.py"
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 REVIEWED_RUNTIME_SOURCES = {
-    "controller": ("scripts/r25_c_start_root.py", 115060,
-                  "f7fa39d97f6c82282a1b1beac940606c71f07e9f0fdea42e4935e023df161479"),
+    "controller": ("scripts/r25_c_start_root.py", 115273,
+                  "1a0d2a6bae2539bf72bad2d673e65d62a464c047cb41a55c3a9f0fee89d3f988"),
     "guard": ("scripts/r25_b_guard_production_v1.cjs", 11273,
                   "5edf4485be0884922935295600adf7c8b3c17fe697b962d31e7f17b09e8f3ec3"),
 }
@@ -334,6 +339,39 @@ def recovered_third_failure(actual):
          "THIRD_CONSUMED_ROLLBACK_RECOVERY_NOT_WITNESSED")
 
 
+def recovered_fourth_failure(actual):
+    """Immutable 464a native preimage recovery; original nonce stays spent."""
+    journal=JOURNALS/("upgrade-"+FOURTH_NONCE)
+    entered=safe_bytes(journal/"entered.json")
+    failed=safe_bytes(journal/"rollback_hold.json")
+    receipt=safe_bytes(journal/"rollback-recovered.json")
+    need(digest(entered)==FOURTH_ENTERED and
+         digest(failed)==FOURTH_ROLLBACK_HOLD and
+         digest(receipt)==FOURTH_RECOVERED,
+         "FOURTH_CONSUMED_JOURNAL_DRIFT")
+    row=json.loads(entered)
+    stop=json.loads(failed)
+    recovered=json.loads(receipt)
+    need(row.get("nonce")==FOURTH_NONCE and row.get("one_use") is True and
+         row.get("financial_authorized") is False and
+         row.get("public_cutover_authorized") is False and
+         row.get("plan",{}).get("before_policy_bytes")==actual and
+         row.get("plan",{}).get("new_source_sha")==SOURCE and
+         stop.get("status")=="CRITICAL_ROLLBACK_INCOMPLETE" and
+         stop.get("reason","").startswith("Hold:NATIVE_COMMAND_FAILED:/usr/bin/systemctl:Failed to reset failed state") and
+         recovered.get("schema")=="aoe2war.a05.stopped-recovery.v1" and
+         recovered.get("status")=="PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED_AFTER_TLS_HOLD" and
+         recovered.get("nonce")==FOURTH_NONCE and
+         recovered.get("entered_sha256")==FOURTH_ENTERED and
+         recovered.get("original_rollback_hold_sha256")==FOURTH_ROLLBACK_HOLD and
+         recovered.get("recovery_source_sha256")==FOURTH_RECOVERY_SOURCE and
+         recovered.get("original_nonce_consumed") is True and
+         recovered.get("old_public_3030_preserved") is True and
+         recovered.get("financial_authorized") is False and
+         recovered.get("public_cutover_authorized") is False,
+         "FOURTH_CONSUMED_ROLLBACK_RECOVERY_DRIFT")
+
+
 def prior_failure(actual):
     journal = JOURNALS / ("upgrade-" + FAILED_NONCE)
     entered = safe_bytes(journal / "entered.json")
@@ -364,6 +402,7 @@ def prior_failure(actual):
          json.loads(latest_rollback).get("reason")=="ORIGINAL_PUBLISHED_EVENT_NOT_VERIFIED",
          "LATEST_CONSUMED_UPGRADE_ROLLBACK_DRIFT")
     recovered_third_failure(actual)
+    recovered_fourth_failure(actual)
     return failed["plan"]
 
 
@@ -595,9 +634,16 @@ def soak_refresh():
 
 def restore_stopped(old, new, plan, backups, changed_steam):
     invoke("/usr/bin/systemctl", "stop", TIMER, REFRESH, new.PROD_UNIT, timeout=55)
-    # A failed Node guard leaves ActiveState=failed even after systemctl stop;
-    # clear only the exact isolated unit, then verify MainPID=0 and inactive.
-    invoke("/usr/bin/systemctl", "reset-failed", new.PROD_UNIT, timeout=20)
+    # A stopped already-inactive service may be transiently unloaded from
+    # systemd; reset-failed then errors "unit not loaded" and strands rollback.
+    # Reset only a genuinely failed exact isolated unit, after daemon reload;
+    # never assume that stop alone proved no Node or socket is running.
+    state=unit_properties(new.PROD_UNIT,"ActiveState,MainPID")
+    need(state.get("MainPID")=="0" and state.get("ActiveState") in ("inactive","failed"),
+         "ROLLBACK_CANDIDATE_PROCESS_STILL_RUNNING")
+    if state["ActiveState"]=="failed":
+        invoke("/usr/bin/systemctl","daemon-reload",timeout=20)
+        invoke("/usr/bin/systemctl","reset-failed",new.PROD_UNIT,timeout=20)
     stopped_candidate(old.PROD_UNIT)
     native_sql(acl_delta(False))
     for key, (path, _, mode) in FILES.items():

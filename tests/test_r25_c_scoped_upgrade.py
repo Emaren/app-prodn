@@ -19,20 +19,38 @@ class Upgrade(unittest.TestCase):
         self.assertIn("UNREVIEWED_ENVIRONMENT_KEY",guard)
         self.assertNotIn('MANAGED_MEDIA_UPLOAD_DIR: "/mnt/',guard)
 
-    def test_reset_failed_only_isolated_web_before_preimage_rollback(self):
-        calls=[]
-        def capture(*args,**kwargs):
-            calls.append(args)
-            return b""
+    def test_rollback_resets_only_genuinely_failed_isolated_unit(self):
         old=SimpleNamespace(PROD_UNIT="aoe2hdbets-web-prod.service")
         new=SimpleNamespace(PROD_UNIT="aoe2hdbets-web-prod.service")
-        with mock.patch.object(m,"invoke",side_effect=capture), \
-             mock.patch.object(m,"stopped_candidate",side_effect=RuntimeError("AFTER_RESET")):
-            with self.assertRaisesRegex(RuntimeError,"AFTER_RESET"):
-                m.restore_stopped(old,new,{}, {},False)
-        self.assertEqual(calls,[
-            ("/usr/bin/systemctl","stop",m.TIMER,m.REFRESH,new.PROD_UNIT),
-            ("/usr/bin/systemctl","reset-failed",new.PROD_UNIT)])
+        for state in ("inactive","failed"):
+            calls=[]
+            def capture(*args,**kwargs):
+                calls.append(args)
+                return b""
+            with mock.patch.object(m,"invoke",side_effect=capture), \
+                 mock.patch.object(m,"unit_properties",return_value={
+                     "ActiveState":state,"MainPID":"0"}), \
+                 mock.patch.object(m,"stopped_candidate",
+                                   side_effect=RuntimeError("AFTER_STATE")):
+                with self.assertRaisesRegex(RuntimeError,"AFTER_STATE"):
+                    m.restore_stopped(old,new,{}, {},False)
+            expected=[("/usr/bin/systemctl","stop",m.TIMER,m.REFRESH,new.PROD_UNIT)]
+            if state=="failed":
+                expected += [("/usr/bin/systemctl","daemon-reload"),
+                             ("/usr/bin/systemctl","reset-failed",new.PROD_UNIT)]
+            self.assertEqual(calls,expected)
+
+    def test_rollback_rejects_live_isolated_unit_before_mutation(self):
+        old=SimpleNamespace(PROD_UNIT="aoe2hdbets-web-prod.service")
+        new=SimpleNamespace(PROD_UNIT="aoe2hdbets-web-prod.service")
+        with mock.patch.object(m,"invoke",return_value=b"") as executor, \
+             mock.patch.object(m,"unit_properties",return_value={
+                  "ActiveState":"active","MainPID":"777"}), \
+             mock.patch.object(m,"native_sql") as pg:
+            with self.assertRaisesRegex(m.Hold,"ROLLBACK_CANDIDATE_PROCESS_STILL_RUNNING"):
+                m.restore_stopped(old,new,{}, {},True)
+            pg.assert_not_called()
+            self.assertEqual(executor.call_count,1)
 
     def test_third_failed_start_requires_exact_recovered_journal(self):
         import json,hashlib
@@ -70,6 +88,43 @@ class Upgrade(unittest.TestCase):
                 (path/"rollback-recovered.json").write_bytes(c+b" ")
                 with self.assertRaisesRegex(m.Hold,"THIRD_CONSUMED_JOURNAL_DRIFT"):
                     m.recovered_third_failure(actual)
+
+    def test_fourth_consumed_tls_hold_needs_original_recovery_hashes(self):
+        import json,hashlib
+        def seal(value):
+            return json.dumps(value,sort_keys=True,separators=(",",":"),ensure_ascii=True).encode()
+        actual={"controller":"old","guard":"old","unit":"old"}
+        entered={"nonce":m.FOURTH_NONCE,"one_use":True,
+                 "financial_authorized":False,"public_cutover_authorized":False,
+                 "plan":{"new_source_sha":m.SOURCE,"before_policy_bytes":actual}}
+        failed={"status":"CRITICAL_ROLLBACK_INCOMPLETE",
+                "reason":"Hold:NATIVE_COMMAND_FAILED:/usr/bin/systemctl:Failed to reset failed state",
+                "financial_authorized":False,"public_cutover_authorized":False}
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/("upgrade-"+m.FOURTH_NONCE)
+            path.mkdir()
+            a=seal(entered);b=seal(failed)
+            recovered={"schema":"aoe2war.a05.stopped-recovery.v1",
+                "status":"PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED_AFTER_TLS_HOLD",
+                "nonce":m.FOURTH_NONCE,"entered_sha256":hashlib.sha256(a).hexdigest(),
+                "original_rollback_hold_sha256":hashlib.sha256(b).hexdigest(),
+                "recovery_source_sha256":m.FOURTH_RECOVERY_SOURCE,
+                "original_nonce_consumed":True,
+                "old_public_3030_preserved":True,
+                "financial_authorized":False,"public_cutover_authorized":False}
+            c=seal(recovered)
+            for name,data in (("entered.json",a),("rollback_hold.json",b),
+                              ("rollback-recovered.json",c)):
+                (path/name).write_bytes(data)
+            with mock.patch.object(m,"JOURNALS",pathlib.Path(d)), \
+                 mock.patch.object(m,"FOURTH_ENTERED",hashlib.sha256(a).hexdigest()), \
+                 mock.patch.object(m,"FOURTH_ROLLBACK_HOLD",hashlib.sha256(b).hexdigest()), \
+                 mock.patch.object(m,"FOURTH_RECOVERED",hashlib.sha256(c).hexdigest()), \
+                 mock.patch.object(m,"safe_bytes",side_effect=lambda p: pathlib.Path(p).read_bytes()):
+                m.recovered_fourth_failure(actual)
+                (path/"rollback-recovered.json").write_bytes(c+b" ")
+                with self.assertRaisesRegex(m.Hold,"FOURTH_CONSUMED_JOURNAL_DRIFT"):
+                    m.recovered_fourth_failure(actual)
 
     def test_pinned_stage_and_financial_scope(self):
         self.assertEqual(m.SOURCE,"175e896c59bf48eda44c15d664d940f5ac40b436")

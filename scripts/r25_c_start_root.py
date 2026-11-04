@@ -1477,14 +1477,18 @@ def production_steam_probe(environment, stage):
     need(isinstance(stage, Path) and re.fullmatch(r"/var/lib/aoe2war-web-prod-[a-f0-9]{12}", str(stage)),
          "PRODUCTION_STEAM_SEALED_STAGE_REQUIRED")
     probe = "fetch('https://steamcommunity.com/openid/login',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'openid.mode=check_authentication',redirect:'error',signal:AbortSignal.timeout(10000)}).then(async r=>{const s=await r.text();if(r.status!==200||!/^is_valid:false$/m.test(s))process.exit(2);console.log(JSON.stringify({steam_tls_verification_reachable:true,unauthenticated_probe_rejected:true,completed_user_sign_in:false}));}).catch(()=>process.exit(3));"
+    need("MANAGED_MEDIA_UPLOAD_DIR" not in environment,
+         "PRODUCTION_STEAM_PROBE_ENVIRONMENT_DRIFT")
     env = {"PATH": "/usr/bin:/bin", "HOME": "/nonexistent", "LANG": "C.UTF-8", "USER": PROD_USER, "LOGNAME": PROD_USER,
       "NODE_ENV": "production", "WARGRAPH_RUNTIME_DISABLED": "true", "AOE2WAR_RUNTIME_PROFILE": PROD_PROFILE,
       "AOE2WAR_R25_ISOLATED_WEB": "true", "AOE2WAR_PROD_DB_PREVIEW": "false", "AOE2_BACKEND_UPSTREAM": "http://127.0.0.1:3331",
       "TRAFFIC_API_BASE": "http://127.0.0.1:3331", "HOSTNAME": "127.0.0.1",
-      "PORT": "3032", "NODE_OPTIONS": "--require=" + str(PROD_GUARD), **environment}
+      "PORT": "3032", "NODE_OPTIONS": "--require=" + str(PROD_GUARD), **environment,
+      "MANAGED_MEDIA_UPLOAD_DIR": str(PROD_PUBLIC_MEDIA_MOUNT)}
     result = subprocess.run(["/usr/sbin/runuser", "-u", PROD_USER, "--", "/usr/bin/node", "-e", probe],
         env=env, cwd=str(stage), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=False)
-    need(result.returncode == 0 and len(result.stdout) < 8192, "PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED")
+    need(result.returncode == 0 and len(result.stdout) < 8192,
+         "PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_" + str(result.returncode))
     proof = parse(result.stdout)
     need(proof == {"steam_tls_verification_reachable": True, "unauthenticated_probe_rejected": True, "completed_user_sign_in": False},
          "PRODUCTION_STEAM_REACHABILITY_PROOF_DRIFT")

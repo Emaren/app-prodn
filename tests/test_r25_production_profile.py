@@ -276,6 +276,15 @@ class ProductionProfile(unittest.TestCase):
         self.assertEqual(node.call_args.kwargs["cwd"],str(sealed))
         self.assertEqual(node.call_args.args[0][:4],["/usr/sbin/runuser","-u",c.PROD_USER,"--"])
         self.assertIn("--require="+str(c.PROD_GUARD),node.call_args.kwargs["env"]["NODE_OPTIONS"])
+        self.assertEqual(node.call_args.kwargs["env"]["MANAGED_MEDIA_UPLOAD_DIR"],
+                         str(c.PROD_PUBLIC_MEDIA_MOUNT))
+        with mock.patch.object(c.subprocess,"run") as denied_node:
+            with self.assertRaisesRegex(c.Hold,"PRODUCTION_STEAM_PROBE_ENVIRONMENT_DRIFT"):
+                c.production_steam_probe({"MANAGED_MEDIA_UPLOAD_DIR":"/mnt/private"},sealed)
+            denied_node.assert_not_called()
+        with mock.patch.object(c.subprocess,"run",return_value=mock.Mock(returncode=1,stdout=b"")):
+            with self.assertRaisesRegex(c.Hold,"PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_1"):
+                c.production_steam_probe({},sealed)
         # A sealed cwd alone is insufficient: the modern guard checks this
         # against its exact 3331 origin before reaching the Steam POST.
         guard = (ROOT / "scripts/r25_b_guard_production_v1.cjs").read_text()
