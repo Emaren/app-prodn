@@ -13,6 +13,64 @@ m=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 class Upgrade(unittest.TestCase):
+    def test_new_public_media_root_exactly_required_by_guard(self):
+        guard=(ROOT/"scripts/r25_b_guard_production_v1.cjs").read_text()
+        self.assertIn('MANAGED_MEDIA_UPLOAD_DIR: "/run/aoe2war-public-media"',guard)
+        self.assertIn("UNREVIEWED_ENVIRONMENT_KEY",guard)
+        self.assertNotIn('MANAGED_MEDIA_UPLOAD_DIR: "/mnt/',guard)
+
+    def test_reset_failed_only_isolated_web_before_preimage_rollback(self):
+        calls=[]
+        def capture(*args,**kwargs):
+            calls.append(args)
+            return b""
+        old=SimpleNamespace(PROD_UNIT="aoe2hdbets-web-prod.service")
+        new=SimpleNamespace(PROD_UNIT="aoe2hdbets-web-prod.service")
+        with mock.patch.object(m,"invoke",side_effect=capture), \
+             mock.patch.object(m,"stopped_candidate",side_effect=RuntimeError("AFTER_RESET")):
+            with self.assertRaisesRegex(RuntimeError,"AFTER_RESET"):
+                m.restore_stopped(old,new,{}, {},False)
+        self.assertEqual(calls,[
+            ("/usr/bin/systemctl","stop",m.TIMER,m.REFRESH,new.PROD_UNIT),
+            ("/usr/bin/systemctl","reset-failed",new.PROD_UNIT)])
+
+    def test_third_failed_start_requires_exact_recovered_journal(self):
+        import json,hashlib
+        def seal(d):
+            return json.dumps(d,sort_keys=True,separators=(",",":"),ensure_ascii=True).encode()
+        def digest(raw):
+            return hashlib.sha256(raw).hexdigest()
+        actual={"controller":"old","guard":"old","unit":"old"}
+        entered={"nonce":m.THIRD_NONCE,"one_use":True,
+                 "financial_authorized":False,"public_cutover_authorized":False,
+                 "plan":{"new_source_sha":m.SOURCE,"before_policy_bytes":actual}}
+        failed={"status":"CRITICAL_ROLLBACK_INCOMPLETE",
+                "reason":"Hold:CANDIDATE_NOT_STOPPED",
+                "financial_authorized":False,"public_cutover_authorized":False}
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/("upgrade-"+m.THIRD_NONCE)
+            path.mkdir()
+            a=seal(entered);b=seal(failed)
+            restored={"status":"PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED_AFTER_FAILED_SYSTEMD_RESET",
+                      "nonce":m.THIRD_NONCE,"entered_sha256":digest(a),
+                      "original_rollback_hold_sha256":digest(b),
+                      "source_controller_sha256":m.THIRD_CONTROLLER_SHA,
+                      "preexisting_public_3030_preserved":True,
+                      "financial_authorized":False,"public_cutover_authorized":False}
+            c=seal(restored)
+            for name,raw in (("entered.json",a),("rollback_hold.json",b),
+                             ("rollback-recovered.json",c)):
+                (path/name).write_bytes(raw)
+            with mock.patch.object(m,"JOURNALS",pathlib.Path(d)), \
+                 mock.patch.object(m,"THIRD_ENTERED",digest(a)), \
+                 mock.patch.object(m,"THIRD_ROLLBACK_HOLD",digest(b)), \
+                 mock.patch.object(m,"THIRD_ROLLBACK_RECOVERED",digest(c)), \
+                 mock.patch.object(m,"safe_bytes",side_effect=lambda p: pathlib.Path(p).read_bytes()):
+                m.recovered_third_failure(actual)
+                (path/"rollback-recovered.json").write_bytes(c+b" ")
+                with self.assertRaisesRegex(m.Hold,"THIRD_CONSUMED_JOURNAL_DRIFT"):
+                    m.recovered_third_failure(actual)
+
     def test_pinned_stage_and_financial_scope(self):
         self.assertEqual(m.SOURCE,"175e896c59bf48eda44c15d664d940f5ac40b436")
         self.assertEqual(m.OLD_SOURCE,"886dac221e73167621d6bbfa89cd30edf6b632a3")

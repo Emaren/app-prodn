@@ -19,6 +19,7 @@ const required = Object.freeze({
   USER: "aoe2war-web-prod", LOGNAME: "aoe2war-web-prod",
   AOE2_BACKEND_UPSTREAM: "http://127.0.0.1:3331",
   TRAFFIC_API_BASE: "http://127.0.0.1:3331",
+  MANAGED_MEDIA_UPLOAD_DIR: "/run/aoe2war-public-media",
 });
 const allowed = new Set([...Object.keys(required), "DATABASE_URL", "SESSION_SECRET",
   "PATH", "HOME", "LANG", "LC_ALL", "TZ", "PWD", "SHELL", "TERM",
