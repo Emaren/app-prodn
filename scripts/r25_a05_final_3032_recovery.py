@@ -44,8 +44,8 @@ STAGE_RECEIPT = ARCHIVE_ROOT / "artifact-stage-receipt-5869.json"
 STAGE_RECEIPT_SHA = "ce7436919837553c1064c83f7421bd26db0f2b0971b30186394fa07a791a43fc"
 CRITICAL_SHA = "8a9eb2fcc3b11b8fa807afbe453bd5f28e38901474f0d769cb67efa6d203535a"
 NEW_UNIT_SHA = "121f76699b1ceeda728b0e69fd1c2602a60ac1f4bb4f6fc979598d6bb74fa1bc"
-PRODUCTION_SOURCE = ARCHIVE_ROOT / "source-qualified-extractor-5869.py"
-PRODUCTION_SOURCE_SHA = "6085b303f4ae8b57414fc5741b6443ba268372becde59524211b91348c833988"
+PRODUCTION_SOURCE = ARCHIVE_ROOT / "source-qualified-extractor-3e451ecf.py"
+PRODUCTION_SOURCE_SHA = "3e451ecfa4c4a2f0b4419250908aca6b2fcb16cf165be8226bd024a071f0ef26"
 RELEASE_REFRESH_SOURCE = Path("/root/aoe2war-r25-refresh-a9eb.py")
 RELEASE_REFRESH_SHA = "74f60f937d311a8296e5c58cf5f0e839d6998b12b7d6a9b694e15dd733f71d28"
 ROOT_SOURCE = Path("/root/r25-a05-final-3032-recovery.py")
@@ -59,6 +59,10 @@ OLD_CONTROLLER_SHA = "06180e39f7dca64aa4f4ce2de2a823d37a614077b9c5b17ed0f838d422
 GUARD_SHA = "5edf4485be0884922935295600adf7c8b3c17fe697b962d31e7f17b09e8f3ec3"
 OLD_JOURNAL = Path("/var/lib/aoe2war-app-production-v1/profile-upgrades/contained-3032-2ed28b040d57cc1f2a3b2e769a52ccaf")
 JOURNALS = OLD_JOURNAL.parent
+FAILED_OWNER_JOURNAL = JOURNALS / "final-3032-7404ed100dc0dfcc0ec8f7ec46984f3f"
+FAILED_OWNER_ENTERED_SHA = "7f1e0d51a7855cd17d8351a128c29cdf4773ae359d09a71024727a5fdfe40b49"
+FAILED_OWNER_HOLD_SHA = "1bd55f0fb8994ba181526ce68270576e17131244daf068b3c1d6948a4ff4ffb2"
+FAILED_OWNER_PLAN_SHA = "82170d7d35aabcac692ceb00c4adac309770fa176e525b0db7efd1d764df17a1"
 PUBLIC_BUILD = "20261028134227-6c0f6d7531"
 H40 = re.compile(r"[0-9a-f]{40}\Z")
 H64 = re.compile(r"[0-9a-f]{64}\Z")
@@ -126,6 +130,53 @@ def history():
     return entered, held
 
 
+def failed_owner_requalification():
+    """Do not erase or replay the latest consumed Emaren owner START.
+
+    It failed at post-systemd protected snapshot verification; the journal
+    says critical rollback incomplete. We independently require the three
+    exact saved files RESTORED, stopped 3032/Steam and live public service
+    before a fresh one-use plan. This does not rewrite that HOLD receipt.
+    """
+    entered_raw = sealed_bytes(FAILED_OWNER_JOURNAL / "entered.json", 0o600)
+    hold_raw = sealed_bytes(FAILED_OWNER_JOURNAL / "hold.json", 0o600)
+    need(sha(entered_raw) == FAILED_OWNER_ENTERED_SHA
+         and sha(hold_raw) == FAILED_OWNER_HOLD_SHA,
+         "CONSUMED_OWNER_RELEASE_FORENSIC_RECEIPT_CHANGED")
+    entered = json.loads(entered_raw)
+    held = json.loads(hold_raw)
+    need(entered.get("schema") == "aoe2war.a05.final-stopped-entered.v1"
+         and entered.get("status") == "CONSUMED_DO_NOT_REPLAY"
+         and entered.get("plan_sha256") == FAILED_OWNER_PLAN_SHA
+         and entered.get("plan", {}).get("nonce") ==
+             "7404ed100dc0dfcc0ec8f7ec46984f3f"
+         and entered.get("financial_authorized") is False
+         and entered.get("public_cutover_authorized") is False
+         and held.get("schema") == "aoe2war.a05.final-3032-hold.v1"
+         and held.get("status") == "CRITICAL_ISOLATED_STOP_INCOMPLETE"
+         and held.get("reason") == "PROTECTED_SNAPSHOT_CHANGED"
+         and held.get("isolated_stop_commands_passed") is False
+         and held.get("financial_authorized") is False
+         and held.get("public_cutover_authorized") is False
+         and not (FAILED_OWNER_JOURNAL / "complete.json").exists()
+         and not (FAILED_OWNER_JOURNAL / "rollback.json").exists(),
+         "CONSUMED_OWNER_RELEASE_JOURNAL_NOT_REQUALIFIED")
+    for live, saved, mode in (
+        (UNIT, "unit.before", 0o644),
+        (POLICY, "policy.before", 0o400),
+        (CONTROLLER, "controller.before", 0o644),
+    ):
+        need(sealed_bytes(live, mode) ==
+             sealed_bytes(FAILED_OWNER_JOURNAL / saved, 0o600),
+             "FAILED_OWNER_ROLLBACK_FILE_NOT_RESTORED:" + saved)
+    return {
+        "entered_sha256": FAILED_OWNER_ENTERED_SHA,
+        "hold_sha256": FAILED_OWNER_HOLD_SHA,
+        "stopped_preimage_requalified": True,
+        "nonce_consumed": True,
+    }
+
+
 def archive(c):
     data = json.loads(sealed_bytes(STAGE_RECEIPT, 0o600))
     need(sha(sealed_bytes(STAGE_RECEIPT, 0o600)) == STAGE_RECEIPT_SHA
@@ -186,6 +237,7 @@ def preflight(c, r):
          policy.get("controller_sha256") == OLD_CONTROLLER_SHA,
          "HELD_ORIGINAL_POLICY_NOT_MATCHED")
     entered, held = history()
+    latest_failed = failed_owner_requalification()
     need(policy.get("native_plan_sha256") == entered.get("plan_sha256")
          and policy.get("journal_path") == str(OLD_JOURNAL / "rollback-requalification")
          and entered.get("plan", {}).get("old_pid") == 2777557
@@ -214,6 +266,7 @@ def preflight(c, r):
       "unit": unit, "policy_raw": policy_raw, "controller": controller,
       "candidate_unit": candidate, "policy": policy,
       "entered": entered, "held": held,
+      "latest_failed_owner": latest_failed,
       "protected_snapshot_sha256": protected_sha,
       "artifact": artifact, "provenance": provenance,
     }
@@ -250,6 +303,7 @@ def plan(args, c, r, ready):
       "old_ticks": ready["entered"]["plan"]["old_ticks"],
       "prior_failed_entered_sha256": sha(sealed_bytes(OLD_JOURNAL / "entered.json", 0o600)),
       "prior_failed_hold_sha256": sha(sealed_bytes(OLD_JOURNAL / "rollback_hold.json", 0o600)),
+      "latest_failed_owner": ready["latest_failed_owner"],
       "protected_snapshot_sha256": ready["protected_snapshot_sha256"],
       "catalog": catalog, "public_nginx_mutations": False,
       "financial_authorized": False, "public_cutover_authorized": False,
@@ -401,6 +455,7 @@ def main():
           "critical_runtime_sha256": CRITICAL_SHA,
           "protected_snapshot_sha256": ready["protected_snapshot_sha256"],
           "old_service_stopped": True,
+          "latest_failed_owner_requalified": ready["latest_failed_owner"]["stopped_preimage_requalified"],
           "public_nginx_mutations": False,
           "financial_authorized": False,
           "public_cutover_authorized": False}
