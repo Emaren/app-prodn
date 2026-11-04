@@ -765,14 +765,22 @@ def production_steam_addresses():
     candidate BEFORE changing the nft allowlist. Never permit a DNS-only IP.
     """
     candidates = set()
-    uid_resolver = r"""import json,socket
+    # The narrow timer runs with NoNewPrivileges and only the three exact
+    # capabilities required for nft and UID/GID switching. PAM-based runuser
+    # can reject a session despite CAP_SETUID/CAP_SETGID (keyinit/limits),
+    # causing the 300s Steam nft allowlist to expire. A direct setpriv exec
+    # avoids PAM entirely and can neither gain a group nor new privileges.
+    uid_resolver = r"""import json,os,socket
+assert os.getuid() == 990 and os.getgid() == 984 and os.getgroups() == []
 print(json.dumps(sorted({row[4][0] for row in
  socket.getaddrinfo('steamcommunity.com',443,type=socket.SOCK_STREAM)})))
 """
     for _ in range(2):
         candidates.update(row[4][0] for row in
                           socket.getaddrinfo(PROD_STEAM,443,type=socket.SOCK_STREAM))
-        uid_addresses = parse(run(["/usr/sbin/runuser","-u",PROD_USER,"--",
+        uid_addresses = parse(run(["/usr/bin/setpriv",
+                                   "--reuid",str(PROD_UID),"--regid",str(PROD_GID),
+                                   "--clear-groups","--no-new-privs","--",
                                    "/usr/bin/python3","-I","-B","-c",uid_resolver],
                                   timeout=12,maximum=8192))
         need(type(uid_addresses) is list and all(type(address) is str for address in uid_addresses),
