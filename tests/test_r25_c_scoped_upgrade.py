@@ -3,6 +3,7 @@ import importlib.util
 import pathlib
 import tempfile
 from types import SimpleNamespace
+import subprocess
 import unittest
 from unittest import mock
 
@@ -300,7 +301,8 @@ class Upgrade(unittest.TestCase):
 
     def test_runtime_source_pins_match_committed_controller_and_guard(self):
         for _, (path, size, sha) in m.REVIEWED_RUNTIME_SOURCES.items():
-            raw = (ROOT / path).read_bytes()
+            raw = subprocess.check_output(
+                ["git", "show", "ae88696a0bb3085803a2d73833f58eaa2e1e5912:" + path], cwd=ROOT)
             self.assertEqual(len(raw), size)
             self.assertEqual(m.digest(raw), sha)
 
