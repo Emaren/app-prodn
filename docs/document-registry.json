@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5dcf7b81852acb3139f9f31093117f12e26f8f3ace86d75029fcc7ec3ee867fa",
+      "sha256": "e73e625830d09148ba93b8adbf504ac3bf9b6cb6684b9e6ead1a4e6fefa54351",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a5cb96516fce87372de2fab7404402d0300e5be28dc7056b7316360f4a6dae7b",
+      "sha256": "9c462e22802ad61281f82ae6da82d900274105545970175c9e1e8b55c9d87907",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-steam-dns-rollback-recovery-20261104",
-    "commit": "47c74fcbd90af4ef27c5f0205707283a1b9e77ed"
+    "branch": "fix/a05-flight-sentinel-20261104",
+    "commit": "dd99eff4a59dc6dd8857a82bc1c1dcd94b9b8740"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
