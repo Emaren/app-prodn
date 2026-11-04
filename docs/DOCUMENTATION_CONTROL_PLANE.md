@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/r25-eight-page-read-model-20261104` at `de603e04c09271310150a68ac560c74f603a470d`
+Implementation baseline: `fix/r25-watcher-public-views-20261104` at `e4eb6463c44bc6a9f9ae53fd37e5a933344a24c4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
