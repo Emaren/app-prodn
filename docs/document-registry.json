@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "583a690c128e1bf3c8fb7c9c4214fe2945eee7830a271bf97b9c636289e68cbe",
+      "sha256": "2be4f44b4ef49855b4fd7cf86a624123a3544e9d7d7b46e659f19447f04104b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/a05-live-event-media-readonly-20261104",
-    "commit": "3832d855e65b9f1f29f008bb8b6431d71c31ffc4"
+    "branch": "codex/a05-native-probe-guard-final-20261104",
+    "commit": "78a45495b315e8e1dd44a1a5e6acd4f73963ddfb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

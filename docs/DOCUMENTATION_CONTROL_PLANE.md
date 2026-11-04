@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/a05-live-event-media-readonly-20261104` at `3832d855e65b9f1f29f008bb8b6431d71c31ffc4`
+Implementation baseline: `codex/a05-native-probe-guard-final-20261104` at `78a45495b315e8e1dd44a1a5e6acd4f73963ddfb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
