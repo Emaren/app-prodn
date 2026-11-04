@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b61a27760955e78c0e76553e87134b02daa652c7ed9542423645479e12d653cd",
+      "sha256": "383c1b24a682529ba0fa3804956707fe200c975c5d2a775df2f347f0273c4e4b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/rivalries-restricted-public-20261104",
-    "commit": "ce6b5b9302252b2ef490ecae9ffd726dd27c3de4"
+    "branch": "fix/r25-eight-page-read-model-20261104",
+    "commit": "de603e04c09271310150a68ac560c74f603a470d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
