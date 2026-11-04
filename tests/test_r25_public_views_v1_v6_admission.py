@@ -50,6 +50,10 @@ class ProductionExactViews(TestCase):
         self.assertNotIn("public.trophies",m.PROD_PUBLIC_APPROVED_IDENTITIES)
         self.assertNotIn("public.api_keys",m.PROD_PUBLIC_APPROVED_IDENTITIES)
         self.assertNotIn("public.bet_wagers",m.PROD_PUBLIC_APPROVED_IDENTITIES)
+        self.assertEqual(
+            m.PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256["aoe2war_public_v9"],
+            "80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c",
+        )
         for sha in m.PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256.values():
             self.assertRegex(sha,r"^[a-f0-9]{64}$")
 

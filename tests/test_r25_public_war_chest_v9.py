@@ -30,8 +30,8 @@ class WarChestV9(unittest.TestCase):
         segment=SQL.split("CREATE OR REPLACE VIEW aoe2war_public_v9.published_wagers",1)[1].split("REVOKE ALL ON aoe2war_public_v9.published_wagers",1)[0]
         for item in ("w.execution_mode='onchain_escrow'",
                      "w.stake_locked_at IS NOT NULL",
-                     "w.stake_tx_hash IS NOT NULL AND i.status='recorded'",
-                     "t.status='recorded' AND t.stake_tx_hash IS NOT NULL",
+                     "NULLIF(BTRIM(w.stake_tx_hash),'') IS NOT NULL AND i.status='recorded'",
+                     "t.status='recorded' AND NULLIF(BTRIM(t.stake_tx_hash),'') IS NOT NULL",
                      "LEFT JOIN public.bet_stake_intents",
                      "LEFT JOIN public.bet_stake_tickets",
                      'COALESCE(', '),FALSE) AS "recordedFunding"'):
@@ -80,6 +80,37 @@ class WarChestV9(unittest.TestCase):
         self.assertIn("markets.filter((market) => market.status === \"settled\"",PUBLIC)
         self.assertIn("Math.round((pool / totalPot) * 100)",PUBLIC)
         self.assertIn("return Math.max(stake, Math.round",PUBLIC)
+
+
+    def test_public_market_integrity_must_match_legacy_verified_and_desync_rules(self):
+        view=SQL.split("CREATE OR REPLACE VIEW aoe2war_public_v9.published_markets",1)[1].split(
+            "REVOKE ALL ON aoe2war_public_v9.published_markets",1)[0]
+        for required in (
+            "m.integrity_status='verified'",
+            "NULLIF(BTRIM(m.proposition_hash),'') IS NOT NULL",
+            "m.team_resolution_status='resolved'",
+            "m.team_confidence='high'",
+            "m.market_type='desync'",
+            "parent.market_type='winner'",
+            "parent.winner_side IN ('left','right')",
+            "parent.settled_at IS NOT NULL",
+            "LEFT JOIN public.bet_markets parent ON parent.id=m.parent_market_id",
+            'AS "publicIntegrityEligible"'):
+            self.assertIn(required,view)
+        for forbidden in ('m.proposition_hash AS','m.integrity_reason AS',
+                          'parent.source_roster_hash AS','parent.proposition_hash AS'):
+            self.assertNotIn(forbidden,view)
+        self.assertIn("eligiblePublishedOpenMarket(",PUBLIC)
+        self.assertIn("isConfidentBetMarket(market)",PUBLIC)
+        self.assertIn('market.publicIntegrityEligible === true',
+            (ROOT/"lib/warChestPublicMarketTruth.ts").read_text())
+
+    def test_open_market_pot_counts_active_slips_not_settled_or_void(self):
+        self.assertIn("activePublishedMarketWagers(wagersByMarket.get(market.id) ?? [])",PUBLIC)
+        self.assertIn('wager.status === "active"',
+            (ROOT/"lib/warChestPublicMarketTruth.ts").read_text())
+        self.assertNotIn('...markets.filter((market) => market.status === "settled"',PUBLIC)
+        self.assertIn("const biggestPotCandidates = primary.map(",PUBLIC)
 
     def test_public_learner_loaders_only_use_scoped_aggregates(self):
         for func in ("loadClaims","loadWagers","loadUsersByIds","loadUsersByNames"):

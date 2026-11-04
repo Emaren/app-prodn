@@ -1100,3 +1100,49 @@ and executed ROLLBACK. Missing, modified, extra, renamed
 or non-security-barrier views remain hard admission holds; the original
 raw table/column ACL allowance is unchanged. The owner must still
 separately authorize the reviewed candidate source and physical START.
+
+
+### A05 War Chest integrity parity correction (v9 new source revision)
+
+The original public Bet Board excludes active/live markets without verified
+market integrity, a proposition hash, resolved/high-confidence winner teams,
+or appropriately phase-matched Desync parent market; low-information
+placeholder names are also suppressed. It also excludes settled, won, lost,
+void and any other non-active wager when calculating live slips and the
+visible left/right pots. The first confined v9 adapter preserved mainnet
+funding proof but accidentally omitted these separate *market and wager
+state* fences. That would inflate live market liquidity or display unreliable
+markets even when all source/Chrome checks passed.
+
+The corrected source-owned v9 market projection now publishes only one
+bounded public eligibility Boolean. Its postgres security-barrier expression
+recreates the verified-proposition and Desync-parent state checks without
+publishing raw proposition hashes, reviewer notes or custody evidence.
+The renderer reuses the shared legacy market-confidence classifier and
+filters the displayed pot/slip list to *active* wagers after applying
+recorded-funded mainnet proof and mainnet lock-date gates. The Heat view
+now considers currently eligible live/open markets only; it does not
+fabricate a settled pot from naive historical wagers (which omits intent
+and claim liability reconciliation). Three new isolated Node test cases
+cover inactive wagers, missing confidence and fail-closed market gates.
+This source revision changes v9's native canonical definition hash;
+the old v9 digest and old e957a399 CI artifact are NOT valid for a new
+release. HEL1's corrected source-owned v9 rollback test returned three
+postgres-owned public view definitions with canonical hash
+80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c.
+Both eligibility display classes are currently empty because no open,
+closing or live markets exist in the database; this is valid current
+state, not missing live liquidity. The new digest is now exact-pinned in
+the source-reviewed controller, and only a fresh full CI/Chrome artifact
+from the corrected head can qualify a release. No deployed financial
+calculation is authorized by this public display-only correction.
+
+The final v9 review also tightened the *recorded funding* predicate:
+the legacy bet-intent hash, batch-ticket hash and market proposition
+must be nonempty after trimming. A non-null blank string is not valid
+on-chain evidence. The final real HEL1 rollback-only PostgreSQL witness
+for the stricter source returned v9 canonical definition hash
+80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c,
+3 owner-checked security-barrier views, 1,416 funded wager records
+(before mainnet date filtering), zero currently eligible open markets,
+and ROLLBACK. This digest supersedes all earlier tentative v9 hashes.
