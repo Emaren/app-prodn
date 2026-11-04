@@ -1257,7 +1257,8 @@ def production_refresh_units():
     service = ("[Unit]\nDescription=Validate Steam TLS destinations for isolated app profile\n"
       "[Service]\nType=oneshot\nUser=root\nExecStart=/usr/bin/python3 -I -B " + str(PROD_LIB / "r25_c_start_root.py") +
       " --phase production-refresh-steam\nNoNewPrivileges=yes\nProtectHome=yes\nPrivateTmp=yes\n"
-      "ProtectSystem=strict\nCapabilityBoundingSet=CAP_NET_ADMIN\nRestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX\n").encode()
+      "ProtectSystem=strict\nCapabilityBoundingSet=CAP_NET_ADMIN CAP_SETUID CAP_SETGID\n"
+      "RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX\n").encode()
     timer = b"[Unit]\nDescription=Bounded Steam destination refresh\n[Timer]\nOnBootSec=30s\nOnUnitActiveSec=60s\nAccuracySec=5s\n[Install]\nWantedBy=timers.target\n"
     return service, timer
 
@@ -1487,11 +1488,18 @@ def production_refresh_unit_identity():
         need(root_file(Path("/etc/systemd/system") / name, 8192, 0o644) == raw,
              "PRODUCTION_REFRESH_UNIT_SOURCE_DRIFT")
         value = dict(row.split("=",1) for row in run(["/usr/bin/systemctl", "show", name, "--no-pager",
-            "--property=NeedDaemonReload,FragmentPath,DropInPaths,ExecStart,User,Type,Triggers"], maximum=32768).decode().splitlines() if "=" in row)
+            "--property=NeedDaemonReload,FragmentPath,DropInPaths,ExecStart,User,Type,Triggers,CapabilityBoundingSet,NoNewPrivileges,ProtectSystem,RestrictAddressFamilies"], maximum=32768).decode().splitlines() if "=" in row)
         need(value.get("NeedDaemonReload") == "no" and value.get("DropInPaths") == "" and
              value.get("FragmentPath") == "/etc/systemd/system/" + name, "PRODUCTION_REFRESH_EFFECTIVE_CONFIG_DRIFT")
         if name.endswith(".service"):
-            need(value.get("User") == "root" and value.get("Type") == "oneshot", "PRODUCTION_REFRESH_EFFECTIVE_IDENTITY")
+            need(value.get("User") == "root" and value.get("Type") == "oneshot"
+                 and set(value.get("CapabilityBoundingSet", "").split()) ==
+                       {"cap_net_admin", "cap_setuid", "cap_setgid"}
+                 and value.get("NoNewPrivileges") == "yes"
+                 and value.get("ProtectSystem") == "strict"
+                 and set(value.get("RestrictAddressFamilies", "").split()) ==
+                       {"AF_INET", "AF_INET6", "AF_NETLINK", "AF_UNIX"},
+                 "PRODUCTION_REFRESH_EFFECTIVE_IDENTITY")
             command = value.get("ExecStart", "")
             stable = re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*;\s*ignore_errors=(?:yes|no)\s*;\s*(?=start_time=)", command, re.S)
             need(stable is not None and command.count("{ path=") == 1 and
