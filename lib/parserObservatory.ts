@@ -3,6 +3,8 @@ import { unstable_cache } from "next/cache";
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS } from "@/lib/replayResultAdjudications";
 import {
   cleanPublicGameRows,
   publicReplayWinnerTruth,
@@ -157,7 +159,7 @@ function isExplicitlyIrrecoverableArtifact(metrics: unknown) {
   ]).has(explicitArtifactDisposition(metrics));
 }
 
-async function loadCorpusRows() {
+async function loadLegacyCorpusRows() {
   // This is final watcher/upload-record grain, not deduplicated logical-game
   // grain and not the frozen Engine Room artifact cohort. Adjudications are
   // overlaid below before resolveReplayWinnerTruth decides stats eligibility.
@@ -192,6 +194,61 @@ async function loadCorpusRows() {
       },
     },
   });
+}
+
+type PublicCorpusProjectedAdjudication = {
+  id: number;
+  idempotencyKey: string;
+  decisionStatus: string;
+  affectsStats: boolean;
+  affectsBets: boolean;
+  actorDisplayNameSnapshot: string;
+  actorRole: string;
+  teamAssignments: unknown;
+  winningTeamKey: string;
+  winningPlayerKeys: unknown;
+  reason: string;
+  evidence: null;
+  sourceReplayHash: string;
+  sourceParseIteration: number;
+  sourceRosterHash: string;
+  sourcePropositionHash: string;
+  createdAt: string;
+};
+
+type RestrictedPublicCorpusRow = {
+  replayResultAdjudications: PublicCorpusProjectedAdjudication[];
+  [key: string]: unknown;
+};
+
+/**
+ * A05 nonfinancial isolated runtime: read only the source-owned sanitized
+ * projection. Do not query protected users or adjudication rows, and do not
+ * count missing public views as an empty replay archive.
+ */
+async function loadCorpusRows() {
+  if (!isNonfinancialPublicReadProfile()) return loadLegacyCorpusRows();
+  const rows = await getPrisma().$queryRaw<RestrictedPublicCorpusRow[]>`
+    SELECT * FROM aoe2war_public_v7.parser_final_corpus
+    ORDER BY played_on DESC NULLS LAST,
+             "timestamp" DESC NULLS LAST, id DESC
+  `;
+  const disabledPrefixes = RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS
+    .map((policy) => `evidence:auto:${policy}:`);
+  const projected = rows.map((row) => {
+    const admissible = (row.replayResultAdjudications ?? [])
+      .filter((item) =>
+        item.decisionStatus === "accepted" &&
+        !disabledPrefixes.some((prefix) => item.idempotencyKey.startsWith(prefix))
+      )
+      .slice(0, 1)
+      .map((item) => ({
+        ...item,
+        createdAt: new Date(item.createdAt),
+      }));
+    return { ...row, replayResultAdjudications: admissible };
+  });
+  return projected as unknown as Awaited<ReturnType<typeof loadLegacyCorpusRows>>;
 }
 
 async function buildPublicParserObservatory() {
