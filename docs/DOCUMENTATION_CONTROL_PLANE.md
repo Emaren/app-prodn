@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-steam-probe-rollback-20261104` at `ea31ea1b5daef89859269a735a60c9eb20fc52e1`
+Implementation baseline: `fix/a05-published-hero-content-20261104` at `f1d01b06563d891896f190205f240a0e5f53fce4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
