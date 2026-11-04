@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ae0b6a6261d1384a4da154bdf8161090488050262f60c22d6968f45bcaba727a",
+      "sha256": "c9af3118a5cb92017fdf542778c8225d51d1a141f9201b957e0ff6a2b2dd4c91",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a7e0387ae6711bd2c5d3818bf164be32c7c1992f90ea82abe8f47f1264856948",
+      "sha256": "1cd0643f69e7b2c670b518beb39451a990c62791936077837a91ce2e697cf168",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-game-stats-public-corpus-v7-20261104",
-    "commit": "3e25d3d21452a7bc879851b9fa04092a65c89e63"
+    "branch": "fix/a05-signedin-vault-hero-v10v11-20261104",
+    "commit": "c92ddd9d7ecc5183512e1b3a732cf19e0380d0bb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
