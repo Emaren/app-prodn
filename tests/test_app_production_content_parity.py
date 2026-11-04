@@ -20,12 +20,12 @@ GUEST_FLIGHT='<script>self.__next_f.push([1,'+json.dumps('0:D{\"name\":\"Public 
 class ReleaseContentGate(unittest.TestCase):
     def check(self, new_home=f'<main>{TITLE}</main>', new_traffic=CAND_TRAFFIC, old_home=f'<main>{TITLE}</main>', old_traffic=OLD_TRAFFIC, title=TITLE):
         pages={(3030,'/'):old_home,(3032,'/'):new_home,(3030,'/traffic'):old_traffic,(3032,'/traffic'):new_traffic}
-        for route in ('/players','/war-chest','/game-stats'):
+        for route in ('/players','/war-chest','/game-stats','/rivalries'):
             pages[(3030,route)]=GUEST_FLIGHT
             pages[(3032,route)]=GUEST_FLIGHT
         with mock.patch.object(f,'production_published_event_title',return_value=title),mock.patch.object(f,'production_content_html',side_effect=lambda port,route:pages[(port,route)]) as pages_requested:
             result=f.production_content_parity()
-            self.assertEqual(pages_requested.call_count,10)
+            self.assertEqual(pages_requested.call_count,12)
             self.assertTrue(result['anonymous_get_only'])
             self.assertFalse(result['financial_authorized'])
             return result

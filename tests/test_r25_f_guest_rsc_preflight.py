@@ -52,20 +52,20 @@ class TestRscPrecutover(unittest.TestCase):
 
     def test_guest_pages_require_both_old_and_new_clean(self):
         pages = {
-            (3030, route): GOOD for route in ("/players", "/war-chest", "/game-stats")
+            (3030, route): GOOD for route in ("/players", "/war-chest", "/game-stats", "/rivalries")
         }
         pages.update({
-            (3032, route): GOOD for route in ("/players", "/war-chest", "/game-stats")
+            (3032, route): GOOD for route in ("/players", "/war-chest", "/game-stats", "/rivalries")
         })
         with mock.patch.object(f, "production_content_html", side_effect=lambda p, r: pages[(p, r)]) as getter:
             result = f.production_public_guest_page_smoke()
-        self.assertEqual(len(result), 3)
-        self.assertEqual(getter.call_count, 6)
+        self.assertEqual(len(result), 4)
+        self.assertEqual(getter.call_count, 8)
         self.assertTrue(all(v["guest_server_render_healthy"] for v in result.values()))
 
     def test_guest_players_error_rejects_public_switch(self):
         pages = {
-            (3030, route): GOOD for route in ("/players", "/war-chest", "/game-stats")
+            (3030, route): GOOD for route in ("/players", "/war-chest", "/game-stats", "/rivalries")
         }
         pages[(3032, "/players")] = ERROR
         with mock.patch.object(f, "production_content_html", side_effect=lambda p, r: pages[(p, r)]):
@@ -73,12 +73,12 @@ class TestRscPrecutover(unittest.TestCase):
                 f.production_public_guest_page_smoke()
 
     def test_guest_war_chest_and_game_stats_errors_block(self):
-        for route in ("/war-chest", "/game-stats"):
+        for route in ("/war-chest", "/game-stats", "/rivalries"):
             pages = {
-                (3030, p): GOOD for p in ("/players", "/war-chest", "/game-stats")
+                (3030, p): GOOD for p in ("/players", "/war-chest", "/game-stats", "/rivalries")
             }
             pages.update({
-                (3032, p): GOOD for p in ("/players", "/war-chest", "/game-stats")
+                (3032, p): GOOD for p in ("/players", "/war-chest", "/game-stats", "/rivalries")
             })
             pages[(3032, route)] = ERROR
             with self.subTest(route=route):
