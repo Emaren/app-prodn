@@ -49,7 +49,31 @@ test("unknown authority, inflated counters, partial/complete mismatch fail close
   }
 });
 
+test("UTC rollover turns yesterday's incomplete day into a complete day", () => {
+  assert.throws(() => normalizeProvisionalTraffic(good(), "2026-11-04"),
+                /Provisional activity invariant failed/);
+  const yesterdayCompleted = good();
+  yesterdayCompleted.points[1].utc_day_complete = true;
+  const afterRollover = normalizeProvisionalTraffic(yesterdayCompleted, "2026-11-04");
+  assert.equal(afterRollover.points[1].utcDayComplete, true);
+});
+
 test("source fetch is exactly GET-only 3331 observational rail, requires same canonical cutoff", async () => {
+  // Production uses the actual UTC clock; static Nov 3 mock data would
+  // become invalid at midnight UTC and make the CI suite fail every day.
+  const liveToday = new Date().toISOString().slice(0, 10);
+  const dayBefore = (days: number) =>
+    new Date(Date.parse(liveToday + "T00:00:00Z") - days * 86_400_000)
+      .toISOString().slice(0, 10);
+  const liveCertifiedCutoff = dayBefore(2);
+  const liveFixture = {
+    ...good(),
+    last_certified_day: liveCertifiedCutoff,
+    points: [
+      { ...good().points[0], date: dayBefore(1), utc_day_complete: true },
+      { ...good().points[1], date: liveToday, utc_day_complete: false },
+    ],
+  };
   const initial = globalThis.fetch;
   const env = process.env.TRAFFIC_API_BASE;
   const observed: Array<{url:string,options:RequestInit}> = [];
@@ -57,9 +81,9 @@ test("source fetch is exactly GET-only 3331 observational rail, requires same ca
     process.env.TRAFFIC_API_BASE = "http://127.0.0.1:3331";
     globalThis.fetch = (async (url: URL | RequestInfo, options: RequestInit) => {
       observed.push({url:String(url),options});
-      return {ok:true,json:async()=>good()} as Response;
+      return {ok:true,json:async()=>liveFixture} as Response;
     }) as typeof fetch;
-    const payload = await loadProvisionalTraffic("2026-10-19");
+    const payload = await loadProvisionalTraffic(liveCertifiedCutoff);
     assert.equal(payload.points.length,2);
     assert.equal(observed[0].url,"http://127.0.0.1:3331/api/projects/aoe2hdbets/observed-daily-series");
     assert.equal(observed[0].options.cache,"no-store");

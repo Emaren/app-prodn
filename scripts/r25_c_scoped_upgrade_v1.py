@@ -51,7 +51,14 @@ TRAFFIC_RECEIPTS = {
     "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
     "commit.json": "e4e11e78599652cbf06685982714df1ebe6b235f9a5a4cb70f23bc75af2acd5a",
 }
-TRAFFIC_SHA = "4d0e6196f5b4f5653d4062e3494619360ef77de6"
+TRAFFIC_R60_SHA = "4d0e6196f5b4f5653d4062e3494619360ef77de6"
+TRAFFIC_SHA = "60cf4da5962b4ba65f546d2bea68c3cdc03e8479"
+TRAFFIC_R61_ALLOWED_FILES = (
+    "docs/PUBLIC_AUDIENCE_V2.md",
+    "docs/TRAFFIC_V2_INGESTION_RECEIPTS_OPERATOR.md",
+    "scripts/public_audience_v2_ingestion_receipts_health.py",
+    "tests/test_public_audience_v2_ingestion_receipts_health.py",
+)
 REFRESH = "aoe2war-steam-egress-refresh.service"
 TIMER = "aoe2war-steam-egress-refresh.timer"
 PUBLIC_NGINX = Path("/etc/nginx/sites-available/aoe2war.com")
@@ -248,9 +255,19 @@ def traffic_receipts():
     for name, expected in TRAFFIC_RECEIPTS.items():
         need(digest(safe_bytes(TRAFFIC_ROOT / name)) == expected, "TRAFFIC_R60_RECEIPT_DRIFT")
     git = ("/usr/bin/git", "-C", "/var/www/Traffic/traffic-api")
+    # R60 was independently committed and certified first. The later R61
+    # source-only audit adds no runtime API, ingest writer, scheduler or
+    # certified audience publication changes. Accept that narrow linear
+    # fast-forward, not arbitrary source drift or an unsigned checkout.
     need(invoke(*git, "rev-parse", "HEAD").strip().decode() == TRAFFIC_SHA and
          not invoke(*git, "status", "--porcelain", "--untracked-files=no").strip(),
-         "TRAFFIC_R60_CHECKOUT_NOT_EXACT")
+         "TRAFFIC_R61_CHECKOUT_NOT_EXACT")
+    need(invoke(*git, "merge-base", TRAFFIC_R60_SHA, TRAFFIC_SHA).strip().decode()
+         == TRAFFIC_R60_SHA and
+         tuple(sorted(invoke(*git, "diff", "--name-only",
+                             TRAFFIC_R60_SHA, TRAFFIC_SHA).decode().splitlines()))
+         == TRAFFIC_R61_ALLOWED_FILES,
+         "TRAFFIC_R61_SCOPE_NOT_EXACT_READ_ONLY_AUDITOR")
 
 
 def upgrade_sources(old, release_ref, failed):

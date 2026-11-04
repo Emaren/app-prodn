@@ -594,9 +594,9 @@
       "owner": "aoe2war-web",
       "path": "docs/COMMISSIONER_REPLAY_REVIEW.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "internal",
-      "sha256": "748086c5d9dc355739ef3f2153e16a40e4ef9c27a2b9a6d93889d1fd67799d91",
+      "sha256": "594ab5628f6e63b746632a45eb2e70ae086c2b042bb0175c238d884fba00cc76",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7f4f8b05ea037964a5640e92a14783fc1c33bc7ea02a06c97d2c739522abd992",
+      "sha256": "3156da6ece1753638ed6f467a7ca12b57da2e5ba58e46bb1066113e75de7fc2c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1192,9 +1192,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKET_TEAM_INTEGRITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "restricted",
-      "sha256": "c4bf646903fe22bbd16f52ee47a08e3be70c224ee0cacf1571411e7d85ec5b61",
+      "sha256": "ba1846eafbf044f1577e8cb04a230d2a91ad307e3c390b1343f8d7471cd94304",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2062,9 +2062,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ENGINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "internal",
-      "sha256": "4fb5cfd36abf0ed3c3f9c3760da2a60091c8236f50e48ccc9f057d1f334ac41b",
+      "sha256": "708dd575c6e61fc80ba7cee44f6a5bceef26bd5f29c6746ae0c027d2caa3b2e4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/a05-resume-stopped-3032-20261103",
-    "commit": "e86e07b6188a0ce817ef8ad26a5125643b85a5db"
+    "branch": "codex/a05-traffic-r61-attestation-20261103",
+    "commit": "1f23d8327febef8c8f8aace4681b375ac62927a9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
