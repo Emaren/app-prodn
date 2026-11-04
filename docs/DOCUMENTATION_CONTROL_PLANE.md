@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/traffic-provisional-rail-20261104` at `b088cb8f5f7a50efe881af64b182cf12b230a36f`
+Implementation baseline: `fix/traffic-provisional-rail-20261104` at `bccd235358f07319e74e9a522e008ec0302af826`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -38,6 +38,10 @@ class TestRscPrecutover(unittest.TestCase):
     def test_next_server_error_in_http_200_is_detected(self):
         self.assertTrue(f.production_has_server_component_error(ERROR))
 
+    def test_error_record_split_across_flight_chunks(self):
+        self.assertTrue(f.production_has_server_component_error(
+            GOOD + flight(['8:E{"dig', 'est":"2743377646"}\n'])))
+
     def test_literal_user_text_does_not_fake_flight_error(self):
         user_text = "Visitor saw 8:E{\"digest\":\"2743377646\"} in a forum post."
         self.assertFalse(f.production_has_server_component_error(GOOD + user_text))

@@ -1635,18 +1635,16 @@ def production_has_server_component_error(page_html):
     """
     need(type(page_html) is str and len(page_html)<=4*1024*1024,
          "CONTENT_PARITY_RSC_HTML_INVALID")
-    chunks=0
+    chunks=[]
     for match in _FLIGHT_CHUNK.finditer(page_html):
-        chunks+=1
         try:
             decoded=json.loads(match.group(1))
         except (ValueError,TypeError) as exc:
             raise Hold("CONTENT_PARITY_RSC_STREAM_INVALID") from exc
         need(type(decoded) is str,"CONTENT_PARITY_RSC_STREAM_INVALID")
-        if any(_FLIGHT_RENDER_ERROR.fullmatch(line) for line in decoded.splitlines()):
-            return True
-    need(chunks>0,"CONTENT_PARITY_RSC_STREAM_MISSING")
-    return False
+        chunks.append(decoded)
+    need(bool(chunks),"CONTENT_PARITY_RSC_STREAM_MISSING")
+    return any(_FLIGHT_RENDER_ERROR.fullmatch(line) for line in "".join(chunks).splitlines())
 
 def production_public_guest_page_smoke():
     """Require actual nonfinancial player, rivalry and archive pages to render.

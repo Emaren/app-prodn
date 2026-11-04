@@ -1242,6 +1242,14 @@ def production_install_database(database, sql, password, journal):
         "new_runtime_role": PROD_DB_ROLE, "new_function_owner": PROD_DB_OWNER,
         "runtime_direct_table_writes_authorized": False, "financial_authorized": False})
 
+# Exact seven public-display views installed by #1155. The SQL hashes
+# PostgreSQL's canonical definitions and owners, not their underlying rows.
+PROD_PUBLIC_READ_MODEL_SHA256 = "885cb0ed6992ff828a78b6b25f4ea3e76399ad967c48d2489843a0814386138d"
+PROD_PUBLIC_READ_MODEL_VIEWS = (
+    "accepted_replay_projections", "pending_claim_names", "pending_claim_watermark",
+    "pending_player_gift_totals", "player_badges", "player_gifts", "replay_projection_watermarks",
+)
+
 def production_database_witness(database, password):
     # F/G call this read-only catalog observation. No auth function invocation,
     # INSERT, UPDATE, synthetic user or rolled-back write is permitted here.
@@ -1269,11 +1277,30 @@ SELECT json_build_object(
  'no_unreviewed_table_select',NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE c.relkind IN ('r','p','v','m','f') AND left(n.nspname,3)<>'pg_' AND n.nspname<>'information_schema' AND
    has_table_privilege(c.oid,'SELECT') AND
-   NOT(n.nspname='public' AND c.relname=ANY(ARRAY[__SAFE_READ_TABLES__]))),
+   NOT((n.nspname='public' AND c.relname=ANY(ARRAY[__SAFE_READ_TABLES__])) OR __SAFE_PUBLIC_VIEW__)),
  'no_unreviewed_column_select',NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    JOIN pg_attribute a ON a.attrelid=c.oid WHERE c.relkind IN ('r','p','v','m','f') AND a.attnum>0 AND NOT a.attisdropped
    AND left(n.nspname,3)<>'pg_' AND n.nspname<>'information_schema' AND has_column_privilege(c.oid,a.attnum,'SELECT') AND
-   NOT(n.nspname='public' AND (c.relname=ANY(ARRAY[__SAFE_READ_TABLES__]) OR __SAFE_COLUMN_READS__))),
+   NOT((n.nspname='public' AND (c.relname=ANY(ARRAY[__SAFE_READ_TABLES__]) OR __SAFE_COLUMN_READS__)) OR __SAFE_PUBLIC_VIEW__)),
+ 'public_read_model',(SELECT json_build_object(
+    'definitions_sha256',encode(sha256(convert_to(string_agg(c.relname||':'||pg_get_userbyid(c.relowner)||':'||pg_get_viewdef(c.oid,false),E'\\n' ORDER BY c.relname COLLATE "C"),'UTF8')),'hex'),
+    'exact_view_count',count(c.oid),
+    'schema_and_view_access',pg_get_userbyid(ns.nspowner)='postgres'
+       AND has_schema_privilege(ns.oid,'USAGE') AND NOT has_schema_privilege(ns.oid,'CREATE')
+       AND NOT has_schema_privilege(ns.oid,'USAGE WITH GRANT OPTION')
+       AND NOT EXISTS(SELECT 1 FROM aclexplode(ns.nspacl) acl
+          WHERE acl.grantee NOT IN (ns.nspowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
+             OR acl.grantor<>ns.nspowner)
+       AND bool_and(c.relkind='v' AND pg_get_userbyid(c.relowner)='postgres'
+          AND c.reloptions=ARRAY['security_barrier=true'] AND has_table_privilege(c.oid,'SELECT')
+          AND NOT has_table_privilege(c.oid,'SELECT WITH GRANT OPTION')
+          AND NOT EXISTS(SELECT 1 FROM pg_attribute a
+             WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped AND a.attacl IS NOT NULL)
+          AND NOT EXISTS(SELECT 1 FROM aclexplode(c.relacl) acl
+             WHERE acl.grantee NOT IN (c.relowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
+                OR acl.grantor<>c.relowner)))
+   FROM pg_namespace ns LEFT JOIN pg_class c ON c.relnamespace=ns.oid
+   WHERE ns.nspname='aoe2war_public_v1' GROUP BY ns.oid),
  'read_acl_sha256',encode(sha256(convert_to((SELECT COALESCE(string_agg(n.nspname||'.'||c.relname||'.'||a.attname,',' ORDER BY n.nspname,c.relname,a.attnum),'')
    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_attribute a ON a.attrelid=c.oid
    WHERE c.relkind IN ('r','p','v','m','f') AND a.attnum>0 AND NOT a.attisdropped AND left(n.nspname,3)<>'pg_'
@@ -1293,7 +1320,14 @@ SELECT json_build_object(
     columns = ["(c.relname='"+table+"' AND a.attname=ANY(ARRAY["+",".join("'"+column+"'" for column in values)+"]))"
                for table, values in PROD_COLUMN_READS.items()]
     sql = sql.replace("__SAFE_COLUMN_READS__", " OR ".join(columns))
+    views = ",".join("'" + name + "'" for name in PROD_PUBLIC_READ_MODEL_VIEWS)
+    sql = sql.replace("__SAFE_PUBLIC_VIEW__", "(n.nspname='aoe2war_public_v1' AND c.relkind='v' AND c.relname=ANY(ARRAY[" + views + "]))")
     proof = parse(production_psql(database, sql, password))
+    model = proof.get("public_read_model")
+    if model is not None:
+        need(model == {"definitions_sha256": PROD_PUBLIC_READ_MODEL_SHA256,
+                       "exact_view_count": len(PROD_PUBLIC_READ_MODEL_VIEWS), "schema_and_view_access": True},
+             "PRODUCTION_PUBLIC_READ_MODEL_CATALOG_DRIFT")
     need(all(type(proof.get(key)) is str and H64.fullmatch(proof[key]) for key in ("read_acl_sha256","definer_identity_sha256")), "PRODUCTION_READ_ACL_DIGEST_REQUIRED")
     need(proof.get("session_user") == PROD_DB_ROLE and proof.get("callable_definers") == PROD_DEFINERS and
          all(proof.get(key) is True for key in ("restricted_role", "restricted_auth_owner", "no_auth_owner_memberships", "definers_pinned_owner_searchpath", "no_memberships", "no_database_create", "no_schema_create", "user_projection_callable",
@@ -1556,7 +1590,9 @@ def production_witness(payload):
     # GET-only negative route check. Unsafe method probes are sealed in the
     # one-time admission receipt, not repeated by observers.
     need(pg["read_acl_sha256"] == admission["catalog"]["read_acl_sha256"] and
-         pg["definer_identity_sha256"] == admission["catalog"]["definer_identity_sha256"], "PRODUCTION_SEALED_READ_ACL_OR_DEFINER_DRIFT")
+         pg["definer_identity_sha256"] == admission["catalog"]["definer_identity_sha256"] and
+         pg.get("public_read_model") == admission["catalog"].get("public_read_model"),
+         "PRODUCTION_SEALED_READ_ACL_OR_DEFINER_DRIFT")
     steam = production_current_steam_tls()
     refresh = production_refresh_unit_identity()
     need(refresh == policy["refresh_units"], "PRODUCTION_REFRESH_SOURCE_OR_EFFECTIVE_DRIFT")
