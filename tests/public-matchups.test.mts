@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildPlayerPairRivalryContext,
+  buildPublicRivalryActivity,
   loadPublicRivalryBoards,
   loadRecentFinalMatchupRows,
   PUBLIC_MATCHUP_SCAN_LIMIT,
@@ -11,6 +12,7 @@ import {
 import {
   buildReplayPublicPlayerRef,
 } from "../lib/publicPlayers.ts";
+import { parseReplaySides } from "../lib/replaySides.ts";
 
 function replayRow(
   input: {
@@ -119,6 +121,48 @@ function unresolvedMeeting(
     disconnectDetected: true,
   });
 }
+
+test("restricted production keeps replay activity while withholding unavailable market links", async () => {
+  const game = provenEmarenWin(87_001, "2026-08-30T18:30:26.000Z");
+  const shared = {
+    parsedCandidates: [{ match: game, sides: parseReplaySides(game.players) }],
+    identityContext: Promise.resolve({ claimedPlayers: new Map(), pendingClaimSummaries: new Map() }),
+  };
+  let marketQueries = 0;
+  const prisma = {
+    betMarket: {
+      findMany: async ({ where }: { where: { linkedGameStatsId?: unknown } }) => {
+        marketQueries++;
+        if (process.env.AOE2WAR_RUNTIME_PROFILE === "nonfinancial-production-v1") {
+          throw new Error("PostgreSQL 42501: permission denied for table bet_markets");
+        }
+        return where.linkedGameStatsId ? [{ id: 35, linkedGameStatsId: game.id }] : [];
+      },
+    },
+  } as unknown as Parameters<typeof buildPublicRivalryActivity>[0];
+
+  const originalEnv = process.env;
+  try {
+    process.env = { ...originalEnv, AOE2WAR_RUNTIME_PROFILE: "legacy" };
+    const legacy = await buildPublicRivalryActivity(prisma, [game], 18, shared);
+    assert.equal(legacy.length, 1);
+    assert.equal(legacy[0].marketHref, "/bets/35");
+    assert.equal(marketQueries, 2);
+
+    Object.assign(process.env, {
+      NODE_ENV: "production",
+      AOE2WAR_RUNTIME_PROFILE: "nonfinancial-production-v1",
+      AOE2WAR_R25_ISOLATED_WEB: "true",
+      AOE2WAR_PROD_DB_PREVIEW: "false",
+      WARGRAPH_RUNTIME_DISABLED: "true",
+    });
+    const restricted = await buildPublicRivalryActivity(prisma, [game], 18, shared);
+    assert.deepEqual(restricted, [{ ...legacy[0], marketHref: null }]);
+    assert.equal(marketQueries, 2);
+  } finally {
+    process.env = originalEnv;
+  }
+});
 
 test("the shared matchup scan preserves the full Emaren-Sechma series beyond the legacy detail window", async () => {
   const currentMeeting =
@@ -394,12 +438,10 @@ test("the full rivalry board shares one identity and pending-claim projection", 
         parse_source: "watcher_final",
         winner: "Emaren",
       }),
-      findMany: async () => [
-        provenEmarenWin(
-          30_000,
-          "2026-08-30T18:30:26.000Z"
-        ),
-      ],
+      findMany: async ({ select }: { select: Record<string, unknown> }) => {
+        assert.equal("warEngineCase" in select, false);
+        return [provenEmarenWin(30_000, "2026-08-30T18:30:26.000Z")];
+      },
     },
     replayStatProjection: {
       findFirst: async () => null,

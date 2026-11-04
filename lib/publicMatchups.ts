@@ -15,6 +15,8 @@ import {
   readPlayedAt,
 } from "@/lib/gameStatsView";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import type { WarEngineCaseView } from "@/lib/warEngine";
 import {
   applyPendingWoloClaimSummary,
   buildPublicPlayerRef,
@@ -30,10 +32,6 @@ import {
 import {
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
-import {
-  WAR_ENGINE_CASE_RELATION,
-  type WarEngineCaseView,
-} from "@/lib/warEngine";
 import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -78,6 +76,8 @@ export type MatchupGameRow = {
   event_types?: unknown;
   key_events?: unknown;
   parse_source?: string | null;
+  // Keep the public match-card type contract, but never JOIN the restricted
+  // underlying War Engine case table on the nonfinancial page query.
   warEngineCase?: WarEngineCaseView | null;
 };
 
@@ -469,7 +469,6 @@ async function loadRecentFinalMatchupRowsFresh(
         key_events: true,
         parse_source: true,
         replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
-        warEngineCase: WAR_ENGINE_CASE_RELATION,
       },
     });
 
@@ -1925,6 +1924,7 @@ export async function buildPublicRivalryActivity(
     )
   );
 
+  const includeMarketLinks = !isNonfinancialPublicReadProfile();
   const [
     {
       claimedPlayers,
@@ -1934,21 +1934,23 @@ export async function buildPublicRivalryActivity(
     sessionMarketRows,
   ] = await Promise.all([
     identityContext,
-    prisma.betMarket.findMany({
-      where: {
-        linkedGameStatsId: {
-          in: gameIds,
-        },
-      },
-      orderBy: {
-        id: "desc",
-      },
-      select: {
-        id: true,
-        linkedGameStatsId: true,
-      },
-    }),
-    sessionKeys.length > 0
+    includeMarketLinks
+      ? prisma.betMarket.findMany({
+          where: {
+            linkedGameStatsId: {
+              in: gameIds,
+            },
+          },
+          orderBy: {
+            id: "desc",
+          },
+          select: {
+            id: true,
+            linkedGameStatsId: true,
+          },
+        })
+      : [],
+    includeMarketLinks && sessionKeys.length > 0
       ? prisma.betMarket.findMany({
           where: {
             linkedSessionKey: {
@@ -2014,6 +2016,7 @@ export async function buildPublicRivalryActivity(
   const marketHrefForGame = (
     game: MatchupGameRow
   ) => {
+    if (!includeMarketLinks) return null;
     const directMarketId =
       marketByGameId.get(game.id);
 
