@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3f5f440e08d4d54e9a8b17819c49c3ab654d4e8dae9f0db338fad00169fd8de9",
+      "sha256": "9281b5eed9432d8eec050775a202f200b0fbc5e40878c7cb75fa62f2f68de108",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/r25-contained-runtime-refresh-20261104",
-    "commit": "d1e35a548b567544567ac0c6f5666ea5f8ea028c"
+    "branch": "fix/traffic-provisional-rail-20261104",
+    "commit": "ccfc27ef8822b4e7e194a92dabb3f19737a944ea"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
