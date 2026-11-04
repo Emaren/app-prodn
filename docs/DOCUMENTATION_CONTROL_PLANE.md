@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-published-hero-content-20261104` at `f1d01b06563d891896f190205f240a0e5f53fce4`
+Implementation baseline: `fix/f-rsc-guest-route-preflight-20261104` at `2b0172bf5a62947342d00d83a38697eb8a12ef8a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
