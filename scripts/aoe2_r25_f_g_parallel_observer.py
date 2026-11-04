@@ -37,6 +37,7 @@ PUBLIC="https://aoe2war.com"
 PAGES=("/","/lobby","/bets","/live-games","/war-chest")
 FINANCE_PREFIXES=("aoe2","wolo","tokenchain","traffic","radio","postgresql","postgres")
 MONITOR_ONESHOT_TIMERS={
+    "aoe2war-release-readiness-observer.service":"aoe2war-release-readiness-observer.timer",
     "aoe2-wolo-transfer-heartbeat.service":"aoe2-wolo-transfer-heartbeat.timer",
     "aoe2hdbets-bet-stake-reconcile.service":"aoe2hdbets-bet-stake-reconcile.timer",
     "aoe2hdbets-challenge-reconcile.service":"aoe2hdbets-challenge-reconcile.timer",
