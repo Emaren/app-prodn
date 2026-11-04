@@ -74,8 +74,8 @@ SCOPE = "UPGRADE_STOPPED_NONFINANCIAL_3032_ONLY"
 SOURCE_PATH = "scripts/r25_c_scoped_upgrade_v1.py"
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 REVIEWED_RUNTIME_SOURCES = {
-    "controller": ("scripts/r25_c_start_root.py", 115060,
-                  "f7fa39d97f6c82282a1b1beac940606c71f07e9f0fdea42e4935e023df161479"),
+    "controller": ("scripts/r25_c_start_root.py", 115124,
+                  "d9703068468ee13b22a18c5da17d756583802f1f743260cb8f90657cf5c52b07"),
     "guard": ("scripts/r25_b_guard_production_v1.cjs", 11273,
                   "5edf4485be0884922935295600adf7c8b3c17fe697b962d31e7f17b09e8f3ec3"),
 }
