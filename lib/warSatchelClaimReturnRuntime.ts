@@ -12,7 +12,7 @@ import {loadSatchelClaimReturnEconomics,satchelReturnContextFingerprint,type Sat
 import {creditVerifiedSatchelClaimReturn} from "./warSatchelFundedLedger.ts";
 import {executeServiceOnlySatchelEscrowReturn,inspectServiceOnlySatchelEscrowReturn,satchelEscrowReturnSpendObservation,type SatchelEscrowReturnRun} from "./woloBetSettlement.ts";
 import {getWoloBetEscrowRuntime} from "./woloChain.ts";
-import {assertCurrentSatchelReturnReserve} from "./warSatchelClaimReturnReserve.ts";
+import {assertCurrentSatchelReturnReserve,inspectCurrentSatchelReturnReserve,satchelReturnReserveNativeBinding,type SatchelReturnExecutionCheck} from "./warSatchelClaimReturnReserve.ts";
 
 const ENDPOINT="http://127.0.0.1:8094";
 const HASH=/^[A-F0-9]{64}$/;
@@ -56,8 +56,6 @@ export function satchelClaimReturnExecutionRun(e:SatchelClaimReturnEconomics):Sa
   return Object.freeze({settlement_run_id:id,source_app:"aoe2hdbets",source_event_id:e.operationId,signer_role:"escrow",
     payouts:Object.freeze([Object.freeze({request_id:id,to_address:e.vaultAddress,amount_uwolo:e.amountUwolo,memo:"aoe2war/satchel/claim-return/v1/"+e.claimId})])});
 }
-/** Strict exact-run assertion shared by prepare, response and read-only recovery.
- * A response hash is merely a candidate; this does not authenticate payment. */
 /** Native 8094 UNKNOWN is never payment finality. Only its strictly bound
  * tx_hash can become a *candidate* for subsequent separate authenticated
  * reconciliation; a missing hash is a permanent inspection-only hold. */
@@ -74,6 +72,29 @@ function assertPrepared(value:unknown,run:SatchelEscrowReturnRun){
   const p=object(value);
   if(p.kind!=="escrow_run_prepared"||p.execution_authorized!==false||p.credit_authorized!==false||canonical(p.run)!==canonical(run))stop("prepared_run_identity_changed");
 }
+/** Immutable HD identity for one new native execution attempt. Serialized
+ * check metadata is audit-only and can never mint the live opaque check. */
+export function satchelClaimReturnExecutionRequest(e:SatchelClaimReturnEconomics,checked:SatchelReturnExecutionCheck){
+  assertCurrentSatchelReturnReserve(e,checked);
+  return Object.freeze({protocol:1 as const,kind:"satchel_claim_return_8094" as const,
+    approval:structuredClone(e.approval),nativeCheck:structuredClone(checked)});
+}
+function assertNativeAttempt(value:unknown,e:SatchelClaimReturnEconomics):boolean{
+  const r=object(value);
+  if(r.protocol!==1||r.kind!=="satchel_claim_return_8094")return false;
+  if(Object.keys(r).length!==4||Object.keys(r).some(k=>!["protocol","kind","approval","nativeCheck"].includes(k))||canonical(r.approval)!==canonical(e.approval))stop("durable_attempt_changed");
+  const c=object(r.nativeCheck),b=object(c.binding);
+  // Expiry is deliberately not renewed or required during read-only recovery.
+  // This stored DTO proves no current permission; the original signature and
+  // transaction identity will be authenticated before any credit.
+  if(c.protocol!==1||c.kind!=="escrow_return_execution_check"||c.executionAuthorized!==false||c.creditAuthorized!==false||
+    typeof c.operationPermitSha256!=="string"||! /^[a-f0-9]{64}$/.test(c.operationPermitSha256)||c.operationPermitSha256==="0".repeat(64)||
+    typeof c.reserveReviewSha256!=="string"||! /^[a-f0-9]{64}$/.test(c.reserveReviewSha256)||c.reserveReviewSha256==="0".repeat(64)||
+    b.ticketId!==e.ticketId||b.marketId!==e.marketId||b.legId!==e.legId||b.entitlementId!==e.entitlementId||b.claimKind!==e.claimKind||b.amountUwolo!==e.amountUwolo||
+    b.claimId!==e.claimId||b.operationId!==e.operationId||b.ownerId!==e.ownerId||b.allocationDigest!==object(e.approval).allocation_digest||
+    b.escrowAddress!==e.escrowAddress||b.vaultAddress!==e.vaultAddress)stop("durable_attempt_changed");
+  return true;
+}
 async function signerRequest(path:"/satchel/v1/returns/prepare"|"/satchel/v1/returns/reconcile",body:unknown,reader:typeof fetch,signal?:AbortSignal){
   const response=await reader(ENDPOINT+path,{method:"POST",redirect:"error",cache:"no-store",headers:{Authorization:"Bearer "+configuration().token,"Content-Type":"application/json",Accept:"application/json"},
     body:JSON.stringify(body),signal:AbortSignal.any([AbortSignal.timeout(8500),...(signal?[signal]:[])])});
@@ -87,12 +108,12 @@ export async function recordReviewedSatchelClaimReturnExecution(prisma:PrismaCli
   const detached=structuredClone(review);
   const e=await exclusive(prisma,tx=>loadSatchelClaimReturnEconomics(tx,owner,detached,"pending"));
   const bank=await authenticateWarSatchelEscrowBank(cfg.escrow,reader);
-  assertCurrentSatchelReturnReserve(e,detached.reserveReview,bank);
+  satchelReturnReserveNativeBinding(e,bank);
   const fingerprint=digest({economics:e,reserveReview:detached.reserveReview});
   return exclusive(prisma,async tx=>{
     const current=await loadSatchelClaimReturnEconomics(tx,owner,detached,"pending");
     if(canonical(current)!==canonical(e))stop("review_context_changed_during_bank_io");
-    assertCurrentSatchelReturnReserve(e,detached.reserveReview,bank);
+    satchelReturnReserveNativeBinding(e,bank);
     const prior=await tx.satchelClaimReturnExecutionReview.findUnique({where:{claimId:owner.claimId}});
     if(prior){if(prior.reviewDigest!==fingerprint)stop("immutable_review_conflict");return {state:"already_reviewed" as const};}
     const claim=await tx.pendingWoloClaim.findUnique({where:{id:owner.claimId}});
@@ -105,8 +126,10 @@ export async function recordReviewedSatchelClaimReturnExecution(prisma:PrismaCli
 async function unknown(prisma:PrismaClient,claimId:number){
   // INSERT acknowledgement can be lost after COMMIT. Re-read the durable fence;
   // do not create evidence that claims an attempt exists when it does not.
-  if(await prisma.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}}))
-    await prisma.satchelClaimReturnExecutionObservation.create({data:{claimId,state:"unknown",txHash:null}});
+  if (!await prisma.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}})) {
+    return {state:"pre_execution_hold" as const};
+  }
+  await prisma.satchelClaimReturnExecutionObservation.create({data:{claimId,state:"unknown",txHash:null}});
   return {state:"unknown_hold" as const};
 }
 /** Exact server-selected claim only. Once an attempt exists every pass is GET
@@ -124,28 +147,42 @@ export async function processCertifiedSatchelClaimReturn(prisma:PrismaClient,cla
     return {state:"credited" as const,txHash:paid.txHash,ownerUserId:r.ownerUserId};
   }
   const e=await exclusive(prisma,tx=>economics(tx,r,"pending")),run=satchelClaimReturnExecutionRun(e);
-  let attempt=await prisma.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}}),reply:unknown;
+  const attempt=await prisma.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}});
+  let reply:unknown;
   if(!attempt){
-    // Asset proof is read-only. A nonauthorizing observation is combined with
-    // the independently signed coverage review before the UNKNOWN transaction.
-    const bank=await authenticateWarSatchelEscrowBank(cfg.escrow,reader);
-    assertCurrentSatchelReturnReserve(e,r.reserveReviewJson,bank);
     let entered=false;
     try{
       reply=await withHdFinancialLease({scope:"hd-legacy",producer:"settlement-run",wallet:cfg.escrow},async signal=>{
         entered=true;
+        const mayPrepare=await exclusive(prisma,async tx=>{
+          await economics(tx,r,"pending");
+          if(await tx.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}}))return false;
+          const claim=await tx.pendingWoloClaim.findUnique({where:{id:claimId}});
+          if(!claim||claim.payoutAttemptedAt!==null)stop("prior_payment_attempt_requires_reconciliation");
+          return true;
+        });
+        if(!mayPrepare)return null;
+        signal.throwIfAborted();
+        // Preparation is expressly nonspending. Its journal change makes any
+        // imported pre-prepare review ineligible for execution admission.
+        assertPrepared(await signerRequest("/satchel/v1/returns/prepare",e.approval,reader,signal),run);
+        const checked=await inspectCurrentSatchelReturnReserve(e,reader,signal);
+        const request=satchelClaimReturnExecutionRequest(e,checked);
         const won=await exclusive(prisma,async tx=>{
-          await economics(tx,r,"pending");assertCurrentSatchelReturnReserve(e,r.reserveReviewJson,bank);
-          const old=await tx.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}});if(old)return false;
-          const c=await tx.pendingWoloClaim.findUnique({where:{id:claimId}});if(!c||c.payoutAttemptedAt!==null)stop("prior_payment_attempt_requires_reconciliation");
-          await tx.satchelClaimReturnExecutionAttempt.create({data:{claimId,runId:run.settlement_run_id,requestJson:run as Prisma.InputJsonValue,requestDigest:digest(run)}});
+          await economics(tx,r,"pending");assertCurrentSatchelReturnReserve(e,checked);
+          if(await tx.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}}))return false;
+          const claim=await tx.pendingWoloClaim.findUnique({where:{id:claimId}});
+          if(!claim||claim.payoutAttemptedAt!==null)stop("prior_payment_attempt_requires_reconciliation");
+          signal.throwIfAborted();
+          assertCurrentSatchelReturnReserve(e,checked);
+          await tx.satchelClaimReturnExecutionAttempt.create({data:{claimId,runId:run.settlement_run_id,requestJson:request as Prisma.InputJsonValue,requestDigest:digest(request)}});
           return true;
         });
         if(!won)return null;
-        signal.throwIfAborted();
-        assertPrepared(await signerRequest("/satchel/v1/returns/prepare",e.approval,reader,signal),run);
-        signal.throwIfAborted();
-        return executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader);
+        // A lost COMMIT acknowledgement never reaches this POST. A later pass
+        // sees the durable attempt and can only inspect/reconcile it.
+        signal.throwIfAborted();assertCurrentSatchelReturnReserve(e,checked);
+        return executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader,signal);
       });
       if(reply===null)return unknown(prisma,claimId);
     }catch{
@@ -153,10 +190,9 @@ export async function processCertifiedSatchelClaimReturn(prisma:PrismaClient,cla
       return unknown(prisma,claimId);
     }
   }else{
-    if(attempt.runId!==run.settlement_run_id||attempt.requestDigest!==digest(run)||canonical(attempt.requestJson)!==canonical(run))stop("durable_attempt_changed");
+    if(attempt.runId!==run.settlement_run_id||attempt.requestDigest!==digest(attempt.requestJson))stop("durable_attempt_changed");
+    if(!assertNativeAttempt(attempt.requestJson,e))return {state:"legacy_attempt_hold" as const};
     try{
-      // Native 8094 GET reports a durable UNKNOWN fence, never a legacy run
-      // receipt or permission to retry a timed-out POST.
       reply=await inspectServiceOnlySatchelEscrowReturn(String(claimId),reader);
     }catch{return unknown(prisma,claimId);}
   }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {authenticatedWarSatchelBankFreshAt,authenticateWarSatchelBank} from "../lib/warSatchelAuthenticatedBank.ts";
+import {authenticatedWarSatchelBankFreshAt,authenticateWarSatchelBank,authenticateWarSatchelEscrowBank} from "../lib/warSatchelAuthenticatedBank.ts";
 import {verifiedBankReceiptMetadata} from "../lib/warSatchelAuthenticatedFinancialProof.ts";
 
 const now=Date.parse("2026-10-20T20:00:00Z"),vault="wolo1"+"q".repeat(38);
@@ -71,6 +71,42 @@ test("missing independently provisioned authority refuses before any network IO"
     if(enabled===undefined)delete process.env.WAR_SATCHEL_PROOF_VERIFIER_ENABLED;
     else process.env.WAR_SATCHEL_PROOF_VERIFIER_ENABLED=enabled;
   }
+});
+
+test("the escrow bank role requires its own reviewed verifier identity", async t => {
+  const env = {
+    WAR_SATCHEL_PROOF_VERIFIER_ENABLED: "true",
+    WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED: "true",
+    WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS: vault,
+    WAR_SATCHEL_SIGNER_AUTH_TOKEN: "t".repeat(64),
+    WAR_SATCHEL_VERIFIER_BINARY: "/fixture/vault-verifier",
+    WAR_SATCHEL_VERIFIER_AUTHORITY_FILE: "/fixture/public-authority",
+    WAR_SATCHEL_ESCROW_BANK_VERIFIER_BINARY: "",
+    WAR_SATCHEL_ESCROW_BANK_VERIFIER_SHA256: "",
+  };
+  const saved = Object.fromEntries(Object.keys(env).map(key => [key, process.env[key]]));
+  Object.assign(process.env, env);
+  t.after(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  let reads = 0;
+  const reader: typeof fetch = async url => {
+    reads++;
+    assert.equal(url, "http://127.0.0.1:8094/satchel/v1/proofs/escrow-bank");
+    return Response.json({}, {status: 503});
+  };
+  const escrow = "wolo1" + "p".repeat(38);
+  await assert.rejects(authenticateWarSatchelEscrowBank(escrow, reader), /pinned_offline_verifier_not_provisioned/);
+  process.env.WAR_SATCHEL_ESCROW_BANK_VERIFIER_BINARY = "/fixture/escrow-verifier";
+  process.env.WAR_SATCHEL_ESCROW_BANK_VERIFIER_SHA256 = "37e2c13b68a6d14b3019ad7a9dc12d38360c63b42094daac14e881e3626898ef";
+  await assert.rejects(authenticateWarSatchelEscrowBank(escrow, reader), /unreviewed_verifier_digest/);
+  assert.equal(reads, 0);
+  process.env.WAR_SATCHEL_ESCROW_BANK_VERIFIER_SHA256 = "bf07bee6cfe18988e9d3c3465bc3a3e66835d9cbc45fa3415462bba8727449e8";
+  await assert.rejects(authenticateWarSatchelEscrowBank(escrow, reader), /bank_proof_export_unavailable/);
+  assert.equal(reads, 1);
 });
 
 test("bank export is fixed server-owned, bounded, read-only and rejects untrusted JSON before native IO",async()=>{

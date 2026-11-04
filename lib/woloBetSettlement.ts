@@ -2109,9 +2109,9 @@ async function satchelReturnReply(response:Response,claimId:string,signal:AbortS
   if(names.length<4||names.length>5||new Set(names).size!==names.length)satchelReturnUnknown();
   return satchelEscrowReturnSpendObservation(JSON.parse(raw),claimId);
 }
-/** One fixed 8094 request under the existing financial lease. Never validates
- * through8092, opens a local signer, follows redirects, or retries UNKNOWN. */
-export async function executeServiceOnlySatchelEscrowReturn(approval:unknown,escrow:string,reader:typeof fetch=fetch,canceled?:AbortSignal){
+/** One fixed 8094 request using the runtime's existing financial lease. */
+export async function executeServiceOnlySatchelEscrowReturn(approval:unknown,escrow:string,reader:typeof fetch,admitted:AbortSignal){
+  if (!admitted) throw Error("SATCHEL_ESCROW_SERVICE_ONLY_ADMISSION_REQUIRED");
   const original=structuredClone(approval);
   if(!original||typeof original!=="object"||Array.isArray(original))throw Error("SATCHEL_ESCROW_SERVICE_ONLY_INVALID_APPROVAL");
   const a=original as Record<string,unknown>,claimId=satchelReturnClaim(a.claim_id),body=JSON.stringify(original);
@@ -2122,12 +2122,12 @@ export async function executeServiceOnlySatchelEscrowReturn(approval:unknown,esc
     throw Error("SATCHEL_ESCROW_SERVICE_ONLY_INVALID_APPROVAL");
   const headers=satchelReturnHeaders();
   return withHdFinancialLease({scope:"hd-legacy",producer:"settlement-run",wallet:escrow},async lease=>{
-    const signal=AbortSignal.any([lease,AbortSignal.timeout(15_000),...(canceled?[canceled]:[])]);
+    const signal=AbortSignal.any([lease,AbortSignal.timeout(15_000)]);
     signal.throwIfAborted();
     const response=await reader(SATCHEL_RETURN_ENDPOINT+"/execute",{method:"POST",headers,body,
       cache:"no-store",redirect:"error",signal});
     return satchelReturnReply(response,claimId,signal);
-  });
+  },admitted);
 }
 /** Query-free read-only recovery, including after owner permit expiry. 404 and
  * all failed/invalid observations remain UNKNOWN, never permission to POST. */

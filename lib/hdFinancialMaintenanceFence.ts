@@ -28,6 +28,10 @@ const scopes={"hd-legacy":48,"hd-satchel":49} as const;
 declare const __AOE2WAR_HD_FINANCIAL_BUILD__: Readonly<{source:string;deployment:string}> | null;
 const BUILD=typeof __AOE2WAR_HD_FINANCIAL_BUILD__ === "undefined" ? null : __AOE2WAR_HD_FINANCIAL_BUILD__;
 let active=0;
+const admittedLeases = new WeakMap<AbortSignal, Readonly<{
+  admission: HdFinancialAdmission;
+  deadline: number;
+}>>();
 function held(reason:string):never{throw Error("HD_FINANCIAL_FENCE_HELD:"+reason);}
 function record(value:unknown):Record<string,unknown>{
   if(!value||typeof value!=="object"||Array.isArray(value))held("invalid_policy");
@@ -125,16 +129,41 @@ async function withConfiguredLease<T>(client:Client,a:Authority,input:HdFinancia
       FROM public.hd_financial_maintenance_policy WHERE scope=$1`,[input.scope])).rows;
     if(rows.length!==1)held("missing_policy");authorize(rows[0],a,input);cancel.signal.throwIfAborted();
     const remaining=(record(rows[0].permit).expires_at as number)*1000-rows[0].now.getTime();
+    admittedLeases.set(cancel.signal, {
+      admission: Object.freeze({...input}),
+      deadline: performance.now() + remaining,
+    });
     expiry=setTimeout(()=>cancel.abort(Error("financial_admission_expired")),remaining);
     // Do not race this callback against a timer and release its lease while a
     // delayed send is still executing. Transports must honor the signal and
     // their existing bounded timeout. Lost connections remain UNKNOWN.
-    const result=await action(cancel.signal);cancel.signal.throwIfAborted();
+    let result: T;
+    try {
+      result = await action(cancel.signal);
+      cancel.signal.throwIfAborted();
+    } finally {
+      admittedLeases.delete(cancel.signal);
+      cancel.abort(Error("financial_admission_ended"));
+    }
     await client.query("COMMIT");return result;
   }finally{if(expiry)clearTimeout(expiry);await client.query("ROLLBACK").catch(()=>{});await client.end().catch(()=>{});}
 }
-export async function withHdFinancialLease<T>(input:HdFinancialAdmission,action:(signal:AbortSignal)=>Promise<T>):Promise<T>{
-  if(!input||(input.scope!=="hd-legacy"&&input.scope!=="hd-satchel")||typeof input.producer!=="string"||!ID.test(input.producer)||typeof input.wallet!=="string"||!WALLET.test(input.wallet)||active>=4)held("invalid_or_busy");
+export async function withHdFinancialLease<T>(
+  input: HdFinancialAdmission,
+  action: (signal: AbortSignal) => Promise<T>,
+  existing?: AbortSignal,
+): Promise<T> {
+  if(!input||(input.scope!=="hd-legacy"&&input.scope!=="hd-satchel")||typeof input.producer!=="string"||!ID.test(input.producer)||typeof input.wallet!=="string"||!WALLET.test(input.wallet))held("invalid_or_busy");
+  // An exact admitted callback can use its held lock for transport. An
+  // arbitrary cancellation signal cannot stand in for an authenticated lease.
+  if (existing !== undefined) {
+    const lease = admittedLeases.get(existing);
+    if (!lease || existing.aborted || performance.now() >= lease.deadline ||
+        lease.admission.scope !== input.scope || lease.admission.producer !== input.producer ||
+        lease.admission.wallet !== input.wallet) held("existing_admission_invalid");
+    return action(existing);
+  }
+  if (active >= 4) held("invalid_or_busy");
   active++;let entered=false;
   try{
     if(!BUILD||!SHA.test(BUILD.source)||!KEY.test(BUILD.deployment))held("compiled_runtime_identity_missing");

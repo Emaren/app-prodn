@@ -40,6 +40,12 @@ test("raw Node and environment claims cannot open financial admission",async()=>
   try {await assert.rejects(withHdFinancialLease(input,async()=>++sends),/HD_FINANCIAL_FENCE_HELD/);assert.equal(sends,0);}
   finally {delete process.env.AOE2WAR_HD_FINANCIAL_SOURCE;delete process.env.AOE2WAR_HD_FINANCIAL_DEPLOYMENT;}
 });
+test("an arbitrary cancellation signal cannot replace financial admission", async () => {
+  await assert.rejects(
+    withHdFinancialLease(input, async () => assert.fail("unadmitted transport"), new AbortController().signal),
+    /existing_admission_invalid/,
+  );
+});
 test("old compiled process cannot adopt a newly rotated authority identity",()=>{
   const k=kernel(identity);k.assertRuntime(authority);
   assert.throws(()=>k.assertRuntime({...authority,source:"c".repeat(40)}),/runtime_identity_mismatch/);
@@ -118,6 +124,29 @@ test("durable independent policy and active admission leases in real private Pos
       release();await pending;
       await owner!.query("SELECT pg_advisory_lock(724176,48)");await owner!.query("SELECT pg_advisory_unlock(724176,48)");
       await assert.rejects(run(),/closed_or_unavailable/);assert.equal(sends,2);
+    });
+    await t.test("reuse requires the exact live PostgreSQL admission", async () => {
+      await set(true);
+      let ended: AbortSignal | undefined;
+      await run(async signal => {
+        ended = signal;
+        assert.equal(await k.withHdFinancialLease(input, async (active: AbortSignal) => active, signal), signal);
+        for (const foreign of [
+          {...input, scope:"hd-satchel"},
+          {...input, producer:"settlement-run"},
+          {...input, wallet:"wolo1"+"q".repeat(38)},
+        ]) {
+          await assert.rejects(
+            k.withHdFinancialLease(foreign, async () => assert.fail("cross-scope transport"), signal),
+            /existing_admission_invalid/,
+          );
+        }
+      });
+      assert.ok(ended?.aborted);
+      await assert.rejects(
+        k.withHdFinancialLease(input, async () => assert.fail("transport after release"), ended),
+        /existing_admission_invalid/,
+      );
     });
     await t.test("separate OS producer holds a shared lease and a restarted process reads durable HOLD",async()=>{
       await set(true);

@@ -9,7 +9,7 @@ RESERVE=(ROOT/"lib/warSatchelClaimReturnReserve.ts").read_text()
 
 class NativeReturnContract(unittest.TestCase):
     def test_execute_passes_signed_approval_not_legacy_run(self):
-        self.assertIn("executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader)",RT)
+        self.assertIn("executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader,signal)",RT)
         self.assertNotIn("executeServiceOnlySatchelEscrowReturn(run,cfg.escrow,reader)",RT)
         self.assertIn('SATCHEL_RETURN_ENDPOINT+"/execute"',ADAPTER)
         self.assertIn('method:"POST"',ADAPTER)
@@ -32,9 +32,15 @@ class NativeReturnContract(unittest.TestCase):
         self.assertIn("authenticatedWarSatchelClaimReturnFreshAt(proof)",RT)
         self.assertIn("creditVerifiedSatchelClaimReturn",RT)
 
-    def test_reserve_hard_hold_cannot_be_bypassed(self):
-        self.assertIn('refuse("native_execution_inventory_verifier_unavailable")',RESERVE)
-        self.assertIn("assertCurrentSatchelReturnReserve(e,r.reserveReviewJson,bank)",RT)
+    def test_post_prepare_native_check_cannot_be_replaced_by_imported_json(self):
+        self.assertIn('issuedChecks.has(value)',RESERVE)
+        self.assertIn('checkBanks.get(value)',RESERVE)
+        self.assertIn('native_post_prepare_check_required',RESERVE)
+        self.assertIn('/satchel/v1/returns/check-execution',RESERVE)
+        self.assertIn('inspectCurrentSatchelReturnReserve(e,reader,signal)',RT)
+        self.assertNotIn('assertCurrentSatchelReturnReserve(e,r.reserveReviewJson,bank)',RT)
+        self.assertLess(RT.index('assertPrepared(await signerRequest'), RT.index('const checked=await inspectCurrent'))
+        self.assertLess(RT.index('const checked=await inspectCurrent'), RT.index('requestJson:request as'))
         self.assertNotIn('http://127.0.0.1:8092',RT)
         self.assertIn('SATCHEL_RETURN_ENDPOINT="http://127.0.0.1:8094',ADAPTER)
 
