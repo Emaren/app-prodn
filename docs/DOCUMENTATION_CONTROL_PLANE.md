@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/central-c02-native-return-20261103` at `4a542a1d810b291372128f72218806aebdabbff8`
+Implementation baseline: `codex/central-c02-native-return-20261103` at `8e9b0ab5254cae34577e050cce996f576c3698f6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
