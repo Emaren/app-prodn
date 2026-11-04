@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-steam-setpriv-confined-dns-20261104` at `6775750b23c194b9cdd713b31344c41ef4b88b30`
+Implementation baseline: `fix/a05-steam-dns-child-retry-20261104` at `b559de764a91044697fc56aa0fc23920705176cb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
