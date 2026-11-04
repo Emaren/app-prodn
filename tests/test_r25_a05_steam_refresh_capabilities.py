@@ -153,7 +153,7 @@ class SteamRefreshCapabilityTests(unittest.TestCase):
         self.assertIn("requalify_first_failed_maintenance()",source)
         self.assertIn("requalify_second_failed_maintenance()",source)
         self.assertIn("PASS_STEAM_REFRESH_SERVICE_AND_NATIVE_C_WITNESS",source)
-        self.assertIn("PRODUCTION_REFRESH_PROTECTED_DRIFT", 
+        self.assertIn("PRODUCTION_REFRESH_PROTECTED_DRIFT",
                       (ROOT / "scripts/r25_c_start_root.py").read_text())
 
     def test_steam_allowlist_remains_finite(self):
