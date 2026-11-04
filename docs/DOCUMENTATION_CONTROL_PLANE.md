@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-final-3032-stopped-recovery-20261104` at `53581d935709fd19d39814eda80fb34d54d4a1c3`
+Implementation baseline: `fix/a05-final-3032-stopped-recovery-20261104` at `d1ba65dc5ad1bebc54523e310d719e9efae5ac0b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
