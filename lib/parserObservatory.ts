@@ -251,23 +251,9 @@ async function loadCorpusRows() {
   return projected as unknown as Awaited<ReturnType<typeof loadLegacyCorpusRows>>;
 }
 
-async function buildPublicParserObservatory() {
+async function loadLegacyParserObservatoryInputs() {
   const prisma = getPrisma();
-  const [
-    rawRows,
-    allGameRows,
-    artifacts,
-    runStatus,
-    parserVersions,
-    fieldCoverage,
-    observations,
-    jobs,
-    candidateFailures,
-    latestArtifactRuns,
-    effectiveProjectionReceipts,
-    acceptedIdentitySnapshots,
-    identityFoundation,
-  ] = await Promise.all([
+  return Promise.all([
     loadCorpusRows(),
     prisma.gameStats.count(),
     prisma.replayArtifact.aggregate({ _count: { _all: true }, _sum: { byteSize: true } }),
@@ -419,6 +405,89 @@ async function buildPublicParserObservatory() {
       };
     })(),
   ]);
+}
+
+type LegacyParserObservatoryInputs = Awaited<ReturnType<typeof loadLegacyParserObservatoryInputs>>;
+
+type PublicParserAggregateJson = Record<string, unknown>;
+
+function publicParserRows(value: unknown, name: string): Array<Record<string, any>> {
+  if (!Array.isArray(value)) throw new Error(`PUBLIC_PARSER_V8_MALFORMED_${name}`);
+  return value as Array<Record<string, any>>;
+}
+
+/**
+ * Exact v8 scope: sanitised public aggregations only. Every original field
+ * has one source-owned SQL publisher. Raw private parser/job/evidence
+ * tables are never queried by the confined production database role.
+ */
+async function loadRestrictedParserObservatoryInputs(): Promise<LegacyParserObservatoryInputs> {
+  const [rawRows, views] = await Promise.all([
+    loadCorpusRows(),
+    getPrisma().$queryRaw<Array<{ payload: PublicParserAggregateJson }>>`
+      SELECT payload FROM aoe2war_public_v8.parser_observatory_snapshot
+    `,
+  ]);
+  if (views.length !== 1 || !views[0]?.payload ||
+      typeof views[0].payload !== "object" || Array.isArray(views[0].payload)) {
+    throw new Error("PUBLIC_PARSER_V8_VIEW_UNAVAILABLE_OR_MALFORMED");
+  }
+  const data = views[0].payload;
+  if (!Number.isSafeInteger(data.allGameRows) || !Number.isSafeInteger(data.observations) ||
+      !Number.isSafeInteger(data.effectiveProjectionReceipts) ||
+      typeof data.artifacts !== "object" || !data.artifacts ||
+      typeof data.identityFoundation !== "object" || !data.identityFoundation) {
+    throw new Error("PUBLIC_PARSER_V8_COUNTERS_UNAVAILABLE");
+  }
+  const parserVersions = publicParserRows(data.parserVersions, "VERSIONS").map((row) => ({
+    ...row, _max: {
+      completedAt: row._max?.completedAt ? new Date(String(row._max.completedAt)) : null,
+    },
+  }));
+  const candidateFailures = publicParserRows(data.candidateFailures, "FAILURES").map((row) => ({
+    ...row, _max: { createdAt: row._max?.createdAt ? new Date(String(row._max.createdAt)) : null },
+  }));
+  const jobs = publicParserRows(data.jobs, "JOBS").map((job) => ({
+    ...job, createdAt: new Date(String(job.createdAt)),
+    events: publicParserRows(job.events, "JOB_EVENTS").map((event) => ({
+      ...event, createdAt: new Date(String(event.createdAt)),
+    })),
+  }));
+  const latestArtifactRuns = publicParserRows(data.latestArtifactRuns, "ARTIFACTS").map((run) => ({
+    ...run, artifact: {
+      ...run.artifact, byteSize: BigInt(String(run.artifact.byteSize)),
+    },
+  }));
+
+  return [
+    rawRows,
+    data.allGameRows, data.artifacts,
+    publicParserRows(data.runStatus, "RUN_STATUS"), parserVersions,
+    publicParserRows(data.fieldCoverage, "FIELDS"), data.observations, jobs,
+    candidateFailures, latestArtifactRuns, data.effectiveProjectionReceipts,
+    publicParserRows(data.acceptedIdentitySnapshots, "IDENTITIES"),
+    data.identityFoundation,
+  ] as unknown as LegacyParserObservatoryInputs;
+}
+
+async function buildPublicParserObservatory() {
+  const [
+    rawRows,
+    allGameRows,
+    artifacts,
+    runStatus,
+    parserVersions,
+    fieldCoverage,
+    observations,
+    jobs,
+    candidateFailures,
+    latestArtifactRuns,
+    effectiveProjectionReceipts,
+    acceptedIdentitySnapshots,
+    identityFoundation,
+  ] = await (isNonfinancialPublicReadProfile()
+    ? loadRestrictedParserObservatoryInputs()
+    : loadLegacyParserObservatoryInputs());
 
   const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
   const physicalArchive = {
