@@ -436,6 +436,15 @@ def production_protective_rollback(root,nonce,receipt_path):
     need(proven,'PRODUCTION_G_AFTER_FAILED_ROLLBACK_UNCERTAIN')
     return result
 
+def production_original_nginx_unchanged(expected_sha):
+    need(H64.fullmatch(expected_sha or ''),'PRODUCTION_ORIGINAL_NGINX_SHA_REQUIRED')
+    check=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes',
+        '-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8',
+        'root@hel1','/usr/bin/sha256sum','/etc/nginx/sites-available/aoe2war.com'],
+        capture_output=True,timeout=35,check=False)
+    return check.returncode==0 and check.stdout.split(b' ',1)[0].decode('ascii','replace')==expected_sha
+
+
 def production_owner_main(argv):
     a=argparse.ArgumentParser();a.add_argument('--production-mode',choices=('before','plan','apply','rollback'),required=True)
     a.add_argument('--nonce',required=True);a.add_argument('--source-sha');a.add_argument('--candidate-source-sha');a.add_argument('--reviewed-root-file',required=True);a.add_argument('--root-source-sha256',required=True)
@@ -510,7 +519,14 @@ def production_owner_main(argv):
                          'source_sha':opts.candidate_source_sha,'controller_source_sha':opts.source_sha,
                          'build_id':after['build_id'],'build_version':after['build_version'],'receipt':str(receipts/(opts.nonce+'-g-after.json'))}).decode())
     except BaseException:
-        production_protective_rollback(root,opts.nonce,receipts/(opts.nonce+'-automatic-rollback-result.json'))
+        # A failed native preflight may never have entered its atomic host
+        # journal; calling rollback in that state masks the real failure.
+        # Inspect the exact public Nginx bytes before deciding whether a
+        # protective restoration is required.
+        if production_original_nginx_unchanged(envelope['plan']['nginx_before_sha256']):
+            print('PASS:PRODUCTION_ORIGINAL_NGINX_UNCHANGED_NO_ROLLBACK_NEEDED',file=sys.stderr,flush=True)
+        else:
+            production_protective_rollback(root,opts.nonce,receipts/(opts.nonce+'-automatic-rollback-result.json'))
         raise
 
 
