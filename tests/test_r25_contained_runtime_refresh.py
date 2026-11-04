@@ -114,8 +114,16 @@ class ContainedRefreshTests(unittest.TestCase):
         self.assertEqual(result["/players"]["status"], "RSC_ERROR")
         self.assertEqual(result["/rivalries"]["status"], "NO_RSC_ERROR")
 
-    def test_canonical_source_pin_matches_catalog_controller(self):
-        raw = (SOURCE.parent / "r25_c_start_root.py").read_bytes()
+    def test_canonical_source_pin_matches_frozen_historical_controller(self):
+        # The previous nonpublic one-use refresh remains source-pinned to the
+        # already reviewed A05 integration candidate, not the next C controller.
+        # The newer controller is independently tested in *_a9eb.py.
+        import subprocess
+        root = SOURCE.parents[1]
+        raw = subprocess.run(
+            ["git", "show", "a9eb6d6e32df3471d88ebbe3007b8c621d5e82a8:scripts/r25_c_start_root.py"],
+            cwd=root, capture_output=True, check=True,
+        ).stdout
         self.assertEqual(len(raw), m.NEW_CONTROLLER_SIZE)
         self.assertEqual(m.sha(raw), m.NEW_CONTROLLER_SHA)
 

@@ -245,6 +245,21 @@ class ProductionAuthPostgres(unittest.TestCase):
         spec.loader.exec_module(controller)
 
         def isolated_transport(database, statement, password=None, maximum=262144):
+            # The deliberately minimal PostgreSQL fixture has only original
+            # auth/v1 views. Verify that native C auth SQL physically while the
+            # v2-v6 *catalog* payload is an explicit expected-value fixture.
+            # Full extra-view identity is negative-tested separately and the
+            # live HEL1 witness must validate actual v2-v6 views before START.
+            if "SELECT COALESCE(json_object_agg(nspname,details)" in statement:
+                expected = {
+                    schema: {
+                        "definitions_sha256": controller.PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256[schema],
+                        "view_names": sorted(names),
+                        "schema_and_view_access": True,
+                    }
+                    for schema,names in controller.PROD_PUBLIC_ADDITIONAL_VIEWS.items()
+                }
+                return __import__("json").dumps(expected).encode()
             return self.sql(statement, "aoe2war_web_prod" if password is not None else "auth_fixture").stdout.encode()
 
         with mock.patch.object(controller, "production_psql", side_effect=isolated_transport):
