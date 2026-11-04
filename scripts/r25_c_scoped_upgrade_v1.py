@@ -49,6 +49,11 @@ FAILED_ROLLBACK = "2c3f7713540e27d269ae649ff0b86dcbb95778655eafc688db5998d3f0091
 LATEST_FAILED_NONCE = "94451e92ea7b9f3d97d8239ec50b8753"
 LATEST_FAILED_ENTERED = "c5cfdc899afe62192c5ab67e266eb29ac94a6788c23f6538348c1f4d76bf5ef2"
 LATEST_VERIFIED_ROLLBACK = "ceaf905dc130981465d3a9442f4a8015f4a2149ab8d91539340632b523cfa72c"
+THIRD_NONCE = "7e92328a777c5e4442137b29dd8781c1"
+THIRD_ENTERED = "849b35646b995090a0ce72de9307b1164c4b06972f549c658c94a40ea484e284"
+THIRD_ROLLBACK_HOLD = "c1ab78b2a8ba1f9922a62bce7e7ca3154cab97c671851e5e48b6e05b5f093916"
+THIRD_ROLLBACK_RECOVERED = "1429e489d1f27c8025c6d314366c1c30d7995675a2f99df08483b02166dafc6d"
+THIRD_CONTROLLER_SHA = "90d8361083b8a268c419c44c6d22eba68e3b24fa00bd11916cc5fb73a54e8692"
 TRAFFIC_ROOT = Path("/var/lib/aoe2war-traffic-r60-20261103")
 TRAFFIC_RECEIPTS = {
     "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
@@ -71,8 +76,8 @@ LOCK_ID = (2064, 6185747, 1000, 0o644)
 REVIEWED_RUNTIME_SOURCES = {
     "controller": ("scripts/r25_c_start_root.py", 115060,
                   "f7fa39d97f6c82282a1b1beac940606c71f07e9f0fdea42e4935e023df161479"),
-    "guard": ("scripts/r25_b_guard_production_v1.cjs", 11216,
-                  "cb77ca6efd2d4416bba9ac602be7a65609f0fc73facdc43e592c6cfd05d79b65"),
+    "guard": ("scripts/r25_b_guard_production_v1.cjs", 11273,
+                  "5edf4485be0884922935295600adf7c8b3c17fe697b962d31e7f17b09e8f3ec3"),
 }
 
 
@@ -296,6 +301,39 @@ def steam_elements():
     return [entry for row in sets.values() for entry in row.get("elem", [])]
 
 
+def recovered_third_failure(actual):
+    """Trust only an exact, consumed, subsequently witnessed stopped-profile recovery."""
+    journal=JOURNALS/("upgrade-"+THIRD_NONCE)
+    entered=safe_bytes(journal/"entered.json")
+    hold=safe_bytes(journal/"rollback_hold.json")
+    recovered=safe_bytes(journal/"rollback-recovered.json")
+    need(digest(entered)==THIRD_ENTERED and
+         digest(hold)==THIRD_ROLLBACK_HOLD and
+         digest(recovered)==THIRD_ROLLBACK_RECOVERED,
+         "THIRD_CONSUMED_JOURNAL_DRIFT")
+    start=json.loads(entered)
+    failed=json.loads(hold)
+    restored=json.loads(recovered)
+    need(start.get("nonce")==THIRD_NONCE and start.get("one_use") is True and
+         start.get("financial_authorized") is False and
+         start.get("public_cutover_authorized") is False and
+         start.get("plan",{}).get("new_source_sha")==SOURCE and
+         start["plan"].get("before_policy_bytes")==actual and
+         failed=={"status":"CRITICAL_ROLLBACK_INCOMPLETE",
+                  "reason":"Hold:CANDIDATE_NOT_STOPPED",
+                  "financial_authorized":False,"public_cutover_authorized":False} and
+         restored.get("status")==
+             "PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED_AFTER_FAILED_SYSTEMD_RESET" and
+         restored.get("nonce")==THIRD_NONCE and
+         restored.get("entered_sha256")==THIRD_ENTERED and
+         restored.get("original_rollback_hold_sha256")==THIRD_ROLLBACK_HOLD and
+         restored.get("source_controller_sha256")==THIRD_CONTROLLER_SHA and
+         restored.get("preexisting_public_3030_preserved") is True and
+         restored.get("financial_authorized") is False and
+         restored.get("public_cutover_authorized") is False,
+         "THIRD_CONSUMED_ROLLBACK_RECOVERY_NOT_WITNESSED")
+
+
 def prior_failure(actual):
     journal = JOURNALS / ("upgrade-" + FAILED_NONCE)
     entered = safe_bytes(journal / "entered.json")
@@ -325,6 +363,7 @@ def prior_failure(actual):
          json.loads(latest_rollback).get("status")=="PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED" and
          json.loads(latest_rollback).get("reason")=="ORIGINAL_PUBLISHED_EVENT_NOT_VERIFIED",
          "LATEST_CONSUMED_UPGRADE_ROLLBACK_DRIFT")
+    recovered_third_failure(actual)
     return failed["plan"]
 
 
@@ -556,6 +595,9 @@ def soak_refresh():
 
 def restore_stopped(old, new, plan, backups, changed_steam):
     invoke("/usr/bin/systemctl", "stop", TIMER, REFRESH, new.PROD_UNIT, timeout=55)
+    # A failed Node guard leaves ActiveState=failed even after systemctl stop;
+    # clear only the exact isolated unit, then verify MainPID=0 and inactive.
+    invoke("/usr/bin/systemctl", "reset-failed", new.PROD_UNIT, timeout=20)
     stopped_candidate(old.PROD_UNIT)
     native_sql(acl_delta(False))
     for key, (path, _, mode) in FILES.items():
