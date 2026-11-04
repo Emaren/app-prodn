@@ -368,7 +368,6 @@ def execute(args, prepared):
             "guest_routes": routes, "guest_content_gate": "PASS_NO_RSC_ERRORS" if content_pass else "HOLD_PUBLIC_CUTOVER",
             "browser_roles_verified": False, "financial_authorized": False, "public_cutover_authorized": False}
         seal(journal, "complete.json", record)
-        print(json.dumps({**record, "journal": str(journal)}, sort_keys=True))
     except BaseException as failure:
         try:
             candidate_systemd("stop", TIMER)
@@ -404,6 +403,7 @@ def execute(args, prepared):
                 "isolated_stop_commands_passed": stopped, "reason_type": type(rollback).__name__,
                 "financial_authorized": False, "public_cutover_authorized": False})
         raise
+    print(json.dumps({**record, "journal": str(journal)}, sort_keys=True))
 
 
 
