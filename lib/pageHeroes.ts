@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 export const PAGE_HERO_VIEWS = ["basic", "advanced", "extreme"] as const;
 export type PageHeroView = (typeof PAGE_HERO_VIEWS)[number];
@@ -274,12 +275,83 @@ async function readPageHeroChain(
   };
 }
 
+type PublishedHeroAsset = {
+  id: number;
+  label: string;
+  url: string;
+  alt: string;
+  active: boolean;
+  sizeBytes: number;
+  updatedAt: string;
+};
+
+type PublishedHeroItem = {
+  id: number;
+  position: number;
+  enabled: boolean;
+  durationMs: number | null;
+  views: unknown;
+  focalX: unknown;
+  focalY: unknown;
+  overlayOpacity: unknown;
+  asset: PublishedHeroAsset;
+};
+
+type PublishedHeroPlaylist = {
+  key: string;
+  id: number;
+  autoplay: boolean;
+  defaultDurationMs: number;
+  transitionDurationMs: number;
+  items: PublishedHeroItem[];
+};
+
+async function readPublishedPageHeroChain(
+  prisma: PrismaClient,
+  surfaceInput: string
+): Promise<PageHeroChain> {
+  const surface = normalizePageHeroSurface(surfaceInput);
+  const key = pageHeroPlaylistKey(surface.key);
+  const rows = await prisma.$queryRaw<PublishedHeroPlaylist[]>`
+    SELECT key,id,autoplay,"defaultDurationMs","transitionDurationMs",items
+    FROM aoe2war_public_v11.published_hero_playlists
+    WHERE key = ${key}
+  `;
+  if (rows.length === 0) return defaultChain(surface);
+  if (rows.length !== 1 || !Array.isArray(rows[0].items)) {
+    throw new Error("PUBLIC_HERO_V11_MALFORMED_PLAYLIST");
+  }
+  const row = rows[0];
+  return {
+    surface,
+    playlist: {
+      id: row.id,
+      autoplay: row.autoplay,
+      defaultDurationMs: row.defaultDurationMs,
+      transitionDurationMs: row.transitionDurationMs,
+    },
+    items: row.items.map((item) => ({
+      id: item.id,
+      position: item.position,
+      enabled: item.enabled,
+      durationMs: item.durationMs,
+      views: normalizeViews(item.views),
+      focalX: clampNumber(item.focalX, 50, 0, 100),
+      focalY: clampNumber(item.focalY, 50, 0, 100),
+      overlayOpacity: clampNumber(item.overlayOpacity, 0.12, 0, 0.6),
+      asset: item.asset,
+    })),
+  };
+}
+
 export async function loadPageHeroChain(
   surfaceInput: string,
   viewInput?: PageHeroView
 ): Promise<PageHeroChain> {
   const prisma = getPrisma();
-  const chain = await readPageHeroChain(prisma, surfaceInput, false);
+  const chain = isNonfinancialPublicReadProfile()
+    ? await readPublishedPageHeroChain(prisma, surfaceInput)
+    : await readPageHeroChain(prisma, surfaceInput, false);
 
   if (!viewInput) return chain;
 
