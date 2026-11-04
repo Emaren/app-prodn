@@ -163,11 +163,11 @@ test("player history is cached separately from current Watcher and presence stat
   );
   assert.match(
     generation,
-    /aoe2war_public_v1\\.player_badges[\\s\\S]*user_badges/,
+    /aoe2war_public_v1\.player_badges[\s\S]*user_badges/,
   );
   assert.match(
     generation,
-    /aoe2war_public_v1\\.player_gifts[\\s\\S]*user_gifts/,
+    /aoe2war_public_v1\.player_gifts[\s\S]*user_gifts/,
   );
   assert.match(
     generation,
@@ -180,7 +180,7 @@ test("player history is cached separately from current Watcher and presence stat
   assert.match(generation, /FROM \$\{claims\}/);
   assert.match(
     generation,
-    /aoe2war_public_v1\\.pending_claim_names[\\s\\S]*pending_wolo_claims/,
+    /aoe2war_public_v1\.pending_claim_names[\s\S]*pending_wolo_claims/,
   );
   assert.doesNotMatch(
     generation,
