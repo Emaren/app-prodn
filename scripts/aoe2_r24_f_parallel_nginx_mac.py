@@ -523,7 +523,8 @@ def production_owner_main(argv):
         # journal; calling rollback in that state masks the real failure.
         # Inspect the exact public Nginx bytes before deciding whether a
         # protective restoration is required.
-        if production_original_nginx_unchanged(envelope['plan']['nginx_before_sha256']):
+        original_sha=envelope.get('plan',{}).get('nginx_before_sha256')
+        if original_sha and production_original_nginx_unchanged(original_sha):
             print('PASS:PRODUCTION_ORIGINAL_NGINX_UNCHANGED_NO_ROLLBACK_NEEDED',file=sys.stderr,flush=True)
         else:
             production_protective_rollback(root,opts.nonce,receipts/(opts.nonce+'-automatic-rollback-result.json'))
