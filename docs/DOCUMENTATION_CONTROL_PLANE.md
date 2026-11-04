@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/a05-traffic-r61-attestation-20261103` at `62f220b99b2221b34c2cebac61d95826729499c9`
+Implementation baseline: `codex/a05-traffic-r61-attestation-20261103` at `1f23d8327febef8c8f8aace4681b375ac62927a9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
