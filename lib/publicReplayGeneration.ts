@@ -27,7 +27,11 @@ async function loadPublicUserIdentityFingerprint(
     return userIdentityPromise;
   }
 
-  const run = prisma.$queryRaw<Array<{ fingerprint: string }>>`
+  const run = (isNonfinancialPublicReadProfile()
+    ? prisma.$queryRaw<Array<{fingerprint:string}>>(Prisma.sql`
+        SELECT fingerprint FROM aoe2war_public_v5.user_identity_fingerprint
+      `)
+    : prisma.$queryRaw<Array<{ fingerprint: string }>>`
     SELECT md5(
       COALESCE(
         jsonb_agg(
@@ -53,7 +57,7 @@ async function loadPublicUserIdentityFingerprint(
       )
     ) AS fingerprint
     FROM public.users
-  `
+  `)
     .then((rows) => rows[0]?.fingerprint ?? "")
     .then((value) => {
       userIdentityCache = {
@@ -123,10 +127,16 @@ export async function loadPublicReplayGeneration(
       orderBy: { id: "desc" },
       select: { id: true, createdAt: true, resultStatus: true },
     }),
-    prisma.replayResultAdjudication.findFirst({
-      orderBy: { id: "desc" },
-      select: { id: true, createdAt: true },
-    }),
+    isNonfinancialPublicReadProfile()
+      ? prisma.$queryRaw<Array<{id:number;createdAt:Date}>>(Prisma.sql`
+          SELECT id,created_at AS "createdAt"
+          FROM aoe2war_public_v5.replay_adjudication_watermark
+          ORDER BY id DESC LIMIT 1
+        `).then(rows => rows[0] ?? null)
+      : prisma.replayResultAdjudication.findFirst({
+          orderBy: { id: "desc" },
+          select: { id: true, createdAt: true },
+        }),
     loadPublicUserIdentityFingerprint(prisma),
   ])
     .then(([game, projection, playerSnapshot, adjudication, userIdentity]) =>

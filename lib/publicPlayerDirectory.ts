@@ -394,40 +394,45 @@ export async function loadPublicPlayerDirectoryFresh(
     rawGames,
     activeFeaturedAvatarAssets,
   ] = await Promise.all([
-    prisma.user.findMany({
-      select: {
-        id: true,
-        uid: true,
-        inGameName: true,
-        steamPersonaName: true,
-        steamId: true,
-        representedCountry: true,
-        verified: true,
-        verificationLevel: true,
-      },
-      orderBy: [
-        { verifiedAt: "desc" },
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
-    }),
+    isNonfinancialPublicReadProfile()
+      ? prisma.$queryRaw<Array<{
+          id:number;uid:string;inGameName:string|null;steamPersonaName:string|null;
+          steamId:string|null;representedCountry:string|null;
+          verified:boolean;verificationLevel:number;
+        }>>(Prisma.sql`
+          SELECT id,uid,in_game_name AS "inGameName",
+                 steam_persona_name AS "steamPersonaName",
+                 steam_id AS "steamId", represented_country AS "representedCountry",
+                 verified,verification_level AS "verificationLevel"
+          FROM aoe2war_public_v5.user_profiles
+          ORDER BY verified_at DESC NULLS LAST,created_at DESC,id DESC
+        `)
+      : prisma.user.findMany({
+          select: {
+            id: true,uid: true,inGameName: true,steamPersonaName: true,
+            steamId: true,representedCountry: true,verified: true,
+            verificationLevel: true,
+          },
+          orderBy: [
+            { verifiedAt: "desc" },{ createdAt: "desc" },{ id: "desc" },
+          ],
+        }),
 
     loadPublicLeaderboardRawGames(prisma),
 
-    prisma.managedMediaAsset.findMany({
-      where: {
-        kind: "avatar",
-        active: true,
-        target: {
-          startsWith: "user-",
-        },
-      },
-      select: {
-        id: true,
-        target: true,
-        updatedAt: true,
-      },
-    }),
+    isNonfinancialPublicReadProfile()
+      ? prisma.$queryRaw<Array<{id:number;target:string;updatedAt:Date}>>(Prisma.sql`
+          SELECT id,target,updated_at AS "updatedAt"
+          FROM aoe2war_public_v5.avatar_revisions
+          WHERE active IS TRUE AND target LIKE 'user-%'
+        `)
+      : prisma.managedMediaAsset.findMany({
+          where: {
+            kind: "avatar",active: true,
+            target: { startsWith: "user-" },
+          },
+          select: { id: true,target: true,updatedAt: true },
+        }),
   ]);
 
   const activeFeaturedAvatarByTarget =
