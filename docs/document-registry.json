@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fac8b783d2fdb27003a40473a61eade9caf4a8c49ecdd03f1733cf95804e77b0",
+      "sha256": "c7975207ad18a912dd077e263034d15e3128b43b5794e6610bd957139c3589d8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/central-c02-native-return-20261103",
-    "commit": "34f5378a6f82e34b28049d98669dadc919461498"
+    "branch": "fix/chain-c02-lease-integrated-20261104",
+    "commit": "aaf7403897b3283a281c77c4ede7be14895a76b0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
