@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4e8662db84ca6c134607b55de3103b87de452f74e117d98d42b516690d672660",
+      "sha256": "40086326fc1dec31acfef751205b426b8d94899f6456c98fd3637bae8d194ebb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-steam-setpriv-confined-dns-20261104",
-    "commit": "6775750b23c194b9cdd713b31344c41ef4b88b30"
+    "branch": "fix/a05-steam-dns-child-retry-20261104",
+    "commit": "b607357ffbb0579e6b6dd9a4e01ebfadfaf8df4b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
