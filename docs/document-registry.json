@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "abd7d0c01fa86deb2d5c91d3d57740390b9fbdf686451d04cebf305e910c5890",
+      "sha256": "e21e0ca531802849f31194f3a995407ef4b99410109ca41d7ed7db0624a72e0c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-final-3032-stopped-recovery-20261104",
-    "commit": "d1ba65dc5ad1bebc54523e310d719e9efae5ac0b"
+    "branch": "fix/a05-qualified-monitor-oneshot-retry-20261104",
+    "commit": "f937f762b079405e3513252bfd3059e9e0bbf768"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

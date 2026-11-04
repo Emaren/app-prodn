@@ -68,6 +68,7 @@ PREFIXES = ("aoe2", "wolo", "tokenchain", "traffic", "radio", "postgresql", "pos
 # plans. Their completed-run metadata is not loaded command/config authority.
 # Active jobs and all unlisted units retain strict runtime identity checks.
 MONITOR_ONESHOT_TIMERS = {
+    "aoe2war-release-readiness-observer.service": "aoe2war-release-readiness-observer.timer",
     "aoe2-wolo-transfer-heartbeat.service": "aoe2-wolo-transfer-heartbeat.timer",
     "aoe2hdbets-bet-stake-reconcile.service": "aoe2hdbets-bet-stake-reconcile.timer",
     "aoe2hdbets-challenge-reconcile.service": "aoe2hdbets-challenge-reconcile.timer",

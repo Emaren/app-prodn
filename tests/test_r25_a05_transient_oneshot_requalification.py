@@ -116,7 +116,7 @@ class ProtectedNativeMonitorTests(TestCase):
         self.assertIn("CONSUMED_OWNER_RELEASE_FORENSIC_RECEIPT_CHANGED",recovery_path.read_text())
         self.assertIn("latest_failed_owner",recovery_path.read_text())
         self.assertEqual(r.PRODUCTION_SOURCE_SHA,
-                         "3e451ecfa4c4a2f0b4419250908aca6b2fcb16cf165be8226bd024a071f0ef26")
+                         "8161731de2af7261dbdc201796fbcdb015d7a9f82facd301f44fb1d57582fec9")
 
     def test_native_db_nginx_financial_guards_unchanged(self):
         text=controller_path.read_text()

@@ -18,8 +18,8 @@ import sys
 import types
 
 HOST = "ubuntu-4gb-hel1-11"
-NATIVE = Path("/var/lib/aoe2war-runtime-artifacts/5869b4ab08702be4b33860f7dda7d97b5de79424/source-qualified-extractor-3e451ecf.py")
-NATIVE_SHA = "3e451ecfa4c4a2f0b4419250908aca6b2fcb16cf165be8226bd024a071f0ef26"
+NATIVE = Path("/var/lib/aoe2war-runtime-artifacts/5869b4ab08702be4b33860f7dda7d97b5de79424/source-qualified-extractor-8161731d.py")
+NATIVE_SHA = "8161731de2af7261dbdc201796fbcdb015d7a9f82facd301f44fb1d57582fec9"
 PUBLIC_BUILD = "20261028134227-6c0f6d7531"
 OWNER_FAILED = Path("/var/lib/aoe2war-app-production-v1/profile-upgrades/final-3032-7404ed100dc0dfcc0ec8f7ec46984f3f")
 CONTROLLED = (
