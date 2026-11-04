@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/f-rsc-guest-route-preflight-20261104` at `2b0172bf5a62947342d00d83a38697eb8a12ef8a`
+Implementation baseline: `fix/f-rsc-guest-route-preflight-20261104` at `358318af666b99c0fe4e74a5557645ed80c7aebd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
