@@ -46,6 +46,9 @@ RUN_ID = 41726585039
 FAILED_NONCE = "1536a06e035ced3e2ed60e4f522570ab"
 FAILED_ENTERED = "e72d21eccc3ac025d8381b346056105ed18fff0a26ca7187e96113a94a36a163"
 FAILED_ROLLBACK = "2c3f7713540e27d269ae649ff0b86dcbb95778655eafc688db5998d3f009190b"
+LATEST_FAILED_NONCE = "94451e92ea7b9f3d97d8239ec50b8753"
+LATEST_FAILED_ENTERED = "c5cfdc899afe62192c5ab67e266eb29ac94a6788c23f6538348c1f4d76bf5ef2"
+LATEST_VERIFIED_ROLLBACK = "ceaf905dc130981465d3a9442f4a8015f4a2149ab8d91539340632b523cfa72c"
 TRAFFIC_ROOT = Path("/var/lib/aoe2war-traffic-r60-20261103")
 TRAFFIC_RECEIPTS = {
     "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
@@ -66,8 +69,8 @@ SCOPE = "UPGRADE_STOPPED_NONFINANCIAL_3032_ONLY"
 SOURCE_PATH = "scripts/r25_c_scoped_upgrade_v1.py"
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 REVIEWED_RUNTIME_SOURCES = {
-    "controller": ("scripts/r25_c_start_root.py", 114421,
-                  "79952ceca239a077cec03d43c4f2872b466443aea6f283dc306647360dd6c0d0"),
+    "controller": ("scripts/r25_c_start_root.py", 115060,
+                  "f7fa39d97f6c82282a1b1beac940606c71f07e9f0fdea42e4935e023df161479"),
     "guard": ("scripts/r25_b_guard_production_v1.cjs", 11216,
                   "cb77ca6efd2d4416bba9ac602be7a65609f0fc73facdc43e592c6cfd05d79b65"),
 }
@@ -180,12 +183,69 @@ def page(port,path):
         return visible(body.decode("utf-8","replace"))
     finally:c.close()
 
+def candidate_media_response(path):
+    need(re.fullmatch(r"/uploads/managed-assets/background/[A-Za-z0-9][A-Za-z0-9._-]{0,220}", path)
+         is not None, "CANDIDATE_MEDIA_UNEXPECTED_PATH")
+    conn=http.client.HTTPConnection("127.0.0.1",3032,timeout=10)
+    try:
+        conn.request("GET",path,headers={"Host":"aoe2war.com","Accept":"image/png,image/webp,image/jpeg"})
+        result=conn.getresponse()
+        status,kind=result.status,(result.getheader("content-type") or "").lower().split(";")[0]
+        prefix=result.read(12)
+        return status,kind,prefix
+    finally:
+        conn.close()
+
+
+def candidate_media_witness():
+    # Server-rendered background URLs are untrusted data. Only the narrow
+    # public managed-background route can be probed; no outbound or private
+    # storage URL can be reached by this evidence check.
+    conn=http.client.HTTPConnection("127.0.0.1",3032,timeout=12)
+    try:
+        conn.request("GET","/",headers={"Host":"aoe2war.com","Accept":"text/html"})
+        response=conn.getresponse()
+        raw=response.read(4*1024*1024+1)
+        need(response.status==200 and len(raw)<=4*1024*1024,
+             "CANDIDATE_MEDIA_HTML_UNAVAILABLE")
+    finally:
+        conn.close()
+    class PublicBackgrounds(HTMLParser):
+        def __init__(self):
+            super().__init__();self.paths=[]
+        def handle_starttag(self, tag, attrs):
+            if tag != "img": return
+            path=dict(attrs).get("src","")
+            if path.startswith("/uploads/managed-assets/background/"):
+                need(re.fullmatch(r"/uploads/managed-assets/background/[A-Za-z0-9][A-Za-z0-9._-]{0,220}",path)
+                     is not None, "CANDIDATE_MEDIA_UNEXPECTED_PATH")
+                self.paths.append(path)
+    parser=PublicBackgrounds()
+    parser.feed(raw.decode("utf-8","replace"))
+    paths=sorted(set(parser.paths))
+    need(1<=len(paths)<=24,"CANDIDATE_MANAGED_MEDIA_DECLARATIONS")
+    for path in paths[:8]:
+        status,kind,prefix=candidate_media_response(path)
+        valid=(kind=="image/png" and prefix.startswith(b"\x89PNG\r\n\x1a\n") or
+               kind=="image/webp" and prefix[:4]==b"RIFF" and prefix[8:12]==b"WEBP" or
+               kind=="image/jpeg" and prefix[:3]==b"\xff\xd8\xff")
+        need(status==200 and valid,"CANDIDATE_MANAGED_MEDIA_BROKEN")
+    return {"checked_public_backgrounds":min(len(paths),8),
+            "paths_sha256":digest(canonical(paths)),
+            "no_private_media_read":True}
+
+
 def candidate_content():
     event=native_sql("BEGIN READ ONLY;SELECT title FROM public.event_tiles "
        "WHERE is_published AND is_active AND status<>'archived' "
        "ORDER BY priority DESC,published_at DESC NULLS LAST LIMIT 1;ROLLBACK;")
     title=next((line for line in event.splitlines() if line not in ("BEGIN","ROLLBACK")),None)
-    need(bool(title) and title in page(3030,"/"),"ORIGINAL_PUBLISHED_EVENT_NOT_VERIFIED")
+    # The protected October-28 public build carries the event in its streamed
+    # page data but does not render it as visible SSR text. It is not the
+    # source of current event truth: immutable 3030 build identity was checked
+    # in prepare(), and the current published title is read from PostgreSQL.
+    old_home = page(3030, "/")
+    need(bool(title) and len(old_home) >= 200, "ORIGINAL_PUBLIC_HOME_NOT_HEALTHY")
     home=page(3032,"/")
     need(title in home,"CANDIDATE_PUBLISHED_EVENT_MISSING")
     old_traffic = page(3030, "/traffic")
@@ -205,7 +265,9 @@ def candidate_content():
          "CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING")
     with urllib.request.urlopen("http://127.0.0.1:3032/api/deployment-version",timeout=5) as r:
         version=json.load(r)["buildVersion"]
+    media = candidate_media_witness()
     return {"event_title_sha256":digest(title.encode()),
+            "managed_media":media,
             "candidate_build_version":version,"certified_and_provisional_traffic_visible":True,
             "last_certified_utc_day": certified.isoformat(), "last_observed_utc_day": observed[1]}
 
@@ -248,6 +310,21 @@ def prior_failure(actual):
     need(actual == failed["plan"]["before_policy_bytes"] and
          all(digest(safe_bytes(journal / (key + ".before"))) == value
              for key, value in actual.items()), "FAILED_UPGRADE_PREIMAGES_NOT_RESTORED")
+    # The later real 3032 admission ran through the Steam TTL soak and then
+    # safely restored this exact stopped profile after a false old-home event
+    # witness. Preserve and verify that consumed transaction as well.
+    latest=JOURNALS/("upgrade-"+LATEST_FAILED_NONCE)
+    latest_entered=safe_bytes(latest/"entered.json")
+    latest_rollback=safe_bytes(latest/"rollback.json")
+    latest_plan=json.loads(latest_entered)
+    need(digest(latest_entered)==LATEST_FAILED_ENTERED and
+         digest(latest_rollback)==LATEST_VERIFIED_ROLLBACK and
+         latest_plan.get("nonce")==LATEST_FAILED_NONCE and
+         latest_plan.get("plan",{}).get("before_policy_bytes")==actual and
+         latest_plan.get("plan",{}).get("new_source_sha")==SOURCE and
+         json.loads(latest_rollback).get("status")=="PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED" and
+         json.loads(latest_rollback).get("reason")=="ORIGINAL_PUBLISHED_EVENT_NOT_VERIFIED",
+         "LATEST_CONSUMED_UPGRADE_ROLLBACK_DRIFT")
     return failed["plan"]
 
 
@@ -278,6 +355,42 @@ def upgrade_sources(old, release_ref, failed):
         inputs[key] = old.production_source({"source_sha": release_ref,
             "source_sizes": {path: size}, "source_hashes": {path: sha}}, path)
     return inputs
+
+
+def approved_media_unit(new, legacy_sha):
+    value=new.production_unit_bytes(STAGE)
+    expected=b" MANAGED_MEDIA_UPLOAD_DIR=/run/aoe2war-public-media"
+    need(value.count(expected)==1,"PUBLIC_MEDIA_ENVIRONMENT_BOUNDARY_CHANGED")
+    baseline=value.replace(expected,b"")
+    need(tuple(new.PROD_PUBLIC_MEDIA_KINDS)==(
+         "artifact","avatar","background","belt","crest","hero","logo","other"),
+         "PUBLIC_MEDIA_KINDS_SCOPE_CHANGED")
+    need(str(new.PROD_PUBLIC_MEDIA_ROOT)==
+         "/mnt/HC_Volume_105319120/aoe2-managed-assets" and
+         str(new.PROD_PUBLIC_MEDIA_MOUNT)=="/run/aoe2war-public-media",
+         "PUBLIC_MEDIA_MOUNT_ROOT_CHANGED")
+    for kind in new.PROD_PUBLIC_MEDIA_KINDS:
+        marker=("\nBindReadOnlyPaths="+str(new.PROD_PUBLIC_MEDIA_ROOT/kind)+":"+
+                str(new.PROD_PUBLIC_MEDIA_MOUNT/kind)).encode()
+        need(baseline.count(marker)==1,"PUBLIC_MEDIA_KIND_MOUNT_CHANGED")
+        baseline=baseline.replace(marker,b"")
+    need(digest(baseline)==legacy_sha,
+         "EXACT_PUBLIC_READONLY_MEDIA_UNIT_DELTA_REQUIRED")
+    need(b"direct-message-attachments" not in value and
+         b"BindPaths=/mnt/HC_Volume_105319120" not in value and
+         b"MANAGED_MEDIA_UPLOAD_DIR=/mnt/" not in value,
+         "PROTECTED_PRIVATE_MEDIA_OR_WRITE_MOUNT")
+    return value
+
+
+def public_media_source_witness(new):
+    for kind in new.PROD_PUBLIC_MEDIA_KINDS:
+        source=new.PROD_PUBLIC_MEDIA_ROOT/kind
+        metadata=source.lstat()
+        need(stat.S_ISDIR(metadata.st_mode) and not source.is_symlink() and
+             metadata.st_uid in (0,1000) and not metadata.st_mode & 0o002,
+             "PUBLIC_MEDIA_SOURCE_DIRECTORY_NOT_QUALIFIED")
+    return True
 
 
 def prepare(args):
@@ -339,8 +452,9 @@ def prepare(args):
     new_guard=source["guard"]
     new_sql=source["auth_sql"]
     proxy=digest(new.production_proxy_bytes())
-    unit=digest(new.production_unit_bytes(STAGE))
-    need(unit == failed["new_unit_sha256"], "QUALIFIED_UPGRADE_UNIT_DRIFT")
+    updated_unit=approved_media_unit(new,failed["new_unit_sha256"])
+    public_media_source_witness(new)
+    unit=digest(updated_unit)
     need(all(source[k]!=actual[k] for k in ("controller","guard","auth_sql")),"SOURCE_ALREADY_MIGRATED")
     need(all((STAGE/p).is_file() for p in ("package.json",".next/BUILD_ID")),"NEW_RUNTIME_INCOMPLETE")
     _,database,password=new.production_runtime_environment()

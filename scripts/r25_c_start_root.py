@@ -580,6 +580,11 @@ PROD_ENV = PROD_BASE / "runtime.env"
 PROD_PROXY = Path("/etc/nginx/conf.d/aoe2war-web-prod-readonly-api.conf")
 PROD_STEAM = "steamcommunity.com"
 PROD_ASSET_DIR = Path("/mnt/HC_Volume_105319120/aoe2-downloads")
+# Only the eight public media kinds are mapped into the isolated web namespace.
+# All private attachments, Traffic data and the remaining volume are denied.
+PROD_PUBLIC_MEDIA_ROOT = Path("/mnt/HC_Volume_105319120/aoe2-managed-assets")
+PROD_PUBLIC_MEDIA_MOUNT = Path("/run/aoe2war-public-media")
+PROD_PUBLIC_MEDIA_KINDS = ("artifact", "avatar", "background", "belt", "crest", "hero", "logo", "other")
 PROD_ASSET_OWNERS = (0,1000)
 PROD_SOURCE_FILES = ("scripts/r25_c_start_root.py", "scripts/r25_c_start_owner_mac.py",
     "scripts/r25_b_guard_production_v1.cjs", "config/nonfinancial-production-auth.sql",
@@ -783,6 +788,7 @@ def production_unit_bytes(stage):
       "AOE2WAR_RUNTIME_PROFILE=" + PROD_PROFILE + " AOE2WAR_R25_ISOLATED_WEB=true AOE2WAR_PROD_DB_PREVIEW=false "
       "AOE2_BACKEND_UPSTREAM=http://127.0.0.1:3331 TRAFFIC_API_BASE=http://127.0.0.1:3331 HOSTNAME=127.0.0.1 PORT=3032 NEXT_TELEMETRY_DISABLED=1 "
       "NODE_OPTIONS=--require=" + str(PROD_GUARD) +
+      " MANAGED_MEDIA_UPLOAD_DIR=" + str(PROD_PUBLIC_MEDIA_MOUNT) +
       "\nUnsetEnvironment=HTTP_PROXY HTTPS_PROXY ALL_PROXY NODE_TLS_REJECT_UNAUTHORIZED NODE_EXTRA_CA_CERTS "
       "NEXTAUTH_SECRET CACHE_DIRECTORY MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE\n"
       "ExecStart=/usr/bin/node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3032\n"
@@ -795,6 +801,8 @@ def production_unit_bytes(stage):
       "\nCacheDirectory=aoe2war-web-prod\nCacheDirectoryMode=0700\n"
       "BindPaths=/var/cache/aoe2war-web-prod:" + str(stage / ".next/cache") +
       "\nBindReadOnlyPaths=" + str(PROD_ASSET_DIR) + ":" + str(stage / "public/downloads") +
+      "".join("\nBindReadOnlyPaths=" + str(PROD_PUBLIC_MEDIA_ROOT / kind) + ":" +
+              str(PROD_PUBLIC_MEDIA_MOUNT / kind) for kind in PROD_PUBLIC_MEDIA_KINDS) +
       "\nMemoryMax=1500M\nCPUQuota=150%\nUMask=0077\n[Install]\nWantedBy=multi-user.target\n").encode()
 
 def production_grant(payload, plan):

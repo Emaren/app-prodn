@@ -52,16 +52,71 @@ class Upgrade(unittest.TestCase):
     def test_public_content_rejects_july_fallback_and_empty_traffic(self):
         with mock.patch.object(m,"native_sql",return_value="BEGIN\nMonday Night Mayhem\nROLLBACK"):
             with mock.patch.object(m,"page",side_effect=[
-                "Monday Night Mayhem","WOLOMANIA I"
+                "Old public home without a current event " * 12,"WOLOMANIA I"
             ]):
                 with self.assertRaisesRegex(m.Hold,"CANDIDATE_PUBLISHED_EVENT_MISSING"):
                     m.candidate_content()
             with mock.patch.object(m,"page",side_effect=[
-                "Monday Night Mayhem","Monday Night Mayhem","LAST PUBLISHED UTC DAY: 2026-10-19",
+                "Old public home without current event " * 12,"Monday Night Mayhem","LAST PUBLISHED UTC DAY: 2026-10-19",
                 "LAST PUBLISHED UTC DAY: 2026-10-19 BROWSER OBSERVED Loading provisional observed activity"
             ]):
                 with self.assertRaisesRegex(m.Hold,"CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING"):
                     m.candidate_content()
+
+    def test_authoritative_current_event_does_not_require_old_site_ssr_text(self):
+        # Real protected October-28 home had the title in streamed data,
+        # not its visible SSR text; new candidate must visibly render it.
+        from io import BytesIO
+        import json
+        old="Protected original homepage navigation " * 12
+        candidate="New homepage: Monday Night Mayhem"
+        old_traffic="LAST PUBLISHED UTC DAY: 2026-10-19"
+        recent=(old_traffic+" BROWSER OBSERVED Latest observed UTC day 2026-11-03 "+
+                "Provisional · unverified Qualifying IPs · not people "+
+                "Filtered page GETs · not sessions")
+        with mock.patch.object(m,"native_sql",return_value="BEGIN\nMonday Night Mayhem\nROLLBACK"), \
+             mock.patch.object(m,"page",side_effect=[old,candidate,old_traffic,recent]) as pages, \
+             mock.patch.object(m.urllib.request,"urlopen",
+                 return_value=BytesIO(json.dumps({"buildVersion":"modern-v1"}).encode())), \
+             mock.patch.object(m,"candidate_media_witness",return_value={
+                 "checked_public_backgrounds":2,"no_private_media_read":True}) as images:
+            result=m.candidate_content()
+        self.assertEqual(result["candidate_build_version"],"modern-v1")
+        self.assertEqual(result["managed_media"]["checked_public_backgrounds"],2)
+        self.assertTrue(result["certified_and_provisional_traffic_visible"])
+        self.assertEqual(pages.call_args_list[0].args,(3030,"/"))
+        self.assertEqual(pages.call_args_list[1].args,(3032,"/"))
+        images.assert_called_once()
+
+    def test_public_media_observation_requires_real_resolved_image_bytes(self):
+        from unittest.mock import Mock
+        page=b'<html><img src="/uploads/managed-assets/background/hero-a.png"></html>'
+        mock_response=Mock(status=200)
+        mock_response.read.return_value=page
+        connection=Mock()
+        connection.getresponse.return_value=mock_response
+        valid=(200,"image/png",bytes.fromhex("89504e470d0a1a0a00000000"))
+        with mock.patch.object(m.http.client,"HTTPConnection",return_value=connection), \
+             mock.patch.object(m,"candidate_media_response",return_value=valid):
+            result=m.candidate_media_witness()
+        self.assertEqual(result["checked_public_backgrounds"],1)
+        self.assertTrue(result["no_private_media_read"])
+        with mock.patch.object(m.http.client,"HTTPConnection",return_value=connection), \
+             mock.patch.object(m,"candidate_media_response",return_value=(404,"text/plain",b"Not found")):
+            with self.assertRaisesRegex(m.Hold,"CANDIDATE_MANAGED_MEDIA_BROKEN"):
+                m.candidate_media_witness()
+        with self.assertRaisesRegex(m.Hold,"CANDIDATE_MEDIA_UNEXPECTED_PATH"):
+            m.candidate_media_response("/uploads/managed-assets/direct-message-attachments/private.jpg")
+
+    def test_unit_change_allows_only_eight_read_only_public_bind_mounts(self):
+        from scripts import r25_c_start_root as controller
+        baseline="c60991bf4c9c84509d224f456259a5a46433de42f964c5822cba3ab2952e488c"
+        updated=m.approved_media_unit(controller,baseline)
+        self.assertEqual(m.digest(updated),
+                         "8d5468da652f04de36408ea725b501d5cb7e80a21227eb3cecc96b254fa7b92e")
+        self.assertNotIn(b"direct-message-attachments",updated)
+        with self.assertRaisesRegex(m.Hold,"EXACT_PUBLIC_READONLY_MEDIA_UNIT_DELTA_REQUIRED"):
+            m.approved_media_unit(controller,"0"*64)
 
     def test_runtime_source_pins_match_committed_controller_and_guard(self):
         for _, (path, size, sha) in m.REVIEWED_RUNTIME_SOURCES.items():

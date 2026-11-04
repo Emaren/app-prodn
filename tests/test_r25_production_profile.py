@@ -84,6 +84,23 @@ class ProductionProfile(unittest.TestCase):
         with self.assertRaisesRegex(c.Hold,"STAGE_NAMESPACE"):
             c.production_unit_bytes(pathlib.Path("/var/www/AoE2HDBets/app-prodn"))
 
+    def test_public_managed_media_is_read_only_and_private_assets_stay_inaccessible(self):
+        stage=pathlib.Path("/var/lib/aoe2war-web-prod-"+("a"*12))
+        unit=c.production_unit_bytes(stage).decode()
+        self.assertIn("TemporaryFileSystem=/run:ro",unit)
+        self.assertIn("InaccessiblePaths=/etc/aoe2hdbets",unit)
+        self.assertIn(" /mnt/HC_Volume_105319120\n",unit)
+        self.assertIn("MANAGED_MEDIA_UPLOAD_DIR=/run/aoe2war-public-media",unit)
+        self.assertEqual(len(c.PROD_PUBLIC_MEDIA_KINDS),8)
+        for kind in c.PROD_PUBLIC_MEDIA_KINDS:
+            line=("BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/"+
+                  kind+":/run/aoe2war-public-media/"+kind)
+            self.assertEqual(unit.count(line),1)
+        self.assertNotIn("direct-message-attachments",unit)
+        self.assertNotIn("MANAGED_MEDIA_UPLOAD_DIR=/mnt/",unit)
+        self.assertNotIn("BindPaths=/mnt/HC_Volume_105319120",unit)
+        self.assertNotIn("ReadWritePaths=/mnt/HC_Volume_105319120",unit)
+
     def test_nft_uid_scoping_never_unrestricted_443_or_financial_backend(self):
         value=c.production_nft_bytes(["23.1.2.3"]).decode()
         rules=[row for row in value.splitlines() if "meta skuid" in row]
