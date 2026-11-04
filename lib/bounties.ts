@@ -5,7 +5,8 @@ import {
   isVerifiedCanonicalBountyPayout,
   OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
 } from "@/lib/bountyHall";
-import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
 import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
@@ -256,70 +257,106 @@ async function loadBountyDirectory(
 }
 
 export async function loadBountyBoard(prisma: PrismaClient) {
+  const restricted = isNonfinancialPublicReadProfile();
   const [
     opportunities,
     canonicalClaims,
     numberedTransferCandidates,
     directory,
+    restrictedLockedCount,
   ] = await Promise.all([
-    prisma.bountyOpportunity.findMany({
-      orderBy: [
-        { featured: "desc" },
-        { priority: "desc" },
-        { updatedAt: "desc" },
-      ],
-      include: {
-        assignedUser: {
+    restricted
+      ? prisma.$queryRaw<Prisma.BountyOpportunityGetPayload<{
+          include: { assignedUser: { select: {
+            id: true; uid: true; inGameName: true;
+          } } };
+        }>[]>(Prisma.sql`
+          SELECT * FROM aoe2war_public_v4.bounty_display_opportunities
+          ORDER BY featured DESC, priority DESC, "updatedAt" DESC
+        `)
+      : prisma.bountyOpportunity.findMany({
+          orderBy: [
+            { featured: "desc" },
+            { priority: "desc" },
+            { updatedAt: "desc" },
+          ],
+          include: {
+            assignedUser: {
+              select: {
+                id: true,
+                uid: true,
+                inGameName: true,
+              },
+            },
+          },
+        }),
+    restricted
+      ? Promise.resolve([] as Array<{payout:{status:string;txHash:string|null}|null}>)
+      : prisma.bountyClaim.findMany({
+          where: {
+            cancelledAt: null,
+          },
+          select: {
+            payout: {
+              select: {
+                status: true,
+                txHash: true,
+              },
+            },
+          },
+        }),
+    restricted
+      ? prisma.$queryRaw<Array<{
+          id:number; txHash:string; transferIndex:number; timestamp:Date;
+          senderAddress:string; recipientAddress:string;
+          amountWoloDisplay:Prisma.Decimal; memo:string|null;
+        }>>(Prisma.sql`
+          SELECT id, "txHash", "transferIndex", timestamp,
+                 "senderAddress", "recipientAddress",
+                 "amountWoloDisplay", memo
+          FROM aoe2war_public_v4.bounty_numbered_transfers
+          ORDER BY timestamp ASC, id ASC, "transferIndex" ASC
+        `)
+      : prisma.woloIndexedTransfer.findMany({
+          where: {
+            senderAddress: {
+              in: [
+                ...OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
+              ],
+            },
+            memo: {
+              contains: "bounty",
+              mode: "insensitive",
+            },
+          },
+          orderBy: [
+            { timestamp: "asc" },
+            { id: "asc" },
+            { transferIndex: "asc" },
+          ],
           select: {
             id: true,
-            uid: true,
-            inGameName: true,
-          },
-        },
-      },
-    }),
-    prisma.bountyClaim.findMany({
-      where: {
-        cancelledAt: null,
-      },
-      select: {
-        payout: {
-          select: {
-            status: true,
             txHash: true,
+            transferIndex: true,
+            timestamp: true,
+            senderAddress: true,
+            recipientAddress: true,
+            amountWoloDisplay: true,
+            memo: true,
           },
-        },
-      },
-    }),
-    prisma.woloIndexedTransfer.findMany({
-      where: {
-        senderAddress: {
-          in: [
-            ...OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
-          ],
-        },
-        memo: {
-          contains: "bounty",
-          mode: "insensitive",
-        },
-      },
-      orderBy: [
-        { timestamp: "asc" },
-        { id: "asc" },
-        { transferIndex: "asc" },
-      ],
-      select: {
-        id: true,
-        txHash: true,
-        transferIndex: true,
-        timestamp: true,
-        senderAddress: true,
-        recipientAddress: true,
-        amountWoloDisplay: true,
-        memo: true,
-      },
-    }),
+        }),
     loadBountyDirectory(prisma),
+    restricted
+      ? prisma.$queryRaw<Array<{lockedCount:bigint}>>(Prisma.sql`
+          SELECT "lockedCount" FROM aoe2war_public_v4.bounty_locked_claim_summary
+        `).then(rows => {
+          if (rows.length !== 1 || rows[0].lockedCount < BigInt(0) ||
+              rows[0].lockedCount > BigInt(Number.MAX_SAFE_INTEGER)) {
+            throw new Error("BOUNTY_LOCKED_COUNT_INVALID");
+          }
+          return Number(rows[0].lockedCount);
+        })
+      : Promise.resolve(null),
   ]);
 
   const numberedBounties =
@@ -338,7 +375,7 @@ export async function loadBountyBoard(prisma: PrismaClient) {
     );
 
   const recipientUsers =
-    recipientAddresses.length
+    !restricted && recipientAddresses.length
       ? await prisma.user.findMany({
           where: {
             walletAddress: {
@@ -453,16 +490,17 @@ export async function loadBountyBoard(prisma: PrismaClient) {
           ),
       );
 
-  const lockedCanonicalClaims =
-    canonicalClaims.filter(
-      (claim) =>
-        !isVerifiedCanonicalBountyPayout({
-          status:
-            claim.payout?.status,
-          txHash:
-            claim.payout?.txHash,
-        }),
-    );
+  const lockedCanonicalCount = restricted
+    ? restrictedLockedCount!
+    : canonicalClaims.filter(
+        (claim) =>
+          !isVerifiedCanonicalBountyPayout({
+            status:
+              claim.payout?.status,
+            txHash:
+              claim.payout?.txHash,
+          }),
+      ).length;
 
   const publicContracts =
     serializedOpportunities.filter(
@@ -647,7 +685,7 @@ export async function loadBountyBoard(prisma: PrismaClient) {
             "in_progress",
         ).length,
       locked:
-        lockedCanonicalClaims.length,
+        lockedCanonicalCount,
       paid:
         ledger.length,
       paidWolo,
