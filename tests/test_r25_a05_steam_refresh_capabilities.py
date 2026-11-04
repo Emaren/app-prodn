@@ -156,6 +156,42 @@ class SteamRefreshCapabilityTests(unittest.TestCase):
         self.assertIn("PRODUCTION_REFRESH_PROTECTED_DRIFT",
                       (ROOT / "scripts/r25_c_start_root.py").read_text())
 
+    def test_effective_capabilities_verified_not_just_bounding_set(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "a05_effective_caps", ROOT / "scripts/r25_c_start_root.py")
+        c = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(c)
+        service, timer = c.production_refresh_units()
+        self.assertNotIn(b"\nUser=root\n",service)
+        self.assertIn(b"\nType=oneshot\nExecStart=/usr/bin/python3",service)
+        self.assertIn(b"CapabilityBoundingSet=CAP_NET_ADMIN CAP_SETUID CAP_SETGID",service)
+        self.assertIn(b"NoNewPrivileges=yes",service)
+        self.assertIn(b"ProtectSystem=strict",service)
+        source=(ROOT / "scripts/r25_c_start_root.py").read_text()
+        self.assertIn('value.get("User") == "" and value.get("Group") == ""',source)
+        self.assertIn('value.get("DynamicUser") == "no"',source)
+        self.assertIn("PRODUCTION_REFRESH_EFFECTIVE_CAPABILITIES_MISSING",source)
+        self.assertIn('Path("/proc/self/status").read_text()',source)
+        self.assertIn('((1 << 12) | (1 << 7) | (1 << 6))',source)
+        self.assertEqual(len(timer),143)
+
+    def test_fourth_repair_requires_all_three_restored_owner_journals(self):
+        code=(ROOT / "scripts/r25_a05_steam_systemd_root_maintenance.py").read_text()
+        for sha in (
+            "0f700797e3482abd0d6639a193ab45d4d0788d333b5dd041ea5b7942d100d4a6",
+            "5ea5f31800bfa138fe16830147cd4f5c0b946ea3701fe22d11551d1fd8ff3ae4",
+            "3647144109e0197e7755c7737bd6edd60802cb5123ab7ac41d28249af6c9b2f7",
+            "414741a61bba6abf2f5b31124ebf641ef5a7ad27da7956e876a36f325833f618",
+            "9dfa2e68999948c997238196d37737b93e7ca06eb3dbafd1ea29085cc73076f2",
+        ):
+            self.assertIn(sha,code)
+        self.assertIn("requalify_third_failed_maintenance()",code)
+        self.assertIn("steam-systemd-root-repair-20261104-9dfa2e68",code)
+        self.assertIn("ONE_USE_REPAIR_JOURNAL_ALREADY_PRESENT",code)
+        self.assertIn("PASS_STEAM_REFRESH_SERVICE_AND_NATIVE_C_WITNESS",code)
+        self.assertIn("REVIEWED_SERVICE_SHAPE_MISMATCH",code)
+
     def test_steam_allowlist_remains_finite(self):
         self.assertIn('"STEAM_DNS_TLS_NO_VERIFIED_ADDRESS"', C)
         self.assertIn('"PRODUCTION_CURRENT_STEAM_SET_EMPTY"', C)
