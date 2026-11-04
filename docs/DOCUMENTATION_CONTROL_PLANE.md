@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/central-a05-final-restricted-pages-20261104` at `8444ec7be106950e995dec074455fbd23778762a`
+Implementation baseline: `fix/a05-exact-a9eb-contained-refresh-20261104` at `080800c9c240b1ce80dae4a192cd660069bcda4d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
