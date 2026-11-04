@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5315796be790e7ad0f1f09c34ca13560c7dca16e19a284e2172b4c53176780bc",
+      "sha256": "19d3e6679ecb1ef0b5d1adb0b8f2e37ff855907ff3bb7ca6bacf112365b58619",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/f-rivalries-rsc-20261104",
-    "commit": "95945aa52065d3c1784c21fe2a55191959cb63a7"
+    "branch": "fix/traffic-provisional-rail-20261104",
+    "commit": "70ae69fa644386186bf9e71906f29fa5d548edde"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
