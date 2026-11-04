@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0c1558c5a0d914a5043a69d070cb45aee638502fa009fb1bd8367b5ff1fbe11c",
+      "sha256": "4ee476ff3ea61dd27b7d99a2015ec264013fd58113cd6465ff2f4d435c142d82",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-exact-a9eb-contained-refresh-20261104",
-    "commit": "bdba4ba082b80ca07b52b8e42bd34b3c02b60bb0"
+    "commit": "c6c72442dc232e080fc0ac362f76605f8af0ce90"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
