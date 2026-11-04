@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-v7v8v9-local-integration-smoke-20261104` at `12895b099c9d57bb20af4a6244cdac41c9813e9e`
+Implementation baseline: `fix/a05-final-3032-stopped-recovery-20261104` at `d1ba65dc5ad1bebc54523e310d719e9efae5ac0b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

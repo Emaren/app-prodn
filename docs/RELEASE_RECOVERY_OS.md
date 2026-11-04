@@ -1146,3 +1146,76 @@ for the stricter source returned v9 canonical definition hash
 3 owner-checked security-barrier views, 1,416 funded wager records
 (before mainnet date filtering), zero currently eligible open markets,
 and ROLLBACK. This digest supersedes all earlier tentative v9 hashes.
+
+## A05 final stopped-3032 recovery, exact runtime 5869b4ab (2026-11-04)
+
+The legacy `r25_a05_recover_steam_dns_hold.py` was correctly frozen
+to a past a9eb6d6e artifact, its consumed one-use rollback journal,
+and a protected host fingerprint from before observer/chain service
+additions. It must **never** be replayed, repointed, or run against
+today's source. A new source-qualified recovery program,
+`scripts/r25_a05_final_3032_recovery.py`, now binds the current
+already-merged production application head
+`5869b4ab08702be4b33860f7dda7d97b5de79424` (PR #1172),
+the exact GitHub-built artifact ID `13346996291`/run
+`41874361015`, zip SHA256
+`8b2297a46271f75e00a53da7b976ce2aeac7b8685a8c3488fec1e4e608c632e0`,
+and sealed host extraction receipt SHA256
+`ce7436919837553c1064c83f7421bd26db0f2b0971b30186394fa07a791a43fc`.
+The source-qualified native controller SHA256 is
+`6085b303f4ae8b57414fc5741b6443ba268372becde59524211b91348c833988`,
+and its canonical new 3032 systemd unit SHA256 is
+`121f76699b1ceeda728b0e69fd1c2602a60ac1f4bb4f6fc979598d6bb74fa1bc`.
+The stage contains 44,839 file-manifest rows (tree SHA256
+`efd6a4d58471aca73d9bea84b2e7672b0c04f2734f040ba340af5fa6d48a9711`)
+and all 17 native critical runtime files passed (SHA256
+`8a9eb2fcc3b11b8fa807afbe453bd5f28e38901474f0d769cb67efa6d203535a`).
+
+The new program has three explicit phases:
+
+* `audit`: **read-only**, no nonce or owner approval accepted, confirms
+  the root-sealed old unit/controller/policy, exact consumed/failed
+  journal, 3032+refresh services stopped, public 3030 unchanged,
+  signed immutable CI artifact, current real protected host snapshot,
+  canonical proposed unit and strict native v1-v11 database catalog.
+  Expected current output is `PASS_READONLY_A05_STAGED_PREIMAGE_NO_SERVICE_AUTHORITY`
+  with `database.status=HOLD` until reviewed v7-v11 PostgreSQL
+  views are installed.
+* `plan`: after exact-source additive public-view SQL installation,
+  derives a **fresh** protected snapshot and full native catalog
+  witness, requires an unused 32-character nonce, unchanged root
+  preimages and original dead PID, and outputs an exact canonical
+  plan SHA256. No service mutation and no authority to deploy.
+* `execute`: accepts only that unchanged source/nonce/plan hash
+  and a **new** unedited, authenticated Emaren owner GitHub comment
+  matching the exact source-head 3/3 successful CI, GitGuardian
+  approval, `A05_FINAL_STOPPED_NONFINANCIAL_3032_ONLY` scope,
+  10-minute maximum grant, max uses one, rollback authority, and
+  explicit AI-delegated authorship disclosure. It consumes a unique
+  root-owned durable journal before any mutation. Only the isolated
+  3032 systemd service, its dedicated Steam refresh units, native
+  3032 controller and approved profile may be updated. It requires
+  new actual PID-bound native database/network/kernel/Steam admission
+  and eight guest HTML+RSC content probes. Failure stops 3032 and
+  restores exact previous unit/controller/policy without ever
+  restarting the prior consumed PID. The original public 3030,
+  Nginx selectors and funded WOLO services are outside authority.
+
+**Real host nonfinancial AUDIT evidence:** On November 4 the root
+source-bound command passed the old stopped unit, preimage, prior
+journal, existing public service, current protected 62-unit inventory,
+artifact API digest, critical build and canonical systemd proof; native
+`production_database_witness` specifically held
+`PRODUCTION_ADDITIONAL_PUBLIC_READ_MODELS_CHANGED` because v7-v11
+are **staged but not installed**. Zero production permissions, runtime
+service, Nginx or financial changes resulted.
+
+**Physical stop-ship remains:** Before SQL installation, use only an
+owner-approved privileged execution channel. Desktop Commander's
+existing command configuration refuses the PostgreSQL COMMIT path.
+Do not alter that blocklist to bypass the provider gate; do not
+represent an AI-authored owner comment as independent human review.
+Require actual source/CI acceptance of this *new* controller before
+its PLAN/EXECUTE, plus a separately qualified F/G six-selector public
+cutover and real guest/nonadmin/admin browser acceptance. A05–A09
+remain OPEN until public evidence, regardless of source or staging.
