@@ -56,6 +56,7 @@ ROLLBACK_RECEIPT = Path("/var/lib/aoe2war-app-production-f/cutover-3384a794d0bad
 ROLLBACK_RECEIPT_SHA = "cd4f809267219f6e0f52a2c751323848f2efaa845f1d701e5007aea348f90634"
 PUBLIC_NGINX = Path("/etc/nginx/sites-available/aoe2war.com")
 TIMER = "aoe2war-steam-egress-refresh.timer"
+REFRESH = "aoe2war-steam-egress-refresh.service"
 SCOPE = "REFRESH_EXISTING_NONFINANCIAL_3032_ONLY"
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 LOCK = Path("/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock")
@@ -83,7 +84,7 @@ def canonical(obj) -> bytes:
 
 def candidate_systemd(action, unit=None):
     need((action, unit) in {
-        ("daemon-reload", None), ("stop", TIMER), ("start", TIMER),
+        ("daemon-reload", None), ("stop", TIMER), ("stop", REFRESH), ("start", TIMER),
         ("stop", UNIT.name), ("start", UNIT.name),
     }, "SYSTEMD_ACTION_NOT_ADMITTED")
     argv = ["/usr/bin/systemctl", action]
@@ -328,6 +329,9 @@ def execute(args, prepared):
     plan_hash = sha(c.canonical(plan))
     need(args.plan_sha256 == plan_hash, "EXACT_PLAN_HASH_REQUIRED")
     grant = owner_grant(c, args, plan)
+    assert_protected(c, plan["protected_snapshot_sha256"])
+    need((read_safe(UNIT), read_safe(POLICY), read_safe(CONTROLLER)) == (unit, policy_raw, old_controller),
+         "PREEXECUTION_PROFILE_DRIFT")
     journal = JOURNALS / ("contained-3032-" + args.nonce)
     journal.mkdir(mode=0o700)
     fsync_dir(JOURNALS)
@@ -336,9 +340,6 @@ def execute(args, prepared):
          "public_cutover_authorized": False})
     for name, raw in (("unit.before", unit), ("policy.before", policy_raw), ("controller.before", old_controller)):
         seal(journal, name, raw)
-    assert_protected(c, plan["protected_snapshot_sha256"])
-    need((read_safe(UNIT), read_safe(POLICY), read_safe(CONTROLLER)) == (unit, policy_raw, old_controller),
-         "PREEXECUTION_PROFILE_DRIFT")
     before = json.loads(policy_raw)
     profile = {**before, "source_sha": NEW, "stage": NEW_STAGE, "build_id": BUILD_ID,
         "build_version": BUILD_VERSION, "artifact": artifact, "ci_artifact": plan["runtime_artifact"],
@@ -346,6 +347,7 @@ def execute(args, prepared):
         "controller_sha256": NEW_CONTROLLER_SHA, "critical_runtime": critical, "native_plan_sha256": plan_hash}
     try:
         candidate_systemd("stop", TIMER)
+        candidate_systemd("stop", REFRESH)
         candidate_systemd("stop", UNIT.name)
         write_atomic(CONTROLLER, controller, 0o644)
         write_atomic(UNIT, new_unit, 0o644)
@@ -354,9 +356,23 @@ def execute(args, prepared):
         profile["steam_addresses"] = c.production_admission_steam_refresh()
         candidate_systemd("start", UNIT.name)
         witness = ready_profile(c, profile, journal, plan, env, db, password)
+        routes = guest_probes()
+        need(c.production_wait(profile, seconds=5) ==
+             (witness["candidate_pid"], witness["candidate_start_ticks"]), "CANDIDATE_CHANGED_DURING_CONTENT_PROBES")
+        content_pass = all(row["status"] == "NO_RSC_ERROR" for row in routes.values())
+        record = {"status": "PASS_NEW_3032_ADMITTED_NOT_PUBLIC", "source_sha": NEW,
+            "build_version": BUILD_VERSION, "build_id": BUILD_ID, "pid": witness["candidate_pid"],
+            "ticks": witness["candidate_start_ticks"], "profile_sha256": witness["profile_sha256"],
+            "read_acl_sha256": witness["postgres"]["read_acl_sha256"],
+            "content": {"candidate_build_version": BUILD_VERSION},
+            "guest_routes": routes, "guest_content_gate": "PASS_NO_RSC_ERRORS" if content_pass else "HOLD_PUBLIC_CUTOVER",
+            "browser_roles_verified": False, "financial_authorized": False, "public_cutover_authorized": False}
+        seal(journal, "complete.json", record)
+        print(json.dumps({**record, "journal": str(journal)}, sort_keys=True))
     except BaseException as failure:
         try:
             candidate_systemd("stop", TIMER)
+            candidate_systemd("stop", REFRESH)
             candidate_systemd("stop", UNIT.name)
             # Reusing the pre-restart admission would bind the wrong PID.
             # Keep the qualified catalog observer for the already-installed views.
@@ -379,7 +395,7 @@ def execute(args, prepared):
             # An unattested replacement must never be left running after a
             # failed restoration. Preserve public 3030 and all journals.
             stopped = True
-            for unit_to_stop in (TIMER, UNIT.name):
+            for unit_to_stop in (TIMER, REFRESH, UNIT.name):
                 try:
                     candidate_systemd("stop", unit_to_stop)
                 except BaseException:
@@ -388,17 +404,7 @@ def execute(args, prepared):
                 "isolated_stop_commands_passed": stopped, "reason_type": type(rollback).__name__,
                 "financial_authorized": False, "public_cutover_authorized": False})
         raise
-    routes = guest_probes()
-    content_pass = all(row["status"] == "NO_RSC_ERROR" for row in routes.values())
-    record = {"status": "PASS_NEW_3032_ADMITTED_NOT_PUBLIC", "source_sha": NEW,
-        "build_version": BUILD_VERSION, "build_id": BUILD_ID, "pid": witness["candidate_pid"],
-        "ticks": witness["candidate_start_ticks"], "profile_sha256": witness["profile_sha256"],
-        "read_acl_sha256": witness["postgres"]["read_acl_sha256"],
-        "content": {"candidate_build_version": BUILD_VERSION},
-        "guest_routes": routes, "guest_content_gate": "PASS_NO_RSC_ERRORS" if content_pass else "HOLD_PUBLIC_CUTOVER",
-        "browser_roles_verified": False, "financial_authorized": False, "public_cutover_authorized": False}
-    seal(journal, "complete.json", record)
-    print(json.dumps({**record, "journal": str(journal)}, sort_keys=True))
+
 
 
 def main():
