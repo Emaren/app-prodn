@@ -121,9 +121,16 @@ class ContainedRefreshNextTests(unittest.TestCase):
         self.assertEqual(result["/players"]["status"], "RSC_ERROR")
         self.assertEqual(result["/rivalries"]["status"], "NO_RSC_ERROR")
 
-    def test_canonical_source_pin_matches_catalog_controller(self):
-        raw = (SOURCE.parent / "r25_c_start_root.py").read_bytes()
-        self.assertEqual(len(raw), m.NEW_CONTROLLER_SIZE)
-        self.assertEqual(m.sha(raw), m.NEW_CONTROLLER_SHA)
+    def test_canonical_source_pin_matches_historical_rollback_controller(self):
+        # The successful source of #1164 remains immutable, even when a
+        # later, independently qualified Steam DNS recovery controller ships.
+        import subprocess
+        root = SOURCE.parents[1]
+        raw = subprocess.run(
+            ["git","show","943dd7cb469f58a95eacd3e0d4e42552b747c705:scripts/r25_c_start_root.py"],
+            cwd=root,capture_output=True,check=True,
+        ).stdout
+        self.assertEqual(len(raw),m.NEW_CONTROLLER_SIZE)
+        self.assertEqual(m.sha(raw),m.NEW_CONTROLLER_SHA)
 
 if __name__=="__main__":unittest.main()

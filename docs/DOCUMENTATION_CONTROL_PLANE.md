@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-exact-a9eb-contained-refresh-20261104` at `c6c72442dc232e080fc0ac362f76605f8af0ce90`
+Implementation baseline: `fix/a05-steam-dns-rollback-recovery-20261104` at `47c74fcbd90af4ef27c5f0205707283a1b9e77ed`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

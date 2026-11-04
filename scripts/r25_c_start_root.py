@@ -738,21 +738,43 @@ server {
 '''
 
 def production_steam_addresses():
-    addresses = sorted(set(row[4][0] for row in socket.getaddrinfo(PROD_STEAM, 443, type=socket.SOCK_STREAM)))
-    need(0 < len(addresses) <= 16, "STEAM_DNS_ADDRESS_BOUND")
+    """Bounded multi-sample DNS + independent TLS validation.
+
+    The real isolated Node UID may get a different CDN A/AAAA answer than
+    root's one-shot libc lookup. That made the 2026-11-04 POST timeout although
+    its previously validated IP was correctly allowed in nft. Resolve as both
+    privileged planner and the confined UID, then TLS+SNI verify **every**
+    candidate BEFORE changing the nft allowlist. Never permit a DNS-only IP.
+    """
+    candidates = set()
+    uid_resolver = r"""import json,socket
+print(json.dumps(sorted({row[4][0] for row in
+ socket.getaddrinfo('steamcommunity.com',443,type=socket.SOCK_STREAM)})))
+"""
+    for _ in range(2):
+        candidates.update(row[4][0] for row in
+                          socket.getaddrinfo(PROD_STEAM,443,type=socket.SOCK_STREAM))
+        uid_addresses = parse(run(["/usr/sbin/runuser","-u",PROD_USER,"--",
+                                   "/usr/bin/python3","-I","-B","-c",uid_resolver],
+                                  timeout=12,maximum=8192))
+        need(type(uid_addresses) is list and all(type(address) is str for address in uid_addresses),
+             "STEAM_UID_DNS_RESPONSE_INVALID")
+        candidates.update(uid_addresses)
+    need(0 < len(candidates) <= 16,"STEAM_DNS_ADDRESS_BOUND")
     accepted = []
     context = ssl.create_default_context()
-    for address in addresses:
+    for address in sorted(candidates):
         ip = ipaddress.ip_address(address)
-        need(ip.is_global and not ip.is_multicast, "STEAM_DNS_NONPUBLIC_ADDRESS")
+        need(ip.is_global and not ip.is_multicast,"STEAM_DNS_NONPUBLIC_ADDRESS")
         try:
-            with socket.create_connection((address, 443), timeout=3) as raw:
-                with context.wrap_socket(raw, server_hostname=PROD_STEAM) as connection:
-                    need(connection.version() in ("TLSv1.2", "TLSv1.3"), "STEAM_TLS_VERSION")
+            with socket.create_connection((address,443),timeout=3) as raw:
+                with context.wrap_socket(raw,server_hostname=PROD_STEAM) as connection:
+                    need(connection.version() in ("TLSv1.2","TLSv1.3"),
+                         "STEAM_TLS_VERSION")
                     accepted.append(str(ip))
-        except (OSError, ssl.SSLError):
-            pass  # An unreachable family never receives an allow rule.
-    need(0 < len(accepted) <= 16, "STEAM_DNS_TLS_NO_VERIFIED_ADDRESS")
+        except (OSError,ssl.SSLError):
+            pass  # Only verified TLS peers get firewall allowlist entries.
+    need(0 < len(accepted) <= 16,"STEAM_DNS_TLS_NO_VERIFIED_ADDRESS")
     return accepted
 
 def production_nft_bytes(addresses):
