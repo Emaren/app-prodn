@@ -1294,6 +1294,8 @@ SELECT json_build_object(
        AND bool_and(c.relkind='v' AND pg_get_userbyid(c.relowner)='postgres'
           AND c.reloptions=ARRAY['security_barrier=true'] AND has_table_privilege(c.oid,'SELECT')
           AND NOT has_table_privilege(c.oid,'SELECT WITH GRANT OPTION')
+          AND NOT EXISTS(SELECT 1 FROM pg_attribute a
+             WHERE a.attrelid=c.oid AND a.attnum>0 AND NOT a.attisdropped AND a.attacl IS NOT NULL)
           AND NOT EXISTS(SELECT 1 FROM aclexplode(c.relacl) acl
              WHERE acl.grantee NOT IN (c.relowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
                 OR acl.grantor<>c.relowner)))
