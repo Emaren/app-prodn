@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/r25-contained-runtime-refresh-20261104` at `a84752f4987436ca864af400982ac43e38b7acbb`
+Implementation baseline: `fix/r25-contained-runtime-refresh-20261104` at `1729a3c5f28cb2e815bedc47dfbbf5d360f5a361`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

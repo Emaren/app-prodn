@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1cac223cfe5b22d0258fd576fb9c3766a7ae8a77c9416796ebead4d817606b76",
+      "sha256": "84b0de991e7ef6695184306046a262002365411e1e6f475c09719861171c5362",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/r25-contained-runtime-refresh-20261104",
-    "commit": "a84752f4987436ca864af400982ac43e38b7acbb"
+    "commit": "1729a3c5f28cb2e815bedc47dfbbf5d360f5a361"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
