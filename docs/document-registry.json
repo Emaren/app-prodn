@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ccec118053ad98dfc1f3dc3626030f20af87b964e0555e5b43c0e07666956de7",
+      "sha256": "d2cf2ea429abb97ed86c54428e3f8fdc14a08901033428ce7049de9550dd7bcf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "3ece3659f8c885ddf51b0cc696cf92c61f39e0e95efafaa09c45d1a40cbf7378",
+      "sha256": "9bbda944a0add18cf12e15454cadc936d6adfbd93905258615a03d64a871bc04",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-v7v8v9-local-integration-smoke-20261104",
-    "commit": "c7ee60df51d4b6a3f1ffed6327d6b5148f11532d"
+    "commit": "d232ecd03e1f9cbf7a824868a720d92c4aefdb45"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

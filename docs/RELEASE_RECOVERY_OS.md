@@ -1084,3 +1084,19 @@ column allowlist only). The native controller continues to fingerprint
 all original table/column grants and the new v11 view's complete
 definition, schema ownership and ACL. This source repair does not grant
 or revoke any legacy role permissions and preserves the other services.
+
+### Native database catalog v7 through v11: single source-qualified gate
+
+The R25 C production controller exact additional-view allowlist now
+includes **19 approved additional views** across public v2-v11, plus
+the seven original v1 public views. v7, v8, v9, v10 and v11 each have
+an independently computed HEL1 PostgreSQL definition/owner/view
+fingerprint, not a document-authored substitute. The combined native
+rehearsal installed all seven v7-v11 views within one rollback-only
+transaction, queried the confined aoe2war_web_prod role, returned
+7,181 final-replay viewer memberships and one active public Hero
+playlist, attested exact names and security_barrier=true ownership,
+and executed ROLLBACK. Missing, modified, extra, renamed
+or non-security-barrier views remain hard admission holds; the original
+raw table/column ACL allowance is unchanged. The owner must still
+separately authorize the reviewed candidate source and physical START.
