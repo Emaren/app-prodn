@@ -8,12 +8,22 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Commissioner Replay Result Review
+
+## Owner-delegated source review, 2026-11-04 UTC
+
+Codex reviewed the adjudications route, `lib/replayResultAdjudications.ts`
+and its authority tests under Tony's delegated authority. Tony is the sole
+human owner. Commissioner and admin are application capabilities. The route
+matches the signed-in account UID exactly against the game or its parse
+attempt, and also requires the reviewer capability for non-admins. The
+source review covers this authorization boundary and carries no release or
+settlement approval.
 
 ## Purpose and product posture
 

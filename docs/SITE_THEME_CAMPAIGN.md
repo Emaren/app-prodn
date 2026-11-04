@@ -8,12 +8,32 @@ systems: ["app-prodn"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "presentation-policy"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-11-03"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Site Theme Campaign
+
+## Owner-delegated source review — 2026-11-03
+
+Codex performed this repository source review under Tony's delegated authority.
+Tony is the sole human owner; Commissioner, operator, signer and reviewer roles
+are distinct authority/cryptographic roles, not evidence of different humans or
+an independent human review. Existing authentication, proof and role separation
+still apply. This review covers the current local candidate, including
+unpublished work; it is not a release receipt, live-service audit, native reserve
+qualification or physical financial deployment approval.
+
+Reviewed `lib/siteThemeCampaign.ts`, its viewer-state/override resolution and
+`tests/site-theme-campaign.test.mts`. Active means enabled and
+`startsAt <= now < endsAt`; toggling enabled does not extend the stored window.
+The original October window has elapsed as of this review. That seed is now a
+historical campaign definition, not evidence that production is currently
+Black or that its database row is unchanged. Inspect the authenticated campaign
+snapshot for live configuration. Overrides remain keyed to campaign and user;
+no presentation toggle authorizes wallet movement or changes finance policy.
+
 
 ## Purpose
 

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/20261023-satchel-final-gated` at `fde7b8aed337910eed8af8b4bab993706bdf1052`
+Implementation baseline: `codex/central-c02-native-return-20261103` at `4a542a1d810b291372128f72218806aebdabbff8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

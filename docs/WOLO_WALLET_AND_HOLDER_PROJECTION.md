@@ -8,12 +8,35 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "wallet-read-model-contract"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-11-03"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # WOLO Wallet and Holder Projection
+
+## Owner-delegated source review — 2026-11-03
+
+Codex performed this repository source review under Tony's delegated authority.
+Tony is the sole human owner; Commissioner, operator, signer and reviewer roles
+are distinct authority/cryptographic roles, not evidence of different humans or
+an independent human review. Existing authentication, proof and role separation
+still apply. This review covers the current local candidate, including
+unpublished work; it is not a release receipt, live-service audit, native reserve
+qualification or physical financial deployment approval.
+
+Reviewed `app/api/wolo/holders/route.ts`,
+`app/api/wolo/balance/[address]/route.ts`, `lib/woloBalanceRead.ts`,
+`lib/woloHolderDirectory.ts` and `lib/woloPublicHolderPrivacy.ts`. Bulk public and
+admin holder views retain distinct balance policies; address-specific reads
+are deliberately public. Historical directory entries are de-duplicated against
+current census membership, and incident annotations remain attributed claims,
+not independently proven wallet control. A validated current bank balance is
+asset observation only: it does not establish complete liabilities, paid-claim
+discharge, fee headroom or execution authority. In particular, neither this
+projection nor a successful connected-wallet read qualifies native escrow
+returns for deployment or spend.
+
 
 ## Chain boundary
 
