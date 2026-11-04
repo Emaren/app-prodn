@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "19d3e6679ecb1ef0b5d1adb0b8f2e37ff855907ff3bb7ca6bacf112365b58619",
+      "sha256": "246d68f2ae7494cf4f8161677817bd2be439cd1d321192a776dc34baffa17f31",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/traffic-provisional-rail-20261104",
-    "commit": "70ae69fa644386186bf9e71906f29fa5d548edde"
+    "commit": "621c9bdb84cfa94a997310e072d5dd52d7b2892b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
