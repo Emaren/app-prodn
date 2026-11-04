@@ -14,6 +14,7 @@ const source=fs.readFileSync(process.argv[1],'utf8');
 const env={NODE_ENV:'production',WARGRAPH_RUNTIME_DISABLED:'true',AOE2WAR_RUNTIME_PROFILE:'nonfinancial-production-v1',
  AOE2WAR_R25_ISOLATED_WEB:'true',AOE2WAR_PROD_DB_PREVIEW:'false',NODE_OPTIONS:'--require='+guard,HOSTNAME:'127.0.0.1',PORT:'3032',
  USER:'aoe2war-web-prod',LOGNAME:'aoe2war-web-prod',AOE2_BACKEND_UPSTREAM:'http://127.0.0.1:3331',TRAFFIC_API_BASE:'http://127.0.0.1:3331',
+ MANAGED_MEDIA_UPLOAD_DIR:'/run/aoe2war-public-media',
  [['SESSION','SECRET'].join('_')]:'A'.repeat(64),[['DATABASE','URL'].join('_')]:('postgresql://' + 'aoe2war_web_prod:' + 't'.repeat(32) + '@127.0.0.1:5432/test')};
 function setup(changes={}) {
  class Server {emit(){return 'passed';} listen(){return 'listening';}}
@@ -61,6 +62,8 @@ assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/auth/sess
 assert.equal(new http.Server().emit('request',{method:'DELETE',url:'/api/auth/session'},response),'passed');
 assert.equal(new http.Server().emit('request',{method:'POST',url:'/api/user/ping'},response),'passed');
 assert.throws(()=>setup({AOE2WAR_R25_ISOLATED_WEB:undefined}),/ENV_AOE2WAR_R25_ISOLATED_WEB/);
+assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:undefined}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
+assert.throws(()=>setup({MANAGED_MEDIA_UPLOAD_DIR:'/mnt/nonpublic'}),/ENV_MANAGED_MEDIA_UPLOAD_DIR/);
 assert.throws(()=>setup({WOLO_SIGNER_KEY:'never-imported'}),/UNREVIEWED_ENVIRONMENT/);
 console.log('PASS:actual_preloader_transport_and_http_boundaries');
 '''

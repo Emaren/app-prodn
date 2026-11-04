@@ -276,6 +276,8 @@ class ProductionProfile(unittest.TestCase):
         self.assertEqual(node.call_args.kwargs["cwd"],str(sealed))
         self.assertEqual(node.call_args.args[0][:4],["/usr/sbin/runuser","-u",c.PROD_USER,"--"])
         self.assertIn("--require="+str(c.PROD_GUARD),node.call_args.kwargs["env"]["NODE_OPTIONS"])
+        self.assertEqual(node.call_args.kwargs["env"]["MANAGED_MEDIA_UPLOAD_DIR"],
+                         "/run/aoe2war-public-media")
         # A sealed cwd alone is insufficient: the modern guard checks this
         # against its exact 3331 origin before reaching the Steam POST.
         guard = (ROOT / "scripts/r25_b_guard_production_v1.cjs").read_text()

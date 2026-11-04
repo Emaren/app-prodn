@@ -207,6 +207,39 @@ class Upgrade(unittest.TestCase):
             with self.assertRaisesRegex(m.Hold, "STEAM_DESTINATIONS_EXPIRED_DURING_SOAK"):
                 m.soak_refresh()
 
+    def test_failed_node_guard_state_is_reset_before_exact_rollback_check(self):
+        # On HEL1, failed status with MainPID=0 blocked an otherwise safe
+        # rollback. The controller must reset the stale status only after
+        # stopping its own unit, before checking the exact 3032 listener.
+        owner=mock.Mock()
+        modern=mock.Mock(PROD_UNIT="aoe2hdbets-web-prod.service")
+        old=mock.Mock(PROD_UNIT="aoe2hdbets-web-prod.service")
+        old.production_nft_shape.return_value="shape"
+        old.production_runtime_environment.return_value=({}, "fixture", "private-test-only")
+        old.production_database_witness.return_value={
+            "read_acl_sha256":"before","definer_identity_sha256":"definer"}
+        plan={"nft_shape_sha256":"shape",
+              "before_read_acl_sha256":"before",
+              "before_definer_sha256":"definer",
+              "before_policy_bytes":{key:m.digest(b"restore") for key in m.FILES}}
+        snapshots={key:b"restore" for key in m.FILES}
+        with mock.patch.object(m,"invoke",return_value=b"") as invoke, \
+             mock.patch.object(m,"stopped_candidate") as stopped, \
+             mock.patch.object(m,"native_sql"), \
+             mock.patch.object(m,"atomic"), \
+             mock.patch.object(m,"safe_bytes",return_value=b"restore"), \
+             mock.patch.object(m,"assert_protected"), \
+             mock.patch.object(m,"steam_elements",return_value=[]):
+            owner.attach_mock(invoke,"invoke")
+            owner.attach_mock(stopped,"stopped")
+            m.restore_stopped(old,modern,plan,snapshots,True)
+        self.assertGreaterEqual(len(owner.mock_calls),3)
+        self.assertEqual(owner.mock_calls[0],mock.call.invoke(
+            "/usr/bin/systemctl","stop",m.TIMER,m.REFRESH,modern.PROD_UNIT,timeout=55))
+        self.assertEqual(owner.mock_calls[1],mock.call.invoke(
+            "/usr/bin/systemctl","reset-failed",modern.PROD_UNIT,timeout=20))
+        self.assertEqual(owner.mock_calls[2],mock.call.stopped(old.PROD_UNIT))
+
     def test_failed_bootstrap_consumes_nonce_and_restores_stopped_baseline(self):
         with tempfile.TemporaryDirectory() as tmp:
             journals = pathlib.Path(tmp)

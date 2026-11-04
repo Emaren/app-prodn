@@ -49,6 +49,10 @@ FAILED_ROLLBACK = "2c3f7713540e27d269ae649ff0b86dcbb95778655eafc688db5998d3f0091
 LATEST_FAILED_NONCE = "94451e92ea7b9f3d97d8239ec50b8753"
 LATEST_FAILED_ENTERED = "c5cfdc899afe62192c5ab67e266eb29ac94a6788c23f6538348c1f4d76bf5ef2"
 LATEST_VERIFIED_ROLLBACK = "ceaf905dc130981465d3a9442f4a8015f4a2149ab8d91539340632b523cfa72c"
+GUARD_FAILED_NONCE = "7e92328a777c5e4442137b29dd8781c1"
+GUARD_FAILED_ENTERED = "849b35646b995090a0ce72de9307b1164c4b06972f549c658c94a40ea484e284"
+GUARD_FAILED_ROLLBACK_HOLD = "c1ab78b2a8ba1f9922a62bce7e7ca3154cab97c671851e5e48b6e05b5f093916"
+GUARD_RECOVERY_RECEIPT = "1429e489d1f27c8025c6d314366c1c30d7995675a2f99df08483b02166dafc6d"
 TRAFFIC_ROOT = Path("/var/lib/aoe2war-traffic-r60-20261103")
 TRAFFIC_RECEIPTS = {
     "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
@@ -69,10 +73,10 @@ SCOPE = "UPGRADE_STOPPED_NONFINANCIAL_3032_ONLY"
 SOURCE_PATH = "scripts/r25_c_scoped_upgrade_v1.py"
 LOCK_ID = (2064, 6185747, 1000, 0o644)
 REVIEWED_RUNTIME_SOURCES = {
-    "controller": ("scripts/r25_c_start_root.py", 115060,
-                  "f7fa39d97f6c82282a1b1beac940606c71f07e9f0fdea42e4935e023df161479"),
-    "guard": ("scripts/r25_b_guard_production_v1.cjs", 11216,
-                  "cb77ca6efd2d4416bba9ac602be7a65609f0fc73facdc43e592c6cfd05d79b65"),
+    "controller": ("scripts/r25_c_start_root.py", 115124,
+                  "d9703068468ee13b22a18c5da17d756583802f1f743260cb8f90657cf5c52b07"),
+    "guard": ("scripts/r25_b_guard_production_v1.cjs", 11420,
+                  "934cb03ba8982883028bcb7d94907223ebc6fbda63abeb6ef047b2a2e08d0cf7"),
 }
 
 
@@ -325,6 +329,20 @@ def prior_failure(actual):
          json.loads(latest_rollback).get("status")=="PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED" and
          json.loads(latest_rollback).get("reason")=="ORIGINAL_PUBLISHED_EVENT_NOT_VERIFIED",
          "LATEST_CONSUMED_UPGRADE_ROLLBACK_DRIFT")
+    guarded=JOURNALS/("upgrade-"+GUARD_FAILED_NONCE)
+    guard_entered=safe_bytes(guarded/"entered.json")
+    guard_hold=safe_bytes(guarded/"rollback_hold.json")
+    guard_recovery=safe_bytes(guarded/"rollback-recovered.json")
+    guard_payload=json.loads(guard_entered)
+    need(digest(guard_entered)==GUARD_FAILED_ENTERED and
+         digest(guard_hold)==GUARD_FAILED_ROLLBACK_HOLD and
+         digest(guard_recovery)==GUARD_RECOVERY_RECEIPT and
+         guard_payload.get("nonce")==GUARD_FAILED_NONCE and
+         guard_payload.get("plan",{}).get("before_policy_bytes")==actual and
+         json.loads(guard_hold).get("status")=="CRITICAL_ROLLBACK_INCOMPLETE" and
+         json.loads(guard_recovery).get("status")==
+             "PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED_AFTER_FAILED_SYSTEMD_RESET",
+         "LATEST_GUARD_REJECTION_RECOVERY_DRIFT")
     return failed["plan"]
 
 
@@ -556,6 +574,11 @@ def soak_refresh():
 
 def restore_stopped(old, new, plan, backups, changed_steam):
     invoke("/usr/bin/systemctl", "stop", TIMER, REFRESH, new.PROD_UNIT, timeout=55)
+    # A rejected Node guard exits without a PID but leaves systemd in failed
+    # state; acknowledge that completed stop before the strict no-listener
+    # witness. The first real rollback proved ignoring this stranded the
+    # original profile even though the candidate had exited.
+    invoke("/usr/bin/systemctl", "reset-failed", new.PROD_UNIT, timeout=20)
     stopped_candidate(old.PROD_UNIT)
     native_sql(acl_delta(False))
     for key, (path, _, mode) in FILES.items():

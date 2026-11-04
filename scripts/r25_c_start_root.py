@@ -1481,7 +1481,8 @@ def production_steam_probe(environment, stage):
       "NODE_ENV": "production", "WARGRAPH_RUNTIME_DISABLED": "true", "AOE2WAR_RUNTIME_PROFILE": PROD_PROFILE,
       "AOE2WAR_R25_ISOLATED_WEB": "true", "AOE2WAR_PROD_DB_PREVIEW": "false", "AOE2_BACKEND_UPSTREAM": "http://127.0.0.1:3331",
       "TRAFFIC_API_BASE": "http://127.0.0.1:3331", "HOSTNAME": "127.0.0.1",
-      "PORT": "3032", "NODE_OPTIONS": "--require=" + str(PROD_GUARD), **environment}
+      "PORT": "3032", "NODE_OPTIONS": "--require=" + str(PROD_GUARD),
+      "MANAGED_MEDIA_UPLOAD_DIR": str(PROD_PUBLIC_MEDIA_MOUNT), **environment}
     result = subprocess.run(["/usr/sbin/runuser", "-u", PROD_USER, "--", "/usr/bin/node", "-e", probe],
         env=env, cwd=str(stage), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=False)
     need(result.returncode == 0 and len(result.stdout) < 8192, "PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED")
