@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ae0b6a6261d1384a4da154bdf8161090488050262f60c22d6968f45bcaba727a",
+      "sha256": "2922e4465968162bf9f51b479b48a184de8bf73e5c869a8fd37cb8076ef13cda",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a7e0387ae6711bd2c5d3818bf164be32c7c1992f90ea82abe8f47f1264856948",
+      "sha256": "f70253da467259108cace08f1529076cc492241bdcbe7d58f64b8a70d920cb59",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-game-stats-public-corpus-v7-20261104",
-    "commit": "3e25d3d21452a7bc879851b9fa04092a65c89e63"
+    "branch": "fix/a05-parser-aggregate-v8-20261104",
+    "commit": "e3703ef1266515d8fa9638092031fd87c5f26528"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
