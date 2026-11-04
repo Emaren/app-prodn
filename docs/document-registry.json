@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5e2bae630800247a431cb4c725e008f9ae2fba71a90dfe0f0448edfd57b40edf",
+      "sha256": "54d225f9f4a010bbe844a27d80e0cb0b9e5dc1d5662788305fc1c3c98d5e0f40",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "90860e2a276d92fd745301af30276391ae74c99ccdafe0be9452645a91f8935f",
+      "sha256": "b8a3f5cd65153db0f842330cf2ac17b9cb6df52026f204f30539e9e232e39baf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-v7v8v9-local-integration-smoke-20261104",
-    "commit": "12895b099c9d57bb20af4a6244cdac41c9813e9e"
+    "branch": "fix/a05-final-3032-stopped-recovery-20261104",
+    "commit": "53581d935709fd19d39814eda80fb34d54d4a1c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
