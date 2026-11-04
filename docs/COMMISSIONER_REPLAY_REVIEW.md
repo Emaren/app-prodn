@@ -8,12 +8,16 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Commissioner Replay Result Review
+
+## Source-contract review — 2026-11-04 (AI engineering review)
+
+Reviewed append-only result/adjudication and terminal-action diagnostic boundaries against the committed replay adjudication and watcher regressions. This is source-contract maintenance, not a new authorized human verdict, an independent finance review, or evidence that any market was settled.
 
 ## Purpose and product posture
 
