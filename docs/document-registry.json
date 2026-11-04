@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6ffafbad0dc50de8141aa584be3fcaf8c193f2e38dce733257a352be90126152",
+      "sha256": "2de3a6efb3359086c3b98bf5411ebdcd980f819e8058e31150fab1708417adc3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/r25-watcher-public-views-20261104",
-    "commit": "e4eb6463c44bc6a9f9ae53fd37e5a933344a24c4"
+    "branch": "fix/r25-bounty-public-v4-20261104",
+    "commit": "acfe7ea2ecec049ded08911eda1d10ffcc23edc7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
