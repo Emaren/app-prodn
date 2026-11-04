@@ -934,3 +934,40 @@ pin the v7 view definition/ACL before 3032 can start.
 
 No generic `GRANT SELECT`, scheduled financial execution, public
 upstream mutation, or replay statistics fabrication is authorized.
+
+## R25 Game Stats parser aggregate v8: public-only classified metrics (2026-11-04)
+
+The original `/game-stats` public observatory attempted direct ORM reads
+from restricted parser runs, replay observations, reprocess job events,
+replay evidence artifact rows, identity publications and warrior claims.
+Those tables remain private. `nonfinancial-production-v1` now branches
+before constructing its legacy aggregate read promises to a single
+source-owned `aoe2war_public_v8.parser_observatory_snapshot`
+`security_barrier=true` PostgreSQL view. The page keeps all twelve
+existing analytics domains: game and archived artifact counts, run status,
+parser versions, field coverage, observations, bounded last six jobs,
+failure-class counts, latest parse results, effective public projection
+receipts, accepted identity display snapshots, and identity foundation
+counts. It never invents zeros on view absence, treats malformed
+aggregate inputs as a visible error, and preserves the legacy 3030
+ORM branch unchanged.
+
+The view is PostgreSQL-owned and publishes only explicit public scalar
+metrics; raw failure detail, arbitrary parser metrics/provenance, evidence
+storage keys, private reprocess scope, worker identities, unpublished
+reviewer notes, wallets, claim decisions and financial tables remain
+outside web SELECT. For accepted identity snapshots it reproduces Prisma
+`supersededBy:null` using a real anti-join on the physical
+`supersedes_id` field. The first exploratory SQL attempt using a guessed
+`superseded_by` column failed inside a transaction and was discarded.
+The corrected combined v7+v8 atomic HEL1 test returns 12 metric groups
+and 60,945 current database game rows as the restricted production
+web role; it is explicitly followed by ROLLBACK.
+
+This v8 publisher is **not** public launch authority. Require all exact
+source/CI/security/Chrome checks; separately pin view definitions and
+base-table negative privilege behavior into the native controller
+allowlist before any additive commit, 3032 restart or Nginx switch.
+The v7 corpus view is a prerequisite and must be installed using its
+exact signed source first. Avoid accidentally presenting prospective
+or candidate parsing statistics as financially settled outcomes.
