@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "06c29a08eed4e9cc1d2bf98ba0f5226a47306dd33a9e8a4cce36ca49ef2831de",
+      "sha256": "eb1bcbb4e9f94067220c746ee2aa8fb2b28d22f3230417631bfb3f25bef3a28b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-rebind-staged-3032-after-oom-20261104",
-    "commit": "cf4071d49a70afc8631bf2e6100cfbf6f1680e39"
+    "commit": "22f56806ab266d3e101c04c9528febf73413dc69"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
