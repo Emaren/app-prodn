@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-qualified-monitor-oneshot-retry-20261104` at `2ed916b162d71da82f70d56cbc2355d85d91640c`
+Implementation baseline: `fix/a05-steam-uid-capability-refresh-20261104` at `bf08ad84f51b7b9b0bf3956fa09d03e3ac0a79a6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
