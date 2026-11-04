@@ -3,6 +3,7 @@ import Link from "next/link";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { loadPublicBattleArchivePage } from "@/lib/publicBattleArchive";
 import {
   buildPublicRivalryActivity,
@@ -222,6 +223,9 @@ export default async function BattleArchivePage({ searchParams }: BattleArchiveP
             totalBattles={total}
           />
         </div>
+        {isNonfinancialPublicReadProfile() ? (
+          <p className="mt-4 text-sm text-slate-400">Betting market links are currently unavailable.</p>
+        ) : null}
 
         {entries.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-6 text-sm text-slate-300">
