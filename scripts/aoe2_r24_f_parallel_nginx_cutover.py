@@ -1607,7 +1607,8 @@ class _PublicVisibleText(HTMLParser):
 def production_content_html(port, route):
     # Origin-only, anonymous, GET-only. No session/cookie or CDN cache required.
     need(port in (3030,3032) and route in (
-        "/", "/traffic", "/players", "/war-chest", "/game-stats"),
+        "/", "/traffic", "/players", "/war-chest", "/game-stats", "/rivalries",
+        "/battle-archive", "/bounties", "/champions", "/radio"),
         "CONTENT_PARITY_UNREVIEWED_ROUTE")
     con = http.client.HTTPConnection("127.0.0.1", port, timeout=20 if route == "/traffic" else 9)
     try:
@@ -1648,13 +1649,14 @@ def production_has_server_component_error(page_html):
     return False
 
 def production_public_guest_page_smoke():
-    """Require actual nonfinancial player/war archive pages to render.
+    """Require actual nonfinancial player, rivalry and archive pages to render.
 
     42501 PostgreSQL denials in the new restricted role must not appear
     as an HTTP-200, empty Next.js error shell. Original 3030 is checked
     alongside the new 3032 so regressions are attributed correctly.
     """
-    routes=("/players","/war-chest","/game-stats")
+    routes=("/players","/war-chest","/game-stats","/rivalries",
+            "/battle-archive","/bounties","/champions","/radio")
     witness={}
     for route in routes:
         old=production_content_html(3030,route)
