@@ -87,6 +87,10 @@ jobs:
         run: npx prisma generate
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
+      - name: Verify the reviewed secure minimatch import compatibility
+        run: |
+          node --test tests/r25-secure-minimatch-adapter.test.cjs
+          node scripts/r25_secure_minimatch_eslint_adapter.cjs
       - name: Lint changed sources (Finish release-gate parity)
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -163,7 +167,7 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts tests/hd-financial-maintenance-fence.test.mts tests/satchel-product-money-limits-postgres.test.mts tests/live-watcher-market-admission-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-return-runtime-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts tests/hd-financial-maintenance-fence.test.mts tests/satchel-product-money-limits-postgres.test.mts tests/live-watcher-market-admission-postgres.test.mts
 
       - name: Pin Go for actual Satchel verifier integration
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff

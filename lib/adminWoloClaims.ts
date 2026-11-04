@@ -34,6 +34,7 @@ type ClaimIdentity = {
 
 type MatchedClaimUser = {
   id: number;
+  uid: string;
   inGameName: string | null;
   steamPersonaName: string | null;
   walletAddress: string | null;
@@ -778,6 +779,7 @@ export async function findMatchedClaimUser(
     },
     select: {
       id: true,
+      uid: true,
       inGameName: true,
       steamPersonaName: true,
       walletAddress: true,
@@ -894,6 +896,22 @@ export async function retryPendingClaimSettlement(
   // A custody-funded wager belongs to the player's Satchel ledger, NOT
   // to the legacy direct-Keplr claim settlement lane. Never broadcast such
   // a claim until exact escrow return attribution is implemented.
+  if(process.env.WAR_SATCHEL_CLAIM_RETURN_EXECUTOR_READY==="true"&&
+     (claim.claimKind==="bet_payout"||claim.claimKind==="bet_refund")){
+    const review=await prisma.satchelClaimReturnExecutionReview.findUnique({where:{claimId:claim.id}});
+    if(review){
+      // Founder matching exposes a narrower display identity. Reload the
+      // canonical owner UID instead of accepting an optional/stale property.
+      const owner=await prisma.user.findUnique({where:{id:matchedUser.id},select:{uid:true}});
+      if(!owner||review.ownerUserId!==matchedUser.id||review.ownerUid!==owner.uid)
+        throw Error("SATCHEL_CLAIM_RETURN_EXECUTION_OWNER_CHANGED");
+      const {processCertifiedSatchelClaimReturn}=await import("./warSatchelClaimReturnRuntime.ts");
+      const result=await processCertifiedSatchelClaimReturn(prisma,claim.id);
+      if(result.state==="credited")return {outcome:"claimed",claimId:claim.id,amountWolo:claim.amountWolo,txHash:result.txHash,matchedUserId:result.ownerUserId};
+      return {outcome:"failed",claimId:claim.id,detail:"Satchel escrow return remains held: "+result.state};
+    }
+  }
+  // An absent review/disabled producer retains this exact legacy fence.
   await assertNoUnroutedSatchelSettlementClaim(prisma, {
     claimId: claim.id,
     claimKind: claim.claimKind,

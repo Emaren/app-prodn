@@ -18,7 +18,15 @@ export function authenticatedWarSatchelBankFreshAt(value:unknown,nowMs=Date.now(
     Number.isSafeInteger(bank.authenticatedHeadExpiresAtMs)&&nowMs<bank.authenticatedHeadExpiresAtMs;
 }
 export async function authenticateWarSatchelBank(vault:string,reader:typeof fetch=fetch,canceled?:AbortSignal):Promise<AuthenticatedWarSatchelBank>{
-  const verified=await collectAndVerifyPinnedWarSatchelBankProof(vault,reader,canceled);
+  return authenticateAccount(vault,reader,canceled,"vault");
+}
+/** Existing native verifier selects only its protected authority's escrow
+ * role. The supplied address cannot replace that independently pinned role. */
+export async function authenticateWarSatchelEscrowBank(escrow:string,reader:typeof fetch=fetch,canceled?:AbortSignal):Promise<AuthenticatedWarSatchelBank>{
+  return authenticateAccount(escrow,reader,canceled,"escrow");
+}
+async function authenticateAccount(vault:string,reader:typeof fetch,canceled:AbortSignal|undefined,role:"vault"|"escrow"):Promise<AuthenticatedWarSatchelBank>{
+  const verified=await collectAndVerifyPinnedWarSatchelBankProof(vault,reader,canceled,role);
   const result=Object.freeze({chainId:"wolo-1" as const,denom:"uwolo" as const,
     vaultAddress:verified.vaultAddress,balanceUwolo:verified.balanceUwolo,height:verified.height,
     commitHeight:verified.commitHeight,blockHash:verified.blockHash,appHash:verified.appHash,

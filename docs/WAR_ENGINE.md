@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "replay-evidence-escalation-contract"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -16,6 +16,16 @@ sensitivity: "internal"
 # The War Engine
 
 The War Engine is AoE2WAR's escalation path for replay files whose normal parser evidence cannot prove a competitive result.
+
+## Owner-delegated source review, 2026-11-04 UTC
+
+Codex reviewed `lib/warEngine.ts`, its public-status tests and the foundation
+migration under Tony's delegated authority. Tony is the sole human owner.
+Public status derives from the latest case event and candidate run. The
+migration enforces append-only case, event and run records and constrains
+candidate runs away from aggregate or betting changes. A public badge is a
+case classification. Accepted adjudication and financial authority remain
+separate controls.
 
 ## Evidence ladder
 

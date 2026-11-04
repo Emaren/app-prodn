@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -21,11 +21,19 @@ re-reviewed against the current multi-watcher implementation and financial
 regression rail. Historical counts and release hashes below remain dated
 evidence, not current mutable production telemetry.
 
+## Owner-delegated source review, 2026-11-04 UTC
+
+Codex reviewed `lib/teamResolution.ts` and `tests/team-resolution.test.mts`
+under Tony's delegated authority. Tony is the sole human owner. The resolver
+treats exactly two distinct player identities as 1v1, checks explicit topology
+for larger rosters and rechecks the frozen proposition at settlement. This
+source review does not establish live book or custody state.
+
 ## Product law
 
 No confident teams, no market. No matching final roster, no settlement.
 
-Watcher-created team books require exactly two defensible replay sides. Usually both sides come from explicit replay team IDs. HD may also encode a lone opponent as unteamed while the allied side carries one shared explicit team ID; that narrow one-team-plus-one-singleton structure is accepted as a complete 2v1/3v1/4v1 proposition. Uneven cardinality must come from replay topology, never player count alone. Each side must contain 1–4 players, Team ID `0` is valid, and player-array order, display names, and aliases never assign team membership. Two unteamed players, an unteamed player alongside two explicit teams, more than two sides, duplicate identities, or otherwise conflicting team evidence may remain visible on `/live-games`, but it has no betting controls.
+Watcher-created team books require exactly two defensible replay sides. Usually both sides come from explicit replay team IDs. HD may also encode a lone opponent as unteamed while the allied side carries one shared explicit team ID; that narrow one-team-plus-one-singleton structure is accepted as a complete 2v1/3v1/4v1 proposition. Exactly two distinct player identities resolve as 1v1, including when both are unteamed. Uneven cardinality must come from replay topology. Each side must contain 1–4 players, Team ID `0` is valid, and player-array order, display names, and aliases never assign team membership. For rosters larger than two, multiple unteamed players or an unteamed player alongside two explicit teams, more than two sides, duplicate identities, or otherwise conflicting team evidence may remain visible on `/live-games`, but it has no betting controls.
 
 ## Data path
 

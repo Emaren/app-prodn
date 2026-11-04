@@ -21,6 +21,10 @@ let active = 0;
 // exact binary SHA-256 established by scripts/check-satchel-authenticated-credit.py
 // (Go1.24.6 Linux/amd64). Source/archive/CI proof is NOT mainnet custody authority.
 const PINNED_VERIFIER_SHA256 = "37e2c13b68a6d14b3019ad7a9dc12d38360c63b42094daac14e881e3626898ef";
+// Wolo f7b5a74928e041a6a90ac983d87649e0484677a4, artifact 13282486069.
+// This reviewed verifier supports the protected escrow account role.
+// Keep the existing deposit, vault, wager and return receipt pin separate.
+const PINNED_ESCROW_BANK_VERIFIER_SHA256 = "bf07bee6cfe18988e9d3c3465bc3a3e66835d9cbc45fa3415462bba8727449e8";
 const ENDPOINT = "http://127.0.0.1:8094";
 const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -115,9 +119,11 @@ function requireConfiguration(x: {vault: string; kind: string}) {
       process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS !== x.vault)
     stop("operator_proof_authority_not_certified");
   const token = process.env.WAR_SATCHEL_SIGNER_AUTH_TOKEN || "";
-  const binary = process.env.WAR_SATCHEL_VERIFIER_BINARY || "";
-  const digest = PINNED_VERIFIER_SHA256;
-  if (process.env.WAR_SATCHEL_VERIFIER_SHA256 && process.env.WAR_SATCHEL_VERIFIER_SHA256 !== digest)
+  const escrowBank = x.kind === "escrow_bank";
+  const binary = (escrowBank ? process.env.WAR_SATCHEL_ESCROW_BANK_VERIFIER_BINARY : process.env.WAR_SATCHEL_VERIFIER_BINARY) || "";
+  const digest = escrowBank ? PINNED_ESCROW_BANK_VERIFIER_SHA256 : PINNED_VERIFIER_SHA256;
+  const declaredDigest = escrowBank ? process.env.WAR_SATCHEL_ESCROW_BANK_VERIFIER_SHA256 : process.env.WAR_SATCHEL_VERIFIER_SHA256;
+  if (declaredDigest && declaredDigest !== digest)
     stop("unreviewed_verifier_digest");
   // The wager proof authority contains an explicit wager_approval_public_key_hex
   // distinct from its withdrawal-role approval_public_key_hex. Go verifies
@@ -268,19 +274,23 @@ export function verifiedBankReceiptMetadata(
     verifiedAtMs:nowMs,authenticatedHeadExpiresAtMs:expiresAtMs});
 }
 
-/** Fixed read-only bank route and command, sharing the exact reviewed binary
- * snapshot and public authority file used by the financial proof boundary.
- * This returns authenticated assets only, never complete solvency authority. */
+/** Fixed read-only bank route and command. The escrow role uses its own pinned
+ * verifier bytes and the protected public authority file. This authenticates
+ * assets and does not certify complete liabilities. */
 export async function collectAndVerifyPinnedWarSatchelBankProof(
   vault:string, reader:typeof fetch=fetch, canceled?:AbortSignal,
+  accountRole:"vault"|"escrow"="vault",
 ):Promise<VerifiedWarSatchelBankObservation>{
   if(!ADDRESS.test(vault)||active>=4)stop("bank_verifier_unavailable");
   active++;
   const signal=AbortSignal.any([AbortSignal.timeout(30_000),...(canceled?[canceled]:[])]);
   try{
     signal.throwIfAborted();
-    const cfg=requireConfiguration({vault,kind:"bank"});
-    const response=await reader(ENDPOINT+"/satchel/v1/proofs/bank",{
+    const cfg=requireConfiguration({
+      vault:accountRole==="escrow"?process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS||"":vault,
+      kind:accountRole==="escrow"?"escrow_bank":"bank",
+    });
+    const response=await reader(ENDPOINT+(accountRole==="escrow"?"/satchel/v1/proofs/escrow-bank":"/satchel/v1/proofs/bank"),{
       method:"POST",redirect:"error",cache:"no-store",
       headers:{Authorization:"Bearer "+cfg.token,"Content-Type":"application/json",Accept:"application/json"},
       body:JSON.stringify({protocol:1}),signal,
@@ -306,7 +316,7 @@ export async function collectAndVerifyPinnedWarSatchelBankProof(
       await writeFile(proofPath,exported,{mode:0o600,flag:"wx"});
       await snapshotBinary(cfg.binary,binaryPath,cfg.digest,signal);
       const {stdout}=await invoke(binaryPath,["verify-bank-proof","--authority",cfg.authority,
-        "--height",String(height),"--proof",proofPath],{timeout:25_000,maxBuffer:16384,windowsHide:true,signal});
+        "--height",String(height),"--proof",proofPath,...(accountRole==="escrow"?["--account-role","escrow"]:[])],{timeout:25_000,maxBuffer:16384,windowsHide:true,signal});
       signal.throwIfAborted();
       return verifiedBankReceiptMetadata(JSON.parse(stdout) as unknown,vault,height);
     }finally{await rm(directory,{recursive:true,force:true});}

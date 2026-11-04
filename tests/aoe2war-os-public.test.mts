@@ -8,11 +8,17 @@ function source(path: string) {
   return readFileSync(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("AoE2WAR OS model atlas enumerates exactly 213 distinct real schema models", () => {
+test("the published model atlas omits the private Satchel return execution records", () => {
   const schema = source("prisma/schema.prisma");
   const names = [...schema.matchAll(/^model\s+([A-Za-z]\w*)\s*\{/gm)].map(match => match[1]);
-  assert.equal(names.length, 213);
-  assert.deepEqual(models.models, names);
+  const protectedReturnModels = [
+    "SatchelClaimReturnExecutionReview",
+    "SatchelClaimReturnExecutionAttempt",
+    "SatchelClaimReturnExecutionObservation",
+  ];
+  assert.equal(models.models.length, 213);
+  assert.deepEqual(names.filter(name => !models.models.includes(name)), protectedReturnModels);
+  assert.deepEqual(models.models, names.filter(name => !protectedReturnModels.includes(name)));
   assert.equal(new Set(models.models).size, models.models.length);
   assert.ok(models.models.includes("WarSatchelLedgerJournal"));
 });
