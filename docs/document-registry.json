@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bad5abf2a65233f0ff7215a6be20b4cb42957990c414a5abfc2add3acce10bc7",
+      "sha256": "172c91ac20d6ccc431299ebfbf7f975e3012755f8426bf6b11e010c495c0777a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-steam-dns-child-retry-20261104",
-    "commit": "b559de764a91044697fc56aa0fc23920705176cb"
+    "branch": "fix/a05-systemd-explicit-root-capability-20261104",
+    "commit": "312dfb7463f9746b9c1d70e9bc745a50e1284786"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

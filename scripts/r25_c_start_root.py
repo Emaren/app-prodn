@@ -1254,6 +1254,18 @@ def production_refresh():
     need(policy.get("schema") == "aoe2war.app.approved-production-profile.v1" and policy.get("profile") == PROD_PROFILE and
          sha(root_file(PROD_LIB / "r25_c_start_root.py", 196608, 0o644)) == policy.get("controller_sha256") and
          production_nft_shape() == policy.get("nft_shape_sha256"), "PRODUCTION_REFRESH_POLICY_DRIFT")
+    # A bounding set does not guarantee effective capabilities. With the
+    # formerly explicit User=root, systemd launched this oneshot as UID0
+    # but CapEff omitted CAP_SETUID; DNS setpriv failed with EPERM.
+    # Fail before DNS or nft changes if the actual process cannot switch
+    # to the confined account, even when the unit file is SHA-pinned.
+    status = Path("/proc/self/status").read_text()
+    match = re.search(r"^CapEff:\s*([a-fA-F0-9]+)$", status, re.M)
+    nnp = re.search(r"^NoNewPrivs:\s*(\d+)$", status, re.M)
+    need(match is not None and nnp is not None and nnp.group(1) == "1"
+         and int(match.group(1), 16) & ((1 << 12) | (1 << 7) | (1 << 6))
+             == ((1 << 12) | (1 << 7) | (1 << 6)),
+         "PRODUCTION_REFRESH_EFFECTIVE_CAPABILITIES_MISSING")
     before = production_protected()
     need(sha(canonical(before)) == policy["protected_snapshot_sha256"], "PRODUCTION_REFRESH_PROTECTED_DRIFT")
     addresses = production_steam_addresses()
@@ -1293,7 +1305,12 @@ def production_admission_steam_refresh():
 
 def production_refresh_units():
     service = ("[Unit]\nDescription=Validate Steam TLS destinations for isolated app profile\n"
-      "[Service]\nType=oneshot\nUser=root\nExecStart=/usr/bin/python3 -I -B " + str(PROD_LIB / "r25_c_start_root.py") +
+      # Omitting User=root is intentional: with NoNewPrivileges=yes,
+      # systemd may strip CAP_SETUID from the *effective* set when it
+      # explicitly performs the root-to-root identity transition. Verified
+      # on HEL1: CapEff=0x1040 with User=root; CapEff=0x10c0 without it.
+      # Both are UID0, but only the latter can setresuid(990) for DNS.
+      "[Service]\nType=oneshot\nExecStart=/usr/bin/python3 -I -B " + str(PROD_LIB / "r25_c_start_root.py") +
       " --phase production-refresh-steam\nNoNewPrivileges=yes\nProtectHome=yes\nPrivateTmp=yes\n"
       "ProtectSystem=strict\nCapabilityBoundingSet=CAP_NET_ADMIN CAP_SETUID CAP_SETGID\n"
       "RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX\n").encode()
@@ -1526,11 +1543,13 @@ def production_refresh_unit_identity():
         need(root_file(Path("/etc/systemd/system") / name, 8192, 0o644) == raw,
              "PRODUCTION_REFRESH_UNIT_SOURCE_DRIFT")
         value = dict(row.split("=",1) for row in run(["/usr/bin/systemctl", "show", name, "--no-pager",
-            "--property=NeedDaemonReload,FragmentPath,DropInPaths,ExecStart,User,Type,Triggers,CapabilityBoundingSet,NoNewPrivileges,ProtectSystem,RestrictAddressFamilies"], maximum=32768).decode().splitlines() if "=" in row)
+            "--property=NeedDaemonReload,FragmentPath,DropInPaths,ExecStart,User,Group,DynamicUser,Type,Triggers,CapabilityBoundingSet,NoNewPrivileges,ProtectSystem,RestrictAddressFamilies"], maximum=32768).decode().splitlines() if "=" in row)
         need(value.get("NeedDaemonReload") == "no" and value.get("DropInPaths") == "" and
              value.get("FragmentPath") == "/etc/systemd/system/" + name, "PRODUCTION_REFRESH_EFFECTIVE_CONFIG_DRIFT")
         if name.endswith(".service"):
-            need(value.get("User") == "root" and value.get("Type") == "oneshot"
+            need(value.get("User") == "" and value.get("Group") == ""
+                 and value.get("DynamicUser") == "no"
+                 and value.get("Type") == "oneshot"
                  and set(value.get("CapabilityBoundingSet", "").split()) ==
                        {"cap_net_admin", "cap_setuid", "cap_setgid"}
                  and value.get("NoNewPrivileges") == "yes"
