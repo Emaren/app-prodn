@@ -898,3 +898,39 @@ before considering F; if 3032 is stopped, report STOPPED rather than a
 fake healthy empty shell. Emit the exact route/status, source version,
 timestamp, and receipt hash in the WarOS production register. No
 automatic cutover or rollback action is authorized by this monitor.
+
+## A05 Game Stats public final replay corpus v7 (source-only, 2026-11-04)
+
+The `/game-stats` public parser observatory previously included
+`gameStats.findMany({ include: user, replayResultAdjudications })`.
+Under `nonfinancial-production-v1`, direct `users` and
+`replay_result_adjudications` reads are correctly denied; the old
+query fails even though `game_stats` itself can be selected.
+Merely granting those raw tables would expose private accounts,
+unpublished adjudication evidence and financial authority.
+
+`config/nonfinancial-public-game-stats-corpus-v7.sql` adds a
+Postgres-owned, `security_barrier=true` final-replay public projection
+using existing `aoe2war_public_v5.user_profiles` and only the
+winner/teams fields from accepted result adjudications. Raw evidence,
+free-text reviewer notes, reviewer private identity, wallet metadata,
+market snapshots and financial disposition are excluded. The page's
+isolated-profile query preserves the original final replay sort and
+retired-auto-adjudication filter before selecting the latest admissible
+review. The legacy 3030 query remains untouched. Missing views throw
+a real error, never a fabricated empty/zero replay count.
+
+Before any physical installation: require source SHA and CI approval,
+run the exact SQL as root-owned PostgreSQL transaction in a
+rollback-only rehearsal under `aoe2war_web_prod`, including
+negative base-table privilege proof; then commit an additive view
+only on that same source. First rehearsal on HEL1 returned
+**7,011** current final records and `ROLLBACK` with the web role.
+This is a narrow **corpus prerequisite**, not the full Game Stats
+observatory: remaining parser/identity aggregate reads still require
+separately reviewed public projections and real nonfinancial
+3032/Chrome acceptance. Future runtime controller must explicitly
+pin the v7 view definition/ACL before 3032 can start.
+
+No generic `GRANT SELECT`, scheduled financial execution, public
+upstream mutation, or replay statistics fabrication is authorized.
