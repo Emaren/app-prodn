@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c9af3118a5cb92017fdf542778c8225d51d1a141f9201b957e0ff6a2b2dd4c91",
+      "sha256": "51cd2e96a2fae9a7a8ce8c4620ecf37829eccd19c68958145f1b396fa2271c4b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "1cd0643f69e7b2c670b518beb39451a990c62791936077837a91ce2e697cf168",
+      "sha256": "7b61eb347933d6c8d7e437b97e55f10c11ca9cd17e5260636dd032b11dc79850",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-signedin-vault-hero-v10v11-20261104",
-    "commit": "c92ddd9d7ecc5183512e1b3a732cf19e0380d0bb"
+    "commit": "81b140f6241913643f31d49e157eb34b5a8d3b6e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

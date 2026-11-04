@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-signedin-vault-hero-v10v11-20261104` at `c92ddd9d7ecc5183512e1b3a732cf19e0380d0bb`
+Implementation baseline: `fix/a05-signedin-vault-hero-v10v11-20261104` at `81b140f6241913643f31d49e157eb34b5a8d3b6e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
