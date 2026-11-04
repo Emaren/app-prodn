@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-war-chest-public-v9-20261104` at `18ef564645028c31bde0853db8dd755b5244445a`
+Implementation baseline: `fix/a05-v7v8v9-local-integration-smoke-20261104` at `12895b099c9d57bb20af4a6244cdac41c9813e9e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

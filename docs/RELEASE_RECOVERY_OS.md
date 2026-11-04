@@ -935,6 +935,43 @@ pin the v7 view definition/ACL before 3032 can start.
 No generic `GRANT SELECT`, scheduled financial execution, public
 upstream mutation, or replay statistics fabrication is authorized.
 
+## R25 Game Stats parser aggregate v8: public-only classified metrics (2026-11-04)
+
+The original `/game-stats` public observatory attempted direct ORM reads
+from restricted parser runs, replay observations, reprocess job events,
+replay evidence artifact rows, identity publications and warrior claims.
+Those tables remain private. `nonfinancial-production-v1` now branches
+before constructing its legacy aggregate read promises to a single
+source-owned `aoe2war_public_v8.parser_observatory_snapshot`
+`security_barrier=true` PostgreSQL view. The page keeps all twelve
+existing analytics domains: game and archived artifact counts, run status,
+parser versions, field coverage, observations, bounded last six jobs,
+failure-class counts, latest parse results, effective public projection
+receipts, accepted identity display snapshots, and identity foundation
+counts. It never invents zeros on view absence, treats malformed
+aggregate inputs as a visible error, and preserves the legacy 3030
+ORM branch unchanged.
+
+The view is PostgreSQL-owned and publishes only explicit public scalar
+metrics; raw failure detail, arbitrary parser metrics/provenance, evidence
+storage keys, private reprocess scope, worker identities, unpublished
+reviewer notes, wallets, claim decisions and financial tables remain
+outside web SELECT. For accepted identity snapshots it reproduces Prisma
+`supersededBy:null` using a real anti-join on the physical
+`supersedes_id` field. The first exploratory SQL attempt using a guessed
+`superseded_by` column failed inside a transaction and was discarded.
+The corrected combined v7+v8 atomic HEL1 test returns 12 metric groups
+and 60,945 current database game rows as the restricted production
+web role; it is explicitly followed by ROLLBACK.
+
+This v8 publisher is **not** public launch authority. Require all exact
+source/CI/security/Chrome checks; separately pin view definitions and
+base-table negative privilege behavior into the native controller
+allowlist before any additive commit, 3032 restart or Nginx switch.
+The v7 corpus view is a prerequisite and must be installed using its
+exact signed source first. Avoid accidentally presenting prospective
+or candidate parsing statistics as financially settled outcomes.
+
 ## A05 War Chest public-only wagers/claims/market projection v9
 
 The public `/war-chest` route previously queried protected `bet_wagers`,
@@ -988,3 +1025,124 @@ public Nginx F/G cutover also require fresh host snapshot and valid
 one-use nonfinancial owner authorization. WoloChain funding controls
 remain the independent chain lane's responsibility. This is a public
 display projection; it cannot settle claims, sign or move WOLO.
+
+## A05 authenticated Game Stats Your Vault and public Page Hero v10-v11
+
+The earlier v7 final corpus/v8 metric projections remove protected public
+Game Stats ORM reads, but authenticated users still triggered
+`loadViewerParserVault()` and its private `replay_parse_attempts`
+relations; page hero loading also crossed unpublished playlist and
+`managed_media_assets` reads. These two query paths must pass
+for a genuinely signed-in Game Stats session, not just guest HTML 200.
+
+`config/nonfinancial-public-parser-viewer-v10.sql` publishes only final
+game IDs and SHA-256 digests of either the owning `game_stats.user_uid`
+or the linked parse attempt uploader UID, preserving the original
+OR membership and deduplicating within each viewer. The confined
+application hashes the already verified session UID, selects only
+matching memberships and reduces those final games using the original
+result and team truth algorithm. The legacy Prisma query is unchanged.
+Source reviewers must note that a digest of a low-entropy/guessable UID
+is not a secret: the application role is strictly server-only, the view
+publishes no source-upload metadata, and the public site MUST NOT
+expose membership data via an arbitrary UID API.
+
+`config/nonfinancial-public-page-heroes-v11.sql` publishes only
+source-owned active `kind='hero'`, `target IS NULL` assets on
+explicitly enabled, in-window, nonarchived hero playlist items.
+The view returns the exact public slide configuration and rendered
+asset labels/URLs, not unpublished upload names, owners, raw media
+configuration, hero-screen draft information, private assets or
+financial state. The confined site reads this one public view; a truly
+absent playlist retains the original design's `defaultChain` empty
+state, and malformed published content fails closed. Original admin
+mutations/readers remain on their separate authenticated path.
+
+A real HEL1 rollback-only v10+v7 source rehearsal returned 7,181
+final viewer memberships, zero clear-UID/secret view columns, with
+postgres ownership, `security_barrier=true` and definition SHA256
+`f42b1c78f5e39dbbce088b31c3ec06986865698806512c9311fcc67a4a1e99bd`.
+A separately attempted combined v10/v11 host rehearsal was refused by
+the connected execution tool, and **no v11 native physical attestation or
+installation is claimed**. v11 requires exact physical SQL rollback
+proof, canonical definition and negative ACL witness before the native
+strict allowlist may admit it.
+
+These source fixes are not A05 public cutover or A06 browser acceptance.
+Do not run financial operations or relax broad web DB privileges.
+
+### v11 Postflight real-host clarification
+
+R25's original exact database allowlist *already approves* read-only SELECT
+on the three public hero playlist/item/screen tables. A preliminary v11
+preflight erroneously asserted those SELECT permissions were forbidden,
+so a combined v7-v11 atomic HEL1 rehearsal correctly refused to commit.
+The corrected postflight **requires those existing approved SELECT grants**
+and independently denies INSERT/UPDATE/DELETE, as well as forbidding
+full-table SELECT on `managed_media_assets` (which has a narrow legacy
+column allowlist only). The native controller continues to fingerprint
+all original table/column grants and the new v11 view's complete
+definition, schema ownership and ACL. This source repair does not grant
+or revoke any legacy role permissions and preserves the other services.
+
+### Native database catalog v7 through v11: single source-qualified gate
+
+The R25 C production controller exact additional-view allowlist now
+includes **19 approved additional views** across public v2-v11, plus
+the seven original v1 public views. v7, v8, v9, v10 and v11 each have
+an independently computed HEL1 PostgreSQL definition/owner/view
+fingerprint, not a document-authored substitute. The combined native
+rehearsal installed all seven v7-v11 views within one rollback-only
+transaction, queried the confined aoe2war_web_prod role, returned
+7,181 final-replay viewer memberships and one active public Hero
+playlist, attested exact names and security_barrier=true ownership,
+and executed ROLLBACK. Missing, modified, extra, renamed
+or non-security-barrier views remain hard admission holds; the original
+raw table/column ACL allowance is unchanged. The owner must still
+separately authorize the reviewed candidate source and physical START.
+
+
+### A05 War Chest integrity parity correction (v9 new source revision)
+
+The original public Bet Board excludes active/live markets without verified
+market integrity, a proposition hash, resolved/high-confidence winner teams,
+or appropriately phase-matched Desync parent market; low-information
+placeholder names are also suppressed. It also excludes settled, won, lost,
+void and any other non-active wager when calculating live slips and the
+visible left/right pots. The first confined v9 adapter preserved mainnet
+funding proof but accidentally omitted these separate *market and wager
+state* fences. That would inflate live market liquidity or display unreliable
+markets even when all source/Chrome checks passed.
+
+The corrected source-owned v9 market projection now publishes only one
+bounded public eligibility Boolean. Its postgres security-barrier expression
+recreates the verified-proposition and Desync-parent state checks without
+publishing raw proposition hashes, reviewer notes or custody evidence.
+The renderer reuses the shared legacy market-confidence classifier and
+filters the displayed pot/slip list to *active* wagers after applying
+recorded-funded mainnet proof and mainnet lock-date gates. The Heat view
+now considers currently eligible live/open markets only; it does not
+fabricate a settled pot from naive historical wagers (which omits intent
+and claim liability reconciliation). Three new isolated Node test cases
+cover inactive wagers, missing confidence and fail-closed market gates.
+This source revision changes v9's native canonical definition hash;
+the old v9 digest and old e957a399 CI artifact are NOT valid for a new
+release. HEL1's corrected source-owned v9 rollback test returned three
+postgres-owned public view definitions with canonical hash
+80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c.
+Both eligibility display classes are currently empty because no open,
+closing or live markets exist in the database; this is valid current
+state, not missing live liquidity. The new digest is now exact-pinned in
+the source-reviewed controller, and only a fresh full CI/Chrome artifact
+from the corrected head can qualify a release. No deployed financial
+calculation is authorized by this public display-only correction.
+
+The final v9 review also tightened the *recorded funding* predicate:
+the legacy bet-intent hash, batch-ticket hash and market proposition
+must be nonempty after trimming. A non-null blank string is not valid
+on-chain evidence. The final real HEL1 rollback-only PostgreSQL witness
+for the stricter source returned v9 canonical definition hash
+80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c,
+3 owner-checked security-barrier views, 1,416 funded wager records
+(before mainnet date filtering), zero currently eligible open markets,
+and ROLLBACK. This digest supersedes all earlier tentative v9 hashes.

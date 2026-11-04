@@ -38,8 +38,8 @@ SELECT w.id, w.market_id AS "marketId",w.user_id AS "userId",
        w.stake_locked_at AS "stakeLockedAt",
        COALESCE((w.execution_mode='onchain_escrow'
          AND w.stake_locked_at IS NOT NULL
-         AND ((w.stake_tx_hash IS NOT NULL AND i.status='recorded')
-             OR (t.status='recorded' AND t.stake_tx_hash IS NOT NULL))
+         AND ((NULLIF(BTRIM(w.stake_tx_hash),'') IS NOT NULL AND i.status='recorded')
+             OR (t.status='recorded' AND NULLIF(BTRIM(t.stake_tx_hash),'') IS NOT NULL))
        ),FALSE) AS "recordedFunding"
 FROM public.bet_wagers w
 LEFT JOIN public.bet_stake_intents i ON i.id=w.stake_intent_id
@@ -84,8 +84,29 @@ SELECT m.id,m.title,m.event_label AS "eventLabel",m.status,
        m.left_label AS "leftLabel",m.right_label AS "rightLabel",
        m.seed_left_wolo AS "seedLeftWolo",
        m.seed_right_wolo AS "seedRightWolo",
-       m.close_at AS "closeAt",m.settled_at AS "settledAt"
-FROM public.bet_markets m;
+       m.close_at AS "closeAt",m.settled_at AS "settledAt",
+       COALESCE((
+         m.integrity_status='verified'
+         AND NULLIF(BTRIM(m.proposition_hash),'') IS NOT NULL
+         AND CASE WHEN m.market_type='desync' THEN
+            parent.id IS NOT NULL AND parent.market_type='winner'
+            AND (
+              (m.status IN ('open','live') AND parent.status IN ('open','live'))
+              OR (m.status='closing' AND (
+                   parent.status IN ('open','closing','live')
+                   OR (parent.status='settled'
+                       AND parent.winner_side IN ('left','right')
+                       AND parent.settled_at IS NOT NULL)))
+              OR (m.status='awaiting_final_proof'
+                  AND parent.status='awaiting_final_proof')
+              OR (m.status='under_review' AND parent.status='under_review')
+            )
+           ELSE m.team_resolution_status='resolved'
+                AND m.team_confidence='high'
+         END
+       ),FALSE) AS "publicIntegrityEligible"
+FROM public.bet_markets m
+LEFT JOIN public.bet_markets parent ON parent.id=m.parent_market_id;
 REVOKE ALL ON aoe2war_public_v9.published_markets FROM PUBLIC,aoe2war_web_prod;
 GRANT SELECT ON aoe2war_public_v9.published_markets TO aoe2war_web_prod;
 

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "989b54cb81b1a4e706b1fe53c9ddb8d9265a074f581da5520b10cd046c31af6e",
+      "sha256": "5e2bae630800247a431cb4c725e008f9ae2fba71a90dfe0f0448edfd57b40edf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "0225416794369270cebe8d0c5af0f26710bc7957d5aae3cf05d790de526ad36d",
+      "sha256": "90860e2a276d92fd745301af30276391ae74c99ccdafe0be9452645a91f8935f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-war-chest-public-v9-20261104",
-    "commit": "18ef564645028c31bde0853db8dd755b5244445a"
+    "branch": "fix/a05-v7v8v9-local-integration-smoke-20261104",
+    "commit": "12895b099c9d57bb20af4a6244cdac41c9813e9e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

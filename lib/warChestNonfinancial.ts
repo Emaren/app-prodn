@@ -9,6 +9,10 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { isDesyncSideMarketType } from "@/lib/desyncSideMarket";
 import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
+import { isConfidentBetMarket } from "@/lib/bets";
+import {
+  activePublishedMarketWagers, eligiblePublishedOpenMarket,
+} from "@/lib/warChestPublicMarketTruth";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { getWarChestUtcWeekStart } from "@/lib/warChestPeriodTruth";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
@@ -33,6 +37,7 @@ type ClaimRow = {
 type MarketRow = {
   id: number; title: string; eventLabel: string; status: string;
   marketType: string; sortOrder: number; featured: boolean;
+  publicIntegrityEligible: boolean;
   leftLabel: string; rightLabel: string;
   seedLeftWolo: number; seedRightWolo: number;
   closeAt: Date | null; settledAt: Date | null;
@@ -112,7 +117,7 @@ export async function loadNonfinancialWarChestSnapshot(
     prisma.$queryRaw<MarketRow[]>`
       SELECT id,title,"eventLabel",status,"marketType","sortOrder",
              featured,"leftLabel","rightLabel","seedLeftWolo","seedRightWolo",
-             "closeAt","settledAt"
+             "closeAt","settledAt","publicIntegrityEligible"
       FROM aoe2war_public_v9.published_markets
       ORDER BY "sortOrder",id
     `,
@@ -142,9 +147,11 @@ export async function loadNonfinancialWarChestSnapshot(
   }
 
   const openMarkets = markets
-    .filter((market) => ["open", "closing", "live"].includes(market.status))
+    .filter((market) => eligiblePublishedOpenMarket(
+      market, isConfidentBetMarket(market),
+    ))
     .map((market) => {
-      const ownWagers = wagersByMarket.get(market.id) ?? [];
+      const ownWagers = activePublishedMarketWagers(wagersByMarket.get(market.id) ?? []);
       const leftWagers = ownWagers.filter((wager) => wager.side === "left");
       const rightWagers = ownWagers.filter((wager) => wager.side === "right");
       const leftPool = market.seedLeftWolo +
@@ -174,16 +181,12 @@ export async function loadNonfinancialWarChestSnapshot(
       };
     });
   const primary = openMarkets.filter((market) => !isDesyncSideMarketType(market.marketType));
-  const biggestPotCandidates = [
-    ...primary.map((market) => ({ label: market.title, potWolo: market.potWolo })),
-    ...markets.filter((market) => market.status === "settled" &&
-      (!isWoloMainnet() || wagersByMarket.has(market.id)))
-      .map((market) => ({
-        label: market.title,
-        potWolo: market.seedLeftWolo + market.seedRightWolo +
-          (wagersByMarket.get(market.id) ?? []).reduce((sum, wager) => sum + wager.amountWolo, 0),
-      })),
-  ];
+  // "Fattest live pot" must not mix settled payouts, refunds or inactive
+  // wagers into current market heat. Settled liability needs its separate
+  // source-of-truth projection, never a guessed seed+historical-wager sum.
+  const biggestPotCandidates = primary.map((market) => ({
+    label: market.title, potWolo: market.potWolo,
+  }));
   const biggestPot = biggestPotCandidates.reduce<{label:string;potWolo:number}|null>(
     (best, row) => (!best || row.potWolo > best.potWolo) ? row : best, null);
   const bestReturn = primary.reduce<{label:string;returnMultiplier:number}|null>((best, market) => {

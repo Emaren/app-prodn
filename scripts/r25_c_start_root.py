@@ -1282,6 +1282,11 @@ PROD_PUBLIC_ADDITIONAL_VIEWS = {
     "aoe2war_public_v4": ("bounty_display_opportunities", "bounty_locked_claim_summary", "bounty_numbered_transfers"),
     "aoe2war_public_v5": ("avatar_revisions", "replay_adjudication_watermark", "user_identity_fingerprint", "user_profiles"),
     "aoe2war_public_v6": ("champions_chaos_activity", "champions_elo_custody"),
+    "aoe2war_public_v7": ("parser_final_corpus",),
+    "aoe2war_public_v8": ("parser_observatory_snapshot",),
+    "aoe2war_public_v9": ("published_claims", "published_markets", "published_wagers"),
+    "aoe2war_public_v10": ("viewer_final_replay_memberships",),
+    "aoe2war_public_v11": ("published_hero_playlists",),
 }
 PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256 = {
     "aoe2war_public_v2": "5aa39bb60282a9596c6f6f579e19467e7f90418ae5b11b9f221aca82997feddf",
@@ -1289,6 +1294,11 @@ PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256 = {
     "aoe2war_public_v4": "a8bd914fe58b52975db3888f765f73e4a5b9ea3aa33fe05009c9af721eb38cf4",
     "aoe2war_public_v5": "4500cf253508977c5d87a71c2db4128bb4e929f5db608b22198ad9c7ca641ccc",
     "aoe2war_public_v6": "daa3c14337f153758f0d1dac0f4675057a4197d0e21d5632970fe7d287e616cc",
+    "aoe2war_public_v7": "cf6895f4cdd57a28dcc4b3cb67c399c3bf2f4a25847792970440a02036c3e1ec",
+    "aoe2war_public_v8": "32324147f06f0935e06e7031476d27a2f3172497d3fc0e21b85285a6cb8a2a08",
+    "aoe2war_public_v9": "80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c",
+    "aoe2war_public_v10": "f42b1c78f5e39dbbce088b31c3ec06986865698806512c9311fcc67a4a1e99bd",
+    "aoe2war_public_v11": "24b526c21f6333172120d2e3d15775458439ec64334f0b9c6e78a46cdabb75fe",
 }
 PROD_PUBLIC_APPROVED_IDENTITIES = (
     tuple("aoe2war_public_v1." + name for name in PROD_PUBLIC_READ_MODEL_VIEWS)
