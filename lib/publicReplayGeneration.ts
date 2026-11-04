@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 const PUBLIC_REPLAY_GENERATION_CACHE_MS = 1_000;
 const PUBLIC_USER_IDENTITY_CACHE_MS = 5_000;
@@ -108,10 +109,16 @@ export async function loadPublicReplayGeneration(
         winner: true,
       },
     }),
-    prisma.replayStatProjection.findFirst({
-      orderBy: { id: "desc" },
-      select: { id: true, createdAt: true },
-    }),
+    isNonfinancialPublicReadProfile()
+      ? prisma.$queryRaw<Array<{ id: number; createdAt: Date }>>(Prisma.sql`
+          SELECT id,created_at AS "createdAt"
+          FROM aoe2war_public_v1.replay_projection_watermarks
+          ORDER BY id DESC LIMIT 1
+        `).then((rows) => rows[0] ?? null)
+      : prisma.replayStatProjection.findFirst({
+          orderBy: { id: "desc" },
+          select: { id: true, createdAt: true },
+        }),
     prisma.replayPlayerSnapshot.findFirst({
       orderBy: { id: "desc" },
       select: { id: true, createdAt: true, resultStatus: true },
