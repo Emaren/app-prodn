@@ -95,7 +95,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/traffic",
     label: "Traffic Observatory",
-    version: "src-f47e43f6b28073474721",
+    version: "src-67cc251544a17e6c2ebc",
   },
   {
     href: "/kingdom-forge",
