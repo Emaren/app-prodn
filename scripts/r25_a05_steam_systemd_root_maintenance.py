@@ -28,7 +28,11 @@ OLD_PROFILE_SHA = 'a73b9ca5823e2bde4999849867cb013b99212098d59d10c0122239c86192b
 NGINX_SHA = 'd8f55532ae9a1b8463ed6f0998f8a92343677e442218d1bdaef1b6e547478ad8'
 OLD_PID = 2625090
 PREVIEW_PID = 1483304
-CANDIDATE_PID = 3248760
+CANDIDATE_PID = 3377112
+PREVIOUS_CANDIDATE_PID = 3248760
+EXPECTED_MEMORY_MAX = "2516582400"
+PERSISTENT_MEMORY_OVERRIDE = Path('/etc/systemd/system.control/aoe2hdbets-web-prod.service.d/50-MemoryMax.conf')
+PERSISTENT_MEMORY_SHA = '110c654076671e47a89365efcc1764c837db81fcd136599f880c5ec0d3a031ea'
 SOURCE = Path('/var/lib/aoe2war-runtime-artifacts/5869b4ab08702be4b33860f7dda7d97b5de79424/source-qualified-extractor-9dfa2e68.py')
 CONTROLLER = Path('/usr/local/lib/aoe2war-web-prod/r25_c_start_root.py')
 SERVICE = Path('/etc/systemd/system/aoe2war-steam-egress-refresh.service')
@@ -136,6 +140,10 @@ def host_unchanged():
         p = properties(name)
         need(p['ActiveState'] == 'active' and p['MainPID'] == str(pid),
              'WEB_SERVICE_PID_DRIFT:' + name)
+    check_file(PERSISTENT_MEMORY_OVERRIDE, PERSISTENT_MEMORY_SHA, 0o644)
+    memory_max = command('/usr/bin/systemctl', 'show', 'aoe2hdbets-web-prod.service',
+                         '-p', 'MemoryMax', '--value').decode().strip()
+    need(memory_max == EXPECTED_MEMORY_MAX, 'CANDIDATE_HEAP_MEMORY_CEILING_DRIFT')
     state = properties('aoe2war-steam-egress-refresh.timer')
     need(state['ActiveState'] == 'active', 'STEAM_TIMER_NOT_ACTIVE')
     for port, version in ((3030, '20261028134227-6c0f6d7531'),
@@ -254,6 +262,16 @@ def preflight():
          and policy.get('source_sha') == '5869b4ab08702be4b33860f7dda7d97b5de79424'
          and policy.get('controller_sha256') == OLD_CONTROLLER_SHA
          and policy.get('port') == 3032, 'PINNED_NONFINANCIAL_PROFILE_DRIFT')
+    admission_path = Path(policy['journal_path']) / 'runtime-admission.json'
+    historical_raw = check_file(admission_path, policy['admission_sha256'], 0o600)
+    historical = json.loads(historical_raw)
+    need(historical.get('status') == 'NATIVE_PRODUCTION_ADMISSION_PASS'
+         and historical.get('source_sha') == policy['source_sha']
+         and historical.get('candidate_pid') == PREVIOUS_CANDIDATE_PID
+         and type(historical.get('candidate_start_ticks')) is int
+         and historical.get('public_cutover_authorized') is False
+         and historical.get('financial_authorized') is False,
+         'PREVIOUS_NATIVE_ADMISSION_NOT_SEALED')
     # Recalculate the replacement service from the exact new C source, and
     # verify the selected DNS resolver now uses PAM-free confined setpriv.
     need('"/usr/bin/setpriv"' in new_source.decode('utf-8') and
@@ -279,6 +297,53 @@ def preflight():
     modified['refresh_units']['service_sha256'] = sha(service)
     new_profile = json_bytes(modified)
     return c, old, {CONTROLLER: new_source, SERVICE: service, PROFILE: new_profile}, lock
+
+
+def requalify_current_candidate(c, original_policy):
+    """Create a real NEW native admission tied to the recovered 3032 process.
+
+    The old sealed admission remains immutable. Recompute all live witnesses;
+    no PID substitution in a historical receipt and no fabricated PASS.
+    """
+    policy = json.loads(PROFILE.read_bytes())
+    pid, ticks = c.production_wait(policy, seconds=20)
+    need(pid == CANDIDATE_PID and type(ticks) is int and ticks > 0,
+         'RECOVERED_CANDIDATE_IDENTITY_CHANGED')
+    previous_path = Path(original_policy['journal_path']) / 'runtime-admission.json'
+    previous_raw = check_file(previous_path, original_policy['admission_sha256'], 0o600)
+    previous = json.loads(previous_raw)
+    need(previous.get('candidate_pid') == PREVIOUS_CANDIDATE_PID
+         and previous.get('source_sha') == policy['source_sha'],
+         'PREVIOUS_RECEIPT_IDENTITY_DRIFT')
+    env, database, password = c.production_runtime_environment()
+    catalog = c.production_database_witness(database, password)
+    need(catalog.get('read_acl_sha256') == previous['catalog']['read_acl_sha256']
+         and catalog.get('definer_identity_sha256') == previous['catalog']['definer_identity_sha256']
+         and catalog.get('public_read_model') == previous['catalog'].get('public_read_model'),
+         'CURRENT_READONLY_DB_CATALOG_DRIFT')
+    policy['steam_addresses'] = c.production_admission_steam_refresh()
+    admission = {
+        'schema': 'aoe2war.app.production-admission.v1',
+        'status': 'NATIVE_PRODUCTION_ADMISSION_PASS',
+        'source_sha': policy['source_sha'],
+        'candidate_pid': pid,
+        'candidate_start_ticks': ticks,
+        'catalog': catalog,
+        'postgres': c.production_database_admission(database, password),
+        'kernel': c.production_kernel_probe(policy['steam_addresses']),
+        'steam': c.production_steam_probe(env, Path(policy['stage'])),
+        'financial_authorized': False,
+        'public_cutover_authorized': False,
+    }
+    need(c.production_wait(policy, seconds=5) == (pid, ticks),
+         'CANDIDATE_CHANGED_DURING_NATIVE_ADMISSION')
+    journal_write('runtime-admission.json', json_bytes(admission))
+    policy['journal_path'] = str(JOURNAL)
+    policy['admission_sha256'] = sha((JOURNAL / 'runtime-admission.json').read_bytes())
+    atomically_replace(PROFILE, json_bytes(policy), 0o400, 'native-admission-refresh')
+    need(c.production_wait(policy, seconds=5) == (pid, ticks),
+         'CANDIDATE_CHANGED_AFTER_NATIVE_ADMISSION')
+    return policy
 
 
 def run():
@@ -337,6 +402,7 @@ def run():
             need(properties('aoe2war-steam-egress-refresh.service').get('Result') == 'success',
                  'REFRESH_ONESHOT_RESULT_FAILED')
             c.production_current_steam_tls()
+            admission_policy = requalify_current_candidate(c, json.loads(old[PROFILE]))
             command('/usr/bin/systemctl', 'start', 'aoe2war-steam-egress-refresh.timer')
             host_unchanged()
             need(c.production_refresh_unit_identity() == expected_refresh,
@@ -347,13 +413,17 @@ def run():
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=95)
             need(witness.returncode == 0 and
                  json.loads(witness.stdout).get('status') == 'NATIVE_PRODUCTION_PROFILE_PASS',
-                 'POST_REPAIR_NATIVE_C_WITNESS_FAILED:' + witness.stdout.decode(errors='replace')[-350:])
+                 'POST_REPAIR_NATIVE_C_WITNESS_FAILED:' +
+                (witness.stdout + witness.stderr).decode(errors='replace')[-350:])
             journal_write('commit.json', json_bytes({
                 'schema': 'aoe2war.app.a05.steam-capability-maintenance.v1',
                 'status': 'PASS_NEW_REFRESH_SERVICE_AND_NATIVE_C_WITNESS',
                 'controller_sha256': NEW_CONTROLLER_SHA,
                 'service_sha256': sha(new[SERVICE]),
-                'profile_sha256': sha(new[PROFILE]),
+                'profile_sha256': sha(PROFILE.read_bytes()),
+                'native_admission_sha256': admission_policy['admission_sha256'],
+                'candidate_pid': CANDIDATE_PID,
+                'candidate_memory_max': EXPECTED_MEMORY_MAX,
                 'public_nginx_sha256': NGINX_SHA,
                 'original_pids_preserved': True,
                 'financial_authorized': False,

@@ -192,6 +192,105 @@ class SteamRefreshCapabilityTests(unittest.TestCase):
         self.assertIn("PASS_STEAM_REFRESH_SERVICE_AND_NATIVE_C_WITNESS",code)
         self.assertIn("REVIEWED_SERVICE_SHAPE_MISMATCH",code)
 
+    def test_persisted_candidate_heap_memory_bound_has_exact_source(self):
+        import hashlib
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "a05_persisted_memory", ROOT / "scripts/r25_a05_steam_systemd_root_maintenance.py")
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        source = ROOT / "ops/systemd/aoe2hdbets-web-prod-memory-2400M.conf"
+        self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), m.PERSISTENT_MEMORY_SHA)
+        self.assertEqual(m.EXPECTED_MEMORY_MAX, "2516582400")
+        self.assertEqual(m.CANDIDATE_PID, 3377112)
+        self.assertEqual(m.PREVIOUS_CANDIDATE_PID, 3248760)
+
+    def test_recovered_candidate_requires_fresh_native_admission(self):
+        import importlib.util
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location(
+            "a05_recovered_admission", ROOT / "scripts/r25_a05_steam_systemd_root_maintenance.py")
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        old_catalog = {"read_acl_sha256": "a" * 64,
+                       "definer_identity_sha256": "b" * 64,
+                       "public_read_model": {"health": True}}
+        historical = {"status": "NATIVE_PRODUCTION_ADMISSION_PASS",
+                      "source_sha": "source-sha",
+                      "candidate_pid": m.PREVIOUS_CANDIDATE_PID,
+                      "catalog": old_catalog}
+        candidate = {"source_sha": "source-sha", "stage": "/tmp/candidate",
+                     "refresh_units": {}, "steam_addresses": ["old"],
+                     "journal_path": "/prior"}
+        live = mock.Mock()
+        live.production_wait.return_value = (m.CANDIDATE_PID, 123456)
+        live.production_runtime_environment.return_value = ({}, "readonly-db", "redacted")
+        live.production_database_witness.return_value = old_catalog
+        live.production_admission_steam_refresh.return_value = ["23.12.156.233"]
+        live.production_database_admission.return_value = {"real_db_admission": True}
+        live.production_kernel_probe.return_value = {"real_kernel_probe": True}
+        live.production_steam_probe.return_value = {"real_steam_probe": True}
+        with tempfile.TemporaryDirectory() as folder:
+            journal = Path(folder) / "new-journal"
+            journal.mkdir()
+            profile = Path(folder) / "approved-profile.json"
+            profile.write_bytes(m.json_bytes(candidate))
+            with mock.patch.object(m, "JOURNAL", journal), \
+                 mock.patch.object(m, "PROFILE", profile), \
+                 mock.patch.object(m, "check_file", return_value=m.json_bytes(historical)):
+                answer = m.requalify_current_candidate(live, {
+                    "journal_path": "/prior", "admission_sha256": "0" * 64})
+                sealed = json.loads((journal / "runtime-admission.json").read_bytes())
+                self.assertEqual(sealed["candidate_pid"], m.CANDIDATE_PID)
+                self.assertEqual(sealed["candidate_start_ticks"], 123456)
+                self.assertFalse(sealed["financial_authorized"])
+                self.assertFalse(sealed["public_cutover_authorized"])
+                self.assertEqual(answer["journal_path"], str(journal))
+                self.assertEqual(answer["admission_sha256"],
+                                 m.sha((journal / "runtime-admission.json").read_bytes()))
+                self.assertEqual(json.loads(profile.read_bytes()), answer)
+                self.assertEqual(answer["steam_addresses"], ["23.12.156.233"])
+                live.production_database_admission.assert_called_once()
+                live.production_steam_probe.assert_called_once()
+
+    def test_recovered_candidate_refuses_catalog_drift_without_writing_receipt(self):
+        import importlib.util
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location(
+            "a05_recovered_catalog_drift", ROOT / "scripts/r25_a05_steam_systemd_root_maintenance.py")
+        m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(m)
+        historical = {"candidate_pid": m.PREVIOUS_CANDIDATE_PID,
+                      "source_sha": "source-sha",
+                      "catalog": {"read_acl_sha256": "before",
+                                  "definer_identity_sha256": "stable",
+                                  "public_read_model": True}}
+        live = mock.Mock()
+        live.production_wait.return_value = (m.CANDIDATE_PID, 123456)
+        live.production_runtime_environment.return_value = ({}, "db", "password")
+        live.production_database_witness.return_value = {
+            "read_acl_sha256": "changed", "definer_identity_sha256": "stable",
+            "public_read_model": True}
+        with tempfile.TemporaryDirectory() as folder:
+            journal = Path(folder) / "new-journal"
+            journal.mkdir()
+            profile = Path(folder) / "approved-profile.json"
+            profile.write_bytes(m.json_bytes({"source_sha": "source-sha", "stage": folder}))
+            with mock.patch.object(m, "JOURNAL", journal), \
+                 mock.patch.object(m, "PROFILE", profile), \
+                 mock.patch.object(m, "check_file", return_value=m.json_bytes(historical)):
+                with self.assertRaisesRegex(RuntimeError, "CURRENT_READONLY_DB_CATALOG_DRIFT"):
+                    m.requalify_current_candidate(live, {
+                        "journal_path": "/prior", "admission_sha256": "0" * 64})
+                self.assertFalse((journal / "runtime-admission.json").exists())
+                live.production_database_admission.assert_not_called()
+
     def test_steam_allowlist_remains_finite(self):
         self.assertIn('"STEAM_DNS_TLS_NO_VERIFIED_ADDRESS"', C)
         self.assertIn('"PRODUCTION_CURRENT_STEAM_SET_EMPTY"', C)

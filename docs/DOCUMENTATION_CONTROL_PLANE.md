@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-systemd-explicit-root-capability-20261104` at `312dfb7463f9746b9c1d70e9bc745a50e1284786`
+Implementation baseline: `fix/a05-rebind-staged-3032-after-oom-20261104` at `22f56806ab266d3e101c04c9528febf73413dc69`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

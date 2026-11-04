@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "172c91ac20d6ccc431299ebfbf7f975e3012755f8426bf6b11e010c495c0777a",
+      "sha256": "eb1bcbb4e9f94067220c746ee2aa8fb2b28d22f3230417631bfb3f25bef3a28b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-systemd-explicit-root-capability-20261104",
-    "commit": "312dfb7463f9746b9c1d70e9bc745a50e1284786"
+    "branch": "fix/a05-rebind-staged-3032-after-oom-20261104",
+    "commit": "22f56806ab266d3e101c04c9528febf73413dc69"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
