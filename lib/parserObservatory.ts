@@ -412,9 +412,15 @@ type LegacyParserObservatoryInputs = Awaited<ReturnType<typeof loadLegacyParserO
 
 type PublicParserAggregateJson = Record<string, unknown>;
 
-function publicParserRows(value: unknown, name: string): Array<Record<string, any>> {
+type PublicParserAggregateRow = Record<string, unknown> & {
+  _max?: { completedAt?: string | null; createdAt?: string | null };
+  artifact: { byteSize: number | string };
+  events?: unknown;
+};
+
+function publicParserRows(value: unknown, name: string): PublicParserAggregateRow[] {
   if (!Array.isArray(value)) throw new Error(`PUBLIC_PARSER_V8_MALFORMED_${name}`);
-  return value as Array<Record<string, any>>;
+  return value as PublicParserAggregateRow[];
 }
 
 /**
