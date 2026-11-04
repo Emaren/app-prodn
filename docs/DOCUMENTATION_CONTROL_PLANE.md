@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-exact-a9eb-contained-refresh-20261104` at `080800c9c240b1ce80dae4a192cd660069bcda4d`
+Implementation baseline: `fix/a05-exact-a9eb-contained-refresh-20261104` at `bdba4ba082b80ca07b52b8e42bd34b3c02b60bb0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
