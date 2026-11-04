@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-steam-dns-child-retry-20261104` at `b559de764a91044697fc56aa0fc23920705176cb`
+Implementation baseline: `fix/a05-systemd-explicit-root-capability-20261104` at `312dfb7463f9746b9c1d70e9bc745a50e1284786`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
