@@ -68,6 +68,7 @@ PREFIXES = ("aoe2", "wolo", "tokenchain", "traffic", "radio", "postgresql", "pos
 # plans. Their completed-run metadata is not loaded command/config authority.
 # Active jobs and all unlisted units retain strict runtime identity checks.
 MONITOR_ONESHOT_TIMERS = {
+    "aoe2war-release-readiness-observer.service": "aoe2war-release-readiness-observer.timer",
     "aoe2-wolo-transfer-heartbeat.service": "aoe2-wolo-transfer-heartbeat.timer",
     "aoe2hdbets-bet-stake-reconcile.service": "aoe2hdbets-bet-stake-reconcile.timer",
     "aoe2hdbets-challenge-reconcile.service": "aoe2hdbets-challenge-reconcile.timer",
@@ -321,16 +322,30 @@ def unit_state(unit):
     # Only these exact inactive pairs normalize them. Preserve the effective
     # loaded command, disk config, Result and every other native property.
     if unit in MONITOR_ONESHOT_TIMERS:
+        # First authenticate an exact known timer/oneshot pair and the
+        # immutable loaded ExecStart command. A changed timer, type,
+        # command, need-reload state or PID syntax is NOT a retryable event.
         need(pairs.get("Type") == "oneshot"
              and pairs.get("TriggeredBy") == MONITOR_ONESHOT_TIMERS[unit]
              and pairs.get("NeedDaemonReload") == "no"
              and type(pairs.get("Result")) is str and bool(pairs["Result"])
-             and pairs.get("ActiveState") == "inactive"
-             and pairs.get("MainPID") == "0", "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
+             and str(pairs.get("MainPID", "")).isdecimal(),
+             "MONITOR_ONESHOT_IDENTITY_DRIFT")
         command = pairs.get("ExecStart", "")
         stable = re.match(r"\{\s*path=[^;]+;\s*argv\[\]=.*;\s*ignore_errors=(?:yes|no)\s*;\s*(?=start_time=)", command, re.S)
         need(stable is not None and command.count("{ path=") == 1,
              "MONITOR_EFFECTIVE_COMMAND_UNRECOGNIZED")
+        active = pairs.get("ActiveState")
+        main_pid = int(pairs["MainPID"])
+        if active in ("activating", "deactivating") or (
+            active == "active" and main_pid > 1
+        ):
+            # We never capture/normalize an active job. The bounded caller
+            # retries only AFTER it finishes and again verifies its full
+            # exact identity, result, command and inactive PID=0 state.
+            raise Hold("MONITOR_ONESHOT_TEMPORARILY_ACTIVE")
+        need(active == "inactive" and main_pid == 0,
+             "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT")
         pairs["ExecStart_command_sha256"] = sha(stable.group(0).encode())
         pairs.pop("ExecMainStartTimestampMonotonic", None)
         pairs.pop("ExecStart", None)
@@ -666,15 +681,18 @@ def production_protected_once():
     return snapshot
 
 def production_protected():
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 45
     while True:
         try: return production_protected_once()
         except Hold as exc:
-            # Only a known monitor oneshot's normal in-flight run is retried.
-            # The final inactive snapshot still must equal its immutable plan.
-            if str(exc) != "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT" or time.monotonic() >= deadline:
+            # Retry ONLY an exactly recognized timer-driven oneshot that
+            # was in-flight during the sample. Unknown units, changed
+            # commands, changed grants, active persistent services and
+            # ALL protected fingerprint mismatches remain immediate HOLD.
+            # This never disables or stops any timer or financial service.
+            if str(exc) != "MONITOR_ONESHOT_TEMPORARILY_ACTIVE" or time.monotonic() >= deadline:
                 raise
-            time.sleep(0.2)
+            time.sleep(0.35)
 
 def production_proxy_bytes():
     return b'''# Exact production read-only replay health boundary; never public.

@@ -181,17 +181,17 @@ class StartTests(unittest.TestCase):
             self.assertNotEqual(first, sample(300, config=b"changed-config"))
             self.assertNotEqual(first, sample(300, command="/usr/bin/changed"))
             self.assertNotEqual(first, sample(300, result="exit-code"))
-            with self.assertRaisesRegex(self.s.Hold,"MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
+            with self.assertRaisesRegex(self.s.Hold,"MONITOR_ONESHOT_IDENTITY_DRIFT"):
                 sample(100,reload="yes")
             active = ("Id=" + unit + "\nType=oneshot\nTriggeredBy=" + timer +
                       "\nActiveState=activating\nMainPID=0\nExecStart=foo\n").encode()
             with mock.patch.object(self.s, "run", side_effect=[active, b"same-reviewed-config"]):
-                with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
+                with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_DRIFT"):
                     self.s.unit_state(unit)
             wrong_timer = active.replace(b"ActiveState=activating", b"ActiveState=inactive").replace(
                 timer.encode(), b"unexpected.timer")
             with mock.patch.object(self.s, "run", side_effect=[wrong_timer, b"same-reviewed-config"]):
-                with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_OR_ACTIVITY_DRIFT"):
+                with self.assertRaisesRegex(self.s.Hold, "MONITOR_ONESHOT_IDENTITY_DRIFT"):
                     self.s.unit_state(unit)
 
     def test_unknown_effective_oneshot_command_shape_is_not_normalized(self):
