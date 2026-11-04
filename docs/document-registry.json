@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e21e0ca531802849f31194f3a995407ef4b99410109ca41d7ed7db0624a72e0c",
+      "sha256": "5197dcff6cc52886f506ff6dee33626872055bd6028f6a5da82544abf1eae93f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-qualified-monitor-oneshot-retry-20261104",
-    "commit": "f937f762b079405e3513252bfd3059e9e0bbf768"
+    "commit": "2ed916b162d71da82f70d56cbc2355d85d91640c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
