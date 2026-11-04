@@ -65,7 +65,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/bounties",
     label: "Bounties",
-    version: "src-787330110a71ff3fd048",
+    version: "src-e16d68ea022a84afb75f",
   },
   {
     href: "/forum",
