@@ -778,11 +778,41 @@ print(json.dumps(sorted({row[4][0] for row in
     for _ in range(2):
         candidates.update(row[4][0] for row in
                           socket.getaddrinfo(PROD_STEAM,443,type=socket.SOCK_STREAM))
-        uid_addresses = parse(run(["/usr/bin/setpriv",
-                                   "--reuid",str(PROD_UID),"--regid",str(PROD_GID),
-                                   "--clear-groups","--no-new-privs","--",
-                                   "/usr/bin/python3","-I","-B","-c",uid_resolver],
-                                  timeout=12,maximum=8192))
+        uid_command = ["/usr/bin/setpriv",
+                       "--reuid",str(PROD_UID),"--regid",str(PROD_GID),
+                       "--clear-groups","--no-new-privs","--",
+                       "/usr/bin/python3","-I","-B","-c",uid_resolver]
+        try:
+            uid_result = run(uid_command, timeout=12, maximum=8192)
+        except Hold as exc:
+            # The original generic runner intentionally suppresses stderr.
+            # Retry ONLY this static confined Steam DNS child, at most twice,
+            # and preserve its final error. No nft mutation occurs before
+            # two real isolated-UID DNS samples and root TLS/SNI verification.
+            if str(exc) != "NATIVE_COMMAND_FAILED:setpriv":
+                raise
+            for retry in range(2):
+                try:
+                    child = subprocess.run(uid_command, stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE, timeout=12)
+                except subprocess.TimeoutExpired:
+                    if retry == 1:
+                        raise Hold("STEAM_UID_DNS_TIMEOUT_AFTER_3_ATTEMPTS") from None
+                    time.sleep(0.3)
+                    continue
+                if child.returncode == 0:
+                    need(0 < len(child.stdout) <= 8192,
+                         "STEAM_UID_DNS_OUTPUT_BOUND")
+                    uid_result = child.stdout
+                    break
+                reason = re.sub(r"[^a-zA-Z0-9_.:/ ,=-]", "",
+                                child.stderr.decode(errors="replace").splitlines()[-1]
+                                if child.stderr else "EMPTY_STDERR")[-180:]
+                if retry == 1:
+                    raise Hold("STEAM_UID_DNS_CHILD_FAILED_AFTER_3_ATTEMPTS:"
+                               + str(child.returncode) + ":" + reason)
+                time.sleep(0.3)
+        uid_addresses = parse(uid_result)
         need(type(uid_addresses) is list and all(type(address) is str for address in uid_addresses),
              "STEAM_UID_DNS_RESPONSE_INVALID")
         candidates.update(uid_addresses)
