@@ -716,6 +716,18 @@ server {
   proxy_read_timeout 5s;
   proxy_pass http://127.0.0.1:3345/api/projects/aoe2hdbets/observed-daily-series?;
  }
+ # Existing public aggregate. Keep the upstream's bounded 12s cold budget.
+ location = /api/projects/aoe2hdbets/observed-browser-insights {
+  if ($request_method != GET) { return 405; }
+  proxy_pass_request_body off;
+  proxy_pass_request_headers off;
+  proxy_set_header Content-Length "";
+  proxy_method GET;
+  proxy_connect_timeout 1s;
+  proxy_read_timeout 14s;
+  proxy_hide_header Set-Cookie;
+  proxy_pass http://127.0.0.1:3345/api/projects/aoe2hdbets/observed-browser-insights?;
+ }
  location / { return 403; }
 }
 '''
@@ -1459,7 +1471,8 @@ def production_steam_probe(environment, stage):
     probe = "fetch('https://steamcommunity.com/openid/login',{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:'openid.mode=check_authentication',redirect:'error',signal:AbortSignal.timeout(10000)}).then(async r=>{const s=await r.text();if(r.status!==200||!/^is_valid:false$/m.test(s))process.exit(2);console.log(JSON.stringify({steam_tls_verification_reachable:true,unauthenticated_probe_rejected:true,completed_user_sign_in:false}));}).catch(()=>process.exit(3));"
     env = {"PATH": "/usr/bin:/bin", "HOME": "/nonexistent", "LANG": "C.UTF-8", "USER": PROD_USER, "LOGNAME": PROD_USER,
       "NODE_ENV": "production", "WARGRAPH_RUNTIME_DISABLED": "true", "AOE2WAR_RUNTIME_PROFILE": PROD_PROFILE,
-      "AOE2WAR_R25_ISOLATED_WEB": "true", "AOE2WAR_PROD_DB_PREVIEW": "false", "AOE2_BACKEND_UPSTREAM": "http://127.0.0.1:3331", "HOSTNAME": "127.0.0.1",
+      "AOE2WAR_R25_ISOLATED_WEB": "true", "AOE2WAR_PROD_DB_PREVIEW": "false", "AOE2_BACKEND_UPSTREAM": "http://127.0.0.1:3331",
+      "TRAFFIC_API_BASE": "http://127.0.0.1:3331", "HOSTNAME": "127.0.0.1",
       "PORT": "3032", "NODE_OPTIONS": "--require=" + str(PROD_GUARD), **environment}
     result = subprocess.run(["/usr/sbin/runuser", "-u", PROD_USER, "--", "/usr/bin/node", "-e", probe],
         env=env, cwd=str(stage), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=False)

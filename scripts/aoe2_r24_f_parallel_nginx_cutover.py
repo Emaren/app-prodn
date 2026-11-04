@@ -10,7 +10,7 @@ No key enrollment, money operation, migration, repo switch, or 14-helper install
 from __future__ import annotations
 import argparse,base64,fcntl,hashlib,hmac,http.client,json,os,pathlib,re,select,signal,socket,ssl,stat,subprocess,sys,time,types,urllib.request
 from html.parser import HTMLParser
-from datetime import datetime,timezone
+from datetime import date,datetime,timezone
 
 HOST="ubuntu-4gb-hel1-11"
 TARGET="0cee3c836c4b0760478280c145e02e81e470ce0e"
@@ -1607,7 +1607,7 @@ class _PublicVisibleText(HTMLParser):
 def production_content_html(port, route):
     # Origin-only, anonymous, GET-only. No session/cookie or CDN cache required.
     need(port in (3030,3032) and route in ("/", "/traffic"), "CONTENT_PARITY_UNREVIEWED_ROUTE")
-    con = http.client.HTTPConnection("127.0.0.1", port, timeout=9)
+    con = http.client.HTTPConnection("127.0.0.1", port, timeout=20 if route == "/traffic" else 9)
     try:
         con.request("GET", route, headers={"Host":"aoe2war.com",
             "User-Agent":"aoe2war-release-content-parity/1",
@@ -1643,26 +1643,37 @@ def production_content_parity():
     need(title in new_home, "CONTENT_PARITY_CANDIDATE_PUBLISHED_EVENT_MISSING")
     old_traffic = production_content_html(3030,"/traffic")
     new_traffic = production_content_html(3032,"/traffic")
-    def published_day(value):
+    def visible(value):
         parser = _PublicVisibleText()
         parser.feed(value)
-        text = " ".join(parser.parts)
+        return " ".join(parser.parts)
+
+    def published_day(text):
         need("No published completed-day Traffic report is available." not in text,
              "CONTENT_PARITY_EMPTY_TRAFFIC_REPORT")
         match = re.search(r"LAST\s+PUBLISHED\s+UTC\s+DAY\s*:\s*(\d{4}-\d{2}-\d{2})",text,re.I)
         need(match is not None,"CONTENT_PARITY_PUBLISHED_DAY_MISSING")
-        from datetime import date
         try: result = date.fromisoformat(match.group(1))
         except ValueError as error: raise Hold("CONTENT_PARITY_PUBLISHED_DAY_INVALID") from error
         return result
-    original_day = published_day(old_traffic)
-    candidate_day = published_day(new_traffic)
+    original_text = visible(old_traffic)
+    candidate_text = visible(new_traffic)
+    original_day = published_day(original_text)
+    candidate_day = published_day(candidate_text)
     need(candidate_day >= original_day,"CONTENT_PARITY_TRAFFIC_ARCHIVE_REGRESSION")
+    observed = re.search(r"Latest observed UTC day\s+(\d{4}-\d{2}-\d{2})", candidate_text)
+    need(observed and date.fromisoformat(observed[1]) > candidate_day and
+         "Provisional · unverified" in candidate_text,
+         "CONTENT_PARITY_OBSERVED_TRAFFIC_ABSENT")
+    need("BROWSER OBSERVED" not in original_text or "BROWSER OBSERVED" in candidate_text,
+         "CONTENT_PARITY_OBSERVED_BROWSER_INSIGHTS_LOST")
     return {"schema":"aoe2war.app.content-parity.v1",
         "status":"PUBLIC_EVENT_AND_CERTIFIED_TRAFFIC_CONTENT_PARITY_OBSERVED",
         "published_event_title_sha256":sha(title.encode()),
         "original_published_day":original_day.isoformat(),
         "candidate_published_day":candidate_day.isoformat(),
+        "candidate_observed_day":observed[1],
+        "candidate_observed_browser_insights":"BROWSER OBSERVED" in candidate_text,
         "anonymous_get_only":True,"financial_authorized":False}
 
 def production_inputs(options):

@@ -259,6 +259,12 @@ class ProductionProfile(unittest.TestCase):
         self.assertEqual(node.call_args.kwargs["cwd"],str(sealed))
         self.assertEqual(node.call_args.args[0][:4],["/usr/sbin/runuser","-u",c.PROD_USER,"--"])
         self.assertIn("--require="+str(c.PROD_GUARD),node.call_args.kwargs["env"]["NODE_OPTIONS"])
+        # A sealed cwd alone is insufficient: the modern guard checks this
+        # against its exact 3331 origin before reaching the Steam POST.
+        guard = (ROOT / "scripts/r25_b_guard_production_v1.cjs").read_text()
+        self.assertIn('TRAFFIC_API_BASE: "http://127.0.0.1:3331"', guard)
+        self.assertEqual(node.call_args.kwargs["env"]["TRAFFIC_API_BASE"],
+                         "http://127.0.0.1:3331")
         for unsafe in (pathlib.Path("/root"),pathlib.Path("/var/lib/aoe2war-web-prod-XYZ")):
             with mock.patch.object(c.subprocess,"run") as node:
                 with self.assertRaisesRegex(c.Hold,"PRODUCTION_STEAM_SEALED_STAGE_REQUIRED"):

@@ -85,7 +85,8 @@ function readonlyBackend(input, init = {}) {
     (["/api/health", "/api/chain-id"].includes(url.pathname) ||
       (method === "GET" && !init.body && !init.headers &&
         ["/api/projects/aoe2hdbets/public-audience-series",
-         "/api/projects/aoe2hdbets/observed-daily-series"].includes(url.pathname)));
+         "/api/projects/aoe2hdbets/observed-daily-series",
+         "/api/projects/aoe2hdbets/observed-browser-insights"].includes(url.pathname)));
 }
 const fetchOriginal = globalThis.fetch;
 globalThis.fetch = function (input, init = {}) {

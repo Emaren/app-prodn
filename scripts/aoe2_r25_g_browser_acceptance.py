@@ -6,11 +6,18 @@ credentials collection, or source/build mutation. Uses Playwright + Chromium.
 The browser only visits the public aoe2war.com origin. Admin requires an
 already-authorized, owner-local Playwright storage-state file. Never share it.
 This is supplementary to, NOT a substitute for, native G BEFORE/AFTER or F.
+
+The explicit candidate-auth mode is different: the owner completes genuine
+Steam authentication in a new visible browser. Only the reviewed authentication
+HTTP mutations are allowed. Its existing SSH tunnel is supplied by the operator;
+this program never opens SSH, starts services, or changes public routing.
 """
 from __future__ import annotations
 import argparse
+import base64
 import datetime as dt
 import hashlib
+import http.client
 import json
 import os
 import pathlib
@@ -436,6 +443,445 @@ def application_source_equivalent(root,candidate,controller):
         raise ValueError("Installed application differs from qualified controller source")
     return True
 
+CANDIDATE_FORWARD_PORT=30332
+CANDIDATE_CHROMIUM_ARGS=("--no-proxy-server","--host-resolver-rules=MAP aoe2war.com ~NOTFOUND")
+
+def key_capture_allowed(route,output):
+    import shutil
+    return route in ("/","/kingdom-construction") and shutil.disk_usage(output).free>=25*1024**3+128*1024**2
+
+def limited_capture_record(row,route,output):
+    import shutil
+    if row.get("screenshot")=="NOT_CAPTURED":
+        row["screenshot"]=("NOT_CAPTURED_CAPACITY_FLOOR" if shutil.disk_usage(output).free<25*1024**3+128*1024**2
+                           else "NOT_CAPTURED_KEY_VIEWS_ONLY")
+    return row
+
+def candidate_admission(path,expected_sha):
+    receipt,observed=private_json(path)
+    if not SHA64.fullmatch(expected_sha or "") or observed!=expected_sha:
+        raise ValueError("Exact native candidate admission receipt required")
+    if not isinstance(receipt,dict) or receipt.get("financial_authorized") is not False or receipt.get("public_cutover_authorized") is not False:
+        raise ValueError("Candidate receipt is not a native nonfinancial admission")
+    if receipt.get("status")=="PASS_NEW_3032_ADMITTED_NOT_PUBLIC":
+        content=receipt.get("content")
+        if (receipt.get("browser_roles_verified") is not False or not isinstance(content,dict)
+            or not re.fullmatch(r"[0-9a-f]{40}",str(receipt.get("source_sha")))
+            or type(receipt.get("pid")) is not int or receipt["pid"]<=1
+            or type(receipt.get("ticks")) is not int or receipt["ticks"]<=0
+            or not SHA64.fullmatch(str(receipt.get("profile_sha256")))
+            or not SHA64.fullmatch(str(receipt.get("read_acl_sha256")))
+            or not re.fullmatch(r"[A-Za-z0-9_-]{8,128}",str(content.get("candidate_build_version")))):
+            raise ValueError("Scoped upgrade admission identity is incomplete")
+        # The flat native upgrade receipt pins this process and profile. G
+        # independently measures the artifact and the admitted runtime.
+        return receipt,{"source_sha":receipt["source_sha"],"candidate_pid":receipt["pid"],
+                        "candidate_start_ticks":receipt["ticks"],"profile_sha256":receipt["profile_sha256"],
+                        "build_version":content["candidate_build_version"]}
+    if (receipt.get("schema") not in ("aoe2war.app.production-recovery-complete.v1","aoe2war.app.production-started.v1")
+        or receipt.get("status")!="PRODUCTION_3032_ADMITTED_NOT_PUBLIC"):
+        raise ValueError("Candidate receipt is not a native nonfinancial admission")
+    witness=receipt.get("witness",{})
+    if (witness.get("schema")!="aoe2war.app.production-witness.v1" or witness.get("status")!="NATIVE_PRODUCTION_PROFILE_PASS"
+        or witness.get("source_sha")!=receipt.get("source_sha") or not re.fullmatch(r"[0-9a-f]{40}",str(witness.get("source_sha")))
+        or witness.get("uid")!=990 or witness.get("gid")!=984 or witness.get("port")!=3032
+        or witness.get("unit")!="aoe2hdbets-web-prod.service" or witness.get("financial_authorized") is not False
+        or witness.get("profile")!="nonfinancial-production-v1" or witness.get("original_pid")!=2625090 or witness.get("preview_pid")!=1483304
+        or witness.get("stage")!="/var/lib/aoe2war-web-prod-"+witness["source_sha"][:12]
+        or witness.get("public_cutover_authorized") is not False or witness.get("read_only_observation") is not True
+        or witness.get("candidate_pid")!=receipt.get("candidate_pid") or type(witness.get("candidate_pid")) is not int
+        or witness["candidate_pid"]<=1 or not re.fullmatch(r"[A-Za-z0-9_-]{8,128}",str(witness.get("build_id")))
+        or not re.fullmatch(r"[A-Za-z0-9_-]{8,128}",str(witness.get("build_version")))):
+        raise ValueError("Candidate native identity is incomplete")
+    for name in ("profile_sha256","manifest_sha256","admission_sha256"):
+        if not SHA64.fullmatch(str(witness.get(name))):raise ValueError("Candidate native evidence digest missing")
+    return receipt,witness
+
+def candidate_before(path,expected_sha,witness,controller):
+    before,observed=private_json(path)
+    if (not SHA64.fullmatch(expected_sha or "") or observed!=expected_sha
+        or not isinstance(before,dict)
+        or not re.fullmatch(r"[0-9a-f]{32}-g-before[.]json",path.name)
+        or before.get("nonce")!=path.name.removesuffix("-g-before.json")
+        or before.get("schema")!="aoe2war.g.app-production.v1" or before.get("phase")!="before"
+        or before.get("host")!="ubuntu-4gb-hel1-11" or before.get("proof")!="SEPARATE_NATIVE_G_OBSERVATION_NOT_HUMAN_REVIEW"
+        or before.get("status")!="PRODUCTION_G_BEFORE_PASS_PENDING_REAL_AUTHENTICATED_BROWSER"
+        or before.get("authenticated_browser_roles_verified") is not False
+        or before.get("controller_source_sha")!=controller or before.get("financial_authorized") is not False
+        or before.get("nginx",{}).get("upstream_port")!=3030 or before.get("nginx",{}).get("selectors")!=6):
+        raise ValueError("Single genuine candidate G BEFORE required")
+    for name in ("source_sha","build_id","build_version","profile_sha256","manifest_sha256","candidate_pid","candidate_start_ticks"):
+        if name in witness and before.get(name)!=witness[name]:raise ValueError("G BEFORE differs from native candidate")
+    if (not SHA64.fullmatch(str(before.get("native_admission_sha256")))
+        or not SHA64.fullmatch(str(before.get("manifest_sha256")))
+        or not re.fullmatch(r"[A-Za-z0-9_-]{8,128}",str(before.get("build_id")))
+        or ("admission_sha256" in witness and before["native_admission_sha256"]!=witness["admission_sha256"])):
+        raise ValueError("G BEFORE admission digest or artifact identity differs")
+    ports=before.get("ports",{})
+    if (set(ports)!={"3030","3031","3032","8092","8093"}
+        or ports["3030"].get("pid")!=2625090 or ports["3031"].get("pid")!=1483304
+        or ports["3032"].get("pid")!=before["candidate_pid"] or ports["3032"].get("uid")!=990):
+        raise ValueError("G BEFORE protected listener or candidate UID drift")
+    asset=before.get("candidate_http",{}).get("asset",{})
+    if (asset.get("path")!="/_next/static/"+before["build_id"]+"/_buildManifest.js" or not SHA64.fullmatch(str(asset.get("sha256")))
+        or type(asset.get("bytes")) is not int or not 1<=asset["bytes"]<=1000000):raise ValueError("G BEFORE sealed static bytes missing")
+    return before
+
+def candidate_route_policy(url,method):
+    try:value=urlsplit(url);port=value.port
+    except ValueError:return "DENY"
+    if value.username or value.password or value.fragment or value.scheme!="https" or port not in (None,443):
+        return "DENY"
+    if value.netloc=="aoe2war.com":
+        if method in ("GET","HEAD"):return "CANDIDATE"
+        if (method,value.path) in (("POST","/api/auth/session"),("DELETE","/api/auth/session"),("POST","/api/user/ping")):
+            return "CANDIDATE"
+        return "DENY"
+    host=value.hostname or ""
+    if any(host==domain or host.endswith("."+domain) for domain in ("steamcommunity.com","steampowered.com","steamstatic.com","steamusercontent.com")):
+        return "STEAM_OWNER_UI"
+    return "DENY"
+
+class CandidateTunnel:
+    """Private candidate transport, never a public HTTPS deployment witness."""
+    def __init__(self,witness):
+        self.witness=witness;self.callback_url=None;self.callbacks=0;self.initiations=0;self.blocked=0
+    def attach(self,page):
+        # Playwright routing handles only the first URL in a redirect chain.
+        # Fetch pauses every hop, including Steam's cross-site callback. DNS
+        # for the site is blocked in this browser if interception ever fails.
+        session=page.context.new_cdp_session(page)
+        session.on("Fetch.requestPaused",lambda event:self.handle(session,event))
+        session.send("Fetch.enable",{"patterns":[{"urlPattern":"*","requestStage":"Request"}]})
+
+    def handle(self,session,event):
+        request=event["request"]
+        request_id={"requestId":event["requestId"]}
+        url,method=request["url"],request["method"]
+        parsed=urlsplit(url)
+        decision=candidate_route_policy(url,method)
+        if decision=="STEAM_OWNER_UI":return session.send("Fetch.continueRequest",request_id)
+        if (decision!="CANDIDATE" or event.get("resourceType")=="EventSource"
+            or parsed.path.startswith(("/downloads/","/download/watcher/","/watch/recordings/"))):
+            self.blocked+=1
+            return session.send("Fetch.failRequest",{**request_id,"errorReason":"BlockedByClient"})
+        from urllib.parse import parse_qs
+        if parsed.path=="/api/auth/steam" and method=="GET":
+            if parse_qs(parsed.query).get("openid.mode")==["id_res"]:
+                # Transient process memory only; never serialized or printed.
+                self.callback_url=url;self.callbacks+=1
+            else:self.initiations+=1
+        try:
+            return session.send("Fetch.fulfillRequest",{**request_id,**self.forward(request,parsed)})
+        except Exception:
+            # No fallback to the old public website; exceptions may contain
+            # OpenID signatures or cookie-bearing request details.
+            self.blocked+=1
+            return session.send("Fetch.failRequest",{**request_id,"errorReason":"Failed"})
+
+    def forward(self,request,parsed):
+        excluded={"accept-encoding","connection","content-length","expect","host","keep-alive",
+                  "proxy-authorization","proxy-connection","te","trailer","transfer-encoding","upgrade"}
+        headers={name:value for name,value in request["headers"].items()
+                 if name.lower() not in excluded and not name.lower().startswith("x-forwarded-")}
+        headers.update({"Host":"aoe2war.com","X-Forwarded-Host":"aoe2war.com","X-Forwarded-Proto":"https",
+                        "Accept-Encoding":"identity"})
+        text=request.get("postData")
+        if request.get("hasPostData") and not isinstance(text,str):raise ValueError("Missing candidate request body")
+        body=text.encode("utf-8") if text is not None else None
+        if body is not None and len(body)>65536:raise ValueError("Candidate request body exceeds bound")
+        target=(parsed.path or "/")+("?"+parsed.query if parsed.query else "")
+        conn=http.client.HTTPConnection("127.0.0.1",CANDIDATE_FORWARD_PORT,timeout=15)
+        try:
+            conn.request(request["method"],target,body=body,headers=headers)
+            response=conn.getresponse()
+            if (response.getheader("X-AoE2WAR-Source")!=self.witness["source_sha"]
+                or response.getheader("X-AoE2WAR-Build-ID")!=self.witness["build_id"]
+                or response.getheader("X-AoE2WAR-Process")!=str(self.witness["candidate_pid"])):
+                raise ValueError("Candidate tunnel reached a different source or process")
+            limit=16*1024*1024
+            raw=response.read(limit+1)
+            if len(raw)>limit:raise ValueError("Candidate response exceeds bound")
+            # Preserve duplicate Set-Cookie lines and redirect status. Chromium
+            # applies its real origin and SameSite policy to the next hop.
+            result_headers=[{"name":name,"value":value} for name,value in response.getheaders()
+                            if name.lower() not in ("connection","keep-alive","transfer-encoding")]
+            return {"responseCode":response.status,"responseHeaders":result_headers,
+                    "body":base64.b64encode(raw).decode("ascii")}
+        finally:conn.close()
+
+def candidate_browser_probe(page,role):
+    # Browser fetches obey its tunnel route. APIRequestContext would bypass
+    # browser routing and accidentally probe the old public website instead.
+    return page.evaluate("""async role => {
+      const read=async path=>{const r=await fetch(path,{credentials:'include',cache:'no-store',redirect:'error'});
+        let body=null;try{body=await r.json()}catch{};return {status:r.status,body};};
+      const session=await read('/api/auth/session'), profile=await read('/api/user/me'), admin=await read('/api/admin/central-command');
+      const user=session.body?.user;
+      return {session:session.status,profile:profile.status,admin:admin.status,
+        authenticated:session.status===200&&profile.status===200&&typeof user?.uid==='string'&&user.uid===profile.body?.uid,
+        expected_role:user?.isAdmin===(role==='admin'),token_absent:!user||!Object.hasOwn(user,'token'),
+        subject:typeof user?.uid==='string'?user.uid:null,
+        guest_denied:session.status===401&&profile.status===401&&admin.status===401};
+    }""",role)
+
+def candidate_static_probe(page,asset):
+    return page.evaluate("""async asset => {
+      const r=await fetch(asset.path,{cache:'no-store',redirect:'error'});
+      const body=await r.arrayBuffer();if(body.byteLength>1000000)return false;
+      const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',body)),b=>b.toString(16).padStart(2,'0')).join('');
+      return r.status===200&&body.byteLength===asset.bytes&&digest===asset.sha256;
+    }""",asset)
+
+def candidate_session_state(context):
+    sessions=[cookie for cookie in context.cookies(ORIGIN) if cookie["name"]=="aoe2hdbets_session"]
+    if len(sessions)!=1 or not sessions[0]["secure"] or not sessions[0]["httpOnly"]:
+        raise ValueError("Expected one secure purpose-created session")
+    return {"cookies":sessions,"origins":[]}
+
+class BrowserContentHold(ValueError):
+    """Public content failure codes contain no URLs, bodies or credentials."""
+
+def modern_public_content(page,witness):
+    """Measure SSR shuffle, decoded portraits and separate Traffic data rails."""
+    page.set_viewport_size({"width":1440,"height":900})
+    cache=page.context.new_cdp_session(page)
+    cache.send("Network.enable")
+    cache.send("Network.setCacheDisabled",{"cacheDisabled":True})
+
+    def checked(response):
+        if response is None or response.status!=200:
+            raise BrowserContentHold("MODERN_CONTENT_HTTP")
+        headers=response.headers
+        if any(headers.get(name)!=value for name,value in (
+            ("x-aoe2war-source",witness["source_sha"]),("x-aoe2war-build-id",witness["build_id"]),
+            ("x-aoe2war-process",str(witness["candidate_pid"]))
+        )):raise BrowserContentHold("MODERN_CONTENT_RUNTIME_IDENTITY")
+        if (headers.get("cf-cache-status","").upper() in ("HIT","STALE","UPDATING","REVALIDATED")
+            or headers.get("age","0")!="0"):
+            raise BrowserContentHold("MODERN_CONTENT_SHARED_CACHE")
+        return headers
+
+    shots=[];lineups=set()
+    try:
+        for attempt in range(5):
+            response=(page.goto(ORIGIN+"/",wait_until="domcontentloaded",timeout=20000) if attempt==0
+                      else page.reload(wait_until="domcontentloaded",timeout=20000))
+            headers=checked(response)
+            opening=page.evaluate("""source => {
+                const doc=new DOMParser().parseFromString(source,'text/html');
+                return [...doc.querySelectorAll('[data-featured-warrior-image-buffer="0"] img')].map(image=>{
+                    const path=image.closest('a')?.getAttribute('href');
+                    return path?.startsWith('/')&&!path.startsWith('//') ? path.split(/[?#]/)[0] : null;
+                });
+            }""",response.text())
+            if len(opening)!=4 or any(not route for route in opening):
+                raise BrowserContentHold("FEATURED_WARRIORS_SERVER_OPENING_MISSING")
+            lineups.add(tuple(opening))
+            page.wait_for_function("""() => {
+                const images=[...document.querySelectorAll('[data-featured-warrior-image-buffer] img')]
+                    .filter(image=>image.parentElement.style.opacity==='1');
+                return images.length===4&&images.every(image=>image.complete&&image.naturalWidth>0);
+            }""",timeout=10000)
+            loaded=page.evaluate("""async () => {
+                const images=[...document.querySelectorAll('[data-featured-warrior-image-buffer] img')]
+                    .filter(image=>image.parentElement.style.opacity==='1');
+                const portraits=await Promise.race([Promise.all(images.map(async image=>{
+                    await image.decode();
+                    const url=new URL(image.currentSrc||image.src);
+                    return {path:url.pathname, same_origin:url.origin===location.origin,
+                            edge_versioned:!!url.searchParams.get('edgev'), width:image.naturalWidth};
+                })),new Promise((_,reject)=>setTimeout(()=>reject(new Error('portrait decode deadline')),5000))]);
+                const nav=performance.getEntriesByType('navigation')[0];
+                return {portraits, ttfb_ms:Math.round(nav.responseStart),
+                        dom_content_loaded_ms:Math.round(nav.domContentLoadedEventEnd)};
+            }""")
+            if (len(loaded["portraits"])!=4 or any(not p["same_origin"] or p["width"]<=0
+                or (p["path"].startswith("/api/media-assets/avatar/") and not p["edge_versioned"])
+                for p in loaded["portraits"])):
+                raise BrowserContentHold("FEATURED_WARRIORS_PORTRAIT_IDENTITY")
+            shots.append({"opening":opening,**loaded,"cache_control":headers.get("cache-control"),
+                          "edge_cache_status":headers.get("cf-cache-status")})
+        fallback_count=sum("/silhouette" in p["path"] for shot in shots for p in shot["portraits"])
+        if len(lineups)<3 or fallback_count==len(shots)*4:
+            raise BrowserContentHold("FEATURED_WARRIORS_INSUFFICIENT_SERVER_VARIATION_OR_PORTRAITS")
+
+        checked(page.goto(ORIGIN+"/traffic",wait_until="domcontentloaded",timeout=20000))
+        published=page.get_by_text(re.compile(r"^LAST PUBLISHED UTC DAY: \d{4}-\d{2}-\d{2}$"))
+        published.wait_for(state="visible",timeout=20000)
+        last_certified=dt.date.fromisoformat(published.inner_text().rsplit(" ",1)[-1])
+        page.get_by_role("button",name="Confirmed Humans",exact=True).wait_for(state="visible",timeout=20000)
+        provisional=page.get_by_role("region",name="Provisional, unverified daily web activity")
+        chart=provisional.get_by_role("img")
+        chart.wait_for(state="visible",timeout=20000)
+        rows=re.findall(r"(\d{4}-\d{2}-\d{2}): (\d+) qualifying IPs",chart.get_attribute("aria-label") or "")
+        dates=[dt.date.fromisoformat(day) for day,_ in rows]
+        today=dt.datetime.now(dt.timezone.utc).date()
+        if (not dates or dates!=sorted(set(dates)) or not last_certified<dates[0]<=dates[-1]<=today
+            or not provisional.get_by_text("Qualifying IPs · not people",exact=True).is_visible()
+            or not provisional.get_by_text("Filtered page GETs · not sessions",exact=True).is_visible()):
+            raise BrowserContentHold("TRAFFIC_DISTINCT_OBSERVED_DATES_OR_LABELS_MISSING")
+        return {"independent_home_responses":len(shots),"distinct_server_openings":len(lineups),
+                "decoded_fallback_portraits":fallback_count,"home_samples":shots,
+                "last_certified_utc_day":last_certified.isoformat(),"observed_only_utc_days":[day for day,_ in rows]}
+    finally:cache.detach()
+
+def candidate_auth_main():
+    """Keep genuine owner sessions in memory across the separately governed cutover."""
+    import subprocess,time,shutil
+    ap=argparse.ArgumentParser(description="Owner Steam login against admitted3032; no saved credentials")
+    ap.add_argument("--candidate-auth-receipt",type=pathlib.Path,required=True)
+    ap.add_argument("--candidate-auth-receipt-sha256",required=True)
+    ap.add_argument("--candidate-g-before",type=pathlib.Path,required=True)
+    ap.add_argument("--candidate-g-before-sha256",required=True)
+    ap.add_argument("--out",type=pathlib.Path,required=True)
+    ap.add_argument("--chromium");ap.add_argument("--login-timeout",type=int,default=600)
+    opts=ap.parse_args()
+    if not 30<=opts.login_timeout<=1800:ap.error("Bounded login timeout30..1800 seconds required")
+    _,native=candidate_admission(opts.candidate_auth_receipt,opts.candidate_auth_receipt_sha256)
+    root=pathlib.Path(__file__).resolve().parents[1]
+    source=subprocess.check_output(["git","-C",str(root),"rev-parse","HEAD"],text=True).strip()
+    if subprocess.check_output(["git","-C",str(root),"status","--porcelain","--untracked-files=no"],text=True):ap.error("Clean qualified source required")
+    application_source_equivalent(root,native["source_sha"],source)
+    before=candidate_before(opts.candidate_g_before,opts.candidate_g_before_sha256,native,source)
+    witness=before
+    output=opts.out.expanduser();output.mkdir(mode=0o700,parents=True,exist_ok=True)
+    if output.is_symlink() or output.stat().st_mode&0o077:ap.error("Private0700 output required")
+    campaign=output/("candidate-auth-"+uuid.uuid4().hex);campaign.mkdir(mode=0o700)
+    if shutil.disk_usage(campaign).free<25*1024**3+128*1024**2:
+        raise ValueError("M1 capacity floor must be restored before launching a new visible browser")
+    from playwright.sync_api import sync_playwright
+    results={};contexts={}
+    with sync_playwright() as pw:
+        launch={"headless":False,"args":["--disk-cache-size=1048576","--media-cache-size=1048576"]}
+        if opts.chromium:launch["executable_path"]=opts.chromium
+        else:launch["channel"]="chrome"
+        candidate_launch={**launch,"args":[*launch["args"],*CANDIDATE_CHROMIUM_ARGS]}
+        browser=pw.chromium.launch(**candidate_launch)
+        public_browser=None
+        try:
+            guest=browser.new_context(ignore_https_errors=False,service_workers="block");contexts["guest"]=guest
+            page=guest.new_page();CandidateTunnel(witness).attach(page)
+            page.goto(ORIGIN+"/__aoe2war_production_guard",wait_until="domcontentloaded")
+            guard=page.evaluate("JSON.parse(document.body.innerText)")
+            if (guard.get("schema")!="aoe2war.production.process-guard.v1" or guard.get("uid")!=990
+                or guard.get("pid")!=witness["candidate_pid"] or guard.get("source_sha")!=witness["source_sha"]
+                or guard.get("build_id")!=witness["build_id"] or guard.get("financial_authorized") is not False):raise ValueError("Actual candidate guard identity failed")
+            if not candidate_static_probe(page,before["candidate_http"]["asset"]):raise ValueError("Candidate browser static bytes differ")
+            if not candidate_browser_probe(page,"guest")["guest_denied"]:raise ValueError("Candidate guest denial failed")
+            candidate_content=modern_public_content(page,witness)
+            results["guest"]={"denial_proven":True}
+            for role in ("admin","nonadmin"):
+                context=browser.new_context(ignore_https_errors=False,service_workers="block");contexts[role]=context
+                page=context.new_page();adapter=CandidateTunnel(witness);adapter.attach(page)
+                print("OWNER_ACTION: Complete Steam sign-in for the real "+role+" account in the new browser window. Do not send credentials in chat.",flush=True)
+                page.goto(ORIGIN+"/api/auth/steam?returnTo=%2Fprofile",wait_until="domcontentloaded",timeout=30000)
+                deadline=time.monotonic()+opts.login_timeout;probe=None
+                while time.monotonic()<deadline:
+                    if urlsplit(page.url).netloc=="aoe2war.com" and urlsplit(page.url).path=="/profile":
+                        probe=candidate_browser_probe(page,role)
+                        if probe["authenticated"]:break
+                    page.wait_for_timeout(500)
+                if not probe or not probe["authenticated"] or not probe["expected_role"] or not probe["token_absent"] or probe["admin"]!=(200 if role=="admin" else 403):
+                    raise ValueError("Genuine candidate "+role+" authentication not proven")
+                if not adapter.initiations or not adapter.callbacks or not adapter.callback_url:raise ValueError("Actual Steam redirect/callback missing")
+                page.reload(wait_until="domcontentloaded")
+                persisted=candidate_browser_probe(page,role)
+                if not persisted["authenticated"] or not persisted["expected_role"] or persisted["subject"]!=probe["subject"]:
+                    raise ValueError("Candidate session persistence failed")
+                # A real assertion without its browser state must be rejected.
+                negative=browser.new_context(ignore_https_errors=False,service_workers="block")
+                negative_page=negative.new_page();CandidateTunnel(witness).attach(negative_page)
+                negative_page.goto(adapter.callback_url,wait_until="domcontentloaded")
+                if not candidate_browser_probe(negative_page,"guest")["guest_denied"]:raise ValueError("Transplanted Steam callback accepted")
+                negative.close();adapter.callback_url=None
+                # Clone only this purpose-created genuine session in RAM for
+                # logout isolation; no state file or existing profile is read.
+                logout=browser.new_context(storage_state=candidate_session_state(context),ignore_https_errors=False,service_workers="block")
+                logout_page=logout.new_page();CandidateTunnel(witness).attach(logout_page)
+                logout_page.goto(ORIGIN+"/__aoe2war_production_guard",wait_until="domcontentloaded")
+                status=logout_page.evaluate("async()=> (await fetch('/api/auth/session',{method:'DELETE',credentials:'include',redirect:'error'})).status")
+                if status!=200 or not candidate_browser_probe(logout_page,"guest")["guest_denied"]:raise ValueError("Candidate logout failed")
+                logout.close()
+                results[role]={"actual_steam_callback":True,"role_proven":True,"session_persisted":True,
+                               "transplanted_callback_denied":True,"dedicated_browser_logout_proven":True,"global_session_revocation_asserted":False}
+            pre={"schema":"aoe2war.g.candidate-auth.v1","status":"CANDIDATE_REAL_STEAM_ROLES_PASS_NOT_PUBLIC",
+                 "source_sha":witness["source_sha"],"controller_source_sha":source,"build_id":witness["build_id"],"build_version":witness["build_version"],
+                 "candidate_pid":witness["candidate_pid"],"candidate_start_ticks":witness["candidate_start_ticks"],"uid":990,
+                 "native_admission_receipt_sha256":opts.candidate_auth_receipt_sha256,"native_admission_sha256":witness["native_admission_sha256"],
+                 "g_before_sha256":opts.candidate_g_before_sha256,"candidate_static_parity":True,
+                 "profile_sha256":witness["profile_sha256"],"roles":results,"transport":"OWNER_LOCAL_SSH_FORWARD_HTTP_TO_3032",
+                 "modern_public_content":candidate_content,"public_tls_verified":False,
+                 "authentication_state_saved":False,"financial_authorized":False}
+            pre_sha=dump_new(campaign/"candidate-auth.json",pre)
+            print(json.dumps({"status":pre["status"],"receipt":str(campaign/"candidate-auth.json"),"sha256":pre_sha}),flush=True)
+            print('WAITING_FOR_GOVERNED_PUBLIC_CUTOVER: send one JSON line {"g_after":"/absolute/nonce-g-after.json","sha256":"exact digest"}; no service or cutover is executed by this runner.',flush=True)
+            command=json.loads(sys.stdin.readline(16385))
+            if set(command)!={"g_after","sha256"} or not SHA64.fullmatch(str(command["sha256"])):raise ValueError("Exact public witness command required")
+            after_path=pathlib.Path(command["g_after"])
+            if not after_path.is_absolute():raise ValueError("Absolute public witness path required")
+            before,after,before_sha,after_sha=production_pair(after_path)
+            if (after_sha!=command["sha256"] or before_sha!=opts.candidate_g_before_sha256 or after["source_sha"]!=witness["source_sha"]
+                or after["controller_source_sha"]!=source or after["profile_sha256"]!=witness["profile_sha256"]):
+                raise ValueError("Public cutover differs from authenticated candidate")
+            rows=[];public,private=production_routes(root);public_content=None
+            # A new unmodified Chromium reaches actual public HTTPS. Only the
+            # dedicated session cookie crosses in memory; no profile is saved.
+            states={role:candidate_session_state(context) if role!="guest" else None for role,context in contexts.items()}
+            browser.close();browser=None
+            public_browser=pw.chromium.launch(**launch)
+            for role,state in states.items():
+                context=public_browser.new_context(storage_state=state,ignore_https_errors=False,service_workers="block")
+                context.route("**/*",lambda route:route.continue_() if route.request.method in ("GET","HEAD") else route.abort("blockedbyclient"))
+                if not production_identity(context,after,role):raise ValueError("Genuine role did not persist through public cutover")
+                if role=="guest":
+                    version=context.request.get(ORIGIN+"/api/deployment-version",timeout=15000)
+                    static=context.request.get(ORIGIN+after["candidate_http"]["asset"]["path"],timeout=15000)
+                    if (version.status!=200 or version.json().get("buildVersion")!=witness["build_version"] or static.status!=200
+                        or hashlib.sha256(static.body()).hexdigest()!=after["candidate_http"]["asset"]["sha256"]):
+                        raise ValueError("Public browser build/static parity failed")
+                    content_page=context.new_page()
+                    try:public_content=modern_public_content(content_page,witness)
+                    finally:content_page.close()
+                for path in public:
+                    for viewport in VIEWPORTS:
+                        row=site_probe(context,path,viewport,"anonymous-public",campaign,False,"NOT_APPLICABLE",
+                                       capture_any=role=="guest" and key_capture_allowed(path,campaign))
+                        limited_capture_record(row,path,campaign)
+                        row["session"]=role+"-public";rows.append(row)
+                for path in private:
+                    for viewport in VIEWPORTS:
+                        proof="AUTHENTICATED_ADMIN_API_200" if role=="admin" else ("NONADMIN_403" if role=="nonadmin" else "ANONYMOUS_401")
+                        session="authorized-admin" if role=="admin" else ("nonadmin-admin-negative" if role=="nonadmin" else "anonymous-admin-negative")
+                        row=site_probe(context,path,viewport,session,campaign,False,proof,capture_any=False)
+                        limited_capture_record(row,path,campaign)
+                        row["session"]=role+"-protected";rows.append(row)
+                context.close()
+            expected=(len(public)+len(private))*3*len(VIEWPORTS);holds=sum(not row["status"].startswith("PASS") for row in rows)
+            result={"schema":"aoe2war.g.app-production.browser.v1","source_sha":witness["source_sha"],"controller_source_sha":source,
+                    "build_id":witness["build_id"],"build_version":witness["build_version"],"nonce":after["nonce"],
+                    "candidate_auth_sha256":pre_sha,"g_before_sha256":before_sha,"g_after_sha256":after_sha,"real_role_probes":{role:True for role in contexts},
+                    "historical_public_routes":88,"independent_public_routes":1,"protected_routes":37,"viewports":[v[0] for v in VIEWPORTS],
+                    "expected_cases":expected,"executed_cases":len(rows),"holds":holds,"rows":rows,"financial_authorized":False,
+                    "real_steam_login_asserted_by_census":True,"authentication_state_saved":False,
+                    "public_static_parity":True,"modern_public_content":public_content,
+                    "valid_expired_jwt_runtime_verified":False,
+                    "status":"BROWSER_CENSUS_PASS_REQUIRES_F_FINAL_ACCEPT" if len(rows)==expected and holds==0 else "HOLD_BROWSER_CENSUS"}
+            digest=dump_new(campaign/"ledger.json",result)
+            print(json.dumps({"status":result["status"],"receipt":str(campaign/"ledger.json"),"sha256":digest,"holds":holds}),flush=True)
+            return 0 if holds==0 and len(rows)==expected else 2
+        except Exception as error:
+            hold={"schema":"aoe2war.g.candidate-auth.v1","status":"HOLD_CANDIDATE_OR_PUBLIC_BROWSER","failure_type":type(error).__name__,
+                  "roles_completed":results,"source_sha":witness["source_sha"],"candidate_pid":witness["candidate_pid"],
+                  "public_deployment_asserted":False,"financial_authorized":False,"authentication_state_saved":False}
+            if isinstance(error,BrowserContentHold):hold["failure_code"]=str(error)
+            digest=dump_new(campaign/"hold.json",hold)
+            print(json.dumps({"status":hold["status"],"receipt":str(campaign/"hold.json"),"sha256":digest}),flush=True)
+            return 2
+        finally:
+            if browser is not None:browser.close()
+            if public_browser is not None:public_browser.close()
+
 def production_main():
     global BUILD_ID,APP_VERSION,FROZEN,PUBLIC,ADMIN
     import subprocess
@@ -479,14 +925,17 @@ def production_main():
                               and hashlib.sha256(asset.body()).hexdigest()==after["candidate_http"]["asset"]["sha256"])
                 for path in PUBLIC:
                     for viewport in VIEWPORTS:
-                        row=site_probe(context,path,viewport,"anonymous-public",campaign,role=="guest","NOT_APPLICABLE",capture_any=(role=="guest" or opts.capture_private_admin_screenshots))
+                        row=site_probe(context,path,viewport,"anonymous-public",campaign,role=="guest","NOT_APPLICABLE",
+                                       capture_any=(role=="guest" or opts.capture_private_admin_screenshots) and key_capture_allowed(path,campaign))
+                        limited_capture_record(row,path,campaign)
                         row["session"]=role+"-public";rows.append(row)
                 for path in ADMIN:
                     for viewport in VIEWPORTS:
                         proof="AUTHENTICATED_ADMIN_API_200" if role=="admin" else ("NONADMIN_403" if role=="nonadmin" else "ANONYMOUS_401")
                         row=site_probe(context,path,viewport,"authorized-admin" if role=="admin" else ("nonadmin-admin-negative" if role=="nonadmin" else "anonymous-admin-negative"),
                                        campaign,opts.capture_private_admin_screenshots,proof,
-                                       capture_any=(role=="guest" or opts.capture_private_admin_screenshots))
+                                       capture_any=False)
+                        limited_capture_record(row,path,campaign)
                         row["session"]=role+"-protected";rows.append(row)
                 context.close()
         finally:browser.close()
@@ -506,5 +955,6 @@ def production_main():
     return 0 if passed else 2
 
 if __name__=="__main__":
+    if "--candidate-auth-receipt" in sys.argv:sys.exit(candidate_auth_main())
     if "--production-g-after" in sys.argv:sys.exit(production_main())
     main()

@@ -26,7 +26,7 @@ class TrafficBoundary(unittest.TestCase):
                      "proxy_pass http://127.0.0.1:3345" + path + "?;"):
             self.assertIn(line, segment)
         self.assertIn("location / { return 403; }", conf)
-        self.assertEqual(conf.count("3345"), 2)
+        self.assertEqual(conf.count("3345"), 3)
         provisional = "/api/projects/aoe2hdbets/observed-daily-series"
         self.assertEqual(conf.count("location = " + provisional + " {"), 1)
         block = conf.split("location = " + provisional + " {",1)[1].split("\n }",1)[0]
@@ -39,6 +39,20 @@ class TrafficBoundary(unittest.TestCase):
                      "proxy_read_timeout 5s;",
                      "proxy_pass http://127.0.0.1:3345" + provisional + "?;"):
             self.assertIn(line, block)
+
+    def test_observed_browser_insights_strips_query_headers_and_body(self):
+        conf = c.production_proxy_bytes().decode("utf-8")
+        path = "/api/projects/aoe2hdbets/observed-browser-insights"
+        self.assertEqual(conf.count("location = " + path + " {"), 1)
+        segment = conf.split("location = " + path + " {", 1)[1].split("\n }", 1)[0]
+        for line in ("if ($request_method != GET) { return 405; }",
+                     "proxy_pass_request_body off;",
+                     "proxy_pass_request_headers off;",
+                     'proxy_set_header Content-Length "";',
+                     "proxy_method GET;",
+                     "proxy_read_timeout 14s;",
+                     "proxy_pass http://127.0.0.1:3345" + path + "?;"):
+            self.assertIn(line, segment)
 
     def test_guard_and_unit_pin_existing_3331_transport(self):
         guard = (ROOT / "scripts/r25_b_guard_production_v1.cjs").read_text()
@@ -62,12 +76,19 @@ if(a<0||b<=a)process.exit(3);
 const checker=vm.runInNewContext(text.slice(a,b)+"\nreadonlyBackend;",{URL});
 const path="/api/projects/aoe2hdbets/public-audience-series";
 const observed="/api/projects/aoe2hdbets/observed-daily-series";
+const browser="/api/projects/aoe2hdbets/observed-browser-insights";
 const accepted=[
+ ["http://127.0.0.1:3331"+browser,{},true],
  ["http://127.0.0.1:3331"+observed,{},true],
  ["http://127.0.0.1:3331"+path,{},true],
  ["http://127.0.0.1:3331/api/health",{method:"GET"},true],
  ["http://127.0.0.1:3331/api/chain-id",{method:"HEAD"},true]];
 const denied=[
+ ["http://127.0.0.1:3331"+browser,{method:"HEAD"},false],
+ ["http://127.0.0.1:3331"+browser,{method:"POST"},false],
+ ["http://127.0.0.1:3331"+browser+"?raw=true",{},false],
+ ["http://127.0.0.1:3331"+browser,{headers:{Cookie:"fixture"}},false],
+ ["http://127.0.0.1:3345"+browser,{},false],
  ["http://127.0.0.1:3331"+observed,{method:"HEAD"},false],
  ["http://127.0.0.1:3331"+observed,{method:"POST"},false],
  ["http://127.0.0.1:3331"+observed+"?raw=true",{},false],
@@ -95,7 +116,7 @@ console.log(JSON.stringify({accepted:accepted.length,denied:denied.length}));
         p = subprocess.run(["node", "-e", javascript, str(guard)], capture_output=True,
                            text=True, timeout=5)
         self.assertEqual(p.returncode, 0, p.stderr[-900:])
-        self.assertEqual(json.loads(p.stdout), {"accepted":4,"denied":17})
+        self.assertEqual(json.loads(p.stdout), {"accepted":5,"denied":22})
 
 if __name__ == "__main__":
     unittest.main()
