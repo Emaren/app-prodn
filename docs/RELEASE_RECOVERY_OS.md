@@ -971,3 +971,57 @@ allowlist before any additive commit, 3032 restart or Nginx switch.
 The v7 corpus view is a prerequisite and must be installed using its
 exact signed source first. Avoid accidentally presenting prospective
 or candidate parsing statistics as financially settled outcomes.
+
+## A05 War Chest public-only wagers/claims/market projection v9
+
+The public `/war-chest` route previously queried protected `bet_wagers`,
+`pending_wolo_claims`, `bet_markets`, and private user identity through
+multiple nested dashboard builders. Those raw tables are intentionally
+denied to `aoe2war_web_prod`; a blanket SELECT grant would cross
+financial and wallet boundaries. Three postgres-owned,
+`security_barrier=true` source views publish only: public wager
+amount/status/time/side, with a computed **recorded-funding Boolean**
+requiring recorded legacy intent or recorded batch-ticket proof; public
+claim status/amount and a public on-chain payout hash with private note
+removed and internal error details reduced to a fixed display-safe
+category; and public market labels, ordering, status and seed pools.
+Wallet addresses, memo, raw signing authority, browser identity,
+private client/account fields and raw market integrity evidence are
+excluded. The existing v5 public user-profile projection supplies the
+display names and verification badges.
+
+The isolated `nonfinancial-production-v1` profile branches before
+constructing any private Prisma promises and reconstructs the actual
+War Chest page from the v9 views. It preserves the existing
+`loadLobbyWoloEarnersBoard` actor merge, matched exposure, team-claim
+split, ranking, payout accounting and weekly UTC clock. Its user/name,
+claim and wager data loaders access only the public v5/v9 views under
+that profile, retaining the original ORM path on legacy servers. The
+mainnet filter is applied to the **actual funding Boolean**, stake lock
+date, and existing mainnet display start: an unsigned, app-only or
+unrecorded wager must never appear as financially funded. The isolated
+War Chest loads public market previews and real aggregate totals, not
+private viewer-specific Bet Board recovery/preset/financial controls;
+the authenticated `/bets` route remains its own separately reviewed
+surface. Missing public views or broken public user-market references
+throw instead of becoming invented zero counts.
+
+**Physical noncommitting test:** On HEL1, applying exact v9 source
+inside a transaction and querying with `SET ROLE aoe2war_web_prod`
+returned 3,378 published markets, 1,457 wager records, 1,416
+recorded-funded wager records, zero null funding flags, 2,432
+unrescinded claim records. The three views are all postgres-owned and
+security-barrier enabled, with canonical definition digest
+`a4a253452d05b3f90906975dedf12cc701943d7c7b8d09283c0eae0654f2b58f`.
+The transaction ended `ROLLBACK`. Counts are source evidence, not
+claims that every transaction is mainnet-visible: mainnet start and
+lock-date filtering still apply at render time.
+
+**Stop-ship:** Source CI, exact-head browser/security, a separately
+reviewed native v9 catalog/ACL allowlist and an additive SQL install are
+mandatory before physically restarting 3032. The v7/v8 Game Stats
+source is separate. The native Steam 3032 recovery and six-selector
+public Nginx F/G cutover also require fresh host snapshot and valid
+one-use nonfinancial owner authorization. WoloChain funding controls
+remain the independent chain lane's responsibility. This is a public
+display projection; it cannot settle claims, sign or move WOLO.

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
 } from "@/lib/betStakeFunding";
@@ -249,7 +250,14 @@ async function loadUsersByIds(prisma: PrismaClient, ids: number[]) {
     return map;
   }
 
-  const users = await prisma.user.findMany({
+  const users = isNonfinancialPublicReadProfile()
+    ? (await prisma.$queryRaw<UserIdentity[]>`
+      SELECT id,uid,in_game_name AS "inGameName",
+             steam_persona_name AS "steamPersonaName",
+             verified,verification_level AS "verificationLevel"
+      FROM aoe2war_public_v5.user_profiles
+    `).filter((user) => uniqueIds.includes(user.id))
+    : await prisma.user.findMany({
     where: { id: { in: uniqueIds } },
     select: {
       id: true,
@@ -276,7 +284,15 @@ async function loadUsersByNames(prisma: PrismaClient, names: string[]) {
     return map;
   }
 
-  const users = await prisma.user.findMany({
+  const users = isNonfinancialPublicReadProfile()
+    ? (await prisma.$queryRaw<UserIdentity[]>`
+      SELECT id,uid,in_game_name AS "inGameName",
+             steam_persona_name AS "steamPersonaName",
+             verified,verification_level AS "verificationLevel"
+      FROM aoe2war_public_v5.user_profiles
+    `).filter((user) => [user.uid, user.inGameName, user.steamPersonaName]
+      .some((value) => normalizedNames.includes(normalizeNameKey(value))))
+    : await prisma.user.findMany({
     where: {
       OR: normalizedNames.flatMap((name) => [
         { uid: { equals: name, mode: "insensitive" as const } },
@@ -412,6 +428,18 @@ function mergeDuplicateActorNames(entries: ActorMetrics[]) {
 }
 
 async function loadClaims(prisma: PrismaClient) {
+  if (isNonfinancialPublicReadProfile()) {
+    const rows = await prisma.$queryRaw<ClaimSample[]>`
+      SELECT "claimedByUserId","normalizedPlayerName","displayPlayerName",
+             "amountWolo","claimKind",status,"createdAt",
+             NULL::timestamp AS "rescindedAt"
+      FROM aoe2war_public_v9.published_claims
+      ORDER BY "createdAt" DESC,id DESC
+    `;
+    return isWoloMainnet()
+      ? rows.filter((row) => row.createdAt >= getWoloMainnetDisplayStartAt())
+      : rows;
+  }
   return prisma.pendingWoloClaim.findMany({
     where: {
       rescindedAt: null,
@@ -432,6 +460,25 @@ async function loadClaims(prisma: PrismaClient) {
 }
 
 async function loadWagers(prisma: PrismaClient) {
+  if (isNonfinancialPublicReadProfile()) {
+    const rows = await prisma.$queryRaw<Array<WagerSample & {
+      recordedFunding: boolean;
+      stakeLockedAt: Date | null;
+    }>>`
+      SELECT id,"marketId","userId",side,"amountWolo",
+             "payoutWolo",status,"createdAt","settledAt",
+             "recordedFunding","stakeLockedAt"
+      FROM aoe2war_public_v9.published_wagers
+      ORDER BY "createdAt" DESC,id DESC
+    `;
+    if (!isWoloMainnet()) return rows;
+    const mainnetStart = getWoloMainnetDisplayStartAt();
+    return rows.filter((row) =>
+      row.recordedFunding &&
+      row.stakeLockedAt !== null &&
+      row.stakeLockedAt >= mainnetStart
+    );
+  }
   return prisma.betWager.findMany({
     where: visibleMainnetWagerWhere(),
     select: {
