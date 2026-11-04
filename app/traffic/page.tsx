@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import TrafficSensors from "@/components/traffic/TrafficSensors";
+import ProvisionalDailyTraffic from "@/components/traffic/ProvisionalDailyTraffic";
+import { loadPublicProvisionalActivity } from "@/lib/publicObservedTraffic";
 import ProvisionalActivity from "@/components/traffic/ProvisionalActivity";
 import { loadProvisionalTraffic } from "@/lib/provisionalTraffic";
 import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
@@ -84,6 +86,18 @@ async function RecentObservedActivity({
   }
 }
 
+async function ObservedDailyTraffic({ lastPublishedDay }: {
+  lastPublishedDay: string | null;
+}) {
+  let data = null;
+  try {
+    data = await loadPublicProvisionalActivity();
+  } catch (error) {
+    console.warn("Provisional observed Traffic unavailable:", error);
+  }
+  return <ProvisionalDailyTraffic data={data} lastPublishedDay={lastPublishedDay} />;
+}
+
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let failed = false;
@@ -143,6 +157,14 @@ export default async function TrafficPage() {
             lastPublishedDay={lastPublishedDay}
             lagDays={ageDays}
           />
+        </Suspense>
+
+        <Suspense fallback={
+          <section aria-live="polite" className="mt-6 rounded-xl border border-amber-300/20 p-6 text-sm text-amber-200">
+            Loading separate provisional daily activity — certified Traffic remains unchanged.
+          </section>
+        }>
+          <ObservedDailyTraffic lastPublishedDay={lastPublishedDay} />
         </Suspense>
 
         {failed ? (
