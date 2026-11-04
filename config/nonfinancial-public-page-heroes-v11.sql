@@ -62,10 +62,17 @@ GRANT SELECT ON aoe2war_public_v11.published_hero_playlists TO aoe2war_web_prod;
 
 DO $postflight$
 BEGIN
- IF has_table_privilege('aoe2war_web_prod','public.hero_playlists','SELECT')
- OR has_table_privilege('aoe2war_web_prod','public.hero_playlist_items','SELECT')
- OR has_table_privilege('aoe2war_web_prod','public.hero_screens','SELECT')
+ -- The existing source-reviewed R25 role already permits public hero
+ -- playlists, items, and screens. Their full-table SELECT is specifically
+ -- enrolled in PROD_READ_TABLES and must NOT be falsely classified as drift.
+ -- Managed media assets have only a published-column grant (no raw SELECT).
+ IF NOT has_table_privilege('aoe2war_web_prod','public.hero_playlists','SELECT')
+ OR NOT has_table_privilege('aoe2war_web_prod','public.hero_playlist_items','SELECT')
+ OR NOT has_table_privilege('aoe2war_web_prod','public.hero_screens','SELECT')
  OR has_table_privilege('aoe2war_web_prod','public.managed_media_assets','SELECT')
+ OR has_table_privilege('aoe2war_web_prod','public.hero_playlists','INSERT,UPDATE,DELETE')
+ OR has_table_privilege('aoe2war_web_prod','public.hero_playlist_items','INSERT,UPDATE,DELETE')
+ OR has_table_privilege('aoe2war_web_prod','public.hero_screens','INSERT,UPDATE,DELETE')
  OR has_schema_privilege('aoe2war_web_prod','aoe2war_public_v11','CREATE')
  THEN RAISE EXCEPTION 'PUBLIC_HERO_V11_RAW_AUTHORITY_DRIFT'; END IF;
 END $postflight$;

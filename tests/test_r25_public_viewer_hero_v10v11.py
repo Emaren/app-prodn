@@ -53,6 +53,16 @@ class ViewerHeroPublicViews(unittest.TestCase):
   self.assertIn("FROM public.hero_playlists p",V11)
   self.assertIn("WHERE p.key LIKE 'page-hero-%'",V11)
 
+ def test_hero_postflight_preserves_preexisting_approved_public_select_only(self):
+  for table in ('hero_playlists','hero_playlist_items','hero_screens'):
+   self.assertIn(
+    f"NOT has_table_privilege('aoe2war_web_prod','public.{table}','SELECT')",V11)
+   self.assertIn(
+    f"has_table_privilege('aoe2war_web_prod','public.{table}','INSERT,UPDATE,DELETE')",V11)
+  self.assertIn(
+    "has_table_privilege('aoe2war_web_prod','public.managed_media_assets','SELECT')",V11)
+  self.assertIn('PUBLIC_HERO_V11_RAW_AUTHORITY_DRIFT',V11)
+
  def test_hero_runtime_legacy_and_confined_branches(self):
   self.assertIn('isNonfinancialPublicReadProfile()',HERO)
   self.assertIn('? await readPublishedPageHeroChain(prisma, surfaceInput)',HERO)

@@ -1070,3 +1070,17 @@ strict allowlist may admit it.
 
 These source fixes are not A05 public cutover or A06 browser acceptance.
 Do not run financial operations or relax broad web DB privileges.
+
+### v11 Postflight real-host clarification
+
+R25's original exact database allowlist *already approves* read-only SELECT
+on the three public hero playlist/item/screen tables. A preliminary v11
+preflight erroneously asserted those SELECT permissions were forbidden,
+so a combined v7-v11 atomic HEL1 rehearsal correctly refused to commit.
+The corrected postflight **requires those existing approved SELECT grants**
+and independently denies INSERT/UPDATE/DELETE, as well as forbidding
+full-table SELECT on `managed_media_assets` (which has a narrow legacy
+column allowlist only). The native controller continues to fingerprint
+all original table/column grants and the new v11 view's complete
+definition, schema ownership and ACL. This source repair does not grant
+or revoke any legacy role permissions and preserves the other services.
