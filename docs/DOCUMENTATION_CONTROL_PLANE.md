@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-guard-reset-recovery-20261104` at `24fbc7ebdfbe52cedca5333d871da942af64215b`
+Implementation baseline: `fix/a05-steam-probe-rollback-20261104` at `ea31ea1b5daef89859269a735a60c9eb20fc52e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
