@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2922e4465968162bf9f51b479b48a184de8bf73e5c869a8fd37cb8076ef13cda",
+      "sha256": "9d79ea096c3ee55eb37f4d4f01734b059787c7225b328e9f1522bfa8734bb23f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "f70253da467259108cace08f1529076cc492241bdcbe7d58f64b8a70d920cb59",
+      "sha256": "23097a8f02c779fc1e0d01cc298b0293f32d41da89f0c84d8c7f755c16cd8edb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-parser-aggregate-v8-20261104",
-    "commit": "e3703ef1266515d8fa9638092031fd87c5f26528"
+    "branch": "fix/a05-v7v8v9-local-integration-smoke-20261104",
+    "commit": "9737bcda082a44df05189d42851142ce28d81a3d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
