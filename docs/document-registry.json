@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "40086326fc1dec31acfef751205b426b8d94899f6456c98fd3637bae8d194ebb",
+      "sha256": "bad5abf2a65233f0ff7215a6be20b4cb42957990c414a5abfc2add3acce10bc7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-steam-dns-child-retry-20261104",
-    "commit": "b607357ffbb0579e6b6dd9a4e01ebfadfaf8df4b"
+    "commit": "b559de764a91044697fc56aa0fc23920705176cb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
