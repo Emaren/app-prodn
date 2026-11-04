@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/public-players-read-model-20261104` at `39c591d7808474b659a56ff66798c2d89ca06f49`
+Implementation baseline: `fix/f-rivalries-rsc-20261104` at `2d7b2e922d0842db26d4042be312e0ee025e9a7e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
