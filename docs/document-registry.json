@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2de3a6efb3359086c3b98bf5411ebdcd980f819e8058e31150fab1708417adc3",
+      "sha256": "9695845f9d073fd2171d8776174793906fc6f3ff0900f3f45e4be5cb2760f214",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/r25-bounty-public-v4-20261104",
-    "commit": "acfe7ea2ecec049ded08911eda1d10ffcc23edc7"
+    "branch": "fix/central-a05-final-restricted-pages-20261104",
+    "commit": "8444ec7be106950e995dec074455fbd23778762a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

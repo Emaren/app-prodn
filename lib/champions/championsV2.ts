@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 import { summarizeChampionshipHall } from "@/lib/champions/championshipSummary";
 import type { ChampionTitleState } from "@/lib/champions/titleState";
@@ -449,6 +450,12 @@ async function loadChaosActivityRowsFresh(
   prisma: PrismaClient,
 ): Promise<WatcherActivityRow[]> {
   try {
+    if (isNonfinancialPublicReadProfile()) {
+      return await prisma.$queryRaw<WatcherActivityRow[]>(Prisma.sql`
+        SELECT "userUid", "eventCount", "streamedGames", "lastWatcherAt", "hasWatcherKey"
+        FROM aoe2war_public_v6.champions_chaos_activity
+      `);
+    }
     return await prisma.$queryRaw<WatcherActivityRow[]>(Prisma.sql`
       WITH watcher_activity AS (
         SELECT
@@ -496,6 +503,8 @@ async function loadChaosActivityRowsFresh(
       "Champion Chaos watcher activity unavailable:",
       error,
     );
+    // A missing reviewed public view is not evidence of zero Watcher games.
+    if (isNonfinancialPublicReadProfile()) throw error;
     return [];
   }
 }
@@ -819,29 +828,71 @@ function buildNationalBelts(
 async function loadEloCustody(
   prisma: PrismaClient,
 ): Promise<EloCustodyMap> {
-  const rows = await prisma.trophy.findMany({
-    where: {
-      family: "elo",
-      status: { in: ["held", "active", "guardian_held"] },
-    },
-    include: {
-      currentHolder: {
-        select: {
-          uid: true,
-          inGameName: true,
-          steamPersonaName: true,
+  type EloHolderUser = {
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+  };
+  type EloCustodyDisplayRow = {
+    id: number;
+    trophyId: string;
+    displayName: string;
+    tier: string | null;
+    eloBandMin: number | null;
+    eloBandMax: number | null;
+    status: string;
+    currentHolderDisplayName: string | null;
+    guardianHolderDisplayName: string | null;
+    updatedAt: Date;
+    currentHolder: EloHolderUser | null;
+    guardianHolder: EloHolderUser | null;
+  };
+  type RestrictedEloCustodyRow = Omit<EloCustodyDisplayRow, "currentHolder" | "guardianHolder"> & {
+    currentUid: string | null;
+    currentInGameName: string | null;
+    currentSteamPersonaName: string | null;
+    guardianUid: string | null;
+    guardianInGameName: string | null;
+    guardianSteamPersonaName: string | null;
+  };
+
+  const rows: EloCustodyDisplayRow[] = isNonfinancialPublicReadProfile()
+    ? (await prisma.$queryRaw<RestrictedEloCustodyRow[]>(Prisma.sql`
+        SELECT id, "trophyId", "displayName", tier, "eloBandMin",
+               "eloBandMax", status, "currentHolderDisplayName",
+               "guardianHolderDisplayName", "updatedAt", "currentUid",
+               "currentInGameName", "currentSteamPersonaName",
+               "guardianUid", "guardianInGameName", "guardianSteamPersonaName"
+        FROM aoe2war_public_v6.champions_elo_custody
+        ORDER BY "updatedAt" DESC, id DESC
+      `)).map((row) => ({
+        ...row,
+        currentHolder: row.currentUid ? {
+          uid: row.currentUid,
+          inGameName: row.currentInGameName,
+          steamPersonaName: row.currentSteamPersonaName,
+        } : null,
+        guardianHolder: row.guardianUid ? {
+          uid: row.guardianUid,
+          inGameName: row.guardianInGameName,
+          steamPersonaName: row.guardianSteamPersonaName,
+        } : null,
+      }))
+    : await prisma.trophy.findMany({
+        where: {
+          family: "elo",
+          status: { in: ["held", "active", "guardian_held"] },
         },
-      },
-      guardianHolder: {
-        select: {
-          uid: true,
-          inGameName: true,
-          steamPersonaName: true,
+        include: {
+          currentHolder: {
+            select: { uid: true, inGameName: true, steamPersonaName: true },
+          },
+          guardianHolder: {
+            select: { uid: true, inGameName: true, steamPersonaName: true },
+          },
         },
-      },
-    },
-    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-  });
+        orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      });
 
   const custody: EloCustodyMap = new Map();
 
