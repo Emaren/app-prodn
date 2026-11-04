@@ -787,3 +787,39 @@ alternative lane, activates War Satchel or initiates counter-wagers.
 sensor, not an auto-fixer or a credential-bearing remote subagent. An offline
 Desktop Commander or absent VPS observer prevents certification; it must be
 reported as missing evidence, never inferred from green GitHub CI.
+
+## R25 nonfinancial projection admission: v1–v6 drift (2026-11-04)
+
+The isolated website's production database role is deliberately denied raw
+financial, Watcher, trophy, identity and media tables. The original native C
+runtime witness approved exactly seven public-only v1 views. When v2–v6
+security-barrier projections were separately added, the unchanged v1-only
+allowlist correctly refused the next 3032 refresh with
+`PRODUCTION_NATIVE_AUTH_DATABASE_BOUNDARY_FAILED`. This is an intentional
+security HOLD, not a service outage and not a reason to grant blanket SELECT.
+
+The source-bound repair expands the **exact** allowlist to nineteen reviewed
+public-display views, with separately pinned PostgreSQL canonical definition
+SHA256 for each added schema, exact view names and counts, postgres ownership,
+`security_barrier=true`, schema USAGE without CREATE, SELECT without GRANT
+OPTION, and explicit rejection of other owners or grantees. It still denies
+direct protected tables and unapproved columns, DML, volatile execution,
+privileged role membership, and schema creation. The original v1 digest and
+auth-definer identity remain unchanged.
+
+For every future additive public projection: install only the reviewed source
+with a root-owned transaction and negative ACL postflight; update this native
+catalog contract in a distinct source-reviewed PR; rerun the real HEL1
+**read-only** `production_database_witness` plus synthetic negative tests;
+rebuild and admit the exact candidate with a fresh, one-use, rollback-capable
+3032 transaction; finally prove the complete streamed browser content. Merely
+returning HTTP 200 or repairing the source without a real runtime witness does
+not close a production gate.
+
+The native witness must distinguish `PRODUCTION_ADDITIONAL_PUBLIC_READ_MODELS_CHANGED`
+(view count/name/owner/definition/permissions drift) from
+`PRODUCTION_NATIVE_AUTH_DATABASE_BOUNDARY_FAILED` (unauthorized reads,
+writes, roles, functions or schema authority). Both remain fail-closed.
+The canonical register is `Emaren/app-prodn#1108`; successful isolated
+catalog evidence is not permission to enable WOLO financial execution or
+switch public Nginx.

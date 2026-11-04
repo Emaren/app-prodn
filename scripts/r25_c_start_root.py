@@ -1250,6 +1250,29 @@ PROD_PUBLIC_READ_MODEL_VIEWS = (
     "pending_player_gift_totals", "player_badges", "player_gifts", "replay_projection_watermarks",
 )
 
+# Source-reviewed additional nonfinancial projections, installed in independent
+# root-only additive transactions. This is an EXACT ALLOWLIST and attestation,
+# not table SELECT or caller-controlled schema admission. Every entry is checked
+# for owner, security_barrier, grants, names and canonical definitions.
+PROD_PUBLIC_ADDITIONAL_VIEWS = {
+    "aoe2war_public_v2": ("radio_published_tracks", "radio_station_display"),
+    "aoe2war_public_v3": ("current_watcher_account_states",),
+    "aoe2war_public_v4": ("bounty_display_opportunities", "bounty_locked_claim_summary", "bounty_numbered_transfers"),
+    "aoe2war_public_v5": ("avatar_revisions", "replay_adjudication_watermark", "user_identity_fingerprint", "user_profiles"),
+    "aoe2war_public_v6": ("champions_chaos_activity", "champions_elo_custody"),
+}
+PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256 = {
+    "aoe2war_public_v2": "5aa39bb60282a9596c6f6f579e19467e7f90418ae5b11b9f221aca82997feddf",
+    "aoe2war_public_v3": "b1abdff57eaeb62dbb6d184aec17f802f0e23c006ddf1e0a30a7ce88bb13179d",
+    "aoe2war_public_v4": "a8bd914fe58b52975db3888f765f73e4a5b9ea3aa33fe05009c9af721eb38cf4",
+    "aoe2war_public_v5": "4500cf253508977c5d87a71c2db4128bb4e929f5db608b22198ad9c7ca641ccc",
+    "aoe2war_public_v6": "daa3c14337f153758f0d1dac0f4675057a4197d0e21d5632970fe7d287e616cc",
+}
+PROD_PUBLIC_APPROVED_IDENTITIES = (
+    tuple("aoe2war_public_v1." + name for name in PROD_PUBLIC_READ_MODEL_VIEWS)
+    + tuple(schema + "." + name for schema, names in PROD_PUBLIC_ADDITIONAL_VIEWS.items() for name in names)
+)
+
 def production_database_witness(database, password):
     # F/G call this read-only catalog observation. No auth function invocation,
     # INSERT, UPDATE, synthetic user or rolled-back write is permitted here.
@@ -1320,9 +1343,49 @@ SELECT json_build_object(
     columns = ["(c.relname='"+table+"' AND a.attname=ANY(ARRAY["+",".join("'"+column+"'" for column in values)+"]))"
                for table, values in PROD_COLUMN_READS.items()]
     sql = sql.replace("__SAFE_COLUMN_READS__", " OR ".join(columns))
-    views = ",".join("'" + name + "'" for name in PROD_PUBLIC_READ_MODEL_VIEWS)
-    sql = sql.replace("__SAFE_PUBLIC_VIEW__", "(n.nspname='aoe2war_public_v1' AND c.relkind='v' AND c.relname=ANY(ARRAY[" + views + "]))")
+    views = ",".join("'" + name + "'" for name in PROD_PUBLIC_APPROVED_IDENTITIES)
+    sql = sql.replace("__SAFE_PUBLIC_VIEW__", "(c.relkind='v' AND n.nspname||'.'||c.relname=ANY(ARRAY[" + views + "]))")
     proof = parse(production_psql(database, sql, password))
+    # Re-attest the exact added schemas and views, including full canonical
+    # definition fingerprints, against the separately reviewed source.
+    extra_sql = """BEGIN READ ONLY;
+SELECT COALESCE(json_object_agg(nspname,details),'{}'::json) FROM (
+ SELECT n.nspname,
+ json_build_object(
+   'definitions_sha256',encode(sha256(convert_to(
+     string_agg(c.relname||':'||pg_get_userbyid(c.relowner)||':'||pg_get_viewdef(c.oid,false),
+       E'\\n' ORDER BY c.relname COLLATE "C"),'UTF8')),'hex'),
+   'view_names',array_agg(c.relname ORDER BY c.relname),
+   'schema_and_view_access',
+      pg_get_userbyid(n.nspowner)='postgres'
+      AND has_schema_privilege(n.oid,'USAGE') AND NOT has_schema_privilege(n.oid,'CREATE')
+      AND NOT has_schema_privilege(n.oid,'USAGE WITH GRANT OPTION')
+      AND NOT EXISTS(SELECT 1 FROM aclexplode(n.nspacl) acl
+        WHERE acl.grantee NOT IN (n.nspowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
+          OR acl.grantor<>n.nspowner)
+      AND bool_and(c.relkind='v' AND pg_get_userbyid(c.relowner)='postgres'
+        AND c.reloptions=ARRAY['security_barrier=true'] AND has_table_privilege(c.oid,'SELECT')
+        AND NOT has_table_privilege(c.oid,'SELECT WITH GRANT OPTION')
+        AND NOT EXISTS(SELECT 1 FROM pg_attribute a WHERE a.attrelid=c.oid
+          AND a.attnum>0 AND NOT a.attisdropped AND a.attacl IS NOT NULL)
+        AND NOT EXISTS(SELECT 1 FROM aclexplode(c.relacl) acl
+          WHERE acl.grantee NOT IN (c.relowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
+             OR acl.grantor<>c.relowner))
+ ) AS details
+ FROM pg_namespace n JOIN pg_class c ON c.relnamespace=n.oid
+ WHERE n.nspname = ANY(ARRAY[__APPROVED_SCHEMAS__])
+ GROUP BY n.oid
+) models;
+ROLLBACK;"""
+    extra_sql = extra_sql.replace("__APPROVED_SCHEMAS__", ",".join("'" + schema + "'" for schema in PROD_PUBLIC_ADDITIONAL_VIEWS))
+    additional = parse(production_psql(database, extra_sql, password))
+    approved = {
+       schema: {"definitions_sha256": PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256[schema],
+                "view_names": sorted(names), "schema_and_view_access": True}
+       for schema, names in PROD_PUBLIC_ADDITIONAL_VIEWS.items()
+    }
+    need(additional == approved, "PRODUCTION_ADDITIONAL_PUBLIC_READ_MODELS_CHANGED")
+    proof["additional_read_model_sha256"] = sha(canonical(additional))
     model = proof.get("public_read_model")
     if model is not None:
         need(model == {"definitions_sha256": PROD_PUBLIC_READ_MODEL_SHA256,

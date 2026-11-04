@@ -118,12 +118,17 @@ class ProductionProfile(unittest.TestCase):
     def test_readonly_catalog_witness_never_invokes_mutating_auth_helpers(self):
         with mock.patch.object(c,"production_psql",return_value=b'{}') as sql:
             with self.assertRaises(c.Hold): c.production_database_witness("fixture","private-test-only")
-        statement=sql.call_args.args[1]
-        self.assertTrue(statement.startswith("BEGIN READ ONLY;"))
-        for forbidden in ("INSERT ", "UPDATE ", "DELETE ", "CREATE ", "SET ROLE", "complete_steam_login(", "touch_session("):
-            self.assertNotIn(forbidden,statement)
-        self.assertIn("no_users_secret_select",statement)
-        self.assertIn("has_column_privilege",statement)
+        statements=[call.args[1] for call in sql.call_args_list]
+        self.assertEqual(len(statements), 2)
+        for statement in statements:
+            self.assertTrue(statement.startswith("BEGIN READ ONLY;"))
+            self.assertIn("ROLLBACK;", statement)
+            for forbidden in ("INSERT ", "UPDATE ", "DELETE ", "CREATE ", "SET ROLE", "complete_steam_login(", "touch_session("):
+                self.assertNotIn(forbidden, statement)
+        self.assertIn("no_users_secret_select", statements[0])
+        self.assertIn("has_column_privilege", statements[0])
+        self.assertIn("security_barrier=true", statements[1])
+        self.assertIn("aoe2war_public_v6", statements[1])
 
     def test_observer_cannot_repeat_admission_or_steam_post(self):
         module=ast.parse((ROOT/"scripts/r25_c_start_root.py").read_text())
