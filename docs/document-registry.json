@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3156da6ece1753638ed6f467a7ca12b57da2e5ba58e46bb1066113e75de7fc2c",
+      "sha256": "583a690c128e1bf3c8fb7c9c4214fe2945eee7830a271bf97b9c636289e68cbe",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/a05-traffic-r61-attestation-20261103",
-    "commit": "1f23d8327febef8c8f8aace4681b375ac62927a9"
+    "branch": "codex/a05-live-event-media-readonly-20261104",
+    "commit": "3832d855e65b9f1f29f008bb8b6431d71c31ffc4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
