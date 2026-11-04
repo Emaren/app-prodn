@@ -1606,7 +1606,9 @@ class _PublicVisibleText(HTMLParser):
 
 def production_content_html(port, route):
     # Origin-only, anonymous, GET-only. No session/cookie or CDN cache required.
-    need(port in (3030,3032) and route in ("/", "/traffic"), "CONTENT_PARITY_UNREVIEWED_ROUTE")
+    need(port in (3030,3032) and route in (
+        "/", "/traffic", "/players", "/war-chest", "/game-stats"),
+        "CONTENT_PARITY_UNREVIEWED_ROUTE")
     con = http.client.HTTPConnection("127.0.0.1", port, timeout=20 if route == "/traffic" else 9)
     try:
         con.request("GET", route, headers={"Host":"aoe2war.com",
@@ -1619,6 +1621,55 @@ def production_content_html(port, route):
         need(3000 < len(data) <= 4*1024*1024,"CONTENT_PARITY_INVALID_HTML_SIZE")
         return data.decode("utf-8",errors="replace")
     finally: con.close()
+
+_FLIGHT_CHUNK = re.compile(r'self\.__next_f\.push\(\[1,("(?:\\.|[^"\\])*")\]\)')
+_FLIGHT_RENDER_ERROR = re.compile(r'[0-9a-f]+:E\{.*"digest"\s*:\s*"[^"]+"\}')
+
+def production_has_server_component_error(page_html):
+    """Detect Next.js streamed RSC error, which returns HTTP 200.
+
+    This uses JSON-decoded Flight data from the real Next response; the
+    same route appeared healthy to ordinary HTTP checks while Chrome
+    rendered only Application error. Fail closed on malformed Flight.
+    """
+    need(type(page_html) is str and len(page_html)<=4*1024*1024,
+         "CONTENT_PARITY_RSC_HTML_INVALID")
+    chunks=0
+    for match in _FLIGHT_CHUNK.finditer(page_html):
+        chunks+=1
+        try:
+            decoded=json.loads(match.group(1))
+        except (ValueError,TypeError) as exc:
+            raise Hold("CONTENT_PARITY_RSC_STREAM_INVALID") from exc
+        need(type(decoded) is str,"CONTENT_PARITY_RSC_STREAM_INVALID")
+        if any(_FLIGHT_RENDER_ERROR.fullmatch(line) for line in decoded.splitlines()):
+            return True
+    need(chunks>0,"CONTENT_PARITY_RSC_STREAM_MISSING")
+    return False
+
+def production_public_guest_page_smoke():
+    """Require actual nonfinancial player/war archive pages to render.
+
+    42501 PostgreSQL denials in the new restricted role must not appear
+    as an HTTP-200, empty Next.js error shell. Original 3030 is checked
+    alongside the new 3032 so regressions are attributed correctly.
+    """
+    routes=("/players","/war-chest","/game-stats")
+    witness={}
+    for route in routes:
+        old=production_content_html(3030,route)
+        new=production_content_html(3032,route)
+        need(not production_has_server_component_error(old),
+             "CONTENT_PARITY_ORIGINAL_GUEST_RSC_ERROR:"+route)
+        need(not production_has_server_component_error(new),
+             "CONTENT_PARITY_CANDIDATE_GUEST_RSC_ERROR:"+route)
+        need(len(new)>=len(old)//8,
+             "CONTENT_PARITY_CANDIDATE_GUEST_BODY_TRUNCATED:"+route)
+        witness[route]={"original_html_bytes":len(old),
+                        "candidate_html_bytes":len(new),
+                        "guest_server_render_healthy":True}
+    return witness
+
 
 def production_published_event_title():
     # A bounded actual SELECT from the existing canonical content DB.
@@ -1667,6 +1718,7 @@ def production_content_parity():
          "CONTENT_PARITY_OBSERVED_TRAFFIC_ABSENT")
     need("BROWSER OBSERVED" not in original_text or "BROWSER OBSERVED" in candidate_text,
          "CONTENT_PARITY_OBSERVED_BROWSER_INSIGHTS_LOST")
+    guest_pages=production_public_guest_page_smoke()
     return {"schema":"aoe2war.app.content-parity.v1",
         "status":"PUBLIC_EVENT_AND_CERTIFIED_TRAFFIC_CONTENT_PARITY_OBSERVED",
         "published_event_title_sha256":sha(title.encode()),
@@ -1674,6 +1726,7 @@ def production_content_parity():
         "candidate_published_day":candidate_day.isoformat(),
         "candidate_observed_day":observed[1],
         "candidate_observed_browser_insights":"BROWSER OBSERVED" in candidate_text,
+        "critical_public_guest_pages":guest_pages,
         "anonymous_get_only":True,"financial_authorized":False}
 
 def production_inputs(options):

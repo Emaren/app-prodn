@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9e024ba0f604da1a9ff9266b241c3260b60a2b1c42af5cf2d05eb89e63971827",
+      "sha256": "b68357649641762d3404e6dc7bfea7e22444614d70f1c7b4ffb0b8e042638720",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-published-hero-content-20261104",
-    "commit": "f1d01b06563d891896f190205f240a0e5f53fce4"
+    "branch": "fix/f-rsc-guest-route-preflight-20261104",
+    "commit": "358318af666b99c0fe4e74a5557645ed80c7aebd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

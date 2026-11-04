@@ -1,6 +1,7 @@
 """Release guard checks actual published event and certified Traffic before Nginx switching."""
 from pathlib import Path
 import importlib.util
+import json
 import unittest
 from unittest import mock
 
@@ -14,13 +15,17 @@ OLD_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: 2026-10-19 Traffic Total Traffi
 OBSERVED='<p>Latest observed UTC day 2026-11-03</p><p>Provisional · unverified</p>'
 CAND_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: 2026-10-20 Traffic Total Traffic'+OBSERVED+'</body></html>'
 EMPTY_TRAFFIC='<html><body>LAST PUBLISHED UTC DAY: UNAVAILABLE No published completed-day Traffic report is available.</body></html>'
+GUEST_FLIGHT='<script>self.__next_f.push([1,'+json.dumps('0:D{\"name\":\"Public guest\"}\n')+'])</script>'+(' '*9500)
 
 class ReleaseContentGate(unittest.TestCase):
     def check(self, new_home=f'<main>{TITLE}</main>', new_traffic=CAND_TRAFFIC, old_home=f'<main>{TITLE}</main>', old_traffic=OLD_TRAFFIC, title=TITLE):
         pages={(3030,'/'):old_home,(3032,'/'):new_home,(3030,'/traffic'):old_traffic,(3032,'/traffic'):new_traffic}
+        for route in ('/players','/war-chest','/game-stats'):
+            pages[(3030,route)]=GUEST_FLIGHT
+            pages[(3032,route)]=GUEST_FLIGHT
         with mock.patch.object(f,'production_published_event_title',return_value=title),mock.patch.object(f,'production_content_html',side_effect=lambda port,route:pages[(port,route)]) as pages_requested:
             result=f.production_content_parity()
-            self.assertEqual(pages_requested.call_count,4)
+            self.assertEqual(pages_requested.call_count,10)
             self.assertTrue(result['anonymous_get_only'])
             self.assertFalse(result['financial_authorized'])
             return result
