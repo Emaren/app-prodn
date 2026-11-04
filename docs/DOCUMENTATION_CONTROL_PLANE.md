@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-steam-uid-capability-refresh-20261104` at `bf08ad84f51b7b9b0bf3956fa09d03e3ac0a79a6`
+Implementation baseline: `fix/a05-steam-setpriv-confined-dns-20261104` at `6775750b23c194b9cdd713b31344c41ef4b88b30`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

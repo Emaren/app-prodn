@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "36eee63b0bc93f6f016fcec36df1ea4adc007be190ca792409fbd8d43a500338",
+      "sha256": "4e8662db84ca6c134607b55de3103b87de452f74e117d98d42b516690d672660",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-steam-uid-capability-refresh-20261104",
-    "commit": "bf08ad84f51b7b9b0bf3956fa09d03e3ac0a79a6"
+    "branch": "fix/a05-steam-setpriv-confined-dns-20261104",
+    "commit": "6775750b23c194b9cdd713b31344c41ef4b88b30"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
