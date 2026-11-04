@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/r25-bounty-public-v4-20261104` at `acfe7ea2ecec049ded08911eda1d10ffcc23edc7`
+Implementation baseline: `fix/central-a05-final-restricted-pages-20261104` at `8444ec7be106950e995dec074455fbd23778762a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
