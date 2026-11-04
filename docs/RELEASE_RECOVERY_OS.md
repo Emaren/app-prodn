@@ -863,3 +863,38 @@ IPv4/IPv6 set, DNS answers seen by the confined UID, TLS SNI outcome,
 Node POST timeout/error category, real service PID, isolated recovery
 journal, and public upstream identity. Never log cookies, signing secrets,
 wallet material, authentication proofs or the raw database URI.
+
+## Bounded A05 readiness observer: detect guest Flight failure before a cutover
+
+`scripts/aoe2war_release_readiness_observer.py` is the strictly read-only,
+non-authoritative, eight-route guest readiness monitor. It observes both
+public 3030 and isolated 3032. For each route it records HTTP status,
+byte count, a SHA-256 hash, expected public content marker, real `<main>`
+presence, and streamed React Flight `[hex]:E{...}` errors. It also
+records the source-bound deployment version per port. Truncated, short,
+exception-bearing, missing-content, and unreachable responses are HOLD,
+even if the HTTP status is 200. Its live baseline on 2026-11-04 was
+3030 8/8 guest diagnostics PASS against `20261028134227-6c0f6d7531`,
+while 3032 was STOPPED. These observations are **not** Steam sign-in,
+admin/browser acceptance, public cutover authority, or a gate-closure
+certificate.
+
+The optional installed source-owned
+`deploy/systemd/aoe2war-release-readiness-observer.service` and
+`.timer` run a single low-resource oneshot approximately every five
+minutes, with a strict 96 MB / 25% CPU budget, loopback-only egress,
+dynamic service identity and 100-second deadline. Each run overwrites
+one atomic root-owned systemd StateDirectory JSON report (no raw
+HTML, cookies, PII, credentials, query strings, or financial data).
+The process exits instead of polling between runs. The old production
+service, isolated service, Nginx selectors, and finance units are never
+modified by the observer; consumers must treat its PASS as
+`GUEST_DIAGNOSTIC_ONLY` and never a substitute for native F/G and
+real Steam/Chrome/admin acceptance.
+
+Drift triage: if public routes fail while 3030 is healthy, classify
+page-level render regression; if only 3032 fails, fix the isolated build
+before considering F; if 3032 is stopped, report STOPPED rather than a
+fake healthy empty shell. Emit the exact route/status, source version,
+timestamp, and receipt hash in the WarOS production register. No
+automatic cutover or rollback action is authorized by this monitor.

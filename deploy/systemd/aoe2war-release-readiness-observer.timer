@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodic bounded guest Flight/RSC readiness drift observation
+
+[Timer]
+OnBootSec=150s
+OnUnitInactiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=20s
+Persistent=false
+Unit=aoe2war-release-readiness-observer.service
+
+[Install]
+WantedBy=timers.target
