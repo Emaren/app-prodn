@@ -1287,10 +1287,16 @@ SELECT json_build_object(
     'exact_view_count',count(c.oid),
     'schema_and_view_access',pg_get_userbyid(ns.nspowner)='postgres'
        AND has_schema_privilege(ns.oid,'USAGE') AND NOT has_schema_privilege(ns.oid,'CREATE')
-       AND NOT EXISTS(SELECT 1 FROM aclexplode(ns.nspacl) acl WHERE acl.grantee=0)
+       AND NOT has_schema_privilege(ns.oid,'USAGE WITH GRANT OPTION')
+       AND NOT EXISTS(SELECT 1 FROM aclexplode(ns.nspacl) acl
+          WHERE acl.grantee NOT IN (ns.nspowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
+             OR acl.grantor<>ns.nspowner)
        AND bool_and(c.relkind='v' AND pg_get_userbyid(c.relowner)='postgres'
           AND c.reloptions=ARRAY['security_barrier=true'] AND has_table_privilege(c.oid,'SELECT')
-          AND NOT EXISTS(SELECT 1 FROM aclexplode(c.relacl) acl WHERE acl.grantee=0)))
+          AND NOT has_table_privilege(c.oid,'SELECT WITH GRANT OPTION')
+          AND NOT EXISTS(SELECT 1 FROM aclexplode(c.relacl) acl
+             WHERE acl.grantee NOT IN (c.relowner,(SELECT oid FROM pg_roles WHERE rolname=session_user))
+                OR acl.grantor<>c.relowner)))
    FROM pg_namespace ns LEFT JOIN pg_class c ON c.relnamespace=ns.oid
    WHERE ns.nspname='aoe2war_public_v1' GROUP BY ns.oid),
  'read_acl_sha256',encode(sha256(convert_to((SELECT COALESCE(string_agg(n.nspname||'.'||c.relname||'.'||a.attname,',' ORDER BY n.nspname,c.relname,a.attnum),'')
@@ -1582,7 +1588,9 @@ def production_witness(payload):
     # GET-only negative route check. Unsafe method probes are sealed in the
     # one-time admission receipt, not repeated by observers.
     need(pg["read_acl_sha256"] == admission["catalog"]["read_acl_sha256"] and
-         pg["definer_identity_sha256"] == admission["catalog"]["definer_identity_sha256"], "PRODUCTION_SEALED_READ_ACL_OR_DEFINER_DRIFT")
+         pg["definer_identity_sha256"] == admission["catalog"]["definer_identity_sha256"] and
+         pg.get("public_read_model") == admission["catalog"].get("public_read_model"),
+         "PRODUCTION_SEALED_READ_ACL_OR_DEFINER_DRIFT")
     steam = production_current_steam_tls()
     refresh = production_refresh_unit_identity()
     need(refresh == policy["refresh_units"], "PRODUCTION_REFRESH_SOURCE_OR_EFFECTIVE_DRIFT")
