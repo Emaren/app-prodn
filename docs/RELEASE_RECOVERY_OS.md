@@ -823,3 +823,43 @@ writes, roles, functions or schema authority). Both remain fail-closed.
 The canonical register is `Emaren/app-prodn#1108`; successful isolated
 catalog evidence is not permission to enable WOLO financial execution or
 switch public Nginx.
+
+## R25 Steam CDN address drift and stopped 3032 rollback recovery (2026-11-04)
+
+A genuine one-use native 3032 swap reached the new Node process but later
+failed `PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_3`. Nftables
+correctly allowed an independently TLS-validated Steam CDN endpoint, but
+Node (under dedicated UID 990) resolved another valid Steam CDN IP: the
+allowlist held `23.12.156.233` while the Node resolver used
+`95.100.176.225`. A timed-out OpenID
+`check_authentication` probe is **not** proof of an authenticated Steam user.
+The automatic rollback requalified the original isolated source but a
+subsequent witness failed; it correctly stopped 3032 and recorded
+`CRITICAL_ROLLBACK_INCOMPLETE`. The public 3030 and financial systems
+remained untouched.
+
+**Protocol repair:** Repeatedly resolve Steam's real hostname using both
+the root planner and isolated UID; reject any private/multicast/badly
+formed addresses; TLS-connect to each candidate with verified system trust
+and exact `steamcommunity.com` SNI; allow only those verified IPs in
+the existing nft sets. Preserve the exact UID-specific egress policy and
+the 300-second expiry. The existing bounded 60-second systemd refresh timer
+automatically repeats this verified discovery once the isolated service is
+admitted; no permanently permissive egress rule or background busy-loop.
+
+**Exception recovery:** A consumed journal must never be replayed or treated
+as a live PID. `scripts/r25_a05_recover_steam_dns_hold.py` admits only
+the exact stopped 3032 state and exact immutable failed journal. Its separate
+fresh nonce, source-reviewed controller hash, read-only host PLAN, actual
+owner-delegated one-use grant, frozen CI artifacts and protected snapshot
+all must match. The handler runs the new native admission with a new PID,
+tests all eight streamed guest pages, and writes a new durable PASS/HOLD
+receipt. A failure stops isolated 3032, restores the previous source bytes
+and never touches public Nginx, 3030, WoloChain, or consensus. **Do not
+declare A05 or A06 closed based on an isolated recovery.**
+
+When diagnosing this class of failure, report separately: validated Steam
+IPv4/IPv6 set, DNS answers seen by the confined UID, TLS SNI outcome,
+Node POST timeout/error category, real service PID, isolated recovery
+journal, and public upstream identity. Never log cookies, signing secrets,
+wallet material, authentication proofs or the raw database URI.
