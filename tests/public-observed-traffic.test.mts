@@ -88,11 +88,11 @@ test("read-only fetch preserves HTTP failures; no observed fake zero",async()=>{
       assert.ok(options?.signal);
       return new Response(JSON.stringify(valid()),{status:200});
     };
-    const result=await loadPublicProvisionalActivity();
+    const result=await loadPublicProvisionalActivity("2026-11-04");
     assert.ok(url.endsWith("/api/projects/aoe2hdbets/observed-daily-series"));
     assert.equal(result.points.length,3);
     globalThis.fetch=async()=>new Response("unavailable",{status:503});
-    await assert.rejects(loadPublicProvisionalActivity(),/503/);
+    await assert.rejects(loadPublicProvisionalActivity("2026-11-04"),/503/);
   }finally{globalThis.fetch=previous;}
 });
 

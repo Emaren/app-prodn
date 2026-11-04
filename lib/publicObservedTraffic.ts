@@ -98,7 +98,9 @@ export function normalizePublicProvisionalActivity(
   };
 }
 
-export async function loadPublicProvisionalActivity(): Promise<PublicProvisionalObservedActivity> {
+export async function loadPublicProvisionalActivity(
+  todayUtc = new Date().toISOString().slice(0, 10),
+): Promise<PublicProvisionalObservedActivity> {
   const base = (process.env.TRAFFIC_API_BASE || "http://127.0.0.1:3345").replace(/\/+$/, "");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 6500);
@@ -110,7 +112,7 @@ export async function loadPublicProvisionalActivity(): Promise<PublicProvisional
     if (!result.ok) {
       throw new Error("Observed Traffic API unavailable: " + result.status);
     }
-    return normalizePublicProvisionalActivity(await result.json());
+    return normalizePublicProvisionalActivity(await result.json(), todayUtc);
   } finally {
     clearTimeout(timeout);
   }
