@@ -159,7 +159,7 @@ test("player history is cached separately from current Watcher and presence stat
 
   assert.match(
     generation,
-    /FROM users/,
+    /const users = Prisma\.raw\(scoped \? "aoe2war_public_v5\.user_profiles" : "users"\)/,
   );
   assert.match(
     generation,
@@ -171,8 +171,10 @@ test("player history is cached separately from current Watcher and presence stat
   );
   assert.match(
     generation,
-    /FROM managed_media_assets/,
+    /const avatars = Prisma\.raw\(scoped \? "aoe2war_public_v5\.avatar_revisions" : "managed_media_assets"\)/,
   );
+  assert.ok(generation.includes("FROM " + "$" + "{users}"));
+  assert.ok(generation.includes("FROM " + "$" + "{avatars}"));
   // Restricted R25 static relation selection must leave legacy raw queries
   // available only in the old, unrestricted runtime profile.
   assert.match(generation, /FROM \$\{badges\}/);
