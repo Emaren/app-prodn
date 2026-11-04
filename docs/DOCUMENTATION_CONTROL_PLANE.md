@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-flight-sentinel-20261104` at `dd99eff4a59dc6dd8857a82bc1c1dcd94b9b8740`
+Implementation baseline: `fix/a05-game-stats-public-corpus-v7-20261104` at `3e25d3d21452a7bc879851b9fa04092a65c89e63`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
