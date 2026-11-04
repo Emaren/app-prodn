@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d7d4d9e4e53573f46f1ccb41e2edbc1fbbff192e2455232b0aa99c8683616ad6",
+      "sha256": "1eaafff2559ee8e7d6ce65312a87dd343240205cb16adf23b572e82a820865f4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-guard-reset-recovery-20261104",
-    "commit": "24fbc7ebdfbe52cedca5333d871da942af64215b"
+    "branch": "fix/a05-steam-probe-rollback-20261104",
+    "commit": "ea31ea1b5daef89859269a735a60c9eb20fc52e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
