@@ -69,6 +69,43 @@ class Upgrade(unittest.TestCase):
             self.assertEqual(len(raw), size)
             self.assertEqual(m.digest(raw), sha)
 
+    def test_traffic_r61_is_only_the_pinned_read_only_audit_forward_commit(self):
+        self.assertEqual(m.TRAFFIC_R60_SHA,
+                         "4d0e6196f5b4f5653d4062e3494619360ef77de6")
+        self.assertEqual(m.TRAFFIC_SHA,
+                         "60cf4da5962b4ba65f546d2bea68c3cdc03e8479")
+        self.assertEqual(tuple(sorted(m.TRAFFIC_R61_ALLOWED_FILES)),
+                         m.TRAFFIC_R61_ALLOWED_FILES)
+        self.assertEqual(m.TRAFFIC_R61_ALLOWED_FILES, (
+            "docs/PUBLIC_AUDIENCE_V2.md",
+            "docs/TRAFFIC_V2_INGESTION_RECEIPTS_OPERATOR.md",
+            "scripts/public_audience_v2_ingestion_receipts_health.py",
+            "tests/test_public_audience_v2_ingestion_receipts_health.py",
+        ))
+        def ok_git(*args, **kwargs):
+            if args[-2:] == ("rev-parse", "HEAD"): return (m.TRAFFIC_SHA+"\n").encode()
+            if args[-3:] == ("status", "--porcelain", "--untracked-files=no"): return b""
+            if args[-3:] == ("merge-base", m.TRAFFIC_R60_SHA, m.TRAFFIC_SHA):
+                return (m.TRAFFIC_R60_SHA+"\n").encode()
+            if len(args)>4 and args[-4:-2] == ("diff","--name-only"):
+                return ("\n".join(m.TRAFFIC_R61_ALLOWED_FILES)+"\n").encode()
+            raise AssertionError(args)
+        with mock.patch.object(m,"safe_bytes",side_effect=lambda path:
+                               b"first" if path.name == "before.json" else b"second"), \
+             mock.patch.object(m,"invoke",side_effect=ok_git), \
+             mock.patch.object(m,"digest",side_effect=lambda data:
+                               m.TRAFFIC_RECEIPTS["before.json"] if data==b"first"
+                               else m.TRAFFIC_RECEIPTS["commit.json"]):
+            m.traffic_receipts()
+            def wrong_git(*args,**kwargs):
+                result=ok_git(*args,**kwargs)
+                if len(args)>4 and args[-4:-2] == ("diff","--name-only"):
+                    return result+b"app/main.py\n"
+                return result
+            with mock.patch.object(m,"invoke",side_effect=wrong_git):
+                with self.assertRaisesRegex(m.Hold,"TRAFFIC_R61_SCOPE_NOT_EXACT"):
+                    m.traffic_receipts()
+
     def test_consumed_failed_upgrade_is_never_replayed(self):
         with mock.patch.object(m, "prepare") as prepare:
             with self.assertRaisesRegex(m.Hold, "NONCE_ALREADY_USED"):
