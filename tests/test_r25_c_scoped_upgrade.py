@@ -13,6 +13,62 @@ m=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 class Upgrade(unittest.TestCase):
+    def test_current_hero_published_not_initial_two_buffer_event(self):
+        self.assertEqual(
+            m.candidate_event_serialization(
+                r'\"type\":\"media_takeover\",\"eventTile\":null,'
+                r'\"type\":\"featured_event\",\"eventTile\":{'
+                r'\"title\":\"Monday Night Mayhem\",\"ctaUrl\":\"/lobby\"}',
+                "Monday Night Mayhem"),
+            m.digest("Monday Night Mayhem".encode()))
+        for raw in (
+            r'\"type\":\"featured_event\",\"eventTile\":{\"title\":\"Wrong\"}',
+            r'\"type\":\"media_takeover\",\"eventTile\":{\"title\":\"Monday Night Mayhem\"}',
+            r'\"type\":\"featured_event\",\"eventTile\":null,'
+            r'\"type\":\"media_takeover\",\"title\":\"Monday Night Mayhem\"'):
+            with self.assertRaisesRegex(m.Hold,"CANDIDATE_PUBLISHED_EVENT_NOT_IN_HERO_STREAM"):
+                m.candidate_event_serialization(raw,"Monday Night Mayhem")
+        with mock.patch.object(m,"native_sql",return_value="BEGIN\n120|2\nROLLBACK"):
+            self.assertEqual(m.current_hero_publication(),
+                             {"published_hero_version":120,"featured_event_active_index":2})
+        with mock.patch.object(m,"native_sql",return_value="BEGIN\nROLLBACK"):
+            with self.assertRaisesRegex(m.Hold,"CURRENT_PUBLISHED_HERO_FEATURED_EVENT_NOT_ENABLED"):
+                m.current_hero_publication()
+
+    def test_fifth_rollback_and_native_steam_proof_is_strict(self):
+        import json,hashlib
+        def seal(d):
+            return json.dumps(d,sort_keys=True,separators=(",",":"),ensure_ascii=True).encode()
+        actual={"controller":"old","guard":"old","unit":"old"}
+        entered={"nonce":m.FIFTH_NONCE,"one_use":True,
+                 "financial_authorized":False,"public_cutover_authorized":False,
+                 "plan":{"new_source_sha":m.SOURCE,"before_policy_bytes":actual}}
+        rollback={"status":"PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED",
+                  "reason":"CANDIDATE_PUBLISHED_EVENT_MISSING",
+                  "historical_admission_reused":False,"old_3032_running":False,
+                  "financial_authorized":False,"public_cutover_authorized":False}
+        admitted={"status":"NATIVE_PRODUCTION_ADMISSION_PASS","source_sha":m.SOURCE,
+                  "financial_authorized":False,"public_cutover_authorized":False,
+                  "steam":{"steam_tls_verification_reachable":True,
+                           "unauthenticated_probe_rejected":True,
+                           "completed_user_sign_in":False}}
+        with tempfile.TemporaryDirectory() as d:
+            path=pathlib.Path(d)/("upgrade-"+m.FIFTH_NONCE);path.mkdir()
+            a,b,c=seal(entered),seal(rollback),seal(admitted)
+            for name,content in (("entered.json",a),("rollback.json",b),
+                                 ("runtime-admission.json",c)):
+                (path/name).write_bytes(content)
+            with mock.patch.object(m,"JOURNALS",pathlib.Path(d)), \
+                 mock.patch.object(m,"FIFTH_ENTERED",hashlib.sha256(a).hexdigest()), \
+                 mock.patch.object(m,"FIFTH_ROLLBACK",hashlib.sha256(b).hexdigest()), \
+                 mock.patch.object(m,"FIFTH_ADMISSION",hashlib.sha256(c).hexdigest()), \
+                 mock.patch.object(m,"safe_bytes",side_effect=lambda p:pathlib.Path(p).read_bytes()):
+                m.recovered_fifth_content_hold(actual)
+                admitted["steam"]["steam_tls_verification_reachable"]=False
+                (path/"runtime-admission.json").write_bytes(seal(admitted))
+                with self.assertRaisesRegex(m.Hold,"FIFTH_CONSUMED_JOURNAL_DRIFT"):
+                    m.recovered_fifth_content_hold(actual)
+
     def test_new_public_media_root_exactly_required_by_guard(self):
         guard=(ROOT/"scripts/r25_b_guard_production_v1.cjs").read_text()
         self.assertIn('MANAGED_MEDIA_UPLOAD_DIR: "/run/aoe2war-public-media"',guard)
@@ -162,43 +218,54 @@ class Upgrade(unittest.TestCase):
             self.assertIsNone(m.re.fullmatch(r"[0-9a-f]{32}",invalid))
         self.assertIsNotNone(m.re.fullmatch(r"[0-9a-f]{32}","a"*32))
 
-    def test_public_content_rejects_july_fallback_and_empty_traffic(self):
-        with mock.patch.object(m,"native_sql",return_value="BEGIN\nMonday Night Mayhem\nROLLBACK"):
-            with mock.patch.object(m,"page",side_effect=[
-                "Old public home without a current event " * 12,"WOLOMANIA I"
-            ]):
-                with self.assertRaisesRegex(m.Hold,"CANDIDATE_PUBLISHED_EVENT_MISSING"):
+    def test_public_content_rejects_missing_event_data_and_empty_traffic(self):
+        old = "Original public home stable " * 12
+        with mock.patch.object(m,"native_sql",return_value="BEGIN\nMonday Night Mayhem\nROLLBACK"), \
+             mock.patch.object(m,"page",return_value=old), \
+             mock.patch.object(m,"current_hero_publication",return_value={
+                 "published_hero_version":120,"featured_event_active_index":2}):
+            with mock.patch.object(m,"candidate_event_transport",
+                 side_effect=m.Hold("CANDIDATE_PUBLISHED_EVENT_NOT_IN_HERO_STREAM")):
+                with self.assertRaisesRegex(m.Hold,
+                                           "CANDIDATE_PUBLISHED_EVENT_NOT_IN_HERO_STREAM"):
                     m.candidate_content()
-            with mock.patch.object(m,"page",side_effect=[
-                "Old public home without current event " * 12,"Monday Night Mayhem","LAST PUBLISHED UTC DAY: 2026-10-19",
-                "LAST PUBLISHED UTC DAY: 2026-10-19 BROWSER OBSERVED Loading provisional observed activity"
-            ]):
-                with self.assertRaisesRegex(m.Hold,"CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING"):
+            with mock.patch.object(m,"candidate_event_transport",return_value="a"*64), \
+                 mock.patch.object(m,"page",side_effect=[
+                    old,"LAST PUBLISHED UTC DAY: 2026-10-19",
+                    "LAST PUBLISHED UTC DAY: 2026-10-19 BROWSER OBSERVED Loading provisional observed activity"]):
+                with self.assertRaisesRegex(m.Hold,
+                                           "CANDIDATE_CERTIFIED_AND_OBSERVED_TRAFFIC_MISSING"):
                     m.candidate_content()
 
-    def test_authoritative_current_event_does_not_require_old_site_ssr_text(self):
-        # Real protected October-28 home had the title in streamed data,
-        # not its visible SSR text; new candidate must visibly render it.
+    def test_authoritative_event_is_in_client_stream_not_initial_visible_slide(self):
+        # Live Hero publication v120 features the event at ordinal two, behind
+        # the first two server-rendered media takeover buffers.
         from io import BytesIO
         import json
         old="Protected original homepage navigation " * 12
-        candidate="New homepage: Monday Night Mayhem"
         old_traffic="LAST PUBLISHED UTC DAY: 2026-10-19"
         recent=(old_traffic+" BROWSER OBSERVED Latest observed UTC day 2026-11-03 "+
                 "Provisional · unverified Qualifying IPs · not people "+
                 "Filtered page GETs · not sessions")
         with mock.patch.object(m,"native_sql",return_value="BEGIN\nMonday Night Mayhem\nROLLBACK"), \
-             mock.patch.object(m,"page",side_effect=[old,candidate,old_traffic,recent]) as pages, \
+             mock.patch.object(m,"page",side_effect=[old,old_traffic,recent]) as pages, \
+             mock.patch.object(m,"current_hero_publication",return_value={
+                 "published_hero_version":120,"featured_event_active_index":2}), \
+             mock.patch.object(m,"candidate_event_transport",
+                               return_value="z"*64) as streamed, \
              mock.patch.object(m.urllib.request,"urlopen",
                  return_value=BytesIO(json.dumps({"buildVersion":"modern-v1"}).encode())), \
              mock.patch.object(m,"candidate_media_witness",return_value={
                  "checked_public_backgrounds":2,"no_private_media_read":True}) as images:
             result=m.candidate_content()
         self.assertEqual(result["candidate_build_version"],"modern-v1")
+        self.assertEqual(result["hero_event_stream_sha256"],"z"*64)
+        self.assertEqual(result["featured_event_active_index"],2)
         self.assertEqual(result["managed_media"]["checked_public_backgrounds"],2)
         self.assertTrue(result["certified_and_provisional_traffic_visible"])
         self.assertEqual(pages.call_args_list[0].args,(3030,"/"))
-        self.assertEqual(pages.call_args_list[1].args,(3032,"/"))
+        self.assertEqual(len(pages.call_args_list),3)
+        streamed.assert_called_once_with("Monday Night Mayhem")
         images.assert_called_once()
 
     def test_public_media_observation_requires_real_resolved_image_bytes(self):

@@ -59,6 +59,10 @@ FOURTH_ENTERED = "912f7c209310758f5e553588c944fca2a74bbb35d9ee0cdb9e4f8826219349
 FOURTH_ROLLBACK_HOLD = "e2922ba6504c6c26146fe6f1135477f7a60a7173ee5f8ed8ad17d1a7fda4b2f8"
 FOURTH_RECOVERED = "8bac6e4b3a65eca0cd35f5aadbcab76be7f5c5c2b68454f388973ece4ccb28b1"
 FOURTH_RECOVERY_SOURCE = "73765f30840d2d036d057a1f740ee6a05b3b0ffe7c868002b231f3fcf9ebe6ed"
+FIFTH_NONCE = "2425cc72b7eec343aaf7f80b17fc123b"
+FIFTH_ENTERED = "4fdfb7b33c368c9c7818c6ea398cbdd8dc3665944c47c70da7671e943dc87c0d"
+FIFTH_ROLLBACK = "a06179abef445242c48e42e946fec63d3ba716fad48cfd59d0d73f3e7e09aa04"
+FIFTH_ADMISSION = "ee670f094892fc3378609eb9456a0642fddf072d7e593a8a273fc8d107b857fa"
 TRAFFIC_ROOT = Path("/var/lib/aoe2war-traffic-r60-20261103")
 TRAFFIC_RECEIPTS = {
     "before.json": "299598514158a8c0b9e689eb754b5ba18dbaf39f33bfb0362ad7b9d171584f63",
@@ -245,19 +249,95 @@ def candidate_media_witness():
             "no_private_media_read":True}
 
 
+def candidate_event_serialization(raw, title):
+    """Require the same published Featured Event in delivered React flight data.
+
+    The hero is a 41-screen carousel. Its active Featured Event may be third,
+    so requiring visible SSR text in the *initial two buffers* is incorrect.
+    The real authenticated browser acceptance validates rendered carousel
+    behavior separately; this is a read-only source/data transport witness.
+    """
+    need(isinstance(raw,str) and isinstance(title,str) and title and
+         len(title)<=180,"CANDIDATE_EVENT_DATA_UNEXPECTED")
+    screen = r'\"type\":\"featured_event\"'
+    event = r'\"eventTile\":{'
+    escaped = json.dumps(title,ensure_ascii=False)[1:-1].replace('"',r'\"')
+    needle = r'\"title\":\"' + escaped + r'\"'
+    start=0
+    while True:
+        pos=raw.find(screen,start)
+        if pos<0:break
+        # One serialized HeroScreen object, not an unrelated article title.
+        section=raw[pos:pos+12000]
+        event_pos=section.find(event)
+        if event_pos>=0 and needle in section[event_pos:event_pos+6000]:
+            return digest(title.encode("utf-8"))
+        start=pos+len(screen)
+    raise Hold("CANDIDATE_PUBLISHED_EVENT_NOT_IN_HERO_STREAM")
+
+
+def current_hero_publication():
+    # Matches loadPublishedHeroPlaylist: latest publication for the exact key.
+    # Date filters and enabled/archived rules match hydrateHeroSnapshot.
+    sql = """BEGIN READ ONLY;
+WITH latest AS (
+ SELECT pub.version, pub.snapshot::jsonb AS snapshot
+ FROM public.hero_playlist_publications pub
+ JOIN public.hero_playlists playlist ON playlist.id=pub.playlist_id
+ WHERE playlist.key='home-lobby-main-stage'
+ ORDER BY pub.version DESC,pub.published_at DESC LIMIT 1
+), active AS (
+ SELECT latest.version,entry,
+        row_number() OVER (
+          ORDER BY (entry->>'position')::integer,
+                   (entry->>'id')::integer)-1 AS ordinal
+ FROM latest CROSS JOIN LATERAL
+      jsonb_array_elements(COALESCE(latest.snapshot->'items','[]'::jsonb)) AS x(entry)
+ WHERE COALESCE((entry->>'enabled')::boolean,true)
+   AND COALESCE(entry->'screen'->>'status','')<>'archived'
+   AND (NULLIF(entry->>'startsAt','') IS NULL
+        OR (entry->>'startsAt')::timestamptz<=now())
+   AND (NULLIF(entry->>'endsAt','') IS NULL
+        OR (entry->>'endsAt')::timestamptz>now())
+)
+SELECT version::text || '|' || ordinal::text FROM active
+WHERE entry->'screen'->>'type'='featured_event'
+ORDER BY ordinal LIMIT 1;
+ROLLBACK;"""
+    response=native_sql(sql)
+    rows=[row for row in response.splitlines() if re.fullmatch(r"\d{1,9}\|\d{1,4}",row)]
+    need(len(rows)==1,"CURRENT_PUBLISHED_HERO_FEATURED_EVENT_NOT_ENABLED")
+    version,index=map(int,rows[0].split("|"))
+    need(version>0 and index<10000,"CURRENT_PUBLISHED_HERO_VERSION_OR_POSITION")
+    return {"published_hero_version":version,"featured_event_active_index":index}
+
+
+def candidate_event_transport(title):
+    connection=http.client.HTTPConnection("127.0.0.1",3032,timeout=20)
+    try:
+        connection.request("GET","/",headers={
+            "Host":"aoe2war.com","Accept":"text/html","Cache-Control":"no-cache"})
+        response=connection.getresponse()
+        data=response.read(4*1024*1024+1)
+        need(response.status==200 and len(data)<=4*1024*1024 and
+             "text/html" in (response.getheader("content-type") or ""),
+             "CANDIDATE_HERO_FLIGHT_NOT_READY")
+    finally:connection.close()
+    return candidate_event_serialization(data.decode("utf-8","replace"),title)
+
+
 def candidate_content():
     event=native_sql("BEGIN READ ONLY;SELECT title FROM public.event_tiles "
        "WHERE is_published AND is_active AND status<>'archived' "
        "ORDER BY priority DESC,published_at DESC NULLS LAST LIMIT 1;ROLLBACK;")
     title=next((line for line in event.splitlines() if line not in ("BEGIN","ROLLBACK")),None)
-    # The protected October-28 public build carries the event in its streamed
-    # page data but does not render it as visible SSR text. It is not the
-    # source of current event truth: immutable 3030 build identity was checked
-    # in prepare(), and the current published title is read from PostgreSQL.
     old_home = page(3030, "/")
     need(bool(title) and len(old_home) >= 200, "ORIGINAL_PUBLIC_HOME_NOT_HEALTHY")
-    home=page(3032,"/")
-    need(title in home,"CANDIDATE_PUBLISHED_EVENT_MISSING")
+    hero=current_hero_publication()
+    event_data_sha=candidate_event_transport(title)
+    # The initial server response exposes only two carousel buffers. The
+    # published event at a later position is exercised by G browser acceptance,
+    # not falsely required as visible text in this first server frame.
     old_traffic = page(3030, "/traffic")
     traffic = page(3032, "/traffic")
     def last_published(value):
@@ -277,6 +357,7 @@ def candidate_content():
         version=json.load(r)["buildVersion"]
     media = candidate_media_witness()
     return {"event_title_sha256":digest(title.encode()),
+            "hero_event_stream_sha256":event_data_sha,**hero,
             "managed_media":media,
             "candidate_build_version":version,"certified_and_provisional_traffic_visible":True,
             "last_certified_utc_day": certified.isoformat(), "last_observed_utc_day": observed[1]}
@@ -372,6 +453,37 @@ def recovered_fourth_failure(actual):
          "FOURTH_CONSUMED_ROLLBACK_RECOVERY_DRIFT")
 
 
+def recovered_fifth_content_hold(actual):
+    """Pin real successful production admission and clean rollback, never replay nonce."""
+    journal=JOURNALS/("upgrade-"+FIFTH_NONCE)
+    entered=safe_bytes(journal/"entered.json")
+    rolled=safe_bytes(journal/"rollback.json")
+    admission=safe_bytes(journal/"runtime-admission.json")
+    need(digest(entered)==FIFTH_ENTERED and digest(rolled)==FIFTH_ROLLBACK and
+         digest(admission)==FIFTH_ADMISSION,"FIFTH_CONSUMED_JOURNAL_DRIFT")
+    first=json.loads(entered)
+    last=json.loads(rolled)
+    proof=json.loads(admission)
+    need(first.get("nonce")==FIFTH_NONCE and first.get("one_use") is True and
+         first.get("financial_authorized") is False and
+         first.get("public_cutover_authorized") is False and
+         first.get("plan",{}).get("before_policy_bytes")==actual and
+         first.get("plan",{}).get("new_source_sha")==SOURCE and
+         last=={"status":"PASS_EXACT_STOPPED_3032_PREIMAGE_RESTORED",
+                "reason":"CANDIDATE_PUBLISHED_EVENT_MISSING",
+                "historical_admission_reused":False,"old_3032_running":False,
+                "financial_authorized":False,"public_cutover_authorized":False} and
+         proof.get("status")=="NATIVE_PRODUCTION_ADMISSION_PASS" and
+         proof.get("source_sha")==SOURCE and
+         proof.get("financial_authorized") is False and
+         proof.get("public_cutover_authorized") is False and
+         proof.get("steam")=={
+             "steam_tls_verification_reachable":True,
+             "unauthenticated_probe_rejected":True,
+             "completed_user_sign_in":False},
+         "FIFTH_CONSUMED_RUNTIME_AND_ROLLBACK_NOT_QUALIFIED")
+
+
 def prior_failure(actual):
     journal = JOURNALS / ("upgrade-" + FAILED_NONCE)
     entered = safe_bytes(journal / "entered.json")
@@ -403,6 +515,7 @@ def prior_failure(actual):
          "LATEST_CONSUMED_UPGRADE_ROLLBACK_DRIFT")
     recovered_third_failure(actual)
     recovered_fourth_failure(actual)
+    recovered_fifth_content_hold(actual)
     return failed["plan"]
 
 
