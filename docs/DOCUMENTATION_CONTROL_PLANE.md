@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-game-stats-public-corpus-v7-20261104` at `3e25d3d21452a7bc879851b9fa04092a65c89e63`
+Implementation baseline: `fix/a05-war-chest-public-v9-20261104` at `18ef564645028c31bde0853db8dd755b5244445a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
