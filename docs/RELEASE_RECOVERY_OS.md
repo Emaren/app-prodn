@@ -934,3 +934,48 @@ pin the v7 view definition/ACL before 3032 can start.
 
 No generic `GRANT SELECT`, scheduled financial execution, public
 upstream mutation, or replay statistics fabrication is authorized.
+
+## A05 authenticated Game Stats Your Vault and public Page Hero v10-v11
+
+The earlier v7 final corpus/v8 metric projections remove protected public
+Game Stats ORM reads, but authenticated users still triggered
+`loadViewerParserVault()` and its private `replay_parse_attempts`
+relations; page hero loading also crossed unpublished playlist and
+`managed_media_assets` reads. These two query paths must pass
+for a genuinely signed-in Game Stats session, not just guest HTML 200.
+
+`config/nonfinancial-public-parser-viewer-v10.sql` publishes only final
+game IDs and SHA-256 digests of either the owning `game_stats.user_uid`
+or the linked parse attempt uploader UID, preserving the original
+OR membership and deduplicating within each viewer. The confined
+application hashes the already verified session UID, selects only
+matching memberships and reduces those final games using the original
+result and team truth algorithm. The legacy Prisma query is unchanged.
+Source reviewers must note that a digest of a low-entropy/guessable UID
+is not a secret: the application role is strictly server-only, the view
+publishes no source-upload metadata, and the public site MUST NOT
+expose membership data via an arbitrary UID API.
+
+`config/nonfinancial-public-page-heroes-v11.sql` publishes only
+source-owned active `kind='hero'`, `target IS NULL` assets on
+explicitly enabled, in-window, nonarchived hero playlist items.
+The view returns the exact public slide configuration and rendered
+asset labels/URLs, not unpublished upload names, owners, raw media
+configuration, hero-screen draft information, private assets or
+financial state. The confined site reads this one public view; a truly
+absent playlist retains the original design's `defaultChain` empty
+state, and malformed published content fails closed. Original admin
+mutations/readers remain on their separate authenticated path.
+
+A real HEL1 rollback-only v10+v7 source rehearsal returned 7,181
+final viewer memberships, zero clear-UID/secret view columns, with
+postgres ownership, `security_barrier=true` and definition SHA256
+`f42b1c78f5e39dbbce088b31c3ec06986865698806512c9311fcc67a4a1e99bd`.
+A separately attempted combined v10/v11 host rehearsal was refused by
+the connected execution tool, and **no v11 native physical attestation or
+installation is claimed**. v11 requires exact physical SQL rollback
+proof, canonical definition and negative ACL witness before the native
+strict allowlist may admit it.
+
+These source fixes are not A05 public cutover or A06 browser acceptance.
+Do not run financial operations or relax broad web DB privileges.

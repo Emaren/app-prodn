@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { unstable_cache } from "next/cache";
 
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
@@ -859,6 +860,29 @@ export const loadPublicParserObservatory = unstable_cache(
 
 export async function loadViewerParserVault(uid: string | null) {
   if (!uid) return null;
+  // Public final replay membership is preserved for signed-in users without
+  // exposing private parse-attempts or user credentials. The UID is hashed;
+  // the role receives only two columns: public final game ID + digest.
+  if (isNonfinancialPublicReadProfile()) {
+    const uidSha256 = createHash("sha256").update(uid, "utf8").digest("hex");
+    const memberships = await getPrisma().$queryRaw<Array<{ gameStatsId: number }>>`
+      SELECT "gameStatsId"
+      FROM aoe2war_public_v10.viewer_final_replay_memberships
+      WHERE "viewerUidSha256" = ${uidSha256}
+    `;
+    const ownedGameIds = new Set(memberships.map((row) => row.gameStatsId));
+    const rawRows = (await loadCorpusRows()).filter((row) => ownedGameIds.has(row.id));
+    const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
+    const resolved = rows.filter((row) => resultTruth(row).statsEligible).length;
+    const teamsResolved = rows.filter((row) => teamTruth(row).resolved).length;
+    return {
+      total: rows.length,
+      resolved,
+      unknown: rows.length - resolved,
+      teamsResolved,
+      resultCoverageBps: rows.length ? Math.round((resolved / rows.length) * 10_000) : 0,
+    };
+  }
   const rawRows = await getPrisma().gameStats.findMany({
     where: {
       is_final: true,
