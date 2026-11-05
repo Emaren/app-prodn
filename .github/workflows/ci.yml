@@ -2,6 +2,11 @@ name: AoE2WAR CI
 
 on:
   workflow_dispatch:
+    inputs:
+      lint_base_sha:
+        description: "Immutable common-ancestor SHA for audited manual release CI"
+        required: true
+        type: string
   pull_request:
   push:
     branches: [main]
@@ -91,13 +96,27 @@ jobs:
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE_SHA: ${{ github.event.before }}
+          DISPATCH_BASE_SHA: ${{ inputs.lint_base_sha }}
         run: |
           python3 - <<'PY'
           import os
           from pathlib import Path
+          import re
           import subprocess
 
           base = os.environ.get("PR_BASE_SHA") or os.environ.get("PUSH_BEFORE_SHA")
+          if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+              dispatch = os.environ.get("DISPATCH_BASE_SHA", "")
+              if not re.fullmatch(r"[0-9a-f]{40}", dispatch):
+                  raise SystemExit("Manual CI requires an exact Git base SHA")
+              pinned = subprocess.check_output(
+                  ["git", "merge-base", "HEAD",
+                   "origin/codex/central-thirdlane-a05-c-integrated-20261103"],
+                  text=True,
+              ).strip()
+              if dispatch != pinned:
+                  raise SystemExit("Manual CI base does not match exact integration merge-base")
+              base = dispatch
           if not base or base == "0" * 40:
               raise SystemExit("Cannot prove changed-file ESLint without a Git base SHA")
 

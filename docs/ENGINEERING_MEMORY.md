@@ -38,6 +38,12 @@ actual GitHub owner grant, native C witness, real G BEFORE/AFTER, and authentica
 browser acceptance remain independently mandatory. A failed PLAN or witness
 is never permission to fabricate acceptance or modify financial services.
 
+Manual release CI also needs a real Git base: a workflow-dispatch event has
+neither PR base nor push-before SHA, so a changed-file lint step cannot silently
+assume success. The manual runner requires an explicit 40-hex Git merge-base
+matching the current HEAD and integration branch; missing or mismatched bases
+are hard stops, not permission to skip source lint or qualify deployment.
+
 ## October 21, 2026 — do not downgrade new financial file families
 
 When War Satchel and Mecha introduced new filenames, the release classifier
