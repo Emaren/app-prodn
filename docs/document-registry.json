@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "19b26851a11d4e909eb95fbefda483debe76e5fc14ece2c6be28b69cc2cc5b51",
+      "sha256": "46d779a41baa2dd2174790e6b559970efa98eac102eb5bbd7652e0a2f403cf13",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a06-public-clan-projection-20261105",
-    "commit": "88623f033c090aa2e7ca13ca0ea37a58ba80eafb"
+    "commit": "79fbcc97fc5c5caca4badbdadaf2f66b4457f298"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
