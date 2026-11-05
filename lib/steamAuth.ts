@@ -173,50 +173,65 @@ function assertCallbackLooksValid(request: NextRequest) {
 }
 
 export async function verifySteamCallback(request: NextRequest) {
-  const mode = request.nextUrl.searchParams.get("openid.mode");
-  if (mode === "cancel") {
-    throw new Error("Steam sign-in was cancelled");
+  // Fixed, nonidentifying stage markers for physical OpenID callback failures.
+  let stage: "mode" | "assertion" | "provider_post" |
+    "provider_status" | "provider_body" | "identity" = "mode";
+  try {
+    const mode = request.nextUrl.searchParams.get("openid.mode");
+    if (mode === "cancel") {
+      throw new Error("Steam sign-in was cancelled");
+    }
+    if (mode !== "id_res") {
+      throw new Error("Steam callback is missing a successful OpenID response");
+    }
+
+    stage = "assertion";
+    assertCallbackLooksValid(request);
+
+    const params = new URLSearchParams();
+    for (const [key, value] of request.nextUrl.searchParams.entries()) {
+      if (!key.startsWith("openid.")) continue;
+      params.set(key, value);
+    }
+    params.set("openid.mode", "check_authentication");
+
+    stage = "provider_post";
+    const response = await fetch(STEAM_OPENID_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(8000),
+    });
+
+    stage = "provider_status";
+    if (!response.ok) {
+      throw new Error(`Steam verification failed with ${response.status}`);
+    }
+
+    stage = "provider_body";
+    const body = await boundedSteamText(response, 8192);
+    const valid = body.split(/\r?\n/).filter((line) => line.startsWith("is_valid:"));
+    if (valid.length !== 1 || valid[0] !== "is_valid:true") {
+      throw new Error("Steam did not validate the OpenID response");
+    }
+
+    stage = "identity";
+    const steamId = parseSteamId(request);
+    if (!steamId) {
+      throw new Error("Steam callback did not include a valid Steam ID");
+    }
+
+    return steamId;
+  } catch (error) {
+    if (usesNonfinancialProductionAuth()) {
+      console.warn("AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:" + stage);
+    }
+    throw error;
   }
-  if (mode !== "id_res") {
-    throw new Error("Steam callback is missing a successful OpenID response");
-  }
-
-  assertCallbackLooksValid(request);
-
-  const params = new URLSearchParams();
-  for (const [key, value] of request.nextUrl.searchParams.entries()) {
-    if (!key.startsWith("openid.")) continue;
-    params.set(key, value);
-  }
-  params.set("openid.mode", "check_authentication");
-
-  const response = await fetch(STEAM_OPENID_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-    cache: "no-store",
-    redirect: "error",
-    signal: AbortSignal.timeout(8000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Steam verification failed with ${response.status}`);
-  }
-
-  const body = await boundedSteamText(response, 8192);
-  const valid = body.split(/\r?\n/).filter((line) => line.startsWith("is_valid:"));
-  if (valid.length !== 1 || valid[0] !== "is_valid:true") {
-    throw new Error("Steam did not validate the OpenID response");
-  }
-
-  const steamId = parseSteamId(request);
-  if (!steamId) {
-    throw new Error("Steam callback did not include a valid Steam ID");
-  }
-
-  return steamId;
 }
 
 export async function fetchSteamProfile(steamId: string): Promise<SteamProfile> {

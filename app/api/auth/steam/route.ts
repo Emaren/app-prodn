@@ -70,18 +70,27 @@ export async function GET(request: NextRequest) {
     return response;
   }
 
+  // Emit only a finite, reviewed stage label; never print OpenID assertions,
+  // Steam identities, session tokens, SQL text, provider responses, or errors.
+  let callbackStage: "openid_verification" | "community_profile" | "prisma_connect" |
+    "scoped_db_login" | "session_sign" | "response_cookie" = "openid_verification";
   try {
     const steamId = await verifySteamCallback(request);
+    callbackStage = "community_profile";
     const profile = await fetchSteamProfile(steamId);
+    callbackStage = "prisma_connect";
     const prisma = getPrisma();
     if (usesNonfinancialProductionAuth()) {
+      callbackStage = "scoped_db_login";
       const uid = await completeProductionSteamLogin(prisma, {
         steamId, sessionUid: await getSessionUid(request), newUid: newSessionUid(),
         personaName: profile.personaName,
         responseNonce: request.nextUrl.searchParams.get("openid.response_nonce") ?? "",
       });
       allowUserOnlineSession(uid);
+      callbackStage = "session_sign";
       const token = await signSession(uid);
+      callbackStage = "response_cookie";
       const response = makeRedirect(request, sanitizeReturnTo(request.nextUrl.searchParams.get("returnTo")));
       setSessionCookie(response, token);
       return clearSteamState(response);
@@ -173,7 +182,11 @@ export async function GET(request: NextRequest) {
     setSessionCookie(response, token);
     return clearSteamState(response);
   } catch {
-    // Database/provider exceptions can contain private query or redirect data.
+    // The deployed callback previously hid the failing boundary. Never emit
+    // exception objects, input data or provider messages into production logs.
+    if (usesNonfinancialProductionAuth()) {
+      console.warn("AOE2WAR_NONFINANCIAL_STEAM_CALLBACK_HOLD_STAGE:" + callbackStage);
+    }
     return clearSteamState(NextResponse.redirect(buildFailurePath(request, "STEAM_SIGN_IN_FAILED")));
   }
 }
