@@ -429,21 +429,36 @@ def execute(args, prepared):
             stopped_isolated_candidate(c)
             # Reusing the pre-restart admission would bind the wrong PID.
             # Keep the qualified catalog observer for the already-installed views.
-            write_atomic(CONTROLLER, old_controller, 0o644)
-            write_atomic(UNIT, unit, 0o644)
+            # v13 was installed before this transaction and the historical C
+            # controller only attests v1-v12. Restoring it would *itself* fail
+            # safe native requalification and strand 3032. Restore the exact
+            # old APPLICATION with the new reviewed v13 C and read-only DNS
+            # mount, while preserving the old unit/controller in this journal.
+            old_dns_unit = unit.decode("utf8")
+            bind = "BindReadOnlyPaths=/run/systemd/resolve/stub-resolv.conf:/run/systemd/resolve/stub-resolv.conf\n"
+            need(old_dns_unit.count("TemporaryFileSystem=/run:ro\n") == 1 and
+                 bind not in old_dns_unit, "ROLLBACK_UNIT_PREIMAGE_UNSAFE")
+            rollback_unit = old_dns_unit.replace("TemporaryFileSystem=/run:ro\n",
+                 "TemporaryFileSystem=/run:ro\n" + bind).encode("utf8")
+            need(rollback_unit == c.production_unit_bytes(Path(OLD_STAGE)),
+                 "ROLLBACK_UNIT_NOT_CANONICAL_OLD_APP_WITH_DNS")
+            write_atomic(CONTROLLER, controller, 0o644)
+            write_atomic(UNIT, rollback_unit, 0o644)
             candidate_systemd("daemon-reload")
-            original = load_controller(old_controller, "rollback_original_controller")
-            assert_protected(original, plan["protected_snapshot_sha256"])
+            assert_protected(c, plan["protected_snapshot_sha256"])
             rollback_dir = journal / "rollback-requalification"
             rollback_dir.mkdir(mode=0o700)
             fsync_dir(journal)
-            before.update(controller_sha256=CONTROLLER_SHA, native_plan_sha256=plan_hash,
-                          steam_addresses=original.production_admission_steam_refresh())
+            before.update(controller_sha256=NEW_CONTROLLER_SHA, unit_sha256=sha(rollback_unit),
+                          native_plan_sha256=plan_hash,
+                          steam_addresses=c.production_admission_steam_refresh())
             candidate_systemd("start", UNIT.name)
-            restored = ready_profile(original, before, rollback_dir, plan, env, db, password, expected_new=False)
+            restored = ready_profile(c, before, rollback_dir, plan, env, db, password, expected_new=False)
             seal(journal, "rollback.json", {"status": "PASS_OLD_ISOLATED_3032_RESTORED_NOT_PUBLIC",
                 "source_sha": OLD, "candidate_pid": restored["candidate_pid"],
                 "profile_sha256": restored["profile_sha256"], "failure_type": type(failure).__name__,
+                "rollback_application_source": OLD, "read_only_dns_mount": True,
+                "rollback_unit_sha256": sha(rollback_unit),
                 "financial_authorized": False, "public_cutover_authorized": False})
         except BaseException as rollback:
             # An unattested replacement must never be left running after a
