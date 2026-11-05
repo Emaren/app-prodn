@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-fg-f50-source-requal-20261105` at `157a13b7a5b8bbcddb42ebfffac3df4ce619feaf`
+Implementation baseline: `fix/a05-steam-failure-stage-20261105` at `2414c44fb9e50c6392d642c3ce0901605e845cda`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
