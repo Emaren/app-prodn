@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9ada70491774c02c0c7b5e0b77867cbfed378b80a81b99b6fa7ac5fdcc9aec52",
+      "sha256": "a25fb30a684bde5aab3da5eb038a52ae86ee820ece7f23ce26429ff8faf760c3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-stopped-3032-recovery-20261105",
-    "commit": "533ba28315dd3593c54e3127671f2b9f42d9fecc"
+    "branch": "fix/a05-provider-post-exception-classifier-20261105",
+    "commit": "2a43df8a3ccec2296d290c415bed595d3fe8c73a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
