@@ -1247,6 +1247,109 @@ def production_nft_shape():
          "PRODUCTION_NFT_RULE_CENSUS")
     return sha(canonical(rows))
 
+def production_steam_dns_diversity(base):
+    """TLS-verify bounded Steam IPs returned by independent literal DNS resolvers.
+
+    This augments (never replaces) the real root + confined UID DNS samples.
+    No DNS response alone becomes a firewall exception. The CA-verified
+    steamcommunity.com SNI check remains mandatory for every distinct IP.
+    """
+    selected = set(base)
+    need(0 < len(selected) <= 16, "STEAM_DNS_INITIAL_SET_BOUNDS")
+    for resolver in ("1.1.1.1", "8.8.8.8", "9.9.9.9"):
+        for family in ("A", "AAAA"):
+            try:
+                reply = subprocess.run(
+                    ["/usr/bin/dig", "+short", "+time=2", "+tries=1",
+                     "@" + resolver, PROD_STEAM, family],
+                    capture_output=True, timeout=4, check=False)
+            except (OSError, subprocess.TimeoutExpired):
+                continue  # Already verified root+UID answers remain mandatory.
+            if reply.returncode or len(reply.stdout) > 2048:
+                continue
+            for line in reply.stdout.decode("ascii", errors="ignore").splitlines():
+                try:
+                    ip = ipaddress.ip_address(line.strip())
+                except ValueError:
+                    continue  # Do not accept CNAME or unrecognized DNS output.
+                if ip.is_global and not ip.is_multicast:
+                    selected.add(str(ip))
+            need(len(selected) <= 16, "STEAM_DNS_DIVERSITY_BOUND")
+    verified = set(base)
+    context = ssl.create_default_context()
+    for address in sorted(selected - verified):
+        try:
+            with socket.create_connection((address, 443), timeout=2) as raw:
+                with context.wrap_socket(raw, server_hostname=PROD_STEAM) as tls:
+                    if tls.version() in ("TLSv1.2", "TLSv1.3"):
+                        verified.add(address)
+        except (OSError, ssl.SSLError):
+            pass
+    need(0 < len(verified) <= 16, "STEAM_DNS_TLS_VERIFIED_SET_BOUNDS")
+    return sorted(verified)
+
+
+def production_live_steam_entries():
+    """Observe real expiring nftables Steam /32 or /128 entries; no writes."""
+    data = parse(run(["/usr/sbin/nft", "-j", "list", "table",
+                      "inet", "aoe2war_web_prod"], maximum=131072))
+    found = {}
+    for row in data.get("nftables", []):
+        item = row.get("set", {})
+        name = item.get("name")
+        if name not in ("steam4", "steam6"):
+            continue
+        need(name not in found, "STEAM_SET_DUPLICATED")
+        addresses = set()
+        for element in item.get("elem") or []:
+            need(type(element) is dict and type(element.get("elem")) is dict,
+                 "STEAM_SET_EXPIRY_UNOBSERVABLE")
+            value = element["elem"]
+            expiration = value.get("expires")
+            need(type(expiration) is int and 0 < expiration <= 300000,
+                 "STEAM_SET_UNBOUNDED_OR_EXPIRED")
+            ip = ipaddress.ip_address(value.get("val"))
+            need(ip.is_global and not ip.is_multicast and
+                 ip.version == (4 if name == "steam4" else 6),
+                 "STEAM_SET_ADDRESS_SCOPE_CHANGED")
+            addresses.add(str(ip))
+        found[name] = addresses
+    need(set(found) == {"steam4", "steam6"} and
+         sum(map(len, found.values())) <= 16, "STEAM_SET_SHAPE_OR_CAP_DRIFT")
+    return found
+
+
+def production_steam_union_commands(fresh, existing):
+    """Add only new TLS-verified Steam IPs; old valid entries expire naturally.
+
+    Never flush the sets, extend the lifetime of a prior IP, or change the
+    firewall rules. Exact nft element timeouts remain 300 seconds.
+    """
+    need(set(existing) == {"steam4", "steam6"}, "STEAM_SET_NAMES_NOT_EXACT")
+    checked = [ipaddress.ip_address(v) for v in fresh]
+    need(all(v.is_global and not v.is_multicast for v in checked),
+         "STEAM_FRESH_NONPUBLIC_ADDRESS")
+    verified = {str(v) for v in checked}
+    need(len(verified) == len(fresh) and 0 < len(verified) <= 16,
+         "STEAM_FRESH_LIST_INVALID")
+    new = {}
+    for name, version in (("steam4", 4), ("steam6", 6)):
+        old = existing[name]
+        new[name] = sorted(
+            address for address in verified
+            if ipaddress.ip_address(address).version == version and address not in old)
+    need(sum(len(v) for v in new.values()) +
+         sum(len(v) for v in existing.values()) <= 16,
+         "STEAM_SET_CAP_EXCEEDED_FAIL_CLOSED")
+    commands = []
+    for name in ("steam4", "steam6"):
+        if new[name]:
+            commands.append("add element inet aoe2war_web_prod " + name +
+                            " { " + ", ".join(address + " timeout 300s"
+                                            for address in new[name]) + " }")
+    return commands
+
+
 def production_refresh():
     need(sys.platform == "linux" and os.geteuid() == 0 and socket.gethostname().split(".")[0] == HOST,
          "PRODUCTION_REFRESH_ROOT_REQUIRED")
@@ -1268,18 +1371,25 @@ def production_refresh():
          "PRODUCTION_REFRESH_EFFECTIVE_CAPABILITIES_MISSING")
     before = production_protected()
     need(sha(canonical(before)) == policy["protected_snapshot_sha256"], "PRODUCTION_REFRESH_PROTECTED_DRIFT")
-    addresses = production_steam_addresses()
-    commands = ["flush set inet aoe2war_web_prod steam4", "flush set inet aoe2war_web_prod steam6"]
-    for version in (4, 6):
-        selected = [a for a in addresses if ipaddress.ip_address(a).version == version]
-        if selected:
-            commands.append("add element inet aoe2war_web_prod steam%d { %s }" %
-                            (version, ", ".join(a + " timeout 300s" for a in selected)))
-    run(["/usr/sbin/nft", "-f", "-"], data=("\n".join(commands) + "\n").encode(), maximum=8192)
-    need(production_nft_shape() == policy["nft_shape_sha256"] and production_protected() == before,
+    # An Akamai DNS answer can legitimately rotate between sequential
+    # lookups. Keep prior *still-expiring* TLS-validated destinations; never
+    # flush them merely because a different IP was returned this minute.
+    # Independent DNS resolvers supply additional bounded candidates, all
+    # separately verified under the real Steam TLS certificate/SNI.
+    addresses = production_steam_dns_diversity(production_steam_addresses())
+    existing = production_live_steam_entries()
+    commands = production_steam_union_commands(addresses, existing)
+    if commands:
+        run(["/usr/sbin/nft", "-f", "-"],
+            data=("\n".join(commands) + "\n").encode(), maximum=8192)
+    current = production_live_steam_entries()
+    need(set(addresses).issubset(current["steam4"] | current["steam6"]) and
+         production_nft_shape() == policy["nft_shape_sha256"] and
+         production_protected() == before,
          "PRODUCTION_REFRESH_CHANGED_NON_STEAM_STATE")
     return {"schema": "aoe2war.app.steam-egress-refresh.v1", "status": "VALIDATED_STEAM_IP_SETS_REFRESHED",
-            "addresses": len(addresses), "timeout_seconds": 300, "financial_authorized": False}
+            "addresses": sum(map(len, current.values())), "timeout_seconds": 300,
+            "financial_authorized": False}
 
 def production_admission_steam_refresh():
     """Revalidate exact Steam TLS endpoints just before the real Node POST.
@@ -1605,22 +1715,31 @@ def production_current_steam_tls():
             need(ip.is_global and not ip.is_multicast, "PRODUCTION_STEAM_SET_NONPUBLIC")
             addresses.append(str(ip))
     need(0 < len(addresses) <= 16, "PRODUCTION_CURRENT_STEAM_SET_EMPTY")
+    # CDN answers rotate independently of the nft timeout. A new DNS lookup
+    # need not repeat the *still approved* IP in the expiring Steam set.
+    # Retain the DNS overlap as telemetry, but require real CA/SNI-verified
+    # TLS from the confined UID to one of those exact listed endpoints.
     probe = r'''import socket,ssl,ipaddress,json,sys,time
-allowed=set(json.loads(sys.argv[1]));dns=set(row[4][0] for row in socket.getaddrinfo('steamcommunity.com',443,type=socket.SOCK_STREAM))
-current=sorted(allowed & dns);deadline=time.monotonic()+8;verified=False
-for address in current[:4]:
+allowed=set(json.loads(sys.argv[1]))
+try: dns=set(row[4][0] for row in socket.getaddrinfo('steamcommunity.com',443,type=socket.SOCK_STREAM))
+except OSError: dns=set()
+current=sorted(allowed);deadline=time.monotonic()+8;verified=False
+for address in current[:16]:
  if time.monotonic()>=deadline:break
  try:
-  with socket.create_connection((address,443),timeout=2) as raw:
+  with socket.create_connection((address,443),timeout=1.5) as raw:
    with ssl.create_default_context().wrap_socket(raw,server_hostname='steamcommunity.com') as tls:
     if tls.version() in ('TLSv1.2','TLSv1.3'):verified=True;break
  except (OSError,ssl.SSLError):pass
-print(json.dumps({'current_uid_tls_sni_verified':verified,'active_dns_set_intersection':len(current),'http_post_sent':False,'completed_user_sign_in':False}))
+print(json.dumps({'current_uid_tls_sni_verified':verified,'active_dns_set_intersection':len(allowed & dns),'approved_tls_candidates':len(allowed),'http_post_sent':False,'completed_user_sign_in':False}))
 '''
     proof = parse(run(["/usr/sbin/runuser", "-u", PROD_USER, "--", "/usr/bin/python3", "-I", "-B", "-c", probe,
         json.dumps(addresses)], timeout=14, maximum=8192))
-    need(proof.get("current_uid_tls_sni_verified") is True and type(proof.get("active_dns_set_intersection")) is int and
-         proof["active_dns_set_intersection"] > 0 and proof.get("http_post_sent") is False,
+    need(proof.get("current_uid_tls_sni_verified") is True and
+         type(proof.get("active_dns_set_intersection")) is int and
+         type(proof.get("approved_tls_candidates")) is int and
+         proof["approved_tls_candidates"] == len(addresses) and
+         proof.get("http_post_sent") is False,
          "PRODUCTION_CURRENT_STEAM_TLS_NOT_REACHABLE")
     return proof
 
