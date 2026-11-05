@@ -1473,6 +1473,8 @@ PROD_PUBLIC_ADDITIONAL_VIEWS = {
     "aoe2war_public_v10": ("viewer_final_replay_memberships",),
     "aoe2war_public_v11": ("published_hero_playlists",),
     "aoe2war_public_v12": ("header_counts", "published_ticker"),
+    # A06: exact postgres-owned active-clan public display, no member identities.
+    "aoe2war_public_v13": ("active_clan_directory",),
 }
 PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256 = {
     "aoe2war_public_v2": "5aa39bb60282a9596c6f6f579e19467e7f90418ae5b11b9f221aca82997feddf",
@@ -1486,6 +1488,7 @@ PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256 = {
     "aoe2war_public_v10": "f42b1c78f5e39dbbce088b31c3ec06986865698806512c9311fcc67a4a1e99bd",
     "aoe2war_public_v11": "24b526c21f6333172120d2e3d15775458439ec64334f0b9c6e78a46cdabb75fe",
     "aoe2war_public_v12": "0c10a889d9435ba19c25894d4d19e19d7e742a7877091c98a51587d101cd7575",
+    "aoe2war_public_v13": "df309879b5bb5570fd29a318c9701a16c9e3da26eebfbb085bd8882ab591ba57",
 }
 PROD_PUBLIC_APPROVED_IDENTITIES = (
     tuple("aoe2war_public_v1." + name for name in PROD_PUBLIC_READ_MODEL_VIEWS)

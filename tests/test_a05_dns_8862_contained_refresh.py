@@ -19,7 +19,7 @@ class DnsContainedRefresh(TestCase):
   self.assertEqual(r.OLD,'bdb134fe4013c9b26f382b55e232638b1d1f5874')
   self.assertEqual(r.NEW,'88621f9798ea2a0982751abdac1aee93bc820d67')
   self.assertEqual(r.NEW_CONTROLLER_SHA, hashlib.sha256((ROOT/'scripts/r25_c_start_root.py').read_bytes()).hexdigest())
-  self.assertEqual(r.NEW_CONTROLLER_SIZE,136428)
+  self.assertEqual(r.NEW_CONTROLLER_SIZE,136658)
   self.assertEqual(r.STAGE_RECEIPT_SHA,'d03ac30beef269f987a3e65a7bf6d21332deb368774dbaf0b08d19786c2d5ffe')
   self.assertEqual(r.ARTIFACT_SHA,'8d030a643adc5752962f2b23c46eaa9d3f62b3c903b87b66ac79b4e9a184069a')
   self.assertEqual(r.SCOPE,'REFRESH_EXISTING_NONFINANCIAL_3032_ONLY')
