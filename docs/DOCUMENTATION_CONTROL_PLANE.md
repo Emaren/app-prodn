@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-public-lobby-v12-20261105` at `530431fefd62bf9522b0ba2dfe15f2b41c34e816`
+Implementation baseline: `fix/a05-f50-native-c-upgrade-20261105` at `a165a0bb23c23115a158b24daba8c1dcc07c5f90`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

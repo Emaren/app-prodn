@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "72befd704f00700987f1cf190d28f203b8d8c5ba24533bca5383a5257ed55180",
+      "sha256": "0e4d2acdb525eeb2fb994c30767c33b208f893050011b36565c42e15f35702cc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-public-lobby-v12-20261105",
-    "commit": "530431fefd62bf9522b0ba2dfe15f2b41c34e816"
+    "branch": "fix/a05-f50-native-c-upgrade-20261105",
+    "commit": "a165a0bb23c23115a158b24daba8c1dcc07c5f90"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
