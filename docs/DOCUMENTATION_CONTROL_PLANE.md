@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-five-routes-restricted-preview-20261105` at `aa7889c205172f973a3262967a87667b2a5acd03`
+Implementation baseline: `fix/a05-five-route-3032-refresh-20261105` at `c0deb54255d45bbb4f49be6c2ca7e0b74909a4b2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
