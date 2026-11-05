@@ -18,8 +18,13 @@ class A05HeapRecovery(unittest.TestCase):
     def test_new_unit_diff_is_exact_and_old_host_digest_is_pinned(self):
         new=c.production_unit_bytes(STAGE)
         self.assertEqual(hashlib.sha256(new).hexdigest(),
-             "2deec75820dbebe26f0d8f4f3211ef7b112020508bd4828a59580587245496e1")
-        old=new.replace(
+             "95199e0a01b21564f346e8e10a81874efe8395e1f69701214a83ed0c55032861")
+        # Historical heap-recovery receipts remain byte-for-byte pinned to
+        # their PRE-DNS unit. Remove only the new resolver bind when deriving
+        # the historical old unit; never rewrite old receipt identities.
+        dns_mount=b"BindReadOnlyPaths=/run/systemd/resolve/stub-resolv.conf:/run/systemd/resolve/stub-resolv.conf\n"
+        self.assertEqual(new.count(dns_mount),1)
+        old=new.replace(dns_mount,b"").replace(
             b"After=network.target postgresql.service\nStartLimitIntervalSec=300\nStartLimitBurst=3\n",
             b"After=network.target postgresql.service\n")
         old=old.replace(
