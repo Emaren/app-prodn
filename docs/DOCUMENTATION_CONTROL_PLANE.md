@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-steam-failure-stage-20261105` at `2414c44fb9e50c6392d642c3ce0901605e845cda`
+Implementation baseline: `fix/a05-3032-diagnostic-refresh-20261105` at `4ebc091331ac05b20ff41c706ce077775d675145`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
