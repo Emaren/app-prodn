@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9908e8c97385dc7dc01a544051ea4fb4d186048e59a1e2452cb30f120e1a0cdd",
+      "sha256": "417723fc2135b205e27ef01556200bc5060ce0094fb73768530144f0f5db7062",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-f50-native-c-upgrade-20261105",
-    "commit": "60752e3f126473016d3e8a3fced0cca1c88eac22"
+    "branch": "fix/a05-steam-cdn-ttl-roll-forward-20261105",
+    "commit": "e87a82ddc43f1a321e3ac23b9434643e94be0e0d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

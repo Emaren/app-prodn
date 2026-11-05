@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-f50-native-c-upgrade-20261105` at `60752e3f126473016d3e8a3fced0cca1c88eac22`
+Implementation baseline: `fix/a05-steam-cdn-ttl-roll-forward-20261105` at `e87a82ddc43f1a321e3ac23b9434643e94be0e0d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
