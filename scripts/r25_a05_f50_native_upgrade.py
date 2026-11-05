@@ -230,6 +230,24 @@ def observe(args):
     return c, plan, policy, old_unit, old_policy, old_controller, new_bytes, build, proof, critical, env, database, password
 
 
+def retry_qualified_steam(c, probe, retryable, attempts=8, delay_seconds=0.75):
+    """Retry only verified CDN/DNS rotation errors, never other C HOLDs.
+
+    Each attempt repeats the original native security probe unchanged. The
+    nftables destination set and HTTPS certificate verification stay intact.
+    """
+    need(1 <= attempts <= 8 and 0 <= delay_seconds <= 2,
+         "STEAM_RETRY_BUDGET_INVALID")
+    for attempt in range(attempts):
+        try:
+            return probe()
+        except c.Hold as failure:
+            if str(failure) != retryable or attempt == attempts - 1:
+                raise
+            time.sleep(delay_seconds)
+    raise Hold("UNREACHABLE_STEAM_RETRY")
+
+
 def execute(args, state):
     (c, plan, policy, old_unit, old_policy, old_controller, updated_unit,
      build, ci_proof, critical, env, database, password) = state
@@ -284,14 +302,17 @@ def execute(args, state):
             "catalog": actual_pg,
             "postgres": c.production_database_admission(database, password),
             "kernel": c.production_kernel_probe(new_policy["steam_addresses"]),
-            "steam": c.production_steam_probe(env, NEW_STAGE),
+            "steam": retry_qualified_steam(c, lambda: c.production_steam_probe(env, NEW_STAGE),
+                        "PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_3"),
             "financial_authorized": False,
             "public_cutover_authorized": False}
         receipt = canonical(admission)
         sealed_write(journal / "runtime-admission.json", receipt, 0o600)
         new_policy["admission_sha256"] = sha(receipt)
         atomic(POLICY, canonical(new_policy), 0o400)
-        witness = c.production_witness({"profile_path": str(POLICY)})
+        witness = retry_qualified_steam(c,
+            lambda: c.production_witness({"profile_path": str(POLICY)}),
+            "PRODUCTION_CURRENT_STEAM_TLS_NOT_REACHABLE")
         need(witness["candidate_pid"] == pid and
              witness["source_sha"] == NEW and
              witness["financial_authorized"] is False,
