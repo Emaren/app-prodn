@@ -83,6 +83,9 @@ class PretransactionNoPhantomRollback(unittest.TestCase):
         for rc,stdout in ((0,b"f"*64+b"  file\n"),(255,b"")):
             with self.subTest(returncode=rc),mock.patch.object(m.subprocess,"run",return_value=subprocess.CompletedProcess([],rc,stdout,b"")):
                 self.assertFalse(m.production_original_nginx_unchanged(expected))
+        for error in (subprocess.TimeoutExpired('ssh',35),OSError('SSH unavailable')):
+            with self.subTest(error=type(error).__name__),mock.patch.object(m.subprocess,'run',side_effect=error):
+                self.assertFalse(m.production_original_nginx_unchanged(expected))
 
 
 if __name__=="__main__":

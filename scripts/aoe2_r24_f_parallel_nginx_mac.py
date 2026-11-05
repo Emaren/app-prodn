@@ -438,10 +438,13 @@ def production_protective_rollback(root,nonce,receipt_path):
 
 def production_original_nginx_unchanged(expected_sha):
     need(H64.fullmatch(expected_sha or ''),'PRODUCTION_ORIGINAL_NGINX_SHA_REQUIRED')
-    check=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes',
-        '-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8',
-        'root@hel1','/usr/bin/sha256sum','/etc/nginx/sites-available/aoe2war.com'],
-        capture_output=True,timeout=35,check=False)
+    try:
+        check=subprocess.run(['/usr/bin/ssh','-T','-o','BatchMode=yes',
+            '-o','StrictHostKeyChecking=yes','-o','ConnectTimeout=8',
+            'root@hel1','/usr/bin/sha256sum','/etc/nginx/sites-available/aoe2war.com'],
+            capture_output=True,timeout=35,check=False)
+    except (subprocess.TimeoutExpired,OSError):
+        return False  # Unknown public state retains protective rollback.
     return check.returncode==0 and check.stdout.split(b' ',1)[0].decode('ascii','replace')==expected_sha
 
 

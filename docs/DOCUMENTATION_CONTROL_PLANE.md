@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-fg-runtime-reliability-20261104` at `73815ea794f098a32ed874fb612736f259f12508`
+Implementation baseline: `fix/a05-fg-runtime-reliability-20261104` at `75cf265f2bd7b4a1b362aef1775f53a06d02cc6b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

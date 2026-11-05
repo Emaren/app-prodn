@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "87334e48bcbd893e8c8888d7545aa546a29dc7b958ebff039a493ed999e4575b",
+      "sha256": "682dcce47a90042cfd448fcf0755bd90fea80c102fbc5d1c572f2489a567d49c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-fg-runtime-reliability-20261104",
-    "commit": "73815ea794f098a32ed874fb612736f259f12508"
+    "commit": "75cf265f2bd7b4a1b362aef1775f53a06d02cc6b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
