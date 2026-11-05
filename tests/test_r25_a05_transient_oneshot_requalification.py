@@ -127,7 +127,8 @@ class ProtectedNativeMonitorTests(TestCase):
                       "PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256",
                       "PROD_OWNED_UNITS"):
             self.assertIn(guard,text)
-        self.assertEqual(len(c.PROD_PUBLIC_ADDITIONAL_VIEWS),11)
+        self.assertEqual(len(c.PROD_PUBLIC_ADDITIONAL_VIEWS),12)
+        self.assertEqual(c.PROD_PUBLIC_ADDITIONAL_VIEWS['aoe2war_public_v13'],('active_clan_directory',))
 
 
 if __name__=="__main__":
