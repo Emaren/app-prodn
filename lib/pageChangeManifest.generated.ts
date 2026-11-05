@@ -5,12 +5,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-8ec949b86a01d1fa951c",
+    version: "src-bd092c6e332b136329b0",
   },
   {
     href: "/oracle",
     label: "The Oracle",
-    version: "src-69ea29d4555e697a3743",
+    version: "src-b5723bd45be86b0f0d5e",
   },
   {
     href: "/leaderboard",
@@ -60,7 +60,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/ai",
     label: "AI Council",
-    version: "src-796712c028cd07060ffc",
+    version: "src-4684a47e56ee6f175466",
   },
   {
     href: "/bounties",
