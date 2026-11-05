@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "94868f9af4859209d8d6a440511711888ff31800fb0161b5b40ce28b71adfe63",
+      "sha256": "0337d72fb869c095f226050b200cfcab70ecaf5f5c0297ff6b1e54feecf358fc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-steam-failure-stage-20261105",
-    "commit": "2414c44fb9e50c6392d642c3ce0901605e845cda"
+    "branch": "fix/a05-3032-diagnostic-refresh-20261105",
+    "commit": "4ebc091331ac05b20ff41c706ce077775d675145"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
