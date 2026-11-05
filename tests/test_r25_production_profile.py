@@ -316,7 +316,7 @@ class ProductionProfile(unittest.TestCase):
     def test_current_steam_requires_nonexpired_set_and_current_uid_tls(self):
         base={"nftables":[{"set":{"name":"steam4","elem":[{"elem":{"val":"23.1.2.3","expires":90000,"timeout":300000}}]}},
                            {"set":{"name":"steam6","elem":[]}}]}
-        proof={"current_uid_tls_sni_verified":True,"active_dns_set_intersection":1,"http_post_sent":False,"completed_user_sign_in":False}
+        proof={"current_uid_tls_sni_verified":True,"active_dns_set_intersection":0,"approved_tls_candidates":1,"http_post_sent":False,"completed_user_sign_in":False}
         captured=[]
         def native(argv,**kwargs):
             if argv[0]=="/usr/sbin/nft":return c.canonical(base)
