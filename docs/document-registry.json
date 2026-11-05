@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "65939614ee96f032544ee891e32bf469cc68098142dd9d33767bfbf611a63afb",
+      "sha256": "6565113be7654a7499c46d961b4dccafcfed7944ddf7983a40bc8c839bd62c51",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-five-routes-restricted-preview-20261105",
-    "commit": "657ad8bbe20f09e182f0cc28eb74cf098ad4f929"
+    "commit": "aa7889c205172f973a3262967a87667b2a5acd03"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
