@@ -18,7 +18,10 @@ class DnsContainedRefresh(TestCase):
  def test_exact_scope_and_source_artifact(self):
   self.assertEqual(r.OLD,'bdb134fe4013c9b26f382b55e232638b1d1f5874')
   self.assertEqual(r.NEW,'88621f9798ea2a0982751abdac1aee93bc820d67')
-  self.assertEqual(r.NEW_CONTROLLER_SHA, hashlib.sha256((ROOT/'scripts/r25_c_start_root.py').read_bytes()).hexdigest())
+  # This old one-use refresh remains pinned to the historical controller;
+  # the new stopped-recovery controller is intentionally a DIFFERENT SHA.
+  self.assertEqual(r.NEW_CONTROLLER_SHA,
+      "5dba6ee5d0bdd65eb0102fbd709963f9410eacd7716eb9e0ddef7fafa3330141")
   self.assertEqual(r.NEW_CONTROLLER_SIZE,136658)
   self.assertEqual(r.STAGE_RECEIPT_SHA,'d03ac30beef269f987a3e65a7bf6d21332deb368774dbaf0b08d19786c2d5ffe')
   self.assertEqual(r.ARTIFACT_SHA,'8d030a643adc5752962f2b23c46eaa9d3f62b3c903b87b66ac79b4e9a184069a')

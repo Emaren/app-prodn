@@ -14,6 +14,7 @@ import fcntl
 import hashlib
 import json
 import os
+import pwd
 from pathlib import Path
 import re
 import socket
@@ -1840,10 +1841,41 @@ def production_resolver_namespace_probe(pid):
     """
     need(type(pid) is int and pid > 1, "PRODUCTION_RESOLVER_PID_REQUIRED")
     stub = Path("/run/systemd/resolve/stub-resolv.conf")
+    # systemd-resolved, not root, owns its generated stub on Ubuntu 24.04.
+    # This is the ONLY permitted service-owned file in this resolver witness;
+    # root_file() deliberately rejects this ownership and must not be used.
+    service = pwd.getpwnam("systemd-resolve")
+    parent = os.lstat(stub.parent)
+    need(stat.S_ISDIR(parent.st_mode) and
+         (parent.st_uid, parent.st_gid) == (service.pw_uid, service.pw_gid) and
+         not (parent.st_mode & 0o022), "PRODUCTION_RESOLVER_DIRECTORY_UNSAFE")
     st = os.lstat(stub)
-    need(stat.S_ISREG(st.st_mode) and st.st_uid == 0 and not (st.st_mode & 0o022),
+    need(stat.S_ISREG(st.st_mode) and st.st_nlink == 1 and
+         (st.st_uid, st.st_gid) == (service.pw_uid, service.pw_gid) and
+         stat.S_IMODE(st.st_mode) == 0o644 and 0 < st.st_size <= 8192,
          "PRODUCTION_HOST_RESOLVER_FILE_UNSAFE")
-    digest = sha(root_file(stub, 8192, 0o644))
+    fd = os.open(stub, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        opened = os.fstat(fd)
+        identity = lambda x: (x.st_dev, x.st_ino, x.st_uid, x.st_gid,
+                              x.st_mode, x.st_nlink, x.st_size, x.st_mtime_ns)
+        need(identity(opened) == identity(st), "PRODUCTION_RESOLVER_OPEN_RACE")
+        contents = b""
+        while len(contents) < opened.st_size:
+            part = os.read(fd, opened.st_size - len(contents))
+            need(bool(part), "PRODUCTION_RESOLVER_SHORT_READ")
+            contents += part
+        need(identity(os.fstat(fd)) == identity(st),
+             "PRODUCTION_RESOLVER_READ_RACE")
+    finally:
+        os.close(fd)
+    # No caller-controlled DNS server; the stub must explicitly use the
+    # loopback daemon resolved inside the shared host network namespace.
+    need(b"nameserver 127.0.0.53" in contents.splitlines() and
+         all(not line.startswith(b"nameserver ") or
+             line == b"nameserver 127.0.0.53" for line in contents.splitlines()),
+         "PRODUCTION_RESOLVER_STUB_CONTENT_DRIFT")
+    digest = sha(contents)
     inside = run(["/usr/bin/nsenter", "--target", str(pid), "--mount",
                   "--", "/usr/bin/sha256sum", "/etc/resolv.conf"],
                  timeout=9, maximum=1024).decode().strip()

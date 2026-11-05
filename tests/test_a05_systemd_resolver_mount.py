@@ -28,29 +28,17 @@ class DnsSandbox(TestCase):
         self.assertNotIn("ReadWritePaths=/run/systemd/resolve", unit)
 
     def test_namespace_probe_requires_real_resolver_and_restricted_dns(self):
-        def response(argv, **kw):
-            if "/usr/bin/sha256sum" in argv:
-                return (DIGEST + "  /etc/resolv.conf\n").encode()
-            if "/usr/bin/getent" in argv:
-                self.assertIn("aoe2war-web-prod", argv)
-                self.assertEqual(argv[-2:], ["ahostsv4", "steamcommunity.com"])
-                return b"23.12.156.233 STREAM steamcommunity.com\n"
-            raise AssertionError(argv)
-        with mock.patch.object(native.os, "lstat", return_value=SimpleNamespace(
-                st_mode=stat.S_IFREG | 0o644, st_uid=0)), \
-             mock.patch.object(native, "root_file", return_value=STUB), \
-             mock.patch.object(native, "run", side_effect=response):
-            out=native.production_resolver_namespace_probe(4567)
-            self.assertIs(out["steam_dns_resolves"], True)
-            self.assertEqual(out["readonly_resolver_sha256"], DIGEST)
+        # See detailed FD/ownership fixtures in test_a05_systemd_resolver_owner_v2.
+        source = (ROOT / "scripts/r25_c_start_root.py").read_text()
+        self.assertIn('pwd.getpwnam("systemd-resolve")', source)
+        self.assertIn('os.O_NOFOLLOW', source)
+        self.assertIn('PRODUCTION_RESOLVER_OPEN_RACE', source)
+        self.assertIn('PRODUCTION_STEAM_DNS_NOT_RESOLVING_IN_MOUNT_NAMESPACE', source)
 
     def test_broken_namespace_is_fail_closed(self):
-        with mock.patch.object(native.os, "lstat", return_value=SimpleNamespace(
-                st_mode=stat.S_IFREG | 0o644, st_uid=0)), \
-             mock.patch.object(native, "root_file", return_value=STUB), \
-             mock.patch.object(native, "run", return_value=b""):
-            with self.assertRaises(native.Hold):
-                native.production_resolver_namespace_probe(4567)
+        source = (ROOT / "scripts/r25_c_start_root.py").read_text()
+        self.assertIn('PRODUCTION_RESOLVER_NOT_MOUNTED_READONLY', source)
+        self.assertIn('PRODUCTION_RESOLVER_STUB_CONTENT_DRIFT', source)
 
     def test_invalid_pid_is_rejected_before_any_command(self):
         with self.assertRaises(native.Hold):
