@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import type {
   LobbyLeaderboardSummary,
   LobbyMatchRow,
@@ -81,14 +82,27 @@ export async function loadAdminLiveTickerMessages(prisma: PrismaClient) {
 }
 
 async function loadEnabledAdminTickerItems(prisma: PrismaClient): Promise<LiveTickerItem[]> {
-  const rows = await prisma.liveTickerMessage.findMany({
-    where: {
-      enabled: true,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-    },
-    orderBy: [{ priority: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-    take: 8,
-  });
+  // The isolated nonfinancial web role must not read the raw ticker table.
+  // The postgres-owned security-barrier view publishes enabled and current
+  // messages only. Missing v12 is a real data error, not an empty ticker.
+  const rows = isNonfinancialPublicReadProfile()
+    ? await prisma.$queryRaw<Array<{
+        id: number; text: string; priority: number;
+        expiresAt: Date | null; createdAt: Date;
+      }>>`
+        SELECT id, text, priority, "expiresAt", "createdAt"
+        FROM aoe2war_public_v12.published_ticker
+        ORDER BY priority DESC, "createdAt" DESC, id DESC
+        LIMIT 8
+      `
+    : await prisma.liveTickerMessage.findMany({
+        where: {
+          enabled: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+        take: 8,
+      });
 
   return rows.map((row) => ({
     key: `admin-${row.id}`,

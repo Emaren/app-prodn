@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ddb72d48433e827441ae901ef4a1d79c6c89824cefb26b7ceb546ac8bfdd51fb",
+      "sha256": "72befd704f00700987f1cf190d28f203b8d8c5ba24533bca5383a5257ed55180",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-05",
       "sensitivity": "internal",
-      "sha256": "72d141a5da84566b195b42beae5a424e16180391789d93cf43a66247e8a14709",
+      "sha256": "87bd030d9408f1097cd59fa8fddbce80323042c9042f7b5dbf3347c3245b2f1f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-memory-safe-service-20261105",
-    "commit": "104c98c24953ec64cab4a9bf5d02971242c85983"
+    "branch": "fix/a05-public-lobby-v12-20261105",
+    "commit": "530431fefd62bf9522b0ba2dfe15f2b41c34e816"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
