@@ -15,6 +15,35 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## November 5, 2026 — mixed proxy does not fix new SSR reads
+
+The A05 mixed-proxy design (five frontend selectors to modern 3032,
+one API selector to legacy 3030) passed source-only routing invariants,
+but does not solve the new frontend's server-rendered Prisma queries:
+the candidate still receives actual 42501 denials on trophies, lobby
+guest reactions, ticker messages and more. GET 200 is not proof the
+React Server Component stream contains valid content. Do not promote a
+mixed frontend based on proxy routing alone. Original public 3030
+remains authoritative until a qualified replacement is accepted.
+
+New v12 candidate read-only source: two postgres-owned security-barrier
+views in aoe2war_public_v12. The ticker view only exposes enabled,
+unexpired public announcement fields, never disabled drafts or admin
+identity. The header view exposes exactly an open community-request
+count and a public workshop-live boolean; not request bodies or
+private stream playback URLs. Both read paths switch only under
+nonfinancial-production-v1 and keep legacy behavior unchanged.
+The actual HEL1 restricted database role aoe2war_web_prod successfully
+queried both views in a rollback-only transaction on November 5:
+one header row, bigint and boolean types; catalog definition SHA256
+0c10a889d9435ba19c25894d4d19e19d7e742a7877091c98a51587d101cd7575.
+No v12 schema was committed by that trial. Installation requires
+source/CI-pinned SQL, authenticated one-use root transaction,
+source-bound ACL/negative privilege review, a matching new Next
+artifact, native C/G/F and authenticated browser acceptance. This
+is partial A05 source remediation only; it does not close A05/A06,
+grant raw access to financial tables, or authorize chain custody.
+
 ## November 5, 2026 — V8 heap crash after a real public F/G switch
 
 A05's reviewed six-selector Nginx cutover and independent G AFTER both

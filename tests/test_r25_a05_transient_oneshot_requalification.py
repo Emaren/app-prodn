@@ -127,7 +127,7 @@ class ProtectedNativeMonitorTests(TestCase):
                       "PROD_PUBLIC_ADDITIONAL_DEFINITION_SHA256",
                       "PROD_OWNED_UNITS"):
             self.assertIn(guard,text)
-        self.assertEqual(len(c.PROD_PUBLIC_ADDITIONAL_VIEWS),10)
+        self.assertEqual(len(c.PROD_PUBLIC_ADDITIONAL_VIEWS),11)
 
 
 if __name__=="__main__":
