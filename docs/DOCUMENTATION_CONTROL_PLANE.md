@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-stopped-resolver-uid-20261105` at `1b5eb5ec17d18c3512206bf46f9fb6cf31234359`
+Implementation baseline: `fix/a05-stopped-resolver-uid-20261105` at `100aac6e2c1bfaef6d7138e4dbf0cf52ec7672a4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
