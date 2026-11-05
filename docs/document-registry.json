@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9e24c84903f4a87364e0bce7af131917768374f7972911229036c114377e2d29",
+      "sha256": "ff55ea69ebdfa9accacb324c0fd1fdb25bb3c0aac53c83bd980d3549d7e52211",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-3032-provider-classifier-requal-20261105",
-    "commit": "bd2511cc3f8a83df21513dd4737c24b4c0680cff"
+    "branch": "fix/a05-systemd-resolver-bind-20261105",
+    "commit": "beea3a51c87b4955a2117e447f2492f0a133e864"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

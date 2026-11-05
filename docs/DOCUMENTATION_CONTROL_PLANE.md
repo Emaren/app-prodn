@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-3032-provider-classifier-requal-20261105` at `bd2511cc3f8a83df21513dd4737c24b4c0680cff`
+Implementation baseline: `fix/a05-systemd-resolver-bind-20261105` at `beea3a51c87b4955a2117e447f2492f0a133e864`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
