@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-memory-safe-service-20261105` at `104c98c24953ec64cab4a9bf5d02971242c85983`
+Implementation baseline: `fix/a05-public-lobby-v12-20261105` at `530431fefd62bf9522b0ba2dfe15f2b41c34e816`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
