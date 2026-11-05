@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f68ffb4a36d15afe665f4fc8444a7fb1d8e691225a929d2957b90cd1e2729503",
+      "sha256": "b2544ce33e54ba5260eb695be132b808af7f6acfe446a3cf07cceb53d3f008ee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-dns-contained-3032-refresh-20261105",
-    "commit": "aa2425f2dec12936ff8fb4810b0662ebae913728"
+    "commit": "48ae49960da31884047ad5ecc0d19b899ac0d572"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
