@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d235ead10d773580cd3cb6577cbee22095144183f2a87a53d1fa354190ab9ca4",
+      "sha256": "65939614ee96f032544ee891e32bf469cc68098142dd9d33767bfbf611a63afb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-stopped-resolver-uid-20261105",
-    "commit": "100aac6e2c1bfaef6d7138e4dbf0cf52ec7672a4"
+    "branch": "fix/a05-five-routes-restricted-preview-20261105",
+    "commit": "657ad8bbe20f09e182f0cc28eb74cf098ad4f929"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
