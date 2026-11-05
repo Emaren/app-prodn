@@ -67,6 +67,20 @@ class TestRscPrecutover(unittest.TestCase):
         self.assertEqual(getter.call_count, 16)
         self.assertTrue(all(v["guest_server_render_healthy"] for v in result.values()))
 
+    def test_dynamic_html_byte_counts_do_not_invalidate_owner_plan(self):
+        routes=("/players", "/war-chest", "/game-stats", "/rivalries",
+                "/battle-archive", "/bounties", "/champions", "/radio")
+        pages={(port,route):GOOD for port in (3030,3032) for route in routes}
+        with mock.patch.object(f, "production_content_html", side_effect=lambda port, route: pages[(port,route)]):
+            sealed=f.production_public_guest_page_smoke()
+        pages[(3030,"/champions")]=GOOD+"<p>more players joined since PLAN</p>"
+        pages[(3032,"/champions")]=GOOD+"<p>more players joined since PLAN - live stream</p>"
+        with mock.patch.object(f, "production_content_html", side_effect=lambda port, route: pages[(port,route)]):
+            refreshed=f.production_public_guest_page_smoke()
+        self.assertEqual(sealed,refreshed)
+        self.assertTrue(all(v=={"guest_server_render_healthy":True,"candidate_not_truncated":True}
+                            for v in sealed.values()))
+
     def test_guest_players_error_rejects_public_switch(self):
         pages = {
             (3030, route): GOOD for route in ("/players", "/war-chest", "/game-stats", "/rivalries", "/battle-archive", "/bounties", "/champions", "/radio")

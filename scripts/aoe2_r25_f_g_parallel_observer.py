@@ -962,8 +962,20 @@ def production_profile():
          BUILD.fullmatch(policy.get("build_id","")),"PRODUCTION_PROFILE_SCOPE")
     need(policy.get("stage")=="/var/lib/aoe2war-web-prod-"+policy["source_sha"][:12],"PRODUCTION_STAGE_PATH")
     need(digest(production_root_file(PRODUCTION_CONTROLLER,196608))==policy.get("controller_sha256"),"PRODUCTION_C_CONTROLLER_PIN")
-    witness=parse(run(["/usr/bin/python3","-I","-B",str(PRODUCTION_CONTROLLER),"--phase","production-witness"],timeout=45,
-                      stdin=canon({"profile_path":str(PRODUCTION_POLICY)})),131072)
+    # A verified C witness is mandatory; periodic Steam refresh can briefly
+    # collide with the independent read-only probe. One bounded retry is
+    # allowed ONLY on failed subprocess execution, never on a returned
+    # non-PASS or profile drift. Each attempt is a fresh native C witness.
+    command=["/usr/bin/python3","-I","-B",str(PRODUCTION_CONTROLLER),"--phase","production-witness"]
+    request=canon({"profile_path":str(PRODUCTION_POLICY)})
+    try:
+        observed=run(command,timeout=45,stdin=request)
+    except Hold as error:
+        if str(error)!="READ_ONLY_COMMAND_FAILED:python3":
+            raise
+        time.sleep(2)
+        observed=run(command,timeout=45,stdin=request)
+    witness=parse(observed,131072)
     need(witness.get("schema")=="aoe2war.app.production-witness.v1" and witness.get("status")=="NATIVE_PRODUCTION_PROFILE_PASS" and
          witness.get("financial_authorized") is False and witness.get("read_only_observation") is True and H64.fullmatch(witness.get("admission_sha256","")),"PRODUCTION_C_NATIVE_READ_ONLY_WITNESS_REQUIRED")
     for key in ("source_sha","build_id","build_version","stage","uid","gid","unit","port","manifest_sha256","protected_snapshot_sha256"):

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "de56e6382ab29cffd97bf16e5127604865665a3a7e5fc4b5722b90640061ed75",
+      "sha256": "0ea2c7219a383b9a7dce8a0f1e4b2181a7a106f6bd9354c5b32f6447e622b67e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-steam-cdn-ttl-roll-forward-20261105",
-    "commit": "90002195fcf84dc7b34950f31a285f2c87cbf555"
+    "branch": "fix/a05-fg-f50-source-requal-20261105",
+    "commit": "157a13b7a5b8bbcddb42ebfffac3df4ce619feaf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
