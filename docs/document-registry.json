@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a25fb30a684bde5aab3da5eb038a52ae86ee820ece7f23ce26429ff8faf760c3",
+      "sha256": "9e24c84903f4a87364e0bce7af131917768374f7972911229036c114377e2d29",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-provider-post-exception-classifier-20261105",
-    "commit": "2a43df8a3ccec2296d290c415bed595d3fe8c73a"
+    "branch": "fix/a05-3032-provider-classifier-requal-20261105",
+    "commit": "bd2511cc3f8a83df21513dd4737c24b4c0680cff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

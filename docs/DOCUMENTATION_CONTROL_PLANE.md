@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-provider-post-exception-classifier-20261105` at `2a43df8a3ccec2296d290c415bed595d3fe8c73a`
+Implementation baseline: `fix/a05-3032-provider-classifier-requal-20261105` at `bd2511cc3f8a83df21513dd4737c24b4c0680cff`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
