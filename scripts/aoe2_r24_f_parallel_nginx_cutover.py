@@ -1665,9 +1665,11 @@ def production_public_guest_page_smoke():
              "CONTENT_PARITY_CANDIDATE_GUEST_RSC_ERROR:"+route)
         need(len(new)>=len(old)//8,
              "CONTENT_PARITY_CANDIDATE_GUEST_BODY_TRUNCATED:"+route)
-        witness[route]={"original_html_bytes":len(old),
-                        "candidate_html_bytes":len(new),
-                        "guest_server_render_healthy":True}
+        # Response byte counts include dynamic public data, so do not seal
+        # them into the one-use owner plan. Re-run the actual length/RSC
+        # checks for every PLAN and APPLY; commit stable PASS assertions only.
+        witness[route]={"guest_server_render_healthy":True,
+                        "candidate_not_truncated":True}
     return witness
 
 
