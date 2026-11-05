@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-dns-final-after-a06-20261105` at `f3fc9a26db8337bbc614165195ca6d299ef49eb2`
+Implementation baseline: `fix/a05-dns-contained-3032-refresh-20261105` at `3df98f2f3b0bc562363895fb8fb56d87f966a455`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
