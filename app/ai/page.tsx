@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import AiCouncilClient from "@/components/ai/AiCouncilClient";
 import { loadPublicAiCouncil } from "@/lib/aiAgents";
 import { getPrisma } from "@/lib/prisma";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,10 @@ function formatSpeed(value: number | null) {
 }
 
 export default async function AiCouncilPage() {
-  const agents = await loadPublicAiCouncil(getPrisma());
+  // The isolated nonfinancial web role has no ai_agents or trace-table SELECT.
+  // Never query private runtime configuration or misrepresent agent telemetry.
+  const readModelPending = usesNonfinancialProductionAuth();
+  const agents = readModelPending ? [] : await loadPublicAiCouncil(getPrisma());
   return (
     <main className="space-y-7 py-7 text-white">
       <section className="relative overflow-hidden rounded-[2.2rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_16%_0%,rgba(34,211,238,0.15),transparent_31%),radial-gradient(circle_at_84%_16%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#081421,#05070e)] p-7 sm:p-11">
@@ -26,6 +30,11 @@ export default async function AiCouncilPage() {
         <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300">Ask about replay truth, rivalries, player form, kingdom systems, or the next battle. Their answers are explanations over supplied evidence, never replacements for parser, adjudication, or chain truth.</p>
       </section>
 
+      {readModelPending ? (
+        <p role="status" data-public-read-model="unavailable" className="rounded-2xl border border-amber-200/25 bg-slate-950/80 p-5 text-sm text-amber-100">
+          Public agent telemetry is temporarily unavailable while its restricted read model is qualified. No private agent configuration is exposed.
+        </p>
+      ) : null}
       <section className="grid gap-4 md:grid-cols-3">
         {agents.map((agent) => (
           <article key={agent.slug} className="rounded-[1.7rem] border border-white/9 bg-slate-950/72 p-6">
@@ -38,7 +47,7 @@ export default async function AiCouncilPage() {
         ))}
       </section>
 
-      <AiCouncilClient agents={agents.map((agent) => ({ slug: agent.slug, name: agent.name, role: agent.role, specialty: agent.specialty }))} />
+      {!readModelPending ? <AiCouncilClient agents={agents.map((agent) => ({ slug: agent.slug, name: agent.name, role: agent.role, specialty: agent.specialty }))} /> : null}
     </main>
   );
 }

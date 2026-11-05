@@ -21,7 +21,7 @@
     "href": "/ai",
     "label": "Ai",
     "district": "commons",
-    "sourceTree": "src-8d9d1b8f967b6278"
+    "sourceTree": "src-b0a81f590169c6b1"
   },
   {
     "href": "/aoe2war-os",
@@ -147,7 +147,7 @@
     "href": "/kingdom",
     "label": "Kingdom",
     "district": "citadel",
-    "sourceTree": "src-81e76a8cd2289dc0"
+    "sourceTree": "src-e6e228e1710e50ff"
   },
   {
     "href": "/kingdom-agents",
@@ -159,7 +159,7 @@
     "href": "/kingdom-bettors",
     "label": "Kingdom Bettors",
     "district": "bazaar",
-    "sourceTree": "src-f01f64fb56c3e2d1"
+    "sourceTree": "src-1f84fff7d127a6b4"
   },
   {
     "href": "/kingdom-brain",
@@ -285,7 +285,7 @@
     "href": "/oracle",
     "label": "Oracle",
     "district": "bazaar",
-    "sourceTree": "src-49d79849e7a1a5ac"
+    "sourceTree": "src-86fa3da79aa1b995"
   },
   {
     "href": "/players",
@@ -471,7 +471,7 @@
     "href": "/war-engine",
     "label": "War Engine",
     "district": "forge",
-    "sourceTree": "src-375d874a3a6d2788"
+    "sourceTree": "src-217e761d3baa0874"
   },
   {
     "href": "/wargraph",
