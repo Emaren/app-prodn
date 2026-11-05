@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a06-public-clan-projection-20261105` at `4dec965a5fb33d5b7fdf9c88ac553558dda48958`
+Implementation baseline: `fix/a05-dns-final-after-a06-20261105` at `f3fc9a26db8337bbc614165195ca6d299ef49eb2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
