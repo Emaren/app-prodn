@@ -79,6 +79,15 @@ class ProductionProfile(unittest.TestCase):
                          "CapabilityBoundingSet=", "NODE_OPTIONS=--require="+str(c.PROD_GUARD)):
             self.assertIn(expected,unit)
         self.assertNotIn("Restart=always",unit)
+        self.assertIn("ExecStart=/usr/bin/node --max-old-space-size=2048 ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3032",unit)
+        self.assertIn("Restart=on-failure",unit)
+        self.assertIn("RestartSec=8s",unit)
+        self.assertIn("StartLimitIntervalSec=300",unit)
+        self.assertIn("StartLimitBurst=3",unit)
+        self.assertIn("MemoryHigh=2700M",unit)
+        self.assertIn("MemoryMax=3200M",unit)
+        self.assertNotIn("Restart=no",unit)
+        self.assertNotIn("ExecStart=/usr/bin/node ./node_modules",unit)
         self.assertNotIn("3030",unit)
         self.assertNotIn("3031",unit)
         with self.assertRaisesRegex(c.Hold,"STAGE_NAMESPACE"):

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-rebind-staged-3032-after-oom-20261104` at `22f56806ab266d3e101c04c9528febf73413dc69`
+Implementation baseline: `fix/a05-memory-safe-service-20261105` at `104c98c24953ec64cab4a9bf5d02971242c85983`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

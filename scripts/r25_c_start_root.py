@@ -860,7 +860,7 @@ def production_unit_bytes(stage):
     need(type(stage) is Path or isinstance(stage, Path), "PRODUCTION_STAGE_PATH_REQUIRED")
     need(stage.parent == Path("/var/lib") and re.fullmatch(r"aoe2war-web-prod-[0-9a-f]{12}", stage.name),
          "PRODUCTION_STAGE_NAMESPACE_REQUIRED")
-    return ("[Unit]\nDescription=AoE2WAR nonfinancial production web\nAfter=network.target postgresql.service\n"
+    return ("[Unit]\nDescription=AoE2WAR nonfinancial production web\nAfter=network.target postgresql.service\nStartLimitIntervalSec=300\nStartLimitBurst=3\n"
       "[Service]\nType=simple\nUser=" + PROD_USER + "\nGroup=" + PROD_USER + "\nWorkingDirectory=" + str(stage) +
       "\nEnvironmentFile=" + str(PROD_ENV) + "\nEnvironment=NODE_ENV=production WARGRAPH_RUNTIME_DISABLED=true "
       "AOE2WAR_RUNTIME_PROFILE=" + PROD_PROFILE + " AOE2WAR_R25_ISOLATED_WEB=true AOE2WAR_PROD_DB_PREVIEW=false "
@@ -869,8 +869,8 @@ def production_unit_bytes(stage):
       " MANAGED_MEDIA_UPLOAD_DIR=" + str(PROD_PUBLIC_MEDIA_MOUNT) +
       "\nUnsetEnvironment=HTTP_PROXY HTTPS_PROXY ALL_PROXY NODE_TLS_REJECT_UNAUTHORIZED NODE_EXTRA_CA_CERTS "
       "NEXTAUTH_SECRET CACHE_DIRECTORY MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE\n"
-      "ExecStart=/usr/bin/node ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3032\n"
-      "Restart=no\nNoNewPrivileges=yes\nCapabilityBoundingSet=\nProtectSystem=strict\nProtectHome=yes\n"
+      "ExecStart=/usr/bin/node --max-old-space-size=2048 ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3032\n"
+      "Restart=on-failure\nRestartSec=8s\nNoNewPrivileges=yes\nCapabilityBoundingSet=\nProtectSystem=strict\nProtectHome=yes\n"
       "PrivateTmp=yes\nPrivateDevices=yes\nProtectKernelTunables=yes\nProtectKernelModules=yes\n"
       "ProtectControlGroups=yes\nRestrictSUIDSGID=yes\nRestrictRealtime=yes\nLockPersonality=yes\n"
       "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX\nTemporaryFileSystem=/run:ro\n"
@@ -881,7 +881,7 @@ def production_unit_bytes(stage):
       "\nBindReadOnlyPaths=" + str(PROD_ASSET_DIR) + ":" + str(stage / "public/downloads") +
       "".join("\nBindReadOnlyPaths=" + str(PROD_PUBLIC_MEDIA_ROOT / kind) + ":" +
               str(PROD_PUBLIC_MEDIA_MOUNT / kind) for kind in PROD_PUBLIC_MEDIA_KINDS) +
-      "\nMemoryMax=1500M\nCPUQuota=150%\nUMask=0077\n[Install]\nWantedBy=multi-user.target\n").encode()
+      "\nMemoryHigh=2700M\nMemoryMax=3200M\nCPUQuota=150%\nUMask=0077\n[Install]\nWantedBy=multi-user.target\n").encode()
 
 def production_grant(payload, plan):
     comment_id = payload.get("owner_comment_id")

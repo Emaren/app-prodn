@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eb1bcbb4e9f94067220c746ee2aa8fb2b28d22f3230417631bfb3f25bef3a28b",
+      "sha256": "ddb72d48433e827441ae901ef4a1d79c6c89824cefb26b7ceb546ac8bfdd51fb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -705,9 +705,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-05",
       "sensitivity": "internal",
-      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
+      "sha256": "72d141a5da84566b195b42beae5a424e16180391789d93cf43a66247e8a14709",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-rebind-staged-3032-after-oom-20261104",
-    "commit": "22f56806ab266d3e101c04c9528febf73413dc69"
+    "branch": "fix/a05-memory-safe-service-20261105",
+    "commit": "104c98c24953ec64cab4a9bf5d02971242c85983"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
