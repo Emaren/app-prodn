@@ -46,6 +46,13 @@ PostgreSQL projections, new-release authenticated browsers, Steam
 callback, load/stability and public automatic recovery still require
 independent physical evidence.
 
+A historical eight-public-media-mount invariant previously tested the
+current C generator, so the independently hardened heap unit looked like
+an unapproved *historical* media change. Keep that invariant bound to the
+archived source's exact SHA and historical output identity, and separately
+test the new candidate's complete unit delta. Never weaken an older
+release's protection simply because the modern unit legitimately evolves.
+
 ## October 21, 2026 — do not downgrade new financial file families
 
 When War Satchel and Mecha introduced new filenames, the release classifier

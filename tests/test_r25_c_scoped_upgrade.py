@@ -290,7 +290,19 @@ class Upgrade(unittest.TestCase):
             m.candidate_media_response("/uploads/managed-assets/direct-message-attachments/private.jpg")
 
     def test_unit_change_allows_only_eight_read_only_public_bind_mounts(self):
-        from scripts import r25_c_start_root as controller
+        # This is a historical, immutable media-only delta. Do not silently
+        # reinterpret it using today\'s candidate heap/restart policy.
+        import hashlib
+        from types import ModuleType
+        archived=subprocess.check_output([
+            "git","show",
+            "bbf5779a343635092a3d2d52d2be2776fe6d6f8e:scripts/r25_c_start_root.py",
+        ],cwd=ROOT)
+        self.assertEqual(hashlib.sha256(archived).hexdigest(),
+                         "9dfa2e68999948c997238196d37737b93e7ca06eb3dbafd1ea29085cc73076f2")
+        controller=ModuleType("historical_scoped_media_controller")
+        controller.__file__=str(ROOT/"scripts/r25_c_start_root.py")
+        exec(compile(archived,controller.__file__,"exec"),controller.__dict__)
         baseline="c60991bf4c9c84509d224f456259a5a46433de42f964c5822cba3ab2952e488c"
         updated=m.approved_media_unit(controller,baseline)
         self.assertEqual(m.digest(updated),
