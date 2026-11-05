@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "972554e0d9bd9455a7d2576a2aa724058cb0570c1b1658c00d3289095a86540b",
+      "sha256": "8aaafca5ff9a491f53ae5aa309aee98834e0d160c5d2d475cac61c14791debe7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a06-public-clan-projection-20261105",
-    "commit": "4dec965a5fb33d5b7fdf9c88ac553558dda48958"
+    "branch": "fix/a05-dns-final-after-a06-20261105",
+    "commit": "25c4a350453351b2fcebcf1d468e5bab3b1e7d8f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
