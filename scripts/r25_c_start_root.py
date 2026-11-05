@@ -874,6 +874,7 @@ def production_unit_bytes(stage):
       "PrivateTmp=yes\nPrivateDevices=yes\nProtectKernelTunables=yes\nProtectKernelModules=yes\n"
       "ProtectControlGroups=yes\nRestrictSUIDSGID=yes\nRestrictRealtime=yes\nLockPersonality=yes\n"
       "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX\nTemporaryFileSystem=/run:ro\n"
+      "BindReadOnlyPaths=/run/systemd/resolve/stub-resolv.conf:/run/systemd/resolve/stub-resolv.conf\n"
       "InaccessiblePaths=/etc/aoe2hdbets /var/lib/postgresql /var/www/AoE2HDBets/app-prodn "
       "/var/www/WoloChain-wolo-1 /mnt/HC_Volume_105319120\nReadOnlyPaths=" + str(stage) +
       "\nCacheDirectory=aoe2war-web-prod\nCacheDirectoryMode=0700\n"
@@ -1827,6 +1828,37 @@ def production_steam_probe(environment, stage):
          "PRODUCTION_STEAM_REACHABILITY_PROOF_DRIFT")
     return proof
 
+def production_resolver_namespace_probe(pid):
+    """Prove resolver availability in the actual 3032 process mount namespace.
+
+    Native startup's external Steam probe cannot witness a service with
+    TemporaryFileSystem=/run:ro: the host resolver is absent inside it unless
+    the single systemd-resolved stub file is explicitly mounted read-only.
+    """
+    need(type(pid) is int and pid > 1, "PRODUCTION_RESOLVER_PID_REQUIRED")
+    stub = Path("/run/systemd/resolve/stub-resolv.conf")
+    st = os.lstat(stub)
+    need(stat.S_ISREG(st.st_mode) and st.st_uid == 0 and not (st.st_mode & 0o022),
+         "PRODUCTION_HOST_RESOLVER_FILE_UNSAFE")
+    digest = sha(root_file(stub, 8192, 0o644))
+    inside = run(["/usr/bin/nsenter", "--target", str(pid), "--mount",
+                  "--", "/usr/bin/sha256sum", "/etc/resolv.conf"],
+                 timeout=9, maximum=1024).decode().strip()
+    need(re.fullmatch(r"[a-f0-9]{64}  /etc/resolv\.conf", inside) is not None
+         and inside[:64] == digest, "PRODUCTION_RESOLVER_NOT_MOUNTED_READONLY")
+    resolved = run(["/usr/bin/nsenter", "--target", str(pid), "--mount",
+                    "--", "/usr/sbin/runuser", "-u", PROD_USER,
+                    "--", "/usr/bin/getent", "ahostsv4", "steamcommunity.com"],
+                   timeout=10, maximum=8192).decode().strip().splitlines()
+    addresses = {row.split()[0] for row in resolved if row.split()}
+    need(bool(addresses) and len(addresses) <= 16 and
+         all(re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", ip) and
+             all(0 <= int(part) <= 255 for part in ip.split(".")) for ip in addresses),
+         "PRODUCTION_STEAM_DNS_NOT_RESOLVING_IN_MOUNT_NAMESPACE")
+    return {"mount_namespace_resolver_verified": True,
+            "readonly_resolver_sha256": digest, "steam_dns_resolves": True}
+
+
 def production_witness(payload):
     need(payload.get("profile_path") == str(PROD_POLICY), "PRODUCTION_EXACT_PROFILE_REQUIRED")
     policy = parse(root_file(PROD_POLICY, 32768, 0o400))
@@ -1876,6 +1908,7 @@ def production_witness(payload):
     actual = dict(row.split(b"=", 1) for row in (Path("/proc") / str(pid) / "environ").read_bytes().split(b"\0") if b"=" in row)
     need(hmac.compare_digest(actual.get(b"SESSION_SECRET", b""), environment["SESSION_SECRET"].encode()) and
          hmac.compare_digest(actual.get(b"DATABASE_URL", b""), environment["DATABASE_URL"].encode()), "PRODUCTION_PROCESS_SECRET_IDENTITY_DRIFT")
+    production_resolver_namespace_probe(pid)
     pg = production_database_witness(database, password)
     kernel = production_kernel_probe(policy["steam_addresses"])
     admission_raw = root_file(Path(policy["journal_path"]) / "runtime-admission.json", 32768, 0o600)
