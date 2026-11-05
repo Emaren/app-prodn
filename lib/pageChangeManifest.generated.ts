@@ -60,7 +60,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/ai",
     label: "AI Council",
-    version: "src-4684a47e56ee6f175466",
+    version: "src-b58b6ee8f950a9572191",
   },
   {
     href: "/bounties",
