@@ -8,12 +8,35 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-05"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 
 # AoE2WAR Engineering Memory and Learned Invariants
+
+## November 5, 2026 — A05 F/G public release witnesses are live, not byte-stable
+
+After successful Steam systemd capability repair and a fresh native C admission
+on November 4, a six-selector public F transaction failed **before its atomic
+host journal** on separate attempts. First, content-parity guest HTML byte
+counts were included in the one-use plan, allowing harmless live changes to
+invalidate its hash between PLAN and APPLY. Next, an independent C
+production-witness subprocess failed transiently during the root preflight,
+while another native read-only witness succeeded minutes later. The Mac
+controller then attempted rollback despite no host cutover journal, masking
+the original failure as an uncertain rollback.
+
+Release source now keeps all actual old/new guest page RSC and truncation
+checks but seals their stable success assertions, not volatile HTML lengths.
+The G observer retries **once** only when a read-only C subprocess exits
+unsuccessfully; any returned non-PASS, drift, or repeat failure still holds.
+The Mac operator checks the exact original Nginx SHA before issuing a
+protective rollback; unknown or changed states retain protective restoration.
+These edge cases are regression-tested. CI, source/asset/role/network identity,
+actual GitHub owner grant, native C witness, real G BEFORE/AFTER, and authenticated
+browser acceptance remain independently mandatory. A failed PLAN or witness
+is never permission to fabricate acceptance or modify financial services.
 
 ## October 21, 2026 — do not downgrade new financial file families
 
