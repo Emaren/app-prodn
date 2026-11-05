@@ -44,9 +44,9 @@ def fixture():
 class ProductionExactViews(TestCase):
     def test_exact_whitelist_no_financial_source_or_unexpected_schemas(self):
         self.assertEqual(len(m.PROD_PUBLIC_READ_MODEL_VIEWS),7)
-        self.assertEqual(sum(map(len,m.PROD_PUBLIC_ADDITIONAL_VIEWS.values())),21)
-        self.assertEqual(len(m.PROD_PUBLIC_APPROVED_IDENTITIES),28)
-        self.assertEqual(len(set(m.PROD_PUBLIC_APPROVED_IDENTITIES)),28)
+        self.assertEqual(sum(map(len,m.PROD_PUBLIC_ADDITIONAL_VIEWS.values())),22)
+        self.assertEqual(len(m.PROD_PUBLIC_APPROVED_IDENTITIES),29)
+        self.assertEqual(len(set(m.PROD_PUBLIC_APPROVED_IDENTITIES)),29)
         self.assertNotIn("public.trophies",m.PROD_PUBLIC_APPROVED_IDENTITIES)
         self.assertNotIn("public.api_keys",m.PROD_PUBLIC_APPROVED_IDENTITIES)
         self.assertNotIn("public.bet_wagers",m.PROD_PUBLIC_APPROVED_IDENTITIES)
@@ -69,6 +69,7 @@ class ProductionExactViews(TestCase):
         self.assertTrue(all("BEGIN READ ONLY;" in sql for sql in sqls))
         self.assertTrue(all("ROLLBACK;" in sql for sql in sqls))
         self.assertIn("aoe2war_public_v6.champions_elo_custody",sqls[0])
+        self.assertIn("aoe2war_public_v13.active_clan_directory",sqls[0])
         self.assertIn("aoe2war_public_v2.radio_station_display",sqls[0])
         self.assertEqual(result["additional_read_model_sha256"],m.sha(m.canonical(approved)))
         self.assertTrue(result["no_unreviewed_table_select"])
@@ -81,7 +82,7 @@ class ProductionExactViews(TestCase):
             elif mutation=="name":
                 approved["aoe2war_public_v5"]["view_names"].append("users_credentials")
             elif mutation=="extra_schema":
-                approved["aoe2war_public_v13"]=approved["aoe2war_public_v12"]
+                approved["aoe2war_public_v14"]=approved["aoe2war_public_v12"]
             else:
                 main["no_unreviewed_column_select"]=False
             with self.subTest(mutation=mutation),mock.patch.object(m,"production_psql",side_effect=[json.dumps(main).encode(),json.dumps(approved).encode()]):
