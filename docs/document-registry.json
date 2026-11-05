@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8aaafca5ff9a491f53ae5aa309aee98834e0d160c5d2d475cac61c14791debe7",
+      "sha256": "a344f038e66391c3f806947061b038af64f4f2915f4040e781c95f214edf28d8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2393,7 +2393,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/a05-dns-final-after-a06-20261105",
-    "commit": "25c4a350453351b2fcebcf1d468e5bab3b1e7d8f"
+    "commit": "f3fc9a26db8337bbc614165195ca6d299ef49eb2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
