@@ -77,6 +77,50 @@ class F50UpgradeTest(unittest.TestCase):
         self.assertIn('need(pid != plan["old_pid"]', text)
         self.assertIn('status": "CONSUMED_NO_REPLAY"', text)
 
+    def test_native_steam_dns_retry_does_not_bypass_probe(self):
+        class C:
+            class Hold(RuntimeError):
+                pass
+        visits = []
+        def intermittent():
+            visits.append(1)
+            if len(visits) < 3:
+                raise C.Hold("PRODUCTION_CURRENT_STEAM_TLS_NOT_REACHABLE")
+            return {"strict_native_c": True}
+        result = mod.retry_qualified_steam(C, intermittent,
+            "PRODUCTION_CURRENT_STEAM_TLS_NOT_REACHABLE",
+            attempts=3, delay_seconds=0)
+        self.assertEqual(result, {"strict_native_c": True})
+        self.assertEqual(len(visits), 3)
+
+    def test_retries_do_not_hide_other_security_holds(self):
+        class C:
+            class Hold(RuntimeError):
+                pass
+        visits = []
+        def critical():
+            visits.append(1)
+            raise C.Hold("PRODUCTION_SEALED_READ_ACL_OR_DEFINER_DRIFT")
+        with self.assertRaisesRegex(C.Hold, "PRODUCTION_SEALED_READ_ACL"):
+            mod.retry_qualified_steam(C, critical,
+                "PRODUCTION_CURRENT_STEAM_TLS_NOT_REACHABLE",
+                attempts=8, delay_seconds=0)
+        self.assertEqual(len(visits), 1)
+
+    def test_retry_budget_expires_without_false_acceptance(self):
+        class C:
+            class Hold(RuntimeError):
+                pass
+        visits = []
+        def expired():
+            visits.append(1)
+            raise C.Hold("PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_3")
+        with self.assertRaisesRegex(C.Hold, "EXIT_3"):
+            mod.retry_qualified_steam(C, expired,
+                "PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_3",
+                attempts=3, delay_seconds=0)
+        self.assertEqual(len(visits), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
