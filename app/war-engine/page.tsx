@@ -28,7 +28,8 @@ const TIERS = Object.entries(
 
 export default async function WarEnginePage() {
   const prisma = getPrisma();
-  const cases = usesNonfinancialProductionAuth()
+  const restricted = usesNonfinancialProductionAuth();
+  const cases = restricted
     ? [] // private case/gameStats joins are not an approved public projection
     : await prisma.warEngineCase.findMany({
     orderBy: [
@@ -98,11 +99,11 @@ export default async function WarEnginePage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <Metric label="Cases" value={cases.length} />
-            <Metric label="Queued" value={queuedCount} />
+            <Metric label="Cases" value={restricted ? "UNKNOWN" : cases.length} />
+            <Metric label="Queued" value={restricted ? "UNKNOWN" : queuedCount} />
             <Metric
               label="Running / Classified"
-              value={`${runningCount} / ${classifiedCount}`}
+              value={restricted ? "UNKNOWN / UNKNOWN" : `${runningCount} / ${classifiedCount}`}
             />
           </div>
         </div>

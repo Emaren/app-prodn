@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/central-app-a07-relay-20261106` at `fe8ee0135b3103909cfc53960b23684dd27ffa1b`
+Implementation baseline: `fix/central-a05-public-readmodels-20261106` at `9848c8e7768605ea504959600bdcafd417455a3b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

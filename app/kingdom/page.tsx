@@ -5,7 +5,7 @@ import { Anvil, ArrowRight, Eye, Flame, Scale } from "lucide-react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadKingdomSummary } from "@/lib/kingdomSummary";
 import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
-import RestrictedPublicPreview from "@/components/production/RestrictedPublicPreview";
+import KingdomPublicNonfinancial from "./KingdomPublicNonfinancial";
 
 import KingdomHero from "./KingdomHero";
 import KingdomChroniclesClient from "./KingdomChroniclesClient";
@@ -67,7 +67,7 @@ export default async function KingdomPage() {
   // Summary currently mixes restricted users, indexed transfers and raw replay
   // sources. The nonfinancial role deliberately has no direct table SELECT.
   if (usesNonfinancialProductionAuth()) {
-    return <RestrictedPublicPreview title="The Kingdom" description="The founding chronicle is open. Its live counts and ledger-backed activity will return after the audited public projection is available." />;
+    return <KingdomPublicNonfinancial />;
   }
   const summary = await loadKingdomSummary();
   const featuredStats = summary.stats.slice(0, 3);
