@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c7975207ad18a912dd077e263034d15e3128b43b5794e6610bd957139c3589d8",
+      "sha256": "e3c787fabb5bbf207c5499942404dacc9fc5b0cce97d3793c7f4db7617d6b734",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/chain-c02-lease-integrated-20261104",
-    "commit": "aaf7403897b3283a281c77c4ede7be14895a76b0"
+    "branch": "fix/c02-after-central-finance-docs-20261106",
+    "commit": "4d34ff4e878491622a1e4c4c0ba6bb700c714cb3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

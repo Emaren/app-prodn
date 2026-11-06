@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/chain-c02-lease-integrated-20261104` at `aaf7403897b3283a281c77c4ede7be14895a76b0`
+Implementation baseline: `fix/c02-after-central-finance-docs-20261106` at `4d34ff4e878491622a1e4c4c0ba6bb700c714cb3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
