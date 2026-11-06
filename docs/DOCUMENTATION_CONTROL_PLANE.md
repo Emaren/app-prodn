@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/c02-after-central-finance-docs-20261106` at `4d34ff4e878491622a1e4c4c0ba6bb700c714cb3`
+Implementation baseline: `session-b/c02-transport-isolated-20261106` at `a1cc2952746497f25428050e01f2c081e5b4cb9b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

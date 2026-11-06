@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e3c787fabb5bbf207c5499942404dacc9fc5b0cce97d3793c7f4db7617d6b734",
+      "sha256": "f70b8735e15140f6a7783a73891e8acc41e765ce777d59089395d68b6bb2cd0c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/c02-after-central-finance-docs-20261106",
-    "commit": "4d34ff4e878491622a1e4c4c0ba6bb700c714cb3"
+    "branch": "session-b/c02-transport-isolated-20261106",
+    "commit": "a1cc2952746497f25428050e01f2c081e5b4cb9b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
