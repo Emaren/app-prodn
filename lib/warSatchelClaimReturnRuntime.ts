@@ -124,7 +124,8 @@ export async function processCertifiedSatchelClaimReturn(prisma:PrismaClient,cla
     return {state:"credited" as const,txHash:paid.txHash,ownerUserId:r.ownerUserId};
   }
   const e=await exclusive(prisma,tx=>economics(tx,r,"pending")),run=satchelClaimReturnExecutionRun(e);
-  let attempt=await prisma.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}}),reply:unknown;
+  const attempt=await prisma.satchelClaimReturnExecutionAttempt.findUnique({where:{claimId}});
+  let reply:unknown;
   if(!attempt){
     // Asset proof is read-only. A nonauthorizing observation is combined with
     // the independently signed coverage review before the UNKNOWN transaction.
