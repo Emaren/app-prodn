@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0a07934448b3170d039db33a9f9357428f564b6fbcb590b3571cccd25898f8af",
+      "sha256": "47234bd1eeddbafc03332722259e9ffbc15e1c14b949c4a8bb24599a208394d2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c02-pg16-synthetic-admission-20261106",
-    "commit": "bd5909dcaabcff3766c33e92387e70269f33aa7e"
+    "commit": "ef7cb58f82c775b67d421b853abb3c91866cee82"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
