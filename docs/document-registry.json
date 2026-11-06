@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "402c0a22ba1242cbbd35e442f29152e7fd6746b0abb0d143e26a8135d78defee",
+      "sha256": "4ef4507141284715ad15c34033b396eefba42a6a24bc2acfa30f79155599fac6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/a05-stopped-steam-recovery-20261105",
-    "commit": "cd1d1b30b0587675d30c466010d9a5aaccb9ee04"
+    "branch": "fix/session-b-app-final-integrated-20261106",
+    "commit": "0fe5850f732b6ae6702fa88fe5591bce81f78607"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

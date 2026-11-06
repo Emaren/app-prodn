@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/a05-stopped-steam-recovery-20261105` at `cd1d1b30b0587675d30c466010d9a5aaccb9ee04`
+Implementation baseline: `fix/session-b-app-final-integrated-20261106` at `0fe5850f732b6ae6702fa88fe5591bce81f78607`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
