@@ -27,7 +27,7 @@ function harness(){
   const calls:Call[]=[];
   const leases:string[]=[];
   const lease=new AbortController();
-  const exports:Record<string,Function>={};
+  const exports:Record<string,unknown>={};
   const sandbox={
     exports,Buffer,AbortSignal,structuredClone,Error,JSON,
     fetch(){throw Error("NETWORK_FORBIDDEN");},
