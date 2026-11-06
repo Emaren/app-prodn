@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d68550946c8ade9d594566c24a4535204c6cce6fd814d88158112b896ceb554a",
+      "sha256": "2b45883e67c0910520d72dfa2fa6b9c8f2ca9a4286d282a8d98373d1a2f8d8c5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2392,8 +2392,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/session-b-app-final-integrated-20261106",
-    "commit": "8f31155c53669de635370798b5486470291e8813"
+    "branch": "fix/central-app-a07-relay-20261106",
+    "commit": "fe8ee0135b3103909cfc53960b23684dd27ffa1b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
