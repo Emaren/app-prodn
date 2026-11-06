@@ -182,6 +182,8 @@ jobs:
               "pg_major": 16,
               "observed": ["tables=29", "rows=0", "triggers=53"],
               "negative_accounting_constraint_rejected": True,
+              "valid_50k_product_plan_accepted": True,
+              "invalid_60k_product_plan_rejected": True,
               "C02_physically_admitted": False,
               "C06_backup_verified": False,
               "C07_real_restore_verified": False,

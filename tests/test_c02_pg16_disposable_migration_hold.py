@@ -132,6 +132,8 @@ class C02Pg16HeldTests(unittest.TestCase):
         self.assertIn(b"CREATE TABLE users", held.FIXTURE)
         self.assertIn(b"VALUES(1,-1)", held.NEGATIVE)
         self.assertIn(b"war_satchel_funded_balances", held.NEGATIVE)
+        self.assertIn(b"VALUES(71, false, 5, 10000, 0)", held.POSITIVE_PRODUCT)
+        self.assertIn(b"VALUES(72, false, 6, 10000, 0)", held.NEGATIVE_PRODUCT)
         self.assertNotIn(b"INSERT INTO war_satchel", held.FIXTURE)
         self.assertIn(b"tables=", held.CENSUS)
         self.assertIn(b"triggers=", held.CENSUS)

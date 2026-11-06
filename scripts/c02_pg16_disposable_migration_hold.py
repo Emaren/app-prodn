@@ -61,6 +61,18 @@ NEGATIVE = b"""
  INSERT INTO war_satchel_funded_balances(owner_user_id,available_uwolo)
  VALUES(1,-1);
 """
+POSITIVE_PRODUCT = b"""
+ BEGIN;
+ INSERT INTO bet_auto_presets(id, until_out, games_remaining,
+                              winner_stake_wolo, desync_stake_wolo)
+ VALUES(71, false, 5, 10000, 0);
+ ROLLBACK;
+"""
+NEGATIVE_PRODUCT = b"""
+ INSERT INTO bet_auto_presets(id, until_out, games_remaining,
+                              winner_stake_wolo, desync_stake_wolo)
+ VALUES(72, false, 6, 10000, 0);
+"""
 
 
 class Hold(Exception):
@@ -192,6 +204,14 @@ def rehearse(repo: Path, pg_bin: Path):
             if no_finance.returncode or \
                     no_finance.stdout.decode("ascii").strip().splitlines() != observed:
                 raise Hold("PG16_NEGATIVE_TEST_MUTATED_FINANCIAL_TABLES")
+            positive_product = checked(psql, env=env, input_data=POSITIVE_PRODUCT)
+            if positive_product.returncode:
+                raise Hold("PG16_VALID_50K_PRODUCT_PLAN_REJECTED")
+            negative_product = checked(psql + ["-1"], env=env,
+                                       input_data=NEGATIVE_PRODUCT)
+            if negative_product.returncode == 0 or \
+                    b"ck_bet_auto_presets_game_plan" not in negative_product.stderr:
+                raise Hold("PG16_EXCESS_50K_PRODUCT_PLAN_NOT_REJECTED")
             return {
                 "schema": SCHEMA, "status": "HOLD_SYNTHETIC_ONLY",
                 "app_held_source_sha": APP_SOURCE_SHA,
@@ -200,6 +220,8 @@ def rehearse(repo: Path, pg_bin: Path):
                 "pg_major": 16,
                 "observed": observed,
                 "negative_accounting_constraint_rejected": True,
+                "valid_50k_product_plan_accepted": True,
+                "invalid_60k_product_plan_rejected": True,
                 "all_synthetic": True, "public_tcp_listener_created": False,
                 "live_database_accessed": False,
                 "C06_backup_verified": False,
