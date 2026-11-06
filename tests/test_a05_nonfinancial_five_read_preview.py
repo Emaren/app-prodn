@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 ROOT=Path(__file__).resolve().parents[1]
 PAGES={
- "ai":("loadPublicAiCouncil(getPrisma())","readModelPending ? []"),
+ "ai":("loadPublicAiCouncil(getPrisma())","loadNonfinancialPublicAiDirectory(getPrisma())"),
  "kingdom":("loadKingdomSummary()","return <RestrictedPublicPreview"),
  "kingdom-bettors":("loadKingdomBettors()","return <RestrictedPublicPreview"),
  "oracle":("loadOracleSnapshot(getPrisma()","return <RestrictedPublicPreview"),
