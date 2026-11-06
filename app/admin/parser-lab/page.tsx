@@ -1,3 +1,4 @@
+import { requireServerAdmin } from "@/lib/adminSession";
 import Link from "next/link";
 import {
   Activity,
@@ -91,6 +92,8 @@ function EmptyLedger({ children }: { children: string }) {
 }
 
 export default async function AdminParserLabPage() {
+  // Parent layout redirects do not prevent nested Flight serialization.
+  await requireServerAdmin();
   const data = await loadAdminParserLab(getPrisma());
   const catalogBarWidth = `${Math.min(100, data.legacy.catalogCoverageBps / 100)}%`;
 
