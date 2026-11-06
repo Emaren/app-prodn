@@ -6,7 +6,7 @@ const pages=["app/admin/backup-os/page.tsx","app/admin/code-health/page.tsx","ap
 test("four actual operator pages inherit the server signed admin layout",()=>{
  const layout=read("app/admin/layout.tsx");
  assert.match(layout,/requireServerAdmin/);
- for(const path of pages){const source=read(path);assert.match(source,/export default function/);assert.doesNotMatch(source,/child_process|execSync|fetch\([^)]*POST/);}
+ for(const path of pages){const source=read(path);assert.match(source,/export default (?:async )?function/);assert.doesNotMatch(source,/child_process|execSync|fetch\([^)]*POST/);}
 });
 test("operator evidence only invokes existing authenticated no-store GET readers",()=>{
  const source=read("components/admin/operational-evidence/OperatorEvidence.tsx");
@@ -18,5 +18,7 @@ test("operator evidence only invokes existing authenticated no-store GET readers
 test("documents are real DocsV2 registry records, never fixture scores",()=>{
  const source=read("app/admin/documents-os/page.tsx");
  assert.match(source,/document-registry.json/);assert.match(source,/registry.documents.map/);
+ assert.match(source,/await requireServerAdmin\(\)/);
+ assert.ok(source.indexOf("await requireServerAdmin()") < source.indexOf("registry.documents.map"));
  assert.doesNotMatch(source,/100\/100|autonomous workers|lastUpdated: new Date/);
 });
