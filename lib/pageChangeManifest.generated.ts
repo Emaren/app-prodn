@@ -5,12 +5,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-bd092c6e332b136329b0",
+    version: "src-2a4dfd7b08b4102b5225",
   },
   {
     href: "/oracle",
     label: "The Oracle",
-    version: "src-b5723bd45be86b0f0d5e",
+    version: "src-9a150541871852c4a0c2",
   },
   {
     href: "/leaderboard",
