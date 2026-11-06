@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/central-a05-public-readmodels-20261106` at `f2cc136f8ab6a54950fce5aa605343e64be16ae0`
+Implementation baseline: `fix/central-a05-public-readmodels-20261106` at `9a9aa112d19d86fc9bd44377567e164e63f93095`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
