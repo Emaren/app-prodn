@@ -8,12 +8,16 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-and-implementation-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-11-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Kingdom Civic Surfaces
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Checked the documented Civic/Forge/Oracle route and API source paths against web integration commit `4731218b08d21214040c6e789bb8dbf42999e48d`. The public R25 website currently runs on HEL1 port 3032, but `/kingdom` and `/oracle` still expose restricted nonfinancial read previews pending A05 parity work. **Documented capabilities are contracts, not evidence that privileged writes or full user-facing parity are deployed.** No financial mutation, treasury authority, or Chain gate is approved by this review.
+
 
 ## Purpose
 
