@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c02-transport-isolated-20261106` at `a1cc2952746497f25428050e01f2c081e5b4cb9b`
+Implementation baseline: `session-b/c02-pg16-synthetic-admission-20261106` at `153445011867a95cf9517305a4f9f3d0a98a36fb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
