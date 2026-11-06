@@ -317,6 +317,22 @@ async function readJson<T>(filePath: string): Promise<T | null> {
   }
 }
 
+/**
+ * Nonexecuting web projection: sandbox-denied host evidence is UNKNOWN,
+ * not an instruction to create directories or relax filesystem confinement.
+ * Mutation/read-modify-write callers must use strict readJson() instead.
+ */
+async function readJsonObservation<T>(filePath: string): Promise<T | null> {
+  try {
+    return await readJson<T>(filePath);
+  } catch (error) {
+    if (["EACCES", "EPERM", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function serializeMutation<T>(work: () => Promise<T>): Promise<T> {
   let release!: () => void;
   const turn = new Promise<void>((resolve) => {
@@ -332,9 +348,20 @@ async function serializeMutation<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
-async function listRuns(limit = 50) {
-  await ensureStore();
-  const names = (await fs.readdir(runsDir()))
+async function listRuns(limit = 50, initialize = true) {
+  // Mutation callers retain initialization. Dashboard GET must NEVER create
+  // state directories: the confined production web role is observation-only.
+  if (initialize) await ensureStore();
+  let filenames: string[];
+  try {
+    filenames = await fs.readdir(runsDir());
+  } catch (error) {
+    if (!initialize && ["ENOENT", "ENOTDIR", "EACCES", "EPERM"].includes(
+      (error as NodeJS.ErrnoException).code ?? ""
+    )) return [];
+    throw error;
+  }
+  const names = filenames
     .filter((name) => name.endsWith(".json"))
     .sort()
     .reverse()
@@ -636,7 +663,7 @@ export async function writeAoe2OsKingdomIntelligence(input: {
 }
 
 export async function readAoe2OsKingdomIntelligence() {
-  return readJson<Aoe2KingdomIntelligenceSnapshot>(
+  return readJsonObservation<Aoe2KingdomIntelligenceSnapshot>(
     kingdomIntelligencePath()
   );
 }
@@ -664,8 +691,8 @@ export async function readAoe2OsStorageEvidence(): Promise<
   Pick<Aoe2OsDashboard, "bridge" | "snapshot">
 > {
   const [bridge, snapshot] = await Promise.all([
-    readJson<Aoe2OsBridgeHeartbeat>(bridgePath()),
-    readJson<Aoe2OsSnapshot>(snapshotPath()),
+    readJsonObservation<Aoe2OsBridgeHeartbeat>(bridgePath()),
+    readJsonObservation<Aoe2OsSnapshot>(snapshotPath()),
   ]);
   return {
     bridge: bridge ? { ...bridge, online: bridgeIsOnline(bridge) } : null,
@@ -674,12 +701,12 @@ export async function readAoe2OsStorageEvidence(): Promise<
 }
 
 export async function loadAoe2OsDashboard(): Promise<Aoe2OsDashboard> {
-  await ensureStore();
+  // Read-only source evidence; never allocate host directories in a GET.
   const [bridge, snapshot, kingdomIntelligence, runs] = await Promise.all([
-    readJson<Aoe2OsBridgeHeartbeat>(bridgePath()),
-    readJson<Aoe2OsSnapshot>(snapshotPath()),
+    readJsonObservation<Aoe2OsBridgeHeartbeat>(bridgePath()),
+    readJsonObservation<Aoe2OsSnapshot>(snapshotPath()),
     readAoe2OsKingdomIntelligence(),
-    listRuns(20),
+    listRuns(20, false),
   ]);
 
   const activeBase = runs.find((run) => RUN_STATUSES_ACTIVE.has(run.status)) ?? null;

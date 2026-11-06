@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -169,5 +169,19 @@ test("file-backed control plane queues, claims, streams and completes", async ()
       ),
       true
     );
+  });
+});
+
+
+test("dashboard GET on an uninitialized store is nonmutating and UNKNOWN", async () => {
+  await withStore(async (root) => {
+    assert.deepEqual(await readdir(root), [], "fresh empty root");
+    const dashboard = await loadAoe2OsDashboard();
+    assert.equal(dashboard.bridge, null);
+    assert.equal(dashboard.snapshot, null);
+    assert.equal(dashboard.kingdomIntelligence, null);
+    assert.equal(dashboard.activeRun, null);
+    assert.deepEqual(dashboard.recentRuns, []);
+    assert.deepEqual(await readdir(root), [], "dashboard read did not mkdir");
   });
 });
