@@ -145,7 +145,7 @@ export async function processCertifiedSatchelClaimReturn(prisma:PrismaClient,cla
         signal.throwIfAborted();
         assertPrepared(await signerRequest("/satchel/v1/returns/prepare",e.approval,reader,signal),run);
         signal.throwIfAborted();
-        return executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader);
+        return executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader,signal);
       });
       if(reply===null)return unknown(prisma,claimId);
     }catch{

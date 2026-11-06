@@ -9,7 +9,7 @@ RESERVE=(ROOT/"lib/warSatchelClaimReturnReserve.ts").read_text()
 
 class NativeReturnContract(unittest.TestCase):
     def test_execute_passes_signed_approval_not_legacy_run(self):
-        self.assertIn("executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader)",RT)
+        self.assertIn("executeServiceOnlySatchelEscrowReturn(e.approval,cfg.escrow,reader,signal)",RT)
         self.assertNotIn("executeServiceOnlySatchelEscrowReturn(run,cfg.escrow,reader)",RT)
         self.assertIn('SATCHEL_RETURN_ENDPOINT+"/execute"',ADAPTER)
         self.assertIn('method:"POST"',ADAPTER)
