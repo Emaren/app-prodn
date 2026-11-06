@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/central-a05-public-readmodels-20261106` at `9848c8e7768605ea504959600bdcafd417455a3b`
+Implementation baseline: `fix/central-a05-verified-stop-wait-20261106` at `8388f3459f63de366e3db650e8e971a311cb47d6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
