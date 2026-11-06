@@ -158,6 +158,42 @@ jobs:
           sudo apt-get install -y --no-install-recommends postgresql-16
           test -x /usr/lib/postgresql/16/bin/initdb
           test -x /usr/lib/postgresql/16/bin/pg_ctl
+      - name: Prove C02 exact-source PG16 migration in isolated synthetic cluster (HOLD only)
+        run: |
+          python3 -B -m unittest discover -s tests -p 'test_c02_pg16_disposable_migration_hold.py' -q
+          python3 -B - <<'PY'
+          import json
+          import subprocess
+
+          check = subprocess.run(
+              ["python3", "-B", "scripts/c02_pg16_disposable_migration_hold.py",
+               "--pg-bin", "/usr/lib/postgresql/16/bin"],
+              capture_output=True, text=True, timeout=75, check=False,
+          )
+          if check.returncode != 3:
+              raise SystemExit("HOLD: C02 exact-source synthetic PostgreSQL migration did not produce the required nonauthorizing exit")
+          try:
+              evidence = json.loads(check.stdout)
+          except ValueError as exc:
+              raise SystemExit("HOLD: C02 synthetic migration evidence was not JSON") from exc
+          required = {
+              "status": "HOLD_SYNTHETIC_ONLY",
+              "migration_count": 13,
+              "pg_major": 16,
+              "observed": ["tables=29", "rows=0", "triggers=53"],
+              "negative_accounting_constraint_rejected": True,
+              "C02_physically_admitted": False,
+              "C06_backup_verified": False,
+              "C07_real_restore_verified": False,
+              "live_database_accessed": False,
+              "public_tcp_listener_created": False,
+              "funded_release_authorized": False,
+          }
+          if any(evidence.get(key) != value for key, value in required.items()):
+              raise SystemExit("HOLD: C02 migration physical census or release denial drifted")
+          print("PASS: 13 exact-source synthetic PG16 migrations; 29 tables; 53 triggers; negative accounting rejected")
+          print("HOLD: real C07 restore and any financial migration/release remain UNAUTHORIZED")
+          PY
       - name: Install frozen application dependencies
         run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
       - name: Generate Prisma client
