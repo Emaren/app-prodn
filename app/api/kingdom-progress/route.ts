@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readPublicQ12Relay } from "@/lib/kingdomProgressPublicRelay";
 import catalog from "@/config/kingdom-progress-projects.json";
 import {
   readPublicPriorityScopes, progressFromVerifiedScope, safeCodeDate,
@@ -140,5 +141,16 @@ async function getProjection(): Promise<PublicEnvelope> {
 }
 
 export async function GET() {
+  // R25's nonfinancial production UID has intentional Steam-only outbound
+  // HTTPS permissions. Never bypass that fence with GitHub credentials or
+  // a broad egress exception. The separately verified Q12 relay is local
+  // read-only source evidence, and expires to UNKNOWN without fallback.
+  if (process.env.AOE2WAR_R25_ISOLATED_WEB === "true") {
+    const trusted = readPublicQ12Relay();
+    return response(trusted ?? {
+      schema: 1, status: "UNKNOWN", observedAt: null,
+      readAt: new Date().toISOString(), entries: []
+    });
+  }
   return response(await getProjection());
 }
