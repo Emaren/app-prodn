@@ -112,8 +112,10 @@ test("private Storage OS source reads only existing receipt files and never init
   const end = source.indexOf("export async function loadAoe2OsDashboard()", begin);
   assert.ok(begin >= 0 && end > begin);
   const reader = source.slice(begin, end);
-  assert.match(reader, /readJson<Aoe2OsBridgeHeartbeat>\(bridgePath\(\)\)/);
-  assert.match(reader, /readJson<Aoe2OsSnapshot>\(snapshotPath\(\)\)/);
+  assert.match(reader, /readJsonObservation<Aoe2OsBridgeHeartbeat>\(bridgePath\(\)\)/);
+  assert.match(reader, /readJsonObservation<Aoe2OsSnapshot>\(snapshotPath\(\)\)/);
+  assert.match(source, /async function readJsonObservation/);
+  assert.match(source, /"EACCES", "EPERM", "ENOTDIR"/);
   assert.doesNotMatch(reader, /ensureStore\(|listRuns\(|fs\.mkdir|fs\.writeFile/);
   assert.match(route, /readAoe2OsStorageEvidence\(\)/);
   assert.doesNotMatch(route, /loadAoe2OsDashboard\(/);

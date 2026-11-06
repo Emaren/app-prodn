@@ -1,3 +1,4 @@
+import { requireServerAdmin } from "@/lib/adminSession";
 import Link from "next/link";
 
 import MarketplaceOwnerConsole from "@/components/market/MarketplaceOwnerConsole";
@@ -5,7 +6,9 @@ import MarketplaceOwnerConsole from "@/components/market/MarketplaceOwnerConsole
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default function AdminMarketplacePage() {
+export default async function AdminMarketplacePage() {
+  // Parent layout redirects do not prevent nested Flight serialization.
+  await requireServerAdmin();
   return (
     <main className="mx-auto max-w-[96rem] px-4 py-8 text-white sm:px-6 lg:px-8">
       <header className="mb-6 overflow-hidden rounded-[2rem] border border-amber-100/14 bg-[radial-gradient(circle_at_0%_0%,rgba(245,158,11,0.13),transparent_34%),linear-gradient(135deg,rgba(20,17,12,0.96),rgba(5,10,20,0.98))] p-6 sm:p-8">

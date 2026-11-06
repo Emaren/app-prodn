@@ -1,9 +1,12 @@
+import { requireServerAdmin } from "@/lib/adminSession";
 import Link from "next/link";
 import BettingBotControlPanel from "@/components/admin/ai/BettingBotControlPanel";
 import NominationInbox from "@/components/kingdom-bettors/NominationInbox";
 import ProvisionKingdomPersonas from "@/components/kingdom-bettors/ProvisionKingdomPersonas";
 export const dynamic="force-dynamic";
-export default function KingdomBettorsAdmin(){
+export default async function KingdomBettorsAdmin(){
+  // Parent layout redirects do not prevent nested Flight serialization.
+  await requireServerAdmin();
   return <main className="mx-auto max-w-[94rem] px-4 py-8 text-white sm:px-8">
     <div className="mb-6 flex flex-wrap items-end justify-between gap-5 rounded-3xl border border-amber-200/20 bg-slate-950 p-7">
       <div><p className="text-[10px] font-bold uppercase tracking-[.3em] text-amber-200/70">COMMAND / HOUSE POLICY</p>

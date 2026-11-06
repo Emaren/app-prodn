@@ -1,7 +1,12 @@
+import { requireServerAdmin } from "@/lib/adminSession";
 import Link from "next/link";
 import registry from "@/docs/document-registry.json";
 export const dynamic="force-dynamic";
-export default function DocumentsOsPage(){
+export default async function DocumentsOsPage(){
+ // A redirect from the parent layout alone does not guarantee that a
+ // concurrently streamed child Flight payload omits this private registry.
+ // Verify the signed administrator before building any document rows.
+ await requireServerAdmin();
  const docs=registry.documents.map(d=>({id:d.id,title:d.title,path:d.path,status:d.status,type:d.type,authority:d.authority,reviewedAt:d.reviewed_at}));
  return <main className="mx-auto max-w-6xl space-y-5 px-5 py-8 text-slate-100">
   <nav className="flex gap-4 text-cyan-300"><Link href="/admin/aoe2war-os">Admin OS</Link><Link href="/admin/backup-os">Backup OS</Link><Link href="/admin/code-health">Code Health</Link><Link href="/admin/storage-transfer">Storage Transfer</Link></nav>
