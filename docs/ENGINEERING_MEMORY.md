@@ -8,12 +8,16 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-21"
+reviewed_at: "2026-11-06"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 
 # AoE2WAR Engineering Memory and Learned Invariants
+
+## November 6, 2026 — Central historical-memory index review (non-authorizing)
+
+Reviewed this durable 3,608-line memory as an **anti-relearning index of historical engineering evidence**, not as an independent recertification of every prior incident, SHA, monetary amount, service state or historical conclusion. Exact finance integration source `7474e66e69e1d6c03b46007fbcba78c586e69fa0` retains an asynchronous, scoped one-use financial lease with explicit signal admission; current HEL1 still serves R25 on 3032 while dedicated Satchel 8094/8095 remain inactive. Those are separately checked current facts. Old checkpoints and examples in this memory remain dated and must be reverified against current sources and physical receipts before release decisions. **No financial permit, independent reviewer approval, global writer fence, backup equivalence, solvency, custody or funded canary is certified by this review.** C01–C09 remain HOLD.
 
 ## October 22 — financial permits bind the running build
 

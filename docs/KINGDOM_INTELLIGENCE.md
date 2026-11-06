@@ -8,12 +8,17 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "self-knowledge-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-11-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Kingdom Intelligence
+
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Checked source entrypoints `/kingdom-intelligence` and `/admin/aoe2war-os` against finance integration commit `7474e66e69e1d6c03b46007fbcba78c586e69fa0`; HEL1 publicly serves R25 on 3032. Operator access, data freshness, independent host provenance and source/runtime consistency still require their own physical receipts. This document describes the **self-knowledge contract**, not a claim that every observer or dependent service is current and healthy. No new read privilege or administrator authorization was granted.
+
 
 ## October 18, 2026 — require matching production source for combined health
 
