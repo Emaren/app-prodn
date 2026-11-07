@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "restricted"
 ---
 
-# R25 Steam v5w: a NEW root-only admission after a genuine Node heap abort
+# R25 Steam v5w: Source-Bound Recovery After Observed Node Heap Abort
 
 ## Physical incident, observed not inferred
 
