@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "e0a3a72d69eadae42c1d13db23738c3d601d7ee6830698b5f6a8a4f72c3f8c6a",
+      "sha256": "56c95a0cc1a50b9e12cb8227b70fe7fd79c86e77e4935f81563980170e5ef702",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -478,9 +478,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "5e41fc4f4feffa2e942587eafce4f7a355660f457ac5684f85ae84a783186687",
+      "sha256": "0d855d0431a9d292eaf94bb11e7d359a0d9b6a724b7c5943784499a80edfc450",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "861ed0fb8cbdd1118f3f67360a075dc6a33847c1d490b3aa8a7c041b587e28b4",
+      "sha256": "689f81ff692f9237566cdb5559cd77be2be8f64c1c486ddf77f2edd8ab033883",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1217,9 +1217,9 @@
       "owner": "aoe2war-web",
       "path": "docs/NATIVE_REPLAY_CONTROL.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "5c12be77c043d887a5e38fd84933fc83f7e3916b0155da1ff5e2d34e63660b22",
+      "sha256": "08238e438063ff7af21c2a8d4c405fc8035011d014be82221e7564863adf145e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1788,9 +1788,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "97f0a5a3942ff10b95ff38e5a5a28764e6a0b27b8518cf3c518bd7f2b21e66f4",
+      "sha256": "d19d6e71cfe4463b59bf6dddc9319a86119fcbd29f606960ee89c5306ec6cb9f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2348,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c02-pg16-synthetic-admission-20261106",
-    "commit": "153445011867a95cf9517305a4f9f3d0a98a36fb"
+    "branch": "fix/central-c02-postddl-owner-20261107",
+    "commit": "0bddef72424587c25263b0180ed62886dd3450b5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
