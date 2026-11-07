@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2bc573bc0effa6f88fd5d1db10c1b343ca2e953b06fe11c26dfd6cadb8638f2a",
+      "sha256": "453f05c4c7456906fd1c091edb1dfdeec8c1ddf49b5d592c70d41f114971e38d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2349,7 +2349,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c02-postmigration-canonical-clean-20261107",
-    "commit": "0749088ef659d1982354bc04b6e74a555157b11d"
+    "commit": "8c89621a8e7e781175c84317893539de9a9d767e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
