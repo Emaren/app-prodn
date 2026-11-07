@@ -3,7 +3,7 @@ id: "aoe2war.app.session-b-r25-steam-v5t-expiry-review"
 title: "Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review"
 type: "reference"
 status: "draft"
-owner: "app-ops"
+owner: "aoe2war-web"
 systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
