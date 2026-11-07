@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c02-pg16-synthetic-admission-20261106` at `153445011867a95cf9517305a4f9f3d0a98a36fb`
+Implementation baseline: `fix/central-c02-postddl-owner-20261107` at `0bddef72424587c25263b0180ed62886dd3450b5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

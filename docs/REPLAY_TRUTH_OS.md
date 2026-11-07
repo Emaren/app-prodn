@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -600,3 +600,17 @@ expansion gate. The control remains restricted to historical known-result #32388
 no modern manifest is fabricated. The separate pre-release hardware breakpoint
 helper preserves raw caller/stream state and restores temporary debug contexts.
 Shared close and cursor equality do not prove whole-input consumption or EOF.
+
+## Source-bound review — 2026-11-07 UTC (Central / AI-delegated)
+
+Rechecked held-App lib/publicReplayTruth.ts, lib/hdReplayEngine.ts and
+lib/parserObservatory.ts for separation between sanitized public projections,
+durable adjudication and uncertain replay evidence. Current source separates
+statistics/presentation eligibility from financial truth; native replay
+manifest authority remains false. This is **not** a fresh corpus census, replay
+adjudication, live browser acceptance or verified stream EOF.
+
+The October 7 three-account 99-unknown census and receipts remain historical,
+not new findings. Candidate-only experiments, negative controls and independent
+verifier gates remain in force. No replay truth, settlement or database state
+was promoted by this documentation review.
