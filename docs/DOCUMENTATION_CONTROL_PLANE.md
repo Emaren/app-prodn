@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-v5x-r2-steam-oneshot-graceful-quiesce-20261107` at `3ce5ba72b7d562a3d02543c753cb01231111b7c9`
+Implementation baseline: `fix/app-r25-v5z-r3-shutdown-window-20261107` at `eadd11af905a591060ce752cb4294f4c03025937`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **112**
+- Authoritative repository documents: **113**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 71
+- `reference`: 72
 - `runbook`: 22
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 15
+- `draft`: 16
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -137,6 +137,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [R25 Bets Published Historical Read Model Under Financial HOLD](SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md) | `reference` | `draft` | `nonfinancial-read-model-source-only-not-funded-or-live` |
 | [R25 Betting Hall v5x Guarded Nonfinancial Cutover](SESSION_A_R25_BETS_V5X_GUARDED_CUTOVER_20261107.md) | `reference` | `draft` | `nonfinancial-source-qualified-physical-release-pending` |
 | [R25 Betting Hall v5x R2: Native Steam Quiesce Repair](SESSION_A_R25_BETS_V5X_R2_QUIESCE_20261107.md) | `reference` | `draft` | `source-only-nonfinancial-physical-release-not-yet-accepted` |
+| [R25 Betting Hall v5z R3: Native Web Stop Window and Exact Steam PID HOLD](SESSION_A_R25_BETS_V5Z_R3_RELEASE_20261107.md) | `reference` | `draft` | `source-only-nonfinancial-runroot-release-not-yet-admitted` |
 | [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
 | [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
 | [R25 Steam v5w: Source-Bound Recovery After Observed Node Heap Abort](SESSION_A_R25_STEAM_V5W_HEAP_RESTART_20261107.md) | `reference` | `draft` | `source-only-root-reviewed-runtime-admission-never-financial` |

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "abb9e66a0a6edb6579da2ccabfcca833490aab329fbe3955410630059e2ff7b3",
+      "sha256": "ca943172a057b3025c1e16b6a3f16788843d5d571f3f9da87ebe8fce38dca6d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-nonfinancial-runroot-release-not-yet-admitted",
+      "id": "aoe2war.app.r25-bets-v5z-r3-stop-window",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_V5Z_R3_RELEASE_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "587c81db203b6996d7c7060cd44d7836c43069c5c2d21d205562facef0459c57",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Betting Hall v5z R3: Native Web Stop Window and Exact Steam PID HOLD",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-emergency-website-recovery-source-only-no-funded-release",
       "id": "aoe2war.app.session-a-r25-public-nonfinancial-recovery-v5u",
       "owner": "aoe2war-web",
@@ -2569,8 +2591,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-v5x-r2-steam-oneshot-graceful-quiesce-20261107",
-    "commit": "3ce5ba72b7d562a3d02543c753cb01231111b7c9"
+    "branch": "fix/app-r25-v5z-r3-shutdown-window-20261107",
+    "commit": "eadd11af905a591060ce752cb4294f4c03025937"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
