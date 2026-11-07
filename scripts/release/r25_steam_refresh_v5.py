@@ -232,6 +232,9 @@ def refresh():
  validated=m.production_steam_dns_diversity(m.production_steam_addresses())
  existing=m.production_live_steam_entries()
  commands=m.production_steam_union_commands(validated,existing)
+ # DNS inspection may take seconds. Rebind runtime and snapshot before nft.
+ bound_runtime_pid(bound_public_commit()[0])
+ check(m.production_protected()==before,"PROTECTED_FINANCE_SNAPSHOT_CHANGED_BEFORE_NFT")
  if commands:
   m.run(["/usr/sbin/nft","-f","-"],data=("\n".join(commands)+"\n").encode(),maximum=8192)
  current=m.production_live_steam_entries()

@@ -117,5 +117,37 @@ class AdmissionContract(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,"PROTECTED_FINANCE_SNAPSHOT_CHANGED"):
                 s.evidence()
 
+class PreWriteProtectedDrift(unittest.TestCase):
+    def test_protected_drift_after_dns_denies_nft_write(self):
+        calls=[]
+        good={"units":["before"]}
+        changed={"units":["after"]}
+        expected={"schema":"reviewed","nft_shape_sha256":"reviewed-shape"}
+        class M:
+            def production_steam_addresses(self):return ["steam"]
+            def production_steam_dns_diversity(self,x):return ["127.0.0.8"]
+            def production_live_steam_entries(self):
+                return {"steam4":set(),"steam6":set()}
+            def production_steam_union_commands(self,fresh,existing):
+                return ["add element inet steam4 127.0.0.8"]
+            def production_protected(self):return changed
+            def run(self,*a,**k):
+                calls.append("nft")
+                raise AssertionError("nft must not be called on protected drift")
+        def readfile(path,mode=None):
+            if path==s.POLICY:return json.dumps(expected).encode()
+            return (str(s.NEW_SELF)+" NoNewPrivileges=yes "
+                "CapabilityBoundingSet=CAP_NET_ADMIN CAP_SETUID CAP_SETGID "
+                "ProtectSystem=strict").encode()
+        with mock.patch.object(s,"get_caps_or_hold"),\
+             mock.patch.object(s,"rawfile",side_effect=readfile),\
+             mock.patch.object(s,"evidence",return_value=(M(),good,"reviewed")),\
+             mock.patch.object(s,"expected_policy",return_value=expected),\
+             mock.patch.object(s,"bound_public_commit",return_value=({"pid3032":9},"sha")),\
+             mock.patch.object(s,"bound_runtime_pid",return_value={"reviewed_protected_snapshot_sha256":"reviewed"}):
+            with self.assertRaisesRegex(RuntimeError,"PROTECTED_FINANCE_SNAPSHOT_CHANGED_BEFORE_NFT"):
+                s.refresh()
+        self.assertEqual(calls,[])
+
 if __name__=="__main__":
     unittest.main(verbosity=2)
