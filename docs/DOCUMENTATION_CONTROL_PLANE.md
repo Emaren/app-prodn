@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/central-c02-postddl-owner-20261107` at `0bddef72424587c25263b0180ed62886dd3450b5`
+Implementation baseline: `session-b/c02-postmigration-canonical-clean-20261107` at `0749088ef659d1982354bc04b6e74a555157b11d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
