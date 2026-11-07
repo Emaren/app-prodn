@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-bets-history-guarded-cutover-v5x-20261107` at `0ae3bae4a825cac831677e924b92f985ba627579`
+Implementation baseline: `fix/app-r25-bets-history-guarded-cutover-v5x-20261107` at `ca013e4259a68bd2db80e0be31cea3da38db8280`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
