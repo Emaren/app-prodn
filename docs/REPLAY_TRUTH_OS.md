@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -20,6 +20,11 @@ read-only operator control plane.
 
 Its north star is zero unexplained unknown replay truth. It does not weaken
 evidence rules merely to reduce an unknown counter.
+
+## 2026-11-07 operational document review (Session B, nonfinancial)
+
+October 6–7 replay receipts, known controls and unknown-result cohorts are historical records, not new November outcomes. The public HD replay-engine visualization is diagnostic only; animation, candidate partitions and counts never establish complete EOF, a certified winner or a WOLO payment. Source/release claims must be requalified at exact current API/Watcher and App heads before operating on new results. This review did not execute replays, promote DB truth or authorize financial operations; it was AI-assisted, not independent historical-referee acceptance.
+
 
 ## Public HD Replay Engine (visual read-only machine)
 

@@ -8,11 +8,16 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 # Betting Hall Product and Concurrency Contract
+
+## 2026-11-07 operational document review (Session B, nonfinancial)
+
+This document was reviewed as a historical product and concurrency contract against the deployed R25 source lineage, not accepted as a current funded operating permit. Its legacy Jim audit, V1.2 market compatibility, shadow Phase Books and premium composer statements describe distinct recorded stages; they must not be combined to infer live WOLO settlement. Current R25 is nonfinancial. New Satchel 8094/8095 is inactive and legacy 8092/8093 is not an authorized fallback for new requests. Full historical on-chain payout finality remains separately held under Chain C04; 69 claimed-but-hashless outcomes are frozen pending independent finality. Historical implementation detail requires exact current-source validation before any new financial deployment. This review was AI-assisted and owner-delegated, not independent human financial approval.
+
 
 ## View lineage
 

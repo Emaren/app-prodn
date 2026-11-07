@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "e0a3a72d69eadae42c1d13db23738c3d601d7ee6830698b5f6a8a4f72c3f8c6a",
+      "sha256": "cc03b8cfe07b13080a258e8d85e698b3985c03e8bd30d747690b924499a65bbf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -478,9 +478,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "5e41fc4f4feffa2e942587eafce4f7a355660f457ac5684f85ae84a783186687",
+      "sha256": "e7a5839cccb4f4f08525c034ae829659ca79100a37da978b9eb2e1d4586a87fd",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ccc64468179d675966a8d1eda1f915f6b88ee1f0f8951534db1e9a117dc91197",
+      "sha256": "5e7e94520104310a68c8dce0635dc6721f47b8d6a9e534fcf0282eeadcb50f41",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1217,9 +1217,9 @@
       "owner": "aoe2war-web",
       "path": "docs/NATIVE_REPLAY_CONTROL.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "5c12be77c043d887a5e38fd84933fc83f7e3916b0155da1ff5e2d34e63660b22",
+      "sha256": "0b3fdb40676b64668e18dfcd45dc3f607a42977bfe7607b79ac3e28eb87cd061",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1832,9 +1832,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "97f0a5a3942ff10b95ff38e5a5a28764e6a0b27b8518cf3c518bd7f2b21e66f4",
+      "sha256": "5058f0f08d96af9561971721f6de6b7d799b1efd984ed160a9503ea93b5d881f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1912,6 +1912,29 @@
       ],
       "title": "Security Incident Notes",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
+      "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "b10f1dc56f900419383328cb05d93770b9f3c55314063bfd43c7171fe2516457",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Session B R25 Steam-Only Restart Review",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -2392,8 +2415,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/central-a05-public-readmodels-20261106",
-    "commit": "9848c8e7768605ea504959600bdcafd417455a3b"
+    "branch": "fix/session-b-r25-steam-refresh-rotation-20261107",
+    "commit": "a1c7d0d4135f324985d550afb7d1c05a32a9f2c4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

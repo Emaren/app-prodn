@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -20,6 +20,11 @@ from the operator host. It prepares immutable intent, runs one bounded normal
 Steam-context observation, and independently revalidates its evidence. The
 instruction at `0x5a6e99` is a stream-release frontier; reaching it does not prove
 EOF. This command creates candidate research evidence only.
+
+## 2026-11-07 operational document review (Session B, nonfinancial)
+
+The October 7 exact 32388 native-debug checkpoint and 99-unknown census are retained as dated historical control evidence, not a current replay truth or production result. The referenced scripts/replay_engine_native_control.py belongs to the separate API checkout; its absence from this App tree is not a missing App deployment file. This document authorizes no game launch, winner promotion, Steam network-policy expansion, financial settlement or chain operation. Its irreversible control path still needs an approved exact-source operator run and fresh receipts. AI-assisted review, not independently certified playback evidence.
+
 
 ## Commands
 

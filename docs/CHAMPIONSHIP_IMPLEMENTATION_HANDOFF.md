@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "engineering-handoff"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -20,6 +20,11 @@ new `championship_v2` Challenge protocol. It does not deploy, mutate production
 data, restart services, send chain transactions, or upgrade WoloChain. App
 custody and money obligations are durable; belt NFT execution is explicitly
 blocked until the chain capability handoff is implemented.
+
+## 2026-11-07 operational document review (Session B, nonfinancial)
+
+Rechecked the bounded implementation handoff versus current R25/Chain isolation: the October 1 PostgreSQL raw-SQL fix and Port 8093 Founder listener description are historical existing-system context, not permission for new funded Satchel fallback. Historical 8093 is preserved; new Satchel 8094 and reviewer 8095 remain inactive. Do not run historical aoe2war finish or migrations solely on this document; current C03/C06/C07 maintenance and exact financial source acceptance belong to Session A. Missing transaction hash is not proof of unpaid status. NFT capability and financial settlement remain separately held. Review was AI-assisted and owner-delegated, not independent human custody or release acceptance.
+
 
 ## Delivered behavior
 
