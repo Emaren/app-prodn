@@ -108,6 +108,11 @@ WITH protected_tables AS (
     AND LEFT(c.relname, 12) = 'war_satchel_'
     AND c.relkind IN ('r','p')
 ),
+attached_indexes AS (
+  SELECT DISTINCT idx.indexrelid AS oid
+  FROM pg_catalog.pg_index idx
+  WHERE idx.indrelid IN (SELECT oid FROM protected_tables)
+),
 attached_sequences AS (
   SELECT DISTINCT d.objid AS oid
   FROM pg_catalog.pg_depend d
@@ -128,6 +133,7 @@ targets AS (
   WHERE (n.nspname = 'public'
          AND LEFT(c.relname,12) = 'war_satchel_')
      OR c.oid IN (SELECT oid FROM attached_sequences)
+     OR c.oid IN (SELECT oid FROM attached_indexes)
 )
 SELECT pg_catalog.json_build_object(
   'schema','aoe2war.c02.pg16-satchel-effective-acl.v1',
@@ -139,7 +145,26 @@ SELECT pg_catalog.json_build_object(
       pg_catalog.json_build_object(
         'name',t.relname,'namespace',t.namespace,
         'kind',CASE WHEN t.relkind IN ('r','p') THEN 'table'
-                    WHEN t.relkind='S' THEN 'sequence' ELSE 'unexpected' END,
+                    WHEN t.relkind='S' THEN 'sequence'
+                    WHEN t.relkind IN ('i','I') THEN 'index'
+                    ELSE 'unexpected' END,
+        'attached_to',CASE
+          WHEN t.relkind='S' THEN (
+            SELECT parent.relname
+            FROM pg_catalog.pg_depend dep
+            JOIN pg_catalog.pg_class parent ON parent.oid=dep.refobjid
+            WHERE dep.objid=t.oid
+              AND dep.refobjid IN (SELECT oid FROM protected_tables)
+              AND dep.deptype IN ('a','i')
+            ORDER BY parent.relname LIMIT 1)
+          WHEN t.relkind IN ('i','I') THEN (
+            SELECT parent.relname
+            FROM pg_catalog.pg_index idx
+            JOIN pg_catalog.pg_class parent ON parent.oid=idx.indrelid
+            WHERE idx.indexrelid=t.oid
+              AND idx.indrelid IN (SELECT oid FROM protected_tables)
+            LIMIT 1)
+          ELSE NULL END,
         'owner',t.owner_name,'owner_can_login',t.rolcanlogin,
         'owner_superuser',t.rolsuper,
         'roles',(
@@ -193,6 +218,7 @@ def evaluate(catalog,table_names,expected_owner):
            "C02_CATALOG_OBJECTS_MISSING_OR_TOO_MANY")
     table_set=set()
     sequences=0
+    indexes=0
     names=set()
     for row in objects:
         insist(type(row) is dict and type(row.get("name")) is str and
@@ -204,9 +230,17 @@ def evaluate(catalog,table_names,expected_owner):
                "C02_FINANCIAL_SEQUENCE_SCHEMA_OUTSIDE_REVIEW")
         names.add(name)
         kind=row.get("kind")
-        insist(kind in ("table","sequence"),"C02_UNREVIEWED_RELKIND")
-        if kind=="table":table_set.add(name)
-        else:sequences+=1
+        insist(kind in ("table","sequence","index"),
+               "C02_UNREVIEWED_RELKIND")
+        attached=row.get("attached_to")
+        if kind=="table":
+            insist(attached is None,"C02_TABLE_INCONSISTENT_DEPENDENCY")
+            table_set.add(name)
+        else:
+            insist(type(attached) is str and attached in table_names,
+                   "C02_UNREVIEWED_FINANCE_RELATION_ATTACHMENT")
+            if kind=="sequence":sequences+=1
+            else:indexes+=1
         insist(row.get("owner")==expected_owner and
                row.get("owner_can_login") is False and
                row.get("owner_superuser") is False,
@@ -226,12 +260,12 @@ def evaluate(catalog,table_names,expected_owner):
                    "C02_EFFECTIVE_FINANCIAL_WRITER_REGRESSION")
     insist(table_set==set(table_names),
            "C02_POSTMIGRATION_TABLE_COVERAGE_DRIFT")
-    insist(sequences<=512 and all(
+    insist(sequences<=512 and indexes<=512 and all(
            x.startswith("war_satchel_") for x in names if x not in table_set),
            "C02_ATTACHED_SEQUENCE_REQUIRES_MANUAL_SCOPE_REVIEW")
     return {"status":"HOLD_C02_POSTMIGRATION_NEGATIVE_ACL_OBSERVED",
             "database":catalog["database"],"table_count":len(table_set),
-            "sequence_count":sequences,
+            "sequence_count":sequences,"index_count":indexes,
             "legacy_and_web_mutation_capabilities_denied":True,
             "neutral_financial_owner_nonlogin":True,
             "independent_c07_restore_proven":False,

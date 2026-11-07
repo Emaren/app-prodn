@@ -20,7 +20,8 @@ def fixture():
     objects=[]
     for name in gate.source_inventory(ROOT):
         objects.append({
-            "name":name,"namespace":"public","kind":"table","owner":NEUTRAL,
+            "name":name,"namespace":"public","kind":"table",
+            "attached_to":None,"owner":NEUTRAL,
             "owner_can_login":False,"owner_superuser":False,
             "roles":[{
                 "name":role,"exists":True,"role_superuser":False,
@@ -121,7 +122,8 @@ class PostMigrationOwnerProof(unittest.TestCase):
 
     def test_no_trust_of_arbitrary_attached_sequences(self):
         d=self.before()
-        d["objects"].append(dict(d["objects"][0],name="war_satchel_funded_balances_id_seq",kind="sequence"))
+        d["objects"].append(dict(d["objects"][0],name="war_satchel_funded_balances_id_seq",
+                                 kind="sequence",attached_to="war_satchel_funded_balances"))
         x=gate.evaluate(d,self.names,NEUTRAL)
         self.assertEqual(x["sequence_count"],1)
         d["objects"][-1]["name"]="unreviewed_external_auto_sequence"
@@ -134,6 +136,29 @@ class PostMigrationOwnerProof(unittest.TestCase):
                                  kind="sequence",namespace="private"))
         self.reject(d,"C02_FINANCIAL_SEQUENCE_SCHEMA_OUTSIDE_REVIEW")
 
+    def test_attached_primary_key_index_is_audited(self):
+        d=self.before()
+        d["objects"].append(dict(d["objects"][0],
+                                 name="war_satchel_funded_balances_pkey",
+                                 kind="index",attached_to="war_satchel_funded_balances"))
+        x=gate.evaluate(d,self.names,NEUTRAL)
+        self.assertEqual(x["index_count"],1)
+        self.assertFalse(x["c02_physical_gate_closed"])
+
+    def test_unattached_index_rejected(self):
+        d=self.before()
+        d["objects"].append(dict(d["objects"][0],
+                                 name="war_satchel_funded_balances_pkey",
+                                 kind="index",attached_to=None))
+        self.reject(d,"C02_UNREVIEWED_FINANCE_RELATION_ATTACHMENT")
+
+    def test_index_attached_to_unreviewed_table_rejected(self):
+        d=self.before()
+        d["objects"].append(dict(d["objects"][0],
+                                 name="war_satchel_funded_balances_pkey",
+                                 kind="index",attached_to="rogue_unreviewed_table"))
+        self.reject(d,"C02_UNREVIEWED_FINANCE_RELATION_ATTACHMENT")
+
     def test_extra_owner_role_membership_cannot_be_hidden(self):
         d=self.before();d["objects"][1]["roles"][2]["owner_member"]=True
         self.reject(d,"C02_EFFECTIVE_FINANCIAL_WRITER_REGRESSION")
@@ -143,6 +168,8 @@ class PostMigrationOwnerProof(unittest.TestCase):
         self.assertIn("BEGIN READ ONLY",sql)
         self.assertIn("pg_catalog.pg_class",sql)
         self.assertIn("pg_catalog.pg_depend",sql)
+        self.assertIn("pg_catalog.pg_index",sql)
+        self.assertIn("'attached_to'",sql)
         self.assertIn("has_table_privilege",sql)
         self.assertIn("has_sequence_privilege",sql)
         self.assertIn("pg_has_role",sql)
