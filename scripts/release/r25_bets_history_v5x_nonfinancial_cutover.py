@@ -433,7 +433,10 @@ def commit():
     need(not WATCHDOG_PID.exists(), "WATCHDOG_ALREADY_STARTED")
     # Launch a short-lived independent root watchdog; on loss of this shell
     # it restores both original service units and website automatically.
-    p = subprocess.Popen(["/usr/bin/setsid", "/usr/bin/python3", "-I", "-B",
+    # Popen's start_new_session already performs setsid(2). Calling the
+    # external setsid binary AGAIN may fork and make Popen.poll() incorrectly
+    # report that the independent watchdog has exited.
+    p = subprocess.Popen(["/usr/bin/python3", "-I", "-B",
                            str(Path(__file__).resolve()), "--phase", "watchdog"],
                          stdin=subprocess.DEVNULL,
                          stdout=(ROOT / "watchdog.log").open("xb"),

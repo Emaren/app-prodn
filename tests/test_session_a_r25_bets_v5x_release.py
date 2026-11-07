@@ -151,6 +151,8 @@ class NonfinancialHistoricalWebReleaseTests(unittest.TestCase):
         self.assertIn("get_native_steam_v5x()",src)
         self.assertIn("restore_units(",src)
         self.assertIn("WATCHDOG_TIMED_OUT_WITHOUT_ROOT_RELEASE_ACCEPTANCE",src)
+        self.assertIn("start_new_session=True",src)
+        self.assertNotIn('"/usr/bin/setsid"',src)
         self.assertIn("financial_c01_c09_accepted",src)
         self.assertIn("old_r25_process_pid",src)
         self.assertNotIn("systemctl enable wolo",src)
