@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 11,
-    "routeHandlerTemplates": 282,
-    "apiHandlerTemplates": 279,
+    "routeHandlerTemplates": 283,
+    "apiHandlerTemplates": 280,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1404,6 +1404,11 @@
     },
     {
       "entrypoint": "app/api/auth/steam/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/public-history/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },
