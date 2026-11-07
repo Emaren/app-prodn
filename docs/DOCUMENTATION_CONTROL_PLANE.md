@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-v5z-r3-shutdown-window-20261107` at `d7366d06ebb23c6abbee8b3ec598532b60fd9376`
+Implementation baseline: `fix/app-r25-v5z-r3-shutdown-window-20261107` at `eadd11af905a591060ce752cb4294f4c03025937`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
