@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-bets-published-history-readonly-20261107` at `83f1073eb5dcef9c84fe71c157b7558009a65ac9`
+Implementation baseline: `fix/app-r25-bets-published-history-readonly-20261107` at `3a70afebd0dd9de1288ba735ff11f41b1032c8fb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
