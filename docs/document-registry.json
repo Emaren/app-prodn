@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c61d6413cdef4cdb096f81ab01222e25b29b48268030b8c0eb7c4ee3972a7dd8",
+      "sha256": "675aaf091af16a9771bff0a07bd156bf17f98a117d6f2ec9daefc3ff068a0927",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1926,7 +1926,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "095089f7322a7cca565bb66979a043ed132315305c05c20462e7006ef326f36f",
+      "sha256": "05d70c24f0a14b5274780f90be4943dde11ef70168bb1fd0df2afae0a2512281",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2503,8 +2503,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-bets-published-history-readonly-20261107",
-    "commit": "3a70afebd0dd9de1288ba735ff11f41b1032c8fb"
+    "branch": "fix/app-r25-bets-public-history-ui-20261107",
+    "commit": "5107119c98daf6ce7bab28700cb95aab52e79129"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
