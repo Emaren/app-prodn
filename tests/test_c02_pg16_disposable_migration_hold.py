@@ -156,5 +156,44 @@ class C02Pg16HeldTests(unittest.TestCase):
         self.assertEqual(err.exception.code, 2)
 
 
+    def test_postddl_role_probe_rejects_unfenced_finance_tables(self):
+        result = lambda stdout=b"", rc=0: subprocess.CompletedProcess(
+            ["psql"], rc, stdout, b"")
+        before = (b"owner_legacy=29\n"
+                  b"table_write=29\nsequence_write=0\nselectable=29\n"
+                  b"schema_create=true\nfinance_member=false\n")
+        bad_after = (b"owner_legacy=0\n"
+                     b"table_write=1\nsequence_write=0\nselectable=29\n"
+                     b"schema_create=false\nfinance_member=false\n")
+        with patch.object(held, "checked", side_effect=[
+                result(), result(before), result(), result(bad_after)]):
+            with self.assertRaisesRegex(held.Hold,
+                                        "^C02_POSTDDL_MODEL_LEGACY_WRITER_NOT_FENCED$"):
+                held.prove_postddl_owner_boundary(["psql"], {"PGHOST": "/tmp/disposable"})
+
+    def test_postddl_role_probe_rejects_unexpected_successful_finance_insert(self):
+        result = lambda stdout=b"": subprocess.CompletedProcess(
+            ["psql"], 0, stdout, b"")
+        before = (b"owner_legacy=29\n"
+                  b"table_write=29\nsequence_write=0\nselectable=29\n"
+                  b"schema_create=true\nfinance_member=false\n")
+        after = (b"owner_legacy=0\n"
+                 b"table_write=0\nsequence_write=0\nselectable=29\n"
+                 b"schema_create=false\nfinance_member=false\n")
+        with patch.object(held, "checked", side_effect=[
+                result(), result(before), result(), result(after), result()]):
+            with self.assertRaisesRegex(held.Hold, "^C02_LEGACY_INSERT_PERMITTED$"):
+                held.prove_postddl_owner_boundary(["psql"], {"PGHOST": "/tmp/disposable"})
+
+    def test_postddl_role_model_does_not_claim_real_financial_fence(self):
+        import inspect
+        source = inspect.getsource(held.prove_postddl_owner_boundary)
+        self.assertIn("CREATE ROLE c02_finance_model NOLOGIN", source)
+        self.assertIn("'table_write=0'", source)
+        self.assertIn("'live_hd_de_privilege_fence_verified':False", source)
+        self.assertIn("'real_migration_executor_verified':False", source)
+        self.assertIn("'PGUSER'] = 'c02_legacy_model'", source)
+
+
 if __name__ == "__main__":
     unittest.main()

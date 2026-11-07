@@ -47,13 +47,13 @@ FIXTURE = b"""
 CENSUS = b"""
  SELECT 'tables='||count(*) FROM pg_class c JOIN pg_namespace n
    ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r'
-     AND c.relname LIKE 'war_satchel_%';
+     AND c.relname ~ '^war_satchel_';
  SELECT 'rows='||COALESCE(sum(s.n_live_tup),0)
    FROM pg_stat_user_tables s WHERE s.schemaname='public'
-     AND s.relname LIKE 'war_satchel_%';
+     AND s.relname ~ '^war_satchel_';
  SELECT 'triggers='||count(*) FROM pg_trigger t
    JOIN pg_class c ON t.tgrelid=c.oid JOIN pg_namespace n ON n.oid=c.relnamespace
-   WHERE n.nspname='public' AND c.relname LIKE 'war_satchel_%'
+   WHERE n.nspname='public' AND c.relname ~ '^war_satchel_'
      AND NOT t.tgisinternal;
 """
 NEGATIVE = b"""
@@ -146,6 +146,132 @@ def restricted_receipt(path: Path, obj: dict):
     return hashlib.sha256(body).hexdigest()
 
 
+def prove_postddl_owner_boundary(psql, env):
+    """Adversarial owner counterexample on the disposable Unix-socket PG16 ONLY.
+
+    Demonstrate why new Satchel DDL needs a follow-on effective privilege
+    audit, using distinct synthetic LOGIN (legacy) and NOLOGIN owner roles.
+    These statements are never shipped as a production migration.
+    """
+    setup = b"""
+CREATE ROLE c02_legacy_model LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+CREATE ROLE c02_finance_model NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+GRANT USAGE, CREATE ON SCHEMA public TO c02_legacy_model;
+GRANT INSERT ON TABLE public.users TO c02_legacy_model;
+DO $x$
+DECLARE r record;
+BEGIN
+ FOR r IN SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n
+    ON n.oid=c.relnamespace WHERE n.nspname='public'
+    AND c.relname ~ '^war_satchel_' AND c.relkind IN ('r','p','S')
+ LOOP
+   IF r.relkind='S' THEN
+     EXECUTE format('ALTER SEQUENCE public.%I OWNER TO c02_legacy_model',r.relname);
+   ELSE
+     EXECUTE format('ALTER TABLE public.%I OWNER TO c02_legacy_model',r.relname);
+   END IF;
+ END LOOP;
+END $x$;
+"""
+    seal = b"""
+DO $x$
+DECLARE r record;
+BEGIN
+ FOR r IN SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n
+    ON n.oid=c.relnamespace WHERE n.nspname='public'
+    AND c.relname ~ '^war_satchel_' AND c.relkind IN ('r','p','S')
+ LOOP
+   IF r.relkind='S' THEN
+     EXECUTE format('ALTER SEQUENCE public.%I OWNER TO c02_finance_model',r.relname);
+     EXECUTE format('REVOKE ALL ON SEQUENCE public.%I FROM PUBLIC,c02_legacy_model',r.relname);
+   ELSE
+     EXECUTE format('ALTER TABLE public.%I OWNER TO c02_finance_model',r.relname);
+     EXECUTE format('REVOKE ALL ON TABLE public.%I FROM PUBLIC,c02_legacy_model',r.relname);
+     EXECUTE format('GRANT SELECT ON TABLE public.%I TO c02_legacy_model',r.relname);
+   END IF;
+ END LOOP;
+END $x$;
+REVOKE CREATE ON SCHEMA public FROM c02_legacy_model;
+"""
+    audit = b"""
+SELECT 'owner_legacy='||count(*) FILTER (WHERE
+      pg_get_userbyid(c.relowner)='c02_legacy_model')
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid
+  WHERE n.nspname='public' AND c.relname ~ '^war_satchel_'
+    AND c.relkind IN ('r','p');
+SELECT 'table_write='||count(*) FILTER (WHERE
+     has_table_privilege('c02_legacy_model',c.oid,'INSERT')
+  OR has_table_privilege('c02_legacy_model',c.oid,'UPDATE')
+  OR has_table_privilege('c02_legacy_model',c.oid,'DELETE')
+  OR has_table_privilege('c02_legacy_model',c.oid,'TRUNCATE')
+  OR has_table_privilege('c02_legacy_model',c.oid,'REFERENCES')
+  OR has_table_privilege('c02_legacy_model',c.oid,'TRIGGER'))
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid
+  WHERE n.nspname='public' AND c.relname ~ '^war_satchel_'
+    AND c.relkind IN ('r','p');
+SELECT 'sequence_write='||count(*) FILTER (WHERE
+     has_sequence_privilege('c02_legacy_model',c.oid,'USAGE')
+  OR has_sequence_privilege('c02_legacy_model',c.oid,'UPDATE'))
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid
+  WHERE n.nspname='public' AND c.relname ~ '^war_satchel_'
+    AND c.relkind='S';
+SELECT 'selectable='||count(*) FILTER (WHERE
+    has_table_privilege('c02_legacy_model',c.oid,'SELECT'))
+  FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid
+  WHERE n.nspname='public' AND c.relname ~ '^war_satchel_'
+    AND c.relkind IN ('r','p');
+SELECT 'schema_create='||has_schema_privilege('c02_legacy_model','public','CREATE');
+SELECT 'finance_member='||pg_has_role('c02_legacy_model','c02_finance_model','MEMBER');
+"""
+    def sql(data, reason, *, role=False, deny=False, error=b''):
+        role_env = dict(env)
+        if role:
+            role_env['PGUSER'] = 'c02_legacy_model'
+        result = checked(psql + (['-1'] if deny else ['-A','-t']),
+                         env=role_env, input_data=data)
+        if deny:
+            if result.returncode == 0 or error not in result.stderr:
+                raise Hold(reason)
+        elif result.returncode:
+            raise Hold(reason)
+        return result.stdout.decode('ascii').strip().splitlines()
+
+    sql(setup, 'C02_ROLE_MODEL_SETUP_FAILED')
+    before = set(sql(audit, 'C02_ROLE_COUNTEREXAMPLE_QUERY_FAILED'))
+    if not {'owner_legacy=29','table_write=29','selectable=29',
+            'schema_create=true','finance_member=false'} <= before:
+        raise Hold('C02_ROLE_COUNTEREXAMPLE_NOT_REPRODUCED')
+    sql(seal, 'C02_POSTDDL_MODEL_FENCE_FAILED')
+    after = set(sql(audit, 'C02_ROLE_POSTSEAL_QUERY_FAILED'))
+    if not {'owner_legacy=0','table_write=0','sequence_write=0',
+            'selectable=29','schema_create=false',
+            'finance_member=false'} <= after:
+        raise Hold('C02_POSTDDL_MODEL_LEGACY_WRITER_NOT_FENCED')
+    for statement, error, reason in (
+        (b'INSERT INTO public.war_satchel_funded_balances(owner_user_id,available_uwolo) VALUES(1,0);',
+         b'permission denied','C02_LEGACY_INSERT_PERMITTED'),
+        (b'ALTER TABLE public.war_satchel_funded_balances ADD COLUMN rogue integer;',
+         b'must be owner','C02_LEGACY_DDL_PERMITTED'),
+        (b'CREATE TABLE public.c02_rogue (id integer);',
+         b'permission denied','C02_LEGACY_SCHEMA_CREATE_PERMITTED'),
+        (b'SET ROLE c02_finance_model;',
+         b'permission denied','C02_LEGACY_FINANCE_ROLE_ESCALATION'),
+    ):
+        sql(statement,reason,role=True,deny=True,error=error)
+    sql(b'BEGIN; INSERT INTO public.users(id) VALUES(990017); ROLLBACK;',
+        'C02_NONFINANCIAL_INSERT_REGRESSED',role=True)
+    sql(b'SELECT count(*) FROM public.war_satchel_funded_balances;',
+        'C02_FINANCE_READ_REGRESSED',role=True)
+    return {
+        'synthetic_preseal_legacy_writable_tables':29,
+        'synthetic_postseal_legacy_writable_tables':0,
+        'synthetic_postseal_legacy_writable_sequences':0,
+        'synthetic_nonfinance_write_and_satchel_read_preserved':True,
+        'real_migration_executor_verified':False,
+        'live_hd_de_privilege_fence_verified':False,
+    }
+
+
 def rehearse(repo: Path, pg_bin: Path):
     if os.geteuid() == 0:
         raise Hold("REFUSE_ROOT_PG16_TEST")
@@ -212,7 +338,9 @@ def rehearse(repo: Path, pg_bin: Path):
             if negative_product.returncode == 0 or \
                     b"ck_bet_auto_presets_game_plan" not in negative_product.stderr:
                 raise Hold("PG16_EXCESS_50K_PRODUCT_PLAN_NOT_REJECTED")
+            modeled_role_boundary = prove_postddl_owner_boundary(psql, env)
             return {
+                "synthetic_postddl_role_boundary": modeled_role_boundary,
                 "schema": SCHEMA, "status": "HOLD_SYNTHETIC_ONLY",
                 "app_held_source_sha": APP_SOURCE_SHA,
                 "migration_catalog_sha256": CATALOG_SHA256,
