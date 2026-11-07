@@ -1,4 +1,19 @@
-# R25 emergency nonfinancial website repair, Steam v5u
+---
+id: "aoe2war.app.session-a-r25-public-nonfinancial-recovery-v5u"
+title: "Session A R25 Public Nonfinancial Recovery and Steam v5u Admission"
+type: "reference"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["aoe2war"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "nonfinancial-emergency-website-recovery-source-only-no-funded-release"
+reviewed_at: "2026-11-07"
+review_interval_days: 7
+sensitivity: "restricted"
+---
+
+# Session A R25 Public Nonfinancial Recovery and Steam v5u Admission
 
 ## Actual production failure
 
