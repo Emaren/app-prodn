@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1399c8e83e4b9baa50668ac494d1afe18e6661560b5c64b1e571716f89cd3f1f",
+      "sha256": "9c8e5d8a5283cc805981137cea291a6d6f8216ba5496e4d28687a83173b62fb1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2592,7 +2592,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/app-r25-v5z-r3-shutdown-window-20261107",
-    "commit": "9c62298850be123dac3cdfa580bac8c05997fe42"
+    "commit": "675d897a1113229b98f178df66bf093486383adf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
