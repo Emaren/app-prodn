@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-bets-history-v5x-r2-timer-quiesce-20261107` at `6dccc850c7024ee6566759f55e5e2f78a87be677`
+Implementation baseline: `fix/app-r25-bets-history-v5x-r2-timer-quiesce-20261107` at `76cefb273f7dfb113de7ebe934cd0a510a9f99ba`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

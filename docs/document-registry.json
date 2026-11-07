@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6f2fff2c3c2e2cb13a4f0ffb76dbbd54b3febcb0bc3996ed5e1d2da2ae9e54d2",
+      "sha256": "af7dcacbbff9df41db6656c1d889b301a735209e3a90bb9dc4917c04bf5e6abf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2570,7 +2570,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/app-r25-bets-history-v5x-r2-timer-quiesce-20261107",
-    "commit": "6dccc850c7024ee6566759f55e5e2f78a87be677"
+    "commit": "76cefb273f7dfb113de7ebe934cd0a510a9f99ba"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
