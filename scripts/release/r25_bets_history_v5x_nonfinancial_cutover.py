@@ -24,7 +24,7 @@ import urllib.request
 class Hold(RuntimeError):
     pass
 
-ROOT = Path("/root/aoe2war-r25-bets-history-v5x-20261107")
+ROOT = Path("/root/aoe2war-r25-bets-history-v5x-r2-20261107")
 STAGE = Path("/var/lib/aoe2war-web-prod-1a380cdf76ff")
 SOURCE = "1a380cdf76ff773aa1d094abd161523500b32b4a"
 BUILD_ID = "XeiQIhm7XxQCOqcohCm_8"
@@ -279,6 +279,24 @@ def preflight():
     protected(v, base)
     return v, base, old_c03
 
+def quiesce_steam_after_timer_stop() -> None:
+    # A timer may have started the restricted oneshot milliseconds before
+    # stopping future triggers. Never SIGTERM it: systemd can record Result=signal
+    # and reject all following Steam refreshes even though its security policy
+    # was intact. Let the existing audited oneshot finish, bounded and with no
+    # acceptance of an unknown/failed service state.
+    for attempt in range(36):
+        active = state(STEAM, "ActiveState")
+        result = state(STEAM, "Result")
+        if active == "inactive" and result == "success":
+            return
+        need(active in ("activating", "active", "deactivating")
+             and result == "success" and attempt < 35,
+             "STEAM_RESTRICTED_ONESHOT_FAILED_OR_OUTSIDE_WAIT_WINDOW")
+        time.sleep(1)
+    raise Hold("STEAM_RESTRICTED_ONESHOT_WAIT_EXHAUSTED")
+
+
 def release_commit(pid: int, old_c03: str) -> dict:
     return {
         "status": "PASS_PUBLIC_NONFINANCIAL_SOURCE_PROMOTED",
@@ -446,10 +464,9 @@ def commit():
     print("PASS_V5X_INDEPENDENT_WEB_AND_STEAM_ROLLBACK_ARMED", flush=True)
     try:
         exec_ok(["/usr/bin/systemctl", "stop", STEAM_TIMER], timeout=25)
-        # A timer may have fired between the initial preflight and stop.
-        # Quiesce this Steam-only oneshot before changing the public PID.
-        exec_ok(["/usr/bin/systemctl", "stop", STEAM], timeout=25)
-        need(state(STEAM, "ActiveState") == "inactive", "STEAM_REFRESH_NOT_QUIESCED")
+        # An already running job must finish normally, without a SIGTERM.
+        # The timer is stopped first, so no new native Steam refresh can start.
+        quiesce_steam_after_timer_stop()
         exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=28)
         atomic(WEB_UNIT, immutable(CANDIDATE_WEB, NEW_WEB_UNIT_SHA, 0o400), 0o644)
         atomic(STEAM_UNIT, immutable(CANDIDATE_STEAM, mode=0o400), 0o644)
