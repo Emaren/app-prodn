@@ -121,6 +121,8 @@ jobs:
           python3 -B scripts/release/r25_steam_refresh_v5s.py --phase selftest
           python3 -B -m unittest discover -s tests -p 'test_session_b_steam_runtime_v5s.py' -v
           python3 -B -m unittest discover -s tests -p 'test_session_b_steam_v5s_c03_observer_timer.py' -v
+          python3 -B scripts/release/r25_steam_refresh_v5t.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_b_steam_v5t_expiry_race.py' -v
       - name: Run active Node contract inventory
         run: python3 scripts/run_test_contract.py
       - name: Build production application

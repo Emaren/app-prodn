@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "31bf8ed61307b1e6723f50947687dd668a0b1a5af2c55b3ba58015eb1da311aa",
+      "sha256": "cd825295382f6ae3d9b0ac6a6fbdcf1ffdc620a01055d49b02129f24fef84017",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1942,6 +1942,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "steam-only-source-review-no-funded-release-or-direct-root-approval",
+      "id": "aoe2war.app.session-b-r25-steam-v5t-expiry-review",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "973629ca929137860a465941a6f1e3d10bbac4b4d5a192aeba545dd6fc5cff2c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -2415,8 +2437,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/session-b-steam-v5s-c03-hourly-20261107",
-    "commit": "15295e41dc949404435656f15de483e931836218"
+    "branch": "fix/session-b-steam-expiry-race-20261107",
+    "commit": "4156964732bc8739376bc38d5369eed5ac86987b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
