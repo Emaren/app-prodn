@@ -41,7 +41,7 @@ New endpoint app/api/bets/public-history/route.ts exports GET alone, with one li
 
 No raw wager/claims table, user ID, wallet address, payout transaction hash, payment amount, private signer, settlement service, RPC, background ensure, direct 3030 proxy, database role change, DDL or financial runtime is touched.
 
-Errors return HTTP 503 HOLD_PUBLIC_HISTORY_READMODEL_UNAVAILABLE with no-store headers; no simulated success or fake financial amount. The existing /api/bets behavior is NOT changed in this PR. A separate UI read-only fallback and staged R25 build release must be qualified before this source can help visitors.
+Errors return HTTP 503 HOLD_PUBLIC_HISTORY_READMODEL_UNAVAILABLE with no-store headers; no simulated success or fake financial amount. The existing /api/bets handler is NOT changed. A subsequent, separately reviewed BetsPage UI adds a read-only archive fallback only when the live restricted board has returned no payload. The fallback never represents unknown personal balances, current wagers, or payout finality as measured zero. Source integration is not the same as a staged R25 build release.
 
 ## Release and financial boundary
 
