@@ -507,7 +507,7 @@ def stop_web_exact_native_window() -> None:
                  file_sha(WEB_UNIT) == unit_sha,
                  "WEB_SHUTDOWN_ESCALATION_CONDITIONS_CHANGED")
             exact_owned_web_pid(pid)
-            exec_ok(["/usr/bin/systemctl", "kill", "--kill-who=main",
+            exec_ok(["/usr/bin/systemctl", "kill", "--kill-whom=main",
                      "--signal=SIGKILL", WEB], timeout=12)
             escalated = True
         time.sleep(1)

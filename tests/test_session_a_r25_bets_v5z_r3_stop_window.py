@@ -44,7 +44,7 @@ class StrictR3R25Release(unittest.TestCase):
   self.assertNotIn('exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=28)',s)
   self.assertNotIn('exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=115)',s)
   self.assertNotIn('exec_ok(["/usr/bin/systemctl", "stop", STEAM]',s)
-  self.assertIn('"--kill-who=main"',s)
+  self.assertIn('"--kill-whom=main"',s)
   self.assertIn('"--signal=SIGKILL", WEB]',s)
   self.assertIn('st.st_uid == 990',s)
   self.assertIn('exact_owned_web_pid(pid)',s)
@@ -155,7 +155,7 @@ class StrictR3R25Release(unittest.TestCase):
    self.assertEqual(command.call_args_list[0].args[0],
        ["/usr/bin/systemctl","stop","--no-block",m.WEB])
    self.assertEqual(command.call_args_list[1].args[0],
-       ["/usr/bin/systemctl","kill","--kill-who=main","--signal=SIGKILL",m.WEB])
+       ["/usr/bin/systemctl","kill","--kill-whom=main","--signal=SIGKILL",m.WEB])
 
  def test_exact_web_stop_refuses_unexpected_pid_after_request(self):
   active=iter(("active","deactivating"))
