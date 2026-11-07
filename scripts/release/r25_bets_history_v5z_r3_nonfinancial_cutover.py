@@ -461,6 +461,59 @@ def get_native_steam_v5x():
          "NEW_STEAM_NATIVE_V5X_PROOF_MISSING")
     return results[0]
 
+def exact_owned_web_pid(pid: int) -> None:
+    # Fail closed against PID reuse and accidental signaling of another unit.
+    need(pid > 1 and state(WEB, "MainPID") == str(pid),
+         "WEB_SHUTDOWN_TARGET_PID_CHANGED")
+    process = Path("/proc") / str(pid)
+    st = process.stat()
+    need(st.st_uid == 990 and
+         os.readlink(process / "exe") == "/usr/bin/node" and
+         b"next-server" in (process / "cmdline").read_bytes() and
+         "/system.slice/aoe2hdbets-web-prod.service" in
+         (process / "cgroup").read_text(),
+         "WEB_SHUTDOWN_TARGET_NOT_EXACT_UID990_NODE_CGROUP")
+
+
+def stop_web_exact_native_window() -> None:
+    # Node's live Next process does not drain long-lived connections on
+    # SIGTERM. The first R2 stop remained in stop-sigterm for 90 seconds,
+    # after which systemd itself sent SIGKILL with Result=timeout. Avoid a
+    # 90-second public 502 and a second overlapping systemctl stop/start.
+    # Escalate only this exact uid990 web systemd service after 20 seconds.
+    # Never kill 3030, Steam, Wolo, PostgreSQL or any unidentified PID.
+    unit_sha = file_sha(WEB_UNIT)
+    need(unit_sha in (OLD_WEB_UNIT_SHA, NEW_WEB_UNIT_SHA),
+         "WEB_SHUTDOWN_UNIT_NOT_EXACT_PREIMAGE")
+    before = state(WEB, "ActiveState")
+    pid = int(state(WEB, "MainPID") or "0")
+    if before in ("inactive", "failed") and pid == 0:
+        return
+    need(before == "active" and pid > 1,
+         "WEB_SHUTDOWN_UNEXPECTED_INITIAL_STATE")
+    exact_owned_web_pid(pid)
+    exec_ok(["/usr/bin/systemctl", "stop", "--no-block", WEB], timeout=12)
+    start = time.monotonic()
+    escalated = False
+    for _ in range(65):
+        active = state(WEB, "ActiveState")
+        now_pid = int(state(WEB, "MainPID") or "0")
+        if active in ("inactive", "failed") and now_pid == 0:
+            return
+        need(active == "deactivating" and now_pid == pid,
+             "WEB_SHUTDOWN_SOURCE_OR_PROCESS_CHANGED")
+        if not escalated and time.monotonic() - start >= 20:
+            need(state(WEB, "SubState") == "stop-sigterm" and
+                 file_sha(WEB_UNIT) == unit_sha,
+                 "WEB_SHUTDOWN_ESCALATION_CONDITIONS_CHANGED")
+            exact_owned_web_pid(pid)
+            exec_ok(["/usr/bin/systemctl", "kill", "--kill-who=main",
+                     "--signal=SIGKILL", WEB], timeout=12)
+            escalated = True
+        time.sleep(1)
+    raise Hold("WEB_SHUTDOWN_EXACT_PID_DID_NOT_TERMINATE_AFTER_BOUNDED_ESCALATION")
+
+
 def restore_units(why: str) -> None:
     # Never overwrite a file that was independently modified by somebody else.
     old_web = immutable(PREIMAGE_WEB, OLD_WEB_UNIT_SHA, 0o400)
@@ -474,7 +527,7 @@ def restore_units(why: str) -> None:
     exec_ok(["/usr/bin/systemctl", "stop", STEAM_TIMER], timeout=20)
     web_was_switched = current_web == NEW_WEB_UNIT_SHA
     if web_was_switched:
-        exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=115)
+        stop_web_exact_native_window()
         atomic(WEB_UNIT, old_web, 0o644)
     if current_steam == new_steam_sha:
         atomic(STEAM_UNIT, old_steam, 0o644)
@@ -517,7 +570,7 @@ def commit():
         # An already running job must finish normally, without a SIGTERM.
         # The timer is stopped first, so no new native Steam refresh can start.
         quiesce_steam_after_timer_stop()
-        exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=115)
+        stop_web_exact_native_window()
         atomic(WEB_UNIT, immutable(CANDIDATE_WEB, NEW_WEB_UNIT_SHA, 0o400), 0o644)
         atomic(STEAM_UNIT, immutable(CANDIDATE_STEAM, mode=0o400), 0o644)
         exec_ok(["/usr/bin/systemctl", "daemon-reload"], timeout=30)

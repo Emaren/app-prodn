@@ -38,11 +38,17 @@ class StrictR3R25Release(unittest.TestCase):
   self.assertTrue(str(m.NEW_SIGNED_RELEASE).endswith("r25-bets-history-v5z-r3-20261107/COMMIT.json"))
   self.assertNotEqual(m.OLD_WEB_PID,2120006)
 
- def test_native_stop_respects_90_second_systemd_shutdown(self):
+ def test_reviewed_node_stop_is_bounded_and_exact_uid990_only(self):
   s=CONTROLLER.read_text()
-  self.assertEqual(s.count('exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=115)'),2)
+  self.assertEqual(s.count('stop_web_exact_native_window()'),3)
   self.assertNotIn('exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=28)',s)
+  self.assertNotIn('exec_ok(["/usr/bin/systemctl", "stop", WEB], timeout=115)',s)
   self.assertNotIn('exec_ok(["/usr/bin/systemctl", "stop", STEAM]',s)
+  self.assertIn('"--kill-who=main"',s)
+  self.assertIn('"--signal=SIGKILL", WEB]',s)
+  self.assertIn('st.st_uid == 990',s)
+  self.assertIn('exact_owned_web_pid(pid)',s)
+  self.assertIn('"/system.slice/aoe2hdbets-web-prod.service"',s)
   self.assertIn('quiesce_steam_after_timer_stop()',s)
   self.assertIn('start_new_session=True',s)
   self.assertIn('WATCHDOG_TIMED_OUT_WITHOUT_ROOT_RELEASE_ACCEPTANCE',s)
@@ -119,6 +125,73 @@ class StrictR3R25Release(unittest.TestCase):
    self.assertNotIn(bad,s)
   self.assertEqual(m.OLD_SIGNED_RELEASE_SHA,"6a20a634aff66d1f60dad3290a18dd237eb5017b8a6017f693da76a4510be4f2")
   self.assertEqual(m.OLD_STEAM_ACCEPT_SHA,"c975c5d442386f3e0b8693d6abe2e8d321c682567dd06e158efa77b98f8ab25a")
+
+ def test_exact_web_stop_accepts_natively_finished_service_without_killing(self):
+  with patch.object(m,"state",side_effect=lambda _,key:{
+      "ActiveState":"inactive","MainPID":"0"}[key]),\
+       patch.object(m,"file_sha",return_value=m.OLD_WEB_UNIT_SHA),\
+       patch.object(m,"exec_ok") as command:
+   m.stop_web_exact_native_window()
+   command.assert_not_called()
+
+ def test_exact_web_stop_escalates_only_after_uid_pid_cgroup_checks(self):
+  from itertools import count
+  active=iter(("active","deactivating","inactive"))
+  pid=iter(("4321","4321","0"))
+  def state(_,key):
+   if key=="ActiveState":return next(active)
+   if key=="MainPID":return next(pid)
+   if key=="SubState":return "stop-sigterm"
+   raise AssertionError(key)
+  with patch.object(m,"state",side_effect=state),\
+       patch.object(m,"file_sha",return_value=m.OLD_WEB_UNIT_SHA),\
+       patch.object(m,"exact_owned_web_pid") as identity,\
+       patch.object(m,"exec_ok",return_value="") as command,\
+       patch.object(m.time,"monotonic",side_effect=count(0,21)),\
+       patch.object(m.time,"sleep",return_value=None):
+   m.stop_web_exact_native_window()
+   self.assertEqual(identity.call_count,2)
+   self.assertEqual(command.call_count,2)
+   self.assertEqual(command.call_args_list[0].args[0],
+       ["/usr/bin/systemctl","stop","--no-block",m.WEB])
+   self.assertEqual(command.call_args_list[1].args[0],
+       ["/usr/bin/systemctl","kill","--kill-who=main","--signal=SIGKILL",m.WEB])
+
+ def test_exact_web_stop_refuses_unexpected_pid_after_request(self):
+  active=iter(("active","deactivating"))
+  pid=iter(("4321","2222"))
+  def state(_,key):
+   if key=="ActiveState":return next(active)
+   if key=="MainPID":return next(pid)
+   raise AssertionError(key)
+  with patch.object(m,"state",side_effect=state),\
+       patch.object(m,"file_sha",return_value=m.OLD_WEB_UNIT_SHA),\
+       patch.object(m,"exact_owned_web_pid"),\
+       patch.object(m,"exec_ok",return_value="") as command:
+   with self.assertRaises(m.Hold):m.stop_web_exact_native_window()
+   self.assertEqual(command.call_count,1)
+
+ def test_exact_web_stop_rejects_any_unreviewed_source_unit(self):
+  with patch.object(m,"file_sha",return_value="0"*64),\
+       patch.object(m,"exec_ok") as cmd:
+   with self.assertRaises(m.Hold):m.stop_web_exact_native_window()
+   cmd.assert_not_called()
+
+ def test_exact_web_stop_refuses_wrong_stop_substate_without_kill(self):
+  active=iter(("active","deactivating"))
+  pid=iter(("4321","4321"))
+  def state(_,key):
+   if key=="ActiveState":return next(active)
+   if key=="MainPID":return next(pid)
+   if key=="SubState":return "failed"
+   raise AssertionError(key)
+  with patch.object(m,"state",side_effect=state),\
+       patch.object(m,"file_sha",return_value=m.OLD_WEB_UNIT_SHA),\
+       patch.object(m,"exact_owned_web_pid"),\
+       patch.object(m,"exec_ok",return_value="") as cmd,\
+       patch.object(m.time,"monotonic",side_effect=iter((0,21))):
+   with self.assertRaises(m.Hold):m.stop_web_exact_native_window()
+   self.assertEqual(cmd.call_count,1)
 
  def test_site_contains_verifiable_read_only_history_not_wager_execution(self):
   s=CONTROLLER.read_text()
