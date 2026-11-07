@@ -1,0 +1,140 @@
+{
+  "allocation": {
+    "version": 2,
+    "allocation_id": "allocation:1",
+    "revision": 1,
+    "operation_id": "satchel:ticket:1",
+    "owner_id": "owner-1",
+    "ticket_id": "1",
+    "funding_tx_hash": "03301FB9FDF234B6CAB72FBC2DA532CB06289CBEE0A98DCA7F38415227046762",
+    "return_cap_uwolo": "50000000000",
+    "funds_budget_id": "bank-review-1",
+    "funds_available_uwolo": "50000000000",
+    "bank_evidence_digest": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+    "bank_height": 200,
+    "bank_block_hash": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "legs": [
+      {
+        "leg_id": "winner",
+        "market_id": "501",
+        "stake_uwolo": "1000000",
+        "entitlements": [
+          {
+            "entitlement_id": "entitlement:101",
+            "claim_id": "101",
+            "claim_kind": "bet_refund",
+            "principal_uwolo": "1000000",
+            "amount_uwolo": "1000000"
+          }
+        ]
+      }
+    ],
+    "issued_at": 1799999990,
+    "expires_at": 1800000100,
+    "signature": "uReqAc9SqPP+HopRTX25RSzyKinOfGEx7lPaGY6n01+w9n9evS94bsd4wXQq3DQ49zzGKEsSwcv1anGUhX/CDA=="
+  },
+  "allocation_digest": "db0a0ae7dfb6cfd5990b560baf5d6962b8fee0503f40112e4c949743ac282c5f",
+  "allocation_sign_bytes": "[\"aoe2war/satchel/return-allocation/v2\",\"wolo-1\",\"uwolo\",\"wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c\",\"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e\",2,\"allocation:1\",1,\"satchel:ticket:1\",\"owner-1\",\"1\",\"03301FB9FDF234B6CAB72FBC2DA532CB06289CBEE0A98DCA7F38415227046762\",\"50000000000\",\"bank-review-1\",\"50000000000\",\"EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\",200,\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",[[\"winner\",\"501\",\"1000000\",[[\"entitlement:101\",\"101\",\"bet_refund\",\"1000000\",\"1000000\"]]]],1799999990,1800000100]",
+  "approval_public_key_hex": "62a611b472d89b0e5fc93c069b9f700b4c552d55bc0e87b56008ef17b6b2bebe",
+  "betting_escrow": "wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c",
+  "fixture_only": true,
+  "mainnet_authority": false,
+  "owner_adr36_sign_bytes": "{\"account_number\":\"0\",\"chain_id\":\"\",\"fee\":{\"amount\":[],\"gas\":\"0\"},\"memo\":\"\",\"msgs\":[{\"type\":\"sign/MsgSignData\",\"value\":{\"data\":\"QW9FMldBUiBXYXIgU2F0Y2hlbCBXSVRIRFJBV0FMIEFVVEhPUklaQVRJT04KT3JpZ2luOiBhb2Uyd2FyLmNvbQpDaGFpbjogd29sby0xCkRlbm9tOiB1d29sbwpPd25lciBVSUQ6IG93bmVyLTEKTGlua2VkIEtlcGxyIHJlY2VpdmluZyB3YWxsZXQ6IHdvbG8xaHh6bnRnYWc2cXFsdXFoc3F1cjJoczI4dm15amN4YXM5M21xNjQKRXhhY3Qgd2l0aGRyYXdhbCBhbW91bnQgdXdvbG86IDEwMDAwMDAKT25lLXVzZSB3aXRoZHJhd2FsIGNoYWxsZW5nZSBJRDogMTIzNDU2NzgtMTIzNC00MTIzLTgxMjMtMTIzNDU2Nzg5YWJkCklzc3VlZDogMjAyNy0wMS0xNVQwNzo1OTo1MC4wMDBaCkV4cGlyZXM6IDIwMjctMDEtMTVUMDg6MDE6NDAuMDAwWgpJIGF1dGhvcml6ZSBPTkxZIHRoaXMgb25lIHdpdGhkcmF3YWwgZnJvbSBteSBXYXIgU2F0Y2hlbCBpbnRvIG15IGxpbmtlZCBLZXBsciB3YWxsZXQuClRoaXMgZG9lcyBOT1QgYXV0aG9yaXplIGF1dG9tYXRlZCBiZXRzIG9yIHBlcm1pdCBhbnkgc2VydmljZSB0byByZWFkIEtlcGxyIHByaXZhdGUga2V5cy4=\",\"signer\":\"wolo1hxzntgag6qqluqhsqur2hs28vmyjcxas93mq64\"}}],\"sequence\":\"0\"}",
+  "owner_challenge_text": "AoE2WAR War Satchel WITHDRAWAL AUTHORIZATION\nOrigin: aoe2war.com\nChain: wolo-1\nDenom: uwolo\nOwner UID: owner-1\nLinked Keplr receiving wallet: wolo1hxzntgag6qqluqhsqur2hs28vmyjcxas93mq64\nExact withdrawal amount uwolo: 1000000\nOne-use withdrawal challenge ID: 12345678-1234-4123-8123-123456789abd\nIssued: 2027-01-15T07:59:50.000Z\nExpires: 2027-01-15T08:01:40.000Z\nI authorize ONLY this one withdrawal from my War Satchel into my linked Keplr wallet.\nThis does NOT authorize automated bets or permit any service to read Keplr private keys.",
+  "owner_mandate_digest": "f3d099917d839be8fec96dbf5ff43fdce9830316ff4d1c10e1c76e5e2e5610f7",
+  "return_approval": {
+    "version": 2,
+    "ticket_id": "1",
+    "market_id": "501",
+    "leg_id": "winner",
+    "entitlement_id": "entitlement:101",
+    "allocation": {
+      "version": 2,
+      "allocation_id": "allocation:1",
+      "revision": 1,
+      "operation_id": "satchel:ticket:1",
+      "owner_id": "owner-1",
+      "ticket_id": "1",
+      "funding_tx_hash": "03301FB9FDF234B6CAB72FBC2DA532CB06289CBEE0A98DCA7F38415227046762",
+      "return_cap_uwolo": "50000000000",
+      "funds_budget_id": "bank-review-1",
+      "funds_available_uwolo": "50000000000",
+      "bank_evidence_digest": "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE",
+      "bank_height": 200,
+      "bank_block_hash": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "legs": [
+        {
+          "leg_id": "winner",
+          "market_id": "501",
+          "stake_uwolo": "1000000",
+          "entitlements": [
+            {
+              "entitlement_id": "entitlement:101",
+              "claim_id": "101",
+              "claim_kind": "bet_refund",
+              "principal_uwolo": "1000000",
+              "amount_uwolo": "1000000"
+            }
+          ]
+        }
+      ],
+      "issued_at": 1799999990,
+      "expires_at": 1800000100,
+      "signature": "uReqAc9SqPP+HopRTX25RSzyKinOfGEx7lPaGY6n01+w9n9evS94bsd4wXQq3DQ49zzGKEsSwcv1anGUhX/CDA=="
+    },
+    "operation_id": "satchel:ticket:1",
+    "claim_id": "101",
+    "owner_id": "owner-1",
+    "claim_kind": "bet_refund",
+    "amount_uwolo": "1000000",
+    "allocation_digest": "db0a0ae7dfb6cfd5990b560baf5d6962b8fee0503f40112e4c949743ac282c5f",
+    "issued_at": 1799999990,
+    "expires_at": 1800000100,
+    "signature": "C/VKH7T8BfJs4JEN6uejJ5t0zodmeahtwXs0NJmL1V+JgtBwTASKJyRLLkkHT2oUF+TmBX1WcuUNcQmVP25fDg=="
+  },
+  "return_approval_sign_bytes": "[\"aoe2war/satchel/claim-return-approval/v2\",\"wolo-1\",\"uwolo\",\"wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c\",\"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e\",2,\"satchel:ticket:1\",\"101\",\"owner-1\",\"1\",\"501\",\"winner\",\"entitlement:101\",\"bet_refund\",\"1000000\",\"db0a0ae7dfb6cfd5990b560baf5d6962b8fee0503f40112e4c949743ac282c5f\",1799999990,1800000100]",
+  "vault": "wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e",
+  "withdrawal_approval_sign_bytes": "[\"aoe2war/satchel/withdraw-approval/v1\",\"wolo-1\",\"uwolo\",\"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e\",\"12345678-1234-4123-8123-123456789abc\",\"12345678-1234-4123-8123-123456789abd\",\"owner-1\",\"wolo1hxzntgag6qqluqhsqur2hs28vmyjcxas93mq64\",\"1000000\",\"aoe2war/satchel/withdraw/v1/12345678-1234-4123-8123-123456789abc\",\"85234dd3e78a83af78ec1bd515f7a9e2fe8d4298f8a0046c8a37a5411eee7b2a\",1799999990,1800000100]",
+  "withdrawal_hold_digest": "85234dd3e78a83af78ec1bd515f7a9e2fe8d4298f8a0046c8a37a5411eee7b2a",
+  "withdrawal_request": {
+    "protocol": 1,
+    "operation_id": "satchel:withdrawal:12345678-1234-4123-8123-123456789abc",
+    "chain_id": "wolo-1",
+    "from_address": "wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e",
+    "to_address": "wolo1hxzntgag6qqluqhsqur2hs28vmyjcxas93mq64",
+    "amount": {
+      "denom": "uwolo",
+      "amount": "1000000"
+    },
+    "memo": "aoe2war/satchel/withdraw/v1/12345678-1234-4123-8123-123456789abc",
+    "owner_id": "owner-1",
+    "approval": {
+      "withdrawal_id": "12345678-1234-4123-8123-123456789abc",
+      "challenge_id": "12345678-1234-4123-8123-123456789abd",
+      "owner_id": "owner-1",
+      "recipient": "wolo1hxzntgag6qqluqhsqur2hs28vmyjcxas93mq64",
+      "amount_uwolo": "1000000",
+      "memo": "aoe2war/satchel/withdraw/v1/12345678-1234-4123-8123-123456789abc",
+      "hold_digest": "85234dd3e78a83af78ec1bd515f7a9e2fe8d4298f8a0046c8a37a5411eee7b2a",
+      "reservation_digest": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+      "issued_at": 1799999990,
+      "expires_at": 1800000100,
+      "signature": "NUmY5zXieQjLFhEVlyLh3Gi49ivarHW90rcJsymcigwel383QVkIobkp9JgvelkK2XyfqqSq7IeSM4K6pU6VCQ=="
+    },
+    "owner_mandate": {
+      "challenge": {
+        "id": "12345678-1234-4123-8123-123456789abd",
+        "owner_uid": "owner-1",
+        "wallet_address": "wolo1hxzntgag6qqluqhsqur2hs28vmyjcxas93mq64",
+        "amount_uwolo": "1000000",
+        "issued_at_utc": "2027-01-15T07:59:50.000Z",
+        "expires_at_utc": "2027-01-15T08:01:40.000Z"
+      },
+      "pub_key": {
+        "type": "tendermint/PubKeySecp256k1",
+        "value": "AvsDcsGBmD4MdwEhcRAFcbmSLaxEj2AkouQvLjMPIO/u"
+      },
+      "signature": "M7K/esgWaR+xwC3zEu9CoqSyXAcdMaleFbEOP7drdHdfapyOzT3lp0BlFHoWaqH4tjNW2cg3IrVUvZslas3ugg=="
+    }
+  }
+}

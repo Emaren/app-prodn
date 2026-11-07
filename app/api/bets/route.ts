@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadBetBoardSnapshot } from "@/lib/bets";
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -12,7 +11,6 @@ export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
     const sessionUid = await getSessionUid(request);
-    queueBetMarketEnsure(prisma, 0);
     const payload = await loadBetBoardSnapshot(prisma, sessionUid, {
       ensureMarkets: false,
       settlementSurfaceMode: "fast",

@@ -19,6 +19,30 @@ sensitivity: "internal"
 
 Rechecked the ordinary protected release path, exact Git source identity, isolated staging, runtime/public version parity, fast and durable rollback, and Wolo 8092/8093 observer boundary against the current `scripts/aoe2_release.py` / `scripts/aoe2_release_ship.py` controls. This review does **not** grant any additional one-time exception or authorize settlement, signer, custody, schema migration or restart outside the release controller. The Traffic Observatory country presentation correction must use a new reviewed, artifact-bound website activation and separately coordinated Traffic API rollout. Dated historical deployment examples remain evidence of their own time, not current runtime truth.
 
+## October 22 UTC — source reviewed, financial release still HARD HOLD
+
+This runbook was source-reviewed against the active release engine,
+`docs/RELEASE_ENGINEERING.md`, Betting Constitution matching rules, current
+GitHub integration ancestry, and the October 21 read-only WoloChain issue #5
+operator receipts. **This is documentation/source review, not a live VPS
+inspection, fresh bank-reserve attestation, payout reconciliation or deployment
+approval.** Production parity must be freshly established by `aoe2war status`
+and protected release receipts before any authorized change.
+
+The new HD War Satchel and Mecha Auto Bets are **not enabled for funded
+production execution**. The Wolo legacy primary/founder settlement lanes
+(8092/8093) must not be stopped/restarted/replaced to facilitate a web release
+while shared financial writers, accepted 100-WOLO escrow, founder claim #889,
+global liabilities, quiesced backup and witnessed rollback remain unresolved.
+No expiry of this review document or source CI success authorizes a deposit,
+withdrawal, signer, financial bridge, timer, migration or old in-flight retry.
+
+Older one-off setup commands below record previous operator procedures.
+They are **not** a new instruction to run live financial activation steps. In
+particular, never reuse historic testnet keyring/home/CLI examples as wolo-1
+signing configuration and never copy custody mnemonics into a new web
+environment. DE is out of the current feature scope; verify only shared WOLO
+non-interference where an actual joint service is implicated.
 
 ## Production truth
 
@@ -1286,13 +1310,17 @@ That points at Unicode header generation and should send you to the attachment r
 
 ## When schema changes exist
 
-If the web change depends on new Prisma tables or columns:
+For new Prisma tables or columns, **the protected additive DATABASE/FINANCIAL
+release transaction owns the order**, not a manual migration/build/restart
+shortcut. Seal and validate the exact migration frontier, capture a fresh
+restorable pre-migration archive and checksum, stage and prove the candidate,
+apply only specifically approved non-destructive migrations, and verify
+receipts and service/build/source parity before activation. Any financial
+maintenance-fence migration remains HELD until its exact source and operator
+permits are independently approved.
 
-- apply the web Prisma migration first
-- then build
-- then restart
-
-Do not restart blindly before the schema is in place.
+Never run `npx prisma migrate deploy` separately to get around that governed
+transaction, and never restart blindly before schema and rollback proof.
 
 ## Related runtime truth
 
@@ -1303,20 +1331,20 @@ Do not restart blindly before the schema is in place.
 - dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](deploy/aoe2-access-logging-phase1.md)
 
 
-## Staking unstake signer
+## Staking unstake signer — historic testnet configuration is NOT mainnet authority
 
-`/api/staking/unstake` must use the staking custody rail.
+`/api/staking/unstake` must use its own staking custody rail; it must never
+borrow the betting payout/founder signing account. The previous testnet sample
+(`/var/lib/wolochaind-testnet`, `/var/www/WoloChain/build/wolochaind`,
+`keyring backend: test`) is **archival only** and must never be treated as
+a reviewed `wolo-1` mainnet signing, seed, fee or deployment procedure.
 
-Preferred live setup:
-
-- key name: `staking`
-- home: `/var/lib/wolochaind-testnet`
-- CLI: `/var/www/WoloChain/build/wolochaind`
-- keyring backend: `test`
-- fee: `5000uwolo`
-
-Do not route staking unstake through the generic betting payout service. That path has different settlement headroom semantics and can block valid staking returns.
-
+Before any real transaction, independently verify the actual wolo-1 signer
+identity, service privileges, balances, original owner entitlement, trusted
+chain proof, fee/headroom and operator permit from current protected runtime
+configuration. Source comments, testnet examples and an unlocked web account
+cannot replace financial controls. No unstake or legacy payout is authorized
+as part of this held Satchel/Mecha release.
 
 ## Evidence-preserving finish mode
 

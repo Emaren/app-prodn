@@ -1007,7 +1007,7 @@ export type LiveSessionSnapshotOptions = {
 };
 
 export async function loadLiveSessionSnapshot(
-  prisma: PrismaClient,
+  prisma: Pick<PrismaClient, "gameStats">,
   options: LiveSessionSnapshotOptions = {}
 ): Promise<{
   activeSessions: LiveGameSession[];

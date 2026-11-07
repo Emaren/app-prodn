@@ -4,8 +4,7 @@ import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
 } from "@/lib/betStakeFunding";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
-import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
+import { matchedVolumeFromSideTotals } from "@/lib/warChestMatchedVolume";
 import type {
   LobbyWoloEarnersBoard,
   LobbyWoloEarnersMode,
@@ -107,23 +106,6 @@ function displayActorName(input: {
   );
 }
 
-function matchedVolumeFromSideTotals(
-  rows: Array<{ marketId: number; side: string; _sum: { amountWolo: number | null } }>
-) {
-  const byMarket = new Map<number, { left: number; right: number }>();
-  for (const row of rows) {
-    const current = byMarket.get(row.marketId) ?? { left: 0, right: 0 };
-    if (row.side === "left") current.left += row._sum.amountWolo ?? 0;
-    if (row.side === "right") current.right += row._sum.amountWolo ?? 0;
-    byMarket.set(row.marketId, current);
-  }
-  let total = 0;
-  for (const pools of byMarket.values()) {
-    total += matchedMarketVolumeWolo(pools.left, pools.right);
-  }
-  return total;
-}
-
 function visibleMainnetClaimWhere(
   extra: Prisma.PendingWoloClaimWhereInput = {}
 ): Prisma.PendingWoloClaimWhereInput {
@@ -147,11 +129,9 @@ export async function loadWarChestSnapshot(
     createdAt: { gte: weeklyWindowStart },
   });
 
-  // Reconciliation may call external settlement rails and should not hold the
-  // public page response open. Queue it once, then start every independent
-  // evidence family immediately. The reporting clock is captured once so the
-  // earner board and weekly SQL lane share one exact UTC-week boundary.
-  queueBetMarketEnsure(prisma);
+  // The War Chest only reads projections. Reconciliation must be admitted by
+  // authenticated producer events, not by HTTP GET or SSR. Preserve the same
+  // report clock across earners and wager volume lanes.
 
   const earnersPromise =
     loadLobbyWoloEarnersBoard(

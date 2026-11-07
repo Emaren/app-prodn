@@ -1,3 +1,4 @@
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
@@ -175,10 +176,8 @@ async function executeWoloStakingUnstakeViaKeyring(input: {
     "sync",
   ];
 
-  const { stdout, stderr } = await execFileAsync(STAKING_CLI, args, {
-    timeout: 45_000,
-    maxBuffer: 1024 * 1024,
-  });
+  const { stdout, stderr } = await withHdFinancialLease({scope:"hd-legacy",producer:"staking-unstake",wallet:getWoloStakingRuntime().stakingWalletAddress||""},
+    signal=>execFileAsync(STAKING_CLI,args,{timeout:45_000,maxBuffer:1024*1024,signal}));
 
   const txHash = parseCliTxHash(stdout, stderr);
 
@@ -221,17 +220,17 @@ async function executeWoloStakingUnstakeViaMnemonic(input: {
   }
 
   const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, wallet, {
-    gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
+    gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),broadcastTimeoutMs:45_000,
   });
 
   try {
-    const result = await client.sendTokens(
+    const result = await withHdFinancialLease({scope:"hd-legacy",producer:"staking-unstake",wallet:account.address},async signal=>{signal.throwIfAborted();return client.sendTokens(
       account.address,
       input.toAddress,
       [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
       resolveUnstakeFee(STAKING_UNSTAKE_FEE),
       input.memo.slice(0, 180)
-    );
+    );});
 
     return {
       txHash: result.transactionHash,

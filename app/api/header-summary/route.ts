@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { getPrisma } from "@/lib/prisma";
 import { buildPreviewDataUrl } from "@/lib/previewDataSource";
@@ -29,9 +28,7 @@ async function loadHeaderSummary(): Promise<HeaderSummary> {
   refreshPromise = (async () => {
     const prisma = getPrisma();
 
-    // Preserve the live-board reconciliation wake-up previously provided by
-    // the header's /api/live-games summary request.
-    queueBetMarketEnsure(prisma, 0);
+    // Public header polling must never wake a settlement-capable queue.
 
     const [liveResult, requestsResult, workshopStatusResult, workshopStreamResult] =
       await Promise.allSettled([

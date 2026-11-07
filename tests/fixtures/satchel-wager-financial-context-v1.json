@@ -1,0 +1,35 @@
+{
+  "context": {
+    "protocol": 1,
+    "kind": "wager",
+    "owner_id": "owner-1",
+    "operation_id": "satchel:ticket:1",
+    "sender": "wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e",
+    "recipient": "wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c",
+    "amount_uwolo": "1000000",
+    "memo": "AoE2HDBets bet ticket v1 · ticket 1",
+    "tx_hash": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+    "reservation": {
+      "version": 1,
+      "operation_id": "satchel:ticket:1",
+      "owner_id": "owner-1",
+      "vault": "wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e",
+      "recipient": "wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c",
+      "amount_uwolo": "1000000",
+      "memo": "AoE2HDBets bet ticket v1 · ticket 1",
+      "reservation_digest": "48630f339617bfc7b2aef016fa87d8786ed6b4af44f4095efff2c22f5aa68953",
+      "ledger_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "consent_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "fee_uwolo": "5000",
+      "issued_at": 1799999999,
+      "expires_at": 1800000120,
+      "signature": "tDQduBhnMo38u8OrU0ZyFow1JvJ3recPWxAOTAEZT3ryMA+CyI5/QMZjHwa0NPQZTVhyr6c7j5WOjhMwREfhBQ=="
+    }
+  },
+  "expected_context_digest": "3be39e3b8c110ea8fc7b19dccb8cfe0e663ff350e6972fb506ae580b2382b9ab",
+  "fixture_only": true,
+  "fixture_path": "internal/satchelservice/testdata/wager-reservation-v1.json",
+  "go_json": "{\"protocol\":1,\"kind\":\"wager\",\"owner_id\":\"owner-1\",\"operation_id\":\"satchel:ticket:1\",\"sender\":\"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e\",\"recipient\":\"wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c\",\"amount_uwolo\":\"1000000\",\"memo\":\"AoE2HDBets bet ticket v1 · ticket 1\",\"tx_hash\":\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\",\"reservation\":{\"version\":1,\"operation_id\":\"satchel:ticket:1\",\"owner_id\":\"owner-1\",\"vault\":\"wolo1dehxumnwdehxumnwdehxumnwdehxumnwep0k7e\",\"recipient\":\"wolo1dahk7mm0dahk7mm0dahk7mm0dahk7mm0c3wh5c\",\"amount_uwolo\":\"1000000\",\"memo\":\"AoE2HDBets bet ticket v1 · ticket 1\",\"reservation_digest\":\"48630f339617bfc7b2aef016fa87d8786ed6b4af44f4095efff2c22f5aa68953\",\"ledger_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"consent_digest\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"fee_uwolo\":\"5000\",\"issued_at\":1799999999,\"expires_at\":1800000120,\"signature\":\"tDQduBhnMo38u8OrU0ZyFow1JvJ3recPWxAOTAEZT3ryMA+CyI5/QMZjHwa0NPQZTVhyr6c7j5WOjhMwREfhBQ==\"}}",
+  "mainnet_authority": false,
+  "source_commit": "99f32de617964565875ed4689bea0d688bb99147"
+}

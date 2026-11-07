@@ -108,10 +108,12 @@ test("promotion and stale seed upserts share exact advisory identity locks", () 
     bets,
     /for \(const identityKey of identityKeys\)[\s\S]*pg_advisory_xact_lock\(hashtextextended\(\$\{identityKey\}, 0\)\)/
   );
-  assert.match(
-    bets,
-    /seeds\.map\(async \(seed\) => \{[\s\S]*prisma\.\$transaction\(async \(tx\)[\s\S]*canonicalBattleIdentityKey\(normalizeName\(seed\.linkedSessionKey\)\)[\s\S]*pg_advisory_xact_lock[\s\S]*tx\.betMarket\.upsert/
-  );
+  const seedsWriter = bets.split("async function persistBetMarketSeeds(")[1]
+    ?.split("async function runBetMarketEnsure(")[0];
+  assert.ok(seedsWriter,"canonical market seed writer must remain present");
+  assert.match(seedsWriter,/const writeSeed = async \(tx: Prisma\.TransactionClient, seed: MarketSeed\)[\s\S]*canonicalBattleIdentityKey\(normalizeName\(seed\.linkedSessionKey\)\)[\s\S]*pg_advisory_xact_lock[\s\S]*tx\.betMarket\.upsert/);
+  assert.match(seedsWriter,/if \(liveOnly\) \{[\s\S]*return prisma\.\$transaction\(async \(tx\) => \{[\s\S]*for \(const seed of seeds\) results\.push\(await writeSeed\(tx, seed\)\)/);
+  assert.doesNotMatch(seedsWriter,/Promise\.all\(\s*seeds\.map\(async \(seed\)/);
 });
 
 test("candidate slug collisions include scheduled or unrelated owners and fail closed", () => {

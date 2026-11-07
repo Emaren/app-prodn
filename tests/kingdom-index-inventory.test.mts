@@ -7,15 +7,20 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 148 exact page templates and 278 handler templates match Git HEAD",()=>{
+test("all 148 exact page templates and 284 handler templates match Git HEAD",()=>{
   const actual=census(gitHeadPaths(),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
     pageTemplates:148,adminTemplates:30,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:10,routeHandlerTemplates:278,apiHandlerTemplates:275,nonApiHandlerTemplates:3
+    excludedStaticTemplates:10,routeHandlerTemplates:284,apiHandlerTemplates:281,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
   assert.equal(inventory.handlers.filter(h=>h.ownership!=="unassigned").length,0);
+  for(const route of ["internal/mecha/funded-tick","user/war-satchel/auto-consent",
+    "user/war-satchel/balance","user/war-satchel/credit-verified",
+    "user/war-satchel/funding-quote","user/war-satchel/withdrawal"]){
+    assert.ok(inventory.handlers.some(h=>h.entrypoint===`app/api/${route}/route.ts`&&h.scope==="api"));
+  }
 });
 test("seven Renaissance phases assign each canonical template exactly once",()=>{
   const phases=renaissance.phases.flatMap(p=>p.routes);

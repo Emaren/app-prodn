@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "engineering-handoff"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -186,3 +186,18 @@ build or direct restart. Its live database migration proof precedes activation.
 - [Commissioner runbook](./CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md)
 - [Chain capability handoff](./CHAMPIONSHIP_CHAIN_HANDOFF.md)
 - [Engineering memory](./ENGINEERING_MEMORY.md)
+
+## Source-bound review — 2026-11-07 UTC (Central / AI-delegated)
+
+Reviewed held-App lib/challengeChampionshipProtocol.ts,
+lib/championshipChallenges.ts and existing championship custody/settlement
+test entrypoints. Source distinguishes the 24-hour challenge window,
+one-hour Commissioner grace and Watcher-observed competitive start from
+optional funding and final settlement. This is a source-structure review, **not**
+live championship acceptance, new title-custody authority, independent Watcher
+truth, or approval to execute NFTs, treasury payouts or WOLO settlement.
+
+The chain executor, source-to-live parity, real wallet signatures, disputed
+title resolution, historical payment finality and independent reserve remain
+separately gated. Prior dated implementation evidence remains historical,
+not represented as a new production test or independent human review.

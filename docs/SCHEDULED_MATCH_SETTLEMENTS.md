@@ -8,20 +8,44 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-11-03"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Scheduled Match Escrow Settlements
 
-Implementation review: 2026-09-30
+## Owner-delegated source review — 2026-11-03
+
+Codex performed this repository source review under Tony's delegated authority.
+Tony is the sole human owner; Commissioner, operator, signer and reviewer roles
+are distinct authority/cryptographic roles, not evidence of different humans or
+an independent human review. Existing authentication, proof and role separation
+still apply. This review covers the current local candidate, including
+unpublished work; it is not a release receipt, live-service audit, native reserve
+qualification or physical financial deployment approval.
+
+Reviewed `lib/scheduledMatchSettlements.ts`, `lib/championshipChallenges.ts`
+and `tests/championship-honor-system-finance.test.mts`. The completed-result
+branch has a material championship exception: both tx-backed deposits must
+exist at or before authenticated Watcher start. A missing or late opposing
+deposit leaves the wager unmatched; each funded side receives its full original
+wager plus guarantee back, even when the other side won. A late deposit remains
+a real refund liability and cannot retroactively create a winner-take-pool bet.
+The plan retains exact source allocations and conservation checks. Read-only
+planning and app settlement rows do not prove physical reserve adequacy or
+successful chain execution.
+
+
+Implementation source review: 2026-11-03 (scope below)
 
 New `championship_v2` Challenges follow the
 [Belt Constitution](./CHAMPIONSHIP_BELT_CONSTITUTION.md). Team funding uses
 stable paired ScheduledMatch financial legs beneath one parent title defense,
 with each participant signing their own original left/right CID/SID contract.
-Each winning roster seat receives its paired two-warrior wager purse. A title
+Each winning roster seat receives its paired two-warrior wager purse only when
+that leg was matched at authenticated start; unmatched proven principal is
+refunded instead. A title
 default is not a played result and uses refunds, not fabricated winner payouts.
 Every leg stays on this existing proof/settlement ledger; public cards show one
 aggregate Challenge and never call payments/refunds complete before tx proof.
@@ -75,7 +99,7 @@ The scheduled-match executor only handles funded Challenge escrow rows from `sch
 - `double_no_show`: refund each funded participant their wager; route funded guarantees to Community Treasury.
 - `no_show_left`: refund both wagers, return the right/challenged guarantee, and award the left/challenger missed guarantee to the right/challenged player who checked in.
 - `no_show_right`: refund both wagers, return the left/challenger guarantee, and award the right/challenged missed guarantee to the left/challenger player who checked in.
-- `completed`: return both guarantees and award both wagers to the verified winner.
+- `completed`: for a matched wager, return both guarantees and award both wagers to the verified winner. For `championship_v2`, apply the start-time matching exception described in the source review above; unmatched proven funding is refunded whole.
 
 Title custody is separate from WOLO settlement. In the legacy protocol only an explicitly selected title
 is attached to a scheduled challenge. Verified watcher/replay proof records the

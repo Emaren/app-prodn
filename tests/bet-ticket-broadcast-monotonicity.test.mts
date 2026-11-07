@@ -222,9 +222,12 @@ test("bet commit ownership check precedes transfer binding and chain verificatio
   const loaded = source.indexOf("const ticket = await loadOwnedTicket", source.indexOf("export async function commitBetStakeTicket"));
   const matched = source.indexOf("ticket.userId !== userId", source.indexOf("async function loadOwnedTicket"));
   const bind = source.indexOf("await bindBetStakeTicketBroadcast(", loaded);
-  const chain = source.indexOf("const verification = await verifyStakeTransfer(", bind);
+  const chain = source.indexOf("await verifyStakeTransfer(", bind);
   assert.ok(matched >= 0, "missing exact-owner decision from ticket load");
   assert.ok(loaded >= 0, "ticket owner must be loaded first");
   assert.ok(bind > loaded, "transaction binding requires ticket owner check");
   assert.ok(chain > bind, "remote chain verification happens after identity binding");
+  const custody = source.indexOf("assertCustodyProof();", loaded);
+  assert.ok(custody > loaded && custody < bind, "custody proof must match the owned durable ticket before binding");
+  assert.match(source.slice(bind, chain), /custodialAuto[\s\S]*input\.satchelFundingProof!\.txTimestamp/);
 });

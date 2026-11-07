@@ -1,3 +1,5 @@
+import {withHdFinancialLease} from "./hdFinancialMaintenanceFence.ts";
+import {readWarSatchelBoundedUtf8} from "./warSatchelBoundedBody.ts";
 import { fetchBoundedWoloTxJson } from "./woloBoundedTxLookup.ts";
 import { createHash } from "node:crypto";
 
@@ -1596,6 +1598,21 @@ function buildBlockedSettlementRunResult(
   };
 }
 
+/** Private last-hop admission shared by primary/founder and escrow runs.
+ * The existing immutable request journals still own UNKNOWN/reconciliation.
+ * A transport error, including lease loss, is never proof of non-broadcast. */
+async function financialSettlementPost<T>(url:string,wallet:string,producer:string,init:RequestInit,reader:typeof fetch=fetch){
+  return withHdFinancialLease({scope:"hd-legacy",wallet,producer},async lease=>{
+    const signal=AbortSignal.any([lease,AbortSignal.timeout(45_000)]);
+    signal.throwIfAborted();
+    const response=await reader(url,{...init,redirect:"error",signal});
+    const raw=await readWarSatchelBoundedUtf8(response.body?.pipeThrough(new TransformStream<Uint8Array,Uint8Array>(),{signal})??null,1_048_576);
+    signal.throwIfAborted();if(!raw)throw Error("Settlement outcome UNKNOWN: invalid bounded response");
+    const payload=JSON.parse(raw) as T;
+    return {response,payload};
+  });
+}
+
 async function executeWoloPayoutViaSettlementService(input: {
   requestId?: string | null;
   toAddress: string;
@@ -1610,7 +1627,7 @@ async function executeWoloPayoutViaSettlementService(input: {
   const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
-  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+  const {response,payload} = await financialSettlementPost<SettlementExecutePayload>(`${baseUrl}/settlement/v1/payouts`, expectedSenderAddress||"", "settlement-payout", {
     method: "POST",
     headers: buildSettlementMutationHeaders(),
     body: JSON.stringify({
@@ -1622,7 +1639,6 @@ async function executeWoloPayoutViaSettlementService(input: {
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
 
   if (!response.ok || !payload.ok || !payload.tx_hash) {
     throw new Error(summarizeSettlementDetail(payload));
@@ -1656,7 +1672,7 @@ async function executeWoloPayoutViaNamedSettlementService(
   const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(baseUrlRaw);
-  const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
+  const {response,payload} = await financialSettlementPost<SettlementExecutePayload>(`${baseUrl}/settlement/v1/payouts`, expectedSenderAddress||"", "founder-payout", {
     method: "POST",
     headers: buildSettlementMutationHeaders(authToken),
     body: JSON.stringify({
@@ -1668,7 +1684,6 @@ async function executeWoloPayoutViaNamedSettlementService(
     cache: "no-store",
   });
 
-  const payload = (await response.json().catch(() => ({}))) as SettlementExecutePayload;
 
   if (!response.ok || !payload.ok || !payload.tx_hash) {
     throw new Error(summarizeSettlementDetail(payload));
@@ -2006,7 +2021,8 @@ export async function executeWoloSettlementRun(input: {
     }
 
     const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
-    const response = await fetch(`${baseUrl}/settlement/v1/runs`, {
+    const {response,payload} = await financialSettlementPost<SettlementRunPayload>(`${baseUrl}/settlement/v1/runs`,
+      (input.signerRole==="escrow"?health?.escrowAddress:health?.payoutAddress)||"", "settlement-run", {
       method: "POST",
       headers: buildSettlementMutationHeaders(),
       body: JSON.stringify(toRunRequestPayload(input)),
@@ -2014,7 +2030,6 @@ export async function executeWoloSettlementRun(input: {
     });
 
     if (!shouldFallbackGroupedRun(response.status) && ![401, 403].includes(response.status)) {
-      const payload = (await response.json().catch(() => ({}))) as SettlementRunPayload;
       return toSettlementRunResult(payload, {
         dryRun: false,
         settlementRunId: input.settlementRunId,
@@ -2041,6 +2056,87 @@ export async function executeWoloEscrowSettlementRun(
   input: Omit<Parameters<typeof executeWoloSettlementRun>[0], "signerRole">
 ) {
   return executeWoloSettlementRun({ ...input, signerRole: "escrow" });
+}
+
+/** Nonexecuting preparation DTO only. Escrow execution sends the SAME original
+ * signed ReturnApproval to the protected 8094 route, never this legacy run DTO. */
+export type SatchelEscrowReturnRun=Readonly<{
+  settlement_run_id:string;source_app:"aoe2hdbets";source_event_id:string;signer_role:"escrow";
+  payouts:readonly Readonly<{request_id:string;to_address:string;amount_uwolo:string;memo:string}>[];
+}>;
+export type SatchelEscrowReturnSpendResult=Readonly<{
+  operation_id:string;status:"UNKNOWN";reason:string;tx_hash?:string;durable_fenced:true;
+}>;
+const SATCHEL_RETURN_ENDPOINT="http://127.0.0.1:8094/satchel/v1/returns";
+const SATCHEL_RETURN_CLAIM=/^[1-9][0-9]{0,11}$/;
+const SATCHEL_RETURN_HASH=/^[A-F0-9]{64}$/;
+const SATCHEL_RETURN_REASONS=new Set([
+  "intent_persisted","pre_sign_permit_revoked","signing_started","signing_uncertain","invalid_signed_bytes_unknown",
+  "signed_bytes_persisted","signed_permit_revoked_unknown","broadcast_started","broadcast_uncertain","broadcast_accepted_unconfirmed",
+]);
+function satchelReturnUnknown():never{throw Error("SATCHEL_ESCROW_SERVICE_ONLY_UNKNOWN");}
+function satchelReturnClaim(claimId:unknown):string{
+  if(typeof claimId!=="string"||!SATCHEL_RETURN_CLAIM.test(claimId)||claimId==="889")
+    throw Error("SATCHEL_ESCROW_SERVICE_ONLY_INVALID_CLAIM");
+  return claimId;
+}
+function satchelReturnHeaders(){
+  const token=process.env.WAR_SATCHEL_SIGNER_AUTH_TOKEN||"";
+  if(!/^[A-Za-z0-9_-]{48,512}$/.test(token))throw Error("SATCHEL_ESCROW_SERVICE_ONLY_UNAVAILABLE");
+  return {Authorization:"Bearer "+token,"Content-Type":"application/json",Accept:"application/json","Accept-Encoding":"identity"};
+}
+/** Exact DTO consistency only. It never authenticates a payment or authorizes
+ * credit/retry; a hash remains a candidate for independent native proof. */
+export function satchelEscrowReturnSpendObservation(value:unknown,claimId:string):SatchelEscrowReturnSpendResult{
+  satchelReturnClaim(claimId);
+  if(!value||typeof value!=="object"||Array.isArray(value))satchelReturnUnknown();
+  const r=value as Record<string,unknown>,keys=Object.keys(r);
+  if(keys.length<4||keys.length>5||keys.some(k=>!["operation_id","status","reason","tx_hash","durable_fenced"].includes(k))||
+    r.operation_id!=="satchel:claim-return:"+claimId||r.status!=="UNKNOWN"||r.durable_fenced!==true||
+    typeof r.reason!=="string"||!SATCHEL_RETURN_REASONS.has(r.reason)||
+    (r.tx_hash!==undefined&&(typeof r.tx_hash!=="string"||(r.tx_hash!==""&&(!SATCHEL_RETURN_HASH.test(r.tx_hash)||r.tx_hash==="0".repeat(64))))))
+    satchelReturnUnknown();
+  return Object.freeze({...r}) as SatchelEscrowReturnSpendResult;
+}
+async function satchelReturnReply(response:Response,claimId:string,signal:AbortSignal){
+  if(response.status!==200||!response.ok||(response.headers.get("Content-Encoding")&&response.headers.get("Content-Encoding")!=="identity"))satchelReturnUnknown();
+  const raw=await readWarSatchelBoundedUtf8(response.body,65536);
+  signal.throwIfAborted();
+  // The published DTO is flat ASCII identifiers/booleans. Reject escaped names,
+  // aliases and duplicate fields before JSON.parse can silently collapse them.
+  if(!raw||raw.includes("\\"))satchelReturnUnknown();
+  const names=[...raw.matchAll(/"([^"\\]*)"\s*:/g)].map(m=>m[1]);
+  if(names.length<4||names.length>5||new Set(names).size!==names.length)satchelReturnUnknown();
+  return satchelEscrowReturnSpendObservation(JSON.parse(raw),claimId);
+}
+/** One fixed 8094 request using the runtime's existing financial lease. */
+export async function executeServiceOnlySatchelEscrowReturn(approval:unknown,escrow:string,reader:typeof fetch,admitted:AbortSignal){
+  if (!admitted) throw Error("SATCHEL_ESCROW_SERVICE_ONLY_ADMISSION_REQUIRED");
+  const original=structuredClone(approval);
+  if(!original||typeof original!=="object"||Array.isArray(original))throw Error("SATCHEL_ESCROW_SERVICE_ONLY_INVALID_APPROVAL");
+  const a=original as Record<string,unknown>,claimId=satchelReturnClaim(a.claim_id),body=JSON.stringify(original);
+  if(a.version!==2||!a.allocation||typeof a.allocation!=="object"||Array.isArray(a.allocation)||
+    typeof a.owner_id!=="string"||!a.owner_id||typeof a.signature!=="string"||!a.signature||
+    typeof a.allocation_digest!=="string"||! /^[a-f0-9]{64}$/.test(a.allocation_digest)||
+    getWoloBetEscrowRuntime().escrowAddress!==escrow||Buffer.byteLength(body,"utf8")>65536)
+    throw Error("SATCHEL_ESCROW_SERVICE_ONLY_INVALID_APPROVAL");
+  const headers=satchelReturnHeaders();
+  return withHdFinancialLease({scope:"hd-legacy",producer:"settlement-run",wallet:escrow},async lease=>{
+    const signal=AbortSignal.any([lease,AbortSignal.timeout(15_000)]);
+    signal.throwIfAborted();
+    const response=await reader(SATCHEL_RETURN_ENDPOINT+"/execute",{method:"POST",headers,body,
+      cache:"no-store",redirect:"error",signal});
+    return satchelReturnReply(response,claimId,signal);
+  },admitted);
+}
+/** Query-free read-only recovery, including after owner permit expiry. 404 and
+ * all failed/invalid observations remain UNKNOWN, never permission to POST. */
+export async function inspectServiceOnlySatchelEscrowReturn(claimId:string,reader:typeof fetch=fetch){
+  satchelReturnClaim(claimId);
+  const signal=AbortSignal.timeout(8500),response=await reader(SATCHEL_RETURN_ENDPOINT+"/execution/"+claimId,{
+    method:"GET",headers:satchelReturnHeaders(),redirect:"error",cache:"no-store",signal,
+  });
+  return satchelReturnReply(response,claimId,signal);
 }
 
 export async function verifyStakeTransfer(input: {
@@ -2389,15 +2485,18 @@ export async function executeWoloPayout(input: {
 
   const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, wallet, {
     gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
+    broadcastTimeoutMs:45_000,
   });
 
-  const result = await client.sendTokens(
+  try {
+  const result = await withHdFinancialLease({scope:"hd-legacy",producer:"local-payout",wallet:account.address},async signal=>{
+    signal.throwIfAborted();return client.sendTokens(
     account.address,
     input.toAddress,
     [{ amount: toUwoLoAmount(input.amountWolo), denom: WOLO_BASE_DENOM }],
     resolvePayoutFee(WOLO_PAYOUT_FEE),
     input.memo.slice(0, 180)
-  );
+  );});
 
   return {
     txHash: result.transactionHash,
@@ -2406,4 +2505,5 @@ export async function executeWoloPayout(input: {
     proofUrl: buildWoloRestTxLookupUrl(result.transactionHash),
     expectedSenderAddress,
   };
+  } finally {client.disconnect();}
 }

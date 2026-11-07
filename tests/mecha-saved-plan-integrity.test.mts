@@ -8,12 +8,12 @@ const preset = () => ({
   desyncSide: "none",
   desyncStakeWolo: 0,
   untilOut: false,
-  gamesRemaining: 20,
+  gamesRemaining: 100,
 });
 
 test("saved Mecha financial integrity is deterministic at the entire finite-plan boundary", () => {
   assert.equal(storedBetAutoFinancialIssue(preset()), null);
-  assert.equal(storedBetAutoFinancialIssue({ ...preset(), gamesRemaining: 21 }), "auto_stake_cap_exceeded");
+  assert.equal(storedBetAutoFinancialIssue({ ...preset(), gamesRemaining: 101 }), "auto_stake_cap_exceeded");
   assert.equal(storedBetAutoFinancialIssue({ ...preset(), gamesRemaining: 0 }), null,
     "A legitimately exhausted plan gets its own lifecycle status, not an invalid-data finding");
   assert.equal(storedBetAutoFinancialIssue({ ...preset(), gamesRemaining: 10_001 }), "stored_preset_invalid");
@@ -26,15 +26,15 @@ test("unknown legacy Desync values cannot be silently represented as an eligible
     assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide }), "stored_preset_invalid");
   }
   assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "no", desyncStakeWolo: 200, gamesRemaining: 10 }), null);
-  assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "yes", desyncStakeWolo: 600 }), "auto_stake_cap_exceeded");
+  assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "yes", desyncStakeWolo: 9_600 }), "auto_stake_cap_exceeded");
   assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "none", desyncStakeWolo: 1 }), "auto_stake_cap_exceeded");
 });
 
 test("malformed legacy amounts fail closed without arithmetic, mutation or new wagers", () => {
-  for (const winnerStakeWolo of [0, -1, 1001, NaN, Infinity, 10.2, Number.MAX_SAFE_INTEGER]) {
+  for (const winnerStakeWolo of [0, -1, 10001, NaN, Infinity, 10.2, Number.MAX_SAFE_INTEGER]) {
     assert.equal(storedBetAutoFinancialIssue({ ...preset(), winnerStakeWolo }), "auto_stake_cap_exceeded");
   }
-  for (const desyncStakeWolo of [-1, 1001, NaN, 1.25]) {
+  for (const desyncStakeWolo of [-1, 10001, NaN, 1.25]) {
     assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncStakeWolo }), "auto_stake_cap_exceeded");
   }
 });

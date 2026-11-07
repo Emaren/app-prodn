@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/f-w1-decode-uri-component-high-20261029` at `2138d4bd6187dfefd6f2356abb4ecaaad3825427`
+Implementation baseline: `session-b/c02-postmigration-canonical-clean-20261107` at `8c89621a8e7e781175c84317893539de9a9d767e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

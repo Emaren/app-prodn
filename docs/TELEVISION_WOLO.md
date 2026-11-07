@@ -8,12 +8,33 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-11-03"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Television WOLO
+
+## Owner-delegated source review — 2026-11-03
+
+Codex performed this repository source review under Tony's delegated authority.
+Tony is the sole human owner; Commissioner, operator, signer and reviewer roles
+are distinct authority/cryptographic roles, not evidence of different humans or
+an independent human review. Existing authentication, proof and role separation
+still apply. This review covers the current local candidate, including
+unpublished work; it is not a release receipt, live-service audit, native reserve
+qualification or physical financial deployment approval.
+
+Reviewed `app/television-wolo/page.tsx`,
+`components/television/TelevisionWoloExperience.tsx` and
+`tests/television-wolo-v1.test.mts`. The server composes existing live, recently
+completed and archive projections; stream lookup is inside the explicit Play
+action. Chaos Vote Lab remains browser-local and non-binding. Neither choosing
+a feed nor a displayed champion proves financial settlement, reserve adequacy,
+wallet authorization or chain title ownership. The source contract test checks
+composition and playback wiring; it does not establish live media availability
+or transaction execution.
+
 
 ## Purpose
 

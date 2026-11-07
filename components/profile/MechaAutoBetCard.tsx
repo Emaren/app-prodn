@@ -1,11 +1,16 @@
 "use client";
+import {BET_MAX_STAKE_WOLO,AUTO_BET_MAX_DAILY_WOLO} from "@/lib/betMoneyLimits";
 
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
 import { useKeplr } from "@/hooks/use-keplr";
 import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
+import WarSatchelFundingAction from "@/components/profile/WarSatchelFundingAction";
+import WarSatchelSpendAuthorization from "@/components/profile/WarSatchelSpendAuthorization";
+import WarSatchelWithdrawAction from "@/components/profile/WarSatchelWithdrawAction";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
+import { parseCertifiedWarSatchelRead, type CertifiedWarSatchelRead } from "@/lib/warSatchelBalanceRead";
 
 type DS = "none" | "yes" | "no";
 type Preset = { enabled: boolean; winnerStakeWolo: number; desyncSide: DS; desyncStakeWolo: number; untilOut: boolean; gamesRemaining: number | null; version: number };
@@ -18,13 +23,14 @@ type Payload = {
   detail?: string;
 };
 type Execution = { id: number; status: string; winnerMarket: { title: string } };
-const MAX_AUTO_GAME_WOLO = 1_000;
+const MAX_AUTO_GAME_WOLO = BET_MAX_STAKE_WOLO;
 const number = (raw: string) => /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : NaN;
 
 /** E2 presentation operates exclusively on existing *shadow-only* user endpoints. */
 export default function MechaAutoBetCard({ displayName }: { displayName: string }) {
   const [server, setServer] = useState<Payload | null>(null);
   const [history, setHistory] = useState<Execution[]>([]);
+  const [satchelBalance, setSatchelBalance] = useState<CertifiedWarSatchelRead | null>(null);
   const [winner, setWinner] = useState("10");
   const [dsSide, setDsSide] = useState<DS>("none");
   const [dsStake, setDsStake] = useState("0");
@@ -83,11 +89,32 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     return () => { cancelled = true; };
   }, [hydrate]);
 
+  // The backend never exposes owner ledger data while the financial source
+  // HOLD is active. Never derive Satchel credit from the connected Keplr
+  // wallet, a proposed deposit, an unverified proof or saved profile state.
+  useEffect(() => {
+    let active = true;
+    setSatchelBalance(null);
+    if (!server?.preset.version) return () => { active = false; };
+    void fetch("/api/user/war-satchel/balance", {
+      cache: "no-store", credentials: "same-origin",
+    }).then(async response => {
+      if (!response.ok) return null;
+      const value: unknown = await response.json();
+      return parseCertifiedWarSatchelRead(value);
+    }).then(value => {
+      if (active) setSatchelBalance(value);
+    }).catch(() => {
+      if (active) setSatchelBalance(null);
+    });
+    return () => { active = false; };
+  }, [server?.preset.version, satchelOpen]);
+
   const stake = number(winner);
   const ds = dsSide === "none" ? 0 : number(dsStake);
   const perGame = stake + ds;
   const count = number(games);
-  const planLimit = server?.limits.maxEstimatedReserveWolo ?? 10_000;
+  const planLimit = server?.limits.maxEstimatedReserveWolo ?? AUTO_BET_MAX_DAILY_WOLO;
   const plan = untilOut ? planLimit : perGame * count;
   const valid = Number.isSafeInteger(stake) && stake >= 1 &&
     Number.isSafeInteger(ds) && ds >= (dsSide === "none" ? 0 : 1) &&
@@ -120,7 +147,11 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
       const next = (await response.json().catch(() => null)) as Payload | null;
       if (!response.ok || !next?.preset) throw new Error(next?.detail || "Command rejected");
       hydrate(next);
-      setNotice(nextEnabled ? "Preview active" : "Preview paused");
+      setNotice(nextEnabled
+        ? next.runtime.mode === "live" && next.runtime.executionReady
+          ? "Mecha plan saved · signed Satchel spending mandate required"
+          : "Preview active"
+        : "Preview paused");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Command rejected");
     } finally { setSaving(false); }
@@ -140,7 +171,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
       const next = (await response.json().catch(() => null)) as Payload | null;
       if (!response.ok || !next?.preset) throw new Error(next?.detail || "Pause rejected");
       hydrate(next);
-      setNotice("Preview paused");
+      setNotice(server.runtime.mode === "live" && server.runtime.executionReady
+        ? "Mecha plan paused · new bets are disabled"
+        : "Preview paused");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Pause rejected");
     } finally { setSaving(false); }
@@ -148,9 +181,10 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
 
   const status = !server ? "UNLINKED" : !armed ? "STANDBY" :
     server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
-    !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
+    !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED CONFIGURED";
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
-  const satchelVerifiedBalanceWolo: string | null = null; // No account-specific reconciled custody ledger.
+  const satchelVerifiedBalanceWolo = satchelBalance ?
+    formatMinimalDenomAmount(satchelBalance.availableUwolo) : null;
   const depositAmountValue = number(depositAmount);
   const depositAmountValid = Number.isSafeInteger(depositAmountValue) && depositAmountValue > 0;
   const walletAction = async () => {
@@ -218,6 +252,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <div className="mt-3 text-2xl font-black tabular-nums text-white" aria-label="War Satchel verified balance">
             {satchelVerifiedBalanceWolo ?? "—"} <span className="text-xs font-bold text-slate-400">WOLO</span>
           </div>
+          <span className="mt-2 block text-[10px] font-semibold text-slate-400">
+            {satchelBalance ? "Available · owner ledger (not vault solvency)" : "Uncertified · no verified Satchel credit"}
+          </span>
           <button type="button" onClick={() => setSatchelOpen((value) => !value)}
             aria-expanded={satchelOpen}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200/30 bg-amber-300/10 px-3 py-1.5 text-xs font-black text-amber-100 transition hover:bg-amber-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
@@ -241,7 +278,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <span className={"h-2.5 w-2.5 rounded-full " + (armed && readiness ? "bg-emerald-300 motion-safe:animate-pulse" : "bg-amber-300/60")} />
           {status === "SHADOW READY" ? "PREVIEW ACTIVE" : status}
         </div>
-        <div className="text-slate-400">{untilOut ? "UNTIL OUT" : (Number.isFinite(count) ? count : "—") + " GAMES"} · PREVIEW ONLY</div>
+        <div className="text-slate-400">{untilOut ? "UNTIL OUT" : (Number.isFinite(count) ? count : "—") + " GAMES"} · {previewOnly ? "PREVIEW ONLY" : "FUNDED EXECUTOR CONFIGURED"}</div>
         <button type="button" aria-expanded={dsPanel} aria-label="Desync bet settings"
           onClick={() => { setDsPanel((value) => !value); setSettings(true); }}
           className={"rounded-lg border px-3 py-2 text-xs font-black tracking-[.12em] " +
@@ -258,7 +295,20 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
+          {satchelBalance && (
+            <p className="mt-3 text-xs text-slate-300">
+              Reserved: {formatMinimalDenomAmount(satchelBalance.reservedUwolo)} WOLO ·
+              Withdrawal pending: {formatMinimalDenomAmount(satchelBalance.withdrawalPendingUwolo)} WOLO
+            </p>
+          )}
           <WarSatchelWalletProof walletAddress={walletStatus === "connected" ? walletAddress : ""} />
+          {server?.preset && server.preset.version > 0 && (
+            <WarSatchelSpendAuthorization
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              presetVersion={server.preset.version}
+              plannedStakeWolo={server.preset.winnerStakeWolo + server.preset.desyncStakeWolo}
+            />
+          )}
           <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">
               WOLO FROM YOUR WALLET
@@ -279,15 +329,17 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               ))}
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-amber-200">
-              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter a positive whole-number WOLO amount"}
-            </span>
-            <button type="button" disabled aria-disabled="true"
-              title="War Satchel funding requires an audited custody ledger and chain receipts"
-              className="rounded-xl border border-amber-200/20 bg-white/[.04] px-4 py-3 text-xs font-black uppercase tracking-[.1em] text-slate-400 opacity-70">
-              LOAD FROM WALLET · COMING SOON
-            </button>
+          <div className="mt-4">
+            {!depositAmountValid && (
+              <p className="mb-2 text-xs text-amber-200">Enter a positive whole-number WOLO amount</p>
+            )}
+            <WarSatchelFundingAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              depositAmount={depositAmount}
+            />
+            <WarSatchelWithdrawAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+            />
           </div>
         </div>
       )}
@@ -330,11 +382,12 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className={"text-xs " + (valid ? "text-slate-400" : "text-rose-300")}>
               {valid ? perGame.toLocaleString() + " / 1,000 MATCH · " + plan.toLocaleString() + " / " + planLimit.toLocaleString() + " PLAN" :
-                "1–1,000 WOLO PER MATCH · 10,000 PLAN MAX"}
+                "1–10,000 WOLO PER MATCH · 50,000 DAILY MAX"}
             </span>
             <button type="button" onClick={() => void save(Boolean(server?.preset.enabled))} disabled={!valid || !server || saving}
               className="rounded-xl bg-amber-300 px-5 py-3 text-[10px] font-black uppercase tracking-[.15em] text-slate-950 hover:bg-amber-200 disabled:opacity-40">
-              {saving ? "SAVING..." : armed ? "SAVE BET PLAN" : "ARM PREVIEW"}
+              {saving ? "SAVING..." : armed ? "SAVE BET PLAN" :
+                previewOnly ? "ARM PREVIEW" : "SAVE MECHA PLAN"}
             </button>
           </div>
         </div>
@@ -348,7 +401,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
         {error ? <span className="text-rose-300">{error}</span> :
           notice ? <span className="text-emerald-300">{notice}</span> :
           <span className="inline-flex items-center gap-1.5 text-slate-500">
-            <Coins className="h-3 w-3" />{previewOnly ? "PREVIEW ONLY · NO WOLO MOVED · NO BET PLACED" : "FUNDING STATUS UNAVAILABLE"}
+            <Coins className="h-3 w-3" />{previewOnly
+              ? "PREVIEW ONLY · NO WOLO MOVED · NO BET PLACED"
+              : "FUNDED MODE CONFIGURED · MATCH AND WALLET MANDATE REQUIRED"}
           </span>}
       </div>
     </section>
