@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "80c72b36f04f67a073797f63cba97398ca2eb17b1e59165c367295007bb52c01",
+      "sha256": "c61d6413cdef4cdb096f81ab01222e25b29b48268030b8c0eb7c4ee3972a7dd8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1919,6 +1919,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial-read-model-source-only-not-funded-or-live",
+      "id": "aoe2war.app.r25-bets-public-history-readmodel",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "095089f7322a7cca565bb66979a043ed132315305c05c20462e7006ef326f36f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Bets Published Historical Read Model Under Financial HOLD",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-emergency-website-recovery-source-only-no-funded-release",
       "id": "aoe2war.app.session-a-r25-public-nonfinancial-recovery-v5u",
       "owner": "aoe2war-web",
@@ -2481,8 +2503,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-v5v-sandbox-preimages-20261107",
-    "commit": "05d8b3ba57436d68453afa62afcfc7d9402ad7ec"
+    "branch": "fix/app-r25-bets-published-history-readonly-20261107",
+    "commit": "3a70afebd0dd9de1288ba735ff11f41b1032c8fb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

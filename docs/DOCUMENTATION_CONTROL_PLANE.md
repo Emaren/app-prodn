@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-v5v-sandbox-preimages-20261107` at `05d8b3ba57436d68453afa62afcfc7d9402ad7ec`
+Implementation baseline: `fix/app-r25-bets-published-history-readonly-20261107` at `3a70afebd0dd9de1288ba735ff11f41b1032c8fb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **108**
+- Authoritative repository documents: **109**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 67
+- `reference`: 68
 - `runbook`: 22
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 11
+- `draft`: 12
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -134,6 +134,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
+| [R25 Bets Published Historical Read Model Under Financial HOLD](SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md) | `reference` | `draft` | `nonfinancial-read-model-source-only-not-funded-or-live` |
 | [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
 | [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
