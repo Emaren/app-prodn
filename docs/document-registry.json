@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d555fc01ce4b8a0013ad81f84106d76b979332725d5d7bf9e891339698c4d42",
+      "sha256": "abb9e66a0a6edb6579da2ccabfcca833490aab329fbe3955410630059e2ff7b3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2570,7 +2570,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/app-v5x-r2-steam-oneshot-graceful-quiesce-20261107",
-    "commit": "6dccc850c7024ee6566759f55e5e2f78a87be677"
+    "commit": "3ce5ba72b7d562a3d02543c753cb01231111b7c9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

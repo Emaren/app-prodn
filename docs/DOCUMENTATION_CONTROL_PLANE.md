@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-v5x-r2-steam-oneshot-graceful-quiesce-20261107` at `6dccc850c7024ee6566759f55e5e2f78a87be677`
+Implementation baseline: `fix/app-v5x-r2-steam-oneshot-graceful-quiesce-20261107` at `3ce5ba72b7d562a3d02543c753cb01231111b7c9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
