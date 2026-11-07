@@ -19,6 +19,7 @@ import { Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import BetsDisplayRail from "@/components/bets/BetsDisplayRail";
+import PublishedBetHistoryFallback from "@/components/bets/PublishedBetHistoryFallback";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -3494,6 +3495,29 @@ export default function BetsPage() {
       previews: EMPTY_BROADCAST_PREVIEW_URLS,
     };
   }, [spotlightMarket]);
+
+  // Never render an apparently open (zero-valued) wagering board when the
+  // restricted R25 financial read is unavailable. Published archival labels
+  // are isolated from user balances, wager placement and settlement claims.
+  if (!loadingBoard && board === null) {
+    return (
+      <main data-bets-view={betsView} className="space-y-6 overflow-x-hidden py-5 text-white">
+        <SpeedReadyMarker route="/bets" ready />
+        <BettingHallImageHero />
+        <header className="mx-auto max-w-6xl px-4">
+          <p className="text-xs uppercase tracking-[0.28em] text-amber-200">Financial release on hold</p>
+          <h1 className="mt-3 text-4xl font-bold tracking-tight">The Betting Hall</h1>
+          <p className="mt-3 max-w-3xl text-slate-300">
+            The live wagering board is unavailable. The kingdom remains open,
+            but no betting, custody or payout authority is active here.
+          </p>
+        </header>
+        <div className="mx-auto max-w-6xl px-4">
+          <PublishedBetHistoryFallback />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main

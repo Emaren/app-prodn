@@ -1,4 +1,5 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import type { CommunityBadge } from "@/lib/communityHonors";
 import { normalizeManagedMediaTarget } from "@/lib/managedMediaAssets";
 
@@ -393,40 +394,45 @@ export async function loadPublicPlayerDirectoryFresh(
     rawGames,
     activeFeaturedAvatarAssets,
   ] = await Promise.all([
-    prisma.user.findMany({
-      select: {
-        id: true,
-        uid: true,
-        inGameName: true,
-        steamPersonaName: true,
-        steamId: true,
-        representedCountry: true,
-        verified: true,
-        verificationLevel: true,
-      },
-      orderBy: [
-        { verifiedAt: "desc" },
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
-    }),
+    isNonfinancialPublicReadProfile()
+      ? prisma.$queryRaw<Array<{
+          id:number;uid:string;inGameName:string|null;steamPersonaName:string|null;
+          steamId:string|null;representedCountry:string|null;
+          verified:boolean;verificationLevel:number;
+        }>>(Prisma.sql`
+          SELECT id,uid,in_game_name AS "inGameName",
+                 steam_persona_name AS "steamPersonaName",
+                 steam_id AS "steamId", represented_country AS "representedCountry",
+                 verified,verification_level AS "verificationLevel"
+          FROM aoe2war_public_v5.user_profiles
+          ORDER BY verified_at DESC NULLS LAST,created_at DESC,id DESC
+        `)
+      : prisma.user.findMany({
+          select: {
+            id: true,uid: true,inGameName: true,steamPersonaName: true,
+            steamId: true,representedCountry: true,verified: true,
+            verificationLevel: true,
+          },
+          orderBy: [
+            { verifiedAt: "desc" },{ createdAt: "desc" },{ id: "desc" },
+          ],
+        }),
 
     loadPublicLeaderboardRawGames(prisma),
 
-    prisma.managedMediaAsset.findMany({
-      where: {
-        kind: "avatar",
-        active: true,
-        target: {
-          startsWith: "user-",
-        },
-      },
-      select: {
-        id: true,
-        target: true,
-        updatedAt: true,
-      },
-    }),
+    isNonfinancialPublicReadProfile()
+      ? prisma.$queryRaw<Array<{id:number;target:string;updatedAt:Date}>>(Prisma.sql`
+          SELECT id,target,updated_at AS "updatedAt"
+          FROM aoe2war_public_v5.avatar_revisions
+          WHERE active IS TRUE AND target LIKE 'user-%'
+        `)
+      : prisma.managedMediaAsset.findMany({
+          where: {
+            kind: "avatar",active: true,
+            target: { startsWith: "user-" },
+          },
+          select: { id: true,target: true,updatedAt: true },
+        }),
   ]);
 
   const activeFeaturedAvatarByTarget =
@@ -539,7 +545,21 @@ export async function loadPublicPlayerDirectoryFresh(
     CanonicalPlayerSnapshot[]
   > =
     uniqueGames.length > 0
-      ? prisma.replayPlayerSnapshot.findMany(
+      ? isNonfinancialPublicReadProfile()
+        ? prisma.$queryRaw<CanonicalPlayerSnapshot[]>(Prisma.sql`
+            SELECT s.id,s.game_stats_id AS "gameStatsId",
+                   s.display_name AS "displayName",
+                   s.normalized_name AS "normalizedName",
+                   s.steam_id AS "steamId",s.player_slot AS "playerSlot",
+                   s.result_eligible AS "resultEligible",
+                   s.result_status AS "resultStatus",s.created_at AS "createdAt"
+            FROM public.replay_player_snapshots AS s
+            JOIN aoe2war_public_v1.accepted_replay_projections AS p
+              ON p.id=s.projection_id
+            WHERE s.game_stats_id IN (${Prisma.join(uniqueGames.map((game)=>game.id))})
+            ORDER BY s.game_stats_id ASC,s.player_slot ASC NULLS LAST,s.id ASC
+          `)
+        : prisma.replayPlayerSnapshot.findMany(
           {
             where: {
               gameStatsId: {
@@ -601,20 +621,39 @@ export async function loadPublicPlayerDirectoryFresh(
       }
 
       try {
-        const pendingGiftGroups =
-          await prisma.userGift.groupBy({
-            by: ["userId"],
-            where: {
-              userId: {
-                in: claimedUserIds,
+        const pendingGiftGroups: Array<{
+          userId: number; count: number; amount: number;
+        }> = isNonfinancialPublicReadProfile()
+          ? (await prisma.$queryRaw<Array<{
+              userId: number; pendingCount: number; pendingAmount: bigint;
+            }>>(Prisma.sql`
+                SELECT user_id AS "userId",
+                       pending_count AS "pendingCount",
+                       pending_amount AS "pendingAmount"
+                FROM aoe2war_public_v1.pending_player_gift_totals
+                WHERE user_id IN (${Prisma.join(claimedUserIds)})
+              `)).map((row) => {
+                const amount=Number(row.pendingAmount);
+                if (!Number.isSafeInteger(amount) || amount<0 ||
+                    !Number.isSafeInteger(row.pendingCount) || row.pendingCount<0) {
+                  throw new Error("PUBLIC_READ_MODEL_PENDING_GIFT_AMOUNT_INVALID");
+                }
+                return {userId:row.userId,count:row.pendingCount,amount};
+              })
+          : (await prisma.userGift.groupBy({
+              by: ["userId"],
+              where: {
+                userId: { in: claimedUserIds },
+                kind: "WOLO",
+                status: "pending",
+                amount: { gt: 0 },
               },
-              kind: "WOLO",
-              status: "pending",
-              amount: { gt: 0 },
-            },
-            _count: { _all: true },
-            _sum: { amount: true },
-          });
+              _count: { _all: true },
+              _sum: { amount: true },
+            })).map((group) => ({
+              userId: group.userId,count:group._count._all,
+              amount:group._sum.amount ?? 0,
+            }));
 
         for (const group of pendingGiftGroups) {
           const uid =
@@ -627,14 +666,15 @@ export async function loadPublicPlayerDirectoryFresh(
           pendingGiftByUserUid.set(
             uid,
             {
-              count: group._count._all,
-              amount:
-                group._sum.amount ??
-                0,
+              count: group.count,
+              amount: group.amount,
             },
           );
         }
       } catch (error) {
+        // A missing production public projection is a release HOLD, not
+        // evidence that no user has pending gifts. Never render false zeros.
+        if (isNonfinancialPublicReadProfile()) throw error;
         console.warn(
           `Public player directory pending WOLO gift rail unavailable: ${
             error instanceof Error
@@ -1361,9 +1401,10 @@ export async function loadPublicPlayerDirectory(
           prisma,
         );
     } catch (error) {
-      // Tests, isolated tools, or a degraded optional rail may not expose the
-      // complete generation authority. Fail safe to the old bounded freshness
-      // window instead of retaining an unversioned projection indefinitely.
+      // The constrained public read model is mandatory in R25 production.
+      // A missing view must not produce a plausible but stale/fake directory.
+      if (isNonfinancialPublicReadProfile()) throw error;
+      // Legacy tools retain their existing bounded compatibility window.
       console.warn(
         "Public player-directory generation unavailable; using bounded fallback:",
         error,

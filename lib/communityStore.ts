@@ -156,6 +156,14 @@ function buildLobbyMessageReactions(
   });
 }
 
+/** Public reads never create a room. Provisioning stays in authenticated write paths. */
+async function findRoomForPublicRead(prisma: PrismaClient, roomSlug: string) {
+  return prisma.chatRoom.findUnique({
+    where: { slug: roomSlug },
+    select: { id: true, slug: true },
+  });
+}
+
 export async function ensureLobbyRoom(prisma: PrismaClient) {
   return prisma.chatRoom.upsert({
     where: { slug: LOBBY_ROOM_SLUG },
@@ -275,13 +283,7 @@ export async function getTournamentRecentMessages(
   createdAt: string;
   user: { inGameName: string | null; steamPersonaName: string | null };
 }>> {
-  const room =
-    roomSlug === LOBBY_ROOM_SLUG
-      ? await ensureLobbyRoom(prisma)
-      : await prisma.chatRoom.findUnique({
-          where: { slug: roomSlug },
-          select: { id: true },
-        });
+  const room = await findRoomForPublicRead(prisma, roomSlug);
 
   if (!room) return [];
 
@@ -321,13 +323,7 @@ export async function getLobbyMessages(
 ,
   options?: { beforeId?: number | null }
 ): Promise<LobbyMessage[]> {
-  const room =
-    roomSlug === LOBBY_ROOM_SLUG
-      ? await ensureLobbyRoom(prisma)
-      : await prisma.chatRoom.findUnique({
-          where: { slug: roomSlug },
-          select: { id: true, slug: true },
-        });
+  const room = await findRoomForPublicRead(prisma, roomSlug);
 
   if (!room) return [];
 

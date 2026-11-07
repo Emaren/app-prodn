@@ -3,6 +3,8 @@ import {
   type PrismaClient,
 } from "@/lib/generated/prisma";
 
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+
 import {
   normalizeLeaderboardDisplayName,
   normalizeLeaderboardSteamId,
@@ -106,8 +108,15 @@ function newestIso(
 async function loadCurrentWatcherAccountStatesFresh(
   prisma: PrismaClient,
 ): Promise<CurrentWatcherAccountState[]> {
-  const rows =
-    await prisma.$queryRaw<
+  const rows = isNonfinancialPublicReadProfile()
+    ? await prisma.$queryRaw<RawCurrentWatcherAccountState[]>(Prisma.sql`
+        SELECT "steamId", "latestObservedName", "nameObservedAt",
+               "steamRmRating", "steamRmObservedAt",
+               "steamDmRating", "steamDmObservedAt"
+        FROM aoe2war_public_v3.current_watcher_account_states
+        ORDER BY "steamId"
+      `)
+    : await prisma.$queryRaw<
       RawCurrentWatcherAccountState[]
     >(Prisma.sql`
       WITH eligible_attempts AS (

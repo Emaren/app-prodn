@@ -82,31 +82,46 @@ async function loadLobbySnapshotFresh(
    * so the first request pays the slowest lane rather than the sum of WOLO,
    * tournament, replay, leaderboard and presence latency.
    */
+  const optionalRead = <T>(name: string, work: Promise<T>, fallback: T) =>
+    work.catch((error): T => {
+      console.warn(`Lobby read-only ${name} unavailable; retaining other independent rails:`, error);
+      return fallback;
+    });
+
+  // Only chain-sensitive Wolo snapshots remain fail-closed. Financial-claim
+  // tables are not part of the public content reader's authority; a missing
+  // earners rail must NOT erase safe, independent tournament/warrior/presence.
   const woloPromise = loadWoloDevSnapshot();
   const woloMarketPromise = loadWoloMarketSnapshot();
-  const tournamentPromise = getFeaturedTournament(prisma, viewerUid);
-  const presencePromise = loadPublicPresenceSnapshot(prisma);
-  const recentMatchesPromise = loadLobbyRecentMatches({
+  const tournamentPromise = optionalRead(
+    "tournament", getFeaturedTournament(prisma, viewerUid), getFallbackTournament(false)
+  );
+  const presencePromise = optionalRead("presence", loadPublicPresenceSnapshot(prisma), {
+    activePlayers: 0, generatedAt: new Date().toISOString(), onlineUsers: [],
+  });
+  const recentMatchesPromise = optionalRead("recent matches", loadLobbyRecentMatches({
     offset: 0,
     limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
-  });
-  const leaderboardPromise = loadLobbyLeaderboard(prisma, {
+  }), []);
+  const leaderboardPromise = optionalRead("leaderboard", loadLobbyLeaderboard(prisma, {
     limit: 32,
     includePendingClaimed: false,
     includeFeaturedClaimed: true,
     scope: "all",
-  });
-  const woloEarnersPromise = loadLobbyWoloEarnersBoard(prisma, {
+  }), getFallbackLeaderboard());
+  const woloEarnersPromise = optionalRead("Wolo earners", loadLobbyWoloEarnersBoard(prisma, {
     mode: "weekly",
     prefetchAlternate: true,
-  });
-  const aoe2hdPulsePromise = loadAoe2HdPulseSnapshot();
+  }), getFallbackWoloEarnersBoard());
+  const aoe2hdPulsePromise = optionalRead(
+    "pulse", loadAoe2HdPulseSnapshot(), getEmptyAoe2HdPulseSnapshot()
+  );
   const featuredWarriorHonorsPromise = loadFeaturedWarriorHonors(prisma);
   const tournamentMessagesPromise = tournamentPromise.then((tournament) =>
-    getLobbyMessages(prisma, tournament.roomSlug, 24, {
+    optionalRead("tournament messages", getLobbyMessages(prisma, tournament.roomSlug, 24, {
       uid: viewerUid,
       guestSessionId: guestReactionSessionId,
-    }),
+    }), [])
   );
 
   try {
@@ -166,20 +181,20 @@ async function loadLobbySnapshotFresh(
           }
         : woloEarners;
 
-    const liveTicker = await loadLiveTickerSnapshot(prisma, {
+    const liveTicker = await optionalRead("live ticker", loadLiveTickerSnapshot(prisma, {
       tournament,
       leaderboard: visibleLeaderboard,
       recentMatches,
       woloMarket,
-    });
+    }), getFallbackLiveTickerSnapshot());
 
     const messages =
       tournamentMessages.length > 0 || tournament.roomSlug === LOBBY_ROOM_SLUG
         ? tournamentMessages
-        : await getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 24, {
+        : await optionalRead("lobby messages", getLobbyMessages(prisma, LOBBY_ROOM_SLUG, 24, {
             uid: viewerUid,
             guestSessionId: guestReactionSessionId,
-          });
+          }), []);
 
     return {
       tournament,

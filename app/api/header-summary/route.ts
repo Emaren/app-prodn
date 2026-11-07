@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
@@ -27,6 +28,36 @@ async function loadHeaderSummary(): Promise<HeaderSummary> {
 
   refreshPromise = (async () => {
     const prisma = getPrisma();
+
+    // R25 production reads a postgres-owned security-barrier summary.
+    // Do not grant the web role raw requests or private workshop streams.
+    // A missing view or live-game read is an HTTP error, never fabricated zero.
+    if (isNonfinancialPublicReadProfile()) {
+      const [live, scoped] = await Promise.all([
+        loadLiveGamesSnapshot(prisma),
+        prisma.$queryRaw<Array<{
+          openRequestCount: bigint; workshopLive: boolean;
+        }>>`
+          SELECT "openRequestCount", "workshopLive"
+          FROM aoe2war_public_v12.header_counts
+        `,
+      ]);
+      if (scoped.length !== 1) {
+        throw new Error("A05_PRODUCTION_PUBLIC_HEADER_V12_REQUIRED");
+      }
+      const count = Number(scoped[0].openRequestCount);
+      if (!Number.isSafeInteger(count) || count < 0) {
+        throw new Error("A05_PRODUCTION_HEADER_COUNT_INVALID");
+      }
+      const value: HeaderSummary = {
+        liveCount: live.liveCount,
+        openRequestCount: count,
+        workshopLive: scoped[0].workshopLive,
+        updatedAt: new Date().toISOString(),
+      };
+      cachedSummary = { expiresAt: Date.now() + CACHE_TTL_MS, value };
+      return value;
+    }
 
     // Header refresh must never dispatch financial maintenance.
 

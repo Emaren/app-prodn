@@ -22,6 +22,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
@@ -63,10 +64,13 @@ jobs:
       SESSION_SECRET: ci-only-not-a-production-secret
       NEXTAUTH_SECRET: ci-only-not-a-production-secret
       NEXTAUTH_URL: http://127.0.0.1:3030
+      AOE2_BACKEND_UPSTREAM: http://127.0.0.1:3331
+      AOE2WAR_ARTIFACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22.22.0
@@ -112,12 +116,58 @@ jobs:
           else:
               print("No changed JS/TS files to lint", flush=True)
           PY
+      - name: R25 Steam v5s exact C03 hourly oneshot and runtime admission denials
+        run: |
+          python3 -B scripts/release/r25_steam_refresh_v5s.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_b_steam_runtime_v5s.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_session_b_steam_v5s_c03_observer_timer.py' -v
+          python3 -B scripts/release/r25_steam_refresh_v5t.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_b_steam_v5t_expiry_race.py' -v
+      - name: R25 Steam v5u exact Nginx bridge and denial contract
+        run: |
+          python3 -B scripts/release/r25_steam_refresh_v5u.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_a_steam_v5u_nginx_recovery.py' -v
+      - name: R25 v5v enforce ProtectHome without weakening original Steam unit
+        run: |
+          python3 -B scripts/release/r25_steam_refresh_v5v.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_a_steam_v5v_nginx_sandbox.py' -v
+      - name: R25 v5w preserved Steam guard with new root-only PID admission
+        run: |
+          python3 -B scripts/release/r25_steam_refresh_v5w.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_a_steam_v5w_heap_restart.py' -v
+      - name: R25 v5x exact CI Bet history runtime, Steam-only admission and fail-closed rollback
+        run: |
+          python3 -B scripts/release/r25_steam_refresh_v5x.py --phase selftest
+          python3 -B scripts/release/r25_bets_history_v5x_nonfinancial_cutover.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_a_r25_bets_v5x_release.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_session_a_r25_bets_v5x_r2_quiesce.py' -v
+          python3 -B scripts/release/r25_steam_refresh_v5z.py --phase selftest
+          python3 -B scripts/release/r25_bets_history_v5z_r3_nonfinancial_cutover.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_a_r25_bets_v5z_r3_stop_window.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_session_a_bets_history_ui_failclosed.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_session_a_bets_public_history_readmodel.py' -v
+      - name: R25 public Bet history is strictly read only under financial HOLD
+        run: |
+          python3 -B -m unittest discover -s tests -p 'test_session_a_bets_public_history_readmodel.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_session_a_bets_history_ui_failclosed.py' -v
       - name: Run active Node contract inventory
         run: python3 scripts/run_test_contract.py
       - name: Build production application
         run: yarn build
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
+      - name: Export the exact tested runtime artifact
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: python3 -B scripts/aoe2_r25_c_parallel_stage.py --ci-export-artifact --artifact-output "$RUNNER_TEMP/aoe2war-runtime"
+      - name: Preserve immutable production runtime bytes
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: aoe2war-runtime-${{ env.AOE2WAR_ARTIFACT_SOURCE_SHA }}
+          path: ${{ runner.temp }}/aoe2war-runtime/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
 
   isolated-rating-postgres:
     name: Isolated Steam-rating PostgreSQL chronology
@@ -127,10 +177,13 @@ jobs:
       # Never connect to production. The test creates a private Unix-socket
       # cluster under /tmp, exercises authority selection, then destroys it.
       RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
+      RUN_PRODUCTION_AUTH_PG_TESTS: "1"
       AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22.22.0
@@ -153,3 +206,5 @@ jobs:
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
             --test tests/current-watcher-rating-postgres.test.mts
+      - name: Prove production auth grants and financial write denial in isolated PostgreSQL
+        run: python3 -B -m unittest discover -s tests -p 'test_nonfinancial_production_auth_pg.py'

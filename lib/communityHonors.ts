@@ -1,4 +1,5 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 export const DEFAULT_BADGE_LABELS = ["OG", "Contributor", "Founder"] as const;
 
@@ -133,6 +134,17 @@ export function badgeToneClassName(label: string) {
   return "border-white/10 bg-white/5 text-slate-200";
 }
 
+type BadgeDisplayRow = {
+  id: number; userId: number; label: string; note: string | null;
+  status: string; displayOnProfile: boolean;
+  acceptedAt: Date | null; createdAt: Date;
+};
+type GiftDisplayRow = {
+  id: number; userId: number; kind: string; amount: number | null;
+  note: string | null; status: string; displayOnProfile: boolean;
+  acceptedAt: Date | null; createdAt: Date;
+};
+
 export async function loadUserCommunitySummaries(
   prisma: PrismaClient,
   userIds: number[],
@@ -156,16 +168,37 @@ export async function loadUserCommunitySummaries(
     return summaryMap;
   }
 
-  const [badges, gifts] = await Promise.all([
-    prisma.userBadge.findMany({
-      where: { userId: { in: uniqueUserIds } },
-      orderBy: [{ createdAt: "asc" }, { label: "asc" }],
-    }),
-    prisma.userGift.findMany({
-      where: { userId: { in: uniqueUserIds } },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    }),
-  ]);
+  const restricted = isNonfinancialPublicReadProfile();
+  if (restricted && includePending) {
+    throw new Error("PUBLIC_READ_MODEL_PRIVATE_HONOR_AUTHORITY_REQUIRED");
+  }
+  const badgeQuery: Promise<BadgeDisplayRow[]> = restricted
+    ? prisma.$queryRaw<BadgeDisplayRow[]>(Prisma.sql`
+        SELECT id,user_id AS "userId",label,note,status,
+               display_on_profile AS "displayOnProfile",
+               accepted_at AS "acceptedAt",created_at AS "createdAt"
+        FROM aoe2war_public_v1.player_badges
+        WHERE user_id IN (${Prisma.join(uniqueUserIds)})
+        ORDER BY created_at ASC,label ASC
+      `)
+    : prisma.userBadge.findMany({
+        where: { userId: { in: uniqueUserIds } },
+        orderBy: [{ createdAt: "asc" }, { label: "asc" }],
+      });
+  const giftQuery: Promise<GiftDisplayRow[]> = restricted
+    ? prisma.$queryRaw<GiftDisplayRow[]>(Prisma.sql`
+        SELECT id,user_id AS "userId",kind,amount,note,status,
+               display_on_profile AS "displayOnProfile",
+               accepted_at AS "acceptedAt",created_at AS "createdAt"
+        FROM aoe2war_public_v1.player_gifts
+        WHERE user_id IN (${Prisma.join(uniqueUserIds)})
+        ORDER BY created_at DESC,id DESC
+      `)
+    : prisma.userGift.findMany({
+        where: { userId: { in: uniqueUserIds } },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+  const [badges, gifts] = await Promise.all([badgeQuery, giftQuery]);
 
   for (const badge of badges) {
     const summary = summaryMap.get(badge.userId);

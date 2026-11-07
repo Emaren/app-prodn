@@ -8,11 +8,15 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-10-22"
+reviewed_at: "2026-11-06"
 review_interval_days: 14
 sensitivity: "internal"
 ---
 # AoE2WAR Betting Constitution
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Scoped technical review of the current `#JimsRule` source contract in `lib/betWagerSettlement.ts` and the running HEL1 release boundary. Current source distinguishes implemented matched/unmatched settlement rules from proposed Phase Books V1 ratification items. The dedicated 8094/8095 financial services remain inactive and C01–C09 remain on HOLD. **This editorial review is not owner ratification, external solvency certification, approval of a new fee rule, custody authorization, or permission for a payout.** Historical numerical examples remain historical and were not re-certified from live chain data.
+
 
 ## October 22, 2026 — scope-preserving review
 

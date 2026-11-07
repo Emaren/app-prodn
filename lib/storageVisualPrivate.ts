@@ -249,7 +249,11 @@ export async function readPrivateStorageVisual(clock:Date=new Date()):Promise<St
     }))};
     return view;
   }catch(e){
-    if((e as NodeJS.ErrnoException).code==="ENOENT")return EMPTY_VISUAL;
+    // The production web unit cannot access the private signed-receipt mount.
+    // Missing/denied evidence is UNKNOWN, never a forged positive snapshot.
+    if(["ENOENT","ENOTDIR","EACCES","EPERM"].includes(
+      (e as NodeJS.ErrnoException).code??""
+    ))return EMPTY_VISUAL;
     throw e;
   }finally{await handle?.close();}
 }

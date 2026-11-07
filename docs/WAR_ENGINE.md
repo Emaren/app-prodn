@@ -8,12 +8,16 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "replay-evidence-escalation-contract"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-11-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # The War Engine
+
+## Source-contract review — 2026-11-04 (AI engineering review)
+
+Reviewed candidate-only replay escalation against the replay-engine-room database migration and its candidate/public-aggregate constraints. No new winner was adjudicated, no production job was run, and the financial nonmutation boundary remains unchanged.
 
 The War Engine is AoE2WAR's escalation path for replay files whose normal parser evidence cannot prove a competitive result.
 

@@ -224,14 +224,16 @@ DO $public_reads$
 DECLARE v_table text;
 BEGIN
   FOREACH v_table IN ARRAY ARRAY[
-    'game_stats', 'replay_result_adjudications', 'replay_player_snapshots',
+    'game_stats', 'replay_player_snapshots',
     'replay_player_metrics', 'replay_game_metrics', 'replay_player_metric_aggregates',
     'replay_player_identity_projections', 'player_identity_aliases', 'warriors',
     'platform_accounts', 'platform_name_observations', 'warrior_platform_links',
     'tournaments', 'tournament_entries', 'tournament_matches',
     'chat_messages', 'chat_message_reactions', 'game_watch_streams',
-    'game_watch_retained_demo', 'page_change_revisions', 'workshop_status',
-    'workshop_entries', 'workshop_artifacts', 'workshop_streams'
+    'game_watch_retained_demo', 'page_change_revisions',
+    -- Publicly published display objects only, never custody or identity secrets.
+    'event_tiles', 'hero_playlists', 'hero_playlist_items',
+    'hero_playlist_publications', 'hero_screens', 'chat_rooms'
   ] LOOP
     IF EXISTS (SELECT 1 FROM pg_catalog.pg_class c
       JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -239,5 +241,30 @@ BEGIN
       EXECUTE pg_catalog.format('GRANT SELECT ON TABLE public.%I TO aoe2war_web_prod', v_table);
     END IF;
   END LOOP;
+  -- Public projection fields. Do NOT grant full raw forum body, uploaded
+  -- media origin/user identity, or trophy payout/custody/financial fields.
+  IF pg_catalog.to_regclass('public.trophies') IS NOT NULL THEN
+    GRANT SELECT (id, display_name) ON public.trophies TO aoe2war_web_prod;
+  END IF;
+  IF pg_catalog.to_regclass('public.forum_threads') IS NOT NULL THEN
+    GRANT SELECT (id, slug, channel, tag, title, excerpt,
+      author_label, author_role, created_at, updated_at)
+      ON public.forum_threads TO aoe2war_web_prod;
+  END IF;
+  IF pg_catalog.to_regclass('public.managed_media_assets') IS NOT NULL THEN
+    GRANT SELECT (id, kind, target, label, url, alt, mime_type,
+      size_bytes, active, updated_at)
+      ON public.managed_media_assets TO aoe2war_web_prod;
+  END IF;
+  IF pg_catalog.to_regclass('public.replay_result_adjudications') IS NOT NULL THEN
+    -- The public effective-result relation deliberately excludes captured
+    -- market/wager/claim snapshots and raw parser payloads.
+    GRANT SELECT (id, game_stats_id, idempotency_key, decision_status,
+      affects_stats, affects_bets, actor_display_name_snapshot, actor_role,
+      team_assignments, winning_team_key, winning_player_keys, reason, evidence,
+      source_replay_hash, source_parse_iteration, source_roster_hash,
+      source_proposition_hash, created_at)
+      ON public.replay_result_adjudications TO aoe2war_web_prod;
+  END IF;
 END
 $public_reads$;

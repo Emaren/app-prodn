@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "aa31669d2f3ce6065afe0004a181379182beed5fd298d374e6833f6e8c77a9cc",
+      "sha256": "c8a54e19e88597cc83f6707ef81380e7f0b1adcf6673a36fee15e4485f1836bd",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "e0a3a72d69eadae42c1d13db23738c3d601d7ee6830698b5f6a8a4f72c3f8c6a",
+      "sha256": "cc03b8cfe07b13080a258e8d85e698b3985c03e8bd30d747690b924499a65bbf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -478,9 +478,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "5e41fc4f4feffa2e942587eafce4f7a355660f457ac5684f85ae84a783186687",
+      "sha256": "e7a5839cccb4f4f08525c034ae829659ca79100a37da978b9eb2e1d4586a87fd",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -594,9 +594,9 @@
       "owner": "aoe2war-web",
       "path": "docs/COMMISSIONER_REPLAY_REVIEW.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "internal",
-      "sha256": "748086c5d9dc355739ef3f2153e16a40e4ef9c27a2b9a6d93889d1fd67799d91",
+      "sha256": "594ab5628f6e63b746632a45eb2e70ae086c2b042bb0175c238d884fba00cc76",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2690325c41d6e6e91bc1e00faf01b10a304cc813d3b1c3085ee348303fc7097d",
+      "sha256": "ca943172a057b3025c1e16b6a3f16788843d5d571f3f9da87ebe8fce38dca6d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -705,9 +705,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-05",
       "sensitivity": "internal",
-      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
+      "sha256": "87bd030d9408f1097cd59fa8fddbce80323042c9042f7b5dbf3347c3245b2f1f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -965,9 +965,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_CIVIC_SURFACES.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "9fcfeeccd437194a7f83df652d35bf555a9fbb522913f11ed8950f88184e8ed6",
+      "sha256": "b5c8338aef789ad0d7b58d82d5d91eb329060106cdc2f2435f20266e7fe01fc7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -988,9 +988,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_INTELLIGENCE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "c5976640aeec45e9a429db9a305c1816fbbd0f8dbbeaf13abedbd8a943b296eb",
+      "sha256": "07a15e546b2a11808d2e2a115261e4795dcf1220e62accf6cb6b255104db780a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1192,9 +1192,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKET_TEAM_INTEGRITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "restricted",
-      "sha256": "c4bf646903fe22bbd16f52ee47a08e3be70c224ee0cacf1571411e7d85ec5b61",
+      "sha256": "ba1846eafbf044f1577e8cb04a230d2a91ad307e3c390b1343f8d7471cd94304",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1217,9 +1217,9 @@
       "owner": "aoe2war-web",
       "path": "docs/NATIVE_REPLAY_CONTROL.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "5c12be77c043d887a5e38fd84933fc83f7e3916b0155da1ff5e2d34e63660b22",
+      "sha256": "0b3fdb40676b64668e18dfcd45dc3f607a42977bfe7607b79ac3e28eb87cd061",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1286,9 +1286,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PAGE_HERO_CMS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-07",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "6bafba383f3645df82ce2b8d69036155e2dd6a662023374d1b5e8ac94fa1c15c",
+      "sha256": "afdbc88fa026790d1db6bd809e4dcafedca4e8081f5ae780bb0dc454e270529e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1579,9 +1579,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REALTIME_TRUTH_CONTRACT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "2e27e7cfe523de8084f45d7f41520612f379a3e5cbe6773c4c76be86847a37ab",
+      "sha256": "9fae3acd6308159cd221e1ab74e56592dfc8209de3dc3315b1ff4a83f8622edb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1605,7 +1605,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "47b99f09afc661b6da9cae4f9798f05742779b348d1b3347a957a8ee6fcda4f6",
+      "sha256": "df26dfda7f1620730dea4c285b41a0a83655480262577587ed50e675fcc42cef",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1651,7 +1651,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "66f43829b70581b800a5d6901d15988e933674bd2870b37f91a4a95b0aa62dd3",
+      "sha256": "b8a3f5cd65153db0f842330cf2ac17b9cb6df52026f204f30539e9e232e39baf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1832,9 +1832,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "97f0a5a3942ff10b95ff38e5a5a28764e6a0b27b8518cf3c518bd7f2b21e66f4",
+      "sha256": "5058f0f08d96af9561971721f6de6b7d799b1efd984ed160a9503ea93b5d881f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1919,6 +1919,205 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial-read-model-source-only-not-funded-or-live",
+      "id": "aoe2war.app.r25-bets-public-history-readmodel",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "05d70c24f0a14b5274780f90be4943dde11ef70168bb1fd0df2afae0a2512281",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Bets Published Historical Read Model Under Financial HOLD",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-source-qualified-physical-release-pending",
+      "id": "aoe2war.app.r25-bets-v5x-guarded-release",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_V5X_GUARDED_CUTOVER_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "b2142ef5a5968ac3f58bd135367c8f9d7652bc107f46f76dd798bc2531b4412c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Betting Hall v5x Guarded Nonfinancial Cutover",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-nonfinancial-physical-release-not-yet-accepted",
+      "id": "aoe2war.app.r25-bets-v5x-r2-graceful-quiesce",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_V5X_R2_QUIESCE_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "df39fc93e9d0223c8e0a05040ac0226b3fa6e48f5c0040741e6473b58b33432b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Betting Hall v5x R2: Native Steam Quiesce Repair",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-nonfinancial-runroot-release-not-yet-admitted",
+      "id": "aoe2war.app.r25-bets-v5z-r3-stop-window",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_V5Z_R3_RELEASE_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "587c81db203b6996d7c7060cd44d7836c43069c5c2d21d205562facef0459c57",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Betting Hall v5z R3: Native Web Stop Window and Exact Steam PID HOLD",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-emergency-website-recovery-source-only-no-funded-release",
+      "id": "aoe2war.app.session-a-r25-public-nonfinancial-recovery-v5u",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "ee4cdd37398102b0f43a32df0527fca13cc6679af7579f26a93dadcd215d37e8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "Session A R25 Public Nonfinancial Recovery and Steam v5u Admission",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "steam-only-sandbox-evidence-recovery-no-funded-release",
+      "id": "aoe2war.app.session-a-r25-steam-v5v-protecthome-repair",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "69b858f334b8bb6d53a6714c1579a71bb428697213b40289cc5e429fef31b6c3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-root-reviewed-runtime-admission-never-financial",
+      "id": "aoe2war.app.r25-steam-v5w-process-readmission",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_STEAM_V5W_HEAP_RESTART_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "11dbd4ba603e7371c393d1aad789ac5a61859318e24b091103367bd710ed37fc",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Steam v5w: Source-Bound Recovery After Observed Node Heap Abort",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
+      "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "12d833f324a070da77910cd948d0544dc967ca962f9005071101bffa644abea7",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Session B R25 Steam-Only Restart Review",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "steam-only-source-review-no-funded-release-or-direct-root-approval",
+      "id": "aoe2war.app.session-b-r25-steam-v5t-expiry-review",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "973629ca929137860a465941a6f1e3d10bbac4b4d5a192aeba545dd6fc5cff2c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -1926,7 +2125,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "19f6b7197525bcbcb62fff3269909fe1f1275191cbbc9ad29a2f66577b8fb277",
+      "sha256": "cd8637d8503b5f296d7e1608656ca71abf0df2cb9458cc4ef7cfe67434d74dc7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2062,9 +2261,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ENGINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "internal",
-      "sha256": "4fb5cfd36abf0ed3c3f9c3760da2a60091c8236f50e48ccc9f057d1f334ac41b",
+      "sha256": "708dd575c6e61fc80ba7cee44f6a5bceef26bd5f29c6746ae0c027d2caa3b2e4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2225,7 +2424,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-02",
       "sensitivity": "restricted",
-      "sha256": "7396af3a3a1dae35848b3edd132f6d3e5e1980a47dfb9aaf80edfac84a888255",
+      "sha256": "2de32b529cf537eef5f19606844d67a849a19f732fb3114d6343895b691348c0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2270,7 +2469,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-01",
       "sensitivity": "internal",
-      "sha256": "53d13ebb6717ff519b99341fa2b6b35ea4356b49ffe72d2002f02933f990d002",
+      "sha256": "63608442ca1c6230507c2d38f7c67c5aff491adb2f185e7abaadae8b338c0cbf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2392,8 +2591,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/r25-postlive-b2-b3-b4-20261102",
-    "commit": "29d2d894bcf4c616abb513a597dc32aa4f86d438"
+    "branch": "fix/app-r25-v5z-r3-shutdown-window-20261107",
+    "commit": "eadd11af905a591060ce752cb4294f4c03025937"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

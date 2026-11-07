@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/r25-postlive-b2-b3-b4-20261102` at `29d2d894bcf4c616abb513a597dc32aa4f86d438`
+Implementation baseline: `fix/app-r25-v5z-r3-shutdown-window-20261107` at `eadd11af905a591060ce752cb4294f4c03025937`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **104**
+- Authoritative repository documents: **113**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 64
-- `runbook`: 21
+- `reference`: 72
+- `runbook`: 22
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 7
+- `draft`: 16
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -134,6 +134,15 @@ This page is generated from the validated front matter in this repository. Cross
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
+| [R25 Bets Published Historical Read Model Under Financial HOLD](SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md) | `reference` | `draft` | `nonfinancial-read-model-source-only-not-funded-or-live` |
+| [R25 Betting Hall v5x Guarded Nonfinancial Cutover](SESSION_A_R25_BETS_V5X_GUARDED_CUTOVER_20261107.md) | `reference` | `draft` | `nonfinancial-source-qualified-physical-release-pending` |
+| [R25 Betting Hall v5x R2: Native Steam Quiesce Repair](SESSION_A_R25_BETS_V5X_R2_QUIESCE_20261107.md) | `reference` | `draft` | `source-only-nonfinancial-physical-release-not-yet-accepted` |
+| [R25 Betting Hall v5z R3: Native Web Stop Window and Exact Steam PID HOLD](SESSION_A_R25_BETS_V5Z_R3_RELEASE_20261107.md) | `reference` | `draft` | `source-only-nonfinancial-runroot-release-not-yet-admitted` |
+| [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
+| [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
+| [R25 Steam v5w: Source-Bound Recovery After Observed Node Heap Abort](SESSION_A_R25_STEAM_V5W_HEAP_RESTART_20261107.md) | `reference` | `draft` | `source-only-root-reviewed-runtime-admission-never-financial` |
+| [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
+| [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |

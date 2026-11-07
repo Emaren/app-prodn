@@ -159,23 +159,30 @@ test("player history is cached separately from current Watcher and presence stat
 
   assert.match(
     generation,
-    /FROM users/,
+    /const users = Prisma\.raw\(scoped \? "aoe2war_public_v5\.user_profiles" : "users"\)/,
   );
   assert.match(
     generation,
-    /FROM user_badges/,
+    /aoe2war_public_v1\.player_badges[\s\S]*user_badges/,
   );
   assert.match(
     generation,
-    /FROM user_gifts/,
+    /aoe2war_public_v1\.player_gifts[\s\S]*user_gifts/,
   );
   assert.match(
     generation,
-    /FROM managed_media_assets/,
+    /const avatars = Prisma\.raw\(scoped \? "aoe2war_public_v5\.avatar_revisions" : "managed_media_assets"\)/,
   );
+  assert.ok(generation.includes("FROM " + "$" + "{users}"));
+  assert.ok(generation.includes("FROM " + "$" + "{avatars}"));
+  // Restricted R25 static relation selection must leave legacy raw queries
+  // available only in the old, unrestricted runtime profile.
+  assert.match(generation, /FROM \$\{badges\}/);
+  assert.match(generation, /FROM \$\{gifts\}/);
+  assert.match(generation, /FROM \$\{claims\}/);
   assert.match(
     generation,
-    /FROM pending_wolo_claims/,
+    /aoe2war_public_v1\.pending_claim_names[\s\S]*pending_wolo_claims/,
   );
   assert.doesNotMatch(
     generation,

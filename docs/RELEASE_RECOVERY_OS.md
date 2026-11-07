@@ -787,3 +787,435 @@ alternative lane, activates War Satchel or initiates counter-wagers.
 sensor, not an auto-fixer or a credential-bearing remote subagent. An offline
 Desktop Commander or absent VPS observer prevents certification; it must be
 reported as missing evidence, never inferred from green GitHub CI.
+
+## R25 nonfinancial projection admission: v1–v6 drift (2026-11-04)
+
+The isolated website's production database role is deliberately denied raw
+financial, Watcher, trophy, identity and media tables. The original native C
+runtime witness approved exactly seven public-only v1 views. When v2–v6
+security-barrier projections were separately added, the unchanged v1-only
+allowlist correctly refused the next 3032 refresh with
+`PRODUCTION_NATIVE_AUTH_DATABASE_BOUNDARY_FAILED`. This is an intentional
+security HOLD, not a service outage and not a reason to grant blanket SELECT.
+
+The source-bound repair expands the **exact** allowlist to nineteen reviewed
+public-display views, with separately pinned PostgreSQL canonical definition
+SHA256 for each added schema, exact view names and counts, postgres ownership,
+`security_barrier=true`, schema USAGE without CREATE, SELECT without GRANT
+OPTION, and explicit rejection of other owners or grantees. It still denies
+direct protected tables and unapproved columns, DML, volatile execution,
+privileged role membership, and schema creation. The original v1 digest and
+auth-definer identity remain unchanged.
+
+For every future additive public projection: install only the reviewed source
+with a root-owned transaction and negative ACL postflight; update this native
+catalog contract in a distinct source-reviewed PR; rerun the real HEL1
+**read-only** `production_database_witness` plus synthetic negative tests;
+rebuild and admit the exact candidate with a fresh, one-use, rollback-capable
+3032 transaction; finally prove the complete streamed browser content. Merely
+returning HTTP 200 or repairing the source without a real runtime witness does
+not close a production gate.
+
+The native witness must distinguish `PRODUCTION_ADDITIONAL_PUBLIC_READ_MODELS_CHANGED`
+(view count/name/owner/definition/permissions drift) from
+`PRODUCTION_NATIVE_AUTH_DATABASE_BOUNDARY_FAILED` (unauthorized reads,
+writes, roles, functions or schema authority). Both remain fail-closed.
+The canonical register is `Emaren/app-prodn#1108`; successful isolated
+catalog evidence is not permission to enable WOLO financial execution or
+switch public Nginx.
+
+## R25 Steam CDN address drift and stopped 3032 rollback recovery (2026-11-04)
+
+A genuine one-use native 3032 swap reached the new Node process but later
+failed `PRODUCTION_REAL_NODE_STEAM_TLS_PROBE_FAILED:EXIT_3`. Nftables
+correctly allowed an independently TLS-validated Steam CDN endpoint, but
+Node (under dedicated UID 990) resolved another valid Steam CDN IP: the
+allowlist held `23.12.156.233` while the Node resolver used
+`95.100.176.225`. A timed-out OpenID
+`check_authentication` probe is **not** proof of an authenticated Steam user.
+The automatic rollback requalified the original isolated source but a
+subsequent witness failed; it correctly stopped 3032 and recorded
+`CRITICAL_ROLLBACK_INCOMPLETE`. The public 3030 and financial systems
+remained untouched.
+
+**Protocol repair:** Repeatedly resolve Steam's real hostname using both
+the root planner and isolated UID; reject any private/multicast/badly
+formed addresses; TLS-connect to each candidate with verified system trust
+and exact `steamcommunity.com` SNI; allow only those verified IPs in
+the existing nft sets. Preserve the exact UID-specific egress policy and
+the 300-second expiry. The existing bounded 60-second systemd refresh timer
+automatically repeats this verified discovery once the isolated service is
+admitted; no permanently permissive egress rule or background busy-loop.
+
+**Exception recovery:** A consumed journal must never be replayed or treated
+as a live PID. `scripts/r25_a05_recover_steam_dns_hold.py` admits only
+the exact stopped 3032 state and exact immutable failed journal. Its separate
+fresh nonce, source-reviewed controller hash, read-only host PLAN, actual
+owner-delegated one-use grant, frozen CI artifacts and protected snapshot
+all must match. The handler runs the new native admission with a new PID,
+tests all eight streamed guest pages, and writes a new durable PASS/HOLD
+receipt. A failure stops isolated 3032, restores the previous source bytes
+and never touches public Nginx, 3030, WoloChain, or consensus. **Do not
+declare A05 or A06 closed based on an isolated recovery.**
+
+When diagnosing this class of failure, report separately: validated Steam
+IPv4/IPv6 set, DNS answers seen by the confined UID, TLS SNI outcome,
+Node POST timeout/error category, real service PID, isolated recovery
+journal, and public upstream identity. Never log cookies, signing secrets,
+wallet material, authentication proofs or the raw database URI.
+
+## Bounded A05 readiness observer: detect guest Flight failure before a cutover
+
+`scripts/aoe2war_release_readiness_observer.py` is the strictly read-only,
+non-authoritative, eight-route guest readiness monitor. It observes both
+public 3030 and isolated 3032. For each route it records HTTP status,
+byte count, a SHA-256 hash, expected public content marker, real `<main>`
+presence, and streamed React Flight `[hex]:E{...}` errors. It also
+records the source-bound deployment version per port. Truncated, short,
+exception-bearing, missing-content, and unreachable responses are HOLD,
+even if the HTTP status is 200. Its live baseline on 2026-11-04 was
+3030 8/8 guest diagnostics PASS against `20261028134227-6c0f6d7531`,
+while 3032 was STOPPED. These observations are **not** Steam sign-in,
+admin/browser acceptance, public cutover authority, or a gate-closure
+certificate.
+
+The optional installed source-owned
+`deploy/systemd/aoe2war-release-readiness-observer.service` and
+`.timer` run a single low-resource oneshot approximately every five
+minutes, with a strict 96 MB / 25% CPU budget, loopback-only egress,
+dynamic service identity and 100-second deadline. Each run overwrites
+one atomic root-owned systemd StateDirectory JSON report (no raw
+HTML, cookies, PII, credentials, query strings, or financial data).
+The process exits instead of polling between runs. The old production
+service, isolated service, Nginx selectors, and finance units are never
+modified by the observer; consumers must treat its PASS as
+`GUEST_DIAGNOSTIC_ONLY` and never a substitute for native F/G and
+real Steam/Chrome/admin acceptance.
+
+Drift triage: if public routes fail while 3030 is healthy, classify
+page-level render regression; if only 3032 fails, fix the isolated build
+before considering F; if 3032 is stopped, report STOPPED rather than a
+fake healthy empty shell. Emit the exact route/status, source version,
+timestamp, and receipt hash in the WarOS production register. No
+automatic cutover or rollback action is authorized by this monitor.
+
+## A05 Game Stats public final replay corpus v7 (source-only, 2026-11-04)
+
+The `/game-stats` public parser observatory previously included
+`gameStats.findMany({ include: user, replayResultAdjudications })`.
+Under `nonfinancial-production-v1`, direct `users` and
+`replay_result_adjudications` reads are correctly denied; the old
+query fails even though `game_stats` itself can be selected.
+Merely granting those raw tables would expose private accounts,
+unpublished adjudication evidence and financial authority.
+
+`config/nonfinancial-public-game-stats-corpus-v7.sql` adds a
+Postgres-owned, `security_barrier=true` final-replay public projection
+using existing `aoe2war_public_v5.user_profiles` and only the
+winner/teams fields from accepted result adjudications. Raw evidence,
+free-text reviewer notes, reviewer private identity, wallet metadata,
+market snapshots and financial disposition are excluded. The page's
+isolated-profile query preserves the original final replay sort and
+retired-auto-adjudication filter before selecting the latest admissible
+review. The legacy 3030 query remains untouched. Missing views throw
+a real error, never a fabricated empty/zero replay count.
+
+Before any physical installation: require source SHA and CI approval,
+run the exact SQL as root-owned PostgreSQL transaction in a
+rollback-only rehearsal under `aoe2war_web_prod`, including
+negative base-table privilege proof; then commit an additive view
+only on that same source. First rehearsal on HEL1 returned
+**7,011** current final records and `ROLLBACK` with the web role.
+This is a narrow **corpus prerequisite**, not the full Game Stats
+observatory: remaining parser/identity aggregate reads still require
+separately reviewed public projections and real nonfinancial
+3032/Chrome acceptance. Future runtime controller must explicitly
+pin the v7 view definition/ACL before 3032 can start.
+
+No generic `GRANT SELECT`, scheduled financial execution, public
+upstream mutation, or replay statistics fabrication is authorized.
+
+## R25 Game Stats parser aggregate v8: public-only classified metrics (2026-11-04)
+
+The original `/game-stats` public observatory attempted direct ORM reads
+from restricted parser runs, replay observations, reprocess job events,
+replay evidence artifact rows, identity publications and warrior claims.
+Those tables remain private. `nonfinancial-production-v1` now branches
+before constructing its legacy aggregate read promises to a single
+source-owned `aoe2war_public_v8.parser_observatory_snapshot`
+`security_barrier=true` PostgreSQL view. The page keeps all twelve
+existing analytics domains: game and archived artifact counts, run status,
+parser versions, field coverage, observations, bounded last six jobs,
+failure-class counts, latest parse results, effective public projection
+receipts, accepted identity display snapshots, and identity foundation
+counts. It never invents zeros on view absence, treats malformed
+aggregate inputs as a visible error, and preserves the legacy 3030
+ORM branch unchanged.
+
+The view is PostgreSQL-owned and publishes only explicit public scalar
+metrics; raw failure detail, arbitrary parser metrics/provenance, evidence
+storage keys, private reprocess scope, worker identities, unpublished
+reviewer notes, wallets, claim decisions and financial tables remain
+outside web SELECT. For accepted identity snapshots it reproduces Prisma
+`supersededBy:null` using a real anti-join on the physical
+`supersedes_id` field. The first exploratory SQL attempt using a guessed
+`superseded_by` column failed inside a transaction and was discarded.
+The corrected combined v7+v8 atomic HEL1 test returns 12 metric groups
+and 60,945 current database game rows as the restricted production
+web role; it is explicitly followed by ROLLBACK.
+
+This v8 publisher is **not** public launch authority. Require all exact
+source/CI/security/Chrome checks; separately pin view definitions and
+base-table negative privilege behavior into the native controller
+allowlist before any additive commit, 3032 restart or Nginx switch.
+The v7 corpus view is a prerequisite and must be installed using its
+exact signed source first. Avoid accidentally presenting prospective
+or candidate parsing statistics as financially settled outcomes.
+
+## A05 War Chest public-only wagers/claims/market projection v9
+
+The public `/war-chest` route previously queried protected `bet_wagers`,
+`pending_wolo_claims`, `bet_markets`, and private user identity through
+multiple nested dashboard builders. Those raw tables are intentionally
+denied to `aoe2war_web_prod`; a blanket SELECT grant would cross
+financial and wallet boundaries. Three postgres-owned,
+`security_barrier=true` source views publish only: public wager
+amount/status/time/side, with a computed **recorded-funding Boolean**
+requiring recorded legacy intent or recorded batch-ticket proof; public
+claim status/amount and a public on-chain payout hash with private note
+removed and internal error details reduced to a fixed display-safe
+category; and public market labels, ordering, status and seed pools.
+Wallet addresses, memo, raw signing authority, browser identity,
+private client/account fields and raw market integrity evidence are
+excluded. The existing v5 public user-profile projection supplies the
+display names and verification badges.
+
+The isolated `nonfinancial-production-v1` profile branches before
+constructing any private Prisma promises and reconstructs the actual
+War Chest page from the v9 views. It preserves the existing
+`loadLobbyWoloEarnersBoard` actor merge, matched exposure, team-claim
+split, ranking, payout accounting and weekly UTC clock. Its user/name,
+claim and wager data loaders access only the public v5/v9 views under
+that profile, retaining the original ORM path on legacy servers. The
+mainnet filter is applied to the **actual funding Boolean**, stake lock
+date, and existing mainnet display start: an unsigned, app-only or
+unrecorded wager must never appear as financially funded. The isolated
+War Chest loads public market previews and real aggregate totals, not
+private viewer-specific Bet Board recovery/preset/financial controls;
+the authenticated `/bets` route remains its own separately reviewed
+surface. Missing public views or broken public user-market references
+throw instead of becoming invented zero counts.
+
+**Physical noncommitting test:** On HEL1, applying exact v9 source
+inside a transaction and querying with `SET ROLE aoe2war_web_prod`
+returned 3,378 published markets, 1,457 wager records, 1,416
+recorded-funded wager records, zero null funding flags, 2,432
+unrescinded claim records. The three views are all postgres-owned and
+security-barrier enabled, with canonical definition digest
+`a4a253452d05b3f90906975dedf12cc701943d7c7b8d09283c0eae0654f2b58f`.
+The transaction ended `ROLLBACK`. Counts are source evidence, not
+claims that every transaction is mainnet-visible: mainnet start and
+lock-date filtering still apply at render time.
+
+**Stop-ship:** Source CI, exact-head browser/security, a separately
+reviewed native v9 catalog/ACL allowlist and an additive SQL install are
+mandatory before physically restarting 3032. The v7/v8 Game Stats
+source is separate. The native Steam 3032 recovery and six-selector
+public Nginx F/G cutover also require fresh host snapshot and valid
+one-use nonfinancial owner authorization. WoloChain funding controls
+remain the independent chain lane's responsibility. This is a public
+display projection; it cannot settle claims, sign or move WOLO.
+
+## A05 authenticated Game Stats Your Vault and public Page Hero v10-v11
+
+The earlier v7 final corpus/v8 metric projections remove protected public
+Game Stats ORM reads, but authenticated users still triggered
+`loadViewerParserVault()` and its private `replay_parse_attempts`
+relations; page hero loading also crossed unpublished playlist and
+`managed_media_assets` reads. These two query paths must pass
+for a genuinely signed-in Game Stats session, not just guest HTML 200.
+
+`config/nonfinancial-public-parser-viewer-v10.sql` publishes only final
+game IDs and SHA-256 digests of either the owning `game_stats.user_uid`
+or the linked parse attempt uploader UID, preserving the original
+OR membership and deduplicating within each viewer. The confined
+application hashes the already verified session UID, selects only
+matching memberships and reduces those final games using the original
+result and team truth algorithm. The legacy Prisma query is unchanged.
+Source reviewers must note that a digest of a low-entropy/guessable UID
+is not a secret: the application role is strictly server-only, the view
+publishes no source-upload metadata, and the public site MUST NOT
+expose membership data via an arbitrary UID API.
+
+`config/nonfinancial-public-page-heroes-v11.sql` publishes only
+source-owned active `kind='hero'`, `target IS NULL` assets on
+explicitly enabled, in-window, nonarchived hero playlist items.
+The view returns the exact public slide configuration and rendered
+asset labels/URLs, not unpublished upload names, owners, raw media
+configuration, hero-screen draft information, private assets or
+financial state. The confined site reads this one public view; a truly
+absent playlist retains the original design's `defaultChain` empty
+state, and malformed published content fails closed. Original admin
+mutations/readers remain on their separate authenticated path.
+
+A real HEL1 rollback-only v10+v7 source rehearsal returned 7,181
+final viewer memberships, zero clear-UID/secret view columns, with
+postgres ownership, `security_barrier=true` and definition SHA256
+`f42b1c78f5e39dbbce088b31c3ec06986865698806512c9311fcc67a4a1e99bd`.
+A separately attempted combined v10/v11 host rehearsal was refused by
+the connected execution tool, and **no v11 native physical attestation or
+installation is claimed**. v11 requires exact physical SQL rollback
+proof, canonical definition and negative ACL witness before the native
+strict allowlist may admit it.
+
+These source fixes are not A05 public cutover or A06 browser acceptance.
+Do not run financial operations or relax broad web DB privileges.
+
+### v11 Postflight real-host clarification
+
+R25's original exact database allowlist *already approves* read-only SELECT
+on the three public hero playlist/item/screen tables. A preliminary v11
+preflight erroneously asserted those SELECT permissions were forbidden,
+so a combined v7-v11 atomic HEL1 rehearsal correctly refused to commit.
+The corrected postflight **requires those existing approved SELECT grants**
+and independently denies INSERT/UPDATE/DELETE, as well as forbidding
+full-table SELECT on `managed_media_assets` (which has a narrow legacy
+column allowlist only). The native controller continues to fingerprint
+all original table/column grants and the new v11 view's complete
+definition, schema ownership and ACL. This source repair does not grant
+or revoke any legacy role permissions and preserves the other services.
+
+### Native database catalog v7 through v11: single source-qualified gate
+
+The R25 C production controller exact additional-view allowlist now
+includes **19 approved additional views** across public v2-v11, plus
+the seven original v1 public views. v7, v8, v9, v10 and v11 each have
+an independently computed HEL1 PostgreSQL definition/owner/view
+fingerprint, not a document-authored substitute. The combined native
+rehearsal installed all seven v7-v11 views within one rollback-only
+transaction, queried the confined aoe2war_web_prod role, returned
+7,181 final-replay viewer memberships and one active public Hero
+playlist, attested exact names and security_barrier=true ownership,
+and executed ROLLBACK. Missing, modified, extra, renamed
+or non-security-barrier views remain hard admission holds; the original
+raw table/column ACL allowance is unchanged. The owner must still
+separately authorize the reviewed candidate source and physical START.
+
+
+### A05 War Chest integrity parity correction (v9 new source revision)
+
+The original public Bet Board excludes active/live markets without verified
+market integrity, a proposition hash, resolved/high-confidence winner teams,
+or appropriately phase-matched Desync parent market; low-information
+placeholder names are also suppressed. It also excludes settled, won, lost,
+void and any other non-active wager when calculating live slips and the
+visible left/right pots. The first confined v9 adapter preserved mainnet
+funding proof but accidentally omitted these separate *market and wager
+state* fences. That would inflate live market liquidity or display unreliable
+markets even when all source/Chrome checks passed.
+
+The corrected source-owned v9 market projection now publishes only one
+bounded public eligibility Boolean. Its postgres security-barrier expression
+recreates the verified-proposition and Desync-parent state checks without
+publishing raw proposition hashes, reviewer notes or custody evidence.
+The renderer reuses the shared legacy market-confidence classifier and
+filters the displayed pot/slip list to *active* wagers after applying
+recorded-funded mainnet proof and mainnet lock-date gates. The Heat view
+now considers currently eligible live/open markets only; it does not
+fabricate a settled pot from naive historical wagers (which omits intent
+and claim liability reconciliation). Three new isolated Node test cases
+cover inactive wagers, missing confidence and fail-closed market gates.
+This source revision changes v9's native canonical definition hash;
+the old v9 digest and old e957a399 CI artifact are NOT valid for a new
+release. HEL1's corrected source-owned v9 rollback test returned three
+postgres-owned public view definitions with canonical hash
+80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c.
+Both eligibility display classes are currently empty because no open,
+closing or live markets exist in the database; this is valid current
+state, not missing live liquidity. The new digest is now exact-pinned in
+the source-reviewed controller, and only a fresh full CI/Chrome artifact
+from the corrected head can qualify a release. No deployed financial
+calculation is authorized by this public display-only correction.
+
+The final v9 review also tightened the *recorded funding* predicate:
+the legacy bet-intent hash, batch-ticket hash and market proposition
+must be nonempty after trimming. A non-null blank string is not valid
+on-chain evidence. The final real HEL1 rollback-only PostgreSQL witness
+for the stricter source returned v9 canonical definition hash
+80b7baa88605b4a22c42cf5eda523d6fd2cce71d57213e0a4c039054b72ddd1c,
+3 owner-checked security-barrier views, 1,416 funded wager records
+(before mainnet date filtering), zero currently eligible open markets,
+and ROLLBACK. This digest supersedes all earlier tentative v9 hashes.
+
+## A05 final stopped-3032 recovery, exact runtime 5869b4ab (2026-11-04)
+
+The legacy `r25_a05_recover_steam_dns_hold.py` was correctly frozen
+to a past a9eb6d6e artifact, its consumed one-use rollback journal,
+and a protected host fingerprint from before observer/chain service
+additions. It must **never** be replayed, repointed, or run against
+today's source. A new source-qualified recovery program,
+`scripts/r25_a05_final_3032_recovery.py`, now binds the current
+already-merged production application head
+`5869b4ab08702be4b33860f7dda7d97b5de79424` (PR #1172),
+the exact GitHub-built artifact ID `13346996291`/run
+`41874361015`, zip SHA256
+`8b2297a46271f75e00a53da7b976ce2aeac7b8685a8c3488fec1e4e608c632e0`,
+and sealed host extraction receipt SHA256
+`ce7436919837553c1064c83f7421bd26db0f2b0971b30186394fa07a791a43fc`.
+The source-qualified native controller SHA256 is
+`6085b303f4ae8b57414fc5741b6443ba268372becde59524211b91348c833988`,
+and its canonical new 3032 systemd unit SHA256 is
+`121f76699b1ceeda728b0e69fd1c2602a60ac1f4bb4f6fc979598d6bb74fa1bc`.
+The stage contains 44,839 file-manifest rows (tree SHA256
+`efd6a4d58471aca73d9bea84b2e7672b0c04f2734f040ba340af5fa6d48a9711`)
+and all 17 native critical runtime files passed (SHA256
+`8a9eb2fcc3b11b8fa807afbe453bd5f28e38901474f0d769cb67efa6d203535a`).
+
+The new program has three explicit phases:
+
+* `audit`: **read-only**, no nonce or owner approval accepted, confirms
+  the root-sealed old unit/controller/policy, exact consumed/failed
+  journal, 3032+refresh services stopped, public 3030 unchanged,
+  signed immutable CI artifact, current real protected host snapshot,
+  canonical proposed unit and strict native v1-v11 database catalog.
+  Expected current output is `PASS_READONLY_A05_STAGED_PREIMAGE_NO_SERVICE_AUTHORITY`
+  with `database.status=HOLD` until reviewed v7-v11 PostgreSQL
+  views are installed.
+* `plan`: after exact-source additive public-view SQL installation,
+  derives a **fresh** protected snapshot and full native catalog
+  witness, requires an unused 32-character nonce, unchanged root
+  preimages and original dead PID, and outputs an exact canonical
+  plan SHA256. No service mutation and no authority to deploy.
+* `execute`: accepts only that unchanged source/nonce/plan hash
+  and a **new** unedited, authenticated Emaren owner GitHub comment
+  matching the exact source-head 3/3 successful CI, GitGuardian
+  approval, `A05_FINAL_STOPPED_NONFINANCIAL_3032_ONLY` scope,
+  10-minute maximum grant, max uses one, rollback authority, and
+  explicit AI-delegated authorship disclosure. It consumes a unique
+  root-owned durable journal before any mutation. Only the isolated
+  3032 systemd service, its dedicated Steam refresh units, native
+  3032 controller and approved profile may be updated. It requires
+  new actual PID-bound native database/network/kernel/Steam admission
+  and eight guest HTML+RSC content probes. Failure stops 3032 and
+  restores exact previous unit/controller/policy without ever
+  restarting the prior consumed PID. The original public 3030,
+  Nginx selectors and funded WOLO services are outside authority.
+
+**Real host nonfinancial AUDIT evidence:** On November 4 the root
+source-bound command passed the old stopped unit, preimage, prior
+journal, existing public service, current protected 62-unit inventory,
+artifact API digest, critical build and canonical systemd proof; native
+`production_database_witness` specifically held
+`PRODUCTION_ADDITIONAL_PUBLIC_READ_MODELS_CHANGED` because v7-v11
+are **staged but not installed**. Zero production permissions, runtime
+service, Nginx or financial changes resulted.
+
+**Physical stop-ship remains:** Before SQL installation, use only an
+owner-approved privileged execution channel. Desktop Commander's
+existing command configuration refuses the PostgreSQL COMMIT path.
+Do not alter that blocklist to bypass the provider gate; do not
+represent an AI-authored owner comment as independent human review.
+Require actual source/CI acceptance of this *new* controller before
+its PLAN/EXECUTE, plus a separately qualified F/G six-selector public
+cutover and real guest/nonadmin/admin browser acceptance. A05–A09
+remain OPEN until public evidence, regardless of source or staging.

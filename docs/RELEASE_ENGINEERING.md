@@ -15,6 +15,41 @@ sensitivity: "internal"
 
 # AoE2WAR Release Engineering
 
+## November 2, 2026 — R25 A05 failed-cutover continuation
+
+The existing F root engine and Mac launcher support a distinct continuation of
+accepted A04 evidence. The failed nonce `3cadeb4aac1f217783effc0c25f49fac`
+remains consumed. Its intent and original Nginx preimage are immutable; neither
+the original approval nor the genuine G BEFORE is reissued.
+
+`--root-cutover-plan` is read-only. It binds a fresh nonce to the exact source
+commit, three executable SHA-256 values, original approval and BEFORE digests,
+consumed transaction, both live process identities, protected runtime snapshot,
+and six-selector Nginx preimage/result. A plan does not authorize mutation.
+
+The alternative to native typed consent is an actual, unedited Emaren GitHub
+comment on Master Register #1108 headed `R25_F_OWNER_TRANSACTION_GRANT`.
+It explicitly discloses AI-delegated owner-only nonfinancial authority, permits
+one exact transaction and its protective rollback, and expires within 600
+seconds. Mac and root independently fetch the actual comment, exact-head
+three-job CI and all three committed executable files using existing GitHub
+authentication. Root rechecks the grant at the locked mutation seam. This
+does not claim an independent human review or confer financial authority.
+
+After reload, fresh verified TLS connections distinguish loopback origin
+(`aoe2war.com` Host and SNI) from public Cloudflare HTTPS. Bounded convergence
+requires two stable observations of the exact version and sealed BUILD_ID
+manifest bytes on both paths, with all six selectors and protected processes
+checked throughout. Observations preserve transport, response provenance and
+timings. A known previous version may converge within the deadline; mixed
+selectors, unknown versions or incorrect static bytes fail closed. Failure
+records and automatic rollback outcomes are durable. Expiry blocks forward
+mutation and never blocks restoration of the recorded original preimage.
+
+The Mac continuation reuses the immutable A04 BEFORE and invokes one genuine
+G AFTER against the new journal. Public cutover evidence alone does not close
+A06: real authenticated and guest responsive browser evidence remains required.
+
 ## October 21, 2026 — Satchel and Mecha financial-risk gate coverage
 
 The source release classifier in `scripts/aoe2_release_gate.py` now assigns

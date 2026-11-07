@@ -9,6 +9,7 @@ import {
   readPlayedAt,
 } from "@/lib/gameStatsView";
 import { getPrisma } from "@/lib/prisma";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
   resolvePublicWarEngineStatus,
   WAR_ENGINE_CASE_PUBLIC_SELECT,
@@ -27,7 +28,10 @@ const TIERS = Object.entries(
 
 export default async function WarEnginePage() {
   const prisma = getPrisma();
-  const cases = await prisma.warEngineCase.findMany({
+  const restricted = usesNonfinancialProductionAuth();
+  const cases = restricted
+    ? [] // private case/gameStats joins are not an approved public projection
+    : await prisma.warEngineCase.findMany({
     orderBy: [
       { createdAt: "desc" },
       { id: "desc" },
@@ -70,6 +74,11 @@ export default async function WarEnginePage() {
 
   return (
     <main className="mx-auto w-full max-w-[112rem] space-y-8 px-3 py-6 text-white sm:px-5 lg:px-8">
+      {usesNonfinancialProductionAuth() ? (
+        <div role="status" data-public-read-model="unavailable" className="rounded-2xl border border-amber-200/25 bg-slate-950/85 p-5 text-sm text-amber-100">
+          Case listings are temporarily unavailable pending an audited public projection. No private replay case records are exposed.
+        </div>
+      ) : null}
       <section className="overflow-hidden rounded-[2.4rem] border border-amber-200/15 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.2),transparent_28%),radial-gradient(circle_at_88%_16%,rgba(56,189,248,0.16),transparent_28%),linear-gradient(135deg,#111827,#08111f_54%,#020617)] p-7 shadow-[0_36px_110px_rgba(0,0,0,0.45)] sm:p-10">
         <div className="max-w-5xl space-y-6">
           <div className="text-xs uppercase tracking-[0.4em] text-amber-200/70">
@@ -90,11 +99,11 @@ export default async function WarEnginePage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <Metric label="Cases" value={cases.length} />
-            <Metric label="Queued" value={queuedCount} />
+            <Metric label="Cases" value={restricted ? "UNKNOWN" : cases.length} />
+            <Metric label="Queued" value={restricted ? "UNKNOWN" : queuedCount} />
             <Metric
               label="Running / Classified"
-              value={`${runningCount} / ${classifiedCount}`}
+              value={restricted ? "UNKNOWN / UNKNOWN" : `${runningCount} / ${classifiedCount}`}
             />
           </div>
         </div>

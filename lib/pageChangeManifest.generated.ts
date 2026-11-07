@@ -5,12 +5,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-8ec949b86a01d1fa951c",
+    version: "src-2a4dfd7b08b4102b5225",
   },
   {
     href: "/oracle",
     label: "The Oracle",
-    version: "src-69ea29d4555e697a3743",
+    version: "src-9a150541871852c4a0c2",
   },
   {
     href: "/leaderboard",
@@ -20,7 +20,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-e698288d0f3bea61e43a",
+    version: "src-5a62f2afc888d64b8839",
   },
   {
     href: "/chaosium",
@@ -45,7 +45,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-f5b36706d2d23260123d",
+    version: "src-84b7aa07cbb47d893679",
   },
   {
     href: "/academy",
@@ -60,12 +60,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/ai",
     label: "AI Council",
-    version: "src-796712c028cd07060ffc",
+    version: "src-9c24be714ec01fdd1f39",
   },
   {
     href: "/bounties",
     label: "Bounties",
-    version: "src-787330110a71ff3fd048",
+    version: "src-e16d68ea022a84afb75f",
   },
   {
     href: "/forum",
@@ -75,7 +75,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/radio",
     label: "Radio WOLO",
-    version: "src-0999cfe2a3b08c564ae1",
+    version: "src-749bb9ec4c811cde2466",
   },
   {
     href: "/workshop",
@@ -95,7 +95,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/traffic",
     label: "Traffic Observatory",
-    version: "src-978c4ff81e9cfe80a92a",
+    version: "src-67cc251544a17e6c2ebc",
   },
   {
     href: "/kingdom-forge",

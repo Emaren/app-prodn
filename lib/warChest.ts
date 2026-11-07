@@ -1,4 +1,6 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { loadNonfinancialWarChestSnapshot } from "@/lib/warChestNonfinancial";
 
 import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
@@ -53,7 +55,20 @@ export type WarChestSnapshot = {
   generatedAt: string;
   wolo: LobbyWoloSnapshot | null;
   earners: LobbyWoloEarnersBoard;
-  betBoard: BetBoardSnapshot;
+  // War Chest presents public market previews + heat, not private Bet Board
+  // viewer books or mutable recovery controls.
+  betBoard: {
+    openMarkets: Array<{
+      id: number;
+      title: string;
+      eventLabel: string;
+      status: "open" | "closing" | "live" | "awaiting_final_proof" | "settled" | "voided" | "under_review";
+      closeLabel: string;
+      left: { name: string; poolWolo: number; crowdPercent: number; slips: number };
+      right: { name: string; poolWolo: number; crowdPercent: number; slips: number };
+    }>;
+    heat: BetBoardSnapshot["heat"];
+  };
   weekly: {
     volumeWolo: number;
     paidOutWolo: number;
@@ -139,6 +154,11 @@ export async function loadWarChestSnapshot(
   options: { mode?: WarChestMode } = {}
 ): Promise<WarChestSnapshot> {
   const mode = options.mode ?? "weekly";
+  // Branch before any private ORM promises are even constructed; financial
+  // and user-owned tables remain denied to nonfinancial-production-v1.
+  if (isNonfinancialPublicReadProfile()) {
+    return loadNonfinancialWarChestSnapshot(prisma, mode);
+  }
   const generatedAt = new Date();
   const weeklyWindowStart =
     getWarChestUtcWeekStart(generatedAt);

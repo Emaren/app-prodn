@@ -3,15 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { radioStoragePath } from "@/lib/radioWolo";
+import { loadPublicRadioMedia } from "@/lib/nonfinancialPublicRadio";
 
 export const runtime = "nodejs";
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ publicId: string }> }) {
   const { publicId } = await context.params;
-  const track = await getPrisma().radioSubmission.findFirst({
-    where: { publicId, status: "published", artworkStorageKey: { not: null } },
-    select: { artworkStorageKey: true, artworkMediaType: true },
-  });
+  const track = await loadPublicRadioMedia(getPrisma(), publicId);
   if (!track?.artworkStorageKey) return NextResponse.json({ detail: "Artwork not found." }, { status: 404 });
   try {
     const bytes = await readFile(radioStoragePath(track.artworkStorageKey));

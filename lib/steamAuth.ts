@@ -172,51 +172,114 @@ function assertCallbackLooksValid(request: NextRequest) {
   }
 }
 
+/** Finite, nonidentifying transport diagnostics. Never log arbitrary Error text. */
+export function classifySteamVerificationTransportFailure(error: unknown): string {
+  const guardReasons = new Set([
+    "ONLY_VALIDATED_STEAM_HTTPS", "STEAM_VERIFICATION_POST_ONLY",
+    "STEAM_FORM_BODY_BOUND", "STEAM_VERIFICATION_FORM_ONLY",
+    "STEAM_REDIRECTS_DENIED", "CUSTOM_FETCH_TRANSPORT_DENIED",
+    "NODE_EGRESS_DENIED", "DNS_HOST_NOT_ALLOWLISTED",
+    "STEAM_CERTIFICATE_AND_SNI_REQUIRED", "RAW_HTTPS_POST_DENIED",
+    "OUTBOUND_URL_INVALID", "CUSTOM_NETWORK_AGENT_DENIED",
+  ]);
+  const transportCodes = new Set([
+    "EAI_AGAIN", "ENOTFOUND", "ETIMEDOUT", "ENETUNREACH",
+    "EHOSTUNREACH", "ECONNRESET", "ECONNREFUSED", "EACCES", "EPERM",
+    "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_HEADERS_TIMEOUT", "ABORT_ERR",
+    "CERT_HAS_EXPIRED", "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+    "ERR_TLS_CERT_ALTNAME_INVALID",
+  ]);
+  const pending: unknown[] = [error];
+  let transport: string | null = null;
+  let type: string | null = null;
+  for (let i = 0; i < pending.length && i < 8; i++) {
+    const item = pending[i];
+    if (!item || typeof item !== "object") continue;
+    const obj = item as { message?: unknown; name?: unknown; code?: unknown;
+      cause?: unknown; errors?: unknown };
+    if (typeof obj.message === "string") {
+      const prefix = "AOE2WAR_PRODUCTION_HOLD:";
+      const at = obj.message.indexOf(prefix);
+      if (at >= 0) {
+        const reason = obj.message.slice(at + prefix.length).split(/[^A-Z_]/)[0];
+        return "GUARD_" + (guardReasons.has(reason) ? reason : "OTHER");
+      }
+    }
+    if (typeof obj.code === "string" && transportCodes.has(obj.code)) {
+      transport ??= "TRANSPORT_" + obj.code;
+    }
+    if (obj.name === "TimeoutError") type ??= "FETCH_TIMEOUT";
+    else if (obj.name === "AbortError") type ??= "FETCH_ABORT";
+    else if (obj.name === "TypeError") type ??= "FETCH_TYPEERROR";
+    if (obj.cause && typeof obj.cause === "object") pending.push(obj.cause);
+    if (Array.isArray(obj.errors)) pending.push(...obj.errors.slice(0, 3));
+  }
+  return transport ?? type ?? "FETCH_UNCLASSIFIED";
+}
+
 export async function verifySteamCallback(request: NextRequest) {
-  const mode = request.nextUrl.searchParams.get("openid.mode");
-  if (mode === "cancel") {
-    throw new Error("Steam sign-in was cancelled");
+  // Fixed, nonidentifying stage markers for physical OpenID callback failures.
+  let stage: "mode" | "assertion" | "provider_post" |
+    "provider_status" | "provider_body" | "identity" = "mode";
+  try {
+    const mode = request.nextUrl.searchParams.get("openid.mode");
+    if (mode === "cancel") {
+      throw new Error("Steam sign-in was cancelled");
+    }
+    if (mode !== "id_res") {
+      throw new Error("Steam callback is missing a successful OpenID response");
+    }
+
+    stage = "assertion";
+    assertCallbackLooksValid(request);
+
+    const params = new URLSearchParams();
+    for (const [key, value] of request.nextUrl.searchParams.entries()) {
+      if (!key.startsWith("openid.")) continue;
+      params.set(key, value);
+    }
+    params.set("openid.mode", "check_authentication");
+
+    stage = "provider_post";
+    const response = await fetch(STEAM_OPENID_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(8000),
+    });
+
+    stage = "provider_status";
+    if (!response.ok) {
+      throw new Error(`Steam verification failed with ${response.status}`);
+    }
+
+    stage = "provider_body";
+    const body = await boundedSteamText(response, 8192);
+    const valid = body.split(/\r?\n/).filter((line) => line.startsWith("is_valid:"));
+    if (valid.length !== 1 || valid[0] !== "is_valid:true") {
+      throw new Error("Steam did not validate the OpenID response");
+    }
+
+    stage = "identity";
+    const steamId = parseSteamId(request);
+    if (!steamId) {
+      throw new Error("Steam callback did not include a valid Steam ID");
+    }
+
+    return steamId;
+  } catch (error) {
+    if (usesNonfinancialProductionAuth()) {
+      console.warn("AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:" + stage);
+      if (stage === "provider_post") {
+        console.warn("AOE2WAR_NONFINANCIAL_OPENID_HOLD_CLASS:" + classifySteamVerificationTransportFailure(error));
+      }
+    }
+    throw error;
   }
-  if (mode !== "id_res") {
-    throw new Error("Steam callback is missing a successful OpenID response");
-  }
-
-  assertCallbackLooksValid(request);
-
-  const params = new URLSearchParams();
-  for (const [key, value] of request.nextUrl.searchParams.entries()) {
-    if (!key.startsWith("openid.")) continue;
-    params.set(key, value);
-  }
-  params.set("openid.mode", "check_authentication");
-
-  const response = await fetch(STEAM_OPENID_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body: params.toString(),
-    cache: "no-store",
-    redirect: "error",
-    signal: AbortSignal.timeout(8000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Steam verification failed with ${response.status}`);
-  }
-
-  const body = await boundedSteamText(response, 8192);
-  const valid = body.split(/\r?\n/).filter((line) => line.startsWith("is_valid:"));
-  if (valid.length !== 1 || valid[0] !== "is_valid:true") {
-    throw new Error("Steam did not validate the OpenID response");
-  }
-
-  const steamId = parseSteamId(request);
-  if (!steamId) {
-    throw new Error("Steam callback did not include a valid Steam ID");
-  }
-
-  return steamId;
 }
 
 export async function fetchSteamProfile(steamId: string): Promise<SteamProfile> {

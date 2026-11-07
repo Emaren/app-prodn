@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getPrisma } from "@/lib/prisma";
+import { loadPublicRadioTracks } from "@/lib/nonfinancialPublicRadio";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -11,20 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RadioPage() {
-  const tracks = await getPrisma().radioSubmission.findMany({
-    where: { status: "published" },
-    orderBy: [{ featured: "desc" }, { publishedAt: "desc" }, { id: "desc" }],
-    take: 60,
-    select: {
-      publicId: true,
-      artistName: true,
-      trackTitle: true,
-      genre: true,
-      featured: true,
-      publishedAt: true,
-      artworkStorageKey: true,
-    },
-  });
+  const tracks = await loadPublicRadioTracks(getPrisma());
   const nowPlaying = tracks[0] || null;
 
   return <main className="space-y-7 py-7 text-white">

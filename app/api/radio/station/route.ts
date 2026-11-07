@@ -6,6 +6,7 @@ import {
 import {
   getPrisma,
 } from "@/lib/prisma";
+import { loadPublicRadioStation } from "@/lib/nonfinancialPublicRadio";
 import {
   publicRadioAssetProjection,
   RADIO_WOLO_TAGLINE,
@@ -174,56 +175,7 @@ export async function GET(
   const prisma =
     getPrisma();
 
-  const station =
-    await prisma.radioStationState.findUnique(
-      {
-        where: {
-          id: 1,
-        },
-        select: {
-          state: true,
-          startedAt:
-            true,
-          stoppedAt:
-            true,
-          program: {
-            select: {
-              id: true,
-              publicId:
-                true,
-              name: true,
-              items: {
-                orderBy: {
-                  position:
-                    "asc",
-                },
-                select: {
-                  id: true,
-                  position:
-                    true,
-                  transition:
-                    true,
-                  crossfadeMs:
-                    true,
-                  asset: {
-                    select: {
-                      publicId:
-                        true,
-                      title: true,
-                      credit:
-                        true,
-                      kind: true,
-                      durationMs:
-                        true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    );
+  const station = await loadPublicRadioStation(prisma);
 
   if (
     !station ||
