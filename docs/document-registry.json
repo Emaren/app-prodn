@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "10e07236b53bdb85bb0e97c33c463f22d5c77d4542b60eed47956e4efef31687",
+      "sha256": "e90ab2a95294254041d9cb157e1a38cdabac2a530f95caefd79d4a300df36f83",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2548,7 +2548,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/app-r25-bets-history-guarded-cutover-v5x-20261107",
-    "commit": "a82c3f6e8ef808ee3d2e86f80f0dea305e1fa947"
+    "commit": "0ae3bae4a825cac831677e924b92f985ba627579"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
