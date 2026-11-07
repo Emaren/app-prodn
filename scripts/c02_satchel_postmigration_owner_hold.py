@@ -125,6 +125,64 @@ def source_inventory(root):
     return sorted(tables)
 
 
+RELATIONS_FILE="scripts/fixtures/c02_satchel_real_migration_relations_pg16_v1.json"
+RELATIONS_SCHEMA="aoe2war.c02.real-13-migration-pg16-relation-census.v1"
+RELATION_COUNTS={"table":29,"sequence":8,"index":76}
+
+
+def reject_json_duplicate_keys(pairs):
+    data={}
+    for k,v in pairs:
+        insist(k not in data,"C02_RELATION_MANIFEST_DUPLICATE_KEY")
+        data[k]=v
+    return data
+
+
+def source_relation_inventory(root,table_names):
+    """Source-bound identity census from ACTUAL 13 SQL migrations on PG16.
+
+    No synthetic SERIAL-per-table assumptions: the reviewed native migration
+    rehearsal creates 29 tables, 8 attached sequences and 76 indexes.
+    """
+    raw=source_read(root/RELATIONS_FILE)
+    try:
+        data=json.loads(raw.decode("utf-8"),object_pairs_hook=reject_json_duplicate_keys)
+    except Hold:
+        raise
+    except (UnicodeError,ValueError,RecursionError) as exc:
+        raise Hold("C02_RELATION_MANIFEST_INVALID") from exc
+    insist(type(data) is dict
+           and set(data)=={"schema","pg_major","canonical_migration_count","relations"}
+           and data.get("schema")==RELATIONS_SCHEMA
+           and type(data.get("pg_major")) is int and data["pg_major"]==16
+           and type(data.get("canonical_migration_count")) is int
+           and data["canonical_migration_count"]==CANONICAL_MIGRATION_COUNT,
+           "C02_NATIVE_PG16_MANIFEST_BINDING_MISSING")
+    rows=data["relations"]
+    insist(type(rows) is list and len(rows)==113,
+           "C02_NATIVE_PG16_MANIFEST_OBJECT_COUNT_DRIFT")
+    found={}
+    counts={"table":0,"sequence":0,"index":0}
+    for row in rows:
+        insist(type(row) is dict and
+               set(row)=={"name","kind","attached_to"},
+               "C02_NATIVE_PG16_MANIFEST_ROW_INVALID")
+        name,kind,attachment=row["name"],row["kind"],row["attached_to"]
+        insist(type(name) is str and
+               re.fullmatch(r"[a-z][a-z0-9_]{2,110}",name) is not None and
+               kind in counts and name not in found,
+               "C02_NATIVE_PG16_MANIFEST_IDENTITY_INVALID")
+        insist(attachment is None if kind=="table" else
+               type(attachment) is str and attachment in table_names,
+               "C02_NATIVE_PG16_MANIFEST_ATTACHMENT_INVALID")
+        found[name]=(kind,attachment)
+        counts[kind]+=1
+    insist(counts==RELATION_COUNTS and
+           {k for k,(kind,_) in found.items() if kind=="table"}==set(table_names),
+           "C02_NATIVE_PG16_MANIFEST_COVERAGE_DRIFT")
+    return found
+
+
 # Run this SQL ONLY inside the separately verified C07 PG16 restored session,
 # with psql -X -A -t and a read-only transaction. It never creates, alters,
 # revokes, grants or starts any role/service. No DB access from this controller.
@@ -231,7 +289,9 @@ COMMIT;
 
 
 def evaluate(catalog,table_names,expected_owner):
-    insist(type(catalog) is dict and catalog.get("schema")==CATALOG_SCHEMA,
+    insist(type(catalog) is dict and
+           set(catalog)=={"schema","database","server_version_num","objects"} and
+           catalog.get("schema")==CATALOG_SCHEMA,
            "C02_CATALOG_SCHEMA_UNRECOGNIZED")
     insist(type(catalog.get("server_version_num")) is int and
            160000<=catalog["server_version_num"]<170000,
@@ -243,15 +303,20 @@ def evaluate(catalog,table_names,expected_owner):
            re.fullmatch(r"[a-z][a-z0-9_]{2,62}",expected_owner) is not None and
            expected_owner not in ROLES,
            "C02_C03_REVIEWED_NEUTRAL_OWNER_REQUIRED")
+    expected=source_relation_inventory(Path(__file__).resolve().parents[1],
+                                       table_names)
     objects=catalog.get("objects")
-    insist(type(objects) is list and len(objects)<=1024,
-           "C02_CATALOG_OBJECTS_MISSING_OR_TOO_MANY")
+    insist(type(objects) is list and len(objects)==len(expected)==113,
+           "C02_REAL_SOURCE_RELATION_COUNT_DRIFT")
     table_set=set()
     sequences=0
     indexes=0
     names=set()
     for row in objects:
-        insist(type(row) is dict and type(row.get("name")) is str and
+        insist(type(row) is dict and
+               set(row)=={"name","namespace","kind","attached_to",
+                          "owner","owner_can_login","owner_superuser","roles"}
+               and type(row.get("name")) is str and
                re.fullmatch(r"[a-z][a-z0-9_]{2,110}",row["name"]) is not None,
                "C02_CATALOG_ROW_NOT_VALID")
         name=row["name"]
@@ -271,6 +336,8 @@ def evaluate(catalog,table_names,expected_owner):
                    "C02_UNREVIEWED_FINANCE_RELATION_ATTACHMENT")
             if kind=="sequence":sequences+=1
             else:indexes+=1
+        insist(expected.get(name)==(kind,attached),
+               "C02_REAL_MIGRATION_RELATION_IDENTITY_DRIFT")
         insist(row.get("owner")==expected_owner and
                row.get("owner_can_login") is False and
                row.get("owner_superuser") is False,
@@ -280,7 +347,11 @@ def evaluate(catalog,table_names,expected_owner):
                {r.get("name") for r in roles if type(r) is dict}==set(ROLES),
                "C02_LEGACY_ROLE_COVERAGE_INCOMPLETE")
         for role in roles:
-            insist(type(role) is dict and role.get("exists") is True
+            insist(type(role) is dict and
+                   set(role)=={"name","exists","role_superuser",
+                               "role_createrole","role_bypassrls",
+                               "effective_write","schema_create","owner_member"}
+                   and role.get("exists") is True
                    and role.get("effective_write") is False
                    and role.get("schema_create") is False
                    and role.get("owner_member") is False
@@ -290,9 +361,10 @@ def evaluate(catalog,table_names,expected_owner):
                    "C02_EFFECTIVE_FINANCIAL_WRITER_REGRESSION")
     insist(table_set==set(table_names),
            "C02_POSTMIGRATION_TABLE_COVERAGE_DRIFT")
-    insist(sequences<=512 and indexes<=512 and all(
-           x.startswith("war_satchel_") for x in names if x not in table_set),
-           "C02_ATTACHED_SEQUENCE_REQUIRES_MANUAL_SCOPE_REVIEW")
+    insist(sequences==RELATION_COUNTS["sequence"] and
+           indexes==RELATION_COUNTS["index"] and
+           names==set(expected),
+           "C02_REAL_MIGRATION_RELATION_IDENTITY_DRIFT")
     return {"status":"HOLD_C02_POSTMIGRATION_NEGATIVE_ACL_OBSERVED",
             "database":catalog["database"],"table_count":len(table_set),
             "sequence_count":sequences,"index_count":indexes,
@@ -313,7 +385,7 @@ def private_catalog(path):
            "C02_CATALOG_OWNER_MODE_OR_SIZE_DRIFT")
     raw=source_read(path)
     insist(len(raw)<=MAX_CATALOG,"C02_CATALOG_SIZE_EXCEEDED")
-    return json.loads(raw)
+    return json.loads(raw,object_pairs_hook=reject_json_duplicate_keys)
 
 
 def main(argv=None):
@@ -325,6 +397,7 @@ def main(argv=None):
     a=p.parse_args(argv)
     try:
         tables=source_inventory(a.root)
+        relation_manifest=source_relation_inventory(a.root,tables)
         if a.emit_sql:
             insist(a.catalog_json is None,"C02_QUERY_AND_CATALOG_MIXED")
             print(SELECT_CATALOG)
@@ -332,6 +405,9 @@ def main(argv=None):
         report={"schema":SCHEMA,"status":"HOLD_NO_C07_POSTMIGRATION_CATALOG",
                 "source_migrations_pinned":CANONICAL_MIGRATION_COUNT,
                 "expected_new_financial_tables":len(tables),
+                "expected_attached_sequences":RELATION_COUNTS["sequence"],
+                "expected_attached_indexes":RELATION_COUNTS["index"],
+                "source_catalog_relation_count":len(relation_manifest),
                 "catalog_verified":False,
                 "independent_c07_restore_proven":False,
                 "c02_physical_gate_closed":False,
