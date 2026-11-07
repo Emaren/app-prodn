@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "81b6cf3e16484c9758b66bed496791e0600e790c9b727c826dc247b7529d265a",
+      "sha256": "083524166ccb6ca111179b5697320d452f995dfc93c928a40a21c8cc71f14a46",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1941,6 +1941,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial-source-qualified-physical-release-pending",
+      "id": "aoe2war.app.r25-bets-v5x-guarded-release",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_V5X_GUARDED_CUTOVER_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "b2142ef5a5968ac3f58bd135367c8f9d7652bc107f46f76dd798bc2531b4412c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Betting Hall v5x Guarded Nonfinancial Cutover",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-emergency-website-recovery-source-only-no-funded-release",
       "id": "aoe2war.app.session-a-r25-public-nonfinancial-recovery-v5u",
       "owner": "aoe2war-web",
@@ -2525,8 +2547,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-steam-post-heap-abort-v5w-20261107",
-    "commit": "138b9308e0e712ed1a06fe51f6138e9961465dad"
+    "branch": "fix/app-r25-bets-history-guarded-cutover-v5x-20261107",
+    "commit": "ca013e4259a68bd2db80e0be31cea3da38db8280"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
