@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-v5u-reviewed-nginx-recovery-20261107` at `c24eee4eab8ed59c8390177b7acf79672789a2c3`
+Implementation baseline: `fix/app-r25-v5u-reviewed-nginx-recovery-20261107` at `face053912b9c0913aeb08d4cde688264f3ef38e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
