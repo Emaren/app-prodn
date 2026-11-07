@@ -165,7 +165,7 @@ def reviewed_nonfinancial_bridge():
        sha(prior)==ORIGINAL_NGINX_PREIMAGE_SHA and
        sha(stage1)==FIRST_RECOVERY_SHA,
        "R25_NONFINANCIAL_PUBLIC_BRIDGE_CHANGED")
- check(site.count(b"proxy_pass http://127.0.0.1:3032;")==7,
+ check(site.count(b"proxy_pass http://127.0.0.1:3032;")==6,
        "REVIEWED_PUBLIC_SELECTORS_CHANGED")
  for scope in (b"location = /api/user/appearance",
                b"location = /api/kingdom-presence/state",
@@ -206,11 +206,12 @@ def base_profile(m):
        "A07_PUBLIC_RELAY_TIMER_INACTIVE")
  for svc in ("wolo-satchel-c01.service","wolo-reviewer-c01.service"):
   check(state(svc,"ActiveState")=="inactive","HELD_FINANCIAL_SERVICE_ACTIVE:"+svc)
- # Original six public 3032 selectors remain plus ONE reviewed
- # 3032 static-first/3030-missing-only bridge. The entire site is SHA-pinned.
+ # The reviewed event-SSE selector moves to 3030 while one static-first
+ # selector moves to 3032: six exact 3032 proxy_pass lines remain in all.
+ # SHA pins cover the entire site; this is not a general count-only approval.
  check(rawfile(NGINX).count(
-    b"proxy_pass http://127.0.0.1:3032;")==7,
-    "REVIEWED_SIX_PUBLIC_PLUS_ONE_STATIC_BRIDGE_CHANGED")
+    b"proxy_pass http://127.0.0.1:3032;")==6,
+    "REVIEWED_PUBLIC_SELECTORS_CHANGED")
  v=json.loads(run(["/usr/bin/curl","--silent","--show-error","--max-time","5",
                     "http://127.0.0.1:3032/api/deployment-version"],timeout=9))
  check(v.get("buildVersion")==RELEASE,"PUBLIC_R25_VERSION_CHANGED")

@@ -10,7 +10,7 @@ sp=importlib.util.spec_from_file_location('steam_v5u_source',SOURCE)
 m=importlib.util.module_from_spec(sp);sp.loader.exec_module(m)
 
 def canonical_synthetic():
- site=b''.join(b'proxy_pass http://127.0.0.1:3032;\n' for _ in range(7))
+ site=b''.join(b'proxy_pass http://127.0.0.1:3032;\n' for _ in range(6))
  site+=b'''
  location = /api/user/appearance
  location = /api/kingdom-presence/state
@@ -77,7 +77,7 @@ class ReviewedRecoveryV5U(unittest.TestCase):
                 '"public_cutover_authorized":False','"public_recovery_is_nonfinancial_only":True',
                 'STEAM_ONLY_EXISTING_UID990_NFT_SETS',
                 'R25_NONFINANCIAL_PUBLIC_BRIDGE_CHANGED',
-                'REVIEWED_SIX_PUBLIC_PLUS_ONE_STATIC_BRIDGE_CHANGED',
+                'REVIEWED_PUBLIC_SELECTORS_CHANGED',
                 'STEAM_SET_UNBOUNDED_OR_EXPIRED'):
    self.assertIn(token,s)
   self.assertNotIn('pg_terminate_backend',s)
