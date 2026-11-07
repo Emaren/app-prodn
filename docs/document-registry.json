@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5bfe3cdd93feafdbebe8fc9b47821eaf6f8ebed4e4004b379e762033252c006c",
+      "sha256": "80c72b36f04f67a073797f63cba97398ca2eb17b1e59165c367295007bb52c01",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1941,6 +1941,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "steam-only-sandbox-evidence-recovery-no-funded-release",
+      "id": "aoe2war.app.session-a-r25-steam-v5v-protecthome-repair",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "69b858f334b8bb6d53a6714c1579a71bb428697213b40289cc5e429fef31b6c3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2459,8 +2481,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-v5u-reviewed-nginx-recovery-20261107",
-    "commit": "87044722f24e2e7ac86dea85f17591d125274882"
+    "branch": "fix/app-r25-v5v-sandbox-preimages-20261107",
+    "commit": "05d8b3ba57436d68453afa62afcfc7d9402ad7ec"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

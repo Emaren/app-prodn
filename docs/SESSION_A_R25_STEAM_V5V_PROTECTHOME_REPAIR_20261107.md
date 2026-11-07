@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "restricted"
 ---
 
-# R25 Steam v5v root-private evidence binding under ProtectHome
+# R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome
 
 ## Physical failure and exact safety outcome
 
