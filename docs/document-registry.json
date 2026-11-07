@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d29e1819b5c6e11497d0decf616950465975342c3a7b729e056ea8f853526e5a",
+      "sha256": "5bfe3cdd93feafdbebe8fc9b47821eaf6f8ebed4e4004b379e762033252c006c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1926,7 +1926,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "76de8b5f56dcb9359dd1d06513a84d2f13a5acdcb54120b0aee30bb87bb283ea",
+      "sha256": "ee4cdd37398102b0f43a32df0527fca13cc6679af7579f26a93dadcd215d37e8",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2460,7 +2460,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/app-r25-v5u-reviewed-nginx-recovery-20261107",
-    "commit": "face053912b9c0913aeb08d4cde688264f3ef38e"
+    "commit": "87044722f24e2e7ac86dea85f17591d125274882"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
