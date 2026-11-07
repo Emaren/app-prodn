@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "675aaf091af16a9771bff0a07bd156bf17f98a117d6f2ec9daefc3ff068a0927",
+      "sha256": "031e97d3d36249ccd4f9e86442a65ad934200ab28922af42f89ab4567260b270",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2504,7 +2504,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/app-r25-bets-public-history-ui-20261107",
-    "commit": "5107119c98daf6ce7bab28700cb95aab52e79129"
+    "commit": "ed7735bf6c8f09af176cb1d06e3359c51cf3770a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
