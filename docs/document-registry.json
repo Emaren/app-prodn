@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "031e97d3d36249ccd4f9e86442a65ad934200ab28922af42f89ab4567260b270",
+      "sha256": "81b6cf3e16484c9758b66bed496791e0600e790c9b727c826dc247b7529d265a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-root-reviewed-runtime-admission-never-financial",
+      "id": "aoe2war.app.r25-steam-v5w-process-readmission",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_STEAM_V5W_HEAP_RESTART_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "11dbd4ba603e7371c393d1aad789ac5a61859318e24b091103367bd710ed37fc",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Steam v5w: Source-Bound Recovery After Observed Node Heap Abort",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2503,8 +2525,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-bets-public-history-ui-20261107",
-    "commit": "ed7735bf6c8f09af176cb1d06e3359c51cf3770a"
+    "branch": "fix/app-r25-steam-post-heap-abort-v5w-20261107",
+    "commit": "138b9308e0e712ed1a06fe51f6138e9961465dad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

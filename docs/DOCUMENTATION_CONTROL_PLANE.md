@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-bets-public-history-ui-20261107` at `ed7735bf6c8f09af176cb1d06e3359c51cf3770a`
+Implementation baseline: `fix/app-r25-steam-post-heap-abort-v5w-20261107` at `138b9308e0e712ed1a06fe51f6138e9961465dad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **109**
+- Authoritative repository documents: **110**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 68
+- `reference`: 69
 - `runbook`: 22
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 12
+- `draft`: 13
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -137,6 +137,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [R25 Bets Published Historical Read Model Under Financial HOLD](SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md) | `reference` | `draft` | `nonfinancial-read-model-source-only-not-funded-or-live` |
 | [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
 | [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
+| [R25 Steam v5w: Source-Bound Recovery After Observed Node Heap Abort](SESSION_A_R25_STEAM_V5W_HEAP_RESTART_20261107.md) | `reference` | `draft` | `source-only-root-reviewed-runtime-admission-never-financial` |
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
 | [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
