@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "083524166ccb6ca111179b5697320d452f995dfc93c928a40a21c8cc71f14a46",
+      "sha256": "abb9e66a0a6edb6579da2ccabfcca833490aab329fbe3955410630059e2ff7b3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1963,6 +1963,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-nonfinancial-physical-release-not-yet-accepted",
+      "id": "aoe2war.app.r25-bets-v5x-r2-graceful-quiesce",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_A_R25_BETS_V5X_R2_QUIESCE_20261107.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-07",
+      "sensitivity": "restricted",
+      "sha256": "df39fc93e9d0223c8e0a05040ac0226b3fa6e48f5c0040741e6473b58b33432b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Betting Hall v5x R2: Native Steam Quiesce Repair",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-emergency-website-recovery-source-only-no-funded-release",
       "id": "aoe2war.app.session-a-r25-public-nonfinancial-recovery-v5u",
       "owner": "aoe2war-web",
@@ -2547,8 +2569,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-bets-history-guarded-cutover-v5x-20261107",
-    "commit": "ca013e4259a68bd2db80e0be31cea3da38db8280"
+    "branch": "fix/app-v5x-r2-steam-oneshot-graceful-quiesce-20261107",
+    "commit": "3ce5ba72b7d562a3d02543c753cb01231111b7c9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
