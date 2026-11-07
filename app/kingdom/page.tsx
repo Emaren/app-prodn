@@ -4,6 +4,8 @@ import { Anvil, ArrowRight, Eye, Flame, Scale } from "lucide-react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadKingdomSummary } from "@/lib/kingdomSummary";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import KingdomPublicNonfinancial from "./KingdomPublicNonfinancial";
 
 import KingdomHero from "./KingdomHero";
 import KingdomChroniclesClient from "./KingdomChroniclesClient";
@@ -62,6 +64,11 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 export default async function KingdomPage() {
+  // Summary currently mixes restricted users, indexed transfers and raw replay
+  // sources. The nonfinancial role deliberately has no direct table SELECT.
+  if (usesNonfinancialProductionAuth()) {
+    return <KingdomPublicNonfinancial />;
+  }
   const summary = await loadKingdomSummary();
   const featuredStats = summary.stats.slice(0, 3);
 

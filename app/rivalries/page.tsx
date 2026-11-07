@@ -6,6 +6,7 @@ import {
   type RivalryCollectionTotals,
 } from "@/components/rivalries/RivalriesViews";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import {
   loadPublicRivalryBoards,
 } from "@/lib/publicMatchups";
@@ -155,6 +156,9 @@ export default async function RivalriesPage({ searchParams }: RivalriesPageProps
   return (
     <div className="space-y-4">
       <SpeedReadyMarker route="/rivalries" />
+      {isNonfinancialPublicReadProfile() ? (
+        <p className="px-1 text-sm text-slate-400">Betting market links are currently unavailable.</p>
+      ) : null}
       <RivalryPagination
         page={page}
         totalPages={totalPages}

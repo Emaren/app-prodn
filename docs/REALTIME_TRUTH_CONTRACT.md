@@ -8,12 +8,16 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-11-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Realtime Truth Contract
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Reviewed the canonical source/evidence boundaries against the current R25/HEL1 deployment record. The Traffic forward-ledger timer is a bounded private SQLite future-evidence capture, **not a public audience publisher or chain settlement writer**. The public site is live on 3032, but Steam-authenticated workflows, watcher/Traffic freshness, canonical replay provenance and financial finality have separate unclosed acceptance gates. This architecture contract must not be quoted as certification of real-time production parity, a funded financial release, or any unknown match outcome.
+
 
 ## Outcome
 

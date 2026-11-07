@@ -679,11 +679,26 @@ function dedupeFeaturedWarriors(pool: FeaturedWarrior[]) {
   return unique;
 }
 
-function shuffleFeaturedWarriors(pool: FeaturedWarrior[]) {
+function createOpeningWarriorRandom(seed: number) {
+  // Seed arrives in the server component payload: identical SSR and hydration,
+  // fresh for each dynamic page request. Not a security or gambling RNG.
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let value = Math.imul(state ^ (state >>> 15), state | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 0x1_0000_0000;
+  };
+}
+
+function shuffleFeaturedWarriors(
+  pool: FeaturedWarrior[],
+  random: () => number = Math.random
+) {
   const candidates = [...pool];
 
   for (let index = candidates.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const swapIndex = Math.floor(random() * (index + 1));
     const current = candidates[index];
     const swap = candidates[swapIndex];
 
@@ -748,7 +763,8 @@ function pickUnknownFeaturedWarrior(
   pool: FeaturedWarrior[],
   blockedKeys = new Set<string>(),
   previousSlotKey: string | null = null,
-  randomize = false
+  randomize = false,
+  random: () => number = Math.random
 ) {
   const previousRawKey = previousSlotKey?.startsWith("unknown:")
     ? previousSlotKey.slice("unknown:".length)
@@ -765,7 +781,7 @@ function pickUnknownFeaturedWarrior(
     return true;
   });
 
-  const ordered = randomize ? shuffleFeaturedWarriors(candidates) : candidates;
+  const ordered = randomize ? shuffleFeaturedWarriors(candidates, random) : candidates;
   return asUnknownFeaturedWarrior(ordered[0] ?? null);
 }
 
@@ -786,12 +802,17 @@ function pickRealFeaturedWarrior(
   return ordered[0] ?? null;
 }
 
-function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = false) {
+function curatedFeaturedWarriorOpening(
+  pool: FeaturedWarrior[],
+  randomize = false,
+  openingSeed?: number
+) {
+  const random = openingSeed === undefined ? Math.random : createOpeningWarriorRandom(openingSeed);
   const basePool = featuredWarriorBasePool(pool);
   const realAvatarPool = basePool.filter(
     (warrior) => featuredWarriorHasRealAvatar(warrior) && !featuredWarriorIsMystery(warrior)
   );
-  const avatarPool = randomize ? shuffleFeaturedWarriors(realAvatarPool) : realAvatarPool;
+  const avatarPool = randomize ? shuffleFeaturedWarriors(realAvatarPool, random) : realAvatarPool;
   const selected: FeaturedWarrior[] = [];
 
   for (const warrior of avatarPool) {
@@ -804,7 +825,8 @@ function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = fals
     basePool,
     new Set(selected.map((warrior) => warrior.key)),
     null,
-    randomize
+    randomize,
+    random
   );
 
   const lineup = [...selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT - 1), mystery].slice(
@@ -812,41 +834,37 @@ function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = fals
     FEATURED_WARRIOR_SLOT_COUNT
   );
 
-  return randomize ? shuffleFeaturedWarriors(lineup) : lineup;
+  return randomize ? shuffleFeaturedWarriors(lineup, random) : lineup;
+}
+
+function versionFeaturedWarriorImageUrl(src: string) {
+  // Cloudflare can retain a 404 for an older managed-avatar URL even after
+  // the original has been repaired. Keep the edge cache key release-bound.
+  if (!src.startsWith("/api/media-assets/avatar/") || src.includes("edgev=")) {
+    return src;
+  }
+  return `${src}${src.includes("?") ? "&" : "?"}edgev=20261103-featured-1`;
 }
 
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
+  let source = warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
 
   if (identity === "grimer") {
-    return featuredAvatarCardUrlForUser(GRIMER_UID, AI_GRIMER_NAME);
+    source = featuredAvatarCardUrlForUser(GRIMER_UID, AI_GRIMER_NAME);
+  } else if (identity === "the-ai-scribe" || identity === "ai-scribe") {
+    source = featuredAvatarCardUrlForUser(AI_SCRIBE_UID, AI_CONCIERGE_NAME);
+  } else if (identity === "moose") {
+    source = featuredAvatarCardUrlForUser(MOOSE_UID, "Moose");
+  } else if (identity === "zodiac") {
+    source = warrior.imageUrl ??
+      featuredAvatarCardUrlForUser(ZODIAC_UID, "Zodiac");
+  } else if (identity === "julio" || identity === "julio-alvarez") {
+    source = warrior.imageUrl ??
+      featuredAvatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez");
   }
 
-  if (identity === "the-ai-scribe" || identity === "ai-scribe") {
-    return featuredAvatarCardUrlForUser(AI_SCRIBE_UID, AI_CONCIERGE_NAME);
-  }
-
-  if (identity === "moose") {
-    return featuredAvatarCardUrlForUser(MOOSE_UID, "Moose");
-  }
-
-  if (identity === "zodiac") {
-    return warrior.imageUrl ??
-      featuredAvatarCardUrlForUser(
-        ZODIAC_UID,
-        "Zodiac"
-      );
-  }
-
-  if (identity === "julio" || identity === "julio-alvarez") {
-    return warrior.imageUrl ??
-      featuredAvatarCardUrlForUser(
-        JULIO_ALVAREZ_UID,
-        "Julio Alvarez"
-      );
-  }
-
-  return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
+  return versionFeaturedWarriorImageUrl(source);
 }
 
 const featuredWarriorDecodeCache = new Map<string, Promise<void>>();
@@ -967,6 +985,29 @@ function BufferedFeaturedWarriorImage({
     };
   }, []);
 
+  const replaceFailedImage = (layer: 0 | 1, failedSrc: string) => {
+    if (sourcesRef.current[layer] !== failedSrc ||
+        failedSrc === UNKNOWN_FEATURED_WARRIOR_IMAGE) {
+      return;
+    }
+    // An edge-cached failure should try the ordinary player portrait before
+    // the bundled safe silhouette. Never display a native broken-image icon.
+    const profileFallback = versionFeaturedWarriorImageUrl(
+      avatarCardUrlForUser(warrior.uid, warrior.lookupName)
+    );
+    const fallback = failedSrc === profileFallback
+      ? UNKNOWN_FEATURED_WARRIOR_IMAGE
+      : profileFallback;
+    const nextSources = [...sourcesRef.current] as [string, string | null];
+    nextSources[layer] = fallback;
+    sourcesRef.current = nextSources;
+    if (pendingLayerRef.current === layer &&
+        pendingSrcRef.current === failedSrc) {
+      pendingSrcRef.current = fallback;
+    }
+    setSources(nextSources);
+  };
+
   const revealLoadedLayer = (layer: 0 | 1, image: HTMLImageElement) => {
     const expectedSrc = sourcesRef.current[layer];
 
@@ -1056,6 +1097,7 @@ function BufferedFeaturedWarriorImage({
               unoptimized
               className={className}
               onLoad={(event) => revealLoadedLayer(layer, event.currentTarget)}
+              onError={() => replaceFailedImage(layer, layerSrc)}
             />
           </div>
         );
@@ -1064,13 +1106,15 @@ function BufferedFeaturedWarriorImage({
   );
 }
 
-function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
+function useRotatingFeaturedWarriors(
+  pool: FeaturedWarrior[], paused: boolean, openingSeed: number
+) {
   const poolSignature = useMemo(
     () => pool.map((warrior) => `${warrior.key}:${featuredWarriorImageSrc(warrior)}`).join("|"),
     [pool]
   );
 
-  const openingLineup = curatedFeaturedWarriorOpening(pool, false);
+  const openingLineup = curatedFeaturedWarriorOpening(pool, true, openingSeed);
 
   // The opening lineup is deterministic across SSR/hydration. Advertise only
   // the first above-the-fold card to the browser's preload scanner, rather
@@ -1264,12 +1308,13 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
   initialHeroPlaylist: HeroPlaylistView;
+  initialWarriorSeed: number;
   speedRoute?: "/" | "/lobby";
 };
 
-function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
+function AdvancedFeaturedWarriors({ warriors, openingSeed }: { warriors: FeaturedWarrior[]; openingSeed: number }) {
   const h = useHomeCopy();
-  const { visibleWarriors } = useRotatingFeaturedWarriors(warriors, false);
+  const { visibleWarriors } = useRotatingFeaturedWarriors(warriors, false, openingSeed);
 
   return (
     <section
@@ -1380,9 +1425,9 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   );
 }
 
-function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
+function ExtremeFeaturedWarriors({ warriors, openingSeed }: { warriors: FeaturedWarrior[]; openingSeed: number }) {
   const h = useHomeCopy();
-  const { visibleWarriors } = useRotatingFeaturedWarriors(warriors, false);
+  const { visibleWarriors } = useRotatingFeaturedWarriors(warriors, false, openingSeed);
 
   return (
     <section
@@ -1468,6 +1513,7 @@ export default function HomePageClient({
 
   initialLobby,
   initialHeroPlaylist,
+  initialWarriorSeed,
   speedRoute = "/",
 }: HomePageClientProps) {
   const h = useHomeCopy();
@@ -2341,9 +2387,9 @@ return (
       {shouldShowShowcaseLobby ? (
         <>
           {isExtremeLobby ? (
-            <ExtremeFeaturedWarriors warriors={featuredWarriors} />
+            <ExtremeFeaturedWarriors warriors={featuredWarriors} openingSeed={initialWarriorSeed} />
           ) : (
-            <AdvancedFeaturedWarriors warriors={featuredWarriors} />
+            <AdvancedFeaturedWarriors warriors={featuredWarriors} openingSeed={initialWarriorSeed} />
           )}
           <LiveTickerStrip
             ticker={liveTicker}

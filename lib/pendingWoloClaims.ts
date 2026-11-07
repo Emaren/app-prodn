@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 
@@ -15,7 +16,7 @@ export type PendingWoloClaimLookupUser = {
   steamPersonaName: string | null;
 };
 
-type PendingWoloClaimDb = Pick<PrismaClient, "pendingWoloClaim">;
+type PendingWoloClaimDb = Pick<PrismaClient, "pendingWoloClaim"> & Partial<Pick<PrismaClient, "$queryRaw">>;
 
 type PendingWoloClaimSummaryRow = {
   id: number;
@@ -150,32 +151,54 @@ export async function loadPendingWoloClaimSummariesByName(
 
   const requestedKeys = new Set(keys);
 
-  const rows = (await prisma.pendingWoloClaim.findMany({
-    where: visibleMainnetClaimWhere({
-      status: "pending",
-      OR: [
-        {
-          normalizedPlayerName: { in: keys },
-        },
-        {
-          claimedByUserId: null,
-          OR: [
-            { normalizedPlayerName: { contains: "/" } },
-            { displayPlayerName: { contains: "/" } },
-          ],
-        },
-      ],
-    }),
-    select: {
-      id: true,
-      claimedByUserId: true,
-      normalizedPlayerName: true,
-      displayPlayerName: true,
-      amountWolo: true,
-      createdAt: true,
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-  })) as PendingWoloClaimSummaryRow[];
+  // The restricted web role cannot read claim state, payout transaction
+  // hashes, private notes or arbitrary balances. Only the already-published
+  // pending-name rail is accessible via the constrained, status-filtered view.
+  // Preserve the legacy team-label splitting and alias-collision rules below.
+  let rows: PendingWoloClaimSummaryRow[];
+  if (isNonfinancialPublicReadProfile()) {
+    if (!prisma.$queryRaw) {
+      throw new Error("PUBLIC_PENDING_CLAIMS_SCOPED_QUERY_REQUIRED");
+    }
+    const mainnetSince = isWoloMainnet()
+      ? Prisma.sql`AND created_at>=${getWoloMainnetDisplayStartAt()}`
+      : Prisma.empty;
+    rows = await prisma.$queryRaw<PendingWoloClaimSummaryRow[]>(Prisma.sql`
+      SELECT id,claimed_by_user_id AS "claimedByUserId",
+             normalized_player_name AS "normalizedPlayerName",
+             display_player_name AS "displayPlayerName",
+             amount_wolo AS "amountWolo",created_at AS "createdAt"
+      FROM aoe2war_public_v1.pending_claim_names
+      WHERE (
+        normalized_player_name IN (${Prisma.join(keys)})
+        OR (claimed_by_user_id IS NULL
+            AND (strpos(normalized_player_name,'/')>0
+                 OR strpos(display_player_name,'/')>0))
+      ) ${mainnetSince}
+      ORDER BY created_at DESC,id DESC LIMIT 10001
+    `);
+    if (rows.length > 10000) {
+      throw new Error("PUBLIC_PENDING_CLAIMS_BOUNDED_QUERY_LIMIT");
+    }
+  } else {
+    rows = (await prisma.pendingWoloClaim.findMany({
+      where: visibleMainnetClaimWhere({
+        status: "pending",
+        OR: [
+          { normalizedPlayerName: { in: keys } },
+          { claimedByUserId: null, OR: [
+              { normalizedPlayerName: { contains: "/" } },
+              { displayPlayerName: { contains: "/" } },
+          ] },
+        ],
+      }),
+      select: {
+        id: true,claimedByUserId: true,normalizedPlayerName: true,
+        displayPlayerName: true,amountWolo: true,createdAt: true,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    })) as PendingWoloClaimSummaryRow[];
+  }
 
   for (const row of rows) {
     const teamNames = splitPendingWoloTeamClaimNames(row);

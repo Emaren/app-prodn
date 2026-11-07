@@ -1,0 +1,27 @@
+[Unit]
+Description=AoE2WAR read-only 3030/3032 guest RSC content drift observer
+After=network.target
+Documentation=https://github.com/Emaren/app-prodn/issues/1108
+ConditionPathExists=/usr/local/lib/aoe2war-release-readiness-observer.py
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+StateDirectory=aoe2war-release-readiness-observer
+StateDirectoryMode=0700
+ExecStart=/usr/bin/python3 -I -B /usr/local/lib/aoe2war-release-readiness-observer.py --output /var/lib/aoe2war-release-readiness-observer/latest.json
+TimeoutStartSec=100s
+MemoryMax=96M
+CPUQuota=25%
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077

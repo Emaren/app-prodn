@@ -4,6 +4,7 @@ import {
 } from "@/lib/replayAdjudications";
 import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 export type PublicLeaderboardRawGame = {
   createdAt: Date;
@@ -222,7 +223,8 @@ export async function loadPublicLeaderboardRawGames(
           prisma,
         );
     } catch (error) {
-      // Correctness wins over reuse when generation authority is unavailable.
+      if (isNonfinancialPublicReadProfile()) throw error;
+      // Legacy cache compatibility only; restricted R25 must fail closed.
       // Do not retain an unversioned lifetime corpus.
       console.warn(
         "Public leaderboard replay generation unavailable; loading fresh corpus:",

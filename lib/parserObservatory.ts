@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
 import { unstable_cache } from "next/cache";
 
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import { RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS } from "@/lib/replayResultAdjudications";
 import {
   cleanPublicGameRows,
   publicReplayWinnerTruth,
@@ -157,7 +160,7 @@ function isExplicitlyIrrecoverableArtifact(metrics: unknown) {
   ]).has(explicitArtifactDisposition(metrics));
 }
 
-async function loadCorpusRows() {
+async function loadLegacyCorpusRows() {
   // This is final watcher/upload-record grain, not deduplicated logical-game
   // grain and not the frozen Engine Room artifact cohort. Adjudications are
   // overlaid below before resolveReplayWinnerTruth decides stats eligibility.
@@ -194,23 +197,64 @@ async function loadCorpusRows() {
   });
 }
 
-async function buildPublicParserObservatory() {
+type PublicCorpusProjectedAdjudication = {
+  id: number;
+  idempotencyKey: string;
+  decisionStatus: string;
+  affectsStats: boolean;
+  affectsBets: boolean;
+  actorDisplayNameSnapshot: string;
+  actorRole: string;
+  teamAssignments: unknown;
+  winningTeamKey: string;
+  winningPlayerKeys: unknown;
+  reason: string;
+  evidence: null;
+  sourceReplayHash: string;
+  sourceParseIteration: number;
+  sourceRosterHash: string;
+  sourcePropositionHash: string;
+  createdAt: string;
+};
+
+type RestrictedPublicCorpusRow = {
+  replayResultAdjudications: PublicCorpusProjectedAdjudication[];
+  [key: string]: unknown;
+};
+
+/**
+ * A05 nonfinancial isolated runtime: read only the source-owned sanitized
+ * projection. Do not query protected users or adjudication rows, and do not
+ * count missing public views as an empty replay archive.
+ */
+async function loadCorpusRows() {
+  if (!isNonfinancialPublicReadProfile()) return loadLegacyCorpusRows();
+  const rows = await getPrisma().$queryRaw<RestrictedPublicCorpusRow[]>`
+    SELECT * FROM aoe2war_public_v7.parser_final_corpus
+    ORDER BY played_on DESC NULLS LAST,
+             "timestamp" DESC NULLS LAST, id DESC
+  `;
+  const disabledPrefixes = RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS
+    .map((policy) => `evidence:auto:${policy}:`);
+  const projected = rows.map((row) => {
+    const admissible = (row.replayResultAdjudications ?? [])
+      .filter((item) =>
+        item.decisionStatus === "accepted" &&
+        !disabledPrefixes.some((prefix) => item.idempotencyKey.startsWith(prefix))
+      )
+      .slice(0, 1)
+      .map((item) => ({
+        ...item,
+        createdAt: new Date(item.createdAt),
+      }));
+    return { ...row, replayResultAdjudications: admissible };
+  });
+  return projected as unknown as Awaited<ReturnType<typeof loadLegacyCorpusRows>>;
+}
+
+async function loadLegacyParserObservatoryInputs() {
   const prisma = getPrisma();
-  const [
-    rawRows,
-    allGameRows,
-    artifacts,
-    runStatus,
-    parserVersions,
-    fieldCoverage,
-    observations,
-    jobs,
-    candidateFailures,
-    latestArtifactRuns,
-    effectiveProjectionReceipts,
-    acceptedIdentitySnapshots,
-    identityFoundation,
-  ] = await Promise.all([
+  return Promise.all([
     loadCorpusRows(),
     prisma.gameStats.count(),
     prisma.replayArtifact.aggregate({ _count: { _all: true }, _sum: { byteSize: true } }),
@@ -362,6 +406,95 @@ async function buildPublicParserObservatory() {
       };
     })(),
   ]);
+}
+
+type LegacyParserObservatoryInputs = Awaited<ReturnType<typeof loadLegacyParserObservatoryInputs>>;
+
+type PublicParserAggregateJson = Record<string, unknown>;
+
+type PublicParserAggregateRow = Record<string, unknown> & {
+  _max?: { completedAt?: string | null; createdAt?: string | null };
+  artifact: { byteSize: number | string };
+  events?: unknown;
+};
+
+function publicParserRows(value: unknown, name: string): PublicParserAggregateRow[] {
+  if (!Array.isArray(value)) throw new Error(`PUBLIC_PARSER_V8_MALFORMED_${name}`);
+  return value as PublicParserAggregateRow[];
+}
+
+/**
+ * Exact v8 scope: sanitised public aggregations only. Every original field
+ * has one source-owned SQL publisher. Raw private parser/job/evidence
+ * tables are never queried by the confined production database role.
+ */
+async function loadRestrictedParserObservatoryInputs(): Promise<LegacyParserObservatoryInputs> {
+  const [rawRows, views] = await Promise.all([
+    loadCorpusRows(),
+    getPrisma().$queryRaw<Array<{ payload: PublicParserAggregateJson }>>`
+      SELECT payload FROM aoe2war_public_v8.parser_observatory_snapshot
+    `,
+  ]);
+  if (views.length !== 1 || !views[0]?.payload ||
+      typeof views[0].payload !== "object" || Array.isArray(views[0].payload)) {
+    throw new Error("PUBLIC_PARSER_V8_VIEW_UNAVAILABLE_OR_MALFORMED");
+  }
+  const data = views[0].payload;
+  if (!Number.isSafeInteger(data.allGameRows) || !Number.isSafeInteger(data.observations) ||
+      !Number.isSafeInteger(data.effectiveProjectionReceipts) ||
+      typeof data.artifacts !== "object" || !data.artifacts ||
+      typeof data.identityFoundation !== "object" || !data.identityFoundation) {
+    throw new Error("PUBLIC_PARSER_V8_COUNTERS_UNAVAILABLE");
+  }
+  const parserVersions = publicParserRows(data.parserVersions, "VERSIONS").map((row) => ({
+    ...row, _max: {
+      completedAt: row._max?.completedAt ? new Date(String(row._max.completedAt)) : null,
+    },
+  }));
+  const candidateFailures = publicParserRows(data.candidateFailures, "FAILURES").map((row) => ({
+    ...row, _max: { createdAt: row._max?.createdAt ? new Date(String(row._max.createdAt)) : null },
+  }));
+  const jobs = publicParserRows(data.jobs, "JOBS").map((job) => ({
+    ...job, createdAt: new Date(String(job.createdAt)),
+    events: publicParserRows(job.events, "JOB_EVENTS").map((event) => ({
+      ...event, createdAt: new Date(String(event.createdAt)),
+    })),
+  }));
+  const latestArtifactRuns = publicParserRows(data.latestArtifactRuns, "ARTIFACTS").map((run) => ({
+    ...run, artifact: {
+      ...run.artifact, byteSize: BigInt(String(run.artifact.byteSize)),
+    },
+  }));
+
+  return [
+    rawRows,
+    data.allGameRows, data.artifacts,
+    publicParserRows(data.runStatus, "RUN_STATUS"), parserVersions,
+    publicParserRows(data.fieldCoverage, "FIELDS"), data.observations, jobs,
+    candidateFailures, latestArtifactRuns, data.effectiveProjectionReceipts,
+    publicParserRows(data.acceptedIdentitySnapshots, "IDENTITIES"),
+    data.identityFoundation,
+  ] as unknown as LegacyParserObservatoryInputs;
+}
+
+async function buildPublicParserObservatory() {
+  const [
+    rawRows,
+    allGameRows,
+    artifacts,
+    runStatus,
+    parserVersions,
+    fieldCoverage,
+    observations,
+    jobs,
+    candidateFailures,
+    latestArtifactRuns,
+    effectiveProjectionReceipts,
+    acceptedIdentitySnapshots,
+    identityFoundation,
+  ] = await (isNonfinancialPublicReadProfile()
+    ? loadRestrictedParserObservatoryInputs()
+    : loadLegacyParserObservatoryInputs());
 
   const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
   const physicalArchive = {
@@ -802,6 +935,29 @@ export const loadPublicParserObservatory = unstable_cache(
 
 export async function loadViewerParserVault(uid: string | null) {
   if (!uid) return null;
+  // Public final replay membership is preserved for signed-in users without
+  // exposing private parse-attempts or user credentials. The UID is hashed;
+  // the role receives only two columns: public final game ID + digest.
+  if (isNonfinancialPublicReadProfile()) {
+    const uidSha256 = createHash("sha256").update(uid, "utf8").digest("hex");
+    const memberships = await getPrisma().$queryRaw<Array<{ gameStatsId: number }>>`
+      SELECT "gameStatsId"
+      FROM aoe2war_public_v10.viewer_final_replay_memberships
+      WHERE "viewerUidSha256" = ${uidSha256}
+    `;
+    const ownedGameIds = new Set(memberships.map((row) => row.gameStatsId));
+    const rawRows = (await loadCorpusRows()).filter((row) => ownedGameIds.has(row.id));
+    const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
+    const resolved = rows.filter((row) => resultTruth(row).statsEligible).length;
+    const teamsResolved = rows.filter((row) => teamTruth(row).resolved).length;
+    return {
+      total: rows.length,
+      resolved,
+      unknown: rows.length - resolved,
+      teamsResolved,
+      resultCoverageBps: rows.length ? Math.round((resolved / rows.length) * 10_000) : 0,
+    };
+  }
   const rawRows = await getPrisma().gameStats.findMany({
     where: {
       is_final: true,

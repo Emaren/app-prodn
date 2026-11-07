@@ -1,5 +1,9 @@
 import { Suspense } from "react";
 import TrafficSensors from "@/components/traffic/TrafficSensors";
+import ProvisionalDailyTraffic from "@/components/traffic/ProvisionalDailyTraffic";
+import { loadPublicProvisionalActivity } from "@/lib/publicObservedTraffic";
+import ProvisionalActivity from "@/components/traffic/ProvisionalActivity";
+import { loadProvisionalTraffic } from "@/lib/provisionalTraffic";
 import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
@@ -61,6 +65,39 @@ async function ObservedTrafficSensors({
   );
 }
 
+// A second, independent observational rail. Never merge these observed
+// IP/GET counts with the canonical human/session curve above.
+async function RecentObservedActivity({
+  lastPublishedDay,
+}: {
+  lastPublishedDay: string | null;
+}) {
+  try {
+    const response = await loadProvisionalTraffic(lastPublishedDay);
+    return <ProvisionalActivity points={response.points} />;
+  } catch (error) {
+    console.warn("Provisional observed activity unavailable:", error);
+    return (
+      <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-slate-400">
+        Recent observed activity is temporarily unavailable.
+        The certified historical Traffic chart remains independent.
+      </section>
+    );
+  }
+}
+
+async function ObservedDailyTraffic({ lastPublishedDay }: {
+  lastPublishedDay: string | null;
+}) {
+  let data = null;
+  try {
+    data = await loadPublicProvisionalActivity();
+  } catch (error) {
+    console.warn("Provisional observed Traffic unavailable:", error);
+  }
+  return <ProvisionalDailyTraffic data={data} lastPublishedDay={lastPublishedDay} />;
+}
+
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let failed = false;
@@ -103,6 +140,14 @@ export default async function TrafficPage() {
         )}
 
         <Suspense fallback={
+          <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-amber-200">
+            Loading provisional observed activity — never human-certified.
+          </section>
+        }>
+          <RecentObservedActivity lastPublishedDay={lastPublishedDay} />
+        </Suspense>
+
+        <Suspense fallback={
           <section aria-live="polite" className="mt-6 rounded-2xl border border-sky-300/15 bg-sky-300/[0.035] p-6 font-mono text-sm text-sky-200">
             Loading observed browser intelligence — historical chart remains available.
           </section>
@@ -112,6 +157,14 @@ export default async function TrafficPage() {
             lastPublishedDay={lastPublishedDay}
             lagDays={ageDays}
           />
+        </Suspense>
+
+        <Suspense fallback={
+          <section aria-live="polite" className="mt-6 rounded-xl border border-amber-300/20 p-6 text-sm text-amber-200">
+            Loading separate provisional daily activity — certified Traffic remains unchanged.
+          </section>
+        }>
+          <ObservedDailyTraffic lastPublishedDay={lastPublishedDay} />
         </Suspense>
 
         {failed ? (

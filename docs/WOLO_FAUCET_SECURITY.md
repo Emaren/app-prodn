@@ -75,11 +75,16 @@ The hardened faucet adds layered controls:
 5. A pre-broadcast reservation binds both account and destination.
 6. Claims are serialized through an application lock.
 7. Uncertain broadcasts remain fail-closed for the reserved account and address.
-8. Only confirmed payouts count toward global payout ceilings.
-9. Default circuit-breaker ceilings are 30 confirmed claims/hour and
-   100 confirmed claims/day.
+8. Only ledger records with a nonempty transaction hash count toward global
+   payout ceilings. The policy calls these records "confirmed", but the route
+   obtains the hash from synchronous broadcast acceptance; it does not prove
+   inclusion or final chain settlement.
+9. Default circuit-breaker ceilings are 30 hashed claims/hour and
+   100 hashed claims/day.
 10. Once tripped, the breaker remains closed until explicit operator review.
-11. Malformed security ledgers fail closed.
+11. Unreadable or malformed ledger JSON fails closed. The claim-ledger reader
+    validates the top-level record, not every nested claim field; this must
+    not be described as complete ledger schema validation.
 12. Ledger writes use atomic replacement.
 
 ## Circuit-breaker recovery
@@ -155,3 +160,21 @@ The regression suite must continue proving:
 - an active breaker blocks claims;
 - account-and-destination reservation occurs before chain broadcast;
 - internal failures are not exposed to clients.
+
+## October 31, 2026 app source review
+
+Reviewed the frozen website source
+`0cee3c836c4b0760478280c145e02e81e470ce0e`: the claim route,
+`lib/woloFaucetPolicy.ts`, and the existing policy and Sybil-hardening tests.
+The route reserves the authenticated account and destination before broadcast,
+serializes claims, and retains an uncertain reservation for its cooldown.
+Its `--broadcast-mode sync` result is not independent chain confirmation.
+The corrections above preserve that distinction without changing payout code.
+Historical raid figures remain dated incident evidence, not newly audited
+chain totals.
+
+This review grants no permission to reset a breaker, claim funds, change
+custody, or enable the faucet on the isolated website. R25's GET/HEAD ingress,
+SELECT-only PostgreSQL role, and UID egress wall must continue blocking that
+financial path. Runtime configuration and chain settlement remain separately
+verified truths owned by their respective operators.

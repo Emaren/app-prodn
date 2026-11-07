@@ -3,7 +3,7 @@
     "href": "/",
     "label": "Kingdom Gate",
     "district": "citadel",
-    "sourceTree": "src-e6739575d025d772"
+    "sourceTree": "src-0cb262f37efc0ff5"
   },
   {
     "href": "/about",
@@ -21,7 +21,7 @@
     "href": "/ai",
     "label": "Ai",
     "district": "commons",
-    "sourceTree": "src-8d9d1b8f967b6278"
+    "sourceTree": "src-4a7ec84b3837eb10"
   },
   {
     "href": "/aoe2war-os",
@@ -33,7 +33,7 @@
     "href": "/battle-archive",
     "label": "Battle Archive",
     "district": "forge",
-    "sourceTree": "src-acf3aa18f1df8d76"
+    "sourceTree": "src-9200e987bdeb31cc"
   },
   {
     "href": "/belts",
@@ -57,7 +57,7 @@
     "href": "/bounties",
     "label": "Bounties",
     "district": "bazaar",
-    "sourceTree": "src-1287b6ca4f7b796b"
+    "sourceTree": "src-3b9bd2c128257039"
   },
   {
     "href": "/challenge",
@@ -69,7 +69,7 @@
     "href": "/champions",
     "label": "Champions",
     "district": "arena",
-    "sourceTree": "src-7fff2098903f8766"
+    "sourceTree": "src-21ee9dfbc6a1c293"
   },
   {
     "href": "/champions/e2",
@@ -111,7 +111,7 @@
     "href": "/clans",
     "label": "Clans",
     "district": "commons",
-    "sourceTree": "src-dddc3843b35e6424"
+    "sourceTree": "src-28463d3e1e7fd437"
   },
   {
     "href": "/download",
@@ -147,7 +147,7 @@
     "href": "/kingdom",
     "label": "Kingdom",
     "district": "citadel",
-    "sourceTree": "src-81e76a8cd2289dc0"
+    "sourceTree": "src-ae3be54433e3ddf4"
   },
   {
     "href": "/kingdom-agents",
@@ -159,7 +159,7 @@
     "href": "/kingdom-bettors",
     "label": "Kingdom Bettors",
     "district": "bazaar",
-    "sourceTree": "src-f01f64fb56c3e2d1"
+    "sourceTree": "src-17d001c4093da744"
   },
   {
     "href": "/kingdom-brain",
@@ -255,7 +255,7 @@
     "href": "/lobby",
     "label": "Lobby",
     "district": "commons",
-    "sourceTree": "src-04dfb3ac78830ef4"
+    "sourceTree": "src-728f35580f33fccb"
   },
   {
     "href": "/market",
@@ -285,7 +285,7 @@
     "href": "/oracle",
     "label": "Oracle",
     "district": "bazaar",
-    "sourceTree": "src-49d79849e7a1a5ac"
+    "sourceTree": "src-792ee854ceb70aa3"
   },
   {
     "href": "/players",
@@ -297,7 +297,7 @@
     "href": "/radio",
     "label": "Radio",
     "district": "commons",
-    "sourceTree": "src-0700bd78ac567e54"
+    "sourceTree": "src-3b4d5295c6b01b02"
   },
   {
     "href": "/realm",
@@ -399,7 +399,7 @@
     "href": "/rivalries",
     "label": "Rivalries",
     "district": "arena",
-    "sourceTree": "src-e0171c35d49605e1"
+    "sourceTree": "src-3a3cc87634010f1e"
   },
   {
     "href": "/roadmap",
@@ -453,7 +453,7 @@
     "href": "/traffic",
     "label": "Traffic",
     "district": "forge",
-    "sourceTree": "src-df6ccb000756d467"
+    "sourceTree": "src-c5d0f806ac5eebad"
   },
   {
     "href": "/users",
@@ -471,7 +471,7 @@
     "href": "/war-engine",
     "label": "War Engine",
     "district": "forge",
-    "sourceTree": "src-375d874a3a6d2788"
+    "sourceTree": "src-2289514cb6c6d071"
   },
   {
     "href": "/wargraph",

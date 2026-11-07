@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 
 import { isClanHallScribeSystemUid } from "@/lib/internalSystemAccounts";
 import { isReactionEmoji } from "@/lib/reactionEmoji";
@@ -284,6 +285,34 @@ function displayName(user: {
 export async function loadClanDirectory(
   prisma: PrismaClient
 ): Promise<ClanDirectoryEntry[]> {
+  if (usesNonfinancialProductionAuth()) {
+    // A06: the web role must never SELECT raw clan or membership tables.
+    // This postgres-owned security-barrier view exposes only active public
+    // directory fields and a numeric aggregate, without member identities.
+    const rows = await prisma.$queryRaw<Array<{
+      id: number;
+      slug: string;
+      name: string;
+      tagline: string | null;
+      description: string | null;
+      crestUrl: string | null;
+      memberCount: bigint;
+    }>>`
+      SELECT id, slug, name, tagline, description, "crestUrl", "memberCount"
+      FROM aoe2war_public_v13.active_clan_directory
+      ORDER BY name ASC, id ASC
+    `;
+    return rows.map((row) => ({
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      tagline: row.tagline,
+      description: row.description,
+      crestUrl: row.crestUrl,
+      memberCount: Number(row.memberCount),
+    }));
+  }
+
   const clans = await prisma.clan.findMany({
     where: { status: "active" },
     orderBy: [{ name: "asc" }, { id: "asc" }],

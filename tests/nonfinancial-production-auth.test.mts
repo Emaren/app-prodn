@@ -238,6 +238,92 @@ test("Steam route HEAD cannot mutate; real GET initiation and verified callback 
 });
 
 
+test("physical Steam OpenID failure logs only an allowlisted stage without identities or assertions", async () => {
+  const env = environment(); const auth = load("lib/productionAuth.ts", {}, env);
+  const warnings: string[] = [];
+  const privateMessage = "PRIVATE_OPENID_ASSERTION_AND_STEAM_ID_" + steamId;
+  const steam = load("lib/steamAuth.ts", { "@/lib/productionAuth": auth }, env, {
+    console: { warn: (line: string) => warnings.push(line) },
+    fetch: async () => { throw new Error(privateMessage); },
+  });
+  await assert.rejects(steam.verifySteamCallback(callback()), /PRIVATE_OPENID_ASSERTION/);
+  assert.deepEqual(warnings, [
+    "AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:provider_post",
+    "AOE2WAR_NONFINANCIAL_OPENID_HOLD_CLASS:FETCH_UNCLASSIFIED",
+  ]);
+  assert.ok(!warnings.join("").includes(privateMessage));
+  assert.ok(!warnings.join("").includes(steamId));
+  warnings.length = 0;
+  await assert.rejects(steam.verifySteamCallback(callback({}, "B".repeat(43))));
+  assert.deepEqual(warnings, ["AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:assertion"]);
+});
+
+test("OpenID provider failures are classified with only finite labels, including nested guard and transport causes", () => {
+  const env = environment(); const auth = load("lib/productionAuth.ts", {}, env);
+  const steam = load("lib/steamAuth.ts", { "@/lib/productionAuth": auth }, env);
+  const classifier = steam.classifySteamVerificationTransportFailure;
+  assert.equal(classifier({ name: "TypeError", message: "fetch failed", cause: {
+    name: "Error", message: "AOE2WAR_PRODUCTION_HOLD:NODE_EGRESS_DENIED; PRIVATE " + steamId,
+    code: "EPERM", } }), "GUARD_NODE_EGRESS_DENIED");
+  assert.equal(classifier({ name: "TypeError", message: "private", cause: {
+    code: "ETIMEDOUT", message: "leak: " + steamId } }), "TRANSPORT_ETIMEDOUT");
+  assert.equal(classifier({ name: "TypeError", message: "private", cause: {
+    code: "EAI_AGAIN" } }), "TRANSPORT_EAI_AGAIN");
+  assert.equal(classifier({ name: "TimeoutError", message: steamId }), "FETCH_TIMEOUT");
+  assert.equal(classifier({ name: "TypeError", message: steamId }), "FETCH_TYPEERROR");
+  assert.equal(classifier({ name: "Error", message: "AOE2WAR_PRODUCTION_HOLD:SECRET_" + steamId }), "GUARD_OTHER");
+  assert.equal(classifier({ message: "PRIVATE: " + steamId, code: "sensitive-" + steamId }), "FETCH_UNCLASSIFIED");
+  const warnings: string[] = [];
+  const guarded = load("lib/steamAuth.ts", { "@/lib/productionAuth": auth }, env, {
+    console: { warn: (line: string) => warnings.push(line) },
+    fetch: async () => { throw Object.assign(new TypeError("PRIVATE provider token"), {
+      cause: new Error("AOE2WAR_PRODUCTION_HOLD:STEAM_VERIFICATION_FORM_ONLY:" + steamId),
+    }); },
+  });
+  return assert.rejects(guarded.verifySteamCallback(callback())).then(() => {
+    assert.deepEqual(warnings, ["AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:provider_post",
+      "AOE2WAR_NONFINANCIAL_OPENID_HOLD_CLASS:GUARD_STEAM_VERIFICATION_FORM_ONLY"]);
+    assert.ok(!warnings.join("").includes(steamId));
+    assert.ok(!warnings.join("").includes("PRIVATE"));
+  });
+});
+
+test("production callback reports only exact Steam/DB stages with the public error unchanged", async () => {
+  const env = environment(); const { steam, auth } = steamModule(env); const session = sessionModule(env);
+  const warnings: string[] = [];
+  const privateMessage = "SENSITIVE_DB_QUERY_AND_NONCE_" + steamId;
+  const route = load("app/api/auth/steam/route.ts", {
+    "next/server": { NextResponse: Reply }, "@/lib/steamAuth": steam,
+    "@/lib/session": session, "@/lib/productionAuth": auth,
+    "@/lib/userOnlinePresence": { allowUserOnlineSession() {} },
+    "@/lib/steamIdentity": { hydrateSteamIdentity: async () => {} },
+    "@/lib/prisma": { getPrisma: () => ({
+      $queryRaw: async () => { throw new Error(privateMessage); },
+    }) },
+  }, env, { console: { warn: (line: string) => warnings.push(line) } });
+  const response = await route.GET(callback());
+  assert.equal(response.status, 307);
+  assert.match(response.headers.get("location")!, /auth=steam-error/);
+  assert.match(response.headers.get("location")!, /detail=STEAM_SIGN_IN_FAILED/);
+  assert.deepEqual(warnings, ["AOE2WAR_NONFINANCIAL_STEAM_CALLBACK_HOLD_STAGE:scoped_db_login"]);
+  assert.ok(!warnings.join("").includes(privateMessage));
+  assert.ok(!warnings.join("").includes(steamId));
+  assert.equal(response.savedCookies.get(cookieName)!.maxAge, 0);
+});
+
+test("production Steam callback never echoes raw error details in its logs or redirect", () => {
+  const route = source("app/api/auth/steam/route.ts");
+  const steam = source("lib/steamAuth.ts");
+  assert.ok(route.includes('console.warn("AOE2WAR_NONFINANCIAL_STEAM_CALLBACK_HOLD_STAGE:" + callbackStage)'));
+  assert.ok(steam.includes('console.warn("AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:" + stage)'));
+  assert.ok(steam.includes('console.warn("AOE2WAR_NONFINANCIAL_OPENID_HOLD_CLASS:" + classifySteamVerificationTransportFailure(error))'));
+  assert.ok(!route.includes("console.warn(error)"));
+  assert.ok(!steam.includes("console.warn(error)"));
+  assert.ok(!route.includes("console.error(error)"));
+  assert.ok(!steam.includes("console.error(error)"));
+});
+
+
 test("native PostgreSQL callback -> signed session GET -> token-free profile GET uses only exact SQL grants", {
   skip: !process.env.AOE2WAR_AUTH_PG_SOCKET,
 }, async () => {

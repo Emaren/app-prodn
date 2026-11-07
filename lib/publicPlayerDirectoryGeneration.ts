@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 /*
  * The browser generation probe runs every five seconds. Coalesce the mutable
@@ -29,6 +30,15 @@ let generationPromise: Promise<string> | null = null;
 async function loadDirectorySupplementFingerprint(
   prisma: PrismaClient,
 ): Promise<DirectorySupplementFingerprint> {
+  // Restricted web reads only source-owned, accepted public projections.
+  // Static relation identities are selected by the attested production
+  // profile, never by a request or user-controlled SQL identifier.
+  const scoped = isNonfinancialPublicReadProfile();
+  const users = Prisma.raw(scoped ? "aoe2war_public_v5.user_profiles" : "users");
+  const avatars = Prisma.raw(scoped ? "aoe2war_public_v5.avatar_revisions" : "managed_media_assets");
+  const badges = Prisma.raw(scoped ? "aoe2war_public_v1.player_badges" : "user_badges");
+  const gifts = Prisma.raw(scoped ? "aoe2war_public_v1.player_gifts" : "user_gifts");
+  const claims = Prisma.raw(scoped ? "aoe2war_public_v1.pending_claim_names" : "pending_wolo_claims");
   const rows = await prisma.$queryRaw<DirectorySupplementFingerprint[]>(Prisma.sql`
     SELECT
       (
@@ -52,7 +62,7 @@ async function loadDirectorySupplementFingerprint(
             '[]'
           )
         )
-        FROM users
+        FROM ${users}
       ) AS users,
       (
         SELECT md5(
@@ -73,7 +83,7 @@ async function loadDirectorySupplementFingerprint(
             '[]'
           )
         )
-        FROM user_badges
+        FROM ${badges}
       ) AS badges,
       (
         SELECT md5(
@@ -95,7 +105,7 @@ async function loadDirectorySupplementFingerprint(
             '[]'
           )
         )
-        FROM user_gifts
+        FROM ${gifts}
       ) AS gifts,
       (
         SELECT md5(
@@ -112,7 +122,7 @@ async function loadDirectorySupplementFingerprint(
             '[]'
           )
         )
-        FROM managed_media_assets
+        FROM ${avatars}
         WHERE kind = 'avatar'
       ) AS "managedAvatars",
       (
@@ -123,7 +133,7 @@ async function loadDirectorySupplementFingerprint(
             MAX(updated_at)
           )::text
         )
-        FROM pending_wolo_claims
+        FROM ${claims}
       ) AS "pendingClaims"
   `);
 
