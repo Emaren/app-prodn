@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/session-b-r25-steam-refresh-rotation-20261107` at `0860ff81b1862d90a884fc9cbc288f7cd94c05f5`
+Implementation baseline: `fix/session-b-steam-v5s-c03-hourly-20261107` at `15295e41dc949404435656f15de483e931836218`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

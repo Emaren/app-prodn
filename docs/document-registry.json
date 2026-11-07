@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "58110c4f7fe6025b9d872ff303055a8ca564522167bb797c080d8e9949b3bd05",
+      "sha256": "31bf8ed61307b1e6723f50947687dd668a0b1a5af2c55b3ba58015eb1da311aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1926,7 +1926,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "a1e8685e0acb6281aa2c0476ec6ad7245beec03eadd8132d2d773ef86fc7f349",
+      "sha256": "12d833f324a070da77910cd948d0544dc967ca962f9005071101bffa644abea7",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2415,8 +2415,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/session-b-r25-steam-refresh-rotation-20261107",
-    "commit": "0860ff81b1862d90a884fc9cbc288f7cd94c05f5"
+    "branch": "fix/session-b-steam-v5s-c03-hourly-20261107",
+    "commit": "15295e41dc949404435656f15de483e931836218"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

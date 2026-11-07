@@ -116,6 +116,11 @@ jobs:
           else:
               print("No changed JS/TS files to lint", flush=True)
           PY
+      - name: R25 Steam v5s exact C03 hourly oneshot and runtime admission denials
+        run: |
+          python3 -B scripts/release/r25_steam_refresh_v5s.py --phase selftest
+          python3 -B -m unittest discover -s tests -p 'test_session_b_steam_runtime_v5s.py' -v
+          python3 -B -m unittest discover -s tests -p 'test_session_b_steam_v5s_c03_observer_timer.py' -v
       - name: Run active Node contract inventory
         run: python3 scripts/run_test_contract.py
       - name: Build production application
