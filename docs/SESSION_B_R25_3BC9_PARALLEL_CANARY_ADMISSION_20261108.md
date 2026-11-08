@@ -94,6 +94,44 @@ loaded Nginx and Steam units, missing old 3030/3032 PIDs, occupied 3033,
 newly listening funded 8094/8095, an already-loaded candidate unit, or a
 changed candidate sandbox. It does not read actual secret env values.
 
+## Actual avatar byte-parity release gate
+
+Source: scripts/r25_3bc9_avatar_byte_parity_audit.py, with
+12 adversarial tests in tests/test_r25_3bc9_avatar_byte_parity_audit.py.
+This is a read-only local-HTTP image test, not a graphic review or permission
+to write an avatar.
+
+At 2026-11-08 02:33 UTC, independent native GETs to 3030 and 3032
+returned HTTP 200 image/webp for all three pinned public alias targets.
+Only Emaren had identical managed image bytes on both processes. Sniper
+had managed SHA256 87cd2af1c80e7df61056bbee1ac7efc99618f8f5cab6e1e9ec7dee86c3ed1f45
+on 3030 but static Sniper card SHA256
+cbc27cd922e4c72e6128d5cba1079fac71956c5b1963e15a540961daa752bf1e
+on 3032. Dil_Pascana had managed SHA256
+afbfb3979c9eb5f6c12569e26a436b8c7bebbc746daece48a456d673d38603d8
+on 3030 but generic static silhouette card SHA256
+24caf5ef022491a2909efda0d2c6944db97da6d7e2d8444968aedcf98a05f04f
+on 3032. Emaren SHA256
+9700616d7b885285059c7b029a3e50581c8bcad71471bd072a3ddafc15ed5c0a
+matched on both.
+
+Native source-pinned auditor reran on HEL1 and returned
+HOLD_AVATAR_MANAGED_BYTE_PARITY, 1/3 matched, 2 known static fallbacks,
+exit code 3. This is **a correctly reproduced pre-existing public defect**,
+not a new 3bc9 deployment failure. The staged repaired 3bc9 source is
+NOT active and has yet to prove native bytes.
+
+The new root-only read-only auditor accepts only localhost 3030 as reference
+and 3032/3033 as candidate, three exact known public aliases, direct no-redirect
+HTTP 200 image/webp, bounded body size, valid WebP RIFF signature and
+exact prior 3030 managed SHA. It will HOLD if the reference changes, a fallback
+is returned even with HTTP 200, candidate differs, source is not WebP or
+response redirects. It writes zero images/data and authorizes no financial
+operation. **The 3033 site cannot pass final avatar acceptance without
+3/3 genuine managed byte parity** against an independently reviewed current
+reference. A failed original reference demands renewed source classification,
+not automatic baseline adjustment.
+
 ## Current physical capacity HOLD
 
 At November 8 approximately 02:15 UTC, HEL1 had 7.6GiB total RAM,

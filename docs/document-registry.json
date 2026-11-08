@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "60069a0b94873cba10885e1da604ff37a1ea3c58d646eec492d7b552d326115a",
+      "sha256": "0988f90874cd5349f71da70c21ad7caf575785208679341cb84f307256ad25bd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1992,7 +1992,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-08",
       "sensitivity": "restricted",
-      "sha256": "3e6a3043c7ead9a3f7ad879797f5abc9223a0d074f340fefce68517c59da3703",
+      "sha256": "75bf23f4095a0d817c61929b89913531774af1a1221a948ab125ee6483237f29",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2526,7 +2526,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/r25-3bc9-parallel-admission-20261108",
-    "commit": "103d09e6f13e963e86011334b77ddfc262604c76"
+    "commit": "e3838b67e2da4f119f209adaf632f20dbb87f6e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

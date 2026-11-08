@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-3bc9-parallel-admission-20261108` at `103d09e6f13e963e86011334b77ddfc262604c76`
+Implementation baseline: `session-b/r25-3bc9-parallel-admission-20261108` at `e3838b67e2da4f119f209adaf632f20dbb87f6e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
