@@ -110,6 +110,9 @@ export async function resolveManagedMediaUrl(
         active: true,
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      // Public asset GETs need only the approved URL. Do not SELECT private
+      // uploader metadata via an unbounded Prisma default row projection.
+      select: { url: true },
     });
 
     if (asset?.url) {
