@@ -5,7 +5,7 @@ Run ONLY via an independent, bounded, root-owned systemd oneshot on HEL1.
 Never touches finance roles, grants, chain, funds, Nginx, or legacy 3030.
 """
 from __future__ import annotations
-import datetime, fcntl, hashlib, json, os, pathlib, stat, subprocess, sys, time, urllib.request
+import datetime, fcntl, hashlib, json, os, pathlib, re, stat, subprocess, sys, time, urllib.request
 P=pathlib.Path
 WEB=P('/etc/systemd/system/aoe2hdbets-web-prod.service')
 STEAM=P('/etc/systemd/system/aoe2war-steam-egress-refresh.service')
@@ -124,16 +124,23 @@ def audit_new():
  check(sha(WEB.read_bytes())==CANDIDATE_UNIT_SHA,'UNIT_REPLACED_DURING_AUDIT')
  time.sleep(5)
  check(read_version()==NEW_VERSION,'RUNTIME_RESTART_AFTER_PROMOTION')
+def nonidentifying_failure(error):
+ text=str(error)
+ m=re.fullmatch(r'HOLD:([A-Z0-9_]{3,110})',text)
+ return m.group(1) if m else type(error).__name__.upper()
+
 def main():
  check(os.geteuid()==0,'ROOT_REQUIRED')
  with LOCK.open('w') as file:
   try:fcntl.flock(file,fcntl.LOCK_EX|fcntl.LOCK_NB)
   except BlockingIOError:raise RuntimeError('HOLD:OTHER_RELEASE_RUNNING')
   original,new=preflight()
-  persist(ORIGINAL_BACKUP,original,0o600)
   print('PASS_BOUNDED_RELEASE_PREFLIGHT',{'old_pid':OLD_PID,'candidate_source':SOURCE,'unit_sha':CANDIDATE_UNIT_SHA},flush=True)
+  # A failed old-site Steam refresh must never restart an otherwise healthy
+  # already accepted production website.
+  manual_steam_refresh()
+  persist(ORIGINAL_BACKUP,original,0o600)
   try:
-   manual_steam_refresh()
    transition(new)
    newpid=await_version(NEW_VERSION,25)
    print('NEW_WEB_PROCESS_RUNNING',newpid,flush=True)
@@ -145,7 +152,7 @@ def main():
    print('PASS_TRAFFIC_R25_PRODUCTION_CUTOVER',newpid,flush=True)
   except BaseException as error:
    print('HOLD_CANDIDATE_INITIATING_AUTOMATIC_STEAM_SAFE_ROLLBACK',
-         type(error).__name__,flush=True)
+         nonidentifying_failure(error),flush=True)
    try:
     transition(original)
     rbpid=await_version(OLD_VERSION,28)
@@ -158,12 +165,12 @@ def main():
       'canonical_traffic_certification_authorized':False})
     print('PASS_ROLLBACK_PUBLIC_WEBSITE_STEAM_AND_FINANCIAL_FENCE',rbpid,flush=True)
    except BaseException as rollback_error:
-    print('EMERGENCY_HOLD_ROLLBACK_NOT_VERIFIED',type(rollback_error).__name__,flush=True)
+    print('EMERGENCY_HOLD_ROLLBACK_NOT_VERIFIED',nonidentifying_failure(rollback_error),flush=True)
     try:receipt({'status':'HOLD_AUTOMATIC_ROLLBACK_UNVERIFIED','failure_class':type(rollback_error).__name__})
     except BaseException:pass
    raise SystemExit(3)
 if __name__=='__main__':
  try:main()
  except Exception as e:
-  print('RELEASE_HOLD',type(e).__name__,str(e).split(':')[0][:45],flush=True)
+  print('RELEASE_HOLD',nonidentifying_failure(e),flush=True)
   sys.exit(3)

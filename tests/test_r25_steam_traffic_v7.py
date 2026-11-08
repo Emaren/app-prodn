@@ -124,6 +124,12 @@ class GuardedSingleRuntimeContract(unittest.TestCase):
   self.assertIn("public_exact_version(OLD_VERSION,24)",code)
   self.assertIn("HOLD_AUTOMATIC_ROLLBACK_UNVERIFIED",code)
   self.assertIn("PASS_ROLLBACK_PUBLIC_WEBSITE_STEAM_AND_FINANCIAL_FENCE",code)
+ def test_old_site_refresh_fails_before_any_unit_write(self):
+  code=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v7.py").read_text()
+  self.assertLess(code.index("manual_steam_refresh()\n  persist(ORIGINAL_BACKUP"),
+                  code.index("   transition(new)"))
+  self.assertLess(code.index("  persist(ORIGINAL_BACKUP"),
+                  code.index("   transition(new)"))
  def test_no_direct_funded_or_chain_mutations(self):
   code=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v7.py").read_text()
   self.assertIn("('/usr/bin/python3'",code) if False else None

@@ -39,7 +39,7 @@ The Steam check is a harmless GET-only OpenID initiation; only secure, HttpOnly 
 
 Source: scripts/release/r25_traffic_single_runtime_release_v7.py.
 
-Preflight requires the old working PID and source, exact old unit, pinned candidate unit (four working-directory substitutions only), physical CI receipt, memory/root reserves, original 3030 PID, Wolo validator, inactive funded ports, and already functioning V7 rollback-profile Steam refresh.
+Preflight requires the old working PID and source, exact old unit, pinned candidate unit (four working-directory substitutions only), physical CI receipt, memory/root reserves, original 3030 PID, Wolo validator, inactive funded ports, and already functioning V7 rollback-profile Steam refresh. A transient failure of the old-site Steam refresh before any candidate transition now returns HOLD with no web unit backup/write and no restart of the healthy existing site.
 
 The host systemd oneshot operates with one Next runtime only: renew Steam on old site; back up the original web unit; replace the one web unit; restart only 3032; verify exact new build and Traffic HTML; enroll candidate PID; renew Steam; verify public HTTPS build parity and financial boundary; write a root0600 receipt.
 
