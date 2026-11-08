@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "71c28223f2480599865375ab394b5d3a0f889c9e4fdff1058f477b9f55c88961",
+      "sha256": "d8ef81bccd34d79ba5f0f72257313facd3ea4eb5a55339992e298794922070ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2007,6 +2007,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-public-consent-no-production-db-ddl-or-financial-release",
+      "id": "aoe2war.app.session-b-private-pending-gift-public-consent",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "999435f1f118313ca01117a55b81420c3d6361b4b9fea3f7d294e69ea259481f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "Session B Public Gift Consent \u2014 Private Pending WOLO Aggregate Source HOLD",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2525,8 +2547,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/pending-wolo-public-ui-truth-20261108",
-    "commit": "4e955fb316380ce748aee0e4d3e93c583f35f02e"
+    "branch": "session-b/private-pending-gift-public-boundary-20261108",
+    "commit": "f7f36924ec3ae4042eb7c59f6f0ffb7162bc8127"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
