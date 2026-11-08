@@ -96,12 +96,14 @@ test("read-only fetch preserves HTTP failures; no observed fake zero",async()=>{
   }finally{globalThis.fetch=previous;}
 });
 
-test("server-side Traffic UI keeps observed and certified data in separate suspense rails",()=>{
+test("server-side Traffic UI keeps the original certified chart and excludes observational substitute",()=>{
   const page=readFileSync(new URL("../app/traffic/page.tsx",import.meta.url),"utf8");
   const component=readFileSync(new URL("../components/traffic/ProvisionalDailyTraffic.tsx",import.meta.url),"utf8");
   assert.match(page,/loadPublicTraffic/);
   assert.match(page,/ObservedTrafficSensors/);
-  assert.match(page,/ObservedDailyTraffic/);
+  assert.doesNotMatch(page,/ObservedDailyTraffic|RecentObservedActivity/);
+  assert.match(page,/Canonical Traffic series/);
+  assert.equal((page.match(/<PremiumTimeSeriesChart/g)||[]).length,1);
   assert.match(page,/lastPublishedDay=\{lastPublishedDay\}/);
   assert.match(component,/OBSERVED \/ UNVERIFIED — DAILY PROJECT ACTIVITY/);
   assert.match(component,/not people,/);

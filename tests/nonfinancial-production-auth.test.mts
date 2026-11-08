@@ -121,6 +121,67 @@ test("a provider-validated callback uses only bounded fixed-origin TLS POST", as
   assert.equal(new URLSearchParams(String(calls[0].options.body)).get("openid.mode"), "check_authentication");
 });
 
+test("a single timed-out Steam check retries the exact same signed assertion once, then validates", async () => {
+  const env = environment(); const auth = load("lib/productionAuth.ts", {}, env);
+  const warnings: string[] = [];
+  const calls: Array<{ url: string; body: string; signal: AbortSignal }> = [];
+  const steam = load("lib/steamAuth.ts", { "@/lib/productionAuth": auth }, env, {
+    console: { warn: (line: string) => warnings.push(line) },
+    fetch: async (url: string, init: RequestInit) => {
+      calls.push({ url: String(url), body: String(init.body), signal: init.signal! });
+      if (calls.length === 1) throw Object.assign(new Error("sensitive fixture"), { name: "TimeoutError" });
+      return new Response("is_valid:true\n", { status: 200 });
+    },
+  });
+  assert.equal(await steam.verifySteamCallback(callback()), steamId);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].url, "https://steamcommunity.com/openid/login");
+  assert.equal(calls[0].body, calls[1].body);
+  assert.ok(calls.every((x) => x.signal instanceof AbortSignal));
+  assert.equal(new URLSearchParams(calls[0].body).get("openid.mode"), "check_authentication");
+  assert.deepEqual(warnings, ["AOE2WAR_NONFINANCIAL_OPENID_RETRY:TRANSIENT_PROVIDER_TRANSPORT"]);
+});
+
+test("two Steam transport timeouts fail closed after at most two provider requests", async () => {
+  const env = environment(); const auth = load("lib/productionAuth.ts", {}, env);
+  const warnings: string[] = [];
+  let count = 0;
+  const steam = load("lib/steamAuth.ts", { "@/lib/productionAuth": auth }, env, {
+    console: { warn: (line: string) => warnings.push(line) },
+    fetch: async () => {
+      count += 1;
+      throw Object.assign(new Error("PRIVATE_STEAM_ASSERTION_" + steamId), { name: "TimeoutError" });
+    },
+  });
+  await assert.rejects(steam.verifySteamCallback(callback()));
+  assert.equal(count, 2);
+  assert.deepEqual(warnings, [
+    "AOE2WAR_NONFINANCIAL_OPENID_RETRY:TRANSIENT_PROVIDER_TRANSPORT",
+    "AOE2WAR_NONFINANCIAL_OPENID_HOLD_STAGE:provider_post",
+    "AOE2WAR_NONFINANCIAL_OPENID_HOLD_CLASS:FETCH_TIMEOUT",
+  ]);
+  assert.ok(!warnings.join("").includes(steamId));
+  assert.ok(!warnings.join("").includes("PRIVATE"));
+});
+
+test("Steam denials, false validation, and local security guards never retry", async () => {
+  const env = environment(); const auth = load("lib/productionAuth.ts", {}, env);
+  const cases = [
+    { result: () => new Response("is_valid:false\n", { status: 200 }) },
+    { result: () => new Response("error", { status: 403 }) },
+    { result: () => { throw new Error("AOE2WAR_PRODUCTION_HOLD:STEAM_VERIFICATION_FORM_ONLY"); } },
+  ];
+  for (const { result } of cases) {
+    let calls = 0;
+    const steam = load("lib/steamAuth.ts", { "@/lib/productionAuth": auth }, env, {
+      console: { warn() {} },
+      fetch: async () => { calls += 1; return result(); },
+    });
+    await assert.rejects(steam.verifySteamCallback(callback()));
+    assert.equal(calls, 1);
+  }
+});
+
 test("callback transplant, wrong identity/endpoint/return URL/unsigned fields and old nonce fail before network", async () => {
   const bad = [
     callback({}, "B".repeat(43)), callback({ "openid.identity": "https://steamcommunity.com/openid/id/76561198000000002" }),
