@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c04-rest-pagination-heartbeat-20261108` at `204e561ae7f9618ddf6c5d6256f1f481d82ac93b`
+Implementation baseline: `session-b/c04-rest-pagination-heartbeat-20261108` at `1004e3f33fccab3f1cb2108370949ff0508e9113`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

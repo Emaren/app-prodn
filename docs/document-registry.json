@@ -386,7 +386,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "49e1875892f3923769d1987ab8f90c8209d7f163d023cef41c5e3672459bbfc2",
+      "sha256": "be94baf2da45c322a519977a320e6a4d3d691c52b0589c7607bf820b5007b6db",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -711,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ac6c7aa9aaed3a42a659c3fee96cfc5e222190928e5baeff742f84582859c34e",
+      "sha256": "0fe29c3df416ca0cf5cbd6d41ee0fc84e13a4d9ebe50c5c769d8d8538ba8e298",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2397,7 +2397,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c04-rest-pagination-heartbeat-20261108",
-    "commit": "204e561ae7f9618ddf6c5d6256f1f481d82ac93b"
+    "commit": "1004e3f33fccab3f1cb2108370949ff0508e9113"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
