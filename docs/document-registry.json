@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3006774719972dba639bb4dccfbdac2ad14a1c9a97b68e469d7e46d0ee226b46",
+      "sha256": "d14cc0f42233141c6b67ce9eb5b59cc5f21d7d2946a7da24dc5cbf087b995181",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2074,6 +2074,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "steam-only-uid990-outbound-recovery-no-funded-release",
+      "id": "aoe2war.app-prodn.session-b-r25-steam-postcutover-repair-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "6af7fdc6a18c259aab733d03ae1761c0108a4280087880583536d0cdbc2571df",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 R25 Steam OpenID Postcutover Repair, 2026-11-08",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2593,7 +2615,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "d69af023f8122c646e04abf55353e40b68bacba2"
+    "commit": "4637461b20d9a0a553468ecc1e03815f2feadae4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
