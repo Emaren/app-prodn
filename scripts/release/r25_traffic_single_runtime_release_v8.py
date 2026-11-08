@@ -81,6 +81,14 @@ def preflight():
  check(sha(WEB.read_bytes())==CURRENT_UNIT_SHA,'PUBLIC_WEB_UNIT_CHANGED')
  check(sha(STEAM.read_bytes())==CURRENT_STEAM_UNIT_SHA,'PUBLIC_STEAM_UNIT_DRIFT')
  check(STEAM_EXEC in STEAM.read_text(),'STEAM_V7_NOT_ACTIVE')
+ check(execute(['systemctl','show','aoe2war-steam-egress-refresh.service',
+                '-p','Result','--value'],7).strip()=='success',
+       'PREVIOUS_STEAM_REFRESH_NOT_SUCCESSFUL')
+ check(execute(['systemctl','show','aoe2war-steam-egress-refresh.service',
+                '-p','ActiveState','--value'],7).strip()=='inactive',
+       'PREVIOUS_STEAM_REFRESH_STILL_ACTIVE')
+ prior=execute(['/usr/bin/python3','-I','-B',str(V7_GUARD),'--phase','plan'],40)
+ check('PASS' in prior and 'HOLD' not in prior,'PREVIOUS_V7_PROTECTED_PLAN_FAILED')
  check(pid('aoe2hdbets-web-prod.service')==OLD_PID,'PUBLIC_WEB_PROCESS_CHANGED')
  check(read_version()==OLD_VERSION,'OLD_PUBLIC_RELEASE_UNHEALTHY')
  check(execute(['systemctl','show','aoe2war-steam-egress-refresh.timer','-p','ActiveState','--value'],6).strip()=='active','STEAM_TIMER_DISABLED')
@@ -209,7 +217,20 @@ def main():
                      capture_output=True,text=True,timeout=15)
     print('STEAM_TIMER_RESUME', 'PASS' if p.returncode==0 else 'HOLD',flush=True)
 if __name__=='__main__':
- try:main()
+ try:
+  import argparse
+  cli=argparse.ArgumentParser(description='Exact-source website-only V8 controller')
+  cli.add_argument('--phase',choices=['plan','execute'],required=True)
+  args=cli.parse_args()
+  if args.phase=='plan':
+   old_web,new_web,old_steam,new_steam=preflight()
+   print(json.dumps({'status':'PASS_V8_READ_ONLY_EXACT_RELEASE_PREFLIGHT',
+     'source':SOURCE,'previous_public_pid':OLD_PID,'old_web_sha256':sha(old_web),
+     'new_web_sha256':sha(new_web),'old_steam_sha256':sha(old_steam),
+     'new_steam_sha256':sha(new_steam),'financial_authorized':False,
+     'public_deployed':False},sort_keys=True),flush=True)
+  elif args.phase=='execute':
+   main()
  except Exception as e:
   print('RELEASE_HOLD',nonidentifying_failure(e),flush=True)
   sys.exit(3)

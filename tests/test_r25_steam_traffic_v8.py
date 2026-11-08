@@ -81,6 +81,14 @@ class ExactWebsiteAndSteamV8(unittest.TestCase):
   self.assertIn('PASS_AUTOMATIC_V7_STEAM_SAFE_ROLLBACK',source)
   self.assertIn("enrollment(False)",source)
   self.assertIn('PASS_V7_RESTORED_WEBSITE_AND_STEAM',source)
+ def test_reviewer_must_select_explicit_plan_or_execute(self):
+  source=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v8.py").read_text()
+  self.assertIn("cli.add_argument('--phase',choices=['plan','execute'],required=True)",source)
+  self.assertIn("if args.phase=='plan':",source)
+  self.assertIn("elif args.phase=='execute':",source)
+  self.assertIn("'PASS_V8_READ_ONLY_EXACT_RELEASE_PREFLIGHT'",source)
+  self.assertIn("'PREVIOUS_V7_PROTECTED_PLAN_FAILED'",source)
+  self.assertIn("'PREVIOUS_STEAM_REFRESH_STILL_ACTIVE'",source)
  def test_security_whitelists_no_finance_execution(self):
   source=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v8.py").read_text()
   for forbidden in ('psql ', 'nft -f', 'DROP TABLE','GRANT ','ALTER ROLE',
