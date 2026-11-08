@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/private-pending-gift-public-boundary-20261108` at `f7f36924ec3ae4042eb7c59f6f0ffb7162bc8127`
+Implementation baseline: `session-b/private-pending-gift-public-boundary-20261108` at `4eb9d147773f2b31e84ba65d666129464f3f584f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -58,6 +58,18 @@ Do not export customer IDs, private note or wallet from this review.
    checks for view consent, limited grants, both read code paths, current
    pending-display wording, and private-gift exclusion using synthetic data.
    The synthetic data is not a substitute for PostgreSQL physical proof.
+5. tests/test_session_b_private_pending_gift_isolated_pg.py provides a
+   separately opted-in, disposable, Unix-socket-only PostgreSQL rehearsal.
+   It creates synthetic 100,000 public, 100 private and 75 unknown-flag
+   WOLO amounts plus independent control rows. The test executes the
+   extracted exact security-barrier view SQL, checks only opted-in rows,
+   proves hidden-only people vanish from the public projection, and checks
+   restricted-role SELECT, INSERT, UPDATE and DELETE denial on private base
+   records plus view UPDATE denial. PostgreSQL 14.18 and 16.10 both passed
+   **7/7** locally with no TCP listener and clean shutdown. This is
+   off-host simulation, NOT an inspection of live HEL1 financial data or
+   approval to apply production DDL. Run explicitly using environment
+   RUN_PUBLIC_GIFT_CONSENT_PG_TESTS=1 with the desired pg16 bin path.
 
 The parent R25 public display truth branch is
 4c48178a66e950ac93c47e014ff9b006e103996f (App draft PR #1235).
