@@ -28,6 +28,9 @@ Source files:
 - lib/woloMainnetTransfers.ts: fixed 100-result pages and plain page;
   track immutable transaction hashes and refuse missing, malformed,
   oversized or overlapping pages. Truncate only after fetching a whole page.
+- lib/woloMainnetTransfers.ts also rejects the entire write phase if ANY
+  paginated source query failed; it returns ok:false with zero created,
+  updated or parsed records. Partial successes cannot mutate the HD index.
 - scripts/backfill-wolo-mainnet-transfers.mjs: exit nonzero when result.ok
   is false, rather than merely printing an error-containing JSON receipt.
 - scripts/verify-wolo-transfer-heartbeat.mjs: pure JSON verifier rejects

@@ -106,3 +106,48 @@ test("invalid limits never call the network",async()=>{
   assert.equal(called,false);
  }finally{cleanup();}
 });
+
+test("upstream failed search produces ok:false without ANY financial DB write",async()=>{
+ const {backfillWoloMainnetTransfers}=await import("../lib/woloMainnetTransfers.ts");
+ const originalRPC=process.env.WOLO_INTERNAL_RPC_URL;
+ const calls:string[]=[];
+ let reads=0,writes=0;
+ process.env.WOLO_INTERNAL_RPC_URL="http://127.0.0.1:26657";
+ process.env.WOLO_INTERNAL_REST_URL=uri;
+ const fakeDB=new Proxy({},{
+  get(_target,key){
+   if(key==="woloIndexedTransfer"){
+    return {create:async()=>{writes++;throw Error("NO_FINANCIAL_WRITES")},
+      update:async()=>{writes++;throw Error("NO_FINANCIAL_WRITES")},
+      findFirst:async()=>{reads++;return null;}};
+   }
+   return {findMany:async()=>{reads++;return [];}};
+  },
+ });
+ globalThis.fetch=(async(input:RequestInfo|URL)=>{
+  const url=String(input);
+  calls.push(url);
+  if(url.endsWith("/status"))
+   return new Response(JSON.stringify({result:{
+    node_info:{network:"wolo-1"},sync_info:{latest_block_height:"2879083"}}}),{status:200});
+  return new Response(JSON.stringify({code:503,message:"native_temporarily_unavailable"}),{status:200});
+ }) as typeof fetch;
+ try{
+  const result=await backfillWoloMainnetTransfers(fakeDB as never,{
+   addressLimit:1,perAddressLimit:1,globalLimit:1,blockLimit:20000});
+  assert.equal(result.ok,false);
+  assert.ok(result.errors.length>0);
+  assert.equal(result.created,0);
+  assert.equal(result.updated,0);
+  assert.equal(result.transfersParsed,0);
+  assert.equal(writes,0);
+  assert.ok(reads>0);
+  assert.ok(calls.some(x=>x.includes("/cosmos/tx/v1beta1/txs")));
+ }finally{
+  globalThis.fetch=originalFetch;
+  if(originalRest===undefined)delete process.env.WOLO_INTERNAL_REST_URL;
+  else process.env.WOLO_INTERNAL_REST_URL=originalRest;
+  if(originalRPC===undefined)delete process.env.WOLO_INTERNAL_RPC_URL;
+  else process.env.WOLO_INTERNAL_RPC_URL=originalRPC;
+ }
+});

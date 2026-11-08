@@ -914,6 +914,32 @@ export async function backfillWoloMainnetTransfers(
     }
   });
 
+  // C03 writer fence: never apply a partial set of successful transaction
+  // queries if ANY native page/search failed. The original implementation
+  // upserted partial transfers and returned ok:false only afterwards.
+  // Reconciliation must be all-source-success BEFORE any financial DB DML.
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      chainId: WOLO_MAINNET_CHAIN_ID,
+      restUrl: getRestUrl(),
+      rpcUrl: getRpcUrl(),
+      mode: "rest_tx_search",
+      latestHeight,
+      fromHeight,
+      blockLimit,
+      addressCount: addresses.length,
+      queriesAttempted: queries.length,
+      txsSeen: txsByHash.size,
+      transfersParsed: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      errors: errors.slice(0, 12),
+      txHashes: [],
+    };
+  }
+
   let transfersParsed = 0;
   let created = 0;
   let updated = 0;
