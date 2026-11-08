@@ -44,3 +44,11 @@ test("isolated Chrome integration cannot hide menu failure behind tee", () => {
   assert.ok(runner.includes("if(!accepted)process.exitCode=2"));
   assert.ok(runner.includes("for(const width of [375,768,1440])"));
 });
+
+
+test("responsive menu browser selects visible controls across duplicate header DOMs", () => {
+  const code = readFileSync(resolve(ROOT, "scripts/r25_public_kingdom_menu_chrome.cjs"), "utf8");
+  assert.match(code, /const button='button\[aria-haspopup="menu"\]\[data-presence-door="kingdom"\]:visible'/);
+  assert.ok(code.includes('locator(button).first().waitFor({state:"visible"'));
+  assert.ok(code.includes("find(x=>x.getBoundingClientRect().width>0)"));
+});

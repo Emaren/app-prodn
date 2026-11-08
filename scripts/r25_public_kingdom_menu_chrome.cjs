@@ -82,7 +82,10 @@ if(process.env.PW_HOME){
       waitUntil:"domcontentloaded",timeout:45000
      });
      if(response?.status()!==200)throw Error("HOLD_KINGDOM_PAGE_NOT_HTTP200");
-     const button='button[aria-haspopup="menu"][data-presence-door="kingdom"]';
+     // Two responsive header trees coexist in the DOM. At md widths the
+     // mobile header's FIRST button is hidden, but the desktop button is
+     // visible. Never let a hidden earlier element mask the real control.
+     const button='button[aria-haspopup="menu"][data-presence-door="kingdom"]:visible';
      await page.locator(button).first().waitFor({state:"visible",timeout:20000});
      // Wait for real hydration before invoking a DOM click. Avoid browser
      // pointer-hover preopening the menu then toggling it closed on click.
