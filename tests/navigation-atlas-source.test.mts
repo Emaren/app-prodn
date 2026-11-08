@@ -66,8 +66,8 @@ test("the 88 accepted public pages remain intact, no admin entries in public ind
   for(const path of ["/kingdom-index","/workshop","/kingdom-progress","/kingdom-systems"]){
     assert.ok(publicRoutes.some(row=>row.href===path), "missing public featured source "+path);
   }
-  assert.match(src("app/AppShell.tsx"), /KINGDOM_PRIMARY_HREFS/);
-  assert.match(src("app/AppShell.tsx"), /showMoreKingdom/);
+  assert.match(src("app/AppShell.tsx"), /KINGDOM_LINKS\.map\(\(item\) => \{/);
+  assert.doesNotMatch(src("app/AppShell.tsx"), /KINGDOM_PRIMARY_HREFS|showMoreKingdom|Explore all Kingdom chambers/);
   assert.ok(src("components/HeaderMenu.tsx").includes('adminOnly: true, featured: true'));
 });
 test("all original Command Tower controls survive and missing links come from canonical allowlist",()=>{
