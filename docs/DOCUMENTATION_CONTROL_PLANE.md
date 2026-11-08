@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/replay-steam-v7-consolidated-20261108` at `bd74ffb539e45cbe833c02970409e209ffacf3f4`
+Implementation baseline: `session-b/atlas-private-chrome-race-20261108` at `85fa60567bae6f4127e61c5d4bbce8a01c937b7a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
