@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e531ddbf9c673ba6b4f285fe44377407de798507bc404446f4a582ef5304f922",
+      "sha256": "a81b6e2c7ff66d53c47951caa45226786430b9b1c33e2763fa0075ded43a3c46",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2661,7 +2661,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/traffic-steam-release-v7-20261108",
-    "commit": "0a7450f9c8c1d12cdf63e33d57e665ad1e3f5cb1"
+    "commit": "22885256485107ac1030d80a9e20413ad9affb4f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

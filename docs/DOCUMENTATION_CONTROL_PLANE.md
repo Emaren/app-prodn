@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/traffic-steam-release-v7-20261108` at `0a7450f9c8c1d12cdf63e33d57e665ad1e3f5cb1`
+Implementation baseline: `session-b/traffic-steam-release-v7-20261108` at `22885256485107ac1030d80a9e20413ad9affb4f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
