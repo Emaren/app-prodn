@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-c02-native-forward-only-release"
+title: "C02 — Native-only WOLO Satchel App integration (held)"
+type: "runbook"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain","postgresql"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "source-only-held-financial-release-contract"
+reviewed_at: "2026-11-08"
+review_interval_days: 14
+sensitivity: "internal"
+---
+
 # C02 — Native-only WOLO Satchel App integration (held)
 
 ## Provenance and authority

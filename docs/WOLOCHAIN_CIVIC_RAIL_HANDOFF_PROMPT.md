@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "cross-repository-handoff"
-reviewed_at: "2026-10-08"
+reviewed_at: "2026-11-08"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -17,8 +17,11 @@ sensitivity: "internal"
 
 Paste the following into a separate Codex task rooted in WoloChain.
 
-Reviewed against the owning source on 2026-10-08. This is a future local/test
-handoff, not proof that Oracle or Forge funding has been implemented or activated.
+Reviewed against the owning source on 2026-10-08. The November 8 C02
+scope review preserves this as a FUTURE local/test handoff, not proof that Oracle
+or Forge funding has been implemented or activated. Important correction:
+8094 is now reserved for the separate native Satchel custody service; Oracle
+must never reuse Satchel, Bet, Founder or Forge ports/credentials.
 
 ```text
 Work only in `/Users/tonyblum/projects/WoloChain-wolo-1`.
@@ -130,8 +133,9 @@ Deliverables
    it on production. It requires a dedicated Oracle escrow key/address, root-only
    keyring and passphrase, unique auth token and request namespace, separate
    volume-backed state and backup paths, reserve floor and fee headroom, and a
-   loopback listener selected only after a live port audit. Port 8094 is only a
-   candidate because 8092 and 8093 are already occupied.
+   loopback listener selected only after a live port audit. Port 8094 is
+   RESERVED FOR NATIVE SATCHEL and is not an Oracle candidate; 8092/8093
+   are legacy Bet/Founder rails. Oracle must select its own distinct port.
 
 7. Parameterize health, backup, restore, and alert verification for that isolated
    profile. A systemd unit being active is insufficient. Health must prove

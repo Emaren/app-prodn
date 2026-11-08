@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c02-postmigration-canonical-clean-20261107` at `8c89621a8e7e781175c84317893539de9a9d767e`
+Implementation baseline: `session-b/c02-native-8094-20261108` at `ee0097a6631a3fc8c97ae9f5e239221a138a6499`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **102**
+- Authoritative repository documents: **103**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 62
-- `runbook`: 21
+- `runbook`: 22
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 5
+- `draft`: 6
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -67,6 +67,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
+| [C02 — Native-only WOLO Satchel App integration (held)](C02_NATIVE_FORWARD_ONLY_RELEASE_CONTRACT.md) | `runbook` | `draft` | `source-only-held-financial-release-contract` |
 | [Private Central Command OS](CENTRAL_COMMAND_OS.md) | `reference` | `active` | `private-source-dispatch-contract` |
 | [AoE2WAR Challenge Protocols and Presentation](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Belt Constitution V1](CHAMPIONSHIP_BELT_CONSTITUTION.md) | `reference` | `active` | `product-contract` |
