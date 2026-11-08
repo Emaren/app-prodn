@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ab6a7948cb46fd75c9639c63ae4a0f8057b7ad1db26821f6a842295ae1ecc70",
+      "sha256": "fb8139f1c39a1524f2d0129d28613768621d8ed89d898b9e730d452aed6c0b9c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2638,7 +2638,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "ff6132f4e795416122ac11bb7b562f36cfc83cc4"
+    "commit": "35edfc2cb0334648895f875716e7e2de904dacc4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
