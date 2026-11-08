@@ -13,7 +13,7 @@ review_interval_days: 14
 sensitivity: "internal"
 ---
 
-# C04 — True REST pagination without historical liability rewriting
+# C04 — Native Cosmos REST paging and heartbeat source correction
 
 ## Root cause and physical contract
 Native wolo-1 REST /cosmos/tx/v1beta1/txs uses bare one-based
