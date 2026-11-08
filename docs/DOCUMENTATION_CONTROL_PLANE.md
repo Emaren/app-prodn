@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/replay-steam-v7-consolidated-20261108` at `b772d40dc41221ec57d96f93184fbf8df4165bcb`
+Implementation baseline: `session-b/replay-steam-v7-consolidated-20261108` at `1e62bb89fe4800300f50edc6d025508ad3408d7b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
