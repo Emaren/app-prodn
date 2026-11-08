@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "86b639fb8ae08a61e225832ca08969c40d88a7253c7509669a92196d8f5d48d0",
+      "sha256": "35412c41bd74ee61536ce540bcc8df57cf3b3bc0b23a8188ec0e11a55b4e7f70",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2181,6 +2181,28 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "source-review-only",
+      "id": "aoe2war.app-prodn.session-b-steam-v8-exact-runtime-release-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_STEAM_V8_EXACT_RUNTIME_RELEASE_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "b0ac56d21f379e2164d656f14b8d4e43e8dbb08418a42b5e5ba66730eb5f3d7e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 Exact Linux Runtime and Steam V8 Release Contract",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -2727,8 +2749,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/replay-steam-v7-consolidated-20261108",
-    "commit": "bd74ffb539e45cbe833c02970409e209ffacf3f4"
+    "branch": "session-b/steam-v8-release-ops-20261108",
+    "commit": "4ab96cc7c1c0ba43a0403795485d3f410a6ba07f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
