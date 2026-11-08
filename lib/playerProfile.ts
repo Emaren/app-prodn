@@ -1765,6 +1765,7 @@ async function loadWoloStats(
           userId: user.id,
           kind: "WOLO",
           status: { in: ["pending", "accepted"] },
+          displayOnProfile: true,
           amount: { gt: 0 },
         },
         select: {

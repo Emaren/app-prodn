@@ -46,15 +46,17 @@ WHERE g.status='accepted' AND g.display_on_profile IS TRUE;
 REVOKE ALL ON aoe2war_public_v1.player_gifts FROM PUBLIC,aoe2war_web_prod;
 GRANT SELECT ON aoe2war_public_v1.player_gifts TO aoe2war_web_prod;
 
--- Pending WOLO gift presentation previously shows counts on public claimed
--- player cards. Publish only aggregate count and amount by user, no note,
--- creation details, creator identity, or payout authority.
+-- Pending WOLO gift presentation is opt-in only: private pending honors
+-- must never leak even as anonymous-looking sums on a public player card.
+-- This still projects only aggregate counts and amounts; no note, creator,
+-- timestamps, wallet, payout identity or movement authority.
 CREATE OR REPLACE VIEW aoe2war_public_v1.pending_player_gift_totals
 WITH (security_barrier=true) AS
 SELECT user_id,COUNT(*)::integer AS pending_count,
        COALESCE(SUM(amount),0)::bigint AS pending_amount
 FROM public.user_gifts
 WHERE kind='WOLO' AND status='pending' AND amount>0
+  AND display_on_profile IS TRUE
 GROUP BY user_id;
 REVOKE ALL ON aoe2war_public_v1.pending_player_gift_totals FROM PUBLIC,aoe2war_web_prod;
 GRANT SELECT ON aoe2war_public_v1.pending_player_gift_totals TO aoe2war_web_prod;
