@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/restricted-replay-readmodel-20261108` at `4dacbd35868021ef14c9ac162b14f01a715b113e`
+Implementation baseline: `session-b/restricted-replay-readmodel-20261108` at `1c5ff7ce99a19de054a3a475741d9fceb2edeb02`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **114**
+- Authoritative repository documents: **115**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 70
-- `runbook`: 25
+- `runbook`: 26
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 82
+- `active`: 83
 - `draft`: 16
 - `generated`: 1
 - `historical`: 12
@@ -141,6 +141,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B Pending WOLO Public Presentation — Source-only Nonfinancial Release](SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md) | `runbook` | `draft` | `source-only-ui-truth-no-custody-or-payment-finality` |
 | [Session B Public Gift Consent — Private Pending WOLO Aggregate Source HOLD](SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md) | `runbook` | `draft` | `source-only-public-consent-no-production-db-ddl-or-financial-release` |
 | [Session B — R25 Nonfinancial Public Physical Release, 2026-11-08](SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md) | `reference` | `active` | `physical-public-website-release-only-financial-gates-held` |
+| [Session B — R25 Steam OpenID Postcutover Repair, 2026-11-08](SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md) | `runbook` | `active` | `steam-only-uid990-outbound-recovery-no-funded-release` |
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
 | [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
 | [R25 Restricted Public Replay Detail Scalar Read Model](SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md) | `reference` | `draft` | `source-only-public-read-projection-no-financial-permit` |
