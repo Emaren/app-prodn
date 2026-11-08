@@ -149,3 +149,16 @@ test("no legacy transport or signer key read in the source", async()=>{
  }
  assert.equal(source.includes("127.0.0.1:8094"),true);
 });
+
+test("new native return leaves original funded journal Prisma columns compatible with a 13-migration database", async()=>{
+ const {readFileSync}=await import("node:fs");
+ const schema=readFileSync(new URL("../prisma/schema.prisma",import.meta.url),"utf8");
+ const block=schema.match(/model SatchelFundedJournal \{([\s\S]*?)\n\}/)?.[1]||"";
+ assert.ok(block.includes("claimReturnId"));
+ assert.ok(block.includes("receiptId"));
+ assert.ok(!block.includes("nativeReturnCreditId"));
+ const migration=readFileSync(new URL("../prisma/migrations/20261108_212700_c02_native_forward_only_returns/migration.sql",import.meta.url),"utf8");
+ assert.ok(migration.includes("'native_return_credit'"));
+ assert.ok(migration.includes("C02_NATIVE_JOURNAL_NOT_BOUND_TO_ORIGINAL_CREDIT"));
+ assert.ok(!migration.includes("ADD COLUMN native_return_credit_id"));
+});

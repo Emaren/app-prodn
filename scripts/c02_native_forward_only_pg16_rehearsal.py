@@ -78,6 +78,9 @@ def report(receipt):
             count=sql(psql,env,"SELECT count(*) FROM pg_class WHERE relname ~ '^war_satchel_' AND relkind='r';").strip()
             check(count=="34","NEW_34_TABLES_NOT_INSTALLED_"+count)
             result["positive"]["tables_after_14th"]=int(count)
+            intact=sql(psql,env,"SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='war_satchel_funded_journal' AND column_name='native_return_credit_id';").strip()
+            check(intact=="0","C02_BREAKS_EXISTING_FUNDED_PRISMA_CLIENT")
+            result["positive"]["old_journal_columns_unchanged"]=True
             # First-ahead source must reject every historical claim id, including
             # the 69 unresolved older claims. No legacy data is transferred.
             for old_id in (889,9645,1,69,2147483647):
@@ -202,6 +205,13 @@ repeat('f',64)::varchar,('wolo1'||repeat('q',45))::varchar);""")
             denied("same_source_funding_as_return",f"""SELECT public.war_satchel_native_credit_once(
 {claim_id},repeat('A',64)::varchar,102,repeat('D',64)::varchar,
 repeat('f',64)::varchar,('wolo1'||repeat('q',45))::varchar);""")
+            denied("unbacked_native_journal", """
+INSERT INTO war_satchel_funded_journal
+(owner_user_id,source_key,event_kind,amount_uwolo,
+ delta_available_uwolo,delta_reserved_uwolo,delta_committed_uwolo,
+ delta_withdrawal_pending_uwolo)
+VALUES(1,'native:return:900000000002','native_return_credit',1,1,0,0,0);
+""")
             denied("immutable_credit_update","UPDATE war_satchel_native_return_credits SET amount_uwolo=2;")
             denied("immutable_attempt_delete","DELETE FROM war_satchel_native_return_attempts;")
             denied("web_direct_dml","SET ROLE c02_test_web; INSERT INTO war_satchel_native_return_attempts(claim_id,operation_key,app_operation_id,approval_sha256) VALUES (900000000002,'satchel:claim-return:900000000002','satchel:ticket:41',repeat('a',64));")

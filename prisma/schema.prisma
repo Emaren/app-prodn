@@ -5450,7 +5450,6 @@ model SatchelFundedJournal {
   deltaWithdrawalPendingUwolo BigInt   @map("delta_withdrawal_pending_uwolo")
   receiptId                   BigInt?  @map("receipt_id")
   claimReturnId               BigInt?  @map("claim_return_id")
-  nativeReturnCreditId        BigInt?  @map("native_return_credit_id")
   executionId                 Int?     @map("execution_id")
   createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 

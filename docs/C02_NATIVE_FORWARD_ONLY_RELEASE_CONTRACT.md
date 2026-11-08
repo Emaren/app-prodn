@@ -58,3 +58,7 @@ sensitivity: "internal"
 ## Decision
 **C02 OPEN — tested finance-source candidate, not a real funded release.**
 Production rollback after a first actual operation must preserve append-only UNKNOWN journals and never resent an ambiguous payment, revert to legacy 8092, delete a credit or silently drop new finance tables. Disable only the approved new producer and run read-only original-operation reconciliation until owner-authorized forward repair.
+
+### Legacy database compatibility repair (November 8)
+
+An exact-head CI isolated deposit test caught a real staging hazard: adding a new optional native_return_credit_id to the old Prisma funded-journal model caused existing deposit queries against the original 13-migration schema to fail. The C02 14th migration now preserves every old journal column, adds a distinct native_return_credit journal event and links it to the immutable native return credit through a guarded trigger. This is deliberately backward-compatible with the original generated Prisma client and staged finance-safe website. The independent PostgreSQL 16 rehearsal proves the old column list remains unchanged and an unbacked native journal event is denied. The formerly failing real deposit CI suite MUST pass on the new head before merging.

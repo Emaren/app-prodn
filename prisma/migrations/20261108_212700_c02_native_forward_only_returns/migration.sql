@@ -197,43 +197,72 @@ CREATE TRIGGER c02_global_chain_tx_once AFTER INSERT
  ON war_satchel_native_return_credits FOR EACH ROW
  EXECUTE FUNCTION war_satchel_native_return_consume();
 
--- Extend the EXISTING funded double-entry journal; no side-channel balance
--- table and no minted spendable credit without one matching audit entry.
-ALTER TABLE war_satchel_funded_journal ADD COLUMN native_return_credit_id bigint
- REFERENCES war_satchel_native_return_credits(id) ON DELETE RESTRICT;
+-- Preserve byte-compatible original Prisma funded-journal column layout.
+-- A staged website must still work on a 13-migration database.
+-- The new native credit is a distinct journal event, never a new column.
+ALTER TABLE war_satchel_funded_journal DROP CONSTRAINT ck_satchel_funded_journal_kind;
+ALTER TABLE war_satchel_funded_journal
+ ADD CONSTRAINT ck_satchel_funded_journal_kind CHECK (
+ event_kind IN ('deposit_credit','claim_return_credit','native_return_credit',
+ 'wager_reserve','wager_commit','wager_refund',
+ 'withdraw_reserve','withdraw_cancel','withdraw_sent'));
 ALTER TABLE war_satchel_funded_journal
  DROP CONSTRAINT ck_satchel_funded_journal_conservation;
 ALTER TABLE war_satchel_funded_journal
  ADD CONSTRAINT ck_satchel_funded_journal_conservation CHECK(
  CASE event_kind
- WHEN 'deposit_credit' THEN receipt_id IS NOT NULL AND native_return_credit_id IS NULL
+ WHEN 'deposit_credit' THEN receipt_id IS NOT NULL
   AND delta_available_uwolo=amount_uwolo AND delta_reserved_uwolo=0
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=0
- WHEN 'claim_return_credit' THEN
-  ((claim_return_id IS NOT NULL AND native_return_credit_id IS NULL) OR
-   (claim_return_id IS NULL AND native_return_credit_id IS NOT NULL))
+ WHEN 'claim_return_credit' THEN claim_return_id IS NOT NULL
   AND delta_available_uwolo=amount_uwolo AND delta_reserved_uwolo=0
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=0
- WHEN 'wager_reserve' THEN execution_id IS NOT NULL AND native_return_credit_id IS NULL
+ WHEN 'native_return_credit' THEN
+  receipt_id IS NULL AND claim_return_id IS NULL AND execution_id IS NULL
+  AND source_key ~ '^native:return:[1-9][0-9]{11}$'
+  AND delta_available_uwolo=amount_uwolo AND delta_reserved_uwolo=0
+  AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=0
+ WHEN 'wager_reserve' THEN execution_id IS NOT NULL
   AND delta_available_uwolo=-amount_uwolo AND delta_reserved_uwolo=amount_uwolo
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=0
- WHEN 'wager_commit' THEN execution_id IS NOT NULL AND native_return_credit_id IS NULL
+ WHEN 'wager_commit' THEN execution_id IS NOT NULL
   AND delta_available_uwolo=0 AND delta_reserved_uwolo=-amount_uwolo
   AND delta_committed_uwolo=amount_uwolo AND delta_withdrawal_pending_uwolo=0
- WHEN 'wager_refund' THEN execution_id IS NOT NULL AND native_return_credit_id IS NULL
+ WHEN 'wager_refund' THEN execution_id IS NOT NULL
   AND delta_available_uwolo=amount_uwolo AND delta_reserved_uwolo=-amount_uwolo
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=0
- WHEN 'withdraw_reserve' THEN native_return_credit_id IS NULL
-  AND delta_available_uwolo=-amount_uwolo AND delta_reserved_uwolo=0
+ WHEN 'withdraw_reserve' THEN
+  delta_available_uwolo=-amount_uwolo AND delta_reserved_uwolo=0
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=amount_uwolo
- WHEN 'withdraw_cancel' THEN native_return_credit_id IS NULL
-  AND delta_available_uwolo=amount_uwolo AND delta_reserved_uwolo=0
+ WHEN 'withdraw_cancel' THEN
+  delta_available_uwolo=amount_uwolo AND delta_reserved_uwolo=0
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=-amount_uwolo
- WHEN 'withdraw_sent' THEN native_return_credit_id IS NULL
-  AND delta_available_uwolo=0 AND delta_reserved_uwolo=0
+ WHEN 'withdraw_sent' THEN
+  delta_available_uwolo=0 AND delta_reserved_uwolo=0
   AND delta_committed_uwolo=0 AND delta_withdrawal_pending_uwolo=-amount_uwolo
- ELSE FALSE
- END);
+ ELSE FALSE END);
+
+-- A native journal event cannot credit a fabricated source key. It must
+-- match the same owner's new immutable original credit record and amount.
+CREATE FUNCTION war_satchel_native_journal_link() RETURNS trigger
+LANGUAGE plpgsql SET search_path=pg_catalog,public AS $native_journal$
+DECLARE native_id bigint;
+BEGIN
+ IF NEW.event_kind <> 'native_return_credit' THEN RETURN NEW; END IF;
+ native_id := substring(NEW.source_key FROM '^native:return:([1-9][0-9]{11})$')::bigint;
+ IF native_id IS NULL OR NOT EXISTS (
+  SELECT 1 FROM public.war_satchel_native_return_credits r
+  JOIN public.war_satchel_native_return_operations o ON o.claim_id=r.claim_id
+  WHERE r.claim_id=native_id AND r.owner_user_id=NEW.owner_user_id
+    AND o.owner_user_id=NEW.owner_user_id
+    AND r.amount_uwolo=NEW.amount_uwolo
+ ) THEN RAISE EXCEPTION 'C02_NATIVE_JOURNAL_NOT_BOUND_TO_ORIGINAL_CREDIT'; END IF;
+ RETURN NEW;
+END;
+$native_journal$;
+CREATE TRIGGER c02_original_credit_journal_link BEFORE INSERT
+ ON war_satchel_funded_journal FOR EACH ROW
+ EXECUTE FUNCTION war_satchel_native_journal_link();
 
 -- Idempotency, global tx consumption, double-entry posting and balance update
 -- share ONE transaction. SECURITY INVOKER; PUBLIC has NO function execute.
@@ -274,9 +303,9 @@ BEGIN
  INSERT INTO public.war_satchel_funded_journal
  (owner_user_id,source_key,event_kind,amount_uwolo,
   delta_available_uwolo,delta_reserved_uwolo,delta_committed_uwolo,
-  delta_withdrawal_pending_uwolo,native_return_credit_id)
- VALUES(r.owner_user_id,'native:return:'||p_claim_id::text,'claim_return_credit',
-  r.amount_uwolo,r.amount_uwolo,0,0,0,receipt_id);
+  delta_withdrawal_pending_uwolo)
+ VALUES(r.owner_user_id,'native:return:'||p_claim_id::text,'native_return_credit',
+  r.amount_uwolo,r.amount_uwolo,0,0,0);
  RETURN receipt_id;
 END;
 $credit$;
