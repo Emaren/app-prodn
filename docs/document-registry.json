@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "239e252f0fe5e5568e05814c297259ba26d617a5f57f63bc829689bd10ed6d5e",
+      "sha256": "2bae67b216d79d0bad96864e8a12b52982f225af027d7a68c989d8d8f7c86d64",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "system-persona-identity-and-authenticated-human-badges",
+      "id": "aoe2war.app-prodn.session-b-ai-system-persona-steam-badge-truth-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "6472cccb9f9341d6970390307c4bd8c3fed2106018d142fb3bf6a3e84e01ae25",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 AI System Persona Steam Badge Truth, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-media-cache-no-db-owner-or-physical-release",
       "id": "aoe2war.app.session-b-managed-media-fallback-cache-recovery",
       "owner": "aoe2war-web",
@@ -2051,6 +2073,51 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "physical-public-website-release-only-financial-gates-held",
+      "id": "aoe2war.app-prodn.session-b-r25-public-physical-release-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "dec5f0586b331bd66900421a6011d2ae930e8b806a9cd09eec9fd39d0f7e36a5",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 R25 Nonfinancial Public Physical Release, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "steam-only-uid990-outbound-recovery-no-funded-release",
+      "id": "aoe2war.app-prodn.session-b-r25-steam-postcutover-repair-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "fb3a238e3112b877138a131eb1c408dea48b55e7543297a3b08f89b9e6f1701a",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 R25 Steam OpenID Postcutover Repair, 2026-11-08",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2088,6 +2155,52 @@
         "aoe2war"
       ],
       "title": "Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "traffic-canonical-website-only-exact-daily-finality-required",
+      "id": "aoe2war.app-prodn.session-b-traffic-canonical-single-chart-correction-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "35693446e0e0cc7d1baaa79909b0c03a29a267840323d5904312730dc4753aef",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Canonical Single Chart Correction, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "observed-project-activity-website-only-no-canonical-certification",
+      "id": "aoe2war.app-prodn.session-b-traffic-current-observation-public-view-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "988fee7ee520d1a0b90c22dfe08fd11cb5558cc39750846f1699a334794bda1e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Current Observation Public View, 2026-11-08",
       "type": "reference"
     },
     {
@@ -2569,8 +2682,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/managed-media-fallback-recovery-20261108",
-    "commit": "6c419672bb12c445eb2a20c6c981dd945f1cca69"
+    "branch": "session-b/traffic-canonical-only-20261108",
+    "commit": "6aff2eaf999f456440a899838270ba452b43a5d8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -241,16 +241,38 @@ export async function verifySteamCallback(request: NextRequest) {
     params.set("openid.mode", "check_authentication");
 
     stage = "provider_post";
-    const response = await fetch(STEAM_OPENID_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "content-type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(8000),
-    });
+    // Steam's OpenID check_authentication is read-only. A bounded second POST of
+    // the exact same, already browser-bound assertion is safe on transient
+    // transport timeouts; never retry provider rejections or guard denials.
+    const verificationForm = params.toString();
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        response = await fetch(STEAM_OPENID_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          body: verificationForm,
+          cache: "no-store",
+          redirect: "error",
+          signal: AbortSignal.timeout(8000),
+        });
+        break;
+      } catch (error) {
+        const classification = classifySteamVerificationTransportFailure(error);
+        const retryable = classification === "FETCH_TIMEOUT" ||
+          classification === "TRANSPORT_ETIMEDOUT" ||
+          classification === "TRANSPORT_ECONNRESET" ||
+          classification === "TRANSPORT_UND_ERR_CONNECT_TIMEOUT" ||
+          classification === "TRANSPORT_UND_ERR_HEADERS_TIMEOUT";
+        if (!retryable || attempt !== 0) throw error;
+        if (usesNonfinancialProductionAuth()) {
+          console.warn("AOE2WAR_NONFINANCIAL_OPENID_RETRY:TRANSIENT_PROVIDER_TRANSPORT");
+        }
+      }
+    }
+    if (!response) throw new Error("Steam verification response missing");
 
     stage = "provider_status";
     if (!response.ok) {

@@ -1,9 +1,5 @@
 import { Suspense } from "react";
 import TrafficSensors from "@/components/traffic/TrafficSensors";
-import ProvisionalDailyTraffic from "@/components/traffic/ProvisionalDailyTraffic";
-import { loadPublicProvisionalActivity } from "@/lib/publicObservedTraffic";
-import ProvisionalActivity from "@/components/traffic/ProvisionalActivity";
-import { loadProvisionalTraffic } from "@/lib/provisionalTraffic";
 import { loadTrafficBrowserInsights } from "@/lib/publicTrafficInsights";
 import PremiumTimeSeriesChart, {
   type ObservatorySeries,
@@ -65,39 +61,6 @@ async function ObservedTrafficSensors({
   );
 }
 
-// A second, independent observational rail. Never merge these observed
-// IP/GET counts with the canonical human/session curve above.
-async function RecentObservedActivity({
-  lastPublishedDay,
-}: {
-  lastPublishedDay: string | null;
-}) {
-  try {
-    const response = await loadProvisionalTraffic(lastPublishedDay);
-    return <ProvisionalActivity points={response.points} />;
-  } catch (error) {
-    console.warn("Provisional observed activity unavailable:", error);
-    return (
-      <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-slate-400">
-        Recent observed activity is temporarily unavailable.
-        The certified historical Traffic chart remains independent.
-      </section>
-    );
-  }
-}
-
-async function ObservedDailyTraffic({ lastPublishedDay }: {
-  lastPublishedDay: string | null;
-}) {
-  let data = null;
-  try {
-    data = await loadPublicProvisionalActivity();
-  } catch (error) {
-    console.warn("Provisional observed Traffic unavailable:", error);
-  }
-  return <ProvisionalDailyTraffic data={data} lastPublishedDay={lastPublishedDay} />;
-}
-
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
   let failed = false;
@@ -121,12 +84,24 @@ export default async function TrafficPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,0.12),transparent_27%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(245,158,11,0.07),transparent_38%)]" />
 
       <div className="relative mx-auto max-w-[1900px] px-3 py-5 sm:px-5 lg:px-8">
+        <section aria-label="Canonical Traffic series" className="mt-7">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[11px] tracking-wide text-slate-400">
           <span>LAST PUBLISHED UTC DAY: {lastPublishedDay ?? "UNAVAILABLE"}</span>
           <span className={overdue ? "font-semibold text-amber-300" : "text-slate-500"}>
             {overdue ? "TRAFFIC ARCHIVE DELAYED — RECENT DAYS UNVERIFIED" : "COMPLETED DAILY BUCKETS ONLY"}
           </span>
         </div>
+          <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.035] px-4 py-3 text-xs leading-relaxed text-slate-300">
+            <span className="font-mono font-semibold uppercase tracking-[0.16em] text-amber-200">
+              Traffic · completed UTC days only · {lastPublishedDay ?? "Not available"}
+            </span>
+            <p className="mt-1">
+              This is the original Total Traffic, Potential Humans and Confirmed Humans graph.
+              Each new UTC day appears only after its canonical session counts are
+              finalized and independently certified. Incomplete and unverified days
+              remain absent, never displayed as zero.
+            </p>
+          </div>
         {points.length ? (
           <PremiumTimeSeriesChart
             title="Traffic"
@@ -139,13 +114,7 @@ export default async function TrafficPage() {
           <div className="flex min-h-[40vh] items-center justify-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025] px-6 text-sm text-slate-400">No published completed-day Traffic report is available.</div>
         )}
 
-        <Suspense fallback={
-          <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-amber-200">
-            Loading provisional observed activity — never human-certified.
-          </section>
-        }>
-          <RecentObservedActivity lastPublishedDay={lastPublishedDay} />
-        </Suspense>
+        </section>
 
         <Suspense fallback={
           <section aria-live="polite" className="mt-6 rounded-2xl border border-sky-300/15 bg-sky-300/[0.035] p-6 font-mono text-sm text-sky-200">
@@ -157,14 +126,6 @@ export default async function TrafficPage() {
             lastPublishedDay={lastPublishedDay}
             lagDays={ageDays}
           />
-        </Suspense>
-
-        <Suspense fallback={
-          <section aria-live="polite" className="mt-6 rounded-xl border border-amber-300/20 p-6 text-sm text-amber-200">
-            Loading separate provisional daily activity — certified Traffic remains unchanged.
-          </section>
-        }>
-          <ObservedDailyTraffic lastPublishedDay={lastPublishedDay} />
         </Suspense>
 
         {failed ? (

@@ -8,6 +8,7 @@ import PlayerProfileRealtimeRefresh from "@/components/players/PlayerProfileReal
 import PlayerProfileDocumentShelf from "@/components/players/PlayerProfileDocumentShelf";
 import { PlayerAiDevelopmentConsole, PlayerHeroAiDomBinder } from "@/components/players/PlayerAiFeature";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
@@ -387,8 +388,19 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               <PlayerRecordBadge profile={profile} />
             </div>
             <div className="flex flex-wrap gap-2">
-              {profile.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
-              <Tag>{profile.isVerified ? "Replay verified" : profile.isClaimed ? "Claimed profile" : "Unclaimed identity"}</Tag>
+              {profile.identity.kind === "claimed" &&
+              isInternalSystemUid(profile.identity.uid)
+                ? <Tag>Automated persona</Tag> : null}
+              {profile.steam.steamId &&
+              !(profile.identity.kind === "claimed" &&
+                isInternalSystemUid(profile.identity.uid))
+                ? <SteamLinkedBadge compact /> : null}
+              <Tag>{profile.identity.kind === "claimed" &&
+                isInternalSystemUid(profile.identity.uid)
+                ? "Internal system profile"
+                : profile.isVerified
+                  ? "Replay verified"
+                  : profile.isClaimed ? "Claimed profile" : "Unclaimed identity"}</Tag>
               <Tag>{profile.command.totalMatches} parsed matches</Tag>
               {profile.isLive ? <Tag>online now</Tag> : null}
               {profile.wolo.pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(profile.wolo.pendingClaimWolo)} WOLO pending review</Tag> : null}
