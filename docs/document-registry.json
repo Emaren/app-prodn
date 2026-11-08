@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb8139f1c39a1524f2d0129d28613768621d8ed89d898b9e730d452aed6c0b9c",
+      "sha256": "2bae67b216d79d0bad96864e8a12b52982f225af027d7a68c989d8d8f7c86d64",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "system-persona-identity-and-authenticated-human-badges",
+      "id": "aoe2war.app-prodn.session-b-ai-system-persona-steam-badge-truth-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "6472cccb9f9341d6970390307c4bd8c3fed2106018d142fb3bf6a3e84e01ae25",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 AI System Persona Steam Badge Truth, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-media-cache-no-db-owner-or-physical-release",
       "id": "aoe2war.app.session-b-managed-media-fallback-cache-recovery",
       "owner": "aoe2war-web",
@@ -2133,6 +2155,29 @@
         "aoe2war"
       ],
       "title": "Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "traffic-canonical-website-only-exact-daily-finality-required",
+      "id": "aoe2war.app-prodn.session-b-traffic-canonical-single-chart-correction-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "35693446e0e0cc7d1baaa79909b0c03a29a267840323d5904312730dc4753aef",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Canonical Single Chart Correction, 2026-11-08",
       "type": "reference"
     },
     {
@@ -2637,8 +2682,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "35edfc2cb0334648895f875716e7e2de904dacc4"
+    "branch": "session-b/traffic-canonical-only-20261108",
+    "commit": "6aff2eaf999f456440a899838270ba452b43a5d8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

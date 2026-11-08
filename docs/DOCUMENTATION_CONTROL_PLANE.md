@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/profile-heap-bulkhead-20261108` at `35edfc2cb0334648895f875716e7e2de904dacc4`
+Implementation baseline: `session-b/traffic-canonical-only-20261108` at `6aff2eaf999f456440a899838270ba452b43a5d8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **115**
+- Authoritative repository documents: **117**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 70
+- `reference`: 72
 - `runbook`: 26
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 84
+- `active`: 86
 - `draft`: 15
 - `generated`: 1
 - `historical`: 12
@@ -137,6 +137,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [R25 Bets Published Historical Read Model Under Financial HOLD](SESSION_A_R25_BETS_PUBLIC_HISTORY_READMODEL_20261107.md) | `reference` | `draft` | `nonfinancial-read-model-source-only-not-funded-or-live` |
 | [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
 | [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
+| [Session B — AI System Persona Steam Badge Truth, 2026-11-08](SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md) | `reference` | `active` | `system-persona-identity-and-authenticated-human-badges` |
 | [Session B Managed Media Fallback Recovery — Source and Native Avatar HOLD](SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md) | `runbook` | `draft` | `source-only-media-cache-no-db-owner-or-physical-release` |
 | [Session B Pending WOLO Public Presentation — Source-only Nonfinancial Release](SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md) | `runbook` | `draft` | `source-only-ui-truth-no-custody-or-payment-finality` |
 | [Session B Public Gift Consent — Private Pending WOLO Aggregate Source HOLD](SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md) | `runbook` | `draft` | `source-only-public-consent-no-production-db-ddl-or-financial-release` |
@@ -144,6 +145,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — R25 Steam OpenID Postcutover Repair, 2026-11-08](SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md) | `runbook` | `active` | `steam-only-uid990-outbound-recovery-no-funded-release` |
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
 | [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
+| [Session B — Traffic Canonical Single Chart Correction, 2026-11-08](SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md) | `reference` | `active` | `traffic-canonical-website-only-exact-daily-finality-required` |
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
