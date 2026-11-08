@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bdd3670c19d3c57d686a6b18704ea9c5345ab5b232f1e3d8ed42692a71af2001",
+      "sha256": "239e252f0fe5e5568e05814c297259ba26d617a5f57f63bc829689bd10ed6d5e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1992,7 +1992,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-08",
       "sensitivity": "restricted",
-      "sha256": "0d02a2d48627912fa989f1ffa562c9cf4ab2e1514102f6a1816d7adecf7b6112",
+      "sha256": "dedd7b869fa91dd08a865efcc85048f97c8577e69fd8cf6ede2c712a3c55841b",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2570,7 +2570,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/managed-media-fallback-recovery-20261108",
-    "commit": "2f5e720b2471635fd20f9d93d6d38a08ef65bde5"
+    "commit": "6c419672bb12c445eb2a20c6c981dd945f1cca69"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

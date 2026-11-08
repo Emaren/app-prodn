@@ -86,10 +86,26 @@ alias-loader run with the reviewed production source projection tests:
 existing @/lib alias dependency and was not accepted as a passing run;
 the canonical repository alias loader was used to qualify it.
 
+New CLI scripts/r25_public_avatar_cache_acceptance.py is a separate
+READ-ONLY native admission probe, defaulting to candidate loopback port 3033.
+An operator must supply the actual expected source SHA40 and Next BUILD_ID;
+the probe requires an intentionally unknown avatar to return a real bounded
+image, X-AoE2WAR-Media-Proxy: direct-public,
+X-AoE2WAR-Media-Fallback: 1, and exactly
+public, max-age=60, must-revalidate. It rejects a 200 response with the
+historical 86400-second/seven-day stale policy, absent fallback provenance,
+wrong image, wrong build, or any off-loopback/finance origin. It returns a
+source-pinned, explicitly NONRELEASING JSON receipt; negative cases exit 2.
+15/15 existing/new native unit tests PASS for the acceptance and separate
+three-portrait parity modules. Real 3032 still returned the old 86400-second
+stale policy and lacks the fallback marker in a read-only probe on November 8 UTC;
+this is known PREPATCH production behavior, NOT acceptance for 3033.
+
 New CI must independently validate exact branch source, production compile,
 managed-media resolver unit tests, docs registry, 88-route provenance
 census, GitGuardian, and real browser images. Successful source CI alone
-is NOT full-site acceptance.
+is NOT full-site acceptance. The cache probe does not replace the separate
+three-distinct-managed-avatar byte parity acceptance or any financial gate.
 
 ### Physical acceptance gate — HOLD
 

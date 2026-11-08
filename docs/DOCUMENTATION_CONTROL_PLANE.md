@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/managed-media-fallback-recovery-20261108` at `2f5e720b2471635fd20f9d93d6d38a08ef65bde5`
+Implementation baseline: `session-b/managed-media-fallback-recovery-20261108` at `6c419672bb12c445eb2a20c6c981dd945f1cca69`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
