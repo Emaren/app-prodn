@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/atlas-private-chrome-race-20261108` at `71d67cf90aa6eda6647cac1225644eee712feda4`
+Implementation baseline: `session-b/c03-steam-oneshot-paging-20261108` at `378ba73766574a9313a1c5da815c35cf59d11c93`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

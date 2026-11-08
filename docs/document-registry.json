@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fd4523be3940a41db745c64b58a1ec4b5a8f7f655f682dc905e7640cd1eab6f3",
+      "sha256": "fcb2c52de11510114202a21fc8bbcbb0d8075a050e2aec72317462369312ecb8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2749,8 +2749,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/atlas-private-chrome-race-20261108",
-    "commit": "71d67cf90aa6eda6647cac1225644eee712feda4"
+    "branch": "session-b/c03-steam-oneshot-paging-20261108",
+    "commit": "378ba73766574a9313a1c5da815c35cf59d11c93"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
