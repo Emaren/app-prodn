@@ -42,7 +42,7 @@ export async function authenticateSatchelClaimReturn(
 ): Promise<AuthenticatedWarSatchelClaimReturn> {
   // Detach nested approval so an asynchronous caller cannot swap economics.
   const expected = Object.freeze({...source, approval: structuredClone(source.approval)});
-  if (!/^[1-9][0-9]{0,9}$/.test(expected.claimId) || expected.claimId === "889" ||
+  if (!/^[1-9][0-9]{0,11}$/.test(expected.claimId) || expected.claimId === "889" ||
       !HASH.test(expected.txHash) || !DIGEST.test(expected.contextFingerprint) ||
       !expected.principalUwolo || !expected.stakeUwolo)
     refuse("durable_context_invalid");

@@ -5450,6 +5450,7 @@ model SatchelFundedJournal {
   deltaWithdrawalPendingUwolo BigInt   @map("delta_withdrawal_pending_uwolo")
   receiptId                   BigInt?  @map("receipt_id")
   claimReturnId               BigInt?  @map("claim_return_id")
+  nativeReturnCreditId        BigInt?  @map("native_return_credit_id")
   executionId                 Int?     @map("execution_id")
   createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
@@ -5733,6 +5734,87 @@ model SatchelClaimReturnExecutionObservation {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   @@index([claimId,createdAt],map:"ix_satchel_return_execution_observations")
   @@map("war_satchel_claim_return_execution_observations")
+}
+
+// C02 forward-only claim and credit identity. SQL owns the immutable source,
+// historical separation and global physical receipt constraints. These Prisma
+// scalar models do not grant financial ownership or activate a writer.
+model SatchelNativeReturnOperation {
+  claimId BigInt @id @default(autoincrement()) @map("claim_id")
+  ownerUserId Int @map("owner_user_id")
+  ownerUid String @map("owner_uid") @db.VarChar(100)
+  wagerOperationId String @map("wager_operation_id") @db.VarChar(128)
+  ticketId Int @map("ticket_id")
+  marketId BigInt @map("market_id")
+  legId String @map("leg_id") @db.VarChar(160)
+  entitlementId String @map("entitlement_id") @db.VarChar(160)
+  claimKind String @map("claim_kind") @db.VarChar(24)
+  amountUwolo BigInt @map("amount_uwolo")
+  principalUwolo BigInt @map("principal_uwolo")
+  stakeUwolo BigInt @map("stake_uwolo")
+  fundedAmountUwolo BigInt @map("funded_amount_uwolo")
+  escrowAddress String @map("escrow_address") @db.VarChar(100)
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  fundingTxHash String @map("funding_tx_hash") @db.VarChar(64)
+  fundingHeight BigInt @map("funding_height")
+  fundingBankRoot String @map("funding_bank_root") @db.VarChar(64)
+  allocationDigest String @map("allocation_digest") @db.VarChar(64)
+  independentReserveReviewSha256 String @map("independent_reserve_review_sha256") @db.VarChar(64)
+  ownerPermitSha256 String @map("owner_permit_sha256") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([wagerOperationId, legId, entitlementId])
+  @@unique([claimId, ownerUserId])
+  @@map("war_satchel_native_return_operations")
+}
+
+model SatchelNativeReturnApproval {
+  claimId BigInt @id @map("claim_id")
+  approvalJson Json @map("approval_json")
+  approvalSha256 String @map("approval_sha256") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("war_satchel_native_return_approvals")
+}
+
+model SatchelNativeReturnAttempt {
+  claimId BigInt @id @map("claim_id")
+  operationKey String @unique @map("operation_key") @db.VarChar(128)
+  appOperationId String @map("app_operation_id") @db.VarChar(128)
+  approvalJson Json @map("approval_json")
+  approvalSha256 String @map("approval_sha256") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("war_satchel_native_return_attempts")
+}
+
+model SatchelNativeReturnObservation {
+  id BigInt @id @default(autoincrement())
+  claimId BigInt @map("claim_id")
+  state String @db.VarChar(24)
+  txHash String? @map("tx_hash") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([claimId,id],map:"ix_satchel_native_return_observations")
+  @@map("war_satchel_native_return_observations")
+}
+
+model SatchelNativeReturnCredit {
+  id BigInt @id @default(autoincrement())
+  claimId BigInt @unique @map("claim_id")
+  ownerUserId Int @map("owner_user_id")
+  chainId String @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  txHash String @map("tx_hash") @db.VarChar(64)
+  messageIndex Int @default(0) @map("message_index")
+  amountUwolo BigInt @map("amount_uwolo")
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  canonicalHeight BigInt @map("canonical_height")
+  bankBlockHash String @map("bank_block_hash") @db.VarChar(64)
+  authenticatedProofDigest String @map("authenticated_proof_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([chainId,txHash,messageIndex])
+  @@map("war_satchel_native_return_credits")
 }
 
 /// Immutable review request built from the existing funded reservation; no parallel ledger.
