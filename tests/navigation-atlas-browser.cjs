@@ -97,11 +97,25 @@ async function main(){
    assert.equal(await atlas.getByRole("status").first().innerText(),"37 of 37 source routes · LIVE STATUS UNVERIFIED");
    const input=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await input.fill("storage");
+   // Playwright fill() dispatches input but React may not have committed its
+   // filtered tree yet. Observe the real filtered result before asserting it;
+   // never broaden the exact two-route acceptance.
+   await page.waitForFunction(() => {
+     const atlas=document.querySelector("#navigation-atlas");
+     const paths=[...(atlas?.querySelectorAll("a[data-atlas-href]")||[])]
+       .map(node=>node.getAttribute("data-atlas-href")).sort();
+     return paths.length===2 && paths[0]==="/admin/storage-os" &&
+       paths[1]==="/admin/storage-transfer" &&
+       atlas?.querySelector('[role="status"]')?.textContent?.includes("2 of 37");
+   }, null, {timeout:15000});
    const storageHrefs=await atlas.locator('a[data-atlas-href]').evaluateAll(
      nodes=>nodes.map(node=>node.getAttribute("data-atlas-href")).sort());
    assert.deepEqual(storageHrefs,["/admin/storage-os","/admin/storage-transfer"],
      "storage search must show only the two exact source-backed private pages");
    await input.fill("");
+   await page.waitForFunction(() =>
+     document.querySelectorAll("#navigation-atlas a[data-atlas-href]").length===37,
+     null,{timeout:15000});
    const people=atlas.getByRole("button",{name:"People",exact:true});
    await people.focus();await page.keyboard.press("Enter");
    assert.equal(await people.getAttribute("aria-pressed"),"true","keyboard cluster filter");
@@ -112,9 +126,17 @@ async function main(){
    assert.equal(await boardEntry.count(),1,"new accepted Job Exchange must be linked exactly once");
    const boardSearch=atlas.getByRole("searchbox",{name:"Find a chamber"});
    await boardSearch.fill("living job exchange");
+   await page.waitForFunction(() => {
+     const links=[...document.querySelectorAll("#navigation-atlas a[data-atlas-href]")];
+     return links.length===1 && links[0].getAttribute("data-atlas-href")===
+       "/admin/central-command/job-board";
+   },null,{timeout:15000});
    assert.equal(await atlas.locator('a[data-atlas-href]').count(),1,
      "Job Exchange should be source-discoverable by name");
    await boardSearch.fill("");
+   await page.waitForFunction(() =>
+     document.querySelectorAll("#navigation-atlas a[data-atlas-href]").length===37,
+     null,{timeout:15000});
    assert.equal(await atlas.locator('a[data-atlas-href="/admin/central-command/work-board"]').count(),1,
      "Accepted Work Board must appear once");
    assert.equal(await atlas.locator('a[data-atlas-href="/admin/central-command/lanes"]').count(),1,
