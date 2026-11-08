@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a81b6e2c7ff66d53c47951caa45226786430b9b1c33e2763fa0075ded43a3c46",
+      "sha256": "7698a3b12bfb379f85fbc151728a12f549100b7b1b2c1d9f1a87d54985c1464b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2171,7 +2171,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-08",
       "sensitivity": "restricted",
-      "sha256": "7f90a9b89a1f1b4dd7702f5afaa632c440bef582bcc982a97752eacb96422c4e",
+      "sha256": "deeeadcd3e94e95938b589fd064517441cc783ec47d7d103d6ac5ef3cd1a3b27",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2661,7 +2661,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/traffic-steam-release-v7-20261108",
-    "commit": "22885256485107ac1030d80a9e20413ad9affb4f"
+    "commit": "1d8f2ee80054232951d0deca92c1994f12a54104"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
