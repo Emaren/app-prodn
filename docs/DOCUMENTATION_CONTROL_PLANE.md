@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/replay-steam-v7-consolidated-20261108` at `bd74ffb539e45cbe833c02970409e209ffacf3f4`
+Implementation baseline: `session-b/steam-v8-release-ops-20261108` at `65c7832c7514be0c3f0e0dbb949dd3a19053e2b7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **119**
+- Authoritative repository documents: **120**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 73
+- `reference`: 74
 - `runbook`: 27
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 87
+- `active`: 88
 - `draft`: 16
 - `generated`: 1
 - `historical`: 12
@@ -146,6 +146,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
 | [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
 | [R25 Restricted Public Replay Detail Scalar Read Model](SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md) | `reference` | `draft` | `source-only-public-read-projection-no-financial-permit` |
+| [Session B — Exact Linux Runtime and Steam V8 Release Contract](SESSION_B_STEAM_V8_EXACT_RUNTIME_RELEASE_20261108.md) | `reference` | `active` | `source-review-only` |
 | [Session B — Traffic Canonical Single Chart Correction, 2026-11-08](SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md) | `reference` | `active` | `traffic-canonical-website-only-exact-daily-finality-required` |
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
