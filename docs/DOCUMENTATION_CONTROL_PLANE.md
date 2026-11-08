@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/pending-wolo-public-ui-truth-20261108` at `95bbc925399db8c6a73cc3dc8d0470fa4ce60086`
+Implementation baseline: `session-b/pending-wolo-public-ui-truth-20261108` at `4e955fb316380ce748aee0e4d3e93c583f35f02e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "07ea72143ed74ea0bb0bc149e040123123e08dc500a20b04acf1c72396666c3a",
+      "sha256": "71c28223f2480599865375ab394b5d3a0f889c9e4fdff1058f477b9f55c88961",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2526,7 +2526,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/pending-wolo-public-ui-truth-20261108",
-    "commit": "95bbc925399db8c6a73cc3dc8d0470fa4ce60086"
+    "commit": "4e955fb316380ce748aee0e4d3e93c583f35f02e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
