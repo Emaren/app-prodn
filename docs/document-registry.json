@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "49409674aa665197616e84c706397a3e05e9dd0b4d71f091689b31199a75401f",
+      "sha256": "07ea72143ed74ea0bb0bc149e040123123e08dc500a20b04acf1c72396666c3a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-ui-truth-no-custody-or-payment-finality",
+      "id": "aoe2war.app.session-b-pending-wolo-public-presentation-truth",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "0280f532dd99bce12d8ee838595535cf367ba209e436c9c1403f941f7c3e6a10",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "Session B Pending WOLO Public Presentation \u2014 Source-only Nonfinancial Release",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2503,8 +2525,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-nonfinancial-recovery-candidate-20261107",
-    "commit": "a4bbbb5c134e237f72a2a9a09b4c11d9ed087bca"
+    "branch": "session-b/pending-wolo-public-ui-truth-20261108",
+    "commit": "95bbc925399db8c6a73cc3dc8d0470fa4ce60086"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
