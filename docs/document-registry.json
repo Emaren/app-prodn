@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f4d3f1e3ac266cc260938ca8bdbf70e3c1141f7460509433d53b1fbadbc7d0f",
+      "sha256": "c1bc96e2046470ab61f9b2e8d6f38fe0f6f17310301e4b954467c7e592c30400",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "system-persona-identity-and-authenticated-human-badges",
+      "id": "aoe2war.app-prodn.session-b-ai-system-persona-steam-badge-truth-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "6472cccb9f9341d6970390307c4bd8c3fed2106018d142fb3bf6a3e84e01ae25",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 AI System Persona Steam Badge Truth, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-media-cache-no-db-owner-or-physical-release",
       "id": "aoe2war.app.session-b-managed-media-fallback-cache-recovery",
       "owner": "aoe2war-web",
@@ -2661,7 +2683,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/traffic-canonical-only-20261108",
-    "commit": "1293bf4e014814daf0b368bbc5322caa6f92cc62"
+    "commit": "3b4c36d42cd8db9d4944b33d73dd868c32640234"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
