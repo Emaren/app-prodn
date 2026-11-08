@@ -47,6 +47,9 @@ if(argPosition>=0&&(!process.argv[argPosition+1]||argPosition+2!==process.argv.l
  throw Error("HOLD_BROWSER_ORIGIN_ARG");
 const origin=validateOrigin(argPosition>=0?process.argv[argPosition+1]:"https://aoe2war.com");
 console.log('EXPECTED_MENU_ENTRIES',expected.length);
+// Shared across the genuine Playwright CI browser and local CDP negative
+// control; keep the same canonical DOM/menu extraction for both transports.
+const menuState=`(()=>{const b=[...document.querySelectorAll('button[aria-haspopup="menu"][data-presence-door="kingdom"]')].find(x=>x.getBoundingClientRect().width>0);const all=[...document.querySelectorAll('[role="menu"]')].filter(x=>x.getBoundingClientRect().width>0);const menu=all.find(x=>x.getAttribute("aria-label"))||all[0];return {hasButton:!!b,open:b?.getAttribute("aria-expanded"), menuCount:all.length, hrefs:menu?[...menu.querySelectorAll('a[role="menuitem"]')].map(x=>new URL(x.href).pathname):[], collapsed:menu?.textContent?.includes("Explore all Kingdom chambers")??false}})()`;
 // The Q17 job already installs and successfully launches playwright-core on
 // genuine Chrome. Use its known-good browser transport rather than the fragile
 // raw DevToolsActivePort bootstrap. The CDP path below remains for the local
@@ -120,7 +123,6 @@ const chrome=spawn(process.env.CHROME_BIN||"/Applications/Google Chrome.app/Cont
 let ws,id=0;const requests=new Map();
 function send(method,params={}){return new Promise((ok,fail)=>{const n=++id;requests.set(n,{ok,fail});ws.send(JSON.stringify({id:n,method,params}));setTimeout(()=>{const p=requests.get(n);if(p){requests.delete(n);fail(Error("CDP_TIMEOUT "+method))}},18000)})}
 async function evaluate(expression){const x=await send("Runtime.evaluate",{expression,returnByValue:true,awaitPromise:true});if(x.result?.exceptionDetails)throw Error("EVAL_EXCEPTION");return x.result?.result?.value;}
-const menuState=`(()=>{const b=[...document.querySelectorAll('button[aria-haspopup="menu"][data-presence-door="kingdom"]')].find(x=>x.getBoundingClientRect().width>0);const all=[...document.querySelectorAll('[role="menu"]')].filter(x=>x.getBoundingClientRect().width>0);const menu=all.find(x=>x.getAttribute("aria-label"))||all[0];return {hasButton:!!b,open:b?.getAttribute("aria-expanded"), menuCount:all.length, hrefs:menu?[...menu.querySelectorAll('a[role="menuitem"]')].map(x=>new URL(x.href).pathname):[], collapsed:menu?.textContent?.includes("Explore all Kingdom chambers")??false}})()`;
 (async()=>{
  const results=[];
  for(let i=0;i<200&&!fs.existsSync(path.join(profile,"DevToolsActivePort"));i++)await pause(100);
