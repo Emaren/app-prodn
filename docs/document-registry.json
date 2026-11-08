@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb8139f1c39a1524f2d0129d28613768621d8ed89d898b9e730d452aed6c0b9c",
+      "sha256": "e531ddbf9c673ba6b4f285fe44377407de798507bc404446f4a582ef5304f922",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2164,6 +2164,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance",
+      "id": "aoe2war.app-prodn.session-b-traffic-steam-v7-single-runtime-release-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "7f90a9b89a1f1b4dd7702f5afaa632c440bef582bcc982a97752eacb96422c4e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Steam V7 Single-Runtime Release, 2026-11-08",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -2637,8 +2660,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "35edfc2cb0334648895f875716e7e2de904dacc4"
+    "branch": "session-b/traffic-steam-release-v7-20261108",
+    "commit": "0a7450f9c8c1d12cdf63e33d57e665ad1e3f5cb1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
