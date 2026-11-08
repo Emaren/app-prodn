@@ -90,7 +90,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-4188431f76bbc73bd68f",
+    version: "src-8473190cacc06da27a49",
   },
   {
     href: "/traffic",
