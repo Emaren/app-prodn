@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "136b9765a4f235c4891fa21211f0bcc504c2fca783a7623037df0b82a47f4af9",
+      "sha256": "fd4523be3940a41db745c64b58a1ec4b5a8f7f655f682dc905e7640cd1eab6f3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2749,8 +2749,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/steam-v8-release-ops-20261108",
-    "commit": "65c7832c7514be0c3f0e0dbb949dd3a19053e2b7"
+    "branch": "session-b/atlas-private-chrome-race-20261108",
+    "commit": "71d67cf90aa6eda6647cac1225644eee712feda4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
