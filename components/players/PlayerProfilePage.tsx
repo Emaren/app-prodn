@@ -391,7 +391,7 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               <Tag>{profile.isVerified ? "Replay verified" : profile.isClaimed ? "Claimed profile" : "Unclaimed identity"}</Tag>
               <Tag>{profile.command.totalMatches} parsed matches</Tag>
               {profile.isLive ? <Tag>online now</Tag> : null}
-              {profile.wolo.pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(profile.wolo.pendingClaimWolo)} WOLO unclaimed</Tag> : null}
+              {profile.wolo.pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(profile.wolo.pendingClaimWolo)} WOLO pending review</Tag> : null}
               {profile.community.badges.map((badge) => (
                 <CommunityBadgePill key={badge.id} label={badge.label} />
               ))}
@@ -508,7 +508,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
             <div className="flex flex-wrap gap-2">
               <Tag>unclaimed identity</Tag>
               <Tag>{profile.command.totalMatches} parsed matches</Tag>
-              {pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(pendingClaimAmount)} WOLO unclaimed</Tag> : null}
+              {pendingClaimCount > 0 ? <Tag>{formatWoloClaimAmount(pendingClaimAmount)} WOLO pending review</Tag> : null}
               {wins > 0 ? <Tag>{wins} wins</Tag> : null}
               {losses > 0 ? <Tag>{losses} losses</Tag> : null}
             </div>
@@ -544,7 +544,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
             {pendingClaimCount > 0 ? (
               <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">
-                {formatWoloClaimAmount(pendingClaimAmount)} WOLO is still waiting in the claim ledger for this replay-built warrior page.
+                {formatWoloClaimAmount(pendingClaimAmount)} WOLO is recorded as pending claims or gifts for this replay-built warrior page. This is not a verified payout or available wallet balance.
               </div>
             ) : null}
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Stats</div>
@@ -681,7 +681,7 @@ function ExtremeHero({
               <HeroStat label="Games" value={String(profile.command.totalMatches)} />
               <HeroStat label="Win Rate" value={formatPercent(profile.command.winRate)} />
               <HeroStat
-                label={profile.wolo.pendingClaimWolo > 0 ? "Claimable WOLO" : "WOLO Flex"}
+                label={profile.wolo.pendingClaimWolo > 0 ? "Pending WOLO (unverified)" : "WOLO Flex"}
                 value={formatWolo(profile.wolo.pendingClaimWolo > 0 ? profile.wolo.pendingClaimWolo : profile.wolo.totalFlexWolo)}
               />
               <HeroStat label="Proof" value={`${profile.watcher.proofScore}/100`} />
@@ -796,7 +796,7 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
             <HeroStat label="Games" value={String(profile.command.totalMatches)} />
             <HeroStat label="Win Rate" value={formatPercent(profile.command.winRate)} />
             <HeroStat
-                label={profile.wolo.pendingClaimWolo > 0 ? "Claimable WOLO" : "WOLO Flex"}
+                label={profile.wolo.pendingClaimWolo > 0 ? "Pending WOLO (unverified)" : "WOLO Flex"}
                 value={formatWolo(profile.wolo.pendingClaimWolo > 0 ? profile.wolo.pendingClaimWolo : profile.wolo.totalFlexWolo)}
               />
             <HeroStat label="Proof" value={`${profile.watcher.proofScore}/100`} />
@@ -1417,7 +1417,7 @@ function WoloRail({ profile }: { profile: PlayerProfile }) {
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <MiniStat label="Pending Claims" value={formatWolo(profile.wolo.pendingClaimWolo)} />
+        <MiniStat label="Pending Claims + Gifts" value={formatWolo(profile.wolo.pendingClaimWolo)} />
         <MiniStat label="Claimed Claims" value={formatWolo(profile.wolo.claimedClaimWolo)} />
         <MiniStat label="Wagered" value={formatWolo(profile.wolo.wageredWolo)} />
         <MiniStat label="Payout Tx" value={String(profile.wolo.payoutTxCount)} />

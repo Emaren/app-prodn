@@ -253,7 +253,7 @@ export default function AdminUserCard({
             ) : null}
             {user.pendingWoloClaimCount > 0 ? (
               <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
-                {formatWolo(user.pendingWoloClaimAmount)} WOLO unclaimed
+                {formatWolo(user.pendingWoloClaimAmount)} WOLO pending review
               </span>
             ) : null}
             {user.giftedWolo > 0 ? (
