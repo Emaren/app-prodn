@@ -73,11 +73,31 @@ def receipt(payload):
  obj.update(payload)
  persist(ROOT_RECEIPT,(json.dumps(obj,sort_keys=True,indent=2)+'\n').encode(),0o600)
  print('RELEASE_RECEIPT_SHA256',sha(ROOT_RECEIPT.read_bytes()),flush=True)
+def candidate_source_seal():
+ # Production's independent executable bootstrap checks this sealed file
+ # BEFORE accepting a new Next.js process. The base 44,954-file archive
+ # acceptance alone does not prove its presence; the first physical attempt
+ # demonstrated that the omission causes a fatal startup failure.
+ stage=P('/var/lib/aoe2war-web-prod-4ab96cc7c1c0')
+ marker=stage/'.aoe2war-source-sha'
+ try:
+  item=marker.lstat()
+ except FileNotFoundError:
+  raise RuntimeError('HOLD:CANDIDATE_ROOT_SOURCE_IDENTITY_MISSING')
+ check(stat.S_ISREG(item.st_mode) and item.st_uid==0 and item.st_nlink==1 and
+       not item.st_mode&0o022 and item.st_size==41 and not marker.is_symlink(),
+       'CANDIDATE_ROOT_SOURCE_IDENTITY_UNSAFE')
+ check(marker.read_bytes()==(SOURCE+'\n').encode(),
+       'CANDIDATE_ROOT_SOURCE_IDENTITY_DRIFT')
+ check((stage/'.next/BUILD_ID').read_text().strip()=='YF_YxSAxc0izAfRG0ARsc',
+       'CANDIDATE_ROOT_BUILD_IDENTITY_DRIFT')
+
 def preflight():
  check(os.geteuid()==0,'RELEASE_ROOT_REQUIRED')
  check(sha(GUARD.read_bytes())==GUARD_SHA,'EXACT_REVIEWED_STEAM_V9_GUARD_NOT_INSTALLED')
  check(sha(V7_GUARD.read_bytes())==V7_GUARD_SHA,'STEAM_V7_ROLLBACK_SOURCE_DRIFT')
  check(sha(STAGE_RECEIPT.read_bytes())==STAGE_RECEIPT_SHA,'NEW_CI_ARTIFACT_STAGE_DRIFT')
+ candidate_source_seal()
  check(sha(WEB.read_bytes())==CURRENT_UNIT_SHA,'PUBLIC_WEB_UNIT_CHANGED')
  check(sha(STEAM.read_bytes())==CURRENT_STEAM_UNIT_SHA,'PUBLIC_STEAM_UNIT_DRIFT')
  check(STEAM_EXEC in STEAM.read_text(),'STEAM_V7_NOT_ACTIVE')
@@ -119,6 +139,7 @@ def preflight():
  check(before_steam.count(b'r25_steam_refresh_traffic_v7.py')==1,'STEAM_1_PATH_BINDING_NOT_EXACT')
  check(sha(new_steam)==CANDIDATE_STEAM_UNIT_SHA,'NEW_STEAM_UNIT_NOT_REVIEWED')
  check(sha(before)==CURRENT_UNIT_SHA,'WEB_UNIT_PREIMAGE_DRIFT')
+ candidate_source_seal()
  return before,new,before_steam,new_steam
 
 def manual_steam_refresh():
@@ -138,6 +159,11 @@ def transition(web_bytes,steam_bytes):
  persist(WEB,web_bytes,0o644)
  persist(STEAM,steam_bytes,0o644)
  execute(['systemctl','daemon-reload'],14)
+ if sha(web_bytes)==CURRENT_UNIT_SHA and sha(steam_bytes)==CANDIDATE_STEAM_UNIT_SHA:
+  # The attempted candidate may have exhausted systemd StartLimitBurst.
+  # Clear ONLY this exact website unit counter before restoring its known
+  # finance-restricted old-version, then fail closed on any restart error.
+  execute(['systemctl','reset-failed','aoe2hdbets-web-prod.service'],9)
  execute(['systemctl','restart','aoe2hdbets-web-prod.service'],40)
 
 def enrollment(new_release):
@@ -184,6 +210,7 @@ def main():
            'web_unit':CANDIDATE_UNIT_SHA,'steam_unit':CANDIDATE_STEAM_UNIT_SHA},flush=True)
   # Existing reviewed V7 Steam egress must PASS before any production change.
   manual_steam_refresh()
+  candidate_source_seal()
   timer_paused=False
   attempted=False
   try:

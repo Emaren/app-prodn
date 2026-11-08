@@ -53,6 +53,15 @@ class V9Contracts(unittest.TestCase):
   self.assertEqual(g.OLD_SHA,"3e54151c10ad39889a6341f000ae36dc1a89f9a3278608c918e707bd068fbb07")
   self.assertEqual(g.V6_SHA,"88343a6405e263e2227c94744e058b53fa4d067c4fd53070d99c15f43b5546ce")
   self.assertEqual(r.V7_GUARD_SHA,"aaf01a33def75ca840d04cf1ea1132110c197562b60cfee7625959ffab2a01cd")
+ def test_omitted_root_seal_fails_before_public_mutation(self):
+  with patch.object(r,"P",side_effect=lambda x:Path("/this/source/does/not/exist") if x=="/var/lib/aoe2war-web-prod-4ab96cc7c1c0" else Path(x)):
+   with self.assertRaisesRegex(RuntimeError,"CANDIDATE_ROOT_SOURCE_IDENTITY_MISSING"):
+    r.candidate_source_seal()
+ def test_restart_limit_is_cleared_only_for_exact_restricted_rollback(self):
+  source=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v9.py").read_text()
+  self.assertIn("if sha(web_bytes)==CURRENT_UNIT_SHA and sha(steam_bytes)==CANDIDATE_STEAM_UNIT_SHA:",source)
+  self.assertIn("'reset-failed','aoe2hdbets-web-prod.service'",source)
+  self.assertIn("candidate_source_seal()\n  timer_paused=False",source)
  def test_timer_restored_even_on_failure(self):
   source=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v9.py").read_text()
   self.assertIn("finally:\n   if timer_paused:",source)
