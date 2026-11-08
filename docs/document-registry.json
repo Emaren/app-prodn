@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "39dced47c881462cd126fc405a271fa53f5e593c5b9107d1fe2231fcab516031",
+      "sha256": "3006774719972dba639bb4dccfbdac2ad14a1c9a97b68e469d7e46d0ee226b46",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2051,6 +2051,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "physical-public-website-release-only-financial-gates-held",
+      "id": "aoe2war.app-prodn.session-b-r25-public-physical-release-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "dec5f0586b331bd66900421a6011d2ae930e8b806a9cd09eec9fd39d0f7e36a5",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 R25 Nonfinancial Public Physical Release, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2570,7 +2593,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "e19ae8d6a515868b7eccb8745cbbc9008078f2b0"
+    "commit": "d69af023f8122c646e04abf55353e40b68bacba2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
