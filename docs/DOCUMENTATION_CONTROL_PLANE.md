@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c02-native-8094-20261108` at `ca0019627da5250c2ab439e33c6715a6fcc04881`
+Implementation baseline: `session-b/c04-rest-pagination-heartbeat-20261108` at `204e561ae7f9618ddf6c5d6256f1f481d82ac93b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **103**
+- Authoritative repository documents: **104**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 62
-- `runbook`: 22
+- `runbook`: 23
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 6
+- `draft`: 7
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -68,6 +68,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
 | [C02 — Native-only WOLO Satchel App integration (held)](C02_NATIVE_FORWARD_ONLY_RELEASE_CONTRACT.md) | `runbook` | `draft` | `source-only-held-financial-release-contract` |
+| [C04 native WOLO REST pagination and fail-closed index heartbeat](C04_WOLO_MAINNET_REST_PAGING_AND_HEARTBEAT.md) | `runbook` | `draft` | `source-only-pending-c03-financial-writer-release` |
 | [Private Central Command OS](CENTRAL_COMMAND_OS.md) | `reference` | `active` | `private-source-dispatch-contract` |
 | [AoE2WAR Challenge Protocols and Presentation](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Belt Constitution V1](CHAMPIONSHIP_BELT_CONSTITUTION.md) | `reference` | `active` | `product-contract` |

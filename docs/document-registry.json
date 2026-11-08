@@ -375,6 +375,30 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-pending-c03-financial-writer-release",
+      "id": "aoe2war.app-prodn.c04-wolo-rest-pagination-heartbeat",
+      "owner": "aoe2war-web",
+      "path": "docs/C04_WOLO_MAINNET_REST_PAGING_AND_HEARTBEAT.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "49e1875892f3923769d1987ab8f90c8209d7f163d023cef41c5e3672459bbfc2",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "postgresql"
+      ],
+      "title": "C04 native WOLO REST pagination and fail-closed index heartbeat",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "operators",
         "developers",
         "ai-agents"
@@ -687,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4815c0629551d0904b8aaa0a398f915869bbb4026f852b3e0087ce06d183e4a8",
+      "sha256": "ac6c7aa9aaed3a42a659c3fee96cfc5e222190928e5baeff742f84582859c34e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2372,8 +2396,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c02-native-8094-20261108",
-    "commit": "ca0019627da5250c2ab439e33c6715a6fcc04881"
+    "branch": "session-b/c04-rest-pagination-heartbeat-20261108",
+    "commit": "204e561ae7f9618ddf6c5d6256f1f481d82ac93b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
