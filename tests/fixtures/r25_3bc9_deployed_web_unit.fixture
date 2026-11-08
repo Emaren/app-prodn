@@ -1,0 +1,51 @@
+[Unit]
+Description=AoE2WAR nonfinancial production web
+After=network.target postgresql.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+[Service]
+Type=simple
+User=aoe2war-web-prod
+Group=aoe2war-web-prod
+WorkingDirectory=/var/lib/aoe2war-web-prod-1a380cdf76ff
+EnvironmentFile=/etc/aoe2war/web-prod-v1/runtime.env
+Environment=NODE_ENV=production WARGRAPH_RUNTIME_DISABLED=true AOE2WAR_RUNTIME_PROFILE=nonfinancial-production-v1 AOE2WAR_R25_ISOLATED_WEB=true AOE2WAR_PROD_DB_PREVIEW=false AOE2_BACKEND_UPSTREAM=http://127.0.0.1:3331 TRAFFIC_API_BASE=http://127.0.0.1:3331 HOSTNAME=127.0.0.1 PORT=3032 NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--require=/usr/local/lib/aoe2war-web-prod/r25_b_guard_production_v1.cjs MANAGED_MEDIA_UPLOAD_DIR=/run/aoe2war-public-media
+UnsetEnvironment=HTTP_PROXY HTTPS_PROXY ALL_PROXY NODE_TLS_REJECT_UNAUTHORIZED NODE_EXTRA_CA_CERTS NEXTAUTH_SECRET CACHE_DIRECTORY MEMORY_PRESSURE_WATCH MEMORY_PRESSURE_WRITE
+ExecStart=/usr/bin/node --max-old-space-size=2048 ./node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3032
+Restart=on-failure
+RestartSec=8s
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+TemporaryFileSystem=/run:ro
+BindReadOnlyPaths=/run/systemd/resolve/stub-resolv.conf:/run/systemd/resolve/stub-resolv.conf
+InaccessiblePaths=/etc/aoe2hdbets /var/lib/postgresql /var/www/AoE2HDBets/app-prodn /var/www/WoloChain-wolo-1 /mnt/HC_Volume_105319120
+ReadOnlyPaths=/var/lib/aoe2war-web-prod-1a380cdf76ff
+CacheDirectory=aoe2war-web-prod
+CacheDirectoryMode=0700
+BindPaths=/var/cache/aoe2war-web-prod:/var/lib/aoe2war-web-prod-1a380cdf76ff/.next/cache
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-downloads:/var/lib/aoe2war-web-prod-1a380cdf76ff/public/downloads
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/artifact:/run/aoe2war-public-media/artifact
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/avatar:/run/aoe2war-public-media/avatar
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/background:/run/aoe2war-public-media/background
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/belt:/run/aoe2war-public-media/belt
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/crest:/run/aoe2war-public-media/crest
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/hero:/run/aoe2war-public-media/hero
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/logo:/run/aoe2war-public-media/logo
+BindReadOnlyPaths=/mnt/HC_Volume_105319120/aoe2-managed-assets/other:/run/aoe2war-public-media/other
+MemoryHigh=2700M
+MemoryMax=3200M
+CPUQuota=150%
+UMask=0077
+[Install]
+WantedBy=multi-user.target
