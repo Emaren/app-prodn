@@ -12,6 +12,7 @@ import PlayerDirectoryOnlineNow, {
 import PlayerDirectoryRealtimeRefresh from "@/components/players/PlayerDirectoryRealtimeRefresh";
 import { PublicPresenceProvider } from "@/components/presence/PublicPresenceProvider";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
 import {
@@ -186,6 +187,9 @@ function PlayerCard({
         ? "hover:border-rose-300/30"
         : "hover:border-amber-300/30";
 
+  const isSystemPersona = isInternalSystemUid(entry.uid);
+  const isActuallySteamLinked = !isSystemPersona && Boolean(entry.steamId);
+
   const badgeStyles =
     accent === "emerald"
       ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
@@ -203,13 +207,15 @@ function PlayerCard({
         <div className="min-w-0">
           <div className="text-lg font-semibold text-white">{entry.name}</div>
           <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
-            {entry.claimed
-              ? entry.verified
-                ? `claimed profile · level ${entry.verificationLevel}`
-                : `steam linked · level ${entry.verificationLevel}`
-              : entry.identityKind === "steam"
-                ? "replay-backed Steam account"
-                : "name-only replay identity"}
+            {isSystemPersona
+              ? "internal system persona · no Steam login"
+              : entry.claimed
+                ? isActuallySteamLinked
+                  ? `Steam linked · level ${entry.verificationLevel}`
+                  : `claimed profile · level ${entry.verificationLevel}`
+                : entry.identityKind === "steam"
+                  ? "replay-backed Steam account"
+                  : "name-only replay identity"}
           </div>
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs ${badgeStyles}`}>
@@ -219,8 +225,10 @@ function PlayerCard({
 
       {entry.claimed ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <SteamLinkedBadge compact />
-          {entry.verified ? <Tag>Replay verified</Tag> : null}
+          {isSystemPersona ? <Tag>Automated persona</Tag> : null}
+          {isActuallySteamLinked ? <SteamLinkedBadge compact /> : null}
+          {!isSystemPersona && entry.verified && entry.replayEvidence.length > 0
+            ? <Tag>Replay verified</Tag> : null}
           {entry.pendingWoloClaimCount > 0 ? (
             <Tag>Unclaimed WOLO · {entry.pendingWoloClaimAmount}</Tag>
           ) : null}
