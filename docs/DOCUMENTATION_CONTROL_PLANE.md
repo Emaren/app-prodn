@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/profile-heap-bulkhead-20261108` at `d69af023f8122c646e04abf55353e40b68bacba2`
+Implementation baseline: `session-b/restricted-replay-readmodel-20261108` at `5a6a43d32f30066bbaf52cf812a46034b24e091d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **113**
+- Authoritative repository documents: **114**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 69
+- `reference`: 70
 - `runbook`: 25
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 82
-- `draft`: 15
+- `draft`: 16
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -143,6 +143,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — R25 Nonfinancial Public Physical Release, 2026-11-08](SESSION_B_R25_PUBLIC_PHYSICAL_RELEASE_20261108.md) | `reference` | `active` | `physical-public-website-release-only-financial-gates-held` |
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
 | [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
+| [R25 Restricted Public Replay Detail Scalar Read Model](SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md) | `reference` | `draft` | `source-only-public-read-projection-no-financial-permit` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |

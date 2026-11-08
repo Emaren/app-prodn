@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3006774719972dba639bb4dccfbdac2ad14a1c9a97b68e469d7e46d0ee226b46",
+      "sha256": "6da676b47b7ab917916f5be9bce88eaf2fa9b042672b9cbc306021dd714ed2a9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2119,6 +2119,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-public-read-projection-no-financial-permit",
+      "id": "aoe2war.app.session-b-restricted-replay-readmodel",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "2cbc196f52d2d2a92ce80b668c99a1938ac7dd9b2bbb70cd9100c3672861b7e8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Restricted Public Replay Detail Scalar Read Model",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -2592,8 +2614,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "d69af023f8122c646e04abf55353e40b68bacba2"
+    "branch": "session-b/restricted-replay-readmodel-20261108",
+    "commit": "5a6a43d32f30066bbaf52cf812a46034b24e091d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
