@@ -108,6 +108,35 @@ test("view consent must not be a mere UI label fix", () => {
   assert.match(ddl, /AND display_on_profile IS TRUE\s+GROUP BY user_id;/);
 });
 
+test("public staking gift activity requires opt-in before enumerating gifts", () => {
+  const staking = read("lib/staking.ts");
+  const query = sectionAfter("async function loadRecentWoloGiftActivityRows(", staking, "function giftToActivityItem(");
+  assert.match(query, /status: \{ in: \["pending", "accepted"\] \}/);
+  assert.match(query, /displayOnProfile: true/);
+  assert.doesNotMatch(query, /note: true/);
+  assert.match(query, /take: Math\.max\(1, take\)/);
+});
+
+test("public staking gift activity must not serialize private notes or infer bounty from them", () => {
+  const staking = read("lib/staking.ts");
+  const renderer = sectionAfter("function giftToActivityItem(", staking, "function detailForPendingSettlement(");
+  assert.doesNotMatch(renderer, /row\.note/);
+  assert.doesNotMatch(renderer, /\bClaimable\b|\bUnclaimed\b/);
+  assert.match(renderer, /Pending gift record \(unverified\)/);
+  assert.match(renderer, /Accepted gift record \(payout unverified\)/);
+  assert.match(renderer, /eventType: "GIFT"/);
+  assert.doesNotMatch(renderer, /eventType: isBounty/);
+  assert.match(renderer, /detail: statusLabel/);
+});
+
+test("public staking HTTP activity route uses the opt-in gift source", () => {
+  const route = read("app/api/staking/activity/route.ts");
+  const staking = read("lib/staking.ts");
+  assert.match(route, /loadMainnetTransferStakingActivityPage\(getPrisma\(\)/);
+  assert.match(staking, /loadRecentWoloGiftActivityRows\(prisma, rawActivityTake, before\)/);
+  assert.match(staking, /giftRows\.map\(\(row\) => giftToActivityItem\(row\)\)/);
+});
+
 test("no financial or secret authority added to source changes", () => {
   assert.doesNotMatch(ddl, /GRANT\s+(ALL|INSERT|UPDATE|DELETE)\b/i);
   for (const source of [directory, profile]) {
