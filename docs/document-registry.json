@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2bae67b216d79d0bad96864e8a12b52982f225af027d7a68c989d8d8f7c86d64",
+      "sha256": "dd09eec748540910e75f403f56bb0622aafa62cd9eb2a9f447d9ca142acdbe31",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2163,6 +2163,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-public-read-projection-no-financial-permit",
+      "id": "aoe2war.app.session-b-restricted-replay-readmodel",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_RESTRICTED_PUBLIC_REPLAY_READMODEL_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "2cbc196f52d2d2a92ce80b668c99a1938ac7dd9b2bbb70cd9100c3672861b7e8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 Restricted Public Replay Detail Scalar Read Model",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "traffic-canonical-website-only-exact-daily-finality-required",
       "id": "aoe2war.app-prodn.session-b-traffic-canonical-single-chart-correction-20261108",
       "owner": "aoe2war-web",
@@ -2202,6 +2224,29 @@
       ],
       "title": "Session B \u2014 Traffic Current Observation Public View, 2026-11-08",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance",
+      "id": "aoe2war.app-prodn.session-b-traffic-steam-v7-single-runtime-release-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "d2d4af0f6993b7f3cbe2d8e573635ef2733d40bf82459c0aa25711926db83cf7",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Steam V7 Single-Runtime Release, 2026-11-08",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -2682,8 +2727,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/traffic-canonical-only-20261108",
-    "commit": "6aff2eaf999f456440a899838270ba452b43a5d8"
+    "branch": "session-b/replay-steam-v7-consolidated-20261108",
+    "commit": "b772d40dc41221ec57d96f93184fbf8df4165bcb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
