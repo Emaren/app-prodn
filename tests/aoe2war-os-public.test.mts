@@ -8,13 +8,18 @@ function source(path: string) {
   return readFileSync(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("the published model atlas omits the private Satchel return execution records", () => {
+test("the public model atlas excludes both legacy and forward-only private Satchel financial records", () => {
   const schema = source("prisma/schema.prisma");
   const names = [...schema.matchAll(/^model\s+([A-Za-z]\w*)\s*\{/gm)].map(match => match[1]);
   const protectedReturnModels = [
     "SatchelClaimReturnExecutionReview",
     "SatchelClaimReturnExecutionAttempt",
     "SatchelClaimReturnExecutionObservation",
+    "SatchelNativeReturnOperation",
+    "SatchelNativeReturnApproval",
+    "SatchelNativeReturnAttempt",
+    "SatchelNativeReturnObservation",
+    "SatchelNativeReturnCredit",
   ];
   assert.equal(models.models.length, 213);
   assert.deepEqual(names.filter(name => !models.models.includes(name)), protectedReturnModels);

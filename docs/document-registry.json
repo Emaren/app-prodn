@@ -351,6 +351,30 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-held-financial-release-contract",
+      "id": "aoe2war.app-prodn.docs-c02-native-forward-only-release",
+      "owner": "aoe2war-web",
+      "path": "docs/C02_NATIVE_FORWARD_ONLY_RELEASE_CONTRACT.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "9685dfb95ab00ebbe684e6262cbe040be69250065691722345d086b026a3e23c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "postgresql"
+      ],
+      "title": "C02 \u2014 Native-only WOLO Satchel App integration (held)",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "operators",
         "developers",
         "ai-agents"
@@ -663,7 +687,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "453f05c4c7456906fd1c091edb1dfdeec8c1ddf49b5d592c70d41f114971e38d",
+      "sha256": "4815c0629551d0904b8aaa0a398f915869bbb4026f852b3e0087ce06d183e4a8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2156,9 +2180,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-08",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "68bea109901cfab60c9e4c40d7eb0fd864fb11ca60046a2a23ff6159cabe9aa4",
+      "sha256": "c11d49c65a11e773abb7c2e29e75e9c4ddf3227d86bfbf1ddd2724e0605f46f7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2372,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c02-postmigration-canonical-clean-20261107",
-    "commit": "8c89621a8e7e781175c84317893539de9a9d767e"
+    "branch": "session-b/c02-native-8094-20261108",
+    "commit": "ca0019627da5250c2ab439e33c6715a6fcc04881"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
