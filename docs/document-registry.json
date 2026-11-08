@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "018d0d91df5c47bb19f3168ff39319e35d6a5da2c1b60719c453bda0cfd6a843",
+      "sha256": "f7bc587717697414ac1885b1ad054f2362f5d3980c20417eb1a282a86b38d67a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2637,7 +2637,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/restricted-replay-readmodel-20261108",
-    "commit": "1c5ff7ce99a19de054a3a475741d9fceb2edeb02"
+    "commit": "3fcde40bec1be46c7d643097e4edabd06bee7783"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

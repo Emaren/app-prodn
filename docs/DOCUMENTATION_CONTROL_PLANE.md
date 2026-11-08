@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/restricted-replay-readmodel-20261108` at `1c5ff7ce99a19de054a3a475741d9fceb2edeb02`
+Implementation baseline: `session-b/restricted-replay-readmodel-20261108` at `3fcde40bec1be46c7d643097e4edabd06bee7783`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
