@@ -98,12 +98,20 @@ test("source fetch is exactly GET-only 3331 observational rail, requires same ca
   }
 });
 
-test("page renders certified chart separately before provisional rail", () => {
+test("page shows fresh observed activity first while retaining untouched certified chart", () => {
   const page=readFileSync("app/traffic/page.tsx","utf8");
   const component=readFileSync("components/traffic/ProvisionalActivity.tsx","utf8");
   assert.match(page,/loadPublicTraffic\(\)/);
   assert.match(page,/RecentObservedActivity lastPublishedDay=\{lastPublishedDay\}/);
-  assert.ok(page.indexOf("<PremiumTimeSeriesChart") < page.indexOf("<RecentObservedActivity"));
+  assert.ok(page.indexOf("<RecentObservedActivity") < page.indexOf("<PremiumTimeSeriesChart"));
+  assert.match(page, /Certified historical Traffic series/);
+  assert.match(page, /not extended using/);
+  assert.match(component, /PremiumTimeSeriesChart/);
+  assert.match(component, /Recent observations/);
+  assert.match(component, /Filtered GET requests · not sessions/);
+  assert.match(component, /Qualifying IPs · not people/);
+  assert.match(component, /observedGetEvents: point.observedGetEvents/);
+  assert.match(component, /observedQualifyingIps: point.observedQualifyingIps/);
   assert.match(component,/not people/i);
   assert.match(component,/not human-certified/i);
   assert.match(component,/Provisional · unverified/);

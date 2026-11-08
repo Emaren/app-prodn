@@ -121,12 +121,41 @@ export default async function TrafficPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,0.12),transparent_27%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.12),transparent_28%),radial-gradient(circle_at_50%_100%,rgba(245,158,11,0.07),transparent_38%)]" />
 
       <div className="relative mx-auto max-w-[1900px] px-3 py-5 sm:px-5 lg:px-8">
+        <div className="mb-3 rounded-xl border border-sky-300/20 bg-sky-300/[0.035] px-4 py-3 text-xs leading-relaxed text-slate-300">
+          <span className="font-mono font-semibold uppercase tracking-[0.17em] text-sky-200">
+            Current project activity — directly observed, not human-certified
+          </span>
+          <p className="mt-1">
+            Fresh observed IP and filtered page-request counts appear below; they are not
+            verified people or sessions. The separate, evidence-certified human series remains in
+            the historical chart underneath.
+          </p>
+        </div>
+        <Suspense fallback={
+          <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-amber-200">
+            Loading provisional observed activity — never human-certified.
+          </section>
+        }>
+          <RecentObservedActivity lastPublishedDay={lastPublishedDay} />
+        </Suspense>
+
+        <section aria-label="Certified historical Traffic series" className="mt-7">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[11px] tracking-wide text-slate-400">
           <span>LAST PUBLISHED UTC DAY: {lastPublishedDay ?? "UNAVAILABLE"}</span>
           <span className={overdue ? "font-semibold text-amber-300" : "text-slate-500"}>
             {overdue ? "TRAFFIC ARCHIVE DELAYED — RECENT DAYS UNVERIFIED" : "COMPLETED DAILY BUCKETS ONLY"}
           </span>
         </div>
+          <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.035] px-4 py-3 text-xs leading-relaxed text-slate-300">
+            <span className="font-mono font-semibold uppercase tracking-[0.16em] text-amber-200">
+              Certified Traffic history · {lastPublishedDay ?? "Not available"}
+            </span>
+            <p className="mt-1">
+              These three historical curves are only published after canonical session
+              classification and provenance verification. They are not extended using
+              observed IPs, GET counts, or unverified browser metrics.
+            </p>
+          </div>
         {points.length ? (
           <PremiumTimeSeriesChart
             title="Traffic"
@@ -139,13 +168,7 @@ export default async function TrafficPage() {
           <div className="flex min-h-[40vh] items-center justify-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025] px-6 text-sm text-slate-400">No published completed-day Traffic report is available.</div>
         )}
 
-        <Suspense fallback={
-          <section className="mt-5 rounded-2xl border border-amber-300/15 p-5 text-xs text-amber-200">
-            Loading provisional observed activity — never human-certified.
-          </section>
-        }>
-          <RecentObservedActivity lastPublishedDay={lastPublishedDay} />
-        </Suspense>
+        </section>
 
         <Suspense fallback={
           <section aria-live="polite" className="mt-6 rounded-2xl border border-sky-300/15 bg-sky-300/[0.035] p-6 font-mono text-sm text-sky-200">
