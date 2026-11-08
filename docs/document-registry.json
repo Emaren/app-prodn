@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "49409674aa665197616e84c706397a3e05e9dd0b4d71f091689b31199a75401f",
+      "sha256": "60069a0b94873cba10885e1da604ff37a1ea3c58d646eec492d7b552d326115a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1985,6 +1985,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "read-only-proposal-no-production-installation-or-financial-release",
+      "id": "aoe2war.app.session-b-r25-3bc9-parallel-admission",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_3BC9_PARALLEL_CANARY_ADMISSION_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "3e6a3043c7ead9a3f7ad879797f5abc9223a0d074f340fefce68517c59da3703",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "R25 3bc9 Parallel Canary and C03 Nonfinancial Rollback Boundary",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial-source-and-physical-review-not-financial-permit",
       "id": "aoe2war.app-prodn.docs-session-b-r25-steam-refresh-restart-review",
       "owner": "aoe2war-web",
@@ -2503,8 +2525,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-nonfinancial-recovery-candidate-20261107",
-    "commit": "a4bbbb5c134e237f72a2a9a09b4c11d9ed087bca"
+    "branch": "session-b/r25-3bc9-parallel-admission-20261108",
+    "commit": "103d09e6f13e963e86011334b77ddfc262604c76"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
