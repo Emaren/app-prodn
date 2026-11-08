@@ -45,6 +45,8 @@ import {
   PUBLIC_MATCHUP_SCAN_LIMIT,
 } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
+import RestrictedPublicReplayDetail from "@/components/game-stats/RestrictedPublicReplayDetail";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 import { parseReplaySides } from "@/lib/replaySides";
 import {
@@ -90,6 +92,12 @@ export default async function GameStatsDetailPage({
   const gameId = parseGameStatsRouteId(id);
   if (gameId === null) {
     notFound();
+  }
+
+  // R25 never tries protected relations from the restricted website role.
+  // A scalar-only public replay is safer than a failed join or forged zero.
+  if (isNonfinancialPublicReadProfile()) {
+    return <RestrictedPublicReplayDetail gameId={gameId} />;
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
