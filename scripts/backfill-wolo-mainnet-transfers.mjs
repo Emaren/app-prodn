@@ -32,6 +32,9 @@ async function main() {
       perAddressLimit: readNumberArg("per-address-limit"),
       globalLimit: readNumberArg("global-limit"),
     });
+    if (result?.ok !== true) {
+      throw new Error("WOLO_TRANSFER_BACKFILL_UNTRUSTED_RESULT");
+    }
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await prisma.$disconnect();
