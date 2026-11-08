@@ -33,6 +33,11 @@ async function main() {
       globalLimit: readNumberArg("global-limit"),
     });
     console.log(JSON.stringify(result, null, 2));
+    if (result.ok !== true) {
+      // The old oneshot heartbeat grepped counts and treated exit 0 as
+      // success even if individual REST queries failed. Refuse that.
+      process.exitCode = 2;
+    }
   } finally {
     await prisma.$disconnect();
     await pool.end();

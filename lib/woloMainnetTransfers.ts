@@ -26,7 +26,7 @@ const MAX_BLOCK_LIMIT = 20_000_000;
 const MAX_ADDRESS_LIMIT = 400;
 const MAX_PER_ADDRESS_LIMIT = 5_000;
 const MAX_GLOBAL_LIMIT = 100_000;
-const TX_SEARCH_PAGE_SIZE = 50;
+const TX_SEARCH_PAGE_SIZE = 100;
 const TX_SEARCH_TIMEOUT_MS = 8_000;
 const QUERY_CONCURRENCY = 4;
 const FAUCET_CLAIM_AMOUNT_UWOLO_BIGINT = BigInt(WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO);
@@ -328,33 +328,55 @@ async function fetchMainnetHeight() {
   return latestHeight;
 }
 
-async function searchRestTxs(query: string, limit: number) {
+/**
+ * HEL1 native Cosmos REST indexes transaction pages using 1-based plain
+ * page=N&limit=100. pagination.offset/pagination.page are silently ignored.
+ * A fixed page size prevents unstable overlapping windows when the caller
+ * requests fewer than 100 transfers or a non-multiple of 100.
+ *
+ * No transactions are written inside this reader. A stale/duplicated page
+ * fails closed instead of claiming a successful historical backfill.
+ */
+export async function searchRestTxs(query: string, limit: number) {
+  if (!Number.isFinite(limit) || limit <= 0) {
+    throw new Error("Wolo REST tx limit must be a finite positive number.");
+  }
   const requested = Math.max(1, Math.min(MAX_GLOBAL_LIMIT, Math.floor(limit)));
   const txs: ChainTxResponse[] = [];
-  let offset = 0;
-
-  while (txs.length < requested) {
-    const pageLimit = Math.min(TX_SEARCH_PAGE_SIZE, requested - txs.length);
+  const seenHashes = new Set<string>();
+  const maximumPages = Math.ceil(requested / TX_SEARCH_PAGE_SIZE);
+  for (let number = 1; number <= maximumPages; number += 1) {
     const params = new URLSearchParams();
     params.set("query", query);
     params.set("order_by", "ORDER_BY_DESC");
-    params.set("pagination.limit", String(pageLimit));
-    params.set("pagination.offset", String(offset));
+    params.set("page", String(number));
+    params.set("limit", String(TX_SEARCH_PAGE_SIZE));
 
     const payload = await fetchJson<TxSearchPayload>(
-      `${getRestUrl()}/cosmos/tx/v1beta1/txs?${params.toString()}`
+      String(getRestUrl()) + "/cosmos/tx/v1beta1/txs?" + params.toString()
     );
 
-    if (payload.code) {
-      throw new Error(payload.message || `REST tx search returned code ${payload.code}`);
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new Error("Wolo REST transaction search returned an invalid envelope.");
     }
-
-    const page = payload.tx_responses || [];
-    txs.push(...page);
-    if (page.length < pageLimit) break;
-    offset += page.length;
+    if (payload.code) {
+      throw new Error(payload.message || "Wolo REST transaction search failed.");
+    }
+    if (!Array.isArray(payload.tx_responses) ||
+        payload.tx_responses.length > TX_SEARCH_PAGE_SIZE) {
+      throw new Error("Wolo REST transaction page is missing or oversized.");
+    }
+    for (const tx of payload.tx_responses) {
+      const txHash = tx && typeof tx === "object"
+        ? normalizeTxHash(tx.txhash) : null;
+      if (!txHash || seenHashes.has(txHash)) {
+        throw new Error("Wolo REST transaction page is invalid or repeated.");
+      }
+      seenHashes.add(txHash);
+      if (txs.length < requested) txs.push(tx);
+    }
+    if (payload.tx_responses.length < TX_SEARCH_PAGE_SIZE) break;
   }
-
   return txs;
 }
 
