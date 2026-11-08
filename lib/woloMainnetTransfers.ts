@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { searchNativeWoloRestPages } from "./woloRestTxPages.ts";
 import {
   WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO,
   WOLO_MAINNET_FAUCET_HOT_WALLET_ADDRESS,
@@ -26,7 +27,6 @@ const MAX_BLOCK_LIMIT = 20_000_000;
 const MAX_ADDRESS_LIMIT = 400;
 const MAX_PER_ADDRESS_LIMIT = 5_000;
 const MAX_GLOBAL_LIMIT = 100_000;
-const TX_SEARCH_PAGE_SIZE = 50;
 const TX_SEARCH_TIMEOUT_MS = 8_000;
 const QUERY_CONCURRENCY = 4;
 const FAUCET_CLAIM_AMOUNT_UWOLO_BIGINT = BigInt(WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO);
@@ -330,32 +330,12 @@ async function fetchMainnetHeight() {
 
 async function searchRestTxs(query: string, limit: number) {
   const requested = Math.max(1, Math.min(MAX_GLOBAL_LIMIT, Math.floor(limit)));
-  const txs: ChainTxResponse[] = [];
-  let offset = 0;
-
-  while (txs.length < requested) {
-    const pageLimit = Math.min(TX_SEARCH_PAGE_SIZE, requested - txs.length);
-    const params = new URLSearchParams();
-    params.set("query", query);
-    params.set("order_by", "ORDER_BY_DESC");
-    params.set("pagination.limit", String(pageLimit));
-    params.set("pagination.offset", String(offset));
-
-    const payload = await fetchJson<TxSearchPayload>(
-      `${getRestUrl()}/cosmos/tx/v1beta1/txs?${params.toString()}`
-    );
-
-    if (payload.code) {
-      throw new Error(payload.message || `REST tx search returned code ${payload.code}`);
-    }
-
-    const page = payload.tx_responses || [];
-    txs.push(...page);
-    if (page.length < pageLimit) break;
-    offset += page.length;
-  }
-
-  return txs;
+  return searchNativeWoloRestPages<ChainTxResponse>({
+    query,
+    restUrl: getRestUrl(),
+    limit: requested,
+    load: (url) => fetchJson<TxSearchPayload>(url),
+  });
 }
 
 function parseUwoloAmount(message: ChainMessage) {

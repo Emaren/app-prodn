@@ -375,6 +375,30 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-tested-no-live-finance-writer-activation",
+      "id": "aoe2war.app-prodn.docs-c04-native-wolo-rest-paging",
+      "owner": "aoe2war-web",
+      "path": "docs/C04_NATIVE_WOLO_REST_PAGING_SOURCE_HOLD.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "c719bb5d0ef0fd56d606a2c6ee816781c7a0cd9dcba4caa85b5dcd49ad295b8b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "postgresql"
+      ],
+      "title": "C04 \u2014 Native Cosmos REST paging and heartbeat source correction",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "operators",
         "developers",
         "ai-agents"
@@ -687,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4815c0629551d0904b8aaa0a398f915869bbb4026f852b3e0087ce06d183e4a8",
+      "sha256": "fb90034005c8683814bd8478ff42e7ce1ddb329ee6e6f9626a5ea7883cbb93c1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2372,8 +2396,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c02-native-8094-20261108",
-    "commit": "ca0019627da5250c2ab439e33c6715a6fcc04881"
+    "branch": "session-b/c04-rest-pagination-20261108",
+    "commit": "f29e295d394c3f9cf24652e0a294352de5c15c78"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
