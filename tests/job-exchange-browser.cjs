@@ -38,7 +38,12 @@ async function run(){
    await p.getByRole("heading",{name:/THE JOB EXCHANGE/}).waitFor({timeout:16000});
    await p.getByRole("heading",{name:"THE SIX BRAINS"}).waitFor({timeout:16000});
    assert.equal(await p.getByRole("button",{name:/Inspect Session .* source evidence/}).count(),6);
+   // The six static cards can hydrate before their independently fetched,
+   // fixture-backed event appears. Require the real observed commit evidence
+   // instead of sampling the pre-fetch UNKNOWN state as a false regression.
+   await p.getByText("COMMIT WITNESSED").waitFor({state:"visible",timeout:16000});
    assert.equal(await p.getByText("COMMIT WITNESSED").count(),1,"Source glow requires actual supplied event");
+   await p.getByText("UNKNOWN",{exact:true}).first().waitFor({state:"visible",timeout:10000});
    assert.equal(await p.getByText("UNKNOWN",{exact:true}).count()>0,true,"No forged deployed BUILD_ID");
    await p.getByRole("button",{name:"Inspect Session C source evidence"}).click();
    assert.equal(await p.getByRole("button",{name:"Inspect Session C source evidence"}).getAttribute("aria-pressed"),"true");
