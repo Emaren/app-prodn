@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "63a272ec34e75c1bede819ce299d710ac5d08adb3bbe46efd00cfac1c9a24f78",
+      "sha256": "dba7c343dba6b3174934ab386d5ee3a4145a81dc3bfff403bce4ee40d6c6292a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2014,7 +2014,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-08",
       "sensitivity": "restricted",
-      "sha256": "18e812a1f1e6c7ba7a6d227999df8d42570ed3170b24df565d124f25739d23f3",
+      "sha256": "ff00026592adea365e288825892692a98c78ec3a1bc3f6cc195ab15866e7714e",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2548,7 +2548,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/private-pending-gift-public-boundary-20261108",
-    "commit": "4eb9d147773f2b31e84ba65d666129464f3f584f"
+    "commit": "b51db9b26ef5dfa49bba9143839e88cd5845a695"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

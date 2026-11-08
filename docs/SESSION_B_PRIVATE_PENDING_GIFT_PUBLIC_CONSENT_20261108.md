@@ -70,6 +70,19 @@ Do not export customer IDs, private note or wallet from this review.
    off-host simulation, NOT an inspection of live HEL1 financial data or
    approval to apply production DDL. Run explicitly using environment
    RUN_PUBLIC_GIFT_CONSENT_PG_TESTS=1 with the desired pg16 bin path.
+6. lib/staking.ts public /api/staking/activity feed separately used
+   unrestricted pending/accepted userGift.findMany and then serialized
+   source gift.note in detail, calling a pending gift Claimable and
+   inferring a bounty classification from private note text. The source
+   now requires displayOnProfile:true, does not SELECT note, and only
+   labels the event as a gift record, with payout unverified. Public
+   /staking sourceTree checksum was regenerated for only /staking and
+   the exact 88-route source/full inventory check passes.
+
+This additional public HTTP surface must get native user-facing negative
+browser proof as well: nonconsented pending gifts and notes must not appear
+in /api/staking/activity, direct /staking page content, or cached public
+responses. Source-level tests alone do not prove live HTML/API privacy.
 
 The parent R25 public display truth branch is
 4c48178a66e950ac93c47e014ff9b006e103996f (App draft PR #1235).
