@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/profile-heap-bulkhead-20261108` at `35edfc2cb0334648895f875716e7e2de904dacc4`
+Implementation baseline: `session-b/traffic-canonical-only-20261108` at `baea694110863b7bdfe226a17934430de3b454a8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **115**
+- Authoritative repository documents: **116**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 70
+- `reference`: 71
 - `runbook`: 26
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 84
+- `active`: 85
 - `draft`: 15
 - `generated`: 1
 - `historical`: 12
@@ -144,6 +144,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — R25 Steam OpenID Postcutover Repair, 2026-11-08](SESSION_B_R25_STEAM_POSTCUTOVER_REPAIR_20261108.md) | `runbook` | `active` | `steam-only-uid990-outbound-recovery-no-funded-release` |
 | [Session B R25 Steam-Only Restart Review](SESSION_B_R25_STEAM_REFRESH_RESTART_REVIEW.md) | `runbook` | `draft` | `nonfinancial-source-and-physical-review-not-financial-permit` |
 | [Session B R25 Steam v5t nft Expiry-Boundary Fail-Closed Review](SESSION_B_R25_STEAM_V5T_EXPIRY_RACE_REVIEW.md) | `reference` | `draft` | `steam-only-source-review-no-funded-release-or-direct-root-approval` |
+| [Session B — Traffic Canonical Single Chart Correction, 2026-11-08](SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md) | `reference` | `active` | `traffic-canonical-website-only-exact-daily-finality-required` |
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |

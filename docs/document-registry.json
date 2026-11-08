@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb8139f1c39a1524f2d0129d28613768621d8ed89d898b9e730d452aed6c0b9c",
+      "sha256": "c25c3fbf50646d4f007e448b1b1eab48339e800431071717186d8270d4fdadf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2141,6 +2141,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "traffic-canonical-website-only-exact-daily-finality-required",
+      "id": "aoe2war.app-prodn.session-b-traffic-canonical-single-chart-correction-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "35693446e0e0cc7d1baaa79909b0c03a29a267840323d5904312730dc4753aef",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Canonical Single Chart Correction, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "observed-project-activity-website-only-no-canonical-certification",
       "id": "aoe2war.app-prodn.session-b-traffic-current-observation-public-view-20261108",
       "owner": "aoe2war-web",
@@ -2637,8 +2660,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "35edfc2cb0334648895f875716e7e2de904dacc4"
+    "branch": "session-b/traffic-canonical-only-20261108",
+    "commit": "baea694110863b7bdfe226a17934430de3b454a8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
