@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/profile-heap-bulkhead-20261108` at `9cfc8eaa2aa97055dc63c8e962d58b0ade2aa4b2`
+Implementation baseline: `session-b/profile-heap-bulkhead-20261108` at `8f1b5a79f1bec55b011ba1919e17a677c5af9e1a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
