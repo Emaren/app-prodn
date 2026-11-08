@@ -31,7 +31,9 @@ Accepts exactly two approved profiles, the existing e058 rollback source and the
 
 No new firewall logic, broad egress policy, database grants or finance/Chain changes. The old TLS/SNI-only Steam endpoints, 300s nft TTL, UID990 DROP, DNS diversity, exact NFT shape, root mode restrictions, CAP/NNP sandbox and system/finance snapshot remain bound. Protected financial topology SHA256 stays 6296fcf49fbc1d33f507c6a8339f87513f933948c0d86a7aa373cebe46071cfb; nft shape stays 985f32c16f3db3c843a196093977c2e2f61aeb11ce67d5cb1ebddaf66cd710af.
 
-Root 0500 enrollment directory /etc/aoe2war/web-prod-v7 has exactly four root-only proof files: active-profile.json mode 0400, accepted-runtime.json mode 0600, runtime-restart-admission.json mode 0400 and steam-refresh-policy.json mode 0400. New readmission can only use the actual observed UID990 Next PID/kernel start ticks, original 3030 PID2625090, validator PID1009, exact stage and source build, unchanged financial snapshot, and closed 8094/8095.
+The exact candidate stage receipt originally sealed under /root is inaccessible from the Steam service's ProtectHome=yes sandbox. A byte-identical SHA-bound root0600 copy must be placed at /etc/aoe2war/web-prod-v7/candidate-stage-acceptance.json. It is evidence only, not a modified release receipt; the original physical stage receipt stays untouched. This repair preserves the sandbox rather than weakening it.
+
+Root 0500 enrollment directory /etc/aoe2war/web-prod-v7 has four generated root-only active policy files: active-profile.json mode 0400, accepted-runtime.json mode 0600, runtime-restart-admission.json mode 0400 and steam-refresh-policy.json mode 0400. New readmission can only use the actual observed UID990 Next PID/kernel start ticks, original 3030 PID2625090, validator PID1009, exact stage and source build, unchanged financial snapshot, and closed 8094/8095.
 
 The Steam check is a harmless GET-only OpenID initiation; only secure, HttpOnly state-cookie metadata and provider HTTPS domain are inspected. No Steam cookies, assertion contents or secrets are exported. The candidate also must render real current observed Traffic HTML before enrollment.
 
@@ -50,3 +52,10 @@ No new Nginx selector, 3030 restart, Wolo validator restart, database grants, pa
 Adversarial source tests cover exact profiles, immutable guard, root-only operation, invalid policy fields, financial flags, mismatched PID/start ticks, safe unit whitelist and rollback. Passing source or CI tests alone does not constitute public acceptance. A native host selftest, exact installed SHA, old-profile production refresh, bounded release and owner browser check are required.
 
 Canonical references: https://github.com/Emaren/app-prodn/issues/1108 and https://github.com/Emaren/traffic-api/issues/31.
+
+
+## Physical attempt 1 rollback and corrective proof location
+
+At 15:03–15:04 UTC the first actual cutover started the new 0a745 candidate on PID 2989688. Candidate enrollment succeeded, but the hardened Steam oneshot could not read its newly accepted physical receipt under /root because the service correctly uses ProtectHome=yes. It returned the opaque PermissionError and the controller automatically restored the old e058 website on fresh PID 2990256, re-enrolled Steam and verified the original public HTTPS build. Root0600 rollback receipt SHA256 ebe01312dde661d6d11edbf6da47c7eda8805bab7d91b8e7be771bc39ff4ea5a proves real automatic rollback, not just a test. Old 3030 and validator were untouched, funded ports closed. The first attempt receipt and source backup must be retained unmodified.
+
+Attempt 2 binds precisely the resulting rollback PID 2990256 and stores a *distinct* promotion/rollback receipt and unit backup with suffix -attempt2. No historical proof is overwritten. The separate corrected v7 Steam adapter sources the candidate stage proof from the root0600 exact SHA copy under /etc/aoe2war/web-prod-v7, which the sandbox can read without loosening home directory restrictions. The current working rollback Steam profile is re-enrolled with this new source SHA before attempting cutover.

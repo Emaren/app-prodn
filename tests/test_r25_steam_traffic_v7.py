@@ -38,6 +38,14 @@ class ExactSteamControllerContract(unittest.TestCase):
   self.assertEqual(v.PROFILES['rollback']['unit_sha'],r.CURRENT_UNIT_SHA)
   self.assertNotEqual(v.PROFILES['rollback']['origin_sha'],v.PROFILES['candidate']['origin_sha'])
   self.assertEqual(v.NFT_SHAPE,'985f32c16f3db3c843a196093977c2e2f61aeb11ce67d5cb1ebddaf66cd710af')
+ def test_candidate_physical_receipt_visible_inside_hardened_service(self):
+  # ProtectHome=yes makes /root inaccessible to the real Steam systemd unit.
+  # The root0600 copy is byte-identical to the protected physical stage original.
+  self.assertEqual(v.CANDIDATE_STAGE_RECEIPT,
+                   v.ROOT / 'candidate-stage-acceptance.json')
+  self.assertNotIn('/root/',str(v.PROFILES['candidate']['origin']))
+  self.assertEqual(v.PROFILES['candidate']['origin_sha'],
+                   '31d750fe72b6b6e1fdad492fec94d1a863fd5305360c400bc3b036167b6c9f27')
  def test_immutable_steam_guard_is_source_pinned(self):
   code=(ROOT/"scripts/release/r25_steam_refresh_traffic_v7.py").read_text()
   self.assertIn(v.OLD_SHA,code)
@@ -124,6 +132,11 @@ class GuardedSingleRuntimeContract(unittest.TestCase):
   self.assertIn("public_exact_version(OLD_VERSION,24)",code)
   self.assertIn("HOLD_AUTOMATIC_ROLLBACK_UNVERIFIED",code)
   self.assertIn("PASS_ROLLBACK_PUBLIC_WEBSITE_STEAM_AND_FINANCIAL_FENCE",code)
+ def test_second_attempt_is_pinned_to_real_verified_rollback_identity(self):
+  self.assertEqual(r.OLD_PID,2990256)
+  self.assertEqual(r.OLD_VERSION,'20261108044653-2983e18532')
+  self.assertEqual(r.ROOT_RECEIPT.name,'public-promotion-or-rollback-v7-attempt2.json')
+  self.assertEqual(r.ORIGINAL_BACKUP.name,'original-3032-unit-v7-before-switch-attempt2.service')
  def test_old_site_refresh_fails_before_any_unit_write(self):
   code=(ROOT/"scripts/release/r25_traffic_single_runtime_release_v7.py").read_text()
   self.assertLess(code.index("manual_steam_refresh()\n  persist(ORIGINAL_BACKUP"),

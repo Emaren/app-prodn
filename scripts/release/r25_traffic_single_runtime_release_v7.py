@@ -10,7 +10,7 @@ P=pathlib.Path
 WEB=P('/etc/systemd/system/aoe2hdbets-web-prod.service')
 STEAM=P('/etc/systemd/system/aoe2war-steam-egress-refresh.service')
 GUARD=P('/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v7.py')
-GUARD_SHA='65e4dbc338a2dd8a8b92177ee049486b94a998e6507fd974ddeef02751d077b8'
+GUARD_SHA='aaf01a33def75ca840d04cf1ea1132110c197562b60cfee7625959ffab2a01cd'
 ROOT=P('/root/aoe2war-session-b-r25-traffic-candidate-0a7450f9')
 STAGE_RECEIPT=ROOT/'physical-stage-acceptance.json'
 CURRENT_UNIT_SHA='13958b7f63ed1342368e8ae9f4c8594268ae7725ad6910c757dd3b9b24c923a5'
@@ -19,11 +19,11 @@ STAGE_RECEIPT_SHA='31d750fe72b6b6e1fdad492fec94d1a863fd5305360c400bc3b036167b6c9
 SOURCE='0a7450f9c8c1d12cdf63e33d57e665ad1e3f5cb1'
 OLD_VERSION='20261108044653-2983e18532'
 NEW_VERSION='20261108140705-1d068e417c'
-OLD_PID,LEGACY_PID,VALIDATOR_PID=2856449,2625090,1009
+OLD_PID,LEGACY_PID,VALIDATOR_PID=2990256,2625090,1009
 STEAM_EXEC='r25_steam_refresh_traffic_v7.py --phase refresh'
-ROOT_RECEIPT=ROOT/'public-promotion-or-rollback-v7.json'
+ROOT_RECEIPT=ROOT/'public-promotion-or-rollback-v7-attempt2.json'
 LOCK=P('/run/lock/aoe2war-session-b-traffic-r25-v7.lock')
-ORIGINAL_BACKUP=ROOT/'original-3032-unit-v7-before-switch.service'
+ORIGINAL_BACKUP=ROOT/'original-3032-unit-v7-before-switch-attempt2.service'
 
 def sha(b):return hashlib.sha256(b).hexdigest()
 def check(ok,reason):

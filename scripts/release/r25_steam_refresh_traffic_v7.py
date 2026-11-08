@@ -27,7 +27,7 @@ LEGACY_PID, VALIDATOR_PID, OLD_PUBLIC_PID = 2625090, 1009, 2856449
 FIRST_UNIT_SHA = '13958b7f63ed1342368e8ae9f4c8594268ae7725ad6910c757dd3b9b24c923a5'
 NEW_UNIT_SHA = 'be8165a050a3fa2c224d6a29c26dca2045a6599c7f18ab41e2e83bb85eacf6e6'
 OLD_SOURCE_RECEIPT = P('/etc/aoe2war/web-prod-v6/accepted-public-release.json')
-CANDIDATE_STAGE_RECEIPT = P('/root/aoe2war-session-b-r25-traffic-candidate-0a7450f9/physical-stage-acceptance.json')
+CANDIDATE_STAGE_RECEIPT = P('/etc/aoe2war/web-prod-v7/candidate-stage-acceptance.json')
 PROFILES = {
  'rollback': {
   'source':'e0586a7b7c355c3b29037d78c71fe26d528d2475',
