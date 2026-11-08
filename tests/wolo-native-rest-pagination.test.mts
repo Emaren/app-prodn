@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { collectPagedCosmosRestTxs } from "../lib/woloRestTxPagination.ts";
+import { collectPagedCosmosRestTxs, type CosmosRestPage } from "../lib/woloRestTxPagination.ts";
 
 const tx = (i: number) => ({ txhash: i.toString(16).padStart(64,"0").toUpperCase() });
 const scan = (limit: number, fake: (page: number) => unknown) => {
@@ -15,7 +15,7 @@ const scan = (limit: number, fake: (page: number) => unknown) => {
       assert.equal(u.searchParams.has("pagination.offset"),false);
       assert.equal(u.searchParams.has("pagination.page"),false);
       assert.equal(u.searchParams.get("limit"),"100");
-      return fake(Number(u.searchParams.get("page"))) as any;
+      return fake(Number(u.searchParams.get("page"))) as CosmosRestPage<{ txhash: string }>;
     },
   }).then(rows => ({rows, urls}));
 };
