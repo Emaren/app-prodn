@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "35412c41bd74ee61536ce540bcc8df57cf3b3bc0b23a8188ec0e11a55b4e7f70",
+      "sha256": "01d9e00360df2637b616746b302c5c1358b5ad88d3c850452affc9a2e9d23e1f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2750,7 +2750,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/steam-v8-release-ops-20261108",
-    "commit": "4ab96cc7c1c0ba43a0403795485d3f410a6ba07f"
+    "commit": "34625233f89645d6710a981ebc25bfa674893dc2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

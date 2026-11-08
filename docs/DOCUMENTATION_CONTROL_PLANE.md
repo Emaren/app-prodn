@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/steam-v8-release-ops-20261108` at `4ab96cc7c1c0ba43a0403795485d3f410a6ba07f`
+Implementation baseline: `session-b/steam-v8-release-ops-20261108` at `34625233f89645d6710a981ebc25bfa674893dc2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
