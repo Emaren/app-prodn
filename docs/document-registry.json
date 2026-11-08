@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fcb2c52de11510114202a21fc8bbcbb0d8075a050e2aec72317462369312ecb8",
+      "sha256": "e0a2ce06b802ac601aa94ddab38d9097533007276385cdb40f259a2a95429026",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2750,7 +2750,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-steam-oneshot-paging-20261108",
-    "commit": "378ba73766574a9313a1c5da815c35cf59d11c93"
+    "commit": "9c4b82eb6d82292c06c5ebf67da31c21e544606c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
