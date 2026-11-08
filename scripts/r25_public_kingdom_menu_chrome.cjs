@@ -16,6 +16,7 @@ if(expected.length!==39)throw new Error("EXPECTED_39_CANONICAL_LINKS");
 function validateOrigin(raw){
  const u=new URL(raw);
  if(u.href==="https://aoe2war.com/")return "https://aoe2war.com";
+ if(u.href==="http://localhost:3137/")return "http://localhost:3137";
  if(u.protocol!=="http:"||u.hostname!=="127.0.0.1"||
      u.username||u.password||u.pathname!=="/"||u.search||u.hash||
      !u.port||[8092,8093,8094,8095].includes(Number(u.port)))
@@ -34,6 +35,7 @@ if(process.argv.includes("--selftest")){
  assert.equal(acceptMenu({...snap,open:"false"},expected),false);
  assert.equal(validateOrigin("https://aoe2war.com"),"https://aoe2war.com");
  assert.equal(validateOrigin("http://127.0.0.1:3032"),"http://127.0.0.1:3032");
+ assert.equal(validateOrigin("http://localhost:3137"),"http://localhost:3137");
  for(const invalid of ["https://example.com","http://127.0.0.1:8094",
     "http://127.0.0.1:3030/api/bets","http://127.0.0.2:3032"])
    assert.throws(()=>validateOrigin(invalid));
@@ -45,6 +47,70 @@ if(argPosition>=0&&(!process.argv[argPosition+1]||argPosition+2!==process.argv.l
  throw Error("HOLD_BROWSER_ORIGIN_ARG");
 const origin=validateOrigin(argPosition>=0?process.argv[argPosition+1]:"https://aoe2war.com");
 console.log('EXPECTED_MENU_ENTRIES',expected.length);
+// The Q17 job already installs and successfully launches playwright-core on
+// genuine Chrome. Use its known-good browser transport rather than the fragile
+// raw DevToolsActivePort bootstrap. The CDP path below remains for the local
+// manual public-edge negative control where Playwright is not installed.
+if(process.env.PW_HOME){
+ (async()=>{
+  const {createRequire}=require("node:module");
+  const playwright=createRequire(__filename)(
+   path.join(process.env.PW_HOME,"node_modules/playwright-core")
+  );
+  const executablePath=process.env.CHROME_BIN;
+  if(!executablePath || !fs.existsSync(executablePath))
+   throw Error("HOLD_CHROME_BINARY_UNAVAILABLE");
+  const output=process.env.ATLAS_BROWSER_OUT;
+  if(!output || !path.isAbsolute(output))
+   throw Error("HOLD_BROWSER_RECEIPT_OUTPUT_REQUIRED");
+  fs.mkdirSync(output,{recursive:true});
+  const browser=await playwright.chromium.launch({
+   headless:true,executablePath,args:["--no-sandbox","--disable-dev-shm-usage"]
+  });
+  const results=[];
+  try{
+   for(const width of [375,768,1440]){
+    const context=await browser.newContext({
+     viewport:{width,height:900},serviceWorkers:"block",reducedMotion:"reduce"
+    });
+    try{
+     const page=await context.newPage();
+     const response=await page.goto(origin+"/?sb-menu-verification="+width,{
+      waitUntil:"domcontentloaded",timeout:45000
+     });
+     if(response?.status()!==200)throw Error("HOLD_KINGDOM_PAGE_NOT_HTTP200");
+     const button='button[aria-haspopup="menu"][data-presence-door="kingdom"]';
+     await page.locator(button).first().waitFor({state:"visible",timeout:20000});
+     // Wait for real hydration before invoking a DOM click. Avoid browser
+     // pointer-hover preopening the menu then toggling it closed on click.
+     await page.waitForTimeout(1200);
+     const clicked=await page.evaluate(`(()=>{const b=[...document.querySelectorAll('button[aria-haspopup="menu"][data-presence-door="kingdom"]')].find(x=>x.getBoundingClientRect().width>0);b?.click();return !!b})()`);
+     let state={};
+     for(let i=0;i<18;i++){
+      await page.waitForTimeout(200);
+      state=await page.evaluate(menuState)||{};
+      if(state.hrefs?.length>0)break;
+     }
+     const passed=clicked&&acceptMenu(state,expected);
+     results.push({width,passed});
+     console.log("KINGDOM_CHROME",JSON.stringify({
+      width,passed,opened:state.open,items:state.hrefs?.length||0,
+      collapsed:state.collapsed,orderMatches:JSON.stringify(state.hrefs)===JSON.stringify(expected)
+     }));
+     await page.screenshot({path:path.join(output,"public-kingdom-menu-"+width+".png")});
+    }finally{await context.close();}
+   }
+  }finally{await browser.close();}
+  const accepted=results.length===3&&results.every(x=>x.passed);
+  console.log("R25_KINGDOM_MENU_VERDICT",JSON.stringify({
+   schema:"aoe2war.r25.public-kingdom-menu.v1",status:accepted?
+   "PASS_PUBLIC_KINGDOM_MENU":"HOLD_PUBLIC_KINGDOM_MENU_COLLAPSED_OR_REORDERED",
+   widths:results,expectedEntries:expected.length,readOnly:true,
+   financialAuthorized:false,productionMutation:false,fullSiteRelease:false
+  }));
+  if(!accepted)process.exitCode=2;
+ })().catch(e=>{console.error("HOLD_PLAYWRIGHT_KINGDOM_MENU",e.message);process.exitCode=4});
+}else{
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),"sb-kingdom-cdp-"));
 const chrome=spawn(process.env.CHROME_BIN||"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",[
  "--headless=new","--no-first-run","--no-default-browser-check","--disable-extensions",
@@ -57,7 +123,7 @@ async function evaluate(expression){const x=await send("Runtime.evaluate",{expre
 const menuState=`(()=>{const b=[...document.querySelectorAll('button[aria-haspopup="menu"][data-presence-door="kingdom"]')].find(x=>x.getBoundingClientRect().width>0);const all=[...document.querySelectorAll('[role="menu"]')].filter(x=>x.getBoundingClientRect().width>0);const menu=all.find(x=>x.getAttribute("aria-label"))||all[0];return {hasButton:!!b,open:b?.getAttribute("aria-expanded"), menuCount:all.length, hrefs:menu?[...menu.querySelectorAll('a[role="menuitem"]')].map(x=>new URL(x.href).pathname):[], collapsed:menu?.textContent?.includes("Explore all Kingdom chambers")??false}})()`;
 (async()=>{
  const results=[];
- for(let i=0;i<60&&!fs.existsSync(path.join(profile,"DevToolsActivePort"));i++)await pause(100);
+ for(let i=0;i<200&&!fs.existsSync(path.join(profile,"DevToolsActivePort"));i++)await pause(100);
  if(!fs.existsSync(path.join(profile,"DevToolsActivePort")))throw Error("CHROME_PORT_NOT_READY");
  const [port]=fs.readFileSync(path.join(profile,"DevToolsActivePort"),"utf8").split("\n");
  const targets=await(await fetch("http://127.0.0.1:"+port+"/json/list")).json();
@@ -88,3 +154,5 @@ const menuState=`(()=>{const b=[...document.querySelectorAll('button[aria-haspop
  }));
  if(!accepted)process.exitCode=2;
 })().catch(e=>{console.log("HOLD_BROWSER",e.message);process.exitCode=4}).finally(async()=>{try{ws?.close()}catch{};try{chrome.kill("SIGTERM")}catch{};await pause(500);try{fs.rmSync(profile,{recursive:true,force:true})}catch{}});
+
+}

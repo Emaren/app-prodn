@@ -26,3 +26,19 @@ test("production checker enforces the original 39-route catalog and all viewport
   assert.match(code, /financialAuthorized:false, productionMutation:false, fullSiteRelease:false/);
   assert.match(code, /http:\/\/127\.0\.0\.1:8094/);
 });
+
+
+test("isolated Chrome integration cannot hide menu failure behind tee", () => {
+  const workflow = readFileSync(
+    resolve(ROOT, ".github/workflows/navigation-atlas-browser.yml"), "utf8"
+  );
+  const runner = readFileSync(resolve(ROOT, "scripts/r25_public_kingdom_menu_chrome.cjs"), "utf8");
+  assert.match(workflow, /if node scripts\/r25_public_kingdom_menu_chrome\.cjs/);
+  assert.match(workflow, /HOLD_PUBLIC_KINGDOM_MENU_REAL_CHROME/);
+  assert.match(workflow, /exit 2/);
+  assert.match(workflow, /sha256sum [^\n]*public-kingdom-menu\.jsonl/);
+  assert.ok(runner.includes("if(process.env.PW_HOME)"));
+  assert.ok(runner.includes("playwright.chromium.launch"));
+  assert.ok(runner.includes("if(!accepted)process.exitCode=2"));
+  assert.ok(runner.includes("for(const width of [375,768,1440])"));
+});
