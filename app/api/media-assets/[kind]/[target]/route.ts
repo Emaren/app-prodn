@@ -5,6 +5,11 @@ import sharp from "sharp";
 
 import { mediaFallbackUrl, resolveManagedMediaUrl } from "@/lib/managedMediaAssets";
 import {
+  fallbackMediaCacheControl,
+  VERIFIED_MANAGED_MEDIA_CACHE_CONTROL,
+  type MediaFallbackReason,
+} from "@/lib/mediaFallbackCachePolicy";
+import {
   isLivingKingdomAvatarHandle,
   LIVING_KINGDOM_AVATAR_FALLBACK,
   resolveLivingKingdomAvatar,
@@ -27,7 +32,7 @@ const MIME_TYPES: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-const IMAGE_RESPONSE_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=604800";
+const IMAGE_RESPONSE_CACHE_CONTROL = VERIFIED_MANAGED_MEDIA_CACHE_CONTROL;
 const OPAQUE_PRESENCE_CACHE_CONTROL =
   "public, max-age=300, stale-while-revalidate=300";
 const generatedVariantPromises = new Map<string, Promise<void>>();
@@ -363,6 +368,19 @@ function redirectToInternalAsset(url: string) {
       "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
     },
   });
+}
+
+/** Apply only at the outer media route after a verified fallback decision.
+ * The underlying public asset may still be served successfully with HTTP 200.
+ * It is NOT the same as a resolved, assigned managed portrait.
+ */
+function markFallbackMedia(
+  response: NextResponse,
+  reason: MediaFallbackReason,
+): NextResponse {
+  response.headers.set("Cache-Control", fallbackMediaCacheControl(reason));
+  response.headers.set("X-AoE2WAR-Media-Fallback", "1");
+  return response;
 }
 
 function managedUploadParts(url: string) {
@@ -713,22 +731,24 @@ export async function GET(
       target,
       fallback
     );
+    const isFallback = url === (mediaFallbackUrl(kind, target, fallback) || "/");
     const direct = await serveDirectAsset(request, url);
 
     if (direct) {
-      return direct;
+      return isFallback ? markFallbackMedia(direct, "unassigned") : direct;
     }
 
-    return redirectToInternalAsset(url);
+    const redirect = redirectToInternalAsset(url);
+    return isFallback ? markFallbackMedia(redirect, "unassigned") : redirect;
   } catch (error) {
     console.warn("Managed media route failed:", error);
     const url = mediaFallbackUrl(kind, target, fallback) || "/";
     const direct = await serveDirectAsset(request, url);
 
     if (direct) {
-      return direct;
+      return markFallbackMedia(direct, "lookup-error");
     }
 
-    return redirectToInternalAsset(url);
+    return markFallbackMedia(redirectToInternalAsset(url), "lookup-error");
   }
 }

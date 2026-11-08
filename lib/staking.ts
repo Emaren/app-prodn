@@ -882,7 +882,6 @@ type WoloGiftActivityRow = {
   id: number;
   kind: string;
   amount: number | null;
-  note: string | null;
   status: string;
   acceptedAt: Date | null;
   createdAt: Date;
@@ -918,6 +917,7 @@ async function loadRecentWoloGiftActivityRows(
       kind: "WOLO",
       amount: { gt: 0 },
       status: { in: ["pending", "accepted"] },
+      displayOnProfile: true,
       ...(createdAt ? { createdAt } : {}),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -926,7 +926,6 @@ async function loadRecentWoloGiftActivityRows(
       id: true,
       kind: true,
       amount: true,
-      note: true,
       status: true,
       acceptedAt: true,
       createdAt: true,
@@ -950,20 +949,23 @@ function giftToActivityItem(
   const timestampLabel = formatMoment(safeTimestamp);
   const player = displayPlayerName(row.user);
   const amountLabel = row.amount != null ? formatActivityWolo(row.amount) : undefined;
-  const isBounty = (row.note || "").toLowerCase().includes("bounty");
-  const statusLabel = row.status === "accepted" ? "Accepted" : isBounty ? "Unclaimed" : "Claimable";
-  const noun = isBounty ? "bounty" : "gift";
+  // A source gift status does not prove a spendable payout. Private notes
+  // must never become public ledger detail or pseudo-bounty authority.
+  const statusLabel =
+    row.status === "accepted"
+      ? "Accepted gift record (payout unverified)"
+      : "Pending gift record (unverified)";
 
   return {
     key: `gift-${row.id}`,
-    label: `${amountLabel ?? row.kind} ${noun}: ${player}`,
-    detail: [statusLabel, row.note?.trim() || null].filter(Boolean).join(" · "),
+    label: `${amountLabel ?? row.kind} gift: ${player}`,
+    detail: statusLabel,
     meta: timestampLabel,
-    eventType: isBounty ? "BOUNTY" : "GIFT",
+    eventType: "GIFT",
     amountLabel,
     timestampLabel,
     occurredAt: safeTimestamp.toISOString(),
-    tone: row.status === "accepted" ? "emerald" : isBounty ? "amber" : "sky",
+    tone: row.status === "accepted" ? "emerald" : "amber",
     sortAt: safeTimestamp,
   };
 }

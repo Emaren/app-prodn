@@ -129,7 +129,7 @@
     "href": "/game-stats",
     "label": "Parser Observatory",
     "district": "forge",
-    "sourceTree": "src-270edc22eb4b58d2"
+    "sourceTree": "src-3b148771418f92a8"
   },
   {
     "href": "/general-inspections",
@@ -291,7 +291,7 @@
     "href": "/players",
     "label": "Players",
     "district": "arena",
-    "sourceTree": "src-5c54660dec674885"
+    "sourceTree": "src-d1a480924e11175b"
   },
   {
     "href": "/radio",
@@ -399,7 +399,7 @@
     "href": "/rivalries",
     "label": "Rivalries",
     "district": "arena",
-    "sourceTree": "src-3a3cc87634010f1e"
+    "sourceTree": "src-16d088bd8c0da0a5"
   },
   {
     "href": "/roadmap",
@@ -423,7 +423,7 @@
     "href": "/staking",
     "label": "Staking",
     "district": "bazaar",
-    "sourceTree": "src-baba4d72a206ada4"
+    "sourceTree": "src-478d13c252f9ac1a"
   },
   {
     "href": "/statistics",
@@ -453,7 +453,7 @@
     "href": "/traffic",
     "label": "Traffic",
     "district": "forge",
-    "sourceTree": "src-c5d0f806ac5eebad"
+    "sourceTree": "src-72b2e7e22c27317d"
   },
   {
     "href": "/users",

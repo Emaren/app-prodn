@@ -90,12 +90,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-4188431f76bbc73bd68f",
+    version: "src-8473190cacc06da27a49",
   },
   {
     href: "/traffic",
     label: "Traffic Observatory",
-    version: "src-67cc251544a17e6c2ebc",
+    version: "src-c6697ad9a22e60f6047c",
   },
   {
     href: "/kingdom-forge",

@@ -98,15 +98,14 @@ test("source fetch is exactly GET-only 3331 observational rail, requires same ca
   }
 });
 
-test("page renders certified chart separately before provisional rail", () => {
+test("page renders one canonical Traffic chart without an observational substitute", () => {
   const page=readFileSync("app/traffic/page.tsx","utf8");
-  const component=readFileSync("components/traffic/ProvisionalActivity.tsx","utf8");
   assert.match(page,/loadPublicTraffic\(\)/);
-  assert.match(page,/RecentObservedActivity lastPublishedDay=\{lastPublishedDay\}/);
-  assert.ok(page.indexOf("<PremiumTimeSeriesChart") < page.indexOf("<RecentObservedActivity"));
-  assert.match(component,/not people/i);
-  assert.match(component,/not human-certified/i);
-  assert.match(component,/Provisional · unverified/);
-  assert.match(component,/observedQualifyingIps/);
-  assert.doesNotMatch(component,/suspectedHuman|confirmedHuman|totalTraffic/);
+  assert.match(page,/Canonical Traffic series/);
+  assert.match(page,/Incomplete and unverified days/);
+  assert.match(page,/points=\{points\}/);
+  assert.match(page,/series=\{SERIES\}/);
+  assert.doesNotMatch(page,/RecentObservedActivity|ObservedDailyTraffic|ProvisionalDailyTraffic/);
+  assert.doesNotMatch(page,/Current project activity|Recent observations/);
+  assert.equal((page.match(/<PremiumTimeSeriesChart/g) || []).length,1);
 });

@@ -646,6 +646,7 @@ export async function loadPublicPlayerDirectoryFresh(
                 userId: { in: claimedUserIds },
                 kind: "WOLO",
                 status: "pending",
+                displayOnProfile: true,
                 amount: { gt: 0 },
               },
               _count: { _all: true },

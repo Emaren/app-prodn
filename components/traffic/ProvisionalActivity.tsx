@@ -1,4 +1,5 @@
 import type { ProvisionalTrafficPoint } from "@/lib/provisionalTraffic";
+import PremiumTimeSeriesChart, { type ObservatorySeries } from "@/components/observatory/PremiumTimeSeriesChart";
 
 export default function ProvisionalActivity({
   points,
@@ -8,6 +9,29 @@ export default function ProvisionalActivity({
   const last = points.at(-1) ?? null;
   const bars = points.slice(-14);
   const maxIps = Math.max(1, ...bars.map((point) => point.observedQualifyingIps));
+  const observedTrend = points.map((point) => ({
+    date: point.date,
+    values: {
+      observedGetEvents: point.observedGetEvents,
+      observedQualifyingIps: point.observedQualifyingIps,
+    },
+  }));
+  const observedSeries: ObservatorySeries[] = [
+    {
+      key: "observedGetEvents",
+      label: "Filtered GET requests · not sessions",
+      color: "#f5c65b",
+      axis: "count",
+      defaultVisible: true,
+    },
+    {
+      key: "observedQualifyingIps",
+      label: "Qualifying IPs · not people",
+      color: "#5aa9ff",
+      axis: "secondaryCount",
+      defaultVisible: true,
+    },
+  ];
 
   return (
     <section
@@ -23,7 +47,8 @@ export default function ProvisionalActivity({
             What the servers have observed recently
           </h2>
           <p className="mt-2 max-w-[900px] text-xs leading-5 text-slate-400">
-            This chart is separate from the certified Traffic history above.
+            This chart shows the latest directly observed activity. The certified
+            historical Traffic chart is kept separately below.
             Qualifying IPs are not unique people; filtered GET events are not page sessions.
             These days can still change as logs arrive. They are NOT part of the
             Total Traffic, Potential Humans or Confirmed Humans series.
@@ -67,6 +92,20 @@ export default function ProvisionalActivity({
           No provisional dates after the latest certified archive day are available.
         </p>
       )}
+
+      {observedTrend.length >= 2 ? (
+        <div className="mt-5">
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.17em] text-amber-200">
+            Observational trend only · latest UTC day may be partial · two independent axes
+          </p>
+          <PremiumTimeSeriesChart
+            title="Recent observations"
+            points={observedTrend}
+            series={observedSeries}
+            variant="statistics"
+          />
+        </div>
+      ) : null}
 
       {bars.length ? (
         <div className="mt-5">

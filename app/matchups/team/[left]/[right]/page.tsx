@@ -605,7 +605,7 @@ function PlayerLine({
 
       {player.pendingWoloClaimCount > 0 ? (
         <Tag>
-          {player.pendingWoloClaimAmount} WOLO unclaimed
+          {player.pendingWoloClaimAmount} WOLO pending review
         </Tag>
       ) : null}
     </div>
