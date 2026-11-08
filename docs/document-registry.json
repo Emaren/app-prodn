@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3006774719972dba639bb4dccfbdac2ad14a1c9a97b68e469d7e46d0ee226b46",
+      "sha256": "dfcc623628072e9507ad6896046014c5996c783cd8f0aa1176b2bebb4ea31725",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2051,6 +2051,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "steam-only-source-review-no-live-write-or-financial-permit",
+      "id": "aoe2war.app.session-b-e058-steam-v6-readmission",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_R25_E058_STEAM_V6_READMISSION_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "6b351d22d4c472a30e0935b23a119e755df8ad78f8e9b6a301bb90d45de3780a",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "aoe2war"
+      ],
+      "title": "Session B R25 e058 Steam v6 Restricted Egress Readmission",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "physical-public-website-release-only-financial-gates-held",
       "id": "aoe2war.app-prodn.session-b-r25-public-physical-release-20261108",
       "owner": "aoe2war-web",
@@ -2592,8 +2614,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "d69af023f8122c646e04abf55353e40b68bacba2"
+    "branch": "session-b/steam-egress-e058-readmission-v6-20261108",
+    "commit": "3c858813644e647ff7d61b3010b81d15b084e8f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
