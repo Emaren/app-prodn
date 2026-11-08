@@ -10,6 +10,8 @@ on:
       - 'components/HeaderMenu.tsx'
       - 'lib/navigationAtlas.ts'
       - 'tests/navigation-atlas-*'
+      - 'scripts/r25_public_kingdom_menu_chrome.cjs'
+      - 'tests/r25-public-kingdom-menu-acceptance.test.mts'
       - '.github/workflows/navigation-atlas-browser.yml'
 permissions:
   contents: read
@@ -84,6 +86,11 @@ jobs:
             sleep 2
           done
           test "$ready" = 1
+          # Session B: run the original public Kingdom dropdown in the SAME
+          # exact Next production build, disposable DB and real Chrome.
+          # No production credentials, financial APIs or host mutations.
+          node scripts/r25_public_kingdom_menu_chrome.cjs --origin http://127.0.0.1:3137 \
+            | tee "$ATLAS_BROWSER_OUT/public-kingdom-menu.jsonl"
           node tests/navigation-atlas-browser.cjs
           bash scripts/renaissance_88_pg_fixture.sh verify > "$ATLAS_BROWSER_OUT/pg-nonmutation.txt"
           printf 'source=%s\nbuild=%s\nproduction_certified=false\n' "$SOURCE_SHA" "$(cat .next/BUILD_ID)" > "$ATLAS_BROWSER_OUT/source-identity.txt"

@@ -48,7 +48,8 @@ console.log('EXPECTED_MENU_ENTRIES',expected.length);
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),"sb-kingdom-cdp-"));
 const chrome=spawn(process.env.CHROME_BIN||"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",[
  "--headless=new","--no-first-run","--no-default-browser-check","--disable-extensions",
- "--disable-background-networking","--remote-debugging-port=0","--remote-allow-origins=http://localhost",
+ "--no-sandbox","--disable-dev-shm-usage","--disable-background-networking",
+ "--remote-debugging-port=0","--remote-allow-origins=http://localhost",
  "--user-data-dir="+profile,"about:blank"],{stdio:"ignore"});
 let ws,id=0;const requests=new Map();
 function send(method,params={}){return new Promise((ok,fail)=>{const n=++id;requests.set(n,{ok,fail});ws.send(JSON.stringify({id:n,method,params}));setTimeout(()=>{const p=requests.get(n);if(p){requests.delete(n);fail(Error("CDP_TIMEOUT "+method))}},18000)})}
