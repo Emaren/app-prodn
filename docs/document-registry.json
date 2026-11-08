@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "239e252f0fe5e5568e05814c297259ba26d617a5f57f63bc829689bd10ed6d5e",
+      "sha256": "39dced47c881462cd126fc405a271fa53f5e593c5b9107d1fe2231fcab516031",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2569,8 +2569,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/managed-media-fallback-recovery-20261108",
-    "commit": "6c419672bb12c445eb2a20c6c981dd945f1cca69"
+    "branch": "session-b/profile-heap-bulkhead-20261108",
+    "commit": "e19ae8d6a515868b7eccb8745cbbc9008078f2b0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

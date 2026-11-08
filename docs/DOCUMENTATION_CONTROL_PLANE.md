@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/managed-media-fallback-recovery-20261108` at `6c419672bb12c445eb2a20c6c981dd945f1cca69`
+Implementation baseline: `session-b/profile-heap-bulkhead-20261108` at `e19ae8d6a515868b7eccb8745cbbc9008078f2b0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
