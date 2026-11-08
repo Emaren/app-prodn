@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b2fc0b6786889fc66a9e71fdfa0de9b010287165472062dc682239b7b45dd652",
+      "sha256": "0ab6a7948cb46fd75c9639c63ae4a0f8057b7ad1db26821f6a842295ae1ecc70",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2141,6 +2141,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "observed-project-activity-website-only-no-canonical-certification",
+      "id": "aoe2war.app-prodn.session-b-traffic-current-observation-public-view-20261108",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "restricted",
+      "sha256": "988fee7ee520d1a0b90c22dfe08fd11cb5558cc39750846f1699a334794bda1e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "traffic-api"
+      ],
+      "title": "Session B \u2014 Traffic Current Observation Public View, 2026-11-08",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -2615,7 +2638,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/profile-heap-bulkhead-20261108",
-    "commit": "8f1b5a79f1bec55b011ba1919e17a677c5af9e1a"
+    "commit": "ff6132f4e795416122ac11bb7b562f36cfc83cc4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

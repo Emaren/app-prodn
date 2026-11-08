@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "restricted"
 ---
 
-# Session B — Traffic Current Observation Public View, November 8 2026
+# Session B — Traffic Current Observation Public View, 2026-11-08
 
 ## Actual evidence and visible problem
 
