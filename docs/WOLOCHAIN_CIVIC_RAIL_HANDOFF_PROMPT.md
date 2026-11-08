@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "cross-repository-handoff"
-reviewed_at: "2026-10-08"
+reviewed_at: "2026-11-08"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -17,20 +17,39 @@ sensitivity: "internal"
 
 Paste the following into a separate Codex task rooted in WoloChain.
 
-Reviewed against the owning source on 2026-10-08. This is a future local/test
-handoff, not proof that Oracle or Forge funding has been implemented or activated.
+Substantively re-reviewed on 2026-11-08 against the **held, non-deployed**
+WoloChain source `32fddb7590553a7a6122e62a3a237a08039e41fa`,
+[WoloChain Satchel operator gates](https://github.com/Emaren/wolochain/blob/32fddb7590553a7a6122e62a3a237a08039e41fa/docs/war-satchel-mainnet-execution.md),
+[mainnet services and ports](https://github.com/Emaren/wolochain/blob/32fddb7590553a7a6122e62a3a237a08039e41fa/docs/mainnet-services-and-ports.md),
+and the [Chain financial release register](https://github.com/Emaren/wolochain/issues/5).
+The historical 2026-10-08 prompt below is revised to **local/test-only**
+advisory instructions. This review establishes source/architecture boundaries,
+**not** acceptance of C01–C09, Oracle/Forge funding, live signer identity,
+remote backups, independent witnesses, or transaction/payment finality.
+No WoloChain or HEL1 runtime source was modified as part of this review.
 
 ```text
-Work only in `/Users/tonyblum/projects/WoloChain-wolo-1`.
+Locate the actual WoloChain repository first; on the operator Mac the
+verified project root is `$HOME/projects/WoloChain`, not the old
+`/Users/tonyblum/projects/WoloChain-wolo-1` path. Never treat that checkout's
+default `main` as the held financial release source. Obtain an explicitly
+reviewed source commit and create a separate isolated worktree without modifying
+Session A's existing branches, worktrees, or uncommitted files. As of this
+review, `32fddb7590553a7a6122e62a3a237a08039e41fa` is a
+**read-only reference for architecture**, not permission to merge or deploy.
 
-Start by writing a concrete execution plan. Then inspect the real repo and
-implement, test, and document the requested local/test-only settlement work.
-Read that repo's `AGENTS.md`, `/Users/tonyblum/projects/VPSSentry/context/SYSTEM_MAP.md`,
-`/Users/tonyblum/projects/VPSSentry/context/SERVER_STORAGE_MAP.md`, `README.md`,
-`docs/mainnet-settlement-runbook.md`, `docs/mainnet-services-and-ports.md`,
-`docs/warbound-trophies.md`, `cmd/wolochaind/cmd/settlement.go`,
+Start with a concrete execution plan, source/branch inventory, and path audit.
+Read the actual worktree's `AGENTS.md`, `README.md`,
+`docs/mainnet-settlement-runbook.md`,
+`docs/mainnet-services-and-ports.md`,
+`docs/war-satchel-mainnet-execution.md`, `docs/warbound-trophies.md`,
+`cmd/wolochaind/cmd/settlement.go`,
 `cmd/wolochaind/cmd/settlement_challenge.go`, `app/app_config.go`, and
-`app/upgrades.go` before changing code. Trust the actual tree if a path moved.
+`app/upgrades.go` where present in the **selected reviewed source**.
+Cross-check the canonical architecture and storage maps, but do not use stale
+local context captures as a substitute for the actual live inventory. If
+required paths moved or are absent, report the difference and stop for source
+selection rather than silently substituting the historical default branch.
 
 Objective
 
@@ -66,8 +85,15 @@ Production safety boundary
   running binary, override configuration, chain state, and services before work.
   A historical checkout or binary seal does not establish current runtime truth.
   Never normalize consensus from Git parity alone.
-- Existing Bet and Founder settlement services use their established binary and
-  listen on loopback ports 8092 and 8093.
+- The incumbent Bet/Founder settlement services have been observed on 8092
+  and 8093, but **their root-owned producer processes and Wolo REST/RPC
+  paths are not yet proven C03-contained**. Current root-owned listeners also
+  include REST 1318 and RPC 27657. A loopback bind or UID1000 firewall denial
+  does not prove financial quiescence or prevent all root/credential signing.
+- The dedicated **War Satchel execution/review reservation uses 8094/8095**,
+  with both funded services inactive and C01–C09 financially held. Never
+  reuse 8094 or 8095 for Oracle or Forge; never route new funded flows back
+  through the incumbent 8092/8093 path.
 - Do not replace, restart, rebuild, relink, or normalize the production consensus
   binary. Do not remove its override, alter genesis, schedule an upgrade, create
   or fund live keys, transfer WOLO, install a service, or mutate production state.
@@ -130,8 +156,11 @@ Deliverables
    it on production. It requires a dedicated Oracle escrow key/address, root-only
    keyring and passphrase, unique auth token and request namespace, separate
    volume-backed state and backup paths, reserve floor and fee headroom, and a
-   loopback listener selected only after a live port audit. Port 8094 is only a
-   candidate because 8092 and 8093 are already occupied.
+   loopback listener selected **only after** a new independent host port,
+   service identity, network access, custody and credential audit. **Do not
+   propose or reserve 8094/8095**: those are allocated to the held War Satchel
+   executor and reserve reviewer, respectively. The old 8094 Oracle suggestion
+   is explicitly retired; no replacement port is pre-approved here.
 
 7. Parameterize health, backup, restore, and alert verification for that isolated
    profile. A systemd unit being active is insufficient. Health must prove
@@ -141,8 +170,9 @@ Deliverables
 
 8. Define a separate Kingdom Forge custody contract and deployment profile. It
    must use its own purpose namespace, escrow address, signer, credentials, state,
-   port, reserve, and reconciliation ledger. Do not route Forge deposits through
-   Oracle, Bet, or Founder custody. Keep Forge milestone authorization and draw
+   independently audited port (never 8092, 8093, 8094 or 8095), reserve,
+   and reconciliation ledger. Do not route Forge deposits through Oracle,
+   Satchel, Bet or Founder custody. Keep Forge milestone authorization and draw
    amounts caller-supplied by AoE2HDBets; WoloChain validates and executes exact
    authorized transfers without inventing project policy. Implement only the
    shared proof primitives needed now and leave any live Forge funding profile as
@@ -164,8 +194,14 @@ Deliverables
     Report every changed file, test command and result, unresolved app/ops work,
     and an explicit statement that production state and services were not changed.
 
+Before any Oracle/Forge funding-profile activation, independently satisfy
+its **own** custody/signers, writer-containment, bank/liability solvency,
+fresh coordinated encrypted backup, same-backup restore, real independent
+governance and transaction-specific owner approval. Do not borrow the still-held
+C01–C09 War Satchel permissions or reuse 8094/8095 for another product.
+
 Stop and report before any action that would touch production chain state,
-production keys, live WOLO balances, the pinned consensus runtime, or the
-existing 8092/8093 rails. Completing the local/test rail does not authorize a
-production install or activation.
+production keys, live WOLO balances, the pinned consensus runtime, the
+incumbent 8092/8093 rails, or reserved 8094/8095 services. Completing the
+local/test rail does not authorize a production install or activation.
 ```

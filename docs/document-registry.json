@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "031e97d3d36249ccd4f9e86442a65ad934200ab28922af42f89ab4567260b270",
+      "sha256": "49409674aa665197616e84c706397a3e05e9dd0b4d71f091689b31199a75401f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1513,9 +1513,9 @@
       "owner": "aoe2war-web",
       "path": "docs/R25_B3_OPERATOR_EVIDENCE_RELEASE.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-10-31",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "eaca0b09af2ff9c5ccc456c80b77b37bd7f7052305fc421061829bfaf38f6d54",
+      "sha256": "ec8493ce4f93e310187edaf0af9e78074d59a659976483d65bb6faecf057263f",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -1535,9 +1535,9 @@
       "owner": "aoe2war-web",
       "path": "docs/R25_B4_KINGDOM_GRAPH_RELEASE.md",
       "review_interval_days": 7,
-      "reviewed_at": "2026-10-31",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "cb474ce970f5eda4dcb5b56aefac512e308023c4c7b4d34548dafad5242ccce0",
+      "sha256": "451e5295c333df8517516aee86cad381bfd0ecb21be22903c802a94c44f501e9",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2311,9 +2311,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-08",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "68bea109901cfab60c9e4c40d7eb0fd864fb11ca60046a2a23ff6159cabe9aa4",
+      "sha256": "73a9002f0456b788272ed8390a0844f61494cb3275d91c84391e929a9b1a74a1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2503,8 +2503,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/app-r25-bets-public-history-ui-20261107",
-    "commit": "ed7735bf6c8f09af176cb1d06e3359c51cf3770a"
+    "branch": "session-b/r25-nonfinancial-recovery-candidate-20261107",
+    "commit": "a4bbbb5c134e237f72a2a9a09b4c11d9ed087bca"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/app-r25-bets-public-history-ui-20261107` at `ed7735bf6c8f09af176cb1d06e3359c51cf3770a`
+Implementation baseline: `session-b/r25-nonfinancial-recovery-candidate-20261107` at `a4bbbb5c134e237f72a2a9a09b4c11d9ed087bca`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
