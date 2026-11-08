@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/traffic-canonical-only-20261108` at `3b4c36d42cd8db9d4944b33d73dd868c32640234`
+Implementation baseline: `session-b/traffic-canonical-only-20261108` at `6aff2eaf999f456440a899838270ba452b43a5d8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
