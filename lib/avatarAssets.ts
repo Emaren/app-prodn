@@ -436,6 +436,10 @@ export function featuredAvatarUrlForUser(
       );
 }
 
+// Rotate only when featured avatar read/identity semantics change. Both
+// server-rendered cards and browser fallback paths share this cache key.
+export const FEATURED_AVATAR_EDGE_REVISION = "20261108-r25-media-access-1";
+
 export function featuredAvatarCardUrlForUser(
   uid: string | null | undefined,
   name: string | null | undefined,
@@ -455,7 +459,7 @@ export function featuredAvatarCardUrlForUser(
       { size: "card" }
     ),
     "edgev",
-    "20261103-featured-1"
+    FEATURED_AVATAR_EDGE_REVISION
   );
 
   return revision == null

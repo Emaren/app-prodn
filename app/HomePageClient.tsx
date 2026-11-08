@@ -41,6 +41,7 @@ import {
   avatarCardUrlForUser,
   avatarUrlForName,
   featuredAvatarCardUrlForUser,
+  FEATURED_AVATAR_EDGE_REVISION,
 } from "@/lib/avatarAssets";
 import { resolveTimeZone } from "@/lib/timeDisplay";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
@@ -843,7 +844,7 @@ function versionFeaturedWarriorImageUrl(src: string) {
   if (!src.startsWith("/api/media-assets/avatar/") || src.includes("edgev=")) {
     return src;
   }
-  return `${src}${src.includes("?") ? "&" : "?"}edgev=20261103-featured-1`;
+  return `${src}${src.includes("?") ? "&" : "?"}edgev=${FEATURED_AVATAR_EDGE_REVISION}`;
 }
 
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {

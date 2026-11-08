@@ -49,9 +49,13 @@ test("failed featured images use versioned public paths and a safe fallback", ()
   const home = read("app/HomePageClient.tsx");
   const avatars = read("lib/avatarAssets.ts");
   assert.match(home, /function versionFeaturedWarriorImageUrl\(src: string\)/);
-  assert.match(home, /edgev=20261103-featured-1/);
+  assert.match(home, /FEATURED_AVATAR_EDGE_REVISION/);
+  assert.match(home, /edgev=\$\{FEATURED_AVATAR_EDGE_REVISION\}/);
+  assert.doesNotMatch(home, /20261103-featured-1/);
   assert.match(home, /onError=\{\(\) => replaceFailedImage\(layer, layerSrc\)\}/);
   assert.match(home, /UNKNOWN_FEATURED_WARRIOR_IMAGE/);
   assert.match(home, /pendingSrcRef\.current = fallback/);
-  assert.match(avatars, /"edgev",\s*"20261103-featured-1"/);
+  assert.match(avatars, /export const FEATURED_AVATAR_EDGE_REVISION = "20261108-r25-media-access-1"/);
+  assert.match(avatars, /"edgev",\s*FEATURED_AVATAR_EDGE_REVISION/);
+  assert.doesNotMatch(avatars, /20261103-featured-1/);
 });
