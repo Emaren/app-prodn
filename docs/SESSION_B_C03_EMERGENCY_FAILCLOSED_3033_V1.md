@@ -2,8 +2,15 @@
 id: "aoe2war.app-prodn.c03-failclosed-emergency-3033-v1"
 title: "C03 emergency-only finance-inert 3033 fallback"
 type: "runbook"
-status: "review"
-owners: ["Session B App Engineering"]
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "session-b-emergency-only-no-c03-funding-or-authenticated-rollback"
+reviewed_at: "2026-11-09"
+review_interval_days: 7
+sensitivity: "restricted"
 ---
 
 # C03 emergency-only finance-inert 3033 fallback
