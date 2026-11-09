@@ -1,0 +1,17 @@
+---
+id: "aoe2war.app-prodn.c03-failclosed-emergency-3033-v1"
+title: "C03 emergency-only finance-inert 3033 fallback"
+type: "runbook"
+status: "review"
+owners: ["Session B App Engineering"]
+---
+
+# C03 emergency-only finance-inert 3033 fallback
+
+This is a small, independently isolated HTTP listener intended only for fail-closed public maintenance, not a functional authenticated R25 rollback and NOT qualification for C03_APP_HANDOFF=YES. It does not retain admin, nonadmin or Scribe sessions and does not query any database; never present it as authenticated continuity.
+
+The program binds only 127.0.0.1:3033, serves 200 to an internal health-check declaring finance/auth disabled, and returns 503 for all public/protected/mutation routes. No SQL, Steam, Satchel, wallets, C04, C08 or C09 code is imported. Every nonhealth response is no-store and disables active content. The systemd unit uses existing restricted Linux identity aoe2war-web-prod, 64 MiB memory max, zero swap, no capabilities, strict filesystem, localhost-only network and 8-task ceiling.
+
+Pre-admission on HEL1: exact reviewed source+unit SHA, no previous listener, current 3030/3032 and validator PIDs, 8092/8093 masks and 8092–8095 closed. Do not add Nginx routes without separate approval. Verify live loopback status, 503 protected-route and mutating-route denial, systemd memory metrics, unchanged original web and validator PIDs and C03/C04 checksum. Do not route real traffic here unless a separate reviewed emergency policy explicitly approves public maintenance mode, measures cutover/restore time and declares loss of authentication and dynamic functionality.
+
+The independent FULL R25 rollback remains required. This helper is only emergency fail-closed infrastructure under severe HEL1 memory pressure.
