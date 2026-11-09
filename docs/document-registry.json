@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "08e8365ad12f9d004b40f2bf68902219b4979627883712b0c4616042d0af3787",
+      "sha256": "fe06180602def18c2c1d568ea21fe7c5c1e3e63d046696d17aa2789433ec1952",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3108,7 +3108,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-b1ef-exact-single-slot-rollback-trial",
-    "commit": "85776e6ece8cb8f73ab74a23f1c1f410d7be8047"
+    "commit": "d0d59f86fe06390c3bae010387fa549564f10d99"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
