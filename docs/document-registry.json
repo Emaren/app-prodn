@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e277cb05a6b2d37b77524624087a7ea3d0da3ac1ef03f8dba424e4c178b97041",
+      "sha256": "08e8365ad12f9d004b40f2bf68902219b4979627883712b0c4616042d0af3787",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2771,6 +2771,28 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "one-use nonfunded physical trial and compulsory original release restoration; NOT permanent release",
+      "id": "aoe2war.app-prodn.session-b-c03-b1ef-physical-single-slot-trial-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_B1EF_PHYSICAL_SINGLE_SLOT_TRIAL_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "aff87527e5c3bf3139cc958ac0d61967cc2198ebf3da572ecb55eede46043f0c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 exact CI b1ef single-slot functional trial and compulsory V17 recovery",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3085,8 +3107,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-public-live-explicit-api-20261109",
-    "commit": "043f95fcb48e268ab304dddeb610050529703e40"
+    "branch": "session-b/c03-b1ef-exact-single-slot-rollback-trial",
+    "commit": "85776e6ece8cb8f73ab74a23f1c1f410d7be8047"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

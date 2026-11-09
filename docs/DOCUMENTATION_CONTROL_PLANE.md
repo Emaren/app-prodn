@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-public-live-explicit-api-20261109` at `043f95fcb48e268ab304dddeb610050529703e40`
+Implementation baseline: `session-b/c03-b1ef-exact-single-slot-rollback-trial` at `85776e6ece8cb8f73ab74a23f1c1f410d7be8047`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **135**
+- Authoritative repository documents: **136**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 42
+- `runbook`: 43
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 31
+- `draft`: 32
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -172,6 +172,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
+| [C03 exact CI b1ef single-slot functional trial and compulsory V17 recovery](release/SESSION_B_C03_B1EF_PHYSICAL_SINGLE_SLOT_TRIAL_20261109.md) | `runbook` | `draft` | `one-use nonfunded physical trial and compulsory original release restoration; NOT permanent release` |
 | [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `runbook` | `draft` | `nonfinancial HTTP classification only, no SQL/financial role changes` |
 | [C03 restricted Steam V16 ProtectHome source evidence and second rollback](release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md) | `runbook` | `draft` | `source-only exact-identity fail-closed App release; no funding` |
 | [C03 explicit approved public-live endpoint without financial authority](release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md) | `runbook` | `draft` | `App-only public read projection; finance execution denied` |
