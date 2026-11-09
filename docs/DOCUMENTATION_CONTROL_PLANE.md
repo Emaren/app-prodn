@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-b1ef-exact-single-slot-rollback-trial` at `dfe2cf818bcfea3bd821915ef3658b6e76a358af`
+Implementation baseline: `session-b/c03-v18-roundtrip-isolated-20261109` at `b10ea7005d02c93746e5ef64ced0756bab0c4587`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **137**
+- Authoritative repository documents: **138**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 44
+- `runbook`: 45
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 33
+- `draft`: 34
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -179,6 +179,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [C03 explicit approved public-live endpoint without financial authority](release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md) | `runbook` | `draft` | `App-only public read projection; finance execution denied` |
 | [C03 exact restricted 3032 R25 promotion and automatic rollback](release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md) | `runbook` | `draft` | `root-only one-use candidate admission, finance-quarantined` |
 | [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `runbook` | `draft` | `source-only, finance-restricted, requires physical acceptance` |
+| [C03 V18 retained-site reversible rollback and return: exact source and isolated receipt](release/SESSION_B_C03_V18_REVERSIBLE_ROUNDTRIP_20261109.md) | `runbook` | `draft` | `one-slot source-pinned nonfunded rollback/return; no financial release` |
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |

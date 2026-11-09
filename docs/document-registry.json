@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ed14db0c6b487c8d05782c79618a2916d8e01403aa43e951b49f552ac0744324",
+      "sha256": "e1b914ab2598d20761249766b3fd12ad95be93270392b493c1da9990fb4c4299",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2926,6 +2926,28 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "one-slot source-pinned nonfunded rollback/return; no financial release",
+      "id": "aoe2war.app-prodn.session-b-c03-v18-reversible-roundtrip-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_V18_REVERSIBLE_ROUNDTRIP_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "427580911f68e10675739078eb78add2a622dc9a4e6ac38bb5d6de512434bf4b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 V18 retained-site reversible rollback and return: exact source and isolated receipt",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3129,8 +3151,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-b1ef-exact-single-slot-rollback-trial",
-    "commit": "dfe2cf818bcfea3bd821915ef3658b6e76a358af"
+    "branch": "session-b/c03-v18-roundtrip-isolated-20261109",
+    "commit": "b10ea7005d02c93746e5ef64ced0756bab0c4587"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
