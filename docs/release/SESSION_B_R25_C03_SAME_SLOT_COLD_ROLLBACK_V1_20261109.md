@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "restricted"
 ---
 
-# Session B C03 restricted 3032 cold recovery, without another Next.js process
+# Session B C03 same-slot finance-restricted cold rollback
 
 ## Physical reason for a cold, same-port rollback
 
