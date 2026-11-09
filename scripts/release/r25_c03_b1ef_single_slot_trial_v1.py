@@ -112,7 +112,18 @@ def stage_ready():
  need((STAGE/'.next/BUILD_ID').read_text().strip()==r['build_id'],'STAGE_BUILD_ID')
  need((STAGE/'.aoe2war-build-version').read_text().strip()==r['build_version'],'STAGE_VERSION')
  need(file_sha(STAGE/'.aoe2war-runtime-manifest.json')==r['manifest_sha256'],'STAGE_RUNTIME_MANIFEST')
- need(STAGE_RECEIPT.is_file(),'STAGE_RECEIPT_ABSENT')
+ sr=json.loads(pinned(STAGE_RECEIPT,0o600).read_text())
+ need(sr.get('schema')=='aoe2war.app.c03.b1ef-single-slot-recovery.v1'
+      and sr.get('status')=='PASS_VERIFIED_CI_RUNTIME_STAGED_NOT_STARTED'
+      and sr.get('source_sha')==SOURCE
+      and sr.get('archive_sha256')==r['sha256']
+      and sr.get('build_id')==r['build_id']
+      and sr.get('build_version')==r['build_version']
+      and sr.get('runtime_files')==int(r['files'])+2
+      and sr.get('no_runtime_started') is True
+      and sr.get('finance_authorized') is False
+      and sr.get('funding_authorized') is False,
+      'STAGE_RECEIPT_UNVERIFIED')
  return r
 def seal(path,obj):
  need(not path.exists() and not path.is_symlink(),'ONE_USE_RECEIPT_ALREADY_WRITTEN')
