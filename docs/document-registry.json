@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a5393a0ba2acb1588fa908a73989bbf38f0ef3e326447ad2a0c6fc1ff1069028",
+      "sha256": "264e8b53511d9d18804ab2a4851a6428403d83f41dd3fc74c9410b492a96c388",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2795,8 +2795,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/bets-readonly-hold-v1-20261109",
-    "commit": "18f725a87b20082a96303d04fb97105f9f2b8a07"
+    "branch": "session-b/c04-steam-v13-staggered-expiry-20261109",
+    "commit": "a2746fb59422301e23dc391a5914fee3108ba56a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
