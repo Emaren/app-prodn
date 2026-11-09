@@ -16,6 +16,11 @@ export const NATIVE_SATCHEL_CLAIM_END = BigInt("999999999999");
 const EXECUTION = "http://127.0.0.1:8094/satchel/v1/returns";
 const HASH = /^[A-F0-9]{64}$/;
 const ASCII = /^[a-zA-Z0-9_.:-]{1,160}$/;
+const SIGNED_V2_APPROVAL_FIELDS = new Set([
+  "version", "ticket_id", "market_id", "leg_id", "entitlement_id",
+  "allocation", "operation_id", "claim_id", "owner_id", "claim_kind",
+  "amount_uwolo", "allocation_digest", "issued_at", "expires_at", "signature",
+]);
 const REASONS = new Set([
   "intent_persisted", "pre_sign_permit_revoked", "signing_started",
   "signing_uncertain", "invalid_signed_bytes_unknown",
@@ -73,6 +78,13 @@ function canonical(value: unknown): string {
 }
 export function nativeReturnIdentity(approval: unknown): NativeAttemptIdentity {
   const a = map(approval);
+  // Reject legacy claim grouping, historic transfer-index hints and other
+  // unsigned policy fields before journaling or making a native network call.
+  // The separately authenticated v2 approval verifier has this same exact
+  // top-level field scope; transport must not be more permissive.
+  if (Object.keys(a).length !== SIGNED_V2_APPROVAL_FIELDS.size ||
+      Object.keys(a).some(key => !SIGNED_V2_APPROVAL_FIELDS.has(key)))
+    refuse("invalid_signed_v2_approval_shape");
   const id = freshSatchelClaimId(a.claim_id);
   if (a.version !== 2 || typeof a.operation_id !== "string" ||
       !ASCII.test(a.operation_id) || typeof a.owner_id !== "string" ||

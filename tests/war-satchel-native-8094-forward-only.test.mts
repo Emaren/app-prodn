@@ -57,6 +57,27 @@ test("fresh ID is a disjoint 12-digit native namespace, never old payout",()=>{
   assert.throws(()=>freshSatchelClaimId(id),/fresh_claim_namespace_required/);
  }
 });
+test("legacy grouping and historic transfer-index fields reject before journal or native 8094",async()=>{
+ const db=journal(),m=mock(()=>{throw Error("network request must be forbidden");});
+ const injected=[
+  {claim_group_key:"market"},
+  {historical_claim_id:"889"},
+  {historical_claim_id:"9645"},
+  {legacy_claim_hash:"A".repeat(64)},
+  {historical_transfer_index:"absent"},
+  {transfer_index_proven:false},
+ ];
+ for(const fields of injected){
+  await assert.rejects(
+   submitFreshNativeReturnOnce({...approval(),...fields},token,db,m.reader),
+   /invalid_signed_v2_approval_shape/,
+  );
+ }
+ assert.equal(db.calls,0);
+ assert.equal(db.rows.size,0);
+ assert.equal(m.calls.length,0);
+});
+
 test("one durable attempt before exactly one POST, then GET on duplicate",async()=>{
  const db=journal();const m=mock(()=>new Response(unknown(),{status:200}));
  const first=await submitFreshNativeReturnOnce(approval(),token,db,m.reader);
