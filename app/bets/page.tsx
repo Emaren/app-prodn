@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 import BetsDisplayRail from "@/components/bets/BetsDisplayRail";
 import PublishedBetHistoryFallback from "@/components/bets/PublishedBetHistoryFallback";
+import PublishedLiveMarketPreview from "@/components/bets/PublishedLiveMarketPreview";
 import { isPublicBetsReadHoldPayload } from "@/lib/betsPublicReadHold";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
@@ -3528,7 +3529,8 @@ export default function BetsPage() {
             but no betting, custody or payout authority is active here.
           </p>
         </header>
-        <div className="mx-auto max-w-6xl px-4">
+        <div className="mx-auto max-w-6xl space-y-6 px-4">
+          <PublishedLiveMarketPreview />
           <PublishedBetHistoryFallback />
         </div>
       </main>
