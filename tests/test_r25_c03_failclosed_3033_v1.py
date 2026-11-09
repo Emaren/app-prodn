@@ -72,7 +72,7 @@ class Failclosed3033(unittest.TestCase):
             m.serve(host="0.0.0.0", port=0)
     def test_unit_resource_and_network_lockdown(self):
         text = UNIT.read_text()
-        for required in ["User=aoe2war-web-prod", "ProtectSystem=strict", "ProtectHome=yes", "NoNewPrivileges=yes", "PrivateDevices=yes", "MemoryMax=67108864", "MemorySwapMax=0", "TasksMax=8", "CPUQuota=15%", "IPAddressDeny=any", "IPAddressAllow=localhost", "CapabilityBoundingSet="]:
+        for required in ["User=aoe2war-web-prod", "ProtectSystem=strict", "ProtectHome=yes", "NoNewPrivileges=yes", "PrivateDevices=yes", "ConditionFileNotEmpty=/usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py", "MemoryMax=67108864", "MemorySwapMax=0", "TasksMax=8", "CPUQuota=15%", "IPAddressDeny=any", "IPAddressAllow=localhost", "CapabilityBoundingSet="]:
             self.assertIn(required, text)
         self.assertNotIn("DATABASE_URL", text)
         self.assertNotIn("PORT=8092", text)

@@ -1,7 +1,7 @@
 [Unit]
 Description=AoE2WAR C03 emergency-only fail-closed 3033 (NOT authenticated rollback)
 After=network.target
-ConditionPathIsRegular=/usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py
+ConditionFileNotEmpty=/usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py
 
 [Service]
 Type=simple
