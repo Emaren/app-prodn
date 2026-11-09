@@ -1,6 +1,6 @@
 ---
 id: "aoe2war.app-prodn.session-b-public-v9-live-market-fallback-20261109"
-title: "R25 finance-restricted published v9 current market preview (App-only)"
+title: "R25 finance-restricted published v9 current market preview"
 type: "runbook"
 status: "draft"
 owner: "aoe2war-web"
