@@ -1,5 +1,6 @@
 type RuntimeCrashDiagnosticGlobal = typeof globalThis & {
   __aoe2warRuntimeCrashDiagnosticsInstalled?: boolean;
+  __aoe2warR25HeapTelemetryTimer?: ReturnType<typeof setInterval>;
 };
 
 function isClosedControllerError(error: unknown) {
@@ -132,4 +133,43 @@ export function installRuntimeCrashDiagnostics() {
       );
     },
   );
+}
+
+/**
+ * Bounded, passive heap census in the isolated R25 Node runtime. The previous
+ * release died with genuine V8 2,048-MiB heap exhaustion. This is evidence,
+ * not a restart watchdog, heap-limit increase or financial-admission signal.
+ * No route, cookie, SQL, UID, memory address or secret appears in the output.
+ */
+export function installR25HeapTelemetry() {
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.AOE2WAR_RUNTIME_PROFILE !== "nonfinancial-production-v1" ||
+    process.env.AOE2WAR_R25_ISOLATED_WEB !== "true"
+  ) {
+    return;
+  }
+  const state = globalThis as RuntimeCrashDiagnosticGlobal;
+  if (state.__aoe2warR25HeapTelemetryTimer) return;
+
+  const periodMs = 30_000;
+  const timer = setInterval(() => {
+    const m = process.memoryUsage();
+    const values = {
+      schema: "aoe2war.r25.v8-heap-pressure-observation.v1",
+      at: new Date().toISOString(),
+      pid: process.pid,
+      uptime_seconds: Math.round(process.uptime()),
+      rss_mib: mib(m.rss),
+      heap_used_mib: mib(m.heapUsed),
+      heap_total_mib: mib(m.heapTotal),
+      external_mib: mib(m.external),
+      array_buffers_mib: mib(m.arrayBuffers),
+      finance_authorized: false,
+      status: "OBSERVATION_ONLY_NOT_STABILITY_CERTIFICATE",
+    };
+    console.info("[AOE2WAR_R25_HEAP_OBSERVATION]", JSON.stringify(values));
+  }, periodMs);
+  timer.unref?.();
+  state.__aoe2warR25HeapTelemetryTimer = timer;
 }

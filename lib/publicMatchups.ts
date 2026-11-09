@@ -2356,7 +2356,7 @@ const loadGenerationCachedPublicRivalryBoards =
         typeof buildPublicRivalryBoardsFresh
       >
     >
-  >(4);
+  >(2, { serializeLoads: true });
 
 export async function loadPublicRivalryBoards(
   prisma: PrismaClient,
@@ -2457,7 +2457,7 @@ const loadGenerationCachedPublicBattleArchive =
         typeof buildPublicBattleArchiveFresh
       >
     >
-  >(4);
+  >(2, { serializeLoads: true });
 
 export async function loadPublicBattleArchive(
   prisma: PrismaClient,

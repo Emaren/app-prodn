@@ -16,12 +16,18 @@ export type GenerationKeyedLoader<Source extends object, Value> = (
  */
 export function createGenerationKeyedLoader<Source extends object, Value>(
   maxGenerations = 1,
+  options: { serializeLoads?: boolean } = {},
 ): GenerationKeyedLoader<Source, Value> {
   const retainedGenerationCount = Math.max(1, Math.floor(maxGenerations));
   const loadsBySource = new WeakMap<
     Source,
     Map<string, GenerationLoad<Value>>
   >();
+  // Large replay corpus projections can take many seconds and allocate
+  // substantial heap. Serial mode caps those builds to ONE active transport
+  // per Prisma source across changing generation keys. Normal lightweight
+  // consumers retain the original fully concurrent behavior.
+  const latestLoadCompletionBySource = new WeakMap<Source, Promise<void>>();
 
   return (source, generation, loadFresh) => {
     let loads = loadsBySource.get(source);
@@ -39,7 +45,12 @@ export function createGenerationKeyedLoader<Source extends object, Value>(
       return existing;
     }
 
+    const previousLoad = options.serializeLoads
+      ? latestLoadCompletionBySource.get(source)
+      : undefined;
+
     const run = Promise.resolve()
+      .then(() => previousLoad)
       .then(loadFresh)
       .catch((error) => {
         if (loads?.get(generation) === run) {
@@ -49,6 +60,15 @@ export function createGenerationKeyedLoader<Source extends object, Value>(
       });
 
     loads.set(generation, run);
+
+    if (options.serializeLoads) {
+      // Failed jobs cannot poison the queue; their callers still see the
+      // original rejection and may retry. No completed result is duplicated.
+      latestLoadCompletionBySource.set(
+        source,
+        run.then(() => undefined, () => undefined),
+      );
+    }
 
     while (loads.size > retainedGenerationCount) {
       const oldestGeneration = loads.keys().next().value;

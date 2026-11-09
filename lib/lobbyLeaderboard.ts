@@ -93,7 +93,7 @@ const loadLeaderboardGameCorpusByGeneration =
   createGenerationKeyedLoader<
     PrismaClient,
     LeaderboardGameCorpus
-  >(2);
+  >(1, { serializeLoads: true });
 let leaderboardGameCorpusEpoch = 0;
 
 

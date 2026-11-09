@@ -37,7 +37,7 @@ const loadRawCorpusByGeneration =
   createGenerationKeyedLoader<
     PrismaClient,
     PublicLeaderboardRawGame[]
-  >(2);
+  >(1, { serializeLoads: true });
 
 /*
  * Manual mutation invalidation participates in the key as a local epoch.
