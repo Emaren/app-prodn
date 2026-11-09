@@ -1,0 +1,572 @@
+{
+  "canonical_migration_count": 13,
+  "pg_major": 16,
+  "relations": [
+    {
+      "attached_to": "war_satchel_auto_spend_consents",
+      "kind": "index",
+      "name": "ix_satchel_auto_consent_owner_plan"
+    },
+    {
+      "attached_to": "war_satchel_funded_journal",
+      "kind": "index",
+      "name": "ix_satchel_funded_journal_owner"
+    },
+    {
+      "attached_to": "war_satchel_funded_receipts",
+      "kind": "index",
+      "name": "ix_satchel_funded_receipts_owner"
+    },
+    {
+      "attached_to": "war_satchel_funded_reservations",
+      "kind": "index",
+      "name": "ix_satchel_funded_reservation_owner"
+    },
+    {
+      "attached_to": "war_satchel_funded_claim_returns",
+      "kind": "index",
+      "name": "ix_satchel_funded_return_owner"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_observations",
+      "kind": "index",
+      "name": "ix_satchel_return_execution_observations"
+    },
+    {
+      "attached_to": "war_satchel_funded_withdrawal_challenges",
+      "kind": "index",
+      "name": "ix_satchel_withdraw_challenge_owner"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_observations",
+      "kind": "index",
+      "name": "ix_satchel_withdraw_observation_op"
+    },
+    {
+      "attached_to": "war_satchel_funded_withdrawals",
+      "kind": "index",
+      "name": "ix_satchel_withdrawal_owner_status"
+    },
+    {
+      "attached_to": "war_satchel_deposit_intents",
+      "kind": "index",
+      "name": "ix_war_satchel_intents_owner_created"
+    },
+    {
+      "attached_to": "war_satchel_deposit_intents",
+      "kind": "index",
+      "name": "ix_war_satchel_intents_status_expiry"
+    },
+    {
+      "attached_to": "war_satchel_ledger_accounts",
+      "kind": "index",
+      "name": "ix_war_satchel_ledger_owner_kind"
+    },
+    {
+      "attached_to": "war_satchel_ledger_postings",
+      "kind": "index",
+      "name": "ix_war_satchel_postings_account_time"
+    },
+    {
+      "attached_to": "war_satchel_proof_candidates",
+      "kind": "index",
+      "name": "ix_war_satchel_proofs_owner_created"
+    },
+    {
+      "attached_to": "war_satchel_wallet_challenges",
+      "kind": "index",
+      "name": "ix_war_satchel_wallet_actor_expiry"
+    },
+    {
+      "attached_to": "war_satchel_wallet_challenges",
+      "kind": "index",
+      "name": "ix_war_satchel_wallet_actor_issue"
+    },
+    {
+      "attached_to": "war_satchel_auto_spend_consents",
+      "kind": "index",
+      "name": "uq_satchel_consent_nonce"
+    },
+    {
+      "attached_to": "war_satchel_funded_receipts",
+      "kind": "index",
+      "name": "uq_satchel_funded_chain_transfer"
+    },
+    {
+      "attached_to": "war_satchel_funded_journal",
+      "kind": "index",
+      "name": "uq_satchel_funded_journal_source"
+    },
+    {
+      "attached_to": "war_satchel_funded_receipts",
+      "kind": "index",
+      "name": "uq_satchel_funded_proof"
+    },
+    {
+      "attached_to": "war_satchel_funded_reservations",
+      "kind": "index",
+      "name": "uq_satchel_funded_reservation_execution"
+    },
+    {
+      "attached_to": "war_satchel_funded_reservations",
+      "kind": "index",
+      "name": "uq_satchel_funded_reservation_ticket"
+    },
+    {
+      "attached_to": "war_satchel_funded_reservations",
+      "kind": "index",
+      "name": "uq_satchel_funded_reservation_ticket_request"
+    },
+    {
+      "attached_to": "war_satchel_funded_claim_returns",
+      "kind": "index",
+      "name": "uq_satchel_funded_return_claim"
+    },
+    {
+      "attached_to": "war_satchel_funded_claim_returns",
+      "kind": "index",
+      "name": "uq_satchel_funded_return_transfer"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_reviews",
+      "kind": "index",
+      "name": "uq_satchel_return_execution_entitlement"
+    },
+    {
+      "attached_to": "war_satchel_funded_withdrawals",
+      "kind": "index",
+      "name": "uq_satchel_withdrawal_challenge"
+    },
+    {
+      "attached_to": "war_satchel_funded_withdrawals",
+      "kind": "index",
+      "name": "uq_satchel_withdrawal_hash"
+    },
+    {
+      "attached_to": "war_satchel_deposit_intents",
+      "kind": "index",
+      "name": "uq_war_satchel_intents_id_owner"
+    },
+    {
+      "attached_to": "war_satchel_deposit_intents",
+      "kind": "index",
+      "name": "uq_war_satchel_intents_memo"
+    },
+    {
+      "attached_to": "war_satchel_deposit_intents",
+      "kind": "index",
+      "name": "uq_war_satchel_intents_nonce"
+    },
+    {
+      "attached_to": "war_satchel_ledger_accounts",
+      "kind": "index",
+      "name": "uq_war_satchel_ledger_account_key"
+    },
+    {
+      "attached_to": "war_satchel_ledger_journals",
+      "kind": "index",
+      "name": "uq_war_satchel_ledger_source_key"
+    },
+    {
+      "attached_to": "war_satchel_ledger_postings",
+      "kind": "index",
+      "name": "uq_war_satchel_posting_one_entry_per_account"
+    },
+    {
+      "attached_to": "war_satchel_proof_candidates",
+      "kind": "index",
+      "name": "uq_war_satchel_proofs_chain_tx_ordinal"
+    },
+    {
+      "attached_to": "war_satchel_proof_candidates",
+      "kind": "index",
+      "name": "uq_war_satchel_proofs_intent"
+    },
+    {
+      "attached_to": "war_satchel_proof_candidates",
+      "kind": "index",
+      "name": "uq_war_satchel_proofs_intent_owner"
+    },
+    {
+      "attached_to": "war_satchel_wallet_challenges",
+      "kind": "index",
+      "name": "uq_war_satchel_wallet_nonce"
+    },
+    {
+      "attached_to": "war_satchel_auto_spend_consents",
+      "kind": "index",
+      "name": "war_satchel_auto_spend_consents_pkey"
+    },
+    {
+      "attached_to": "war_satchel_auto_spend_mandates",
+      "kind": "index",
+      "name": "war_satchel_auto_spend_mandates_pkey"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_authorizations",
+      "kind": "index",
+      "name": "war_satchel_claim_return_authorizations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_authorizations",
+      "kind": "index",
+      "name": "war_satchel_claim_return_authorizations_return_tx_hash_key"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_attempts",
+      "kind": "index",
+      "name": "war_satchel_claim_return_execution_attempts_pkey"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_attempts",
+      "kind": "index",
+      "name": "war_satchel_claim_return_execution_attempts_run_id_key"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_observations",
+      "kind": "index",
+      "name": "war_satchel_claim_return_execution_observations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_reviews",
+      "kind": "index",
+      "name": "war_satchel_claim_return_execution_reviews_pkey"
+    },
+    {
+      "attached_to": "war_satchel_deposit_intents",
+      "kind": "index",
+      "name": "war_satchel_deposit_intents_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_balances",
+      "kind": "index",
+      "name": "war_satchel_funded_balances_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_claim_returns",
+      "kind": "index",
+      "name": "war_satchel_funded_claim_returns_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_journal",
+      "kind": "index",
+      "name": "war_satchel_funded_journal_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_receipts",
+      "kind": "index",
+      "name": "war_satchel_funded_receipts_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_reservations",
+      "kind": "index",
+      "name": "war_satchel_funded_reservations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_withdrawal_challenges",
+      "kind": "index",
+      "name": "war_satchel_funded_withdrawal_challenges_pkey"
+    },
+    {
+      "attached_to": "war_satchel_funded_withdrawals",
+      "kind": "index",
+      "name": "war_satchel_funded_withdrawals_pkey"
+    },
+    {
+      "attached_to": "war_satchel_ledger_accounts",
+      "kind": "index",
+      "name": "war_satchel_ledger_accounts_pkey"
+    },
+    {
+      "attached_to": "war_satchel_ledger_journals",
+      "kind": "index",
+      "name": "war_satchel_ledger_journals_pkey"
+    },
+    {
+      "attached_to": "war_satchel_ledger_postings",
+      "kind": "index",
+      "name": "war_satchel_ledger_postings_pkey"
+    },
+    {
+      "attached_to": "war_satchel_physical_receipt_consumptions",
+      "kind": "index",
+      "name": "war_satchel_physical_receipt__receipt_kind_source_receipt_i_key"
+    },
+    {
+      "attached_to": "war_satchel_physical_receipt_consumptions",
+      "kind": "index",
+      "name": "war_satchel_physical_receipt_consumptions_pkey"
+    },
+    {
+      "attached_to": "war_satchel_proof_candidates",
+      "kind": "index",
+      "name": "war_satchel_proof_candidates_pkey"
+    },
+    {
+      "attached_to": "war_satchel_wager_approvals",
+      "kind": "index",
+      "name": "war_satchel_wager_approvals_pkey"
+    },
+    {
+      "attached_to": "war_satchel_wager_authorizations",
+      "kind": "index",
+      "name": "war_satchel_wager_authorizations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_wager_authorizations",
+      "kind": "index",
+      "name": "war_satchel_wager_authorizations_reservation_id_key"
+    },
+    {
+      "attached_to": "war_satchel_wager_broadcasts",
+      "kind": "index",
+      "name": "war_satchel_wager_broadcasts_pkey"
+    },
+    {
+      "attached_to": "war_satchel_wager_broadcasts",
+      "kind": "index",
+      "name": "war_satchel_wager_broadcasts_tx_hash_key"
+    },
+    {
+      "attached_to": "war_satchel_wallet_challenges",
+      "kind": "index",
+      "name": "war_satchel_wallet_challenges_pkey"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_approvals",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_approvals_pkey"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_attempts",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_attempts_pkey"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_attempts",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_attempts_withdrawal_id_key"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_authorizations",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_authorizations_challenge_id_key"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_authorizations",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_authorizations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_authorizations",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_authorizations_reservation_digest_key"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_observations",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_observations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_physical_consumptions",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_physical_consumptions_pkey"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_physical_consumptions",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_physical_consumptions_withdrawal_id_key"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_revocations",
+      "kind": "index",
+      "name": "war_satchel_withdrawal_revocations_pkey"
+    },
+    {
+      "attached_to": "war_satchel_claim_return_execution_observations",
+      "kind": "sequence",
+      "name": "war_satchel_claim_return_execution_observations_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_funded_claim_returns",
+      "kind": "sequence",
+      "name": "war_satchel_funded_claim_returns_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_funded_journal",
+      "kind": "sequence",
+      "name": "war_satchel_funded_journal_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_funded_receipts",
+      "kind": "sequence",
+      "name": "war_satchel_funded_receipts_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_ledger_accounts",
+      "kind": "sequence",
+      "name": "war_satchel_ledger_accounts_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_ledger_postings",
+      "kind": "sequence",
+      "name": "war_satchel_ledger_postings_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_proof_candidates",
+      "kind": "sequence",
+      "name": "war_satchel_proof_candidates_id_seq"
+    },
+    {
+      "attached_to": "war_satchel_withdrawal_observations",
+      "kind": "sequence",
+      "name": "war_satchel_withdrawal_observations_id_seq"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_auto_spend_consents"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_auto_spend_mandates"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_claim_return_authorizations"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_claim_return_execution_attempts"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_claim_return_execution_observations"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_claim_return_execution_reviews"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_deposit_intents"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_balances"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_claim_returns"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_journal"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_receipts"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_reservations"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_withdrawal_challenges"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_funded_withdrawals"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_ledger_accounts"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_ledger_journals"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_ledger_postings"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_physical_receipt_consumptions"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_proof_candidates"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_wager_approvals"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_wager_authorizations"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_wager_broadcasts"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_wallet_challenges"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_withdrawal_approvals"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_withdrawal_attempts"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_withdrawal_authorizations"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_withdrawal_observations"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_withdrawal_physical_consumptions"
+    },
+    {
+      "attached_to": null,
+      "kind": "table",
+      "name": "war_satchel_withdrawal_revocations"
+    }
+  ],
+  "schema": "aoe2war.c02.real-13-migration-pg16-relation-census.v1"
+}

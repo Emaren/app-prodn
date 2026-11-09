@@ -40,6 +40,15 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
   const originalRequire = createRequire(filename);
   mod.require = (specifier: string): unknown => {
     if (specifier === "@/hooks/use-keplr") return DISCONNECTED_KEPLR;
+    if (specifier === "@/components/profile/WarSatchelFundingAction") {
+      return loadProductionModule("components/profile/WarSatchelFundingAction.tsx");
+    }
+    if (specifier === "@/components/profile/WarSatchelWithdrawAction") {
+      return loadProductionModule("components/profile/WarSatchelWithdrawAction.tsx");
+    }
+    if (specifier === "@/components/profile/WarSatchelSpendAuthorization") {
+      return loadProductionModule("components/profile/WarSatchelSpendAuthorization.tsx");
+    }
     if (specifier === "@/components/profile/WarSatchelWalletProof") {
       // Execute the actual optional Keplr-owner component, not an inert stub.
       return loadProductionModule("components/profile/WarSatchelWalletProof.tsx");
@@ -47,8 +56,14 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
     if (specifier === "@/hooks/useWoloBalance") {
       return loadProductionModule("hooks/useWoloBalance.ts");
     }
-    if (specifier === "@/lib/woloBalanceRead") {
+    if (specifier === "@/lib/woloBalanceRead" || specifier === "./woloBalanceRead.ts") {
       return loadProductionModule("lib/woloBalanceRead.ts");
+    }
+    if (specifier === "@/lib/warSatchelBalanceRead") {
+      return loadProductionModule("lib/warSatchelBalanceRead.ts");
+    }
+    if (specifier === "@/lib/betMoneyLimits") {
+      return loadProductionModule("lib/betMoneyLimits.ts");
     }
     if (specifier === "@/lib/woloChain") {
       return {
@@ -95,6 +110,7 @@ test("profile layout supplies the real QueryClient and renders E2's visible tria
 test("runtime fixture remains offline: no wallet transfer or custody authorization", () => {
   assert.equal(DISCONNECTED_KEPLR.useKeplr().status, "disconnected");
   const card = readFileSync(path.resolve(ROOT, "components/profile/MechaAutoBetCard.tsx"), "utf8");
-  assert.match(card, /LOAD FROM WALLET · COMING SOON/);
-  assert.match(card, /disabled aria-disabled="true"/);
+  assert.match(card, /<WarSatchelFundingAction/);
+  const funding = readFileSync(new URL("../components/profile/WarSatchelFundingAction.tsx", import.meta.url), "utf8");
+  assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid \|\| mayHaveSent \|\|\s*knownIntents\.length > 0\}/);
 });

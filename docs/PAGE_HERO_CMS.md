@@ -8,12 +8,17 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-07"
+reviewed_at: "2026-11-06"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Page Hero CMS
+
+## November 6, 2026 — Central technical review (non-authorizing)
+
+Checked `lib/pageHeroes.ts`, `components/page-heroes/PageHeroRotator.tsx`, and the `/game-stats` consumer against finance integration commit `7474e66e69e1d6c03b46007fbcba78c586e69fa0`. Reuse of Hero schema and view-specific selection remain source-level product contracts; **this check does not establish public production image availability, asset completeness, or editor acceptance**. No CMS migration, image import or live content write was performed.
+
 
 ## Contract
 

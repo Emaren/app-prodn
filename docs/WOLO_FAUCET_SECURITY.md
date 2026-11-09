@@ -8,12 +8,33 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "security-contract"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-11-03"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # WOLO Faucet Security
+
+## Owner-delegated source review — 2026-11-03
+
+Codex performed this repository source review under Tony's delegated authority.
+Tony is the sole human owner; Commissioner, operator, signer and reviewer roles
+are distinct authority/cryptographic roles, not evidence of different humans or
+an independent human review. Existing authentication, proof and role separation
+still apply. This review covers the current local candidate, including
+unpublished work; it is not a release receipt, live-service audit, native reserve
+qualification or physical financial deployment approval.
+
+Reviewed `app/api/wolo/faucet/claim/route.ts`, `lib/woloFaucetPolicy.ts`
+and the faucet policy/Sybil-hardening tests. The route derives identity from the
+signed session, requires a Steam link, and persists an account/destination
+reservation before sending. Failed confirmation retains the reservation;
+uncertainty is not a confirmed payout and must not be cleared to obtain another
+send. Circuit-breaker recovery is an explicit owner-authorized operational
+procedure, not an instruction for an agent to delete production evidence during
+a documentation review. These app eligibility controls do not certify native
+escrow return reserves or authorize another signer role to spend.
+
 
 ## Security model
 

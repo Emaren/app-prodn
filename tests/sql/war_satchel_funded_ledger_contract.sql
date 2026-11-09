@@ -1,0 +1,285 @@
+-- PostgreSQL 16 isolated synthetic-funded accounting contract. No live assets.
+BEGIN;
+INSERT INTO users(id) VALUES (71241), (71242) ON CONFLICT (id) DO NOTHING;
+INSERT INTO bet_auto_executions(id) VALUES (81001) ON CONFLICT (id) DO NOTHING;
+INSERT INTO war_satchel_funded_balances
+(owner_user_id, available_uwolo, reserved_uwolo, committed_uwolo)
+VALUES (71241, 500000000, 0, 0);
+
+INSERT INTO war_satchel_deposit_intents
+(id, user_id, chain_id, sender_address, vault_address, amount_uwolo, memo, nonce, expires_at)
+VALUES
+('d1171771-5fc6-4904-9042-988123891111',71241,'wolo-1','wolo1ssssssssssssssssssssssssssssssssssssss','wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',50000000,
+ 'aoe2war/satchel/v1/synthetic-test/1234567890ABCDEF','synthetic-unique-nonce-test-17',
+ CURRENT_TIMESTAMP + interval '10 minutes');
+INSERT INTO war_satchel_proof_candidates
+(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at)
+VALUES
+('d1171771-5fc6-4904-9042-988123891111',71241,'wolo-1',repeat('E',64),0,'wolo1ssssssssssssssssssssssssssssssssssssss',
+ 'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',50000000,321,NOW());
+
+INSERT INTO war_satchel_funded_receipts
+(owner_user_id,proof_candidate_id,chain_id,tx_hash,transfer_index,amount_uwolo,vault_address,canonical_height)
+VALUES
+(71241,(SELECT id FROM war_satchel_proof_candidates WHERE tx_hash=repeat('E',64)),
+ 'wolo-1',repeat('E',64),0,50000000,'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',321);
+
+INSERT INTO war_satchel_funded_journal
+(owner_user_id, source_key, event_kind, amount_uwolo, delta_available_uwolo,
+ delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo, receipt_id, execution_id)
+VALUES
+(71241,'test:credited', 'deposit_credit',50000000,50000000,0,0,0,
+ (SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=repeat('E',64)),NULL),
+(71241,'test:reserved','wager_reserve',25000000,-25000000,25000000,0,0,NULL,81001);
+
+DO $test$
+DECLARE
+ failed BOOLEAN;
+BEGIN
+  -- Unique source keys cannot replay a second credit.
+  failed := FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_journal
+    (owner_user_id, source_key, event_kind, amount_uwolo, delta_available_uwolo,
+     delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo,execution_id)
+    VALUES (71241,'test:credited','wager_refund',1,1,-1,0,0,81001);
+  EXCEPTION WHEN unique_violation THEN failed := TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'duplicate journal source accepted'; END IF;
+
+  -- An attempted second on-chain receipt for the same original proof cannot land.
+  failed := FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_receipts
+    (owner_user_id,proof_candidate_id,chain_id,tx_hash,transfer_index,amount_uwolo,vault_address,canonical_height)
+    VALUES
+    (71242,(SELECT id FROM war_satchel_proof_candidates WHERE tx_hash=repeat('E',64)),
+     'wolo-1',repeat('B',64),0,50000000,'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',321);
+  EXCEPTION WHEN unique_violation THEN failed := TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'cross-owner receipt replay accepted'; END IF;
+
+  -- It is impossible to create a fee-taking 2% reservation/refund journal:
+  -- the exact bucket deltas must equal the full stated amount.
+  failed := FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_journal
+    (owner_user_id,source_key,event_kind,amount_uwolo,delta_available_uwolo,
+     delta_reserved_uwolo,delta_committed_uwolo,delta_withdrawal_pending_uwolo,execution_id)
+    VALUES(71241,'test:fee-taken','wager_refund',25000000,24500000,-25000000,0,0,81001);
+  EXCEPTION WHEN check_violation THEN failed := TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION '2 percent unmatched refund fee was accepted'; END IF;
+
+  -- No bucket can go negative even if an app writer forgets its WHERE guard.
+  failed := FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_balances SET available_uwolo=-1 WHERE owner_user_id=71241;
+  EXCEPTION WHEN check_violation THEN failed := TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'negative available balance accepted'; END IF;
+
+  -- Historical receipt/journal records must never be updated or removed.
+  failed := FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_receipts SET amount_uwolo=1 WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed := SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'funded receipt mutation accepted'; END IF;
+
+  failed := FALSE;
+  BEGIN
+    DELETE FROM war_satchel_funded_journal WHERE source_key='test:credited';
+  EXCEPTION WHEN OTHERS THEN failed := SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'funded journal deletion accepted'; END IF;
+
+  INSERT INTO war_satchel_funded_reservations
+  (id,owner_user_id,execution_id,amount_uwolo,ticket_request_id)
+  VALUES('satchel:reserve:81001',71241,81001,25000000,'satchel:ticket:81001');
+
+  failed := FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_reservations
+      SET status='committed' WHERE execution_id=81001;
+  EXCEPTION WHEN OTHERS THEN failed := SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'reservation bypassed unknown-hold fence'; END IF;
+
+  UPDATE war_satchel_funded_reservations SET status='unknown_hold' WHERE execution_id=81001;
+  UPDATE war_satchel_funded_reservations SET status='committed',
+    ticket_id=993,tx_hash=repeat('C',64) WHERE execution_id=81001;
+
+  failed := FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_reservations
+      SET status='released' WHERE execution_id=81001;
+  EXCEPTION WHEN OTHERS THEN failed := SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'committed payout was refunded'; END IF;
+
+  failed := FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_reservations SET owner_user_id=71242 WHERE execution_id=81001;
+  EXCEPTION WHEN OTHERS THEN failed := SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'reservation owner reassigned'; END IF;
+END;
+$test$;
+
+-- Owner payout failure matrix, all synthetic and rolled back.
+INSERT INTO war_satchel_funded_withdrawal_challenges
+  (id,owner_user_id,owner_uid,wallet_address,amount_uwolo,issued_at,expires_at,consumed_at)
+VALUES('fd000000-2222-4222-8222-000000000042',71241,'owner:test:71241',
+  'wolo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',25000000,
+  NOW()-INTERVAL '1 minute',NOW()+INTERVAL '2 minutes',NOW());
+INSERT INTO war_satchel_funded_withdrawals
+  (id,owner_user_id,owner_wallet_address,authorizing_challenge_id,amount_uwolo)
+VALUES('fd000000-1111-4111-8111-000000000041',71241,
+  'wolo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',
+  'fd000000-2222-4222-8222-000000000042',25000000);
+
+DO $withdrawal_test$
+DECLARE failed BOOLEAN;
+BEGIN
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET status='sent',
+      tx_hash=repeat('D',64),confirmed_height=531
+    WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal sent without prebroadcast fence'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET owner_user_id=71242
+    WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal reassigned to other Steam owner'; END IF;
+
+  UPDATE war_satchel_funded_withdrawals SET status='unknown_hold'
+    WHERE owner_user_id=71241;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET status='cancelled'
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'ambiguous chain withdrawal was refunded'; END IF;
+
+  UPDATE war_satchel_funded_withdrawals SET status='sent',
+    tx_hash=repeat('D',64),confirmed_height=531
+  WHERE owner_user_id=71241;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET status='unknown_hold'
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'sent payout was made eligible for replay'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawal_challenges SET amount_uwolo=25000001
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'Keplr signed withdrawal authorization mutated'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawal_challenges SET consumed_at=NULL
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%one-use%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal authorization replayed'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals
+      SET authorizing_challenge_id=NULL WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal dissociated from Keplr approval'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET amount_uwolo=1
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal amount changed after sent'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_journal
+      (owner_user_id,source_key,event_kind,amount_uwolo,
+        delta_available_uwolo,delta_reserved_uwolo,
+        delta_committed_uwolo,delta_withdrawal_pending_uwolo)
+    VALUES(71241,'test:bad_withdrawal','withdraw_cancel',25000000,24750000,0,0,-25000000);
+  EXCEPTION WHEN check_violation THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal cancellation fee was accepted'; END IF;
+
+  INSERT INTO war_satchel_funded_journal
+    (owner_user_id,source_key,event_kind,amount_uwolo,
+      delta_available_uwolo,delta_reserved_uwolo,
+      delta_committed_uwolo,delta_withdrawal_pending_uwolo)
+  VALUES(71241,'test:withdrawn','withdraw_sent',25000000,0,0,0,-25000000);
+END;
+$withdrawal_test$;
+-- Escrow payout/refund is a DIFFERENT globally unique type from user deposits.
+INSERT INTO pending_wolo_claims(id) VALUES (88321);
+INSERT INTO war_satchel_funded_claim_returns
+(claim_id,owner_user_id,source_market_id,claim_kind,chain_id,tx_hash,
+ transfer_index,amount_uwolo,vault_address,canonical_height)
+VALUES(88321,71241,663,'bet_refund','wolo-1',repeat('F',64),0,25000000,
+ 'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',690);
+
+INSERT INTO war_satchel_funded_journal
+(owner_user_id,source_key,event_kind,amount_uwolo,
+ delta_available_uwolo,delta_reserved_uwolo,
+ delta_committed_uwolo,delta_withdrawal_pending_uwolo,claim_return_id)
+VALUES(71241,'test:claim-return:88321','claim_return_credit',25000000,
+ 25000000,0,0,0,
+ (SELECT id FROM war_satchel_funded_claim_returns WHERE claim_id=88321));
+
+DO $return_test$
+DECLARE failed BOOLEAN;
+BEGIN
+  failed:=FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_claim_returns
+    (claim_id,owner_user_id,source_market_id,claim_kind,chain_id,tx_hash,
+     transfer_index,amount_uwolo,vault_address,canonical_height)
+    VALUES(88321,71242,663,'bet_refund','wolo-1',repeat('9',64),0,25000000,
+      'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',690);
+  EXCEPTION WHEN unique_violation THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'claim could be credited to two owners'; END IF;
+  failed:=FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_journal
+    (owner_user_id,source_key,event_kind,amount_uwolo,
+     delta_available_uwolo,delta_reserved_uwolo,
+     delta_committed_uwolo,delta_withdrawal_pending_uwolo,claim_return_id)
+    VALUES(71241,'test:claim_return_fee','claim_return_credit',25000000,
+      24500000,0,0,0,
+      (SELECT id FROM war_satchel_funded_claim_returns WHERE claim_id=88321));
+  EXCEPTION WHEN check_violation THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'escrow return silently deducted a fee'; END IF;
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_claim_returns SET owner_user_id=71242 WHERE claim_id=88321;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'claim owner attribution not immutable'; END IF;
+END;
+$return_test$;
+ROLLBACK;
+SELECT 'PASS Satchel funded credit, full refund, nonnegative ledger and immutable withdrawal payout guards' AS result;

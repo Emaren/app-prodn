@@ -21,6 +21,8 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
         self.assertEqual(report["classification"], "SOURCE_OBSERVATION_ONLY")
         self.assertFalse(report["all_financial_producers_isolated"])
         self.assertFalse(report["safe_to_deploy"])
+        self.assertTrue(report["public_reads_without_known_direct_queue"])
+        self.assertEqual(report["public_read_violations"], [])
         self.assertEqual(report["cross_repo_runtime_attestation"], "UNKNOWN")
         self.assertGreaterEqual(len(report["unverified_producer_owners"]), 5)
         observed = report["observations"]
@@ -45,7 +47,7 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
             baseline = MODULE.inspect(root)
             self.assertTrue(baseline["known_source_edges_intact"])
             victim = root / "app" / "api" / "live-games" / "route.ts"
-            victim.write_text("export async function GET() { return null; }\n")
+            victim.write_text("export async function POST() { return null; }\n")
             changed = MODULE.inspect(root)
             self.assertFalse(changed["known_source_edges_intact"])
             self.assertTrue(any(x["status"] == "SOURCE_DRIFT" for x in changed["observations"]))
@@ -69,6 +71,36 @@ class FinancialProducerSourceCensusTests(unittest.TestCase):
             self.assertTrue(homepage)
             self.assertEqual(homepage[0]["status"], "UNKNOWN_SOURCE")
             self.assertFalse(result["all_financial_producers_isolated"])
+
+    def test_public_get_reconciliation_wakeup_is_rejected_even_with_other_edges_intact(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            grouped: dict[str, list[str]] = {}
+            for item in MODULE.EVIDENCE:
+                grouped.setdefault(item.path, []).append(item.needle)
+            for path, needles in grouped.items():
+                p = root / path
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text("\\n".join(needles) + "\\n")
+            baseline = MODULE.inspect(root)
+            self.assertTrue(baseline["known_source_edges_intact"])
+            for path, token in (
+                ("lib/lobbySnapshot.ts", "queueLobbyMaintenance("),
+                ("app/api/live-games/route.ts", "queueBetMarketEnsure("),
+                ("app/api/bets/route.ts", "queueBetMarketEnsure("),
+                ("app/api/header-summary/route.ts", "ensureBetMarkets("),
+                ("lib/warChest.ts", "queueBetMarketEnsure("),
+            ):
+                p = root / path
+                original = p.read_text()
+                with self.subTest(path=path):
+                    p.write_text(original + token + "\\n")
+                    report = MODULE.inspect(root)
+                    self.assertFalse(report["known_source_edges_intact"])
+                    self.assertFalse(report["public_reads_without_known_direct_queue"])
+                    self.assertTrue(any(x["path"] == path for x in report["public_read_violations"]))
+                    self.assertFalse(report["safe_to_deploy"])
+                p.write_text(original)
 
 
 if __name__ == "__main__":

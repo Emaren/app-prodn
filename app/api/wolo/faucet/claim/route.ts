@@ -1,3 +1,4 @@
+import {withHdFinancialLease} from "@/lib/hdFinancialMaintenanceFence";
 import { execFile } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
@@ -230,10 +231,8 @@ async function sendFaucetTransfer(address: string) {
     txArgs.push("--from", FAUCET_FROM);
   }
 
-  const { stdout, stderr } = await execFileAsync(FAUCET_CLI, txArgs, {
-    maxBuffer: 1024 * 1024,
-    timeout: 45_000,
-  });
+  const { stdout, stderr } = await withHdFinancialLease({scope:"hd-legacy",producer:"faucet",wallet:FAUCET_SENDER_ADDRESS},
+    signal=>execFileAsync(FAUCET_CLI,txArgs,{maxBuffer:1024*1024,timeout:45_000,signal}));
   const txPayload = parseJsonRecord(stdout);
   const txCode = Number(txPayload?.code ?? 0);
   const txhash = String(txPayload?.txhash || "");

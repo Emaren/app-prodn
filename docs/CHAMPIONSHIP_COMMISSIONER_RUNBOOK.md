@@ -8,12 +8,32 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-11-03"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Championship Commissioner V1 Runbook
+
+## Owner-delegated source review — 2026-11-03
+
+Codex performed this repository source review under Tony's delegated authority.
+Tony is the sole human owner; Commissioner, operator, signer and reviewer roles
+are distinct authority/cryptographic roles, not evidence of different humans or
+an independent human review. Existing authentication, proof and role separation
+still apply. This review covers the current local candidate, including
+unpublished work; it is not a release receipt, live-service audit, native reserve
+qualification or physical financial deployment approval.
+
+Reviewed `lib/championshipChallenges.ts`, `lib/trophies/championship.ts` and
+`lib/scheduledMatchSettlements.ts`. Custody changes create app reign/history and
+blocked NFT intents; they do not prove chain ownership or discharge a WOLO
+obligation. Allocated payouts preserve `broadcasting`/`uncertain` liabilities
+and reconcile proof rather than blindly retrying. For played `championship_v2`
+legs, both tx-backed deposits must predate or equal authenticated Watcher start
+to form a matched wager; otherwise proven principal is refunded whole. Sporting
+result authority alone cannot create a funded winner purse.
+
 
 Use the Championship Commissioner cockpit in `/admin/trophies`. Admin session
 authorization is required at every API boundary. The contract is the

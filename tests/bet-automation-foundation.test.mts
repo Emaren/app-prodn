@@ -44,7 +44,7 @@ test("auto-bet presets normalize a finite self-only preview", () => {
   assert.equal(estimateBetAutomationReserveWolo(preset), 36);
 });
 
-test("Until Out uses the hard 10,000 WOLO plan envelope", () => {
+test("Until Out uses the hard 50,000 WOLO plan envelope", () => {
   const preset = parseBetAutoPresetDraft(
     validPreset({ untilOut: true, gamesRemaining: null })
   );
@@ -54,36 +54,36 @@ test("Until Out uses the hard 10,000 WOLO plan envelope", () => {
   );
 });
 
-test("finite plans cannot estimate more than 10,000 WOLO", () => {
+test("finite plans cannot estimate more than 50,000 WOLO", () => {
   assert.throws(
     () =>
       parseBetAutoPresetDraft(
-        validPreset({ winnerStakeWolo: 101, gamesRemaining: 100 })
+        validPreset({ winnerStakeWolo: 501, gamesRemaining: 100 })
       ),
     (error: unknown) =>
       error instanceof BetAutomationInputError &&
-      /10,100 WOLO/.test(error.message)
+      /50,100 WOLO/.test(error.message)
   );
 });
 
 test("Mecha per-match preset boundary is enforced", () => {
-  assert.equal(BET_AUTOMATION_MAX_PER_GAME_WOLO, 1_000);
+  assert.equal(BET_AUTOMATION_MAX_PER_GAME_WOLO, 10_000);
   assert.equal(
     parseBetAutoPresetDraft(validPreset({
-      winnerStakeWolo: 998, desyncSide: "yes", desyncStakeWolo: 2,
+      winnerStakeWolo: 9998, desyncSide: "yes", desyncStakeWolo: 2,
       gamesRemaining: 1,
-    })).winnerStakeWolo, 998
+    })).winnerStakeWolo, 9998
   );
   assert.throws(
-    () => parseBetAutoPresetDraft(validPreset({ winnerStakeWolo: 1_001, gamesRemaining: 1 })),
-    /between 1 and 1,000/
+    () => parseBetAutoPresetDraft(validPreset({ winnerStakeWolo: 10_001, gamesRemaining: 1 })),
+    /between 1 and 10,000/
   );
   assert.throws(
     () => parseBetAutoPresetDraft(validPreset({
-      winnerStakeWolo: 999, desyncSide: "yes", desyncStakeWolo: 2,
+      winnerStakeWolo: 9999, desyncSide: "yes", desyncStakeWolo: 2,
       gamesRemaining: 1,
     })),
-    /combined per-game plan cannot exceed 1,000/
+    /combined per-game plan cannot exceed 10,000/
   );
 });
 

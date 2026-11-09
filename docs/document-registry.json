@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "08ebd83f2dd6a47b3d6592596b694791cb424e27744586fde3305a646d5f07a6",
+      "sha256": "974a866b8d75fe129c18db8ffbfc22ddce621c105682367233319de62deda15b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-22",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "aa31669d2f3ce6065afe0004a181379182beed5fd298d374e6833f6e8c77a9cc",
+      "sha256": "958466f05e417e486bf7a17a7b9d1c6abb8d4d8f84f97fc719925266c636e4db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "e0a3a72d69eadae42c1d13db23738c3d601d7ee6830698b5f6a8a4f72c3f8c6a",
+      "sha256": "56c95a0cc1a50b9e12cb8227b70fe7fd79c86e77e4935f81563980170e5ef702",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-10-22",
       "sensitivity": "internal",
-      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
+      "sha256": "5d52e6562e2a7ee70f9d45113dd7ac6837fff2a35229802302c781a522bf27bb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -348,6 +348,54 @@
       ],
       "title": "AoE2WAR Bounty Board",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-only-held-financial-release-contract",
+      "id": "aoe2war.app-prodn.docs-c02-native-forward-only-release",
+      "owner": "aoe2war-web",
+      "path": "docs/C02_NATIVE_FORWARD_ONLY_RELEASE_CONTRACT.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "9685dfb95ab00ebbe684e6262cbe040be69250065691722345d086b026a3e23c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "postgresql"
+      ],
+      "title": "C02 \u2014 Native-only WOLO Satchel App integration (held)",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "source-tested-no-live-finance-writer-activation",
+      "id": "aoe2war.app-prodn.docs-c04-native-wolo-rest-paging",
+      "owner": "aoe2war-web",
+      "path": "docs/C04_NATIVE_WOLO_REST_PAGING_SOURCE_HOLD.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "7e757ede61b208673948c42fea80c8e6edc55fddc00d84780010718f3c85b8c9",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain",
+        "postgresql"
+      ],
+      "title": "C04 \u2014 Native Cosmos REST paging and heartbeat source correction",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -455,9 +503,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-11-03",
       "sensitivity": "internal",
-      "sha256": "358d990355e1050a36699ac3c9fe6b8f819b9fb480f1434878f913be01775897",
+      "sha256": "761fed9f274674c507e7580dbd60d972e154d36646447b6ccc0cd60e6d136fde",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -478,9 +526,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "internal",
-      "sha256": "5e41fc4f4feffa2e942587eafce4f7a355660f457ac5684f85ae84a783186687",
+      "sha256": "0d855d0431a9d292eaf94bb11e7d359a0d9b6a724b7c5943784499a80edfc450",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -594,9 +642,9 @@
       "owner": "aoe2war-web",
       "path": "docs/COMMISSIONER_REPLAY_REVIEW.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "internal",
-      "sha256": "748086c5d9dc355739ef3f2153e16a40e4ef9c27a2b9a6d93889d1fd67799d91",
+      "sha256": "6853af66e0dad8eebaff266992967fe05dc0452bc5059a78177d47942bea3dfa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1def9a7e9268553eba50197384d4de939d58f9758a756c800b7dd01f1f935842",
+      "sha256": "3fdbe193f884110af1dd756303b92131bdea294aa3cafbc4ae54efc74e951122",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -705,9 +753,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-21",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "c156e9f848423ff597f8dba7fe2fba6d50f809ae2e7a990c5abb126fdb246a72",
+      "sha256": "7fa2413172802e391c83077a6e8d87f10b671c5c36da507b5d0df0e70c5cde5a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -965,9 +1013,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_CIVIC_SURFACES.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "9fcfeeccd437194a7f83df652d35bf555a9fbb522913f11ed8950f88184e8ed6",
+      "sha256": "eba66edf7c9e36f48caa1994bac1078c9de86aef2a3eb00e045987a88fe74bd1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -988,9 +1036,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_INTELLIGENCE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "c5976640aeec45e9a429db9a305c1816fbbd0f8dbbeaf13abedbd8a943b296eb",
+      "sha256": "2f625d97cc62a8701d55cf2923ff48cb4ea03d707077781a83bbad2298050047",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1192,9 +1240,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKET_TEAM_INTEGRITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "restricted",
-      "sha256": "c4bf646903fe22bbd16f52ee47a08e3be70c224ee0cacf1571411e7d85ec5b61",
+      "sha256": "5e08efbd3f107869d3608cd8ac998bf0a7b442da7b540d36a3302b7ecd747118",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1217,9 +1265,9 @@
       "owner": "aoe2war-web",
       "path": "docs/NATIVE_REPLAY_CONTROL.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "5c12be77c043d887a5e38fd84933fc83f7e3916b0155da1ff5e2d34e63660b22",
+      "sha256": "08238e438063ff7af21c2a8d4c405fc8035011d014be82221e7564863adf145e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1242,7 +1290,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-23",
       "sensitivity": "internal",
-      "sha256": "b3b0da47350ae5152b0d18a083c5115e0131e9c83f77b62135d99eed9b030489",
+      "sha256": "223917acd87500ad5b4f6803992d496f0b3402828c10e53c687686874d36e17f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1286,9 +1334,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PAGE_HERO_CMS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-07",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "6bafba383f3645df82ce2b8d69036155e2dd6a662023374d1b5e8ac94fa1c15c",
+      "sha256": "a69c2456db302733da8e6c6f0b822026f84334ee28e765492aad38093fb16544",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1505,6 +1553,30 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-rollback-source-only-not-c03-gate-closure",
+      "id": "aoe2war.app-prodn.r25-c03-restricted-rollback-drill-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_C03_RESTRICTED_ROLLBACK_DRILL_V1.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "3e1820803774c06438b60fed31e3e69c7e05febf32011eaad545d4a3f481dfad",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "postgresql",
+        "steam"
+      ],
+      "title": "R25 C03 restricted 3032 rollback and restoration drill",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -1535,9 +1607,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REALTIME_TRUTH_CONTRACT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-11-06",
       "sensitivity": "internal",
-      "sha256": "2e27e7cfe523de8084f45d7f41520612f379a3e5cbe6773c4c76be86847a37ab",
+      "sha256": "2f3613d893c14d1756faff7125d0aea394fcbf5d17a88c795f27ef9123934f4d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1561,7 +1633,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-21",
       "sensitivity": "internal",
-      "sha256": "47b99f09afc661b6da9cae4f9798f05742779b348d1b3347a957a8ee6fcda4f6",
+      "sha256": "6f814638f2684b725ba2c09d04176759678422b60d3c5451e2985d350971935a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1740,9 +1812,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_CORPUS_METRICS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-09",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "9fa97e82eab2113da88a1280aaed7ababdbea46c6c8aa8b51b3c931f4325d99d",
+      "sha256": "dfcdd9ee744e3cd19c563bc26e9fce030d6f350d0ab75467b3a790590a586ef1",
       "source_of_truth": "runtime-evidence",
       "status": "active",
       "systems": [
@@ -1788,9 +1860,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-07",
+      "reviewed_at": "2026-11-07",
       "sensitivity": "restricted",
-      "sha256": "97f0a5a3942ff10b95ff38e5a5a28764e6a0b27b8518cf3c518bd7f2b21e66f4",
+      "sha256": "d19d6e71cfe4463b59bf6dddc9319a86119fcbd29f606960ee89c5306ec6cb9f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1833,9 +1905,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SCHEDULED_MATCH_SETTLEMENTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-11-03",
       "sensitivity": "restricted",
-      "sha256": "58a36ec555e63af97b1bab873ef3415198f564feebd414ee22fcc47c001fffa1",
+      "sha256": "b46184c6bcd5c12dda94435cfaba0817a4ae294e755a59d5c4e268ffdbb04893",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1880,9 +1952,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SITE_THEME_CAMPAIGN.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-03",
       "sensitivity": "internal",
-      "sha256": "76d4c17477764175e4055afb272dc419797f030f7572753cee32ece06b389374",
+      "sha256": "bcd473bbed3e4781452ce93ea30ba624728a377334618a3d500e3bb765542ac7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1949,9 +2021,9 @@
       "owner": "aoe2war-web",
       "path": "docs/TELEVISION_WOLO.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-11-03",
       "sensitivity": "internal",
-      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "sha256": "fb15c762fcbfd25f7af48d1e08313e8c151cbe4a824ae8ec2ffb8573b855b4cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2018,9 +2090,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ENGINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-11-04",
       "sensitivity": "internal",
-      "sha256": "4fb5cfd36abf0ed3c3f9c3760da2a60091c8236f50e48ccc9f057d1f334ac41b",
+      "sha256": "96245214cf22d04cd2b8978ec15033067552d181b48a76cb0db6db961018474d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2156,9 +2228,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-08",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "68bea109901cfab60c9e4c40d7eb0fd864fb11ca60046a2a23ff6159cabe9aa4",
+      "sha256": "c11d49c65a11e773abb7c2e29e75e9c4ddf3227d86bfbf1ddd2724e0605f46f7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2179,9 +2251,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_FAUCET_SECURITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-03",
       "sensitivity": "restricted",
-      "sha256": "9be52f24cdcd5d8c84479a70b9dbedc712af549485b1ef5e9e988643cdcbae28",
+      "sha256": "a53e3c28b4554f017d65da15fa5acdafffdea0ee9e47f540fad56febc312c4b6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2203,7 +2275,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "8e79666b17dbedfed13670eb1fc06c8984031f178b804b615193972da93782a2",
+      "sha256": "3be74c74dd73e234526d24839d3ec9cfc332cdcaacd0eb069ef7e6829686bf97",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2224,9 +2296,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-11-03",
       "sensitivity": "internal",
-      "sha256": "848e624f3164978117067fa097ca40e0fbe567c5a81c78f6e349293200ddff4d",
+      "sha256": "3809e12fd090cf732d951a08385289ded2e3f22f777fb3cd1c7bc4f4aacd50c6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2348,8 +2420,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/f-w1-decode-uri-component-high-20261029",
-    "commit": "2138d4bd6187dfefd6f2356abb4ecaaad3825427"
+    "branch": "session-b/c02-native-strict-approval-fields-20261109",
+    "commit": "8c08e7cb0ab7bc1353a5cc8471ae6a86ccdae5cc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

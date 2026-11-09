@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -521,3 +521,19 @@ principal does not inflate the wagered rail.
 
 `Claimable` remains current claimable cashflow and may include returned
 capital. Only claim kinds admitted by the Take policy may increase ranked Take.
+
+## Source-bound review — 2026-11-07 UTC (Central / AI-delegated)
+
+Reviewed current held-App lib/woloBetSettlement.ts and associated Betting Hall
+and 8094-only C02 test entrypoints against the ticket/settlement and concurrency
+boundaries above. The B/A/E presentation rules and matched winner/desync
+economic distinctions remain product contracts; this review is **not** a new
+funded authorization or a claim each browser variant was retested live. The
+new native escrow-return client is source-only on the held finance integration.
+Its lease, parser and UNKNOWN guards do not prove custody, independent reserve,
+live schema, 8094/8095 startup or payout finality.
+
+The synthetic C02 PostgreSQL 16 rehearsal tests bounded 50,000-WOLO candidate
+constraints, not an accepted economics policy. Original limits require
+separate financial review. C01–C09 funded gates and actual C02 migration
+remain HOLD; no source or operator action here changes those gates.

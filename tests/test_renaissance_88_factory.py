@@ -22,7 +22,20 @@ class PublicFactoryTests(unittest.TestCase):
         self.assertEqual(p["planned_public"],88)
         self.assertEqual(len(p["phase_order"]),7)
         self.assertEqual(p["actual_templates"],148)
-        self.assertEqual(p["actual_handlers"],278)
+        self.assertEqual(p["actual_handlers"],284)
+        # The funded Satchel integration adds six concrete API handlers to the
+        # 278-handler source baseline. Public Index scope stays exactly 88.
+        _,handlers=factory.source_paths(ROOT)
+        satchel_handlers=(
+            "/api/internal/mecha/funded-tick",
+            "/api/user/war-satchel/auto-consent",
+            "/api/user/war-satchel/balance",
+            "/api/user/war-satchel/credit-verified",
+            "/api/user/war-satchel/funding-quote",
+            "/api/user/war-satchel/withdrawal",
+        )
+        for route in satchel_handlers:
+            self.assertEqual(handlers[route],"app"+route+"/route.ts")
         self.assertTrue(all(x["category"] in ("public_index_static","public_alias_redirect") for x in p["routes"]))
         self.assertTrue(all(x["source_closure_complete"] is False for x in p["routes"]))
         self.assertFalse(p["production_certified"])

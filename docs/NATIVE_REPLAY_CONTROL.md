@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-07"
+reviewed_at: "2026-11-07"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -162,3 +162,18 @@ and produce commissioner-review evidence rather than direct truth writes.
 Whole-input consumption, genuine EOF and its cause remain separately unproven;
 those propositions are not silently redefined merely to recover historical
 winner truth.
+
+## Source-bound review — 2026-11-07 UTC (Central / AI-delegated)
+
+Rechecked held-App lib/nativeReplayManifest.ts, lib/nativeReplayWorker.ts
+and scripts/native_replay_contract.py. The manifest requires a known-result
+candidateOnly control and four authority booleans false. The worker applies
+bounded execution parameters; source digests prove request integrity, not
+replay truth. This review does **not** rerun #32388, establish genuine EOF,
+verify the deployed API binary, approve unknown-result research, or advance
+statistics, bets or WOLO settlement.
+
+The October 7 receipts and counts remain historical. The governed
+prepare/run/verify sequence and its physical evidence requirements remain
+unchanged; no live runner, protected replay database or funded service
+was touched during this review.

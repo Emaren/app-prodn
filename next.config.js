@@ -97,7 +97,17 @@ module.exports = {
   // Release staging deliberately discards .next-release/cache before
   // artifact hashing. Do not materialize Webpack's filesystem cache in the
   // isolated release worktree only to delete it immediately afterward.
-  webpack(config) {
+  webpack(config, {webpack} = {}) {
+    // Embed actual clean source + unique build generation. A rotated runtime
+    // env or authority file cannot upgrade the identity of an older process.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const financialIdentity = require("./scripts/hd-financial-build-identity.cjs")(__dirname);
+    if (webpack) {
+      config.plugins = config.plugins || [];
+      config.plugins.push(new webpack.DefinePlugin({
+        __AOE2WAR_HD_FINANCIAL_BUILD__: JSON.stringify(financialIdentity),
+      }));
+    }
     if (process.env.NEXT_DIST_DIR === ".next-release") {
       config.cache = false;
     }

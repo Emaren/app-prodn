@@ -21,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
@@ -53,6 +54,10 @@ jobs:
         run: python3 scripts/run_test_contract.py --list
       - name: Scan candidate source for secrets
         run: python3 scripts/scan_tracked_secrets.py
+      - name: Scan all added text across reviewed commit history
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/scan_changed_commit_history_secrets.py
 
   web:
     name: Type, contract, and production build
@@ -66,6 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
@@ -81,6 +87,10 @@ jobs:
         run: npx prisma generate
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
+      - name: Verify the reviewed secure minimatch import compatibility
+        run: |
+          node --test tests/r25-secure-minimatch-adapter.test.cjs
+          node scripts/r25_secure_minimatch_eslint_adapter.cjs
       - name: Lint changed sources (Finish release-gate parity)
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -114,21 +124,28 @@ jobs:
         run: python3 scripts/run_test_contract.py
       - name: Build production application
         run: yarn build
+      - name: Prove compiled financial gate source and build generation
+        run: node scripts/check-hd-financial-build-identity.cjs
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
 
   isolated-rating-postgres:
     name: Isolated Steam-rating PostgreSQL chronology
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       # Never connect to production. The test creates a private Unix-socket
       # cluster under /tmp, exercises authority selection, then destroys it.
       RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
+      RUN_SATCHEL_PHYSICAL_PG_TESTS: "1"
+      RUN_HD_FINANCIAL_FENCE_PG_TESTS: "1"
+      RUN_LIVE_MARKET_PG_TESTS: "1"
       AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22.22.0
@@ -141,6 +158,44 @@ jobs:
           sudo apt-get install -y --no-install-recommends postgresql-16
           test -x /usr/lib/postgresql/16/bin/initdb
           test -x /usr/lib/postgresql/16/bin/pg_ctl
+      - name: Prove C02 exact-source PG16 migration in isolated synthetic cluster (HOLD only)
+        run: |
+          python3 -B -m unittest discover -s tests -p 'test_c02_pg16_disposable_migration_hold.py' -q
+          python3 -B - <<'PY'
+          import json
+          import subprocess
+
+          check = subprocess.run(
+              ["python3", "-B", "scripts/c02_pg16_disposable_migration_hold.py",
+               "--pg-bin", "/usr/lib/postgresql/16/bin"],
+              capture_output=True, text=True, timeout=75, check=False,
+          )
+          if check.returncode != 3:
+              raise SystemExit("HOLD: C02 exact-source synthetic PostgreSQL migration did not produce the required nonauthorizing exit")
+          try:
+              evidence = json.loads(check.stdout)
+          except ValueError as exc:
+              raise SystemExit("HOLD: C02 synthetic migration evidence was not JSON") from exc
+          required = {
+              "status": "HOLD_SYNTHETIC_ONLY",
+              "migration_count": 13,
+              "pg_major": 16,
+              "observed": ["tables=29", "rows=0", "triggers=53"],
+              "negative_accounting_constraint_rejected": True,
+              "valid_50k_product_plan_accepted": True,
+              "invalid_60k_product_plan_rejected": True,
+              "C02_physically_admitted": False,
+              "C06_backup_verified": False,
+              "C07_real_restore_verified": False,
+              "live_database_accessed": False,
+              "public_tcp_listener_created": False,
+              "funded_release_authorized": False,
+          }
+          if any(evidence.get(key) != value for key, value in required.items()):
+              raise SystemExit("HOLD: C02 migration physical census or release denial drifted")
+          print("PASS: 13 exact-source synthetic PG16 migrations; 29 tables; 53 triggers; negative accounting rejected")
+          print("HOLD: real C07 restore and any financial migration/release remain UNAUTHORIZED")
+          PY
       - name: Install frozen application dependencies
         run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
       - name: Generate Prisma client
@@ -150,4 +205,12 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts tests/war-satchel-return-runtime-postgres.test.mts tests/war-satchel-wager-authority-postgres.test.mts tests/war-satchel-owner-roundtrip-postgres.test.mts tests/hd-financial-maintenance-fence.test.mts tests/satchel-product-money-limits-postgres.test.mts tests/live-watcher-market-admission-postgres.test.mts
+
+      - name: Pin Go for actual Satchel verifier integration
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.24.6'
+          cache: false
+      - name: Authenticate real SDK deposit credit and signed wager proof
+        run: python3 scripts/check-satchel-authenticated-credit.py

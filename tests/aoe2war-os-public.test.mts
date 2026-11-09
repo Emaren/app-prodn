@@ -8,11 +8,22 @@ function source(path: string) {
   return readFileSync(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("AoE2WAR OS model atlas enumerates exactly 193 distinct real schema models", () => {
+test("the public model atlas excludes both legacy and forward-only private Satchel financial records", () => {
   const schema = source("prisma/schema.prisma");
   const names = [...schema.matchAll(/^model\s+([A-Za-z]\w*)\s*\{/gm)].map(match => match[1]);
-  assert.equal(names.length, 193);
-  assert.deepEqual(models.models, names);
+  const protectedReturnModels = [
+    "SatchelClaimReturnExecutionReview",
+    "SatchelClaimReturnExecutionAttempt",
+    "SatchelClaimReturnExecutionObservation",
+    "SatchelNativeReturnOperation",
+    "SatchelNativeReturnApproval",
+    "SatchelNativeReturnAttempt",
+    "SatchelNativeReturnObservation",
+    "SatchelNativeReturnCredit",
+  ];
+  assert.equal(models.models.length, 213);
+  assert.deepEqual(names.filter(name => !models.models.includes(name)), protectedReturnModels);
+  assert.deepEqual(models.models, names.filter(name => !protectedReturnModels.includes(name)));
   assert.equal(new Set(models.models).size, models.models.length);
   assert.ok(models.models.includes("WarSatchelLedgerJournal"));
 });
@@ -81,8 +92,10 @@ test("AoE2WAR OS change-notice includes the Storage Atlas component in its sourc
   const digest = createHash("sha256");
   for (const path of files) {
     digest.update(path);
+    // Match the canonical Python generator's actual NUL-byte separator.
     digest.update(Buffer.from([0]));
     digest.update(readFileSync(new URL("../" + path, import.meta.url)));
+    // Match the canonical Python generator's actual NUL-byte separator.
     digest.update(Buffer.from([0]));
   }
   const edition = "src-" + digest.digest("hex").slice(0, 20);
