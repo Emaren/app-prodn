@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c5523c2dcb24996861093fbe6abf2038b348eb07a649421a1c69ab89f5bf0810",
+      "sha256": "a5393a0ba2acb1588fa908a73989bbf38f0ef3e326447ad2a0c6fc1ff1069028",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2795,8 +2795,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-steam-v12-lease-edge-20261109",
-    "commit": "95ac585196f4e42bc30b8b2b16ef4c04b9d3d86b"
+    "branch": "session-b/bets-readonly-hold-v1-20261109",
+    "commit": "18f725a87b20082a96303d04fb97105f9f2b8a07"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
