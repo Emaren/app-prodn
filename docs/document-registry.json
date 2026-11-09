@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1a2b843561890611106547e3e8ba4661c7981987cefbe5ff7f2051eab6e37900",
+      "sha256": "8fdd0f0d77fb1be83ab84092632523dc417fd1d4e18714300cb134ff1137218d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2888,6 +2888,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only, two exact restricted 3032 process profiles, no Chain permission",
+      "id": "aoe2war.app-prodn.session-b-r25-steam-v15-gc-final-build-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "83d73f8387f6d51d3b5d98b69e668e846ec9f91b45e79e2418636597ea6a2e6d",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -2907,8 +2929,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-dropin-bound-cold-rollback-v2-20261109",
-    "commit": "6d599c4194caddd2bebcef559c3ef60e737d6aa3"
+    "branch": "session-b/r25-steam-v15-final-build-20261109",
+    "commit": "72841954018b70fbf30a22a5435b14b1932027c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
