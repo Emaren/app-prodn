@@ -17,8 +17,8 @@ class PublishedHistoricalMarketContract(unittest.TestCase):
 
     def test_all_queries_use_existing_restricted_public_view_only(self):
         source = SRC.read_text()
-        self.assertEqual(source.count("$queryRaw<"), 1)
-        self.assertEqual(source.count("FROM aoe2war_public_v9.published_markets AS m"), 1)
+        self.assertEqual(source.count("$queryRaw<"), 2)
+        self.assertEqual(source.count("FROM aoe2war_public_v9.published_markets AS m"), 2)
         self.assertIn('m."publicIntegrityEligible" IS TRUE', source)
         self.assertIn("m.status IN ('settled', 'voided', 'under_review')", source)
         for forbidden in (

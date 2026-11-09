@@ -20,6 +20,21 @@ type PublicHistoricalMarketRow = {
   settledAt: Date | null;
 };
 
+// The existing approved v9 view has no intrinsic status filter. This
+// supplementary projection is an integrity-gated, public-only market preview;
+// it contains NO liquidity, wager, claim, user, wallet or payment details.
+type PublicLiveMarketRow = {
+  id: number;
+  title: string;
+  eventLabel: string;
+  status: "open" | "live" | "closing" | "awaiting_final_proof";
+  featured: boolean;
+  marketType: string;
+  leftLabel: string;
+  rightLabel: string;
+  closeAt: Date | null;
+};
+
 const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0, must-revalidate",
   "CDN-Cache-Control": "no-store",
@@ -30,7 +45,9 @@ export async function GET() {
   try {
     // One bounded SELECT against the already-approved R25 public v9 view.
     // No background market creation, funding or payouts.
-    const published = await getPrisma().$queryRaw<PublicHistoricalMarketRow[]>`
+    const prisma = getPrisma();
+    const [published, activePublished] = await Promise.all([
+      prisma.$queryRaw<PublicHistoricalMarketRow[]>`
       SELECT m.id, m.title, m."eventLabel", m.status,
              m."sortOrder", m.featured, m."marketType",
              m."leftLabel", m."rightLabel", m."closeAt", m."settledAt"
@@ -39,7 +56,18 @@ export async function GET() {
         AND m.status IN ('settled', 'voided', 'under_review')
       ORDER BY m."settledAt" DESC NULLS LAST, m.id DESC
       LIMIT 48
-    `;
+    `,
+      prisma.$queryRaw<PublicLiveMarketRow[]>`
+        SELECT m.id, m.title, m."eventLabel", m.status,
+               m.featured, m."marketType",
+               m."leftLabel", m."rightLabel", m."closeAt"
+        FROM aoe2war_public_v9.published_markets AS m
+        WHERE m."publicIntegrityEligible" IS TRUE
+          AND m.status IN ('open', 'live', 'closing', 'awaiting_final_proof')
+        ORDER BY m.featured DESC, m."sortOrder" ASC, m.id DESC
+        LIMIT 48
+      `,
+    ]);
 
     return NextResponse.json(
       {
@@ -54,6 +82,36 @@ export async function GET() {
         source: "aoe2war_public_v9.published_markets",
         dataWarning:
           "These are database-published historical market labels, not authenticated chain settlement, custody or payout proofs.",
+        // This is an independent, nonfunded published market preview.
+        // Zero rows means no eligible published active markets, not that
+        // a private market table was read or inferred.
+        publicLivePreview: {
+          schema: "aoe2war.app.bets-published-live-preview.v1",
+          status: "PUBLIC_MARKET_PREVIEW_FINANCIAL_HOLD",
+          source: "aoe2war_public_v9.published_markets",
+          publicIntegrityRequired: true,
+          financialExecutionAuthorized: false,
+          acceptingWagers: false,
+          approvingPayouts: false,
+          onchainPaymentFinalityVerified: false,
+          personalWagersIncluded: false,
+          actualLiquidityProven: false,
+          completeMarketCensus: false,
+          emptyReason: activePublished.length === 0
+            ? "NO_ELIGIBLE_PUBLISHED_ACTIVE_MARKETS" : null,
+          markets: activePublished.map((market) => ({
+            id: market.id,
+            title: market.title,
+            eventLabel: market.eventLabel,
+            status: market.status,
+            featured: market.featured,
+            marketType: market.marketType,
+            leftLabel: market.leftLabel,
+            rightLabel: market.rightLabel,
+            closeAt: market.closeAt?.toISOString() ?? null,
+            bettingPermitted: false,
+          })),
+        },
         markets: published.map((market) => ({
           id: market.id,
           title: market.title,
