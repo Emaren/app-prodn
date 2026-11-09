@@ -3,7 +3,7 @@
 
 All source-pinned old/new evidence is materialized by the exact root release
 controller under private /etc/aoe2war/web-prod-v16 in mode 0400. The sandboxed
-oneshot may NEVER read /root, open wallet paths, or weaken ProtectHome. 
+oneshot cannot access private home-directory artifacts or wallet paths.
 Original V14 C03/C04 guard and finance boundaries remain.
 
 No arbitrary destination, release, PID, finance capability, or dynamic scope.
