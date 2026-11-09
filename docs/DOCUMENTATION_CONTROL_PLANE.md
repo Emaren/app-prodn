@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-corpus-heap-pressure-v1-20261109` at `da091ea96e9960f08e3372e42f298ebaeb060631`
+Implementation baseline: `session-b/r25-corpus-heap-pressure-v1-20261109` at `8a582e0d3417abaf9d84adaf3097752d48d13056`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

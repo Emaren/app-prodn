@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9ec0e9a1771c968cf9e6cebeddb77d462b5ce9a9e00625b7b70ecb14903a9b5f",
+      "sha256": "53649c63355b8d3b2fb9618b48646283921d8fe50a9146bfcd8b025388ee18a2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2863,7 +2863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/r25-corpus-heap-pressure-v1-20261109",
-    "commit": "da091ea96e9960f08e3372e42f298ebaeb060631"
+    "commit": "8a582e0d3417abaf9d84adaf3097752d48d13056"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
