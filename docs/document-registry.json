@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "264e8b53511d9d18804ab2a4851a6428403d83f41dd3fc74c9410b492a96c388",
+      "sha256": "3cf4a1a3a60fa459ef1d8d1358d922e2d54ec9c2b46a36b6d825c031a69e1136",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2007,6 +2007,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "session-b-emergency-only-no-c03-funding-or-authenticated-rollback",
+      "id": "aoe2war.app-prodn.c03-failclosed-emergency-3033-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_B_C03_EMERGENCY_FAILCLOSED_3033_V1.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "78af0132a7f57d7a6a8361cac061c345d2339c7101f53a4ad67386ceabca4331",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 emergency-only finance-inert 3033 fallback",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-media-cache-no-db-owner-or-physical-release",
       "id": "aoe2war.app.session-b-managed-media-fallback-cache-recovery",
       "owner": "aoe2war-web",
@@ -2795,8 +2817,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-steam-v13-staggered-expiry-20261109",
-    "commit": "a2746fb59422301e23dc391a5914fee3108ba56a"
+    "branch": "session-b/c03-3033-failclosed-v1-20261109",
+    "commit": "1a7f6c40262f26cb3e57a9bfdebaf9ca88e0d94b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
