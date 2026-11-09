@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8fdd0f0d77fb1be83ab84092632523dc417fd1d4e18714300cb134ff1137218d",
+      "sha256": "7efe1e4ba1fd0799e34633e9789c80d57e0d96d32c12eedba65aac90fe6a9cb6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2752,6 +2752,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "root-only one-use candidate admission, finance-quarantined",
+      "id": "aoe2war.app-prodn.session-b-c03-r25-single-slot-exact-promotion-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "6636f1e42aeb640e2bd75b5906b2ba3cf43ceb39326210bf7950791bac3fb14c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "C03 exact restricted 3032 R25 promotion and automatic rollback",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only, finance-restricted, requires physical acceptance",
       "id": "aoe2war.app-prodn.session-b-c03-same-slot-dropin-pin-v2-20261109",
       "owner": "aoe2war-web",
@@ -2929,8 +2952,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-steam-v15-final-build-20261109",
-    "commit": "72841954018b70fbf30a22a5435b14b1932027c3"
+    "branch": "session-b/c03-single-slot-exact-promotion-20261109",
+    "commit": "1199eef41c60a8d7f52625e3aae9035b53e2b037"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
