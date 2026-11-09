@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 import BetsDisplayRail from "@/components/bets/BetsDisplayRail";
 import PublishedBetHistoryFallback from "@/components/bets/PublishedBetHistoryFallback";
+import { isPublicBetsReadHoldPayload } from "@/lib/betsPublicReadHold";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -1822,7 +1823,9 @@ export default function BetsPage() {
 
       const isInitialBoardLoad = initialBoardLoadRef.current;
       initialBoardLoadRef.current = false;
-      if (isInitialBoardLoad) {
+      // Production must prove the restricted read on EVERY navigation.
+      // A warm cached snapshot could predate a C03 permission revocation.
+      if (isInitialBoardLoad && process.env.NODE_ENV !== "production") {
         const warmedBoard = await consumeWarmBetsBoard(uid);
         if (warmedBoard) {
           return warmedBoard as BetBoardSnapshot;
@@ -1834,6 +1837,17 @@ export default function BetsPage() {
         signal,
       });
       if (!response.ok) {
+        if (response.status === 503) {
+          const held = await response.json().catch(() => null);
+          if (isPublicBetsReadHoldPayload(held)) {
+            // A stale previously successful board must never remain active
+            // after a C03 permission revocation or protected read denial.
+            setBoard(null);
+            // Existing PublishedBetHistoryFallback renders only the separately
+            // approved public archive. No wager or payout controls appear.
+            return null;
+          }
+        }
         throw new Error("Bet board failed to load.");
       }
       return (await response.json()) as BetBoardSnapshot;
@@ -1841,6 +1855,8 @@ export default function BetsPage() {
       if (error instanceof DOMException && error.name === "AbortError") {
         return null;
       }
+      // Unknown failures also invalidate previously cached live market state.
+      setBoard(null);
       console.error("Failed to load bet board:", error);
       if (!quiet) {
         toast.error("The book is quiet right now.");
