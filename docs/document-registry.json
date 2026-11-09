@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cf229c4efa2802fafa9e315c376a2439bbe0c116878f9ed1dcbfa0615c83475b",
+      "sha256": "a7b381b84e082e30f75d8530f5201ed7420af6c75d9141db2a4f32c87293eecc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2775,6 +2775,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial HTTP classification only, no SQL/financial role changes",
+      "id": "aoe2war.app-prodn.session-b-c03-prisma-crossrealm-42501-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "public",
+      "sha256": "5c90fcd152742a3a976b9246abf4fa942e48efcb98605e5e2d0a4a0fbf5f2bdd",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 known Prisma SQLSTATE 42501 financial read denial across JS realms",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only exact-identity fail-closed App release; no funding",
       "id": "aoe2war.app-prodn.session-b-c03-protecthome-steam-v16-recovery-20261109",
       "owner": "aoe2war-web",
@@ -3041,8 +3063,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c02-forward-only-r25-20261109",
-    "commit": "e65699ed397b1aa56f79f803d047f4ffcde7b5b6"
+    "branch": "session-b/c03-prisma-crossrealm-42501-20261109",
+    "commit": "bfaf2d7188a589acdf25926499bcaa5316e045c4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
