@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-single-slot-exact-promotion-20261109` at `ce3b033088ae09db80c3fe492cc42be9c1666f2a`
+Implementation baseline: `session-b/c03-single-slot-exact-promotion-20261109` at `1199eef41c60a8d7f52625e3aae9035b53e2b037`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
