@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-r25-reversible-drill-20261109` at `0858927826f7572947d6792728fa706273e9d35a`
+Implementation baseline: `session-b/c02-native-strict-approval-fields-20261109` at `8c08e7cb0ab7bc1353a5cc8471ae6a86ccdae5cc`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
