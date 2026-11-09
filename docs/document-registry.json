@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "517b5ca7eaee6fdea316b434000875490052028129e94643cbf5afca83fa5941",
+      "sha256": "78fb24b02123261e5b23f76a778ad000c16b4f02a92ff13b8ddcf3e094db832b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2953,7 +2953,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-single-slot-exact-promotion-20261109",
-    "commit": "51196ce778b67aa43fee74a2b5da6b83ade9d7b7"
+    "commit": "ce3b033088ae09db80c3fe492cc42be9c1666f2a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
