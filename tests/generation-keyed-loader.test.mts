@@ -82,3 +82,87 @@ test("failed loads are retried and data sources remain isolated", async () => {
   assert.equal(sourceACalls, 2);
   assert.equal(sourceBCalls, 1);
 });
+
+test("serial heavy corpus loader never overlaps distinct generations", async () => {
+  const load = createGenerationKeyedLoader<object, string[]>(1, {
+    serializeLoads: true,
+  });
+  const source = {};
+  let running = 0;
+  let maximumRunning = 0;
+  const gates: Array<() => void> = [];
+  const started: string[] = [];
+  const fresh = (key: string) => async () => {
+    running += 1;
+    maximumRunning = Math.max(maximumRunning, running);
+    started.push(key);
+    await new Promise<void>((resolve) => gates.push(resolve));
+    running -= 1;
+    return [key, "all historical rows retained"];
+  };
+
+  const a = load(source, "a", fresh("a"));
+  const b = load(source, "b", fresh("b"));
+  const c = load(source, "c", fresh("c"));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, ["a"]);
+  assert.equal(running, 1);
+  gates.shift()?.();
+  assert.deepEqual(await a, ["a", "all historical rows retained"]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, ["a", "b"]);
+  gates.shift()?.();
+  assert.deepEqual(await b, ["b", "all historical rows retained"]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(started, ["a", "b", "c"]);
+  gates.shift()?.();
+  assert.deepEqual(await c, ["c", "all historical rows retained"]);
+  assert.equal(maximumRunning, 1);
+});
+
+test("serial failure cannot poison a later generation or cross-source work", async () => {
+  const load = createGenerationKeyedLoader<object, number>(1, {
+    serializeLoads: true,
+  });
+  const sourceA = {};
+  const sourceB = {};
+  let release!: () => void;
+  const first = load(sourceA, "first", async () => {
+    await new Promise<void>((resolve) => { release = resolve; });
+    throw new Error("database denied");
+  });
+  const subsequent = load(sourceA, "second", async () => 42);
+  const other = load(sourceB, "second", async () => 99);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(await other, 99);
+  release();
+  await assert.rejects(first, /database denied/);
+  assert.equal(await subsequent, 42);
+  const reuse = await load(sourceA, "second", async () => {
+    throw new Error("same-gen should never rerun");
+  });
+  assert.equal(reuse, 42);
+});
+
+test("heavy corpus serial retry stays bounded under rapid generation churn", async () => {
+  const load = createGenerationKeyedLoader<object, number[]>(1, {
+    serializeLoads: true,
+  });
+  const source = {};
+  let concurrent = 0;
+  let maxConcurrent = 0;
+  const all = Array.from({ length: 12 }, (_, generation) =>
+    load(source, String(generation), async () => {
+      concurrent++;
+      maxConcurrent = Math.max(maxConcurrent, concurrent);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      concurrent--;
+      return Array.from({ length: 128 }, (_, n) => generation * 128 + n);
+    }),
+  );
+  const values = await Promise.all(all);
+  assert.equal(values.length, 12);
+  assert.equal(values.every((v) => v.length === 128), true);
+  assert.equal(new Set(values.flat()).size, 12 * 128);
+  assert.equal(maxConcurrent, 1);
+});

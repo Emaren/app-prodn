@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fce9a25310b48031cfa639695f9dff709afa95a6fa5a62d978896f0f52f15db0",
+      "sha256": "53649c63355b8d3b2fb9618b48646283921d8fe50a9146bfcd8b025388ee18a2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2821,6 +2821,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only-nonfinancial-r25-memory-guard",
+      "id": "aoe2war.app-prodn.session-b-r25-corpus-heap-pressure-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "18730881bc2c7ed5f7cf86e6b75cb8c9eb4da9501cf53453d0c565a7049decf1",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B R25 generation-aware replay corpus pressure repair",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -2840,8 +2862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-steam-v14-recvq-20261109",
-    "commit": "2d5cbc126100895e7c94408d03cb55bfb887c706"
+    "branch": "session-b/r25-corpus-heap-pressure-v1-20261109",
+    "commit": "8a582e0d3417abaf9d84adaf3097752d48d13056"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

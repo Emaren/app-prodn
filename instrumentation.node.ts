@@ -3,6 +3,7 @@ import {
 } from "./lib/nonfinancialRuntimeAdmission";
 import {
   installRuntimeCrashDiagnostics,
+  installR25HeapTelemetry,
 } from "./lib/runtimeCrashDiagnostics";
 import {
   startWarGraphRuntime,
@@ -14,5 +15,6 @@ if (process.env.NODE_ENV === "production") {
   // database, broad role or missing financial-runtime isolation.
   requireNonfinancialAuthDatasource(process.env.DATABASE_URL ?? "", process.env);
   installRuntimeCrashDiagnostics();
+  installR25HeapTelemetry();
   startWarGraphRuntime();
 }

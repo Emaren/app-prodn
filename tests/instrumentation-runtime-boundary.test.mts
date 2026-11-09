@@ -84,6 +84,24 @@ test(
       /process\.memoryUsage\(\)/,
     );
 
+    assert.match(
+      node,
+      /installR25HeapTelemetry\(\)/,
+    );
+
+    assert.match(
+      diagnostics,
+      /OBSERVATION_ONLY_NOT_STABILITY_CERTIFICATE/,
+    );
+    assert.match(
+      diagnostics,
+      /periodMs = 30_000/,
+    );
+    assert.match(
+      diagnostics,
+      /timer\.unref/,
+    );
+
     assert.doesNotMatch(
       diagnostics,
       /process\.on\(\s*"uncaughtException"/,

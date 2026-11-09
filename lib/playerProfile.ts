@@ -281,7 +281,7 @@ const PROFILE_MATCH_PAGE_LIMIT = 18;
 const loadPlayerProfileReplayCorpus = createGenerationKeyedLoader<
   PrismaClient,
   PlayerProfileGameRow[]
->();
+>(1, { serializeLoads: true });
 // Exact-Steam profiles should not re-read the same replay-derived corpus on every
 // request. The authoritative replay generation participates in the cache key, so
 // any GameStats/projection/snapshot/adjudication/identity change creates a fresh
@@ -289,7 +289,7 @@ const loadPlayerProfileReplayCorpus = createGenerationKeyedLoader<
 const loadExactSteamProfileReplayCorpus = createGenerationKeyedLoader<
   PrismaClient,
   PlayerProfileGameRow[]
->(16);
+>(8, { serializeLoads: true });
 
 const RESOURCE_KEYS = {
   food: ["food", "food gathered", "food collected", "food_collected", "food_gathered", "total_food"],
