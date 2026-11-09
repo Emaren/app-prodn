@@ -711,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "874b2416f9d78c7c86db7c4eb9d6b40a966c8bb2fca5e5c5e1da9e28120ec91d",
+      "sha256": "3fdbe193f884110af1dd756303b92131bdea294aa3cafbc4ae54efc74e951122",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2420,8 +2420,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-r25-reversible-drill-20261109",
-    "commit": "0858927826f7572947d6792728fa706273e9d35a"
+    "branch": "session-b/c02-native-strict-approval-fields-20261109",
+    "commit": "8c08e7cb0ab7bc1353a5cc8471ae6a86ccdae5cc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
