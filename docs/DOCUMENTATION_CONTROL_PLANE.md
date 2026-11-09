@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c04-rest-pagination-20261108` at `f29e295d394c3f9cf24652e0a294352de5c15c78`
+Implementation baseline: `session-b/c04-no-partial-writes-20261108` at `8eadaaa1c1436c5b514033fdf5c7a01586bfd2a1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

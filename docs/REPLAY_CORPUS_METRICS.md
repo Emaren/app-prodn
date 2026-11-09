@@ -8,12 +8,18 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "runtime-evidence"
 authority: "metric-contract"
-reviewed_at: "2026-10-09"
+reviewed_at: "2026-11-08"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Replay Corpus and Public Metric Contract
+
+Contract re-review (2026-11-08): the accepted Steam identity and
+public-directory grain distinctions were rechecked against
+lib/publicReplayTruth.ts and the five passing alias-loader-backed
+leaderboard-directory integration tests. The July 28 numeric snapshot
+below has NOT been remeasured or refreshed and remains historical.
 
 Review note (2026-09-22): the grain definitions, public-label rules, and
 projection invariants were re-reviewed against the current implementation and
