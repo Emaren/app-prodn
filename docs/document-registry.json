@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "47e295976ce3e856ef57c0c15584471482542ce3e31e8cd8391b38b9d8eb0029",
+      "sha256": "39bb5ab111ae916279119df98cc99b94ed842cd7227ba3a2fa37b71840b90e7d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3174,7 +3174,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-steam-v19-retired-preview-exact-20261109",
-    "commit": "95a9ec6d4a7a5f7b5373f54b0abbdeccadbfa6e8"
+    "commit": "d6028bb40aaaf69b641f9101970ab617d4e92c7e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
