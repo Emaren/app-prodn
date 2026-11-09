@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a7b381b84e082e30f75d8530f5201ed7420af6c75d9141db2a4f32c87293eecc",
+      "sha256": "05f7c79d0d0bd99d577d606e162d1228ead73af04534b48d5f1c1a7fbba77a71",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2819,6 +2819,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "App-only public read projection; finance execution denied",
+      "id": "aoe2war.app-prodn.session-b-c03-public-live-direct-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "public",
+      "sha256": "4a1cc62bc89485eabf861b5519191e328a6553dca8f09ce72afcb7e06f838dfb",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 explicit approved public-live endpoint without financial authority",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "root-only one-use candidate admission, finance-quarantined",
       "id": "aoe2war.app-prodn.session-b-c03-r25-single-slot-exact-promotion-20261109",
       "owner": "aoe2war-web",
@@ -3063,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-prisma-crossrealm-42501-20261109",
-    "commit": "bfaf2d7188a589acdf25926499bcaa5316e045c4"
+    "branch": "session-b/c03-public-live-explicit-api-20261109",
+    "commit": "d25bae7c73d73dc9466e640d1ee2c9504271e176"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

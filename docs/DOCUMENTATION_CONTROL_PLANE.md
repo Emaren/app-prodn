@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-prisma-crossrealm-42501-20261109` at `bfaf2d7188a589acdf25926499bcaa5316e045c4`
+Implementation baseline: `session-b/c03-public-live-explicit-api-20261109` at `d25bae7c73d73dc9466e640d1ee2c9504271e176`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **134**
+- Authoritative repository documents: **135**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 41
+- `runbook`: 42
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 30
+- `draft`: 31
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -174,6 +174,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
 | [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `runbook` | `draft` | `nonfinancial HTTP classification only, no SQL/financial role changes` |
 | [C03 restricted Steam V16 ProtectHome source evidence and second rollback](release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md) | `runbook` | `draft` | `source-only exact-identity fail-closed App release; no funding` |
+| [C03 explicit approved public-live endpoint without financial authority](release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md) | `runbook` | `draft` | `App-only public read projection; finance execution denied` |
 | [C03 exact restricted 3032 R25 promotion and automatic rollback](release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md) | `runbook` | `draft` | `root-only one-use candidate admission, finance-quarantined` |
 | [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `runbook` | `draft` | `source-only, finance-restricted, requires physical acceptance` |
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
