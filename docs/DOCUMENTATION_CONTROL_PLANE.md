@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c04-steam-v12-lease-edge-20261109` at `95ac585196f4e42bc30b8b2b16ef4c04b9d3d86b`
+Implementation baseline: `session-b/bets-readonly-hold-v1-20261109` at `fc1a4e2484a4fb93c51901fdc1bbe081979238f4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
