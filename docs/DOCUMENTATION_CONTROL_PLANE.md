@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-3033-dynamic-uid-v2-20261109` at `fb1eb1235b5c52af9b607475faf6a1eeaab2b1b6`
+Implementation baseline: `session-b/c04-steam-v14-recvq-20261109` at `0f7fb51fd9e003283825f132c58dea3d12727074`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **123**
+- Authoritative repository documents: **124**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 30
+- `runbook`: 31
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 19
+- `draft`: 20
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -173,6 +173,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
+| [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands
