@@ -144,20 +144,37 @@ def source_preflight():
             LEGACY_WEB_UNIT_SHA,'R25_RESTRICTED_PRODUCTION_UNIT_SHA')
     require(sha(file(UNIT, 0o644)) == OLD_UNIT_SHA, 'V13_STEAM_UNIT_SHA')
     require(unit_prop(STEAM_TIMER_NAME, 'ActiveState') == 'active',
-            'V9_TIMER_NOT_ACTIVE')
+            'V13_TIMER_NOT_ACTIVE')
     require(unit_prop(STEAM_UNIT_NAME, 'MainPID') == '0',
             'STEAM_ONESHOT_CURRENTLY_ACTIVE')
     require(unit_prop(STEAM_UNIT_NAME, 'NeedDaemonReload') == 'no',
             'STEAM_DAEMON_RELOAD_PENDING')
     require(unit_prop(STEAM_UNIT_NAME, 'DropInPaths') == '',
             'STEAM_UNIT_SHADOW_DROPIN')
-    require(unit_prop('aoe2hdbets-web-prod.service','MainPID') == '3750280',
-            'WEB_R25_PID_CHANGED')
+    # V13's original source-bound R25 PID 3750280 was terminated at
+    # 2026-11-09T14:10:47Z by actual V8 2048-MiB heap exhaustion.
+    # Re-enrol ONLY exact successor PID+start ticks+unit+build identity.
+    # A later restart MUST consume no V14 permit and requires new review.
+    require(unit_prop('aoe2hdbets-web-prod.service','MainPID') == '4183890',
+            'WEB_R25_RECOVERY_PID_CHANGED')
+    require(unit_prop('aoe2hdbets-web-prod.service','NRestarts') == '3',
+            'WEB_R25_RECOVERY_RESTART_COUNT_CHANGED')
+    require(unit_prop('aoe2hdbets-web-prod.service','ExecMainStartTimestampMonotonic')
+            == '2075992636073', 'WEB_R25_RECOVERY_START_MONOTONIC_CHANGED')
+    require(unit_prop('aoe2hdbets-web-prod.service','WorkingDirectory')
+            == '/var/lib/aoe2war-web-prod-4ab96cc7c1c0',
+            'WEB_R25_REVIEWED_STAGED_BUILD_DRIFT')
+    ticks = int(P('/proc/4183890/stat').read_text().rsplit(') ',1)[1].split()[19])
+    require(ticks == 207599263, 'WEB_R25_RECOVERY_PROC_TICKS_CHANGED')
+    maxmem = int(unit_prop('aoe2hdbets-web-prod.service','MemoryMax'))
+    currentmem = int(unit_prop('aoe2hdbets-web-prod.service','MemoryCurrent'))
+    require(maxmem == 3355443200 and 0 < currentmem < 2684354560,
+            'WEB_R25_HEAP_RECOVERY_BUDGET_EXCEEDED')
     require(unit_prop('wolochaind-mainnet.service','MainPID') == '1009',
             'CHAIN_VALIDATOR_PID_CHANGED')
     source = file(UNIT)
     require(source.count(OLD) == 1 and source.count(NEW) == 0,
-            'V9_COMMAND_NOT_EXACTLY_ONCE')
+            'V13_COMMAND_NOT_EXACTLY_ONCE')
     future = source.replace(OLD,NEW)
     require(sha(future) == NEW_UNIT_SHA, 'V14_UNIT_NOT_EXACT_SINGLE_REPLACEMENT')
     v = load()
