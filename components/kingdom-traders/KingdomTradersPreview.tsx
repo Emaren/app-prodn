@@ -1,13 +1,3 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Kingdom Traders — PAPER Research · AoE2WAR",
-  description:
-    "Read-only preview of the isolated Kingdom Traders PAPER cockpit. No wallets, live trading or financial execution.",
-  robots: { index: false, follow: false },
-  alternates: { canonical: "/kingdom-traders" },
-};
-
 const cards = [
   {
     label: "Historical PAPER accounts",

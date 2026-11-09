@@ -6,12 +6,13 @@ const contract = JSON.parse(
   readFileSync(new URL("../config/session-c-kingdom-traders-seam.json", import.meta.url), "utf8")
 );
 const page = readFileSync(
-  new URL("../app/kingdom-traders/page.tsx", import.meta.url), "utf8"
+  new URL("../components/kingdom-traders/KingdomTradersPreview.tsx", import.meta.url), "utf8"
 );
 
 test("Session C only publishes a read-only public navigation preview", () => {
   assert.equal(contract.schema, "aoe2war.session-c.kingdom-traders.nonfinancial-seam.v1");
   assert.equal(contract.previewRoute, "/kingdom-traders");
+  assert.equal(contract.routeMounted, false);
   assert.equal(contract.navigationEnabled, false);
   assert.equal(contract.publicOrigin, null);
   assert.equal(contract.publicCertificateTrusted, false);

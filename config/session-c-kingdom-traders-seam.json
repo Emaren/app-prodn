@@ -4,6 +4,7 @@
   "appSourceBase": "fba4d07e3ee49a2e14c652dcc6641b8af3003abb",
   "tradersSourceBase": "c631834284141c72580e575076535aa28a8f0c08",
   "previewRoute": "/kingdom-traders",
+  "routeMounted": false,
   "navigationEnabled": false,
   "publicOrigin": null,
   "publicCertificateTrusted": false,
