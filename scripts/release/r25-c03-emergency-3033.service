@@ -5,8 +5,8 @@ ConditionFileNotEmpty=/usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1
 
 [Service]
 Type=simple
-User=aoe2war-web-prod
-Group=aoe2war-web-prod
+User=aoe2war-c03-emergency
+DynamicUser=yes
 WorkingDirectory=/
 ExecStart=/usr/bin/python3 -I -B /usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py
 Restart=on-failure
