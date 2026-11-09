@@ -28,7 +28,7 @@ RECEIPT = ROOT / 'exact-c04-steam-v10-live-admission-receipt.json'
 OLD_UNIT_SHA = '0fddaf791d3c147766c5df108b34c761da9a3d07759043348671fa222eda0557'
 NEW_UNIT_SHA = 'f5d08beebca0912e8271fddf891983ac80b60d148e7e2242cd34832bb0a55176'
 TIMER_SHA = 'd3f4ce6fbbf6b2aad826a57e10e62859b82ce6e175b0ac99e6c5aa6f776413fc'
-MAIN_SHA = '57ad7471d28e9831cafd99e18b9b402a1a9392be0e0a4cb3140c57279bf893ea'
+MAIN_SHA = '19f19b81139a77b8c03c1011efef6d99640d9b133c5c5c630ff9b982f922ce0e'
 HELPER_SHA = '6f236e35878f069b5190cc7a9abbfc2cd312a8aaf4c352752208550406d82e9e'
 PROTECTED_C04_SHA = '064a16dde48c64a3001621902b4ae7a028ec4975183fd4c24b8a16338c1a226c'
 LEGACY_WEB_UNIT_SHA = '42bcd2f3833b3e8db5dddaf3be8058f7b265de0fb388e3e9508149de59e72621'
@@ -98,7 +98,7 @@ def source_preflight():
             'STEAM_DAEMON_RELOAD_PENDING')
     require(unit_prop(STEAM_UNIT_NAME, 'DropInPaths') == '',
             'STEAM_UNIT_SHADOW_DROPIN')
-    require(unit_prop('aoe2hdbets-web-prod.service','MainPID') == '3576266',
+    require(unit_prop('aoe2hdbets-web-prod.service','MainPID') == '3750280',
             'WEB_R25_PID_CHANGED')
     require(unit_prop('wolochaind-mainnet.service','MainPID') == '1009',
             'CHAIN_VALIDATOR_PID_CHANGED')

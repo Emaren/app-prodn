@@ -122,6 +122,8 @@ class C04MaskedSteamAdmission(unittest.TestCase):
         self.assertIn('ORIGINAL_FIN_SNAPSHOT =',s)
         self.assertIn('C03_ORIGINAL_V1_REVIEW_PINS_CHANGED',s)
         self.assertIn('C04_EXACT_MASK_HELPER_SOURCE_DRIFT',s)
+        self.assertIn("'status':'PASS_EXACT_STEAM_V10_ADMISSION'",s)
+        self.assertNotIn("'status':'PASS_EXACT_STEAM_V9_ADMISSION'",s)
         self.assertIn("STEAM_V10_EFFECTIVE_SERVICE_UNIT_DRIFT",s)
         self.assertIn("f5d08beebca0912e8271fddf891983ac80b60d148e7e2242cd34832bb0a55176",s)
         self.assertIn("0fddaf791d3c147766c5df108b34c761da9a3d07759043348671fa222eda0557",s)
@@ -141,6 +143,8 @@ class C04MaskedSteamAdmission(unittest.TestCase):
         self.assertIn("persist_unit(file(BACKUP,0o600))",s)
         self.assertIn("run(['systemctl','start',STEAM_TIMER_NAME]",s)
         self.assertIn("FINANCE_AUTHORIZED", s.upper())
+        self.assertIn("'3750280'",s)
+        self.assertIn("MAIN_SHA = '"+hashlib.sha256(STEAM.read_bytes()).hexdigest()+"'",s)
         for forbidden in ("ALTER ROLE","GRANT ","REVOKE ","systemctl unmask",
                           "systemctl start wolochain","http://127.0.0.1:8092"):
             self.assertNotIn(forbidden,s)

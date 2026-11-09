@@ -331,7 +331,7 @@ def enroll(name):
  check(f2==f and m2.production_nft_shape()==NFT_SHAPE,'CROSS_BOUNDARY_PROOF_CHANGED')
  ph=atomic_json(POLICY,obj.expected_policy(m2,f2),0o400)
  check(verify_active_runtime(name,p)==(pid,ticks),'LAST_SECOND_RUNTIME_DRIFT')
- print(json.dumps({'status':'PASS_EXACT_STEAM_V9_ADMISSION','profile':name,
+ print(json.dumps({'status':'PASS_EXACT_STEAM_V10_ADMISSION','profile':name,
     'source_sha':p['source'],'pid':pid,'policy_sha256':ph,'release_receipt_sha256':rh,
     'finance_authorized':False},sort_keys=True),flush=True)
 

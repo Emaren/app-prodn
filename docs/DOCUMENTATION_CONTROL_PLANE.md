@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c04-closed-masked-steam-v10-20261109` at `1e86630afc848933de7ed086c289bb2cadcae6c1`
+Implementation baseline: `session-b/c04-closed-masked-steam-v10-20261109` at `71c76a47c72c6f79c18ea4c5b8338364218160a0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
