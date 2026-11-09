@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "00ac10b9109670749373e35730849c5297df65b2c149c30bbfd12357164ce411",
+      "sha256": "ccdebff9467551bc17b26f257fbea71650eab1dd30abf8323bcce8d7ce879abb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2888,6 +2888,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial App SELECT on already-approved public v9 view only",
+      "id": "aoe2war.app-prodn.session-b-public-v9-live-market-fallback-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "public",
+      "sha256": "ce259ac01c7005359cab531c6b4829b17505aa355a1c134180551040bbb084aa",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "R25 finance-restricted published v9 current market preview",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-staged-fail-closed-cold-rollback-no-production-financial-change",
       "id": "aoe2war.app-prodn.session-b-r25-c03-same-slot-cold-rollback-v1-20261109",
       "owner": "aoe2war-web",
@@ -2996,8 +3018,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/steam-c01-delta-v17-20261109",
-    "commit": "0cdd727ea829c90c743a7f9a606e60f60db6c560"
+    "branch": "session-b/c03-v9-public-open-readonly-20261109",
+    "commit": "588d33cd5a626a060ff0df1f6bdba22b2f0586bf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
