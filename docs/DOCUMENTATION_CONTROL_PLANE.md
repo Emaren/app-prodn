@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-steam-v15-final-build-20261109` at `64c03e6525f5d5c513bfc45158ab5f648862927a`
+Implementation baseline: `session-b/r25-steam-v15-final-build-20261109` at `72841954018b70fbf30a22a5435b14b1932027c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **127**
+- Authoritative repository documents: **128**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 34
+- `runbook`: 35
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 23
+- `draft`: 24
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -171,6 +171,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `runbook` | `draft` | `source-only, finance-restricted, requires physical acceptance` |
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
