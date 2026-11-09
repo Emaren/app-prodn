@@ -106,10 +106,13 @@ def baseline(after_promotion=False):
  trial=read_trial()
  if not after_promotion:trial.root_only()
  else:
-  need(hashfile(INSTALLED_STEAM)==STEAM_UNIT_SHA
+  # Exact-source recovery must remain callable after an OOM/crash or a held
+  # Steam oneshot. Check source bytes and selected units, not ActiveState.
+  need(hashfile(INSTALLED_STEAM) in (STEAM_UNIT_SHA,V17_UNIT_SHA)
+       and INSTALLED_V18.is_file()
        and hashfile(INSTALLED_V18)==STEAM_SOURCE_SHA
-       and show(WEB_SERVICE,'ActiveState')=='active',
-       'PROMOTED_WEB_STEAM_V18_NOT_ACTIVE')
+       and hashfile(INSTALLED_WEB)==CANDIDATE_SHA,
+       'PROMOTED_WEB_STEAM_V18_SOURCE_NOT_QUALIFIED')
  trial.stage_ready()
  need(show(WEB_SERVICE,'MemoryMax')=='3355443200'
       and show(WEB_SERVICE,'User')=='aoe2war-web-prod','APP_OS_MEMORY_IDENTITY')
@@ -230,9 +233,14 @@ def activate():
   obs['failure']=type(e).__name__+'_'+str(e)[:120]
   obs['rollback_steps']=recover(trial)
  finally:
-  obs['final_pid']=show(WEB_SERVICE,'MainPID')
-  obs['final_web_unit_sha']=hashfile(INSTALLED_WEB)
-  obs['final_steam_unit_sha']=hashfile(INSTALLED_STEAM)
+  # A failed systemd reload or missing source must not suppress the negative
+  # immutable receipt. Distinguish unobservable state from a trusted hash.
+  def observed(call):
+   try:return call()
+   except Exception:return 'UNAVAILABLE'
+  obs['final_pid']=observed(lambda:show(WEB_SERVICE,'MainPID'))
+  obs['final_web_unit_sha']=observed(lambda:hashfile(INSTALLED_WEB))
+  obs['final_steam_unit_sha']=observed(lambda:hashfile(INSTALLED_STEAM))
   seal(RESULT,status,obs)
  need(status.startswith('PASS_'),'RETAINED_R25_RELEASE_FAILED')
  print(status,flush=True)
