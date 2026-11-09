@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-3033-failclosed-v1-20261109` at `2679c78e016152c4d22641517faf56ed78d11575`
+Implementation baseline: `session-b/c03-3033-dynamic-uid-v2-20261109` at `8d389f764b312d51db331357c79140584c12eb89`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
