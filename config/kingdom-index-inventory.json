@@ -13,8 +13,8 @@
     "dynamicTemplates": 20,
     "publicIndexTemplates": 88,
     "excludedStaticTemplates": 11,
-    "routeHandlerTemplates": 283,
-    "apiHandlerTemplates": 280,
+    "routeHandlerTemplates": 284,
+    "apiHandlerTemplates": 281,
     "nonApiHandlerTemplates": 3
   },
   "pages": [
@@ -1409,6 +1409,11 @@
     },
     {
       "entrypoint": "app/api/bets/public-history/route.ts",
+      "scope": "api",
+      "ownership": "unassigned"
+    },
+    {
+      "entrypoint": "app/api/bets/public-live/route.ts",
       "scope": "api",
       "ownership": "unassigned"
     },

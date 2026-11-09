@@ -20,7 +20,7 @@ class ExistingEndpointCurrentPreviewContract(unittest.TestCase):
   self.assertIn('m."publicIntegrityEligible" IS TRUE',source)
   self.assertIn("m.status IN ('open', 'live', 'closing', 'awaiting_final_proof')",source)
   self.assertIn('ORDER BY m.featured DESC',source)
-  self.assertFalse((ROOT/'app/api/bets/public-live/route.ts').exists())
+  self.assertTrue((ROOT/'app/api/bets/public-live/route.ts').exists())
   self.assertFalse((ROOT/'components/bets/PublishedLiveMarketPreview.tsx').exists())
   self.assertNotIn('SELECT *',source)
   for forbidden in ('pending_wolo_claims','bet_wagers','bet_markets','bet_stake_intents','user_id',
