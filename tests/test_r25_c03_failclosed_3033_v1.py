@@ -8,7 +8,7 @@ from http.server import HTTPServer
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "scripts/release/r25_c03_failclosed_3033_v1.py"
-UNIT = ROOT / "scripts/release/aoe2war-c03-failclosed-3033.service"
+UNIT = ROOT / "scripts/release/r25-c03-emergency-3033.service"
 s = importlib.util.spec_from_file_location("r25_c03_failclosed_3033_v1", SOURCE)
 m = importlib.util.module_from_spec(s)
 s.loader.exec_module(m)
@@ -75,6 +75,8 @@ class Failclosed3033(unittest.TestCase):
         for required in ["User=aoe2war-c03-emergency", "DynamicUser=yes", "ProtectSystem=strict", "ProtectHome=yes", "NoNewPrivileges=yes", "PrivateDevices=yes", "ConditionFileNotEmpty=/usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py", "MemoryMax=67108864", "MemorySwapMax=0", "TasksMax=8", "CPUQuota=15%", "IPAddressDeny=any", "IPAddressAllow=localhost", "CapabilityBoundingSet="]:
             self.assertIn(required, text)
         self.assertNotIn("User=aoe2war-web-prod", text)
+        self.assertNotIn("aoe2war-c03-failclosed-3033.service", text)
+        self.assertTrue(UNIT.name.startswith("r25-"))
         self.assertNotIn("DATABASE_URL", text)
         self.assertNotIn("PORT=8092", text)
 
