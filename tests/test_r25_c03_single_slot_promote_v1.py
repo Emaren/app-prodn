@@ -46,6 +46,26 @@ class ExactSourceBounded(unittest.TestCase):
    with patch.object(pathlib.Path,'read_bytes',return_value=original):
     with self.assertRaisesRegex(m.Hold,'ORIGINAL_WEB_UNIT_SHA'):
      m.same_port_units()
+ def test_masked_service_exit_one_is_exact_healthy_quarantine(self):
+  # Physical HEL1: is-enabled emits masked but exits 1, not success 0.
+  with (
+   patch.object(m,'command',return_value=''),
+   patch.object(m.subprocess,'run',
+       return_value=types.SimpleNamespace(returncode=1,stdout='masked\n')),
+   patch.object(m,'prop',side_effect=lambda unit,key:
+         '1009' if unit=='wolochaind-mainnet.service' else '2625090'),
+  ):
+   m.exact_finance_guard()
+
+ def test_nonmasked_services_refused_even_when_exit_zero(self):
+  with (
+   patch.object(m,'command',return_value=''),
+   patch.object(m.subprocess,'run',
+       return_value=types.SimpleNamespace(returncode=0,stdout='enabled\n')),
+  ):
+   with self.assertRaisesRegex(m.Hold,'LEGACY_UNIT_UNMASKED'):
+    m.exact_finance_guard()
+
  def test_finance_listener_open_aborts_without_allowance(self):
   with patch.object(m,'command',return_value='LISTEN 0 512 127.0.0.1:8094 0.0.0.0:*'):
    with self.assertRaisesRegex(m.Hold,'FINANCE_LISTENER_OPEN'):

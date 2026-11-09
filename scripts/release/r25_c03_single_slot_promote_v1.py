@@ -118,7 +118,12 @@ def exact_finance_guard():
   need(not re.search(':'+str(port)+r'\s',text),'FINANCE_LISTENER_OPEN')
  for unit in ('wolochain-mainnet-settlement.service',
               'wolochain-founder-rewards-settlement.service'):
-  need(command(['systemctl','is-enabled',unit])=='masked','LEGACY_UNIT_UNMASKED')
+  # systemctl is-enabled returns status 1 for an intentionally masked unit.
+  # Read the exact result and refuse every other state or unexpected error.
+  r=subprocess.run(['systemctl','is-enabled',unit],capture_output=True,
+                   text=True,timeout=8)
+  need(r.stdout.strip()=='masked' and r.returncode in (0,1),
+       'LEGACY_UNIT_UNMASKED')
  need(prop('wolochaind-mainnet.service','MainPID')=='1009','VALIDATOR_PID_DRIFT')
  need(prop('aoe2hdbets-web.service','MainPID')=='2625090','LEGACY_PID_DRIFT')
 def preflight():
