@@ -59,7 +59,7 @@ test("historical exact-Steam aliases require membership in the cleaned profile c
 test("exact-Steam replay corpora are generation-keyed and bounded", () => {
   assert.match(
     source,
-    /const loadExactSteamProfileReplayCorpus = createGenerationKeyedLoader<[\s\S]*?>\(16\)/,
+    /const loadExactSteamProfileReplayCorpus = createGenerationKeyedLoader<[\s\S]*?>\(8, \{ serializeLoads: true \}\)/,
   );
   assert.match(
     source,
