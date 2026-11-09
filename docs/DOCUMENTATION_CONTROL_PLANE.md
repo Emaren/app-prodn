@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-v18-roundtrip-isolated-20261109` at `b10ea7005d02c93746e5ef64ced0756bab0c4587`
+Implementation baseline: `session-b/c03-v18-roundtrip-isolated-20261109` at `aa609e1c33641d59f341134b096bdb9facc09607`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

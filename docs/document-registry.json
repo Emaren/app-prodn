@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e1b914ab2598d20761249766b3fd12ad95be93270392b493c1da9990fb4c4299",
+      "sha256": "30015562fd2993a1f2200d8889ea33b45a50bd011488e5241907921254a84878",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3152,7 +3152,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-v18-roundtrip-isolated-20261109",
-    "commit": "b10ea7005d02c93746e5ef64ced0756bab0c4587"
+    "commit": "aa609e1c33641d59f341134b096bdb9facc09607"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
