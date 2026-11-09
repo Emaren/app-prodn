@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1f98d0ba98ed9e53bf319e0858495df3fc97abea416a712495f049820408bb45",
+      "sha256": "00b82fcf5237d3c8f3a6e9d754f28baa6fbbf1ce06db8f0468ec3a9d0f1f9b9b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2753,6 +2753,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "steam-source-bound-readonly",
+      "id": "aoe2war.app-prodn.session-b-c04-steam-sandbox-v11-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "internal",
+      "sha256": "4b0887f17cecc295dca6ef83c102c67158e99129cd8205e351b662e56a7f07a5",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Session B \u2014 C04 Steam Sandbox V11",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -2772,8 +2795,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-closed-masked-steam-v10-20261109",
-    "commit": "ed5ea178d69dd943859b0c5e292b9c47e30ddec3"
+    "branch": "session-b/c04-steam-v11-sandbox-evidence-20261109",
+    "commit": "485bae7ecda96d76431e730587b8c9d3452be42f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
