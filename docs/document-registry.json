@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4ec13a2844a7a1cde23f8b3e353d75ba04e979e386c96a0630eeefe30a5a45f7",
+      "sha256": "cf229c4efa2802fafa9e315c376a2439bbe0c116878f9ed1dcbfa0615c83475b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2752,6 +2752,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfunded source-only App transport parity; Chain finance owner retains execution",
+      "id": "aoe2war.app-prodn.session-b-c02-source-parity-r25-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "9ab5b0615e59380b4f34b7c0196cb0a6586e93fd7ba272f98e41a81531a6945d",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "C02 exact native-8094 forward-only App transport source parity in R25",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only exact-identity fail-closed App release; no funding",
       "id": "aoe2war.app-prodn.session-b-c03-protecthome-steam-v16-recovery-20261109",
       "owner": "aoe2war-web",
@@ -3018,8 +3041,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-v9-public-open-readonly-20261109",
-    "commit": "b63a35369111d26d706c23c4b54822f9c8a7aebe"
+    "branch": "session-b/c02-forward-only-r25-20261109",
+    "commit": "e65699ed397b1aa56f79f803d047f4ffcde7b5b6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
