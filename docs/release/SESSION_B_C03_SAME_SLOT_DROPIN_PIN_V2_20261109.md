@@ -13,7 +13,7 @@ review_interval_days: 7
 sensitivity: "restricted"
 ---
 
-# C03 restricted 3032 drop-in-preserving rollback v2
+# C03: source-pinned same-slot rollback with existing systemd memory drop-in
 
 The original reviewed #1267 root controller has an impossible live HEL1 precondition: its restore requires DropInPaths empty. HEL1's actual aoe2hdbets-web-prod.service has a legitimate, root-owned systemd memory cap drop-in. Do not delete or override it to satisfy an outdated predicate.
 
