@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "033e2c098eb3266de483520dabcba910670751b04e883aa3075f370f01c146ad",
+      "sha256": "fce9a25310b48031cfa639695f9dff709afa95a6fa5a62d978896f0f52f15db0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2798,6 +2798,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "steam-source-bound-readonly-c04-masks-not-financial-release",
+      "id": "aoe2war.app-prodn.session-b-c04-steam-v14-recvq-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "6921ebf678666ec6281f8f6c28b7b4be3bcdee7815b293ba7c55bd839e4508a3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Steam V14 C04 identity-only receive queue normalization",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -2817,8 +2840,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-3033-dynamic-uid-v2-20261109",
-    "commit": "fb1eb1235b5c52af9b607475faf6a1eeaab2b1b6"
+    "branch": "session-b/c04-steam-v14-recvq-20261109",
+    "commit": "2d5cbc126100895e7c94408d03cb55bfb887c706"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
