@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-b1ef-exact-single-slot-rollback-trial` at `6da4bb0da869774e970cf61250c6d64f353d6516`
+Implementation baseline: `session-b/c03-b1ef-exact-single-slot-rollback-trial` at `dfe2cf818bcfea3bd821915ef3658b6e76a358af`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
