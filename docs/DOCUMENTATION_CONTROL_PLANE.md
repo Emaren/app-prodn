@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-cold-restricted-rollback-v1-20261109` at `b37428be7bc2a8697024a90507a1b98810dcee9d`
+Implementation baseline: `session-b/r25-cold-restricted-rollback-v1-20261109` at `08a7f59610f7069d6454ad2678165905972373e5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

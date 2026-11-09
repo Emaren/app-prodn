@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7f2bdb05f964f18615c9a0079c3f8fb92778c19b9439ef48e87ae8fb183d1139",
+      "sha256": "3759763a3df747f295ea3cdde72500001d032d9bb751d6d73176001068a44efc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2828,7 +2828,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-09",
       "sensitivity": "restricted",
-      "sha256": "c57055b335472af9990d933f8a7a4cb5bd2a1238d4e097cef697878bc1051c42",
+      "sha256": "f5f02470fa6095668e68425e0b828f291f377f80159de5c0e83aa7acdb1feb61",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2886,7 +2886,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/r25-cold-restricted-rollback-v1-20261109",
-    "commit": "b37428be7bc2a8697024a90507a1b98810dcee9d"
+    "commit": "08a7f59610f7069d6454ad2678165905972373e5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
