@@ -27,6 +27,28 @@ test("known restricted public board read surfaces fail shut", () => {
   assert.equal(isRestrictedBetsReadDenied(error("wolo_indexed_transfers", "P2010")), true);
 });
 
+test("Prisma P2039 across separate JavaScript realm still preserves narrow finance HOLD", async () => {
+  // An actual Next/Prisma error can cross package/compiler or VM realms.
+  // Its visible SQLSTATE and protected table are necessary, never sufficient
+  // without an actual Prisma error code.
+  const { runInNewContext } = await import("node:vm");
+  const alien = runInNewContext(
+    'Object.assign(new Error("Database error. Code: `42501`. Message: `permission denied for table pending_wolo_claims`"), {code:"P2039"})',
+  );
+  assert.equal(alien instanceof Error, false);
+  assert.equal(isRestrictedBetsReadDenied(alien), true);
+  assert.equal(isRestrictedBetsReadDenied({
+    code: "P2010",
+    message: "Raw query failed. Code: `42501`. Message: `permission denied for table bet_stake_intents`",
+  }), true);
+  assert.equal(isRestrictedBetsReadDenied({
+    code: "P2039", message: "Raw query failed. Code: `42501`. Message: `permission denied for table users`",
+  }), false);
+  assert.equal(isRestrictedBetsReadDenied({
+    code: "P2039", message: {}, toString() { throw Error("untrusted toString"); },
+  }), false);
+});
+
 test("unknown SQL, table, unrelated database errors and malicious payload are not silently hidden", () => {
   assert.equal(isRestrictedBetsReadDenied(error("users")), false);
   assert.equal(isRestrictedBetsReadDenied(error("bet_markets", "P2002")), false);

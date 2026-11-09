@@ -23,7 +23,11 @@ export function isRestrictedBetsReadDenied(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
   if (code !== "P2039" && code !== "P2010") return false;
-  const message = error instanceof Error ? error.message : String(error);
+  // A Prisma engine error may cross a VM/Next bundle boundary and lose
+  // instanceof Error. Read its own string message without trusting a
+  // generic String(object) conversion or unverified nested cause.
+  const record = error as { message?: unknown; meta?: unknown };
+  const message = typeof record.message === "string" ? record.message : "";
   if (!/\b42501\b/.test(message)) return false;
   const table = /permission denied for table ([a-z_][a-z0-9_]*)/i.exec(message)?.[1];
   return typeof table === "string" &&
