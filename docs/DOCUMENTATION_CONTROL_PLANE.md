@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-cold-restricted-rollback-v1-20261109` at `08a7f59610f7069d6454ad2678165905972373e5`
+Implementation baseline: `session-b/r25-steam-v15-final-build-20261109` at `64c03e6525f5d5c513bfc45158ab5f648862927a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **126**
+- Authoritative repository documents: **127**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 33
+- `runbook`: 34
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 22
+- `draft`: 23
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -176,6 +176,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
 | [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `runbook` | `draft` | `source-staged-fail-closed-cold-rollback-no-production-financial-change` |
 | [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `runbook` | `draft` | `source-only-nonfinancial-r25-memory-guard` |
+| [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands
