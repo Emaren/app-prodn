@@ -130,6 +130,21 @@ class C04MaskedSteamAdmission(unittest.TestCase):
         self.assertEqual(hashlib.sha256(V9.read_bytes()).hexdigest(),
            'cb275a8ae8bc62c373ffe73063e60ff8ca7bd93661b899d887432ad6095cb07a')
 
+    def test_steam_only_source_bound_switch_and_backout(self):
+        p = ROOT / 'scripts/release/r25_steam_masked_c04_switch_v10.py'
+        s = p.read_text()
+        self.assertIn("PROTECTED_C04_SHA = '064a16dde48c64a3001621902b4ae7a028ec4975183fd4c24b8a16338c1a226c'",s)
+        self.assertIn("OLD_UNIT_SHA = '0fddaf791d3c147766c5df108b34c761da9a3d07759043348671fa222eda0557'",s)
+        self.assertIn("NEW_UNIT_SHA = 'f5d08beebca0912e8271fddf891983ac80b60d148e7e2242cd34832bb0a55176'",s)
+        self.assertIn("run(['systemctl','stop',STEAM_TIMER_NAME]",s)
+        self.assertIn("run(['systemctl','daemon-reload']",s)
+        self.assertIn("persist_unit(file(BACKUP,0o600))",s)
+        self.assertIn("run(['systemctl','start',STEAM_TIMER_NAME]",s)
+        self.assertIn("FINANCE_AUTHORIZED", s.upper())
+        for forbidden in ("ALTER ROLE","GRANT ","REVOKE ","systemctl unmask",
+                          "systemctl start wolochain","http://127.0.0.1:8092"):
+            self.assertNotIn(forbidden,s)
+
     def test_v10_enrollment_has_distinct_protected_policy_location(self):
         src=STEAM.read_text()
         self.assertIn('/etc/aoe2war/web-prod-v10',src)

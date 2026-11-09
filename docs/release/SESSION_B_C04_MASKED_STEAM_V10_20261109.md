@@ -41,6 +41,12 @@ The original V1 source, original C03 V1 service/timer/command and pinned C03 com
 - Python tests/test_r25_steam_c04_masked_v10.py: 12 positive/negative tests PASS. Includes third-listener bypass denial, original C03 command denial, TOCTOU denial, changed 3030 / resurrected 8092 denial and finally restored original need() function.
 - No live timer, C03 observer, source-pinned V9, Chain financial service, custody, database ownership or funded listener changed by this preflight.
 
+## Source-bound physical switch
+
+The only executable activation path is scripts/release/r25_steam_masked_c04_switch_v10.py, installed under its reviewed SHA. It checks original service/timer/website SHAs and masks, saves a root-0600 V9 unit backup, installs exact two V10 scripts root-0644, and makes exactly one source-controlled Steam ExecStart replacement. It stops the Steam timer only during switch, reloads, runs V10 selftest/inspect/enroll, runs the actual Steam oneshot and confirms success, then restores the timer and repeats protected inspection. On any failed physical predicate after the unit change it restores the exact original V9 unit bytes and the original Steam timer. No Chain service/financial roles are ever changed.
+
+This is an explicitly versioned V10 policy, not a silently redefined original V9 signature. An operator MUST verify exact-head CI and the existing HEL1 C04 closed state before invoking the one-use --activate procedure.
+
 ## Remaining acceptance
 
 The new V10 must be deployed under a separately reviewed exact Steam unit/config SHA and source-bound post-transition fingerprint. Physical Steam refresh and negative test must pass with C04 masks intact. Then independently verify genuine owner and non-admin Chrome/Steam sessions and the finance-safe 3033 rollback before C03 live coordination.
