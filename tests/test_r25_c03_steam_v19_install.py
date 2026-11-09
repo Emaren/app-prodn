@@ -62,7 +62,7 @@ class V19Install(unittest.TestCase):
 
  def test_source_requires_exact_protected_r24_state_and_no_finance(self):
   text=SRC.read_text()
-  for target in ('"MainPID")=="0"','"ActiveState")=="inactive"', 
+  for target in ('"MainPID")=="0"','"ActiveState")=="inactive"',
                  "FINANCE_LISTENER_OPEN","EXACT_RETAINED_PUBLIC_R25_MISSING",
                  "ALREADY_PUBLISHED_OR_PREVIOUS_ACTION",
                  "V19_TIMER_NOT_ACTIVE","ORIGIN_PROOF"):
