@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-sandboxed-steam-v16-20261109` at `bd0b173b5285efe45e42521fc21cbb0a371a01ca`
+Implementation baseline: `session-b/steam-c01-delta-v17-20261109` at `2e8c685e6809a2abd70d7d75634c495c947ab515`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **130**
+- Authoritative repository documents: **131**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 37
+- `runbook`: 38
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 26
+- `draft`: 27
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -180,6 +180,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `runbook` | `draft` | `source-staged-fail-closed-cold-rollback-no-production-financial-change` |
 | [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `runbook` | `draft` | `source-only-nonfinancial-r25-memory-guard` |
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
+| [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands
