@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/steam-c01-delta-v17-20261109` at `2e8c685e6809a2abd70d7d75634c495c947ab515`
+Implementation baseline: `session-b/steam-c01-delta-v17-20261109` at `0cdd727ea829c90c743a7f9a606e60f60db6c560`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

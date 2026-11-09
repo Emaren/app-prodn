@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5078c4b7b40bc74cbe15c33498d64678b77837b67e1212168bde045d3d43c637",
+      "sha256": "00ac10b9109670749373e35730849c5297df65b2c149c30bbfd12357164ce411",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2962,7 +2962,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-09",
       "sensitivity": "restricted",
-      "sha256": "f0028edc68996fe2c7e8d0f9cc9b70445294080c44e0a55e783e8e889bdde685",
+      "sha256": "1086149377d0ca9501dee554ca35798f898366fd765ace67863b1eba33f2d6ff",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2997,7 +2997,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/steam-c01-delta-v17-20261109",
-    "commit": "2e8c685e6809a2abd70d7d75634c495c947ab515"
+    "commit": "0cdd727ea829c90c743a7f9a606e60f60db6c560"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
