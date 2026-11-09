@@ -1,0 +1,11 @@
+[Unit]
+Description=Validate Steam TLS destinations for isolated app profile
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -I -B /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v18.py --phase refresh
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectSystem=strict
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_SETUID CAP_SETGID
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX

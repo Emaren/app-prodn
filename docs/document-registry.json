@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fe06180602def18c2c1d568ea21fe7c5c1e3e63d046696d17aa2789433ec1952",
+      "sha256": "ed14db0c6b487c8d05782c79618a2916d8e01403aa43e951b49f552ac0744324",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2793,6 +2793,28 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "source-bound App public-only R25 release with independent authenticated owner acceptance required",
+      "id": "aoe2war.app-prodn.session-b-c03-b1ef-v18-retained-production-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_B1EF_V18_RETAINED_PRODUCTION_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "7090c50490e34c768cf3cae6e46ffd9a741d8fec3d8784075bd83209da76373c",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Steam V18 exact b1ef retained one-slot nonfunded production release",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3108,7 +3130,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-b1ef-exact-single-slot-rollback-trial",
-    "commit": "d0d59f86fe06390c3bae010387fa549564f10d99"
+    "commit": "dfe2cf818bcfea3bd821915ef3658b6e76a358af"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
