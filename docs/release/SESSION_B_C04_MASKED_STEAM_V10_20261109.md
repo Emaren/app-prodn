@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.session-b-c04-masked-steam-v10-20261109"
+title: "Session B — Versioned C04-Masked Steam V10"
+type: "runbook"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "steam-source-bound-readonly"
+reviewed_at: "2026-11-09"
+review_interval_days: 7
+sensitivity: "internal"
+---
+
 # Session B — Versioned C04-Masked Steam V10
 
 Scope: nonfinancial R25 website Steam-only egress admission. Not a C03/C04/C09 approval.
