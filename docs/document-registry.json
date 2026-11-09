@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d417d3018f4baf7ef6849af349c2d7d0cca1e7bf04ff9eda25f8121c4f08a23d",
+      "sha256": "00ac10b9109670749373e35730849c5297df65b2c149c30bbfd12357164ce411",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2955,6 +2955,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only reviewed App release with physical production acceptance required",
+      "id": "aoe2war.app-prodn.session-b-steam-v17-exact-c01-inert-delta-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "1086149377d0ca9501dee554ca35798f898366fd765ace67863b1eba33f2d6ff",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -2974,8 +2996,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-sandboxed-steam-v16-20261109",
-    "commit": "bd0b173b5285efe45e42521fc21cbb0a371a01ca"
+    "branch": "session-b/steam-c01-delta-v17-20261109",
+    "commit": "0cdd727ea829c90c743a7f9a606e60f60db6c560"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
