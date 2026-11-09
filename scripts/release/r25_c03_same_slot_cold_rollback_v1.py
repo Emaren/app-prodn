@@ -187,6 +187,30 @@ def restore():
    time.sleep(1.5)
  except Exception as e:
   print('HOLD_ORIGINAL_ROLLBACK_TRANSITION',type(e).__name__,str(e)[:160],flush=True)
+  # Recovery itself can fail (daemon reload, source launch, health timeout).
+  # First restore the exact original unit if the candidate is still pinned,
+  # then attempt ONE bounded old-source start. NEVER start legacy 3030.
+  # A second recovery attempt is evidence, never a synthetic PASS.
+  try:
+   current=sha_file(UNIT)
+   require(current in (NEW_UNIT_SHA, OLD_UNIT_SHA),
+           'UNRECOGNIZED_PARTIAL_RECOVERY_UNIT')
+   if current==NEW_UNIT_SHA:
+    exec_cmd('systemctl','stop','aoe2hdbets-web-prod.service',timeout=35)
+    atomic_replace(old)
+   require(sha_file(UNIT)==OLD_UNIT_SHA,'SECONDARY_ORIGINAL_UNIT_HASH_DRIFT')
+   exec_cmd('systemctl','daemon-reload',timeout=35)
+   exec_cmd('systemctl','start','aoe2hdbets-web-prod.service',timeout=35)
+   short_deadline=time.monotonic()+35
+   while time.monotonic()<short_deadline:
+    if get_version()==OLD_VERSION:
+     status='PASS_SECONDARY_RESTORED_RESTRICTED_ORIGINAL_3032_NOT_AUTH_CERTIFIED'
+     print('PASS_SECONDARY_RESTRICTED_3032_RECOVERY',flush=True)
+     break
+    time.sleep(1.5)
+  except Exception as second:
+   print('HOLD_SECONDARY_RESTRICTED_3032_RECOVERY',type(second).__name__,
+         str(second)[:160],flush=True)
  finally:
   elapsed=int(1000*(time.monotonic()-started))
   seal({**evidence,'status':status,'rollback_ms':elapsed,

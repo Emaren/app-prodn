@@ -91,6 +91,15 @@ class ColdRestrictedSlot(unittest.TestCase):
   self.assertNotIn("exec_cmd('systemctl','start','aoe2hdbets-web.service'",text)
   self.assertNotIn("exec_cmd('systemctl','restart','wolochaind-mainnet.service'",text)
 
+ def test_recovery_failure_has_bounded_secondary_original_start(self):
+  text=FILE.read_text()
+  self.assertIn('HOLD_ORIGINAL_ROLLBACK_TRANSITION',text)
+  self.assertIn('PASS_SECONDARY_RESTRICTED_3032_RECOVERY',text)
+  self.assertIn('HOLD_SECONDARY_RESTRICTED_3032_RECOVERY',text)
+  self.assertIn('UNRECOGNIZED_PARTIAL_RECOVERY_UNIT',text)
+  self.assertIn('short_deadline=time.monotonic()+35',text)
+  self.assertIn("status='PASS_SECONDARY_RESTORED_RESTRICTED_ORIGINAL_3032_NOT_AUTH_CERTIFIED'",text)
+
  def test_receipts_explicitly_prohibit_auth_acceptance(self):
   text=FILE.read_text()
   for s in ("'funding_authorized':False",
