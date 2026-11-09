@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-v9-public-open-readonly-20261109` at `b934bf873df6885bf4910626ce7d2fead153160c`
+Implementation baseline: `session-b/c03-v9-public-open-readonly-20261109` at `b63a35369111d26d706c23c4b54822f9c8a7aebe`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
