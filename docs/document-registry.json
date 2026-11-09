@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c5523c2dcb24996861093fbe6abf2038b348eb07a649421a1c69ab89f5bf0810",
+      "sha256": "a8e261dbe6d84c2e6c9ef78c178ae5f03af97d4edf95afe9a355fda739cf7305",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2795,8 +2795,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-steam-v12-lease-edge-20261109",
-    "commit": "95ac585196f4e42bc30b8b2b16ef4c04b9d3d86b"
+    "branch": "session-b/c04-steam-v13-staggered-expiry-20261109",
+    "commit": "ad75b47d78ae9d54258623f91de599e426b3b9ff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

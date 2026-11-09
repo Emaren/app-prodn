@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c04-steam-v12-lease-edge-20261109` at `95ac585196f4e42bc30b8b2b16ef4c04b9d3d86b`
+Implementation baseline: `session-b/c04-steam-v13-staggered-expiry-20261109` at `ad75b47d78ae9d54258623f91de599e426b3b9ff`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
