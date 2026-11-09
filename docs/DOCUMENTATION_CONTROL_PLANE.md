@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/bets-readonly-hold-v1-20261109` at `18f725a87b20082a96303d04fb97105f9f2b8a07`
+Implementation baseline: `session-b/c04-steam-v13-staggered-expiry-20261109` at `a2746fb59422301e23dc391a5914fee3108ba56a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
