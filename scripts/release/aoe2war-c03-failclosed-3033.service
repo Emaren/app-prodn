@@ -1,0 +1,40 @@
+[Unit]
+Description=AoE2WAR C03 emergency-only fail-closed 3033 (NOT authenticated rollback)
+After=network.target
+ConditionFileNotEmpty=/usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py
+
+[Service]
+Type=simple
+User=aoe2war-web-prod
+Group=aoe2war-web-prod
+WorkingDirectory=/
+ExecStart=/usr/bin/python3 -I -B /usr/local/lib/aoe2war-web-prod/r25_c03_failclosed_3033_v1.py
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=5
+KillMode=control-group
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryMax=67108864
+MemorySwapMax=0
+TasksMax=8
+CPUQuota=15%
+LimitNOFILE=64
+RestrictAddressFamilies=AF_UNIX AF_INET
+IPAddressDeny=any
+IPAddressAllow=localhost
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

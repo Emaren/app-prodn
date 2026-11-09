@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c04-steam-v13-staggered-expiry-20261109` at `a2746fb59422301e23dc391a5914fee3108ba56a`
+Implementation baseline: `session-b/c03-3033-failclosed-v1-20261109` at `2679c78e016152c4d22641517faf56ed78d11575`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **122**
+- Authoritative repository documents: **123**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 29
+- `runbook`: 30
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 18
+- `draft`: 19
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -138,6 +138,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session A R25 Public Nonfinancial Recovery and Steam v5u Admission](SESSION_A_R25_PUBLIC_NONFINANCIAL_RECOVERY_V5U_20261107.md) | `reference` | `draft` | `nonfinancial-emergency-website-recovery-source-only-no-funded-release` |
 | [R25 Steam v5v Root-Protected Evidence Under Strict ProtectHome](SESSION_A_R25_STEAM_V5V_PROTECTHOME_REPAIR_20261107.md) | `reference` | `draft` | `steam-only-sandbox-evidence-recovery-no-funded-release` |
 | [Session B — AI System Persona Steam Badge Truth, 2026-11-08](SESSION_B_AI_SYSTEM_PERSONA_STEAM_BADGE_TRUTH_20261108.md) | `reference` | `active` | `system-persona-identity-and-authenticated-human-badges` |
+| [C03 emergency-only finance-inert 3033 fallback](SESSION_B_C03_EMERGENCY_FAILCLOSED_3033_V1.md) | `runbook` | `draft` | `session-b-emergency-only-no-c03-funding-or-authenticated-rollback` |
 | [Session B Managed Media Fallback Recovery — Source and Native Avatar HOLD](SESSION_B_MANAGED_MEDIA_FALLBACK_CACHE_RECOVERY_20261108.md) | `runbook` | `draft` | `source-only-media-cache-no-db-owner-or-physical-release` |
 | [Session B Pending WOLO Public Presentation — Source-only Nonfinancial Release](SESSION_B_PENDING_WOLO_PUBLIC_PRESENTATION_TRUTH_20261108.md) | `runbook` | `draft` | `source-only-ui-truth-no-custody-or-payment-finality` |
 | [Session B Public Gift Consent — Private Pending WOLO Aggregate Source HOLD](SESSION_B_PRIVATE_PENDING_GIFT_PUBLIC_CONSENT_20261108.md) | `runbook` | `draft` | `source-only-public-consent-no-production-db-ddl-or-financial-release` |
