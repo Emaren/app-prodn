@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "53649c63355b8d3b2fb9618b48646283921d8fe50a9146bfcd8b025388ee18a2",
+      "sha256": "7f2bdb05f964f18615c9a0079c3f8fb92778c19b9439ef48e87ae8fb183d1139",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2821,6 +2821,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-staged-fail-closed-cold-rollback-no-production-financial-change",
+      "id": "aoe2war.app-prodn.session-b-r25-c03-same-slot-cold-rollback-v1-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "c57055b335472af9990d933f8a7a4cb5bd2a1238d4e097cef697878bc1051c42",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Session B C03 same-slot finance-restricted cold rollback",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "source-only-nonfinancial-r25-memory-guard",
       "id": "aoe2war.app-prodn.session-b-r25-corpus-heap-pressure-20261109",
       "owner": "aoe2war-web",
@@ -2862,8 +2885,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-corpus-heap-pressure-v1-20261109",
-    "commit": "8a582e0d3417abaf9d84adaf3097752d48d13056"
+    "branch": "session-b/r25-cold-restricted-rollback-v1-20261109",
+    "commit": "b37428be7bc2a8697024a90507a1b98810dcee9d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
