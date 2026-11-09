@@ -872,6 +872,20 @@ export async function backfillWoloMainnetTransfers(
     }
   });
 
+  // No partial HD financial-index mutation after ANY failed REST query.
+  // Before this guard the caller wrote all successful pages then returned
+  // ok:false, leaving incomplete index data with a failed heartbeat.
+  if (errors.length > 0) {
+    return {
+      ok: false,chainId: WOLO_MAINNET_CHAIN_ID,
+      restUrl: getRestUrl(),rpcUrl: getRpcUrl(),mode: "rest_tx_search",
+      latestHeight,fromHeight,blockLimit,addressCount: addresses.length,
+      queriesAttempted: queries.length,txsSeen: txsByHash.size,
+      transfersParsed: 0,created: 0,updated: 0,skipped: 0,
+      errors: errors.slice(0,12),txHashes: [],
+    };
+  }
+
   let transfersParsed = 0;
   let created = 0;
   let updated = 0;

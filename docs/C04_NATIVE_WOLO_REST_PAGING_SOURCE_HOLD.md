@@ -37,8 +37,12 @@ side. This does not prove which historic App claim each transfer paid.
   limit, 100 records per request, maximum 100,000, duplicate hash/replayed
   page rejection, missing/error/invalid-total/truncated-page denial,
   uppercased transaction identity, no financial writes.
-- lib/woloMainnetTransfers.ts calls this helper. Existing classification,
-  memo/height/owner processing and upsert logic are unchanged.
+- lib/woloMainnetTransfers.ts calls this helper. Classification and
+  memo/height/owner processing remain unchanged. A complete source-query
+  success gate now precedes ANY upsert, preventing partial HD financial
+  index writes when one of multiple paginated queries fails.
+- scripts/backfill-wolo-mainnet-transfers.mjs explicitly exits nonzero
+  when the backfill returned ok:false, even outside the enrolled shell.
 - The old production heartbeat shell grepped JSON counters but returned
   success even when the producer output had ok:false.
 - scripts/wolo-transfer-heartbeat-result-guard.mjs requires valid JSON
