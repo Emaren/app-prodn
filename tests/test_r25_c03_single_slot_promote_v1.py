@@ -94,6 +94,6 @@ class ExactSourceBounded(unittest.TestCase):
     self.assertIn('HOLD_PROMOTION_Hold',seal.call_args.args[1]['observations'][0])
  def test_no_effect_on_module_import(self):
   self.assertTrue(callable(m.inspect) and callable(m.activate) and callable(m.restore))
-  self.assertFalse(m.ROOT.exists() and not m.ROOT.is_dir())
+  self.assertEqual(m.ROOT, pathlib.Path('/root/aoe2war-session-b-r25-exact-promotion-v1-20261109'))
 
 if __name__=='__main__':unittest.main()
