@@ -1,0 +1,37 @@
+{
+  "schema": "aoe2war.session-c.kingdom-traders.nonfinancial-seam.v1",
+  "owner": "SESSION_C_PRODUCT",
+  "appSourceBase": "fba4d07e3ee49a2e14c652dcc6641b8af3003abb",
+  "tradersSourceBase": "c631834284141c72580e575076535aa28a8f0c08",
+  "previewRoute": "/kingdom-traders",
+  "navigationEnabled": false,
+  "publicOrigin": null,
+  "publicCertificateTrusted": false,
+  "operatorCredentialDelegation": false,
+  "steamAuthenticationDelegation": false,
+  "privateSourceProxyEnabled": false,
+  "paperSourceStatus": "HALT_NO_INDEPENDENT_FRESH_MARKET_DATA",
+  "paperAccountsInHistoricalSnapshot": 100,
+  "openUnpricedHistoricalPaperPositions": 7,
+  "realOrdersAllowed": false,
+  "walletFundingAllowed": false,
+  "leverageAllowed": false,
+  "woloInteractionsAllowed": false,
+  "financialSQLAccessAllowed": false,
+  "websiteReleaseOwnershipTransferred": false,
+  "requiredApprovals": [
+    "SESSION_B_AUTHENTICATED_3032_ROLLBACK_HANDOFF",
+    "SESSION_C_PUBLIC_CA_DNS_TLS_ACCEPTANCE",
+    "NONFINANCIAL_READ_MODEL_REVIEW",
+    "OWNER_APPROVAL_FOR_NAVIGATION_RELEASE"
+  ],
+  "approvedReadOnlyStatusShape": {
+    "schema": "KT_SESSION_C_PAPER_ONLY_PRODUCTION_STATUS_V1",
+    "originalAccounts": 100,
+    "openUnpricedOriginalPositions": 7,
+    "paperStatus": "HALT_NO_INDEPENDENT_FRESH_MARKET_DATA",
+    "paperNewOrdersAllowed": false,
+    "realOrders": 0,
+    "fundedAuthority": false
+  }
+}
