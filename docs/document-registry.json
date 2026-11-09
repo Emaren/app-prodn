@@ -711,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "72e486a84ae4083e0b05092a145447eb6b9a812e1c944c5fd7581a2fe8f214c1",
+      "sha256": "874b2416f9d78c7c86db7c4eb9d6b40a966c8bb2fca5e5c5e1da9e28120ec91d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1549,6 +1549,30 @@
       ],
       "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial-rollback-source-only-not-c03-gate-closure",
+      "id": "aoe2war.app-prodn.r25-c03-restricted-rollback-drill-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/R25_C03_RESTRICTED_ROLLBACK_DRILL_V1.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-11-08",
+      "sensitivity": "internal",
+      "sha256": "3e1820803774c06438b60fed31e3e69c7e05febf32011eaad545d4a3f481dfad",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "postgresql",
+        "steam"
+      ],
+      "title": "R25 C03 restricted 3032 rollback and restoration drill",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -2396,8 +2420,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-no-partial-writes-20261108",
-    "commit": "8eadaaa1c1436c5b514033fdf5c7a01586bfd2a1"
+    "branch": "session-b/c03-r25-reversible-drill-20261109",
+    "commit": "0858927826f7572947d6792728fa706273e9d35a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
