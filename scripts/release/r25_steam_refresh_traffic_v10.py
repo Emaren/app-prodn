@@ -19,6 +19,8 @@ ACTIVE, RECEIPT, ADMISSION, POLICY = [ROOT / s for s in ('active-profile.json','
 OLD_WEB = P('/etc/aoe2war/web-prod-v6/original-web-unit.conf')
 CURRENT_UNIT = P('/etc/systemd/system/aoe2hdbets-web-prod.service')
 STEAM_UNIT = P('/etc/systemd/system/aoe2war-steam-egress-refresh.service')
+STEAM_V10_UNIT_SHA256 = 'f5d08beebca0912e8271fddf891983ac80b60d148e7e2242cd34832bb0a55176'
+ORIGINAL_STEAM_V9_UNIT_SHA256 = '0fddaf791d3c147766c5df108b34c761da9a3d07759043348671fa222eda0557'
 NGINX = P('/etc/nginx/sites-available/aoe2war.com')
 NGINX_SHA = '811cb9f1d4152a8573bc83ba27002206dcd5db1b2272b796c2c6dd919436425f'
 FIN_SNAPSHOT = '064a16dde48c64a3001621902b4ae7a028ec4975183fd4c24b8a16338c1a226c'
@@ -136,6 +138,7 @@ def static_check():
  check(PROFILES['candidate']['unit_sha']!=PROFILES['rollback']['unit_sha'],'DISTINCT_RELEASE')
  check(ROOT.name=='web-prod-v10' and ADMISSION.parent==ROOT and RECEIPT.parent==ROOT,'ROOT_POLICY_DIRECTORY')
  check(digest(verified(NGINX))==NGINX_SHA,'NGINX_SITE_DRIFT')
+ check(digest(verified(STEAM_UNIT,0o644))==STEAM_V10_UNIT_SHA256,'STEAM_V10_EFFECTIVE_SERVICE_UNIT_DRIFT')
  check(digest(verified(OLD_WEB,0o600))=='1f2970c685e53d0f426b86baeb1910c4f73f346a6e18baf97b064ef1fae7bbe3','ORIGINAL_SYSTEMD_UNIT_DRIFT')
  check(digest(verified(OLD_SOURCE_RECEIPT,0o600))==PROFILES['rollback']['origin_sha'],'REVIEWED_ROLLBACK_ORIGIN_RECEIPT_DRIFT')
  raw=verified(CURRENT_UNIT)
