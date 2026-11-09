@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-single-slot-exact-promotion-20261109` at `1199eef41c60a8d7f52625e3aae9035b53e2b037`
+Implementation baseline: `session-b/c03-sandboxed-steam-v16-20261109` at `bd0b173b5285efe45e42521fc21cbb0a371a01ca`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **129**
+- Authoritative repository documents: **130**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 36
+- `runbook`: 37
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 25
+- `draft`: 26
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -171,6 +171,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [C03 restricted Steam V16 ProtectHome source evidence and second rollback](release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md) | `runbook` | `draft` | `source-only exact-identity fail-closed App release; no funding` |
 | [C03 exact restricted 3032 R25 promotion and automatic rollback](release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md) | `runbook` | `draft` | `root-only one-use candidate admission, finance-quarantined` |
 | [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `runbook` | `draft` | `source-only, finance-restricted, requires physical acceptance` |
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
