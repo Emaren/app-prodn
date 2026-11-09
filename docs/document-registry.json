@@ -386,7 +386,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "c719bb5d0ef0fd56d606a2c6ee816781c7a0cd9dcba4caa85b5dcd49ad295b8b",
+      "sha256": "7e757ede61b208673948c42fea80c8e6edc55fddc00d84780010718f3c85b8c9",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -711,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb90034005c8683814bd8478ff42e7ce1ddb329ee6e6f9626a5ea7883cbb93c1",
+      "sha256": "72e486a84ae4083e0b05092a145447eb6b9a812e1c944c5fd7581a2fe8f214c1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1788,9 +1788,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_CORPUS_METRICS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-09",
+      "reviewed_at": "2026-11-08",
       "sensitivity": "internal",
-      "sha256": "9fa97e82eab2113da88a1280aaed7ababdbea46c6c8aa8b51b3c931f4325d99d",
+      "sha256": "dfcdd9ee744e3cd19c563bc26e9fce030d6f350d0ab75467b3a790590a586ef1",
       "source_of_truth": "runtime-evidence",
       "status": "active",
       "systems": [
@@ -2396,8 +2396,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c04-rest-pagination-20261108",
-    "commit": "f29e295d394c3f9cf24652e0a294352de5c15c78"
+    "branch": "session-b/c04-no-partial-writes-20261108",
+    "commit": "8eadaaa1c1436c5b514033fdf5c7a01586bfd2a1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
