@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "30015562fd2993a1f2200d8889ea33b45a50bd011488e5241907921254a84878",
+      "sha256": "875d04e0ba0332c0455de257cf548f92bd0343c754225c6ffd95940b6d0262e7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2930,6 +2930,28 @@
         "developers",
         "ai-agents"
       ],
+      "authority": "source-pinned Steam-only 3031 retirement repair without financial release",
+      "id": "aoe2war.app-prodn.session-b-c03-steam-v19-retired-r24-preview-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_STEAM_V19_RETIRED_R24_PREVIEW_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "82f87a2029232d97d3d958801de5a38b9e61a2e5de4384bf0d94672484b03391",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 Steam V19 exact retired R24 preview admission and guarded service repair",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
       "authority": "one-slot source-pinned nonfunded rollback/return; no financial release",
       "id": "aoe2war.app-prodn.session-b-c03-v18-reversible-roundtrip-20261109",
       "owner": "aoe2war-web",
@@ -3151,8 +3173,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-v18-roundtrip-isolated-20261109",
-    "commit": "aa609e1c33641d59f341134b096bdb9facc09607"
+    "branch": "session-b/c03-steam-v19-retired-preview-exact-20261109",
+    "commit": "b1d6ad70168de7f8f81667e02ebaae9aa2ff28d6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
