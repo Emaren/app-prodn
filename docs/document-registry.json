@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6f8bd7a545e67d13f2afd7b2a162fede1e978691aac9b16ceae110ce45799098",
+      "sha256": "c47a309a77df923e3ec88742ca0ffd87082c203b3c4d82f92279868f20d9629f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2299,6 +2299,29 @@
         "ai-agents"
       ],
       "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.foundry-f10-readonly-host-admission",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_FOUNDRY_F10_READONLY_HOST_ADMISSION.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "7b8240ab5eac23627fd1ec9a5e3a4d4482a274581bfc5f56149dfb942dd39c95",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry"
+      ],
+      "title": "Foundry F10 \u2014 Fixed read-only host observations and untrusted source admission",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-only-session-c-source-review",
       "id": "aoe2war.app-prodn.foundry-f6-audit-concurrency-contract",
       "owner": "aoe2war-web",
       "path": "docs/SESSION_C_FOUNDRY_F6_AUDIT_CONCURRENCY.md",
@@ -3235,7 +3258,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "1c8259cd1c1b28cd67809cd6398807102b1cb715d94f6a7f55df2699a34f8ab6",
+      "sha256": "fd34681abac0de0c8c1189743449f5d625470c1b5f129b3581b2786376748124",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3248,8 +3271,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/foundry-f9-hold-only-preview-20261110",
-    "commit": "84c872fdddf57e65f6faf343b276969a9b7cc1de"
+    "branch": "session-c/foundry-f10-host-probes-20261110",
+    "commit": "1913dd73c4b1aeaf74ad46164c378d64096664e9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

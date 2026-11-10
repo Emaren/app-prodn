@@ -115,3 +115,21 @@ a real F6 audit; no work is executed and no HEL1 service is installed.
 See [F9 private HOLD-only source contract](../../docs/SESSION_C_FOUNDRY_F9_HOLD_ONLY_PREVIEW.md).
 
     python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+
+## F10 fixed allowlisted host read-only observations
+
+F10 adds one-shot, bounded systemd-status and pinned local-storage
+probes with source SHA ALWAYS unknown. These local readings cannot
+attest remote host identity, timer reliability, backup integrity,
+PAPER market prices, browser acceptance or any trading/finance
+permission; F1/F2/F9 HOLD boundaries remain intact. The implementation
+has **no service, timer, agent executor or HTTP route**. See
+[F10 fixed host source and release HOLD](../../docs/SESSION_C_FOUNDRY_F10_READONLY_HOST_ADMISSION.md).
+
+Manual M1 observation (source UNTRUSTED/HOLD):
+
+    python3 tools/kingdom-foundry/nightforge_readonly_probe_cli.py --mac-storage
+
+Full regression:
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v
