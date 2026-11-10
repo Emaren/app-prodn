@@ -63,6 +63,10 @@ class PromotionCases(unittest.TestCase):
             }],
             "allowed_artifact_root": str(self.root / "build"),
             "allowed_rollback_root": str(self.root / "rollback"),
+            "approved_rollback": {
+                "source_sha": self.manifest["rollback_source_sha"],
+                "artifact_sha256": self.manifest["rollback_sha256"],
+            },
         }
         self.responses = {
             "/repos/Emaren/app-prodn/pulls/1306": {
@@ -188,6 +192,13 @@ class PromotionCases(unittest.TestCase):
         r[key]["check_runs"][0]["app"]["slug"] = "attacker"
         with self.assertRaises(p.Denied):
             p.inspect_remote(self.manifest, self.policy, r.__getitem__)
+
+    def test_reject_unapproved_rollback_source_or_digest(self):
+        for key in ("source_sha", "artifact_sha256"):
+            wrong = deepcopy(self.policy)
+            wrong["approved_rollback"][key] = ("8" * 40 if key == "source_sha" else "8" * 64)
+            with self.subTest(key=key), self.assertRaises(p.Denied):
+                p.inspect_remote(self.manifest, wrong, self.api)
 
     def test_reject_missing_required_ci(self):
         incomplete = deepcopy(self.manifest)
