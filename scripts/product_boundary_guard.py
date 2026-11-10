@@ -141,7 +141,10 @@ def validate_git_pointer(checkout: Path, product_root: Path, repo_name: str) -> 
     p = Path(pointer)
     if not p.is_absolute() or ".." in p.parts or p.is_symlink():
         raise BoundaryHold("UNSAFE_GIT_POINTER")
-    actual = p.resolve(strict=True)
+    try:
+        actual = p.resolve(strict=True)
+    except OSError as exc:
+        raise BoundaryHold("UNRESOLVED_GIT_POINTER") from exc
     expected_bases = (
         product_root / ("app-prodn" if repo_name.endswith("app-prodn") else "kingdom-traders") / ".git" / "worktrees",
         product_root / "session-b-app-c02" / ".git" / "worktrees",
