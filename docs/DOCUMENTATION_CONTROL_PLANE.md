@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-v20-physical-roundtrip-20261110` at `21d0218faf45d8decc4e21d0830d6c85753ff5a3`
+Implementation baseline: `session-b/c03-v20-physical-roundtrip-20261110` at `b90cfecd8f8d9008c5b33a15383d5ff3c5736ec8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

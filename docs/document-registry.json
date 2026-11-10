@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c8569d23c43c65676c69033112434a7f77142ac0575502f1895583e2f737a77",
+      "sha256": "b9e043b185afb42ab4572c7315ae5477c42c734a94d521dbd61cc93f9b07127d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3218,7 +3218,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-v20-physical-roundtrip-20261110",
-    "commit": "21d0218faf45d8decc4e21d0830d6c85753ff5a3"
+    "commit": "b90cfecd8f8d9008c5b33a15383d5ff3c5736ec8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
