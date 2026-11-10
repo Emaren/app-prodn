@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-public-live-explicit-api-20261109` at `043f95fcb48e268ab304dddeb610050529703e40`
+Implementation baseline: `central/kingdom-foundry-phase0-20261109` at `6573ccb77b1001e3eecc0381cebf6ea7237d8cf8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **135**
+- Authoritative repository documents: **136**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 74
 - `runbook`: 42
-- `working`: 1
+- `working`: 2
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 31
+- `draft`: 32
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -186,6 +186,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
+| [Kingdom Foundry — Phase 0 (source-only)](../tools/kingdom-foundry/README.md) | `working` | `draft` | `product-only-source-review` |
 
 ## Canonical commands
 

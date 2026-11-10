@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.kingdom-foundry-f0-readme"
+title: "Kingdom Foundry — Phase 0 (source-only)"
+type: "working"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn", "kingdom-foundry"]
+audience: ["developers", "operators", "ai-agents"]
+source_of_truth: "git"
+authority: "product-only-source-review"
+reviewed_at: "2026-11-10"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Kingdom Foundry — Phase 0 (source-only)
 
 Tracked in [App #1290](https://github.com/Emaren/app-prodn/issues/1290).

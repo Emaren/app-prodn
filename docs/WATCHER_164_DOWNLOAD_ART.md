@@ -8,12 +8,18 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Watcher 1.6.4 Download Artwork
+
+**2026-11-10 offline source review**: the two retained versioned WebP
+files still match their recorded 289,088 and 321,518 byte lengths,
+respectively. The App source currently identifies Watcher 1.6.5,
+with 1.6.4 retained as previous; these are historical artwork receipts,
+NOT current installed binary or public deployment certification.
 
 Scope: `/download` extreme presentation only, October 10, 2026
 release artwork refresh. Do not change the watcher release manifest,

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e277cb05a6b2d37b77524624087a7ea3d0da3ac1ef03f8dba424e4c178b97041",
+      "sha256": "2e2bf38728d938fae6c62e60febc2c331b025833963843095cc8b41e81a1c8ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2486,9 +2486,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "sha256": "61eba70ec573e4d7dc927917a4a32a275972bbe3a70e045794d21fa9f36dd91f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2555,9 +2555,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "25a8dbee3c23c5676a7ddda01f40304f8269f7f4d204573322815275c4d00907",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3081,12 +3081,35 @@
       ],
       "title": "Prisma Schema and Migration Reference",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-only-source-review",
+      "id": "aoe2war.app-prodn.kingdom-foundry-f0-readme",
+      "owner": "aoe2war-web",
+      "path": "tools/kingdom-foundry/README.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "af0faa4622cdb817d3e50446d26e042cb7a32a3fa71e50c4e20920e0e4caa122",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry"
+      ],
+      "title": "Kingdom Foundry \u2014 Phase 0 (source-only)",
+      "type": "working"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-public-live-explicit-api-20261109",
-    "commit": "043f95fcb48e268ab304dddeb610050529703e40"
+    "branch": "central/kingdom-foundry-phase0-20261109",
+    "commit": "6573ccb77b1001e3eecc0381cebf6ea7237d8cf8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

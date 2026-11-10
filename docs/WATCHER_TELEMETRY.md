@@ -8,12 +8,20 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
+
+**2026-11-10 offline source review**: this document preserves 2026-10
+Watcher 1.6.3/1.6.4 release and telemetry receipts as historical evidence.
+Current App source lib/watcherRelease.ts declares version 1.6.5 and
+previousVersion 1.6.4. The historical v1.6.4 "Public release" statement
+below refers to its 2026-10-10 release identity only, NOT today's current
+binary or a new authenticated production acceptance. No new signing,
+WebPKI or deployed-vault verification is claimed by this docs-only review.
 
 ## Production release identity — 2026-10-10
 
