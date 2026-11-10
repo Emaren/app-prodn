@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/public-player-artifact-verify-20261110` at `779a0f5867f632ef90a5670c4a390918417a8eac`
+Implementation baseline: `session-b/public-player-artifact-verify-20261110` at `3f670bbd50e6720206cf0818f31375963a59c168`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

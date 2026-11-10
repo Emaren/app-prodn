@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3e44d48bd3b9733de75ba649bc69eb3433a99c04f91f860b1ebd9ffd951dcd78",
+      "sha256": "282edfa92962dc59102be57fbdf590208d2745afd760081bf463d167caf36090",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3086,7 +3086,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/public-player-artifact-verify-20261110",
-    "commit": "779a0f5867f632ef90a5670c4a390918417a8eac"
+    "commit": "3f670bbd50e6720206cf0818f31375963a59c168"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
