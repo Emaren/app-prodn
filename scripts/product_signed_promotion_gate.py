@@ -80,7 +80,8 @@ def read_manifest(raw: bytes, now: datetime) -> dict:
     for key in ("artifact_sha256", "rollback_sha256"):
         if not isinstance(data[key], str) or not HEX256.fullmatch(data[key]):
             forbid("INVALID_ARTIFACT_DIGEST")
-    if not isinstance(data["branch"], str) or not BRANCH.fullmatch(data["branch"]):
+    if (not isinstance(data["branch"], str) or not BRANCH.fullmatch(data["branch"])
+            or any(part in ("", ".", "..") for part in data["branch"].split("/"))):
         forbid("WRONG_SOURCE_BRANCH")
     if data["operation"] not in OPERATIONS:
         forbid("UNAUTHORIZED_OPERATION")
