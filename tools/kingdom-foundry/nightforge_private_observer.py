@@ -56,6 +56,10 @@ def _private_scope(*, product_root: Path, repo_checkout: Path, private_dir: Path
         checkout == product or not checkout.is_relative_to(product) or
         not real.is_dir() or real != private or
         not real.is_relative_to(product) or
+        # Dedicated PRIVATE direct child of PRODUCT only. Even a 0700
+        # directory inside Session B's checkout is never ours to mutate.
+        real.parent != product or
+        not re.fullmatch(r"session-c-f11-[a-z0-9_-]{6,72}",real.name) or
         real == product or real.is_relative_to(checkout) or
         any(x.lower() in PROTECTED_PARTS for x in real.parts) or
         any(x.lower() in PROTECTED_PARTS for x in checkout.parts) or

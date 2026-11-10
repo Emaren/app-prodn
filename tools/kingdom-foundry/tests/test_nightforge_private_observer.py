@@ -192,6 +192,22 @@ class PrivateOneShotObserverTests(TestCase):
             self.record(private_dir=ROOT)
         self.assertFalse(self.db.exists())
 
+    def test_refuse_even_private_folder_inside_session_B_checkout(self):
+        # Owning PRODUCT does not authorize touching B's separate
+        # App worktree or any nested 0700 directory beneath it.
+        b=PRODUCT/"session-b-app-c02"
+        if not b.is_dir():
+            self.skipTest("Session B separate checkout not present on CI")
+        name=b/"session-c-f11-test-private-should-not-write"
+        self.assertFalse(name.exists())
+        try:
+            name.mkdir(mode=0o700)
+            with self.assertRaisesRegex(Rejected,"OWNER_PRIVATE"):
+                self.record(private_dir=name,receipt_id="f11-refuse-b")
+            self.assertFalse((name/"foundry-f11-local-hold.sqlite").exists())
+        finally:
+            name.rmdir()
+
     def test_reject_bad_raw_oversized_lanes_and_command_injection(self):
         for invalid in (b"",b"x"*4097,"string",None):
             with self.subTest(invalid=type(invalid)),self.assertRaises(Rejected):
