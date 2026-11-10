@@ -38,8 +38,8 @@ result = {"phase": mode, "uid": os.geteuid(), "groups": os.getgroups()}
 expected = pwd.getpwnam(runner).pw_uid
 if result["uid"] != expected or result["uid"] in (0, 501):
     raise SystemExit("HOLD_WRONG_REAL_UID")
-if 80 in result["groups"]:
-    raise SystemExit("HOLD_ADMIN_GROUP")
+if any(g in result["groups"] for g in (0, 20, 80)):
+    raise SystemExit("HOLD_SHARED_OR_PRIVILEGED_GROUP")
 p = pathlib.Path(scratch) / ("accepted_" + mode + ".txt")
 with p.open("x", encoding="utf-8") as fh:
     fh.write("product-only fixture\n")
@@ -127,8 +127,12 @@ def runner_uid() -> int:
     if record.pw_uid in (0, 501):
         hold("RUNNER_UID_NOT_ISOLATED")
     groups = run("/usr/bin/id", "-Gn", RUNNER).strip().split()
-    if "admin" in groups or "wheel" in groups:
-        hold("RUNNER_HAS_PRIVILEGED_GROUP")
+    forbidden = {"admin", "wheel", "staff", "_developer", "_appserveradm"}
+    if any(group in forbidden for group in groups):
+        hold("RUNNER_HAS_SHARED_OR_PRIVILEGED_GROUP")
+    gids = {int(x) for x in run("/usr/bin/id", "-G", RUNNER).split()}
+    if gids.intersection({0, 20, 80}):
+        hold("RUNNER_HAS_SHARED_GROUP_ID")
     return record.pw_uid
 
 
@@ -222,7 +226,8 @@ def apply(args) -> None:
         state["phase"] = "ACL_PARTIAL"
         store_state(state)
     SCRATCH.mkdir(mode=0o700)
-    os.chown(SCRATCH, runner_uid(), -1)
+    runner_record = pwd.getpwnam(RUNNER)
+    os.chown(SCRATCH, runner_uid(), runner_record.pw_gid)
     os.chmod(SCRATCH, 0o700)
     POLICY.mkdir(mode=0o755)
     script = POLICY / PROBE_NAME
