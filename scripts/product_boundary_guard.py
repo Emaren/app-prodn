@@ -29,6 +29,7 @@ ORIGINS = {
 }
 APPROVED_SOURCE = {
     "scripts/product_boundary_guard.py",
+    "scripts/product_signed_promotion_gate.py",
     "tests/test_product_boundary_guard.py",
     ".github/workflows/product-boundary.yml",
 }
