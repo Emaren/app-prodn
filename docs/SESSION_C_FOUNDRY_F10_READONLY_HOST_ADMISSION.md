@@ -17,8 +17,12 @@ sensitivity: "internal"
 
 ## Exact ancestry and Session C ownership
 
-F10 implementation SHA:
+F10 original implementation SHA:
 1913dd73c4b1aeaf74ad46164c378d64096664e9.
+Exact Linux acceptance/test repair SHA:
+7442f3a3b064c1396d88fd872a5949fa8d261f46.
+The Linux test repair is the new reviewed source baseline; production
+host-identity validation remains unchanged.
 
 Direct parent Foundry F9 DRAFT App PR #1301:
 8d193184bfea91332fe7e50fa2c9f2456d3a86a4.
@@ -122,6 +126,24 @@ At this exact F10 implementation source:
 No LLM weights were downloaded. No quantized local LLM
 benchmark has been run in F10. The old 720/720 baseline
 was the deterministic rule engine only, not inference.
+
+### Independent Linux CI failure and exact repair
+
+The initial full GitHub Ubuntu Foundry job correctly returned FAIL
+because two **tests** called the newly protected HEL1-root observer
+without a separately supplied machine-ID SHA. The production source
+refused them with HOLD_HOST_LINUX_PIN_REQUIRED. The dedicated
+F10 focused job had passed on M1; that was not sufficient to declare
+the independent Linux workflow green.
+
+Repair commit 7442f3a3b064c1396d88fd872a5949fa8d261f46
+changes ONLY test setup: Ubuntu uses a locally mocked machine ID,
+an explicit synthetic expected SHA and a bounded statvfs stub;
+the physical Mac test continues to use real local free-space
+counters. Missing host binding still returns HOLD. No production
+guard, GitGuardian check, test-assertion logic or execution halt
+was disabled. The complete 134/134 owner-M1 suite passed again.
+Independent exact-head CI must rerun after this source change.
 
 ## Proposed future unprivileged service (NOT approved/installed)
 

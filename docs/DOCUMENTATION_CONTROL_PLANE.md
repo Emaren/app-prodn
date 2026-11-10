@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/foundry-f10-host-probes-20261110` at `1913dd73c4b1aeaf74ad46164c378d64096664e9`
+Implementation baseline: `session-c/foundry-f10-host-probes-20261110` at `7442f3a3b064c1396d88fd872a5949fa8d261f46`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

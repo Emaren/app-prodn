@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c47a309a77df923e3ec88742ca0ffd87082c203b3c4d82f92279868f20d9629f",
+      "sha256": "856c5c9e378f17de37c8728912e6bc81e3ff422b2ae3cd824d48e8963b5360b6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2305,7 +2305,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "7b8240ab5eac23627fd1ec9a5e3a4d4482a274581bfc5f56149dfb942dd39c95",
+      "sha256": "1ac89eab198b203c7b4fe011d3f06c69bc1ecfa12cefe656b98e773bae8b4f67",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3272,7 +3272,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/foundry-f10-host-probes-20261110",
-    "commit": "1913dd73c4b1aeaf74ad46164c378d64096664e9"
+    "commit": "7442f3a3b064c1396d88fd872a5949fa8d261f46"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
