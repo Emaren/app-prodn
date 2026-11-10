@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-optional-replay-stats-read-fence-20261110` at `e284014b3611329c067f0c18b8ed7706139b0485`
+Implementation baseline: `session-b/public-player-artifact-verify-20261110` at `779a0f5867f632ef90a5670c4a390918417a8eac`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
