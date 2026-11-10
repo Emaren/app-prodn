@@ -711,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "292bb0110adedbcc8e2ebc1f9d253b901d986915e7a53bf3f864b0c2d6dae9c9",
+      "sha256": "72f49e27383e2ca4eabfc500ee2ae9ab935b31106dea0c987ec74d0306d28782",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2443,7 +2443,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c02-native-pg16-14th-contract-20261109",
-    "commit": "b4d2cc291c79388a9b2522ede30c036fff9c1cdf"
+    "commit": "08eb1865a3ddfad386978e7c2d83059f925e49a3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
