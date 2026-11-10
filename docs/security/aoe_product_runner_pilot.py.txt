@@ -91,7 +91,13 @@ def metadata(p: Path) -> dict:
     if p.is_symlink() or not p.is_dir():
         hold("DIRECTORY_OR_SYMLINK:" + str(p))
     s = p.stat()
-    acl = run("/bin/ls", "-ldeO", str(p))
+    # Exclude directory mtime/size from the ACL fingerprint; creating the
+    # approved scratch changes PRODUCT mtime but must not fake an ACL drift.
+    acl = "\n".join(line.strip() for line in
+                    run("/bin/ls", "-ldeO", str(p)).splitlines()[1:])
+    identity = (str(s.st_dev) + ":" + str(s.st_ino) + ":" + str(s.st_uid)
+                + ":" + str(s.st_gid) + ":" + str(stat.S_IMODE(s.st_mode))
+                + "\n" + acl)
     return {
         "path": str(p),
         "dev": s.st_dev,
@@ -100,7 +106,7 @@ def metadata(p: Path) -> dict:
         "gid": s.st_gid,
         "mode": stat.S_IMODE(s.st_mode),
         "acl_text": acl,
-        "sha256": hashlib.sha256(acl.encode()).hexdigest(),
+        "sha256": hashlib.sha256(identity.encode()).hexdigest(),
     }
 
 
