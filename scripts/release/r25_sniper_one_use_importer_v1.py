@@ -15,11 +15,14 @@ are irreversibly bound to this one authorization ID and known sources.
 from __future__ import annotations
 import argparse
 import hashlib
+import grp
 import http.client
 import json
 import os
+import pwd
 from pathlib import Path
 import re
+import ssl
 import stat
 import subprocess
 import sys
@@ -28,6 +31,7 @@ ROOT = Path("/mnt/HC_Volume_105319120/aoe2-managed-assets")
 SRC = ROOT / "uploads" / "managed-assets" / "avatar"
 DEST = ROOT / "avatar"
 PUBLIC_PROJECTION = "/run/aoe2war-public-media/avatar"
+PUBLIC_HTTPS_HOST = "aoe2war.com"
 JOURNAL_NAME = ".r25-sniper-6758764032-one-use.journal"
 STAGE_PREFIX = ".r25-sniper-6758764032-"
 APPROVAL = "6758764032"
@@ -132,9 +136,39 @@ def command(args: list[str]):
 def service(name,key):
     return command(["systemctl","show",name,"-p",key,"--value"])
 
+def plain_media_acl(acl_text:str)->bool:
+    """Refuse named/default ACL grants on any owner-writable release path."""
+    expected={"user::rwx","group::rwx","other::r-x"}
+    if not isinstance(acl_text,str):
+        return False
+    entries=[line.strip() for line in acl_text.splitlines()
+             if line.strip() and not line.startswith("#")]
+    return len(entries)==3 and set(entries)==expected
+
+def writer_boundary():
+    group=grp.getgrgid(1000)
+    members=sorted(set(group.gr_mem) |
+                   {u.pw_name for u in pwd.getpwall() if u.pw_gid==1000})
+    need(group.gr_name=="tony" and members==["tony"],"UNTRUSTED_TONY_GROUP_MEMBER")
+    paths=(ROOT,ROOT/"uploads",ROOT/"uploads"/"managed-assets",SRC,DEST)
+    identities={}
+    for p in paths:
+        s=exact_dir(p,p)
+        acl=command(["getfacl","-cp",str(p)])
+        need(plain_media_acl(acl),"MEDIA_ACL_UNREVIEWED_GRANT")
+        identities[str(p)]={"device":s.st_dev,"inode":s.st_ino}
+    for p in (Path("/mnt"),Path("/mnt/HC_Volume_105319120")):
+        s=p.lstat()
+        need(stat.S_ISDIR(s.st_mode) and s.st_uid==0 and s.st_gid==0 and
+             stat.S_IMODE(s.st_mode)==0o755 and not stat.S_ISLNK(s.st_mode),
+             "MEDIA_ANCESTOR_RENAME_EXPOSURE")
+    return {"group":group.gr_name,"member_names":members,
+            "plain_posix_acl":True,"directory_identities":identities}
+
 def host_health(*, check_mount=True):
     need(os.name=="posix" and sys.platform=="linux" and os.geteuid()==0,
          "HOST_PRIVILEGE_OR_OS")
+    writer=writer_boundary()
     web=int(service("aoe2hdbets-web-prod.service","MainPID"))
     old=int(service("aoe2hdbets-web.service","MainPID"))
     paper=int(service("kingdom-traders-paper.service","MainPID"))
@@ -175,7 +209,8 @@ def host_health(*, check_mount=True):
     return {"web_pid":web,"rollback_pid":old,"paper_pid":paper,
             "paper_mem_limit_bytes":100663296,"steam_v20_timer":"active",
             "finance_listeners":0,"managed_media_bind_read_only":True,
-            "r25_source":R25,"prod_guard_sha256":PRELOADER_SHA}
+            "r25_source":R25,"prod_guard_sha256":PRELOADER_SHA,
+            "writer_group_acl_boundary":writer}
 
 def open_journal(dest: Path):
     path=dest/JOURNAL_NAME
@@ -213,8 +248,10 @@ def load_journal(dest: Path):
     for e in entries:
         need(e["approval"]==APPROVAL and e["manifest"]==MANIFEST_SHA,"JOURNAL_PIN_DRIFT")
         need(e["event"] in ("BEGIN","PREPARED","INSTALLED","POST_PARITY_PASS",
-                            "ROLLBACK_REASON","ROLLED_BACK","COMPLETED","TEMP_INTENT","TEMP_OPENED"),"JOURNAL_UNTRUSTED_EVENT")
-    need(len(entries)<=20,"JOURNAL_ENTRY_COUNT")
+                            "ROLLBACK_REASON","ROLLED_BACK","COMPLETED","TEMP_INTENT","TEMP_OPENED",
+                            "PENDING_PUBLIC_ACCEPTANCE","LOOPBACK_VERIFIED","PUBLIC_VERIFIED",
+                            "ROLLBACK_PARTIAL_HOLD"),"JOURNAL_UNTRUSTED_EVENT")
+    need(len(entries)<=32,"JOURNAL_ENTRY_COUNT")
     return entries
 
 def rollback(dest:Path=DEST, *, reason:str="EXPLICIT", injury=None):
@@ -222,25 +259,32 @@ def rollback(dest:Path=DEST, *, reason:str="EXPLICIT", injury=None):
     # a matching-name file created by somebody else, even if bytes are equal.
     entries=load_journal(dest)
     need(not any(e["event"]=="COMPLETED" for e in entries),"ALREADY_COMPLETED_NO_ROLLBACK")
+    need(not any(e["event"]=="ROLLED_BACK" for e in entries),"ALREADY_ROLLED_BACK")
     prepared={e["name"]:e["inode"] for e in entries if e["event"]=="PREPARED"}
     need(len(prepared)<=4 and set(prepared).issubset(PINS),"BAD_PREPARED_NAMES")
     fd=os.open(dest/JOURNAL_NAME,os.O_WRONLY|os.O_APPEND|getattr(os,"O_NOFOLLOW",0))
     try:
         append(fd,"ROLLBACK_REASON",why=reason[:120])
         removed=[]
+        conflicts=[]
         for name, inode in sorted(prepared.items(),reverse=True):
             for target in (dest/name, dest/(STAGE_PREFIX+name+".tmp")):
                 try: s=target.lstat()
                 except FileNotFoundError: continue
-                need(stat.S_ISREG(s.st_mode) and s.st_ino==inode and s.st_nlink in (1,2),
-                     "ROLLBACK_FOREIGN_OR_CHANGED_FILE")
-                if target.name==name:
-                    read_pinned(target,name,False,dest.parent,allow_two_links=True)
-                # Temporary file must have approved mode/content too.
-                else:
-                    with target.open("rb") as f: b=f.read(MAX_BODY+1)
-                    need(digest(b)==PINS[name][0] and len(b)==PINS[name][1],
-                         "ROLLBACK_TEMP_CHANGED")
+                try:
+                    need(stat.S_ISREG(s.st_mode) and s.st_ino==inode and s.st_nlink in (1,2),
+                         "ROLLBACK_FOREIGN_OR_CHANGED_FILE")
+                    if target.name==name:
+                        read_pinned(target,name,False,dest.parent,allow_two_links=True)
+                    else:
+                        with target.open("rb") as f: b=f.read(MAX_BODY+1)
+                        need(digest(b)==PINS[name][0] and len(b)==PINS[name][1],
+                             "ROLLBACK_TEMP_CHANGED")
+                except Hold as exc:
+                    # A competing writer's target is NEVER deleted. Continue
+                    # restoring other owned inodes rather than stranding them.
+                    conflicts.append({"name":target.name,"reason":str(exc)})
+                    continue
                 target.unlink()
                 removed.append(target.name)
                 syncdir(dest)
@@ -251,15 +295,18 @@ def rollback(dest:Path=DEST, *, reason:str="EXPLICIT", injury=None):
             tmp=dest/(STAGE_PREFIX+name+".tmp")
             try: s=tmp.lstat()
             except FileNotFoundError: continue
-            # We must never delete a file merely because it has our temp NAME.
-            # TEMP_OPENED with inode was fsynced before the first data write.
-            need(name in opened and s.st_ino==opened[name] and
-                 stat.S_ISREG(s.st_mode) and s.st_nlink==1 and
-                 s.st_size<=PINS[name][1] and
-                 (dest.parent!=ROOT or s.st_uid==0),"UNTRACKED_TEMP_CHANGED")
+            if not (name in opened and s.st_ino==opened[name] and
+                    stat.S_ISREG(s.st_mode) and s.st_nlink==1 and
+                    s.st_size<=PINS[name][1] and
+                    (dest.parent!=ROOT or s.st_uid==0)):
+                conflicts.append({"name":tmp.name,"reason":"UNTRACKED_TEMP_CHANGED"})
+                continue
             tmp.unlink()
             removed.append(tmp.name)
             syncdir(dest)
+        if conflicts:
+            append(fd,"ROLLBACK_PARTIAL_HOLD",removed=removed,conflicts=conflicts)
+            raise Hold("HOLD_R25_SNIPER_ROLLBACK_FOREIGN_OR_CHANGED_FILE")
         append(fd,"ROLLED_BACK",removed=removed)
         return {"status":"PASS_ROLLED_BACK","removed":removed,"journal_preserved":str(dest/JOURNAL_NAME)}
     finally:
@@ -286,6 +333,32 @@ def http_image(port:int,target:str):
     finally:
         conn.close()
 
+def https_image(target:str):
+    """Actual public TLS endpoint, not localhost or a browser's cached DOM."""
+    from urllib.parse import urlencode
+    need(target in FEATURED, "PUBLIC_UNAPPROVED_TARGET")
+    path="/api/media-assets/avatar/"+target+"?"+urlencode(
+        {"size":"card","fallback":"/champions/players/silhouette.card.webp"})
+    conn=http.client.HTTPSConnection(PUBLIC_HTTPS_HOST,443,timeout=10,
+                                   context=ssl.create_default_context())
+    try:
+        conn.request("GET",path,headers=HEADERS)
+        response=conn.getresponse()
+        data=response.read(MAX_BODY+1)
+        need(response.status==200, "PUBLIC_HTTPS_STATUS")
+        need(0<len(data)<=MAX_BODY and data[:4]==b"RIFF" and data[8:12]==b"WEBP",
+             "PUBLIC_HTTPS_WEBP_BYTES")
+        mime=response.getheader("Content-Type","").split(";")[0].strip().lower()
+        need(mime=="image/webp", "PUBLIC_HTTPS_MIME")
+        cache=response.getheader("Cache-Control","")
+        need(cache==CACHE,"PUBLIC_HTTPS_CACHE")
+        proxy=response.getheader("X-AoE2WAR-Media-Proxy","")
+        need(proxy=="direct-managed","PUBLIC_HTTPS_NOT_MANAGED")
+        return {"sha256":digest(data),"bytes":len(data),"mime":mime,
+                "cache":cache,"proxy":proxy}
+    finally:
+        conn.close()
+
 def acceptance():
     cases=[]
     for target in FEATURED:
@@ -296,13 +369,39 @@ def acceptance():
     need(len({x["sha256"] for x in cases})==3,"THREE_DISTINCT_MANAGED")
     need(cases[-1]["sha256"]==PINS[NAME+".card.webp"][0] and
          cases[-1]["bytes"]==PINS[NAME+".card.webp"][1],"SNIPER_EXPECTED_BODY")
-    return {"status":"PASS_3_OF_3_PUBLIC_PORTRAIT_PARITY",
+    return {"status":"PASS_3_OF_3_LOOPBACK_PORTRAIT_PARITY",
             "cases":cases,"mime":"image/webp","cache":CACHE}
 
-def release(root:Path=ROOT, *, probes:bool=True, after_link=None, accept=None):
+def public_https_acceptance(loopback:dict):
+    need(type(loopback) is dict and
+         loopback.get("status")=="PASS_3_OF_3_LOOPBACK_PORTRAIT_PARITY" and
+         type(loopback.get("cases")) is list,"PUBLIC_LOOPBACK_PROOF_REQUIRED")
+    cases=loopback["cases"]
+    need(len(cases)==len(FEATURED) and
+         [x.get("target") for x in cases]==list(FEATURED),"PUBLIC_LOOPBACK_TARGETS")
+    evidence=[]
+    for original in cases:
+        fresh=https_image(original["target"])
+        need(fresh["sha256"]==original["sha256"] and
+             fresh["bytes"]==original["bytes"],"PUBLIC_HTTPS_BODY_MISMATCH")
+        evidence.append({"target":original["target"],**fresh})
+    need(len(evidence)==3 and
+         evidence[-1]["sha256"]==PINS[NAME+".card.webp"][0],
+         "PUBLIC_SNIPER_SHA_MISMATCH")
+    return {"status":"PASS_3_OF_3_PUBLIC_HTTPS_MIME_CACHE_PARITY",
+            "host":PUBLIC_HTTPS_HOST,"port":443,"cases":evidence}
+
+
+def release(root:Path=ROOT, *, probes:bool=True, after_link=None, accept=None,
+            accept_public=None, after_state=None, before_link=None):
     # Synthetic tests inject a disposable root; live CLI cannot.
     src=root/"uploads"/"managed-assets"/"avatar"
     dest=root/"avatar"
+    # Test injection cannot be supplied to a production release.
+    need(not (probes and (after_link is not None or accept is not None or
+                          accept_public is not None or after_state is not None or
+                          before_link is not None)),
+         "LIVE_TEST_HOOKS_DENIED")
     if probes: baseline=host_health()
     else: baseline={"fixture_only":True}
     pre=inspect_assets(root,src,dest)
@@ -333,6 +432,7 @@ def release(root:Path=ROOT, *, probes:bool=True, after_link=None, accept=None):
             syncdir(dest)
             # PREPARED inode is durable *before* no-replace final hardlink.
             append(fd,"PREPARED",name=name,inode=info.st_ino)
+            if before_link: before_link(name)  # fixture-only competing writer hook
             os.link(temp,dest/name,follow_symlinks=False) # atomic NO-REPLACE
             syncdir(dest)
             if after_link: after_link(name)  # simulate lost ack in disposable test
@@ -340,14 +440,28 @@ def release(root:Path=ROOT, *, probes:bool=True, after_link=None, accept=None):
             os.unlink(temp)
             syncdir(dest)
             read_pinned(dest/name,name,False,root)
+        # PHASE 1: installed but reversible. PUBLIC checks MUST run before
+        # irrevocable journal completion; failure always invokes inode rollback.
+        append(fd,"PENDING_PUBLIC_ACCEPTANCE",installed=sorted(PINS))
+        if after_state: after_state("PENDING_PUBLIC_ACCEPTANCE")
+        loopback=accept() if accept else acceptance()
+        append(fd,"LOOPBACK_VERIFIED",verified=loopback)
+        if after_state: after_state("LOOPBACK_VERIFIED")
+        external=accept_public(loopback) if accept_public else public_https_acceptance(loopback)
+        need(type(external) is dict and
+             external.get("status")=="PASS_3_OF_3_PUBLIC_HTTPS_MIME_CACHE_PARITY",
+             "PUBLIC_HTTPS_PROOF_NOT_ACCEPTED")
+        append(fd,"PUBLIC_VERIFIED",verified=external)
+        if after_state: after_state("PUBLIC_VERIFIED")
         health_post=host_health() if probes else baseline
-        need(health_post==baseline,"HOST_STATE_DRIFT_AFTER_IMPORT")
-        verified=accept() if accept else acceptance()
-        append(fd,"POST_PARITY_PASS",verified=verified)
+        need(health_post==baseline,"HOST_STATE_DRIFT_AFTER_PUBLIC_HTTPS")
+        # PHASE 2: only after TLS, image SHA, MIME and cache are verified is
+        # durable COMPLETED legitimate. Never require a post-COMPLETED rollback.
         append(fd,"COMPLETED",installed=sorted(PINS),host=health_post)
         committed=True
         return {"status":"DEPLOYED_FOUR_PINNED_SNIPER_MEDIA","pre":pre,
-                "host":baseline,"parity":verified,"journal":str(dest/JOURNAL_NAME)}
+                "host":baseline,"loopback":loopback,"public_https":external,
+                "journal":str(dest/JOURNAL_NAME)}
     except Exception as exc:
         os.close(fd)
         fd=-1
