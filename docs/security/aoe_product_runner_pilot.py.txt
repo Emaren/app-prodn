@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""SOURCE ONLY: proposed macOS PRODUCT runner pilot. Never auto-apply.
+
+Owner approval of this exact source SHA, account name, four ACL paths, recovery
+denial path and rollback plan is required BEFORE any --apply / --verify / --rollback.
+No FINANCIAL contents or recovery archives are ever listed or read.
+"""
+from __future__ import annotations
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import pwd
+import re
+import stat
+import subprocess
+import sys
+
+RUNNER = "aoe_product_runner"
+HOME = Path("/Users/tonyblum")
+PARENT = HOME / "projects" / "AoE2WAR-LANES"
+PRODUCT = PARENT / "PRODUCT"
+FINANCIAL = PARENT / "FINANCIAL"
+PATHS = (HOME, HOME / "projects", PARENT, PRODUCT)
+SCRATCH = PRODUCT / ".aoe2_product_runner_scratch"
+CONTROL = PRODUCT / ".aoe2_product_runner_owner_control"
+POLICY = PRODUCT / ".aoe2_product_runner_policy"
+PROBE_NAME = "pilot_probe.py"
+STATE_NAME = "state.json"
+APPROVAL_RE = re.compile(
+    r"^https://github\.com/Emaren/app-prodn/issues/1280#issuecomment-[0-9]+$"
+)
+PROBE = r'''
+import errno, json, os, pathlib, pwd, socket, sys
+scratch, financial, recovery, runner, mode = sys.argv[1:]
+result = {"phase": mode, "uid": os.geteuid(), "groups": os.getgroups()}
+expected = pwd.getpwnam(runner).pw_uid
+if result["uid"] != expected or result["uid"] in (0, 501):
+    raise SystemExit("HOLD_WRONG_REAL_UID")
+if any(g in result["groups"] for g in (0, 20, 80)):
+    raise SystemExit("HOLD_SHARED_OR_PRIVILEGED_GROUP")
+p = pathlib.Path(scratch) / ("accepted_" + mode + ".txt")
+with p.open("x", encoding="utf-8") as fh:
+    fh.write("product-only fixture\n")
+result["product_write"] = "PASS" if p.read_text() == "product-only fixture\n" else "HOLD"
+for label, root in (("financial", financial), ("owner_private_recovery", recovery)):
+    # Harmless unknown-child stat; does not enumerate, open or read protected files.
+    try:
+        os.stat(os.path.join(root, "__aoe2_product_restricted_access_probe_never_exists__"))
+    except PermissionError as exc:
+        result[label] = "PASS_KERNEL_DENIAL_ERRNO_" + str(exc.errno)
+    except FileNotFoundError:
+        result[label] = "HOLD_TRAVERSAL_ALLOWED_ENOENT"
+    else:
+        result[label] = "HOLD_UNEXPECTED_ACCESS"
+if mode == "sandbox":
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.close()
+        result["socket_creation"] = "HOLD_NETWORK_SOCKET_ALLOWED"
+    except PermissionError as exc:
+        result["socket_creation"] = "PASS_SANDBOX_DENIAL_ERRNO_" + str(exc.errno)
+print(json.dumps(result, sort_keys=True))
+if (result["product_write"] != "PASS" or
+    not result["financial"].startswith("PASS_") or
+    not result["owner_private_recovery"].startswith("PASS_") or
+    (mode == "sandbox" and not result["socket_creation"].startswith("PASS_"))):
+    raise SystemExit(3)
+'''
+# A macOS seatbelt profile for the *pilot only*. Separate login/launch restrictions
+# remain mandatory before granting the runner continuous autonomous privileges.
+PROFILE = """(version 1)
+(allow default)
+(deny network*)
+"""
+
+
+def hold(message: str) -> None:
+    raise RuntimeError("HOLD:" + message)
+
+
+def run(*argv: str) -> str:
+    result = subprocess.run(argv, capture_output=True, text=True, timeout=20)
+    if result.returncode:
+        hold("CMD_FAILED:" + argv[0] + ":" + result.stderr.strip()[:100])
+    return result.stdout
+
+
+def metadata(p: Path) -> dict:
+    if p.is_symlink() or not p.is_dir():
+        hold("DIRECTORY_OR_SYMLINK:" + str(p))
+    s = p.stat()
+    # Exclude directory mtime/size from the ACL fingerprint; creating the
+    # approved scratch changes PRODUCT mtime but must not fake an ACL drift.
+    acl = "\n".join(line.strip() for line in
+                    run("/bin/ls", "-ldeO", str(p)).splitlines()[1:])
+    identity = (str(s.st_dev) + ":" + str(s.st_ino) + ":" + str(s.st_uid)
+                + ":" + str(s.st_gid) + ":" + str(stat.S_IMODE(s.st_mode))
+                + "\n" + acl)
+    return {
+        "path": str(p),
+        "dev": s.st_dev,
+        "ino": s.st_ino,
+        "uid": s.st_uid,
+        "gid": s.st_gid,
+        "mode": stat.S_IMODE(s.st_mode),
+        "acl_text": acl,
+        "sha256": hashlib.sha256(identity.encode()).hexdigest(),
+    }
+
+
+def snapshot() -> list[dict]:
+    rows = [metadata(p) for p in PATHS]
+    if rows[2]["mode"] != 0o700 or rows[3]["mode"] != 0o700:
+        hold("EXISTING_LANE_MODE_CHANGED")
+    if any(row["uid"] != 501 for row in rows):
+        hold("OWNER_UID_CHANGED")
+    if any(row["dev"] != rows[3]["dev"] for row in rows):
+        hold("UNEXPECTED_MOUNT_CHANGE")
+    return rows
+
+
+def expected_acl() -> str:
+    return "user:" + RUNNER + " allow search"
+
+
+def runner_uid() -> int:
+    try:
+        record = pwd.getpwnam(RUNNER)
+    except KeyError:
+        hold("RUNNER_ACCOUNT_NOT_CREATED_BY_OWNER")
+    if record.pw_uid in (0, 501):
+        hold("RUNNER_UID_NOT_ISOLATED")
+    groups = run("/usr/bin/id", "-Gn", RUNNER).strip().split()
+    forbidden = {"admin", "wheel", "staff", "_developer", "_appserveradm"}
+    if any(group in forbidden for group in groups):
+        hold("RUNNER_HAS_SHARED_OR_PRIVILEGED_GROUP")
+    gids = {int(x) for x in run("/usr/bin/id", "-G", RUNNER).split()}
+    if gids.intersection({0, 20, 80}):
+        hold("RUNNER_HAS_SHARED_GROUP_ID")
+    return record.pw_uid
+
+
+def source_digest() -> str:
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+
+def owner_approval(args) -> None:
+    if os.geteuid() != 0:
+        hold("OWNER_APPLY_REQUIRES_ROOT_AFTER_EXPLICIT_APPROVAL")
+    if args.approval_url is None or not APPROVAL_RE.fullmatch(args.approval_url):
+        hold("EXACT_OWNER_APPROVAL_COMMENT_REQUIRED")
+    if args.sha256 != source_digest():
+        hold("SCRIPT_SOURCE_SHA_NOT_PINNED")
+    if not args.recovery_parent or not Path(args.recovery_parent).is_absolute():
+        hold("OWNER_PRIVATE_RECOVERY_PARENT_APPROVAL_REQUIRED")
+    if args.recovery_parent.startswith(str(PRODUCT)):
+        hold("RECOVERY_PARENT_INVALID")
+    if os.uname().sysname != "Darwin":
+        hold("NOT_MACOS")
+    runner_uid()
+
+
+def state_path() -> Path:
+    return CONTROL / STATE_NAME
+
+
+def store_state(state: dict) -> None:
+    target = state_path()
+    tmp = CONTROL / ".state-new.json"
+    with tmp.open("x", encoding="utf-8") as f:
+        json.dump(state, f, sort_keys=True, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, target)
+    os.chmod(target, 0o600)
+
+
+def read_state() -> dict:
+    if not state_path().is_file():
+        hold("NO_APPROVED_PILOT_STATE")
+    return json.loads(state_path().read_text(encoding="utf-8"))
+
+
+def confirm_original_paths(baseline: list[dict]) -> None:
+    current = snapshot()
+    for old, now in zip(baseline, current):
+        if (old["dev"], old["ino"], old["uid"], old["gid"], old["mode"]) != (
+            now["dev"], now["ino"], now["uid"], now["gid"], now["mode"]
+        ):
+            hold("ANCESTOR_METADATA_DRIFT")
+
+
+def plan() -> None:
+    base = snapshot()
+    print(json.dumps({
+        "status": "SOURCE_ONLY_PLAN_NO_MUTATION",
+        "script_sha256": source_digest(),
+        "runner": RUNNER,
+        "four_acl_paths": [{"path": x["path"], "sha256": x["sha256"],
+                            "dev": x["dev"], "ino": x["ino"]} for x in base],
+        "acl": expected_acl(),
+        "scratch": str(SCRATCH),
+        "approval_required": True,
+        "financial_probe_executed": False,
+    }, sort_keys=True, indent=2))
+
+
+def apply(args) -> None:
+    owner_approval(args)
+    before = snapshot()
+    if CONTROL.exists() or SCRATCH.exists() or POLICY.exists():
+        hold("PILOT_PATH_ALREADY_EXISTS")
+    if any(expected_acl() in row["acl_text"] for row in before):
+        hold("OWNER_ACL_ALREADY_PRESENT")
+    CONTROL.mkdir(mode=0o700)
+    state = {
+        "schema": "aoe2war.product.runner.pilot.v1",
+        "phase": "STARTED",
+        "source_sha256": source_digest(),
+        "approval_url": args.approval_url,
+        "baseline": before,
+        "acl_paths": [],
+        "scratch": str(SCRATCH),
+        "no_financial_acl_changed": True,
+    }
+    store_state(state)
+    for location in PATHS:
+        run("/bin/chmod", "+a", expected_acl(), str(location))
+        state["acl_paths"].append(str(location))
+        state["phase"] = "ACL_PARTIAL"
+        store_state(state)
+    SCRATCH.mkdir(mode=0o700)
+    runner_record = pwd.getpwnam(RUNNER)
+    os.chown(SCRATCH, runner_uid(), runner_record.pw_gid)
+    os.chmod(SCRATCH, 0o700)
+    POLICY.mkdir(mode=0o755)
+    script = POLICY / PROBE_NAME
+    with script.open("x", encoding="utf-8") as f:
+        f.write(PROBE.lstrip())
+    os.chmod(script, 0o644)
+    profile = POLICY / "pilot.sb"
+    with profile.open("x", encoding="utf-8") as f:
+        f.write(PROFILE)
+    os.chmod(profile, 0o644)
+    state["phase"] = "INSTALLED_NOT_ACCEPTED"
+    state["policy_sha256"] = hashlib.sha256(profile.read_bytes()).hexdigest()
+    state["probe_sha256"] = hashlib.sha256(script.read_bytes()).hexdigest()
+    store_state(state)
+    print("INSTALLED_NOT_ACCEPTED; run verify separately. NEVER treat apply as PASS.")
+
+
+def verify(args) -> None:
+    owner_approval(args)
+    state = read_state()
+    if state["source_sha256"] != source_digest():
+        hold("SOURCE_CHANGED_SINCE_APPLY")
+    confirm_original_paths(state["baseline"])
+    if state["phase"] not in ("INSTALLED_NOT_ACCEPTED", "ACCEPTANCE_PASS"):
+        hold("PARTIAL_INSTALL_REQUIRES_OWNER_ROLLBACK")
+    if any(expected_acl() not in metadata(p)["acl_text"] for p in PATHS):
+        hold("EXPECTED_ACL_MISSING")
+    if SCRATCH.stat().st_uid != runner_uid() or stat.S_IMODE(SCRATCH.stat().st_mode) != 0o700:
+        hold("SCRATCH_IDENTITY_OR_MODE")
+    if hashlib.sha256((POLICY / PROBE_NAME).read_bytes()).hexdigest() != state["probe_sha256"]:
+        hold("PROBE_SOURCE_CHANGED")
+    uid = runner_uid()
+    home = pwd.getpwnam(RUNNER).pw_dir
+    safe_env = ("HOME=" + home, "PATH=/usr/bin:/bin", "LANG=C")
+    for phase in ("kernel_uid", "sandbox"):
+        cmd = ["/usr/bin/sudo", "-n", "-u", RUNNER,
+               "/usr/bin/env", "-i", *safe_env]
+        if phase == "sandbox":
+            cmd += ["/usr/bin/sandbox-exec", "-f", str(POLICY / "pilot.sb")]
+        cmd += ["/usr/bin/python3", "-I", "-B", str(POLICY / PROBE_NAME),
+                str(SCRATCH), str(FINANCIAL), args.recovery_parent, RUNNER, phase]
+        # These probes touch only a disposable runner scratch file and stat
+        # UNKNOWN child names under denied parents; no protected contents opened.
+        stdout = run(*cmd)
+        receipt = json.loads(stdout.strip().splitlines()[-1])
+        if receipt["uid"] != uid:
+            hold("PROBE_UID_WRONG")
+        print(json.dumps(receipt, sort_keys=True))
+    state["phase"] = "ACCEPTANCE_PASS"
+    store_state(state)
+
+
+def rollback(args) -> None:
+    owner_approval(args)
+    state = read_state()
+    if state["source_sha256"] != source_digest():
+        hold("SOURCE_CHANGED_SINCE_APPLY")
+    confirm_original_paths(state["baseline"])
+    # The owner must first stop/disable ONLY the pilot runner.
+    if args.runner_stopped != "YES":
+        hold("RUNNER_MUST_BE_STOPPED_BEFORE_ROLLBACK")
+    for location in reversed(PATHS):
+        now = metadata(location)
+        old = next(x for x in state["baseline"] if x["path"] == str(location))
+        if expected_acl() in now["acl_text"] and expected_acl() not in old["acl_text"]:
+            run("/bin/chmod", "-a", expected_acl(), str(location))
+    for old, now in zip(state["baseline"], snapshot()):
+        if old["sha256"] != now["sha256"]:
+            hold("ROLLBACK_ACL_NOT_IDENTICAL")
+    state["phase"] = "ROLLED_BACK_ACLS"
+    store_state(state)
+    # Do not delete evidence or user account automatically; disable separately
+    # by owner via Users & Groups, then seal scratch and receipt offhost.
+    print("ROLLED_BACK_ACLS; owner must disable pilot account and retain receipts.")
+
+
+def main() -> int:
+    p = argparse.ArgumentParser()
+    p.add_argument("action", choices=("plan", "apply", "verify", "rollback"))
+    p.add_argument("--sha256")
+    p.add_argument("--approval-url")
+    p.add_argument("--recovery-parent")
+    p.add_argument("--runner-stopped", default="NO")
+    a = p.parse_args()
+    try:
+        if a.action == "plan":
+            plan()
+        elif a.action == "apply":
+            apply(a)
+        elif a.action == "verify":
+            verify(a)
+        else:
+            rollback(a)
+        return 0
+    except (RuntimeError, OSError, subprocess.TimeoutExpired, KeyError, ValueError) as exc:
+        print("HOLD:" + str(exc), file=sys.stderr)
+        return 3
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,36 @@
+name: PRODUCT boundary source and negative authorization
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  product-boundary:
+    name: product-boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      BOUNDARY_REPOSITORY: ${{ github.repository }}
+      BOUNDARY_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BOUNDARY_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      BOUNDARY_BRANCH: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - name: Checkout EXACT reviewed source (no credentials retained)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use deterministic Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Positive and adversarial negative authorization cases
+        run: python3 -I -B -m unittest discover -s tests -p 'test_product_boundary_guard.py' -v
+      - name: Source-bound owner signature, CI, artifact, rollback, nonce negatives
+        run: python3 -I -B -m unittest discover -s tests -p 'test_product_signed_promotion_gate.py' -v
+      - name: Source SHA, exact owner/origin, tree and approved file changes
+        run: python3 -I -B scripts/product_boundary_guard.py --check
