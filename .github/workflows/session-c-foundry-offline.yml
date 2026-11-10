@@ -1,0 +1,53 @@
+name: Session C Kingdom Foundry F1-F5 OFFLINE Contracts
+
+on:
+  pull_request:
+    paths:
+      - "tools/kingdom-foundry/**"
+      - ".github/workflows/session-c-foundry-offline.yml"
+      - "docs/SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md"
+      - "docs/document-registry.json"
+      - "docs/DOCUMENTATION_CONTROL_PLANE.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundry-no-execution:
+    name: foundry-source-only-security-and-crash-recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history is needed for exact implementation-baseline proof.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: F0-F5 original and hardened ledger, scheduler, triage and benchmark
+        run: python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+      - name: Offline deterministic known-answer rule benchmark, no weights
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, "tools/kingdom-foundry")
+          from nightforge_benchmark import run_deterministic_baseline
+          outcome = run_deterministic_baseline(loops=10)
+          assert outcome["correct"] == 12
+          assert outcome["falsePositiveRate"] == 0
+          assert outcome["falseNegativeRate"] == 0
+          assert outcome["llmCalls"] == 0
+          assert outcome["executionEnabled"] is False
+          assert outcome["hel1ResidentInference"] == "HOLD"
+          print("PASS_FOUNDRY_RULE_BASELINE_120_NO_MODEL_NO_HOST")
+          PY
+      - name: Strict documentation registry and signed source lineage contract
+        run: python3 scripts/docs_v2_check.py
+      - name: Reject executable integration into active website
+        run: |
+          test ! -e app/kingdom-foundry/page.tsx
+          test ! -e app/api/kingdom-foundry/route.ts
+          test ! -e app/api/nightforge/route.ts
+          git diff --check
