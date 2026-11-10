@@ -34,6 +34,8 @@ class PromotionCases(unittest.TestCase):
             "pr": 1306,
             "branch": "session-c/product-boundary-guard-20261110",
             "source_sha": self.sha,
+            "base_branch": "session-b/r25-pinned-review-base-20261110",
+            "base_sha": "e" * 40,
             "artifact_sha256": "b" * 64,
             "rollback_source_sha": "c" * 40,
             "rollback_sha256": "d" * 64,
@@ -72,7 +74,7 @@ class PromotionCases(unittest.TestCase):
             "/repos/Emaren/app-prodn/pulls/1306": {
                 "state": "open", "draft": False,
                 "head": {"sha": self.sha, "ref": self.manifest["branch"]},
-                "base": {"ref": "main"},
+                "base": {"ref": self.manifest["base_branch"], "sha": self.manifest["base_sha"]},
             },
             "/repos/Emaren/app-prodn/commits/" + self.sha +
             "/check-runs?per_page=100": {
@@ -144,6 +146,13 @@ class PromotionCases(unittest.TestCase):
             altered = dict(self.manifest, **changes)
             with self.subTest(changes=changes), self.assertRaises(p.Denied):
                 p.read_manifest(p.canonical_json(altered), self.now)
+
+    def test_reject_stale_base_branch_or_base_sha(self):
+        for key, value in (("ref", "main"), ("sha", "1" * 40)):
+            fake = deepcopy(self.responses)
+            fake["/repos/Emaren/app-prodn/pulls/1306"]["base"][key] = value
+            with self.subTest(key=key), self.assertRaises(p.Denied):
+                p.inspect_remote(self.manifest, self.policy, fake.__getitem__)
 
     def test_reject_changed_pull_request_head_or_direct_push(self):
         for key, value in (
