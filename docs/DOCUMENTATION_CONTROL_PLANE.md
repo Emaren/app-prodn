@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/public-player-one-use-cutover-20261110` at `de5061811c68acdd3a332620547dfda3c3bcef69`
+Implementation baseline: `session-b/public-player-one-use-cutover-20261110` at `cbec98c7bf8dd47a1eda2631b34132e20f3b912f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
