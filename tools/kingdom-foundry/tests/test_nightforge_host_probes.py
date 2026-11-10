@@ -324,6 +324,51 @@ class F10ReadOnlyHostProbes(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 write_private_export(state,html,private_root=folder)
 
+    def test_actual_MAC_one_shot_cli_stdout_is_only_unattested_and_readonly(self):
+        if sys.platform != "darwin":
+            self.skipTest("actual M1 command only; on Linux use local mocked mounts")
+        command=[sys.executable,str(
+            ROOT/"tools/kingdom-foundry/nightforge_readonly_probe_cli.py"),
+            "--mac-storage","--lane","PRODUCT_C"]
+        proc=subprocess.run(command,check=False,capture_output=True,
+                            text=True,timeout=10)
+        self.assertEqual(proc.returncode,0,proc.stderr)
+        self.assertEqual(proc.stderr,"")
+        receipt=json.loads(proc.stdout)
+        self.assertEqual(receipt["status"],"HOLD_UNATTESTED_LOCAL_SOURCE")
+        self.assertEqual(receipt["sourceGitSHA"],"unknown")
+        self.assertFalse(receipt["sourceExternallyAttested"])
+        self.assertFalse(receipt["backupCertified"])
+        self.assertFalse(receipt["agentExecutionEnabled"])
+        self.assertFalse(receipt["dispatchAllowed"])
+        self.assertFalse(receipt["financeAllowed"])
+        self.assertFalse(receipt["paperOrdersAllowed"])
+        self.assertFalse(receipt["realOrdersAllowed"])
+        self.assertEqual(receipt["networkCalls"],0)
+        self.assertEqual(receipt["fileWrites"],0)
+        self.assertGreater(receipt["availableMiBSelfReported"],0)
+        self.assertIn("STORAGE_VISUAL_SOURCE_NOT_TRUSTED",proc.stdout)
+        self.assertNotIn("FINANCIAL/",proc.stdout)
+        self.assertNotIn("root@",proc.stdout)
+
+    def test_manual_cli_refuses_unpinned_linux_and_wrong_arguments_without_paths(self):
+        cli=str(ROOT/"tools/kingdom-foundry/nightforge_readonly_probe_cli.py")
+        scenarios=(
+            ["--hel1-root"],
+            ["--mac-storage","--approved-linux-machine-id-sha256","a"*64],
+            ["--systemd-unit","wolo-reviewer.service"],
+            ["--systemd-unit","kingdom-traders-paper.service",
+             "--approved-linux-machine-id-sha256","a"*64],
+        )
+        for flags in scenarios:
+            with self.subTest(flags=flags):
+                proc=subprocess.run([sys.executable,cli,*flags],
+                    check=False,capture_output=True,text=True,timeout=10)
+                self.assertEqual(proc.returncode,2)
+                self.assertEqual(proc.stdout,"")
+                self.assertNotIn("/etc/machine-id",proc.stderr)
+                self.assertNotIn("Bearer",proc.stderr)
+
     def test_source_does_not_contain_general_executor_network_or_finance(self):
         source=(ROOT/"tools/kingdom-foundry/nightforge_host_probes.py").read_text()
         for bad in ("requests.", "urlopen(", "socket.", "ssh ",
