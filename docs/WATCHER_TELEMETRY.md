@@ -8,10 +8,12 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
+
+> **November 10, 2026 documentation-only source review:** This remains a historical Watcher artifact/telemetry reference. Existing pinned October release bytes, authentication and deployment controls are unchanged. This review does not certify a new Watcher release, current download links, or live player telemetry.
 
 # Watcher Telemetry
 

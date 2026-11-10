@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "39bb5ab111ae916279119df98cc99b94ed842cd7227ba3a2fa37b71840b90e7d",
+      "sha256": "3830a2de303de61dc7648e49161df393de80fdbdf27126dc95595bca74fc9852",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2486,9 +2486,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "sha256": "05e5653a291a8e83d453f1643d808107e9f0e897234d28f0a19e530dd67390be",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2555,9 +2555,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "7fe7a20f8f78402f2a7fe5403c120647755c84af45af0ee3fefefc52de8f5df2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3174,7 +3174,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/c03-steam-v19-retired-preview-exact-20261109",
-    "commit": "d6028bb40aaaf69b641f9101970ab617d4e92c7e"
+    "commit": "bccff09bc6c716f8e74d9018e0512a4d15232d81"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

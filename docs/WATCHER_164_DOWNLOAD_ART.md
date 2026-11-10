@@ -8,10 +8,12 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
+
+> **November 10, 2026 documentation-only source review:** This remains a historical Watcher artifact/telemetry reference. Existing pinned October release bytes, authentication and deployment controls are unchanged. This review does not certify a new Watcher release, current download links, or live player telemetry.
 
 # Watcher 1.6.4 Download Artwork
 
