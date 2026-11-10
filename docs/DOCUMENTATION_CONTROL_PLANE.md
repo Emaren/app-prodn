@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c02-native-pg16-14th-contract-20261109` at `b4d2cc291c79388a9b2522ede30c036fff9c1cdf`
+Implementation baseline: `session-b/c02-native-pg16-14th-contract-20261109` at `08eb1865a3ddfad386978e7c2d83059f925e49a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
