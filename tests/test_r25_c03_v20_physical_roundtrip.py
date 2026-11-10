@@ -19,6 +19,8 @@ class V20Roundtrip(unittest.TestCase):
   self.assertEqual(v.V20_FIN_SHA,"3a24b53d356d6ac406999fbabed66c5144d74e538503840d407feb4d5f365f15")
   self.assertEqual(v.NFT_SHA,"985f32c16f3db3c843a196093977c2e2f61aeb11ce67d5cb1ebddaf66cd710af")
   self.assertIn("physical-v20-steam-retired-preview-install.json",src)
+  self.assertEqual(v.V20_INSTALL_RECEIPT_SHA,"eb9da5ca2dd0ef08a657ff13fcfe299230111bb5a00f6f0471129d643c593a6f")
+  self.assertIn("SOURCE_QUALIFIED_V20_PHYSICAL_INSTALL_RECEIPT_SHA",src)
   self.assertIn("PASS_V20_RETIRED_PREVIEW_PROTECTED_STEAM_RENEWAL",src)
   self.assertIn("PASS_REAL_V20_WEB3032_RETURN_TO_B1EF_UNAUTHENTICATED",src)
   self.assertIn("C03_APP_HANDOFF_ACCEPTED",src)

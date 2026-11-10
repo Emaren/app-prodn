@@ -27,6 +27,7 @@ SOURCE=ROOT/"r25_c03_v20_reversible_physical_v1.py"
 STEAM=P("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py")
 STEAM_SHA="7d432066f370b9eeb7f931f2143a12f2695177e6c174775b4400617e00909c4c"
 V20_UNIT_SHA="b976a10d5cc8b3c199974f1b85a912a67323e8b57b4f69325a1061428d20deb2"
+V20_INSTALL_RECEIPT_SHA="eb9da5ca2dd0ef08a657ff13fcfe299230111bb5a00f6f0471129d643c593a6f"
 V20_FIN_SHA="3a24b53d356d6ac406999fbabed66c5144d74e538503840d407feb4d5f365f15"
 NFT_SHA="985f32c16f3db3c843a196093977c2e2f61aeb11ce67d5cb1ebddaf66cd710af"
 PREVIOUS_V18_UNIT="8dae3ac8f4f9ac0d01fed6ddde4a82bb0e6de28ced2553eba9c24349533c3032"
@@ -92,8 +93,11 @@ def host_class(m):
    need(m.file_sha(self.v18.INSTALLED_STEAM)==V20_UNIT_SHA,
         "REVIEWED_INSTALLED_V20_STEAM_UNIT")
    self.v20.static_check()
-   report=json.loads(self.v20.verified(
-       ROOT/"physical-v20-steam-retired-preview-install.json",0o600))
+   receipt_path=ROOT/"physical-v20-steam-retired-preview-install.json"
+   raw=self.v20.verified(receipt_path,0o600)
+   need(sha(raw)==V20_INSTALL_RECEIPT_SHA,
+        "SOURCE_QUALIFIED_V20_PHYSICAL_INSTALL_RECEIPT_SHA")
+   report=json.loads(raw)
    need(report.get("status")==
         "PASS_V20_RETIRED_PREVIEW_PROTECTED_STEAM_RENEWAL"
         and report.get("final_steam_unit_sha")==V20_UNIT_SHA
