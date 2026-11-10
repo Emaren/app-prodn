@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-nonfinancial-frontend-20261109` at `d94cd0c59fa6c137816955172c78d043fbf82c09`
+Implementation baseline: `session-c/traffic-watcher-storage-readmodels-20261110` at `565075dc791c9d538638416b0f577403694c5e3f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **138**
+- Authoritative repository documents: **139**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 74
 - `runbook`: 44
-- `working`: 2
+- `working`: 3
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 34
+- `draft`: 35
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -152,6 +152,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
 | [Session C — Kingdom Traders nonfinancial frontend seam (NOT deployed)](SESSION_C_KINGDOM_TRADERS_NONFINANCIAL_FRONTEND_SEAM.md) | `working` | `draft` | `product-only-session-c-source-review` |
+| [Session C — Nonfinancial observability source handoff (NOT deployed)](SESSION_C_NONFINANCIAL_OBSERVABILITY_HANDOFF.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |

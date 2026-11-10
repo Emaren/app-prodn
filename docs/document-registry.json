@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3cdf125f18c1eeba52e4a8bdbe557e6c78a3e1c1b6352e98c7cd91e442536eaa",
+      "sha256": "25cd3e36e919bed7207d5da29fbf8847d8f837121afdc48d87577389752f4cb3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2321,6 +2321,32 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.session-c-nonfinancial-observability-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_NONFINANCIAL_OBSERVABILITY_HANDOFF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "5ce8cc31d29c6ef7b0d581fb66022f887b2dba96fc001b5f995334652e988aaf",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "traffic-app",
+        "traffic-api",
+        "aoe2-watcher",
+        "storage-os"
+      ],
+      "title": "Session C \u2014 Nonfinancial observability source handoff (NOT deployed)",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -3152,8 +3178,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/r25-nonfinancial-frontend-20261109",
-    "commit": "d94cd0c59fa6c137816955172c78d043fbf82c09"
+    "branch": "session-c/traffic-watcher-storage-readmodels-20261110",
+    "commit": "565075dc791c9d538638416b0f577403694c5e3f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
