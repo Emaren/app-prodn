@@ -240,8 +240,11 @@ class PrivateOneShotObserverTests(TestCase):
         self.assertEqual(first["journalResult"],"HOLD")
         with sqlite3.connect(self.db) as db:
             db.execute("UPDATE f1_events SET body_sha256=?",("f"*64,))
+        # Use a different source observation so F1 can commit a second
+        # HOLD row, then F9 must detect the OLDER corrupted event.
         with self.assertRaisesRegex(Rejected,"CORRUPT"):
-            self.record(receipt_id="f11-tampered")
+            self.record(raw_systemd_observation("failed"),
+                        receipt_id="f11-tampered")
         self.assertFalse((self.private/"foundry-private-f11-tampered.html").exists())
 
     def test_manual_MAC_CLI_source_to_private_0600_html(self):
