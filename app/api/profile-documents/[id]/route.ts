@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { readProductionUser, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
 import {
   PROFILE_DOCUMENT_KIND,
   loadProfileDocumentBytes,
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 const NO_STORE_HEADERS = { "Cache-Control": "private, no-store, max-age=0" };
 
-async function gateDocument(request: NextRequest, idValue: string) {
+async function gateDocument(request: NextRequest, idValue: string, readOnly = false) {
   const uid = await getSessionUid(request);
   if (!uid) return { error: NextResponse.json({ detail: "No active session" }, { status: 401, headers: NO_STORE_HEADERS }) };
 
@@ -26,7 +27,9 @@ async function gateDocument(request: NextRequest, idValue: string) {
 
   const prisma = getPrisma();
   const [viewer, asset] = await Promise.all([
-    prisma.user.findUnique({ where: { uid }, select: { uid: true, isAdmin: true } }),
+    readOnly && usesNonfinancialProductionAuth()
+      ? readProductionUser(prisma, uid)
+      : prisma.user.findUnique({ where: { uid }, select: { uid: true, isAdmin: true } }),
     prisma.managedMediaAsset.findFirst({ where: { id, kind: PROFILE_DOCUMENT_KIND, active: true } }),
   ]);
 
@@ -49,7 +52,7 @@ function safeDownloadName(value: string | null) {
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const gate = await gateDocument(request, id);
+  const gate = await gateDocument(request, id, true);
   if ("error" in gate) return gate.error;
 
   const bytes = await loadProfileDocumentBytes(gate.asset.url);
