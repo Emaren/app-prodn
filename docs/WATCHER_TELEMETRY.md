@@ -8,16 +8,20 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-10-10
+## November 10, 2026 review boundary
 
-**Public release: Watcher v1.6.4. Previous retained generation: v1.6.3.**
+HEL1's public `/api/watcher/release` responded HTTP 200 with `version: 1.6.5` at 02:40 UTC. The v1.6.4 and earlier release blocks below are retained as dated historical receipts, **not a fresh certification of the currently advertised 1.6.5 binaries or behavior**. Revalidate current binary hashes, updater signatures, install/relaunch behavior, and telemetry independently before a new release claim. This review preserves the established privacy and finality contracts; it does not authorize betting or settlement.
+
+## Historical production release identity — 2026-10-10
+
+**At the October 10 checkpoint, the public release was Watcher v1.6.4, with v1.6.3 retained.**
 The immutable [GitHub v1.6.4 release](https://github.com/Emaren/aoe2-watcher/releases/tag/v1.6.4) was published 2026-10-10 after both app-prodn PR #473 CI jobs succeeded. The certified bundle contains 12 canonical objects, including five player downloads (signed Windows NSIS + portable, unsigned manual Apple Silicon DMG + direct ZIP, Linux AppImage), the native macOS updater integrity ZIP and DMG blockmap, three updater manifests, and two checksum receipts. The native macOS ZIP is an integrity-bound source artifact; **unsigned Mac builds are manual-only** and are not advertised as Developer ID notarized or supported for automatic update.
 
 Release identity and immutable evidence:
