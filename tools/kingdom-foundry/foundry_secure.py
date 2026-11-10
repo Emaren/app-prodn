@@ -173,15 +173,31 @@ class SecureJournal:
     def ingest(self, data: bytes, evidence_bytes: bytes | None = None):
         event, canonical = strict_event(data)
         evidence_verified = False
+        offline_fixture_evidence = False
         if evidence_bytes is not None:
             if type(evidence_bytes) is not bytes or not 0 < len(evidence_bytes) <= 4096:
                 raise Rejected("HOLD_EVIDENCE_BYTES_OVERSIZED")
             proof = strict_json(evidence_bytes)
-            if (not isinstance(proof, dict) or
-                set(proof) != {"schema", "source", "status"} or
-                proof.get("schema") != "kingdom.foundry.evidence.v1" or
-                proof.get("source") != event["source"] or
-                proof.get("status") not in ("OBSERVED", "FAILED", "UNKNOWN")):
+            common = (type(proof) is dict and
+                proof.get("source") == event["source"] and
+                proof.get("status") in ("OBSERVED", "FAILED", "UNKNOWN"))
+            if not common:
+                raise Rejected("HOLD_EVIDENCE_NOT_TYPED")
+            if proof.get("schema") == "kingdom.foundry.evidence.v1":
+                if set(proof) != {"schema", "source", "status"}:
+                    raise Rejected("HOLD_EVIDENCE_NOT_TYPED")
+            elif proof.get("schema") == "kingdom.foundry.evidence.v2":
+                # F8 observational fixture digests are local content seals;
+                # they cannot become authenticated Git/source attestations.
+                if (set(proof) != {"schema", "source", "status",
+                                  "observation_sha256", "diagnostic_code"} or
+                    type(proof.get("observation_sha256")) is not str or
+                    not re.fullmatch(r"[0-9a-f]{64}", proof["observation_sha256"]) or
+                    type(proof.get("diagnostic_code")) is not str or
+                    not re.fullmatch(r"[A-Z_]{4,80}", proof["diagnostic_code"])):
+                    raise Rejected("HOLD_EVIDENCE_NOT_TYPED")
+                offline_fixture_evidence = True
+            else:
                 raise Rejected("HOLD_EVIDENCE_NOT_TYPED")
             if HOSTILE.search(evidence_bytes.decode("utf-8")):
                 raise Rejected("HOLD_EVIDENCE_HOSTILE")
@@ -197,7 +213,8 @@ class SecureJournal:
             trust = "VERIFIED"
         except Rejected:
             repo, trust = binding.name, "HOLD"
-        if event["severity"] == "critical" or not evidence_verified:
+        if (event["severity"] == "critical" or not evidence_verified or
+            offline_fixture_evidence):
             trust = "HOLD"
         body_sha = sha256(canonical.encode("ascii")).hexdigest()
         fingerprint = sha256(json.dumps({

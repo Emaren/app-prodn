@@ -32,6 +32,8 @@ jobs:
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_foundry_audit_concurrency.py' -v
       - name: F7 private static dashboard non-disclosure, 0600 and no route
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_foundry_dashboard.py' -v
+      - name: F8 sanitized offline collectors, v2 evidence and source SHA permanent HOLD
+        run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_nightforge_collectors.py' -v
       - name: Offline deterministic known-answer rule benchmark, no weights
         run: |
           python3 - <<'PY'

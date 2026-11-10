@@ -88,6 +88,17 @@ class FoundryDashboardTests(TestCase):
         self.assertFalse(observed["walletOrWoloAllowed"])
         self.assertFalse(observed["websiteMounted"])
 
+    def test_unknown_source_sha_from_research_collector_stays_visible_hold(self):
+        self.admitted()
+        event=self.event(9,kind="storage_pressure",source_sha="unknown")
+        self.assertEqual(event["status"],"HOLD")
+        report=read_model(self.journal)
+        row=report["items"][0]
+        self.assertEqual(row["sourceSha"],"unknown")
+        self.assertEqual(row["state"],"HOLD_SOURCE_UNVERIFIED")
+        self.assertEqual(row["sourceStatus"],"HOLD_CURRENT_SOURCE_UNVERIFIED")
+        self.assertNotIn("MARKET",str(row["nextPermittedStep"]))
+
     def test_unknown_or_critical_event_never_looks_admitted(self):
         self.admitted()
         critical=self.event(2,kind="ci_failure",severity="critical")

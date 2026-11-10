@@ -32,7 +32,7 @@ STATUS_MAP = {
 }
 DISPLAY_STATUS = frozenset(STATUS_MAP)
 REPO = re.compile(r"[a-z0-9][a-z0-9_-]{1,40}\Z")
-SHA40 = re.compile(r"[0-9a-f]{40}\Z")
+SOURCE_SHA = re.compile(r"(?:unknown|[0-9a-f]{40})\Z")
 
 
 def _safe_read_model(journal: SecureJournal, *, max_rows=80):
@@ -68,7 +68,7 @@ def _safe_read_model(journal: SecureJournal, *, max_rows=80):
             # because they came from a database path.
             if (lane not in ("PRODUCT_B", "PRODUCT_C") or
                 type(repo) is not str or not REPO.fullmatch(repo) or
-                type(sha) is not str or not SHA40.fullmatch(sha) or
+                type(sha) is not str or not SOURCE_SHA.fullmatch(sha) or
                 type(event) is not dict or
                 event.get("lane") != lane or
                 event.get("kind") != kind or
