@@ -16,18 +16,18 @@ spec=importlib.util.spec_from_file_location("v22_dual",FILE)
 v=importlib.util.module_from_spec(spec);spec.loader.exec_module(v)
 def sha(b):return hashlib.sha256(b).hexdigest()
 def encode(o):return (json.dumps(o,sort_keys=True,separators=(",",":"))+"\n").encode()
-AST_GOLDEN={
-"load_original":"a53a9feeddd752a29f43ff63f2abd13aee443fd87d4cb85eeafc318eeefdc4ed",
-"verify_exact_retired_preview":"3f678d67bf44384a96a2d7b72978ddcf4b579cd4a6a41521e8545f89e6a7d450",
-"load_c03_helper":"fdd9d3bfa1c45d7f28118c3d4d65ccd712de3ee5f80e05ee03d0b8495a4898a9",
-"load_c04_helper":"003197a625430f938e5c1b22ec6588ca40af5087fc90ef4e182cb101f4684004",
-"nginx_config_has_no_retired_3031":"e1083b323f7cc08fed845d2384ee2619339c692761202714098845ac2ffaf0a6",
-"native_snapshot":"e4c942a26a73a6fe033b5684b7ab47a680c42ce66eadf0954b9c06c940f97268",
-"read_live_steam_lease_seconds":"9b5d8af219f1fededa725826bf21b63874c7027de2588b83872e028509349a0f",
-"strict_lease_seconds_with_gc_retry":"abef9122a92f628a3872e37f09be880e2bd533944ddc326fc1cc5aa8161597a2",
-"lease_expiry_readonly_wait":"f40a4befc7ebdbe437005f25db8f6cc339000f57db34fa1da6c2d642f8c2992c",
-"load_c01_exact_delta_helper":"02d4117afef5cbba16fe4b05f71b9e22edc1a7580a3cc9f62c1b6f73224ed71e",
-"c04_socket_backlog_identity_rows":"44e13971edc2df70703f5833c2631c6510310f8fb25159cfdf7055b0a86c8670"
+TEXT_GOLDEN={
+'load_original':'334b27fa9da2fa7c5cdb911e445bfebe5a3be5c4a0bc031ded5b2fecc029fac2',
+'verify_exact_retired_preview':'ceda965c67ddcc62019dd3286a5213081dc2147ee8622385245ea6dfd483eb00',
+'load_c03_helper':'54e86118665ea581ea22fca8aa926831792027f0712363efe9d8d36bda765417',
+'load_c04_helper':'4f03e5edbf4e95ae446aaaeecb5912fd30bd64e00940ffe7f7324ca654f0cb3a',
+'nginx_config_has_no_retired_3031':'c3479b2237eb7e59ce735be42154abfb3d4cc8983be7fccb32bd57ece834fd7a',
+'native_snapshot':'2764e6464630e41af6270b1c4f2191757d738cdf25f7f7626d1f800920770fca',
+'read_live_steam_lease_seconds':'bc8c08928c5e0b65a6b26f2666a45c9589b59e29cf121ef2dd41230e78b5cbc9',
+'strict_lease_seconds_with_gc_retry':'35f4796db30e17288b5ae4048d90d1d5cafde534783dddcee53cac127a4f4e12',
+'lease_expiry_readonly_wait':'ff5e81b865dc78b39893a106b4253755b548d9de8fff91feff34e0bacd064013',
+'load_c01_exact_delta_helper':'790e7de3798cd1d4805a07272268556e2624d3803927676f896739c87a1c5b23',
+'c04_socket_backlog_identity_rows':'550a0b8ea6c1cfcd551cf746c578b6f2b3166af12478a172e2603b2843ca0b5e',
 }
 def proof():
  p=v.PROFILES["candidate"]
@@ -66,11 +66,12 @@ def proof():
  return raws
 
 class V22Bounded(unittest.TestCase):
- def test_original_protected_v20_functions_are_byte_equivalent_ast(self):
+ def test_original_protected_v20_functions_are_exact_text_sha(self):
   t=ast.parse(FILE.read_text())
-  actual={n.name:sha(ast.dump(n,include_attributes=False).encode())
+  text=FILE.read_text()
+  actual={n.name:sha(ast.get_source_segment(text,n).encode())
           for n in t.body if isinstance(n,ast.FunctionDef)}
-  for n,h in AST_GOLDEN.items():
+  for n,h in TEXT_GOLDEN.items():
    with self.subTest(n=n):self.assertEqual(actual.get(n),h)
  def test_exactly_two_source_build_unit_identities(self):
   self.assertEqual(set(v.PROFILES),{"rollback","candidate"})
