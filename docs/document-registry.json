@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e277cb05a6b2d37b77524624087a7ea3d0da3ac1ef03f8dba424e4c178b97041",
+      "sha256": "f2b65b7d1553938f8ee7be246feed60c7bb6043c56047175f643366c9e0ae645",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2486,9 +2486,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "sha256": "cb9e10351d2fc82938fc9929da1417fde9440e4fb8393b18af00ebdf120da574",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2555,9 +2555,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "6ef1a0d49c031079c0a45adea9eedcfe1be8a520868ec3f663f691f27d88f69a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3066,6 +3066,50 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.product-runner-owner-approval",
+      "owner": "aoe2war-web",
+      "path": "docs/security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "34a772f3eac69e7e4a1a317c78c62a5dddf096ff5c0ccea78440c4b2959ea127",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "PRODUCT Runner Owner Approval and Acceptance",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.product-signed-promotion-gate",
+      "owner": "aoe2war-web",
+      "path": "docs/security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "fb95ee1a261d4e8d88e6e78b0d06848c0f47e1ce18adeae1b5b141a76a671bb3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "PRODUCT Signed Promotion Exact SHA Gate",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -3085,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-public-live-explicit-api-20261109",
-    "commit": "043f95fcb48e268ab304dddeb610050529703e40"
+    "branch": "session-c/r25-product-security-acceptance-20261110",
+    "commit": "a941a0c712969aa80ebda24d115e3f32bd7430e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
