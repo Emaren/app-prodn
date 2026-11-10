@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-sniper-one-use-importer-20261110` at `3ae421dd2d5bbd17e5b7780e6908c56ee943d839`
+Implementation baseline: `session-b/r25-sniper-one-use-importer-20261110` at `c9a3077d16750d9cebb95112570bc5296776f367`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
