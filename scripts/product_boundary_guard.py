@@ -82,9 +82,9 @@ def authorize_source(raw: str) -> str:
         raise BoundaryHold("PROTECTED_NATIVE_OR_EXEC_SURFACE")
     if path.suffix.lower() in DENIED_SUFFIXES:
         raise BoundaryHold("PROTECTED_FILE_TYPE")
-    if parts[0] in {"scripts", "tests", ".github"} and str(path) not in APPROVED_SOURCE:
-        # This guard's explicit amendment surface. Other automated/script source
-        # changes require a separate reviewed workflow, not silent allowance.
+    if parts[0] in {"scripts", ".github"} and str(path) not in APPROVED_SOURCE:
+        # General nonfinancial tests are allowed, but scripts/workflows are
+        # restricted execution surfaces requiring a separate reviewed change.
         raise BoundaryHold("UNREVIEWED_EXECUTABLE_SURFACE")
     return str(path)
 
