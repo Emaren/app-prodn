@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-public-site-theme-read-fence-20261110` at `f6fdcb56732709f00f7b0426dc4ef72e2769e115`
+Implementation baseline: `session-b/r25-public-theme-client-503-unavailable-20261110` at `266c6be90bcf249148636aa75cee598a3828fc90`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
