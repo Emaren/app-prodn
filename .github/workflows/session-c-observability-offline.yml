@@ -1,0 +1,40 @@
+name: Session C Nonfinancial Observability - OFFLINE
+
+on:
+  pull_request:
+    paths:
+      - "lib/sessionCTrafficContinuity.mjs"
+      - "lib/sessionCWatcherVisibility.mjs"
+      - "lib/sessionCStorageCapacity.mjs"
+      - "components/SessionCNonfinancialObservationPanel.tsx"
+      - "tests/session-c-ops-observation-contract.test.mjs"
+      - ".github/workflows/session-c-observability-offline.yml"
+      - "docs/SESSION_C_NONFINANCIAL_OBSERVABILITY_HANDOFF.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    name: traffic-watcher-storage-source-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Adversarial Traffic/Watcher/Storage and unmounted UI
+        run: node --test tests/session-c-ops-observation-contract.test.mjs
+      - name: Existing PRODUCT paper seam stays source-held
+        run: node --test tests/session-c-product-paper-readonly.test.mjs tests/session-c-traders-seam.test.mjs
+      - name: Strict original site route census and signed docs index
+        run: |
+          node scripts/kingdom_index_source_audit.mjs
+          python3 scripts/docs_v2_check.py
+      - name: Prohibit active release route from Session C source
+        run: |
+          test ! -e app/kingdom-traders/page.tsx
+          test ! -e app/api/kingdom-traders/route.ts
+          git diff --check
