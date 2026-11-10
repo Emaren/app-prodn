@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "restricted"
 ---
 
-# SOURCE-ONLY PRODUCT RELEASE PROMOTION CONTRACT v1 — exact SHA + owner signature + independent CI
+# PRODUCT Signed Promotion Exact SHA Gate
 
 Status: DESIGN/NEGATIVE FIXTURE QUALIFIED; **NOT INSTALLED ON B'S RELEASE CONTROLLER**. This is a fail-closed integration requirement, not a claim that GitHub optional PR checks stop direct pushes. Session B alone owns App R25/Steam/3032/restricted rollback; Codex solely owns FINANCIAL; Session C may produce only source-bound candidate evidence. Kingdom Traders remains PAPER HALT.
 
