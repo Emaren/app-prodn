@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "12cc57bce4cb55c07d6a8b138cfd814f3071c9877113442ef0f2e810810f4923",
+      "sha256": "cb23082ed47421b64e253663d93c07c680fc027b89e58cb7e6d36448ea870153",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-optional-replay-stats-read-fence-20261110",
-    "commit": "e284014b3611329c067f0c18b8ed7706139b0485"
+    "branch": "session-b/r25-player-profile-documents-combined-20261110",
+    "commit": "9abb2dd306fd231a6567ecd5e4e2889a35c40af1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
