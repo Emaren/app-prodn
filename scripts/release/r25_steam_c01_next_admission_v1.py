@@ -127,7 +127,8 @@ def candidate_transition(before, after, reviewed):
             re.fullmatch(r"C01-V21-[A-Z0-9]{12,64}", reviewed["approval_id"]),
             "OWNER_APPROVAL_ID")
     for k in ("owner_approval_receipt_sha256", "codex_zero_funds_receipt_sha256"):
-        require(type(reviewed[k]) is str and HEX64.fullmatch(reviewed[k]), "RECEIPT_ID")
+        require(type(reviewed[k]) is str and HEX64.fullmatch(reviewed[k]) and
+                reviewed[k] != "0" * 64, "RECEIPT_ID")
     require(reviewed["owner_approval_receipt_sha256"] !=
             reviewed["codex_zero_funds_receipt_sha256"], "INDEPENDENT_RECEIPTS")
     require(reviewed["previous_one_use_receipt_consumed"] is False,
