@@ -17,12 +17,12 @@ This source document does not create that controller. Until an external writable
 Canonical UTF-8 sorted-key JSON, fixed schema aoe2war.product.promotion.v1, minimum fields:
 
 - repository (exact Emaren/app-prodn or Emaren/kingdom-traders)
-- PR number, base branch and exact 40-hex PR HEAD source commit SHA
+- PR number, **exact PR base branch AND base 40-hex SHA**, plus exact 40-hex PR HEAD source commit SHA
 - reviewed allowed change paths plus reviewed baseline SHA and source diff SHA256
 - artifact SHA256 and precise allowed operation (STAGE_NONFINANCIAL_APP or STAGE_PAPER_ONLY; no live trading/funding)
 - required CI workflow IDs, run IDs, attempt numbers and expected workflow-file blob hashes bound to that HEAD
 - required GitGuardian/security, docs, build, source provenance and negative/positive guard results
-- release controller trusted version SHA, rollback source+artifact SHA, host CPU/RAM/storage bounds and preflight receipts
+- release controller trusted version SHA, rollback source+artifact SHA **matching B/root-controlled trusted_policy.approved_rollback**, host CPU/RAM/storage bounds and preflight receipts
 - absolute expiry UTC, unpredictable nonce, exact owner/Central review comment ID
 - private/authenticated acceptance matrix and signed-in role evidence for routes that require it; explicit protected finance 503 and denied mutations
 - declaration that FINANCIAL, C06/C07, custody, 8092–8095 and trading remain held
@@ -34,6 +34,8 @@ Owner signs the canonical manifest with OpenSSH Ed25519 SSHSIG: namespace **aoe2
   ssh-keygen -Y verify -f /B-controlled/allowed_signers -I aoe2war-central -n aoe2war-product-release -s /owner-reviewed/admission.json.sig < /owner-reviewed/admission.json
 
 No text substitution or JSON whitespace normalization is permitted after signing; verify the exact bytes.
+
+The source-only gate now enforces B-controlled/root-owned, non-group/world-writable artifact and rollback staging roots and exact staged files in addition to SHA256; artifact review must include symlink/TOCTOU controls. The root-controlled trust policy supplies its own independently approved rollback source SHA and artifact digest; a valid owner signature alone cannot silently replace rollback. A PR based on a pinned B release branch (rather than main) is permitted only when **both exact base branch and SHA** match the signed manifest and real GitHub PR.
 
 ## REQUIRED release-controller algorithm — reject unless every condition PASS
 
