@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Foundry F8 — Offline normalized collectors, source HOLD
+# Foundry F8 — Offline normalized collectors, source HOLD, immutable observation digest
 
 ## Exact ancestry and source ownership
 

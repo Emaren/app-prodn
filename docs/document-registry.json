@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0d1950f71d81e7e51dfe46fb9175b600987719b788f40699eb610e8592ce8d31",
+      "sha256": "53ef687a2d29f6c6588d6de6f6acc5f13b92fa278998650e6321ca0bea0ab165",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2345,6 +2345,29 @@
         "ai-agents"
       ],
       "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.foundry-f8-offline-collectors",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_FOUNDRY_F8_SANITIZED_COLLECTORS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "610883b0f1bcb08b43ddadb362ad526c342fbd330d571ed717b141ee43d3081b",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry"
+      ],
+      "title": "Foundry F8 \u2014 Offline normalized collectors, source HOLD, immutable observation digest",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-only-session-c-source-review",
       "id": "aoe2war.app-prodn.kingdom-foundry-f1-f5-source-handoff",
       "owner": "aoe2war-web",
       "path": "docs/SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md",
@@ -3189,7 +3212,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "cbd644ac52f2f25d0889c4fdf9f84b482be568922047bb5314ee8820b80551fa",
+      "sha256": "ef9c0fb92db9ac7642fcf918954f0ea9107dafd47d2bc5c0584844964d8e167a",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3202,8 +3225,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/foundry-f7-private-readmodel-20261110",
-    "commit": "4ccd049ac0f43b2bd0fb2ea0861ae8fcdefb46f4"
+    "branch": "session-c/foundry-f8-sanitized-collectors-20261110",
+    "commit": "38a18ba6e59d70388af623f67c910020622a335f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
