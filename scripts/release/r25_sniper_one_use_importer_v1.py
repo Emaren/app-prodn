@@ -213,7 +213,7 @@ def load_journal(dest: Path):
     for e in entries:
         need(e["approval"]==APPROVAL and e["manifest"]==MANIFEST_SHA,"JOURNAL_PIN_DRIFT")
         need(e["event"] in ("BEGIN","PREPARED","INSTALLED","POST_PARITY_PASS",
-                            "ROLLBACK_REASON","ROLLED_BACK","COMPLETED","TEMP_INTENT"),"JOURNAL_UNTRUSTED_EVENT")
+                            "ROLLBACK_REASON","ROLLED_BACK","COMPLETED","TEMP_INTENT","TEMP_OPENED"),"JOURNAL_UNTRUSTED_EVENT")
     need(len(entries)<=20,"JOURNAL_ENTRY_COUNT")
     return entries
 
@@ -245,12 +245,17 @@ def rollback(dest:Path=DEST, *, reason:str="EXPLICIT", injury=None):
                 removed.append(target.name)
                 syncdir(dest)
         intent={e["name"] for e in entries if e["event"]=="TEMP_INTENT"}
-        need(intent.issubset(PINS),"BAD_TEMP_INTENT")
+        opened={e["name"]:e["inode"] for e in entries if e["event"]=="TEMP_OPENED"}
+        need(intent.issubset(PINS) and set(opened).issubset(intent),"BAD_TEMP_INTENT")
         for name in sorted(intent - set(prepared)):
             tmp=dest/(STAGE_PREFIX+name+".tmp")
             try: s=tmp.lstat()
             except FileNotFoundError: continue
-            need(stat.S_ISREG(s.st_mode) and s.st_nlink==1 and s.st_size<=PINS[name][1] and
+            # We must never delete a file merely because it has our temp NAME.
+            # TEMP_OPENED with inode was fsynced before the first data write.
+            need(name in opened and s.st_ino==opened[name] and
+                 stat.S_ISREG(s.st_mode) and s.st_nlink==1 and
+                 s.st_size<=PINS[name][1] and
                  (dest.parent!=ROOT or s.st_uid==0),"UNTRACKED_TEMP_CHANGED")
             tmp.unlink()
             removed.append(tmp.name)
@@ -312,6 +317,10 @@ def release(root:Path=ROOT, *, probes:bool=True, after_link=None, accept=None):
             temp=dest/(STAGE_PREFIX+name+".tmp")
             flags=os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,"O_NOFOLLOW",0)
             tfd=os.open(temp,flags,0o644)
+            opened_info=os.fstat(tfd)
+            # Journal the inode BEFORE writing; a power loss may leave a
+            # partial temp which is deletable only with this exact inode pin.
+            append(fd,"TEMP_OPENED",name=name,inode=opened_info.st_ino)
             try:
                 with os.fdopen(tfd,"wb",closefd=False) as f:
                     f.write(body);f.flush()
@@ -330,6 +339,7 @@ def release(root:Path=ROOT, *, probes:bool=True, after_link=None, accept=None):
             append(fd,"INSTALLED",name=name,inode=info.st_ino)
             os.unlink(temp)
             syncdir(dest)
+            read_pinned(dest/name,name,False,root)
         health_post=host_health() if probes else baseline
         need(health_post==baseline,"HOST_STATE_DRIFT_AFTER_IMPORT")
         verified=accept() if accept else acceptance()

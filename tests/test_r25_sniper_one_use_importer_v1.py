@@ -49,11 +49,14 @@ class OneUsePublicSniper(unittest.TestCase):
         result=self.run_release()
         self.assertEqual(result["status"],"DEPLOYED_FOUR_PINNED_SNIPER_MEDIA")
         self.assertEqual(set(self.has_media()),set(m.PINS))
+        for name in m.PINS:
+            self.assertEqual((self.src/name).read_bytes(),(self.dst/name).read_bytes())
         self.assertEqual(self.staged(),[])
         entries=self.journal()
         self.assertEqual(entries[0]["event"],"BEGIN")
         self.assertEqual(entries[-1]["event"],"COMPLETED")
         self.assertEqual(sum(x["event"]=="TEMP_INTENT" for x in entries),4)
+        self.assertEqual(sum(x["event"]=="TEMP_OPENED" for x in entries),4)
         self.assertEqual(sum(x["event"]=="PREPARED" for x in entries),4)
         self.assertEqual(sum(x["event"]=="INSTALLED" for x in entries),4)
         self.assertEqual({n:hashlib.sha256((self.src/n).read_bytes()).hexdigest() for n in m.PINS},
@@ -171,10 +174,24 @@ class OneUsePublicSniper(unittest.TestCase):
             m.append(fd,"TEMP_INTENT",name=name)
             stage=self.dst/(m.STAGE_PREFIX+name+".tmp")
             stage.write_bytes(b"incomplete")
+            m.append(fd,"TEMP_OPENED",name=name,inode=stage.stat().st_ino)
         finally:os.close(fd)
         result=m.rollback(self.dst,reason="INTERRUPTED_BEFORE_PREPARED")
         self.assertIn(stage.name,result["removed"])
         self.assertFalse(stage.exists())
+
+    def test_unrecorded_temp_file_is_preserved_for_manual_review(self):
+        name=sorted(m.PINS)[0]
+        fd=m.open_journal(self.dst)
+        try:
+            m.append(fd,"BEGIN",pre={"fixture":True})
+            m.append(fd,"TEMP_INTENT",name=name)
+            temp=self.dst/(m.STAGE_PREFIX+name+".tmp")
+            temp.write_bytes(b"FOREIGN-INJECTED-TEMP")
+        finally:os.close(fd)
+        with self.assertRaisesRegex(m.Hold,"UNTRACKED_TEMP_CHANGED"):
+            m.rollback(self.dst,reason="PRE_OPEN_FAILURE")
+        self.assertEqual(temp.read_bytes(),b"FOREIGN-INJECTED-TEMP")
 
     def test_recovery_refuses_foreign_inode(self):
         name=sorted(m.PINS)[0]
