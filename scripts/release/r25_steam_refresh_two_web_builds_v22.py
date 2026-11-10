@@ -62,12 +62,15 @@ CANDIDATE_SOURCE_OVERLAY = V20_ROOT/'artifact.json'
 CANDIDATE_SOURCE_OVERLAY_SHA = '2c0bb606db2c21ca263efbcacb57c52e4cb493553737a5a919e21170baaf6a74'
 PLAYER_STAGE_JOURNAL = P('/var/lib/aoe2war-public-player-6662c33a-one-use-v1/events')
 PLAYER_STAGE_PERMIT = ROOT/'approved-public-player-permit.json'
+PLAYER_ACTIVATE_PERMIT = P('/root/aoe2war-public-player-6662c33a-activate-permit.json')
+PLAYER_ACTIVATE_NONCE32 = re.compile(r'^[0-9a-f]{32}$')
+PLAYER_ACTIVATE_SHA64 = re.compile(r'^[0-9a-f]{64}$')
 PLAYER_CI_OVERLAY = ROOT/'public-player-artifact.json'
 PLAYER_CI_OVERLAY_SHA = '1101e3ca5cc9c1ecefabadc848e5d7a20793d6d0d89031a13780558c33c91349'
 PLAYER_CI_ARCHIVE_SHA = '37987d4e08682a86549e7cd89bb0792ef2e4b1652ff30c85abed964190b9b5a4'
 PLAYER_CI_MANIFEST_SHA = 'e0502a16e0936689c39c0d6f1276913c9f19ab213a2477af4fba7ef05282e845'
 PLAYER_CI_TREE_SHA = '5c06b08b549c17af0396f355d46897c1935463ce38b2aecf8ac2693f2f74f64f'
-PLAYER_CONTROLLER_SHA = 'e5e250582846cbb211ce2720919f6984efc21564d9f2307d5f5248948f965204'
+PLAYER_CONTROLLER_SHA = 'dbbaab81dc964352670b24b23eea482f1af52d319015969ebb2d48cd59d171b8'
 LOCK = ROOT/'steam-refresh-v22.lock'
 C03_HELPER = P('/usr/local/lib/aoe2war-web-prod/r25_c03_observer_oneshot_guard_v9.py')
 C03_HELPER_SHA = '39a7929803d64d2998cd1fa8984096533377d08c7af28106a1ae4b8ecba778f2'
@@ -147,7 +150,8 @@ def player_stage_proof(read=verified, list_entries=None):
        [f'{i:04d}.json' for i in range(1,len(names)+1)],
        'PLAYER_STAGE_JOURNAL_UNRECOGNIZED_EXTRA_OR_MISSING_EVENT')
  allowed_after={'STOP_INTENT','WEB_STOPPED','UNIT_SWAP_INTENT','UNIT_SWAPPED',
-                'START_INTENT','CANDIDATE_STARTED','PUBLIC_VERIFIED',
+                'START_INTENT','CANDIDATE_STARTED','STEAM_CANDIDATE_ENROLLED',
+                'PUBLIC_VERIFIED',
                 'COMPLETED','RECOVERY_INTENT','ROLLED_BACK','ABORTED',
                 'FAIL_SHUT_HOLD'}
  previous='0'*64
@@ -723,10 +727,30 @@ def make_guard():
  obj.expected_policy=expected
  return obj
 
-def v22_timer_exclusive_lock(fn):
- """Prevent timer refresh from interleaving human profile enroll/recovery."""
+def v22_timer_exclusive_lock(fn, inherited_fd=None):
+ """Lock timer refresh and owner candidate enrollment over same file inode.
+
+ The root-only one-use controller may inherit its already-held open file
+ description into --phase enroll. This is NOT a bypass: verify original inode,
+ owner and mode, and assert exclusive lock acquisition. Never unlock or close
+ the parent's borrowed FD. Timer refresh always opens/locks independently.
+ """
  raw=verified(LOCK,0o600)
  check(len(raw)<=4096,'V22_REFRESH_LOCK_CONTENT_NOT_EMPTY')
+ if inherited_fd is not None:
+  check(type(inherited_fd) is int and 3<=inherited_fd<=1024,
+        'V22_INHERITED_LOCK_FD_SCOPE')
+  a=os.fstat(inherited_fd)
+  b=os.stat(LOCK,follow_symlinks=False)
+  check(stat.S_ISREG(a.st_mode) and a.st_ino==b.st_ino and
+        a.st_dev==b.st_dev and a.st_uid==b.st_uid==0 and
+        stat.S_IMODE(a.st_mode)==0o600,
+        'V22_INHERITED_LOCK_WRONG_FILE')
+  try:
+   fcntl.flock(inherited_fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  except BlockingIOError:
+   raise RuntimeError('HOLD:V22_INHERITED_LOCK_NOT_EXCLUSIVE')
+  return fn()
  fd=os.open(LOCK,os.O_RDWR|os.O_CLOEXEC|os.O_NOFOLLOW)
  try:
   fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -736,6 +760,42 @@ def v22_timer_exclusive_lock(fn):
  finally:
   try:fcntl.flock(fd,fcntl.LOCK_UN)
   finally:os.close(fd)
+
+def candidate_activation_permit_digest(expected_sha,reader=verified):
+ """No candidate enroll from just a STAGE_ONLY permit or unbound CLI hash."""
+ check(type(expected_sha) is str and bool(PLAYER_ACTIVATE_SHA64.fullmatch(expected_sha)),
+       'V22_ACTIVATE_PERMIT_SHA_SCOPE')
+ raw=reader(PLAYER_ACTIVATE_PERMIT,0o600)
+ check(digest(raw)==expected_sha,'V22_ACTIVATE_PERMIT_NOT_OWNER_PINNED')
+ p=json.loads(raw)
+ check(p.get('schema')=='aoe2war.r25.public-player.central-permit.v1'
+       and p.get('approved_phase')=='ACTIVATE_ONLY'
+       and p.get('central_scope')=='PUBLIC_PLAYER_ONLY_NO_DOCUMENT_GET'
+       and p.get('approved_source_sha')==PROFILES['candidate']['source']
+       and p.get('approved_build_id')==PROFILES['candidate']['build']
+       and p.get('approved_candidate_unit_sha256')==PUBLIC_PLAYER_UNIT_SHA
+       and p.get('controller_sha256')==PLAYER_CONTROLLER_SHA
+       and p.get('ci_archive_sha256')==PLAYER_CI_ARCHIVE_SHA
+       and p.get('approved_steam_v22_unit_sha256')==STEAM_V22_UNIT_SHA256
+       and p.get('approved_steam_v22_source_sha256')==
+           digest(verified(SELF,0o644))
+       and p.get('allowed_operation')=='ONE_USE_RESTRICTED_3032_ONLY'
+       and p.get('financial_writers_authorized') is False
+       and p.get('web_financial_mutations_authorized') is False
+       and p.get('codex_financial_capture_active') is False
+       and bool(PLAYER_ACTIVATE_NONCE32.fullmatch(str(p.get('approval_nonce',''))))
+       and bool(PLAYER_ACTIVATE_NONCE32.fullmatch(str(p.get('stage_nonce',''))))
+       and p['approval_nonce']!=p['stage_nonce']
+       and bool(PLAYER_ACTIVATE_SHA64.fullmatch(str(p.get('stage_permit_sha256',''))))
+       and bool(PLAYER_ACTIVATE_SHA64.fullmatch(str(p.get('staged_event_sha256','')))),
+       'V22_CANDIDATE_ENROLL_WRONG_PHASE_OR_NONCE')
+ stage=player_stage_proof()
+ check(not stage['terminal']
+       and p['stage_permit_sha256']==stage['central_permit_sha']
+       and p['staged_event_sha256']==stage['origin_sha'],
+       'V22_CANDIDATE_ENROLL_STAGE_RECEIPT_DRIFT')
+ return {'phase':'ACTIVATE_ONLY','source':PROFILES['candidate']['source'],
+         'permit_sha256':expected_sha,'stage_receipt_sha256':stage['origin_sha']}
 
 def lease_transfer_headroom(read=None):
  """Strict pre-switch read-only TTL floor; if near expiry HOLD, never flush."""
@@ -910,7 +970,12 @@ def main():
  ar.add_argument('--phase',required=True,
      choices=['selftest','inspect','pre-cutover','plan','enroll','refresh'])
  ar.add_argument('--profile',choices=['candidate','rollback'])
+ ar.add_argument('--inherited-controller-lock-fd',type=int)
+ ar.add_argument('--activation-permit-sha256',default='')
  args=ar.parse_args()
+ check(not (args.inherited_controller_lock_fd is not None or
+            args.activation_permit_sha256) or args.phase=='enroll',
+       'V22_INHERITED_LOCK_ENROLL_ONLY')
  if args.phase=='selftest':
   static_check()
   load_original()
@@ -934,7 +999,16 @@ def main():
                    sort_keys=True),flush=True)
  elif args.phase=='enroll':
   check(args.profile is not None,'PROFILE_REQUIRED')
-  v22_timer_exclusive_lock(lambda: enroll(args.profile))
+  if args.profile=='candidate':
+   check(args.inherited_controller_lock_fd is not None,
+         'V22_CANDIDATE_REQUIRES_SERIALIZED_CONTROLLER_LOCK')
+   candidate_activation_permit_digest(args.activation_permit_sha256)
+  elif args.activation_permit_sha256:
+   # Rollback recovery may bind the same exact activation permit, but
+   # cannot promote a different source while calling it 'rollback'.
+   candidate_activation_permit_digest(args.activation_permit_sha256)
+  v22_timer_exclusive_lock(lambda: enroll(args.profile),
+                           inherited_fd=args.inherited_controller_lock_fd)
  elif args.phase=='plan':
   obj=make_guard()
   obj.plan()

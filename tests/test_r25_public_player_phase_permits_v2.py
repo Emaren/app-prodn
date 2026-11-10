@@ -35,7 +35,9 @@ def permit_obj(phase,nonce,stage_sha="",stage_nonce="",event_sha=""):
     }
     if phase=="ACTIVATE_ONLY":
         obj.update(stage_permit_sha256=stage_sha,stage_nonce=stage_nonce,
-                   staged_event_sha256=event_sha)
+                   staged_event_sha256=event_sha,
+                   approved_steam_v22_source_sha256="a"*64,
+                   approved_steam_v22_unit_sha256=c.V22_TIMER_UNIT_SHA)
     return obj
 
 def raw(obj):return c.canonical(obj)+b"\n"

@@ -43,6 +43,9 @@ jobs:
           assert "PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED" in s
           assert "STAGE_ONLY" in s and "stage_nonce" in s
           assert "v22_timer_exclusive_lock(refresh_once)" in s
+          assert "candidate_activation_permit_digest" in s
+          assert "V22_INHERITED_LOCK_WRONG_FILE" in s
+          assert "V22_CANDIDATE_REQUIRES_SERIALIZED_CONTROLLER_LOCK" in s
           assert "lease_expiry_readonly_wait()" in s
           assert "C01_DELTA_HELPER_SHA256" in s and "FIN_SNAPSHOT" in s
           print("PASS_V22_SOURCE_ONLY_STRICT_NEW_SOURCE_AND_PRESERVED_V20_TIMER")
@@ -51,4 +54,5 @@ jobs:
         run: |
           python3 -B -m unittest -v \
             tests.test_r25_steam_dual_web_builds_v22 \
-            tests.test_r25_public_player_phase_permits_v2
+            tests.test_r25_public_player_phase_permits_v2 \
+            tests.test_r25_public_player_v22_serialized_promotion_v1

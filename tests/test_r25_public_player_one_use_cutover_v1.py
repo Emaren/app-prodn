@@ -1,5 +1,6 @@
 """Fail-shut one-use cutover tests. No root, systemd, real site or FINANCIAL."""
 import datetime as dt
+from contextlib import nullcontext
 import importlib.util
 import json
 from pathlib import Path
@@ -139,6 +140,7 @@ class Activation(TestCase):
             ("state",lambda:"STAGED"),
             ("read_safe",lambda *a,**k:self.unit),
             ("append_event",lambda name,extra=None:self.events.append(name)),
+            ("load_events",lambda:[{"state":x} for x in self.events]),
             ("atomic_unit_replace",lambda *a,**k:self.saved.append(("swap",a[1]))),
             ("cmd",self.fake_cmd),
         ):
@@ -147,13 +149,21 @@ class Activation(TestCase):
         guard.start();self.addCleanup(guard.stop)
         guard=patch.object(c.host_guard,"collect",lambda : (self.facts,self.unit))
         guard.start();self.addCleanup(guard.stop)
-        guard=patch.object(c,"prop",lambda *a,**k:"0" if a[1]=="MainPID" else "inactive")
+        guard=patch.object(c,"prop",lambda *a,**k:
+            "0" if a[1]=="MainPID" else "active" if a[0].endswith(".timer") else "inactive")
         guard.start();self.addCleanup(guard.stop)
         self.mock.fail_start=False
         # Activation behavioral tests simulate a future separately source-
         # qualified Steam compatibility admission; NEVER the current V20.
-        steam=patch.object(c,"require_steam_active_target_compatible",return_value=True)
-        steam.start();self.addCleanup(steam.stop)
+        for key,value in (
+            ("require_steam_active_target_compatible",lambda obj:{"lease_seconds":150}),
+            ("steam_transition_lock",lambda:nullcontext(3)),
+            ("strict_nft_lease_under_transition_lock",lambda:245),
+            ("v22_enroll_bound",lambda profile,permit_sha,fd:{"status":"PASS_EXACT_STEAM_V22_DUAL_BUILD_ADMISSION",
+                 "profile":profile,"finance_authorized":False}),
+        ):
+            steam=patch.object(c,key,value)
+            steam.start();self.addCleanup(steam.stop)
 
     def test_successful_activation_keeps_rollback_window_open(self):
         with patch.object(c,"read_post_state",return_value={"new_pid":"9999"}),patch.object(c,"check_public",return_value={"public_probes":18,"managed_portraits":3}):
@@ -162,7 +172,8 @@ class Activation(TestCase):
                             "approval_nonce":"2"*32,
                             "_permit_sha":"a"*64,
                             "stage_permit_sha256":"b"*64,
-                            "staged_event_sha256":"c"*64})
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
         self.assertEqual(result["status"],"PASS_PUBLIC_PLAYER_RELEASE_DEPLOYED")
         self.assertIn("COMPLETED",self.events)
         self.assertNotIn("ROLLED_BACK",self.events)
@@ -176,7 +187,8 @@ class Activation(TestCase):
                             "approval_nonce":"2"*32,
                             "_permit_sha":"a"*64,
                             "stage_permit_sha256":"b"*64,
-                            "staged_event_sha256":"c"*64})
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
         self.assertIn("RECOVERY_INTENT",self.events)
         self.assertNotIn("COMPLETED",self.events)
     def test_steam_readmission_failure_forces_rollback(self):
@@ -187,7 +199,8 @@ class Activation(TestCase):
                             "approval_nonce":"2"*32,
                             "_permit_sha":"a"*64,
                             "stage_permit_sha256":"b"*64,
-                            "staged_event_sha256":"c"*64})
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
         self.assertIn("RECOVERY_INTENT",self.events)
         self.assertNotIn("COMPLETED",self.events)
     def test_https_failed_after_installation_triggers_restore(self):
@@ -198,7 +211,8 @@ class Activation(TestCase):
                             "approval_nonce":"2"*32,
                             "_permit_sha":"a"*64,
                             "stage_permit_sha256":"b"*64,
-                            "staged_event_sha256":"c"*64})
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
         self.assertIn("CANDIDATE_STARTED",self.events)
         self.assertNotIn("PUBLIC_VERIFIED",self.events)
     def test_unrecoverable_restart_is_explicit_fail_shut_hold(self):
@@ -210,8 +224,20 @@ class Activation(TestCase):
                             "approval_nonce":"2"*32,
                             "_permit_sha":"a"*64,
                             "stage_permit_sha256":"b"*64,
-                            "staged_event_sha256":"c"*64})
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
         self.assertIn("FAIL_SHUT_HOLD",self.events)
+    def test_steam_timer_lock_conflict_does_not_restart_healthy_web(self):
+        with patch.object(c,"steam_transition_lock",side_effect=c.Hold("V22_TIMER_REFRESH_RACE")):
+            with self.assertRaisesRegex(c.Hold,"ACTIVATION_REFUSED_BEFORE_STOP_INTENT"):
+                c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY","approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,"stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
+        self.assertNotIn("STOP_INTENT",self.events)
+        self.assertIn("ABORTED",self.events)
+        self.assertFalse(any(x[:2]==("systemctl","stop") for x in self.commands))
     def test_competing_writer_before_activation_detected(self):
         with patch.object(c.host_guard,"evaluate",side_effect=c.host_guard.Hold("UNIT_CHANGED")):
             with self.assertRaises(c.host_guard.Hold):
@@ -220,24 +246,33 @@ class Activation(TestCase):
                             "approval_nonce":"2"*32,
                             "_permit_sha":"a"*64,
                             "stage_permit_sha256":"b"*64,
-                            "staged_event_sha256":"c"*64})
+                            "staged_event_sha256":"c"*64,
+                            "approved_steam_v22_source_sha256":"d"*64})
         self.assertNotIn("STOP_INTENT",self.events)
 
-class SteamV20ExactCompatibility(TestCase):
-    def test_current_pr1300_source_is_incompatible_with_preserved_v20(self):
-        with self.assertRaisesRegex(c.Hold,"STEAM_V20_EXACT_ACTIVE_PROFILE_INCOMPATIBLE"):
-            c.require_steam_active_target_compatible()
-    def test_only_original_exact_v20_profile_has_positive_classifier(self):
-        self.assertTrue(c.require_steam_active_target_compatible(
-            source=c.V20_APPROVED_ACTIVE_TARGET[0],
-            build=c.V20_APPROVED_ACTIVE_TARGET[1],
-            unit_sha=c.V20_APPROVED_ACTIVE_TARGET[2]))
-    def test_other_source_or_unit_does_not_inherit_old_steam_profile(self):
-        for i in range(3):
-            item=list(c.V20_APPROVED_ACTIVE_TARGET)
-            item[i]="f"*40 if i==0 else "untrusted"
-            with self.assertRaises(c.Hold):
-                c.require_steam_active_target_compatible(*item)
+class SteamV22ExactCompatibility(TestCase):
+    def test_original_v20_executable_is_not_candidate_authority(self):
+        with patch.object(c,"approved_v22_source_sha",side_effect=c.Hold("V22_SOURCE_NOT_INSTALLED")):
+            with self.assertRaisesRegex(c.Hold,"V22_SOURCE_NOT_INSTALLED"):
+                c.require_steam_active_target_compatible({})
+    def test_only_strict_exact_candidate_with_lease_headroom_passes(self):
+        info={"status":"PASS_STEAM_V22_TWO_WEB_BUILDS_SOURCE_BOUND_READONLY",
+              "active_profile":"rollback","source_sha":c.host_guard.BASELINE,
+              "candidate_source_sha":c.CANDIDATE,"finance_authorized":False,
+              "web_activation_authorized":False,"steam_lease_min_seconds":245}
+        with patch.object(c,"approved_v22_source_sha",return_value="f"*64),patch.object(c,"run_v22",return_value=__import__("json").dumps(info)):
+            self.assertEqual(c.require_steam_active_target_compatible({})["lease_seconds"],245)
+    def test_forged_profile_or_expired_lease_refused_before_web_stop(self):
+        base={"status":"PASS_STEAM_V22_TWO_WEB_BUILDS_SOURCE_BOUND_READONLY",
+              "active_profile":"rollback","source_sha":c.host_guard.BASELINE,
+              "candidate_source_sha":c.CANDIDATE,"finance_authorized":False,
+              "web_activation_authorized":False,"steam_lease_min_seconds":150}
+        for changes in ({"active_profile":"candidate"},{"candidate_source_sha":"f"*40},
+                        {"finance_authorized":True},{"steam_lease_min_seconds":99}):
+            check=dict(base,**changes)
+            with patch.object(c,"approved_v22_source_sha",return_value="f"*64),patch.object(c,"run_v22",return_value=__import__("json").dumps(check)):
+                with self.assertRaisesRegex(c.Hold,"V22_TWO_BUILD_PRECUTOVER_NOT_PROVEN"):
+                    c.require_steam_active_target_compatible({})
 
 class Recovery(TestCase):
     def setUp(self):
@@ -246,7 +281,7 @@ class Recovery(TestCase):
         p.start();self.addCleanup(p.stop)
     def test_interrupted_after_unit_swap_can_recover(self):
         with patch.object(c,"load_events",return_value=[{"state":"UNIT_SWAPPED"}]),patch.object(c,"rollback_unit",return_value={"status":"PASS_RESTRICTED_3032_ROLLBACK"}):
-            r=c.restore({},"INTERRUPTED_PROCESS",manual=False)
+            r=c.restore({"_permit_sha":"a"*64},"INTERRUPTED_PROCESS",manual=False)
         self.assertEqual(r["status"],"PASS_RESTRICTED_3032_ROLLBACK")
         self.assertIn("RECOVERY_INTENT",self.events)
     def test_interrupted_during_stage_aborts_without_touching_unit(self):
@@ -257,7 +292,7 @@ class Recovery(TestCase):
     def test_completed_release_is_reversible_within_window(self):
         later=(c.now()+dt.timedelta(minutes=10)).isoformat()
         with patch.object(c,"load_events",return_value=[{"state":"COMPLETED","data":{"rollback_deadline":later}}]),patch.object(c,"rollback_unit",return_value={"status":"PASS_RESTRICTED_3032_ROLLBACK"}):
-            r=c.restore({},"OWNER_ACCEPTANCE_REJECTED",manual=True)
+            r=c.restore({"_permit_sha":"a"*64},"OWNER_ACCEPTANCE_REJECTED",manual=True)
         self.assertEqual(r["status"],"PASS_RESTRICTED_3032_ROLLBACK")
     def test_expired_manual_rollback_does_not_overwrite_other_writer(self):
         ago=(c.now()-dt.timedelta(minutes=31)).isoformat()

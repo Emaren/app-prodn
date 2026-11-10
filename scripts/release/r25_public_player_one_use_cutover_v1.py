@@ -25,6 +25,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import ctypes
 import errno
+from contextlib import contextmanager
 
 HERE=Path(__file__).resolve().parent
 REVIEWED_DEPENDENCY_SHAS={
@@ -69,13 +70,19 @@ V20_APPROVED_ACTIVE_TARGET=(
     "QVzgMJiQwhFvwrRbY9oZW",
     "f3b30861df399f0debcf702ed9ac60b7a00415f77700b5784b2b4496b6b5d56a",
 )
+V22_SOURCE=Path("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py")
+V22_LOCK=Path("/etc/aoe2war/web-prod-v22/steam-refresh-v22.lock")
+V22_TIMER_UNIT=Path("/etc/systemd/system/aoe2war-steam-egress-refresh.service")
+V22_TIMER_UNIT_SHA="44ad57ded3f26690eccf674297c4bc4aa00c0ae2ed563f631001ba6d2de1232a"
+V22_LEASE_TRANSFER_MIN_SECONDS=180
 ROLLBACK_WINDOW_SECONDS=1800
 MAX_BODY=4_000_000
 AVATAR=re.compile(r"user-u-[0-9a-f]{32}-featured\Z")
 VALID_EVENTS=("PREPARED","EXTRACTING","STAGED","STOP_INTENT","WEB_STOPPED",
               "UNIT_SWAP_INTENT","UNIT_SWAPPED","START_INTENT",
               "CANDIDATE_STARTED","PUBLIC_VERIFIED","COMPLETED",
-              "RECOVERY_INTENT","ROLLED_BACK","ABORTED","FAIL_SHUT_HOLD")
+              "STEAM_CANDIDATE_ENROLLED","RECOVERY_INTENT",
+              "ROLLED_BACK","ABORTED","FAIL_SHUT_HOLD")
 HEX64=re.compile(r"^[0-9a-f]{64}$")
 STAGE_PERMIT_PATH=Path("/root/aoe2war-public-player-6662c33a-stage-permit.json")
 ACTIVATE_PERMIT_PATH=Path("/root/aoe2war-public-player-6662c33a-activate-permit.json")
@@ -218,6 +225,15 @@ def permit(path,expected_sha,operation,read_only=False):
              "staged_event_sha256" not in obj and
              "stage_permit_sha256" not in obj,
              "STAGE_PERMIT_CONTAINS_ACTIVATION_FIELDS")
+    if path==ACTIVATE_PERMIT_PATH:
+        steam_pin=str(obj.get("approved_steam_v22_source_sha256",""))
+        need(bool(HEX64.fullmatch(steam_pin)) and
+             obj.get("approved_steam_v22_unit_sha256")==V22_TIMER_UNIT_SHA,
+             "ACTIVATION_V22_SOURCE_OR_UNIT_PIN_MISSING")
+    else:
+        need("approved_steam_v22_source_sha256" not in obj and
+             "approved_steam_v22_unit_sha256" not in obj,
+             "STAGE_ONLY_CANNOT_INSTALL_STEAM_V22")
     # The root-controlled permit's SHA must be supplied from an independently
     # reviewed Central approval; this parser does not claim cryptographic
     # GitHub author attestation or replace the owner/central human decision.
@@ -488,16 +504,16 @@ def read_post_state():
          "POST_LEGACY_OR_PAPER_DRIFT")
     need(facts["steam_timer"]=="active" and
          facts["steam_script_sha"]==host_guard.STEAM_SCRIPT_SHA and
-         facts["steam_unit_sha"]==host_guard.STEAM_UNIT_SHA,"STEAM_READMISSION_FAILED")
+         facts["steam_unit_sha"]==V22_TIMER_UNIT_SHA,"V22_STEAM_READMISSION_FAILED")
     need(facts["financial_listeners"]==[] and facts["selector_count"]==6,
          "POST_FINANCIAL_OR_NGINX_DRIFT")
-    # The existing Steam V20 code provides a non-mutating, source-pinned
-    # protected snapshot inspector. Do not run its --phase refresh.
-    steam=json.loads(cmd(["/usr/bin/python3",
-        "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py",
-        "--phase","inspect"],35))
-    need(steam.get("status")=="PASS_STEAM_V20_PROTECTED_READONLY" and
-         steam.get("finance_authorized") is False,"STEAM_V20_INSPECT_FAILED")
+    # Candidate must already be V22-enrolled under the shared timer lock.
+    steam=json.loads(run_v22("--phase","inspect",timeout=40))
+    need(steam.get("status")=="PASS_STEAM_V22_PROTECTED_READONLY" and
+         steam.get("active_profile")=="candidate" and
+         steam.get("source_sha")==CANDIDATE and
+         steam.get("build_id")==BUILD and
+         steam.get("finance_authorized") is False,"V22_INSPECT_AFTER_ENROLL_FAILED")
     raw=json.loads(cmd(["/usr/sbin/nft","-j","list","table","inet",
                         "aoe2war_web_prod"],15))
     sets={}
@@ -520,12 +536,17 @@ def read_post_state():
     need(set(sets)=={"steam4","steam6"} and
          0<sum(map(len,sets.values()))<=16 and
          min(x for group in sets.values() for x in group)>=15,
-         "STEAM_V20_LEASE_READMISSION_HOLD")
-    return {"new_pid":facts["web_pid"],"steam_v20_readonly_inspect":"PASS",
+         "V22_LEASE_READMISSION_HOLD")
+    return {"new_pid":facts["web_pid"],"steam_v22_readonly_inspect":"PASS",
             "steam_lease_min_seconds":min(x for group in sets.values() for x in group)}
 
-def rollback_unit(reason,force=False):
-    """Recover the restricted original 3032, NEVER reroute Nginx to 3030."""
+def rollback_unit(reason,force=False,activation_permit_sha=None,steam_lock_fd=None):
+    """Restore restricted original 3032 and exact V22 rollback Steam profile."""
+    if steam_lock_fd is None:
+        with steam_transition_lock() as fd:
+            return rollback_unit(reason,force,activation_permit_sha,fd)
+    need(bool(HEX64.fullmatch(str(activation_permit_sha))),
+         "ROLLBACK_ACTIVATION_PERMIT_SHA_REQUIRED")
     raw=read_safe(ORIGINAL_UNIT,16384)
     need(sha(raw)==host_guard.UNIT_SHA,"ORIGINAL_UNIT_BACKUP_DRIFT")
     current=WEB_UNIT.read_bytes()
@@ -533,18 +554,24 @@ def rollback_unit(reason,force=False):
     need(current_hash in (host_guard.UNIT_SHA,UNIT_CANDIDATE_SHA),
          "COMPETING_UNIT_REPLACEMENT_NO_CLOBBER")
     if current_hash==UNIT_CANDIDATE_SHA:
-        cmd(["systemctl","stop",WEB],60)
+        cmd(["systemctl","stop",WEB],45)
         atomic_unit_replace(raw,UNIT_CANDIDATE_SHA)
     cmd(["systemctl","daemon-reload"],35)
-    cmd(["systemctl","start",WEB],80)
+    cmd(["systemctl","start",WEB],65)
+    # Must restore the old source identity in Steam before releasing the
+    # shared timer lock. The original V20 binary is still immutable and
+    # available for independent, later exact-unit rollback admission.
+    v22_enroll_bound("rollback",activation_permit_sha,steam_lock_fd)
     facts,unit=host_guard.collect()
-    need(facts["source"]==host_guard.BASELINE and facts["build"]==host_guard.BASE_BUILD and
+    need(facts["source"]==host_guard.BASELINE and
+         facts["build"]==host_guard.BASE_BUILD and
          sha(unit)==host_guard.UNIT_SHA and facts["web_state"]=="active" and
-         facts["financial_listeners"]==[] and facts["steam_timer"]=="active",
+         facts["financial_listeners"]==[] and facts["steam_timer"]=="active" and
+         facts["steam_unit_sha"]==V22_TIMER_UNIT_SHA,
          "ROLLBACK_SOURCE_OR_SERVICE_NOT_RESTORED")
     append_event("ROLLED_BACK",{"why":reason,"original_build":host_guard.BASE_BUILD,
                                 "original_unit_sha256":host_guard.UNIT_SHA,
-                                "finance_unchanged":True})
+                                "steam_profile":"rollback","finance_unchanged":True})
     return {"status":"PASS_RESTRICTED_3032_ROLLBACK","new_pid":facts["web_pid"],
             "original_3030_untouched":True,"finance_unchanged":True}
 
@@ -571,18 +598,124 @@ def pre_approval_stage(stage_input,permit_obj):
     return {"status":"PASS_CANDIDATE_STAGE_NOT_ACTIVE","state":state(),
             "candidate_source":CANDIDATE,"live_web_unchanged":True}
 
-def require_steam_active_target_compatible(
-        source=CANDIDATE,build=BUILD,unit_sha=UNIT_CANDIDATE_SHA,
-        approved=V20_APPROVED_ACTIVE_TARGET):
-    """No V20 modification or V21 admission: reject unknown source/unit pins.
+def approved_v22_source_sha(obj):
+    """Verify root-owned exact installed V22 bytes against fresh Central digest."""
+    expected=obj.get("approved_steam_v22_source_sha256")
+    need(type(expected) is str and bool(HEX64.fullmatch(expected)),
+         "V22_SOURCE_SHA_NOT_CENTRALLY_APPROVED")
+    st=V22_SOURCE.lstat()
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==0 and st.st_nlink==1
+         and not st.st_mode&0o022,"V22_BINARY_PERMISSIONS_DRIFT")
+    need(sha(V22_SOURCE.read_bytes())==expected,"V22_BINARY_SOURCE_DRIFT")
+    unit_stat=V22_TIMER_UNIT.lstat()
+    need(stat.S_ISREG(unit_stat.st_mode) and unit_stat.st_uid==0
+         and unit_stat.st_nlink==1 and not unit_stat.st_mode&0o022,
+         "V22_TIMER_UNIT_WRONG_OWNER_OR_SYMLINK")
+    need(sha(V22_TIMER_UNIT.read_bytes())==V22_TIMER_UNIT_SHA,
+         "V22_TIMER_UNIT_NOT_INSTALLED")
+    need(host_guard.read_file_sha(
+         "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py"
+         )==host_guard.STEAM_SCRIPT_SHA,
+         "ORIGINAL_V20_BINARY_NOT_PRESERVED")
+    return expected
 
-    Timer active + readonly V20 inspect is NOT proof that its future refresh
-    recognizes an unknown candidate. This guard must remain a real cutover HOLD
-    until a separately reviewed cross-lane source-compatible Steam transition.
+def run_v22(*arguments,timeout=65,pass_fd=None):
+    """Use only reviewed V22 program path, never arbitrary service commands."""
+    args=["/usr/bin/python3","-I","-B",str(V22_SOURCE),*arguments]
+    extra={} if pass_fd is None else {"pass_fds":(pass_fd,)}
+    p=subprocess.run(args,capture_output=True,timeout=timeout,**extra)
+    need(p.returncode==0,"V22_COMMAND_FAILED")
+    return p.stdout.decode(errors="replace").strip()
+
+def require_steam_active_target_compatible(obj):
+    """Previously installed V20 remains incompatible; V22 exact new profile only."""
+    approved_v22_source_sha(obj)
+    raw=run_v22("--phase","pre-cutover",timeout=55)
+    response=json.loads(raw)
+    need(response.get("status")=="PASS_STEAM_V22_TWO_WEB_BUILDS_SOURCE_BOUND_READONLY"
+         and response.get("active_profile")=="rollback"
+         and response.get("source_sha")==host_guard.BASELINE
+         and response.get("candidate_source_sha")==CANDIDATE
+         and response.get("finance_authorized") is False
+         and response.get("web_activation_authorized") is False
+         and type(response.get("steam_lease_min_seconds")) is int
+         and response["steam_lease_min_seconds"]>=V22_LEASE_TRANSFER_MIN_SECONDS,
+         "V22_TWO_BUILD_PRECUTOVER_NOT_PROVEN")
+    return {"status":"PASS_EXACT_TWO_BUILD_PRECUTOVER_SOURCE_ONLY",
+            "lease_seconds":response["steam_lease_min_seconds"]}
+
+def strict_nft_lease_under_transition_lock():
+    """Reread genuine nft lease TTL after acquiring the V22 timer lock.
+
+    No nft mutation. Refuse disappearing lease, zero TTL, wrong set flags,
+    unknown units, and any TTL too short for the guarded restart.
     """
-    need((source,build,unit_sha)==approved,
-         "STEAM_V20_EXACT_ACTIVE_PROFILE_INCOMPATIBLE_WITH_PLAYER_BUILD")
-    return True
+    raw=json.loads(cmd(["/usr/sbin/nft","-j","list","table","inet",
+                        "aoe2war_web_prod"],15))
+    sets={}
+    for item in raw.get("nftables",[]):
+        entry=item.get("set",{})
+        name=entry.get("name")
+        if name not in ("steam4","steam6"):continue
+        need(name not in sets and entry.get("table")=="aoe2war_web_prod" and
+             entry.get("family")=="inet" and "timeout" in entry.get("flags",[]),
+             "V22_LOCKED_NFT_LEASE_SET_DRIFT")
+        leases=[]
+        for item in entry.get("elem") or []:
+            value=item.get("elem",{}) if type(item) is dict else {}
+            exp=value.get("expires")
+            need(type(exp) is int and 0<exp<=300 and
+                 type(value.get("val")) is str and len(value["val"])<64,
+                 "V22_LOCKED_NFT_LEASE_ENTRY_DRIFT")
+            leases.append(exp)
+        sets[name]=leases
+    need(set(sets)=={"steam4","steam6"} and
+         0<sum(map(len,sets.values()))<=16,
+         "V22_LOCKED_NFT_LEASE_SCOPE_DRIFT")
+    remaining=min(lease for group in sets.values() for lease in group)
+    need(remaining>=V22_LEASE_TRANSFER_MIN_SECONDS,
+         "V22_LOCKED_NFT_LEASE_BELOW_RESTART_HEADROOM")
+    return remaining
+
+@contextmanager
+def steam_transition_lock():
+    """Same V22 lock inode as timer: no timer refresh during cold restart."""
+    # The actual V22 timer flock file is permitted to be EMPTY, unlike
+    # nonempty owner-signed permit JSON. Do not use read_safe() here.
+    lock_stat=V22_LOCK.lstat()
+    need(stat.S_ISREG(lock_stat.st_mode) and lock_stat.st_uid==0
+         and lock_stat.st_nlink==1 and
+         stat.S_IMODE(lock_stat.st_mode)==0o600 and
+         lock_stat.st_size<=4096,"V22_LOCK_OWNER_OR_SIZE_DRIFT")
+    fd=os.open(V22_LOCK,os.O_RDWR|os.O_NOFOLLOW|os.O_CLOEXEC)
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        held=os.fstat(fd)
+        need(held.st_ino==lock_stat.st_ino and held.st_dev==lock_stat.st_dev,
+             "V22_TIMER_LOCK_RACE")
+        yield fd
+    except BlockingIOError as ex:
+        raise Hold("HOLD:R25_PUBLIC_PLAYER_V22_TIMER_REFRESH_RACE") from ex
+    finally:
+        try:fcntl.flock(fd,fcntl.LOCK_UN)
+        finally:os.close(fd)
+
+def v22_enroll_bound(profile,permit_sha,fd):
+    need(profile in ("candidate","rollback"),"V22_UNKNOWN_ENROLL_PROFILE")
+    need(bool(HEX64.fullmatch(str(permit_sha))),"V22_ENROLL_PERMIT_SHA_MISSING")
+    raw=run_v22("--phase","enroll","--profile",profile,
+                "--inherited-controller-lock-fd",str(fd),
+                "--activation-permit-sha256",permit_sha,
+                timeout=65,pass_fd=fd)
+    receipt=json.loads(raw)
+    need(receipt.get("status")=="PASS_EXACT_STEAM_V22_DUAL_BUILD_ADMISSION"
+         and receipt.get("profile")==profile
+         and receipt.get("source_sha")==(
+             CANDIDATE if profile=="candidate" else host_guard.BASELINE)
+         and receipt.get("finance_authorized") is False,
+         "V22_ENROLL_RECEIPT_NOT_EXACT")
+    return receipt
+
 
 def activate(obj):
     need(state()=="STAGED","STAGE_NOT_READY_OR_ALREADY_USED")
@@ -595,44 +728,61 @@ def activate(obj):
          "STAGED_RUNTIME_IDENTITY_CHANGED")
     candidate=raw.replace(host_guard.ORIGINAL_DIR.encode(),host_guard.CANDIDATE_DIR.encode())
     need(sha(candidate)==UNIT_CANDIDATE_SHA,"CANDIDATE_UNIT_SHA_DRIFT")
-    # MUST run before stopping 3032 or swapping any unit. Current Steam V20
-    # source does not recognize the PR1300 build; never hope timer renewal
-    # will work and plan to roll back later.
-    require_steam_active_target_compatible()
     need(obj.get("approved_phase")=="ACTIVATE_ONLY" and
          bool(NONCE32.fullmatch(str(obj.get("approval_nonce","")))),
          "ACTIVATION_NONCE_OR_PHASE_NOT_ACCEPTED")
-    append_event("STOP_INTENT",{
-        "activate_permit_sha256":obj["_permit_sha"],
-        "activation_nonce":obj["approval_nonce"],
-        "stage_permit_sha256":obj["stage_permit_sha256"],
-        "staged_event_sha256":obj["staged_event_sha256"]})
+    # V22's exact staged provenance, original R25, source overlay, stage
+    # permit and nft/lease proof must pass BEFORE stopping the public service.
+    compatibility=require_steam_active_target_compatible(obj)
     try:
-        cmd(["systemctl","stop",WEB],75)
-        need(prop(WEB,"ActiveState") in ("inactive","failed") and
-             prop(WEB,"MainPID")=="0","WEB_NOT_STOPPED")
-        append_event("WEB_STOPPED")
-        append_event("UNIT_SWAP_INTENT")
-        atomic_unit_replace(candidate,host_guard.UNIT_SHA)
-        append_event("UNIT_SWAPPED")
-        cmd(["systemctl","daemon-reload"],35)
-        append_event("START_INTENT")
-        cmd(["systemctl","start",WEB],90)
-        append_event("CANDIDATE_STARTED")
+        with steam_transition_lock() as lockfd:
+            need(prop("aoe2war-steam-egress-refresh.timer","ActiveState")=="active",
+                 "V22_TIMER_DISABLED_UNDER_LOCK")
+            locked_lease_seconds=strict_nft_lease_under_transition_lock()
+            append_event("STOP_INTENT",{
+                "activate_permit_sha256":obj["_permit_sha"],
+                "activation_nonce":obj["approval_nonce"],
+                "stage_permit_sha256":obj["stage_permit_sha256"],
+                "staged_event_sha256":obj["staged_event_sha256"],
+                "v22_source_sha256":obj["approved_steam_v22_source_sha256"],
+                "min_pre_cutover_lease_seconds":compatibility["lease_seconds"],
+                "min_locked_lease_seconds":locked_lease_seconds})
+            cmd(["systemctl","stop",WEB],45)
+            need(prop(WEB,"ActiveState") in ("inactive","failed") and
+                 prop(WEB,"MainPID")=="0","WEB_NOT_STOPPED")
+            append_event("WEB_STOPPED")
+            append_event("UNIT_SWAP_INTENT")
+            atomic_unit_replace(candidate,host_guard.UNIT_SHA)
+            append_event("UNIT_SWAPPED")
+            cmd(["systemctl","daemon-reload"],35)
+            append_event("START_INTENT")
+            cmd(["systemctl","start",WEB],65)
+            append_event("CANDIDATE_STARTED")
+            v22_enroll_bound("candidate",obj["_permit_sha"],lockfd)
+            append_event("STEAM_CANDIDATE_ENROLLED",{"active_profile":"candidate"})
+        # Timer resumes automatically after releasing the same file lock.
+        # No restart of timers, no security firewall, no third web runtime.
         post=read_post_state()
         acceptance=check_public(obj["managed_avatar_handles"])
         append_event("PUBLIC_VERIFIED",dict(post,**acceptance))
         deadline=(now()+dt.timedelta(seconds=ROLLBACK_WINDOW_SECONDS)).isoformat()
         append_event("COMPLETED",{"rollback_deadline":deadline,
-                                  "candidate_unit_sha256":UNIT_CANDIDATE_SHA})
+                                  "candidate_unit_sha256":UNIT_CANDIDATE_SHA,
+                                  "steam_profile":"candidate"})
         return {"status":"PASS_PUBLIC_PLAYER_RELEASE_DEPLOYED",
                 "candidate_source":CANDIDATE,"candidate_build":BUILD,
                 "rollback_available_until":deadline,"finance_unchanged":True}
     except Exception as error:
-        # Fail-shut; retain exact prior proof even if post-restart checks fail.
+        if not any(e["state"]=="STOP_INTENT" for e in load_events()):
+            # Timer lock contention before STOP_INTENT changed no web unit.
+            # Never restart the healthy original just to 'undo' no mutation.
+            append_event("ABORTED",{"why":"BEFORE_STOP_INTENT",
+                                    "reason":type(error).__name__})
+            raise Hold("ACTIVATION_REFUSED_BEFORE_STOP_INTENT") from error
         append_event("RECOVERY_INTENT",{"reason":type(error).__name__})
         try:
-            recovery=rollback_unit("AUTO_ROLLBACK_AFTER_"+type(error).__name__)
+            recovery=rollback_unit("AUTO_ROLLBACK_AFTER_"+type(error).__name__,
+                                   activation_permit_sha=obj["_permit_sha"])
         except Exception as recovery_error:
             append_event("FAIL_SHUT_HOLD",{"reason":type(recovery_error).__name__})
             raise Hold("AUTO_ROLLBACK_FAILED_REQUIRES_MANUAL_RESTRICTED_3032_RECOVERY") from recovery_error
@@ -663,7 +813,7 @@ def restore(obj,reason,manual=True):
              "PREACTIVATION_UNIT_DRIFT")
         append_event("ABORTED",{"original_restricted_web_intact":True})
         return {"status":"PASS_RELEASE_ABORTED_BEFORE_CUTOVER"}
-    return rollback_unit(reason)
+    return rollback_unit(reason,activation_permit_sha=obj["_permit_sha"])
 
 def inspect():
     report={"schema":"r25.one-use.controller.v1","utc":now().isoformat(),
