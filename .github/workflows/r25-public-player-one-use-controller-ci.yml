@@ -42,7 +42,9 @@ jobs:
           assert 'require_steam_active_target_compatible()' in source
           assert 'codex_financial_capture_active' in source
           assert 'HOLD:R25_PUBLIC_PLAYER' in source
-          assert 'RESTRICTED_3032_UNIT_NOT_NGINX_TO_LEGACY_3030' in source or 'RESTORE_ORIGINAL_RESTRICTED_3032_UNIT_NOT_NGINX_TO_LEGACY_3030' in source
+          assert 'no_legacy_3030_public_reroute' in source
+          assert 'atomic_unit_replace(raw,UNIT_CANDIDATE_SHA)' in source
+          assert 'ORIGINAL_UNIT' in source and 'rollback_unit(' in source
           assert 'git clean' not in source and 'set -e' not in source
           print('PASS:R25_PUBLIC_PLAYER_FAIL_SHUT_SOURCE_GUARDS_NO_LIVE_ACTION')
           PY
