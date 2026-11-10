@@ -17,6 +17,7 @@ from nightforge import CONTRACTS, diagnose, group_findings, _utc
 
 SCHEMA = "kingdom.nightforge.collector-fixture.v1"
 MODE = "SANITIZED_OFFLINE_FIXTURE_ONLY"
+LOCAL_MODE = "LOCAL_HOST_READONLY_UNATTESTED"
 MAX_SNAPSHOT_BYTES = 4096
 MAX_BATCH = 20
 MAX_AGE_SECONDS = 3600
@@ -63,7 +64,8 @@ def review_snapshot(raw: bytes, *, owner_now_utc: str):
     parsed = strict_json(raw)
     if type(parsed) is not dict or set(parsed) != REPORT_FIELDS:
         raise Rejected("HOLD_COLLECTOR_UNEXPECTED_FIELDS")
-    if parsed["schema"] != SCHEMA or parsed["mode"] != MODE:
+    if (parsed["schema"] != SCHEMA or
+        parsed["mode"] not in (MODE, LOCAL_MODE)):
         raise Rejected("HOLD_COLLECTOR_SOURCE_MODE_NOT_APPROVED")
     if (type(parsed["kind"]) is not str or
         parsed["kind"] not in CONTRACTS or
@@ -125,7 +127,10 @@ def review_snapshot(raw: bytes, *, owner_now_utc: str):
     return {
         "schema":"kingdom.nightforge.offline-collector-result.v1",
         "kind":parsed["kind"],"lane":parsed["lane"],
-        "sourceAttribution":"UNVERIFIED_LOCAL_FIXTURE",
+        "sourceAttribution":(
+            "UNATTESTED_LOCAL_READONLY_PROBE"
+            if parsed["mode"] == LOCAL_MODE
+            else "UNVERIFIED_LOCAL_FIXTURE"),
         "sourceGitSHA":"unknown","claimedSourceGitSHA":parsed["claimed_source_sha"],
         "reportedObservationUTC":parsed["observed_utc"],
         "observedTimeExternallyAttested":False,
