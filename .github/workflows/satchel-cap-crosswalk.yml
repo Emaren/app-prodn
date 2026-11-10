@@ -1,0 +1,59 @@
+name: Satchel Spending-Cap Crosswalk (non-authorizing)
+
+on:
+  pull_request:
+    paths:
+      - 'lib/betAutomation.ts'
+      - 'lib/warSatchelAutoSpendConsent.ts'
+      - 'lib/warSatchelWagerReservation.ts'
+      - 'lib/warSatchelDedicatedSignerClient.ts'
+      - 'lib/warSatchelFundedLedger.ts'
+      - 'scripts/aoe2_satchel_cap_crosswalk.py'
+      - 'tests/test_aoe2_satchel_cap_crosswalk.py'
+      - '.github/workflows/satchel-cap-crosswalk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  literal-source-crosswalk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Regression-test independent literal caps and unknown refusal
+        run: python3 -m unittest discover -s tests -p 'test_aoe2_satchel_cap_crosswalk.py' -v
+      - name: Publish SHA256-grounded nonauthorizing source findings
+        run: |
+          python3 scripts/aoe2_satchel_cap_crosswalk.py --root . --output satchel-cap-crosswalk.json > /dev/null
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads(Path("satchel-cap-crosswalk.json").read_text())
+          lines=[
+              "## Satchel spending-cap source audit (NOT a release gate)",
+              "",
+              "**Status:** " + r["status"],
+              "**Literal mismatches:** " + str(r["mismatches"]),
+              "**Unknown source/shape:** " + str(r["unknown_rules"]),
+              "",
+              "Plan reserve is not necessarily an owner daily cap.",
+              "Workflow SUCCESS does not enable funded custody and does not establish complete economic consistency.",
+          ]
+          for x in r["observations"]:
+              lines.append("- " + x["rule"] + ": " + str(x["actual_wolo"]) + " WOLO, " + x["classification"])
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out:
+              out.write("\n".join(lines) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: satchel-economic-source-crosswalk
+          path: satchel-cap-crosswalk.json
+          retention-days: 14
+          if-no-files-found: error
