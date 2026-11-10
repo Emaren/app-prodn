@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2e2bf38728d938fae6c62e60febc2c331b025833963843095cc8b41e81a1c8ad",
+      "sha256": "39bc435a87448718ff725a16fbbf8bd18800a0876b28ba3065e0902fa7146022",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2298,6 +2298,30 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.kingdom-foundry-f1-f5-source-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "5250a634aeeb33724ad7e56a39c1a0e7cb50bf26a82b2068b4af0627af9b3dc3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry",
+        "kingdom-traders"
+      ],
+      "title": "Kingdom Foundry F1\u2013F5 \u2014 Source-only engineering and Nightforge acceptance",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -3095,7 +3119,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "af0faa4622cdb817d3e50446d26e042cb7a32a3fa71e50c4e20920e0e4caa122",
+      "sha256": "306c1bad0d62ba1c7b56c24883194e5164859217beff35a3d8812dea92da2d71",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3108,8 +3132,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "central/kingdom-foundry-phase0-20261109",
-    "commit": "6573ccb77b1001e3eecc0381cebf6ea7237d8cf8"
+    "branch": "session-c/foundry-f1-f3-20261110",
+    "commit": "f55ff910291d71e4cef86a07c465417d2d7007b3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

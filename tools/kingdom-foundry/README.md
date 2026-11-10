@@ -47,3 +47,20 @@ F0 isolated PRODUCT source / no B/C collisions; F1 schema and input security; F2
 ## Source lineage and governance
 
 Central created the initial files using the owner-requested Phase 0 prototype and test contract in ChatGPT; code is not financial or privileged and it must be independently reviewed. See [App #1280](https://github.com/Emaren/app-prodn/issues/1280) for two-workspace owner boundaries and [Chain #239](https://github.com/Emaren/wolochain/issues/239) for the seven held finance gates.
+
+## Session C F1–F5 source-only expansion
+
+The separately reviewed Session C branch adds a monotonic source-pinned F1
+event ledger, durable F2 scheduler with crash/retry and budget holds, strict
+F3 Nightforge normalized observation adapters, F4 offline deterministic
+benchmark and permanently frozen F5 future agent checkpoints. Nothing is
+connected to a coding model, shell command broker, public website, live
+exchange, financing service, or the installed HEL1 PAPER source. All
+execution flags remain false; this code is not a daemon or deployment.
+
+Full source controls: [F1–F5 handoff](../../docs/SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md).
+
+Reproduce offline with the standard library test runner:
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+    python3 scripts/docs_v2_check.py
