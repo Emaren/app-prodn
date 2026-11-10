@@ -82,6 +82,7 @@ import {
 import {
   fetchSiteThemeCampaignState,
   saveThemeCampaignOverride,
+  SiteThemeCampaignReadUnavailable,
 } from "@/lib/siteThemeCampaignClient";
 
 type LobbyAppearanceContextValue = {
@@ -103,6 +104,7 @@ type LobbyAppearanceContextValue = {
   leaderboardLane: LeaderboardLane;
   setLeaderboardLane: (lane: LeaderboardLane) => void;
   appearanceLoaded: boolean;
+  siteThemeCampaignAvailability: "unknown" | "available" | "unavailable" | "error";
   presentationTone: ReturnType<typeof getLobbyPresentationTone>;
   pageStyle: CSSProperties;
 };
@@ -118,6 +120,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     useState<SiteThemeCampaignControl | null>(null);
   const [campaignOverrideThemeKey, setCampaignOverrideThemeKey] =
     useState<LobbyThemeKey | null>(null);
+  const [siteThemeCampaignAvailability, setSiteThemeCampaignAvailability] =
+    useState<"unknown" | "available" | "unavailable" | "error">("unknown");
   const [tileThemeKey, setTileThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_TILE_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
   const [textColor, setTextColor] = useState<LobbyTextColor>(DEFAULT_LOBBY_TEXT_COLOR);
@@ -159,6 +163,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       needsAccountTimeDisplayDefaultMigration(user?.uid);
     setBrowserTimeZone(resolvedBrowserTimeZone);
     setAppearanceLoaded(false);
+    setSiteThemeCampaignAvailability("unknown");
 
     const hydrateAppearance = async () => {
       try {
@@ -166,11 +171,15 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setSiteThemeCampaign(campaignState.campaign);
         setCampaignOverrideThemeKey(campaignState.overrideThemeKey);
+        setSiteThemeCampaignAvailability("available");
       } catch (error) {
         console.warn("Failed to hydrate site theme campaign:", error);
         if (cancelled) return;
-        setSiteThemeCampaign(null);
-        setCampaignOverrideThemeKey(null);
+        // Retain the previously verified campaign/override on transient
+        // unreadability. Null means genuine absent only after successful GET.
+        setSiteThemeCampaignAvailability(
+          error instanceof SiteThemeCampaignReadUnavailable ? "unavailable" : "error"
+        );
       }
 
       if (!user?.uid) {
@@ -261,12 +270,16 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       void fetchSiteThemeCampaignState()
         .then((state) => {
           setSiteThemeCampaign(state.campaign);
+          setSiteThemeCampaignAvailability("available");
           if (user?.uid) {
             setCampaignOverrideThemeKey(state.overrideThemeKey);
           }
         })
         .catch((error) => {
           console.warn("Failed to refresh site theme campaign:", error);
+          setSiteThemeCampaignAvailability(
+            error instanceof SiteThemeCampaignReadUnavailable ? "unavailable" : "error"
+          );
         });
     }, 60_000);
 
@@ -498,6 +511,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         leaderboardLane,
         setLeaderboardLane,
         appearanceLoaded,
+        siteThemeCampaignAvailability,
         presentationTone,
         pageStyle,
       }}
