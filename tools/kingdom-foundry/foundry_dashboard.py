@@ -162,8 +162,29 @@ def render_private_html(report: dict) -> str:
         type(report.get("items")) is not list or
         len(report["items"]) > MAX_ROWS):
         raise Rejected("HOLD_DASHBOARD_UNTRUSTED_REPORT")
-    if report.get("audit",{}).get("status") != "VERIFIED_INTERNAL_CHAIN_ONLY":
+    audit = report.get("audit")
+    if type(audit) is not dict:
         raise Rejected("HOLD_DASHBOARD_NO_VERIFIED_AUDIT")
+    hold_only = audit.get("status") == "NO_AUDIT_ALL_HOLDS"
+    if hold_only:
+        # This alternative is ONLY for a private F8 source-UNKNOWN journal,
+        # not a way to bless a "DONE" receipt without an F6 audit chain.
+        if (report.get("status") != "HOLD_ONLY_UNSEALED_NO_SCHEDULER" or
+            audit.get("entries") != 0 or not report["items"] or
+            any(type(row) is not dict or
+                row.get("state") != "HOLD_SOURCE_UNVERIFIED" or
+                row.get("sourceSha") != "unknown" or
+                row.get("sourceStatus") != "HOLD_CURRENT_SOURCE_UNVERIFIED"
+                for row in report["items"])):
+            raise Rejected("HOLD_DASHBOARD_UNSEALED_NOT_ALL_SOURCE_HOLD")
+    elif audit.get("status") != "VERIFIED_INTERNAL_CHAIN_ONLY":
+        raise Rejected("HOLD_DASHBOARD_NO_VERIFIED_AUDIT")
+    unsealed_note = (
+        '<p class="warn" role="status">UNSEALED HOLD-ONLY OBSERVATIONS: '
+        'No source attestation, scheduler job or audited completion '
+        'is present. Every row requires operator investigation.</p>'
+        if hold_only else ""
+    )
     css = """
 :root{color-scheme:dark;--bg:#101620;--panel:#1b2533;--line:#344255;
 --text:#f5f8ff;--muted:#bdc9db;--accent:#b3dbff;--hold:#f7be78;
@@ -241,7 +262,8 @@ padding-top:14px;color:var(--muted);font-size:.9rem}
         "No live market-price certification</p>"
         "<p class=\"muted\">This is a bounded local database projection. "
         "Local Git source checks and internal hash-chain checks are not "
-        "independent production or external attestations.</p></header>"
+        "independent production or external attestations.</p>"
+        f"{unsealed_note}</header>"
         f'<section aria-label="Queue summary" class="stats">{stat_html}</section>'
         "<h2>Investigation and HOLD register</h2>"
         '<div class="tablewrap" role="region" tabindex="0" '
