@@ -71,8 +71,16 @@ def scan_history(base: str, head: str = "HEAD") -> tuple[list[Finding], int]:
     if not SHA.fullmatch(base):
         raise ValueError("base must be an exact 40-character Git SHA")
     git("cat-file", "-e", base + "^{commit}")
-    git("merge-base", "--is-ancestor", base, head)
-    commits = git("rev-list", "--reverse", base + ".." + head).decode("ascii").splitlines()
+    git("cat-file", "-e", head + "^{commit}")
+    # A pull request may diverge when its target branch advances after creation.
+    # Scan the complete HEAD-side history from the *unique* Git merge base,
+    # including merge-resolution additions, rather than silently skipping it.
+    common_bases = git("merge-base", "--all", base, head).decode("ascii").splitlines()
+    if len(common_bases) != 1 or not SHA.fullmatch(common_bases[0]):
+        raise ValueError("missing or ambiguous common ancestry")
+    start = common_bases[0]
+    git("merge-base", "--is-ancestor", start, head)
+    commits = git("rev-list", "--reverse", start + ".." + head).decode("ascii").splitlines()
     if not commits or len(commits) > MAX_COMMITS:
         raise ValueError("empty or excessively large commit range")
     findings: list[Finding] = []
