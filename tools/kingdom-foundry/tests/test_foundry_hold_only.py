@@ -188,6 +188,23 @@ class HoldOnlyPreviewTests(TestCase):
             render_private_html({**report,"items":[
                 {**report["items"][0],"sourceSha":HEAD}]})
 
+    def test_older_verified_source_hidden_beyond_page_still_refused(self):
+        # A page-1-only validation would incorrectly hide the first
+        # verified event and bless the newer HOLD as "all HOLD".
+        doc=self.f8_event(1)
+        evidence=canonical({"schema":"kingdom.foundry.evidence.v1",
+                            "source":"app-media","status":"FAILED"})
+        event=dict(doc["event"])
+        event["source_sha"]=HEAD
+        event["evidence_ref"]="receipt://event/"+sha256(evidence).hexdigest()
+        result=self.journal.ingest(canonical(event),evidence)
+        self.assertEqual(result["status"],"RECORDED")
+        self.ingest(2)
+        self.journal.close()
+        with self.assertRaisesRegex(Rejected,"NOT_ALL_UNVERIFIED_SOURCE"):
+            preview_untrusted_observations(self.db,product_root=ROOT,
+                                           max_rows=1)
+
     def test_requested_limit_boolean_zero_and_161_refused(self):
         self.ingest(1)
         self.journal.close()

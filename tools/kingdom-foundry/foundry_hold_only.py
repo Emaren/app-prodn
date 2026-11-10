@@ -80,16 +80,18 @@ def preview_untrusted_observations(db_path: Path, *,
         total = conn.execute("SELECT count(*) FROM f1_events").fetchone()[0]
         if not 1 <= total <= MAX_EVENTS:
             raise Rejected("HOLD_OBSERVER_NO_BOUNDED_F1_EVENTS")
+        # Source authority MUST be checked across the ENTIRE bounded
+        # F1 journal, not only the most recent visible page. An older
+        # verified event concealed by max_rows would be a safety failure.
         rows = conn.execute(
             "SELECT seq, external_id, body_sha256, body, lane, kind, "
-            "repo, source_sha, trust FROM f1_events "
-            "ORDER BY seq DESC LIMIT ?",(max_rows,)
-        ).fetchall()
-        if len(rows) != min(max_rows,total):
-            raise Rejected("HOLD_OBSERVER_ROW_COUNT_MISMATCH")
+            "repo, source_sha, trust FROM f1_events ORDER BY seq DESC"
+        )
         items = []
+        scanned = 0
         for (seq,external_id,body_sha,body,lane,kind,
              repo,source_sha,trust) in rows:
+            scanned += 1
             if (type(seq) is not int or seq < 1 or
                 type(body) is not str or len(body)>8192 or
                 type(body_sha) is not str or
@@ -106,6 +108,8 @@ def preview_untrusted_observations(db_path: Path, *,
                 event["kind"] != kind or event["source_sha"]!="unknown" or
                 event["severity"] not in ("info","warning","error","critical")):
                 raise Rejected("HOLD_OBSERVER_CORRUPT_OR_REWRITTEN_EVENT")
+            if len(items) >= max_rows:
+                continue
             items.append({
                 "recordId":f"KF-{seq:012d}",
                 "lane":lane,"severity":event["severity"],
@@ -120,6 +124,8 @@ def preview_untrusted_observations(db_path: Path, *,
                 "nextPermittedStep":STATUS_MAP[REASON],
                 "financialApproval":False,"executionEnabled":False,
             })
+        if scanned != total:
+            raise Rejected("HOLD_OBSERVER_ROW_COUNT_MISMATCH")
         conn.execute("ROLLBACK")
     except sqlite3.Error as exc:
         raise Rejected("HOLD_OBSERVER_SQLITE_READ_FAILURE") from exc
