@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "restricted"
 ---
 
-# OWNER APPROVAL PACKET — PRODUCT restricted runner macOS pilot (SOURCE ONLY)
+# PRODUCT Runner Owner Approval and Acceptance
 
 Status: **HOLD — no live Mac account, ACL, privilege or process change approved**. This document and the inert source script are part of draft App PR #1306. Preserve all 23 PRODUCT checkouts, the two local-only retention refs, Session B's live release authority and Codex's FINANCIAL exclusivity.
 
