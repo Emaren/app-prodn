@@ -120,7 +120,13 @@ def verify_package(directory: Path, expected: dict = PIN) -> dict:
             require(name not in observed, "DUPLICATE_ENTRY")
             require(member.isfile() or member.issym(), "SPECIAL_OR_HARDLINK_ENTRY")
             require(member.uid == 0 and member.gid == 0, "ARCHIVE_UID_OR_GID")
-            require(member.mode & 0o022 == 0, "ARCHIVE_WRITABLE_BY_GROUP_OR_OTHER")
+            # POSIX symlinks conventionally report mode 0777, but symlink
+            # mode bits do not grant write permission to their target. The
+            # signed CI manifest still pins each link's exact mode/target,
+            # its destination must stay inside this archive, and links may
+            # never be an extracted parent. Regular files stay nonwritable.
+            if member.isfile():
+                require(member.mode & 0o022 == 0, "ARCHIVE_WRITABLE_BY_GROUP_OR_OTHER")
             row = {"path": name, "mode": member.mode}
             if member.isfile():
                 require(member.size >= 0 and member.size <= (2**31), "ARCHIVE_ENTRY_SIZE")

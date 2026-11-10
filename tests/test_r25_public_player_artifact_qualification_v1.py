@@ -181,6 +181,15 @@ class ArchiveGuards(unittest.TestCase):
         ])
         self.refused("SYMLINK_PARENT_ESCAPE",e)
 
+    def test_symlink_mode_0777_accepted_but_signed_target_and_no_parent_rules_remain(self):
+        e=self.make(entries=[
+            entry(name="assets/actual.webp",data=b"safe immutable image"),
+            entry(name="assets/link.webp",target="actual.webp",kind="symlink",mode=0o777),
+        ])
+        r=v.verify_package(self.root,e)
+        self.assertFalse(r["deployment_authorized"])
+        self.assertEqual(r["file_count"],2)
+
     def test_missing_symlink_target_refused(self):
         e=self.make(entries=[entry(name="assets/link",target="missing.webp",kind="symlink")])
         self.refused("SYMLINK_TARGET_MISSING",e)
