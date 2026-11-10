@@ -30,6 +30,8 @@ jobs:
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -v
       - name: F6 adversarial concurrent claims, append-only audit and disposable SIGKILL
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_foundry_audit_concurrency.py' -v
+      - name: F7 private static dashboard non-disclosure, 0600 and no route
+        run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_foundry_dashboard.py' -v
       - name: Offline deterministic known-answer rule benchmark, no weights
         run: |
           python3 - <<'PY'

@@ -35,8 +35,14 @@ def canonical(data):
 class FrozenAudit:
     """Rollback-safe append within dispatcher transactions; NO side effects."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, *, create_schema=True):
         self.db = conn
+        # Read-only observers MUST NOT create triggers/tables or write WAL.
+        # The dispatcher alone may run schema initialization.
+        if create_schema is False:
+            return
+        if create_schema is not True:
+            raise Rejected("HOLD_AUDIT_SCHEMA_MODE_INVALID")
         self.db.execute("CREATE TABLE IF NOT EXISTS f6_audit ("
             "seq INTEGER PRIMARY KEY AUTOINCREMENT,"
             "prev_sha TEXT NOT NULL,"
