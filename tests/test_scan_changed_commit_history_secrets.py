@@ -46,10 +46,10 @@ class HistoricalSecretScanTests(unittest.TestCase):
         base, common, commit = "a" * 40, "b" * 40, "c" * 40
         fake = "AK" + "IA" + "B" * 16
         patch = (
-            "diff --git a/lib/p.ts b/lib/p.ts\\n"
-            "+++ b/lib/p.ts\\n"
-            "@@ -0,0 +1 @@\\n"
-            "+const value = '" + fake + "';\\n"
+            "diff --git a/lib/p.ts b/lib/p.ts\n"
+            "+++ b/lib/p.ts\n"
+            "@@ -0,0 +1 @@\n"
+            "+const value = '" + fake + "';\n"
         )
 
         def fake_git(*args):
@@ -57,15 +57,15 @@ class HistoricalSecretScanTests(unittest.TestCase):
                 return b""
             if args[:2] == ("merge-base", "--all"):
                 self.assertEqual(args[2:], (base, "HEAD"))
-                return (common + "\\n").encode()
+                return (common + "\n").encode()
             if args[:2] == ("merge-base", "--is-ancestor"):
                 self.assertEqual(args[2:], (common, "HEAD"))
                 return b""
             if args[:2] == ("rev-list", "--reverse"):
                 self.assertEqual(args[2], common + "..HEAD")
-                return (commit + "\\n").encode()
+                return (commit + "\n").encode()
             if args[:2] == ("rev-list", "--parents"):
-                return (commit + " " + common + "\\n").encode()
+                return (commit + " " + common + "\n").encode()
             if args[0] == "diff":
                 self.assertEqual(args[-3:], (common, commit, "--"))
                 return patch.encode()
@@ -88,7 +88,7 @@ class HistoricalSecretScanTests(unittest.TestCase):
                 return fake_git.bases
             raise AssertionError("must stop before scanning an ambiguous history")
 
-        for bases in (b"", (common + "\\n" + "c" * 40 + "\\n").encode()):
+        for bases in (b"", (common + "\n" + "c" * 40 + "\n").encode()):
             fake_git.bases = bases
             with self.subTest(bases=bases), mock.patch.object(MOD, "git", side_effect=fake_git):
                 with self.assertRaisesRegex(ValueError, "missing or ambiguous"):
