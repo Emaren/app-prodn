@@ -38,6 +38,8 @@ jobs:
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_foundry_hold_only.py' -v
       - name: F10 fixed read-only host probes and 0600 F9 end-to-end HOLD
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_nightforge_host_probes.py' -v
+      - name: F11 0600 one-shot observer, clean Git source pin and crash replay HOLD
+        run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_nightforge_private_observer.py' -v
       - name: Offline deterministic known-answer rule benchmark, no weights
         run: |
           python3 - <<'PY'
