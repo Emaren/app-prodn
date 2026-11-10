@@ -13,3 +13,37 @@ Before enabling even a navigation link, accept all of: Session B signed-in admin
 Product handoff: https://github.com/Emaren/kingdom-traders/issues/118
 App two-lane boundary: https://github.com/Emaren/app-prodn/issues/1280
 Seven WoloChain financial gate closure is wholly outside PRODUCT. No 8092–8095 endpoints are used.
+
+
+## Authenticated server-only PAPER read-model integration (SOURCE ONLY)
+
+This Session C integration branch descends from exact accepted R25 source
+b1ef050b954be734c9f34147361e0d02d7c89b19, and preserves existing
+unmounted preview 2319804a1b1524bc992c12cc52161baebe4f8c72.
+It does NOT modify the active 3032 release or protected App API.
+
+Product source proposes optional GET /api/bridge-status-v1 on the independently
+owned PRODUCT loopback service. It is disabled unless a separate machine-only
+SHA-verified credential is approved and provisioned. The endpoint only returns
+anonymous status: historical 100 modeled PAPER account count, 7 still-unpriced
+positions, unchanged source HALT, zero orders and an exact source SHA.
+No bot IDs, balances, financial hashes, tokens or personal/user records.
+
+App lib/kingdomTradersAdminStatus.ts is intentionally UNMOUNTED. It invokes
+the existing App requireAdmin session guard before any product request,
+requires an exact environment release admission flag, then delegates to
+server-only lib/kingdomTradersPaperReadonly.mjs. The client requires a
+separate machine-token file and TLS trust certificate, checks both private
+file permissions and exact IP/port/path, verifies HTTPS without insecure
+TLS options, uses GET only, limits responses to 4096 bytes and validates the
+complete frozen nonfinancial schema. All bad auth/network/TLS/source or
+forged money permissions fail to HOLD and never expose private inputs.
+
+No Next API route, page, Steam cookie delegation, public nav link, public
+hostname, Nginx rewrite, owner Basic password forwarding, database table
+access or new financial writer is present. Source tests are 100 percent
+offline. Session B must accept the ordinary/nonadmin authenticated release
+matrix, exact App/PRODUCT SHA and separate machine identity before ANY
+website route can mount this adapter. User-facing preview remains static
+and responsive, with the private actual operator cockpit accessed separately
+through SSH. No active 3032 frontend smoke or browser acceptance is claimed.
