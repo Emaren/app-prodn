@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef666885f30f762968b36311526faf865e58c34c63603dc37f8e629762282ff7",
+      "sha256": "4cd15009ce96241994dabb032ba13f9af929c456b66582e5b2335635b519baa0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-release-contracts-20261110",
-    "commit": "f75d6e2d20976b42b1301b08f82d910ff4f0f238"
+    "branch": "session-b/r25-nonfinancial-write-v2-proposal-20261110",
+    "commit": "ee3df678596cc9100a7aae6ffa98f61d88fb898a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
