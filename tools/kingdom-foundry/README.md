@@ -103,3 +103,15 @@ See [F8 source and hold contract](../../docs/SESSION_C_FOUNDRY_F8_SANITIZED_COLL
 Full offline regression:
 
     python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+
+## F9 genuine private HOLD-only snapshot without invented audit history
+
+F9 provides a pure read-only SQLite connection and an explicitly
+owner-triggered offline 0600 static HTML exporter for journals containing
+ONLY F8 unverified/HOLD source observations and zero scheduler jobs.
+It verifies the entire bounded F1 journal even if the display shows
+only its newest page. The original F6 audited-queue path still requires
+a real F6 audit; no work is executed and no HEL1 service is installed.
+See [F9 private HOLD-only source contract](../../docs/SESSION_C_FOUNDRY_F9_HOLD_ONLY_PREVIEW.md).
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v

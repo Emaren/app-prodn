@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "622597d4f9862af8e1bb5e13d5c5fbc5882b70df3a61c7b3a8aa16c36d9afec9",
+      "sha256": "6f8bd7a545e67d13f2afd7b2a162fede1e978691aac9b16ceae110ce45799098",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2368,6 +2368,29 @@
         "ai-agents"
       ],
       "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.foundry-f9-hold-only-private-observer",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_FOUNDRY_F9_HOLD_ONLY_PREVIEW.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "ab0832bc04e0c3984a3ec075a8cdc486f7755fb3592135b82360124e67a34a5a",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry"
+      ],
+      "title": "Foundry F9 \u2014 Unsealed HOLD-only private read-only SQLite and CLI preview",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-only-session-c-source-review",
       "id": "aoe2war.app-prodn.kingdom-foundry-f1-f5-source-handoff",
       "owner": "aoe2war-web",
       "path": "docs/SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md",
@@ -3212,7 +3235,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "ef9c0fb92db9ac7642fcf918954f0ea9107dafd47d2bc5c0584844964d8e167a",
+      "sha256": "1c8259cd1c1b28cd67809cd6398807102b1cb715d94f6a7f55df2699a34f8ab6",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3225,8 +3248,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/foundry-f8-sanitized-collectors-20261110",
-    "commit": "ecb2bd51c3907c2f7ea8c1704113449a2c70aa35"
+    "branch": "session-c/foundry-f9-hold-only-preview-20261110",
+    "commit": "84c872fdddf57e65f6faf343b276969a9b7cc1de"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

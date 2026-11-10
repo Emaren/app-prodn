@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/foundry-f8-sanitized-collectors-20261110` at `ecb2bd51c3907c2f7ea8c1704113449a2c70aa35`
+Implementation baseline: `session-c/foundry-f9-hold-only-preview-20261110` at `84c872fdddf57e65f6faf343b276969a9b7cc1de`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **141**
+- Authoritative repository documents: **142**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 74
 - `runbook`: 42
-- `working`: 7
+- `working`: 8
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 37
+- `draft`: 38
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -154,6 +154,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Foundry F6 — Transactional audit, concurrent claim and crash recovery](SESSION_C_FOUNDRY_F6_AUDIT_CONCURRENCY.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Foundry F7 — Owner-private Central Command source and HOLD dashboard](SESSION_C_FOUNDRY_F7_PRIVATE_COMMAND_READMODEL.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Foundry F8 — Offline normalized collectors, source HOLD, immutable observation digest](SESSION_C_FOUNDRY_F8_SANITIZED_COLLECTORS.md) | `working` | `draft` | `product-only-session-c-source-review` |
+| [Foundry F9 — Unsealed HOLD-only private read-only SQLite and CLI preview](SESSION_C_FOUNDRY_F9_HOLD_ONLY_PREVIEW.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Kingdom Foundry F1–F5 — Source-only engineering and Nightforge acceptance](SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Session C PRODUCT — Read-only worktree and release candidate inventory](SESSION_C_PRODUCT_INVENTORY_20261110.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
