@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e277cb05a6b2d37b77524624087a7ea3d0da3ac1ef03f8dba424e4c178b97041",
+      "sha256": "82f02f9e181e2d1a05e4784dc142f195afa1351989e3da699d78c4166153decc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2486,9 +2486,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "sha256": "cb9e10351d2fc82938fc9929da1417fde9440e4fb8393b18af00ebdf120da574",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2555,9 +2555,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "6ef1a0d49c031079c0a45adea9eedcfe1be8a520868ec3f663f691f27d88f69a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-public-live-explicit-api-20261109",
-    "commit": "043f95fcb48e268ab304dddeb610050529703e40"
+    "branch": "session-b/r25-optional-replay-stats-read-fence-20261110",
+    "commit": "95f220b3ecb4bf4d5794169593fd8a2e51320a4d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
