@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/foundry-f10-host-probes-20261110` at `7442f3a3b064c1396d88fd872a5949fa8d261f46`
+Implementation baseline: `session-c/foundry-f11-private-observer-20261110` at `c03ce3e5e373ef3576c9e1e21f8a853e427f3950`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **143**
+- Authoritative repository documents: **144**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 74
 - `runbook`: 42
-- `working`: 9
+- `working`: 10
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 39
+- `draft`: 40
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -152,6 +152,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
 | [Foundry F10 — Fixed read-only host observations and untrusted source admission](SESSION_C_FOUNDRY_F10_READONLY_HOST_ADMISSION.md) | `working` | `draft` | `product-only-session-c-source-review` |
+| [Foundry F11 — Owner-private one-shot HOLD recorder and failure-recoverable dashboard](SESSION_C_FOUNDRY_F11_ONE_SHOT_PRIVATE_OBSERVER.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Foundry F6 — Transactional audit, concurrent claim and crash recovery](SESSION_C_FOUNDRY_F6_AUDIT_CONCURRENCY.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Foundry F7 — Owner-private Central Command source and HOLD dashboard](SESSION_C_FOUNDRY_F7_PRIVATE_COMMAND_READMODEL.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Foundry F8 — Offline normalized collectors, source HOLD, immutable observation digest](SESSION_C_FOUNDRY_F8_SANITIZED_COLLECTORS.md) | `working` | `draft` | `product-only-session-c-source-review` |

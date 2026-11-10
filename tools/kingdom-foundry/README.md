@@ -133,3 +133,18 @@ Manual M1 observation (source UNTRUSTED/HOLD):
 Full regression:
 
     python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+
+## F11 one-shot local status into owner-private HOLD journal and HTML
+
+F11 joins the F10 bounded local probe with F8/F1 source-UNKNOWN HOLD
+receipts and F9's owner-only no-overwrite 0600 HTML. It requires a
+clean, exact Git-pinned source checkout and a dedicated direct child of
+PRODUCT (never another engineer's worktree). These checks attest
+neither live host state nor completion of any worker, release,
+backup, financial process or PAPER order. It has no daemon, timer
+or production HTTP route. See
+[F11 source and owner-private acceptance](../../docs/SESSION_C_FOUNDRY_F11_ONE_SHOT_PRIVATE_OBSERVER.md).
+
+Full offline regression:
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v

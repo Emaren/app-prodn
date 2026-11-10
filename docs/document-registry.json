@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "856c5c9e378f17de37c8728912e6bc81e3ff422b2ae3cd824d48e8963b5360b6",
+      "sha256": "0ccee7248361bbd731412bd54055a292adc5ff93d25f01803afde7fba91601de",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2322,6 +2322,29 @@
         "ai-agents"
       ],
       "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.foundry-f11-one-shot-private-observer",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_FOUNDRY_F11_ONE_SHOT_PRIVATE_OBSERVER.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "b1dab6717274b01c5b4259e7aa399d65e88da077a4980439de138b5ff0aa1351",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry"
+      ],
+      "title": "Foundry F11 \u2014 Owner-private one-shot HOLD recorder and failure-recoverable dashboard",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-only-session-c-source-review",
       "id": "aoe2war.app-prodn.foundry-f6-audit-concurrency-contract",
       "owner": "aoe2war-web",
       "path": "docs/SESSION_C_FOUNDRY_F6_AUDIT_CONCURRENCY.md",
@@ -3258,7 +3281,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "fd34681abac0de0c8c1189743449f5d625470c1b5f129b3581b2786376748124",
+      "sha256": "f58870cd854c0896f23474a326fe9997eabc9a747fa1f17138a709d23c8c4b2e",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3271,8 +3294,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/foundry-f10-host-probes-20261110",
-    "commit": "7442f3a3b064c1396d88fd872a5949fa8d261f46"
+    "branch": "session-c/foundry-f11-private-observer-20261110",
+    "commit": "c03ce3e5e373ef3576c9e1e21f8a853e427f3950"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
