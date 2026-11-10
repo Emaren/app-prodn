@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7608e8f5d3ce65fa20bd205f76a5ee61427781a5802ca95ec5fa06cf8b78ba8a",
+      "sha256": "c242a221a892c0851ff25e5ae28a02e45c89334be5d0cf394683536f3d66ad40",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2992,6 +2992,28 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial same-slot 3032 rollback and return gated by physical V20 enrollment",
+      "id": "aoe2war.app-prodn.session-b-c03-v20-physical-one-slot-roundtrip-20261110",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_V20_PHYSICAL_ONE_SLOT_ROUNDTRIP_20261110.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "cbe47038f0fa5a0dba3f34d1c4ec42d060f93e997eee6740a035a6141a5044fc",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 V20 source-qualified reversible single-slot R25 rollback-and-return",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -3195,8 +3217,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-v20-steam-sandbox-ro-20261110",
-    "commit": "d5d2a75928b22b4fb722eda6ca42f2df250a040c"
+    "branch": "session-b/c03-v20-physical-roundtrip-20261110",
+    "commit": "5d775108b96d729da3f0d750035d41fdc859f65f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
