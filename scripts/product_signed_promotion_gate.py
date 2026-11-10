@@ -340,6 +340,12 @@ def cli() -> int:
         manifest = read_manifest(raw, datetime.now(timezone.utc))
         verify_signature(raw, Path(args.signature), signers)
         policy = json.loads(trust.read_text(encoding="utf-8"))
+        # Both staging roots and exact files are B-controlled: reject any
+        # runner-editable/mutable-by-group artifact before emitting admission.
+        for key in ("allowed_artifact_root", "allowed_rollback_root"):
+            check_trusted_path(Path(policy[key]), directory=True)
+        for candidate in (Path(args.artifact), Path(args.rollback_artifact)):
+            check_trusted_path(candidate)
         verify_under_root(Path(args.artifact), Path(policy["allowed_artifact_root"]),
                           manifest["artifact_sha256"])
         verify_under_root(Path(args.rollback_artifact),
