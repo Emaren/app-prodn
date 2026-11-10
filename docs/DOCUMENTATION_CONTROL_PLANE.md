@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/foundry-f1-f3-20261110` at `f55ff910291d71e4cef86a07c465417d2d7007b3`
+Implementation baseline: `session-c/foundry-f6-audit-race-20261110` at `5866bdf53299a36f70ebadda6a2198cf56495e07`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **137**
+- Authoritative repository documents: **139**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 74
 - `runbook`: 42
-- `working`: 3
+- `working`: 5
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 33
+- `draft`: 35
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -151,7 +151,9 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Traffic Canonical Single Chart Correction, 2026-11-08](SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md) | `reference` | `active` | `traffic-canonical-website-only-exact-daily-finality-required` |
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
+| [Foundry F6 — Transactional audit, concurrent claim and crash recovery](SESSION_C_FOUNDRY_F6_AUDIT_CONCURRENCY.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Kingdom Foundry F1–F5 — Source-only engineering and Nightforge acceptance](SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md) | `working` | `draft` | `product-only-session-c-source-review` |
+| [Session C PRODUCT — Read-only worktree and release candidate inventory](SESSION_C_PRODUCT_INVENTORY_20261110.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |

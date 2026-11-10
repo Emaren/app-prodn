@@ -64,3 +64,16 @@ Reproduce offline with the standard library test runner:
 
     python3 -m unittest discover -s tools/kingdom-foundry/tests -v
     python3 scripts/docs_v2_check.py
+
+## F6 audited nonexecuting source and physical disposable race tests
+
+The stacked F6 source adds append-only internal audit checks and actual
+PRODUCT-only disposable subprocess concurrency/SIGKILL tests. No real
+worker, LLM, command broker or HEL1 service is connected. Its internal
+hash chain is NOT externally anchored or immutable against a privileged
+DB rewrite. Read [F6 audit and recovery handoff](../../docs/SESSION_C_FOUNDRY_F6_AUDIT_CONCURRENCY.md)
+and the [read-only workspace inventory](../../docs/SESSION_C_PRODUCT_INVENTORY_20261110.md).
+
+F6 local test command:
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v
