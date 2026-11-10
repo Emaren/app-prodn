@@ -90,3 +90,16 @@ LLM or execution permission is involved. See
 Run offline:
 
     python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+
+## F8 sanitized, research-only offline observation adapters
+
+The F8 source implements strict nine-family fixed-schema offline
+collector adapters, content seals and F1 v2 SHA-distinct evidence.
+All source authority remains UNKNOWN/HOLD; no collector contacts
+systemd, GitHub, Steam, Traffic, Watcher, Storage, PAPER, managed
+media or any production API. No runner/agent, public route or LLM.
+See [F8 source and hold contract](../../docs/SESSION_C_FOUNDRY_F8_SANITIZED_COLLECTORS.md).
+
+Full offline regression:
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v
