@@ -168,7 +168,7 @@ def check_trusted_path(path: Path, *, directory: bool = False) -> None:
 def validate_trusted_policy(policy: dict, repo: str, ci_runs: list[dict]) -> list[dict]:
     if not isinstance(policy, dict) or set(policy) != {
         "schema", "repository", "required_ci", "external_checks",
-        "allowed_artifact_root", "allowed_rollback_root",
+        "allowed_artifact_root", "allowed_rollback_root", "approved_rollback",
     } or policy["schema"] != SCHEMA or policy["repository"] != repo:
         forbid("WRONG_TRUST_POLICY")
     required = policy["required_ci"]
@@ -190,6 +190,14 @@ def validate_trusted_policy(policy: dict, repo: str, ci_runs: list[dict]) -> lis
                 or not isinstance(item["name"], str) or not item["name"]
                 or not isinstance(item["app_slug"], str) or not item["app_slug"]):
             forbid("MALFORMED_EXTERNAL_CHECK")
+    rollback = policy["approved_rollback"]
+    if (not isinstance(rollback, dict)
+            or set(rollback) != {"source_sha", "artifact_sha256"}
+            or not isinstance(rollback["source_sha"], str)
+            or not HEXSHA.fullmatch(rollback["source_sha"])
+            or not isinstance(rollback["artifact_sha256"], str)
+            or not HEX256.fullmatch(rollback["artifact_sha256"])):
+        forbid("UNTRUSTED_ROLLBACK_RECEIPT")
     for key in ("allowed_artifact_root", "allowed_rollback_root"):
         root = Path(policy[key])
         if not root.is_absolute() or "PRODUCT" in root.parts:
@@ -223,6 +231,9 @@ def inspect_remote(manifest: dict, policy: dict, api) -> dict:
             or pr.get("draft") is True):
         forbid("PR_NOT_EXACT_HEAD_OR_REVIEW_READY")
     required = validate_trusted_policy(policy, repo, manifest["ci_runs"])
+    if (manifest["rollback_source_sha"] != policy["approved_rollback"]["source_sha"]
+            or manifest["rollback_sha256"] != policy["approved_rollback"]["artifact_sha256"]):
+        forbid("ROLLBACK_NOT_APPROVED_BY_HOST")
     checks = api(root + "/commits/" + sha + "/check-runs?per_page=100").get("check_runs", [])
     for required_check in policy["external_checks"]:
         if not any(c.get("name") == required_check["name"]
