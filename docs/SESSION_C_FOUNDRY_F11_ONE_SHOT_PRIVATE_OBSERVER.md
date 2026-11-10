@@ -117,6 +117,30 @@ This illustrates a manual source-only M1 receipt. It is NOT
 a proposal to run an observer on HEL1, schedule its execution,
 enable PAPER trades, or grant F2/F5 task completion.
 
+## Actual owner M1 receipt (not production deployment)
+
+After the source was committed clean, Session C physically ran
+the one-shot **--mac-storage** command on the owner's M1 from
+exact source d127d002c49b9fdbe23325a34400b9fd1e16aea0.
+The private state directory lives immediately under PRODUCT,
+outside any Git worktree, with verified 0700 permissions.
+The resulting 0600 SQLite journal contained exactly ONE event:
+source_sha=unknown, trust=HOLD, no scheduled F2 job, no
+F6 verification audit, no task execution and no finance/trading
+approval. The corresponding new 0600 HTML has a prominent
+UNSEALED HOLD-ONLY observation warning.
+
+Actual HTML bytes: 4,398.
+Actual SQLite journal bytes: 20,480.
+HTML SHA256:
+2f3862ce0cb1f643082986cd531bb5df032dcb844c6337ad2899e93f5b7f2a51.
+
+The source checkout remained clean after physical execution,
+and no HEL1 process, Nginx, Steam, website 3032 or PAPER 9447
+service changed. The evidence remains owner-private; the digest
+and metadata in this contract are an **internal** local source
+consistency receipt, not remote signed production proof.
+
 ## Tests, resource budget and rollback
 
 Owner-M1 offline tests:
