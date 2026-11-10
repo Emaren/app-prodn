@@ -12,6 +12,7 @@ import secrets
 
 from foundry import Rejected
 from foundry_secure import SecureJournal
+from foundry_audit import FrozenAudit
 
 LANES = frozenset(("PRODUCT_B", "PRODUCT_C"))
 PR_KEY = re.compile(r"(app-prodn|kingdom-traders|traffic-api|traffic-app):[a-z0-9/_-]{1,96}\Z")
@@ -82,8 +83,12 @@ class DurableDispatcher:
             self.db.execute("INSERT OR IGNORE INTO f2_lane_control(lane)"
                             " VALUES(?)",(lane,))
         self.db.commit()
+        self.audit = FrozenAudit(self.db)
+        self.audit.verify()
 
     def _begin(self):
+        # If an audit row is modified or missing, DO NOT grant another claim.
+        self.audit.verify()
         self.db.execute("BEGIN IMMEDIATE")
 
     def _clock(self, lane, now_ms):
@@ -156,6 +161,8 @@ class DurableDispatcher:
                     raise Rejected("HOLD_DEPENDENCY_MUST_PRECEDE_JOB")
                 self.db.execute("INSERT INTO f2_dependencies VALUES(?,?)",
                                 (job_id,dep))
+            self.audit.append(lane=lane,job_id=job_id,code="QUEUED",
+                              now_ms=now_ms,status="WAITING")
             self.db.execute("COMMIT")
             return {"status":"WAITING","job_id":job_id,
                     "execution_enabled":False}
@@ -171,6 +178,8 @@ class DurableDispatcher:
                 raise Rejected("HOLD_RATE_LIMIT_PAUSE_BOUNDS")
             self.db.execute("UPDATE f2_lane_control SET paused_until_ms=? "
                             "WHERE lane=?",(until_ms,lane))
+            self.audit.append(lane=lane,job_id=0,code="LANE_PAUSED",
+                              now_ms=now_ms,status="PAUSED")
             self.db.execute("COMMIT")
             return {"status":"PAUSED","lane":lane,
                     "execution_enabled":False}
@@ -192,17 +201,34 @@ class DurableDispatcher:
                 return {"status":"RATE_LIMIT_PAUSE","execution_enabled":False}
             # An expired lease is never completed automatically. Its old
             # token becomes invalid; bounded attempts decide retry vs HOLD.
+            expired=self.db.execute("SELECT job_id,attempts FROM f2_jobs "
+                "WHERE lane=? AND status='CLAIMED' AND lease_expires_ms<=?",
+                (lane,now_ms)).fetchall()
             self.db.execute("UPDATE f2_jobs SET status=CASE WHEN "
                 "attempts>=? THEN 'HOLD' ELSE 'WAITING' END,"
                 "hold_reason=CASE WHEN attempts>=? THEN 'RETRY_LIMIT' ELSE '' END,"
                 "lease_token_sha=NULL,lease_owner=NULL,lease_expires_ms=NULL,"
                 "lease_started_ms=NULL WHERE lane=? AND status='CLAIMED' "
                 "AND lease_expires_ms<=?",(MAX_RETRIES,MAX_RETRIES,lane,now_ms))
+            for expired_id,attempts in expired:
+                held=attempts>=MAX_RETRIES
+                self.audit.append(lane=lane,job_id=expired_id,
+                    code="LEASE_EXPIRED_HOLD" if held else "LEASE_EXPIRED_RETRY",
+                    now_ms=now_ms,status="HOLD" if held else "WAITING")
+            dependency_held=self.db.execute("SELECT j.job_id FROM f2_jobs j "
+                "WHERE j.lane=? AND j.status='WAITING' "
+                "AND EXISTS (SELECT 1 FROM f2_dependencies dep JOIN f2_jobs p "
+                "ON p.job_id=dep.dependency_id WHERE dep.job_id=j.job_id "
+                "AND p.status='HOLD')",(lane,)).fetchall()
             self.db.execute("UPDATE f2_jobs SET status='HOLD',"
                 "hold_reason='DEPENDENCY_HELD' WHERE lane=? AND status='WAITING' "
                 "AND EXISTS (SELECT 1 FROM f2_dependencies dep JOIN f2_jobs p "
                 "ON p.job_id=dep.dependency_id WHERE dep.job_id=f2_jobs.job_id "
                 "AND p.status='HOLD')",(lane,))
+            for (blocked_id,) in dependency_held:
+                self.audit.append(lane=lane,job_id=blocked_id,
+                                  code="DEPENDENCY_HOLD",now_ms=now_ms,
+                                  status="HOLD")
             day=_day(now_ms)
             usage=self.db.execute("SELECT completed_cents,claims FROM "
                 "f2_daily_usage WHERE lane=? AND day=?",
@@ -220,6 +246,8 @@ class DurableDispatcher:
                     self.db.execute("UPDATE f2_jobs SET status='HOLD',"
                          "hold_reason='SOURCE_REF_CHANGED' WHERE job_id=?",
                          (job_id,))
+                    self.audit.append(lane=lane,job_id=job_id,
+                        code="SOURCE_CHANGED_HOLD",now_ms=now_ms,status="HOLD")
                     continue
                 if usage[1]>=self.max_jobs_per_day:
                     self.db.execute("COMMIT")
@@ -236,6 +264,9 @@ class DurableDispatcher:
                 self.db.execute("INSERT INTO f2_daily_usage(lane,day,claims)"
                     " VALUES(?,?,1) ON CONFLICT(lane,day) DO UPDATE "
                     "SET claims=claims+1",(lane,day))
+                self.audit.append(lane=lane,job_id=job_id,
+                    code="LEASE_CLAIMED_SIMULATION",now_ms=now_ms,
+                    status="CLAIMED")
                 self.db.execute("COMMIT")
                 return {"status":"CLAIMED_SIMULATION_ONLY","job_id":job_id,
                         "lease_token":token,"expires_ms":now_ms+lease_ms,
@@ -271,6 +302,8 @@ class DurableDispatcher:
                 raise Rejected("HOLD_LEASE_MAX_ELAPSED")
             self.db.execute("UPDATE f2_jobs SET lease_expires_ms=? "
                             "WHERE job_id=?",(expiry,job_id))
+            self.audit.append(lane=row[0],job_id=job_id,
+                 code="LEASE_HEARTBEAT",now_ms=now_ms,status="CLAIMED")
             self.db.execute("COMMIT")
             return {"status":"HEARTBEAT_RECEIPT_ONLY",
                     "expires_ms":expiry,"execution_enabled":False}
@@ -300,6 +333,9 @@ class DurableDispatcher:
                 "completed_cents) VALUES(?,?,?) ON CONFLICT(lane,day) "
                 "DO UPDATE SET completed_cents=completed_cents+?",
                 (row[0],row[6],cost_cents,cost_cents))
+            self.audit.append(lane=row[0],job_id=job_id,
+                code="SIMULATED_SETTLEMENT",now_ms=now_ms,
+                status=newstatus,cents=cost_cents)
             self.db.execute("COMMIT")
             return {"status":newstatus,"execution_enabled":False}
         except BaseException:
@@ -312,4 +348,5 @@ class DurableDispatcher:
         return {"schema":"kingdom.foundry.dispatcher.v1",
                 "queue":dict(jobs),"executor":"DISABLED",
                 "model_calls":0,"shell_commands":0,
-                "finance":"DENIED","deployments":0}
+                "finance":"DENIED","deployments":0,
+                "audit":self.audit.verify()}

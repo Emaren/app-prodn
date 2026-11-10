@@ -28,6 +28,8 @@ jobs:
           python-version: "3.12"
       - name: F0-F5 original and hardened ledger, scheduler, triage and benchmark
         run: python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+      - name: F6 adversarial concurrent claims, append-only audit and disposable SIGKILL
+        run: python3 -m unittest discover -s tools/kingdom-foundry/tests -p 'test_foundry_audit_concurrency.py' -v
       - name: Offline deterministic known-answer rule benchmark, no weights
         run: |
           python3 - <<'PY'
