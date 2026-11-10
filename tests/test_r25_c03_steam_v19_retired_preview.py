@@ -13,7 +13,27 @@ UNIT=ROOT/"scripts/release/r25_steam_refresh_traffic_v19.service"
 spec=importlib.util.spec_from_file_location("source_reviewed_r25_v19",SRC)
 v=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(v)
-PROOF=json.loads((Path.home()/".cache/aoe2war/session-b-c03-v18-roundtrip-isolated-20261109/r24-preview-quiesce-verified.json").read_text())
+# CI/pytest must never depend on a private owner-host receipt path. This
+# minimal in-memory model is synthetic, intentionally NOT a real production
+# receipt and NOT hash-equivalent to the physical root-sealed evidence.
+# Only the production V19 guard accepts exact SHA256-pinned root evidence.
+PROOF={
+ "schema":"aoe2war.app.c03.legacy-r24-unrouted-quiesce.v1",
+ "status":"PASS_UNROUTED_3031_R24_QUIESCED_3030_3032_UNCHANGED",
+ "C03_APP_HANDOFF_ACCEPTED":False,
+ "financial_permissions_modified":False,
+ "money_moved":False,
+ "nginx_3031_selectors_before":0,
+ "active_3031_connections_before":0,
+ "r24_after_active":"inactive",
+ "service_enabled":"disabled",
+ "before":{
+  "r24_pid":"1483304", "prod_pid":"465815",
+  "old_pid":"2625090",
+  "steam_sha":"8dae3ac8f4f9ac0d01fed6ddde4a82bb0e6de28ced2553eba9c24349533c3032",
+  "web_sha":"f3b30861df399f0debcf702ed9ac60b7a00415f77700b5784b2b4496b6b5d56a",
+ },
+}
 OLD_SRC=ROOT/"scripts/release/r25_steam_refresh_traffic_v18.py"
 
 
