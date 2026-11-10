@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-public-live-explicit-api-20261109` at `043f95fcb48e268ab304dddeb610050529703e40`
+Implementation baseline: `session-b/r25-media-projection-20261110` at `881b945f88b776a15c64b22f4025b8b45b5bbcca`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
