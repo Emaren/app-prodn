@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dac236df28f4605f7952aa62430ec90b820122a2a036066a8573e353bebae7f5",
+      "sha256": "195628196d1a54c1bc46579ae4b7a7f02b788313b9d0f468f8a230025c75247b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3086,7 +3086,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/r25-sniper-one-use-importer-20261110",
-    "commit": "1b3b018864fcd97c123c3a510b23cd49d0af642f"
+    "commit": "3ae421dd2d5bbd17e5b7780e6908c56ee943d839"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
