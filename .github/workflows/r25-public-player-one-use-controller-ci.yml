@@ -29,7 +29,8 @@ jobs:
           python3 -B -m unittest -v \
             tests.test_r25_public_player_artifact_qualification_v1 \
             tests.test_r25_public_player_same_slot_preflight_v1 \
-            tests.test_r25_public_player_one_use_cutover_v1
+            tests.test_r25_public_player_one_use_cutover_v1 \
+            tests.test_r25_public_player_phase_permits_v2
       - name: Source never has an implicit financial activation path
         run: |
           python3 -B - <<'PY'
@@ -40,6 +41,10 @@ jobs:
           ast.parse(source)
           assert 'STEAM_V20_EXACT_ACTIVE_PROFILE_INCOMPATIBLE_WITH_PLAYER_BUILD' in source
           assert 'require_steam_active_target_compatible()' in source
+          assert 'approved_phase' in source
+          assert 'STAGE_ONLY' in source and 'ACTIVATE_ONLY' in source
+          assert 'stage_permit_sha256' in source and 'staged_event_sha256' in source
+          assert 'activation_nonce' in source and 'stage_nonce' in source
           assert 'codex_financial_capture_active' in source
           assert 'HOLD:R25_PUBLIC_PLAYER' in source
           assert 'no_legacy_3030_public_reroute' in source

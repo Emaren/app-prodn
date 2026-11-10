@@ -45,6 +45,8 @@ def proof():
  "approved_candidate_unit_sha256":v.PUBLIC_PLAYER_UNIT_SHA,
  "controller_sha256":v.PLAYER_CONTROLLER_SHA,"ci_archive_sha256":v.PLAYER_CI_ARCHIVE_SHA,
  "allowed_operation":"ONE_USE_RESTRICTED_3032_ONLY",
+ "approved_phase":"STAGE_ONLY",
+ "approval_nonce":"1"*32,
  "codex_financial_capture_active":False,
  "financial_writers_authorized":False,"web_financial_mutations_authorized":False,
  "managed_avatar_handles":["user-u-1301e0492fdf4a229d941940413497e1-featured",
@@ -54,7 +56,8 @@ def proof():
  previous="0"*64
  for num,(state,data) in enumerate([
  ("PREPARED",{"original_web_pid":"701398","unit_sha256":v.NEW_UNIT_SHA,
-             "permit_sha256":sha(raws["permit"])}),
+             "permit_sha256":sha(raws["permit"]),
+             "permit_phase":"STAGE_ONLY","stage_nonce":"1"*32}),
  ("EXTRACTING",{}),
  ("STAGED",{"files_and_links":45046,"source":p["source"],"build":p["build"],
             "created_empty_bind_targets":[".next/cache","public/downloads"]})
@@ -117,6 +120,22 @@ class GenuineStaging(unittest.TestCase):
   r=v.player_stage_proof(read=self.reader,list_entries=lambda:["0001.json","0002.json","0003.json"])
   self.assertEqual(r["origin_sha"],sha(self.raws["0003.json"]))
   self.assertEqual(r["overlay_sha"],v.PLAYER_CI_OVERLAY_SHA)
+ def test_stage_only_receipt_cannot_be_recast_as_activation(self):
+  obj=json.loads(self.raws["permit"])
+  obj["approved_phase"]="ACTIVATE_ONLY"
+  obj["approval_nonce"]="2"*32
+  self.raws["permit"]=encode(obj)
+  self.rechained()
+  with self.assertRaisesRegex(RuntimeError,"PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED"):
+   v.player_stage_proof(read=self.reader,
+                        list_entries=lambda:["0001.json","0002.json","0003.json"])
+ def test_stage_nonce_tampering_even_with_correct_chain_fails(self):
+  self.change("0001.json",lambda x:x["data"].update(stage_nonce="f"*32))
+  self.change("0002.json",lambda x:x.update(prev_sha256=sha(self.raws["0001.json"])))
+  self.change("0003.json",lambda x:x.update(prev_sha256=sha(self.raws["0002.json"])))
+  with self.assertRaisesRegex(RuntimeError,"PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED"):
+   v.player_stage_proof(read=self.reader,
+                        list_entries=lambda:["0001.json","0002.json","0003.json"])
  def test_missing_genuine_stage_is_a_real_hold(self):
   del self.raws["0003.json"]
   with self.assertRaises(KeyError):v.player_stage_proof(read=self.reader,list_entries=lambda:["0001.json","0002.json","0003.json"])

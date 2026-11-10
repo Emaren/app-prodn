@@ -157,7 +157,12 @@ class Activation(TestCase):
 
     def test_successful_activation_keeps_rollback_window_open(self):
         with patch.object(c,"read_post_state",return_value={"new_pid":"9999"}),patch.object(c,"check_public",return_value={"public_probes":18,"managed_portraits":3}):
-            result=c.activate({"managed_avatar_handles":HANDLE})
+            result=c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY",
+                            "approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,
+                            "stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64})
         self.assertEqual(result["status"],"PASS_PUBLIC_PLAYER_RELEASE_DEPLOYED")
         self.assertIn("COMPLETED",self.events)
         self.assertNotIn("ROLLED_BACK",self.events)
@@ -166,31 +171,56 @@ class Activation(TestCase):
         self.mock.fail_start=True
         with patch.object(c,"rollback_unit",return_value={"status":"PASS_RESTRICTED_3032_ROLLBACK"}):
             with self.assertRaisesRegex(c.Hold,"ORIGINAL_RESTORED"):
-                c.activate({"managed_avatar_handles":HANDLE})
+                c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY",
+                            "approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,
+                            "stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64})
         self.assertIn("RECOVERY_INTENT",self.events)
         self.assertNotIn("COMPLETED",self.events)
     def test_steam_readmission_failure_forces_rollback(self):
         with patch.object(c,"read_post_state",side_effect=c.Hold("STEAM_READMISSION_FAILED")),patch.object(c,"rollback_unit",return_value={"status":"PASS_RESTRICTED_3032_ROLLBACK"}):
             with self.assertRaisesRegex(c.Hold,"ORIGINAL_RESTORED"):
-                c.activate({"managed_avatar_handles":HANDLE})
+                c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY",
+                            "approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,
+                            "stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64})
         self.assertIn("RECOVERY_INTENT",self.events)
         self.assertNotIn("COMPLETED",self.events)
     def test_https_failed_after_installation_triggers_restore(self):
         with patch.object(c,"read_post_state",return_value={"new_pid":"100"}),patch.object(c,"check_public",side_effect=c.Hold("HTTPS_CONTENT_DRIFT")),patch.object(c,"rollback_unit",return_value={"status":"PASS_RESTRICTED_3032_ROLLBACK"}):
             with self.assertRaisesRegex(c.Hold,"ORIGINAL_RESTORED"):
-                c.activate({"managed_avatar_handles":HANDLE})
+                c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY",
+                            "approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,
+                            "stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64})
         self.assertIn("CANDIDATE_STARTED",self.events)
         self.assertNotIn("PUBLIC_VERIFIED",self.events)
     def test_unrecoverable_restart_is_explicit_fail_shut_hold(self):
         self.mock.fail_start=True
         with patch.object(c,"rollback_unit",side_effect=c.Hold("RESTORE_FAILED")):
             with self.assertRaisesRegex(c.Hold,"AUTO_ROLLBACK_FAILED"):
-                c.activate({"managed_avatar_handles":HANDLE})
+                c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY",
+                            "approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,
+                            "stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64})
         self.assertIn("FAIL_SHUT_HOLD",self.events)
     def test_competing_writer_before_activation_detected(self):
         with patch.object(c.host_guard,"evaluate",side_effect=c.host_guard.Hold("UNIT_CHANGED")):
             with self.assertRaises(c.host_guard.Hold):
-                c.activate({"managed_avatar_handles":HANDLE})
+                c.activate({"managed_avatar_handles":HANDLE,
+                            "approved_phase":"ACTIVATE_ONLY",
+                            "approval_nonce":"2"*32,
+                            "_permit_sha":"a"*64,
+                            "stage_permit_sha256":"b"*64,
+                            "staged_event_sha256":"c"*64})
         self.assertNotIn("STOP_INTENT",self.events)
 
 class SteamV20ExactCompatibility(TestCase):
@@ -366,17 +396,20 @@ class GenuinePermitBoundaries(TestCase):
             "codex_financial_capture_active":False,
             "financial_writers_authorized":False,"web_financial_mutations_authorized":False,
             "allowed_operation":"ONE_USE_RESTRICTED_3032_ONLY",
+            "approved_phase":"STAGE_ONLY","approval_nonce":"1"*32,
             "issued_at":start.isoformat().replace("+00:00","Z"),
             "expires_at":end.isoformat().replace("+00:00","Z"),
             "managed_avatar_handles":HANDLE,
             "central_comment_url":"https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6774289832",
         }
         return obj
-    def run_permit(self,obj,phase="activate",sha_override=None):
+    def run_permit(self,obj,phase="stage",sha_override=None,path=None):
         raw=c.canonical(obj)+b"\n"
+        where=path or (c.STAGE_PERMIT_PATH if phase=="stage"
+                       else c.ACTIVATE_PERMIT_PATH)
         # Entire object is synthetic, not a real owner approval.
         with patch.object(c,"require_root",return_value=None),patch.object(c,"read_safe",return_value=raw):
-            return c.permit(c.PERMIT_PATH,sha_override or c.sha(raw),phase)
+            return c.permit(where,sha_override or c.sha(raw),phase)
     def test_synthetic_matching_permit_exact_fields(self):
         self.assertEqual(self.run_permit(self.make())["approved_source_sha"],c.CANDIDATE)
     def test_mismatched_source_never_authorizes_cutover(self):
@@ -389,9 +422,10 @@ class GenuinePermitBoundaries(TestCase):
             self.run_permit(obj)
     def test_expired_activation_not_rescued_by_rollback_right(self):
         obj=self.make(expired=True)
-        with self.assertRaisesRegex(c.Hold,"PERMIT_EXPIRED_FOR_ACTIVATION"):
-            self.run_permit(obj,phase="activate")
-        self.assertEqual(self.run_permit(obj,phase="rollback")["approved_source_sha"],c.CANDIDATE)
+        with self.assertRaisesRegex(c.Hold,"PERMIT_UNEXPECTED_PHASE_LOCATION"):
+            self.run_permit(obj,phase="activate",path=c.STAGE_PERMIT_PATH)
+        self.assertEqual(self.run_permit(obj,phase="recover",
+                         path=c.STAGE_PERMIT_PATH)["approved_source_sha"],c.CANDIDATE)
     def test_wrong_permit_digest_rejected(self):
         with self.assertRaisesRegex(c.Hold,"PERMIT_BYTES_NOT_CENTRAL_PINNED"):
             self.run_permit(self.make(),sha_override="e"*64)

@@ -77,7 +77,9 @@ VALID_EVENTS=("PREPARED","EXTRACTING","STAGED","STOP_INTENT","WEB_STOPPED",
               "CANDIDATE_STARTED","PUBLIC_VERIFIED","COMPLETED",
               "RECOVERY_INTENT","ROLLED_BACK","ABORTED","FAIL_SHUT_HOLD")
 HEX64=re.compile(r"^[0-9a-f]{64}$")
-PERMIT_PATH=Path("/root/aoe2war-public-player-6662c33a-release-permit.json")
+STAGE_PERMIT_PATH=Path("/root/aoe2war-public-player-6662c33a-stage-permit.json")
+ACTIVATE_PERMIT_PATH=Path("/root/aoe2war-public-player-6662c33a-activate-permit.json")
+NONCE32=re.compile(r"^[0-9a-f]{32}$")
 INPUT_PATH=Path("/root/aoe2war-public-player-6662c33a-ci-input")
 
 class Hold(Exception):pass
@@ -140,7 +142,20 @@ def parse_utc(s):
 def now():return dt.datetime.now(dt.timezone.utc)
 def permit(path,expected_sha,operation,read_only=False):
     require_root()
-    need(path==PERMIT_PATH,"PERMIT_UNEXPECTED_LOCATION")
+    need(operation in ("stage","activate","rollback","recover"),
+         "PERMIT_OPERATION_UNKNOWN")
+    stage_operation=operation=="stage"
+    # Rollback and interruption recovery retain *independent* permitted scope:
+    # recover selects its physical phase using the immutable existing journal.
+    expected_path=(STAGE_PERMIT_PATH if stage_operation else ACTIVATE_PERMIT_PATH)
+    if operation=="recover":
+        rows=load_events()
+        crossed=any(row["state"] in ("STOP_INTENT","WEB_STOPPED",
+                      "UNIT_SWAP_INTENT","UNIT_SWAPPED","START_INTENT",
+                      "CANDIDATE_STARTED","PUBLIC_VERIFIED","COMPLETED")
+                    for row in rows)
+        expected_path=ACTIVATE_PERMIT_PATH if crossed else STAGE_PERMIT_PATH
+    need(path==expected_path,"PERMIT_UNEXPECTED_PHASE_LOCATION")
     need(bool(HEX64.fullmatch(expected_sha or "")),"PERMIT_SHA_MISSING")
     raw=read_safe(path,32000)
     need(sha(raw)==expected_sha,"PERMIT_BYTES_NOT_CENTRAL_PINNED")
@@ -155,7 +170,10 @@ def permit(path,expected_sha,operation,read_only=False):
          obj.get("codex_financial_capture_active") is False and
          obj.get("financial_writers_authorized") is False and
          obj.get("web_financial_mutations_authorized") is False and
-         obj.get("allowed_operation")=="ONE_USE_RESTRICTED_3032_ONLY",
+         obj.get("allowed_operation")=="ONE_USE_RESTRICTED_3032_ONLY" and
+         obj.get("approved_phase")==("STAGE_ONLY" if path==STAGE_PERMIT_PATH
+                                     else "ACTIVATE_ONLY") and
+         bool(NONCE32.fullmatch(str(obj.get("approval_nonce","")))),
          "PERMIT_FIELDS_DRIFT")
     start,expiry=parse_utc(obj.get("issued_at")),parse_utc(obj.get("expires_at"))
     need((expiry-start).total_seconds()>0 and (expiry-start).total_seconds()<=3600,
@@ -173,6 +191,33 @@ def permit(path,expected_sha,operation,read_only=False):
          "PERMIT_MANAGED_AVATAR_SCOPE")
     need(bool(re.fullmatch(r"https://github.com/Emaren/app-prodn/(?:issues/1280|pull/1300|pull/1307)#issuecomment-[0-9]{9,}",str(obj.get("central_comment_url","")))),
          "PERMIT_CENTRAL_APPROVAL_REFERENCE")
+    if path==ACTIVATE_PERMIT_PATH:
+        need(bool(HEX64.fullmatch(str(obj.get("stage_permit_sha256","")))) and
+             bool(HEX64.fullmatch(str(obj.get("staged_event_sha256","")))) and
+             bool(NONCE32.fullmatch(str(obj.get("stage_nonce","")))),
+             "ACTIVATION_STAGE_BINDING_MISSING")
+        if operation in ("activate","rollback","recover"):
+            events=load_events()
+            need(len(events)>=3 and
+                 [e["state"] for e in events[:3]]==
+                   ["PREPARED","EXTRACTING","STAGED"],
+                 "ACTIVATION_STAGING_EVENTS_UNAVAILABLE")
+            stage_event=events[0]["data"]
+            need(stage_event.get("permit_phase")=="STAGE_ONLY" and
+                 stage_event.get("stage_nonce")==obj["stage_nonce"] and
+                 stage_event.get("permit_sha256")==obj["stage_permit_sha256"] and
+                 obj["approval_nonce"]!=obj["stage_nonce"] and
+                 sha(read_safe(EVENTS/"0003.json",65536))==obj["staged_event_sha256"],
+                 "ACTIVATION_STAGE_NONCE_OR_RECEIPT_DRIFT")
+            need(sha(read_safe(STAGE_PERMIT_PATH,32000))==obj["stage_permit_sha256"],
+                 "ACTIVATION_STAGING_PERMIT_CHANGED")
+        # Never permit an activation if phase binding is missing or reuses the
+        # stage-only permit, even if an attacker reproduces matching source SHA.
+    else:
+        need("stage_nonce" not in obj and
+             "staged_event_sha256" not in obj and
+             "stage_permit_sha256" not in obj,
+             "STAGE_PERMIT_CONTAINS_ACTIVATION_FIELDS")
     # The root-controlled permit's SHA must be supplied from an independently
     # reviewed Central approval; this parser does not claim cryptographic
     # GitHub author attestation or replace the owner/central human decision.
@@ -509,12 +554,16 @@ def pre_approval_stage(stage_input,permit_obj):
     need(not NEW_PATH.exists() and not NEW_PATH.is_symlink() and
          not STAGE.exists() and not STAGE.is_symlink(),"CANDIDATE_PATH_PREEXISTS")
     archive_guard.verify_package(stage_input)
-    ensure_dir(JOURNAL,create=True)
+    ensure_dir(JOURNAL)
+    need(not EVENTS.exists() and not ORIGINAL_UNIT.exists(),
+         "EXISTING_STAGING_JOURNAL_OR_BACKUP")
     os.mkdir(EVENTS,0o700);fsync_dir(JOURNAL)
     write_once(ORIGINAL_UNIT,unit)
     append_event("PREPARED",{"original_web_pid":facts["web_pid"],
                              "unit_sha256":sha(unit),
-                             "permit_sha256":permit_obj["_permit_sha"]})
+                             "permit_sha256":permit_obj["_permit_sha"],
+                             "permit_phase":"STAGE_ONLY",
+                             "stage_nonce":permit_obj["approval_nonce"]})
     append_event("EXTRACTING")
     extraction=extract_verified(stage_input,STAGE)
     no_replace(STAGE,NEW_PATH)
@@ -550,7 +599,14 @@ def activate(obj):
     # source does not recognize the PR1300 build; never hope timer renewal
     # will work and plan to roll back later.
     require_steam_active_target_compatible()
-    append_event("STOP_INTENT")
+    need(obj.get("approved_phase")=="ACTIVATE_ONLY" and
+         bool(NONCE32.fullmatch(str(obj.get("approval_nonce","")))),
+         "ACTIVATION_NONCE_OR_PHASE_NOT_ACCEPTED")
+    append_event("STOP_INTENT",{
+        "activate_permit_sha256":obj["_permit_sha"],
+        "activation_nonce":obj["approval_nonce"],
+        "stage_permit_sha256":obj["stage_permit_sha256"],
+        "staged_event_sha256":obj["staged_event_sha256"]})
     try:
         cmd(["systemctl","stop",WEB],75)
         need(prop(WEB,"ActiveState") in ("inactive","failed") and
@@ -653,11 +709,23 @@ def main():
             print(json.dumps(inspect(),sort_keys=True));return
         phase=("stage" if args.stage else "activate" if args.activate else
                "rollback" if args.rollback else "recover")
-        obj=permit(PERMIT_PATH,args.permit_sha256,phase)
+        permit_path=(STAGE_PERMIT_PATH if args.stage else ACTIVATE_PERMIT_PATH)
+        if args.recover:
+            # Recover uses the exact original stage permit before STOP_INTENT,
+            # and the independent activation permit after crossing it.
+            rows=load_events()
+            crossed=any(row["state"] in ("STOP_INTENT","WEB_STOPPED",
+                    "UNIT_SWAP_INTENT","UNIT_SWAPPED","START_INTENT",
+                    "CANDIDATE_STARTED","PUBLIC_VERIFIED","COMPLETED")
+                    for row in rows)
+            permit_path=ACTIVATE_PERMIT_PATH if crossed else STAGE_PERMIT_PATH
+        obj=permit(permit_path,args.permit_sha256,phase)
         obj["_permit_sha"]=args.permit_sha256
         if args.stage:
             need(not JOURNAL.exists(),"ONE_USE_JOURNAL_ALREADY_EXISTS")
-            result=pre_approval_stage(INPUT_PATH,obj)
+            ensure_dir(JOURNAL,create=True)
+            with Exclusive():
+                result=pre_approval_stage(INPUT_PATH,obj)
         else:
             with Exclusive():
                 if args.activate:result=activate(obj)

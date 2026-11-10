@@ -67,7 +67,7 @@ PLAYER_CI_OVERLAY_SHA = '1101e3ca5cc9c1ecefabadc848e5d7a20793d6d0d89031a13780558
 PLAYER_CI_ARCHIVE_SHA = '37987d4e08682a86549e7cd89bb0792ef2e4b1652ff30c85abed964190b9b5a4'
 PLAYER_CI_MANIFEST_SHA = 'e0502a16e0936689c39c0d6f1276913c9f19ab213a2477af4fba7ef05282e845'
 PLAYER_CI_TREE_SHA = '5c06b08b549c17af0396f355d46897c1935463ce38b2aecf8ac2693f2f74f64f'
-PLAYER_CONTROLLER_SHA = '1b7c0a8e309007cdbe1774cdf3f2458596c888c0841a84a2e910343929492d01'
+PLAYER_CONTROLLER_SHA = 'e5e250582846cbb211ce2720919f6984efc21564d9f2307d5f5248948f965204'
 LOCK = ROOT/'steam-refresh-v22.lock'
 C03_HELPER = P('/usr/local/lib/aoe2war-web-prod/r25_c03_observer_oneshot_guard_v9.py')
 C03_HELPER_SHA = '39a7929803d64d2998cd1fa8984096533377d08c7af28106a1ae4b8ecba778f2'
@@ -185,6 +185,13 @@ def player_stage_proof(read=verified, list_entries=None):
        and permit.get('controller_sha256')==PLAYER_CONTROLLER_SHA
        and permit.get('ci_archive_sha256')==PLAYER_CI_ARCHIVE_SHA
        and permit.get('allowed_operation')=='ONE_USE_RESTRICTED_3032_ONLY'
+       and permit.get('approved_phase')=='STAGE_ONLY'
+       and type(permit.get('approval_nonce')) is str
+       and bool(re.fullmatch(r'[0-9a-f]{32}',permit['approval_nonce']))
+       and events[0]['data'].get('permit_phase')=='STAGE_ONLY'
+       and events[0]['data'].get('stage_nonce')==permit['approval_nonce']
+       and 'stage_permit_sha256' not in permit
+       and 'staged_event_sha256' not in permit
        and permit.get('codex_financial_capture_active') is False
        and permit.get('financial_writers_authorized') is False
        and permit.get('web_financial_mutations_authorized') is False

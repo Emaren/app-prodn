@@ -40,6 +40,8 @@ jobs:
           assert hashlib.sha256(b).hexdigest()=="44ad57ded3f26690eccf674297c4bc4aa00c0ae2ed563f631001ba6d2de1232a"
           assert hashlib.sha256(b.replace(new,old)).hexdigest()=="b976a10d5cc8b3c199974f1b85a912a67323e8b57b4f69325a1061428d20deb2"
           assert "web-prod-v22" in s and "PLAYER_STAGE_JOURNAL" in s
+          assert "PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED" in s
+          assert "STAGE_ONLY" in s and "stage_nonce" in s
           assert "v22_timer_exclusive_lock(refresh_once)" in s
           assert "lease_expiry_readonly_wait()" in s
           assert "C01_DELTA_HELPER_SHA256" in s and "FIN_SNAPSHOT" in s
@@ -47,4 +49,6 @@ jobs:
           PY
       - name: Test positive/hostile CI overlay, stage receipts, timer races, lease GC and rollback
         run: |
-          python3 -B -m unittest -v tests.test_r25_steam_dual_web_builds_v22
+          python3 -B -m unittest -v \
+            tests.test_r25_steam_dual_web_builds_v22 \
+            tests.test_r25_public_player_phase_permits_v2
