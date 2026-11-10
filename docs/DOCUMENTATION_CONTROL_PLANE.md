@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/traffic-watcher-storage-readmodels-20261110` at `565075dc791c9d538638416b0f577403694c5e3f`
+Implementation baseline: `session-c/traffic-watcher-storage-readmodels-20261110` at `f62a132c64862115628b84bce02ee574171da62b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

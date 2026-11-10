@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "25cd3e36e919bed7207d5da29fbf8847d8f837121afdc48d87577389752f4cb3",
+      "sha256": "b02ca61cc1a05b07c1dae08d6e67754e472d5dcda2c6fdee9c4992b27544016b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2328,7 +2328,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "5ce8cc31d29c6ef7b0d581fb66022f887b2dba96fc001b5f995334652e988aaf",
+      "sha256": "643a14e2bc47b8e0ef3a98f4745b1f7c783d2080a336f91605684a369a66556e",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3179,7 +3179,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/traffic-watcher-storage-readmodels-20261110",
-    "commit": "565075dc791c9d538638416b0f577403694c5e3f"
+    "commit": "f62a132c64862115628b84bce02ee574171da62b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

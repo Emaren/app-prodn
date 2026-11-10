@@ -69,6 +69,11 @@ runtime. The current public Traffic original chart is not replaced.
 
 ## Offline acceptance and HTTP behavior
 
+The dedicated workflow now fetches full Git history, rather than a
+default one-commit PR checkout, so docs_v2_check.py can independently
+prove the recorded implementation baseline commit is a true ancestor.
+This does NOT bypass or replace the existing documentation verifier.
+
 The 14 source contract tests run with Node builtin test runner; existing
 9 PAPER seam tests and 88-route census continue separately.
 The lightweight session-c-observability-offline GitHub workflow runs the
