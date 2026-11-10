@@ -1,0 +1,12 @@
+{
+  "schema_version": "kingdom.foundry.event.v0",
+  "event_id": "traffic-2026-11-09-rollup-gap-observation-001",
+  "observed_utc": "2026-11-10T03:30:00Z",
+  "source": "traffic-rollup",
+  "lane": "PRODUCT_C",
+  "kind": "traffic_gap",
+  "severity": "warning",
+  "source_sha": "unknown",
+  "summary": "Canonical history not published beyond the certified data window",
+  "evidence_ref": "receipt://traffic/pending-canonical-certification"
+}
