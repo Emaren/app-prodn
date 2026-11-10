@@ -1,0 +1,61 @@
+name: Finance Read-Side Tripwire (observational only)
+
+on:
+  pull_request:
+    paths:
+      - 'app/api/bets/route.ts'
+      - 'app/api/live-games/route.ts'
+      - 'app/api/header-summary/route.ts'
+      - 'lib/lobbySnapshot.ts'
+      - 'lib/warChest.ts'
+      - 'lib/betMarketEnsureQueue.ts'
+      - 'lib/bets.ts'
+      - 'scripts/aoe2_financial_read_tripwire.py'
+      - 'tests/test_aoe2_financial_read_tripwire.py'
+      - '.github/workflows/financial-read-tripwire.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-tripwire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run negative/false-positive unit tests
+        run: python3 -m unittest discover -s tests -p 'test_aoe2_financial_read_tripwire.py' -v
+      - name: Inspect actual checkout source without financial side effects
+        run: |
+          python3 scripts/aoe2_financial_read_tripwire.py --root . --output financial-read-tripwire.json > /dev/null
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads(Path("financial-read-tripwire.json").read_text())
+          lines=[
+              "## Finance read-side source tripwire (NOT a release gate)",
+              "",
+              "**Status:** " + data["status"],
+              "**Known public-read modules with wakeups:** " + str(data["known_public_read_wakeup_count"]),
+              "**Unknown source modules:** " + str(len(data["unknown_source_paths"])),
+              "",
+              "These are source observations only. This job succeeding does not mean finance-safe, Wolo-authorized or ready to deploy.",
+              "Use python3 scripts/aoe2_financial_read_tripwire.py --check only when actively requiring no known wakeups.",
+          ]
+          for r in data["public_reads"]:
+              lines.append("- " + r["path"] + ": " + str(len(r["calls"])) + " known invocation(s)")
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a") as out:
+              out.write("\n".join(lines) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: financial-read-side-source-evidence
+          path: financial-read-tripwire.json
+          retention-days: 14
+          if-no-files-found: error
