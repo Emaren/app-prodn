@@ -8,12 +8,16 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-11-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Watcher 1.6.4 Download Artwork
+
+## November 10, 2026 review boundary
+
+This document retains the fixed October 10 v1.6.4 artwork and historical asset hashes. At 2026-11-10 02:40 UTC, HEL1's public `/api/watcher/release` returned HTTP 200 and advertised **v1.6.5**. This artwork record is **not** a new v1.6.5 artifact, signature, installer, or route certification. Check the separately approved current-release manifest before changing download targets.
 
 Scope: `/download` extreme presentation only, October 10, 2026
 release artwork refresh. Do not change the watcher release manifest,
