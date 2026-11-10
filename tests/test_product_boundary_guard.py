@@ -67,7 +67,7 @@ class BoundaryTests(unittest.TestCase):
             checkout.mkdir(parents=True)
             target = policy.authorize_output("artifacts/product-boundary/receipt.json",
                                              checkout, root / "PRODUCT")
-            self.assertEqual(target, checkout / "artifacts/product-boundary/receipt.json")
+            self.assertEqual(target, checkout.resolve(strict=True) / "artifacts/product-boundary/receipt.json")
             self.assertFalse(target.exists(), "policy must not write any artifact")
 
     def test_reject_external_and_disguised_outputs(self):

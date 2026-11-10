@@ -130,7 +130,7 @@ def validate_git_pointer(checkout: Path, product_root: Path, repo_name: str) -> 
     if marker.is_symlink():
         raise BoundaryHold("SYMLINK_GIT_MARKER")
     if marker.is_dir():
-        if marker.resolve(strict=True) != checkout / ".git":
+        if marker.resolve(strict=True) != checkout.resolve(strict=True) / ".git":
             raise BoundaryHold("GIT_DIRECTORY_ESCAPE")
         return
     if not marker.is_file():
@@ -186,7 +186,7 @@ def check_checkout(checkout: Path, repo_name: str, expected_sha: str,
     if checkout.is_symlink() or checkout.stat().st_uid != (checkout / ".git").stat().st_uid:
         raise BoundaryHold("CHECKOUT_OWNER_OR_LINK_MISMATCH")
     validate_git_pointer(checkout, product_root, repo_name) if not ci else None
-    if git(checkout, "rev-parse", "--show-toplevel") != str(checkout.resolve(strict=True)):
+    if Path(git(checkout, "rev-parse", "--show-toplevel")).resolve(strict=True) != checkout.resolve(strict=True):
         raise BoundaryHold("WORKTREE_ROOT_MISMATCH")
     origin = git(checkout, "remote", "get-url", "origin")
     if origin not in ORIGINS[repo_name]:
