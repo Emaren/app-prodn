@@ -21,7 +21,8 @@ class BoundaryTests(unittest.TestCase):
         for value in ("scripts/product_boundary_guard.py",
                       "tests/test_product_boundary_guard.py",
                       ".github/workflows/product-boundary.yml",
-                      "src/paper/price.ts", "docs/product-report.md"):
+                      "src/paper/price.ts", "docs/product-report.md",
+                      "tests/test_player_profile.py"):
             with self.subTest(value=value):
                 self.assertEqual(policy.authorize_source(value), value)
 
