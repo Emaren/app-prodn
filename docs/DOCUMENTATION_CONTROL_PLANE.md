@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-release-contracts-20261110` at `f75d6e2d20976b42b1301b08f82d910ff4f0f238`
+Implementation baseline: `session-b/r25-traffic-certification-20261110` at `1c3915a1ee73db70e1454b2074edef4862d49309`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

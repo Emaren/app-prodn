@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef666885f30f762968b36311526faf865e58c34c63603dc37f8e629762282ff7",
+      "sha256": "c51c864f6b097041572989373998c0dedf8df93ed7c3fb55baf569bb43aaf7d8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-release-contracts-20261110",
-    "commit": "f75d6e2d20976b42b1301b08f82d910ff4f0f238"
+    "branch": "session-b/r25-traffic-certification-20261110",
+    "commit": "1c3915a1ee73db70e1454b2074edef4862d49309"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
