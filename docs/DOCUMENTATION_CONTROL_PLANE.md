@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/foundry-f8-sanitized-collectors-20261110` at `38a18ba6e59d70388af623f67c910020622a335f`
+Implementation baseline: `session-c/foundry-f8-sanitized-collectors-20261110` at `ecb2bd51c3907c2f7ea8c1704113449a2c70aa35`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

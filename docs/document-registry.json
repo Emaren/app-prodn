@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "53ef687a2d29f6c6588d6de6f6acc5f13b92fa278998650e6321ca0bea0ab165",
+      "sha256": "622597d4f9862af8e1bb5e13d5c5fbc5882b70df3a61c7b3a8aa16c36d9afec9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3226,7 +3226,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/foundry-f8-sanitized-collectors-20261110",
-    "commit": "38a18ba6e59d70388af623f67c910020622a335f"
+    "commit": "ecb2bd51c3907c2f7ea8c1704113449a2c70aa35"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
