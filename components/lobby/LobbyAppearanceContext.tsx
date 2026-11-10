@@ -82,9 +82,12 @@ import {
 import {
   fetchSiteThemeCampaignState,
   saveThemeCampaignOverride,
+  SiteThemeCampaignUnavailableError,
+  type SiteThemeCampaignAvailability,
 } from "@/lib/siteThemeCampaignClient";
 
 type LobbyAppearanceContextValue = {
+  siteThemeCampaignAvailability: SiteThemeCampaignAvailability;
   themeKey: LobbyThemeKey;
   setThemeKey: (themeKey: LobbyThemeKey) => void;
   tileThemeKey: LobbyThemeKey;
@@ -116,6 +119,8 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
   const [siteThemeCampaign, setSiteThemeCampaign] =
     useState<SiteThemeCampaignControl | null>(null);
+  const [siteThemeCampaignAvailability, setSiteThemeCampaignAvailability] =
+    useState<SiteThemeCampaignAvailability>("loading");
   const [campaignOverrideThemeKey, setCampaignOverrideThemeKey] =
     useState<LobbyThemeKey | null>(null);
   const [tileThemeKey, setTileThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_TILE_THEME);
@@ -159,6 +164,9 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       needsAccountTimeDisplayDefaultMigration(user?.uid);
     setBrowserTimeZone(resolvedBrowserTimeZone);
     setAppearanceLoaded(false);
+    setSiteThemeCampaignAvailability("loading");
+    // A prior Steam UID's private override must never cross accounts.
+    setCampaignOverrideThemeKey(null);
 
     const hydrateAppearance = async () => {
       try {
@@ -166,11 +174,15 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setSiteThemeCampaign(campaignState.campaign);
         setCampaignOverrideThemeKey(campaignState.overrideThemeKey);
+        setSiteThemeCampaignAvailability("ready");
       } catch (error) {
-        console.warn("Failed to hydrate site theme campaign:", error);
         if (cancelled) return;
-        setSiteThemeCampaign(null);
-        setCampaignOverrideThemeKey(null);
+        // A 503 is unknown campaign state, not proof of campaign absence.
+        // Keep the last verified PUBLIC theme, never an old user's override.
+        setSiteThemeCampaignAvailability("unavailable");
+        if (!(error instanceof SiteThemeCampaignUnavailableError)) {
+          console.warn("Failed to hydrate site theme campaign:", error);
+        }
       }
 
       if (!user?.uid) {
@@ -256,21 +268,29 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    let cancelled = false;
 
     const interval = window.setInterval(() => {
       void fetchSiteThemeCampaignState()
         .then((state) => {
+          if (cancelled) return;
           setSiteThemeCampaign(state.campaign);
+          setSiteThemeCampaignAvailability("ready");
           if (user?.uid) {
             setCampaignOverrideThemeKey(state.overrideThemeKey);
           }
         })
         .catch((error) => {
-          console.warn("Failed to refresh site theme campaign:", error);
+          if (cancelled) return;
+          setSiteThemeCampaignAvailability("unavailable");
+          if (!(error instanceof SiteThemeCampaignUnavailableError)) {
+            console.warn("Failed to refresh site theme campaign:", error);
+          }
         });
     }, 60_000);
 
     return () => {
+      cancelled = true;
       window.clearInterval(interval);
     };
   }, [user?.uid]);
@@ -480,6 +500,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   return (
     <LobbyAppearanceContext.Provider
       value={{
+        siteThemeCampaignAvailability,
         themeKey,
         setThemeKey,
         tileThemeKey,
