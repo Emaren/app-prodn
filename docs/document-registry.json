@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ffeb62de4869ff674028d9f6403dd4109f8ec5628497209f5f46522da549b853",
+      "sha256": "0d1950f71d81e7e51dfe46fb9175b600987719b788f40699eb610e8592ce8d31",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2322,6 +2322,29 @@
         "ai-agents"
       ],
       "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.foundry-f7-private-command-readmodel",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_FOUNDRY_F7_PRIVATE_COMMAND_READMODEL.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "8d07ae47fd29461690923aa68485dfac73d9c01616b81ace72edd271bec318d0",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-foundry"
+      ],
+      "title": "Foundry F7 \u2014 Owner-private Central Command source and HOLD dashboard",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-only-session-c-source-review",
       "id": "aoe2war.app-prodn.kingdom-foundry-f1-f5-source-handoff",
       "owner": "aoe2war-web",
       "path": "docs/SESSION_C_KINGDOM_FOUNDRY_F1_F5_HANDOFF.md",
@@ -3166,7 +3189,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "023e73ef973bfa0156d93430ad9de3bb1e870531bda3966c2b755fd0419dbfc1",
+      "sha256": "cbd644ac52f2f25d0889c4fdf9f84b482be568922047bb5314ee8820b80551fa",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3179,8 +3202,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/foundry-f6-audit-race-20261110",
-    "commit": "5866bdf53299a36f70ebadda6a2198cf56495e07"
+    "branch": "session-c/foundry-f7-private-readmodel-20261110",
+    "commit": "4ccd049ac0f43b2bd0fb2ea0861ae8fcdefb46f4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

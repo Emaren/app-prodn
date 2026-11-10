@@ -77,3 +77,16 @@ and the [read-only workspace inventory](../../docs/SESSION_C_PRODUCT_INVENTORY_2
 F6 local test command:
 
     python3 -m unittest discover -s tools/kingdom-foundry/tests -v
+
+## F7 owner-private read-only Central Command surface
+
+Foundry F7 adds a bounded SQLite snapshot projection with local Git source,
+current HOLDs, severity, assigned PRODUCT lane, evidence and fixed permitted
+operator steps. Static responsive HTML is created only as a 0600 file in an
+existing owner-private PRODUCT directory. No public website route, server,
+LLM or execution permission is involved. See
+[F7 private dashboard handoff](../../docs/SESSION_C_FOUNDRY_F7_PRIVATE_COMMAND_READMODEL.md).
+
+Run offline:
+
+    python3 -m unittest discover -s tools/kingdom-foundry/tests -v
