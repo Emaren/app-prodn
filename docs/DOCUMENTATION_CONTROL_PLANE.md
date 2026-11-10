@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-v20-steam-sandbox-ro-20261110` at `c1a54811064b443cc0140c72f946b662d437714d`
+Implementation baseline: `session-b/c03-v20-steam-sandbox-ro-20261110` at `d5d2a75928b22b4fb722eda6ca42f2df250a040c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
