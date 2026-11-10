@@ -32,7 +32,8 @@ APPROVAL = re.compile(
     r"^https://github[.]com/Emaren/app-prodn/issues/1280#issuecomment-[0-9]+$"
 )
 KEYS = {
-    "schema", "repo", "pr", "branch", "source_sha", "artifact_sha256",
+    "schema", "repo", "pr", "branch", "base_branch", "base_sha",
+    "source_sha", "artifact_sha256",
     "rollback_source_sha", "rollback_sha256", "operation",
     "expires_at", "nonce", "approval_url", "ci_runs",
 }
@@ -74,7 +75,7 @@ def read_manifest(raw: bytes, now: datetime) -> dict:
         forbid("WRONG_SCHEMA_OR_REPOSITORY")
     if type(data["pr"]) is not int or data["pr"] < 1:
         forbid("INVALID_PR")
-    for key in ("source_sha", "rollback_source_sha"):
+    for key in ("source_sha", "base_sha", "rollback_source_sha"):
         if not isinstance(data[key], str) or not HEXSHA.fullmatch(data[key]):
             forbid("INVALID_SOURCE_SHA")
     for key in ("artifact_sha256", "rollback_sha256"):
@@ -83,6 +84,10 @@ def read_manifest(raw: bytes, now: datetime) -> dict:
     if (not isinstance(data["branch"], str) or not BRANCH.fullmatch(data["branch"])
             or any(part in ("", ".", "..") for part in data["branch"].split("/"))):
         forbid("WRONG_SOURCE_BRANCH")
+    if (not isinstance(data["base_branch"], str)
+            or not re.fullmatch(r"[A-Za-z0-9._/-]{1,128}", data["base_branch"])
+            or any(part in ("", ".", "..") for part in data["base_branch"].split("/"))):
+        forbid("BAD_BASE_BRANCH")
     if data["operation"] not in OPERATIONS:
         forbid("UNAUTHORIZED_OPERATION")
     if (data["repo"] == "Emaren/app-prodn") != (data["operation"] == "STAGE_NONFINANCIAL_APP"):
@@ -226,7 +231,8 @@ def inspect_remote(manifest: dict, policy: dict, api) -> dict:
     pr = api(root + "/pulls/" + str(manifest["pr"]))
     if (pr.get("head", {}).get("sha") != sha
             or pr.get("head", {}).get("ref") != manifest["branch"]
-            or pr.get("base", {}).get("ref") != "main"
+            or pr.get("base", {}).get("ref") != manifest["base_branch"]
+            or pr.get("base", {}).get("sha") != manifest["base_sha"]
             or pr.get("state") != "open"
             or pr.get("draft") is True):
         forbid("PR_NOT_EXACT_HEAD_OR_REVIEW_READY")
