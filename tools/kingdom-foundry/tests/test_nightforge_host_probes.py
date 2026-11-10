@@ -49,6 +49,23 @@ class F10ReadOnlyHostProbes(unittest.TestCase):
         return probe_systemd_local(
             unit,lane=lane,observed_utc=observed_utc,runner=self.runner)
 
+    def storage_untrusted(self,*, statvfs=None):
+        """M1 physical; CI Linux strictly PINNED STUB, never fake HEL1."""
+        if sys.platform=="darwin":
+            kwargs={}
+            if statvfs is not None:kwargs["statvfs"]=statvfs
+            return probe_local_storage("M1_MAC_LOCAL",lane="PRODUCT_C",
+                observed_utc=OBSERVED,**kwargs)
+        fake_id=b"b"*32
+        class StubFS:
+            f_frsize=4096
+            f_bavail=2_000_000
+        return probe_local_storage("HEL1_ROOT_LOCAL",lane="PRODUCT_C",
+            observed_utc=OBSERVED,
+            approved_linux_machine_id_sha256=sha256(fake_id).hexdigest(),
+            machine_id_reader=lambda:fake_id,
+            statvfs=statvfs if statvfs is not None else lambda _:StubFS())
+
     def check_untrusted(self,raw):
         body=json.loads(raw)
         self.assertEqual(body["mode"],LOCAL_MODE)
@@ -183,9 +200,7 @@ class F10ReadOnlyHostProbes(unittest.TestCase):
         self.assertFalse(proof["sourceIndependenceVerified"])
 
     def test_storage_mount_is_platform_bound_and_not_fake_backup_proof(self):
-        platform="M1_MAC_LOCAL" if sys.platform=="darwin" else "HEL1_ROOT_LOCAL"
-        raw=probe_local_storage(platform,lane="PRODUCT_C",
-                                observed_utc=OBSERVED)
+        raw=self.storage_untrusted()
         report=self.check_untrusted(raw)
         data=json.loads(raw)["data"]
         self.assertEqual(data["plane"],
@@ -207,7 +222,6 @@ class F10ReadOnlyHostProbes(unittest.TestCase):
                 observed_utc=OBSERVED)
 
     def test_tampered_statvfs_and_negative_device_bytes_refused(self):
-        platform="M1_MAC_LOCAL" if sys.platform=="darwin" else "HEL1_ROOT_LOCAL"
         class Stat:
             def __init__(self,block,available):
                 self.f_frsize=block;self.f_bavail=available
@@ -216,14 +230,11 @@ class F10ReadOnlyHostProbes(unittest.TestCase):
                       Stat(4096,10**16),Stat(True,100),
                       Stat(4096,3*10**12)):
             with self.subTest(stats=stats.__dict__),self.assertRaises(Rejected):
-                probe_local_storage(platform,lane="PRODUCT_C",
-                    observed_utc=OBSERVED,statvfs=lambda _:stats)
+                self.storage_untrusted(statvfs=lambda _:stats)
 
-    def test_source_approved_untrusted_modes_still_one_hold_batch(self):
+    def test_unattested_local_modes_still_one_hold_batch(self):
         raw=self.systemd()
-        platform="M1_MAC_LOCAL" if sys.platform=="darwin" else "HEL1_ROOT_LOCAL"
-        disk=probe_local_storage(platform,lane="PRODUCT_C",
-                                 observed_utc=OBSERVED)
+        disk=self.storage_untrusted()
         batch=review_batch((raw,disk),owner_now_utc=OWNER_NOW)
         self.assertEqual(batch["count"],2)
         self.assertFalse(batch["dispatchAllowed"])
@@ -284,17 +295,10 @@ class F10ReadOnlyHostProbes(unittest.TestCase):
                     statvfs=lambda _:FakeFS())
 
     def test_actual_local_disk_observation_enters_private_F1_hold_and_F9_0600(self):
-        platform="M1_MAC_LOCAL" if sys.platform=="darwin" else "HEL1_ROOT_LOCAL"
-        pinned={}
-        if platform=="HEL1_ROOT_LOCAL":
-            fake_id=b"b"*32
-            pinned={"approved_linux_machine_id_sha256":sha256(fake_id).hexdigest(),
-                    "machine_id_reader":lambda:fake_id}
         with TemporaryDirectory(prefix="f10-readonly-physical-",dir=ROOT) as dirname:
             folder=Path(dirname)
             folder.chmod(0o700)
-            raw=probe_local_storage(platform,lane="PRODUCT_C",
-                observed_utc=OBSERVED,**pinned)
+            raw=self.storage_untrusted()
             reported=self.check_untrusted(raw)
             head=subprocess.check_output(["git","-C",str(ROOT),
                 "rev-parse","HEAD"],text=True).strip()
