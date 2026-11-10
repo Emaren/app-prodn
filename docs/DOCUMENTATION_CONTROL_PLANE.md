@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-steam-two-exact-web-builds-v22-20261110` at `bb9bed16a70701f70c22fe64fa2c601d3090d120`
+Implementation baseline: `session-b/public-player-phase-bound-permits-20261110` at `0f07cc07dcd24e69cd9a1e3ecdc909bba91eb421`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

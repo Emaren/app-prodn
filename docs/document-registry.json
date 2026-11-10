@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ccb274d094d14a804b1a015328d608f284df5d908a07e0aba74b6bd0c183dd40",
+      "sha256": "4571ae7a88c597b2d71ee5e55b315d1d0252dc0cb86fc7155db51fc310aaf896",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-steam-two-exact-web-builds-v22-20261110",
-    "commit": "bb9bed16a70701f70c22fe64fa2c601d3090d120"
+    "branch": "session-b/public-player-phase-bound-permits-20261110",
+    "commit": "0f07cc07dcd24e69cd9a1e3ecdc909bba91eb421"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
