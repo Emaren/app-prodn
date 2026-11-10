@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/r25-media-projection-20261110` at `881b945f88b776a15c64b22f4025b8b45b5bbcca`
+Implementation baseline: `session-b/r25-sniper-one-use-importer-20261110` at `1b3b018864fcd97c123c3a510b23cd49d0af642f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

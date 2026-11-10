@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0e2124e17545dedd7bc620b7b9cc89ee079a8aefea9ce413f7722766169fdadd",
+      "sha256": "dac236df28f4605f7952aa62430ec90b820122a2a036066a8573e353bebae7f5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-media-projection-20261110",
-    "commit": "881b945f88b776a15c64b22f4025b8b45b5bbcca"
+    "branch": "session-b/r25-sniper-one-use-importer-20261110",
+    "commit": "1b3b018864fcd97c123c3a510b23cd49d0af642f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
