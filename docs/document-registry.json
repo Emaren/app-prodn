@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9636d0334eba6a311301fdb63512a65005bdce24d2f910a134873af7a4302fc0",
+      "sha256": "f5c68482297e82fca044e2530858462d8cefb7092655b725baaeea50fc080302",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-public-site-theme-read-fence-20261110",
-    "commit": "f6fdcb56732709f00f7b0426dc4ef72e2769e115"
+    "branch": "session-b/r25-theme-503-client-explicit-20261110",
+    "commit": "d889681518f86388aef0c833fedee0f607f41659"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
