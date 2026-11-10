@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ed14db0c6b487c8d05782c79618a2916d8e01403aa43e951b49f552ac0744324",
+      "sha256": "3cdf125f18c1eeba52e4a8bdbe557e6c78a3e1c1b6352e98c7cd91e442536eaa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2298,6 +2298,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-only-session-c-source-review",
+      "id": "aoe2war.app-prodn.session-c-kingdom-traders-nonfinancial-frontend-seam",
+      "owner": "aoe2war-web",
+      "path": "docs/SESSION_C_KINGDOM_TRADERS_NONFINANCIAL_FRONTEND_SEAM.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "internal",
+      "sha256": "79fb6d6d0f6f029efce9e5eb67bf4221adb086acb0b23873e070463adec9d78f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "kingdom-traders"
+      ],
+      "title": "Session C \u2014 Kingdom Traders nonfinancial frontend seam (NOT deployed)",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "presentation-policy",
       "id": "aoe2war.app-prodn.docs-site-theme-campaign",
       "owner": "aoe2war-web",
@@ -2486,9 +2509,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "sha256": "cb9e10351d2fc82938fc9929da1417fde9440e4fb8393b18af00ebdf120da574",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2555,9 +2578,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "6ef1a0d49c031079c0a45adea9eedcfe1be8a520868ec3f663f691f27d88f69a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3129,8 +3152,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-b1ef-exact-single-slot-rollback-trial",
-    "commit": "dfe2cf818bcfea3bd821915ef3658b6e76a358af"
+    "branch": "session-c/r25-nonfinancial-frontend-20261109",
+    "commit": "d94cd0c59fa6c137816955172c78d043fbf82c09"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

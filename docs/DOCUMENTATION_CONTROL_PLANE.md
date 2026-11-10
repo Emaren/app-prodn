@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-b1ef-exact-single-slot-rollback-trial` at `dfe2cf818bcfea3bd821915ef3658b6e76a358af`
+Implementation baseline: `session-c/r25-nonfinancial-frontend-20261109` at `d94cd0c59fa6c137816955172c78d043fbf82c09`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **137**
+- Authoritative repository documents: **138**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,12 +38,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 74
 - `runbook`: 44
-- `working`: 1
+- `working`: 2
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 33
+- `draft`: 34
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -151,6 +151,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Traffic Canonical Single Chart Correction, 2026-11-08](SESSION_B_TRAFFIC_CANONICAL_SINGLE_CHART_CORRECTION_20261108.md) | `reference` | `active` | `traffic-canonical-website-only-exact-daily-finality-required` |
 | [Session B — Traffic Current Observation Public View, 2026-11-08](SESSION_B_TRAFFIC_CURRENT_OBSERVATION_PUBLIC_VIEW_20261108.md) | `reference` | `active` | `observed-project-activity-website-only-no-canonical-certification` |
 | [Session B — Traffic Steam V7 Single-Runtime Release, 2026-11-08](SESSION_B_TRAFFIC_STEAM_V7_SINGLE_RUNTIME_RELEASE_20261108.md) | `runbook` | `active` | `two-pinned-nonfinancial-r25-sources-only-no-canonical-publisher-no-wolo-finance` |
+| [Session C — Kingdom Traders nonfinancial frontend seam (NOT deployed)](SESSION_C_KINGDOM_TRADERS_NONFINANCIAL_FRONTEND_SEAM.md) | `working` | `draft` | `product-only-session-c-source-review` |
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |

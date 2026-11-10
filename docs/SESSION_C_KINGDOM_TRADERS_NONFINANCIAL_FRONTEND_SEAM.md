@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.session-c-kingdom-traders-nonfinancial-frontend-seam"
+title: "Session C — Kingdom Traders nonfinancial frontend seam (NOT deployed)"
+type: "working"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn","kingdom-traders"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "product-only-session-c-source-review"
+reviewed_at: "2026-11-10"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Session C — Kingdom Traders nonfinancial frontend seam (NOT deployed)
 
 Source ancestry is the merged R25 V18 release controller fba4d07e3ee49a2e14c652dcc6641b8af3003abb. Session B retains all production 3032, Steam V18, Nginx, 3030 rollback and website SQL authority. This branch is a separate PRODUCT-only unmerged PR, not a public release.
