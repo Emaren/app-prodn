@@ -1,0 +1,48 @@
+name: R25 public player one-use controller safety fixtures
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/release/r25_public_player_*.py'
+      - 'tests/test_r25_public_player_*.py'
+      - '.github/workflows/r25-public-player-one-use-controller-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-safety-fixtures:
+    name: Source-only one-use 3032 controller and rollback adversarial tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Controller + verifier + physical read-only admission negative fixtures
+        run: |
+          python3 -B -m unittest -v \
+            tests.test_r25_public_player_artifact_qualification_v1 \
+            tests.test_r25_public_player_same_slot_preflight_v1 \
+            tests.test_r25_public_player_one_use_cutover_v1
+      - name: Source never has an implicit financial activation path
+        run: |
+          python3 -B - <<'PY'
+          import ast
+          from pathlib import Path
+          p=Path('scripts/release/r25_public_player_one_use_cutover_v1.py')
+          source=p.read_text()
+          ast.parse(source)
+          assert 'STEAM_V20_EXACT_ACTIVE_PROFILE_INCOMPATIBLE_WITH_PLAYER_BUILD' in source
+          assert 'require_steam_active_target_compatible()' in source
+          assert 'codex_financial_capture_active' in source
+          assert 'HOLD:R25_PUBLIC_PLAYER' in source
+          assert 'RESTRICTED_3032_UNIT_NOT_NGINX_TO_LEGACY_3030' in source or 'RESTORE_ORIGINAL_RESTRICTED_3032_UNIT_NOT_NGINX_TO_LEGACY_3030' in source
+          assert 'git clean' not in source and 'set -e' not in source
+          print('PASS:R25_PUBLIC_PLAYER_FAIL_SHUT_SOURCE_GUARDS_NO_LIVE_ACTION')
+          PY
