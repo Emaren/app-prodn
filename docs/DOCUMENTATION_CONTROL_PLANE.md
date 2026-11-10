@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c03-steam-v19-retired-preview-exact-20261109` at `bccff09bc6c716f8e74d9018e0512a4d15232d81`
+Implementation baseline: `session-b/c03-v20-steam-sandbox-ro-20261110` at `c1a54811064b443cc0140c72f946b662d437714d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **139**
+- Authoritative repository documents: **140**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 46
+- `runbook`: 47
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 35
+- `draft`: 36
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -180,6 +180,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [C03 exact restricted 3032 R25 promotion and automatic rollback](release/SESSION_B_C03_R25_SINGLE_SLOT_EXACT_PROMOTION_20261109.md) | `runbook` | `draft` | `root-only one-use candidate admission, finance-quarantined` |
 | [C03: source-pinned same-slot rollback with existing systemd memory drop-in](release/SESSION_B_C03_SAME_SLOT_DROPIN_PIN_V2_20261109.md) | `runbook` | `draft` | `source-only, finance-restricted, requires physical acceptance` |
 | [C03 Steam V19 exact retired R24 preview admission and guarded service repair](release/SESSION_B_C03_STEAM_V19_RETIRED_R24_PREVIEW_20261109.md) | `runbook` | `draft` | `source-pinned Steam-only 3031 retirement repair without financial release` |
+| [C03 Steam V20 read-only Nginx source guard and distinct one-use recovery](release/SESSION_B_C03_STEAM_V20_SANDBOX_READONLY_20261110.md) | `runbook` | `draft` | `source-qualified Steam-only recovery; no web switch or financial release` |
 | [C03 V18 retained-site reversible rollback and return: exact source and isolated receipt](release/SESSION_B_C03_V18_REVERSIBLE_ROUNDTRIP_20261109.md) | `runbook` | `draft` | `one-slot source-pinned nonfunded rollback/return; no financial release` |
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |

@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3830a2de303de61dc7648e49161df393de80fdbdf27126dc95595bca74fc9852",
+      "sha256": "70970156040a711f085f1e99ff79f9152ecbc8e0075597bbd22e35a5be47475c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2952,6 +2952,28 @@
         "developers",
         "ai-agents"
       ],
+      "authority": "source-qualified Steam-only recovery; no web switch or financial release",
+      "id": "aoe2war.app-prodn.session-b-c03-steam-v20-sandbox-readonly-20261110",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_STEAM_V20_SANDBOX_READONLY_20261110.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "95e239334f7d41fdcd9300aef2d717207adac83af174d7d206f02aab01101ba1",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C03 Steam V20 read-only Nginx source guard and distinct one-use recovery",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
       "authority": "one-slot source-pinned nonfunded rollback/return; no financial release",
       "id": "aoe2war.app-prodn.session-b-c03-v18-reversible-roundtrip-20261109",
       "owner": "aoe2war-web",
@@ -3173,8 +3195,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c03-steam-v19-retired-preview-exact-20261109",
-    "commit": "bccff09bc6c716f8e74d9018e0512a4d15232d81"
+    "branch": "session-b/c03-v20-steam-sandbox-ro-20261110",
+    "commit": "c1a54811064b443cc0140c72f946b662d437714d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
