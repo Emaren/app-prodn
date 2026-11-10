@@ -47,3 +47,17 @@ matrix, exact App/PRODUCT SHA and separate machine identity before ANY
 website route can mount this adapter. User-facing preview remains static
 and responsive, with the private actual operator cockpit accessed separately
 through SSH. No active 3032 frontend smoke or browser acceptance is claimed.
+
+
+## Unmounted admin PAPER status panel and responsive acceptance
+
+The reviewable server-only component
+components/kingdom-traders/KingdomTradersAdminPaperPanel.tsx renders only the
+strictly allowlisted admin-source STATUS. It never fetches or accepts the
+operator Basic password. Missing admin approval or rejected private
+source is shown as HOLD with no personal account details. On narrow viewports
+the panel uses min(100%, 210px) grid min-width and flexible flex-wrap rather
+than a fixed-width dashboard. It has a labeled status indicator and no
+mutating controls, form actions or trading navigation. This component is
+not mounted in any page or API route, and no public site deployment or
+Chrome acceptance is claimed before Session B's release handoff.

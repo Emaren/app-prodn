@@ -120,6 +120,8 @@ test("Untrusted machine credential file or missing TLS CA refuses the App relay"
     });
     chmodSync(machineCredentialFile, 0o666);
     assert.equal((await go()).ok, false);
+    chmodSync(machineCredentialFile, 0o640);
+    assert.equal((await go()).ok, false, "group-readable machine bearer fails closed");
     chmodSync(machineCredentialFile, 0o600);
     writeFileSync(productCaFile, "not a certificate");
     assert.equal((await go()).ok, false);
@@ -148,4 +150,23 @@ test("Only an unmounted admin-gated server adapter exists; route and credentials
   assert.ok(!source.includes("http://"));
   assert.ok(!source.includes("NEXT_PUBLIC_"));
   assert.ok(!source.includes("8092") && !source.includes("8094"));
+});
+
+
+test("The staged admin PAPER panel stays responsive, semantic, and disconnected", () => {
+  const panel = readFileSync(join(base,
+    "components/kingdom-traders/KingdomTradersAdminPaperPanel.tsx"), "utf8");
+  assert.match(panel, /role="status"/);
+  assert.match(panel, /aria-live="polite"/);
+  assert.match(panel, /gridTemplateColumns:/);
+  assert.match(panel, /min\(100%, 210px\)/);
+  assert.match(panel, /flexWrap: "wrap"/);
+  assert.match(panel, /PAPER HALT/);
+  assert.match(panel, /seven open positions/);
+  assert.ok(!panel.includes("fetch("));
+  assert.ok(!panel.includes("useEffect"));
+  assert.ok(!panel.includes("<button"));
+  assert.ok(!panel.includes("Authorization"));
+  assert.ok(!panel.includes("NEXT_PUBLIC_"));
+  assert.ok(!panel.includes("api/bridge-status-v1"));
 });
