@@ -223,7 +223,7 @@ test("canonical same-origin managed avatar with query preserves known-length pol
   ];
   for(const source of valid) {
     assert.equal(isCanonicalPublicAvatarHeadSource(source),true);
-    let observed=[];
+    const observed=[];
     const blocked=await admitFeaturedMediaByHead(source,async url=>{
       observed.push(url);
       return {ok:true,status:200,headers:{get:()=>String(2097153)}};
@@ -234,7 +234,7 @@ test("canonical same-origin managed avatar with query preserves known-length pol
 });
 
 test("real HTTP fixture receives no network on normalized financial target",async()=>{
-  let hits=[];
+  const hits=[];
   const local=createServer((req,res)=>{
     hits.push({method:req.method,url:req.url});
     res.writeHead(200,{"Content-Length":"3000000"});res.end();
