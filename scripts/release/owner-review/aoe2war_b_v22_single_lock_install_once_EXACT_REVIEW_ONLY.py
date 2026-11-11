@@ -239,6 +239,7 @@ def check_physical(before=True):
     for name,pid in CRITICAL.items():
         data=unit(name)
         check(data["MainPID"]==str(pid) and data["ActiveState"]=="active" and data["NeedDaemonReload"]=="no","PID_"+name)
+        check(cmdcheck(["systemctl","show",name,"-p","NRestarts","--value"],10).strip()=="0","RESTART_COUNT_"+name)
     for name in ("wolochain-mainnet-settlement.service","wolochain-founder-rewards-settlement.service"):
         data=unit(name)
         link=Path("/etc/systemd/system")/name
@@ -334,6 +335,13 @@ def main_install():
           stat.S_IMODE(lock.stat().st_mode)==0o600 and lock.stat().st_nlink==1 and
           lock.stat().st_ino==1150281 and lock.stat().st_size==0,"LOCK_INODE_DRIFT")
     check(not DROP_DIR.exists() and not DROP_DIR.is_symlink(),"DROPIN_DIR_ALREADY_PRESENT")
+    check(req["boot_id"]==HOST_BOOT and req["reviewed_seven_pids"]==CRITICAL
+          and req["c04_both_masked"] is True and req["finance_port_listeners"]==[]
+          and req["reviewed_v22_source_sha256"]==EXPECTED["v22-source.py"]
+          and req["reviewed_v22_unit_sha256"]==EXPECTED["candidate-v22-timer.service"]
+          and req["v20_active_unit_sha256"]==EXPECTED["original-v20-timer.service"]
+          and req["staged_event_0003_unchanged_sha256"]==EXPECTED["stage-event-0003.json"],
+          "APPROVED_PACKET_PROTECTED_SCOPE_FIELDS")
     check(req["dropin_sha256"]==DROP_SHA and req["dropin_exact_destination"]==str(DROP_FILE)
           and req["exact_pr_head"]=="f61c7c507997608173cc886938588373c1a2fb92"
           and req["requested_operation"]=="ONE_NEW_B_PHASE_STEAM_V22_BASE_UNIT_AND_SINGLE_LOCK_ONLY_DROPIN_REINSTALL"
@@ -345,6 +353,17 @@ def main_install():
     check(digest("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py")=="7d432066f370b9eeb7f931f2143a12f2695177e6c174775b4400617e00909c4c","V20_SOURCE_SHA")
     check_physical(True)
     check(unit("aoe2war-steam-egress-refresh.service")["ActiveState"]=="inactive","V20_ONESHOT_RUNNING")
+    before_sandbox_raw=cmdcheck(["systemctl","show","aoe2war-steam-egress-refresh.service",
+      "-p","NoNewPrivileges","-p","PrivateTmp","-p","ProtectHome",
+      "-p","CapabilityBoundingSet","-p","RestrictAddressFamilies","-p","ProtectSystem"],12)
+    before_sandbox=dict(x.split("=",1) for x in before_sandbox_raw.splitlines() if "=" in x)
+    check(before_sandbox.get("NoNewPrivileges")=="yes" and
+      before_sandbox.get("PrivateTmp")=="yes" and
+      before_sandbox.get("ProtectHome")=="yes" and
+      before_sandbox.get("ProtectSystem")=="strict" and
+      before_sandbox.get("CapabilityBoundingSet")=="cap_setgid cap_setuid cap_net_admin" and
+      before_sandbox.get("RestrictAddressFamilies")=="AF_INET AF_INET6 AF_NETLINK AF_UNIX",
+      "CURRENT_SOURCES_SANDBOX_BASELINE_"+repr(before_sandbox))
     process_conflicts()
     evidence=witness()
     check((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(evidence["at_utc"])).total_seconds()<90,"PROVIDER_WITNESS_STALE")
@@ -386,12 +405,18 @@ def main_install():
     # Single separate V22-install-phase manager reload admitted by Central.
     cmdcheck(["systemctl","daemon-reload"],60)
     pass_step("ONE_INSTALL_PHASE_DAEMON_RELOAD")
-    props=cmdcheck(["systemctl","show","aoe2war-steam-egress-refresh.service","-p","ProtectSystem","-p","ReadWritePaths","-p","DropInPaths","-p","NeedDaemonReload"],12)
+    props=cmdcheck(["systemctl","show","aoe2war-steam-egress-refresh.service",
+      "-p","ProtectSystem","-p","ReadWritePaths","-p","DropInPaths","-p","NeedDaemonReload",
+      "-p","NoNewPrivileges","-p","PrivateTmp","-p","ProtectHome",
+      "-p","CapabilityBoundingSet","-p","RestrictAddressFamilies","-p","ExecStart"],12)
     live=dict(line.split("=",1) for line in props.splitlines() if "=" in line)
     check(live.get("ProtectSystem")=="strict" and
           live.get("ReadWritePaths")==str(DEST/"steam-refresh-v22.lock") and
           live.get("DropInPaths")==str(DROP_FILE) and
-          live.get("NeedDaemonReload")=="no","EFFECTIVE_SANDBOX_SCOPE_"+repr(live))
+          live.get("NeedDaemonReload")=="no" and
+          all(live.get(key)==value for key,value in before_sandbox.items()) and
+          "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py --phase refresh" in live.get("ExecStart",""),
+          "EFFECTIVE_SANDBOX_SCOPE_"+repr(live))
     pass_step("EFFECTIVE_UNIT_SANDBOX_SCOPE",properties=live)
     check_physical(False)
     check(unit("aoe2war-steam-egress-refresh.timer")["ActiveState"]=="inactive","TIMER_UNEXPECTED_START")
@@ -407,7 +432,7 @@ def main_install():
     ins=cmdcheck(["/usr/bin/python3","-I","-B",str(V22SRC),"--phase","inspect"],65)
     pass_step("V22_ORIGINAL_RUNTIME_PROTECTED_INSPECT",output=ins.strip()[-1300:])
     # Native V22 refresh, no synthetic lease or firewall write.
-    cmdcheck(["systemctl","start","aoe2war-steam-egress-refresh.service"],90)
+    cmdcheck(["systemctl","start","aoe2war-steam-egress-refresh.service"],180)
     check(unit("aoe2war-steam-egress-refresh.service")["ActiveState"]=="inactive","STEAM_ONESHOT_NOT_COMPLETED")
     check_physical(False)
     evidence_after=witness()
