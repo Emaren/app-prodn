@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9bc7d0d69ca7d3715478fc63413cc380976ff554b15724e1127df9d876ec5fe6",
+      "sha256": "862ef9ed6a7a36ba8f2155f9fb2738ce7cf152a4279874d9872cb66fb4c1a3c8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/r25-featured-fallback-decoded-20261111",
-    "commit": "b9a1e0423f8d9e3969d294805643df703908517e"
+    "branch": "session-c/r25-compact-avatar-bytes-20261111",
+    "commit": "42b528963b9ff7c570611add6f54af104e379e36"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-featured-fallback-decoded-20261111` at `b9a1e0423f8d9e3969d294805643df703908517e`
+Implementation baseline: `session-c/r25-compact-avatar-bytes-20261111` at `42b528963b9ff7c570611add6f54af104e379e36`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
