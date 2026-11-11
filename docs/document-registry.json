@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ebb37e200a8b8b992289cf98ece6d54126c3026494dcf9649bda2f75a137ebca",
+      "sha256": "d3a5c3af757f270ad111b4faa4b0e7247c320c4f238843e147292f898859d604",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3130,7 +3130,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/mainline-observability-readmodels-20261110",
-    "commit": "2b259dbe559cc96d04b184ffa94a96c4777a78a7"
+    "commit": "867b6ff0bb0529a3d57f6f3f2616c00bc2e96463"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
