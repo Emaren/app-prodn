@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c22f60b50d9e2b54c5e49839480102e9b8a1912a6fd323af2b7c08c2b64f43ec",
+      "sha256": "6705a94def603c40cd46b455e42d1fcc78c56571f131f028f0bb6ae7454e2bcd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3086,7 +3086,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/steam-atomic-lease-fixture-20261111",
-    "commit": "69413a39cfab091f2e2fe9105207d55cce575e11"
+    "commit": "a37ae902ccc2adb246cc046c042055c6b0981a7d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/steam-atomic-lease-fixture-20261111` at `69413a39cfab091f2e2fe9105207d55cce575e11`
+Implementation baseline: `session-b/steam-atomic-lease-fixture-20261111` at `a37ae902ccc2adb246cc046c042055c6b0981a7d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
