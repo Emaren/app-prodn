@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bcdee3c42286a29170062237c7155284a5045530f218697e3e562a27b857ad8b",
+      "sha256": "12648f3bea545fb8d2a5652f3e7771e4bea03015b93d4098947a890e6cab9e40",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/r25-traffic-canonical-utc-gap-20261110",
-    "commit": "e4abba94541e9a96213614a98a5165c1dbd7c10b"
+    "branch": "session-c/r25-public-player-regression-contract-20261110",
+    "commit": "752d0c5d825a294b9ade548376c46a474955c122"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
