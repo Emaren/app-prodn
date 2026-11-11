@@ -71,7 +71,7 @@ async function runScoped<T extends Record<string, unknown>>(
   work: (client: ScopedClient) => Promise<T[] | void>,
 ): Promise<T[] | void> {
   const cfg = scoped(scope);
-  const client = await pool(scope).connect();
+  const client: ScopedClient = await pool(scope).connect();
   try {
     // Every acquisition checks the physical SQL role/database, not config
     // strings alone. Reader and sidecar must have distinct actual databases.
