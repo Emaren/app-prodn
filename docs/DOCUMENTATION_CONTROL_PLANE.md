@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `58bd38e5bca7bdbc309f81d6d5030c1fbc380d5e`
+Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `f3193c183ef97e189c3ead3d39774612c106a14c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
