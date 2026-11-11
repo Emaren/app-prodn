@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "db3581e638bdb5cc8752196f36b6c0ccc5dda0b8519ef600c84f7ba9837521bc",
+      "sha256": "8297466b81561a328bd0e622e41822ddf60863e4ef1db0160450560e202bb6a9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3086,7 +3086,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/public-player-v22-serialized-promotion-20261110",
-    "commit": "71ffc6599651cf2d5f58e35c807067cb57826db8"
+    "commit": "0d51474f7821d3cf52e4e327d11634a63de6cee4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
