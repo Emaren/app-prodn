@@ -240,6 +240,7 @@ test("actual JOSE sessions require original identity and admin authority comes f
     "next/navigation": { redirect: () => { throw new Error("fixture-redirect"); } },
     "next/server": { NextResponse: Reply }, "@/lib/session": session,
     "@/lib/productionAuth": { usesNonfinancialProductionAuth: () => true,
+      usesC03ExistingOnlyAuth: () => false,
       readProductionUser: async () => ({ id: 1, uid: "fixture-user", isAdmin }) },
     "@/lib/prisma": { getPrisma: () => ({ user: { findUnique: async () => { throw new Error("NO_DIRECT_USER_SELECT"); } } }) },
   }, env);

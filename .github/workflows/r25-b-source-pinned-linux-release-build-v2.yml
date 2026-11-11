@@ -6,8 +6,10 @@ on:
       - ".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml"
       - "scripts/release/r25_b_c_dev_to_linux_release_contract_v2.py"
       - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
+      - "scripts/release/r25_b_linux_independent_artifact_verify_v2.py"
       - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
       - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
+      - "tests/test_r25_b_linux_independent_artifact_verify_v2.py"
       # A source-pinned release must also rebuild after C03 runtime changes,
       # not only after modifications to the artifact builder itself.
       - "app/api/auth/steam/route.ts"
@@ -33,6 +35,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   b-linux-release-build-source-only:
@@ -96,5 +99,52 @@ jobs:
         with:
           name: b-linux-source-pinned-release-${{ github.run_id }}
           path: ${{ runner.temp }}/aoe2war-b-linux-release-v2/
+          if-no-files-found: error
+          retention-days: 7
+
+  b-linux-independent-download-review:
+    needs: b-linux-release-build-source-only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CI: "true"
+      AOE2WAR_ARTIFACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify independent reviewer fixtures on Linux
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          test "$(git rev-parse HEAD)" = "$AOE2WAR_ARTIFACT_SOURCE_SHA"
+          python3 -B -m unittest -q tests.test_r25_b_linux_independent_artifact_verify_v2
+      - name: Fetch exact GitHub API artifact identity with read-only job token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" > "$RUNNER_TEMP/b-linux-artifact-api-v2.json"
+          python3 -m json.tool "$RUNNER_TEMP/b-linux-artifact-api-v2.json" >/dev/null
+      - name: Download original GitHub artifact bytes into separate verifier runner
+        uses: actions/download-artifact@v4
+        with:
+          name: b-linux-source-pinned-release-${{ github.run_id }}
+          path: ${{ runner.temp }}/b-linux-exact-run-downloaded-v2
+      - name: Independently stream SHA and every tar-member digest
+        run: |
+          python3 -B scripts/release/r25_b_linux_independent_artifact_verify_v2.py --artifact-dir "$RUNNER_TEMP/b-linux-exact-run-downloaded-v2" --github-api-artifacts-json "$RUNNER_TEMP/b-linux-artifact-api-v2.json" --output "$RUNNER_TEMP/b-linux-independent-review-v2.json"
+          python3 -m json.tool "$RUNNER_TEMP/b-linux-independent-review-v2.json" >/dev/null
+      - name: Export immutable independent review-only receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: b-linux-byte-verification-${{ github.run_id }}
+          path: ${{ runner.temp }}/b-linux-independent-review-v2.json
           if-no-files-found: error
           retention-days: 7
