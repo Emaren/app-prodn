@@ -141,11 +141,6 @@ jobs:
         run: yarn build
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
-      - name: DIAGNOSTIC ONLY - identify tracked source drift before immutable artifact export
-        run: |
-          echo "TRACKED_SOURCE_DRIFT_BEGIN"
-          git status --porcelain --untracked-files=no
-          echo "TRACKED_SOURCE_DRIFT_END"
       - name: Export the exact tested runtime artifact
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         run: python3 -B scripts/aoe2_r25_c_parallel_stage.py --ci-export-artifact --artifact-output "$RUNNER_TEMP/aoe2war-runtime"
