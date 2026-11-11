@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "231c8af4cf343c1f6344251776f1b1d74fb6f46cedc25693edcb11affeb35718",
+      "sha256": "91b64ada4a5300639e99a55c1a19b886223d31ae5dd16a022da1f43a4bdd0af2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2759,7 +2759,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-11",
       "sensitivity": "restricted",
-      "sha256": "523d2e58aecd7a16fe78930e7d5ed947d95b89304fca99b0a5f17b1d4d24ccf3",
+      "sha256": "84931235b4110232ab0a1070bcbc87b2b61eebb6858b895bfd5621c6c45ca4f1",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -2999,6 +2999,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority",
+      "id": "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "de572da81292af8e9205f08420b5f36a1648a0f2d07f538846e079dd3c41d209",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial App SELECT on already-approved public v9 view only",
       "id": "aoe2war.app-prodn.session-b-public-v9-live-market-fallback-20261109",
       "owner": "aoe2war-web",
@@ -3196,7 +3218,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
-    "commit": "78d851062eb88a1886e833c68da5331087ce4879"
+    "commit": "51bcb00bfd71eedac481501da72fcd7854be4f82"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
