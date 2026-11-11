@@ -4,6 +4,13 @@ import { motion } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import {
+  trafficCalendarFraction,
+  trafficCalendarWindow,
+  trafficCertifiedRuns,
+  trafficMissingCalendarDays,
+  trafficNearestCalendarIndex,
+} from "@/lib/trafficChartCalendar";
 
 export type ObservatoryAxis = "count" | "secondaryCount" | "wolo";
 
@@ -279,7 +286,14 @@ function smoothPath(
   return path;
 }
 
-function rangePoints(points: ObservatoryPoint[], range: RangeKey) {
+function rangePoints(
+  points: ObservatoryPoint[],
+  range: RangeKey,
+  variant: "traffic" | "statistics",
+) {
+  if (variant === "traffic") {
+    return trafficCalendarWindow(points, range);
+  }
   if (range === "ALL") {
     return points;
   }
@@ -336,8 +350,8 @@ export default function PremiumTimeSeriesChart({
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const displayedPoints = useMemo(
-    () => rangePoints(points, range),
-    [points, range],
+    () => rangePoints(points, range, variant),
+    [points, range, variant],
   );
 
   const displayedSeries = useMemo(
@@ -386,6 +400,10 @@ export default function PremiumTimeSeriesChart({
   const rightMax = axisMaxWithHeadroom(rawRightMax);
 
   function xForIndex(index: number) {
+    if (variant === "traffic") {
+      const fraction = trafficCalendarFraction(displayedPoints, index);
+      if (fraction !== null) return MARGIN.left + fraction * PLOT_WIDTH;
+    }
     if (displayedPoints.length <= 1) {
       return MARGIN.left + PLOT_WIDTH / 2;
     }
@@ -400,6 +418,14 @@ export default function PremiumTimeSeriesChart({
   }
 
   function segmentsForSeries(item: ObservatorySeries) {
+    if (variant === "traffic") {
+      return trafficCertifiedRuns(displayedPoints, item.key).map((indices) =>
+        indices.map((index) => ({
+          x: xForIndex(index),
+          y: yForValue(displayedPoints[index].values[item.key]!, item.axis),
+        })),
+      );
+    }
     const segments: Coord[][] = [];
 
     let current: Coord[] = [];
@@ -463,9 +489,9 @@ export default function PremiumTimeSeriesChart({
       ),
     );
 
-    const index = Math.round(
-      plotRelative * (displayedPoints.length - 1),
-    );
+    const index = variant === "traffic"
+      ? trafficNearestCalendarIndex(displayedPoints, plotRelative)
+      : Math.round(plotRelative * (displayedPoints.length - 1));
 
     setHoverIndex(index);
   }
@@ -476,6 +502,8 @@ export default function PremiumTimeSeriesChart({
   const hoverX = hoverIndex === null ? null : xForIndex(hoverIndex);
 
   const xTicks = tickIndexes(displayedPoints.length);
+  const trafficGapDays =
+    variant === "traffic" ? trafficMissingCalendarDays(displayedPoints) : 0;
 
   const shellClass =
     variant === "traffic"
@@ -511,6 +539,15 @@ export default function PremiumTimeSeriesChart({
           ))}
         </div>
       </div>
+
+      {variant === "traffic" ? (
+        <p className="relative px-5 pb-3 text-xs text-slate-400 sm:px-8" aria-live="polite">
+          Calendar-day scale ending at the most recent certified UTC report.
+          {trafficGapDays > 0
+            ? ` ${trafficGapDays} uncertified UTC day${trafficGapDays === 1 ? "" : "s"} within this range; curves break at each gap, never counted as zero.`
+            : " No missing UTC days between the visible certified reports."}
+        </p>
+      ) : null}
 
       <div className="relative min-w-0 px-4 sm:px-7">
         <div className="min-w-0 border-y border-white/[0.055]">
