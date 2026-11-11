@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4abfbb3527ba553e72ca22b5b9a07720e9718ee929c7589d2f53c6a00f47f206",
+      "sha256": "a2f6017a1d9f540fbd9c7fc520d4b80481406ac5b421ac08178e29a722c1cd0e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3130,7 +3130,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
-    "commit": "4772b40485090c6d2229411368814da7d0e850f4"
+    "commit": "a0dff6eec84ea918a3e4457985abe5ebffb3cc8b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
