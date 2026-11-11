@@ -15,6 +15,9 @@ spec.loader.exec_module(module)
 
 
 class PrivateAttestationTests(unittest.TestCase):
+    def test_real_owner_uid_501_is_unmodified_by_portable_fixtures(self):
+        self.assertEqual(module.EXPECTED_OWNER_UID, 501)
+
     def setUp(self):
         # Private synthetic owner-controlled fixture, deleted before return.
         self.tmp = tempfile.TemporaryDirectory(prefix="aoe2war-product-denial-fixture-")
@@ -24,11 +27,14 @@ class PrivateAttestationTests(unittest.TestCase):
         self.private.mkdir(mode=0o700)
 
     def test_positive_metadata_only_without_content_reads(self):
-        with mock.patch.object(module, "_owner_home", return_value="/Users/fictional-owner"):
-            with mock.patch("subprocess.run") as runner:
-                runner.return_value.returncode = 0
-                runner.return_value.stdout = b"mock-private-metadata-without-content"
-                value = module._inspect(str(self.private), module._owner_home())
+        # Synthetic fixture UID follows CI's unprivileged runner; production
+        # remains pinned to actual owner UID501, tested independently below.
+        with mock.patch.object(module, "EXPECTED_OWNER_UID", os.geteuid()):
+            with mock.patch.object(module, "_owner_home", return_value="/Users/fictional-owner"):
+                with mock.patch("subprocess.run") as runner:
+                    runner.return_value.returncode = 0
+                    runner.return_value.stdout = b"mock-private-metadata-without-content"
+                    value = module._inspect(str(self.private), module._owner_home())
         self.assertEqual(value["private_path"], str(self.private))
         self.assertEqual(value["mode"], 0o700)
         self.assertEqual(len(value["acl_sha256"]), 64)
@@ -47,8 +53,9 @@ class PrivateAttestationTests(unittest.TestCase):
 
     def test_public_or_shared_directory_fails_closed(self):
         self.private.chmod(0o755)
-        with self.assertRaisesRegex(module.Hold, "PERMISSIONS"):
-            module._inspect(str(self.private), "/Users/fictional-owner")
+        with mock.patch.object(module, "EXPECTED_OWNER_UID", os.geteuid()):
+            with self.assertRaisesRegex(module.Hold, "PERMISSIONS"):
+                module._inspect(str(self.private), "/Users/fictional-owner")
 
     def test_product_and_financial_roots_are_not_denial_target(self):
         owner = "/Users/fictional-owner"
