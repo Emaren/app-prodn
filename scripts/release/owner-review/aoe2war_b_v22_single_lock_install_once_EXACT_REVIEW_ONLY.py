@@ -337,7 +337,7 @@ def main_install():
     check(req["dropin_sha256"]==DROP_SHA and req["dropin_exact_destination"]==str(DROP_FILE)
           and req["exact_pr_head"]=="f61c7c507997608173cc886938588373c1a2fb92"
           and req["requested_operation"]=="ONE_NEW_B_PHASE_STEAM_V22_BASE_UNIT_AND_SINGLE_LOCK_ONLY_DROPIN_REINSTALL"
-          and req["finance_authorized"] is False and req["public_activation_authorized"] is False,
+          and req["financial_authorized"] is False and req["public_activation_authorized"] is False,
           "REVIEW_PACKET_FIELDS_DRIFT")
     for filename,sha in EXPECTED.items():
         check(digest(R/filename)==sha,"INPUT_SHA_"+filename)
