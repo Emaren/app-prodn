@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-traffic-canonical-utc-gap-20261110` at `e4abba94541e9a96213614a98a5165c1dbd7c10b`
+Implementation baseline: `session-c/r25-public-player-regression-contract-20261110` at `752d0c5d825a294b9ade548376c46a474955c122`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
