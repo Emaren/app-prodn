@@ -23,7 +23,15 @@ const ENV: Record<C03Scope, [string, string]> = {
  // Infer the concrete Pool instance from its constructor rather than
  // treating the bundled namespace as an ambient TypeScript Pool type.
 type ScopedPool = ReturnType<typeof createScopedPool>;
-type ScopedClient = Awaited<ReturnType<ScopedPool["connect"]>>;
+// This repository's pg runtime declaration is namespace-only. Declare
+// the narrow parameterized SQL query and release interface rather than
+// calling an untyped generic client or importing extra permissions.
+type ScopedClient = {
+  query<T extends Record<string, unknown>>(
+    statement: string, values?: unknown[],
+  ): Promise<{ rows: T[] }>;
+  release(): void;
+};
 const POOLS = new Map<C03Scope, ScopedPool>();
 function scoped(scope: C03Scope): C03Connection {
   const [urlVar, dbVar] = ENV[scope];
