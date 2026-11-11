@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-compact-avatar-bytes-20261111` at `27d4d0b151163a4729f1512e11a78c2b2ac5fc46`
+Implementation baseline: `session-c/post1327-docsv2-main-anchor-20261111` at `1cc6c0595da4d13bb71de594de940ed6d7b7559a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
