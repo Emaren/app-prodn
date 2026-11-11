@@ -4,7 +4,7 @@
  * independently admitted nonfinancial sidecar schema. No HBA/grant/DDL writes.
  * Session A must independently baseline protected auth object/ACL changes.
  */
-import { Pool, type PoolClient } from "pg";
+import { Pool } from "pg";
 import type { ExistingSteamReader, NonfinancialNonceWriter } from "./c03ExistingSteamFlow";
 
 type C03Scope = "reader" | "nonce" | "presence";
@@ -19,7 +19,12 @@ const ENV: Record<C03Scope, [string, string]> = {
   nonce: ["AOE2WAR_C03_NONCE_DATABASE_URL", "AOE2WAR_C03_SIDECAR_DATABASE_NAME"],
   presence: ["AOE2WAR_C03_PRESENCE_DATABASE_URL", "AOE2WAR_C03_SIDECAR_DATABASE_NAME"],
 };
-const POOLS = new Map<C03Scope, Pool>();
+// The repository uses the existing pg runtime import without @types/pg.
+ // Infer the concrete Pool instance from its constructor rather than
+ // treating the bundled namespace as an ambient TypeScript Pool type.
+type ScopedPool = ReturnType<typeof createScopedPool>;
+type ScopedClient = Awaited<ReturnType<ScopedPool["connect"]>>;
+const POOLS = new Map<C03Scope, ScopedPool>();
 function scoped(scope: C03Scope): C03Connection {
   const [urlVar, dbVar] = ENV[scope];
   const url = process.env[urlVar];
@@ -35,11 +40,8 @@ function scoped(scope: C03Scope): C03Connection {
   // Do not trust the URL username as proof of effective PostgreSQL role.
   return { url, database, role: EXPECTED_ROLES[scope] };
 }
-function pool(scope: C03Scope): Pool {
-  const existing = POOLS.get(scope);
-  if (existing) return existing;
-  const cfg = scoped(scope);
-  const created = new Pool({
+function createScopedPool(cfg: C03Connection, scope: C03Scope) {
+  return new Pool({
     connectionString: cfg.url,
     max: 3,
     min: 0,
@@ -47,12 +49,18 @@ function pool(scope: C03Scope): Pool {
     connectionTimeoutMillis: 5_000,
     application_name: "aoe2war-c03-" + scope,
   });
+}
+function pool(scope: C03Scope): ScopedPool {
+  const existing = POOLS.get(scope);
+  if (existing) return existing;
+  const cfg = scoped(scope);
+  const created = createScopedPool(cfg, scope);
   POOLS.set(scope, created);
   return created;
 }
 async function runScoped<T extends Record<string, unknown>>(
   scope: C03Scope,
-  work: (client: PoolClient) => Promise<T[] | void>,
+  work: (client: ScopedClient) => Promise<T[] | void>,
 ): Promise<T[] | void> {
   const cfg = scoped(scope);
   const client = await pool(scope).connect();
