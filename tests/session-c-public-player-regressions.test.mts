@@ -188,3 +188,107 @@ test("source assertions do not constitute live response/identity proof", () => {
   assert.match(parity, /old\.sha256 != new\.sha256/);
   assert.match(parity, /"accepts_as_full_site_release": False/);
 });
+
+
+// Separate from HeaderMenu's 47-item ACCOUNT dropdown: the top 🏰 castle
+// door renders the ORIGINAL 39-link Kingdom navigation from AppShell.
+// The source in preserved legacy main is the historical order authority.
+const ORIGINAL_CASTLE_ROUTES = [
+  "/kingdom",
+  "/oracle",
+  "/leaderboard",
+  "/champions",
+  "/kingdom-bettors",
+  "/chaosium",
+  "/olympia",
+  "/leagues",
+  "/tournaments",
+  "/national-champions",
+  "/clans",
+  "/academy",
+  "/library",
+  "/market",
+  "/ai",
+  "/kingdom-intelligence",
+  "/kingdom-brain",
+  "/kingdom-progress",
+  "/renaissance",
+  "/kingdom-systems",
+  "/replay-laboratory",
+  "/wolo-machine",
+  "/kingdom-index",
+  "/aoe2war-os",
+  "/television-wolo",
+  "/kingdom-agents",
+  "/kingdom-treasury",
+  "/bounties",
+  "/forum",
+  "/radio",
+  "/workshop",
+  "/game-stats",
+  "/hd-replay-engine",
+  "/traffic",
+  "/kingdom-forge",
+  "/round-chamber",
+  "/statistics",
+  "/general-inspections",
+  "/speed"
+];
+
+function castleSourceRoutes(sourceText) {
+  const start = sourceText.indexOf("const KINGDOM_LINKS = [");
+  const end = sourceText.indexOf("] as const;", start);
+  if (start < 0 || end <= start) return [];
+  return Array.from(
+    sourceText.slice(start, end).matchAll(/href:\s*"(\/[^"]+)"/g),
+    (match) => match[1],
+  );
+}
+
+function assertOriginalCastleRoutes(actual) {
+  assert.ok(actual.length >= ORIGINAL_CASTLE_ROUTES.length,
+    "shortened castle navigation: original 39 links lost");
+  assert.equal(actual.length, new Set(actual).size,
+    "duplicate castle navigation route");
+  let offset = 0;
+  for (const expected of ORIGINAL_CASTLE_ROUTES) {
+    const found = actual.indexOf(expected, offset);
+    assert.ok(found >= offset,
+      "original castle navigation route missing or reordered: " + expected);
+    offset = found + 1;
+  }
+}
+
+test("castle-icon Kingdom menu retains original 39 links in exact historical order", () => {
+  const shell = source("app/AppShell.tsx");
+  const links = castleSourceRoutes(shell);
+  assertOriginalCastleRoutes(links);
+  assert.equal(links.length, 39, "canonical castle menu should be full, not four links");
+  assert.deepEqual(links.slice(0, 4),
+    ["/kingdom", "/oracle", "/leaderboard", "/champions"]);
+});
+
+test("castle menu negative guard rejects a four-link replacement or silent reordering", () => {
+  const full = castleSourceRoutes(source("app/AppShell.tsx"));
+  assert.throws(() => assertOriginalCastleRoutes(full.slice(0, 4)), /shortened castle/);
+  const changed = [...full];
+  [changed[2], changed[3]] = [changed[3], changed[2]];
+  assert.throws(() => assertOriginalCastleRoutes(changed), /missing or reordered/);
+});
+
+test("desktop hover, touch click and mobile castle panels use the SAME full list", () => {
+  const shell = source("app/AppShell.tsx");
+  assert.match(shell, /function KingdomNavItem\(/);
+  assert.match(shell, /onMouseEnter=\{openMenu\}/);
+  assert.match(shell, /window\.matchMedia\("\(hover: none\)"\)/);
+  assert.match(shell, /aria-expanded=\{open\}/);
+  assert.match(shell, /data-presence-door="kingdom"/);
+  assert.match(shell, /role="menu"/);
+  assert.match(shell, /role="menuitem"/);
+  assert.equal((shell.match(/<KingdomMenuPanel/g) ?? []).length, 2);
+  assert.equal((shell.match(/KINGDOM_LINKS\.map\(\(item\)/g) ?? []).length, 1);
+  assert.match(shell, /overflow-y-auto overscroll-contain touch-pan-y/);
+  assert.match(shell, /createPortal\(/);
+  assert.match(shell, /setOpen\(false\)/);
+  assert.doesNotMatch(shell, /KINGDOM_LINKS\.slice\(/);
+});
