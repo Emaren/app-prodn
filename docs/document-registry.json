@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "12648f3bea545fb8d2a5652f3e7771e4bea03015b93d4098947a890e6cab9e40",
+      "sha256": "f37deadf6e28770d299865ebbb0cf03e26086c711540223a3cce98cd72c592a5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/r25-public-player-regression-contract-20261110",
-    "commit": "752d0c5d825a294b9ade548376c46a474955c122"
+    "branch": "session-c/r25-kingdom-castle-39-menu-contract-20261111",
+    "commit": "eef59634a006f56a49d788fde7d5c0ac9ca3e678"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

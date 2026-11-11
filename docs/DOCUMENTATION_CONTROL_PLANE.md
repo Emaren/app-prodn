@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-public-player-regression-contract-20261110` at `752d0c5d825a294b9ade548376c46a474955c122`
+Implementation baseline: `session-c/r25-kingdom-castle-39-menu-contract-20261111` at `eef59634a006f56a49d788fde7d5c0ac9ca3e678`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
