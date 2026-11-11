@@ -63,9 +63,12 @@ async function ObservedTrafficSensors({
 
 export default async function TrafficPage() {
   let points: PublicTrafficPoint[] = [];
+  let archiveCalculatedAt: string | null = null;
   let failed = false;
   try {
-    points = (await loadPublicTraffic()).points;
+    const report = await loadPublicTraffic();
+    points = report.points;
+    archiveCalculatedAt = report.archiveCalculatedAt;
   } catch (error) {
     failed = true;
     console.error("Traffic page preload failed:", error);
@@ -87,6 +90,11 @@ export default async function TrafficPage() {
         <section aria-label="Canonical Traffic series" className="mt-7">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 py-2 text-[11px] tracking-wide text-slate-400">
           <span>LAST PUBLISHED UTC DAY: {lastPublishedDay ?? "UNAVAILABLE"}</span>
+          <span aria-label="Original archive calculation timestamp">
+            ARCHIVE SNAPSHOT CALCULATED: {archiveCalculatedAt
+              ? <time dateTime={archiveCalculatedAt}>{archiveCalculatedAt.slice(0, 19).replace("T", " ")} UTC</time>
+              : "UNAVAILABLE"}
+          </span>
           <span className={overdue ? "font-semibold text-amber-300" : "text-slate-500"}>
             {overdue ? "TRAFFIC ARCHIVE DELAYED — RECENT DAYS UNVERIFIED" : "COMPLETED DAILY BUCKETS ONLY"}
           </span>
@@ -99,7 +107,9 @@ export default async function TrafficPage() {
               This is the original Total Traffic, Potential Humans and Confirmed Humans graph.
               Each new UTC day appears only after its canonical session counts are
               finalized and independently certified. Incomplete and unverified days
-              remain absent, never displayed as zero.
+              remain absent, never displayed as zero. The archive calculation
+              timestamp identifies the source snapshot, not certification of
+              any additional days.
             </p>
           </div>
         {points.length ? (

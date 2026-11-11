@@ -11,6 +11,7 @@ export type PublicTrafficPayload = {
   ok: true;
   startDate: string | null;
   coverageEndedAt: string | null;
+  archiveCalculatedAt: string | null;
   semantics: Record<string, unknown> | null;
   points: PublicTrafficPoint[];
 };
@@ -32,6 +33,16 @@ type CanonicalTrafficPayload = {
 };
 
 const DAY_MS = 86_400_000;
+
+/** Publication provenance is display-only, never evidence of missing days. */
+export function normalizeArchiveCalculationUtc(value: unknown): string | null {
+  if (typeof value !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    return null;
+  }
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
 
 function trafficCount(value: unknown, day: string, label: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
@@ -125,6 +136,7 @@ export function normalizePublicTrafficPayload(
     ok: true,
     startDate: payload.coverage_started_at || null,
     coverageEndedAt: payload.coverage_ended_at || null,
+    archiveCalculatedAt: normalizeArchiveCalculationUtc(payload.archive_calculated_at),
     semantics: payload.semantics || null,
     points,
   };
