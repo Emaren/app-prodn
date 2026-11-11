@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/public-player-v22-serialized-promotion-20261110` at `4748a090d50695645d912559a40145aae53d2595`
+Implementation baseline: `session-b/v22-three-source-install-transaction-20261111` at `dd55ed103a11fc8db2e13f29a75e580cf502a58f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
