@@ -25,12 +25,16 @@ UNIT="/etc/systemd/system/aoe2hdbets-web-prod.service"
 UNIT_SHA="f3b30861df399f0debcf702ed9ac60b7a00415f77700b5784b2b4496b6b5d56a"
 PRELOADER_SHA="5edf4485be0884922935295600adf7c8b3c17fe697b962d31e7f17b09e8f3ec3"
 STEAM_SCRIPT_SHA="7d432066f370b9eeb7f931f2143a12f2695177e6c174775b4400617e00909c4c"
-STEAM_UNIT_SHA="b976a10d5cc8b3c199974f1b85a912a67323e8b57b4f69325a1061428d20deb2"
+# Installed V22 replaces the service UNIT, not the preserved V20 inverse binary.
+STEAM_UNIT_SHA="44ad57ded3f26690eccf674297c4bc4aa00c0ae2ed563f631001ba6d2de1232a"
+STEAM_LOCK_ONLY_DROPIN_SHA="34d66d8b1684ed23c3ddae2fb3cc66ca3b1ab26bc4f6bb1fae378012f03e5920"
+STEAM_LOCK_ONLY_DROPIN_PATH="/etc/systemd/system/aoe2war-steam-egress-refresh.service.d/50-r25-v22-lock-only.conf"
 PIN={
     "source":BASELINE,"build":BASE_BUILD,"web_pid":"701398",
     "rollback_pid":"2625090","paper_pid":"779129",
     "unit_sha":UNIT_SHA,"preloader_sha":PRELOADER_SHA,
     "steam_script_sha":STEAM_SCRIPT_SHA,"steam_unit_sha":STEAM_UNIT_SHA,
+    "steam_lock_dropin_sha":STEAM_LOCK_ONLY_DROPIN_SHA,
     "web_user":"aoe2war-web-prod","web_group":"aoe2war-web-prod",
     "web_memory_limit":3355443200,"web_selector_count":6,
     "old_path":ORIGINAL_DIR,"new_path":CANDIDATE_DIR,
@@ -44,7 +48,7 @@ def checksum(x:bytes): return hashlib.sha256(x).hexdigest()
 def evaluate(facts:dict, unit_bytes:bytes, pins=PIN):
     """Pure fail-closed predicate; returns a non-authorizing plan only."""
     for field in ("source","build","web_pid","rollback_pid","paper_pid",
-                  "unit_sha","preloader_sha","steam_script_sha","steam_unit_sha",
+                  "unit_sha","preloader_sha","steam_script_sha","steam_unit_sha","steam_lock_dropin_sha",
                   "web_user","web_group"):
         need(facts.get(field)==pins[field],"PIN_"+field.upper())
     need(type(unit_bytes) is bytes and checksum(unit_bytes)==pins["unit_sha"],"UNIT_BYTES")
@@ -85,7 +89,8 @@ def evaluate(facts:dict, unit_bytes:bytes, pins=PIN):
         "web_pid":pins["web_pid"],"rollback_3030_preserved":True,
         "rollback_policy":"RESTORE_ORIGINAL_RESTRICTED_3032_UNIT_NOT_NGINX_TO_LEGACY_3030",
         "allowed_service_change_if_later_centrally_approved":"ONLY_aoe2hdbets-web-prod.service",
-        "steam_v20_identity_preserved":True,"finance_ports_quarantined":True,
+        "steam_v20_inverse_binary_preserved":True,"steam_v22_service_admitted":True,
+        "steam_lock_only_dropin_pinned":True,"finance_ports_quarantined":True,
         "third_web_runtime_authorized":False,"deployment_authorized":False,
         "rollback_executed":False,"root_only_approval_still_required":True,
     }
@@ -132,6 +137,7 @@ def collect():
         "preloader_sha":read_file_sha("/usr/local/lib/aoe2war-web-prod/r25_b_guard_production_v1.cjs"),
         "steam_script_sha":read_file_sha("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py"),
         "steam_unit_sha":read_file_sha("/etc/systemd/system/aoe2war-steam-egress-refresh.service"),
+        "steam_lock_dropin_sha":read_file_sha(STEAM_LOCK_ONLY_DROPIN_PATH),
         "web_pid":systemd(web,"MainPID"),"rollback_pid":systemd(roll,"MainPID"),
         "paper_pid":systemd(paper,"MainPID"),
         "web_state":systemd(web,"ActiveState"),"rollback_state":systemd(roll,"ActiveState"),

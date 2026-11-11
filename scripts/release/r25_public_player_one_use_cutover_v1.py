@@ -32,7 +32,7 @@ REVIEWED_DEPENDENCY_SHAS={
     "r25_public_player_artifact_qualification_v1.py":
       "1565979cb3c1662f5764b6c3baab4d7a4333bba67472a723db006a3a3940e391",
     "r25_public_player_same_slot_preflight_v1.py":
-      "70e5331d9920e5675f815ceb333f19236956f940adae4d106b0864fef60bd17c",
+      "87314320dd4aee0730d619a512d3625ac45a67d2030d6a0930d22ecbb4396de2",
 }
 def sibling(module,name):
     spec=importlib.util.spec_from_file_location(name,HERE/module)
@@ -196,7 +196,7 @@ def permit(path,expected_sha,operation,read_only=False):
          all(type(x) is str and AVATAR.fullmatch(x) for x in targets) and
          len(set(targets))==3 and SNIPER_AVATAR_HANDLE in targets,
          "PERMIT_MANAGED_AVATAR_SCOPE")
-    need(bool(re.fullmatch(r"https://github.com/Emaren/app-prodn/(?:issues/1280|pull/1300|pull/1307)#issuecomment-[0-9]{9,}",str(obj.get("central_comment_url","")))),
+    need(bool(re.fullmatch(r"https://github.com/Emaren/app-prodn/(?:issues/1280|pull/1300|pull/1307|pull/1316)#issuecomment-[0-9]{9,}",str(obj.get("central_comment_url","")))),
          "PERMIT_CENTRAL_APPROVAL_REFERENCE")
     if path==ACTIVATE_PERMIT_PATH:
         need(bool(HEX64.fullmatch(str(obj.get("stage_permit_sha256","")))) and

@@ -24,7 +24,7 @@ def base():
     pins=copy.deepcopy(m.PIN)
     pins["unit_sha"]=m.checksum(unit)
     facts={k:pins[k] for k in ("source","build","web_pid","rollback_pid","paper_pid",
-        "unit_sha","preloader_sha","steam_script_sha","steam_unit_sha","web_user","web_group")}
+        "unit_sha","preloader_sha","steam_script_sha","steam_unit_sha","steam_lock_dropin_sha","web_user","web_group")}
     facts.update(
         web_state="active",rollback_state="active",paper_state="active",
         web_restarts="0",rollback_restarts="0",paper_restarts="0",
@@ -52,6 +52,21 @@ class ExactSlot(unittest.TestCase):
     def test_web_pid_drift(self):self.refuse("PIN_WEB_PID",{"web_pid":"701399"})
     def test_legacy_rollback_pid_drift(self):self.refuse("PIN_ROLLBACK_PID",{"rollback_pid":"1"})
     def test_steam_script_drift(self):self.refuse("PIN_STEAM_SCRIPT_SHA",{"steam_script_sha":"0"*64})
+    def test_v22_native_service_hash_required(self):
+        self.assertEqual(m.STEAM_UNIT_SHA,
+            "44ad57ded3f26690eccf674297c4bc4aa00c0ae2ed563f631001ba6d2de1232a")
+        self.refuse("PIN_STEAM_UNIT_SHA",{"steam_unit_sha":
+            "b976a10d5cc8b3c199974f1b85a912a67323e8b57b4f69325a1061428d20deb2"})
+    def test_exact_single_lock_only_dropin_required(self):
+        self.assertEqual(m.STEAM_LOCK_ONLY_DROPIN_SHA,
+            "34d66d8b1684ed23c3ddae2fb3cc66ca3b1ab26bc4f6bb1fae378012f03e5920")
+        self.refuse("PIN_STEAM_LOCK_DROPIN_SHA",{"steam_lock_dropin_sha":"0"*64})
+    def test_v20_inverse_source_binary_stays_pinned(self):
+        facts,unit,pins=base()
+        result=m.evaluate(facts,unit,pins)
+        self.assertTrue(result["steam_v20_inverse_binary_preserved"])
+        self.assertTrue(result["steam_v22_service_admitted"])
+        self.assertTrue(result["steam_lock_only_dropin_pinned"])
     def test_steam_timer_inactive(self):self.refuse("STEAM_TIMER_STATE",{"steam_timer":"inactive"})
     def test_finance_listeners_open(self):self.refuse("PROTECTED_FINANCE_LISTENER",{"financial_listeners":[8094]})
     def test_nginx_selector_drift(self):self.refuse("NGINX_SELECTOR_DRIFT",{"selector_count":5})
