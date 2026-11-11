@@ -24,6 +24,8 @@ on:
       - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
       - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
       - "tests/test_r25_b_c03_website_source_admission.py"
+      - "tests/test_r25_b_product_mainline_scope.py"
+      - ".github/workflows/product-boundary.yml"
       - "tests/test_r25_b_v22_systemd_condition_native.py"
       - "tests/c03-existing-steam-flow.test.mts"
       - "lib/c03ExistingSteamFlow.ts"
@@ -76,6 +78,7 @@ jobs:
             tests.test_r25_b_linux_release_receipt_emit_v2 \
             tests.test_r25_b_linux_independent_artifact_verify_v2 \
             tests.test_r25_b_c03_website_source_admission \
+            tests.test_r25_b_product_mainline_scope \
             tests.test_r25_b_v22_systemd_condition_native
       - uses: actions/setup-node@v4
         with:
