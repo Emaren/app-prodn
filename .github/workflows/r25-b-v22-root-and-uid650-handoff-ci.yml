@@ -28,6 +28,14 @@ on:
       - "lib/c03ExistingSteamPg.ts"
       - "lib/c03ProductionAuthServer.ts"
       - "lib/productionAuth.ts"
+      - "lib/adminSession.ts"
+      - "lib/c03AdminIdentityGate.ts"
+      - "tests/c03-admin-identity-gate.test.mts"
+      - "app/api/user/register/route.ts"
+      - "app/api/user/update_name/route.ts"
+      - "app/api/user/language/route.ts"
+      - "app/api/user/appearance/route.ts"
+      - "app/api/admin/delete_user/[uid]/route.ts"
       - "app/api/auth/steam/route.ts"
       - "app/api/auth/session/route.ts"
       - "app/api/user/me/route.ts"
@@ -69,7 +77,9 @@ jobs:
         with:
           node-version: "22.22.0"
       - name: Existing-only Steam admin/ordinary/nonce source contract
-        run: node --experimental-strip-types --test tests/c03-existing-steam-flow.test.mts
+        run: |
+          node --experimental-strip-types --test tests/c03-existing-steam-flow.test.mts
+          node --experimental-strip-types --test tests/c03-admin-identity-gate.test.mts
       - name: Direct root/source/public deployment entrypoints must fail closed
         run: |
           for file in \

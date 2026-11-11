@@ -20,6 +20,14 @@ on:
       - "lib/productionAuth.ts"
       - "tests/c03-existing-steam-flow.test.mts"
       - "tests/nonfinancial-production-auth.test.mts"
+      - "lib/adminSession.ts"
+      - "lib/c03AdminIdentityGate.ts"
+      - "tests/c03-admin-identity-gate.test.mts"
+      - "app/api/user/register/route.ts"
+      - "app/api/user/update_name/route.ts"
+      - "app/api/user/language/route.ts"
+      - "app/api/user/appearance/route.ts"
+      - "app/api/admin/delete_user/[uid]/route.ts"
   workflow_dispatch:
 
 permissions:

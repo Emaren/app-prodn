@@ -31,6 +31,21 @@ adapter `lib/c03ProductionAuthServer.ts`, never imported by browser-shared
 `lib/productionAuth.ts`. The legacy shared functions explicitly HOLD if
 the restricted C03 profile reaches them instead of loading Node-only SQL
 dependencies into the client browser graph. User-me POST explicitly returns 503 for account/profile edits.
+**Admin authorization compatibility, not admin database admission:** the
+signed Emaren UID now reaches `lib/adminSession.ts` through the same
+exact A 21-field read facade. `isAdmin=true` and positive original ID are
+required; ordinary Scribe is denied admin status. The returned admin
+database slot is an inert proxy which rejects every legacy Prisma operation
+before construction of any pooled connection. Static admin pages may
+authenticate, but dynamic admin GET/POST routes depending on protected
+Prisma remain explicitly UNAVAILABLE until new approved nonfinancial data
+facades; they are **not** silently permitted to mutate FINANCIAL tables.
+Registration, update_name, language PUT, appearance POST and even the
+separate backend-admin delete-user route all early-return 503 in C03 before
+constructing old database access or calling the backend. Language GET
+similarly holds rather than leaking an unadmitted `public.users` column.
+These are source-only denials, not a claim that every admin dashboard works.
+
 C03 refuses a guest/preview/shadow profile, disabled finance runtime fence,
 nonproduction mode or nonisolated web. Logout preserves existing signed
 session-clearing and in-memory offline barrier. After the original provider check and exact

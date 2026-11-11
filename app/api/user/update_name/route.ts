@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
+import { usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
 import { fetchUserVerification, toUserApi, type UserApi } from "@/lib/userDto";
 import { resolveRequestUid } from "@/lib/requestIdentity";
 
@@ -10,6 +11,13 @@ function normalizeInGameName(name: string) {
 }
 
 export async function POST(request: NextRequest) {
+  // No registration, linking, or protected profile edits during C03.
+  // Deny before parsing user input and before any legacy database access.
+  if (usesC03ExistingOnlyAuth()) {
+    return NextResponse.json({ detail: "C03 protected account changes unavailable" },
+      { status: 503, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }
+
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const uid = await resolveRequestUid(request, body);
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });

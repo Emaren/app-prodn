@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { appearancePreferenceFingerprint } from "@/lib/appearancePreference";
 import { getPrisma } from "@/lib/prisma";
+import { usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
 import {
   loadAppearancePreferenceForUser,
   normalizeAppearancePreference,
@@ -40,6 +41,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // This old Prisma writer has no admitted C03 nonfinancial-sidecar role.
+  if (usesC03ExistingOnlyAuth()) {
+    return NextResponse.json({ detail: "C03 appearance edits unavailable" },
+      { status: 503, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }
+
   try {
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {

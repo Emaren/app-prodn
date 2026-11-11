@@ -101,6 +101,37 @@ class C03RouteSource(unittest.TestCase):
             self.assertIn('from "@/lib/c03ProductionAuthServer"',
                           (ROOT/route).read_text())
 
+    def test_admin_signed_uid_reaches_only_21_field_server_reader(self):
+        admin=(ROOT/"lib/adminSession.ts").read_text()
+        gate=(ROOT/"lib/c03AdminIdentityGate.ts").read_text()
+        self.assertIn("c03ExistingAdminIdentity(uid, readC03ExistingUser)",admin)
+        self.assertLess(admin.index("if (usesC03ExistingOnlyAuth())"),
+                        admin.index("const prisma = getPrisma();"))
+        self.assertIn("HOLD:C03_PROTECTED_ADMIN_PRISMA_NOT_ADMITTED",gate)
+        self.assertIn("user.isAdmin !== true",gate)
+        self.assertNotIn('from "pg"',gate)
+        self.assertNotIn("new Pool(",gate)
+    def test_direct_user_and_admin_mutation_routes_refuse_c03_before_writers(self):
+        paths = {
+          "app/api/user/register/route.ts":"user.create(",
+          "app/api/user/update_name/route.ts":"user.update(",
+          "app/api/user/language/route.ts":"user.update(",
+          "app/api/user/appearance/route.ts":"upsertAppearancePreference(",
+          "app/api/admin/delete_user/[uid]/route.ts":"getBackendUpstreamBase()",
+        }
+        for path,writer in paths.items():
+            s=(ROOT/path).read_text()
+            self.assertIn("usesC03ExistingOnlyAuth()",s,path)
+            self.assertIn("status: 503",s,path)
+            self.assertLess(s.index("if (usesC03ExistingOnlyAuth())"),
+                            s.index(writer),path)
+    def test_restricted_c03_admin_does_not_mint_legacy_db_authority(self):
+        admin=(ROOT/"lib/adminSession.ts").read_text()
+        self.assertIn("c03DeniedLegacyAdminData<ReturnType<typeof getPrisma>>()",admin)
+        gate=(ROOT/"lib/c03AdminIdentityGate.ts").read_text()
+        self.assertIn("get: deny",gate)
+        self.assertIn("set: deny",gate)
+
     def test_no_physical_finance_write_authority_claim(self):
         s=SIDE.read_text()
         self.assertIn("No HBA/grant/DDL writes",s)
