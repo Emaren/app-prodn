@@ -29,9 +29,25 @@ Native V22 exact new-source selftest, exact original rollback profile inspection
 
 The new review files deliberately have no production CLI entry point. A second, independent authorization trust boundary is mandatory: a GitHub comment by the shared owner account is NOT sufficient to prove Central independence. The root adapter additionally requires a detached Ed25519 signature over the exact unmodified GitHub comment body, verified by OpenSSL against a source-pinned, root-only public-key fingerprint. The private signer must remain outside HEL1 and all automated UID501/UID650/B PRODUCT reach. No Central offline signing public key has yet been owner-registered or source-pinned (the verifier's production constant is intentionally NONE, therefore INSTALL unconditionally HOLDS). Synthetic tests generate disposable temporary keys only, not a real signer. No owner command/key generation request is justified until Central independently reviews signing-key custody and the exact registered fingerprint, immutable root executable, physical fence/inverse and fresh owner/Central permit. Directly running reviewed source from UID501-writable PRODUCT is prohibited.
 
-## 2. C→B immutable artifact contract
+## 2. C→B immutable source and independent Linux release-build contract
 
-C supplies an exact App Git commit/tree, archived runtime SHA/bytes/build ID, Node ABI, source provenance, declared nonfinancial acceptance features and read-only backend contract. Manifest assertions by themselves are NOT sufficient. B must independently verify the Git tree and CI, stream/check the artifact hash and obtain a physical root-attested actual UID650/GID650 restricted process receipt with kernel FINANCIAL/private recovery denial and closed UID501 automation bypass. B copies approved output to a new root-only mode0400 stage (single link, no symlink), distinct from forever-frozen STAGE0003. C obtains no HEL1 deployment key, systemctl, Nginx, Steam, finance, or root permit.
+**Architecture correction:** C develops on macOS ARM64, Node24 under UID650;
+its output is a SOURCE archive plus exact App Git commit/tree and lockfile
+digest, not a production runtime archive. The old v1 function accepting a
+purported C-owned Linux runtime is now denied unless paired with a distinct
+B independently verified Linux build proof. Future deployment uses the
+explicit v2 contract.
+
+B's exact Linux x86-64 Node22.22.0 Ubuntu CI job builds that SAME source
+commit/tree with locked npm dependencies and exports real runtime.tar.gz
+with the existing canonical build exporter. A separate v2 receipt includes
+GitHub run ID, source/tree, lockfile, original manifest and archive SHA/size,
+Build ID and ABI. B must independently fetch the actual GitHub run/job
+identity, confirm the job succeeded and Linux runner identity, and stream
+the ZIP/inner runtime bytes before accepting the root stage. The emitted
+receipt does NOT certify UID650 source provenance on its own, and a
+self-reported GitHub run ID does NOT certify an independent release.
+Manifest assertions by themselves are NOT sufficient. B must independently verify the Git tree and CI, stream/check the artifact hash and obtain a physical root-attested actual UID650/GID650 restricted process receipt with kernel FINANCIAL/private recovery denial and closed UID501 automation bypass. B copies approved output to a new root-only mode0400 stage (single link, no symlink), distinct from forever-frozen STAGE0003. C obtains no HEL1 deployment key, systemctl, Nginx, Steam, finance, or root permit.
 
 A distinct exact C source/build must be explicitly supported by the live Steam V22 exact dual-profile guard. The current two source profiles do not authorize arbitrary new future C builds; wildcard identity is forbidden. B must revise/admit exact compatibility before a new C source/build can activate.
 

@@ -1,0 +1,69 @@
+name: Session B isolated Linux x86_64 Node22 release artifact build v2
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml"
+      - "scripts/release/r25_b_c_dev_to_linux_release_contract_v2.py"
+      - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
+      - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
+      - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  b-linux-release-build-source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      AOE2_BACKEND_UPSTREAM: http://127.0.0.1:3331
+      AOE2WAR_ARTIFACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.0"
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Pin native Linux arch, Node and exact source
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          test "$(node --version)" = v22.22.0
+          test "$(git rev-parse HEAD)" = "$AOE2WAR_ARTIFACT_SOURCE_SHA"
+          test -f package-lock.json
+          python3 -B -m unittest -q \
+            tests.test_r25_b_c_dev_linux_release_contract_v2 \
+            tests.test_r25_b_linux_release_receipt_emit_v2
+      - name: Install exact locked dependencies without credentials
+        run: |
+          npm ci --no-audit --no-fund
+          echo "AOE2WAR_CI_INSTALL_PASSED=true" >> "$GITHUB_ENV"
+      - name: Build exactly this Linux source
+        run: |
+          npm run build
+          test -s .next/BUILD_ID
+          echo "AOE2WAR_CI_BUILD_PASSED=true" >> "$GITHUB_ENV"
+      - name: Export actual Linux runtime via existing guarded CI exporter
+        run: |
+          python3 -B scripts/aoe2_r25_c_parallel_stage.py \
+            --ci-export-artifact \
+            --artifact-output "$RUNNER_TEMP/aoe2war-b-linux-release-v2"
+          python3 -B scripts/release/r25_b_linux_release_receipt_emit_v2.py \
+            --ci-export-dir "$RUNNER_TEMP/aoe2war-b-linux-release-v2"
+          sha256sum "$RUNNER_TEMP/aoe2war-b-linux-release-v2/runtime.tar.gz"
+      - name: Publish immutable Linux builder artifact for independent B review
+        uses: actions/upload-artifact@v4
+        with:
+          name: b-linux-source-pinned-release-${{ github.run_id }}
+          path: ${{ runner.temp }}/aoe2war-b-linux-release-v2/
+          if-no-files-found: error
+          retention-days: 7

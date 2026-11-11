@@ -33,14 +33,22 @@ def runner():
             "source_commit":SOURCE,"artifact_sha256":ARCHIVE,
             "attested_by_root":True}
 def ci():
-    return {"source_commit":SOURCE,"conclusion":"success","verified_by_B":True}
+    return {"source_commit":SOURCE,"conclusion":"success","verified_by_B":True,
+            "run_id":456789}
+def trusted_linux():
+    return {"status":"PASS_LINUX_BUILD_SOURCE_AND_BYTES_CONTRACT_ONLY",
+            "os":"linux","arch":"x86_64","node":"v22.22.0",
+            "can_install":False,"source_commit":SOURCE,"source_tree":TREE,
+            "archive_sha256":ARCHIVE,"archive_bytes":10240,
+            "build_id":"test-source-build-A","builder_run_id":456789}
 def artifact(r=None,**kwargs):
     return m.validate_c_artifact(r or receipt(),
       source_tree_lookup=kwargs.get("source_tree_lookup",TREE),
       archive_sha=kwargs.get("archive_sha",ARCHIVE),
       archive_bytes=kwargs.get("archive_bytes",10240),
       attested_runner=kwargs.get("attested_runner",runner()),
-      external_ci=kwargs.get("external_ci",ci()))
+      external_ci=kwargs.get("external_ci",ci()),
+      trusted_linux_build_receipt=kwargs.get("trusted_linux_build_receipt",trusted_linux()))
 def stage():
     return {"schema":m.B_STAGE_SCHEMA,
         "root_owned":True,"mode":0o400,"nlink":1,
@@ -89,6 +97,14 @@ class CtoBTests(unittest.TestCase):
     def test_source_cli_denies(self):
         x=subprocess.run([sys.executable,"-B",str(SRC)],capture_output=True,text=True)
         self.assertEqual(x.returncode,3)
+    def test_legacy_c_artifact_without_b_linux_proof_is_denied(self):
+        with self.assertRaisesRegex(m.Hold,"C_MACOS_IS_NOT_A_LINUX"):
+            artifact(trusted_linux_build_receipt={})
+    def test_mac_arm64_c_manifest_cannot_claim_runtime_acceptance(self):
+        fake=trusted_linux()
+        fake["arch"]="arm64"
+        with self.assertRaisesRegex(m.Hold,"C_MACOS_IS_NOT_A_LINUX"):
+            artifact(trusted_linux_build_receipt=fake)
     def test_exact_artifact_data_contract_passes_without_release(self):
         self.assertFalse(artifact()["deployment_authorized"])
     def test_wrong_git_tree_denied(self):

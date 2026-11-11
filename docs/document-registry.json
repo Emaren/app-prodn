@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3ec26132eacfa5df6f404be46ba08e157ce79d02a7f60a8ae53e0176912711a7",
+      "sha256": "95d5c12ac94067c5992b5cb9884880a5efb2ee5907c1e8fb39c78312b65dfe2b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2775,6 +2775,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "nonfinancial source only, session A sole FINANCIAL writer, no production admission",
+      "id": "aoe2war.app-prodn.session-b-c03-existing-only-steam-contract-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "9a96881ce5183053acee3966e39a8ac01935c19756e1656c1248cd01bf877040",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B C03 existing-user-only Steam website contract",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial HTTP classification only, no SQL/financial role changes",
       "id": "aoe2war.app-prodn.session-b-c03-prisma-crossrealm-42501-20261109",
       "owner": "aoe2war-web",
@@ -3073,7 +3095,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-11",
       "sensitivity": "restricted",
-      "sha256": "28341f939bb23ab70cb5f0b52f91ec964cf7546dc7900b8ebb700ab0de46b865",
+      "sha256": "3066827ea0f09f0c35e59f43235639cf5d0e2f29f09dcdcb290fe319167cfb0e",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3108,7 +3130,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
-    "commit": "22bab21722d47bb223dfd0274bca878b7e8b38ae"
+    "commit": "a2233081a56b2ad0c8a79c25c7b60cb38e71d3ac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

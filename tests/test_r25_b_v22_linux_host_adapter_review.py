@@ -5,6 +5,9 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import os
+import tempfile
+from unittest.mock import patch
 import sys
 import unittest
 
@@ -52,6 +55,57 @@ class ExactHostReview(unittest.TestCase):
         text=FILE.read_text()
         self.assertIn('txn.PRODUCTION_TARGETS',text)
         self.assertNotIn('self.packet["target_path"]',text)
+    def test_cleanup_exact_new_stage_only_after_original_inverse(self):
+        with tempfile.TemporaryDirectory(prefix="b-exact-stage-inverse-") as d:
+            paths={}
+            pins={}
+            for key in ("v22","controller","guard"):
+                path=Path(d)/key
+                path.write_bytes(b"old-"+key.encode())
+                stage=path.with_name(path.name+".b-v22-new-stage")
+                stage.write_bytes(b"new-"+key.encode())
+                paths[key]=str(path)
+                pins[key]=(a.policy.digest(path.read_bytes()),a.policy.digest(stage.read_bytes()))
+            host=a.HEL1SourceInstallHost()
+            old=a.txn.strict_file
+            def current_user_strict(path,**kwargs):
+                kwargs["require_uid"]=os.getuid()
+                return old(path,**kwargs)
+            with patch.object(a.txn,"PRODUCTION_TARGETS",paths), \
+                 patch.object(a.policy,"PINNED",pins), \
+                 patch.object(a.txn,"strict_file",side_effect=current_user_strict), \
+                 patch.object(host,"verify_no_swap_was_started",return_value=None):
+                self.assertTrue(host.cleanup_exact_abandoned_new_stages())
+                for path in paths.values():
+                    self.assertFalse(Path(path+".b-v22-new-stage").exists())
+                    self.assertTrue(Path(path).exists())
+
+    def test_cleanup_unknown_competing_stage_bytes_holds_without_deleting(self):
+        with tempfile.TemporaryDirectory(prefix="b-unknown-stage-inverse-") as d:
+            paths={}
+            pins={}
+            for key in ("v22","controller","guard"):
+                path=Path(d)/key
+                path.write_bytes(b"old-"+key.encode())
+                stage=path.with_name(path.name+".b-v22-new-stage")
+                stage.write_bytes(b"new-"+key.encode())
+                paths[key]=str(path)
+                pins[key]=(a.policy.digest(path.read_bytes()),a.policy.digest(stage.read_bytes()))
+            bad=Path(paths["guard"]+".b-v22-new-stage")
+            bad.write_bytes(b"competing byte writer")
+            host=a.HEL1SourceInstallHost()
+            old=a.txn.strict_file
+            def current_user_strict(path,**kwargs):
+                kwargs["require_uid"]=os.getuid()
+                return old(path,**kwargs)
+            with patch.object(a.txn,"PRODUCTION_TARGETS",paths), \
+                 patch.object(a.policy,"PINNED",pins), \
+                 patch.object(a.txn,"strict_file",side_effect=current_user_strict), \
+                 patch.object(host,"verify_no_swap_was_started",return_value=None):
+                with self.assertRaisesRegex(RuntimeError,"UNKNOWN_ABANDONED_STAGE"):
+                    host.cleanup_exact_abandoned_new_stages()
+                self.assertEqual(bad.read_bytes(),b"competing byte writer")
+
     def test_root_loader_preserves_review_only_status(self):
         self.assertIn("HOLD:REVIEW_ONLY_NO_LIVE_ROOT_INSTALL_CLI",FILE.read_text())
 

@@ -1,11 +1,19 @@
 import type { NextRequest } from "next/server";
 import { toUserApi, type UserCoreRow } from "@/lib/userDto";
+import { c03ExistingReader, c03TouchNonfinancialPresence } from "@/lib/c03ExistingSteamPg";
 
 export const NONFINANCIAL_PRODUCTION_PROFILE = "nonfinancial-production-v1";
 export const PRODUCTION_WEB_ORIGIN = "https://aoe2war.com";
 
+export const C03_EXISTING_ONLY_PROFILE = "nonfinancial-c03-existing-only-v1";
+
+export function usesC03ExistingOnlyAuth() {
+  return process.env.AOE2WAR_RUNTIME_PROFILE === C03_EXISTING_ONLY_PROFILE;
+}
+
 export function usesNonfinancialProductionAuth() {
-  return process.env.AOE2WAR_RUNTIME_PROFILE === NONFINANCIAL_PRODUCTION_PROFILE;
+  return process.env.AOE2WAR_RUNTIME_PROFILE === NONFINANCIAL_PRODUCTION_PROFILE
+    || usesC03ExistingOnlyAuth();
 }
 
 type AuthDatabase = {
@@ -20,6 +28,9 @@ export async function completeProductionSteamLogin(prisma: AuthDatabase, input: 
   steamId: string; sessionUid: string | null; newUid: string;
   personaName: string | null; responseNonce: string;
 }) {
+  if (usesC03ExistingOnlyAuth()) {
+    throw new Error("HOLD:C03_LEGACY_MUTATING_SECURITY_DEFINER_DENIED");
+  }
   const rows = await prisma.$queryRaw<Array<{ uid: string }>>`
     SELECT aoe2war_auth_v1.complete_steam_login(
       ${input.steamId}::text, ${input.sessionUid}::text, ${input.newUid}::text,
@@ -32,6 +43,16 @@ export async function completeProductionSteamLogin(prisma: AuthDatabase, input: 
 }
 
 export async function touchProductionSession(prisma: AuthDatabase, uid: string, email: string | null = null) {
+  if (usesC03ExistingOnlyAuth()) {
+    const rows = await c03ExistingReader.readExistingUser(uid);
+    if (rows.length !== 1 || rows[0]?.uid !== uid) return false;
+    // C03 cannot modify protected public.users.email or last_seen. A
+    // different requested email is a separately authorized account mutation.
+    if (email !== null && rows[0]?.email !== email) {
+      throw new Error("HOLD:C03_PROTECTED_EMAIL_UPDATE_DENIED");
+    }
+    return c03TouchNonfinancialPresence(uid);
+  }
   const rows = await prisma.$queryRaw<Array<{ touched: boolean }>>`
     SELECT aoe2war_auth_v1.touch_session(${uid}::text, ${email}::text) AS touched
   `;
@@ -39,6 +60,17 @@ export async function touchProductionSession(prisma: AuthDatabase, uid: string, 
 }
 
 export async function readProductionUser(prisma: AuthDatabase, uid: string) {
+  if (usesC03ExistingOnlyAuth()) {
+    const rows = await c03ExistingReader.readExistingUser(uid);
+    const row = rows[0];
+    if (!row || rows.length !== 1 || row.uid !== uid
+        || typeof row.isAdmin !== "boolean" || Object.hasOwn(row, "token")) return null;
+    const { token: legacyToken, ...user } = toUserApi({
+      ...(row as unknown as UserCoreRow), token: null,
+    });
+    void legacyToken;
+    return user;
+  }
   const rows = await prisma.$queryRaw<Array<Omit<UserCoreRow, "token">>>`
     SELECT * FROM aoe2war_auth_v1.read_user(${uid}::text)
   `;

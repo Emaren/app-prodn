@@ -80,6 +80,7 @@ class FakeHost:
     def verify_existing_root_transaction_receipt(self):self.fire("verify_inverse_receipt")
     def transaction_has_complete_inverse(self):return True
     def verify_no_swap_was_started(self):self.fire("verify_no_swap")
+    def cleanup_exact_abandoned_new_stages(self):self.fire("cleanup_exact_stages")
     def verify_original_recovery_protected_postflight(self):self.fire("original_recovery_postflight")
     def require_persistent_guard_and_sentinel(self):
         self.fire("verify_recovery_fence")
@@ -180,7 +181,8 @@ class SourceInstallCoordinatorFixture(unittest.TestCase):
         self.assertTrue(t.inverse_called)
         self.assertFalse(t.new or h.fence or h.sentinel)
         self.assertTrue(h.timer)
-        self.assertLess(h.history.index("transaction_inverse"),h.history.index("sentinel_remove"))
+        self.assertLess(h.history.index("transaction_inverse"),h.history.index("cleanup_exact_stages"))
+        self.assertLess(h.history.index("cleanup_exact_stages"),h.history.index("sentinel_remove"))
     def test_failure_at_timer_reenable_does_not_claim_complete(self):
         h,t,c=coord("timer_restore")
         with self.assertRaises(RuntimeError):c.install()

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Nonfinancial C UID650 -> B 3032 immutable artifact interface and admission.
+"""DEPRECATED compatibility interface: B trusted Linux runtime only.
+
+C UID650 macOS/ARM64/Node24 output is SOURCE ONLY and never enters HEL1.
+The explicit v2 source-to-Linux build contract must pass first. This module
+must not accept a C-owned Linux runtime assertion as release authority.
 
 Pure immutable receipt checks and same-slot state transitions; no remote access,
 root mutation, Steam login, network, timers, SQL, secrets or service controls.
@@ -45,14 +49,25 @@ def canonical(obj:object)->bytes:
     return json.dumps(obj,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()
 
 def validate_c_artifact(receipt, *, source_tree_lookup, archive_sha,
-                        archive_bytes, attested_runner, external_ci):
-    """C's manifest is untrusted until root-side source/UID/CI verification.
+                        archive_bytes, attested_runner, external_ci,
+                        trusted_linux_build_receipt=None):
+    """Deprecated v1 contract requires independently checked B Linux proof.
 
     source_tree_lookup: independently fetched authoritative Git tree.
     archive_sha/bytes: independently streamed by B, not fields copied from C.
     attested_runner: B-verified *root-controlled UID650 launch* receipt.
     external_ci: B independently verified exact-head check results.
     """
+    # This function historically (incorrectly) conflated C's M1 dev build
+    # with a Linux release artifact. No previous C receipt authorizes a Linux
+    # runtime. Require the independently verified *B* Linux build receipt.
+    linux=trusted_linux_build_receipt
+    require(type(linux) is dict and
+            linux.get("status")=="PASS_LINUX_BUILD_SOURCE_AND_BYTES_CONTRACT_ONLY"
+            and linux.get("os")=="linux" and linux.get("arch")=="x86_64"
+            and linux.get("node")=="v22.22.0"
+            and linux.get("can_install") is False,
+            "C_MACOS_IS_NOT_A_LINUX_ARTIFACT_USE_V2")
     require(type(receipt) is dict
             and receipt.get("schema")==C_ARTIFACT_SCHEMA
             and receipt.get("source_repo")==SOURCE_REPO,"C_ARTIFACT_SCHEMA")
@@ -93,6 +108,13 @@ def validate_c_artifact(receipt, *, source_tree_lookup, archive_sha,
             and external_ci.get("conclusion")=="success"
             and external_ci.get("verified_by_B") is True,
             "EXTERNAL_SOURCE_CI")
+    require(linux.get("source_commit")==source
+            and linux.get("source_tree")==tree
+            and linux.get("archive_sha256")==archive_sha
+            and linux.get("archive_bytes")==archive_bytes
+            and linux.get("build_id")==receipt.get("build_id")
+            and linux.get("builder_run_id")==external_ci.get("run_id"),
+            "C_RECEIPT_MUST_MATCH_B_LINUX_CI")
     features=receipt.get("declared_acceptance_features")
     require(type(features) is list and set(features)==ALLOWED_FEATURES
             and len(features)==len(ALLOWED_FEATURES),"ACCEPTANCE_SCOPE")

@@ -387,6 +387,7 @@ class HEL1SourceInstallHost:
         for file in ("r25_b_v22_linux_host_adapter_REVIEW_ONLY.py",
                      "r25_b_v22_source_install_coordinator_REVIEW_ONLY.py",
                      "r25_v22_root_install_admission_REVIEW_ONLY.py",
+                     "r25_b_v22_central_signature_REVIEW_ONLY.py",
                      "r25_v22_three_source_transaction_REVIEW_ONLY.py"):
             root_source(HERE/file)
         # Never accept an absent or owner-writable control directory.
@@ -430,6 +431,34 @@ class HEL1SourceInstallHost:
                   "UNPREPARED_RECOVERY_SOURCE_DRIFT_"+key)
         check(not any(TRANS.glob("SWAP_INTENT_*.json")),
               "UNPREPARED_RECOVERY_HAS_SWAP_INTENT")
+
+    def cleanup_exact_abandoned_new_stages(self):
+        """Remove only SHA-pinned new-stage residue after original inverse.
+
+        A crash after PREPARE_INTENT but before PREPARED may leave a subset
+        of staged files. Unknown bytes, owner, links or source drift HOLD.
+        Never delete a working directory or blindly sweep temporary names.
+        """
+        self.verify_no_swap_was_started()
+        for key,path in txn.PRODUCTION_TARGETS.items():
+            original=Path(path)
+            stage=original.with_name(original.name+".b-v22-new-stage")
+            if not stage.exists() and not stage.is_symlink():
+                continue
+            raw=txn.strict_file(stage,require_uid=0)
+            check(hashlib.sha256(raw).hexdigest()==policy.PINNED[key][1],
+                  "UNKNOWN_ABANDONED_STAGE_"+key)
+            check(stat.S_IMODE(stage.lstat().st_mode)==
+                  stat.S_IMODE(original.lstat().st_mode),
+                  "ABANDONED_STAGE_MODE_CHANGED_"+key)
+            stage.unlink()
+            txn.fsync_dir(stage.parent)
+        for key in txn.ORDER:
+            inverse=TRANS/(key+".inverse")
+            if inverse.exists() or inverse.is_symlink():
+                check(sha(inverse)==policy.PINNED[key][0],
+                      "PARTIAL_INVERSE_BYTES_DRIFT_"+key)
+        return True
 
     def native_original_v22_selftest_and_v20_fallback(self):
         for name,path in txn.PRODUCTION_TARGETS.items():

@@ -88,6 +88,7 @@ class SourceInstallCoordinator:
                 # Crash in PREPARE: no swap was permitted without PREPARED
                 # and all original SHA values must still match.
                 self.backend.verify_no_swap_was_started()
+            self.backend.cleanup_exact_abandoned_new_stages()
             self.backend.native_original_v22_selftest_and_v20_fallback()
             self.backend.verify_original_recovery_protected_postflight()
             self.backend.seal_exact_inverse_receipt()

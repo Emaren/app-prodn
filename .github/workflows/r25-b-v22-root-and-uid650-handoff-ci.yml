@@ -15,6 +15,20 @@ on:
       - "tests/test_r25_b_v22_source_install_coordinator_review.py"
       - "tests/test_r25_b_v22_linux_host_adapter_review.py"
       - "tests/test_r25_b_c_product_artifact_same_slot.py"
+      - "scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py"
+      - "scripts/release/r25_b_c_dev_to_linux_release_contract_v2.py"
+      - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
+      - "scripts/release/r25_b_c03_nonfinancial_sidecar_SCHEMA_REVIEW_ONLY.sql"
+      - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
+      - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
+      - "tests/test_r25_b_c03_website_source_admission.py"
+      - "tests/test_r25_b_v22_systemd_condition_native.py"
+      - "tests/c03-existing-steam-flow.test.mts"
+      - "lib/c03ExistingSteamFlow.ts"
+      - "lib/c03ExistingSteamPg.ts"
+      - "lib/productionAuth.ts"
+      - "app/api/auth/steam/route.ts"
+      - "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md"
       - "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md"
       - ".github/workflows/r25-b-v22-root-and-uid650-handoff-ci.yml"
   workflow_dispatch:
@@ -42,7 +56,16 @@ jobs:
             tests.test_r25_b_v22_central_signature_review \
             tests.test_r25_b_v22_source_install_coordinator_review \
             tests.test_r25_b_v22_linux_host_adapter_review \
-            tests.test_r25_b_c_product_artifact_same_slot
+            tests.test_r25_b_c_product_artifact_same_slot \
+            tests.test_r25_b_c_dev_linux_release_contract_v2 \
+            tests.test_r25_b_linux_release_receipt_emit_v2 \
+            tests.test_r25_b_c03_website_source_admission \
+            tests.test_r25_b_v22_systemd_condition_native
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.0"
+      - name: Existing-only Steam admin/ordinary/nonce source contract
+        run: node --experimental-strip-types --test tests/c03-existing-steam-flow.test.mts
       - name: Direct root/source/public deployment entrypoints must fail closed
         run: |
           for file in \
