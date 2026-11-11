@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ddfeef2bf98b18e381a363833eca6996ffc472a55a2d2436414191c7e420b434",
+      "sha256": "d3a5c3af757f270ad111b4faa4b0e7247c320c4f238843e147292f898859d604",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/owner-private-denial-attestation-20261110",
-    "commit": "5320aa583fbfe9be5d5d06babd62760a67396c37"
+    "branch": "session-c/mainline-observability-readmodels-20261110",
+    "commit": "867b6ff0bb0529a3d57f6f3f2616c00bc2e96463"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
