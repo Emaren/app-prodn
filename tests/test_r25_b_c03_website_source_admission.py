@@ -6,6 +6,7 @@ ROOT=Path(__file__).resolve().parents[1]
 STEAM=(ROOT/"app/api/auth/steam/route.ts")
 PROD=(ROOT/"lib/productionAuth.ts")
 SIDE=(ROOT/"lib/c03ExistingSteamPg.ts")
+SERVER=(ROOT/"lib/c03ProductionAuthServer.ts")
 DDL=(ROOT/"scripts/release/r25_b_c03_nonfinancial_sidecar_SCHEMA_REVIEW_ONLY.sql")
 class C03RouteSource(unittest.TestCase):
     def test_steam_provider_verified_before_c03_identity(self):
@@ -61,20 +62,22 @@ class C03RouteSource(unittest.TestCase):
         self.assertNotIn("CREATE SCHEMA IF NOT EXISTS",s)
     def test_c03_signed_session_get_and_post_do_not_construct_legacy_prisma(self):
         src=(ROOT/"app/api/auth/session/route.ts").read_text()
-        self.assertIn("readProductionUser(null, uid)",src)
-        self.assertIn("touchProductionSession(null, uid, providedEmail)",src)
+        self.assertIn("readC03ExistingUser(uid)",src)
+        self.assertIn("touchC03ExistingSession(uid, providedEmail)",src)
+        self.assertNotIn("readProductionUser(null, uid)",src)
         self.assertLess(src.index("if (usesC03ExistingOnlyAuth()) {\n    const user ="),
                         src.index("const prisma = getPrisma();\n  if (usesNonfinancialProductionAuth()) {"))
         self.assertIn("C03 preview identity not admitted",src)
     def test_c03_user_me_denies_protected_profile_post(self):
         src=(ROOT/"app/api/user/me/route.ts").read_text()
-        self.assertIn("readProductionUser(null, uid)",src)
+        self.assertIn("readC03ExistingUser(uid)",src)
         self.assertIn("C03 protected account updates unavailable",src)
         self.assertIn("status: 503",src)
     def test_c03_presence_pings_only_use_new_sidecar(self):
         src=(ROOT/"app/api/user/ping/route.ts").read_text()
         self.assertIn("usesC03ExistingOnlyAuth() ? null : getPrisma()",src)
-        self.assertIn("touchProductionSession(prisma, uid)",src)
+        self.assertIn("touchC03ExistingSession(uid)",src)
+        self.assertIn("touchProductionSession(prisma!, uid)",src)
         self.assertIn("prisma!.user.updateMany",src)
     def test_c03_maintenance_profile_denies_guests_and_shadow(self):
         src=PROD.read_text()
@@ -83,6 +86,21 @@ class C03RouteSource(unittest.TestCase):
                      "WARGRAPH_RUNTIME_DISABLED",
                      "HOLD:C03_ISOLATED_PRODUCTION_ONLY_PROFILE_REQUIRED"):
             self.assertIn(need,src)
+    def test_server_only_pg_client_never_enters_shared_browser_module(self):
+        shared=PROD.read_text()
+        private=SERVER.read_text()
+        for forbidden in ('from "@/lib/c03ExistingSteamPg"',
+                          'from "@/lib/c03ProductionAuthServer"',
+                          'from "pg"', "new Pool("):
+            self.assertNotIn(forbidden, shared)
+        self.assertIn("HOLD:C03_USE_EXPLICIT_SERVER_ONLY_SESSION_ADAPTER", shared)
+        self.assertIn("HOLD:C03_USE_EXPLICIT_SERVER_ONLY_USER_READER", shared)
+        self.assertIn('from "@/lib/c03ExistingSteamPg"',private)
+        for route in ("app/api/auth/session/route.ts",
+                      "app/api/user/me/route.ts","app/api/user/ping/route.ts"):
+            self.assertIn('from "@/lib/c03ProductionAuthServer"',
+                          (ROOT/route).read_text())
+
     def test_no_physical_finance_write_authority_claim(self):
         s=SIDE.read_text()
         self.assertIn("No HBA/grant/DDL writes",s)

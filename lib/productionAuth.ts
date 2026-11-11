@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
 import { toUserApi, type UserCoreRow } from "@/lib/userDto";
-import { c03ExistingReader, c03TouchNonfinancialPresence } from "@/lib/c03ExistingSteamPg";
 
 export const NONFINANCIAL_PRODUCTION_PROFILE = "nonfinancial-production-v1";
 export const PRODUCTION_WEB_ORIGIN = "https://aoe2war.com";
@@ -54,15 +53,11 @@ export async function completeProductionSteamLogin(prisma: AuthDatabase, input: 
 }
 
 export async function touchProductionSession(prisma: AuthDatabase | null, uid: string, email: string | null = null) {
+  // This shared module is imported into client-facing modules (e.g. clans).
+  // Never import pg or a server-only C03 module here. Actual scoped C03 SQL
+  // is available solely through API route imports of c03ProductionAuthServer.
   if (usesC03ExistingOnlyAuth()) {
-    const rows = await c03ExistingReader.readExistingUser(uid);
-    if (rows.length !== 1 || rows[0]?.uid !== uid) return false;
-    // C03 cannot modify protected public.users.email or last_seen. A
-    // different requested email is a separately authorized account mutation.
-    if (email !== null && rows[0]?.email !== email) {
-      throw new Error("HOLD:C03_PROTECTED_EMAIL_UPDATE_DENIED");
-    }
-    return c03TouchNonfinancialPresence(uid);
+    throw new Error("HOLD:C03_USE_EXPLICIT_SERVER_ONLY_SESSION_ADAPTER");
   }
   if (!prisma) throw new Error("HOLD:C03_LEGACY_PRISMA_READ_DENIED");
   const rows = await prisma.$queryRaw<Array<{ touched: boolean }>>`
@@ -73,15 +68,7 @@ export async function touchProductionSession(prisma: AuthDatabase | null, uid: s
 
 export async function readProductionUser(prisma: AuthDatabase | null, uid: string) {
   if (usesC03ExistingOnlyAuth()) {
-    const rows = await c03ExistingReader.readExistingUser(uid);
-    const row = rows[0];
-    if (!row || rows.length !== 1 || row.uid !== uid
-        || typeof row.isAdmin !== "boolean" || Object.hasOwn(row, "token")) return null;
-    const { token: legacyToken, ...user } = toUserApi({
-      ...(row as unknown as UserCoreRow), token: null,
-    });
-    void legacyToken;
-    return user;
+    throw new Error("HOLD:C03_USE_EXPLICIT_SERVER_ONLY_USER_READER");
   }
   if (!prisma) throw new Error("HOLD:C03_LEGACY_PRISMA_READ_DENIED");
   const rows = await prisma.$queryRaw<Array<Omit<UserCoreRow, "token">>>`

@@ -19,6 +19,7 @@ import {
 } from "@/lib/userOnlinePresenceGuards";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 import { touchProductionSession, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
+import { touchC03ExistingSession } from "@/lib/c03ProductionAuthServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -350,8 +351,11 @@ export async function POST(request: NextRequest) {
     uid,
     heartbeatAt.getTime(),
     async () => {
+      if (usesC03ExistingOnlyAuth()) {
+        return await touchC03ExistingSession(uid) ? 1 : 0;
+      }
       if (usesNonfinancialProductionAuth()) {
-        return await touchProductionSession(prisma, uid) ? 1 : 0;
+        return await touchProductionSession(prisma!, uid) ? 1 : 0;
       }
       const result = await prisma!.user.updateMany({
         where: { uid },

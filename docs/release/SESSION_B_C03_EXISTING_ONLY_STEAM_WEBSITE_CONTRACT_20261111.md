@@ -26,7 +26,11 @@ A distinct source-only runtime profile `nonfinancial-c03-existing-only-v1`
 now selects B's reader/nonce adapter BEFORE legacy getPrisma, without changing
 the existing deployed profile. C03 source also branches session GET/POST,
 user-me GET, and presence ping to avoid constructing the legacy protected
-Prisma pool. User-me POST explicitly returns 503 for account/profile edits.
+Prisma pool. PostgreSQL access now lives only in the C03 server-only API
+adapter `lib/c03ProductionAuthServer.ts`, never imported by browser-shared
+`lib/productionAuth.ts`. The legacy shared functions explicitly HOLD if
+the restricted C03 profile reaches them instead of loading Node-only SQL
+dependencies into the client browser graph. User-me POST explicitly returns 503 for account/profile edits.
 C03 refuses a guest/preview/shadow profile, disabled finance runtime fence,
 nonproduction mode or nonisolated web. Logout preserves existing signed
 session-clearing and in-memory offline barrier. After the original provider check and exact

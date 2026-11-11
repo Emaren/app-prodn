@@ -26,6 +26,7 @@ on:
       - "tests/c03-existing-steam-flow.test.mts"
       - "lib/c03ExistingSteamFlow.ts"
       - "lib/c03ExistingSteamPg.ts"
+      - "lib/c03ProductionAuthServer.ts"
       - "lib/productionAuth.ts"
       - "app/api/auth/steam/route.ts"
       - "app/api/auth/session/route.ts"

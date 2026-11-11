@@ -19,6 +19,7 @@ import {
 } from "@/lib/userOnlinePresence";
 import { livingKingdomHub } from "@/lib/livingKingdom/hub";
 import { isProductionAuthMutationOrigin, readProductionUser, touchProductionSession, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
+import { readC03ExistingUser, touchC03ExistingSession } from "@/lib/c03ProductionAuthServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
   // C03 physically rejects the legacy website Prisma datasource. Existing
   // signed user sessions MUST use the 21-field scoped reader directly.
   if (usesC03ExistingOnlyAuth()) {
-    const user = await readProductionUser(null, uid);
+    const user = await readC03ExistingUser(uid);
     if (!user) return NextResponse.json({ detail: "User not found" }, { status: 401 });
     return NextResponse.json({ uid, user }, { headers: {
       "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie",
@@ -146,10 +147,10 @@ export async function POST(request: NextRequest) {
     }
     // No protected users update: a separately scoped NONFINANCIAL presence
     // writer touches only c03_b_sidecar.user_presence.
-    if (!await touchProductionSession(null, uid, providedEmail)) {
+    if (!await touchC03ExistingSession(uid, providedEmail)) {
       return NextResponse.json({ detail: "User not found" }, { status: 401 });
     }
-    const user = await readProductionUser(null, uid);
+    const user = await readC03ExistingUser(uid);
     if (!user) return NextResponse.json({ detail: "User not found" }, { status: 401 });
     return NextResponse.json({ uid, user }, { headers: {
       "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie",

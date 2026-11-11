@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { fetchUserVerification, toUserApi } from "@/lib/userDto";
 import { readProductionUser, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
+import { readC03ExistingUser } from "@/lib/c03ProductionAuthServer";
 import { loadPendingWoloClaimSummaryForUser } from "@/lib/pendingWoloClaims";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 import { validateWoloAddress } from "@/lib/woloBetSettlement";
@@ -355,7 +356,7 @@ export async function GET(request: NextRequest) {
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
   if (usesC03ExistingOnlyAuth()) {
-    const user = await readProductionUser(null, uid);
+    const user = await readC03ExistingUser(uid);
     if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
     return NextResponse.json({
       ...user, financialStatus: "unavailable", profilePresentationStatus: "unavailable",
