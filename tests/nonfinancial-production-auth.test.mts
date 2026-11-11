@@ -51,7 +51,8 @@ function load(file: string, deps: Record<string, unknown>, env: Record<string, s
       // reader/nonce/presence module is NEVER used in this old profile.
       // Any accidental access throws instead of silently faking authority.
       if (name === "@/lib/c03ExistingSteamPg" ||
-          name === "@/lib/c03ExistingSteamFlow") {
+          name === "@/lib/c03ExistingSteamFlow" ||
+          name === "@/lib/c03ProductionAuthServer") {
         return new Proxy({}, { get: () => {
           throw new Error("LEGACY_PROFILE_MUST_NOT_TOUCH_C03_SIDECAR");
         } });
