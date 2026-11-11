@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0f1feaab039790447999eb0b1ce8130ccfb9fa7ad8bcce8a64b42c22fa8db60e",
+      "sha256": "7814dfa5d5bb5ed8938f44f9270b63ca1305ed23787915f1d210a133ecea3c9f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3066,6 +3066,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority",
+      "id": "aoe2war.app-prodn.session-b-v22-root-install-uid650-product-release-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "f647d2532e4ebbd20577282d9c692855b4604d93a4cf4776f796ca560517d303",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 V22 root SOURCE_INSTALL and UID650\u21923032 release engine",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -3085,8 +3107,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/v22-three-source-install-transaction-20261111",
-    "commit": "dd55ed103a11fc8db2e13f29a75e580cf502a58f"
+    "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
+    "commit": "f91e57c2602a1e0674819d17c59f7fd5677b6e91"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

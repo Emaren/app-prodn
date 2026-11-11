@@ -182,7 +182,15 @@ class Transaction:
         self.event("APPLIED_UNVERIFIED")
 
     def inverse(self):
-        """Crash recovery: reverse only exact OLD/NEW bytes, never unknown drift."""
+        """Idempotent crash recovery of exact OLD/NEW bytes only.
+
+        A crash after creating an inverse-stage file but before renaming it
+        must NOT strand future recovery on a benign existing staging name.
+        Existing stages are reused only if their exact trusted old hash and
+        metadata match. No unknown source overwrite is ever authorized.
+        """
+        if not (self.state / "PREPARED.json").is_file():
+            raise Hold("INVERSE_WITHOUT_PREPARED_ROOT_RECEIPT")
         self.verify_provenance()
         if (self.state / "COMPLETED.json").exists():
             raise Hold("COMPLETED_REQUIRES_NEW_ROLLBACK_AUTHORITY")
@@ -191,17 +199,35 @@ class Transaction:
             actual = sha(strict_file(dest, require_uid=self.uid))
             if actual not in PINNED[key]:
                 raise Hold("UNKNOWN_TARGET_COMPETING_WRITER_" + key)
-            if actual == PINNED[key][0]:
-                continue
             payload = strict_file(self.state / (key + ".inverse"),
                                   require_uid=self.uid, require_mode=0o400)
+            if sha(payload) != PINNED[key][0]:
+                raise Hold("INVERSE_TAMPER_" + key)
             stage = dest.with_name(dest.name + ".b-v22-inverse-stage")
-            create_once(stage, payload, mode=stat.S_IMODE(dest.stat().st_mode))
-            os.replace(stage, dest)
-            fsync_dir(dest.parent)
-            if sha(strict_file(dest, require_uid=self.uid)) != PINNED[key][0]:
-                raise Hold("INVERSE_FAILED_" + key)
-        self.event("INVERSE_COMPLETE")
+            if stage.exists() or stage.is_symlink():
+                previous = strict_file(stage, require_uid=self.uid)
+                if sha(previous) != PINNED[key][0] or (
+                    stat.S_IMODE(stage.lstat().st_mode) !=
+                    stat.S_IMODE(dest.lstat().st_mode)):
+                    raise Hold("INVERSE_STAGE_COMPETING_WRITER_" + key)
+            elif actual == PINNED[key][1]:
+                create_once(stage, payload,
+                            mode=stat.S_IMODE(dest.stat().st_mode))
+            if actual == PINNED[key][1]:
+                os.replace(stage, dest)
+                fsync_dir(dest.parent)
+                if sha(strict_file(dest, require_uid=self.uid)) != PINNED[key][0]:
+                    raise Hold("INVERSE_FAILED_" + key)
+            elif stage.exists():
+                # Exact benign leftover stage from an interrupted earlier
+                # inverse. Clean only the pinned byte-equivalent path.
+                stage.unlink()
+                fsync_dir(dest.parent)
+        if not (self.state / "INVERSE_COMPLETE.json").exists():
+            self.event("INVERSE_COMPLETE")
+        for key in ORDER:
+            if sha(strict_file(self.targets[key], require_uid=self.uid)) != PINNED[key][0]:
+                raise Hold("POST_INVERSE_OLD_SOURCE_DRIFT_" + key)
 
     def complete_after_external_proof(self):
         # This review primitive cannot validate independent Central approval,

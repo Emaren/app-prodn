@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SRC = Path(__file__).resolve().parents[1] / "scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py"
 spec = importlib.util.spec_from_file_location("b_v22_transaction_review", SRC)
@@ -185,6 +186,60 @@ class V22ThreeSourceTxn(unittest.TestCase):
         self.targets["guard"].write_bytes(b"third-party-change")
         self.targets["guard"].chmod(0o500)
         with self.assertRaisesRegex(m.Hold, "UNKNOWN_TARGET_COMPETING_WRITER_guard"):
+            txn.inverse()
+
+    def test_inverse_crash_before_atomic_restore_resumes_exact_stage(self):
+        txn=self.tx()
+        txn.prepare()
+        txn.apply()
+        original=m.os.replace
+        def crash_before_inverse(src,dest):
+            if str(src).endswith(".b-v22-inverse-stage"):
+                raise RuntimeError("INJECTED_CRASH_BEFORE_INVERSE_RENAME")
+            return original(src,dest)
+        with patch.object(m.os,"replace",side_effect=crash_before_inverse):
+            with self.assertRaisesRegex(RuntimeError,"INJECTED_CRASH"):
+                txn.inverse()
+        self.assertTrue(self.targets["guard"].with_name(
+            self.targets["guard"].name+".b-v22-inverse-stage").exists())
+        txn.inverse()
+        self.assert_old()
+        # Idempotent recovery recheck, not an additional source install.
+        txn.inverse()
+        self.assert_old()
+
+    def test_inverse_crash_after_one_restoration_then_resume(self):
+        txn=self.tx()
+        txn.prepare()
+        txn.apply()
+        original=m.os.replace
+        counter=[0]
+        def crash_on_second_restore(src,dest):
+            if str(src).endswith(".b-v22-inverse-stage"):
+                counter[0]+=1
+                if counter[0]==2:
+                    raise RuntimeError("INJECTED_SECOND_INVERSE_CRASH")
+            return original(src,dest)
+        with patch.object(m.os,"replace",side_effect=crash_on_second_restore):
+            with self.assertRaisesRegex(RuntimeError,"INJECTED_SECOND"):
+                txn.inverse()
+        txn.inverse()
+        self.assert_old()
+
+    def test_unknown_preexisting_inverse_stage_refuses_overwrite(self):
+        txn=self.tx()
+        txn.prepare()
+        txn.apply()
+        stage=self.targets["guard"].with_name(
+            self.targets["guard"].name+".b-v22-inverse-stage")
+        stage.write_bytes(b"malicious")
+        with self.assertRaisesRegex(m.Hold,"INVERSE_STAGE_COMPETING_WRITER"):
+            txn.inverse()
+        self.assert_new()
+
+    def test_inverse_unprepared_refuses(self):
+        txn=self.tx()
+        with self.assertRaisesRegex(m.Hold,"INVERSE_WITHOUT_PREPARED_ROOT_RECEIPT"):
             txn.inverse()
 
     def test_completion_is_impossible_without_separate_host_executor(self):

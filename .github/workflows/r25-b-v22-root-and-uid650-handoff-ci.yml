@@ -1,0 +1,55 @@
+name: Session B exact V22 source install and C UID650 artifact contract (inert)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py"
+      - "scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py"
+      - "tests/test_r25_v22_three_source_transaction_review.py"
+      - "tests/test_r25_b_v22_root_install_admission_review.py"
+      - "tests/test_r25_b_v22_source_install_coordinator_review.py"
+      - "tests/test_r25_b_v22_linux_host_adapter_review.py"
+      - "tests/test_r25_b_c_product_artifact_same_slot.py"
+      - "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md"
+      - ".github/workflows/r25-b-v22-root-and-uid650-handoff-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-root-source-and-handoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify one-use phase, durable crash inverse, C artifact, same-slot roles
+        run: |
+          python3 -B -m unittest -v \
+            tests.test_r25_v22_three_source_transaction_review \
+            tests.test_r25_b_v22_root_install_admission_review \
+            tests.test_r25_b_v22_source_install_coordinator_review \
+            tests.test_r25_b_v22_linux_host_adapter_review \
+            tests.test_r25_b_c_product_artifact_same_slot
+      - name: Direct root/source/public deployment entrypoints must fail closed
+        run: |
+          for file in \
+            scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py \
+            scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py \
+            scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py \
+            scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py \
+            scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py; do
+            rc=0
+            python3 -B "$file" >/tmp/session-b-inert-source-refusal.txt || rc=$?
+            test "$rc" -eq 3
+            grep -F "HOLD:" /tmp/session-b-inert-source-refusal.txt
+          done
