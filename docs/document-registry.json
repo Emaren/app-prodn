@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9636d0334eba6a311301fdb63512a65005bdce24d2f910a134873af7a4302fc0",
+      "sha256": "e9664abbb61b6e52bbc0a479c9851f774a516579ceed9afc720a06e1f8bf674a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3066,6 +3066,50 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.product-runner-owner-approval",
+      "owner": "aoe2war-web",
+      "path": "docs/security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "34a772f3eac69e7e4a1a317c78c62a5dddf096ff5c0ccea78440c4b2959ea127",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "PRODUCT Runner Owner Approval and Acceptance",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.product-signed-promotion-gate",
+      "owner": "aoe2war-web",
+      "path": "docs/security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "fb95ee1a261d4e8d88e6e78b0d06848c0f47e1ce18adeae1b5b141a76a671bb3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "PRODUCT Signed Promotion Exact SHA Gate",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -3085,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/r25-public-site-theme-read-fence-20261110",
-    "commit": "f6fdcb56732709f00f7b0426dc4ef72e2769e115"
+    "branch": "session-c/mainline-product-boundary-20261110",
+    "commit": "e584b2666bc4cb117f3dbfb3cbdeb7f5e6653963"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

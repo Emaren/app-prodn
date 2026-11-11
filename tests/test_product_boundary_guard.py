@@ -1,0 +1,174 @@
+"""Adversarial PRODUCT boundary checks. Every forbidden operation is policy-only."""
+import importlib.util
+import os
+from pathlib import Path
+import tempfile
+import unittest
+from unittest import mock
+
+GUARD = Path(__file__).resolve().parents[1] / "scripts" / "product_boundary_guard.py"
+spec = importlib.util.spec_from_file_location("product_boundary_guard", GUARD)
+policy = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(policy)
+
+
+class BoundaryTests(unittest.TestCase):
+    def denied_source(self, value):
+        with self.assertRaises(policy.BoundaryHold, msg=value):
+            policy.authorize_source(value)
+
+    def test_allow_reviewed_files(self):
+        for value in ("scripts/product_boundary_guard.py",
+                      "tests/test_product_boundary_guard.py",
+                      ".github/workflows/product-boundary.yml",
+                      "src/paper/price.ts", "docs/product-report.md",
+                      "tests/test_player_profile.py"):
+            with self.subTest(value=value):
+                self.assertEqual(policy.authorize_source(value), value)
+
+    def test_prior_nine_negative_cases(self):
+        values = (
+            "../FINANCIAL/never_write.txt",
+            "/Users/owner/projects/AoE2WAR-LANES/FINANCIAL/never_write.txt",
+            "../../owner-private-recovery/backup.age",
+            "db/raw_ledger_financial.sql",
+            "src/run-arbitrary-command.ts",
+            "db/wolo_financial.sql",
+            "systemd/wolo-native-8094.service",
+            "src/execute-shell.py",
+            "reports/product-boundary/../../custody.txt",
+        )
+        for value in values:
+            with self.subTest(value=value):
+                self.denied_source(value)
+
+    def test_recovery_and_native_aliases(self):
+        for value in ("owner-private-recovery/old.age", "src/CUSTODY/api.ts",
+                      "src/wallet_signing/secret.ts", "new-8095-reviewer.ts",
+                      "scripts/payout_sync.py", "src/finance/claim.ts",
+                      "infra/nginx.conf", ".github/workflows/stealth.yml",
+                      "scripts/unaudited.py", "src/code.sh",
+                      "src/run-arbitrary-command.ts"):
+            with self.subTest(value=value):
+                self.denied_source(value)
+
+    def test_traversal_and_unicode_bypass(self):
+        for value in ("a/../b", "./file", "a//b", "~/.ssh/id_rsa", "$HOME/key",
+                      "C:/escape", "\\\\server\\share", "a\\..\\b",
+                      "a/\x00/b", "a/\nname", "a/.git/config", "a/./file"):
+            with self.subTest(value=repr(value)):
+                with self.assertRaises(policy.BoundaryHold):
+                    policy.relative_path(value)
+
+    def test_bounded_authorized_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkout = root / "PRODUCT" / "repo"
+            checkout.mkdir(parents=True)
+            target = policy.authorize_output("artifacts/product-boundary/receipt.json",
+                                             checkout, root / "PRODUCT")
+            self.assertEqual(target, checkout.resolve(strict=True) / "artifacts/product-boundary/receipt.json")
+            self.assertFalse(target.exists(), "policy must not write any artifact")
+
+    def test_reject_external_and_disguised_outputs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "PRODUCT"
+            checkout = root / "repo"
+            checkout.mkdir(parents=True)
+            for value in ("../FINANCIAL/out", "/tmp/out", "../../recovery/private",
+                          "public/index.html", "reports/product-boundary/../../secret",
+                          "artifacts/product-boundary/./receipt.json"):
+                with self.subTest(value=value), self.assertRaises(policy.BoundaryHold):
+                    policy.authorize_output(value, checkout, root)
+
+    def test_reject_symlinked_output_ancestor(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "PRODUCT"
+            checkout = root / "repo"
+            checkout.mkdir(parents=True)
+            (checkout / "artifacts").symlink_to(Path(tmp) / "outside", target_is_directory=True)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SYMLINK"):
+                policy.authorize_output("artifacts/product-boundary/receipt.json",
+                                         checkout, root)
+
+    def test_no_implicit_command_permission(self):
+        good = {"argv": ["python3", "-I", "-B",
+                         "scripts/product_boundary_guard.py", "--check"],
+                "cwd": ".", "output": None}
+        self.assertEqual(policy.authorize_task(good), tuple(good["argv"]))
+        for arg in (
+            {"argv": ["sh", "-c", "echo harmless"], "cwd": ".", "output": None},
+            {"argv": ["python3", "scripts/run_anything.py"], "cwd": ".", "output": None},
+            {"argv": ["python3", "-I", "-B", "scripts/product_boundary_guard.py",
+                      "--check"], "cwd": "..", "output": None},
+            dict(good, shell=True),
+            dict(good, output="artifacts/product-boundary/output.json"),
+            {"argv": "python3 -I -B scripts/product_boundary_guard.py --check",
+             "cwd": ".", "output": None},
+        ):
+            with self.subTest(payload=arg), self.assertRaises(policy.BoundaryHold):
+                policy.authorize_task(arg)
+
+    def test_git_pointer_reject_external(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "PRODUCT"
+            checkout = root / "app-prodn"
+            checkout.mkdir(parents=True)
+            (checkout / ".git").write_text("gitdir: /private/elsewhere/.git/worktrees/escape\n")
+            with self.assertRaises(policy.BoundaryHold):
+                policy.validate_git_pointer(checkout, root, "Emaren/app-prodn")
+
+    def test_git_pointer_reject_relative(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "PRODUCT"
+            checkout = root / "app-prodn"
+            checkout.mkdir(parents=True)
+            (checkout / ".git").write_text("gitdir: ../../FINANCIAL/secret\n")
+            with self.assertRaises(policy.BoundaryHold):
+                policy.validate_git_pointer(checkout, root, "Emaren/app-prodn")
+
+    def test_strict_origin_branch_head_owner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "PRODUCT"
+            checkout = root / "app-prodn"
+            (checkout / ".git").mkdir(parents=True)
+            sha = "a" * 40
+            branch = "session-c/guard-test"
+            answers = {
+                ("rev-parse", "--show-toplevel"): str(checkout),
+                ("remote", "get-url", "origin"): "https://github.com/Emaren/app-prodn",
+                ("rev-parse", "HEAD"): sha,
+                ("branch", "--show-current"): branch,
+                ("status", "--porcelain=v1", "--untracked-files=normal"): "",
+            }
+            def fake_git(p, *args):
+                return answers[args]
+            with mock.patch.object(policy, "git", side_effect=fake_git):
+                receipt = policy.check_checkout(checkout, "Emaren/app-prodn", sha,
+                                               branch, root, ci=False)
+                self.assertEqual(receipt["sha"], sha)
+                answers[("remote", "get-url", "origin")] = \
+                    "https://github.com/Emaren/app-prodn.attacker.invalid"
+                with self.assertRaisesRegex(policy.BoundaryHold, "ORIGIN"):
+                    policy.check_checkout(checkout, "Emaren/app-prodn", sha,
+                                          branch, root, ci=False)
+                answers[("remote", "get-url", "origin")] = \
+                    "https://github.com/Emaren/app-prodn"
+                with self.assertRaisesRegex(policy.BoundaryHold, "SHA"):
+                    policy.check_checkout(checkout, "Emaren/app-prodn", "b" * 40,
+                                          branch, root, ci=False)
+                with self.assertRaisesRegex(policy.BoundaryHold, "BRANCH"):
+                    policy.check_checkout(checkout, "Emaren/app-prodn", sha,
+                                          "session-b/admin", root, ci=False)
+
+    def test_reject_source_symlink_entry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "repo").symlink_to(root / "missing", target_is_directory=True)
+            with self.assertRaises((policy.BoundaryHold, OSError)):
+                policy.authorize_output("reports/product-boundary/receipt.json",
+                                         root / "repo", root)
+
+
+if __name__ == "__main__":
+    unittest.main()
