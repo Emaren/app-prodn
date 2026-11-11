@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { firstDecodableFeaturedImage } from "../lib/featuredWarriorDecodeFallback.ts";
+import {
+  firstDecodableFeaturedImage,
+  admitFeaturedMediaByHead,
+  exceedsFeaturedCompactMediaBytes,
+  FEATURED_COMPACT_MEDIA_MAX_BYTES,
+} from "../lib/featuredWarriorDecodeFallback.ts";
 const primary = "/api/media-assets/avatar/primary?size=card";
 const profile = "/api/media-assets/avatar/profile?size=card";
 const safe = "/champions/players/silhouette.card.webp";
@@ -54,4 +59,53 @@ test("opening SSR lineup and first critical preloaded bitmap remain identical",(
   assert.match(s,/const openingLineup = curatedFeaturedWarriorOpening\(pool, true, openingSeed\)/);
   assert.match(s,/openingPreloadSrcRef\.current = featuredWarriorImageSrc\(openingLineup\[0\]\)/);
   assert.match(s,/preload\(openingPreloadSrcRef\.current, \{ as: "image", fetchPriority: "high" \}\)/);
+});
+
+test("2 MiB compact cutoff only rejects known oversized Content-Length", () => {
+  assert.equal(FEATURED_COMPACT_MEDIA_MAX_BYTES,2097152);
+  for (const n of [null,"","0","83184","2097152","bad","-1"]) {
+    assert.equal(exceedsFeaturedCompactMediaBytes(n),false);
+  }
+  for (const n of ["2097153","7340032","9999999999999999999999"]) {
+    assert.equal(exceedsFeaturedCompactMediaBytes(n),true);
+  }
+});
+
+test("a known oversized primary never reaches decode; compact fallback wins",async()=>{
+  const decoded=[];
+  const admitted=[];
+  const winner=await firstDecodableFeaturedImage([primary,profile,safe],
+    async src=>{decoded.push(src);},
+    async src=>{admitted.push(src);return src!==primary;});
+  assert.equal(winner,profile);
+  assert.deepEqual(decoded,[profile]);
+  assert.deepEqual(admitted,[primary,profile]);
+});
+
+test("public avatar HEAD 307-followed-404 or >2 MiB skips, smaller passes",async()=>{
+  const mk=(status,length)=>({
+    ok:status===200,status,headers:{get:()=>length},
+  });
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(404,null)),false);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(200,"2097153")),false);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(200,"2097152")),true);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(200,null)),true);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(405,null)),true);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>{throw new Error("HEAD blocked")}),true);
+});
+
+test("static silhouette and unrelated routes make no network probe",async()=>{
+  const noProbe=async()=>{throw new Error("unexpected HEAD")};
+  assert.equal(await admitFeaturedMediaByHead(safe,noProbe),true);
+  assert.equal(await admitFeaturedMediaByHead("/api/finance/status",noProbe),true);
+  assert.equal(await admitFeaturedMediaByHead("https://example.test/image.png",noProbe),true);
+});
+
+test("client image HEAD uses no credentials, bounded timeout, no body",()=>{
+  const s=readFileSync(new URL("../app/HomePageClient.tsx",import.meta.url),"utf8");
+  assert.match(s,/method: "HEAD"/);
+  assert.match(s,/credentials: "omit"/);
+  assert.match(s,/cache: "no-store"/);
+  assert.match(s,/controller\.abort\(\), 1500/);
+  assert.match(s,/admitFeaturedWarriorImage\s*\n\s*\)/);
 });
