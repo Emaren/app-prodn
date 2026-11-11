@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-kingdom-castle-39-menu-contract-20261111` at `eef59634a006f56a49d788fde7d5c0ac9ca3e678`
+Implementation baseline: `session-c/r25-featured-fallback-decoded-20261111` at `4f60683450f71c39854712ea64f166440dc6aeae`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

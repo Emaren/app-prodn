@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f37deadf6e28770d299865ebbb0cf03e26086c711540223a3cce98cd72c592a5",
+      "sha256": "039c651dac79aabde00c380d2076eb857304473e57929e3cac3d8452e4592312",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/r25-kingdom-castle-39-menu-contract-20261111",
-    "commit": "eef59634a006f56a49d788fde7d5c0ac9ca3e678"
+    "branch": "session-c/r25-featured-fallback-decoded-20261111",
+    "commit": "4f60683450f71c39854712ea64f166440dc6aeae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
