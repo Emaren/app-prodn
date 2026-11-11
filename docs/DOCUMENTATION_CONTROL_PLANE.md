@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/mainline-observability-readmodels-20261110` at `867b6ff0bb0529a3d57f6f3f2616c00bc2e96463`
+Implementation baseline: `session-c/r25-traffic-canonical-utc-gap-20261110` at `e4abba94541e9a96213614a98a5165c1dbd7c10b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
