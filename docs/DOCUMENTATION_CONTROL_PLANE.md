@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/post1327-docsv2-main-anchor-20261111` at `1cc6c0595da4d13bb71de594de940ed6d7b7559a`
+Implementation baseline: `session-c/traffic-certified-snapshot-20261111` at `b1fd732212ddd2d318e8f5fb7ff14c824247ae7e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
