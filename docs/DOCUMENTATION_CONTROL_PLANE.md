@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/mainline-product-boundary-20261110` at `e584b2666bc4cb117f3dbfb3cbdeb7f5e6653963`
+Implementation baseline: `session-c/owner-private-denial-attestation-20261110` at `5320aa583fbfe9be5d5d06babd62760a67396c37`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
