@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/traffic-certified-snapshot-20261111` at `b4ab4fa61b86cd3faebfbb1f68439f67023c578c`
+Implementation baseline: `session-c/r25-compact-avatar-bytes-20261111` at `27d4d0b151163a4729f1512e11a78c2b2ac5fc46`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

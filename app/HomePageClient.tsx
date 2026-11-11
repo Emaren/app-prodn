@@ -44,7 +44,10 @@ import {
   FEATURED_AVATAR_EDGE_REVISION,
 } from "@/lib/avatarAssets";
 import { resolveTimeZone } from "@/lib/timeDisplay";
-import { firstDecodableFeaturedImage } from "@/lib/featuredWarriorDecodeFallback";
+import {
+  firstDecodableFeaturedImage,
+  admitFeaturedMediaByHead,
+} from "@/lib/featuredWarriorDecodeFallback";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 const LobbyChat = dynamic(
@@ -880,6 +883,29 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   return versionFeaturedWarriorImageUrl(source);
 }
 
+// Nonfinancial, public-image HEAD preflight. Never forward browser cookies,
+ // parse a body, or request a financial/service URL.
+async function admitFeaturedWarriorImage(src: string): Promise<boolean> {
+  return admitFeaturedMediaByHead(src, async (localUrl) => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 1500);
+    try {
+      return await fetch(localUrl, {
+        method: "HEAD",
+        credentials: "omit",
+        // A public avatar HEAD must NEVER reach a redirect Location: it may
+        // point off-origin or into an unrelated internal/financial API.
+        // Browser fetch rejects before issuing a second network request.
+        redirect: "error",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  });
+}
+
 const featuredWarriorDecodeCache = new Map<string, Promise<void>>();
 
 function decodeFeaturedWarriorImage(src: string) {
@@ -1279,7 +1305,8 @@ function useRotatingFeaturedWarriors(
       // the chosen fallback BEFORE swapping the already painted card.
       void firstDecodableFeaturedImage(
         [primaryImage, profileFallback, UNKNOWN_FEATURED_WARRIOR_IMAGE],
-        decodeFeaturedWarriorImage
+        decodeFeaturedWarriorImage,
+        admitFeaturedWarriorImage
       )
         .then((predecodedImageUrl) => {
           if (disposed || paused) {
