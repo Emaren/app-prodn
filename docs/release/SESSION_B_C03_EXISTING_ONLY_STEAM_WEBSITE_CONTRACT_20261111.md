@@ -24,7 +24,12 @@ B did not edit any FINANCIAL source.
 
 A distinct source-only runtime profile `nonfinancial-c03-existing-only-v1`
 now selects B's reader/nonce adapter BEFORE legacy getPrisma, without changing
-the existing deployed profile. After the original provider check and exact
+the existing deployed profile. C03 source also branches session GET/POST,
+user-me GET, and presence ping to avoid constructing the legacy protected
+Prisma pool. User-me POST explicitly returns 503 for account/profile edits.
+C03 refuses a guest/preview/shadow profile, disabled finance runtime fence,
+nonproduction mode or nonisolated web. Logout preserves existing signed
+session-clearing and in-memory offline barrier. After the original provider check and exact
 browser state cookie/nonce verification, B calls ONLY
 `c03_auth_ro.resolve_existing_steam(verified Steam ID)`, then the
 original 21-field `c03_auth_ro.read_user(existing UID)` projection through a

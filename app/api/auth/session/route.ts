@@ -18,7 +18,7 @@ import {
   forceUserOnlineOffline,
 } from "@/lib/userOnlinePresence";
 import { livingKingdomHub } from "@/lib/livingKingdom/hub";
-import { isProductionAuthMutationOrigin, readProductionUser, touchProductionSession, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { isProductionAuthMutationOrigin, readProductionUser, touchProductionSession, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +36,11 @@ function normalizeEmail(v: unknown): string | null {
 export async function GET(request: NextRequest) {
   const previewIdentity =
     getPreviewIdentity();
+  // No preview account may be mistaken for a signed existing C03 user.
+  if (usesC03ExistingOnlyAuth() && previewIdentity) {
+    return NextResponse.json({ detail: "C03 preview identity not admitted" },
+      { status: 503, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }
 
   if (previewIdentity) {
     if (
@@ -99,6 +104,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ detail: "No active session" }, { status: 401 });
   }
 
+  // C03 physically rejects the legacy website Prisma datasource. Existing
+  // signed user sessions MUST use the 21-field scoped reader directly.
+  if (usesC03ExistingOnlyAuth()) {
+    const user = await readProductionUser(null, uid);
+    if (!user) return NextResponse.json({ detail: "User not found" }, { status: 401 });
+    return NextResponse.json({ uid, user }, { headers: {
+      "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie",
+    } });
+  }
   const prisma = getPrisma();
   if (usesNonfinancialProductionAuth()) {
     const user = await readProductionUser(prisma, uid);
@@ -125,6 +139,22 @@ export async function POST(request: NextRequest) {
   const providedEmail = normalizeEmail(body.email);
 
   let uid = await getSessionUid(request);
+  if (usesC03ExistingOnlyAuth()) {
+    if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
+    if (!isProductionAuthMutationOrigin(request)) {
+      return NextResponse.json({ detail: "Origin not allowed" }, { status: 403 });
+    }
+    // No protected users update: a separately scoped NONFINANCIAL presence
+    // writer touches only c03_b_sidecar.user_presence.
+    if (!await touchProductionSession(null, uid, providedEmail)) {
+      return NextResponse.json({ detail: "User not found" }, { status: 401 });
+    }
+    const user = await readProductionUser(null, uid);
+    if (!user) return NextResponse.json({ detail: "User not found" }, { status: 401 });
+    return NextResponse.json({ uid, user }, { headers: {
+      "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie",
+    } });
+  }
   const prisma = getPrisma();
   if (usesNonfinancialProductionAuth()) {
     if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });

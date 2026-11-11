@@ -18,7 +18,7 @@ import {
   userOnlineLastSeenPersister,
 } from "@/lib/userOnlinePresenceGuards";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
-import { touchProductionSession, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { touchProductionSession, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -235,7 +235,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const prisma = getPrisma();
+  // Under C03 no legacy datasource may be created, even by a heartbeat.
+  const prisma = usesC03ExistingOnlyAuth() ? null : getPrisma();
   const body = parsedBody.value;
 
   if (isLiveProductionReadOnlyPreview()) {
@@ -352,7 +353,7 @@ export async function POST(request: NextRequest) {
       if (usesNonfinancialProductionAuth()) {
         return await touchProductionSession(prisma, uid) ? 1 : 0;
       }
-      const result = await prisma.user.updateMany({
+      const result = await prisma!.user.updateMany({
         where: { uid },
         data: { lastSeen: heartbeatAt },
       });
@@ -376,7 +377,7 @@ export async function POST(request: NextRequest) {
     // This profile has no Traffic ingest credential or outbound grant.
     trafficIdentity = { status: "disabled" };
   } else if (body.report_traffic_identity !== false) {
-    const trafficUser = await prisma.user.findUnique({
+    const trafficUser = await prisma!.user.findUnique({
       where: { uid },
       select: {
         uid: true,

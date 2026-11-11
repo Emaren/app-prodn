@@ -8,7 +8,18 @@ export const PRODUCTION_WEB_ORIGIN = "https://aoe2war.com";
 export const C03_EXISTING_ONLY_PROFILE = "nonfinancial-c03-existing-only-v1";
 
 export function usesC03ExistingOnlyAuth() {
-  return process.env.AOE2WAR_RUNTIME_PROFILE === C03_EXISTING_ONLY_PROFILE;
+  if (process.env.AOE2WAR_RUNTIME_PROFILE !== C03_EXISTING_ONLY_PROFILE) return false;
+  // This is a distinct admitted maintenance profile, never a preview/dev
+  // shortcut to the existing 21-field protected reader.
+  if (process.env.NODE_ENV !== "production" ||
+      process.env.AOE2WAR_R25_ISOLATED_WEB !== "true" ||
+      process.env.WARGRAPH_RUNTIME_DISABLED !== "true" ||
+      process.env.AOE2WAR_PROD_DB_PREVIEW === "true" ||
+      process.env.AOE2WAR_SHADOW_MODE === "true" ||
+      process.env.ALLOW_GUEST_SESSIONS === "true") {
+    throw new Error("HOLD:C03_ISOLATED_PRODUCTION_ONLY_PROFILE_REQUIRED");
+  }
+  return true;
 }
 
 export function usesNonfinancialProductionAuth() {
@@ -42,7 +53,7 @@ export async function completeProductionSteamLogin(prisma: AuthDatabase, input: 
   return uid;
 }
 
-export async function touchProductionSession(prisma: AuthDatabase, uid: string, email: string | null = null) {
+export async function touchProductionSession(prisma: AuthDatabase | null, uid: string, email: string | null = null) {
   if (usesC03ExistingOnlyAuth()) {
     const rows = await c03ExistingReader.readExistingUser(uid);
     if (rows.length !== 1 || rows[0]?.uid !== uid) return false;
@@ -53,13 +64,14 @@ export async function touchProductionSession(prisma: AuthDatabase, uid: string, 
     }
     return c03TouchNonfinancialPresence(uid);
   }
+  if (!prisma) throw new Error("HOLD:C03_LEGACY_PRISMA_READ_DENIED");
   const rows = await prisma.$queryRaw<Array<{ touched: boolean }>>`
     SELECT aoe2war_auth_v1.touch_session(${uid}::text, ${email}::text) AS touched
   `;
   return rows[0]?.touched === true;
 }
 
-export async function readProductionUser(prisma: AuthDatabase, uid: string) {
+export async function readProductionUser(prisma: AuthDatabase | null, uid: string) {
   if (usesC03ExistingOnlyAuth()) {
     const rows = await c03ExistingReader.readExistingUser(uid);
     const row = rows[0];
@@ -71,6 +83,7 @@ export async function readProductionUser(prisma: AuthDatabase, uid: string) {
     void legacyToken;
     return user;
   }
+  if (!prisma) throw new Error("HOLD:C03_LEGACY_PRISMA_READ_DENIED");
   const rows = await prisma.$queryRaw<Array<Omit<UserCoreRow, "token">>>`
     SELECT * FROM aoe2war_auth_v1.read_user(${uid}::text)
   `;

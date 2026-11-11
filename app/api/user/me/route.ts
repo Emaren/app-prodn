@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { fetchUserVerification, toUserApi } from "@/lib/userDto";
-import { readProductionUser, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { readProductionUser, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
 import { loadPendingWoloClaimSummaryForUser } from "@/lib/pendingWoloClaims";
 import { resolveRequestUid, resolveRequestEmail } from "@/lib/requestIdentity";
 import { validateWoloAddress } from "@/lib/woloBetSettlement";
@@ -354,6 +354,16 @@ export async function GET(request: NextRequest) {
   const uid = await resolveRequestUid(request);
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
+  if (usesC03ExistingOnlyAuth()) {
+    const user = await readProductionUser(null, uid);
+    if (!user) return NextResponse.json({ detail: "User not found" }, { status: 404 });
+    return NextResponse.json({
+      ...user, financialStatus: "unavailable", profilePresentationStatus: "unavailable",
+      pendingClaimAmountWolo: null, pendingClaimCount: null, pendingClaimLatestCreatedAt: null,
+      avatarUrl: "/champions/players/silhouette.webp", featuredAvatarUrl: null,
+      avatarOptions: [], belts: [], artifacts: [], earningWoloPerDay: null,
+    }, { headers: { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie" } });
+  }
   const prisma = getPrisma();
   if (usesNonfinancialProductionAuth()) {
     const user = await readProductionUser(prisma, uid);
@@ -400,6 +410,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // C03 maintenance preserves existing Steam login, not account/profile edits.
+  // Never reach the legacy protected users Prisma writer from this profile.
+  if (usesC03ExistingOnlyAuth()) {
+    return NextResponse.json({ detail: "C03 protected account updates unavailable" },
+      { status: 503, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
   const uid = await resolveRequestUid(request, body);
