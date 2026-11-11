@@ -25,9 +25,11 @@ def fixture():
         "r25_b_v22_linux_host_adapter_REVIEW_ONLY.py":"e"*64,
         "r25_b_v22_source_install_coordinator_REVIEW_ONLY.py":"a"*64,
         "r25_v22_root_install_admission_REVIEW_ONLY.py":"b"*64,
+        "r25_b_v22_central_signature_REVIEW_ONLY.py":"f"*64,
         "r25_v22_three_source_transaction_REVIEW_ONLY.py":"c"*64,
       },
       "central_comment_id":6809999999,
+      "central_signer_public_sha256":"9"*64,
       "operation":"SOURCE_INSTALL_ONLY_NO_PUBLIC_ACTIVATION",
       "request_state":"UNADMITTED_REQUIRE_INDEPENDENT_CENTRAL",
       "source_ref_sha256":m.BASE_HEAD,
@@ -58,6 +60,7 @@ def fixture():
       "executor_sha256":packet["executor_sha256"],
       "reviewed_source_head_sha256":packet["reviewed_source_head_sha256"],
       "root_modules_sha256":packet["root_modules_sha256"],
+      "central_signer_public_sha256":packet["central_signer_public_sha256"],
       "owner_receipt_sha256":packet["owner_receipt_sha256"],
       "stage0003_sha256":m.STAGE_EVENT_SHA,
       "boot_id":m.BOOT_REVIEW,
@@ -79,7 +82,14 @@ def admit(packet,comment,**kwargs):
     params={"now":NOW,"root_bytes_sha":"e"*64,"actual_boot":m.BOOT_REVIEW,
       "actual_host":m.HOST_REVIEW,"central_comment":comment,
       "packet_sha":"c"*64,"owner_receipt_sha":"b"*64,
-      "actual_module_shas":packet["root_modules_sha256"]}
+      "actual_module_shas":packet["root_modules_sha256"],
+      "actual_signer_key_sha":"9"*64,
+      "signed_central_proof":{
+        "status":"PASS_CENTRAL_OFFLINE_SIGNED_SOURCE_INSTALL_MESSAGE",
+        "public_key_sha256":"9"*64,
+        "signed_message_sha256":m.digest(comment["body"].encode()),
+        "github_comment_exact":True,
+      }}
     params.update(kwargs)
     return m.validate_packet(packet,**params)
 

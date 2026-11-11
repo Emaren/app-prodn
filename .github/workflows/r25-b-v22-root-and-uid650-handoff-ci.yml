@@ -5,11 +5,13 @@ on:
     paths:
       - "scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py"
       - "scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py"
       - "scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py"
       - "scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py"
       - "scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py"
       - "tests/test_r25_v22_three_source_transaction_review.py"
       - "tests/test_r25_b_v22_root_install_admission_review.py"
+      - "tests/test_r25_b_v22_central_signature_review.py"
       - "tests/test_r25_b_v22_source_install_coordinator_review.py"
       - "tests/test_r25_b_v22_linux_host_adapter_review.py"
       - "tests/test_r25_b_c_product_artifact_same_slot.py"
@@ -37,6 +39,7 @@ jobs:
           python3 -B -m unittest -v \
             tests.test_r25_v22_three_source_transaction_review \
             tests.test_r25_b_v22_root_install_admission_review \
+            tests.test_r25_b_v22_central_signature_review \
             tests.test_r25_b_v22_source_install_coordinator_review \
             tests.test_r25_b_v22_linux_host_adapter_review \
             tests.test_r25_b_c_product_artifact_same_slot
@@ -46,6 +49,7 @@ jobs:
             scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py \
             scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py \
             scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py \
+            scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py \
             scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py \
             scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py; do
             rc=0

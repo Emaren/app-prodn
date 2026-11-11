@@ -75,7 +75,8 @@ def utc(value):
 
 def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
                     central_comment, packet_sha, owner_receipt_sha,
-                    actual_module_shas, consumed=False):
+                    actual_module_shas, actual_signer_key_sha,
+                    signed_central_proof, consumed=False):
     """No caller-supplied 'approved' booleans: require native GitHub comment.
 
     central_comment must be HTTPS-fetched from api.github.com by an independently
@@ -85,7 +86,7 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
     require(type(packet) is dict and type(central_comment) is dict, "RECORD_TYPE")
     expected_keys={
         "schema","operation","request_state","source_ref_sha256",
-        "reviewed_source_head_sha256","root_modules_sha256","stage0003_sha256",
+        "reviewed_source_head_sha256","root_modules_sha256","central_signer_public_sha256","stage0003_sha256",
         "v20_source_sha256","original_3032_unit_sha256",
         "service_unit_sha256","timer_unit_sha256","lock_dropin_sha256",
         "source_install_fence_sha256","source_install_fence_path",
@@ -123,6 +124,7 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
                 "r25_b_v22_linux_host_adapter_REVIEW_ONLY.py",
                 "r25_b_v22_source_install_coordinator_REVIEW_ONLY.py",
                 "r25_v22_root_install_admission_REVIEW_ONLY.py",
+                "r25_b_v22_central_signature_REVIEW_ONLY.py",
                 "r25_v22_three_source_transaction_REVIEW_ONLY.py",
             } and
             all(type(v) is str and HEX64.fullmatch(v)
@@ -133,6 +135,16 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
             type(packet.get("reviewed_source_head_sha256")) is str and
             HEX40.fullmatch(packet["reviewed_source_head_sha256"]),
             "REVIEWED_ROOT_MODULE_SET")
+    require(type(actual_signer_key_sha) is str and
+            HEX64.fullmatch(actual_signer_key_sha) and
+            packet.get("central_signer_public_sha256")==actual_signer_key_sha,
+            "NO_INDEPENDENT_SIGNER_KEY_PIN")
+    require(type(signed_central_proof) is dict and
+            signed_central_proof.get("status")==
+              "PASS_CENTRAL_OFFLINE_SIGNED_SOURCE_INSTALL_MESSAGE" and
+            signed_central_proof.get("public_key_sha256")==actual_signer_key_sha and
+            signed_central_proof.get("github_comment_exact") is True,
+            "DETACHED_SIGNATURE_REQUIRED")
     require(packet.get("boot_id") == actual_boot == BOOT_REVIEW
             and packet.get("host") == actual_host == HOST_REVIEW,
             "BOOT_OR_HOST_DRIFT")
@@ -165,6 +177,9 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
     require(central_comment.get("created_at") == central_comment.get("updated_at")
             and issue_at <= utc(central_comment.get("created_at"))
             and utc(central_comment["created_at"]) <= now, "CENTRAL_COMMENT_TIME")
+    require(signed_central_proof.get("signed_message_sha256")==
+            digest(central_comment.get("body","").encode()),
+            "DETACHED_SIGNATURE_BODY_MISMATCH")
     expected_approval = {
         "decision": "CENTRAL_SOURCE_INSTALL_ONLY_APPROVED",
         "packet_sha256": packet_sha,
@@ -172,6 +187,7 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
         "executor_sha256": root_bytes_sha,
         "reviewed_source_head_sha256": packet["reviewed_source_head_sha256"],
         "root_modules_sha256": actual_module_shas,
+        "central_signer_public_sha256": actual_signer_key_sha,
         "owner_receipt_sha256": owner_receipt_sha,
         "stage0003_sha256": STAGE_EVENT_SHA,
         "boot_id": actual_boot,

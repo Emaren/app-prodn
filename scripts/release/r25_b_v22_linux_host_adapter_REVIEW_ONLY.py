@@ -33,6 +33,7 @@ def fixed_sibling(filename, name):
     return mod
 
 policy=fixed_sibling("r25_v22_root_install_admission_REVIEW_ONLY.py","b_v22_install_policy")
+sigverify=fixed_sibling("r25_b_v22_central_signature_REVIEW_ONLY.py","b_v22_central_sig")
 txn=fixed_sibling("r25_v22_three_source_transaction_REVIEW_ONLY.py","b_v22_transaction")
 
 ROOT=Path("/root/aoe2war-b-v22-three-source-install-v1")
@@ -109,6 +110,7 @@ class HEL1SourceInstallHost:
             "r25_b_v22_linux_host_adapter_REVIEW_ONLY.py",
             "r25_b_v22_source_install_coordinator_REVIEW_ONLY.py",
             "r25_v22_root_install_admission_REVIEW_ONLY.py",
+            "r25_b_v22_central_signature_REVIEW_ONLY.py",
             "r25_v22_three_source_transaction_REVIEW_ONLY.py",
         ):
             root_source(HERE/source)
@@ -118,6 +120,12 @@ class HEL1SourceInstallHost:
               "ROOT_EXECUTOR_PARENT")
         root_source(INPUT,0o600)
         root_source(OWNER,0o600)
+        # Independent Central signer is an external offline authority.
+        # Its private key is never resident on this host.
+        root_dir(sigverify.CENTRAL_OFFLINE_PUBLIC_PEM.parent)
+        root_source(sigverify.CENTRAL_OFFLINE_PUBLIC_PEM,0o400)
+        root_source(sigverify.CENTRAL_EXPECTED_MESSAGE,0o400)
+        root_source(sigverify.CENTRAL_DETACHED_SIGNATURE,0o400)
 
     def validate_root_packet_and_independent_central(self):
         packet_bytes=b_value(INPUT)
@@ -144,6 +152,13 @@ class HEL1SourceInstallHost:
             body=stream.read(32769)
         check(len(body)<=32768,"CENTRAL_API_TOO_LARGE")
         central=strict_json(body)
+        independent=sigverify.verify_central_detached_signature(
+            public_key=sigverify.CENTRAL_OFFLINE_PUBLIC_PEM,
+            message=sigverify.CENTRAL_EXPECTED_MESSAGE,
+            signature=sigverify.CENTRAL_DETACHED_SIGNATURE,
+            exact_github_comment_body=central.get("body","").encode(),
+            expected_public_sha256=sigverify.CENTRAL_OFFLINE_PUBLIC_KEY_SHA256,
+            trusted_uid=0,openssl="/usr/bin/openssl")
         result=policy.validate_packet(
             self.packet,
             now=dt.datetime.now(dt.timezone.utc),
@@ -159,9 +174,12 @@ class HEL1SourceInstallHost:
                     "r25_b_v22_linux_host_adapter_REVIEW_ONLY.py",
                     "r25_b_v22_source_install_coordinator_REVIEW_ONLY.py",
                     "r25_v22_root_install_admission_REVIEW_ONLY.py",
+                    "r25_b_v22_central_signature_REVIEW_ONLY.py",
                     "r25_v22_three_source_transaction_REVIEW_ONLY.py",
                 )
             },
+            actual_signer_key_sha=sigverify.CENTRAL_OFFLINE_PUBLIC_KEY_SHA256,
+            signed_central_proof=independent,
             consumed=bool(list(TRANS.iterdir())),
         )
         check(result.get("status")=="PASS_EXACT_CENTRAL_SOURCE_INSTALL_POLICY_ONLY",
