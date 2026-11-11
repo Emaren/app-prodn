@@ -37,6 +37,39 @@ export function exceedsFeaturedCompactMediaBytes(contentLength: string | null): 
   return BigInt(contentLength) > BigInt(FEATURED_COMPACT_MEDIA_MAX_BYTES);
 }
 
+/**
+ * The browser URL parser normalizes dot segments (including encoded dots)
+ * BEFORE issuing fetch. Validate that exact canonical pathname here, rather
+ * than authorizing a raw prefix which could become /api/bets on the wire.
+ * The origin is deliberately synthetic: this pure guard needs no browser state.
+ *
+ * Ambiguous path escapes, separators and fragments fail open to the OLD
+ * image.decode fallback, but are NEVER admitted to the new HEAD preflight.
+ */
+export function isCanonicalPublicAvatarHeadSource(source: string): boolean {
+  const prefix = "/api/media-assets/avatar/";
+  if (!source.startsWith(prefix) || source.startsWith("//")) return false;
+  const rawPath = source.split(/[?#]/, 1)[0];
+  if (
+    rawPath.length <= prefix.length ||
+    /[\\%#;\x00-\x1f\x7f]/.test(rawPath) ||
+    rawPath.includes("//") ||
+    source.includes("#")
+  ) return false;
+  try {
+    const base = "https://avatar-head.invalid";
+    const parsed = new URL(source, base);
+    return (
+      parsed.origin === base &&
+      parsed.pathname.startsWith(prefix) &&
+      parsed.pathname === rawPath &&
+      parsed.pathname.split("/").every((segment) => segment !== "." && segment !== "..")
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** HEAD only public, same-origin managed avatars; no cookies and no body.
  * A failed/unsupported probe leaves the existing decode/fallback semantics.
  * Redirects are forbidden at the callsite; a rejected 307 is unknown
@@ -51,7 +84,9 @@ export async function admitFeaturedMediaByHead(
     headers: { get(name: string): string | null };
   }>,
 ): Promise<boolean> {
-  if (!source.startsWith("/api/media-assets/avatar/") || source.startsWith("//")) {
+  if (!isCanonicalPublicAvatarHeadSource(source)) {
+    // Not an approval for the new request: only preflight is bypassed.
+    // The original decode/rotation semantics remain unchanged.
     return true;
   }
   try {

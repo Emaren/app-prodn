@@ -6,6 +6,7 @@ import { once } from "node:events";
 import {
   firstDecodableFeaturedImage,
   admitFeaturedMediaByHead,
+  isCanonicalPublicAvatarHeadSource,
   exceedsFeaturedCompactMediaBytes,
   FEATURED_COMPACT_MEDIA_MAX_BYTES,
 } from "../lib/featuredWarriorDecodeFallback.ts";
@@ -182,4 +183,77 @@ test("rejected redirect uses existing decode/fallback without approving bad byte
   );
   assert.equal(result,profile);
   assert.deepEqual(decoded,[primary,profile]);
+});
+
+// A browser normalizes raw dot segments and encoded dot segments before
+// fetch, so a naive startsWith check is not a request-path trust boundary.
+test("canonical avatar HEAD guard rejects normalization into any service API", async () => {
+  const unsafe = [
+    "/api/media-assets/avatar/../../../api/bets",
+    "/api/media-assets/avatar/%2e%2e/%2e%2e/%2e%2e/api/bets",
+    "/api/media-assets/avatar/..\\..\\..\\api\\bets",
+    "/api/media-assets/avatar/%2F..%2fapi%2Fbets",
+    "/api/media-assets/avatar/%5c..%5Capi%5Cbets",
+    "/api/media-assets/avatar/a/../b",
+    "/api/media-assets/avatar/a/./b",
+    "/api/media-assets/avatar//evil",
+    "/api/media-assets/avatar/a#fragment",
+    "/api/media-assets/avatar/a;other",
+    "/api/media-assets/avatar/",
+    "https://app.example.test/api/media-assets/avatar/a",
+    "//evil.example/api/media-assets/avatar/a",
+    "/api/bets",
+    "/api/media-assets/avatar/real\\..\\..\\..\\api\\bets",
+    "/api/media-assets/avatar/%00malformed",
+  ];
+  let headCalls=0;
+  for (const attack of unsafe) {
+    assert.equal(isCanonicalPublicAvatarHeadSource(attack),false,
+      "ambiguous URI must not enter HEAD: "+attack);
+    assert.equal(await admitFeaturedMediaByHead(attack,async()=>{headCalls++;throw Error("unexpected network");}),
+      true,"unknown URI preserves image decode fallback: "+attack);
+  }
+  assert.equal(headCalls,0,"no preflight HEAD callback for any attack");
+});
+
+test("canonical same-origin managed avatar with query preserves known-length policy",async()=>{
+  const valid = [
+    "/api/media-assets/avatar/portrait.webp?size=card&edgev=abc123",
+    "/api/media-assets/avatar/abc-123?size=thumb",
+  ];
+  for(const source of valid) {
+    assert.equal(isCanonicalPublicAvatarHeadSource(source),true);
+    let observed=[];
+    const blocked=await admitFeaturedMediaByHead(source,async url=>{
+      observed.push(url);
+      return {ok:true,status:200,headers:{get:()=>String(2097153)}};
+    });
+    assert.equal(blocked,false,"known >2MiB rejected");
+    assert.deepEqual(observed,[source],"only original canonical request admitted");
+  }
+});
+
+test("real HTTP fixture receives no network on normalized financial target",async()=>{
+  let hits=[];
+  const local=createServer((req,res)=>{
+    hits.push({method:req.method,url:req.url});
+    res.writeHead(200,{"Content-Length":"3000000"});res.end();
+  });
+  local.listen(0,"127.0.0.1");await once(local,"listening");
+  try {
+    const base="http://127.0.0.1:"+local.address().port;
+    const attacks=[
+      "/api/media-assets/avatar/../../../api/bets",
+      "/api/media-assets/avatar/%2e%2e/%2e%2e/%2e%2e/api/bets",
+      "/api/media-assets/avatar/..\\..\\..\\api\\bets",
+    ];
+    for(const source of attacks) {
+      assert.equal(await admitFeaturedMediaByHead(source,
+        async uri=>fetch(base+uri,{method:"HEAD",credentials:"omit",redirect:"error"})),
+        true);
+    }
+    assert.deepEqual(hits,[]);
+  }finally{
+    await new Promise(resolve=>local.close(resolve));
+  }
 });
