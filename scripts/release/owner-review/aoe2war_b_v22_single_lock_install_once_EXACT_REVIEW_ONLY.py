@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Session B read-only source-bound Steam provider witness and V22 INSTALL_ONLY request.
-No service, firewall, DNS, repository or financial mutation. Only root-private evidence file.
+"""Source-reviewed, explicit-Central-admission-only one-use V22 installer.
+Import and ordinary/no-argument invocation are inert; no implicit authority.
 """
-import hashlib, ipaddress, json, os, re, secrets, stat, subprocess, time
+import hashlib, ipaddress, json, os, re, secrets, stat, subprocess, time, argparse, sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 HOST="steamcommunity.com"
@@ -87,117 +87,13 @@ def nft_sets():
     check(set(sets)=={"steam4","steam6"},"NFT_SET_NAMES")
     check(0<len(sets["steam4"])+len(sets["steam6"])<=16,"NFT_TOTAL")
     return sets
-def main():
-    check(os.geteuid()==0,"ROOT_REQUIRED")
-    uname_check()
-    now=datetime.now(timezone.utc)
-    check(digest(STAGED)==NEW_EVENT,"STAGED_JOURNAL")
-    expected={"v22-source.py":V22,"candidate-v22-timer.service":V22_UNIT,"original-v20-timer.service":OLD_UNIT,
-              "original-3032-unit.service":"f3b30861df399f0debcf702ed9ac60b7a00415f77700b5784b2b4496b6b5d56a",
-              "review-manifest.json":"918ad5714200b450c8a1ba4a9f72b4301dea0370fddeaeacbae9a8dbe8285183",
-              "stage-event-0003.json":NEW_EVENT}
-    for name,sha in expected.items():check(digest(ROOT/name)==sha,"PIN_"+name)
-    check(digest("/etc/systemd/system/aoe2war-steam-egress-refresh.service")==OLD_UNIT,"V20_UNIT")
-    for name,pid in PIDS.items():
-        s=unit(name);check(s["ActiveState"]=="active" and s["MainPID"]==str(pid) and s["NeedDaemonReload"]=="no","PROTECTED_PID_"+name)
-    for name in ("wolochain-mainnet-settlement.service","wolochain-founder-rewards-settlement.service"):
-        u=unit(name);check(u["LoadState"]=="masked" and u["ActiveState"]=="inactive" and u["MainPID"]=="0","C04_MASK_"+name)
-        check((Path("/etc/systemd/system")/name).is_symlink() and (Path("/etc/systemd/system")/name).readlink()==Path("/dev/null"),"MASK_LINK_"+name)
-    s,_,_=run(["ss","-H","-lntp"])
-    for port in (8092,8093,8094,8095):
-        check(not any(re.search(r":"+str(port)+r"\s",line) for line in s.splitlines()),"FINANCE_LISTENER")
-    a={};aaaa={}
-    for resolver in ("1.1.1.1","8.8.8.8","9.9.9.9"):
-        a[resolver]=dns_query(resolver,"A")
-        aaaa[resolver]=dns_query(resolver,"AAAA")
-        check(a[resolver]["answer_count"]>0,"EMPTY_DNS_A_"+resolver)
-    sysa=system_dns("A");sysaaaa=system_dns("AAAA")
-    provider_a=set(sysa).union(*(x["addresses"] for x in a.values()))
-    provider_aaaa=set(sysaaaa).union(*(x["addresses"] for x in aaaa.values()))
-    check(len(provider_a)>0 and len(provider_a)<=16,"A_BOUNDS")
-    # Any disagreement in AAAA across resolvers is HOLD, never "provider unavailable".
-    positive_aaaa=[len(x["addresses"])>0 for x in aaaa.values()]+[bool(sysaaaa)]
-    check(all(positive_aaaa) or not any(positive_aaaa),"AAAA_DISAGREEMENT")
-    check(len(provider_aaaa)<=16,"AAAA_BOUNDS")
-    validated_a=[tls(ip,4) for ip in sorted(provider_a)]
-    validated_aaaa=[tls(ip,6) for ip in sorted(provider_aaaa)]
-    live=nft_sets()
-    for ip in provider_a:check(ip in live["steam4"] and live["steam4"][ip]>=180,"MISSING_REAL_IPV4_LEASE_"+ip)
-    for ip in provider_aaaa:check(ip in live["steam6"] and live["steam6"][ip]>=180,"MISSING_REAL_IPV6_LEASE_"+ip)
-    # Reject unvalidated family-6 leases; an empty set allowed only with unanimous NODATA.
-    if not provider_aaaa:check(not live["steam6"],"STALE_UNVERIFIED_IPV6_LEASE")
-    check(all(ttl>=180 for family in live.values() for ttl in family.values()),"ANY_LOW_LEASE")
-    check(sum(map(len,live.values()))<=16,"TOO_MANY_LEASES")
-    token=secrets.token_hex(20)
-    evidence={"schema":"aoe2war.session-b.provider-tls-dns-nft-witness.v1","witness_start_utc":now.isoformat(),
-      "witness_end_utc":datetime.now(timezone.utc).isoformat(),"provider":HOST,
-      "source_pr1316_head":"d5ef77f05a3b9c3e6e053c05ea5db15c5e14598d",
-      "v22_sha256":V22,"controller_sha256":"dbbaab81dc964352670b24b23eea482f1af52d319015969ebb2d48cd59d171b8",
-      "dns_independent":{r:{"A":a[r],"AAAA":aaaa[r]} for r in a},
-      "dns_system":{"A":sysa,"AAAA":sysaaaa},
-      "validated_tls_ca_sni":{"A":validated_a,"AAAA":validated_aaaa},
-      "nft":live,
-      "headroom_floor_seconds":180,"steamsix_empty_admitted_due_to_unanimous_current_AAAA_NODATA":not bool(provider_aaaa),
-      "valid_only_for_seconds":90,"finance_authorized":False}
-    packet={"schema":"aoe2war.session-b.v22-steam-install-only-review-request.v1",
-      "phase":"STEAM_INSTALL_ONLY","status":"REQUEST_UNADMITTED_DO_NOT_EXECUTE",
-      "request_nonce":token,"created_at_utc":datetime.now(timezone.utc).isoformat(),
-      "expires_at_utc":(datetime.now(timezone.utc)+timedelta(minutes=50)).isoformat(),
-      "host_boot_id":Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
-      "stage_event_0003_sha256":NEW_EVENT,
-      "candidate_source_sha":"6662c33a0ecf25e5b4bd11283fe98a4842a69eb0",
-      "candidate_build_id":"brqExtuPGWtj1iKPCdur-",
-      "original_web3032_pid":701398,"original_3030_pid":2625090,
-      "v22_source_sha256":V22,"v22_timer_source_sha256":V22_UNIT,
-      "v20_timer_preimage_sha256":OLD_UNIT,
-      "original_3032_unit_sha256":expected["original-3032-unit.service"],
-      "review_manifest_sha256":expected["review-manifest.json"],
-      "steam_provider_witness":evidence,
-      "require_new_witness_within_seconds_before_install":90,
-      "require_source_bound_preflight_and_AAAA_witness_before_cutover":True,
-      "allowed_actions_after_independent_Central_admission":[
-        "Stop only the existing Steam timer under an explicit separately admitted plan; prove V20 oneshot quiescent",
-        "Install exact SHA-pinned V22 Python from existing root-private input, preserve original V20 source and unit",
-        "Create original-profile-only root-private v22 guard and shared inode-verified 0600 flock",
-        "Atomically swap only the exact Steam refresh service ExecStart single V20-to-V22 path",
-        "Perform one separately admitted systemd daemon-reload for the timer-unit installation, NOT reuse the consumed manager-maintenance permit",
-        "Enroll the original 3032 rollback profile; start existing Steam timer; prove original source and dual-stack-conditioned authentic nft headroom"
-      ],
-      "required_preflight":["No Codex C06/C07 financial capture/restore conflict","New <=90-second DNS/CA-TLS/SNI/nft witness with observed A+AAAA for steamcommunity.com",
-        "Both C04 masked/inactive and all financial listeners 8092-8095 closed",
-        "All original 7 systemd PIDs unchanged and staging SHA/inputs unchanged",
-        "Actual 3030/3032 HTTP200, Betting HTTP503, no source HEAD movement"],
-      "required_recovery":"If install fails before 3032 STOP_INTENT, stop only Steam timer, verify oneshot quiescent and exact unit-inode preimage, inverse restore exact original V20 service bytes, require a separately admitted manager daemon-reload, restart original timer without modifying website/finance. No blind retries or clobber.",
-      "explicit_denials":["NO_PUBLIC_3032_RESTART","NO_3030_CHANGE","NO_NGINX_SWITCH","NO_ACTIVATE_ONLY","NO_FINANCIAL_START_OR_UNMASK","NO_NFT_POLICY_EDIT","NO_RESTAGE","NO_GIT_MAIN_SYNC","NO_LEGACY_8092_FALLBACK"],
-      "requires_separate_activate_only_permit":True,
-      "old_activated_permit_expired_sha256":"ded0d1e25b188846333552df2393f58f0bd2876d1947f55ca99f13adc95500d3"}
-    path=Path("/root/aoe2war-b-v22-install-only-request-"+token[:12]+".json")
-    data=(json.dumps(packet,sort_keys=True,indent=2)+"\n").encode()
-    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
-    os.write(fd,data);os.fsync(fd);os.close(fd)
-    dirfd=os.open("/root",os.O_RDONLY|os.O_DIRECTORY);os.fsync(dirfd);os.close(dirfd)
-    st=path.stat()
-    print(json.dumps({"status":"PASS_SOURCE_BOUND_PROVIDER_WITNESS_INSTALL_REQUEST_PREPARED_ONLY",
-      "packet_path":str(path),"packet_sha256":hashlib.sha256(data).hexdigest(),"packet_bytes":len(data),
-      "packet_uid":st.st_uid,"packet_mode":oct(stat.S_IMODE(st.st_mode)),"packet_nlink":st.st_nlink,
-      "request_nonce_prefix":token[:12],"created_at_utc":packet["created_at_utc"],"expires_at_utc":packet["expires_at_utc"],
-      "A":sorted(provider_a),"AAAA":sorted(provider_aaaa),
-      "validated_TLS_A":len(validated_a),"validated_TLS_AAAA":len(validated_aaaa),
-      "nft_leases":live,"seconds_earliest":min(ttl for fam in live.values() for ttl in fam.values()),
-      "finance_mutation":False},sort_keys=True,indent=2))
-if False:
-    try:main()
-    except Exception as e:
-        msg=str(e)
-        print(json.dumps({"status":"HOLD_PROVIDER_WITNESS_NO_INSTALL_REQUEST","reason":msg[:280]}))
-        raise SystemExit(3)
 
 # SESSION B — ONE USE PHYSICAL INSTALL_ONLY. Appended to reviewed read-only witness helpers.
 import sys, hashlib, json, os, re, stat, subprocess, time, ipaddress, datetime
 from pathlib import Path
-REQ=Path("/root/aoe2war-b-v22-lock-only-reinstall-review-request-7a87c54a0b8b.json")
-REQ_SHA="62a737947abdb0bf8258556317274b43b06392c9f1ba639339b276e0063d4042"
-INTENT=Path("/root/aoe2war-b-v22-single-lock-reinstall-consumed-7a87c54a0b8b.json")
+REQ=None
+REQ_SHA=None
+INTENT=None
 R=Path("/root/aoe2war-public-player-6662c33a-v22-install-input")
 DEST=Path("/etc/aoe2war/web-prod-v22")
 V22SRC=Path("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py")
@@ -227,7 +123,8 @@ CRITICAL={
 "kingdom-traders-paper.service":779129,"r25-c03-emergency-3033.service":4136606,
 "wolochaind-mainnet.service":1009,"ssh.service":3727528,"nginx.service":3727665
 }
-started=datetime.datetime.now(datetime.timezone.utc)
+AUTHORIZATION_CTX=None
+started=None
 def pass_step(s, **info):
     print("PASS:"+s+" "+json.dumps(info,sort_keys=True),flush=True)
 def cmdcheck(args,timeout=35):
@@ -256,7 +153,7 @@ def check_physical(before=True):
     if before:
         check(digest(STEAM_UNIT)==EXPECTED["original-v20-timer.service"],"ORIGINAL_V20_UNIT")
         check(unit("aoe2war-steam-egress-refresh.timer")["ActiveState"]=="active","STEAM_TIMER_ACTIVE")
-        check(unit("aoe2war-steam-egress-refresh.service")["ActiveState"]=="inactive","V20_ONESHOT_RUNNING")
+        require_native_steam_quiescent(unit("aoe2war-steam-egress-refresh.service"))
     else:
         check(digest(STEAM_UNIT)==EXPECTED["candidate-v22-timer.service"],"V22_UNIT_SHA")
         check(digest(V22SRC)==EXPECTED["v22-source.py"],"V22_SOURCE_SHA")
@@ -309,11 +206,28 @@ def record_intent(obj):
     fd=os.open(INTENT,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
     with os.fdopen(fd,"wb") as f:f.write(blob);f.flush();os.fsync(f.fileno())
     d=os.open("/root",os.O_RDONLY|os.O_DIRECTORY);os.fsync(d);os.close(d)
+def require_native_steam_quiescent(state):
+    """An executing V20 timer tick forbids the one-use installation."""
+    check(state.get("ActiveState")=="inactive" and state.get("MainPID")=="0",
+          "V20_ONESHOT_RUNNING")
+
+def require_unconsumed(path):
+    check(not path.exists() and not path.is_symlink(),"ONE_USE_PREVIOUSLY_CONSUMED")
+def require_real_lease_headroom(leases):
+    check(bool(leases.get("steam4") or leases.get("steam6")) and
+          all(type(ttl) is int and ttl>=180 and ttl<=300
+              for family in leases.values() for ttl in family.values()),
+          "STEAM_GENUINE_TTL_UNDER_180")
+
 def main_install():
+    global started
+    check(AUTHORIZATION_CTX is not None and AUTHORIZATION_CTX.get("decision")=="CENTRAL_INSTALL_ONLY_APPROVED",
+          "NO_INDEPENDENT_CENTRAL_AUTHORIZATION")
+    started=datetime.datetime.now(datetime.timezone.utc)
     os.umask(0o077)
     check(os.geteuid()==0,"ROOT")
     statreq=REQ.lstat()
-    check(stat.S_ISREG(statreq.st_mode) and statreq.st_uid==0 and stat.S_IMODE(statreq.st_mode)==0o600 and statreq.st_nlink==1 and statreq.st_size==6853,"REQUEST_MODE")
+    check(stat.S_ISREG(statreq.st_mode) and statreq.st_uid==0 and stat.S_IMODE(statreq.st_mode)==0o600 and statreq.st_nlink==1 and 1024<=statreq.st_size<=16384,"REQUEST_MODE")
     check(digest(REQ)==REQ_SHA,"REQUEST_SHA")
     req=json.loads(REQ.read_text())
     check(req["schema"]=="aoe2war.session-b.v22-lock-only-dropin-reinstall-request.v1"
@@ -322,8 +236,8 @@ def main_install():
           and req["source_base_pr_1316_head"]=="d5ef77f05a3b9c3e6e053c05ea5db15c5e14598d","REQUEST_SCHEMA")
     expires=datetime.datetime.fromisoformat(req["expires_utc"])
     check(started < expires and datetime.datetime.now(datetime.timezone.utc)<expires-datetime.timedelta(seconds=120),"REQUEST_EXPIRES_SOON")
-    check(req["nonce"].startswith("7a87c54a0b8b") and len(req["nonce"])==40,"REQUEST_NONCE")
-    check(not INTENT.exists(),"NONCE_CONSUMED")
+    check(re.fullmatch(r"[0-9a-f]{40}",req["nonce"]) is not None and REQ.name.endswith(req["nonce"][:12]+".json"),"REQUEST_NONCE")
+    require_unconsumed(INTENT)
     check(DEST.is_dir() and not DEST.is_symlink() and DEST.stat().st_uid==0 and
           stat.S_IMODE(DEST.stat().st_mode)==0o500,"V22_ROOT_DRIFT")
     check(V22SRC.is_file() and digest(V22SRC)==EXPECTED["v22-source.py"],"V22_FORENSIC_PY_DRIFT")
@@ -352,7 +266,7 @@ def main_install():
         check((R/filename).lstat().st_uid==0 and stat.S_IMODE((R/filename).lstat().st_mode)==0o400,"INPUT_PERMS_"+filename)
     check(digest("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py")=="7d432066f370b9eeb7f931f2143a12f2695177e6c174775b4400617e00909c4c","V20_SOURCE_SHA")
     check_physical(True)
-    check(unit("aoe2war-steam-egress-refresh.service")["ActiveState"]=="inactive","V20_ONESHOT_RUNNING")
+    require_native_steam_quiescent(unit("aoe2war-steam-egress-refresh.service"))
     before_sandbox_raw=cmdcheck(["systemctl","show","aoe2war-steam-egress-refresh.service",
       "-p","NoNewPrivileges","-p","PrivateTmp","-p","ProtectHome",
       "-p","CapabilityBoundingSet","-p","RestrictAddressFamilies","-p","ProtectSystem"],12)
@@ -366,6 +280,7 @@ def main_install():
       "CURRENT_SOURCES_SANDBOX_BASELINE_"+repr(before_sandbox))
     process_conflicts()
     evidence=witness()
+    require_real_lease_headroom(evidence["leases"])
     check((datetime.datetime.now(datetime.timezone.utc)-datetime.datetime.fromisoformat(evidence["at_utc"])).total_seconds()<90,"PROVIDER_WITNESS_STALE")
     pass_step("FRESH_ONE_USE_INSTALL_PREFLIGHT",evidence=evidence)
     check(datetime.datetime.now(datetime.timezone.utc)<expires-datetime.timedelta(seconds=120),"EXPIRES_WITHIN_120S")
@@ -438,9 +353,111 @@ def main_install():
     evidence_after=witness()
     check(digest(DROP_FILE)==DROP_SHA and digest(DEST/"original-steam-v20.service")==EXPECTED["original-v20-timer.service"],"POSTFLIGHT_ROLLBACK_INVERSE_OR_DROPIN")
     pass_step("REPAIRED_V22_NATIVE_INSTALL_COMPLETE",v22_sha256=digest(V22SRC),unit_sha256=digest(STEAM_UNIT),dropin_sha256=DROP_SHA,steam=evidence_after,finance_quarantined=True,public_3032_pid=701398,rollback_3030_pid=2625090,staged_not_activated=True,receipt=str(INTENT))
-try:
-    main_install()
-except Exception as e:
-    print("HOLD:V22_INSTALL_TRANSACTION "+str(e)[:340],flush=True)
-    print("HOLD:ONE_USE_NONCE_MUST_NOT_REPLAY; PROTECTED ORIGINAL WEB UNTOUCHED; ANY INVERSE NEEDS CENTRAL ADMISSION",flush=True)
-    raise SystemExit(3)
+
+
+import datetime as _dt
+APPROVAL_SCHEMA="aoe2war.central.install-only-admission.v1"
+APPROVAL_DECISION="CENTRAL_INSTALL_ONLY_APPROVED"
+EXACT_OPERATION="ONE_NEW_B_PHASE_STEAM_V22_BASE_UNIT_AND_SINGLE_LOCK_ONLY_DROPIN_REINSTALL"
+APPROVAL_KEYS=frozenset({"schema","decision","request_sha256","executor_sha256",
+ "nonce_sha256","host","boot_id","operation","expires_utc","one_use",
+ "max_manager_reloads","financial_authorized","public_activation_authorized"})
+def approval_fields(req,request_sha,executor_sha):
+    return {"schema":APPROVAL_SCHEMA,"decision":APPROVAL_DECISION,
+      "request_sha256":request_sha,"executor_sha256":executor_sha,
+      "nonce_sha256":hashlib.sha256(req["nonce"].encode()).hexdigest(),
+      "host":"ubuntu-4gb-hel1-11","boot_id":req["boot_id"],
+      "operation":EXACT_OPERATION,"one_use":True,"max_manager_reloads":1,
+      "financial_authorized":False,"public_activation_authorized":False}
+def validate_central_approval(req,request_sha,executor_sha,comment,now=None):
+    """Pure negative-testable real-GitHub Central decision validation."""
+    now=now or _dt.datetime.now(_dt.timezone.utc)
+    check(comment.get("id") is not None and
+       comment.get("user",{}).get("login")=="Emaren" and
+       comment.get("html_url")=="https://github.com/Emaren/app-prodn/pull/1316#issuecomment-"+str(comment["id"]),
+       "CENTRAL_GITHUB_COMMENT_IDENTITY")
+    check(comment.get("updated_at")==comment.get("created_at"),"CENTRAL_COMMENT_EDITED")
+    created=_dt.datetime.fromisoformat(comment["created_at"].replace("Z","+00:00"))
+    check(created<=now and (now-created).total_seconds()<=2700,"CENTRAL_COMMENT_NOT_FRESH")
+    body=comment.get("body","")
+    ticks=chr(96)*3
+    matches=re.findall(re.escape(ticks)+r"json\s*(\{.*?\})\s*"+re.escape(ticks),body,flags=re.S)
+    check(len(matches)==1,"CENTRAL_APPROVAL_FORMAT")
+    approval=json.loads(matches[0])
+    check(set(approval)==APPROVAL_KEYS,"CENTRAL_APPROVAL_FIELDS")
+    expected=approval_fields(req,request_sha,executor_sha)
+    check(all(type(approval[k])==type(v) and approval[k]==v for k,v in expected.items()),
+          "CENTRAL_APPROVAL_SCOPE_HASH_NONCE_OR_DENIAL")
+    permitted_until=_dt.datetime.fromisoformat(approval["expires_utc"].replace("Z","+00:00"))
+    request_until=_dt.datetime.fromisoformat(req["expires_utc"].replace("Z","+00:00"))
+    check(created<=permitted_until<=request_until and
+          now<permitted_until-_dt.timedelta(seconds=120) and
+          now<request_until-_dt.timedelta(seconds=120),
+          "CENTRAL_OR_REQUEST_EXPIRY")
+    return approval
+def central_comment_from_github(comment_id):
+    check(re.fullmatch(r"[1-9][0-9]{6,16}",str(comment_id)) is not None,
+          "CENTRAL_COMMENT_ID_INVALID")
+    url="https://api.github.com/repos/Emaren/app-prodn/issues/comments/"+str(comment_id)
+    raw,_,_=run(["curl","--silent","--show-error","--fail-with-body",
+       "--noproxy","*","--max-time","12",
+       "--header","Accept: application/vnd.github+json",url],timeout=16)
+    check(len(raw)<131072,"CENTRAL_COMMENT_TOO_LARGE")
+    return json.loads(raw)
+def explicit_execution_entry(argv=None):
+    """No argument, import, and ordinary review NEVER call main_install."""
+    global REQ,REQ_SHA,INTENT,AUTHORIZATION_CTX
+    argv=list(sys.argv[1:] if argv is None else argv)
+    if not argv:
+        print("HOLD:REVIEW_ONLY_NO_EXPLICIT_EXECUTION",flush=True)
+        return 3
+    parser=argparse.ArgumentParser(description="One-use CENTRAL-admitted Steam V22 installation")
+    parser.add_argument("--execute",action="store_true")
+    parser.add_argument("--request",required=True)
+    parser.add_argument("--request-sha",required=True)
+    parser.add_argument("--central-approval-comment-id",required=True)
+    args=parser.parse_args(argv)
+    check(args.execute,"EXECUTE_FLAG_ABSENT")
+    check(re.fullmatch(r"[a-f0-9]{64}",args.request_sha) is not None,"REQUEST_SHA_ARGUMENT")
+    check(re.fullmatch(r"[1-9][0-9]{6,16}",args.central_approval_comment_id) is not None,
+          "CENTRAL_COMMENT_ID")
+    check(os.geteuid()==0,"ROOT_REQUIRED")
+    src=Path(__file__)
+    st=src.lstat()
+    check(src.parent==Path("/root") and src.name.startswith("aoe2war-b-v22-reviewed-executor-") and
+          src.name.endswith(".py") and stat.S_ISREG(st.st_mode) and
+          st.st_uid==0 and st.st_nlink==1 and
+          stat.S_IMODE(st.st_mode)==0o400,"EXECUTOR_ROOT_STORAGE_PREIMAGE")
+    executor_sha=digest(src)
+    check(src.name=="aoe2war-b-v22-reviewed-executor-"+executor_sha[:12]+".py",
+          "EXECUTOR_FILE_SHA_NAME")
+    path=Path(args.request)
+    check(path.parent==Path("/root") and
+          re.fullmatch(r"aoe2war-b-v22-lock-only-reinstall-review-request-[a-f0-9]{12}\.json",path.name)
+          is not None,"UNAPPROVED_REQUEST_PATH")
+    st=path.lstat()
+    check(stat.S_ISREG(st.st_mode) and st.st_uid==0 and st.st_nlink==1 and
+          stat.S_IMODE(st.st_mode)==0o600,"REQUEST_ROOT_PREIMAGE")
+    check(digest(path)==args.request_sha,"REQUEST_PINNED_SHA")
+    req=json.loads(path.read_text())
+    check(re.fullmatch(r"[a-f0-9]{40}",req["nonce"]) is not None and
+          path.name.endswith(req["nonce"][:12]+".json"),"REQUEST_NONCE_PATH_BINDING")
+    intent=Path("/root/aoe2war-b-v22-single-lock-reinstall-consumed-"+req["nonce"][:12]+".json")
+    require_unconsumed(intent)
+    comment=central_comment_from_github(args.central_approval_comment_id)
+    approval=validate_central_approval(req,args.request_sha,executor_sha,comment)
+    REQ=path;REQ_SHA=args.request_sha;INTENT=intent;AUTHORIZATION_CTX=approval
+    try:
+        main_install()
+    except Exception as ex:
+        print("HOLD:V22_INSTALL_TRANSACTION "+str(ex)[:340],flush=True)
+        print("HOLD:NO_REPLAY_NO_UNAPPROVED_INVERSE_NO_3032_ACTIVATION",flush=True)
+        return 3
+    return 0
+
+if __name__=="__main__":
+    try:
+        raise SystemExit(explicit_execution_entry())
+    except Exception as exc:
+        print("HOLD:NOT_ADMITTED "+str(exc)[:300],flush=True)
+        raise SystemExit(3)
