@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e9664abbb61b6e52bbc0a479c9851f774a516579ceed9afc720a06e1f8bf674a",
+      "sha256": "ebb37e200a8b8b992289cf98ece6d54126c3026494dcf9649bda2f75a137ebca",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/mainline-product-boundary-20261110",
-    "commit": "e584b2666bc4cb117f3dbfb3cbdeb7f5e6653963"
+    "branch": "session-c/mainline-observability-readmodels-20261110",
+    "commit": "2b259dbe559cc96d04b184ffa94a96c4777a78a7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
