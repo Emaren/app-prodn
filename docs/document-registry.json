@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a1fc71bfe068a0752ed0012f6c6af2743513ef86a1ffa57b4dfb982928be86eb",
+      "sha256": "a66f87e601bacd1d478eae3ea7fcfcd10ce51caa618332d400e5365dfae3905a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/traffic-certified-snapshot-20261111",
-    "commit": "4b341f15fb5bca3295f30d6a9645acd03a1924a5"
+    "branch": "session-c/post1327-docsv2-main-anchor-20261111",
+    "commit": "1cc6c0595da4d13bb71de594de940ed6d7b7559a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
