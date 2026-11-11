@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/v22-executor-bytes-review-20261111` at `455f72301a5d4194d8f1088715af408ae16cd96a`
+Implementation baseline: `session-b/steam-atomic-lease-fixture-20261111` at `a74a5c50fb9175eb0ba03c9fb869ee6dee728ac3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

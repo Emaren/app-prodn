@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "62366c38b41df27abb1b426abfbb8df59c2065236336481b1d9eff06dd45f9bb",
+      "sha256": "1a483616312b0fe5b76244c3d7bd7d7e8b781afdeec8959381ce3a5f45ce1191",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/v22-executor-bytes-review-20261111",
-    "commit": "455f72301a5d4194d8f1088715af408ae16cd96a"
+    "branch": "session-b/steam-atomic-lease-fixture-20261111",
+    "commit": "a74a5c50fb9175eb0ba03c9fb869ee6dee728ac3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
