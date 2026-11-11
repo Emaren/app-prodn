@@ -237,6 +237,24 @@ def validate_approval(req,packet_sha,source_sha,comment,now=None):
     check(created<=expiry<=req_expiry and now<expiry-dt.timedelta(seconds=90)
           and now<req_expiry-dt.timedelta(seconds=90),"CENTRAL_APPROVAL_EXPIRED")
     return approved
+def reject_native_timer_race(previous,latest,max_elapsed=15):
+    """Kernel expiry counts DOWN between genuine read-only snapshots.
+    The only tolerated drift is ordinary non-increasing <=15s decay.
+    Never extend or alter memberships in this verifier.
+    """
+    check(set(previous)=={"steam4","steam6"} and
+          set(latest)==set(previous),"NATIVE_NFT_SET_NAMES_DRIFT")
+    check(set(previous["steam4"])==set(latest["steam4"]) and
+          set(previous["steam6"])==set(latest["steam6"]),
+          "CONCURRENT_OR_UNFENCED_NFT_MEMBER_WRITER")
+    for name in ("steam4","steam6"):
+        for ip,old_ttl in previous[name].items():
+            new_ttl=latest[name][ip]
+            check(type(old_ttl) is int and type(new_ttl) is int and
+                  0<=old_ttl-new_ttl<=max_elapsed and
+                  0<new_ttl<=300,"CONCURRENT_OR_UNFENCED_NFT_TTL_REFRESH")
+    return True
+
 def atomic_commands(leases):
     result=[]
     for name in ("steam4","steam6"):
@@ -313,7 +331,8 @@ def perform(args):
               and second["shape_sha256"]==current["shape_sha256"],
               "POST_QUIESCE_DNS_OR_NFT_SHAPE_CHANGED")
         latest=m.nft_sets()
-        check(latest==second["lease_preimage"],"CONCURRENT_OR_UNFENCED_NFT_WRITER")
+        check(reject_native_timer_race(second["lease_preimage"],latest,max_elapsed=15),
+              "CONCURRENT_OR_UNFENCED_NFT_WRITER")
         lines=atomic_commands(latest)
         # One nft -f kernel transaction. No flush, no rule, no table or policy write.
         bound_process(["nft","-f","-"],limit=15,stdin="\n".join(lines)+"\n")

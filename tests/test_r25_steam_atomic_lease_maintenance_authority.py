@@ -115,3 +115,30 @@ class SteamMaintenanceAuthorityTests(unittest.TestCase):
         self.assertTrue(all("timeout 300s" in x for x in lines if x.startswith("add")))
         self.assertFalse(any("8092" in x or "flush" in x or "rule" in x for x in lines))
 if __name__=="__main__":unittest.main()
+
+class LeaseSnapshotDecayNegativeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):cls.m=loaded()
+    def test_one_second_natural_decay_accepted_without_claiming_exact_equality(self):
+        a={"steam4":{"2.23.88.217":280,"23.12.156.233":115},"steam6":{}}
+        b={"steam4":{"2.23.88.217":279,"23.12.156.233":114},"steam6":{}}
+        self.assertTrue(self.m.reject_native_timer_race(a,b))
+    def test_same_ip_renewed_by_competing_writer_denied(self):
+        a={"steam4":{"2.23.88.217":80},"steam6":{}}
+        b={"steam4":{"2.23.88.217":299},"steam6":{}}
+        with self.assertRaisesRegex(RuntimeError,"NFT_TTL_REFRESH"):
+            self.m.reject_native_timer_race(a,b)
+    def test_member_addition_or_removal_denied(self):
+        a={"steam4":{"2.23.88.217":80},"steam6":{}}
+        for b in ({"steam4":{},"steam6":{}},
+                  {"steam4":{"2.23.88.217":79,"23.12.156.233":300},"steam6":{}}):
+            with self.assertRaisesRegex(RuntimeError,"NFT_MEMBER_WRITER"):
+                self.m.reject_native_timer_race(a,b)
+    def test_too_much_decay_before_batch_denied(self):
+        a={"steam4":{"2.23.88.217":300},"steam6":{}}
+        b={"steam4":{"2.23.88.217":280},"steam6":{}}
+        with self.assertRaisesRegex(RuntimeError,"NFT_TTL_REFRESH"):
+            self.m.reject_native_timer_race(a,b)
+    def test_bad_set_names_denied(self):
+        with self.assertRaisesRegex(RuntimeError,"NFT_SET_NAMES_DRIFT"):
+            self.m.reject_native_timer_race({"steam4":{"2.23.88.217":300}},{"steam4":{"2.23.88.217":299}})
