@@ -39,7 +39,9 @@ export function exceedsFeaturedCompactMediaBytes(contentLength: string | null): 
 
 /** HEAD only public, same-origin managed avatars; no cookies and no body.
  * A failed/unsupported probe leaves the existing decode/fallback semantics.
- * 404/503 after following a stale 307 can safely skip that broken candidate.
+ * Redirects are forbidden at the callsite; a rejected 307 is unknown
+ * and falls through to the existing Image.decode path, never followed by HEAD.
+ * A directly observed 404/503 without redirect can skip that candidate.
  */
 export async function admitFeaturedMediaByHead(
   source: string,
@@ -54,7 +56,10 @@ export async function admitFeaturedMediaByHead(
   }
   try {
     const response = await head(source);
-    if (response.status === 405 || response.status === 501) return true;
+    // No-follow fetch rejects redirects; treat any synthetic 3xx response
+    // as unsupported rather than inventing proof of a final media response.
+    if ((response.status >= 300 && response.status < 400) ||
+        response.status === 405 || response.status === 501) return true;
     if (!response.ok) return false;
     return !exceedsFeaturedCompactMediaBytes(response.headers.get("content-length"));
   } catch {

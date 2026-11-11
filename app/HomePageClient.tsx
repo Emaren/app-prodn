@@ -893,7 +893,10 @@ async function admitFeaturedWarriorImage(src: string): Promise<boolean> {
       return await fetch(localUrl, {
         method: "HEAD",
         credentials: "omit",
-        redirect: "follow",
+        // A public avatar HEAD must NEVER reach a redirect Location: it may
+        // point off-origin or into an unrelated internal/financial API.
+        // Browser fetch rejects before issuing a second network request.
+        redirect: "error",
         cache: "no-store",
         signal: controller.signal,
       });

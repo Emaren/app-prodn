@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { createServer } from "node:http";
+import { once } from "node:events";
 import {
   firstDecodableFeaturedImage,
   admitFeaturedMediaByHead,
@@ -82,7 +84,7 @@ test("a known oversized primary never reaches decode; compact fallback wins",asy
   assert.deepEqual(admitted,[primary,profile]);
 });
 
-test("public avatar HEAD 307-followed-404 or >2 MiB skips, smaller passes",async()=>{
+test("direct 404 or known oversized avatar HEAD skips; redirect is unknown",async()=>{
   const mk=(status,length)=>({
     ok:status===200,status,headers:{get:()=>length},
   });
@@ -90,6 +92,8 @@ test("public avatar HEAD 307-followed-404 or >2 MiB skips, smaller passes",async
   assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(200,"2097153")),false);
   assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(200,"2097152")),true);
   assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(200,null)),true);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(307,null)),true);
+  assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(308,null)),true);
   assert.equal(await admitFeaturedMediaByHead(primary,async()=>mk(405,null)),true);
   assert.equal(await admitFeaturedMediaByHead(primary,async()=>{throw new Error("HEAD blocked")}),true);
 });
@@ -105,7 +109,77 @@ test("client image HEAD uses no credentials, bounded timeout, no body",()=>{
   const s=readFileSync(new URL("../app/HomePageClient.tsx",import.meta.url),"utf8");
   assert.match(s,/method: "HEAD"/);
   assert.match(s,/credentials: "omit"/);
+  assert.match(s,/redirect: "error"/);
+  assert.doesNotMatch(
+    s.slice(s.indexOf("async function admitFeaturedWarriorImage"),s.indexOf("const featuredWarriorDecodeCache")),
+    /redirect: "follow"/,
+  );
   assert.match(s,/cache: "no-store"/);
   assert.match(s,/controller\.abort\(\), 1500/);
   assert.match(s,/admitFeaturedWarriorImage\s*\n\s*\)/);
+});
+
+// Real local HTTP servers simulate attacker-controlled redirects. Neither
+// internal privileged endpoints nor a second-origin listener may receive HEAD.
+// The first avatar endpoint receives exactly one HEAD; redirect:error rejects
+// before a Location is ever requested, so ordinary image.decode remains viable.
+test("adversarial external and privileged API Location never receive a second HEAD",async()=>{
+  let avatarHeads=0;
+  let privilegedHeads=0;
+  let externalHeads=0;
+  const external=createServer((req,res)=>{
+    if(req.method==="HEAD") externalHeads++;
+    res.writeHead(200,{"Content-Type":"image/webp"});res.end();
+  });
+  external.listen(0,"127.0.0.1");await once(external,"listening");
+  const foreign="http://127.0.0.1:"+external.address().port+"/exfil";
+  let destination=foreign;
+  const local=createServer((req,res)=>{
+    if(req.url?.startsWith("/api/media-assets/avatar/")) {
+      avatarHeads++;
+      res.writeHead(307,{"Location":destination});res.end();return;
+    }
+    if(req.url==="/api/bets" || req.url==="/api/financial/admin")privilegedHeads++;
+    res.writeHead(404);res.end();
+  });
+  local.listen(0,"127.0.0.1");await once(local,"listening");
+  const base="http://127.0.0.1:"+local.address().port;
+  try {
+    for(const forbidden of [
+      foreign,
+      "/api/bets",
+      "/api/financial/admin",
+      "//127.0.0.1:"+external.address().port+"/exfil",
+    ]) {
+      destination=forbidden;
+      const admitted=await admitFeaturedMediaByHead(primary,
+        async source=>fetch(base+source,{
+          method:"HEAD",redirect:"error",credentials:"omit",
+          signal:AbortSignal.timeout(1500),
+        }));
+      assert.equal(admitted,true,"a blocked 307 preserves conservative decode");
+    }
+    assert.equal(avatarHeads,4);
+    assert.equal(privilegedHeads,0,"no HEAD to privileged internal API");
+    assert.equal(externalHeads,0,"no HEAD to external redirect target");
+  } finally {
+    await Promise.all([new Promise(resolve=>local.close(resolve)),
+      new Promise(resolve=>external.close(resolve))]);
+  }
+});
+
+test("rejected redirect uses existing decode/fallback without approving bad bytes",async()=>{
+  const decoded=[];
+  const result=await firstDecodableFeaturedImage(
+    [primary,profile,safe],
+    async source=>{
+      decoded.push(source);
+      if(source===primary)throw new Error("307 image decode unavailable");
+    },
+    async source=>admitFeaturedMediaByHead(source,async()=>{
+      throw new TypeError("fetch rejected redirect before follow");
+    }),
+  );
+  assert.equal(result,profile);
+  assert.deepEqual(decoded,[primary,profile]);
 });
