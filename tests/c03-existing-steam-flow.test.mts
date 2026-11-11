@@ -4,15 +4,23 @@ import test from 'node:test';
 import {
   admitVerifiedExistingSteamCallback,
   C03_BLOCKED_OPS,
+  type VerifiedSteamCallbackInput,
 } from '../lib/c03ExistingSteamFlow.ts';
 
 const STEAM = '76561198000000000';
 const NONCE = '2026-11-11T20:00:00ZephemeralSignedNonce';
 const VALID = { uid: 'u_existing_admin', verification_level: 1 };
-function harness(o: any = {}) {
+type HarnessOptions = {
+  identities?: {uid:string;verification_level:number}[];
+  rows?: Record<string, unknown>[];
+  admin?: boolean;
+  nonceFault?: boolean;
+};
+function harness(o: HarnessOptions = {}) {
   const calls: string[] = [];
   const reader = {
     async resolveExistingSteam(id: string) {
+      assert.equal(id, STEAM);
       calls.push('resolve');
       return o.identities ?? [VALID];
     },
@@ -31,7 +39,10 @@ function harness(o: any = {}) {
   };
   return { calls, reader, nonce };
 }
-async function run(h: ReturnType<typeof harness>, input: any = {}) {
+async function run(
+  h: ReturnType<typeof harness>,
+  input: Partial<VerifiedSteamCallbackInput> = {},
+) {
   return admitVerifiedExistingSteamCallback({
     steamId: STEAM, responseNonce: NONCE, signedSessionUid: null, ...input
   }, h.reader, h.nonce);
