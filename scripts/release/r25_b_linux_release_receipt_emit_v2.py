@@ -90,7 +90,8 @@ def generate(export_dir:Path, *, evidence:dict, source_commit:str,
       "lockfile_sha256":lockfile_sha,
       "builder":"github-actions-ubuntu-24.04",
       "os":"linux","arch":"x86_64","node":"v22.22.0",
-      "npm_ci":True,"production_build":True,
+      "locked_dependency_install":"yarn-frozen-lockfile",
+      "lockfile_name":"yarn.lock","production_build":True,
       "run_id":int(run),
       "runtime_archive":{"name":"runtime.tar.gz",
                          "sha256":archive_sha,"bytes":archive_bytes},
@@ -117,7 +118,7 @@ def main(argv=None):
     tree=cmd("git","rev-parse","HEAD^{tree}")
     need(source==evidence.get("AOE2WAR_ARTIFACT_SOURCE_SHA"),
          "GIT_REF_NOT_EXACT_PR_HEAD")
-    lock=Path("package-lock.json")
+    lock=Path("yarn.lock")
     need(lock.is_file(),"LOCKFILE_REQUIRED")
     archive=path/"runtime.tar.gz"
     result=generate(

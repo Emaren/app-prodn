@@ -66,6 +66,10 @@ class ExactHostReview(unittest.TestCase):
                 stage.write_bytes(b"new-"+key.encode())
                 paths[key]=str(path)
                 pins[key]=(a.policy.digest(path.read_bytes()),a.policy.digest(stage.read_bytes()))
+            # Linux runners have a real inaccessible /root tree, unlike macOS.
+            # Every injected fixture state path must be private to this test.
+            isolated_transaction=Path(d)/"fixture-transaction"
+            isolated_transaction.mkdir()
             host=a.HEL1SourceInstallHost()
             old=a.txn.strict_file
             def current_user_strict(path,**kwargs):
@@ -73,6 +77,7 @@ class ExactHostReview(unittest.TestCase):
                 return old(path,**kwargs)
             with patch.object(a.txn,"PRODUCTION_TARGETS",paths), \
                  patch.object(a.policy,"PINNED",pins), \
+                 patch.object(a,"TRANS",isolated_transaction), \
                  patch.object(a.txn,"strict_file",side_effect=current_user_strict), \
                  patch.object(host,"verify_no_swap_was_started",return_value=None):
                 self.assertTrue(host.cleanup_exact_abandoned_new_stages())
@@ -93,6 +98,10 @@ class ExactHostReview(unittest.TestCase):
                 pins[key]=(a.policy.digest(path.read_bytes()),a.policy.digest(stage.read_bytes()))
             bad=Path(paths["guard"]+".b-v22-new-stage")
             bad.write_bytes(b"competing byte writer")
+            # Linux runners have a real inaccessible /root tree, unlike macOS.
+            # Every injected fixture state path must be private to this test.
+            isolated_transaction=Path(d)/"fixture-transaction"
+            isolated_transaction.mkdir()
             host=a.HEL1SourceInstallHost()
             old=a.txn.strict_file
             def current_user_strict(path,**kwargs):
@@ -100,6 +109,7 @@ class ExactHostReview(unittest.TestCase):
                 return old(path,**kwargs)
             with patch.object(a.txn,"PRODUCTION_TARGETS",paths), \
                  patch.object(a.policy,"PINNED",pins), \
+                 patch.object(a,"TRANS",isolated_transaction), \
                  patch.object(a.txn,"strict_file",side_effect=current_user_strict), \
                  patch.object(host,"verify_no_swap_was_started",return_value=None):
                 with self.assertRaisesRegex(RuntimeError,"UNKNOWN_ABANDONED_STAGE"):

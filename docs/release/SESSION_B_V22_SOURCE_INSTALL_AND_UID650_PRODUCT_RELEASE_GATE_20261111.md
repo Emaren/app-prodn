@@ -39,7 +39,7 @@ B independently verified Linux build proof. Future deployment uses the
 explicit v2 contract.
 
 B's exact Linux x86-64 Node22.22.0 Ubuntu CI job builds that SAME source
-commit/tree with locked npm dependencies and exports real runtime.tar.gz
+commit/tree with the repository's actual frozen Yarn lockfile and exports real runtime.tar.gz
 with the existing canonical build exporter. A separate v2 receipt includes
 GitHub run ID, source/tree, lockfile, original manifest and archive SHA/size,
 Build ID and ABI. B must independently fetch the actual GitHub run/job

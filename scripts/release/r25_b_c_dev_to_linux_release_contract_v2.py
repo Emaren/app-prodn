@@ -88,7 +88,8 @@ def qualify_b_linux_build(c, linux, *, independent_git_tree,
          and linux.get("os")=="linux"
          and linux.get("arch")=="x86_64"
          and linux.get("node")==PIN_NODE_B
-         and linux.get("npm_ci") is True
+         and linux.get("locked_dependency_install")=="yarn-frozen-lockfile"
+         and linux.get("lockfile_name")=="yarn.lock"
          and linux.get("production_build") is True,
          "B_TRUSTED_LINUX_BUILD")
     need(linux.get("private_keys_embedded") is False

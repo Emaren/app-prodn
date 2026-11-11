@@ -19,6 +19,10 @@ jobs:
     timeout-minutes: 35
     env:
       CI: "true"
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
       AOE2_BACKEND_UPSTREAM: http://127.0.0.1:3331
       AOE2WAR_ARTIFACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -29,7 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22.0"
-          cache: npm
+          cache: yarn
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -39,17 +43,23 @@ jobs:
           test "$(uname -m)" = x86_64
           test "$(node --version)" = v22.22.0
           test "$(git rev-parse HEAD)" = "$AOE2WAR_ARTIFACT_SOURCE_SHA"
-          test -f package-lock.json
+          test -f yarn.lock
           python3 -B -m unittest -q \
             tests.test_r25_b_c_dev_linux_release_contract_v2 \
             tests.test_r25_b_linux_release_receipt_emit_v2
-      - name: Install exact locked dependencies without credentials
+      - name: Install frozen Yarn dependencies without credentials
         run: |
-          npm ci --no-audit --no-fund
+          corepack enable
+          yarn --version
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
           echo "AOE2WAR_CI_INSTALL_PASSED=true" >> "$GITHUB_ENV"
+      - name: Compile exact Prisma and TypeScript contracts
+        run: |
+          npx prisma generate
+          npx tsc --noEmit --pretty false
       - name: Build exactly this Linux source
         run: |
-          npm run build
+          yarn build
           test -s .next/BUILD_ID
           echo "AOE2WAR_CI_BUILD_PASSED=true" >> "$GITHUB_ENV"
       - name: Export actual Linux runtime via existing guarded CI exporter
