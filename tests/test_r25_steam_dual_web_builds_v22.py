@@ -312,3 +312,89 @@ class FollowOnJournalSafety(unittest.TestCase):
   with self.assertRaisesRegex(RuntimeError,"PLAYER_STAGE_JOURNAL_UNRECOGNIZED"):
    v.player_stage_proof(read=self.source_reader(a),
                         list_entries=lambda:["0001.json","0002.json","0003.json","unexpected.lock"])
+
+class CrossVersionStageActivationBinding(unittest.TestCase):
+ """Source-shaped fixture: genuine prior STAGE_ONLY ancestry, distinct ACTIVATION SHA.
+
+ This fixture never accesses HEL1, signs permits, changes systemd, or grants authority.
+ The separate root-private physical witness uses the real stage0003 preimage.
+ """
+ def setUp(self):
+  self.stage=proof()
+  self.stage_proof_function=v.player_stage_proof
+  self.expected_stage=self.stage_proof_function(
+      read=self.stage_reader,list_entries=lambda:["0001.json","0002.json","0003.json"])
+  self.original=json.loads(self.stage["permit"])
+  self.activation=dict(self.original,
+      approved_phase="ACTIVATE_ONLY",
+      controller_sha256=v.PLAYER_ACTIVATE_CONTROLLER_SHA,
+      approved_steam_v22_source_sha256=sha(FILE.read_bytes()),
+      approved_steam_v22_unit_sha256=v.STEAM_V22_UNIT_SHA256,
+      approval_nonce="2"*32,stage_nonce=self.original["approval_nonce"],
+      stage_permit_sha256=sha(self.stage["permit"]),
+      staged_event_sha256=sha(self.stage["0003.json"]))
+ def stage_reader(self,path,mode):
+  if path==v.PLAYER_CI_OVERLAY:return self.stage["overlay"]
+  if path==v.PLAYER_STAGE_PERMIT:return self.stage["permit"]
+  if path.parent==v.PLAYER_STAGE_JOURNAL:return self.stage[path.name]
+  raise AssertionError("Unexpected stage source "+str(path))
+ def activation_reader(self,path,mode):
+  self.assertEqual(path,v.PLAYER_ACTIVATE_PERMIT)
+  self.assertEqual(mode,0o600)
+  return encode(self.activation)
+ def verify(self):
+  with (patch.object(v,"player_stage_proof",side_effect=lambda:
+       self.stage_proof_function(read=self.stage_reader,
+                                list_entries=lambda:["0001.json","0002.json","0003.json"])),
+        patch.object(v,"verified",side_effect=lambda p,m=None:
+                     FILE.read_bytes() if p==v.SELF and m==0o644
+                     else self.fail("Unexpected installed binary read"))):
+   return v.candidate_activation_permit_digest(
+       sha(encode(self.activation)),reader=self.activation_reader)
+ def refuse(self,key,value):
+  self.activation[key]=value
+  with self.assertRaisesRegex(RuntimeError,"V22_CANDIDATE_ENROLL_"):
+   self.verify()
+ def test_distinct_sha_values_are_real_source_bytes(self):
+  self.assertEqual(v.PLAYER_CONTROLLER_SHA,
+     "dbbaab81dc964352670b24b23eea482f1af52d319015969ebb2d48cd59d171b8")
+  self.assertEqual(v.PLAYER_ACTIVATE_CONTROLLER_SHA,
+     "9e2262b0d1f1e428cdd18e2f1d7b1aab84247aadd01b88dbcfbc430aa3f85350")
+  controller=FILE.parent/"r25_public_player_one_use_cutover_v1.py"
+  self.assertEqual(v.PLAYER_ACTIVATE_CONTROLLER_SHA,sha(controller.read_bytes()))
+  self.assertNotEqual(v.PLAYER_CONTROLLER_SHA,v.PLAYER_ACTIVATE_CONTROLLER_SHA)
+ def test_historical_stage_is_still_valid_after_new_source(self):
+  self.assertEqual(self.original["controller_sha256"],v.PLAYER_CONTROLLER_SHA)
+  self.assertEqual(self.expected_stage["origin_sha"],sha(self.stage["0003.json"]))
+  self.assertEqual(self.expected_stage["central_permit_sha"],sha(self.stage["permit"]))
+ def test_new_controller_and_v22_agree_on_one_same_activation_permit(self):
+  r=self.verify()
+  self.assertEqual(r["permit_sha256"],sha(encode(self.activation)))
+  self.assertEqual(r["stage_receipt_sha256"],sha(self.stage["0003.json"]))
+  self.assertEqual(r["phase"],"ACTIVATE_ONLY")
+ def test_old_controller_must_not_authorize_activation(self):
+  self.refuse("controller_sha256",v.PLAYER_CONTROLLER_SHA)
+ def test_new_controller_cannot_retroactively_restage_original(self):
+  forged=dict(self.original,controller_sha256=v.PLAYER_ACTIVATE_CONTROLLER_SHA)
+  self.stage["permit"]=encode(forged)
+  for n in ("0001.json","0002.json","0003.json"):
+   o=json.loads(self.stage[n])
+   if n=="0001.json":o["data"]["permit_sha256"]=sha(self.stage["permit"])
+   elif n=="0002.json":o["prev_sha256"]=sha(self.stage["0001.json"])
+   else:o["prev_sha256"]=sha(self.stage["0002.json"])
+   self.stage[n]=encode(o)
+  with self.assertRaisesRegex(RuntimeError,"PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED"):
+   self.stage_proof_function(read=self.stage_reader,
+                    list_entries=lambda:["0001.json","0002.json","0003.json"])
+ def test_wrong_source_or_stage_proof_refused(self):
+  for key,val in (("approved_steam_v22_source_sha256","0"*64),
+                  ("stage_permit_sha256","0"*64),
+                  ("staged_event_sha256","0"*64),
+                  ("stage_nonce","3"*32),
+                  ("approval_nonce",self.activation["stage_nonce"])):
+   with self.subTest(key=key):
+    old=self.activation[key];self.refuse(key,val);self.activation[key]=old
+ def test_financial_activation_rejected(self):
+  self.refuse("financial_writers_authorized",True)
+ def test_staged_only_permit_is_not_activation_permit(self):
+  self.refuse("approved_phase","STAGE_ONLY")

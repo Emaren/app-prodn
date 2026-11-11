@@ -71,6 +71,9 @@ PLAYER_CI_ARCHIVE_SHA = '37987d4e08682a86549e7cd89bb0792ef2e4b1652ff30c85abed964
 PLAYER_CI_MANIFEST_SHA = 'e0502a16e0936689c39c0d6f1276913c9f19ab213a2477af4fba7ef05282e845'
 PLAYER_CI_TREE_SHA = '5c06b08b549c17af0396f355d46897c1935463ce38b2aecf8ac2693f2f74f64f'
 PLAYER_CONTROLLER_SHA = 'dbbaab81dc964352670b24b23eea482f1af52d319015969ebb2d48cd59d171b8'
+# Historical STAGE_ONLY source stays pinned to the exact original staged controller.
+# ACTIVATE_ONLY is an independently reviewed successor controller, never a stage rewrite.
+PLAYER_ACTIVATE_CONTROLLER_SHA = '9e2262b0d1f1e428cdd18e2f1d7b1aab84247aadd01b88dbcfbc430aa3f85350'
 LOCK = ROOT/'steam-refresh-v22.lock'
 C03_HELPER = P('/usr/local/lib/aoe2war-web-prod/r25_c03_observer_oneshot_guard_v9.py')
 C03_HELPER_SHA = '39a7929803d64d2998cd1fa8984096533377d08c7af28106a1ae4b8ecba778f2'
@@ -210,7 +213,8 @@ def player_stage_proof(read=verified, list_entries=None):
        'PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED')
  stage_raw=read(PLAYER_STAGE_JOURNAL/'0003.json',0o600)
  return {'origin_sha':digest(stage_raw),'overlay_sha':digest(overlay_raw),
-         'central_permit_sha':digest(permit_raw),'source':overlay['source_sha'],
+         'central_permit_sha':digest(permit_raw),
+         'stage_nonce':permit['approval_nonce'],'source':overlay['source_sha'],
          'build':overlay['build_id'],'version':overlay['build_version'],
          'last_state':events[-1]['state'],
          'terminal':events[-1]['state'] in {'ROLLED_BACK','ABORTED','FAIL_SHUT_HOLD'}}
@@ -774,7 +778,7 @@ def candidate_activation_permit_digest(expected_sha,reader=verified):
        and p.get('approved_source_sha')==PROFILES['candidate']['source']
        and p.get('approved_build_id')==PROFILES['candidate']['build']
        and p.get('approved_candidate_unit_sha256')==PUBLIC_PLAYER_UNIT_SHA
-       and p.get('controller_sha256')==PLAYER_CONTROLLER_SHA
+       and p.get('controller_sha256')==PLAYER_ACTIVATE_CONTROLLER_SHA
        and p.get('ci_archive_sha256')==PLAYER_CI_ARCHIVE_SHA
        and p.get('approved_steam_v22_unit_sha256')==STEAM_V22_UNIT_SHA256
        and p.get('approved_steam_v22_source_sha256')==
@@ -792,6 +796,7 @@ def candidate_activation_permit_digest(expected_sha,reader=verified):
  stage=player_stage_proof()
  check(not stage['terminal']
        and p['stage_permit_sha256']==stage['central_permit_sha']
+       and p['stage_nonce']==stage['stage_nonce']
        and p['staged_event_sha256']==stage['origin_sha'],
        'V22_CANDIDATE_ENROLL_STAGE_RECEIPT_DRIFT')
  return {'phase':'ACTIVATE_ONLY','source':PROFILES['candidate']['source'],
