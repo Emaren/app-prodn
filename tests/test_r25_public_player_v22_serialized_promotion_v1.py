@@ -122,7 +122,7 @@ class SteamIdentity(unittest.TestCase):
 class V22ActivationEvidence(unittest.TestCase):
     def setUp(self):
         self.stage={"origin_sha":"a"*64,"central_permit_sha":"b"*64,
-                    "terminal":False}
+                    "stage_nonce":"1"*32,"terminal":False}
         self.obj={
           "schema":"aoe2war.r25.public-player.central-permit.v1",
           "approved_phase":"ACTIVATE_ONLY",
@@ -130,7 +130,7 @@ class V22ActivationEvidence(unittest.TestCase):
           "approved_source_sha":v.PROFILES["candidate"]["source"],
           "approved_build_id":v.PROFILES["candidate"]["build"],
           "approved_candidate_unit_sha256":v.PUBLIC_PLAYER_UNIT_SHA,
-          "controller_sha256":v.PLAYER_CONTROLLER_SHA,
+          "controller_sha256":v.PLAYER_ACTIVATE_CONTROLLER_SHA,
           "ci_archive_sha256":v.PLAYER_CI_ARCHIVE_SHA,
           "approved_steam_v22_source_sha256":hashlib.sha256(b"V22_PROOF_BYTES").hexdigest(),
           "approved_steam_v22_unit_sha256":v.STEAM_V22_UNIT_SHA256,
@@ -151,6 +151,14 @@ class V22ActivationEvidence(unittest.TestCase):
                 reader=lambda p,mode:payload)
     def test_positive_exact_activation_proof_source_bound(self):
         self.assertEqual(self.verify()["phase"],"ACTIVATE_ONLY")
+    def test_historical_stage_controller_cannot_activate_new_phase(self):
+        self.obj["controller_sha256"]=v.PLAYER_CONTROLLER_SHA
+        with self.assertRaisesRegex(RuntimeError,"V22_CANDIDATE_ENROLL_WRONG_PHASE_OR_NONCE"):
+            self.verify()
+    def test_wrong_historical_stage_nonce_fails_even_with_other_correct_bindings(self):
+        self.obj["stage_nonce"]="e"*32
+        with self.assertRaisesRegex(RuntimeError,"V22_CANDIDATE_ENROLL_STAGE_RECEIPT_DRIFT"):
+            self.verify()
     def test_stage_only_cannot_candidate_enroll(self):
         self.obj["approved_phase"]="STAGE_ONLY"
         with self.assertRaisesRegex(RuntimeError,"V22_CANDIDATE_ENROLL_WRONG_PHASE_OR_NONCE"):
