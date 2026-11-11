@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/r25-featured-fallback-decoded-20261111` at `b9a1e0423f8d9e3969d294805643df703908517e`
+Implementation baseline: `session-c/traffic-certified-snapshot-20261111` at `b4ab4fa61b86cd3faebfbb1f68439f67023c578c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
