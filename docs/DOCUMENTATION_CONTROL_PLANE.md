@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/v22-lock-file-only-dropin-20261111` at `b734b0dd27e4809fdf7081221df0f5d8b4c145b3`
+Implementation baseline: `session-b/v22-executor-bytes-review-20261111` at `455f72301a5d4194d8f1088715af408ae16cd96a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

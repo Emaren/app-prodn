@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "016a595bc3e1c3f0600d6251fef3c8475ade08004046174e2281a55bd2ef0f0e",
+      "sha256": "62366c38b41df27abb1b426abfbb8df59c2065236336481b1d9eff06dd45f9bb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3085,8 +3085,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/v22-lock-file-only-dropin-20261111",
-    "commit": "b734b0dd27e4809fdf7081221df0f5d8b4c145b3"
+    "branch": "session-b/v22-executor-bytes-review-20261111",
+    "commit": "455f72301a5d4194d8f1088715af408ae16cd96a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
