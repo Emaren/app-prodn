@@ -158,7 +158,7 @@ test(
     assert.doesNotMatch(homepage, /fadingSlot === index/);
     assert.match(
       homepage,
-      /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)[\s\S]*setVisibleWarriors/,
+      /firstDecodableFeaturedImage\([\s\S]*decodeFeaturedWarriorImage[\s\S]*setVisibleWarriors/,
     );
     assert.equal((homepage.match(/key=\{index\}/g) || []).length, 2);
     assert.equal(
@@ -174,7 +174,7 @@ test(
     assert.match(homepage, /featuredWarriorDecodeCache\.delete\(src\)/);
     assert.doesNotMatch(
       homepage,
-      /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)[\s\S]*?\.catch\(\(\) => undefined\)[\s\S]*?\.then/,
+      /firstDecodableFeaturedImage\([\s\S]*decodeFeaturedWarriorImage[\s\S]*?\.catch\(\(\) => undefined\)[\s\S]*?\.then/,
     );
     assert.equal(
       (homepage.match(/<BufferedFeaturedWarriorImage/g) || []).length,
