@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `a2bf36d3f4d64ce11516e7c417c67c5a197bbb84`
+Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `bdedfb9affafe9777256725c53a852a62de5f858`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **137**
+- Authoritative repository documents: **138**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 74
-- `runbook`: 44
+- `runbook`: 45
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 33
+- `draft`: 34
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -171,6 +171,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
 | [Session B C03 existing-user-only Steam website contract](release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md) | `runbook` | `draft` | `nonfinancial source only, session A sole FINANCIAL writer, no production admission` |
 | [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `runbook` | `draft` | `nonfinancial HTTP classification only, no SQL/financial role changes` |

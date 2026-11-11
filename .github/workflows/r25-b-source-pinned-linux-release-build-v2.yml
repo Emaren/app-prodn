@@ -20,6 +20,7 @@ on:
       - "lib/productionAuth.ts"
       - "tests/c03-existing-steam-flow.test.mts"
       - "tests/nonfinancial-production-auth.test.mts"
+      - "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md"
       - "lib/adminSession.ts"
       - "lib/c03AdminIdentityGate.ts"
       - "tests/c03-admin-identity-gate.test.mts"
