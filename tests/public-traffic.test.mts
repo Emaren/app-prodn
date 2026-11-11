@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   normalizePublicTrafficPayload,
+  normalizeArchiveCalculationUtc,
 } from "../lib/publicTraffic.ts";
 
 test("public Traffic normalization excludes the partial current UTC day", () => {
@@ -144,4 +145,37 @@ test("per-row calculation timestamp permits last day only if its UTC day ended b
     ],
   }, "2026-10-20");
   assert.deepEqual(result.points.map(p => p.date), ["2026-10-13"]);
+});
+
+test("Traffic archive provenance is exact UTC metadata, never synthetic daily points",()=>{
+  const value=normalizePublicTrafficPayload({
+    coverage_started_at:"2026-06-11",
+    coverage_ended_at:"2026-10-19",
+    archive_calculated_at:"2026-10-20T21:36:55.213038+00:00",
+    points:[
+      {date:"2026-10-19",values:{totalTraffic:100,suspectedHuman:20,confirmedHuman:5}},
+    ],
+  },"2026-11-11");
+  assert.equal(value.archiveCalculatedAt,"2026-10-20T21:36:55.213Z");
+  assert.deepEqual(value.points.map(p=>p.date),["2026-10-19"]);
+  assert.equal(value.points.length,1);
+});
+
+test("invalid/missing archive calculation is unavailable, not inferred from today",()=>{
+  for(const invalid of [undefined,null,"","yesterday","2026-99-99T12:00:00Z",
+                        "2026-10-20","2026-10-20T21:00:00"]) {
+    assert.equal(normalizeArchiveCalculationUtc(invalid),null);
+    assert.equal(normalizePublicTrafficPayload({archive_calculated_at:invalid,points:[]},
+      "2026-11-11").archiveCalculatedAt,null);
+  }
+});
+
+test("original Traffic page displays two distinct source stamps without backfilling",()=>{
+  const s=readFileSync("app/traffic/page.tsx","utf8");
+  assert.match(s,/LAST PUBLISHED UTC DAY:/);
+  assert.match(s,/ARCHIVE SNAPSHOT CALCULATED:/);
+  assert.match(s,/archiveCalculatedAt = report\.archiveCalculatedAt/);
+  assert.match(s,/timestamp identifies the source snapshot, not certification/);
+  assert.match(s,/<PremiumTimeSeriesChart/);
+  assert.doesNotMatch(s,/Recent observations graph|backfillMissingDays/);
 });

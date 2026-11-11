@@ -44,6 +44,10 @@ import {
   FEATURED_AVATAR_EDGE_REVISION,
 } from "@/lib/avatarAssets";
 import { resolveTimeZone } from "@/lib/timeDisplay";
+import {
+  firstDecodableFeaturedImage,
+  admitFeaturedMediaByHead,
+} from "@/lib/featuredWarriorDecodeFallback";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 const LobbyChat = dynamic(
@@ -242,6 +246,8 @@ type FeaturedWarrior = {
   href: string;
   uid?: string | null;
   imageUrl?: string;
+  /** Hydrated rotation choice only: never persisted or added to the SSR pool. */
+  predecodedImageUrl?: string;
   isPlaceholder?: boolean;
   hasFeaturedAvatar?: boolean;
   featuredAvatarRevision?: string | null;
@@ -848,6 +854,15 @@ function versionFeaturedWarriorImageUrl(src: string) {
 }
 
 function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
+  // When the primary managed asset failed but a fallback already decoded,
+  // render precisely that safe local bitmap. Never retry the broken primary.
+  if (
+    warrior.predecodedImageUrl?.startsWith("/") &&
+    !warrior.predecodedImageUrl.startsWith("//")
+  ) {
+    return warrior.predecodedImageUrl;
+  }
+
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
   let source = warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
 
@@ -866,6 +881,29 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   }
 
   return versionFeaturedWarriorImageUrl(source);
+}
+
+// Nonfinancial, public-image HEAD preflight. Never forward browser cookies,
+ // parse a body, or request a financial/service URL.
+async function admitFeaturedWarriorImage(src: string): Promise<boolean> {
+  return admitFeaturedMediaByHead(src, async (localUrl) => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 1500);
+    try {
+      return await fetch(localUrl, {
+        method: "HEAD",
+        credentials: "omit",
+        // A public avatar HEAD must NEVER reach a redirect Location: it may
+        // point off-origin or into an unrelated internal/financial API.
+        // Browser fetch rejects before issuing a second network request.
+        redirect: "error",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  });
 }
 
 const featuredWarriorDecodeCache = new Map<string, Promise<void>>();
@@ -1259,8 +1297,18 @@ function useRotatingFeaturedWarriors(
 
       transitionInFlightRef.current = true;
 
-      void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior))
-        .then(() => {
+      const primaryImage = featuredWarriorImageSrc(nextWarrior);
+      const profileFallback = versionFeaturedWarriorImageUrl(
+        avatarCardUrlForUser(nextWarrior.uid, nextWarrior.lookupName)
+      );
+      // A managed 307/large or broken image must not freeze rotation. Decode
+      // the chosen fallback BEFORE swapping the already painted card.
+      void firstDecodableFeaturedImage(
+        [primaryImage, profileFallback, UNKNOWN_FEATURED_WARRIOR_IMAGE],
+        decodeFeaturedWarriorImage,
+        admitFeaturedWarriorImage
+      )
+        .then((predecodedImageUrl) => {
           if (disposed || paused) {
             transitionInFlightRef.current = false;
             return;
@@ -1273,7 +1321,7 @@ function useRotatingFeaturedWarriors(
             const next = [...latest];
             const outgoing = next[slot];
             lastWarriorBySlotRef.current[slot] = outgoing?.key ?? null;
-            next[slot] = nextWarrior;
+            next[slot] = { ...nextWarrior, predecodedImageUrl };
             visibleWarriorsRef.current = next;
             return next;
           });

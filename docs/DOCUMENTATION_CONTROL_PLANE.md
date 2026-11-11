@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `6a8a4d8a58c587f541d58035bb8695980d4df7af`
+Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `78d851062eb88a1886e833c68da5331087ce4879`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **138**
+- Authoritative repository documents: **140**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 74
-- `runbook`: 45
+- `reference`: 75
+- `runbook`: 46
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 34
+- `draft`: 36
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -188,6 +188,8 @@ This page is generated from the validated front matter in this repository. Cross
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
 | [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `draft` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
+| [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
+| [PRODUCT Signed Promotion Exact SHA Gate](security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md) | `reference` | `draft` | `security-contract` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands

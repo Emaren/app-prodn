@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4ce3365ed9a32fcb1b8a45ba61478d91f219584ab49d1d232b61cde404fb808b",
+      "sha256": "231c8af4cf343c1f6344251776f1b1d74fb6f46cedc25693edcb11affeb35718",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3132,6 +3132,50 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.product-runner-owner-approval",
+      "owner": "aoe2war-web",
+      "path": "docs/security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "34a772f3eac69e7e4a1a317c78c62a5dddf096ff5c0ccea78440c4b2959ea127",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "PRODUCT Runner Owner Approval and Acceptance",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.product-signed-promotion-gate",
+      "owner": "aoe2war-web",
+      "path": "docs/security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-10",
+      "sensitivity": "restricted",
+      "sha256": "fb95ee1a261d4e8d88e6e78b0d06848c0f47e1ce18adeae1b5b141a76a671bb3",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "PRODUCT Signed Promotion Exact SHA Gate",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "schema-reference",
       "id": "aoe2war.app-prodn.prisma-readme",
       "owner": "aoe2war-web",
@@ -3152,7 +3196,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
-    "commit": "6a8a4d8a58c587f541d58035bb8695980d4df7af"
+    "commit": "78d851062eb88a1886e833c68da5331087ce4879"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
