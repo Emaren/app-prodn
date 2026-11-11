@@ -10,6 +10,7 @@ change. Never run without a separately posted exact Central authority.
 """
 import argparse
 import datetime as dt
+import math
 import hashlib
 import importlib.util
 import ipaddress
@@ -38,11 +39,20 @@ OPERATION="ONE_USE_V20_TIMER_QUIESCED_SAME_VERIFIED_IPS_NFT_ATOMIC_LEASE_RENEWAL
 DECISION="CENTRAL_STEAM_LEASE_MAINTENANCE_APPROVED"
 PK_PREFIX="/root/aoe2war-b-steam-lease-maintenance-request-"
 INTENT_PREFIX="/root/aoe2war-b-steam-lease-maintenance-consumed-"
+ARMED_PREFIX="/root/aoe2war-b-steam-lease-watchdog-armed-"
+RESTORED_PREFIX="/root/aoe2war-b-steam-lease-watchdog-restored-"
+WATCHDOG_PREFIX="aoe2war-b-steam-maint-rescue-"
+WORKER_PREFIX="aoe2war-b-steam-maint-work-"
+WATCHDOG_DELAY_SECONDS=115
+WORKER_RUNTIME_MAX_SECONDS=85
+WORKER_NFT_BUDGET_SECONDS=35
 APPROVAL_KEYS=frozenset({
  "schema","decision","operation","packet_sha256","executor_sha256",
  "nonce_sha256","boot_id","host","expires_utc","one_use","nft_batch_limit",
  "financial_authorized","web_activation_authorized","v22_install_authorized",
- "manager_reload_authorized"
+ "manager_reload_authorized","independent_systemd_watchdog_required",
+ "watchdog_delay_seconds","worker_runtime_max_seconds",
+ "watchdog_may_only_restore_original_steam_timer"
 })
 def check(ok,reason):
     if not ok:raise RuntimeError("HOLD:"+reason)
@@ -122,6 +132,8 @@ def host_preflight(m):
     m.process_conflicts()
     check(file_sha("/etc/systemd/system/"+SERVICE)==V20_UNIT_SHA,"V20_SHA")
     check(file_sha("/etc/systemd/system/"+TIMER)==TIMER_UNIT_SHA,"TIMER_UNIT_SHA")
+    check(Path("/run/systemd/system").is_dir() and
+          Path("/usr/bin/systemd-run").is_file(),"TRANSIENT_SYSTEMD_MANAGER_UNAVAILABLE")
     check(file_sha("/var/lib/aoe2war-public-player-6662c33a-one-use-v1/events/0003.json")==STAGE_SHA,"STAGE_SHA")
     return {"boot_id":Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
             "seven_protected_pids":m.CRITICAL,"v20_unit_sha256":V20_UNIT_SHA,
@@ -146,7 +158,7 @@ def protected_postflight(m):
               os.readlink(link)=="/dev/null", "C04_MASK_"+name)
     listeners=bound_process(["ss","-H","-lntp"],limit=10)
     for port in (8092,8093,8094,8095):
-        check(not any(re.search(r":"+str(port)+r"\\s",line)
+        check(not any(re.search(r":"+str(port)+r"\s",line)
                       for line in listeners.splitlines()),"FINANCE_PORT_"+str(port))
     for port,path,status in ((3030,"/players",200),(3032,"/players",200),(3032,"/api/bets",503)):
         result=bound_process(["curl","-sS","-m","12","-o","/dev/null",
@@ -197,7 +209,11 @@ def prepare():
       "financial_authorized":False,"web_activation_authorized":False,
       "v22_install_authorized":False,"manager_reload_authorized":False,
       "max_atomic_batches":1,"native_v20_timer_original_restore_required":True,
-      "no_exact_post_commit_ttl_inverse_claim":True
+      "no_exact_post_commit_ttl_inverse_claim":True,
+      "independent_systemd_watchdog_required":True,
+      "watchdog_delay_seconds":WATCHDOG_DELAY_SECONDS,
+      "worker_runtime_max_seconds":WORKER_RUNTIME_MAX_SECONDS,
+      "watchdog_may_only_restore_original_steam_timer":True
     }
     blob=(json.dumps(obj,sort_keys=True,indent=2)+"\n").encode()
     write_once(path,blob,0o600)
@@ -212,7 +228,11 @@ def approval_expectation(req,packet_sha,source_sha):
       "nonce_sha256":sha(req["nonce"].encode()),"boot_id":req["protected_host"]["boot_id"],
       "host":HOST,"one_use":True,"nft_batch_limit":1,
       "financial_authorized":False,"web_activation_authorized":False,
-      "v22_install_authorized":False,"manager_reload_authorized":False}
+      "v22_install_authorized":False,"manager_reload_authorized":False,
+      "independent_systemd_watchdog_required":True,
+      "watchdog_delay_seconds":WATCHDOG_DELAY_SECONDS,
+      "worker_runtime_max_seconds":WORKER_RUNTIME_MAX_SECONDS,
+      "watchdog_may_only_restore_original_steam_timer":True}
 def validate_approval(req,packet_sha,source_sha,comment,now=None):
     now=now or utc()
     check(comment.get("user",{}).get("login")=="Emaren"
@@ -268,6 +288,195 @@ def atomic_commands(leases):
             ])
     check(0<len(result)<=32,"NFT_ATOMIC_COMMAND_BUDGET")
     return result
+def nonce_tag(request):
+    check(type(request.get("nonce")) is str and
+          bool(re.fullmatch(r"[0-9a-f]{40}",request["nonce"])),
+          "NONCE_WRONG_SHAPE")
+    return sha(request["nonce"].encode())[:12]
+
+def worker_name(request):
+    return WORKER_PREFIX+nonce_tag(request)+".service"
+
+def rescue_base(request):
+    return WATCHDOG_PREFIX+nonce_tag(request)
+
+def worker_elapsed():
+    # Field 22 of /proc/self/stat is process boot-relative starttime ticks.
+    # A hard systemd RuntimeMaxSec also terminates the whole worker cgroup.
+    line=Path("/proc/self/stat").read_text()
+    ticks=int(line.rsplit(") ",1)[1].split()[19])
+    elapsed=time.monotonic()-ticks/os.sysconf("SC_CLK_TCK")
+    check(0<=elapsed<WORKER_RUNTIME_MAX_SECONDS,
+          "WORKER_CGROUP_RUNTIME_EXPIRED")
+    return elapsed
+
+def require_supervised_worker(request):
+    name=worker_name(request)
+    cg=Path("/proc/self/cgroup").read_text()
+    check(any(line.endswith("/"+name) for line in cg.splitlines()),
+          "WORKER_NOT_IN_NONCE_BOUND_SYSTEMD_SERVICE")
+    fields=bound_process(["systemctl","show",name,"-p","MainPID",
+        "-p","ActiveState","-p","KillMode","-p","RuntimeMaxUSec",
+        "-p","FragmentPath","-p","ControlGroup"],limit=10)
+    props=dict(line.split("=",1) for line in fields.splitlines() if "=" in line)
+    check(props.get("MainPID")==str(os.getpid()) and
+          props.get("ActiveState")=="active" and
+          props.get("KillMode")=="control-group" and
+          props.get("ControlGroup","").endswith("/"+name) and
+          props.get("FragmentPath","").endswith("/"+name),
+          "WORKER_SYSTEMD_IDENTITY_OR_CGROUP_DRIFT")
+    runtime=props.get("RuntimeMaxUSec","")
+    check(runtime in ("1min 25s","85s","85000000us"),
+          "WORKER_RUNTIME_MAX_NOT_85S_"+runtime)
+    check(worker_elapsed()<=WORKER_RUNTIME_MAX_SECONDS-40,
+          "WORKER_INSUFFICIENT_RECOVERY_BUDGET")
+    return name
+
+def arm_independent_watchdog(request,request_path,request_sha,source_sha):
+    name=rescue_base(request)
+    timer=name+".timer"
+    service=name+".service"
+    check(not Path(ARMED_PREFIX+nonce_tag(request)+".json").exists(),
+          "WATCHDOG_ALREADY_PREARMED")
+    # Independent PID1 transient timer and service. This watchdog is NOT in
+    # the short-lived maintenance service cgroup, survives SIGKILL/SSH loss.
+    runner=[
+       "/usr/bin/systemd-run","--unit="+name,
+       "--on-active="+str(WATCHDOG_DELAY_SECONDS)+"s",
+       "--timer-property=AccuracySec=1us",
+       "--property=Type=oneshot",
+       "/usr/bin/python3","-I","-B",str(Path(__file__).resolve()),
+       "--watchdog-recover","--request",str(request_path),
+       "--request-sha",request_sha
+    ]
+    bound_process(runner,limit=18)
+    state=bound_process(["systemctl","show",timer,"-p","ActiveState",
+       "-p","LoadState","-p","Triggers","-p","FragmentPath"],limit=10)
+    props=dict(line.split("=",1) for line in state.splitlines() if "=" in line)
+    check(props.get("ActiveState")=="active" and
+          props.get("LoadState")=="loaded" and
+          props.get("FragmentPath","").endswith("/"+timer) and
+          service in props.get("Triggers",""),
+          "WATCHDOG_NOT_PHYSICALLY_PREARMED_IN_PID1")
+    service_cat=bound_process(["systemctl","cat",service],limit=10)
+    check(str(Path(__file__).resolve()) in service_cat and
+          "--watchdog-recover" in service_cat and request_sha in service_cat,
+          "WATCHDOG_SERVICE_COMMAND_NOT_EXACT")
+    at=utc()
+    ticket={
+      "schema":"aoe2war.session-b.watchdog-prearmed.v1",
+      "source_sha256":source_sha,
+      "request_sha256":request_sha,
+      "boot_id":request["protected_host"]["boot_id"],
+      "timer_unit_sha256":TIMER_UNIT_SHA,
+      "v20_service_sha256":V20_UNIT_SHA,
+      "worker_unit":worker_name(request),
+      "rescue_timer":timer,
+      "rescue_service":service,
+      "prearmed_at_utc":at.isoformat(),
+      "restore_deadline_utc":(at+dt.timedelta(seconds=WATCHDOG_DELAY_SECONDS)).isoformat(),
+      "worker_runtime_max_seconds":WORKER_RUNTIME_MAX_SECONDS,
+      "watchdog_delay_seconds":WATCHDOG_DELAY_SECONDS,
+      "finance_authorized":False,
+      "website_authorized":False
+    }
+    receipt=(json.dumps(ticket,sort_keys=True)+"\n").encode()
+    write_once(ARMED_PREFIX+nonce_tag(request)+".json",receipt,0o600)
+    check(unit_timer_active(timer),"WATCHDOG_TIMER_DISARMED_AFTER_PREARM")
+    print("PASS:INDEPENDENT_PID1_WATCHDOG_PREARMED",
+          json.dumps({"unit":timer,"worker":worker_name(request),
+          "seconds":WATCHDOG_DELAY_SECONDS,"no_manager_reload":True}),
+          flush=True)
+    return timer
+
+def unit_timer_active(timer):
+    return bound_process(["systemctl","show",timer,
+               "-p","ActiveState","--value"],limit=10).strip()=="active"
+
+def restore_receipt_and_cancel(request,request_sha,source_sha,watchdog_timer):
+    check(unit_timer_active(TIMER),"ORIGINAL_TIMER_NOT_ACTIVE_BEFORE_WATCHDOG_CANCEL")
+    ticket_path=ARMED_PREFIX+nonce_tag(request)+".json"
+    ticket=json.loads(root_file(ticket_path,0o600))
+    check(ticket["request_sha256"]==request_sha and
+          ticket["source_sha256"]==source_sha and
+          ticket["rescue_timer"]==watchdog_timer,
+          "WATCHDOG_TICKET_CHANGED")
+    if not Path(RESTORED_PREFIX+nonce_tag(request)+".json").exists():
+        write_once(RESTORED_PREFIX+nonce_tag(request)+".json",
+          (json.dumps({"schema":"aoe2war.session-b.steam-timer-restored.v1",
+          "request_sha256":request_sha,"executor_sha256":source_sha,
+          "restored_at_utc":utc().isoformat(),
+          "original_v20_timer_active":True},sort_keys=True)+"\n").encode(),
+          0o600)
+    if unit_timer_active(watchdog_timer):
+        bound_process(["systemctl","stop",watchdog_timer],limit=15)
+    check(not unit_timer_active(watchdog_timer) and unit_timer_active(TIMER),
+          "WATCHDOG_NOT_CANCELLED_AFTER_ORIGINAL_RESTORED")
+    print("PASS:WATCHDOG_CANCELLED_ONLY_AFTER_ORIGINAL_TIMER_RESTORED",flush=True)
+
+def watchdog_recover(request_path,request_sha):
+    source_sha=exact_executor_source()
+    path=Path(request_path)
+    check(path.parent==Path("/root") and bool(re.fullmatch(
+          r"aoe2war-b-steam-lease-maintenance-request-[a-f0-9]{12}\.json",
+          path.name)),"WATCHDOG_REQUEST_ROOT_PATH")
+    raw=root_file(path,0o600)
+    check(sha(raw)==request_sha,"WATCHDOG_PACKET_SHA_DRIFT")
+    request=json.loads(raw)
+    tag=nonce_tag(request)
+    check(path.name.endswith(tag+".json") and
+          request["executor_sha256"]==source_sha and
+          request["schema"]==PACKET_SCHEMA and
+          request["independent_systemd_watchdog_required"] is True and
+          request["financial_authorized"] is False and
+          request["web_activation_authorized"] is False and
+          request["v22_install_authorized"] is False,
+          "WATCHDOG_WRONG_SCOPE")
+    check(Path("/proc/sys/kernel/random/boot_id").read_text().strip()==
+          request["protected_host"]["boot_id"],"WATCHDOG_BOOT_CHANGED")
+    name=rescue_base(request)
+    check(any(line.endswith("/"+name+".service") for line in
+           Path("/proc/self/cgroup").read_text().splitlines()),
+          "WATCHDOG_NOT_IN_INDEPENDENT_PID1_SERVICE")
+    ticket=json.loads(root_file(ARMED_PREFIX+tag+".json",0o600))
+    check(ticket["source_sha256"]==source_sha and
+          ticket["request_sha256"]==request_sha and
+          ticket["rescue_service"]==name+".service" and
+          ticket["rescue_timer"]==name+".timer" and
+          ticket["worker_unit"]==worker_name(request) and
+          ticket["timer_unit_sha256"]==TIMER_UNIT_SHA and
+          ticket["v20_service_sha256"]==V20_UNIT_SHA,
+          "WATCHDOG_PREARMED_TICKET_DRIFT")
+    marker=json.loads(root_file(INTENT_PREFIX+tag+".json",0o600))
+    check(marker["request_sha256"]==request_sha and
+          marker["executor_sha256"]==source_sha,
+          "WATCHDOG_ORIGINAL_CONSUMED_INTENT_DRIFT")
+    check(file_sha("/etc/systemd/system/"+TIMER)==TIMER_UNIT_SHA and
+          file_sha("/etc/systemd/system/"+SERVICE)==V20_UNIT_SHA,
+          "WATCHDOG_ORIGINAL_V20_UNIT_BYTES_DRIFT")
+    if Path(RESTORED_PREFIX+tag+".json").exists():
+        check(unit_timer_active(TIMER),"WATCHDOG_COMPLETION_MARKER_WITH_STOPPED_TIMER")
+        print("PASS:WATCHDOG_ALREADY_RESTORED_NOOP",flush=True)
+        return
+    worker=worker_name(request)
+    state=bound_process(["systemctl","show",worker,"-p","ActiveState","--value"],
+                        limit=10).strip()
+    if state in ("active","activating","deactivating"):
+        # PID1 RuntimeMaxSec must already have killed the entire worker cgroup
+        # by 85s, while this timer fires only after 115s. A late straggler is
+        # explicitly fenced BEFORE restarting the original native timer.
+        bound_process(["systemctl","stop",worker],limit=18)
+        state=bound_process(["systemctl","show",worker,
+                            "-p","ActiveState","--value"],limit=10).strip()
+    check(state not in ("active","activating","deactivating"),
+          "WATCHDOG_WORKER_NOT_FENCED")
+    if not unit_timer_active(TIMER):
+        bound_process(["systemctl","start",TIMER],limit=28)
+    check(unit_timer_active(TIMER),"WATCHDOG_ORIGINAL_TIMER_NOT_RESTORED")
+    print("PASS:INDEPENDENT_PID1_WATCHDOG_RECOVERED_ORIGINAL_V20_TIMER",
+          json.dumps({"worker":worker,"original_timer":TIMER,
+          "finance_authorized":False,"web_authorized":False}),flush=True)
+
 def perform(args):
     source_sha=exact_executor_source()
     check(bool(re.fullmatch(r"[a-f0-9]{64}",args.request_sha)),"PACKET_SHA_ARGUMENT")
@@ -289,12 +498,17 @@ def perform(args):
           request.get("web_activation_authorized") is False and
           request.get("v22_install_authorized") is False and
           request.get("manager_reload_authorized") is False and
+          request.get("independent_systemd_watchdog_required") is True and
+          request.get("watchdog_delay_seconds")==WATCHDOG_DELAY_SECONDS and
+          request.get("worker_runtime_max_seconds")==WORKER_RUNTIME_MAX_SECONDS and
+          request.get("watchdog_may_only_restore_original_steam_timer") is True and
           isinstance(request.get("nonce"),str) and
           re.fullmatch(r"[0-9a-f]{40}",request["nonce"]) and
           p.name.endswith(sha(request["nonce"].encode())[:12]+".json"),
           "PACKET_AUTHORITY_AND_NONCE_BINDING")
     marker=Path(INTENT_PREFIX+sha(request["nonce"].encode())[:12]+".json")
     check(not marker.exists() and not marker.is_symlink(),"NONCE_ALREADY_CONSUMED")
+    require_supervised_worker(request)
     m=reviewed()
     comment=m.central_comment_from_github(args.approval_comment_id)
     validate_approval(request,args.request_sha,source_sha,comment)
@@ -313,12 +527,18 @@ def perform(args):
              "at_utc":utc().isoformat()},sort_keys=True)+"\n").encode(),0o600)
     print("PASS:NONCE_CONSUMED_ONCE_BEFORE_TIMER_MUTATION",flush=True)
     timer_stop_attempted=False
+    watchdog_timer=None
     batch_committed=False
     try:
+        watchdog_timer=arm_independent_watchdog(request,p,args.request_sha,source_sha)
+        check(worker_elapsed()<WORKER_RUNTIME_MAX_SECONDS-40,
+              "WORKER_RUNTIME_EXHAUSTED_BEFORE_STEAM_STOP")
+        check(unit_timer_active(watchdog_timer),
+              "INDEPENDENT_WATCHDOG_NOT_ARMED_BEFORE_STOP")
         timer_stop_attempted=True
-        bound_process(["systemctl","stop",TIMER],limit=30)
+        bound_process(["systemctl","stop",TIMER],limit=22)
         start=time.monotonic()
-        while time.monotonic()-start<90:
+        while time.monotonic()-start<25:
             state=m.unit(SERVICE)
             if state["ActiveState"]=="inactive" and state["MainPID"]=="0":break
             time.sleep(2)
@@ -333,6 +553,10 @@ def perform(args):
         latest=m.nft_sets()
         check(reject_native_timer_race(second["lease_preimage"],latest,max_elapsed=15),
               "CONCURRENT_OR_UNFENCED_NFT_WRITER")
+        check(worker_elapsed()<=WORKER_RUNTIME_MAX_SECONDS-WORKER_NFT_BUDGET_SECONDS,
+              "WORKER_INSUFFICIENT_TIME_FOR_BATCH_AND_TIMER_RESTORE")
+        check(unit_timer_active(watchdog_timer),
+              "WATCHDOG_TRIGGERED_OR_DISARMED_BEFORE_ATOMIC_BATCH")
         lines=atomic_commands(latest)
         # One nft -f kernel transaction. No flush, no rule, no table or policy write.
         bound_process(["nft","-f","-"],limit=15,stdin="\n".join(lines)+"\n")
@@ -361,6 +585,8 @@ def perform(args):
         check(protected_postflight(m),"PROTECTED_HOST_POSTFLIGHT")
         check(shape_sha()==current["shape_sha256"],"FIREWALL_SHAPE_POSTFLIGHT")
         print("PASS:ORIGINAL_V20_TIMER_PIDS_STAGE_C04_AND_NFT_SHAPE",flush=True)
+        if watchdog_timer is not None:
+            restore_receipt_and_cancel(request,args.request_sha,source_sha,watchdog_timer)
     check(batch_committed,"NO_ATOMIC_BATCH_COMMITTED")
 def main(argv=None):
     argv=sys.argv[1:] if argv is None else argv
@@ -371,6 +597,7 @@ def main(argv=None):
     mode=parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--prepare",action="store_true")
     mode.add_argument("--execute",action="store_true")
+    mode.add_argument("--watchdog-recover",action="store_true")
     parser.add_argument("--request")
     parser.add_argument("--request-sha")
     parser.add_argument("--approval-comment-id")
@@ -380,6 +607,11 @@ def main(argv=None):
             check(not any((args.request,args.request_sha,args.approval_comment_id)),
                   "PREPARE_CANNOT_INCLUDE_AUTHORITY")
             prepare()
+        elif args.watchdog_recover:
+            check(bool(args.request) and bool(args.request_sha) and
+                  not args.approval_comment_id,
+                  "WATCHDOG_ONLY_PACKET_AND_HASH_ARGUMENTS")
+            watchdog_recover(args.request,args.request_sha)
         else:
             check(all((args.request,args.request_sha,args.approval_comment_id)),
                   "EXECUTION_ARGS_MISSING")
