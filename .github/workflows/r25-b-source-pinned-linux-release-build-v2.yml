@@ -8,6 +8,18 @@ on:
       - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
       - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
       - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
+      # A source-pinned release must also rebuild after C03 runtime changes,
+      # not only after modifications to the artifact builder itself.
+      - "app/api/auth/steam/route.ts"
+      - "app/api/auth/session/route.ts"
+      - "app/api/user/me/route.ts"
+      - "app/api/user/ping/route.ts"
+      - "lib/c03ExistingSteamFlow.ts"
+      - "lib/c03ExistingSteamPg.ts"
+      - "lib/c03ProductionAuthServer.ts"
+      - "lib/productionAuth.ts"
+      - "tests/c03-existing-steam-flow.test.mts"
+      - "tests/nonfinancial-production-auth.test.mts"
   workflow_dispatch:
 
 permissions:
