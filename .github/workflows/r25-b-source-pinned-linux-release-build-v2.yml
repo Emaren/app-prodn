@@ -1,0 +1,182 @@
+name: Session B isolated Linux x86_64 Node22 release artifact build v2
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml"
+      - "scripts/release/r25_b_c_dev_to_linux_release_contract_v2.py"
+      - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
+      - "scripts/release/r25_b_linux_independent_artifact_verify_v2.py"
+      - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
+      - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
+      - "tests/test_r25_b_linux_independent_artifact_verify_v2.py"
+      - ".github/workflows/product-boundary.yml"
+      - "tests/test_r25_b_product_mainline_scope.py"
+      # A source-pinned release must also rebuild after C03 runtime changes,
+      # not only after modifications to the artifact builder itself.
+      - "app/api/auth/steam/route.ts"
+      - "app/api/auth/session/route.ts"
+      - "app/api/user/me/route.ts"
+      - "app/api/user/ping/route.ts"
+      - "lib/c03ExistingSteamFlow.ts"
+      - "lib/c03ExistingSteamPg.ts"
+      - "lib/c03ProductionAuthServer.ts"
+      - "lib/productionAuth.ts"
+      - "tests/c03-existing-steam-flow.test.mts"
+      - "tests/nonfinancial-production-auth.test.mts"
+      - "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md"
+      - "lib/adminSession.ts"
+      - "lib/c03AdminIdentityGate.ts"
+      - "tests/c03-admin-identity-gate.test.mts"
+      - "app/api/user/register/route.ts"
+      - "app/api/user/update_name/route.ts"
+      - "app/api/user/language/route.ts"
+      - "app/api/user/appearance/route.ts"
+      - "app/api/admin/delete_user/[uid]/route.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  b-linux-release-build-source-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+      AOE2_BACKEND_UPSTREAM: http://127.0.0.1:3331
+      AOE2WAR_ARTIFACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.0"
+          cache: yarn
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Require canonical main as an exact ancestor before Linux build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$GITHUB_REPOSITORY" = Emaren/app-prodn
+          live_main="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          test "${#live_main}" -eq 40
+          if test "$GITHUB_EVENT_NAME" = pull_request; then
+            test "${{ github.event.pull_request.base.ref }}" = main
+            test "${{ github.event.pull_request.base.sha }}" = "$live_main"
+          fi
+          relation="$(gh api "repos/$GITHUB_REPOSITORY/compare/${live_main}...${AOE2WAR_ARTIFACT_SOURCE_SHA}" --jq '.status')"
+          test "$relation" = ahead -o "$relation" = identical
+          echo "PASS:B_EXACT_SOURCE_INCLUDES_LIVE_CANONICAL_MAIN:$live_main"
+      - name: Pin native Linux arch, Node and exact source
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          test "$(node --version)" = v22.22.0
+          test "$(git rev-parse HEAD)" = "$AOE2WAR_ARTIFACT_SOURCE_SHA"
+          test -f yarn.lock
+          python3 -B -m unittest -q \
+            tests.test_r25_b_c_dev_linux_release_contract_v2 \
+            tests.test_r25_b_linux_release_receipt_emit_v2
+      - name: Install frozen Yarn dependencies without credentials
+        run: |
+          corepack enable
+          yarn --version
+          yarn install --frozen-lockfile --ignore-scripts --non-interactive
+          echo "AOE2WAR_CI_INSTALL_PASSED=true" >> "$GITHUB_ENV"
+      - name: Compile exact Prisma and TypeScript contracts
+        run: |
+          npx prisma generate
+          npx tsc --noEmit --pretty false
+      - name: Build exactly this Linux source
+        run: |
+          yarn build
+          test -s .next/BUILD_ID
+          echo "AOE2WAR_CI_BUILD_PASSED=true" >> "$GITHUB_ENV"
+      - name: Recheck current canonical main at runtime export boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          live_main="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          relation="$(gh api "repos/$GITHUB_REPOSITORY/compare/${live_main}...${AOE2WAR_ARTIFACT_SOURCE_SHA}" --jq '.status')"
+          test "$relation" = ahead -o "$relation" = identical
+          echo "PASS:B_MAIN_ANCESTRY_AT_ARTIFACT_EXPORT:$live_main"
+      - name: Export actual Linux runtime via existing guarded CI exporter
+        run: |
+          python3 -B scripts/aoe2_r25_c_parallel_stage.py \
+            --ci-export-artifact \
+            --artifact-output "$RUNNER_TEMP/aoe2war-b-linux-release-v2"
+          python3 -B scripts/release/r25_b_linux_release_receipt_emit_v2.py \
+            --ci-export-dir "$RUNNER_TEMP/aoe2war-b-linux-release-v2"
+          sha256sum "$RUNNER_TEMP/aoe2war-b-linux-release-v2/runtime.tar.gz"
+      - name: Publish immutable Linux builder artifact for independent B review
+        uses: actions/upload-artifact@v4
+        with:
+          name: b-linux-source-pinned-release-${{ github.run_id }}
+          path: ${{ runner.temp }}/aoe2war-b-linux-release-v2/
+          if-no-files-found: error
+          retention-days: 7
+
+  b-linux-independent-download-review:
+    needs: b-linux-release-build-source-only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CI: "true"
+      AOE2WAR_ARTIFACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Recheck current canonical main before independently accepting artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          live_main="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          relation="$(gh api "repos/$GITHUB_REPOSITORY/compare/${live_main}...${AOE2WAR_ARTIFACT_SOURCE_SHA}" --jq '.status')"
+          test "$relation" = ahead -o "$relation" = identical
+          echo "PASS:B_CURRENT_MAIN_AT_INDEPENDENT_BYTE_VERIFICATION:$live_main"
+      - name: Verify independent reviewer fixtures on Linux
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          test "$(git rev-parse HEAD)" = "$AOE2WAR_ARTIFACT_SOURCE_SHA"
+          python3 -B -m unittest -q tests.test_r25_b_linux_independent_artifact_verify_v2
+      - name: Fetch exact GitHub API artifact identity with read-only job token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" > "$RUNNER_TEMP/b-linux-artifact-api-v2.json"
+          python3 -m json.tool "$RUNNER_TEMP/b-linux-artifact-api-v2.json" >/dev/null
+      - name: Download original GitHub artifact bytes into separate verifier runner
+        uses: actions/download-artifact@v4
+        with:
+          name: b-linux-source-pinned-release-${{ github.run_id }}
+          path: ${{ runner.temp }}/b-linux-exact-run-downloaded-v2
+      - name: Independently stream SHA and every tar-member digest
+        run: |
+          python3 -B scripts/release/r25_b_linux_independent_artifact_verify_v2.py --artifact-dir "$RUNNER_TEMP/b-linux-exact-run-downloaded-v2" --github-api-artifacts-json "$RUNNER_TEMP/b-linux-artifact-api-v2.json" --output "$RUNNER_TEMP/b-linux-independent-review-v2.json"
+          python3 -m json.tool "$RUNNER_TEMP/b-linux-independent-review-v2.json" >/dev/null
+      - name: Export immutable independent review-only receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: b-linux-byte-verification-${{ github.run_id }}
+          path: ${{ runner.temp }}/b-linux-independent-review-v2.json
+          if-no-files-found: error
+          retention-days: 7

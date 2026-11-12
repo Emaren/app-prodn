@@ -22,6 +22,8 @@ export type PlayerNormalizedStats = {
   schemaVersion: string | null;
   metricDictionaryVersion: string | null;
   truncated: boolean;
+  /** Distinguish unavailable protected evidence from a genuine zero sample. */
+  availability?: "available" | "unavailable";
   metrics: PlayerNormalizedMetricSummary[];
 };
 
@@ -38,6 +40,27 @@ function emptyPlayerNormalizedStats(): PlayerNormalizedStats {
     truncated: false,
     metrics: [],
   };
+}
+
+/**
+ * Only this optional public normalized replay rail may fail soft on its
+ * *exact* denied projection relation. We never use this classifier to bypass
+ * finance permissions or to make a denied user/identity lookup appear empty.
+ */
+export function isDeniedPublicReplayProjection(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as {
+    code?: unknown;
+    message?: unknown;
+    meta?: { code?: unknown; message?: unknown };
+  };
+  if (!["P2010", "P2039"].includes(String(candidate.code ?? ""))) return false;
+  const sqlState = String(candidate.meta?.code ?? "");
+  const message = [candidate.message, candidate.meta?.message]
+    .filter((part): part is string => typeof part === "string")
+    .join(" ");
+  return (sqlState === "42501" || /Code:\s*`42501`/.test(message)) &&
+    /\bpermission denied for (?:table|relation) replay_stat_projections\b/i.test(message);
 }
 
 function bestDirection(metricKey: string) {
@@ -245,6 +268,11 @@ export async function loadPlayerNormalizedStats(
         : "";
     if (["P2021", "P2022"].includes(code)) {
       return emptyPlayerNormalizedStats();
+    }
+    if (isDeniedPublicReplayProjection(error)) {
+      // "Unavailable" is not zero games, zero metrics or absence of evidence.
+      // Keep the rest of the public profile visible without broad SQL grants.
+      return { ...emptyPlayerNormalizedStats(), availability: "unavailable" };
     }
     throw error;
   }

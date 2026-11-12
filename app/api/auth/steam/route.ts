@@ -18,7 +18,9 @@ import {
   verifySteamCallback,
 } from "@/lib/steamAuth";
 import { allowUserOnlineSession } from "@/lib/userOnlinePresence";
-import { completeProductionSteamLogin, usesNonfinancialProductionAuth } from "@/lib/productionAuth";
+import { completeProductionSteamLogin, usesNonfinancialProductionAuth, usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
+import { admitVerifiedExistingSteamCallback } from "@/lib/c03ExistingSteamFlow";
+import { c03ExistingReader, c03NonceWriter } from "@/lib/c03ExistingSteamPg";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +78,25 @@ export async function GET(request: NextRequest) {
     "scoped_db_login" | "session_sign" | "response_cookie" = "openid_verification";
   try {
     const steamId = await verifySteamCallback(request);
+    if (usesC03ExistingOnlyAuth()) {
+      // Existing-user only: no getPrisma(), no complete_steam_login SECDEF,
+      // no newSessionUid(), no public.users mutation and no account linking.
+      // The OpenID provider assertion, browser state cookie and signed nonce
+      // were already verified by verifySteamCallback() above.
+      callbackStage = "scoped_db_login";
+      const existing = await admitVerifiedExistingSteamCallback({
+        steamId,
+        responseNonce: request.nextUrl.searchParams.get("openid.response_nonce") ?? "",
+        signedSessionUid: await getSessionUid(request),
+      }, c03ExistingReader, c03NonceWriter);
+      allowUserOnlineSession(existing.uid); // in-memory only
+      callbackStage = "session_sign";
+      const token = await signSession(existing.uid);
+      callbackStage = "response_cookie";
+      const response = makeRedirect(request, sanitizeReturnTo(request.nextUrl.searchParams.get("returnTo")));
+      setSessionCookie(response, token);
+      return clearSteamState(response);
+    }
     callbackStage = "community_profile";
     const profile = await fetchSteamProfile(steamId);
     callbackStage = "prisma_connect";

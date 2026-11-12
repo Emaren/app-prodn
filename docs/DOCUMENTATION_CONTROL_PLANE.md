@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/public-managed-thumb-20261112` at `b65541821a92af4e051578ac5160350d97bafb9f`
+Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `2386a76d447755e11e76d33736d4ac6f99948df2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **137**
+- Authoritative repository documents: **143**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 75
-- `runbook`: 43
+- `reference`: 76
+- `runbook`: 48
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 33
+- `draft`: 39
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -171,7 +171,9 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
+| [Session B C03 existing-user-only Steam website contract](release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md) | `runbook` | `draft` | `nonfinancial source only, session A sole FINANCIAL writer, no production admission` |
 | [C03 known Prisma SQLSTATE 42501 financial read denial across JS realms](release/SESSION_B_C03_PRISMA_CROSSREALM_42501_20261109.md) | `runbook` | `draft` | `nonfinancial HTTP classification only, no SQL/financial role changes` |
 | [C03 restricted Steam V16 ProtectHome source evidence and second rollback](release/SESSION_B_C03_PROTECTHOME_STEAM_V16_RECOVERY_20261109.md) | `runbook` | `draft` | `source-only exact-identity fail-closed App release; no funding` |
 | [C03 explicit approved public-live endpoint without financial authority](release/SESSION_B_C03_PUBLIC_LIVE_DIRECT_20261109.md) | `runbook` | `draft` | `App-only public read projection; finance execution denied` |
@@ -180,11 +182,15 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — Versioned C04-Masked Steam V10](release/SESSION_B_C04_MASKED_STEAM_V10_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
+| [Session B HEL1 real absent-preimage recovery and owner-root signer approval packet](release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md) | `runbook` | `draft` | `review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit` |
+| [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
+| [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
 | [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `runbook` | `draft` | `nonfinancial App SELECT on already-approved public v9 view only` |
 | [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `runbook` | `draft` | `source-staged-fail-closed-cold-rollback-no-production-financial-change` |
 | [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `runbook` | `draft` | `source-only-nonfinancial-r25-memory-guard` |
 | [Steam V15 source-pinned R25 heap-build enrollment and nft lease zero handling](release/SESSION_B_R25_STEAM_V15_GC_FINAL_BUILD_20261109.md) | `runbook` | `draft` | `source-only, two exact restricted 3032 process profiles, no Chain permission` |
 | [Steam V17 exact pre-C01 topology reconstruction and restricted 3032 recovery](release/SESSION_B_STEAM_V17_EXACT_C01_INERT_DELTA_20261109.md) | `runbook` | `draft` | `source-only reviewed App release with physical production acceptance required` |
+| [Session B — V22 root SOURCE_INSTALL and UID650→3032 release engine](release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md) | `runbook` | `draft` | `source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority` |
 | [PRODUCT Runner Owner Approval and Acceptance](security/PRODUCT_RUNNER_OWNER_APPROVAL_AND_ACCEPTANCE.md) | `runbook` | `draft` | `security-contract` |
 | [PRODUCT Signed Promotion Exact SHA Gate](security/PRODUCT_SIGNED_PROMOTION_EXACT_SHA_GATE.md) | `reference` | `draft` | `security-contract` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |

@@ -1150,6 +1150,14 @@ function NormalizedStatsPanel({
 }: {
   stats: PlayerNormalizedStats;
 }) {
+  if (stats.availability === "unavailable") {
+    return (
+      <div role="status" className="rounded-xl border border-amber-300/15 bg-amber-300/[0.045] p-4 text-sm text-amber-100/80">
+        Exact replay statistics are temporarily unavailable. Existing match
+        outcomes remain unchanged; missing evidence is not counted as zero.
+      </div>
+    );
+  }
   if (stats.visibleGames === 0 || stats.metrics.length === 0) {
     return null;
   }

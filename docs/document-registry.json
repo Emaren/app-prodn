@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e9f3b43e14dcad7fcb871610591cdb896c76317fe2489611200fb601993c8635",
+      "sha256": "c5458585bb16af3f61911fdf84f10c6038a16d6cd96b9174de4e00cd9d1f5ac8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1400,7 +1400,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-11-12",
       "sensitivity": "internal",
-      "sha256": "b4931cbc9e46bf8b8014e6cc5bbca9e286f53b3247e3f441cfda80610833387c",
+      "sha256": "e4240754732c9fe42d0a8c8bcdb18d7b2f435f077a7b56b32195bc1e6face3e8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2752,6 +2752,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority",
+      "id": "aoe2war.app-prodn.session-b-3032-two-cycle-protected-release-and-rollback-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "b0cb6e4a7c4f0fc9aae6568e353a29fb56135205c66336c06ad5554652fa6eac",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B protected 3032 two-cycle release and rollback admission",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfunded source-only App transport parity; Chain finance owner retains execution",
       "id": "aoe2war.app-prodn.session-b-c02-source-parity-r25-20261109",
       "owner": "aoe2war-web",
@@ -2767,6 +2789,28 @@
         "wolochain"
       ],
       "title": "C02 exact native-8094 forward-only App transport source parity in R25",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "nonfinancial source only, session A sole FINANCIAL writer, no production admission",
+      "id": "aoe2war.app-prodn.session-b-c03-existing-only-steam-contract-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "9ff8272806f60d2a24f0754af9e665c2c1ca6ae3ac43fa30a19a2d023cb64480",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B C03 existing-user-only Steam website contract",
       "type": "runbook"
     },
     {
@@ -2955,6 +2999,72 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit",
+      "id": "aoe2war.app-prodn.session-b-hel1-absent-v22-signing-approval-20261112",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-12",
+      "sensitivity": "restricted",
+      "sha256": "3bda1b24cfa0adfc31fa68fccb3337c386ff62ef86393ac0d51c5880e3f33da1",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B HEL1 real absent-preimage recovery and owner-root signer approval packet",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority",
+      "id": "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "254c23d7b256763a2402d0971636e9c9bfd11501a8779b151c3626db3e509163",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority",
+      "id": "aoe2war.app-prodn.session-b-pre-c03-nonfinancial-site-release-boundary-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "3301cfed779ae39745afa535569fd1a4f986297e8c59553836407295f6ab452f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B existing-profile website release before C03 finance quarantine",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "nonfinancial App SELECT on already-approved public v9 view only",
       "id": "aoe2war.app-prodn.session-b-public-v9-live-market-fallback-20261109",
       "owner": "aoe2war-web",
@@ -3066,6 +3176,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "source-only review; B exclusive HEL1 install and 3032 cutover, no finance authority",
+      "id": "aoe2war.app-prodn.session-b-v22-root-install-uid650-product-release-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "dcfac1e0417fee3406be9ec812371e06b91d63215df56972134749cd6122e39f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B \u2014 V22 root SOURCE_INSTALL and UID650\u21923032 release engine",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "security-contract",
       "id": "aoe2war.app-prodn.product-runner-owner-approval",
       "owner": "aoe2war-web",
@@ -3129,8 +3261,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/public-managed-thumb-20261112",
-    "commit": "b65541821a92af4e051578ac5160350d97bafb9f"
+    "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
+    "commit": "2386a76d447755e11e76d33736d4ac6f99948df2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

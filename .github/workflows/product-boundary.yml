@@ -32,5 +32,77 @@ jobs:
         run: python3 -I -B -m unittest discover -s tests -p 'test_product_boundary_guard.py' -v
       - name: Source-bound owner signature, CI, artifact, rollback, nonce negatives
         run: python3 -I -B -m unittest discover -s tests -p 'test_product_signed_promotion_gate.py' -v
-      - name: Source SHA, exact owner/origin, tree and approved file changes
+      # C PRODUCT's exact namespace contract must remain untouched. B release
+      # source has an independently reviewed, different command/SQL boundary.
+      # Never feed B's scripts/release fixtures to C's restricted argv/paths
+      # filter or broaden its C-only allowlist. Fork impersonations run C's
+      # original check, not this B-specific scope.
+      - name: Source SHA, exact owner/origin, tree and approved C source changes
+        if: >-
+          github.event_name != 'pull_request' ||
+          github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' ||
+          github.event.pull_request.head.repo.full_name != github.repository
         run: python3 -I -B scripts/product_boundary_guard.py --check
+      - name: Source SHA, exact canonical main ancestry and protected B-only release boundary
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.head_ref == 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$BOUNDARY_REPOSITORY" = Emaren/app-prodn
+          test "$BOUNDARY_BRANCH" = session-b/v22-root-executor-and-c-artifact-contract-20261111
+          test "${{ github.event.pull_request.base.ref }}" = main
+          test "$(git rev-parse HEAD)" = "$BOUNDARY_HEAD_SHA"
+          test "$(git remote get-url origin)" = https://github.com/Emaren/app-prodn
+          git merge-base --is-ancestor "$BOUNDARY_BASE_SHA" HEAD
+          # A stale PR base is NOT current main; source must be reconciled.
+          actual_main="$(gh api "repos/$BOUNDARY_REPOSITORY/branches/main" --jq '.commit.sha')"
+          test "$actual_main" = "$BOUNDARY_BASE_SHA"
+          # Compare the exact B branch against *actual main*, not an old
+          # stacked B parent. Preserve C and A namespaces by deny-by-default.
+          git diff --name-only --diff-filter=ACMRTUXB -z "$BOUNDARY_BASE_SHA" HEAD -- > "$RUNNER_TEMP/b-product-source-paths.nul"
+          while IFS= read -r -d '' path; do
+            case "$path" in
+              docs/security/*|prisma/*|systemd/*|infra/*|ops/*|scripts/product_*|tests/test_product_*)
+                echo "HOLD:B_MAINLINE_C_PRODUCT_OR_FINANCIAL_SOURCE_DRIFT:$path"
+                exit 3 ;;
+              app/api/admin/wolo*|app/api/admin/bets*|app/api/admin/bount*|app/api/admin/championship*|app/api/admin/oracle*|app/api/user/war-satchel*|app/api/user/wolo*|app/api/user/bet-automation*)
+                echo "HOLD:B_MAINLINE_FINANCIAL_HANDLER_DRIFT:$path"
+                exit 3 ;;
+            esac
+            case "$path" in
+              .github/workflows/product-boundary.yml|.github/workflows/r25-b-source-pinned-linux-release-build-v2.yml|.github/workflows/r25-b-v22-root-and-uid650-handoff-ci.yml|.github/workflows/r25-public-player-one-use-controller-ci.yml|.github/workflows/r25-steam-dual-web-builds-v22-ci.yml|.github/workflows/r25-v22-three-source-transaction-review-ci.yml)
+                ;;
+              .github/workflows/*)
+                echo "HOLD:B_UNREVIEWED_WORKFLOW:$path"; exit 3 ;;
+              scripts/release/*)
+                case "$path" in
+                  *.py|*.service|scripts/release/r25_b_c03_nonfinancial_sidecar_SCHEMA_REVIEW_ONLY.sql) ;;
+                  *) echo "HOLD:B_UNREVIEWED_RELEASE_EXECUTABLE:$path"; exit 3 ;;
+                esac ;;
+              app/api/*)
+                case "$path" in
+                  app/api/auth/session/route.ts|app/api/auth/steam/route.ts|app/api/user/me/route.ts|app/api/user/ping/route.ts|app/api/user/appearance/route.ts|app/api/user/language/route.ts|app/api/user/register/route.ts|app/api/user/update_name/route.ts|app/api/admin/delete_user/*/route.ts) ;;
+                  *) echo "HOLD:B_UNREVIEWED_API_AUTHORITY:$path"; exit 3 ;;
+                esac ;;
+              lib/*)
+                case "$path" in
+                  lib/c03*|lib/adminSession.ts|lib/productionAuth.ts|lib/playerNormalizedStats.ts) ;;
+                  *) echo "HOLD:B_UNREVIEWED_RUNTIME_LIBRARY:$path"; exit 3 ;;
+                esac ;;
+              docs/*|tests/*|components/players/PlayerProfilePage.tsx|config/kingdom-index-routes.json)
+                ;;
+              *)
+                echo "HOLD:B_UNREVIEWED_SOURCE_PATH:$path"; exit 3 ;;
+            esac
+            case "$path" in
+              */financial/*|financial/*|*/FINANCIAL/*|FINANCIAL/*|*/finance/*|finance/*|*owner-private-recovery*|*private_keys*|*secrets*|*.pem|*.key|*.p12)
+                echo "HOLD:B_FINANCIAL_OR_PRIVATE_AUTHORITY_PATH:$path"; exit 3 ;;
+            esac
+          done < "$RUNNER_TEMP/b-product-source-paths.nul"
+          python3 -B -m unittest -q tests.test_r25_b_product_mainline_scope
+          python3 -B -m unittest -q tests.test_r25_b_v22_root_install_admission_review tests.test_r25_b_v22_central_signature_review tests.test_r25_b_c03_website_source_admission
+          echo PASS:B_MAINLINE_CURRENT_SOURCE_AND_SEPARATE_RESTRICTED_RELEASE_BOUNDARY

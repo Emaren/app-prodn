@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getPrisma } from "@/lib/prisma";
+import { usesC03ExistingOnlyAuth } from "@/lib/productionAuth";
 import { getSessionUid } from "@/lib/session";
 
 type RouteContext = {
@@ -15,6 +16,13 @@ function resolveAdminToken() {
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
+  // Back-end admin delete bypasses the local Prisma mutation fence; it
+  // must be explicitly denied in C03 BEFORE any upstream HTTP request.
+  if (usesC03ExistingOnlyAuth()) {
+    return NextResponse.json({ detail: "C03 protected account deletion unavailable" },
+      { status: 503, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }
+
   const { uid } = await context.params;
   if (!uid?.trim()) {
     return NextResponse.json({ detail: "Missing uid" }, { status: 400 });

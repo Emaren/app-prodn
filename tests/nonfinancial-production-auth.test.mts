@@ -47,6 +47,17 @@ function load(file: string, deps: Record<string, unknown>, env: Record<string, s
     require: (name: string) => {
       if (name in deps) return deps[name];
       if (name === "@/lib/userDto") return load("lib/userDto.ts", {}, env);
+      // Legacy nonfinancial-production-v1 tests prove the C03 separate
+      // reader/nonce/presence module is NEVER used in this old profile.
+      // Any accidental access throws instead of silently faking authority.
+      if (name === "@/lib/c03ExistingSteamPg" ||
+          name === "@/lib/c03ExistingSteamFlow" ||
+          name === "@/lib/c03ProductionAuthServer" ||
+          name === "@/lib/c03AdminIdentityGate") {
+        return new Proxy({}, { get: () => {
+          throw new Error("LEGACY_PROFILE_MUST_NOT_TOUCH_C03_SIDECAR");
+        } });
+      }
       if (name === "node:crypto" || name === "crypto") return require(name);
       throw new Error("Unexpected fixture import: " + name);
     }, process: { env }, URL, URLSearchParams, Buffer, TextDecoder, TextEncoder, Uint8Array,
@@ -229,6 +240,7 @@ test("actual JOSE sessions require original identity and admin authority comes f
     "next/navigation": { redirect: () => { throw new Error("fixture-redirect"); } },
     "next/server": { NextResponse: Reply }, "@/lib/session": session,
     "@/lib/productionAuth": { usesNonfinancialProductionAuth: () => true,
+      usesC03ExistingOnlyAuth: () => false,
       readProductionUser: async () => ({ id: 1, uid: "fixture-user", isAdmin }) },
     "@/lib/prisma": { getPrisma: () => ({ user: { findUnique: async () => { throw new Error("NO_DIRECT_USER_SELECT"); } } }) },
   }, env);

@@ -1,0 +1,58 @@
+name: R25 Steam V22 exactly two web builds acceptance
+
+on:
+  pull_request:
+    paths:
+      - "scripts/release/r25_steam_refresh_two_web_builds_v22.py"
+      - "scripts/release/r25_steam_refresh_two_web_builds_v22.service"
+      - "tests/test_r25_steam_dual_web_builds_v22.py"
+      - ".github/workflows/r25-steam-dual-web-builds-v22-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  steam-v22-source-only:
+    name: V22 immutable Steam V20 security plus exact two-release adversarial matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Exact V22 source syntax and independently pinned unit SHA
+        run: |
+          python3 -B - <<'PY'
+          import ast,hashlib,pathlib
+          source=pathlib.Path("scripts/release/r25_steam_refresh_two_web_builds_v22.py")
+          unit=pathlib.Path("scripts/release/r25_steam_refresh_two_web_builds_v22.service")
+          s=source.read_text()
+          ast.parse(s)
+          old=b"/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_traffic_v20.py"
+          new=b"/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py"
+          b=unit.read_bytes()
+          assert b.count(new)==1 and b.count(old)==0
+          assert hashlib.sha256(b).hexdigest()=="44ad57ded3f26690eccf674297c4bc4aa00c0ae2ed563f631001ba6d2de1232a"
+          assert hashlib.sha256(b.replace(new,old)).hexdigest()=="b976a10d5cc8b3c199974f1b85a912a67323e8b57b4f69325a1061428d20deb2"
+          assert "web-prod-v22" in s and "PLAYER_STAGE_JOURNAL" in s
+          assert "PLAYER_STAGE_PERMIT_NOT_SOURCE_AUTHORIZED" in s
+          assert "STAGE_ONLY" in s and "stage_nonce" in s
+          assert "v22_timer_exclusive_lock(refresh_once)" in s
+          assert "candidate_activation_permit_digest" in s
+          assert "V22_INHERITED_LOCK_WRONG_FILE" in s
+          assert "V22_CANDIDATE_REQUIRES_SERIALIZED_CONTROLLER_LOCK" in s
+          assert "lease_expiry_readonly_wait()" in s
+          assert "C01_DELTA_HELPER_SHA256" in s and "FIN_SNAPSHOT" in s
+          print("PASS_V22_SOURCE_ONLY_STRICT_NEW_SOURCE_AND_PRESERVED_V20_TIMER")
+          PY
+      - name: Test positive/hostile CI overlay, stage receipts, timer races, lease GC and rollback
+        run: |
+          python3 -B -m unittest -v \
+            tests.test_r25_steam_dual_web_builds_v22 \
+            tests.test_r25_public_player_phase_permits_v2 \
+            tests.test_r25_public_player_v22_serialized_promotion_v1

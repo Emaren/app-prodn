@@ -1,0 +1,119 @@
+name: Session B exact V22 source install and C UID650 artifact contract (inert)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py"
+      - "scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py"
+      - "tests/test_r25_b_v22_hel1_absent_preimage_review.py"
+      - "tests/test_r25_b_hel1_signer_root_entrypoint_review.py"
+      - "tests/test_r25_b_v22_reboot_recovery_contract_review.py"
+      - "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md"
+      - "scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py"
+      - "tests/test_r25_v22_three_source_transaction_review.py"
+      - "tests/test_r25_b_v22_root_install_admission_review.py"
+      - "tests/test_r25_b_v22_central_signature_review.py"
+      - "tests/test_r25_b_v22_source_install_coordinator_review.py"
+      - "tests/test_r25_b_v22_linux_host_adapter_review.py"
+      - "tests/test_r25_b_c_product_artifact_same_slot.py"
+      - "scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py"
+      - "scripts/release/r25_b_c_dev_to_linux_release_contract_v2.py"
+      - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
+      - "scripts/release/r25_b_linux_independent_artifact_verify_v2.py"
+      - "tests/test_r25_b_linux_independent_artifact_verify_v2.py"
+      - "scripts/release/r25_b_c03_nonfinancial_sidecar_SCHEMA_REVIEW_ONLY.sql"
+      - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
+      - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
+      - "tests/test_r25_b_c03_website_source_admission.py"
+      - "tests/test_r25_b_pre_c03_nonfinancial_website_release.py"
+      - "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md"
+      - "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md"
+      - "docs/release/evidence/SESSION_B_APP_BRANCH_PR_LEDGER_20261111.json"
+      - "tests/test_r25_b_product_mainline_scope.py"
+      - ".github/workflows/product-boundary.yml"
+      - "tests/test_r25_b_v22_systemd_condition_native.py"
+      - "tests/c03-existing-steam-flow.test.mts"
+      - "lib/c03ExistingSteamFlow.ts"
+      - "lib/c03ExistingSteamPg.ts"
+      - "lib/c03ProductionAuthServer.ts"
+      - "lib/productionAuth.ts"
+      - "lib/adminSession.ts"
+      - "lib/c03AdminIdentityGate.ts"
+      - "tests/c03-admin-identity-gate.test.mts"
+      - "app/api/user/register/route.ts"
+      - "app/api/user/update_name/route.ts"
+      - "app/api/user/language/route.ts"
+      - "app/api/user/appearance/route.ts"
+      - "app/api/admin/delete_user/[uid]/route.ts"
+      - "app/api/auth/steam/route.ts"
+      - "app/api/auth/session/route.ts"
+      - "app/api/user/me/route.ts"
+      - "app/api/user/ping/route.ts"
+      - "docs/release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md"
+      - "docs/release/SESSION_B_V22_SOURCE_INSTALL_AND_UID650_PRODUCT_RELEASE_GATE_20261111.md"
+      - "docs/release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md"
+      - ".github/workflows/r25-b-v22-root-and-uid650-handoff-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-root-source-and-handoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify one-use phase, durable crash inverse, C artifact, same-slot roles
+        run: |
+          python3 -B -m unittest -v \
+            tests.test_r25_v22_three_source_transaction_review \
+            tests.test_r25_b_v22_root_install_admission_review \
+            tests.test_r25_b_v22_central_signature_review \
+            tests.test_r25_b_v22_source_install_coordinator_review \
+            tests.test_r25_b_v22_linux_host_adapter_review \
+            tests.test_r25_b_v22_hel1_absent_preimage_review \
+            tests.test_r25_b_hel1_signer_root_entrypoint_review \
+            tests.test_r25_b_v22_reboot_recovery_contract_review \
+            tests.test_r25_b_c_product_artifact_same_slot \
+            tests.test_r25_b_c_dev_linux_release_contract_v2 \
+            tests.test_r25_b_linux_release_receipt_emit_v2 \
+            tests.test_r25_b_linux_independent_artifact_verify_v2 \
+            tests.test_r25_b_c03_website_source_admission \
+            tests.test_r25_b_pre_c03_nonfinancial_website_release \
+            tests.test_r25_b_product_mainline_scope \
+            tests.test_r25_b_v22_systemd_condition_native
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.0"
+      - name: Existing-only Steam admin/ordinary/nonce source contract
+        run: |
+          node --experimental-strip-types --test tests/c03-existing-steam-flow.test.mts
+          node --experimental-strip-types --test tests/c03-admin-identity-gate.test.mts
+      - name: Direct root/source/public deployment entrypoints must fail closed
+        run: |
+          for file in \
+            scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py \
+            scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py \
+            scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py \
+            scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py \
+            scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py \
+            scripts/release/r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py \
+            scripts/release/r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py \
+            scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py; do
+            rc=0
+            python3 -B "$file" >/tmp/session-b-inert-source-refusal.txt || rc=$?
+            test "$rc" -eq 3
+            grep -F "HOLD:" /tmp/session-b-inert-source-refusal.txt
+          done
