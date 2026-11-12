@@ -40,6 +40,7 @@ class SourceBoundaryTests(unittest.TestCase):
         spec.loader.exec_module(module)
         self.assertIsNone(module.BRANCH.fullmatch("session-b/v22-root-executor-and-c-artifact-contract-20261111"))
         self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-v23-lease-expiry-race-repair-20261112"))
+        self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-v23-c03-observer-completion-retry-20261112"))
         self.assertIsNotNone(module.BRANCH.fullmatch("session-c/safe-product-review"))
         self.assertIn("UNREVIEWED_EXECUTABLE_SURFACE",SOURCE_GUARD.read_text())
 
@@ -49,11 +50,29 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn('session-b/v22-root-executor-and-c-artifact-contract-20261111',s)
         self.assertIn('session-b/steam-v23-lease-expiry-race-repair-20261112',s)
         self.assertIn('HOLD:B_RELEASE_BRANCH_UNAUTHORIZED',s)
+        self.assertIn('session-b/steam-v23-c03-observer-completion-retry-20261112',s)
+        self.assertIn('HOLD:B_V23_C03_OBSERVER_SOURCE_SCOPE',s)
         self.assertIn('HOLD:B_V23_REPAIR_SOURCE_SCOPE',s)
         self.assertIn("github.event.pull_request.base.ref",s)
         self.assertIn('test "$actual_main" = "$BOUNDARY_BASE_SHA"',s)
         self.assertIn('git merge-base --is-ancestor "$BOUNDARY_BASE_SHA" HEAD',s)
         self.assertIn("python3 -I -B scripts/product_boundary_guard.py --check",s)
+
+    def test_main_push_after_exact_b_merge_uses_separate_readonly_attested_gate(self):
+        s=WORKFLOW.read_text()
+        self.assertIn("HOLD:B_MAIN_PUSH_WRONG_MERGE_PROVENANCE",s)
+        self.assertIn("HOLD:B_MAIN_PUSH_SOURCE_SCOPE",s)
+        self.assertIn("repos/$BOUNDARY_REPOSITORY/pulls/1338",s)
+        self.assertIn('git rev-parse HEAD^1',s)
+        self.assertIn('git rev-parse HEAD^2',s)
+        self.assertIn('test "$BOUNDARY_BASE_SHA" = a61c5af90fe77f10e0b6d1c6c680641ba37acc7a',s)
+        self.assertIn('test "$reviewed_pr_head" = "$(git rev-parse HEAD^2)"',s)
+        self.assertIn('test "$reviewed_merge_sha" = "$BOUNDARY_HEAD_SHA"',s)
+        self.assertIn("python3 -B -m unittest -q tests.test_r25_steam_v23_c03_observer_completion",s)
+        self.assertIn("github.event.before == 'a61c5af90fe77f10e0b6d1c6c680641ba37acc7a'",s)
+        self.assertIn("python3 -I -B scripts/product_boundary_guard.py --check",s)
+        self.assertNotIn("allow-all",s)
+        self.assertNotIn("continue-on-error: true",s)
 
     def test_linux_builder_and_independent_verifier_require_current_main(self):
         build=(ROOT/".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml").read_text()

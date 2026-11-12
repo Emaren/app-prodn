@@ -156,8 +156,9 @@ class BoundedSteamExpiry(TestCase):
     def test_source_retain_original_protected_boundaries(self):
         text = SOURCE.read_text()
         self.assertIn('original.get_caps_or_hold()', text)
-        self.assertIn('v22.native_snapshot()', text)
-        self.assertIn('m.production_protected() == before', text)
+        self.assertIn('read_protected_after_c03_observer_completion(\n            v22.native_snapshot)', text)
+        self.assertIn('read_protected_after_c03_observer_completion(m.production_protected)',text)
+        self.assertIn('m.production_protected) == before', text)
         self.assertIn('m.production_nft_shape() == v22.NFT_SHAPE', text)
         self.assertIn('v22.v22_timer_exclusive_lock(transaction)', text)
         self.assertIn('validate_current_web()', text)
