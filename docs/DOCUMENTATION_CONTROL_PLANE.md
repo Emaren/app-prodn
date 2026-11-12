@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/public-managed-thumb-20261112` at `87e881e1e9a826a2ec98fbf22b413b7ae2d710a7`
+Implementation baseline: `session-c/public-managed-thumb-20261112` at `b65541821a92af4e051578ac5160350d97bafb9f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
