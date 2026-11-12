@@ -40,6 +40,7 @@ class SourceBoundaryTests(unittest.TestCase):
         spec.loader.exec_module(module)
         self.assertIsNone(module.BRANCH.fullmatch("session-b/v22-root-executor-and-c-artifact-contract-20261111"))
         self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-v23-lease-expiry-race-repair-20261112"))
+        self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-v23-c03-observer-completion-retry-20261112"))
         self.assertIsNotNone(module.BRANCH.fullmatch("session-c/safe-product-review"))
         self.assertIn("UNREVIEWED_EXECUTABLE_SURFACE",SOURCE_GUARD.read_text())
 
@@ -49,6 +50,8 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn('session-b/v22-root-executor-and-c-artifact-contract-20261111',s)
         self.assertIn('session-b/steam-v23-lease-expiry-race-repair-20261112',s)
         self.assertIn('HOLD:B_RELEASE_BRANCH_UNAUTHORIZED',s)
+        self.assertIn('session-b/steam-v23-c03-observer-completion-retry-20261112',s)
+        self.assertIn('HOLD:B_V23_C03_OBSERVER_SOURCE_SCOPE',s)
         self.assertIn('HOLD:B_V23_REPAIR_SOURCE_SCOPE',s)
         self.assertIn("github.event.pull_request.base.ref",s)
         self.assertIn('test "$actual_main" = "$BOUNDARY_BASE_SHA"',s)
