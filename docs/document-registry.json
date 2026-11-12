@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "666408a9168e2c7096895ba46f6c6a575e672a40c97e493f9f71fc8d54daa28f",
+      "sha256": "057b3d4df300aef1f11162296af9964b715bfda7e828b6a8a3dba0e93e57a486",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3261,8 +3261,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/theme-503-campaign-preservation-20261112",
-    "commit": "4646c9c5849eecedfb13ea2c143e92622325b683"
+    "branch": "session-b/steam-v23-lease-expiry-race-repair-20261112",
+    "commit": "e2af32c447e8d18ad73bdd730f2a6b419130587c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

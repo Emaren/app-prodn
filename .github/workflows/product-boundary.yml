@@ -40,20 +40,25 @@ jobs:
       - name: Source SHA, exact owner/origin, tree and approved C source changes
         if: >-
           github.event_name != 'pull_request' ||
-          github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' ||
+          (github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
+           github.head_ref != 'session-b/steam-v23-lease-expiry-race-repair-20261112') ||
           github.event.pull_request.head.repo.full_name != github.repository
         run: python3 -I -B scripts/product_boundary_guard.py --check
       - name: Source SHA, exact canonical main ancestry and protected B-only release boundary
         if: >-
           github.event_name == 'pull_request' &&
-          github.head_ref == 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
+          (github.head_ref == 'session-b/v22-root-executor-and-c-artifact-contract-20261111' ||
+           github.head_ref == 'session-b/steam-v23-lease-expiry-race-repair-20261112') &&
           github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$BOUNDARY_REPOSITORY" = Emaren/app-prodn
-          test "$BOUNDARY_BRANCH" = session-b/v22-root-executor-and-c-artifact-contract-20261111
+          case "$BOUNDARY_BRANCH" in
+            session-b/v22-root-executor-and-c-artifact-contract-20261111|session-b/steam-v23-lease-expiry-race-repair-20261112) ;;
+            *) echo HOLD:B_RELEASE_BRANCH_UNAUTHORIZED; exit 3 ;;
+          esac
           test "${{ github.event.pull_request.base.ref }}" = main
           test "$(git rev-parse HEAD)" = "$BOUNDARY_HEAD_SHA"
           test "$(git remote get-url origin)" = https://github.com/Emaren/app-prodn
@@ -63,6 +68,24 @@ jobs:
           test "$actual_main" = "$BOUNDARY_BASE_SHA"
           # Compare the exact B branch against *actual main*, not an old
           # stacked B parent. Preserve C and A namespaces by deny-by-default.
+          # This one later Steam race repair must contain ONLY these exact paths
+          # and SHA-reviewed Python bytes. Do not broaden C's original guard.
+          if [ "$BOUNDARY_BRANCH" = session-b/steam-v23-lease-expiry-race-repair-20261112 ]; then
+            exact_paths="$(printf '%s\n' \
+              '.github/workflows/product-boundary.yml' \
+              'scripts/release/r25_steam_refresh_current_product_v23.py' \
+              'tests/test_r25_steam_v23_bounded_expiry_repair.py' \
+              'tests/test_r25_b_product_mainline_scope.py' \
+              'docs/DOCUMENTATION_CONTROL_PLANE.md' \
+              'docs/document-registry.json' | LC_ALL=C sort)"
+            actual_paths="$(git diff --name-only "$BOUNDARY_BASE_SHA" HEAD -- | LC_ALL=C sort)"
+            test "$actual_paths" = "$exact_paths" || {
+              echo HOLD:B_V23_REPAIR_SOURCE_SCOPE; exit 3;
+            }
+            test "$(sha256sum scripts/release/r25_steam_refresh_current_product_v23.py | cut -d' ' -f1)" = '5747e59c783acca1ed0c7e3f1c2b032eed9036fc0deb176728af2d6417019bce' || exit 3
+            test "$(sha256sum tests/test_r25_steam_v23_bounded_expiry_repair.py | cut -d' ' -f1)" = '732ff45d0cfd445ca4ea2d3a636144888b7af7b26789e35062d03424657c5f8d' || exit 3
+            test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '825035f4f0124803e5284d959d65f02ec0ae32638377d2c240ac19a6e6a6979d' || exit 3
+          fi
           git diff --name-only --diff-filter=ACMRTUXB -z "$BOUNDARY_BASE_SHA" HEAD -- > "$RUNNER_TEMP/b-product-source-paths.nul"
           while IFS= read -r -d '' path; do
             case "$path" in

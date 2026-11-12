@@ -127,6 +127,39 @@ def load_v22():
          "ORIGINAL_NFT_SCOPE_DRIFT")
     return module
 
+def recover_verified_lease_expiry_once(m, original, validated, observed,
+                                       protected_before, web_pid, nft_shape):
+    """Close only a validated-IP expiry race between pre/post nft observations.
+
+    V5z's original command builder never extends a still-live lease. If an
+    already TLS-verified address falls out of nft in that gap, one narrowly
+    bounded re-add of just the now-absent verified address is permitted.
+    No flush, arbitrary address, new tables, extra capabilities or timer tweak.
+    """
+    global CHECKPOINT
+    missing = sorted(set(validated) - (observed["steam4"] | observed["steam6"]))
+    if not missing:
+        return observed
+    CHECKPOINT = "EXPIRED_VERIFIED_STEAM_LEASE_RETRY"
+    need(len(missing) <= 16, "STEAM_RETRY_ADDRESS_SCOPE")
+    commands = m.production_steam_union_commands(missing, observed)
+    need(0 < len(commands) <= 2 and sum(map(len, commands)) < 8192,
+         "STEAM_RETRY_COMMAND_SCOPE")
+    need(validate_current_web()[0] == web_pid,
+         "STEAM_RETRY_WEB_IDENTITY_CHANGED")
+    need(m.production_protected() == protected_before
+         and m.production_nft_shape() == nft_shape,
+         "STEAM_RETRY_PROTECTED_BASELINE_CHANGED")
+    CHECKPOINT = "EXPIRED_VERIFIED_STEAM_LEASE_NFT_ADD"
+    m.run(["/usr/sbin/nft", "-f", "-"],
+          data=("\n".join(commands) + "\n").encode(), maximum=8192)
+    CHECKPOINT = "EXPIRED_VERIFIED_STEAM_LEASE_FINAL_OBSERVATION"
+    final = original.observe_strict_steam_set_with_bounded_retry(m)
+    need(set(validated).issubset(final["steam4"] | final["steam6"]),
+         "STEAM_EGRESS_LEASE_NOT_INSTALLED_AFTER_BOUNDED_RETRY")
+    return final
+
+
 def only_steam_refresh():
     global CHECKPOINT
     CHECKPOINT = "WEB_IDENTITY"
@@ -163,6 +196,8 @@ def only_steam_refresh():
                   data=("\n".join(commands)+"\n").encode(),maximum=8192)
         CHECKPOINT = "PROTECTED_POST_WRITE_REVALIDATION"
         after = original.observe_strict_steam_set_with_bounded_retry(m)
+        after = recover_verified_lease_expiry_once(
+            m, original, validated, after, before, before_pid, v22.NFT_SHAPE)
         need(set(validated).issubset(after["steam4"] | after["steam6"]),
              "STEAM_EGRESS_LEASE_NOT_INSTALLED")
         need(m.production_nft_shape() == v22.NFT_SHAPE
