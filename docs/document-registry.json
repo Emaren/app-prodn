@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bcdaac6a2489bb3d476112c3e4ce009b2ca0e6c9112a380987adb12fd4a038f8",
+      "sha256": "e9f3b43e14dcad7fcb871610591cdb896c76317fe2489611200fb601993c8635",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/kingdom-traders-paper-public-gateway-20261112",
-    "commit": "c1ef10986f87209146f5042c82ae2ed3df928d24"
+    "branch": "session-c/public-managed-thumb-20261112",
+    "commit": "b65541821a92af4e051578ac5160350d97bafb9f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

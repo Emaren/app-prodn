@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/kingdom-traders-paper-public-gateway-20261112` at `c1ef10986f87209146f5042c82ae2ed3df928d24`
+Implementation baseline: `session-c/public-managed-thumb-20261112` at `b65541821a92af4e051578ac5160350d97bafb9f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

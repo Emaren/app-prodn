@@ -1,9 +1,10 @@
-import { promises as fs } from "fs";
+import { constants as fsConstants, promises as fs } from "fs";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 
 import { mediaFallbackUrl, resolveManagedMediaUrl } from "@/lib/managedMediaAssets";
+import { shippedManagedPortraitThumbName } from "@/lib/featuredWarriorShippedThumb";
 import {
   fallbackMediaCacheControl,
   VERIFIED_MANAGED_MEDIA_CACHE_CONTROL,
@@ -430,6 +431,62 @@ function publicAssetRelativePath(url: string) {
   return decoded.replace(/^\/+/, "");
 }
 
+// A few public, originally uploaded portraits survive on disk only as
+// shipped, source-controlled thumbnails. If the configured managed upload
+// volume has no original, use the exact same-upload basename WebP for cards
+// and thumbs instead of redirecting image cards to multi-MB original PNGs.
+// This is intentionally labeled direct-shipped, NOT direct-managed: source
+// parity and current-upload identity still require independent verification.
+async function serveExactShippedPortraitThumb(
+  request: NextRequest,
+  kind: string,
+  filename: string,
+): Promise<NextResponse | null> {
+  const thumbName = shippedManagedPortraitThumbName(
+    kind,
+    filename,
+    request.nextUrl.searchParams.get("size"),
+  );
+  if (!thumbName) return null;
+
+  const directory = path.join(publicRoot(), "featured-warriors", "thumbs");
+  const filePath = path.join(directory, thumbName);
+  try {
+    const directoryStat = await fs.lstat(directory);
+    if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink()) return null;
+    // O_NOFOLLOW prevents a malicious symlink from redirecting a public
+    // thumbnail lookup outside the shipped, bounded public-media directory.
+    const file = await fs.open(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+    try {
+      const stat = await file.stat();
+      if (!stat.isFile() || stat.size < 12 || stat.size > 750_000) return null;
+      const data = await file.readFile();
+      if (
+        data.length !== stat.size ||
+        data.toString("ascii", 0, 4) !== "RIFF" ||
+        data.toString("ascii", 8, 12) !== "WEBP"
+      ) return null;
+
+      return new NextResponse(data, {
+        headers: {
+          "Cache-Control": IMAGE_RESPONSE_CACHE_CONTROL,
+          "Content-Length": String(data.length),
+          "Content-Type": "image/webp",
+          "Last-Modified": stat.mtime.toUTCString(),
+          "Vary": "Accept",
+          "X-AoE2WAR-Image-Variant": "shipped-featured-thumb",
+          "X-AoE2WAR-Media-Proxy": "direct-shipped-thumbnail",
+          "X-AoE2WAR-Media-Fallback": "matched-upload-thumb",
+        },
+      });
+    } finally {
+      await file.close();
+    }
+  } catch {
+    return null; // No shipped proof: preserve normal redirect/original path.
+  }
+}
+
 async function serveManagedUploadDirect(request: NextRequest, url: string) {
   const parts = managedUploadParts(url);
 
@@ -462,7 +519,9 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
     break;
   }
 
-  if (!originalPath || !originalHit) return null;
+  if (!originalPath || !originalHit) {
+    return serveExactShippedPortraitThumb(request, parts.kind, parts.file);
+  }
 
   const requestedVariant: Exclude<ManagedVariant, "original"> | null = cardSidecar
     ? "card-sidecar"
@@ -487,6 +546,8 @@ async function serveManagedUploadDirect(request: NextRequest, url: string) {
     if (variantHit) {
       return imageResponse(variantHit, variantPath, requestedVariant);
     }
+    const shippedThumb = await serveExactShippedPortraitThumb(request, parts.kind, parts.file);
+    if (shippedThumb) return shippedThumb;
   }
 
   return imageResponse(originalHit, originalPath, "original");
