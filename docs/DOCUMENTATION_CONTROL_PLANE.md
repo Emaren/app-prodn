@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/traffic-certified-snapshot-20261111` at `ce6f5b677b8b2d702b3862bbe6087e4eff5b5287`
+Implementation baseline: `session-c/kingdom-traders-paper-public-gateway-20261112` at `c1ef10986f87209146f5042c82ae2ed3df928d24`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

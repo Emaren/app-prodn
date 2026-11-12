@@ -26,19 +26,24 @@ function discover(dir=path.join(root,"app"),parts=[]) {
  }
  return result.sort();
 }
-// Separate B4 source-only route: not one of the historical 88 scored Index cards.
-// Fail closed if either source entrypoint or independent census registration drifts.
-const independentRoute="/kingdom-construction";
+// Named independent public pages have genuine source and inventory records,
+// but are NOT retroactively added to the frozen 88 scored candidate cohort.
+const independentRoutes=new Map([
+ ["/kingdom-construction","app/kingdom-construction/page.tsx"],
+ ["/kingdom-traders","app/kingdom-traders/page.tsx"],
+]);
 const independentInventory=JSON.parse(readFileSync(path.join(root,"config/kingdom-index-inventory.json"),"utf8"));
-const independentPage=independentInventory.pages.filter(p=>p.href===independentRoute);
-if(independentPage.length!==1 || independentPage[0].entrypoint!=="app/kingdom-construction/page.tsx" ||
-   independentPage[0].scope!=="excluded-static" || independentPage[0].assurance!=="unverified" ||
-   !readdirSync(path.join(root,"app/kingdom-construction")).includes("page.tsx") ||
-   current.some(row=>row.href===independentRoute)) {
- console.error("KINGDOM INDEX B4 SEPARATE ROUTE ASSURANCE HOLD");
- process.exit(2);
+for(const [href,entrypoint] of independentRoutes) {
+ const records=independentInventory.pages.filter(p=>p.href===href);
+ if(records.length!==1 || records[0].entrypoint!==entrypoint ||
+    records[0].scope!=="excluded-static" || records[0].assurance!=="unverified" ||
+    !readdirSync(path.join(root,path.dirname(entrypoint))).includes("page.tsx") ||
+    current.some(row=>row.href===href)) {
+  console.error("KINGDOM INDEX INDEPENDENT ROUTE ASSURANCE HOLD",href);
+  process.exit(2);
+ }
 }
-const inventory=discover().filter(href=>href!==independentRoute);
+const inventory=discover().filter(href=>!independentRoutes.has(href));
 const actual=current.map(row=>row.href).sort();
 const missing=inventory.filter(href=>!actual.includes(href));
 const obsolete=actual.filter(href=>!inventory.includes(href));

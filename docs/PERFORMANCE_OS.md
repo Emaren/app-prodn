@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-10-12"
+reviewed_at: "2026-11-12"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -35,6 +35,17 @@ a matching rule still does not guarantee a `HIT` if another rule, CDN
 configuration, or response property bypasses cache. Preserve the failed
 response receipt and same-POP evidence. Never fake HIT or relax identity,
 Accept, URL, version, or cookie guards.
+
+## November 12, 2026 — source-only documentation review
+
+The source-controlled V2 speed cohort now contains **119 distinct route
+representatives**, including the new /kingdom-traders PAPER-only public
+gateway. This benchmark inventory is **not** the separate historical 88-route
+Kingdom Index/Renaissance candidate cohort; neither population is a production
+certification. Performance policies remain guardrails, and historical
+observations retain their original dated receipts. This review does not assert
+new live LCP metrics, edge-cache changes, browser acceptance, a HEL1 release,
+or any FINANCIAL authorization.
 
 ## Purpose
 
@@ -75,7 +86,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the current 88-route V2 public cohort in
+benchmarks use the source-derived 119-route V2 public cohort (reviewed November 12, 2026) in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently

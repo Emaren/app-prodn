@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "46faedfbaa58584528ada336cfce1fed8d4214ddc582cd85ee5314e1e3b06d43",
+      "sha256": "bcdaac6a2489bb3d476112c3e4ce009b2ca0e6c9112a380987adb12fd4a038f8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1398,9 +1398,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-12",
+      "reviewed_at": "2026-11-12",
       "sensitivity": "internal",
-      "sha256": "665b22b772428192717abb51f110338f08ba47eef6188ce39286a084ac821ac2",
+      "sha256": "b4931cbc9e46bf8b8014e6cc5bbca9e286f53b3247e3f441cfda80610833387c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3129,8 +3129,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/traffic-certified-snapshot-20261111",
-    "commit": "ce6f5b677b8b2d702b3862bbe6087e4eff5b5287"
+    "branch": "session-c/kingdom-traders-paper-public-gateway-20261112",
+    "commit": "c1ef10986f87209146f5042c82ae2ed3df928d24"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

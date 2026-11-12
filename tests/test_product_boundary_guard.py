@@ -26,6 +26,45 @@ class BoundaryTests(unittest.TestCase):
             with self.subTest(value=value):
                 self.assertEqual(policy.authorize_source(value), value)
 
+    def test_exact_reviewed_audit_script_is_sha_and_base_pinned(self):
+        source = GUARD.parent / "kingdom_index_source_audit.mjs"
+        self.assertEqual(
+            policy.EXACT_REVIEWED_SHA256,
+            "185defe7f93ea39bf1829b7a8eaf4a48f050b50d40ad1438c9be9ca468326a01",
+        )
+        # Ordinary source policy continues to DENY executable scripts.
+        self.denied_source(policy.EXACT_REVIEWED_SCRIPT)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            candidate = scripts / "kingdom_index_source_audit.mjs"
+            candidate.write_bytes(source.read_bytes())
+            self.assertEqual(
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                ), policy.EXACT_REVIEWED_SCRIPT,
+            )
+            with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
+                policy.authorize_changed_source(
+                    root, "b" * 40, policy.EXACT_REVIEWED_SCRIPT
+                )
+            candidate.write_bytes(candidate.read_bytes() + b"\n// forbidden drift\n")
+            with self.assertRaisesRegex(policy.BoundaryHold, "SHA_MISMATCH"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                )
+            candidate.unlink()
+            candidate.symlink_to(source)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                )
+            with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_EXECUTABLE"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_BASE, "scripts/another_script.mjs"
+                )
+
     def test_prior_nine_negative_cases(self):
         values = (
             "../FINANCIAL/never_write.txt",

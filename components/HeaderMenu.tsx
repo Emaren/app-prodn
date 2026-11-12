@@ -96,6 +96,7 @@ export default function HeaderMenu({
       { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
       { href: "/kingdom-bettors", label: "Kingdom Bettors", icon: Swords, featured: true },
       { href: "/kingdom", label: "Kingdom", icon: Castle, featured: true },
+      { href: "/kingdom-traders", label: "Kingdom Traders", icon: Bot, featured: true },
       { href: "/kingdom-index", label: "Kingdom Index", icon: BarChart3, featured: true },
       { href: "/kingdom-brain", label: "Kingdom Brain", icon: Network, featured: true },
       { href: "/kingdom-progress", label: "Kingdom Progress", icon: BarChart3, featured: true },
