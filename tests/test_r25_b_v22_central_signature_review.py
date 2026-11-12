@@ -63,8 +63,12 @@ class DetachedCentralSignature(unittest.TestCase):
         self.assertEqual(p.returncode,3)
         self.assertIn("NOT_PINNED",p.stdout)
 
-    def test_explicitly_no_default_approved_signer(self):
-        self.assertIsNone(m.CENTRAL_OFFLINE_PUBLIC_KEY_SHA256)
+    def test_owner_attested_production_fingerprint_is_pinned_but_not_installed(self):
+        self.assertEqual(m.CENTRAL_OFFLINE_PUBLIC_KEY_SHA256,
+                         "e9c5b0375d8457b69a3e69e12a7d190ed55ad754c89384348cb0feebeb41512f")
+        self.assertNotEqual(m.CENTRAL_OFFLINE_PUBLIC_KEY_SHA256,
+                            "567d4d198159c9d3021dcad7d074eb43b53d8c40039b769f1bb8d27d0e4a5968")
+        self.assertIn("HOLD:INDEPENDENT_CENTRAL_PUBLIC_KEY_NOT_PINNED",SRC.read_text())
 
     def test_actual_disposable_ed25519_signature_positive(self):
         self.assertEqual(self.verify()["status"],

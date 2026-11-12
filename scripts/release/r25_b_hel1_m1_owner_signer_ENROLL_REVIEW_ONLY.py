@@ -23,7 +23,7 @@ PUB=ROOT/"hel1-prod-owner-ed25519.public.pem"
 OPENSSL="/opt/homebrew/bin/openssl"
 # A distinct one-line exact post-enrollment source patch is required. Never
 # bind this to C's existing UID650 DEVELOPMENT public SHA.
-HEL1_PRODUCTION_PUBLIC_PEM_SHA256=None
+HEL1_PRODUCTION_PUBLIC_PEM_SHA256="e9c5b0375d8457b69a3e69e12a7d190ed55ad754c89384348cb0feebeb41512f"
 APPROVAL_MESSAGE=ROOT/"central-source-install-comment-body.txt"
 APPROVAL_SIGNATURE=ROOT/"central-source-install-comment-body.sig"
 CENTRAL_PREFIX="AOE2WAR_CENTRAL_SOURCE_INSTALL_V22_APPROVED_V1:"

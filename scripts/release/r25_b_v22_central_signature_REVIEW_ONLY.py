@@ -18,7 +18,7 @@ import sys
 # No previously independently registered Central offline key exists.
 # Source must fail closed until an independently reviewed exact public SHA
 # is pinned here by a distinct source/owner approval transaction.
-CENTRAL_OFFLINE_PUBLIC_KEY_SHA256=None
+CENTRAL_OFFLINE_PUBLIC_KEY_SHA256="e9c5b0375d8457b69a3e69e12a7d190ed55ad754c89384348cb0feebeb41512f"
 CENTRAL_OFFLINE_PUBLIC_PEM=Path("/etc/aoe2war/central-admission-v1/source-install-ed25519.pub.pem")
 CENTRAL_EXPECTED_MESSAGE=Path("/root/aoe2war-b-v22-three-source-install-v1/central-approval-body.txt")
 CENTRAL_DETACHED_SIGNATURE=Path("/root/aoe2war-b-v22-three-source-install-v1/central-approval.sig")

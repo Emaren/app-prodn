@@ -101,7 +101,7 @@ group-writable or symlink ancestor.
 | r25_b_v22_linux_host_adapter_REVIEW_ONLY.py | 6c8a04437fc387caa779b4dea449646409ab95fcd035d7090e20e0086dea521c |
 | r25_b_v22_source_install_coordinator_REVIEW_ONLY.py | 19218563af52ea1cfe40aad0d5791206355d75d7196b82e1bca313d32be53e4c |
 | r25_v22_root_install_admission_REVIEW_ONLY.py | c7131d99877be3a7b2282ce89b717240767a95a9fe65b562cce92795838d254a |
-| r25_b_v22_central_signature_REVIEW_ONLY.py | 6be9ea81a4e53cf398b7592a2b5c63ef3205ddcc92cbd4f47521700731a6f1cd |
+| r25_b_v22_central_signature_REVIEW_ONLY.py | 2aa68f4a4eda8deda9f8da1351e96d7e364b4625f7b19debbf638ecebed7b6db |
 | r25_v22_three_source_transaction_REVIEW_ONLY.py | a3f5e93410853b0be1ced1447307d5b7a879e48f6477b38cb183d5b8127d8ea1 |
 | r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py | f052e5265c6643d40053189c4c32ef64a3eecc32bcdedc52067ee1ed431cd719 |
 
@@ -128,7 +128,7 @@ No old expired nonce or permit may be reused; TTL <=30 minutes.
 **Central accepted this owner-custody POLICY in principle, not new source
 bytes or sudo authority.** Proposed new B source
 scripts/release/r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py
-SHA256 d6aa7d7c91a660db9aec5d0bd8eb34b7cee4cdfaa40c06eae606257e0f329441
+SHA256 896a390114a7265db5996e1521cc75383aa71acb3de588663dafaf8fcbc479c7
 must be independently accepted for a separately approved root-only copy
 at /private/var/root/.aoe2war-b-hel1-prod-sign-v1/
 r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py (one actual path, no space),
@@ -142,9 +142,22 @@ GitHub, HEL1, Intel, UID501/UID650 agents or remote command tools.
 This is **not C's signer** with public SHA
 567d4d198159c9d3021dcad7d074eb43b53d8c40039b769f1bb8d27d0e4a5968.
 
-After Central independently approves the newly created public fingerprint,
-a separate one-line source pin in the B verifier/signer must be reviewed
-before any exact source-install signing. The later sign-exact-central-comment
+The owner physically executed the previously bounded enroll-public-only
+action and supplied exactly:
+PASS:B_HEL1_SEPARATE_OWNER_ROOT_PUBLIC_SHA256=e9c5b0375d8457b69a3e69e12a7d190ed55ad754c89384348cb0feebeb41512f
+HOLD:B_HEL1_PUBLIC_KEY_NOT_CENTRAL_PINNED_NOT_HEL1_INSTALLED
+The enrollment helper emitted only the PUBLIC PEM SHA256. This is direct
+owner-supplied physical evidence, NOT B's own root-only file readback, and
+does not authorize transmission of the private PEM. The fingerprint differs
+from C's local DEV-GO signer.
+
+The B HEL1 verifier and future M1 signing helper have now pinned this exact
+PUBLIC SHA256 as **source candidates**, not installed root trust. Their Python
+file hashes have accordingly changed in the source map above; Central must
+independently review the new bytes. The root-owned M1 enrollment helper
+remains at its original reviewed source SHA until the owner separately
+installs the new approved helper as a controlled root-only replacement.
+The later sign-exact-central-comment
 phase accepts only canonical exact SOURCE_INSTALL_ONLY approval body,
 same six SHA modules, expected actual absent host preimage, current boot,
 owner packet/nonce and no finance/public activation. It emits a one-use
@@ -155,11 +168,14 @@ M1 is network-connected, not air-gapped. A GitHub owner comment alone is
 not the independent signature; Central source approval is procedural
 review distinct from the sole human owner.
 
-**There is no source-approved owner Terminal sudo command yet.**
-The requested ONE next owner-controlled action is to authorize independent
-Central review of these exact source hashes/mapping and decide
-APPROVE or HOLD explicitly. No enrollment/root copy/source-install is
-automatically authorized by this document.
+**The first native owner Terminal enrollment was completed and reported PASS.**
+No other owner sudo action or HEL1 source install is authorized.
+Next, Central independently inspects the exact B source-pinned public SHA
+and both changed file SHA256 values. Following that review a separate
+one-use owner-controlled readback may check root0400 public PEM metadata,
+SHA and Ed25519 type and supply only the public PEM to the HEL1 root
+trust installer. The PRIVATE PEM stays M1 root-only. No generic sudo
+or old signer/activation permit is transferable.
 
 ## Future public release remains independently gated
 
@@ -182,9 +198,9 @@ uninstalled until Session A approves its own reader/HBA and sidecar.
 
 HEL1_SOURCE_PREIMAGE_REPAIRED=HOLD_SOURCE_READY_HOST_UNCHANGED
 
-HEL1_SIGNER_SOURCE_APPROVED=HOLD_INDEPENDENT_EXACT_BYTES_REVIEW
+HEL1_SIGNER_SOURCE_APPROVED=HOLD_NEW_PUBLIC_PIN_SOURCE_REVIEW
 
-HEL1_SIGNER_PHYSICAL=HOLD_NO_SEPARATE_KEY_ENROLLED
+HEL1_SIGNER_PHYSICAL=PASS_OWNER_ATTESTED_M1_ONLY_HEL1_TRUST_HOLD
 
 NONFINANCIAL_DEPLOYMENT=HOLD_NO_ROOT_SOURCE_INSTALL_PERMIT
 

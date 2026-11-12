@@ -59,7 +59,8 @@ class HEL1SeparateSourceReview(unittest.TestCase):
                 self.assertNotIn("PRIVATE KEY",cp.stdout)
 
     def test_signer_is_distinct_from_C_m1_key_and_requires_trusted_tty(self):
-        self.assertEqual(s.HEL1_PRODUCTION_PUBLIC_PEM_SHA256,None)
+        self.assertEqual(s.HEL1_PRODUCTION_PUBLIC_PEM_SHA256,
+                         "e9c5b0375d8457b69a3e69e12a7d190ed55ad754c89384348cb0feebeb41512f")
         self.assertEqual(str(s.ROOT),"/private/var/root/.aoe2war-b-hel1-prod-sign-v1")
         self.assertNotIn(".aoe2war-product-runner-control-v1",str(s.ROOT))
         with self.assertRaisesRegex(ValueError,"PHYSICAL_OWNER_ROOT_TTY"):
@@ -114,6 +115,12 @@ class HEL1SeparateSourceReview(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"UNKNOWN_APPROVAL_MESSAGE"):
             s.validate_signable_comment(b"approve everything",pub)
 
+    def test_public_pin_matches_separate_hel1_verifier_not_C_key(self):
+        verifier=(ROOT/"scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py").read_text()
+        pin=s.HEL1_PRODUCTION_PUBLIC_PEM_SHA256
+        self.assertIn('CENTRAL_OFFLINE_PUBLIC_KEY_SHA256="'+pin+'"',verifier)
+        self.assertNotEqual(pin,"567d4d198159c9d3021dcad7d074eb43b53d8c40039b769f1bb8d27d0e4a5968")
+        self.assertNotIn('PRIVATE KEY-----\n',verifier)
     def test_review_packet_matches_exact_seven_source_byte_hashes(self):
         doc=(ROOT/"docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md").read_text()
         for name in (
