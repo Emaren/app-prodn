@@ -65,6 +65,66 @@ class BoundaryTests(unittest.TestCase):
                     root, policy.EXACT_REVIEWED_BASE, "scripts/another_script.mjs"
                 )
 
+    def test_exact_reviewed_dynamic_media_route_is_base_sha_and_inode_pinned(self):
+        source = GUARD.parent.parent / policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+        self.assertEqual(
+            policy.EXACT_REVIEWED_DYNAMIC_SHA256,
+            "bb1433119e955fd4e7bf9c6d2ecdcb64b0566ed01eef203d9fc224e1b5ba7243",
+        )
+        self.denied_source(policy.EXACT_REVIEWED_DYNAMIC_ROUTE)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+            target.parent.mkdir(parents=True)
+            target.write_bytes(source.read_bytes())
+            self.assertEqual(
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_DYNAMIC_BASE,
+                    policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+                ),
+                policy.EXACT_REVIEWED_DYNAMIC_ROUTE,
+            )
+            with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
+                policy.authorize_changed_source(
+                    root, "a" * 40, policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+                )
+            with self.assertRaisesRegex(policy.BoundaryHold, "TRAVERSAL_OR_UNSAFE_COMPONENT"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_DYNAMIC_BASE,
+                    "app/api/media-assets/[other]/[target]/route.ts"
+                )
+            target.write_bytes(target.read_bytes() + b"tamper")
+            with self.assertRaisesRegex(policy.BoundaryHold, "SHA_MISMATCH"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_DYNAMIC_BASE,
+                    policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+                )
+            target.unlink()
+            target.symlink_to(source)
+            with self.assertRaisesRegex(policy.BoundaryHold, "REGULAR_FILE_REQUIRED"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_DYNAMIC_BASE,
+                    policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+                )
+            target.unlink()
+            target.write_bytes(source.read_bytes())
+            alias = root / "hardlink-to-source-route"
+            os.link(target, alias)
+            with self.assertRaisesRegex(policy.BoundaryHold, "REGULAR_FILE_REQUIRED"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_DYNAMIC_BASE,
+                    policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+                )
+            alias.unlink()
+            target.unlink()
+            target.parent.rmdir()
+            target.parent.symlink_to(source.parent, target_is_directory=True)
+            with self.assertRaisesRegex(policy.BoundaryHold, "SYMLINK_ANCESTOR"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_DYNAMIC_BASE,
+                    policy.EXACT_REVIEWED_DYNAMIC_ROUTE
+                )
+
     def test_prior_nine_negative_cases(self):
         values = (
             "../FINANCIAL/never_write.txt",
