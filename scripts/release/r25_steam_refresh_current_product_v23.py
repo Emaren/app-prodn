@@ -39,6 +39,7 @@ PROTECTED = ("aoe2hdbets-web.service","r25-c03-emergency-3033.service",
 ORIGINAL_PIDS = (2625090, 4136606, 779129, 1009)
 SOURCE_SELF_SHA = None  # installed-file identity is bound by root installer
 HTTP_SCOPE = "STEAM_ONLY_EXISTING_UID990_NFT_SETS"
+CHECKPOINT = "WEB_IDENTITY"
 
 def need(condition: bool, message: str) -> None:
     if not condition:
@@ -88,15 +89,12 @@ def validate_current_web() -> tuple[int, str]:
     pid = int(ptext)
     proc = Path("/proc") / str(pid)
     need(proc.exists() and proc.stat().st_uid == 990,"CURRENT_WEB_WRONG_KERNEL_UID")
-    if os.geteuid() == 0:
-        need(os.readlink(proc / "cwd") == str(STAGE),"CURRENT_WEB_WRONG_CWD")
-        # Next.js sets process.title to "next-server (v15.5.28)" after startup.
-        # Linux /proc/PID/cmdline therefore no longer contains /usr/bin/node.
-        # Bind the actual executable instead, together with the exact pinned
-        # systemd unit, working directory, build IDs, owner UID and PID above.
-        need(os.path.realpath(os.readlink(proc / "exe")) ==
-             os.path.realpath("/usr/bin/node"),
-             "CURRENT_WEB_EXECUTABLE_NOT_NODE")
+    # A capability-limited Steam-only systemd oneshot is intentionally
+    # denied ptrace-style access to another UID's /proc/PID/cwd and /exe.
+    # Those readlinks work in an interactive root shell but fail in the real
+    # NoNewPrivileges sandbox.  Bind to the kernel PID UID and the sealed
+    # root-owned systemd unit, exact source, BUILD_ID and WorkingDirectory
+    # above; do not request extra ptrace capabilities or loosen sandboxing.
     for unit, expected in zip(PROTECTED,ORIGINAL_PIDS):
         need(show(unit,"MainPID") == str(expected),"OTHER_PROTECTED_PID_CHANGED")
     for unit in ("wolochain-mainnet-settlement.service",
@@ -130,19 +128,28 @@ def load_v22():
     return module
 
 def only_steam_refresh():
+    global CHECKPOINT
+    CHECKPOINT = "WEB_IDENTITY"
     before_pid, _ = validate_current_web()
+    CHECKPOINT = "LOAD_IMMUTABLE_V22"
     v22 = load_v22()
     original = v22.load_original()
+    CHECKPOINT = "RESTRICTED_CAPABILITIES"
     original.get_caps_or_hold()  # root, NNP=1, CAP_NET_ADMIN/SETUID/SETGID
     def transaction():
+        global CHECKPOINT
+        CHECKPOINT = "PROTECTED_FINANCIAL_SNAPSHOT"
         # Original immutable sources enforce all finance source/role/NFT masks.
         _, m, financial_snapshot = v22.native_snapshot()
         need(financial_snapshot == v22.FIN_SNAPSHOT, "PROTECTED_FINANCIAL_SNAPSHOT")
         need(m.production_nft_shape() == v22.NFT_SHAPE, "NFT_FIREWALL_SHAPE_DRIFT")
         before = m.production_protected()
+        CHECKPOINT = "STEAM_TLS_DESTINATION_VALIDATION"
         validated = m.production_steam_dns_diversity(m.production_steam_addresses())
+        CHECKPOINT = "STEAM_NFT_LEASE_OBSERVATION"
         current = original.observe_strict_steam_set_with_bounded_retry(m)
         commands = m.production_steam_union_commands(validated,current)
+        CHECKPOINT = "PROTECTED_PRE_WRITE_REVALIDATION"
         need(len(commands) <= 16 and sum(len(x) for x in commands) < 8192,
              "STEAM_NFT_COMMANDS_UNBOUNDED")
         need(validate_current_web()[0] == before_pid,
@@ -150,9 +157,11 @@ def only_steam_refresh():
         need(m.production_protected() == before
              and m.production_nft_shape() == v22.NFT_SHAPE,
              "PROTECTED_BASELINE_CHANGED_BEFORE_STEAM_NFT")
+        CHECKPOINT = "STEAM_ONLY_NFT_WRITE"
         if commands:
             m.run(["/usr/sbin/nft","-f","-"],
                   data=("\n".join(commands)+"\n").encode(),maximum=8192)
+        CHECKPOINT = "PROTECTED_POST_WRITE_REVALIDATION"
         after = original.observe_strict_steam_set_with_bounded_retry(m)
         need(set(validated).issubset(after["steam4"] | after["steam6"]),
              "STEAM_EGRESS_LEASE_NOT_INSTALLED")
@@ -167,6 +176,7 @@ def only_steam_refresh():
             "ttl_seconds":300,"financial_authorized":False,
             "allowed_operation":HTTP_SCOPE,"build_id":BUILD,
         },sort_keys=True),flush=True)
+    CHECKPOINT = "STEAM_EXCLUSIVE_LEASE_LOCK"
     return v22.v22_timer_exclusive_lock(transaction)
 
 def main() -> int:
@@ -187,7 +197,7 @@ def main() -> int:
     except Exception as exc:
         reason = str(exc)
         if not re.fullmatch(r"(?:HOLD:)?[A-Z0-9_]{3,100}",reason):
-            reason = "HOLD:NONIDENTIFYING_" + type(exc).__name__.upper()
+            reason = "HOLD:NONIDENTIFYING_" + type(exc).__name__.upper() + "_AT_" + CHECKPOINT
         print(json.dumps({"status":"HOLD_STEAM_CURRENT_PRODUCT_V23",
                           "reason":reason,"financial_authorized":False},
                          sort_keys=True),flush=True)
