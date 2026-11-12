@@ -21,17 +21,22 @@ function walk(directory,parts=[]) {
 }
 test("every static public App Router page has exactly one nonprivate Kingdom Index address",()=>{
   const discovered=walk(join(root,"app")).sort();
-  // The only separate new public route is B4's independently reviewed source
-  // graph. It is not retroactively a member of 88 scored Index candidates.
-  const independent="/kingdom-construction";
+  // Independent public routes have exact census records, never forged scores
+  // in the frozen historical 88-route Index candidate cohort.
+  const independent=new Map([
+    ["/kingdom-construction","app/kingdom-construction/page.tsx"],
+    ["/kingdom-traders","app/kingdom-traders/page.tsx"],
+  ]);
   const inventory=JSON.parse(readFileSync(join(root,"config/kingdom-index-inventory.json"),"utf8"));
-  const graph=inventory.pages.filter((p:{href:string})=>p.href===independent);
-  assert.equal(graph.length,1);
-  assert.equal(graph[0].scope,"excluded-static");
-  assert.equal(graph[0].entrypoint,"app/kingdom-construction/page.tsx");
-  assert.equal(graph[0].assurance,"unverified");
-  assert.deepEqual(discovered.filter(href=>href===independent),[independent]);
-  const known=discovered.filter(href=>href!==independent);
+  for(const [href,entrypoint] of independent) {
+    const records=inventory.pages.filter((p:{href:string})=>p.href===href);
+    assert.equal(records.length,1,href);
+    assert.equal(records[0].scope,"excluded-static",href);
+    assert.equal(records[0].entrypoint,entrypoint,href);
+    assert.equal(records[0].assurance,"unverified",href);
+    assert.deepEqual(discovered.filter(route=>route===href),[href]);
+  }
+  const known=discovered.filter(href=>!independent.has(href));
   const actual=catalog.map(p=>p.href).sort();
   assert.equal(actual.length,88);
   assert.deepEqual(actual,known);
