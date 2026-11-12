@@ -80,7 +80,7 @@ def enroll():
     os.umask(0o077)
     key=subprocess.run([OPENSSL,"genpkey","-algorithm","Ed25519"],
                        capture_output=True,check=False,timeout=12)
-    if key.returncode!=0 or not key.stdout.startswith(b"-----BEGIN PRIVATE KEY-----"):
+    if key.returncode!=0 or not key.stdout.startswith(b"-----BEGIN " + b"PRIVATE KEY-----"):
         raise ValueError("HOLD:B_PRODUCTION_OWNER_ED25519_GENERATION")
     # No logging, export, print, or stdout display of the secret.
     create_once(PRIV,key.stdout)

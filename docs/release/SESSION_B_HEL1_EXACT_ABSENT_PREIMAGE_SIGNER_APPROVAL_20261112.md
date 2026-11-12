@@ -59,7 +59,7 @@ present and broken symlinks at the new-only target paths are denied.
    PREPARE intent, original V22 root0400 inverse byte file and two distinct
    root0400 ABSENT markers. Stage exactly three SHA-pinned root0644 NEW files
    in their final same-filesystem destination parent.
-3. Atomic/fsycned replace only those fixed three paths. Native new V22
+3. Atomic/fsynced replace only those fixed three paths. Native new V22
    selftest, unchanged V20, old rollback profile, C04 masks, financial ports,
    seven protected PIDs and HTTP protections must pass before sentinel
    release. This SOURCE_INSTALL never restarts 3032 or changes Nginx.
@@ -128,7 +128,7 @@ No old expired nonce or permit may be reused; TTL <=30 minutes.
 **Central accepted this owner-custody POLICY in principle, not new source
 bytes or sudo authority.** Proposed new B source
 scripts/release/r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py
-SHA256 1f0874e2b178703eb49d3bb7b6a74be30b29ee71c3b38bf6d2645f5e49446f04
+SHA256 d6aa7d7c91a660db9aec5d0bd8eb34b7cee4cdfaa40c06eae606257e0f329441
 must be independently accepted for a separately approved root-only copy
 at /private/var/root/.aoe2war-b-hel1-prod-sign-v1/
 r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py (one actual path, no space),
