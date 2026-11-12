@@ -5,7 +5,11 @@
  * Session A must independently baseline protected auth object/ACL changes.
  */
 import { Pool } from "pg";
-import type { ExistingSteamReader, NonfinancialNonceWriter } from "./c03ExistingSteamFlow";
+import {
+  isC03DirectLoginBinding,
+  type ExistingSteamReader,
+  type NonfinancialNonceWriter,
+} from "./c03ExistingSteamFlow";
 
 type C03Scope = "reader" | "nonce" | "presence";
 type C03Connection = { url: string; database: string; role: string };
@@ -73,14 +77,17 @@ async function runScoped<T extends Record<string, unknown>>(
   const cfg = scoped(scope);
   const client: ScopedClient = await pool(scope).connect();
   try {
-    // Every acquisition checks the physical SQL role/database, not config
-    // strings alone. Reader and sidecar must have distinct actual databases.
-    const binding = await client.query<{ role: string; database: string }>(
-      "SELECT current_user AS role, current_database() AS database"
+    // Strict direct LOGIN check on EVERY acquired reader/nonce/presence client.
+    // current_user can be borrowed via SET ROLE; it is NOT the authenticated
+    // login identity. A's C03 facade also requires direct session_user.
+    const binding = await client.query<{
+      login_role: string; role: string; database: string
+    }>(
+      "SELECT session_user AS login_role, current_user AS role, current_database() AS database"
     );
-    if (binding.rows.length !== 1 || binding.rows[0]?.role !== cfg.role ||
-        binding.rows[0]?.database !== cfg.database) {
-      throw new Error("HOLD:C03_PG_EFFECTIVE_ROLE_OR_DATABASE_DRIFT");
+    if (binding.rows.length !== 1 ||
+        !isC03DirectLoginBinding(binding.rows[0], cfg)) {
+      throw new Error("HOLD:C03_PG_DIRECT_LOGIN_ROLE_OR_DATABASE_DRIFT");
     }
     return await work(client);
   } finally {

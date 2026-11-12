@@ -29,6 +29,21 @@ export type VerifiedSteamCallbackInput = {
   signedSessionUid: string | null;
 };
 
+/** B's independent SQL login guard: current_user alone is NOT direct login.
+ * A's restricted read facade requires session_user=c03_auth_reader; the
+ * website also requires matching session_user/current_user/database on every
+ * reader, nonce and presence connection. Never accept SET ROLE impersonation.
+ */
+export function isC03DirectLoginBinding(
+  actual: { login_role?: unknown; role?: unknown; database?: unknown } | null | undefined,
+  expected: { role: string; database: string },
+): boolean {
+  return !!actual
+    && actual.login_role === expected.role
+    && actual.role === expected.role
+    && actual.database === expected.database;
+}
+
 export class C03ExistingOnlyHold extends Error {
   readonly code: string;
   constructor(code: string) {

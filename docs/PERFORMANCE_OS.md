@@ -8,12 +8,24 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-10-12"
+reviewed_at: "2026-11-11"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Performance OS
+
+## November 11, 2026 — bounded source-contract rereview
+
+This renewal inspects the still-tracked Performance OS document, the exact
+source command implementation in scripts/aoe2_speed_edge.py for the immutable
+featured-avatar plan/verify/apply/rollback split, and the tracked
+88-route cohort file in docs/audits/performance-route-cohort-v2.txt.
+It preserves their review/rollback guard language and the historical
+October avatar/LCP performance observations **as historical receipts**.
+No new live Cloudflare rule, CDN HIT, browser LCP, release speed or production
+physical performance certification is claimed by this source review.
+The existing Source OS and protected HEL1 rollback gates remain independent.
 
 ## October 13, 2026 — featured-avatar live-rule fingerprint (read-only)
 

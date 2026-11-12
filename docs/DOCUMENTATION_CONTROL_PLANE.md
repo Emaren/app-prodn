@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `5aaa710a925232fc6dcdfdf7079164d6c1f96551`
+Implementation baseline: `session-b/v22-root-executor-and-c-artifact-contract-20261111` at `07defac8aeff33e0f1fe4be117d503ebac51547c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **141**
+- Authoritative repository documents: **142**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 76
-- `runbook`: 46
+- `runbook`: 47
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 88
-- `draft`: 37
+- `draft`: 38
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -183,6 +183,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Session B — C04 Steam Sandbox V11](release/SESSION_B_C04_STEAM_SANDBOX_V11_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly` |
 | [Steam V14 C04 identity-only receive queue normalization](release/SESSION_B_C04_STEAM_V14_RECVQ_20261109.md) | `runbook` | `draft` | `steam-source-bound-readonly-c04-masks-not-financial-release` |
 | [Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026](release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md) | `reference` | `draft` | `read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority` |
+| [Session B existing-profile website release before C03 finance quarantine](release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md) | `runbook` | `draft` | `SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority` |
 | [R25 finance-restricted published v9 current market preview](release/SESSION_B_PUBLIC_V9_LIVE_MARKET_FALLBACK_20261109.md) | `runbook` | `draft` | `nonfinancial App SELECT on already-approved public v9 view only` |
 | [Session B C03 same-slot finance-restricted cold rollback](release/SESSION_B_R25_C03_SAME_SLOT_COLD_ROLLBACK_V1_20261109.md) | `runbook` | `draft` | `source-staged-fail-closed-cold-rollback-no-production-financial-change` |
 | [Session B R25 generation-aware replay corpus pressure repair](release/SESSION_B_R25_CORPUS_MEMORY_PRESSURE_20261109.md) | `runbook` | `draft` | `source-only-nonfinancial-r25-memory-guard` |

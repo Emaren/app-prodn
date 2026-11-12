@@ -24,6 +24,10 @@ on:
       - "tests/test_r25_b_c_dev_linux_release_contract_v2.py"
       - "tests/test_r25_b_linux_release_receipt_emit_v2.py"
       - "tests/test_r25_b_c03_website_source_admission.py"
+      - "tests/test_r25_b_pre_c03_nonfinancial_website_release.py"
+      - "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md"
+      - "docs/release/SESSION_B_MAINLINE_AND_APP_BACKLOG_RECONCILIATION_20261111.md"
+      - "docs/release/evidence/SESSION_B_APP_BRANCH_PR_LEDGER_20261111.json"
       - "tests/test_r25_b_product_mainline_scope.py"
       - ".github/workflows/product-boundary.yml"
       - "tests/test_r25_b_v22_systemd_condition_native.py"
@@ -78,6 +82,7 @@ jobs:
             tests.test_r25_b_linux_release_receipt_emit_v2 \
             tests.test_r25_b_linux_independent_artifact_verify_v2 \
             tests.test_r25_b_c03_website_source_admission \
+            tests.test_r25_b_pre_c03_nonfinancial_website_release \
             tests.test_r25_b_product_mainline_scope \
             tests.test_r25_b_v22_systemd_condition_native
       - uses: actions/setup-node@v4

@@ -33,6 +33,20 @@ The canonical mainline imports C's strict PRODUCT boundary guard, which accepts 
 
 The B Linux builder must independently verify GitHub's actual canonical main HEAD is an ancestor of its exact PR source before compilation, again at artifact export, and a third time on the second independent Linux download/byte-verification worker. An advancing mainline reopens reconciliation; it does NOT authorize reuse of an older exact-head artifact. This source-policy separation is not UID650 kernel segregation, root SOURCE_INSTALL approval, new C03 database authority or public deployment permission.
 
+## Separate normal nonfinancial release before C03 producer quarantine
+
+The unchanged already-live auth profile nonfinancial-production-v1 remains a
+different, conditionally admissible route for ordinary PRODUCT improvements
+before C03. It preserves original signed Steam/SECDEF auth and can write
+public.users auth/presence columns and consume users_id_seq on registration;
+never falsely claim this is post-quarantine SQL-write denial. The future C03
+existing-only profile requires separate reader, session_user direct-login
+proof, nonce/presence sidecar, HBA/ACL authority and authenticated acceptance.
+The two mutually exclusive exact source/host/permit contracts are documented
+in [pre-C03 website-only source policy](SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md).
+Neither mode bypasses separate HEL1 signer, root SOURCE_INSTALL, same-slot
+ACTIVATE_ONLY or two real authenticated rollback cycle admissions.
+
 ## Phase 1: C source proof versus B Linux proof
 
 C separately installs a root-trusted restricted PRODUCT runner on M1 macOS ARM64/Node24, verifies a real UID650/GID650 process performing positive source edits and local builds, with genuine kernel EACCES/EPERM on FINANCIAL and private recovery, including ancestor/symlink traversal, and closed UID501 automation bypass. Require independently verified root-owned controls and source archive Git SHA/tree/Yarn lock SHA. A C-supplied Mac-built runtime cannot pass Linux admission through any label or manifest field.

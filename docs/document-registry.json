@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "35b1a17b5eb7657f530504918acf4e819e1cc0e38c913bf4abd39e674b9ad111",
+      "sha256": "89b5779ec253337b45cfff98fe26c50bd96775da230335934085e6f88bf95ebd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1398,9 +1398,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-12",
+      "reviewed_at": "2026-11-11",
       "sensitivity": "internal",
-      "sha256": "665b22b772428192717abb51f110338f08ba47eef6188ce39286a084ac821ac2",
+      "sha256": "fdfd839a06aab3aead581122bc4260f4b3a7b86cf7f8e9951c6d883826b619db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2759,7 +2759,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-11",
       "sensitivity": "restricted",
-      "sha256": "7e33f0425fd5bfb8bd15a122d78b241d6a905d7b5d858ef151d6dc34b3fa1a8f",
+      "sha256": "b0cb6e4a7c4f0fc9aae6568e353a29fb56135205c66336c06ad5554652fa6eac",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3006,7 +3006,7 @@
       "review_interval_days": 7,
       "reviewed_at": "2026-11-11",
       "sensitivity": "restricted",
-      "sha256": "de572da81292af8e9205f08420b5f36a1648a0f2d07f538846e079dd3c41d209",
+      "sha256": "254c23d7b256763a2402d0971636e9c9bfd11501a8779b151c3626db3e509163",
       "source_of_truth": "git",
       "status": "draft",
       "systems": [
@@ -3014,6 +3014,28 @@
       ],
       "title": "Session B canonical-main and App branch/PR reconciliation ledger, November 11 2026",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "SOURCE-ONLY decision; no HEL1 or FINANCIAL producer authority",
+      "id": "aoe2war.app-prodn.session-b-pre-c03-nonfinancial-site-release-boundary-20261111",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_PRE_C03_NONFINANCIAL_SITE_RELEASE_BOUNDARY_20261111.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-11",
+      "sensitivity": "restricted",
+      "sha256": "3301cfed779ae39745afa535569fd1a4f986297e8c59553836407295f6ab452f",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B existing-profile website release before C03 finance quarantine",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -3218,7 +3240,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
-    "commit": "5aaa710a925232fc6dcdfdf7079164d6c1f96551"
+    "commit": "07defac8aeff33e0f1fe4be117d503ebac51547c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

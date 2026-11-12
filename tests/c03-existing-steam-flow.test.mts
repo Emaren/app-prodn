@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   admitVerifiedExistingSteamCallback,
   C03_BLOCKED_OPS,
+  isC03DirectLoginBinding,
   type VerifiedSteamCallbackInput,
 } from '../lib/c03ExistingSteamFlow.ts';
 
@@ -118,4 +119,26 @@ test('registered/link/presence policy is explicitly blocked', () => {
   assert.equal(C03_BLOCKED_OPS.protectedLastSeen, 'NEVER_UPDATE_PUBLIC_USERS');
   assert.match(C03_BLOCKED_OPS.firstRegistration, /DISTINCT_FINANCIAL/);
   assert.match(C03_BLOCKED_OPS.accountLinking, /DISTINCT_FINANCIAL/);
+});
+
+test('A C03 direct SQL login contract requires BOTH session_user and current_user', () => {
+  const roles = [
+    ['c03_auth_reader', 'aoe2hd_auth_ro'],
+    ['c03_auth_nonce_writer', 'c03_product_sidecar'],
+    ['c03_auth_presence_writer', 'c03_product_sidecar'],
+  ] as const;
+  for (const [role, database] of roles) {
+    const expected = {role, database};
+    const direct = {login_role: role, role, database};
+    assert.equal(isC03DirectLoginBinding(direct, expected), true);
+    assert.equal(isC03DirectLoginBinding({...direct, login_role:'aoe2war_web_prod'}, expected), false,
+      'SET ROLE effective identity must never impersonate direct login');
+    assert.equal(isC03DirectLoginBinding({...direct, role:'aoe2war_auth_owner'}, expected), false);
+    assert.equal(isC03DirectLoginBinding({...direct, database:'original_financial_hd'}, expected), false);
+    assert.equal(isC03DirectLoginBinding({role, database}, expected), false,
+      'old current_user-only role check is forbidden');
+    assert.equal(isC03DirectLoginBinding(null, expected), false);
+    assert.equal(isC03DirectLoginBinding({...direct, login_role: null}, expected), false);
+    assert.equal(isC03DirectLoginBinding({...direct, role: null}, expected), false);
+  }
 });

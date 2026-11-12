@@ -35,7 +35,10 @@ class C03RouteSource(unittest.TestCase):
         for role in ("c03_auth_reader","c03_auth_nonce_writer",
                      "c03_auth_presence_writer"):
             self.assertIn(role,s)
-        self.assertIn("current_user AS role, current_database()",s)
+        self.assertIn("session_user AS login_role, current_user AS role, current_database()",s)
+        self.assertIn("isC03DirectLoginBinding(binding.rows[0], cfg)",s)
+        self.assertIn("HOLD:C03_PG_DIRECT_LOGIN_ROLE_OR_DATABASE_DRIFT",s)
+        self.assertNotIn("HOLD:C03_PG_EFFECTIVE_ROLE_OR_DATABASE_DRIFT",s)
         self.assertIn("readerDb === sidecarDb",s)
     def test_reader_only_executes_projected_facade(self):
         s=SIDE.read_text()
