@@ -27,6 +27,7 @@ def fixture():
         "r25_v22_root_install_admission_REVIEW_ONLY.py":"b"*64,
         "r25_b_v22_central_signature_REVIEW_ONLY.py":"f"*64,
         "r25_v22_three_source_transaction_REVIEW_ONLY.py":"c"*64,
+        "r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py":"d"*64,
       },
       "central_comment_id":6809999999,
       "central_signer_public_sha256":"9"*64,
@@ -43,7 +44,9 @@ def fixture():
       "source_install_fence_path":m.FENCE,
       "source_install_sentinel_path":m.SENTINEL,
       "old_new_sha256":{k:list(pair) for k,pair in m.PINNED.items()},
+      "observed_old_preimage":copy.deepcopy(m.OBSERVED_OLD_PREIMAGE),
       "executor_sha256":"e"*64,
+      "root_entrypoint_sha256":"d"*64,
       "boot_id":m.BOOT_REVIEW, "host":m.HOST_REVIEW,
       "original_seven_pids":copy.deepcopy(m.PID_BASE),
       "financial_authorized":False, "public_cutover_authorized":False,
@@ -58,8 +61,10 @@ def fixture():
       "packet_sha256":"c"*64,
       "nonce_sha256":m.digest(packet["nonce"].encode()),
       "executor_sha256":packet["executor_sha256"],
+      "root_entrypoint_sha256":packet["root_entrypoint_sha256"],
       "reviewed_source_head_sha256":packet["reviewed_source_head_sha256"],
       "root_modules_sha256":packet["root_modules_sha256"],
+      "observed_old_preimage":m.OBSERVED_OLD_PREIMAGE,
       "central_signer_public_sha256":packet["central_signer_public_sha256"],
       "owner_receipt_sha256":packet["owner_receipt_sha256"],
       "stage0003_sha256":m.STAGE_EVENT_SHA,
@@ -130,6 +135,17 @@ class BRootSourceReview(unittest.TestCase):
     def test_wrong_boot_denied(self):
         p,c=fixture()
         with self.assertRaisesRegex(m.Hold,"BOOT_OR_HOST"):admit(p,c,actual_boot="d"*36)
+    def test_unapproved_entrypoint_mutation_denied(self):
+        p,c=fixture()
+        p["root_entrypoint_sha256"]="0"*64
+        with self.assertRaisesRegex(m.Hold,"REVIEWED_ROOT_MODULE_SET"):
+            admit(p,c)
+    def test_central_approval_binds_exact_entrypoint(self):
+        p,c=fixture()
+        c["body"]=c["body"].replace('"root_entrypoint_sha256":"d', '"root_entrypoint_sha256":"a')
+        with self.assertRaisesRegex(m.Hold,"CENTRAL_APPROVAL_EXACT"):
+            admit(p,c)
+
     def test_wrong_immutable_installed_executor_denied(self):
         p,c=fixture()
         with self.assertRaisesRegex(m.Hold,"REVIEWED_EXECUTOR"):admit(p,c,root_bytes_sha="0"*64)
@@ -141,6 +157,26 @@ class BRootSourceReview(unittest.TestCase):
         p,c=fixture()
         p["v20_source_sha256"]="0"*64
         with self.assertRaisesRegex(m.Hold,"SOURCE_OR_STAGE"):admit(p,c)
+    def test_observed_missing_controller_guard_is_mandatory(self):
+        p,c=fixture()
+        p["observed_old_preimage"]["controller"]=m.PINNED["controller"][0]
+        with self.assertRaisesRegex(m.Hold,"ACTUAL_HOST_OLD_ABSENT_PREIMAGE"):
+            admit(p,c)
+        p,c=fixture()
+        p["observed_old_preimage"]["guard"]=m.PINNED["guard"][0]
+        with self.assertRaisesRegex(m.Hold,"ACTUAL_HOST_OLD_ABSENT_PREIMAGE"):
+            admit(p,c)
+    def test_missing_observed_preimage_packet_field_rejected(self):
+        p,c=fixture()
+        del p["observed_old_preimage"]
+        with self.assertRaisesRegex(m.Hold,"UNREVIEWED_EXTRA_OR_MISSING"):
+            admit(p,c)
+    def test_central_signed_comment_must_commit_real_host_preimage(self):
+        p,c=fixture()
+        c["body"]=c["body"].replace('"controller":null','"controller":"fabricated"')
+        with self.assertRaisesRegex(m.Hold,"CENTRAL_APPROVAL_EXACT"):
+            admit(p,c)
+
     def test_new_controller_sha_change_denied(self):
         p,c=fixture()
         p["old_new_sha256"]["controller"][1]="0"*64

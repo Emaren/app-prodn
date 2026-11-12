@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2afbbee8752797e251fc93ac32f3666cb7ca03736db715874942b4bf55acf9a6",
+      "sha256": "bcef073416350bc6b50655f93961b1f8de986cf04ddff5313e7ab45c2684c79e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2999,6 +2999,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "review of exact-source ONLY; no owner sudo, no HEL1 installer or public cutover permit",
+      "id": "aoe2war.app-prodn.session-b-hel1-absent-v22-signing-approval-20261112",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-12",
+      "sensitivity": "restricted",
+      "sha256": "8946f07616ae622ec15bcc320ec4e9bae027c4b6e67dda20f3a27fdf8b98edea",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Session B HEL1 real absent-preimage recovery and owner-root signer approval packet",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "read-only mainline/PR/branch source census; no merge, branch deletion, financial or production install authority",
       "id": "aoe2war.app-prodn.session-b-mainline-app-branch-ledger-20261111",
       "owner": "aoe2war-web",
@@ -3240,7 +3262,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/v22-root-executor-and-c-artifact-contract-20261111",
-    "commit": "cdcce9ec9ea1e1f2faa231e9a15b9792fc9e1138"
+    "commit": "c7d3f5faacd82b7679d37a03456a85b23a093729"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

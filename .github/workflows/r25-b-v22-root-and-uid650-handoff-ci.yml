@@ -8,6 +8,12 @@ on:
       - "scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py"
       - "scripts/release/r25_b_v22_source_install_coordinator_REVIEW_ONLY.py"
       - "scripts/release/r25_b_v22_linux_host_adapter_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py"
+      - "scripts/release/r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py"
+      - "tests/test_r25_b_v22_hel1_absent_preimage_review.py"
+      - "tests/test_r25_b_hel1_signer_root_entrypoint_review.py"
+      - "tests/test_r25_b_v22_reboot_recovery_contract_review.py"
+      - "docs/release/SESSION_B_HEL1_EXACT_ABSENT_PREIMAGE_SIGNER_APPROVAL_20261112.md"
       - "scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py"
       - "tests/test_r25_v22_three_source_transaction_review.py"
       - "tests/test_r25_b_v22_root_install_admission_review.py"
@@ -77,6 +83,9 @@ jobs:
             tests.test_r25_b_v22_central_signature_review \
             tests.test_r25_b_v22_source_install_coordinator_review \
             tests.test_r25_b_v22_linux_host_adapter_review \
+            tests.test_r25_b_v22_hel1_absent_preimage_review \
+            tests.test_r25_b_hel1_signer_root_entrypoint_review \
+            tests.test_r25_b_v22_reboot_recovery_contract_review \
             tests.test_r25_b_c_product_artifact_same_slot \
             tests.test_r25_b_c_dev_linux_release_contract_v2 \
             tests.test_r25_b_linux_release_receipt_emit_v2 \
@@ -100,6 +109,8 @@ jobs:
             scripts/release/r25_v22_root_install_admission_REVIEW_ONLY.py \
             scripts/release/r25_b_v22_central_signature_REVIEW_ONLY.py \
             scripts/release/r25_v22_three_source_transaction_REVIEW_ONLY.py \
+            scripts/release/r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py \
+            scripts/release/r25_b_hel1_m1_owner_signer_ENROLL_REVIEW_ONLY.py \
             scripts/release/r25_b_c_product_artifact_and_same_slot_v1.py; do
             rc=0
             python3 -B "$file" >/tmp/session-b-inert-source-refusal.txt || rc=$?

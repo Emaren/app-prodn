@@ -22,6 +22,11 @@ PINNED = {
     "guard": ("70e5331d9920e5675f815ceb333f19236956f940adae4d106b0864fef60bd17c",
               "87314320dd4aee0730d619a512d3625ac45a67d2030d6a0930d22ecbb4396de2"),
 }
+# Exact observed host preimage: controller/guard were NEVER installed.
+# Historical original Git blobs are provenance, not a claim of HEL1 bytes.
+OBSERVED_OLD_PREIMAGE = {
+    "v22": PINNED["v22"][0], "controller": None, "guard": None,
+}
 BOOT_REVIEW = "6fdc01cb-8eb6-448d-9a5a-b62b66e0fe34"
 HOST_REVIEW = "ubuntu-4gb-hel1-11"
 BASE_HEAD = "f91e57c2602a1e0674819d17c59f7fd5677b6e91"
@@ -86,10 +91,11 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
     require(type(packet) is dict and type(central_comment) is dict, "RECORD_TYPE")
     expected_keys={
         "schema","operation","request_state","source_ref_sha256",
-        "reviewed_source_head_sha256","root_modules_sha256","central_signer_public_sha256","stage0003_sha256",
+         "reviewed_source_head_sha256","root_modules_sha256","root_entrypoint_sha256",
+        "central_signer_public_sha256","stage0003_sha256",
         "v20_source_sha256","original_3032_unit_sha256",
         "service_unit_sha256","timer_unit_sha256","lock_dropin_sha256",
-        "source_install_fence_sha256","source_install_fence_path",
+        "observed_old_preimage","source_install_fence_sha256","source_install_fence_path",
         "source_install_sentinel_path","old_new_sha256","executor_sha256",
         "boot_id","host","original_seven_pids","financial_authorized",
         "public_cutover_authorized","steam_auth_contract_change_authorized",
@@ -116,6 +122,8 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
     require(packet.get("old_new_sha256") ==
             {name: list(pair) for name, pair in PINNED.items()},
             "EXACT_THREE_SOURCE_BYTES")
+    require(packet.get("observed_old_preimage") == OBSERVED_OLD_PREIMAGE,
+            "ACTUAL_HOST_OLD_ABSENT_PREIMAGE")
     require(type(root_bytes_sha) is str and HEX64.fullmatch(root_bytes_sha)
             and packet.get("executor_sha256") == root_bytes_sha,
             "REVIEWED_EXECUTOR_BYTES")
@@ -126,12 +134,15 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
                 "r25_v22_root_install_admission_REVIEW_ONLY.py",
                 "r25_b_v22_central_signature_REVIEW_ONLY.py",
                 "r25_v22_three_source_transaction_REVIEW_ONLY.py",
+                "r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py",
             } and
             all(type(v) is str and HEX64.fullmatch(v)
                 for v in actual_module_shas.values()) and
             packet.get("root_modules_sha256")==actual_module_shas and
             packet.get("executor_sha256")==actual_module_shas[
                 "r25_b_v22_linux_host_adapter_REVIEW_ONLY.py"] and
+            packet.get("root_entrypoint_sha256")==actual_module_shas[
+                "r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py"] and
             type(packet.get("reviewed_source_head_sha256")) is str and
             HEX40.fullmatch(packet["reviewed_source_head_sha256"]),
             "REVIEWED_ROOT_MODULE_SET")
@@ -185,8 +196,10 @@ def validate_packet(packet, *, now, root_bytes_sha, actual_boot, actual_host,
         "packet_sha256": packet_sha,
         "nonce_sha256": digest(packet["nonce"].encode()),
         "executor_sha256": root_bytes_sha,
+        "root_entrypoint_sha256":packet["root_entrypoint_sha256"],
         "reviewed_source_head_sha256": packet["reviewed_source_head_sha256"],
         "root_modules_sha256": actual_module_shas,
+        "observed_old_preimage": OBSERVED_OLD_PREIMAGE,
         "central_signer_public_sha256": actual_signer_key_sha,
         "owner_receipt_sha256": owner_receipt_sha,
         "stage0003_sha256": STAGE_EVENT_SHA,
@@ -249,6 +262,59 @@ def validate_protected_snapshot(before, after, *, timer_can_be_paused=False):
             and after.get("steam_source_sha256") in PINNED["v22"],
             "V22_SOURCE_CHANGE_SCOPE")
     return {"status": "PASS_PROTECTED_READONLY_BEFORE_AFTER_SOURCE_SCOPE"}
+
+def validate_recovery_protected_snapshot(before, after, *, timer_restored):
+    """Recovery-only: reboot may change boot/PIDs, NEVER source/finance units.
+
+    Requires a separate root-owned sentinel, fixed negative service guard
+    and exact original transaction receipt in the caller; unlike fresh
+    SOURCE_INSTALL, recovery cannot trust the expired original boot/PIDs.
+    """
+    require(type(before) is dict and type(after) is dict,"RECOVERY_SNAPSHOT_TYPE")
+    for label, snap in (("BEFORE",before),("AFTER",after)):
+        require(snap.get("host")==HOST_REVIEW,"RECOVERY_"+label+"_HOST")
+        boot=snap.get("boot")
+        require(type(boot) is str and re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}",boot),
+                "RECOVERY_"+label+"_BOOT_SHAPE")
+        pids=snap.get("pids")
+        require(type(pids) is dict and set(pids)==set(PID_BASE)
+                and all(type(v) is int and v>0 for v in pids.values())
+                and len(set(pids.values()))==len(pids),
+                "RECOVERY_"+label+"_SEVEN_LIVE_PID")
+        if boot==BOOT_REVIEW:
+            require(pids==PID_BASE,"RECOVERY_"+label+"_ORIGINAL_BOOT_PID_DRIFT")
+        require(snap.get("nrestarts")=={k:0 for k in PID_BASE},
+                "RECOVERY_"+label+"_RESTARTS")
+        require(snap.get("c04_masked")=={
+            "wolochain-mainnet-settlement.service":True,
+            "wolochain-founder-rewards-settlement.service":True,
+        } and snap.get("finance_listeners")==[],
+                "RECOVERY_"+label+"_FINANCIAL_FENCE")
+        require(snap.get("nginx_selectors")==6
+                and snap.get("original_unit_sha256")==WEB_ORIGINAL_UNIT_SHA
+                and snap.get("stage0003_sha256")==STAGE_EVENT_SHA
+                and snap.get("v20_sha256")==V20_SHA
+                and snap.get("steam_unit_sha256")==V22_STEAM_SERVICE_UNIT_SHA
+                and snap.get("steam_timer_unit_sha256")==V22_TIMER_UNIT_SHA
+                and snap.get("steam_lock_dropin_sha256")==V22_LOCK_DROPIN_SHA,
+                "RECOVERY_"+label+"_PROTECTED_BYTES")
+        require(snap.get("public_3032_http")==200
+                and snap.get("original_3030_http")==200
+                and snap.get("public_bets_http")==503
+                and snap.get("emergency_3033_http")==503
+                and snap.get("manager_reload_pending") is False,
+                "RECOVERY_"+label+"_HTTP_OR_SYSTEMD")
+    require(before["boot"]==after["boot"]
+            and before["pids"]==after["pids"],
+            "RECOVERY_BOOT_OR_PROTECTED_PID_CHANGED_DURING_INVERSE")
+    require(before.get("steam_source_sha256") in PINNED["v22"]
+            and after.get("steam_source_sha256")==PINNED["v22"][0],
+            "RECOVERY_REQUIRES_EXACT_ORIGINAL_V22")
+    require(before.get("steam_timer_active") is False
+            and after.get("steam_timer_active") is timer_restored,
+            "RECOVERY_STEAM_TIMER_PHASE")
+    return {"status":"PASS_REBOOT_SAFE_EXACT_ORIGINAL_RECOVERY_PROTECTION_ONLY",
+            "public_cutover":False,"financial_authority":False}
 
 def source_install_sequence():
     """Review contract. Crash recovery MUST reenter with persistent fence."""

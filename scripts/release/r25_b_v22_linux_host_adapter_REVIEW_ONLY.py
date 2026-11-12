@@ -99,6 +99,7 @@ class HEL1SourceInstallHost:
         self.packet_hash=None
         self.owner_hash=None
         self.before=None
+        self.is_recovery=False
 
     def require_immutable_root_executor(self):
         check(os.geteuid()==0,"ROOT_REQUIRED")
@@ -112,6 +113,7 @@ class HEL1SourceInstallHost:
             "r25_v22_root_install_admission_REVIEW_ONLY.py",
             "r25_b_v22_central_signature_REVIEW_ONLY.py",
             "r25_v22_three_source_transaction_REVIEW_ONLY.py",
+            "r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py",
         ):
             root_source(HERE/source)
         st=HERE.lstat()
@@ -134,6 +136,10 @@ class HEL1SourceInstallHost:
         self.owner_hash=hashlib.sha256(owner_bytes).hexdigest()
         self.packet=strict_json(packet_bytes)
         owner=strict_json(owner_bytes)
+        # Exact immutable ROOT wrapper source, not just the host adapter.
+        check(self.packet.get("root_entrypoint_sha256") ==
+              sha(HERE/"r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py"),
+              "ROOT_ENTRYPOINT_BYTES_DRIFT")
         check(owner.get("schema")=="aoe2war.b.v22.owner-one-use-receipt.v1"
               and owner.get("scope")=="SOURCE_INSTALL_ONLY"
               and owner.get("approval")=="OWNER_LOCAL_INTERACTIVE_ROOT"
@@ -176,6 +182,7 @@ class HEL1SourceInstallHost:
                     "r25_v22_root_install_admission_REVIEW_ONLY.py",
                     "r25_b_v22_central_signature_REVIEW_ONLY.py",
                     "r25_v22_three_source_transaction_REVIEW_ONLY.py",
+                    "r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py",
                 )
             },
             actual_signer_key_sha=sigverify.CENTRAL_OFFLINE_PUBLIC_KEY_SHA256,
@@ -276,6 +283,9 @@ class HEL1SourceInstallHost:
         policy.validate_protected_snapshot(self.before,self.before)
         check(self.before["steam_source_sha256"]==policy.PINNED["v22"][0],
               "OLD_NATIVE_V22_UNEXPECTED")
+        # Must qualify the actual HEL1 preimage, not historical Git originals.
+        for key in txn.OBSERVED_ABSENT_OLD:
+            txn.require_absent(Path(txn.PRODUCTION_TARGETS[key]), trusted_uid=0)
 
     def install_exact_persistent_condition_guard(self):
         check(not GUARD.exists() and not GUARD.is_symlink(),"FENCE_EXISTS_ALREADY")
@@ -345,6 +355,7 @@ class HEL1SourceInstallHost:
             "schema":"aoe2war.b.v22.installed-source-not-public.v1",
             "packet_sha256":self.packet_hash,
             "source_shas":{k:v[1] for k,v in policy.PINNED.items()},
+            "observed_old_preimage":policy.OBSERVED_OLD_PREIMAGE,
             "native_selftest":True,
             "financial_authorized":False,
             "public_activation":False,
@@ -377,7 +388,11 @@ class HEL1SourceInstallHost:
     def verify_original_seven_pid_and_steam_refresh(self):
         end=self._snapshot()
         # Do not trigger an unapproved live nft/Steam refresh from here.
-        policy.validate_protected_snapshot(self.before,end)
+        if self.is_recovery:
+            policy.validate_recovery_protected_snapshot(
+                self.before,end,timer_restored=True)
+        else:
+            policy.validate_protected_snapshot(self.before,end)
 
     def require_root_recovery_executor(self):
         check(os.geteuid()==0,"RECOVERY_ROOT_REQUIRED")
@@ -388,10 +403,12 @@ class HEL1SourceInstallHost:
                      "r25_b_v22_source_install_coordinator_REVIEW_ONLY.py",
                      "r25_v22_root_install_admission_REVIEW_ONLY.py",
                      "r25_b_v22_central_signature_REVIEW_ONLY.py",
-                     "r25_v22_three_source_transaction_REVIEW_ONLY.py"):
+                     "r25_v22_three_source_transaction_REVIEW_ONLY.py",
+                     "r25_b_hel1_source_install_entrypoint_REVIEW_ONLY.py"):
             root_source(HERE/file)
         # Never accept an absent or owner-writable control directory.
         root_dir(HERE)
+        self.is_recovery=True
 
     def verify_existing_root_transaction_receipt(self):
         root_dir(ROOT);root_dir(TRANS)
@@ -427,8 +444,11 @@ class HEL1SourceInstallHost:
 
     def verify_no_swap_was_started(self):
         for key,path in txn.PRODUCTION_TARGETS.items():
-            check(sha(Path(path))==policy.PINNED[key][0],
-                  "UNPREPARED_RECOVERY_SOURCE_DRIFT_"+key)
+            if key in txn.OBSERVED_ABSENT_OLD:
+                txn.require_absent(Path(path),trusted_uid=0)
+            else:
+                check(sha(Path(path))==policy.PINNED[key][0],
+                      "UNPREPARED_RECOVERY_SOURCE_DRIFT_"+key)
         check(not any(TRANS.glob("SWAP_INTENT_*.json")),
               "UNPREPARED_RECOVERY_HAS_SWAP_INTENT")
 
@@ -448,22 +468,37 @@ class HEL1SourceInstallHost:
             raw=txn.strict_file(stage,require_uid=0)
             check(hashlib.sha256(raw).hexdigest()==policy.PINNED[key][1],
                   "UNKNOWN_ABANDONED_STAGE_"+key)
-            check(stat.S_IMODE(stage.lstat().st_mode)==
-                  stat.S_IMODE(original.lstat().st_mode),
+            expected_mode=(txn.NEW_FILE_MODE if key in txn.OBSERVED_ABSENT_OLD
+                           else stat.S_IMODE(original.lstat().st_mode))
+            check(stat.S_IMODE(stage.lstat().st_mode)==expected_mode,
                   "ABANDONED_STAGE_MODE_CHANGED_"+key)
             stage.unlink()
             txn.fsync_dir(stage.parent)
         for key in txn.ORDER:
             inverse=TRANS/(key+".inverse")
-            if inverse.exists() or inverse.is_symlink():
+            absent=TRANS/(key+".absent")
+            if key in txn.OBSERVED_ABSENT_OLD:
+                check(not inverse.exists() and not inverse.is_symlink(),
+                      "ABSENT_ORIGINAL_MUST_NOT_HAVE_INVERSE_BYTES_"+key)
+                if absent.exists() or absent.is_symlink():
+                    expected=txn.canonical({
+                        "schema":txn.ABSENT_MARKER_SCHEMA,"key":key,
+                        "old_preimage":None,"new_sha256":policy.PINNED[key][1],
+                    })
+                    check(txn.strict_file(absent,require_uid=0,require_mode=0o400)==expected,
+                          "ABSENT_ORIGINAL_RECEIPT_TAMPER_"+key)
+            elif inverse.exists() or inverse.is_symlink():
                 check(sha(inverse)==policy.PINNED[key][0],
                       "PARTIAL_INVERSE_BYTES_DRIFT_"+key)
         return True
 
     def native_original_v22_selftest_and_v20_fallback(self):
         for name,path in txn.PRODUCTION_TARGETS.items():
-            check(sha(Path(path))==policy.PINNED[name][0],
-                  "OLD_SOURCE_NOT_RESTORED_"+name)
+            if name in txn.OBSERVED_ABSENT_OLD:
+                txn.require_absent(Path(path),trusted_uid=0)
+            else:
+                check(sha(Path(path))==policy.PINNED[name][0],
+                      "OLD_SOURCE_NOT_RESTORED_"+name)
         check(sha(V20)==policy.V20_SHA,"V20_INVERSE_CHANGED")
         raw=call(["/usr/bin/python3","-I","-B",V22,"--phase","selftest"],60)
         check("PASS_STEAM_V22_IMMUTABLE_V20_AND_TWO_EXACT_PROFILE_PROOFS" in raw,
@@ -473,9 +508,8 @@ class HEL1SourceInstallHost:
         post=self._snapshot()
         check(post["steam_source_sha256"]==policy.PINNED["v22"][0],
               "RECOVERY_EXPECTED_OLD_SOURCE")
-        checked=dict(post)
-        checked["steam_timer_active"]=True
-        policy.validate_protected_snapshot(checked,post,timer_can_be_paused=True)
+        policy.validate_recovery_protected_snapshot(
+            self.before,post,timer_restored=False)
 
     def seal_exact_inverse_receipt(self):
         txn.create_once(ROOT/"source-inverse-complete.json",txn.canonical({
@@ -492,6 +526,7 @@ class HEL1SourceInstallHost:
             root_stage(),
             TRANS,
             trusted_uid=0,
+            absent_old=txn.OBSERVED_ABSENT_OLD,
         )
 
 if __name__=="__main__":

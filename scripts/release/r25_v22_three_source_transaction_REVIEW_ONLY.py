@@ -38,6 +38,13 @@ PINNED = {
     ),
 }
 ORDER = tuple(PINNED)
+# Exact observed HEL1 preimage. These paths were NEVER installed on HEL1,
+# although old historical Git blobs exist; they must not be fabricated.
+OBSERVED_ABSENT_OLD = frozenset(("controller", "guard"))
+OBSERVED_OLD_PREIMAGE = {"v22": PINNED["v22"][0],
+                         "controller": None, "guard": None}
+ABSENT_MARKER_SCHEMA = "aoe2war.b.v22.original-source-absent.v1"
+NEW_FILE_MODE = 0o644
 PRODUCTION_TARGETS = {
     "v22": "/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py",
     "controller": "/usr/local/lib/aoe2war-web-prod/r25_public_player_one_use_cutover_v1.py",
@@ -82,6 +89,21 @@ def strict_file(path: Path, *, require_uid: int | None = None,
     finally:
         os.close(fd)
 
+def require_absent(path: Path, *, trusted_uid: int):
+    """Strict no-follow negative source preimage, including broken symlinks."""
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise Hold("EXPECTED_OLD_ABSENT_" + path.name)
+    parent = path.parent.lstat()
+    if (not stat.S_ISDIR(parent.st_mode) or
+            parent.st_uid != trusted_uid or
+            stat.S_IMODE(parent.st_mode) & 0o022):
+        raise Hold("ABSENT_PARENT_NOT_ROOT_TRUSTED_" + path.name)
+    return True
+
 def create_once(path: Path, blob: bytes, *, mode: int = 0o600):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, mode)
     try:
@@ -97,13 +119,17 @@ def create_once(path: Path, blob: bytes, *, mode: int = 0o600):
 class Transaction:
     """No public CLI. The caller MUST supply a separate approved locked executor."""
     def __init__(self, targets: dict[str, Path], candidates: dict[str, Path],
-                 state_dir: Path, *, trusted_uid: int):
+                 state_dir: Path, *, trusted_uid: int,
+                 absent_old: frozenset[str] = frozenset()):
         if set(targets) != set(ORDER) or set(candidates) != set(ORDER):
             raise Hold("EXACT_THREE_TARGETS_REQUIRED")
         self.targets = {k: Path(targets[k]) for k in ORDER}
         self.candidates = {k: Path(candidates[k]) for k in ORDER}
         self.state = Path(state_dir)
         self.uid = trusted_uid
+        if not isinstance(absent_old, frozenset) or not absent_old.issubset(ORDER):
+            raise Hold("UNREVIEWED_ABSENT_PREIMAGE_SCOPE")
+        self.absent_old = absent_old
         st = self.state.lstat()
         if (not stat.S_ISDIR(st.st_mode) or st.st_uid != trusted_uid or
                 stat.S_IMODE(st.st_mode) != 0o700):
@@ -117,9 +143,11 @@ class Transaction:
         create_once(self.state / (name + ".json"), canonical({"event": name}))
 
     def manifest(self):
-        body = {"schema": "aoe2war.b.v22.exact-three-file-transaction.review.v1",
+        body = {"schema": "aoe2war.b.v22.exact-three-file-transaction.review.v2",
                 "order": list(ORDER),
-                "pins": {k: {"old": PINNED[k][0], "new": PINNED[k][1]}
+                "old_absent": sorted(self.absent_old),
+                "pins": {k: {"old": None if k in self.absent_old else PINNED[k][0],
+                              "new": PINNED[k][1]}
                          for k in ORDER}}
         return canonical(body)
 
@@ -131,20 +159,32 @@ class Transaction:
         old_data = {}
         new_data = {}
         for key in ORDER:
-            old = strict_file(self.targets[key], require_uid=self.uid)
+            if key in self.absent_old:
+                require_absent(self.targets[key], trusted_uid=self.uid)
+                old = None
+            else:
+                old = strict_file(self.targets[key], require_uid=self.uid)
+                if sha(old) != PINNED[key][0]:
+                    raise Hold("OLD_SOURCE_SHA_" + key)
             new = strict_file(self.candidates[key], require_uid=self.uid, require_mode=0o400)
-            if sha(old) != PINNED[key][0]:
-                raise Hold("OLD_SOURCE_SHA_" + key)
             if sha(new) != PINNED[key][1]:
                 raise Hold("NEW_SOURCE_SHA_" + key)
             old_data[key], new_data[key] = old, new
         self.event("PREPARE_INTENT")
         for key in ORDER:
-            create_once(self.state / (key + ".inverse"), old_data[key], mode=0o400)
+            if key in self.absent_old:
+                create_once(self.state / (key + ".absent"), canonical({
+                    "schema": ABSENT_MARKER_SCHEMA, "key": key,
+                    "old_preimage": None, "new_sha256": PINNED[key][1],
+                }), mode=0o400)
+                mode = NEW_FILE_MODE
+            else:
+                create_once(self.state / (key + ".inverse"), old_data[key], mode=0o400)
+                mode = stat.S_IMODE(self.targets[key].stat().st_mode)
             # A same-directory staging path gives atomic os.replace even when
             # source reviews reside on another filesystem.
             stage = self.targets[key].with_name(self.targets[key].name + ".b-v22-new-stage")
-            create_once(stage, new_data[key], mode=stat.S_IMODE(self.targets[key].stat().st_mode))
+            create_once(stage, new_data[key], mode=mode)
         create_once(self.state / "manifest.json", self.manifest(), mode=0o400)
         self.event("PREPARED")
 
@@ -154,10 +194,20 @@ class Transaction:
         if manifest != self.manifest():
             raise Hold("MANIFEST_TAMPER")
         for key in ORDER:
-            inverse = strict_file(self.state / (key + ".inverse"),
-                                  require_uid=self.uid, require_mode=0o400)
-            if sha(inverse) != PINNED[key][0]:
-                raise Hold("INVERSE_TAMPER_" + key)
+            if key in self.absent_old:
+                absent = strict_file(self.state / (key + ".absent"),
+                                     require_uid=self.uid, require_mode=0o400)
+                if absent != canonical({"schema": ABSENT_MARKER_SCHEMA,
+                                        "key": key, "old_preimage": None,
+                                        "new_sha256": PINNED[key][1]}):
+                    raise Hold("ABSENT_INVERSE_TAMPER_" + key)
+                if (self.state / (key + ".inverse")).exists():
+                    raise Hold("ABSENT_HAS_UNEXPECTED_OLD_BYTES_" + key)
+            else:
+                inverse = strict_file(self.state / (key + ".inverse"),
+                                      require_uid=self.uid, require_mode=0o400)
+                if sha(inverse) != PINNED[key][0]:
+                    raise Hold("INVERSE_TAMPER_" + key)
 
     def apply(self, *, after_swap=None):
         if not (self.state / "PREPARED.json").is_file():
@@ -167,10 +217,17 @@ class Transaction:
         self.verify_provenance()
         for key in ORDER:
             stage = self.targets[key].with_name(self.targets[key].name + ".b-v22-new-stage")
-            if sha(strict_file(self.targets[key], require_uid=self.uid)) != PINNED[key][0]:
+            if key in self.absent_old:
+                require_absent(self.targets[key], trusted_uid=self.uid)
+            elif sha(strict_file(self.targets[key], require_uid=self.uid)) != PINNED[key][0]:
                 raise Hold("PRE_SWAP_TARGET_DRIFT_" + key)
             if sha(strict_file(stage, require_uid=self.uid)) != PINNED[key][1]:
                 raise Hold("PRE_SWAP_STAGE_DRIFT_" + key)
+            if stat.S_IMODE(stage.lstat().st_mode) != (
+                NEW_FILE_MODE if key in self.absent_old
+                else stat.S_IMODE(self.targets[key].lstat().st_mode)
+            ):
+                raise Hold("PRE_SWAP_STAGE_MODE_DRIFT_" + key)
             self.event("SWAP_INTENT_" + key)
             os.replace(stage, self.targets[key])
             fsync_dir(self.targets[key].parent)
@@ -196,6 +253,33 @@ class Transaction:
             raise Hold("COMPLETED_REQUIRES_NEW_ROLLBACK_AUTHORITY")
         for key in reversed(ORDER):
             dest = self.targets[key]
+            if key in self.absent_old:
+                # A new-only file must be removed to return to *real* absence.
+                # Durable intent before unlink; replay after crash is safe.
+                stage = dest.with_name(dest.name + ".b-v22-inverse-stage")
+                if stage.exists() or stage.is_symlink():
+                    raise Hold("ABSENT_INVERSE_HAS_STAGE_" + key)
+                try:
+                    actual = sha(strict_file(dest, require_uid=self.uid))
+                except FileNotFoundError:
+                    require_absent(dest, trusted_uid=self.uid)
+                    actual = None
+                if actual is not None and actual != PINNED[key][1]:
+                    raise Hold("UNKNOWN_TARGET_COMPETING_WRITER_" + key)
+                if actual is not None and (
+                    stat.S_IMODE(dest.lstat().st_mode) != NEW_FILE_MODE
+                ):
+                    raise Hold("ABSENT_NEW_FILE_MODE_DRIFT_" + key)
+                intent = self.state / ("INVERSE_ABSENT_INTENT_" + key + ".json")
+                if not intent.exists():
+                    self.event("INVERSE_ABSENT_INTENT_" + key)
+                else:
+                    strict_file(intent, require_uid=self.uid, require_mode=0o600)
+                if actual is not None:
+                    dest.unlink()
+                    fsync_dir(dest.parent)
+                require_absent(dest, trusted_uid=self.uid)
+                continue
             actual = sha(strict_file(dest, require_uid=self.uid))
             if actual not in PINNED[key]:
                 raise Hold("UNKNOWN_TARGET_COMPETING_WRITER_" + key)
@@ -226,7 +310,9 @@ class Transaction:
         if not (self.state / "INVERSE_COMPLETE.json").exists():
             self.event("INVERSE_COMPLETE")
         for key in ORDER:
-            if sha(strict_file(self.targets[key], require_uid=self.uid)) != PINNED[key][0]:
+            if key in self.absent_old:
+                require_absent(self.targets[key], trusted_uid=self.uid)
+            elif sha(strict_file(self.targets[key], require_uid=self.uid)) != PINNED[key][0]:
                 raise Hold("POST_INVERSE_OLD_SOURCE_DRIFT_" + key)
 
     def complete_after_external_proof(self):

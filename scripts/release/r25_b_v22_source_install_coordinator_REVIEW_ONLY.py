@@ -44,7 +44,7 @@ class SourceInstallCoordinator:
             self.backend.stop_only_existing_steam_timer()
             self.backend.require_steam_oneshot_quiescent()
             try:
-                self.tx.prepare()  # durable intent/manifest/old inverse first
+                self.tx.prepare()  # original V22 inverse + two original-ABSENT markers
                 self.phase = "PREPARED"
                 self.tx.apply()    # each replacement atomic+fsynced
                 self.phase = "SWAPPED_PENDING_NATIVE_PROOF"
