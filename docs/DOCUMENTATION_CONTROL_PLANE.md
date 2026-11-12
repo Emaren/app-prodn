@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `uid650/theme-503-campaign-preservation-20261112` at `88904979d9604d8c34cfa3a36b420a023265d7b2`
+Implementation baseline: `session-c/theme-503-campaign-preservation-20261112` at `4646c9c5849eecedfb13ea2c143e92622325b683`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
