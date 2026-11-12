@@ -7,6 +7,7 @@ The CLI checks the exact checked-out source and changed paths before CI continue
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -33,6 +34,11 @@ APPROVED_SOURCE = {
     "tests/test_product_boundary_guard.py",
     ".github/workflows/product-boundary.yml",
 }
+# Single independently inspectable executable-source admission; this is NOT a
+# wildcard scripts/ allowance. Future source bytes/base require new review.
+EXACT_REVIEWED_SCRIPT = "scripts/kingdom_index_source_audit.mjs"
+EXACT_REVIEWED_BASE = "3933f695ec48d4e2cab68e93194b745fab2e4b7d"
+EXACT_REVIEWED_SHA256 = "185defe7f93ea39bf1829b7a8eaf4a48f050b50d40ad1438c9be9ca468326a01"
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -88,6 +94,23 @@ def authorize_source(raw: str) -> str:
         # restricted execution surfaces requiring a separate reviewed change.
         raise BoundaryHold("UNREVIEWED_EXECUTABLE_SURFACE")
     return str(path)
+
+
+def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
+    """Allow only one exact audited script blob against its exact reviewed base."""
+    relative = relative_path(raw)
+    name = str(relative)
+    if name != EXACT_REVIEWED_SCRIPT:
+        return authorize_source(name)
+    if base != EXACT_REVIEWED_BASE:
+        raise BoundaryHold("REVIEWED_EXECUTABLE_WRONG_BASE")
+    path = checkout / relative
+    st = path.lstat()
+    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+        raise BoundaryHold("REVIEWED_EXECUTABLE_NOT_SINGLE_REGULAR_FILE")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != EXACT_REVIEWED_SHA256:
+        raise BoundaryHold("REVIEWED_EXECUTABLE_EXACT_SHA_MISMATCH")
+    return name
 
 
 def authorize_output(raw: str, checkout: Path, product_root: Path) -> Path:
@@ -207,7 +230,7 @@ def changed_source(checkout: Path, base: str) -> list[str]:
                 base, "HEAD", "--")
     changes = names.splitlines() if names else []
     for name in changes:
-        authorize_source(name)
+        authorize_changed_source(checkout, base, name)
         mode = git(checkout, "ls-files", "--stage", "--", name)
         if mode.startswith("120000 "):
             raise BoundaryHold("SYMLINK_SOURCE_CHANGE")
