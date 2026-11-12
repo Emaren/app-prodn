@@ -39,11 +39,14 @@ jobs:
       # original check, not this B-specific scope.
       - name: Source SHA, exact owner/origin, tree and approved C source changes
         if: >-
-          github.event_name != 'pull_request' ||
-          (github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
-           github.head_ref != 'session-b/steam-v23-lease-expiry-race-repair-20261112' &&
-           github.head_ref != 'session-b/steam-v23-c03-observer-completion-retry-20261112') ||
-          github.event.pull_request.head.repo.full_name != github.repository
+          (github.event_name != 'push' ||
+           github.ref != 'refs/heads/main' ||
+           github.event.before != 'a61c5af90fe77f10e0b6d1c6c680641ba37acc7a') &&
+          (github.event_name != 'pull_request' ||
+           (github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
+            github.head_ref != 'session-b/steam-v23-lease-expiry-race-repair-20261112' &&
+            github.head_ref != 'session-b/steam-v23-c03-observer-completion-retry-20261112') ||
+           github.event.pull_request.head.repo.full_name != github.repository)
         run: python3 -I -B scripts/product_boundary_guard.py --check
       - name: Source SHA, exact canonical main ancestry and protected B-only release boundary
         if: >-
@@ -106,7 +109,7 @@ jobs:
             test "$(sha256sum scripts/release/r25_steam_refresh_current_product_v23.py | cut -d' ' -f1)" = '3bb7f065a46e4c1d31ca70a9a30df1c8efbafeca72d95e0d89a37c04e221c5cc' || exit 3
             test "$(sha256sum tests/test_r25_steam_v23_bounded_expiry_repair.py | cut -d' ' -f1)" = '1f26bd44011d82dc88308d6c7a472c0322a48ad7e57d38920cc7b752701c3c32' || exit 3
             test "$(sha256sum tests/test_r25_steam_v23_c03_observer_completion.py | cut -d' ' -f1)" = 'e23bc70d1b13c053dd2e3082afe8a24b371574cdd2ade82452e70fe418b1fb46' || exit 3
-            test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '03391e440f09a89588848320b24d77c88267d10886b72efecf80a9c60b6b85bc' || exit 3
+            test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '145d8f299371aec5d8093ba0ab21b0047e17e3350d1abea61b7aa6bb891c6302' || exit 3
           fi
           git diff --name-only --diff-filter=ACMRTUXB -z "$BOUNDARY_BASE_SHA" HEAD -- > "$RUNNER_TEMP/b-product-source-paths.nul"
           while IFS= read -r -d '' path; do
@@ -151,3 +154,53 @@ jobs:
           python3 -B -m unittest -q tests.test_r25_b_product_mainline_scope
           python3 -B -m unittest -q tests.test_r25_b_v22_root_install_admission_review tests.test_r25_b_v22_central_signature_review tests.test_r25_b_c03_website_source_admission
           echo PASS:B_MAINLINE_CURRENT_SOURCE_AND_SEPARATE_RESTRICTED_RELEASE_BOUNDARY
+      # The same B-only source must survive a merge into canonical main.
+      # Without this path, C's guard incorrectly rejects known B release
+      # files on push even though PR CI was green. This exception accepts
+      # EXACTLY the one reviewed #1338 merge: immutable parent, actual GitHub
+      # PR merge SHA, second parent = exact PR head, seven paths, four pinned
+      # source/test hashes. Any other push stays in C's original strict guard.
+      - name: Verify exact reviewed B PR1338 merge into main without widening C
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          github.event.before == 'a61c5af90fe77f10e0b6d1c6c680641ba37acc7a'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$BOUNDARY_REPOSITORY" = Emaren/app-prodn || exit 3
+          test "$BOUNDARY_BRANCH" = main || exit 3
+          test "$BOUNDARY_BASE_SHA" = a61c5af90fe77f10e0b6d1c6c680641ba37acc7a || exit 3
+          test "$(git rev-parse HEAD)" = "$BOUNDARY_HEAD_SHA" || exit 3
+          test "$(git rev-parse HEAD^1)" = "$BOUNDARY_BASE_SHA" || {
+            echo HOLD:B_MAIN_PUSH_WRONG_MERGE_PROVENANCE; exit 3;
+          }
+          reviewed_pr_head="$(gh api "repos/$BOUNDARY_REPOSITORY/pulls/1338" --jq '.head.sha')"
+          reviewed_merge_sha="$(gh api "repos/$BOUNDARY_REPOSITORY/pulls/1338" --jq '.merge_commit_sha')"
+          reviewed_merged="$(gh api "repos/$BOUNDARY_REPOSITORY/pulls/1338" --jq '.merged')"
+          test "$reviewed_merged" = true || exit 3
+          test "$reviewed_pr_head" = "$(git rev-parse HEAD^2)" || {
+            echo HOLD:B_MAIN_PUSH_WRONG_MERGE_PROVENANCE; exit 3;
+          }
+          test "$reviewed_merge_sha" = "$BOUNDARY_HEAD_SHA" || {
+            echo HOLD:B_MAIN_PUSH_WRONG_MERGE_PROVENANCE; exit 3;
+          }
+          expected_paths="$(printf '%s\n' \
+            '.github/workflows/product-boundary.yml' \
+            'scripts/release/r25_steam_refresh_current_product_v23.py' \
+            'tests/test_r25_steam_v23_bounded_expiry_repair.py' \
+            'tests/test_r25_steam_v23_c03_observer_completion.py' \
+            'tests/test_r25_b_product_mainline_scope.py' \
+            'docs/DOCUMENTATION_CONTROL_PLANE.md' \
+            'docs/document-registry.json' | LC_ALL=C sort)"
+          actual_paths="$(git diff --name-only "$BOUNDARY_BASE_SHA" HEAD -- | LC_ALL=C sort)"
+          test "$actual_paths" = "$expected_paths" || {
+            echo HOLD:B_MAIN_PUSH_SOURCE_SCOPE; exit 3;
+          }
+          test "$(sha256sum scripts/release/r25_steam_refresh_current_product_v23.py | cut -d' ' -f1)" = '3bb7f065a46e4c1d31ca70a9a30df1c8efbafeca72d95e0d89a37c04e221c5cc' || exit 3
+          test "$(sha256sum tests/test_r25_steam_v23_bounded_expiry_repair.py | cut -d' ' -f1)" = '1f26bd44011d82dc88308d6c7a472c0322a48ad7e57d38920cc7b752701c3c32' || exit 3
+          test "$(sha256sum tests/test_r25_steam_v23_c03_observer_completion.py | cut -d' ' -f1)" = 'e23bc70d1b13c053dd2e3082afe8a24b371574cdd2ade82452e70fe418b1fb46' || exit 3
+          test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '145d8f299371aec5d8093ba0ab21b0047e17e3350d1abea61b7aa6bb891c6302' || exit 3
+          python3 -B -m unittest -q tests.test_r25_steam_v23_c03_observer_completion tests.test_r25_steam_v23_bounded_expiry_repair tests.test_r25_b_product_mainline_scope
+          echo PASS:B_EXACT_MERGED_NONFINANCIAL_SOURCE_AND_C_ORIGINAL_GUARD_PRESERVED
