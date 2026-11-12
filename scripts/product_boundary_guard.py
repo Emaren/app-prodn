@@ -7,6 +7,7 @@ The CLI checks the exact checked-out source and changed paths before CI continue
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -33,6 +34,16 @@ APPROVED_SOURCE = {
     "tests/test_product_boundary_guard.py",
     ".github/workflows/product-boundary.yml",
 }
+# Single independently inspectable executable-source admission; this is NOT a
+# wildcard scripts/ allowance. Future source bytes/base require new review.
+EXACT_REVIEWED_SCRIPT = "scripts/kingdom_index_source_audit.mjs"
+EXACT_REVIEWED_BASE = "3933f695ec48d4e2cab68e93194b745fab2e4b7d"
+EXACT_REVIEWED_SHA256 = "185defe7f93ea39bf1829b7a8eaf4a48f050b50d40ad1438c9be9ca468326a01"
+# Next dynamic route segments are deliberately NOT admitted by the general
+# path grammar. This is one reviewed, immutable route blob and one exact base.
+EXACT_REVIEWED_DYNAMIC_ROUTE = "app/api/media-assets/[kind]/[target]/route.ts"
+EXACT_REVIEWED_DYNAMIC_BASE = "753c3631a12483c70e1538ccc3b087839677ff9d"
+EXACT_REVIEWED_DYNAMIC_SHA256 = "bb1433119e955fd4e7bf9c6d2ecdcb64b0566ed01eef203d9fc224e1b5ba7243"
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -88,6 +99,49 @@ def authorize_source(raw: str) -> str:
         # restricted execution surfaces requiring a separate reviewed change.
         raise BoundaryHold("UNREVIEWED_EXECUTABLE_SURFACE")
     return str(path)
+
+
+def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
+    """No dynamic-route wildcard: admit one independently reviewable route."""
+    if raw == EXACT_REVIEWED_DYNAMIC_ROUTE:
+        if base != EXACT_REVIEWED_DYNAMIC_BASE:
+            raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_WRONG_BASE")
+        # Bound every component by this literal constant; never resolve a
+        # caller-provided path with arbitrary bracket or traversal segments.
+        parent = checkout
+        for part in ("app", "api", "media-assets", "[kind]", "[target]"):
+            parent = parent / part
+            if parent.is_symlink():
+                raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_SYMLINK_ANCESTOR")
+        path = parent / "route.ts"
+        st = path.lstat()
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or st.st_size <= 0 or st.st_size > 2_000_000:
+            raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_REGULAR_FILE_REQUIRED")
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(path, flags)
+        try:
+            live = os.fstat(descriptor)
+            if (live.st_dev, live.st_ino, live.st_size) != (st.st_dev, st.st_ino, st.st_size):
+                raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_INODE_CHANGED")
+            content = os.read(descriptor, 2_000_001)
+        finally:
+            os.close(descriptor)
+        if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_DYNAMIC_SHA256:
+            raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_EXACT_SHA_MISMATCH")
+        return raw
+    relative = relative_path(raw)
+    name = str(relative)
+    if name != EXACT_REVIEWED_SCRIPT:
+        return authorize_source(name)
+    if base != EXACT_REVIEWED_BASE:
+        raise BoundaryHold("REVIEWED_EXECUTABLE_WRONG_BASE")
+    path = checkout / relative
+    st = path.lstat()
+    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+        raise BoundaryHold("REVIEWED_EXECUTABLE_NOT_SINGLE_REGULAR_FILE")
+    if hashlib.sha256(path.read_bytes()).hexdigest() != EXACT_REVIEWED_SHA256:
+        raise BoundaryHold("REVIEWED_EXECUTABLE_EXACT_SHA_MISMATCH")
+    return name
 
 
 def authorize_output(raw: str, checkout: Path, product_root: Path) -> Path:
@@ -207,7 +261,7 @@ def changed_source(checkout: Path, base: str) -> list[str]:
                 base, "HEAD", "--")
     changes = names.splitlines() if names else []
     for name in changes:
-        authorize_source(name)
+        authorize_changed_source(checkout, base, name)
         mode = git(checkout, "ls-files", "--stage", "--", name)
         if mode.startswith("120000 "):
             raise BoundaryHold("SYMLINK_SOURCE_CHANGE")

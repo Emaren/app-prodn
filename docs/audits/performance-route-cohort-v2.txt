@@ -43,6 +43,7 @@
 /kingdom-recovery
 /kingdom-sensors
 /kingdom-systems
+/kingdom-traders
 /kingdom-tests
 /kingdom-treasury
 /kingdom-forge

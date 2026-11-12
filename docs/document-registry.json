@@ -1398,9 +1398,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-11-11",
+      "reviewed_at": "2026-11-12",
       "sensitivity": "internal",
-      "sha256": "fdfd839a06aab3aead581122bc4260f4b3a7b86cf7f8e9951c6d883826b619db",
+      "sha256": "e4240754732c9fe42d0a8c8bcdb18d7b2f435f077a7b56b32195bc1e6face3e8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
