@@ -21,6 +21,7 @@ import re
 import stat
 import subprocess
 import sys
+import time
 
 V22 = Path("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py")
 V22_SHA = "c6e633538fc17dad6fe887452516cb2ba1095855a0aab6f4bdda47f5985f6edc"
@@ -127,6 +128,27 @@ def load_v22():
          "ORIGINAL_NFT_SCOPE_DRIFT")
     return module
 
+def read_protected_after_c03_observer_completion(reader, pause=time.sleep):
+    """Retry only genuine *active* C03 observer, never certify it while active.
+
+    The original root-reviewed C03 identity guard explicitly permits a new
+    observation after its read-only oneshot completes. One hourly timer can
+    start in the same second as Steam's minute timer. Re-run the unmodified
+    complete protected observer every attempt; never reuse its old result.
+    Five attempts/at most four bounded 0.75s waits. All other errors HOLD.
+    """
+    global CHECKPOINT
+    for attempt in range(5):
+        try:
+            return reader()
+        except RuntimeError as exc:
+            if str(exc) != "C03_OBSERVER_TEMPORARILY_ACTIVE" or attempt == 4:
+                raise
+            CHECKPOINT = "C03_OBSERVER_CLEAN_COMPLETION_RETRY"
+            pause(0.75)
+    raise AssertionError("unreachable")
+
+
 def recover_verified_lease_expiry_once(m, original, validated, observed,
                                        protected_before, web_pid, nft_shape):
     """Close only a validated-IP expiry race between pre/post nft observations.
@@ -147,7 +169,8 @@ def recover_verified_lease_expiry_once(m, original, validated, observed,
          "STEAM_RETRY_COMMAND_SCOPE")
     need(validate_current_web()[0] == web_pid,
          "STEAM_RETRY_WEB_IDENTITY_CHANGED")
-    need(m.production_protected() == protected_before
+    need(read_protected_after_c03_observer_completion(
+        m.production_protected) == protected_before
          and m.production_nft_shape() == nft_shape,
          "STEAM_RETRY_PROTECTED_BASELINE_CHANGED")
     CHECKPOINT = "EXPIRED_VERIFIED_STEAM_LEASE_NFT_ADD"
@@ -173,10 +196,11 @@ def only_steam_refresh():
         global CHECKPOINT
         CHECKPOINT = "PROTECTED_FINANCIAL_SNAPSHOT"
         # Original immutable sources enforce all finance source/role/NFT masks.
-        _, m, financial_snapshot = v22.native_snapshot()
+        _, m, financial_snapshot = read_protected_after_c03_observer_completion(
+            v22.native_snapshot)
         need(financial_snapshot == v22.FIN_SNAPSHOT, "PROTECTED_FINANCIAL_SNAPSHOT")
         need(m.production_nft_shape() == v22.NFT_SHAPE, "NFT_FIREWALL_SHAPE_DRIFT")
-        before = m.production_protected()
+        before = read_protected_after_c03_observer_completion(m.production_protected)
         CHECKPOINT = "STEAM_TLS_DESTINATION_VALIDATION"
         validated = m.production_steam_dns_diversity(m.production_steam_addresses())
         CHECKPOINT = "STEAM_NFT_LEASE_OBSERVATION"
@@ -187,7 +211,8 @@ def only_steam_refresh():
              "STEAM_NFT_COMMANDS_UNBOUNDED")
         need(validate_current_web()[0] == before_pid,
              "WEB_RESTART_DURING_STEAM_REFRESH")
-        need(m.production_protected() == before
+        need(read_protected_after_c03_observer_completion(
+            m.production_protected) == before
              and m.production_nft_shape() == v22.NFT_SHAPE,
              "PROTECTED_BASELINE_CHANGED_BEFORE_STEAM_NFT")
         CHECKPOINT = "STEAM_ONLY_NFT_WRITE"
@@ -201,7 +226,8 @@ def only_steam_refresh():
         need(set(validated).issubset(after["steam4"] | after["steam6"]),
              "STEAM_EGRESS_LEASE_NOT_INSTALLED")
         need(m.production_nft_shape() == v22.NFT_SHAPE
-             and m.production_protected() == before,
+             and read_protected_after_c03_observer_completion(
+                 m.production_protected) == before,
              "PROTECTED_BASELINE_CHANGED_AFTER_STEAM_NFT")
         validate_current_web()
         print(json.dumps({
