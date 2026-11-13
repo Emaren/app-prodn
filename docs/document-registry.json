@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3b52a0951403c75bfba598680a5f8f5d184ed30c95b0c16e8809047c566d1011",
+      "sha256": "d5b50169e1cad984e39961e4d018b803e5d356db40eb7096b50581576e7204af",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3261,8 +3261,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/factory-v1-visual-console-20261112",
-    "commit": "e7bdd312666f34695f455bab146b1923b68c9e74"
+    "branch": "session-b/factory-release-loop-canary-20261113",
+    "commit": "8c28abea60cf057e927862aea8dad889e63faf31"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

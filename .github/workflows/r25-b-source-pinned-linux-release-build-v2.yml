@@ -3,6 +3,18 @@ name: Session B isolated Linux x86_64 Node22 release artifact build v2
 on:
   pull_request:
     paths:
+      # Every ordinary PRODUCT UI change must produce a source-pinned Linux candidate.
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "public/**"
+      - "styles/**"
+      - "pages/**"
+      - "prisma/**"
+      - "package.json"
+      - "yarn.lock"
+      - "next.config.*"
+      - "tsconfig.json"
       - ".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml"
       - "scripts/release/r25_b_c_dev_to_linux_release_contract_v2.py"
       - "scripts/release/r25_b_linux_release_receipt_emit_v2.py"
