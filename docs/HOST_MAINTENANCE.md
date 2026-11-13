@@ -145,11 +145,14 @@ Do not begin package or reboot work while any of these are true:
   is active;
 - source/runtime is not certified or the production checkout has unexplained
   changes;
-- the required W1-specific maintenance admission is absent; under the current
-  C04 quarantine 8092–8095 must have **zero listeners**, and the four
-  bet-reconciliation/staking-reward timer/service units and both legacy
-  settlement services must stay **masked and inactive**. Never unmask financial
-  units to meet the historical one-listener-per-port W1 condition;
+- the required W1-specific maintenance admission is absent; under C04,
+  8092–8095 must have **zero listeners** and all six named financial units
+  must stay **masked**. The two settlement services and two quarantined
+  reconciliation/reward services remain **inactive with PID0**. The two
+  masked timers retain the accepted **failed(resources)** state with no next
+  execution scheduled; neither timer is required to show inactive. Never
+  reset-failed, start or unmask financial units to satisfy the historical
+  one-listener-per-port W1 condition;
 - database backup or migration truth is unknown for a schema-affecting change;
 - root or mounted-volume health suggests the maintenance itself may exhaust
   storage;
@@ -282,9 +285,11 @@ Immediately before reboot:
    authorization exists; current C04 quarantine alone is **not** reboot approval;
 2. record public HTTPS, Nginx upstream, protected 3032 and preserved 3030/3033
    internal web health (plus 3330 API where applicable);
-3. record **zero listeners on 8092–8095** and masks/inactivity for both legacy
-   settlement services and all four legacy financial timer/service units;
-   the historical 8092/8093 one-listener prerequisite applies only after a
+3. record **zero listeners on 8092–8095** and all **six financial unit
+   masks**: both settlement services and both quarantined reconciliation/reward
+   services must remain inactive/PID0; both masked timers must retain their
+   recorded failed(resources), no active trigger and no next scheduled elapse.
+   The historical 8092/8093 one-listener prerequisite applies only after a
    separate W1 authorization and is **not** a reason to unmask today;
 4. record protected `aoe2hdbets-web-prod.service` 3032 PID/restarts, the
    active source SHA, Next `BUILD_ID`, build version, approved release receipt
@@ -307,7 +312,8 @@ systemctl is-active aoe2war-steam-egress-refresh.timer
 systemctl is-active nginx.service
 systemctl show -p MainPID -p NRestarts -p FragmentPath aoe2hdbets-web-prod.service
 systemctl cat aoe2hdbets-web-prod.service
-systemctl show -p LoadState -p UnitFileState -p ActiveState \
+systemctl show -p LoadState -p UnitFileState -p ActiveState -p Result \
+  -p MainPID -p NextElapseUSecRealtime -p NextElapseUSecMonotonic \
   aoe2hdbets-bet-stake-reconcile.timer aoe2hdbets-bet-stake-reconcile.service \
   aoe2hdbets-staking-rewards.timer aoe2hdbets-staking-rewards.service \
   wolochain-mainnet-settlement.service wolochain-founder-rewards-settlement.service
@@ -317,10 +323,17 @@ aoe2war audit
 aoe2war doctor
 ```
 
-Fail closed unless **all six named financial units remain masked/inactive**
-and 8092–8095 retain **zero listeners**, matching the current dated C04
-quarantine receipts; do not start/restart/unmask financial units for this
-check. Separately prove 3032 internal HTTP and public HTTPS/PWA through
+Fail closed unless **all six named financial units remain persistently
+masked**, both settlement services and both newly quarantined financial
+services remain **inactive/PID0**, and both masked financial timers retain
+their accepted **failed(resources)** state with no next execution time,
+active trigger or process. Also require **zero listeners on 8092–8095**,
+matching the dated C04 quarantine receipts. Expected masked-timer
+failed(resources) is not a reason to reset-failed, start, restart or unmask
+financial units, nor is it a blanket monitor PASS without the receipt.
+The two receipt-pinned failed timers may remain visible in
+`systemctl --failed`; stop on **any new or unaccounted-for** failed unit.
+Separately prove 3032 internal HTTP and public HTTPS/PWA through
 Nginx's **3032 upstream**, matching the active 3032 service PID and release
 root's source SHA, `BUILD_ID`, build version and source-pinned Steam
 helper to the **approved release receipt**. Verify Steam timer's latest
@@ -345,8 +358,10 @@ Maintenance is complete only when:
 - the active 3032 source SHA, `BUILD_ID`, build version, Steam helper,
   release receipt and preserved 3030/3033 rollback/emergency identities
   did not drift;
-- current C04 financial masks/inactivity and zero 8092–8095 listeners
-  are unchanged, with no attempt to meet historical active Wolo conditions;
+- all six C04 financial masks, four inactive/PID0 financial services,
+  two expected masked/failed(resources) timers with no scheduled execution,
+  and zero 8092–8095 listeners are unchanged; no attempt was made to satisfy
+  historical active-Wolo prerequisites;
 - no new failed unit, capacity blocker, or permission drift remains;
 - `aoe2war audit` has no P0/P1 finding and Doctor has no blocker;
 - outputs, deviations, rollback readiness, and any remaining warning are
