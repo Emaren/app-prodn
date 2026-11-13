@@ -39,6 +39,10 @@ APPROVED_SOURCE = {
 EXACT_REVIEWED_SCRIPT = "scripts/kingdom_index_source_audit.mjs"
 EXACT_REVIEWED_BASE = "3933f695ec48d4e2cab68e93194b745fab2e4b7d"
 EXACT_REVIEWED_SHA256 = "185defe7f93ea39bf1829b7a8eaf4a48f050b50d40ad1438c9be9ca468326a01"
+# Existing source history stays admitted ONLY at its former exact base/hash.
+# Factory V1 adds one source-reviewed inventory entry, no script wildcard.
+EXACT_REVIEWED_FACTORY_BASE = "9f7b56f536ba51b4678ac43baebfae140ada6479"
+EXACT_REVIEWED_FACTORY_SHA256 = "bb613ddbd9203f5ad5f2f19be8521db2dc64e03e36e7e4872da0f2b01c1beab8"
 # Next dynamic route segments are deliberately NOT admitted by the general
 # path grammar. This is one reviewed, immutable route blob and one exact base.
 EXACT_REVIEWED_DYNAMIC_ROUTE = "app/api/media-assets/[kind]/[target]/route.ts"
@@ -133,13 +137,25 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
     name = str(relative)
     if name != EXACT_REVIEWED_SCRIPT:
         return authorize_source(name)
-    if base != EXACT_REVIEWED_BASE:
+    if base == EXACT_REVIEWED_BASE:
+        expected_sha = EXACT_REVIEWED_SHA256
+    elif base == EXACT_REVIEWED_FACTORY_BASE:
+        expected_sha = EXACT_REVIEWED_FACTORY_SHA256
+    else:
         raise BoundaryHold("REVIEWED_EXECUTABLE_WRONG_BASE")
     path = checkout / relative
     st = path.lstat()
-    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or st.st_size < 1 or st.st_size > 500_000:
         raise BoundaryHold("REVIEWED_EXECUTABLE_NOT_SINGLE_REGULAR_FILE")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != EXACT_REVIEWED_SHA256:
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        live = os.fstat(descriptor)
+        if (live.st_dev, live.st_ino, live.st_size) != (st.st_dev, st.st_ino, st.st_size):
+            raise BoundaryHold("REVIEWED_EXECUTABLE_CHANGED_INODE")
+        content = os.read(descriptor, 500_001)
+    finally:
+        os.close(descriptor)
+    if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != expected_sha:
         raise BoundaryHold("REVIEWED_EXECUTABLE_EXACT_SHA_MISMATCH")
     return name
 

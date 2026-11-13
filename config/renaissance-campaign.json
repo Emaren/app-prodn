@@ -206,6 +206,7 @@
         "/realm",
         "/kingdom",
         "/kingdom-traders",
+        "/factory",
         "/admin",
         "/admin/translations",
         "/offline",
