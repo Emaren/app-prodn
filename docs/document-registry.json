@@ -455,9 +455,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-31",
       "sensitivity": "internal",
-      "sha256": "358d990355e1050a36699ac3c9fe6b8f819b9fb480f1434878f913be01775897",
+      "sha256": "69a6562dabe733c24b3a183406dabed56805982895a10624b9854f9dbf5a51db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d9ca637661976cb43ca68de7ae0cf423d03e66efa15591c69eb4d60dbe07361e",
+      "sha256": "44be4dadd9bb36f70180562bd2438d83fcee878ad71c169e0d6e06f63f843e87",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1833,9 +1833,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SCHEDULED_MATCH_SETTLEMENTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-31",
       "sensitivity": "restricted",
-      "sha256": "58a36ec555e63af97b1bab873ef3415198f564feebd414ee22fcc47c001fffa1",
+      "sha256": "10f308c3607477deec8bea42c35fabc796a91eab0fd95bee54d3ef6d09b64997",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2042,9 +2042,9 @@
       "owner": "aoe2war-web",
       "path": "docs/TELEVISION_WOLO.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-31",
       "sensitivity": "internal",
-      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "sha256": "5ee83b5a678ead8603841cc19e680e6c5e799efe6d31ef8e7d9095d62cd9004a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2441,8 +2441,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "repair/g-r10-native-fd200-final-docs-20261030",
-    "commit": "d1d4b30dd3a8a0ba95ea876c7c67a13edce27e0b"
+    "branch": "review/d-r16-native-producer-inbox-20261030",
+    "commit": "88fe48d19ee684173fa1ed4a18bcfd51a85c10b8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

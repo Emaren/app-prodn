@@ -1,0 +1,93 @@
+AOE2WAR R16 SIX NATIVE PRODUCER INTAKE -- INSTALLATION CONTRACT
+SOURCE ONLY. F controller #1042 exact 77b27d643aeb8831f9298ec70d010c7ce59e28ea.
+W1_SAFE exact 95883d4a285d3ff2ddc6a84e1c3946621f0431b9.
+Frozen original W1 b46a51f1592c9f296839924ae55e722618b10d35 DENIED.
+
+SCOPE: root-protected intake of REAL EXTERNALLY SIGNED six-class receipts.
+NO signatures generated, no private keys read/stored, no writer/DB calls,
+no root installation here, no release control or fabricated HEALTHY.
+F existing native issuer remains independently authoritative.
+
+C ROOT INSTALL PROVENANCE
+  Pin exact reviewed SHA256 for source scripts/aoe2_solo_website_producer_intake.py
+  when copying to root UID0 mode0755 regular executable
+  /usr/local/libexec/aoe2war/solo-v1-producer-intake.
+  Root-owned no-group-writable ancestor, no symlink, python3 -I shebang.
+  C must independently review final manifest, source modules, issuer code,
+  two distinct SSH forced-command roots, allowed root ops and rollback.
+  Owner separately approves exact installation with domain-signed RSA packet.
+  No root copy or activation is authorized by this document.
+  The intake does not implement a new root SSH forced command/installer.
+
+SIX REAL INDEPENDENT PRODUCERS, NOT SIX ROOT-SIGNED TEST FIXTURES
+  F canonical trust at /etc/aoe2war/solo-owner-website-v1/trusted-producers.json
+  exactly doctor,recovery,finance,host,source,stage, six unique Ed25519 SPKI
+  public hashes and absolute root-owned reviewed key paths.
+  F canonical aoe2_solo_website_producer_receipts.verify_all() verifies domain
+  AOE2WAR.SOLO_WEBSITE.NATIVE_PRODUCER_RECEIPT.V1 (newline terminated) over
+  canonical compact sorted ASCII JSON seven-field payload:
+  producer,candidate_sha,attempt_id,phase,host,observed_at,content_sha256.
+  Signatures generated independently in external authority domains only.
+  This intake invokes F verifier, not an alternative signature algorithm.
+  Actual signer enrollment requires C/B/E independent origin and private-key
+  custody review; six distinct public keys by itself is NOT independence.
+
+ROOT-SEALED SOURCE CONTRACT
+  Input root UID0 mode0600 six per-class exact JSON originals:
+    /var/lib/aoe2war-solo-website-v1/native-producer-inbox/
+       <64lowerhex attempt>/<PHASE>/<doctor|recovery|finance|host|source|stage>.json
+  An independently approved C ingress process must populate files BEFORE
+  the intake runs; the tool does not accept arbitrary user files or directories.
+  All ancestors root-owned and no group/other write, no symlinks/O_NOFOLLOW.
+  Source dev/inode/ctime/mtime/size reread before/after; input 1..262144 bytes.
+  Exact envelope: schema aoe2war.solo.native-issuer-input.v1, class, section,
+  receipt {payload: seven fields above,signature_base64: real Ed25519 bytes}.
+  All six use identical observed_at 0..120 seconds old, exact W1_SAFE source,
+  phase/attempt/host. Host signature hashes only mount; mount.rollback_sha256
+  must hash canonical included rollback. Finance/source/stage/recovery real
+  sections are checked AGAIN by F issuer after receipt delivery.
+
+  verify: read-only, all six real cryptographic signatures or HOLD.
+  seal: same checks FIRST, then root-only O_EXCL create new attempt/phase slot,
+  six mode0600 original signed raw files, fsync each, fsync slot and parent:
+    /var/lib/aoe2war-solo-website-v1/native-admission/<attempt>/<PHASE>/
+  No overwrite or replay. Partial crash leaves permanent HOLD (no auto-delete).
+  Output SIGNED_PRODUCER_INPUTS_SEALED_NOT_ADMITTED is never a GO, and never
+  bypasses installed F issuer original FD200 and owner RSA phase consent.
+  C must independently approve any use of seal; NEVER run on live HEL1 based
+  only on source CI or this document.
+
+OWNERS AND PHYSICAL INPUTS
+  doctor: real independently signed Doctor p0=0,p1=0, no manufactured status.
+  recovery: E six REAL independently restored HEL1 classes:
+    APP_DB, TRAFFIC_SQLITE_WAL, WOLO_CONSENSUS_FINANCE, LOOP4_FINANCIAL,
+    WATCHER_REPLAY_MEDIA, RELEASE_ROLLBACK_CONFIG; source+Intel ciphertext
+    readback+third failure-domain restore, signed trust chain. CURRENT 0/6.
+    A returned M1 media video is NOT HEL1 independent recovery.
+  finance: B 25 required systemd services/timers plus ALL extra units,
+    idle oneshot MainPID 0 and no fictional process, real 8092/8093,
+    cron/at, proc cgroups, DB, non-systemd ingress and GET/HEAD/prewarm;
+    real unchanged balances/liabilities/pending/UNKNOWN.
+  host: C HEL1 actual mount, source+BUILD_ID, original release.lock,
+    rollback, current statvfs; original policy free>=30GiB,
+    effective<=88%, Finish<92%, alternative policy never silently inferred.
+  source: B REAL reviewed signed W1_SAFE call-site-level GET/HEAD/prewarm DAG,
+    actual sinks; no read-to-finance writer reachability, immutable SHA;
+    original unsafe W1 never admitted.
+  stage: F original root-protected durable stage and before/after phase receipts.
+
+CRITICAL REMAINING F/C OPERATIONAL PRE-ISSUE DEFECT
+  Root_phase.issue PRE_STAGE chooses random attempt then immediately calls
+  audit BEFORE returning the attempt. External producer receipts MUST include
+  that SAME attempt, so six independent signers currently cannot prepare the
+  inbox before audit. Fresh signatures have <=120 seconds.
+  F/C must design an original-FD200-preserving, one-attempt, bounded
+  pre-announced intent under authenticated root command session; independent
+  producer requests, immutable input, expiration, anti-replay and owner RSA
+  consent. Never predict attempts, synthesize signatures, reacquire release
+  lock, relax 120s window, or weaken phase binding.
+  This module intentionally does not touch F controller, nonce journal,
+  host SSH forced commands, F/D issuer or producer private keys.
+
+No new native root install, money movement, service restart, deployment,
+backup deletion, root key material or financial read wakeup authorized.

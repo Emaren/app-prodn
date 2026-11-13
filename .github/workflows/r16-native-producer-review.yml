@@ -1,0 +1,38 @@
+name: R16 Native Producer Intake Source Review
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/aoe2_solo_website_producer_intake.py'
+      - 'tests/test_solo_native_producer_intake.py'
+      - 'deploy/solo-native-audit/R16_PRODUCER_INTAKE_CONTRACT.txt'
+      - '.github/workflows/r16-native-producer-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-producer-scope:
+    name: Native producer receipt intake and DocsV2
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Compile producer source and synthetic adverse tests
+        run: python3 -m py_compile scripts/aoe2_solo_website_producer_intake.py tests/test_solo_native_producer_intake.py
+      - name: Execute scoped native producer unit contracts
+        run: python3 -m unittest discover -s tests -p 'test_solo_native_producer_intake.py' -v
+      - name: Independently verify canonical documentation baseline
+        run: |
+          python3 scripts/docs_v2_check.py || {
+            echo "HOLD: DOCSV2_GENERATED_DIFF_DIAGNOSTIC"
+            python3 scripts/docs_v2_check.py --write
+            git diff -- docs/DOCUMENTATION_CONTROL_PLANE.md docs/document-registry.json | head -160
+            exit 1
+          }
