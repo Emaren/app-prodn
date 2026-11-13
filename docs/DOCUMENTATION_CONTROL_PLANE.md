@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/c02-native-strict-approval-fields-20261109` at `8c08e7cb0ab7bc1353a5cc8471ae6a86ccdae5cc`
+Implementation baseline: `session-b/c02-native-pg16-14th-contract-20261109` at `08eb1865a3ddfad386978e7c2d83059f925e49a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **105**
+- Authoritative repository documents: **106**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,13 +37,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 62
-- `runbook`: 24
+- `runbook`: 25
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 81
-- `draft`: 8
+- `draft`: 9
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -155,6 +155,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
+| [C02 exact 14th Satchel migration and durable original-operation journal isolated acceptance](release/SESSION_B_C02_NATIVE_PG16_14TH_EXACT_20261109.md) | `runbook` | `draft` | `disposable PG16 noncrediting acceptance; production DDL prohibited` |
 | [Prisma Schema and Migration Reference](../prisma/README.md) | `reference` | `active` | `schema-reference` |
 
 ## Canonical commands

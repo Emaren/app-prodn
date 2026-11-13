@@ -711,7 +711,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3fdbe193f884110af1dd756303b92131bdea294aa3cafbc4ae54efc74e951122",
+      "sha256": "72f49e27383e2ca4eabfc500ee2ae9ab935b31106dea0c987ec74d0306d28782",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2135,9 +2135,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "internal",
-      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "sha256": "df4eeea3961d4602cb9ae95c5050cd5c67ec4a7c4dec22017e83473665e065df",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2204,9 +2204,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-11-10",
       "sensitivity": "restricted",
-      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
+      "sha256": "2a74f6f72414cfb32558bfe8bf84135a36f5b07868fd91c746f6a98d4bd32a3e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2397,6 +2397,28 @@
     },
     {
       "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "disposable PG16 noncrediting acceptance; production DDL prohibited",
+      "id": "aoe2war.app-prodn.session-b-c02-native-pg16-14th-exact-20261109",
+      "owner": "aoe2war-web",
+      "path": "docs/release/SESSION_B_C02_NATIVE_PG16_14TH_EXACT_20261109.md",
+      "review_interval_days": 7,
+      "reviewed_at": "2026-11-09",
+      "sensitivity": "restricted",
+      "sha256": "a8d4c3b101d4f0ae274318723e8b1be63d7b394d458b9abd7c8c208a9c00b1b8",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "C02 exact 14th Satchel migration and durable original-operation journal isolated acceptance",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -2420,8 +2442,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/c02-native-strict-approval-fields-20261109",
-    "commit": "8c08e7cb0ab7bc1353a5cc8471ae6a86ccdae5cc"
+    "branch": "session-b/c02-native-pg16-14th-contract-20261109",
+    "commit": "08eb1865a3ddfad386978e7c2d83059f925e49a3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
