@@ -1,0 +1,59 @@
+AOE2WAR PRODUCT — R1 ACCEPTED BASELINE (historical, 2026-11-13 UTC)
+
+Authority: https://github.com/Emaren/app-prodn/pull/1350#issuecomment-6865705731
+Coordination: https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6865731974
+North Star: https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6865351173
+
+PR1350 merged as 74f3f3f2b640967d6b32065f1806c713d1fd24d8.
+The independently built and physically accepted source deliberately remains
+785ebb5066b5c4f4c33241cb77663f4dac79a650, tree 4f3c996fae8c0354b14cb9eb2f323d3542516e3c.
+BUILD_ID T5PhcksVebUQn1sGocrj7. Do not rebuild/redownload/redeploy R1 to repeat proof.
+Existing restricted 3032 service aoe2hdbets-web-prod.service, zero restarts.
+Previous source b101efb38868c00e3592a873491d8ce36ee43038,
+BUILD_ID s09mYXhW7UPH9Ulh71g4z. Both versions serve /factory HTTP200.
+
+Exact GitHub run43506023373, archive artifact14076322460, 615264241 bytes,
+ZIP SHA256 a07a26269d108587df1c3ae6c0ab6b4f5689af79767a5dc6a64a485809b26dba.
+Independent verifier artifact14076652092; receipt SHA256
+ff134606b48951d7b3bbc9801e14f43d54c49160b40902d37ef0b0c831a3727b.
+Runtime616534741 bytes, SHA256
+876f4f2023b324698bce8219905a282bec3c47d8747d48169ac7bd9951394753,
+45168 per-member verified entries (45170 total archive entries).
+Eight exact-head workflows passed. No financial authority was conferred.
+
+Current V3 controller bytes physically accepted by THIS new-source R1 cycle:
+771ebd5bc1164f75f4466cdc0a05a608ffc25671fccb12e05ebf321c56e30452.
+Root manifest785ebb5066b5-run-43506023373.json SHA256
+9b0734cac4077764634a4a0427ad82eb56488f80efa56003fccacb5c4ca8d753.
+The older R2 document and its source-custody warning remain historical evidence;
+its statement that current V3 new-source staging is unproven was superseded by R1.
+
+Physical sequence:
+21:33:21-21:33:41 stage (~20s), 21:34:14-21:34:22 activate (~8s).
+21:34:46 first public HTTPS exact candidate source/BUILD_ID proof.
+21:35:18 signed-in /wolo showed real wolo-1 height2967803, Node live.
+21:36:28.696791 journal rolled_back; previous public identity proved21:40:48;
+21:41:18 browser returned to old height0/Standby. Rollback duration UNKNOWN.
+21:41:32-21:41:41 reactivate (~9s), public candidate proof21:42:03;
+21:42:19 signed-in height2967889/Advancing/age5s/Node live.
+
+Observed timings, never interchangeable:
+- First observed engineering clock20:42:19 -> first public candidate21:34:46:
+  52m27s. Exact user-message/request receipt UNKNOWN.
+- Same observed clock -> final public reactivated candidate21:42:03:59m44s.
+  This is the observed engineering benchmark, not exact idea-to-production.
+- Linux builder7m29s, pure build4m29s, independent verifier31s.
+- Mac artifact acquisition+verification20m50s, including verifier receipt collision;
+  pure download endpoint time UNKNOWN. Mac->HEL1 runtime transfer6m09s.
+- Root manifest6s; rollback exact command start/duration UNKNOWN.
+- R2 after-artifact physical cycle50.563s remains a separate earlier sample,
+  under its own controller digest, not a source-to-production measurement.
+
+Protected postflight: original3030 fallback200, emergency3033 and PAPER intact;
+protected PIDs2625090/779129/4136606/1009 unchanged; six financial units masked;
+zero listeners8092-8095; financial/api/bets503; Steam refresh timer active.
+Read-only public RPC observation did not widen Steam egress or authorize finance.
+
+NEXT release P0 at R1 acceptance: root free5921902592 bytes, BELOW unchanged
+6GiB new-source staging guard. Recheck live capacity and retain current/immediate
+previous runtimes and evidence before the next stage. R1 itself remains accepted.

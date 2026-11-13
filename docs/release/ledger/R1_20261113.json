@@ -1,0 +1,39 @@
+{
+  "schema": "aoe2war.product.historical-benchmark.v1",
+  "id": "R1-20261113",
+  "sourceSha": "785ebb5066b5c4f4c33241cb77663f4dac79a650",
+  "buildId": "T5PhcksVebUQn1sGocrj7",
+  "provenanceUrl": "https://github.com/Emaren/app-prodn/pull/1350#issuecomment-6865705731",
+  "clock": {
+    "source": "historical-receipt",
+    "precisionMs": 1000,
+    "uncertaintyMs": null,
+    "monotonicNs": null
+  },
+  "actualUserRequestReceivedAt": null,
+  "firstObservedEngineeringAt": "2026-11-13T20:42:19Z",
+  "prOpenedAt": "2026-11-13T20:50:29Z",
+  "allExactHeadChecksCompleteAt": "2026-11-13T21:08:15Z",
+  "firstPublicCandidateSourceBuildProofAt": "2026-11-13T21:34:46Z",
+  "previousSourceBuildPublicProofAt": "2026-11-13T21:40:48Z",
+  "finalPublicCandidateSourceBuildProofAt": "2026-11-13T21:42:03Z",
+  "receiptSealedAt": null,
+  "observedEngineeringToFirstPublicProofMs": 3147000,
+  "observedEngineeringToFinalReactivatedPublicProofMs": 3584000,
+  "exactRequestToProductionMs": null,
+  "exactRequestToSealedAcceptanceMs": null,
+  "phases": {
+    "linuxBuilderMs": 449000,
+    "independentVerifierMs": 31000,
+    "macAcquisitionAndVerificationIncludingReceiptCollisionMs": 1250000,
+    "pureDownloadMs": null,
+    "macToHel1Ms": 369000,
+    "rootManifestMs": 6000,
+    "stageApproximateMs": 20000,
+    "activateApproximateMs": 8000,
+    "rollbackMs": null,
+    "reactivateApproximateMs": 9000
+  },
+  "qualification": "Observed engineering timestamps; not an instrumented user-message-to-production measurement.",
+  "financialAuthorized": false
+}
