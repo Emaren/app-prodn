@@ -109,6 +109,52 @@ def previous_from_journal(directory):
         raise RuntimeError("ROLLOUT_PREVIOUS_BUILD_INVALID")
     return old_source,old_build
 
+def accepted_root_seal(directory, source, build, summary_raw):
+    """The final green beacon needs an actual complete root-side seal.
+
+    Source and BUILD_ID headers alone prove the active website, not completion
+    of all private root receipts. Missing/mismatched seal never promotes T10.
+    """
+    try:
+        seal_path=directory/"release-seal-v1.json"
+        events_path=directory/"release-events-v1.jsonl"
+        if (not seal_path.exists() or not events_path.exists() or
+            seal_path.lstat().st_size>20000 or
+            events_path.lstat().st_size>8*1024*1024):
+            return False
+        seal=json.loads(root_file(seal_path,0o600))
+        events_raw=root_file(events_path,0o600)
+        if not events_raw.endswith(b"\n"):
+            return False
+        last=json.loads(events_raw.splitlines()[-1])
+        if (seal.get("schema")!="aoe2war.product.release-seal.v1" or
+            seal.get("sourceSha")!=source or seal.get("buildId")!=build or
+            seal.get("financialAuthorized") is not False or
+            seal.get("ledgerSha256")!=hashlib.sha256(events_raw).hexdigest() or
+            seal.get("summarySha256")!=hashlib.sha256(summary_raw).hexdigest() or
+            last.get("event")!="T10" or last.get("state")!="pass" or
+            last.get("sourceSha")!=source or
+            last.get("eventHash")!=seal.get("lastEventHash")):
+            return False
+        # Final receipt publication follows T10 and must include distinct
+        # exact-source public witnesses and PR/CI provenance, not a filename
+        # invented by the just-refreshed status publisher.
+        for name in (
+            "public-evidence-T7-v1.json", "public-evidence-T8-v1.json",
+            "public-evidence-T9-v1.json", "source-qualification-v1.json",
+            "pr-provenance-v1.json",
+        ):
+            proof=directory/name
+            if not proof.exists() or proof.lstat().st_size>20000:
+                return False
+            payload=json.loads(root_file(proof,0o600))
+            if (not isinstance(payload,dict) or
+                payload.get("sourceSha")!=source):
+                return False
+        return True
+    except (OSError,RuntimeError,ValueError,TypeError,IndexError,KeyError):
+        return False
+
 def public_release_summary(directory,source,build,now):
     """Project optional root-owned evidence; absent evidence stays UNKNOWN."""
     base={
@@ -123,9 +169,14 @@ def public_release_summary(directory,source,build,now):
     if not path.exists():return base
     try:
         if path.lstat().st_size>20000:return base
-        obj=json.loads(root_file(path,0o600))
+        summary_raw=root_file(path,0o600)
+        obj=json.loads(summary_raw)
         if (obj.get("schema")!=base["schema"] or obj.get("sourceSha")!=source or
             obj.get("buildId")!=build):return base
+        has_t10=any(isinstance(row,dict) and row.get("event")=="T10"
+                    and row.get("state")=="pass" for row in obj.get("stages",[]))
+        root_seal_pass=not has_t10 or accepted_root_seal(
+            directory,source,build,summary_raw)
         def timestamp(value):
             if not isinstance(value,str) or len(value)>40:return None
             parsed=dt.datetime.fromisoformat(value.replace("Z","+00:00"))
@@ -150,6 +201,8 @@ def public_release_summary(directory,source,build,now):
             if proof is not None and (not isinstance(proof,str) or
                 re.fullmatch(r"[a-f0-9]{64}",proof) is None):return base
             if state=="pass" and (not at or not proof):state="unknown"
+            if event=="T10" and state=="pass" and not root_seal_pass:
+                state="unknown"
             result.append({"event":event,"label":event,"state":state,"at":at,
                 "durationMs":number(row.get("durationMs")),"proofSha256":proof})
         url=obj.get("provenanceUrl")
@@ -159,7 +212,7 @@ def public_release_summary(directory,source,build,now):
         if start not in ("observed-engineering","declared-request","unknown"):start="unknown"
         base.update({"generatedAt":generated,"startKind":start,
             "firstVerifiedProductionMs":number(obj.get("firstVerifiedProductionMs")),
-            "finalAcceptedMs":number(obj.get("finalAcceptedMs")),
+            "finalAcceptedMs":number(obj.get("finalAcceptedMs")) if root_seal_pass else None,
             "clocksUncertaintyMs":number(obj.get("clocksUncertaintyMs")),
             "stages":result,"provenanceUrl":url})
         transfer=obj.get("transfer")

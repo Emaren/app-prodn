@@ -1,4 +1,6 @@
 import importlib.util
+import hashlib
+import tempfile
 import json
 from pathlib import Path
 import unittest
@@ -69,6 +71,51 @@ class FactoryPublicStatusTests(unittest.TestCase):
              patch.object(Path,"lstat",return_value=Metadata()), \
              patch.object(m,"root_file",return_value=json.dumps(obj).encode()):
             self.assertEqual(m.public_release_summary(Path("/fixture"),"f"*40,"new_build",NOW)["stages"][0]["state"],"unknown")
+    def test_t10_requires_completed_root_seal_and_exact_receipts(self):
+        obj=self.summary(("T8","T9","T10"))
+        obj["finalAcceptedMs"]=4000
+        raw=(json.dumps(obj)+"\n").encode()
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp)
+            (directory/"release-summary-v1.json").write_bytes(raw)
+            final={"event":"T10","state":"pass","sourceSha":"f"*40,
+                   "eventHash":"a"*64}
+            events=(json.dumps(final)+"\n").encode()
+            (directory/"release-events-v1.jsonl").write_bytes(events)
+            seal={"schema":"aoe2war.product.release-seal.v1",
+                  "sourceSha":"f"*40,"buildId":"new_build",
+                  "ledgerSha256":hashlib.sha256(events).hexdigest(),
+                  "summarySha256":hashlib.sha256(raw).hexdigest(),
+                  "lastEventHash":final["eventHash"],
+                  "financialAuthorized":False}
+            (directory/"release-seal-v1.json").write_text(json.dumps(seal))
+            def read_unprivileged_fixture(path,mode=None):
+                return path.read_bytes()
+            with patch.object(m,"root_file",side_effect=read_unprivileged_fixture):
+                # A T10 phase string in a locally generated summary is NOT
+                # evidence of a root-completed acceptance receipt.
+                incomplete=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                self.assertEqual(incomplete["stages"][-1]["state"],"unknown")
+                self.assertIsNone(incomplete["finalAcceptedMs"])
+                for name in (
+                    "public-evidence-T7-v1.json","public-evidence-T8-v1.json",
+                    "public-evidence-T9-v1.json","source-qualification-v1.json",
+                    "pr-provenance-v1.json",
+                ):
+                    (directory/name).write_text(json.dumps({"sourceSha":"f"*40}))
+                complete=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                self.assertEqual(complete["stages"][-1]["state"],"pass")
+                self.assertEqual(complete["finalAcceptedMs"],4000)
+                (directory/"release-seal-v1.json").write_text(
+                    json.dumps({**seal,"summarySha256":"0"*64}))
+                tampered=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                self.assertEqual(tampered["stages"][-1]["state"],"unknown")
+                self.assertIsNone(tampered["finalAcceptedMs"])
+                (directory/"release-seal-v1.json").write_text(json.dumps(seal))
+                (directory/"public-evidence-T9-v1.json").unlink()
+                missing=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                self.assertEqual(missing["stages"][-1]["state"],"unknown")
+
 
 if __name__=="__main__":
     unittest.main()
