@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b1a799569650d512c1b6c29b2fffb2e3b3c958b33b96249052a122ed3f77ca49",
+      "sha256": "2febcc819423f46d7bdd0f15d99926daf676c899f598515ea3ed49ca60052b6f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3262,7 +3262,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-b/steam-w1-fourunit-quarantine-requal-20261113",
-    "commit": "971eee2a1a432bf0bde3acc015fd2ce845bd5632"
+    "commit": "24353ffc91dc869acf4c25050bc66024dd721a12"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
