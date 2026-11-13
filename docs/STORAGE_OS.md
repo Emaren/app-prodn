@@ -8,12 +8,29 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-10-13"
+reviewed_at: "2026-11-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR Storage OS
+
+## Current C04/W2 capacity limitation — 2026-11-13 UTC
+
+The V1→V2 Wolo settlement handoff below is preserved as a
+**historical/future W1 plan**, not today's active storage procedure:
+B's [HEL1 read-only evidence](https://github.com/Emaren/app-prodn/pull/1343#issuecomment-6842562063) recorded
+the original Wolo settlement units masked/inactive and zero 8092–8095
+listeners. Its prerequisite of exactly one authenticated listener on
+8092 and 8093 is **unsatisfied under C04**, and no storage campaign,
+settlement restart or protected backup can be inferred from the older
+acceptance proof. At the same observation HEL1 root was approximately
+93% used with **11 GiB free**; this is a capacity measurement, **not**
+approval to clean, compress or reconfigure protected volumes. The
+existing `~/bin/aoe2war` launch path on the owner Mac still targets a
+historical mixed checkout; do **not** assume its commands inspect the
+canonical restricted UID650 source or auto-repoint the old CLI. Preserve
+live rollback generations, financial separation and owner permissions.
 
 ## Purpose
 
