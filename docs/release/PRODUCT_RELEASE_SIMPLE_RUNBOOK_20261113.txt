@@ -229,3 +229,15 @@ That is not guaranteed future headroom. Recheck available *blocks*, the next
 artifact transfer size, extraction peak, protected keep-set and off-host
 retention before each release. No automatic deletion of unique recovery
 material or activated financial components.
+
+
+10. EXACT REVIEWED DEPLOYMENT OS SCRIPT ADMISSION
+
+The existing PRODUCT boundary rejects new scripts/ by default. Four reviewed
+Deployment OS script paths are individually admitted ONLY at the exact
+canonical R1 base 74f3f3f2b640967d6b32065f1806c713d1fd24d8 and exact
+SHA256 bytes pinned in scripts/product_boundary_guard.py. There is NO
+scripts/* wildcard, no automatic authority to execute arbitrary shell tasks,
+no signed/root installation authority and no FINANCIAL permission. Future
+source bytes or base ancestry require a separate security review and tests.
+CI must pass the actual negative authorization gate; never force-green it.

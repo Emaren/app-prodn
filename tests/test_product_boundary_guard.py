@@ -135,6 +135,50 @@ class BoundaryTests(unittest.TestCase):
                     policy.EXACT_REVIEWED_DYNAMIC_ROUTE
                 )
 
+    def test_four_deployment_os_scripts_exact_base_hash_and_no_wildcard(self):
+        approved = policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE
+        self.assertEqual(len(approved), 4)
+        with tempfile.TemporaryDirectory() as tmp:
+            checkout = Path(tmp)
+            (checkout / "scripts").mkdir()
+            for name, digest in approved.items():
+                with self.subTest(name=name):
+                    self.denied_source(name)  # no ordinary scripts/ wildcard
+                    reviewed = GUARD.parent.parent / name
+                    target = checkout / name
+                    target.write_bytes(reviewed.read_bytes())
+                    self.assertEqual(
+                        __import__("hashlib").sha256(target.read_bytes()).hexdigest(),
+                        digest)
+                    self.assertEqual(
+                        policy.authorize_changed_source(
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name),
+                        name)
+                    with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
+                        policy.authorize_changed_source(checkout, "a"*40, name)
+                    target.write_bytes(target.read_bytes() + b"\x00")
+                    with self.assertRaisesRegex(policy.BoundaryHold, "EXACT_SHA_MISMATCH"):
+                        policy.authorize_changed_source(
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                    target.unlink()
+                    target.symlink_to(reviewed)
+                    with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
+                        policy.authorize_changed_source(
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                    target.unlink()
+                    target.write_bytes(reviewed.read_bytes())
+                    alias = checkout / ("alias-" + target.name)
+                    os.link(target, alias)
+                    with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
+                        policy.authorize_changed_source(
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                    alias.unlink()
+                    target.unlink()
+            with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_EXECUTABLE"):
+                policy.authorize_changed_source(
+                    checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE,
+                    "scripts/aoe2_product_unreviewed_future.py")
+
     def test_prior_nine_negative_cases(self):
         values = (
             "../FINANCIAL/never_write.txt",
