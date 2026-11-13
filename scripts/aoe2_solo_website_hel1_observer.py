@@ -162,7 +162,9 @@ def issued_root_snapshot(challenge):
                 h["free_bytes"] < 30 * 2**30 or
                 # Bounded natural writes are normal; excess drift triggers
                 # a new root-issued challenge, never synthetic sameness.
-                abs(d["free_bytes"]-h["free_bytes"]) > 64*2**20 or
+                # Match native issuer reconcile_live: 16 MiB, not the
+                # historical permissive 64 MiB observer tolerance.
+                abs(d["free_bytes"]-h["free_bytes"]) > 16*2**20 or
                 d["effective_used_pct"] > 88 or
                 d["finish_used_pct"] >= 92 or
                 abs(h.get("effective_used_pct",float("inf"))-
