@@ -14,6 +14,28 @@ sensitivity: "internal"
 ---
 # Manual Bet Stake Tickets
 
+## Later live quarantine receipt — 2026-11-13 09:53:35 UTC
+
+The **earlier 2026-11-13 observation** below that the legacy
+bet-stake reconciliation timer was enabled is **superseded** by the
+[owner-signed W1 physical containment receipt](https://github.com/Emaren/wolochain/issues/239#issuecomment-6849667181).
+At 09:53:35 UTC, the bet-stake reconciliation and staking rewards
+**timers AND services** were persistently masked via systemd control-plane
+links to \`/dev/null\`; services were inactive (PID 0), timers reported
+**masked/failed(resources)** with no finite scheduled expiry, all four
+manual start attempts were denied, and daemon-reload preserved the denial.
+The historical service definitions and evidence remain preserved.
+This is a **dated physical observation**, not an automatically refreshed
+live-health guarantee; recheck a fresh W1-authoritative receipt before
+claiming current containment.
+
+This closes the **two automatic financial timer execution paths only**.
+It does **not** revoke other legacy HTTP/SQL financial writer authority,
+close C03 or any other seven open W1 gates, admit reserves/custody, or
+permit funding (still **DENIED**). Re-enabling any unit requires a
+different owner-signed and independently approved financial-resume action.
+PRODUCT/Factory release operators cannot supply that authority.
+
 ## Current legacy timer write-capability warning — 2026-11-13 UTC
 
 Session A's [read-only live HEL1/HD authority review](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
