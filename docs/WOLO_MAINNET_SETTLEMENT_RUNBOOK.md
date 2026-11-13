@@ -15,6 +15,29 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## Current live legacy reward timer authority warning — 2026-11-13 UTC
+
+The disabled timer / \`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED\` statements
+farther below describe **historical repair checkpoints, not the current
+effective HEL1 runtime**. Session A's [current read-only W1 audit](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+observed \`aoe2hdbets-staking-rewards.timer\` **enabled and active**
+(daily 00:10 UTC), targeting original **3030** via authenticated POST
+\`/api/staking/rewards/run\`. The physically deployed
+\`lib/stakingExecution.ts\` sets
+\`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED=false\`; the HTTP route
+may invoke distribution, staking payout and treasury payout logic with
+HD database write authority. A recent no-payable-rewards result or a
+successful timer exit **does not prove the next execution cannot write**.
+
+C04's masked original Wolo settlement units and closed 8092–8095
+listeners do **not** fence these original 3030/HD effects. W1 owns
+any suspension, future resumption, financial SQL/ledger correction or
+payout authorization; W2 release engineering cannot grant that authority
+by website CI. Funding remains DENIED and financial gate closure
+remains separate. The historic transaction facts and old operating
+procedures below are retained for provenance; their current
+preconditions must be independently re-verified before use.
+
 ## October 16, 2026 — legacy claim name collisions must not select a random recipient
 
 The legacy admin Claim WOLO recovery path previously fetched up to 250

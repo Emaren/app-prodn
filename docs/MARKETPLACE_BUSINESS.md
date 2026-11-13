@@ -23,6 +23,26 @@ The original `app/market/page.tsx` is a protected presentation surface.
 Marketplace expansion is layered through imported components and dedicated
 routes rather than casually rewriting that page.
 
+## Current financial source-versus-production boundary — 2026-11-13 UTC
+
+Session A's [independent read-only financial-domain source findings](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+confirm that the **100 WOLO charter**, **1000 bps / 10% tax** and
+**100-WOLO invoice increments through 100,000** remain the current
+\`lib/marketplaceBusiness.ts\` **implementation constants**. The
+\`verifyMarketplaceBusinessPayment\` code checks wallet identity,
+recipient, amount, memo, transaction proof and reuse, but those checks
+are **not** an independent same-height finality or economic-ledger
+acceptance receipt. No present merchant payment, exclusive custody reserve,
+tax payment, liability closure, funded C05/C09 operation or live Marketplace
+charge has been admitted by this source review.
+
+The W1 financial gate record remains **2/9 closed (C04/C08)** and
+**seven OPEN**, with funding **DENIED**. Ordinary PRODUCT website and
+Factory source/build approval must **not** imply permission to move WOLO,
+alter financial SQL/grants or accept customer money. This annotation
+does not supersede the original October 13 historical contract review
+and does not renew its frontmatter review date.
+
 ## Canonical implementation
 
 Primary logic:

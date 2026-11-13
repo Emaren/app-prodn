@@ -14,6 +14,27 @@ sensitivity: "internal"
 ---
 # Manual Bet Stake Tickets
 
+## Current legacy timer write-capability warning — 2026-11-13 UTC
+
+Session A's [read-only live HEL1/HD authority review](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+confirms \`aoe2hdbets-bet-stake-reconcile.timer\` remains **enabled
+and active** approximately every five minutes, executing \`--apply\`
+against the original **3030** authenticated POST endpoint
+\`/api/bets/stake-reconciliation\`. This is **not** a metrics-only job:
+the current source invokes \`placePooledBetWager\` and
+\`commitBetStakeTicket\`, and the live original 3030 process uses
+a PostgreSQL role with HD bet/staking table write authority.
+A zero-candidate previous run, an idempotency design and exit status
+zero **do not prove future financial mutation is impossible**.
+
+C04 masks different Wolo settlement units; those masks do not
+quarantine this timer's 3030-to-HD writer path. W1, not PRODUCT C/B,
+owns any suspension decision and financial reconciliation/ledger or
+sequence acceptance. Keep the existing bounded source behavior below
+as its implementation contract, but do not call TIMER_RUNNING or
+LAST_EXIT_0 a financial-operation permit. Financial funding remains
+DENIED while seven gates remain OPEN.
+
 ## October 16, 2026 — bounded source contract review
 
 Reviewed the current `lib/betStakeTickets.ts`,
