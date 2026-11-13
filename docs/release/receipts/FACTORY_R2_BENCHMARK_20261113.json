@@ -1,0 +1,82 @@
+{
+  "activation_marker": {
+    "local": true,
+    "public_https": true,
+    "samples": 1
+  },
+  "build": "s09mYXhW7UPH9Ulh71g4z",
+  "completed_at": "2026-11-13T19:20:27.129Z",
+  "controller_sha256": "bf8289d8125631a88f1da63e19a693093055b4c50b3677d430744b0bef83373a",
+  "final_web_identity": {
+    "ActiveState": "active",
+    "MainPID": "2550758",
+    "WorkingDirectory": "/var/lib/aoe2war-web-prod-b101efb38868"
+  },
+  "finance_authorized": false,
+  "fresh_steam_callback_authenticated": false,
+  "github_run_id": 43488656565,
+  "manifest_sha256": "099b9ee91cf96f6c9ce1937a54929e89cb50bd49cfa6a46aea4377620f4e6866",
+  "new_web_identity": {
+    "ActiveState": "active",
+    "MainPID": "2550267",
+    "WorkingDirectory": "/var/lib/aoe2war-web-prod-b101efb38868"
+  },
+  "phase_source": "live_product_root",
+  "phases": [
+    {
+      "duration_seconds": 19.876,
+      "exit_code": 0,
+      "operation": "stage",
+      "started_at": "2026-11-13T19:19:36.567Z"
+    },
+    {
+      "duration_seconds": 9.012,
+      "exit_code": 0,
+      "operation": "activate",
+      "started_at": "2026-11-13T19:19:56.442Z"
+    },
+    {
+      "duration_seconds": 10.112,
+      "exit_code": 0,
+      "operation": "rollback",
+      "started_at": "2026-11-13T19:20:06.679Z"
+    },
+    {
+      "duration_seconds": 8.449,
+      "exit_code": 0,
+      "operation": "reactivate",
+      "started_at": "2026-11-13T19:20:17.389Z"
+    }
+  ],
+  "preflight": {
+    "old_marker": {
+      "local": false,
+      "public_https": false,
+      "samples": 1
+    },
+    "original_web_pid": "2490147"
+  },
+  "previous_build": "nBTNCwShjF-q4D3N3Axme",
+  "previous_source": "2a5544f855dca33240d335abd21793511617966e",
+  "reactivation_marker": {
+    "local": true,
+    "public_https": true,
+    "samples": 1
+  },
+  "restored_web_identity": {
+    "ActiveState": "active",
+    "MainPID": "2550567",
+    "WorkingDirectory": "/var/lib/aoe2war-web-prod-2a5544f855dc"
+  },
+  "result": "PASS_PHYSICAL_FACTORY_R2_ROUNDTRIP",
+  "rollback_marker": {
+    "local": false,
+    "public_https": false,
+    "samples": 1
+  },
+  "schema": "aoe2war.product.physical-release-benchmark.v1",
+  "source": "b101efb38868c00e3592a873491d8ce36ee43038",
+  "started_at": "2026-11-13T19:19:36.567Z",
+  "steam_egress_renewal": "pass_exit0",
+  "total_elapsed_seconds": 50.563
+}

@@ -1,0 +1,75 @@
+AOE2WAR PRODUCT FACTORY R2 — PHYSICAL RELEASE AND CURRENT CONTROLLER RECOVERY
+2026-11-13 UTC. PRODUCT-only. No FINANCIAL permits, funds, PostgreSQL mutation, chain reset, or new Next runtime.
+
+SOURCE OF TRUTH
+Factory R2 PR #1347 merged to canonical main (merge commit 27b8577af9e264943ab3267f3134c4232c7e0cfd).
+Release source: b101efb38868c00e3592a873491d8ce36ee43038
+GitHub Actions run: 43488656565; source builder, independent byte verifier, PRODUCT boundary,
+DocsV2 and remaining checked workflows SUCCESS on the exact PR head.
+BUILD_ID: s09mYXhW7UPH9Ulh71g4z
+Runtime archive SHA256: bd716ffb3003c73d14c63120307a3be95a3b62bd1b92be9d6a5689e7f5a5fef9
+Current verified runtime: /var/lib/aoe2war-web-prod-b101efb38868
+Previous verified runtime: /var/lib/aoe2war-web-prod-2a5544f855dc
+
+R2 FULL PHYSICAL FACTORY RELEASE BENCHMARK (root-owned historic receipt)
+Receipt: /var/lib/aoe2war-product-release-v1/b101efb38868/benchmark-v1.json
+Verified R2 marker: factory-20261113-loop-v2
+Marker absent before, present after new release, absent after rollback to previous Factory
+(which STILL returned HTTP 200), present after reactivation. Both local and public HTTPS.
+Stage:      19.876 seconds, exit0
+Activate:    9.012 seconds, exit0
+Rollback:   10.112 seconds, exit0
+Reactivate:  8.449 seconds, exit0
+TOTAL:      50.563 seconds, after the independently verified artifact was available on HEL1.
+This does not include GitHub queue/build/byte verification or artifact transfer duration.
+Live final release root journal: phase=live, exact source/build and unit SHA.
+Original 3030 fallback remained HTTP200, six financial units masked, ports8092–8095 closed,
+financial public API HTTP503, no new service or funded authority.
+
+IMPORTANT: SOURCE-CUSTODY DISCONTINUITY DURING FOLLOWUP
+The historical R2 benchmark records V3 controller SHA256
+bf8289d8125631a88f1da63e19a693093055b4c50b3677d430744b0bef83373a.
+That exact source is NOT the currently installed /root/aoe2war_product_release_controller_v3.py:
+a later review-source copy changed the file. Do NOT rewrite, relabel or silently treat the
+original benchmark as evidence for the current V3 bytes. Its historical receipt remains intact.
+Original exact bytes could not be located in present B owner-private staging.
+
+CURRENT V3 REQUALIFICATION — NEW PHYSICAL ROOT PROOF
+Current installed /root/aoe2war_product_release_controller_v3.py SHA256
+771ebd5bc1164f75f4466cdc0a05a608ffc25671fccb12e05ebf321c56e30452.
+10/10 isolated positive/negative rollback tests PASS.
+Separate real live R2 rollback 9.956 s + reactivation 12.186 s = 22.142 s.
+Actual old/new exact source and BUILD_ID verified; public HTTPS marker absent/present,
+same 3032 unit, Steam renewal success exit0, six masks and FIN port denials retained.
+New root-owned independent receipt:
+ /var/lib/aoe2war-product-release-v1/b101efb38868/source-requalified-current-v3-20261113.json
+Receipt SHA256:
+ aae6c3596e287bef115d5ec0bfbe4bc7cf6adb35bc31ce0c3b268b1bd116a32e
+This independently qualifies the CURRENT V3 for rollback/reactivation only, not another
+fully source-distinct stage+deploy cycle, and it does not repair the historical source loss.
+
+REUSABLE PRODUCT RELEASE ENGINE
+Live root source: /root/aoe2war_product_release_controller_v3.py
+Root manifest generator: /root/aoe2war_prepare_product_manifest_v2.py
+Steam HTTPS egress: /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py
+Public status observer: /usr/local/sbin/aoe2war_factory_public_status_v2.py
+Existing cron scheduler every two minutes, not extra systemd units.
+Source-provenance archive under docs/release/artifacts, same bytes as read from HEL1
+and owner B review custody. Financial gates C01-C09 remain independent.
+
+STILL NOT VERIFIED — DO NOT LABEL GREEN
+Fresh full human Steam OpenID callback, newly signed session and admin vs ordinary role.
+Single operator command from a source PR through artifact verification and activation.
+Automated fault-injection kill/restart/recovery across all journal phases.
+Long-term artifact retention and host disk headroom; root space ~6.5 GiB as inspected.
+Current V3 full new-build stage+activate is supported by source and isolated tests,
+but the actual physically exercised stage/activate belongs to historical V3 SHA bf828.
+No claim of flawless zero-human deployment or any funded release.
+
+NEXT RELEASE ACCEPTANCE
+New PRODUCT UI PR against canonical main -> exact Linux x86_64 Node22 builder and byte
+verification -> owner-root source-bound manifest -> same-slot V3 activation with
+automated exact preimage rollback on failed health -> public source marker + finance
+denials -> measured rollback/reattivation, if an acceptance release.
+Never overwrite active root controller source without staging separately and comparing
+the exact benchmarked SHA first. Preserve the previous runtime for rollback and 3030.

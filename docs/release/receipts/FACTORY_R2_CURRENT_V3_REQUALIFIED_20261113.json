@@ -1,0 +1,50 @@
+{
+  "at": "2026-11-13T19:47:40.864Z",
+  "build": "s09mYXhW7UPH9Ulh71g4z",
+  "current_controller_sha256": "771ebd5bc1164f75f4466cdc0a05a608ffc25671fccb12e05ebf321c56e30452",
+  "finance_authorized": false,
+  "manifest_sha256": "099b9ee91cf96f6c9ce1937a54929e89cb50bd49cfa6a46aea4377620f4e6866",
+  "new_funded_canary_authorized": false,
+  "observed_before": {
+    "at": "2026-11-13T19:47:16.249Z",
+    "build": "s09mYXhW7UPH9Ulh71g4z",
+    "marker_public_https": true,
+    "pid": "2550758",
+    "source": "b101efb38868c00e3592a873491d8ce36ee43038"
+  },
+  "observed_reactivated": {
+    "at": "2026-11-13T19:47:40.855Z",
+    "build": "s09mYXhW7UPH9Ulh71g4z",
+    "marker_public_https": true,
+    "pid": "2565989",
+    "source": "b101efb38868c00e3592a873491d8ce36ee43038"
+  },
+  "observed_rollback": {
+    "at": "2026-11-13T19:47:26.900Z",
+    "build": "nBTNCwShjF-q4D3N3Axme",
+    "marker_public_https": false,
+    "pid": "2565667",
+    "source": "2a5544f855dca33240d335abd21793511617966e"
+  },
+  "original_r2_benchmark_sha_still_historical": "bf8289d8125631a88f1da63e19a693093055b4c50b3677d430744b0bef83373a",
+  "previous_source": "2a5544f855dca33240d335abd21793511617966e",
+  "schema": "aoe2war.product.current-controller-v3-requalification.v1",
+  "source": "b101efb38868c00e3592a873491d8ce36ee43038",
+  "status": "PASS_PHYSICAL_ROLLBACK_AND_REACTIVATE_CURRENT_V3",
+  "steam_renewal": "success_exit0",
+  "steps": [
+    {
+      "duration_seconds": 9.956,
+      "exit_code": 0,
+      "operation": "rollback",
+      "started_at": "2026-11-13T19:47:16.249Z"
+    },
+    {
+      "duration_seconds": 12.186,
+      "exit_code": 0,
+      "operation": "reactivate",
+      "started_at": "2026-11-13T19:47:26.900Z"
+    }
+  ],
+  "total_elapsed_seconds": 22.142
+}
