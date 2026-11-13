@@ -283,7 +283,7 @@ export default function FactoryConsole() {
         <div className={css.heroIntro}>
           <div className={css.eyebrow}><Zap size={13} aria-hidden /> PUBLIC RELEASE OBSERVATORY <span> / SYSTEM 001</span></div>
           <h1>THE <span>WAR</span> FACTORY<span className={css.cursor}>_</span></h1>
-          <div className={css.tagline}>CODE <ChevronRight size={12} /> CONFIDENCE <ChevronRight size={12} /> LAUNCH</div>
+          <div className={css.tagline}>CODE <ChevronRight size={12} /> CONFIDENCE <ChevronRight size={12} /> LAUNCH <span data-release-trial="20261113-loop-01">· RELEASE TRIAL 01</span></div>
         </div>
         <div className={css.heroGrid}>
           <CoreDiagram status={feed} />
