@@ -15,6 +15,20 @@ sensitivity: "internal"
 
 # AoE2WAR Evidence Vault
 
+## Current C04 quarantine boundary — read-only observation, 2026-11-13 UTC
+
+The September 2026 schema-2 recovery receipts below are **historical
+source-bound restoration evidence**, not a claim that a November 2026
+post-writer-fence C06 capture or C07 same-ciphertext financial restore has
+been admitted. B's [independent HEL1 observation](https://github.com/Emaren/app-prodn/pull/1343#issuecomment-6842562063) at
+2026-11-13T03:02:26Z found both original Wolo settlement units **masked and
+inactive**, with **no listeners on 8092–8095**. The historical Wolo preflight,
+snapshot and restart steps below require the separately authorized future W1
+service/consensus prerequisites and are **not presently executable under
+C04 quarantine**. W1's financial backup/custody acceptance remains distinct;
+nothing in this document authorizes settlement restart, validator quiesce,
+secret-key handling, financial backup capture or C06/C07 closure.
+
 ## Current status
 
 The off-host Evidence Vault is **configured and evidence-verified**.

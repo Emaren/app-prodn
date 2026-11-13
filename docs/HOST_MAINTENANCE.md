@@ -15,6 +15,24 @@ sensitivity: "internal"
 
 # AoE2WAR Host Maintenance
 
+## Current protected host state — 2026-11-13 UTC
+
+B's [read-only HEL1 evidence](https://github.com/Emaren/app-prodn/pull/1343#issuecomment-6842562063) confirms
+the protected public website at **3032** served source
+`9f7b56f536ba51b4678ac43baebfae140ada6479` with no restarts,
+the original **3030** remains only a preserved legacy rollback (do not route
+the public there without its separate financial-risk proof), and Steam/Nginx
+must be qualified with any source-pinned release. The original Wolo
+settlement services remain **masked and inactive**, and ports **8092–8095
+have zero listeners** under the current C04 quarantine. Historical host
+package/reboot acceptance requiring **one verified 8092/8093 listener each**
+is therefore **NOT satisfied today** and must not be bypassed or
+misrepresented as healthy. Ordinary public website release has a separate
+nonfinancial 3032+Steam source/rollback protocol; it does not authorize
+protected host maintenance, restart or settlement. Fresh operator approval,
+recovery state, memory/headroom and W1 protected prerequisites are still
+required before any actual host package/reboot action.
+
 ## Scope and current posture
 
 This runbook owns explicitly approved VPS package and reboot maintenance. It is
