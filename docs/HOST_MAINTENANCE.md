@@ -118,11 +118,17 @@ of replacing a runner beneath an active transaction.
 
 At an idle seam, Finish validates the source runner with `bash -n`, copies it
 to a root-owned partial path, verifies the exact SHA-256, mode and ownership,
-then atomically replaces `/usr/local/sbin/aoe2war-maintenance-run`. Wolo
-must be active, have exactly one listener on both protected ports, keep the same
-PID and restart counter, and advance before and after the replacement. Every
-NOOP or UPDATED reconciliation seals an immutable root-owned receipt under the
-AoE2WAR control store.
+then atomically replaces `/usr/local/sbin/aoe2war-maintenance-run`. Its
+historical W1 acceptance required Wolo active, exactly one listener on each
+protected 8092/8093 port, unchanged validator PID/restart counter and chain
+advancement. **That future W1-specific acceptance is NOT today's C04 state**:
+both legacy settlement units remain masked, all four legacy
+bet-reconciliation/staking-reward timer/service units are now also masked, and
+8092–8095 have zero listeners. Do not start or unmask any of them to satisfy
+an obsolete preflight. Current HEL1 host maintenance remains on HOLD pending
+separate operator and W1 authorization. Every admitted NOOP or UPDATED
+reconciliation must seal an immutable root-owned receipt under the AoE2WAR
+control store.
 
 This is a managed code-authority synchronization, not a package upgrade, reboot,
 or Wolo mutation.
@@ -139,8 +145,11 @@ Do not begin package or reboot work while any of these are true:
   is active;
 - source/runtime is not certified or the production checkout has unexplained
   changes;
-- either protected Wolo port `8092` or `8093` does not have exactly one
-  expected listener;
+- the required W1-specific maintenance admission is absent; under the current
+  C04 quarantine 8092–8095 must have **zero listeners**, and the four
+  bet-reconciliation/staking-reward timer/service units and both legacy
+  settlement services must stay **masked and inactive**. Never unmask financial
+  units to meet the historical one-listener-per-port W1 condition;
 - database backup or migration truth is unknown for a schema-affecting change;
 - root or mounted-volume health suggests the maintenance itself may exhaust
   storage;
@@ -269,11 +278,18 @@ warning as consent.
 
 Immediately before reboot:
 
-1. verify no protected mutation is running;
-2. record public and internal web/API health;
-3. record exactly one listener on Wolo ports `8092` and `8093`;
-4. record active timers, failed units, capacity, and the current certified
-   release identities;
+1. verify no protected mutation is running and that independent W1/host
+   authorization exists; current C04 quarantine alone is **not** reboot approval;
+2. record public HTTPS, Nginx upstream, protected 3032 and preserved 3030/3033
+   internal web health (plus 3330 API where applicable);
+3. record **zero listeners on 8092–8095** and masks/inactivity for both legacy
+   settlement services and all four legacy financial timer/service units;
+   the historical 8092/8093 one-listener prerequisite applies only after a
+   separate W1 authorization and is **not** a reason to unmask today;
+4. record protected `aoe2hdbets-web-prod.service` 3032 PID/restarts, the
+   active source SHA, Next `BUILD_ID`, build version, approved release receipt
+   and rollback identity; record Steam egress-refresh timer/service, Nginx
+   config/upstream, other timers, failed units and capacity;
 5. confirm provider console/recovery access and the abort/escalation contact;
 6. obtain explicit approval for the exact UTC window.
 
@@ -286,29 +302,51 @@ verify:
 ```bash
 systemctl is-system-running
 systemctl --failed
-systemctl is-active aoe2hdbets-web.service
-systemctl is-active aoe2hdbets-api.service
+systemctl is-active aoe2hdbets-web-prod.service
+systemctl is-active aoe2war-steam-egress-refresh.timer
+systemctl is-active nginx.service
+systemctl show -p MainPID -p NRestarts -p FragmentPath aoe2hdbets-web-prod.service
+systemctl cat aoe2hdbets-web-prod.service
+systemctl show -p LoadState -p UnitFileState -p ActiveState \
+  aoe2hdbets-bet-stake-reconcile.timer aoe2hdbets-bet-stake-reconcile.service \
+  aoe2hdbets-staking-rewards.timer aoe2hdbets-staking-rewards.service \
+  wolochain-mainnet-settlement.service wolochain-founder-rewards-settlement.service
+ss -ltn
 aoe2war status
 aoe2war audit
 aoe2war doctor
 ```
 
-Also prove public HTTPS, internal binds `3030` and `3330`, database migration
-state, critical timers, root/volume capacity, and exactly one listener on each
-protected Wolo port. A temporarily slow Wolo startup is not permission to
-replace its binary or force a chain upgrade. Inspect its owning runbook and
-logs, preserve evidence, and escalate if expected identity or listener count
-does not return.
+Fail closed unless **all six named financial units remain masked/inactive**
+and 8092–8095 retain **zero listeners**, matching the current dated C04
+quarantine receipts; do not start/restart/unmask financial units for this
+check. Separately prove 3032 internal HTTP and public HTTPS/PWA through
+Nginx's **3032 upstream**, matching the active 3032 service PID and release
+root's source SHA, `BUILD_ID`, build version and source-pinned Steam
+helper to the **approved release receipt**. Verify Steam timer's latest
+actual refresh result, Nginx config, expected service identities, session
+continuity and protected finance-denial endpoints; a merely active timer
+is not proof of a qualified Steam refresh. Preserve 3030 as the **legacy
+financial-risk rollback only**, and 3033 as emergency; neither is a
+substitute for 3032 public routing. Check 3330 API if expected, database
+migration state, critical nonfinancial timers and root/volume capacity.
+An unexpected identity, mask, listener, public route or rollback drift is
+a STOP requiring independent review, never an invitation to repair by
+restarting Wolo or routing traffic to 3030.
 
 ## Completion criteria
 
 Maintenance is complete only when:
 
 - approved package/kernel/reboot scope matches what actually changed;
-- web, replay API, public routes, database connectivity, and required timers
-  are healthy;
-- the certified application source/build/version identities did not drift;
-- protected Wolo listener counts and expected identities are unchanged;
+- protected 3032 web, Steam refresh, Nginx/public HTTPS, replay API,
+  public routes, database connectivity and required nonfinancial timers
+  pass their source-pinned identity/health checks;
+- the active 3032 source SHA, `BUILD_ID`, build version, Steam helper,
+  release receipt and preserved 3030/3033 rollback/emergency identities
+  did not drift;
+- current C04 financial masks/inactivity and zero 8092–8095 listeners
+  are unchanged, with no attempt to meet historical active Wolo conditions;
 - no new failed unit, capacity blocker, or permission drift remains;
 - `aoe2war audit` has no P0/P1 finding and Doctor has no blocker;
 - outputs, deviations, rollback readiness, and any remaining warning are

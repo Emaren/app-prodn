@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-13"
+reviewed_at: "2026-11-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -41,7 +41,10 @@ The W1 financial gate record remains **2/9 closed (C04/C08)** and
 Factory source/build approval must **not** imply permission to move WOLO,
 alter financial SQL/grants or accept customer money. This annotation
 does not supersede the original October 13 historical contract review
-and does not renew its frontmatter review date.
+and is now renewed only for A's [2026-11-13 exact-blob source-contract
+review](https://github.com/Emaren/app-prodn/pull/1343#issuecomment-6850115271).
+The renewed date does **not** certify payment finality, merchant receipts,
+custody, reserves, live financial operations, C05/C09 or funding.
 
 ## Canonical implementation
 
