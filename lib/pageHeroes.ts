@@ -135,6 +135,8 @@ export type PageHeroAdminSnapshot = {
   selectedSurface: PageHeroSurface;
   library: PageHeroAsset[];
   chain: PageHeroChain;
+  /** Published-only view; unpublished assets and editing are unavailable. */
+  readOnly?: boolean;
 };
 
 const DEFAULT_DURATION_MS = 12000;
@@ -358,6 +360,26 @@ export async function loadPageHeroChain(
   return {
     ...chain,
     items: chain.items.filter((item) => item.views.includes(viewInput)),
+  };
+}
+
+/**
+ * Nonfinancial production: show only the existing, already-published public
+ * projection. Never SELECT private managed_media_assets or hero_* tables.
+ * There is deliberately no authoring library or editable chain in this mode.
+ */
+export async function loadPublishedPageHeroAdminSnapshot(
+  prisma: PrismaClient,
+  surfaceInput: string
+): Promise<PageHeroAdminSnapshot> {
+  const selectedSurface = normalizePageHeroSurface(surfaceInput);
+  const chain = await readPublishedPageHeroChain(prisma, selectedSurface.key);
+  return {
+    surfaces: PAGE_HERO_SURFACES,
+    selectedSurface,
+    library: [],
+    chain,
+    readOnly: true,
   };
 }
 

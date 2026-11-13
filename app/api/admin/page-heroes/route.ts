@@ -4,12 +4,14 @@ import { requireAdmin } from "@/lib/adminSession";
 import {
   assignPageHeroAssets,
   loadPageHeroAdminSnapshot,
+  loadPublishedPageHeroAdminSnapshot,
   normalizePageHeroSurface,
   removePageHeroItem,
   reorderPageHeroItems,
   updatePageHeroItem,
   updatePageHeroSettings,
 } from "@/lib/pageHeroes";
+import { isNonfinancialPublicReadProfile } from "@/lib/nonfinancialPublicReadProfile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +38,23 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("surface")
   );
 
+  if (isNonfinancialPublicReadProfile()) {
+    try {
+      return NextResponse.json(
+        await loadPublishedPageHeroAdminSnapshot(gate.prisma, surface.key),
+        { headers: NO_STORE_HEADERS }
+      );
+    } catch {
+      return NextResponse.json(
+        {
+          code: "PAGE_HERO_PUBLISHED_VIEW_UNAVAILABLE",
+          detail: "The published Hero preview is temporarily unavailable. Editing remains disabled on this protected website.",
+        },
+        { status: 503, headers: NO_STORE_HEADERS }
+      );
+    }
+  }
+
   return NextResponse.json(
     await loadPageHeroAdminSnapshot(gate.prisma, surface.key),
     { headers: NO_STORE_HEADERS }
@@ -45,6 +64,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const gate = await requireAdmin(request);
   if ("error" in gate) return gate.error;
+
+  // No base-table writes, grants, or silent editor fallbacks on the
+  // existing protected nonfinancial production database role.
+  if (isNonfinancialPublicReadProfile()) {
+    return NextResponse.json(
+      {
+        code: "PAGE_HERO_EDITOR_PROTECTED",
+        detail: "Page Hero editing is unavailable on the protected public website. Nothing was changed.",
+      },
+      { status: 503, headers: NO_STORE_HEADERS }
+    );
+  }
 
   try {
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
