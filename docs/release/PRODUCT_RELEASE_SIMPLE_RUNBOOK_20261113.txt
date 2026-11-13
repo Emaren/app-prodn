@@ -1,0 +1,102 @@
+AOE2WAR PRODUCT RELEASE — SIMPLE OPERATOR RUNBOOK
+Updated: 2026-11-13 UTC
+Scope: Public nonfinancial Next.js website only.
+
+THE PRACTICAL RULE
+A public website change is not a financial transaction. Keep ONE root-owned
+existing 3032 service, exact build checks, a verified source/BUILD_ID, health
+checks, and an exact original-unit rollback. DO NOT require C01-C09 financial
+funding gates, owner financial signer, a new website runtime, or separate
+Steam/C08 source-install approval merely to change public HTML/CSS/React.
+Owner-authorized SSH to HEL1 root is the existing OS-level deployment authority.
+
+CURRENT FACTORY V1
+PR: https://github.com/Emaren/app-prodn/pull/1343 (merged).
+Source commit packaged: 2a5544f855dca33240d335abd21793511617966e
+Main merge commit: dfbe3f13aee65987a27183013ed55a8157622390
+GitHub Actions run: 43422793259; all eight checked workflows SUCCESS.
+BUILD_ID: nBTNCwShjF-q4D3N3Axme
+Verified runtime archive SHA256:
+017554f9b69487824c4c540ef38cea2c18230729f5f8523dea57a468e77ed9b4
+Original product runtime: /var/lib/aoe2war-web-prod-9f7b56f536ba
+Live Factory runtime: /var/lib/aoe2war-web-prod-2a5544f855dc
+Root-only controller: /root/aoe2war_simple_product_release_v1.py
+Immutable preimage/candidate unit journal:
+  /var/lib/aoe2war-product-release-v1/2a5544f855dc/
+
+PROVEN PHYSICAL CUTOVER, 2026-11-13
+(1) stage: exact Linux artifact and BUILD_ID verified.
+(2) activate: /factory HTTP 200; web PID 2489497.
+(3) rollback: previous 3032 web restored; /factory HTTP 404;
+    web PID 2489762. Original 3030 website was not switched.
+(4) reactivate: /factory HTTP 200; web PID 2490147.
+(5) public HTTPS https://aoe2war.com/factory HTTP 200.
+(6) 3032 /api/bets HTTP 503, guest /api/auth/session HTTP 401.
+(7) financial listeners 8092-8095 absent; six financial jobs/units
+    masked, no observed restart in other protected processes.
+Actual product memory ceiling 3355443200 bytes, unprivileged
+aoe2war-web-prod user, existing sandbox unchanged.
+No third Next.js server, Nginx rewrite, PostgreSQL outage or financial
+source action.
+
+OPERATOR COMMANDS FOR CURRENT FACTORY RELEASE
+All run on HEL1 as the existing owner-authorized root account.
+  python3 -B /root/aoe2war_simple_product_release_v1.py status
+  python3 -B /root/aoe2war_simple_product_release_v1.py rollback
+  python3 -B /root/aoe2war_simple_product_release_v1.py reactivate
+
+DO NOT rerun 'stage' on an already staged release, replay new bootstrap
+signatures, or use old 9f7b Steam V23 as source authority for newer web
+code. Rollback is restricted to the source-pinned original unit captured
+in the root-owned journal.
+
+AUTOMATIC FACTORY STATUS
+Publisher: /usr/local/sbin/aoe2war_factory_public_status_v1.py
+Units: aoe2war-product-factory-status.{service,timer}
+Timer: every two minutes, ROOT-owned read-only status gathering.
+Output: /factory/status.json. It refuses fake browser green lights:
+authenticated-browser and unverified media remain UNKNOWN. It checks
+actual 3032 source/build/service, financial denial, six masked units,
+old-site fallback and release journal. Its public feed auto-expires
+after ten minutes if publication stops.
+
+NEXT PRODUCT RELEASE — NO CEREMONIAL SIGNING LOOP
+1. Develop in UID650 PRODUCT. CI/product boundary checks and a real
+   Linux x86_64 Node22 build, source SHA and archive digest must pass.
+2. Reuse the existing B-controlled release pattern and root OS SSH
+   authority. For a NEW candidate, instantiate the narrow controller
+   from this source with that candidate's exact Git SHA, build ID,
+   artifact SHA, current live unit SHA/runtime, and a fresh journal.
+   The current factory-specific controller is NOT a generic arbitrary
+   artifact installer and must not be tricked with mismatched SHAs.
+3. Stage the verified archive on HEL1, do not modify 3030 or finance.
+4. One same-slot 3032 switch; verify public route, 503 financial
+   denial, guest denial, and protected masks/ports.
+5. On any failed predicate, atomically restore the exact captured
+   old unit and restart the original 3032 runtime; report HOLD.
+6. Demonstrate old->new->old->new only when testing the release
+   controller or risky changes; then keep old runtime as rollback.
+7. Publish source/BUILD_ID/health/rollback receipt. Do not block a
+   nonfinancial site release on financial C01-C09 funding gates.
+
+DOCUMENTATION RULE
+This text-only runbook lives in docs/release and does not add an
+unreviewed Markdown frontmatter entry to the DocsV2 registry.
+Normal website rollout does not require rerunning historical manual
+review-dating ceremonies as a ROOT DEPLOY PERMIT. Existing CI DocsV2
+structural checks remain unchanged in the repository. If those checks
+fail on a future PR, repair the actual source/registry discrepancy;
+do not falsify reviewed_at dates or disable financial security gates.
+The checked exact Factory PR succeeded in all eight GitHub workflows.
+
+OPEN SEPARATE MAINTENANCE
+Steam egress refresh V23 was already failed with
+MONITOR_ONESHOT_IDENTITY_DRIFT before this Factory deployment. Its
+release-source pin is now also stale for new Factory and needs a
+separate narrowly scoped PRODUCT compatibility repair. Do not let
+this preexisting monitor defect force a rollback of an otherwise
+healthy PUBLIC nonfinancial web page, and do not infer Steam auth
+was accepted by a guest/public check.
+Authentication-role browser testing is outstanding, not a false PASS.
+All C01,C02,C03,C05,C06,C07,C09 financial gates remain separate
+and funding remains DENIED.
