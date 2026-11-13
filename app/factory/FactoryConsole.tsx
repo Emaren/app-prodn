@@ -296,7 +296,7 @@ export default function FactoryConsole() {
         <div className={css.heroFoot}>
           <span><SignalDot small signal={webStatus} /> EDGE {edge.reachable === true ? "HTTP 200" : "NOT VERIFIED"}</span>
           <span><LockKeyhole size={12} aria-hidden /> READ-ONLY / NO RELEASE CONTROLS</span>
-          <span>SCAN {localTime(edge.observedAt)}</span>
+          <span data-factory-release-marker="factory-20261113-loop-v2">SCAN {localTime(edge.observedAt)} · RELEASE LOOP R2</span>
         </div>
       </section>
 
