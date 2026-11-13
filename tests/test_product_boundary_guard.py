@@ -32,6 +32,10 @@ class BoundaryTests(unittest.TestCase):
             policy.EXACT_REVIEWED_SHA256,
             "185defe7f93ea39bf1829b7a8eaf4a48f050b50d40ad1438c9be9ca468326a01",
         )
+        self.assertEqual(
+            policy.EXACT_REVIEWED_FACTORY_SHA256,
+            "bb613ddbd9203f5ad5f2f19be8521db2dc64e03e36e7e4872da0f2b01c1beab8",
+        )
         # Ordinary source policy continues to DENY executable scripts.
         self.denied_source(policy.EXACT_REVIEWED_SCRIPT)
         with tempfile.TemporaryDirectory() as tmp:
@@ -42,9 +46,15 @@ class BoundaryTests(unittest.TestCase):
             candidate.write_bytes(source.read_bytes())
             self.assertEqual(
                 policy.authorize_changed_source(
-                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                    root, policy.EXACT_REVIEWED_FACTORY_BASE, policy.EXACT_REVIEWED_SCRIPT
                 ), policy.EXACT_REVIEWED_SCRIPT,
             )
+            # Former source pin is still stored, but new audit source bytes
+            # cannot masquerade as the 3933... historical approved script.
+            with self.assertRaisesRegex(policy.BoundaryHold, "SHA_MISMATCH"):
+                policy.authorize_changed_source(
+                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                )
             with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
                 policy.authorize_changed_source(
                     root, "b" * 40, policy.EXACT_REVIEWED_SCRIPT
@@ -52,17 +62,17 @@ class BoundaryTests(unittest.TestCase):
             candidate.write_bytes(candidate.read_bytes() + b"\n// forbidden drift\n")
             with self.assertRaisesRegex(policy.BoundaryHold, "SHA_MISMATCH"):
                 policy.authorize_changed_source(
-                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                    root, policy.EXACT_REVIEWED_FACTORY_BASE, policy.EXACT_REVIEWED_SCRIPT
                 )
             candidate.unlink()
             candidate.symlink_to(source)
             with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
                 policy.authorize_changed_source(
-                    root, policy.EXACT_REVIEWED_BASE, policy.EXACT_REVIEWED_SCRIPT
+                    root, policy.EXACT_REVIEWED_FACTORY_BASE, policy.EXACT_REVIEWED_SCRIPT
                 )
             with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_EXECUTABLE"):
                 policy.authorize_changed_source(
-                    root, policy.EXACT_REVIEWED_BASE, "scripts/another_script.mjs"
+                    root, policy.EXACT_REVIEWED_FACTORY_BASE, "scripts/another_script.mjs"
                 )
 
     def test_exact_reviewed_dynamic_media_route_is_base_sha_and_inode_pinned(self):

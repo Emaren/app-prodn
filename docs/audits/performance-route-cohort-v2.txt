@@ -28,6 +28,7 @@
 /connect-wallet
 /contact-emaren
 /download
+/factory
 /forum
 /game-stats
 /hd-replay-engine

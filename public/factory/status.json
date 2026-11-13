@@ -1,0 +1,92 @@
+{
+  "schema": "aoe2war.factory.public.v1",
+  "generatedAt": null,
+  "liveRelease": {
+    "id": null,
+    "status": "unknown",
+    "verifiedAt": null
+  },
+  "candidateRelease": {
+    "id": null,
+    "status": "unknown",
+    "verifiedAt": null
+  },
+  "previousRelease": {
+    "id": null,
+    "status": "unknown",
+    "verifiedAt": null
+  },
+  "pipelineStage": {
+    "active": null,
+    "stages": {
+      "develop": "unknown",
+      "test": "unknown",
+      "build": "unknown",
+      "approve": "unknown",
+      "deploy": "unknown",
+      "verify": "unknown",
+      "rollback": "unknown"
+    }
+  },
+  "serviceHealth": [
+    {
+      "id": "website",
+      "state": "unknown"
+    },
+    {
+      "id": "identity",
+      "state": "unknown"
+    },
+    {
+      "id": "media",
+      "state": "unknown"
+    },
+    {
+      "id": "public-api",
+      "state": "unknown"
+    },
+    {
+      "id": "release",
+      "state": "unknown"
+    }
+  ],
+  "testGroups": [
+    {
+      "id": "source",
+      "state": "unknown",
+      "passed": null,
+      "total": null
+    },
+    {
+      "id": "security",
+      "state": "unknown",
+      "passed": null,
+      "total": null
+    },
+    {
+      "id": "browser",
+      "state": "unknown",
+      "passed": null,
+      "total": null
+    },
+    {
+      "id": "artifact",
+      "state": "unknown",
+      "passed": null,
+      "total": null
+    },
+    {
+      "id": "release",
+      "state": "unknown",
+      "passed": null,
+      "total": null
+    },
+    {
+      "id": "rollback",
+      "state": "unknown",
+      "passed": null,
+      "total": null
+    }
+  ],
+  "recentActivity": []
+}

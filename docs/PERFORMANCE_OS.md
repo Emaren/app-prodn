@@ -50,7 +50,7 @@ Accept, URL, version, or cookie guards.
 
 ## November 12, 2026 — source-only documentation review
 
-The source-controlled V2 speed cohort now contains **119 distinct route
+The source-controlled V2 speed cohort now contains **120 distinct route
 representatives**, including the new /kingdom-traders PAPER-only public
 gateway. This benchmark inventory is **not** the separate historical 88-route
 Kingdom Index/Renaissance candidate cohort; neither population is a production
@@ -98,7 +98,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the source-derived 119-route V2 public cohort (reviewed November 12, 2026) in
+benchmarks use the source-derived 120-route V2 public cohort (reviewed November 12, 2026) in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/steam-v23-c03-observer-completion-retry-20261112` at `b347fd9f40cd18cb9b4570bae3354d794db8a4c5`
+Implementation baseline: `session-c/factory-v1-visual-console-20261112` at `e7bdd312666f34695f455bab146b1923b68c9e74`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

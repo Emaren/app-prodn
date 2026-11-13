@@ -15,6 +15,51 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## Later live quarantine receipt — 2026-11-13 09:53:35 UTC
+
+The **earlier 2026-11-13 observation** below that the legacy
+staking rewards timer was enabled is **superseded** by the
+[owner-signed W1 physical containment receipt](https://github.com/Emaren/wolochain/issues/239#issuecomment-6849667181).
+At 09:53:35 UTC, the bet-stake reconciliation and staking rewards
+**timers AND services** were persistently masked via systemd control-plane
+links to \`/dev/null\`; services were inactive (PID 0), timers reported
+**masked/failed(resources)** with no finite scheduled expiry, all four
+manual start attempts were denied, and daemon-reload preserved the denial.
+The historical service definitions and evidence remain preserved.
+This is a **dated physical observation**, not an automatically refreshed
+live-health guarantee; recheck a fresh W1-authoritative receipt before
+claiming current containment.
+
+This closes the **two automatic financial timer execution paths only**.
+It does **not** revoke other legacy HTTP/SQL financial writer authority,
+close C03 or any other seven open W1 gates, admit reserves/custody, or
+permit funding (still **DENIED**). Re-enabling any unit requires a
+different owner-signed and independently approved financial-resume action.
+PRODUCT/Factory release operators cannot supply that authority.
+
+## Current live legacy reward timer authority warning — 2026-11-13 UTC
+
+The disabled timer / \`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED\` statements
+farther below describe **historical repair checkpoints, not the current
+effective HEL1 runtime**. Session A's [current read-only W1 audit](https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6842753114)
+observed \`aoe2hdbets-staking-rewards.timer\` **enabled and active**
+(daily 00:10 UTC), targeting original **3030** via authenticated POST
+\`/api/staking/rewards/run\`. The physically deployed
+\`lib/stakingExecution.ts\` sets
+\`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED=false\`; the HTTP route
+may invoke distribution, staking payout and treasury payout logic with
+HD database write authority. A recent no-payable-rewards result or a
+successful timer exit **does not prove the next execution cannot write**.
+
+C04's masked original Wolo settlement units and closed 8092–8095
+listeners do **not** fence these original 3030/HD effects. W1 owns
+any suspension, future resumption, financial SQL/ledger correction or
+payout authorization; W2 release engineering cannot grant that authority
+by website CI. Funding remains DENIED and financial gate closure
+remains separate. The historic transaction facts and old operating
+procedures below are retained for provenance; their current
+preconditions must be independently re-verified before use.
+
 ## October 16, 2026 — legacy claim name collisions must not select a random recipient
 
 The legacy admin Claim WOLO recovery path previously fetched up to 250

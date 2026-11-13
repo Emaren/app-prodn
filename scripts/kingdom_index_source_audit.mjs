@@ -31,6 +31,7 @@ function discover(dir=path.join(root,"app"),parts=[]) {
 const independentRoutes=new Map([
  ["/kingdom-construction","app/kingdom-construction/page.tsx"],
  ["/kingdom-traders","app/kingdom-traders/page.tsx"],
+ ["/factory","app/factory/page.tsx"],
 ]);
 const independentInventory=JSON.parse(readFileSync(path.join(root,"config/kingdom-index-inventory.json"),"utf8"));
 for(const [href,entrypoint] of independentRoutes) {
