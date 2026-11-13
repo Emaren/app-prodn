@@ -3,6 +3,17 @@ name: Session B isolated Linux x86_64 Node22 release artifact build v2
 on:
   pull_request:
     paths:
+      # Ordinary PRODUCT UI changes must produce an exact Linux release artifact.
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "public/**"
+      - "styles/**"
+      - "package.json"
+      - "yarn.lock"
+      - "next.config.*"
+      - "tsconfig.json"
+      - "prisma/schema.prisma"
       # Every ordinary PRODUCT UI change must produce a source-pinned Linux candidate.
       - "app/**"
       - "components/**"
