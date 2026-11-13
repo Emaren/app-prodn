@@ -150,6 +150,177 @@ def validate_four_masked(receipt: dict, show=_native_show,
             "units": states}
 
 
+# The immutable original systemd controller accepts no masked finance oneshot.
+# Extend its read-only snapshot only for W1's four source-pinned masks. All
+# other services still use the original controller byte-for-byte.
+ORIGINAL_UNIT_PROPERTIES = (
+    "Id", "Type", "TriggeredBy", "NeedDaemonReload", "Result",
+    "ActiveState", "MainPID", "ExecMainStartTimestampMonotonic",
+    "User", "WorkingDirectory", "ExecStart", "FragmentPath", "DropInPaths",
+)
+
+
+def _masked_snapshot_row(m, unit: str, trusted: dict) -> dict:
+    """Return an original-shaped row from ACTUAL systemd data, not invented old DDL."""
+    raw = m.run(["/usr/bin/systemctl", "show", unit, "--no-pager",
+                 "--property=" + ",".join(ORIGINAL_UNIT_PROPERTIES)],
+                maximum=65536)
+    pairs = distinct_json(line.split("=", 1)
+                          for line in raw.decode("utf-8").splitlines()
+                          if "=" in line)
+    require(set(pairs) == set(ORIGINAL_UNIT_PROPERTIES), "ORIGINAL_SNAPSHOT_FIELDS")
+    require(pairs["Id"] == unit
+            and pairs["FragmentPath"] == trusted["FragmentPath"]
+            and pairs["ActiveState"] == trusted["ActiveState"]
+            and pairs["Result"] == trusted["Result"]
+            and pairs["Type"] == ""
+            and pairs["TriggeredBy"] == ""
+            and pairs["MainPID"] in ("", "0")
+            and pairs["ExecStart"] == "",
+            "MASKED_EFFECTIVE_UNIT_DRIFT")
+    # Original unit_state hashes ExecStart for every non-monitor path.
+    # A masked source has no executable; include that actual empty digest.
+    pairs["ExecStart_sha256"] = m.sha(pairs.pop("ExecStart").encode("utf-8"))
+    cat = m.run(["/usr/bin/systemctl", "cat", unit, "--no-pager"],
+                maximum=131072)
+    require(b"masked" in cat.lower() and len(cat) <= 131072,
+            "MASKED_EFFECTIVE_CONFIG_NOT_VERIFIED")
+    return {"properties": pairs, "start_ticks": None,
+            "unit_config_sha256": m.sha(cat)}
+
+
+def attach_to_original_protected_chain(m, *, attestor=None) -> None:
+    """Wrap, never remove, V22->C03->C04's original FULL-system snapshot.
+
+    Source-only until independently signed W1 post-C01 and pre-C01 digests
+    are admitted by V23. Neither a newly observed hash nor this helper itself
+    may grant production activation. No systemctl mutation in this module.
+    """
+    require(callable(m.unit_state) and callable(m.production_protected),
+            "ORIGINAL_FULL_CHAIN_MISSING")
+    require(not getattr(m, "_w1_quarantine_attached", False),
+            "DUPLICATE_W1_ATTACHMENT")
+    inspect = attestor or observe
+    original_unit = m.unit_state
+    original_protected = m.production_protected
+
+    def full_protected():
+        before = inspect()
+        require(before.get("state") == "PASS_PHYSICAL_W1_MASK_ONLY"
+                and before.get("receipt_sha256") == RECEIPT_SHA256
+                and before.get("financial_authorized") is False
+                and set(before.get("units", {})) == set(UNITS),
+                "W1_ATTESTATION_NOT_ACCEPTED")
+        masked = {}
+        def routed_unit_state(name):
+            if name not in UNITS:
+                return original_unit(name)
+            row = _masked_snapshot_row(m, name, before["units"][name])
+            masked[name] = row
+            return row
+        m.unit_state = routed_unit_state
+        try:
+            snap = original_protected()
+        finally:
+            m.unit_state = original_unit
+        require(type(snap) is dict and type(snap.get("units")) is dict,
+                "ORIGINAL_SNAPSHOT_NOT_PRESENT")
+        require(set(masked) == set(UNITS)
+                and all(snap["units"].get(k) == masked[k] for k in UNITS),
+                "FOUR_MASKS_NOT_IN_FULL_SNAPSHOT")
+        after = inspect()
+        require(before == after, "W1_MASK_TOCTOU_DRIFT")
+        return snap
+
+    m.production_protected = full_protected
+    m._w1_quarantine_attached = True
+
+
+def inspect_only_full_fingerprint(m) -> dict:
+    """Read-only candidate fingerprint. NEVER an independent approval."""
+    require(getattr(m, "_w1_quarantine_attached", False),
+            "UNATTESTED_FINGERPRINT_PROPOSAL")
+    snapshot = m.production_protected()
+    return {"status": "CANDIDATE_POST_W1_FINGERPRINT_REVIEW_REQUIRED",
+            "snapshot_sha256": m.sha(m.canonical(snapshot)),
+            "unit_count": len(snapshot["units"]),
+            "financial_authorized": False, "root_stage_authorized": False}
+
+
+def candidate_full_pair_for_independent_review() -> dict:
+    """Read-only HEL1-root source fingerprint proposal, NEVER an admission.
+
+    Imports the existing byte-pinned V22/C03/C04/C01 chain and applies only
+    W1's receipt-attested four-unit read adapter. No financial service start,
+    daemon reload, SQL, nft write, or change to the production Steam helper.
+    """
+    import copy
+    import importlib.util
+    import sys
+
+    require(sys.platform == "linux" and os.geteuid() == 0
+            and os.uname().nodename == "ubuntu-4gb-hel1-11",
+            "EXACT_READONLY_HEL1_ROOT_AUDITOR")
+    v22_path = Path("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_two_web_builds_v22.py")
+    v22_sha = "c6e633538fc17dad6fe887452516cb2ba1095855a0aab6f4bdda47f5985f6edc"
+    root_metadata(v22_path, is_dir=False)
+    require(hashlib.sha256(v22_path.read_bytes()).hexdigest() == v22_sha,
+            "IMMUTABLE_V22_SOURCE_CHANGED")
+    spec = importlib.util.spec_from_file_location("w1_readonly_v22", v22_path)
+    require(spec is not None and spec.loader is not None, "ORIGINAL_V22_NOT_LOADABLE")
+    v22 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(v22)
+    require(v22.FIN_SNAPSHOT ==
+            "3a24b53d356d6ac406999fbabed66c5144d74e538503840d407feb4d5f365f15",
+            "OLD_FULL_FINANCE_PIN_CHANGED")
+    original = v22.load_original()
+    m = original.load_immutable_original()
+    attach_to_original_protected_chain(m)
+    current = m.production_protected()
+    proposal_post = m.sha(m.canonical(current))
+    delta = v22.load_c01_exact_delta_helper()
+    require(set(delta.SERVICE_PROFILES) ==
+            {"wolo-satchel-c01.service", "wolo-reviewer-c01.service"}
+            and delta.POST_C01_SHA == v22.OLD_C01_POST_SHA256
+            and delta.PRE_C01_SHA == v22.OLD_C01_PRE_SHA256,
+            "IMMUTABLE_C01_DELTA_IDENTITY")
+    prior = copy.deepcopy(current)
+    for name, policy in delta.SERVICE_PROFILES.items():
+        require(name in prior["units"]
+                and set(("old_exec_sha", "old_config_sha")).issubset(policy),
+                "C01_PREIMAGE_FIELDS_MISSING")
+        row = prior["units"][name]
+        require(type(row) is dict and type(row.get("properties")) is dict,
+                "C01_PREIMAGE_ROW_MISSING")
+        row["properties"]["ExecStart_sha256"] = policy["old_exec_sha"]
+        row["properties"]["DropInPaths"] = ""
+        row["unit_config_sha256"] = policy["old_config_sha"]
+    proposal_pre = m.sha(m.canonical(prior))
+    # Run EVERY original C01 source, executable and inverse preimage check,
+    # substituting only a PROPOSED digest; the auditor grants no authority.
+    delta.POST_C01_SHA = proposal_post
+    delta.PRE_C01_SHA = proposal_pre
+    proof = delta.reconstruct_pre_c01(m, current)
+    require(proof.get("status") == "PASS_EXACT_TWO_C01_INERT_UNIT_DELTAS_ONLY"
+            and proof.get("finance_authorized") is False,
+            "ORIGINAL_C01_PREIMAGE_NOT_VERIFIED")
+    require(m.sha(m.canonical(m.production_protected())) == proposal_post,
+            "POST_W1_FULL_SYSTEM_SNAPSHOT_CHANGED")
+    require(m.production_nft_shape() == v22.NFT_SHAPE,
+            "ORIGINAL_NFT_SCOPE_DRIFT")
+    return {
+        "status": "CANDIDATE_POST_W1_FINGERPRINT_INDEPENDENT_REVIEW_REQUIRED",
+        "post_c01_sha256": proposal_post,
+        "pre_c01_sha256": proposal_pre,
+        "protected_unit_count": len(current["units"]),
+        "w1_receipt_sha256": RECEIPT_SHA256,
+        "original_v22_sha256": v22_sha,
+        "financial_authorized": False,
+        "root_stage_authorized": False,
+        "public_activation_authorized": False,
+    }
+
+
 def observe() -> dict:
     """Never invoke systemctl start/restart/unmask; read only."""
     receipt = accepted_receipt()
@@ -159,9 +330,15 @@ def observe() -> dict:
 if __name__ == "__main__":
     import sys
     try:
-        result = observe()
-        print(json.dumps({"status": result["state"], "financial_authorized": False,
-                          "receipt_sha256": RECEIPT_SHA256}, sort_keys=True))
+        if sys.argv[1:] == ["--read-only-fingerprint"]:
+            result = candidate_full_pair_for_independent_review()
+            print(json.dumps(result, sort_keys=True), flush=True)
+        elif sys.argv[1:] == []:
+            result = observe()
+            print(json.dumps({"status": result["state"], "financial_authorized": False,
+                              "receipt_sha256": RECEIPT_SHA256}, sort_keys=True))
+        else:
+            raise Hold("HOLD_W1_QUARANTINE_UNKNOWN_ACTION")
     except Exception:
         print('{"status":"HOLD_W1_QUARANTINE","financial_authorized":false}')
         sys.exit(3)

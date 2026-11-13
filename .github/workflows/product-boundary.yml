@@ -120,6 +120,7 @@ jobs:
               '.github/workflows/product-boundary.yml' \
               'scripts/release/r25_steam_w1_four_mask_guard_v1.py' \
               'tests/test_r25_steam_w1_four_mask_guard_v1.py' \
+              'tests/test_r25_steam_w1_chain_v1.py' \
               'tests/test_r25_b_product_mainline_scope.py' \
               'docs/EVIDENCE_VAULT.md' \
               'docs/HOST_MAINTENANCE.md' \
@@ -132,7 +133,7 @@ jobs:
             test "$actual_paths" = "$exact_paths" || {
               echo HOLD:B_W1_FOUR_MASK_SOURCE_SCOPE; exit 3;
             }
-            test "$(sha256sum scripts/release/r25_steam_w1_four_mask_guard_v1.py | cut -d' ' -f1)" = '8e9591ab55da4d81518514bae9be25eeff8fa47d1bf3266aa8d958feb7553b76' || exit 3
+            test "$(sha256sum scripts/release/r25_steam_w1_four_mask_guard_v1.py | cut -d' ' -f1)" = '4bd276958dfeb84d460c9b2b9e98e240e20df50447172464175cfe525382240d' || exit 3
             test "$(sha256sum tests/test_r25_steam_w1_four_mask_guard_v1.py | cut -d' ' -f1)" = '8cfad202d455deb3eab659c889618ef9b844733208da540f72516caeb8158381' || exit 3
             test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '9e64aabacdfe46412768247b2d8e59200327e74672927eb722c5b451f69fb762' || exit 3
             # Exact, independently reviewed 2026-11-13 DocsV2 text copied
@@ -142,7 +143,8 @@ jobs:
             test "$(git hash-object docs/MARKETPLACE_BUSINESS.md)" = 'c9c720a193d9949814750b3a49ff17483161f7f1' || exit 3
             test "$(git hash-object docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md)" = 'c5dd227948b6889e236a8c8b21be35de12ded340' || exit 3
             test "$(git hash-object docs/STORAGE_OS.md)" = 'e63afed852c70fefb173b71b7097d1f686e57c29' || exit 3
-            python3 -B -m unittest -q tests.test_r25_steam_w1_four_mask_guard_v1
+            test "$(sha256sum tests/test_r25_steam_w1_chain_v1.py | cut -d' ' -f1)" = 'f404a37e46d5368f4f7974fa249be1e273bcd297865fd3e45c17598d5daf54fc' || exit 3
+            python3 -B -m unittest -q tests.test_r25_steam_w1_four_mask_guard_v1 tests.test_r25_steam_w1_chain_v1
             echo PASS:B_EXACT_W1_FOUR_MASK_SOURCE_ONLY_POLICY_NO_ROOT_INSTALL
           fi
           git diff --name-only --diff-filter=ACMRTUXB -z "$BOUNDARY_BASE_SHA" HEAD -- > "$RUNNER_TEMP/b-product-source-paths.nul"
