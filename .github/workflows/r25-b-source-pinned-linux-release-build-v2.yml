@@ -1,6 +1,11 @@
 name: Session B isolated Linux x86_64 Node22 release artifact build v2
 
 on:
+  # Automatically qualify each newly merged PRODUCT main commit.
+  # Artifact-only: no production deploy, Steam, or finance activation.
+  push:
+    branches:
+      - main
   pull_request:
     paths:
       - ".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml"
