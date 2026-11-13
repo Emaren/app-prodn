@@ -7,15 +7,16 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 144 exact page templates and 279 handler templates match Git HEAD",()=>{
+test("all 144 exact page templates and 280 handler templates match Git HEAD",()=>{
   const actual=census(gitHeadPaths(),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
     pageTemplates:144,adminTemplates:26,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:10,routeHandlerTemplates:279,apiHandlerTemplates:276,nonApiHandlerTemplates:3
+    excludedStaticTemplates:10,routeHandlerTemplates:280,apiHandlerTemplates:277,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
   assert.equal(inventory.handlers.filter(h=>h.ownership!=="unassigned").length,0);
+  assert.equal(inventory.handlers.filter(h=>h.entrypoint==="app/api/admin/war-satchel/diagnostics/route.ts").length,1);
 });
 test("seven Renaissance phases assign each canonical template exactly once",()=>{
   const phases=renaissance.phases.flatMap(p=>p.routes);
