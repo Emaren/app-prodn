@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d5b50169e1cad984e39961e4d018b803e5d356db40eb7096b50581576e7204af",
+      "sha256": "f402519a4ad0f7ba6605d1f931fceb9ba6f51d02a4d506d49285eca6182b25a7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3261,8 +3261,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/factory-release-loop-canary-20261113",
-    "commit": "8c28abea60cf057e927862aea8dad889e63faf31"
+    "branch": "session-c/product-next-real-change-20261113",
+    "commit": "be0feb0d4f19455658c5fcd5f992f2637f3ed251"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
