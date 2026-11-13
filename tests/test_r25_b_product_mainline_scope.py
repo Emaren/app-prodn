@@ -41,6 +41,7 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIsNone(module.BRANCH.fullmatch("session-b/v22-root-executor-and-c-artifact-contract-20261111"))
         self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-v23-lease-expiry-race-repair-20261112"))
         self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-v23-c03-observer-completion-retry-20261112"))
+        self.assertIsNone(module.BRANCH.fullmatch("session-b/steam-w1-fourunit-quarantine-requal-20261113"))
         self.assertIsNotNone(module.BRANCH.fullmatch("session-c/safe-product-review"))
         self.assertIn("UNREVIEWED_EXECUTABLE_SURFACE",SOURCE_GUARD.read_text())
 
@@ -53,6 +54,8 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn('session-b/steam-v23-c03-observer-completion-retry-20261112',s)
         self.assertIn('HOLD:B_V23_C03_OBSERVER_SOURCE_SCOPE',s)
         self.assertIn('HOLD:B_V23_REPAIR_SOURCE_SCOPE',s)
+        self.assertIn('session-b/steam-w1-fourunit-quarantine-requal-20261113',s)
+        self.assertIn('HOLD:B_W1_FOUR_MASK_SOURCE_SCOPE',s)
         self.assertIn("github.event.pull_request.base.ref",s)
         self.assertIn('test "$actual_main" = "$BOUNDARY_BASE_SHA"',s)
         self.assertIn('git merge-base --is-ancestor "$BOUNDARY_BASE_SHA" HEAD',s)

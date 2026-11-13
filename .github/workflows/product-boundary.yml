@@ -45,7 +45,8 @@ jobs:
           (github.event_name != 'pull_request' ||
            (github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
             github.head_ref != 'session-b/steam-v23-lease-expiry-race-repair-20261112' &&
-            github.head_ref != 'session-b/steam-v23-c03-observer-completion-retry-20261112') ||
+            github.head_ref != 'session-b/steam-v23-c03-observer-completion-retry-20261112' &&
+             github.head_ref != 'session-b/steam-w1-fourunit-quarantine-requal-20261113') ||
            github.event.pull_request.head.repo.full_name != github.repository)
         run: python3 -I -B scripts/product_boundary_guard.py --check
       - name: Source SHA, exact canonical main ancestry and protected B-only release boundary
@@ -53,7 +54,8 @@ jobs:
           github.event_name == 'pull_request' &&
           (github.head_ref == 'session-b/v22-root-executor-and-c-artifact-contract-20261111' ||
            github.head_ref == 'session-b/steam-v23-lease-expiry-race-repair-20261112' ||
-           github.head_ref == 'session-b/steam-v23-c03-observer-completion-retry-20261112') &&
+           github.head_ref == 'session-b/steam-v23-c03-observer-completion-retry-20261112' ||
+            github.head_ref == 'session-b/steam-w1-fourunit-quarantine-requal-20261113') &&
           github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         env:
@@ -61,7 +63,7 @@ jobs:
         run: |
           test "$BOUNDARY_REPOSITORY" = Emaren/app-prodn
           case "$BOUNDARY_BRANCH" in
-            session-b/v22-root-executor-and-c-artifact-contract-20261111|session-b/steam-v23-lease-expiry-race-repair-20261112|session-b/steam-v23-c03-observer-completion-retry-20261112) ;;
+            session-b/v22-root-executor-and-c-artifact-contract-20261111|session-b/steam-v23-lease-expiry-race-repair-20261112|session-b/steam-v23-c03-observer-completion-retry-20261112|session-b/steam-w1-fourunit-quarantine-requal-20261113) ;;
             *) echo HOLD:B_RELEASE_BRANCH_UNAUTHORIZED; exit 3 ;;
           esac
           test "${{ github.event.pull_request.base.ref }}" = main
@@ -110,6 +112,24 @@ jobs:
             test "$(sha256sum tests/test_r25_steam_v23_bounded_expiry_repair.py | cut -d' ' -f1)" = '1f26bd44011d82dc88308d6c7a472c0322a48ad7e57d38920cc7b752701c3c32' || exit 3
             test "$(sha256sum tests/test_r25_steam_v23_c03_observer_completion.py | cut -d' ' -f1)" = 'e23bc70d1b13c053dd2e3082afe8a24b371574cdd2ade82452e70fe418b1fb46' || exit 3
             test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '145d8f299371aec5d8093ba0ab21b0047e17e3350d1abea61b7aa6bb891c6302' || exit 3
+          fi
+          # Exact W1 four-mask B-owned source-only review. This does NOT
+          # add B branches to C's restricted PRODUCT guard or grant root access.
+          if [ "$BOUNDARY_BRANCH" = session-b/steam-w1-fourunit-quarantine-requal-20261113 ]; then
+            exact_paths="$(printf '%s\n' \
+              '.github/workflows/product-boundary.yml' \
+              'scripts/release/r25_steam_w1_four_mask_guard_v1.py' \
+              'tests/test_r25_steam_w1_four_mask_guard_v1.py' \
+              'tests/test_r25_b_product_mainline_scope.py' | LC_ALL=C sort)"
+            actual_paths="$(git diff --name-only "$BOUNDARY_BASE_SHA" HEAD -- | LC_ALL=C sort)"
+            test "$actual_paths" = "$exact_paths" || {
+              echo HOLD:B_W1_FOUR_MASK_SOURCE_SCOPE; exit 3;
+            }
+            test "$(sha256sum scripts/release/r25_steam_w1_four_mask_guard_v1.py | cut -d' ' -f1)" = '8e9591ab55da4d81518514bae9be25eeff8fa47d1bf3266aa8d958feb7553b76' || exit 3
+            test "$(sha256sum tests/test_r25_steam_w1_four_mask_guard_v1.py | cut -d' ' -f1)" = '8cfad202d455deb3eab659c889618ef9b844733208da540f72516caeb8158381' || exit 3
+            test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '9e64aabacdfe46412768247b2d8e59200327e74672927eb722c5b451f69fb762' || exit 3
+            python3 -B -m unittest -q tests.test_r25_steam_w1_four_mask_guard_v1
+            echo PASS:B_EXACT_W1_FOUR_MASK_SOURCE_ONLY_POLICY_NO_ROOT_INSTALL
           fi
           git diff --name-only --diff-filter=ACMRTUXB -z "$BOUNDARY_BASE_SHA" HEAD -- > "$RUNNER_TEMP/b-product-source-paths.nul"
           while IFS= read -r -d '' path; do
