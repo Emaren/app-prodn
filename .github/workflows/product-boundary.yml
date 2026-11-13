@@ -42,10 +42,14 @@ jobs:
           (github.event_name != 'push' ||
            github.ref != 'refs/heads/main' ||
            github.event.before != 'a61c5af90fe77f10e0b6d1c6c680641ba37acc7a') &&
+          (github.event_name != 'push' ||
+           github.ref != 'refs/heads/main' ||
+           github.event.before != '68451f64eb9ec2b8341fde0ff548d7c95b8b8ce4') &&
           (github.event_name != 'pull_request' ||
            (github.head_ref != 'session-b/v22-root-executor-and-c-artifact-contract-20261111' &&
             github.head_ref != 'session-b/steam-v23-lease-expiry-race-repair-20261112' &&
-            github.head_ref != 'session-b/steam-v23-c03-observer-completion-retry-20261112') ||
+            github.head_ref != 'session-b/steam-v23-c03-observer-completion-retry-20261112' &&
+            github.head_ref != 'session-b/factory-release-loop-canary-20261113') ||
            github.event.pull_request.head.repo.full_name != github.repository)
         run: python3 -I -B scripts/product_boundary_guard.py --check
       - name: Source SHA, exact canonical main ancestry and protected B-only release boundary
@@ -53,7 +57,8 @@ jobs:
           github.event_name == 'pull_request' &&
           (github.head_ref == 'session-b/v22-root-executor-and-c-artifact-contract-20261111' ||
            github.head_ref == 'session-b/steam-v23-lease-expiry-race-repair-20261112' ||
-           github.head_ref == 'session-b/steam-v23-c03-observer-completion-retry-20261112') &&
+           github.head_ref == 'session-b/steam-v23-c03-observer-completion-retry-20261112' ||
+           github.head_ref == 'session-b/factory-release-loop-canary-20261113') &&
           github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         env:
@@ -61,7 +66,7 @@ jobs:
         run: |
           test "$BOUNDARY_REPOSITORY" = Emaren/app-prodn
           case "$BOUNDARY_BRANCH" in
-            session-b/v22-root-executor-and-c-artifact-contract-20261111|session-b/steam-v23-lease-expiry-race-repair-20261112|session-b/steam-v23-c03-observer-completion-retry-20261112) ;;
+            session-b/v22-root-executor-and-c-artifact-contract-20261111|session-b/steam-v23-lease-expiry-race-repair-20261112|session-b/steam-v23-c03-observer-completion-retry-20261112|session-b/factory-release-loop-canary-20261113) ;;
             *) echo HOLD:B_RELEASE_BRANCH_UNAUTHORIZED; exit 3 ;;
           esac
           test "${{ github.event.pull_request.base.ref }}" = main
@@ -90,6 +95,22 @@ jobs:
             test "$(sha256sum scripts/release/r25_steam_refresh_current_product_v23.py | cut -d' ' -f1)" = '5747e59c783acca1ed0c7e3f1c2b032eed9036fc0deb176728af2d6417019bce' || exit 3
             test "$(sha256sum tests/test_r25_steam_v23_bounded_expiry_repair.py | cut -d' ' -f1)" = '732ff45d0cfd445ca4ea2d3a636144888b7af7b26789e35062d03424657c5f8d' || exit 3
             test "$(sha256sum tests/test_r25_b_product_mainline_scope.py | cut -d' ' -f1)" = '825035f4f0124803e5284d959d65f02ec0ae32638377d2c240ac19a6e6a6979d' || exit 3
+          fi
+          # One B-owned, nonfinancial Factory R2 canary: exact paths and
+          # SHA-pinned UI/builder bytes. C UID650 source guard is unchanged.
+          if [ "$BOUNDARY_BRANCH" = session-b/factory-release-loop-canary-20261113 ]; then
+            exact_paths="$(printf '%s\n' \
+              '.github/workflows/product-boundary.yml' \
+              '.github/workflows/r25-b-source-pinned-linux-release-build-v2.yml' \
+              'app/factory/FactoryConsole.tsx' \
+              'docs/DOCUMENTATION_CONTROL_PLANE.md' \
+              'docs/document-registry.json' | LC_ALL=C sort)"
+            actual_paths="$(git diff --name-only "$BOUNDARY_BASE_SHA" HEAD -- | LC_ALL=C sort)"
+            test "$actual_paths" = "$exact_paths" || {
+              echo HOLD:B_FACTORY_R2_UNREVIEWED_SOURCE_SCOPE; exit 3;
+            }
+            test "$(sha256sum app/factory/FactoryConsole.tsx | cut -d' ' -f1)" = '7d85f238250069801d308fa360ce4c8d8c00224783223ab70755a44ccc7bdaa5' || exit 3
+            test "$(sha256sum .github/workflows/r25-b-source-pinned-linux-release-build-v2.yml | cut -d' ' -f1)" = 'e5688411c780a1e89a0824b18a4b3f9c940352648f589c664da47b92e72d082d' || exit 3
           fi
           # B-only C03 observer collision: allow exactly these reviewed,
           # content-addressed files. C UID650 original guard stays strict.
@@ -141,7 +162,7 @@ jobs:
                   lib/c03*|lib/adminSession.ts|lib/productionAuth.ts|lib/playerNormalizedStats.ts) ;;
                   *) echo "HOLD:B_UNREVIEWED_RUNTIME_LIBRARY:$path"; exit 3 ;;
                 esac ;;
-              docs/*|tests/*|components/players/PlayerProfilePage.tsx|config/kingdom-index-routes.json)
+              docs/*|tests/*|app/factory/FactoryConsole.tsx|components/players/PlayerProfilePage.tsx|config/kingdom-index-routes.json)
                 ;;
               *)
                 echo "HOLD:B_UNREVIEWED_SOURCE_PATH:$path"; exit 3 ;;
@@ -154,6 +175,35 @@ jobs:
           python3 -B -m unittest -q tests.test_r25_b_product_mainline_scope
           python3 -B -m unittest -q tests.test_r25_b_v22_root_install_admission_review tests.test_r25_b_v22_central_signature_review tests.test_r25_b_c03_website_source_admission
           echo PASS:B_MAINLINE_CURRENT_SOURCE_AND_SEPARATE_RESTRICTED_RELEASE_BOUNDARY
+      - name: Verify exact merged Factory R2 B PR1347 without widening C
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          github.event.before == '68451f64eb9ec2b8341fde0ff548d7c95b8b8ce4'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$BOUNDARY_REPOSITORY" = Emaren/app-prodn
+          test "$BOUNDARY_BRANCH" = main
+          test "$(git rev-parse HEAD)" = "$BOUNDARY_HEAD_SHA"
+          test "$(git rev-parse HEAD^1)" = "$BOUNDARY_BASE_SHA"
+          test "$BOUNDARY_BASE_SHA" = '68451f64eb9ec2b8341fde0ff548d7c95b8b8ce4'
+          test "$(gh api repos/$BOUNDARY_REPOSITORY/pulls/1347 --jq .merged)" = true
+          test "$(gh api repos/$BOUNDARY_REPOSITORY/pulls/1347 --jq .head.sha)" = "$(git rev-parse HEAD^2)"
+          test "$(gh api repos/$BOUNDARY_REPOSITORY/pulls/1347 --jq .merge_commit_sha)" = "$BOUNDARY_HEAD_SHA"
+          actual_paths="$(git diff --name-only "$BOUNDARY_BASE_SHA" HEAD | LC_ALL=C sort)"
+          expected_paths="$(printf '%s\n' \
+            '.github/workflows/product-boundary.yml' \
+            '.github/workflows/r25-b-source-pinned-linux-release-build-v2.yml' \
+            'app/factory/FactoryConsole.tsx' \
+            'docs/DOCUMENTATION_CONTROL_PLANE.md' \
+            'docs/document-registry.json' | LC_ALL=C sort)"
+          test "$actual_paths" = "$expected_paths" || exit 3
+          test "$(sha256sum app/factory/FactoryConsole.tsx | cut -d' ' -f1)" = '7d85f238250069801d308fa360ce4c8d8c00224783223ab70755a44ccc7bdaa5'
+          test "$(sha256sum .github/workflows/r25-b-source-pinned-linux-release-build-v2.yml | cut -d' ' -f1)" = 'e5688411c780a1e89a0824b18a4b3f9c940352648f589c664da47b92e72d082d'
+          echo PASS:FACTORY_R2_EXACT_B_MERGE_AND_C_POLICY_UNCHANGED
       # The same B-only source must survive a merge into canonical main.
       # Without this path, C's guard incorrectly rejects known B release
       # files on push even though PR CI was green. This exception accepts

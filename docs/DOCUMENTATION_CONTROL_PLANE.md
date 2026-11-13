@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/factory-v1-visual-console-20261112` at `e7bdd312666f34695f455bab146b1923b68c9e74`
+Implementation baseline: `session-b/factory-release-loop-canary-20261113` at `d304747cd99aeafefb4d21071a08337f8dd10dd9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
