@@ -52,8 +52,10 @@ in the root-owned journal.
 
 AUTOMATIC FACTORY STATUS
 Publisher: /usr/local/sbin/aoe2war_factory_public_status_v1.py
-Units: aoe2war-product-factory-status.{service,timer}
-Timer: every two minutes, ROOT-owned read-only status gathering.
+Scheduler: existing cron daemon, fixed /etc/cron.d/aoe2war-product-factory-status
+Every two minutes, root-owned read-only status gathering, flock-protected.
+The two temporary Factory-specific systemd units were removed, with exact
+source backups, so C03's original 57-unit census remains unchanged.
 Output: /factory/status.json. It refuses fake browser green lights:
 authenticated-browser and unverified media remain UNKNOWN. It checks
 actual 3032 source/build/service, financial denial, six masked units,
@@ -89,14 +91,39 @@ fail on a future PR, repair the actual source/registry discrepancy;
 do not falsify reviewed_at dates or disable financial security gates.
 The checked exact Factory PR succeeded in all eight GitHub workflows.
 
-OPEN SEPARATE MAINTENANCE
-Steam egress refresh V23 was already failed with
-MONITOR_ONESHOT_IDENTITY_DRIFT before this Factory deployment. Its
-release-source pin is now also stale for new Factory and needs a
-separate narrowly scoped PRODUCT compatibility repair. Do not let
-this preexisting monitor defect force a rollback of an otherwise
-healthy PUBLIC nonfinancial web page, and do not infer Steam auth
-was accepted by a guest/public check.
-Authentication-role browser testing is outstanding, not a false PASS.
+STEAM EGRESS REPAIRED AND PHYSICALLY ACCEPTED — 2026-11-13
+V23 was pinned to a superseded web unit, and its original global Steam
+snapshot guard could not accept the intentionally MASKED C04 wager
+reconciliation service (NeedDaemonReload=yes). V25 fixed only the web
+source pin and exposed that legitimate masked-state conflict. V26 is a
+bounded PRODUCT-only Steam egress refresh with a narrower, independently
+observable set of hard safety guards — not a reclassification of any
+FINANCIAL funding or writer-fence gate.
+
+Live source: /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_factory_v26.py
+Source SHA256: 67b3d973da5df0c47ce6c40150cc76e7a78a8ae1855518d0e986a795da1ca7cb
+Canonical source archive: docs/release/artifacts/r25_steam_refresh_factory_v26.py
+Existing 60-current-product-v23.conf and V23 original source SHA819d retained;
+the 70-current-factory-v25.conf drop-in now invokes exact V26. Its old bytes
+are preserved as steam-v25-dropin-pre-v26.conf in the root release journal.
+The only permitted nft operation is an ATOMIC delete/re-add of currently
+CA/TLS-verified Steam IPs in existing five-minute steam4/steam6 sets for
+web UID990. No flush, new table, policy/chain change, additional listener
+or blanket internet access. The immutable original nft rule shape is pinned
+by SHA985f32; six legacy financial services remain masked, financial ports
+8092–8095 stay closed, four protected service PIDs are unchanged, and
+C03's read-only monitor must have its expected held success/exit3 state.
+
+Actual Steam service systemd run PASS exit0; subsequent native renewal PASS
+with two atomic commands for 3 verified Steam IPv4 addresses. The original
+one-minute Steam timer is enabled and recurring with successful results.
+Verified from uid990: HTTPS Steam OpenID endpoint HTTP302, TLS verification
+result zero. Public /api/auth/steam is HTTP307 with expiring state cookie.
+Do NOT claim a new user completed provider callback: existing Emaren session
+and public redirect prove separate components; real fresh OpenID callback,
+database authorization, and signed-session roundtrip still require a
+legitimate user authentication and authenticated browser acceptance.
+
+FINANCIAL C01/C02/C03/C05/C06/C07/C09 remain HOLD; funding DENIED.
 All C01,C02,C03,C05,C06,C07,C09 financial gates remain separate
 and funding remains DENIED.
