@@ -160,6 +160,17 @@ ORIGINAL_UNIT_PROPERTIES = (
 )
 
 
+MASKED_SERVICE_FIELDS = frozenset((
+    "Id", "Type", "TriggeredBy", "NeedDaemonReload", "Result",
+    "ActiveState", "MainPID", "ExecMainStartTimestampMonotonic",
+    "User", "WorkingDirectory", "FragmentPath", "DropInPaths",
+))
+MASKED_TIMER_FIELDS = frozenset((
+    "Id", "TriggeredBy", "NeedDaemonReload", "Result",
+    "ActiveState", "FragmentPath", "DropInPaths",
+))
+
+
 def _masked_snapshot_row(m, unit: str, trusted: dict) -> dict:
     """Return an original-shaped row from ACTUAL systemd data, not invented old DDL."""
     raw = m.run(["/usr/bin/systemctl", "show", unit, "--no-pager",
@@ -168,19 +179,19 @@ def _masked_snapshot_row(m, unit: str, trusted: dict) -> dict:
     pairs = distinct_json(line.split("=", 1)
                           for line in raw.decode("utf-8").splitlines()
                           if "=" in line)
-    require(set(pairs) == set(ORIGINAL_UNIT_PROPERTIES), "ORIGINAL_SNAPSHOT_FIELDS")
+    expected = MASKED_SERVICE_FIELDS if unit.endswith(".service") else MASKED_TIMER_FIELDS
+    require(set(pairs) == expected, "ORIGINAL_MASKED_SNAPSHOT_FIELDS")
     require(pairs["Id"] == unit
             and pairs["FragmentPath"] == trusted["FragmentPath"]
             and pairs["ActiveState"] == trusted["ActiveState"]
             and pairs["Result"] == trusted["Result"]
-            and pairs["Type"] == ""
+            and pairs.get("Type", "") == ""
             and pairs["TriggeredBy"] == ""
-            and pairs["MainPID"] in ("", "0")
-            and pairs["ExecStart"] == "",
+            and pairs.get("MainPID", "0") == "0"
+            and "ExecStart" not in pairs,
             "MASKED_EFFECTIVE_UNIT_DRIFT")
-    # Original unit_state hashes ExecStart for every non-monitor path.
-    # A masked source has no executable; include that actual empty digest.
-    pairs["ExecStart_sha256"] = m.sha(pairs.pop("ExecStart").encode("utf-8"))
+    # systemctl does not emit ExecStart on ANY accepted masked source.
+    # Preserve that absence in the original-shaped canonical unit row.
     cat = m.run(["/usr/bin/systemctl", "cat", unit, "--no-pager"],
                 maximum=131072)
     require(b"masked" in cat.lower() and len(cat) <= 131072,

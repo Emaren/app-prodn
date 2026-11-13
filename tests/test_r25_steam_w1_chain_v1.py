@@ -32,10 +32,13 @@ class FullChain(unittest.TestCase):
             self.assertIn(u, g.UNITS)
             if argv[1] == "cat":
                 return ("# Unit " + u + " is masked.\n").encode()
+            expected = (g.MASKED_SERVICE_FIELDS if u.endswith(".service")
+                        else g.MASKED_TIMER_FIELDS)
             p = {k: {"Id": u, "FragmentPath": self.trusted[u]["FragmentPath"],
                      "ActiveState": self.trusted[u]["ActiveState"],
                      "Result": self.trusted[u]["Result"],
-                     "MainPID": "0"}.get(k, "") for k in g.ORIGINAL_UNIT_PROPERTIES}
+                     "MainPID": "0"}.get(k, "")
+                 for k in g.ORIGINAL_UNIT_PROPERTIES if k in expected}
             return ("\n".join(k + "=" + v for k, v in p.items()) + "\n").encode()
         def original_unit(u):
             self.calls.append(u)
@@ -135,6 +138,20 @@ class FullChain(unittest.TestCase):
                                 capture_output=True, text=True, timeout=6)
         self.assertEqual(result.returncode, 3)
         self.assertIn("HOLD_W1_QUARANTINE", result.stdout)
+
+    def test_unrecognized_masked_systemd_property_shape_holds(self):
+        previous = self.m.run
+        target = next(u for u in g.UNITS if u.endswith(".service"))
+        def altered(argv, maximum=None):
+            original = previous(argv, maximum=maximum)
+            if argv[1] == "show" and argv[2] == target:
+                return original.replace(b"Result=success", b"")
+            return original
+        self.m.run = altered
+        self.attach()
+        with self.assertRaisesRegex(g.Hold, "ORIGINAL_MASKED_SNAPSHOT_FIELDS"):
+            self.m.production_protected()
+        self.assertIs(self.m.unit_state, self.original_unit)
 
     def test_original_guard_exception_restores_original_reader(self):
         self.m.production_protected = lambda: (_ for _ in ()).throw(
