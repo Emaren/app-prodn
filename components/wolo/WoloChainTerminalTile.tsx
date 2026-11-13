@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { parseWoloBrowserRpcStatus } from "@/lib/woloBrowserRpcStatus";
 
 type WoloStatusSnapshot = {
   healthy: boolean;
@@ -11,7 +12,7 @@ type WoloStatusSnapshot = {
   latestBlockTime: string | null;
   lastBlockAgeSeconds: number | null;
   staleAfterSeconds: number;
-  peers: number;
+  peers: number | null;
   catchingUp: boolean;
   consensusStatus: "advancing" | "stalled" | "catching_up" | "standby";
   statusLabel: string;
@@ -205,6 +206,7 @@ function renderDaemonLine(line: string, index: number) {
 export default function WoloChainTerminalTile() {
   const [snapshot, setSnapshot] = useState<WoloStatusSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const lastObservedHeight = useRef<string | null>(null);
   const [daemon, setDaemon] = useState<DaemonLogPayload | null>(null);
   const [premiumRuntimeView, setPremiumRuntimeView] = useState(() =>
     readStoredPremiumPreference(RUNTIME_VIEW_KEY, false)
@@ -227,31 +229,35 @@ export default function WoloChainTerminalTile() {
     let cancelled = false;
 
     async function loadStatus() {
+      const controller = new AbortController();
+      const deadline = window.setTimeout(() => controller.abort(), 5000);
       try {
-        const response = await fetch("/api/wolo/status", { cache: "no-store" });
-        const payload = (await response.json().catch(() => ({}))) as
-          | WoloStatusSnapshot
-          | { detail?: string };
-
-        if (!response.ok) {
-          throw new Error(
-            typeof payload === "object" &&
-              payload &&
-              "detail" in payload &&
-              typeof payload.detail === "string"
-              ? payload.detail
-              : "Chain status failed."
-          );
-        }
-
+        // Same-origin, public GET only: no server egress expansion, signer, wallet or DB.
+        const response = await fetch("/rpc/status", {
+          cache: "no-store",
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("Public WoloChain RPC unavailable");
+        const parsed = parseWoloBrowserRpcStatus(
+          await response.json(),
+          lastObservedHeight.current,
+          Date.now(),
+        );
         if (!cancelled) {
-          setSnapshot(payload as WoloStatusSnapshot);
+          lastObservedHeight.current = parsed.latestBlockHeight;
+          setSnapshot(parsed);
           setError(null);
         }
-      } catch (statusError) {
+      } catch {
         if (!cancelled) {
-          setError(statusError instanceof Error ? statusError.message : "Chain status failed.");
+          // A missing/invalid RPC response is UNKNOWN, never a fabricated height 0.
+          lastObservedHeight.current = null;
+          setSnapshot(null);
+          setError("Public chain status unavailable or unverified");
         }
+      } finally {
+        window.clearTimeout(deadline);
       }
     }
 
@@ -311,7 +317,7 @@ export default function WoloChainTerminalTile() {
     setPremiumDaemonView((current) => !current);
   }
 
-    const consensusLabel = snapshot?.statusLabel || "Standby";
+  const consensusLabel = snapshot?.statusLabel || "Unknown";
   const ageLabel = `age ${formatAge(snapshot?.lastBlockAgeSeconds ?? null)}`;
 
   const runtimeLines =
@@ -355,8 +361,8 @@ export default function WoloChainTerminalTile() {
                 WoloChain Runtime
               </div>
               <div className="flex flex-wrap gap-2">
-                <PremiumRuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
-                <PremiumRuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
+                <PremiumRuntimeChip label={`height ${snapshot?.latestBlockHeight || "unknown"}`} />
+                <PremiumRuntimeChip label={`peers ${snapshot?.peers ?? "unknown"}`} />
                 <PremiumRuntimeChip
                   label={consensusLabel}
                   className={consensusChipClasses(snapshot?.consensusStatus, true)}
@@ -373,18 +379,18 @@ export default function WoloChainTerminalTile() {
                   : "border-amber-300/25 bg-amber-400/10 text-amber-100"
               )}
             >
-              {snapshot?.healthy ? "Node live" : "Standby"}
+              {snapshot?.healthy ? "Node live" : snapshot ? "Node stalled" : "Unknown"}
             </div>
           </div>
 
           <div className="relative mt-4 grid gap-4 xl:grid-cols-[0.88fr_1.12fr]">
             <div className="grid gap-3 sm:grid-cols-2">
-              <PremiumRuntimeStat label="Chain ID" value={snapshot?.chainId || "wolo"} />
+              <PremiumRuntimeStat label="Chain ID" value={snapshot?.chainId || "unknown"} />
               <PremiumRuntimeStat
                 label="Latest Height"
-                value={snapshot?.latestBlockHeight || "0"}
+                value={snapshot?.latestBlockHeight || "unknown"}
               />
-              <PremiumRuntimeStat label="Peers" value={String(snapshot?.peers ?? 0)} />
+              <PremiumRuntimeStat label="Peers" value={String(snapshot?.peers ?? "unknown")} />
               <PremiumRuntimeStat
                 label="Block Time"
                 value={formatTime(snapshot?.latestBlockTime || null)}
@@ -411,8 +417,8 @@ export default function WoloChainTerminalTile() {
                 WoloChain Runtime
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <RuntimeChip label={`height ${snapshot?.latestBlockHeight || "0"}`} />
-                <RuntimeChip label={`peers ${snapshot?.peers ?? 0}`} />
+                <RuntimeChip label={`height ${snapshot?.latestBlockHeight || "unknown"}`} />
+                <RuntimeChip label={`peers ${snapshot?.peers ?? "unknown"}`} />
                 <RuntimeChip
                   label={consensusLabel}
                   className={consensusChipClasses(snapshot?.consensusStatus)}
@@ -428,15 +434,15 @@ export default function WoloChainTerminalTile() {
                   : "border border-amber-300/25 bg-amber-400/10 text-amber-100"
               )}
             >
-              {snapshot?.healthy ? "Node live" : "Standby"}
+              {snapshot?.healthy ? "Node live" : snapshot ? "Node stalled" : "Unknown"}
             </div>
           </div>
 
           <div className="mt-5 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
             <div className="grid gap-3 sm:grid-cols-2">
-              <TerminalStat label="Chain ID" value={snapshot?.chainId || "wolo"} />
-              <TerminalStat label="Latest Height" value={snapshot?.latestBlockHeight || "0"} />
-              <TerminalStat label="Peers" value={String(snapshot?.peers ?? 0)} />
+              <TerminalStat label="Chain ID" value={snapshot?.chainId || "unknown"} />
+              <TerminalStat label="Latest Height" value={snapshot?.latestBlockHeight || "unknown"} />
+              <TerminalStat label="Peers" value={String(snapshot?.peers ?? "unknown")} />
               <TerminalStat
                 label="Block Time"
                 value={formatTime(snapshot?.latestBlockTime || null)}
