@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b0582e55ab203f4fe49c3c5104937bade9edd536de2dfeda7c865592797b3a9d",
+      "sha256": "cf1c06976362e05956ace198ee6a3d52ee889809e65ad5000c1c2d1db16ea895",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -730,9 +730,9 @@
       "owner": "aoe2war-web",
       "path": "docs/EVIDENCE_VAULT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "2451b6779d155d457838c15f01613df5a422fd445867929498c163e6956c93c2",
+      "sha256": "86db03f68b0e99e4f2fd1f1b74b3dd5d1aeae9fe73cc67491e11dd73131000e4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -868,9 +868,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HOST_MAINTENANCE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "3fa4166cb62dd8ac0f94fc22a21e794db2f921e5241f33e4608e9e321ebbf1d4",
+      "sha256": "525b0bc1418fcefdebd7a6917a47a4cec0fdf220b8b0a46d85dc6f9fee21f955",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1169,9 +1169,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKETPLACE_BUSINESS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "b8cca628571aba5c6470d826c1006457952e0a88143466e707b884a1c1cf5e6d",
+      "sha256": "188555fa37c0468aaf4c2b7febad659c762545d788a7d43712f494e156dae67b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1466,9 +1466,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "3177bbf2e19b09d61f22b6ae78423d8f913c701446ff6638bd1e1e8ad959bb51",
+      "sha256": "a98a28a7a40fe61fe9fdc3a0da2079fa9e3a6e24e7ecbad34a09531868e62c7b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2347,9 +2347,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STORAGE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-11-13",
       "sensitivity": "internal",
-      "sha256": "2c695ac8c792d38956afeb4369086a12848a44f19b4dd523a6a0938f69355425",
+      "sha256": "d3ef68d9277afa21479a5bac9602df7aa713fe8fec66a02765a2e43d3f291231",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3261,8 +3261,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-b/steam-v23-c03-observer-completion-retry-20261112",
-    "commit": "b347fd9f40cd18cb9b4570bae3354d794db8a4c5"
+    "branch": "session-b/steam-w1-fourunit-quarantine-requal-20261113",
+    "commit": "4123edc594c64134f044cc41ce677f3889331f4d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
