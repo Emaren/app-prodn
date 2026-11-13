@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-b/steam-w1-fourunit-quarantine-requal-20261113` at `24353ffc91dc869acf4c25050bc66024dd721a12`
+Implementation baseline: `session-b/steam-w1-fourunit-quarantine-requal-20261113` at `4123edc594c64134f044cc41ce677f3889331f4d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
