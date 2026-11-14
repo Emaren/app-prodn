@@ -178,7 +178,7 @@ class ApprovalTests(unittest.TestCase):
         source = self.approval["sourceSha"]
         api_root = "repos/Emaren/app-prodn/"
         def fake(endpoint, failure=False, optional=False, duplicate=False,
-                 skipped_required=False):
+                 skipped_required=False, optional_name=None):
             if endpoint == api_root + "pulls/1351":
                 return {"head": {"sha": source, "repo": {"full_name": "Emaren/app-prodn"}},
                         "base": {"ref": "main", "repo": {"full_name": "Emaren/app-prodn"}},
@@ -191,9 +191,9 @@ class ApprovalTests(unittest.TestCase):
             if endpoint.startswith(api_root + "commits/"):
                 checks = [{"id":777, "name":"CI", "status":"completed",
                            "conclusion":"failure" if failure else "success"}]
-                if optional:
+                if optional or optional_name is not None:
                     checks.append({"id":778,
-                        "name":"Nightly/manual source-bound Next census",
+                        "name":optional_name or "Nightly/manual source-bound Next census",
                         "status":"completed", "conclusion":"skipped"})
                 if duplicate:
                     checks.append({"id":779, "name":"CI",
@@ -220,6 +220,24 @@ class ApprovalTests(unittest.TestCase):
             self.approval, lambda endpoint: fake(endpoint, optional=True))
         self.assertEqual(len(optional_receipt["allChecks"]),2)
         self.assertEqual(optional_receipt["allChecks"][1]["conclusion"],"skipped")
+        preview_optional = (
+            "Chromium — six Kingdom instrument pages, isolated exact source",
+            "Chromium — exact candidate, no production data or operator mutations",
+        )
+        for name in preview_optional:
+            _, _, preview = R.qualify(
+                self.approval, lambda endpoint: fake(endpoint, optional_name=name))
+            self.assertEqual(preview["allChecks"][1]["conclusion"], "skipped")
+            # Optional conditional jobs never become optional when an owner
+            # explicitly requires their success.
+            required={**self.approval, "requiredChecks":["CI", name]}
+            with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
+                R.qualify(required, lambda endpoint: fake(endpoint, optional_name=name))
+        for forged_skip in ("GitGuardian Security Checks", "product-boundary",
+                            "Unknown preview", "chrome"):
+            with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
+                R.qualify(self.approval,
+                          lambda endpoint: fake(endpoint, optional_name=forged_skip))
         with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
             R.qualify(self.approval, lambda endpoint: fake(endpoint, duplicate=True))
         with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
