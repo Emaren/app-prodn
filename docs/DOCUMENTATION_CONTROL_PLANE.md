@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/product-os-postflight-compat-20261114` at `427679d48c05dae66d31e68cd82aedff4c29f645`
+Implementation baseline: `session-c/product-next-site-change-20261114` at `ed7bf80f0b117cb04ca3c69ed65ada3d7f89a4f8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
