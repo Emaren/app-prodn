@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "02f7af1a6195bcd9b13d6b49b61fa077d6ef9f24c52220e21d6b728303f59280",
+      "sha256": "4a96a6e0f410f1f389aa4f4c9d29b267d3f3ece3a6119ca3aeae65680d9bd814",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3350,7 +3350,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/kingdom-deployments-factory-wolo-20261114",
-    "commit": "ef64639bb7796827e85655fe145af37ed0657dd1"
+    "commit": "656f6f0b7c907105bad11ce55eb81a66e3599790"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
