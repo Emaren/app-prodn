@@ -52,10 +52,10 @@ EXACT_REVIEWED_DYNAMIC_SHA256 = "bb1433119e955fd4e7bf9c6d2ecdcb64b0566ed01eef203
 # SHA256-pinned scripts were reviewed as one source-bound set against the exact
 # R1 canonical main base. This grants code REVIEW ONLY, not root execution or
 # any extension of authorize_task / the actual 3032 admission boundary.
-EXACT_REVIEWED_DEPLOYMENT_OS_BASE = "c859b196525817035ebec3dadae5d102303ace86"
+EXACT_REVIEWED_DEPLOYMENT_OS_BASE = "6f413a39864c7f54f3e3574150ca396819702416"
 EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE = {
     "scripts/aoe2_product_release.py":
-        "dc056f2a40e69b4c672ddaed3666c9b6600f61d4a2e1d6ae994519f9aced866e",
+        "7b772e89781b1d09879866bf375e51ba873af22c579dfb73f6f45795379bf218",
     "scripts/aoe2_product_release_ledger.py":
         "d452f3b0fc31641beeab9ee4df5e6f29a64289faa3f25aa3fca46b60bda83bd9",
     "scripts/aoe2_product_release_transport.py":

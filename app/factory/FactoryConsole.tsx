@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   FACTORY_SERVICES, FACTORY_STAGES, FACTORY_TEST_GROUPS,
-  readFactoryPublicStatus, unknownFactoryStatus, factoryStageEvidence,
+  readFactoryPublicStatus, unknownFactoryStatus, factoryStageEvidence, factoryHeadroomEvidence,
   type FactoryActivity, type FactoryFeed, type FactoryRelease,
   type FactorySignal, type FactoryStage,
 } from "@/lib/factoryPublicStatus";
@@ -211,9 +211,26 @@ const bytes = (value: number | null | undefined) => value === null || value === 
 function ReleaseTelemetry({ feed }: { feed: FactoryFeed }) {
   const cycle = feed.value.releaseOs;
   const hasLedger = !!cycle?.stages.length;
-  const disk = cycle?.disk;
-  const diskAge = disk ? Date.now() - Date.parse(disk.observedAt) : null;
-  const diskFresh = diskAge !== null && diskAge >= -60_000 && diskAge <= 600_000;
+  const headroom = factoryHeadroomEvidence(cycle?.disk);
+  const capacityCurrent = headroom.state === "pass" || headroom.state === "hold";
+  const marginGiB = headroom.marginBytes === null ? null :
+    (Math.abs(headroom.marginBytes) / 1024 ** 3).toFixed(2);
+  const marginLabel = capacityCurrent
+    ? headroom.marginBytes === 0 ? "At the 6 GiB minimum" :
+      (headroom.marginBytes! > 0 ? "+" : "") + marginGiB + " GiB " +
+      (headroom.marginBytes! > 0 ? "above" : "below") + " the 6 GiB minimum"
+    : headroom.state === "stale" ? "Capacity observation expired" : "No fresh capacity observation";
+  const observedSeconds = headroom.ageMs === null ? null :
+    Math.max(0, Math.floor(headroom.ageMs / 1000));
+  const observedAge = observedSeconds === null ? "UNKNOWN" :
+    observedSeconds < 60 ? observedSeconds + "s ago" :
+      Math.floor(observedSeconds / 60) + "m " + observedSeconds % 60 + "s ago";
+  const headroomTitle = [
+    headroom.observedAt ? "UTC observation: " + headroom.observedAt + "." : "Observation timestamp UNKNOWN.",
+    cycle ? "Source: " + cycle.sourceSha + "; BUILD_ID: " + cycle.buildId + "." : "Source UNKNOWN.",
+    "The release minimum remains 6 GiB. Incoming artifact and extraction readiness are UNKNOWN.",
+    "This capacity sample does not authorize or certify the next release.",
+  ].join(" ");
   const transfer = cycle?.transfer;
   const next = FACTORY_STAGES.map(stage => ({ stage, ...factoryStageEvidence(cycle, stage) }))
     .find(row => row.state !== "pass");
@@ -229,11 +246,16 @@ function ReleaseTelemetry({ feed }: { feed: FactoryFeed }) {
           cycle?.startKind === "observed-engineering" ? "Observed engineering clock" : "Start timestamp UNKNOWN"}</span></div>
       <div><small>START → ROLLBACK-TESTED ACCEPTANCE</small>
         <strong>{elapsed(cycle?.finalAcceptedMs)}</strong><span>Previous proof, reactivation and sealed receipt</span></div>
-      <div data-signal={!diskFresh ? "unknown" : disk!.rootFreeBytes >= disk!.requiredBytes ? "pass" : "hold"}>
-        <small>ROOT HEADROOM / UNCHANGED GUARD</small>
-        <strong>{diskFresh ? (disk!.rootFreeBytes / 1024 ** 3).toFixed(2) + " GiB" : "UNKNOWN"}</strong>
-        <span>{diskFresh ? "Required " + (disk!.requiredBytes / 1024 ** 3).toFixed(0) +
-          " GiB · " + localTime(disk!.observedAt) : "No fresh disk observation"}</span></div>
+      <div data-signal={headroom.state} title={headroomTitle}>
+        <small>LIVE ROOT HEADROOM</small>
+        <strong>{capacityCurrent ? (headroom.freeBytes! / 1024 ** 3).toFixed(2) + " GiB" :
+          headroom.state === "stale" ? "STALE" : "UNKNOWN"}</strong>
+        <span>{marginLabel}</span>
+        <span>{headroom.observedAt ? <time dateTime={headroom.observedAt}
+          title={"UTC: " + headroom.observedAt}>Observed {observedAge} · {
+            new Date(headroom.observedAt).toLocaleString()}</time> : "Observation time UNKNOWN"}</span>
+        <span>Capacity only · release readiness unverified</span>
+      </div>
     </div>
     <dl className={css.identityGrid}>
       <div><dt>ACTIVE SOURCE</dt><dd>{feed.value.liveRelease.id || "UNKNOWN"}</dd></div>

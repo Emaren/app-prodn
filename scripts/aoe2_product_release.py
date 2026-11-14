@@ -92,10 +92,105 @@ def load_approval(path, phase, now=None):
     return value
 
 
+
+
+FAILURE_LOG_LIMIT = 1024 * 1024
+
+def private_failure_log(raw):
+    """Bound stored logs and omit receipt bodies, credentials and URLs.
+
+    Custody: existing B-owner 0700 release directory, individual 0600 files.
+    These diagnostics are never Factory/public evidence or receipt storage.
+    The diagnostic metadata retains the exact hash of all captured bytes;
+    stored text may be truncated, redacted, or omitted as explicitly recorded.
+    """
+    limited = raw[:FAILURE_LOG_LIMIT]
+    receipt = re.search(
+        rb"aoe2war\.product\.(?:release-|public-identity-witness|"
+        rb"github-qualification|pr-provenance|owner-approval|web-release-manifest)"
+        rb'|"active_unit_sha256"|"active_runtime"',
+        raw,
+    )
+    if receipt:
+        stored = b"[Protected PRODUCT receipt/journal body omitted; inspect its original evidence and diagnostic digest.]\n"
+        content_state = "receipt-omitted"
+    else:
+        stored = re.sub(
+            rb"(?im)^.*(?:authorization|set-cookie|cookies?|bearer\s+\S+|"
+            rb"gh[pousr]_[A-Za-z0-9_]*|github_pat_[A-Za-z0-9_]*|"
+            rb"(?:password|secret|token|api[_-]?key|database_url)\s*[\"']?\s*[:=]).*$",
+            b"[Credential-bearing line redacted]",
+            limited,
+        )
+        stored = re.sub(
+            rb"https?://[^\s<>\"']+",
+            b"[URL redacted]",
+            stored,
+            flags=re.IGNORECASE,
+        )
+        stored = re.sub(
+            rb"https?:\\/\\/[^\s<>\"']+",
+            b"[URL redacted]",
+            stored,
+            flags=re.IGNORECASE,
+        )
+        content_state = "redacted" if stored != limited else "as-captured"
+        stored = stored[:FAILURE_LOG_LIMIT]
+    return stored, {
+        "captureState": "full" if len(raw) <= FAILURE_LOG_LIMIT else "truncated",
+        "contentState": content_state,
+        "storedBytes": len(stored),
+        "storedSha256": hashlib.sha256(stored).hexdigest(),
+    }
+
+
 def command(parts, timeout=60, data=None):
-    result = subprocess.run(parts, input=data, capture_output=True, timeout=timeout)
-    need(result.returncode == 0, "COMMAND_FAILED_" + Path(parts[0]).name.upper())
-    return result.stdout.decode()
+    try:
+        result = subprocess.run(parts, input=data, capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired as error:
+        result = None
+        stdout, stderr = error.stdout or b"", error.stderr or b""
+        code = "HOLD_PRODUCT_RELEASE_COMMAND_TIMEOUT_" + Path(parts[0]).name.upper()
+    else:
+        if result.returncode == 0:
+            return result.stdout.decode()
+        stdout, stderr = result.stdout, result.stderr
+        matches = re.findall(rb"HOLD_PRODUCT_[A-Z0-9_]{1,120}", stdout + b"\n" + stderr)
+        code = matches[-1].decode() if matches else (
+            "HOLD_PRODUCT_RELEASE_COMMAND_FAILED_" + Path(parts[0]).name.upper()
+        )
+    reference = None
+    if DIAGNOSTIC_DIR is not None:
+        # Existing restricted B custody only. Never print output/arguments or
+        # publish these logs; protected receipts retain their original custody.
+        stem = "command-failure-" + str(time.monotonic_ns())
+        name = stem + ".json"
+        report = {
+            "schema": "aoe2war.product.command-failure.v1",
+            "observedAt": ledger.utcnow(), "predicate": code,
+            "executable": Path(parts[0]).name,
+            "returnCode": result.returncode if result is not None else None,
+            "stdoutBytes": len(stdout), "stderrBytes": len(stderr),
+            "stdoutSha256": hashlib.sha256(stdout).hexdigest(),
+            "stderrSha256": hashlib.sha256(stderr).hexdigest(),
+            "custody": "restricted-B-owner-private-not-public",
+            "storedLimitBytesPerStream": FAILURE_LOG_LIMIT,
+            "redactionPolicy": "receipt-bodies-credential-lines-and-urls-v1",
+        }
+        try:
+            for label, raw in (("stdout", stdout), ("stderr", stderr)):
+                stored, details = private_failure_log(raw)
+                relative = stem + "." + label + ".log"
+                seal_once(Path(DIAGNOSTIC_DIR) / relative, stored)
+                report[label + "Log"] = relative
+                report[label + "Capture"] = details
+            seal_once(Path(DIAGNOSTIC_DIR) / name,
+                      (json.dumps(report, sort_keys=True, indent=2) + "\n").encode())
+            reference = name
+        except Exception:
+            # Logging failure must not conceal or replace the original HOLD.
+            pass
+    raise RuntimeError(code + (" DIAGNOSTIC=" + reference if reference else ""))
 
 
 def gh_json(endpoint):
@@ -110,6 +205,7 @@ def qualify(approval, fetch=gh_json):
          and pr["base"]["repo"]["full_name"] == "Emaren/app-prodn"
          and pr["head"]["repo"]["full_name"] == "Emaren/app-prodn",
          "PR_SOURCE_OR_REPOSITORY_MISMATCH")
+    ancestry = canonical_main_ancestry(source, fetch)
     run = fetch(base + "actions/runs/" + str(approval["runId"]))
     need(run["head_sha"] == source and run["status"] == "completed"
          and run["conclusion"] == "success"
@@ -146,6 +242,7 @@ def qualify(approval, fetch=gh_json):
              and item["workflow_run"]["head_sha"] == source,
              "ARTIFACT_METADATA_SOURCE_OR_DIGEST")
     qualified = {
+        **ancestry,
         "schema": "aoe2war.product.github-qualification.v1",
         "sourceSha": source, "buildId": approval["buildId"],
         "pr": approval["pr"], "prUrl": pr["html_url"],
@@ -374,34 +471,55 @@ def controller(action, manifest):
                       "elapsedMs": round((time.monotonic() - started) * 1000)}), flush=True)
 
 
+
 def seal_once(path, raw):
     path = Path(path)
+    need(path.parent.is_dir() and not path.parent.is_symlink(), "LOCAL_RECEIPT_PARENT")
     if path.exists():
         transport.checked_file(path)
         need(path.read_bytes() == raw, "LOCAL_RECEIPT_COLLISION")
         return
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
-        need(os.write(fd, raw) == len(raw), "RECEIPT_SHORT_WRITE")
+        offset = 0
+        while offset < len(raw):
+            written = os.write(fd, raw[offset:])
+            need(written > 0, "RECEIPT_SHORT_WRITE")
+            offset += written
         os.fsync(fd)
     finally:
         os.close(fd)
+    directory = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
 
 
-def root_receipt(path, raw):
+
+def root_receipt(path, raw, verify_only=False):
+    source12, name = receipt_location(path)
     digest = hashlib.sha256(raw).hexdigest()
-    # Paths are fixed below, source12 is a validated hex identifier. Input is JSON data.
+    mode = "verify" if verify_only else "write"
     text = (
-        "umask 077; if test -e " + path +
-        "; then test \"$(sha256sum " + path + " | cut -d ' ' -f1)\" = " + digest +
-        "; else set -C; cat > " + path + "; fi"
+        "python3 -I -B -c " + shlex.quote(ROOT_RECEIPT_CODE) + " " +
+        " ".join(shlex.quote(value) for value in (mode, source12, name, digest))
     )
-    ssh(text, root=True, data=raw)
+    result = json.loads(ssh(text, root=True, data=raw if not verify_only else None))
+    need(result.get("status") == "PASS_ROOT_PRODUCT_RECEIPT"
+         and result.get("sourceSha", "")[:12] == source12
+         and result.get("name") == name and result.get("sha256") == digest
+         and result.get("bytes") == len(raw) and result.get("mode") == mode,
+         "ROOT_RECEIPT_READBACK")
 
 
 def release(approval, remote, proof, log, work):
     root_pins()
     source = approval["sourceSha"]
+    already_sealed = any(row["event"] == "T10" and row["state"] == "pass"
+                         for row in ledger.read(log, source))
+    if not already_sealed:
+        canonical_main_ancestry(source)
     manifest = "/root/aoe2war-product-release-manifests/" + source[:12] + "-run-" + str(approval["runId"]) + ".json"
     existing = ssh("if test -f " + manifest + "; then cat " + manifest + "; fi", root=True)
     if not existing:
@@ -419,7 +537,7 @@ def release(approval, remote, proof, log, work):
     raw_state = ssh("if test -f " + journal + "/state.json; then cat " +
                     journal + "/state.json; fi", root=True)
     phase = json.loads(raw_state)["phase"] if raw_state else None
-    need(phase in (None, "staged", "live", "rolled_back"),
+    need(phase in (None, "prepared", "live", "rolled_back"),
          "CONTROLLER_INTERRUPTED_REQUIRES_REVIEWED_RECOVERY")
     accepted = {x["event"] for x in ledger.read(log, source) if x["state"] == "pass"}
     if "T10" in accepted:
@@ -429,19 +547,19 @@ def release(approval, remote, proof, log, work):
         print("PASS_ALREADY_SEALED_EXACT_SOURCE_ROOT_RECEIPT_CHECKED")
         return
     if phase is None:
-        controller("stage", manifest)
-        phase = "staged"
+        approved_controller("stage", manifest, approval)
+        phase = "prepared"
     if "T6" not in accepted:
         event(log, approval, "T6", extra={"proofSha256": hashlib.sha256(existing.encode()).hexdigest()})
-    if phase == "staged":
-        controller("activate", manifest)
+    if phase == "prepared":
+        approved_controller("activate", manifest, approval)
         phase = "live"
     if phase == "live" and "T7" not in accepted:
         digest = stage_witness(work, "T7", source, approval["buildId"])
         event(log, approval, "T7", extra={"proofSha256": digest})
     if phase == "live" and "T9" not in accepted:
         event(log, approval, "rollback", "running")
-        controller("rollback", manifest)
+        approved_controller("rollback", manifest, approval)
         phase = "rolled_back"
     if phase == "rolled_back":
         digest = stage_witness(work, "T8",
@@ -449,14 +567,14 @@ def release(approval, remote, proof, log, work):
         if "T8" not in accepted:
             event(log, approval, "T8", extra={"proofSha256": digest})
         event(log, approval, "reactivate", "running")
-        controller("reactivate", manifest)
+        approved_controller("reactivate", manifest, approval)
     digest = stage_witness(work, "T9", source, approval["buildId"])
     if "T9" not in accepted:
         event(log, approval, "T9", extra={"proofSha256": digest})
     root_pins()
     # Existing source-pinned observer validates protected processes and finance denial.
     ssh("python3 -I -B " + INSPECTOR + " --phase inspect", root=True)
-    controller("status", manifest)
+    approved_controller("status", manifest, approval)
     before = hashlib.sha256(log.read_bytes()).hexdigest()
     event(log, approval, "T10", extra={"proofSha256": before})
     seal_acceptance(approval, log, work, journal)
@@ -500,6 +618,7 @@ def seal_acceptance(approval, log, work, journal):
         path = work / name
         need(path.is_file(), "REQUIRED_WITNESS_MISSING")
         transport.checked_file(path)
+    acceptance_payloads(approval, log, work)
     # Repeated exact bytes are idempotent; different bytes HOLD at root.
     for name in ("release-events-v1.jsonl", "release-summary-v1.json",
                  "release-seal-v1.json", "public-evidence-T7-v1.json",
@@ -515,23 +634,336 @@ def seal_acceptance(approval, log, work, journal):
     }), flush=True)
 
 
+
+# FACTORY_FINAL_CERTIFICATION_V1
+DIAGNOSTIC_DIR = None
+RECEIPT_NAMES = (
+    "release-events-v1.jsonl", "release-summary-v1.json", "release-seal-v1.json",
+    "public-evidence-T7-v1.json", "public-evidence-T8-v1.json",
+    "public-evidence-T9-v1.json", "source-qualification-v1.json",
+    "pr-provenance-v1.json",
+)
+
+# This literal executes through the already-authorized owner-root SSH channel.
+# It accepts only one existing PRODUCT journal and eight exact receipt names.
+# It never loads code from the website or accepts a command/path from JSON.
+ROOT_RECEIPT_CODE = r"""
+import fcntl, hashlib, json, os, re, stat, subprocess, sys
+from pathlib import Path
+
+OWNER_UID = 0
+BASE = Path("/var/lib/aoe2war-product-release-v1")
+UNIT = Path("/etc/systemd/system/aoe2hdbets-web-prod.service")
+LOCK = Path("/run/lock/aoe2war-product-release-v1.lock")
+NAMES = {
+    "release-events-v1.jsonl", "release-summary-v1.json", "release-seal-v1.json",
+    "public-evidence-T7-v1.json", "public-evidence-T8-v1.json",
+    "public-evidence-T9-v1.json", "source-qualification-v1.json",
+    "pr-provenance-v1.json",
+}
+
+def need(ok, reason):
+    if not ok:
+        raise RuntimeError("HOLD_PRODUCT_RECEIPT_" + reason)
+
+def digest(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+def trusted(path, mode=None, directory=False):
+    info = path.lstat()
+    need(not path.is_symlink() and info.st_uid == OWNER_UID, "OWNER_OR_SYMLINK")
+    need(stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode),
+         "INODE_TYPE")
+    need(not stat.S_IMODE(info.st_mode) & 0o022, "WRITABLE_AUTHORITY")
+    if mode is not None:
+        need(stat.S_IMODE(info.st_mode) == mode, "MODE")
+    if not directory:
+        need(info.st_nlink == 1, "HARDLINK")
+    return info
+
+def contents(name, directory_fd, expected):
+    fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory_fd)
+    try:
+        info = os.fstat(fd)
+        need(stat.S_ISREG(info.st_mode) and info.st_uid == OWNER_UID
+             and info.st_nlink == 1 and stat.S_IMODE(info.st_mode) == 0o600,
+             "FILE_AUTHORITY")
+        need(info.st_size <= 8 * 1024 * 1024, "FILE_SIZE")
+        blocks = []
+        while True:
+            part = os.read(fd, 65536)
+            if not part:
+                break
+            blocks.append(part)
+        raw = b"".join(blocks)
+        need(digest(raw) == expected, "IMMUTABLE_DIGEST_COLLISION")
+        return raw
+    finally:
+        os.close(fd)
+
+def bound_body(name, raw, state, journal):
+    if name.endswith(".jsonl"):
+        rows = [json.loads(line) for line in raw.splitlines()]
+        need(rows and all(row.get("sourceSha") == state["source"] for row in rows),
+             "LEDGER_SOURCE")
+        return
+    body = json.loads(raw)
+    expected_source, expected_build = state["source"], state["build"]
+    if name == "public-evidence-T8-v1.json":
+        original = journal / "original-web-unit.service"
+        trusted(original, 0o600)
+        match = re.search(
+            r"(?m)^WorkingDirectory=(/var/lib/aoe2war-web-prod-[0-9a-f]{12})$",
+            original.read_text(),
+        )
+        need(match is not None, "PREVIOUS_UNIT")
+        previous = Path(match.group(1))
+        trusted(previous, directory=True)
+        for marker in (previous / ".aoe2war-source-sha", previous / ".next/BUILD_ID"):
+            trusted(marker)
+        expected_source = (previous / ".aoe2war-source-sha").read_text().strip()
+        expected_build = (previous / ".next/BUILD_ID").read_text().strip()
+    need(body.get("sourceSha") == expected_source, "BODY_SOURCE")
+    if name.startswith("public-evidence-") or name in (
+        "release-summary-v1.json", "release-seal-v1.json", "source-qualification-v1.json"
+    ):
+        need(body.get("buildId") == expected_build, "BODY_BUILD")
+
+lock_fd = directory_fd = None
+try:
+    need(os.geteuid() == OWNER_UID, "ROOT_OWNER_REQUIRED")
+    mode, source12, name, expected = sys.argv[1:]
+    need(mode in ("write", "verify") and name in NAMES
+         and re.fullmatch("[0-9a-f]{12}", source12)
+         and re.fullmatch("[0-9a-f]{64}", expected), "ARGUMENT_SCOPE")
+    trusted(BASE, directory=True)
+    journal = BASE / source12
+    trusted(journal, 0o700, directory=True)
+    trusted(LOCK, 0o600)
+    lock_fd = os.open(LOCK, os.O_RDWR | os.O_NOFOLLOW)
+    fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    state_file = journal / "state.json"
+    trusted(state_file, 0o600)
+    state = json.loads(state_file.read_bytes())
+    need(state.get("phase") == "live"
+         and re.fullmatch("[0-9a-f]{40}", state.get("source", ""))
+         and state["source"][:12] == source12, "JOURNAL_SOURCE_OR_PHASE")
+    trusted(UNIT)
+    need(digest(UNIT.read_bytes()) == state.get("active_unit_sha256"), "ACTIVE_UNIT")
+    runtime = "/var/lib/aoe2war-web-prod-" + source12
+    active = subprocess.check_output([
+        "systemctl", "show", "aoe2hdbets-web-prod.service",
+        "-p", "WorkingDirectory", "--value"
+    ], timeout=10).decode().strip()
+    need(active == runtime == state.get("active_runtime"), "ACTIVE_RUNTIME")
+    directory_fd = os.open(journal, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temporary = ".receipt-" + name + "-" + expected + ".tmp"
+    final_path, temporary_path = journal / name, journal / temporary
+    if mode == "write":
+        raw = sys.stdin.buffer.read(8 * 1024 * 1024 + 1)
+        need(raw and len(raw) <= 8 * 1024 * 1024 and digest(raw) == expected,
+             "INPUT_DIGEST_OR_SIZE")
+        bound_body(name, raw, state, journal)
+        # Recover only our exact interrupted atomic-link transition.
+        if final_path.exists() and temporary_path.exists():
+            a, b = final_path.lstat(), temporary_path.lstat()
+            if (a.st_dev, a.st_ino) == (b.st_dev, b.st_ino):
+                need(a.st_uid == OWNER_UID and a.st_nlink == 2
+                     and stat.S_ISREG(a.st_mode) and stat.S_IMODE(a.st_mode) == 0o600
+                     and not final_path.is_symlink() and not temporary_path.is_symlink()
+                     and digest(final_path.read_bytes()) == expected,
+                     "INTERRUPTED_LINK_AUTHORITY")
+                os.unlink(temporary, dir_fd=directory_fd)
+                os.fsync(directory_fd)
+        if not final_path.exists():
+            try:
+                fd = os.open(
+                    temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                    0o600, dir_fd=directory_fd
+                )
+            except FileExistsError:
+                # Complete temp files can resume; incomplete temp evidence HOLDS.
+                contents(temporary, directory_fd, expected)
+            else:
+                try:
+                    offset = 0
+                    while offset < len(raw):
+                        written = os.write(fd, raw[offset:])
+                        need(written > 0, "SHORT_WRITE")
+                        offset += written
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            os.link(
+                temporary, name, src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd, follow_symlinks=False
+            )
+            os.unlink(temporary, dir_fd=directory_fd)
+            os.fsync(directory_fd)
+    # A successful write always includes a fresh full final-file readback.
+    # Verify mode never creates, removes, chmods or rewrites any root file.
+    actual = contents(name, directory_fd, expected)
+    bound_body(name, actual, state, journal)
+    print(json.dumps({
+        "status": "PASS_ROOT_PRODUCT_RECEIPT",
+        "sourceSha": state["source"], "name": name,
+        "sha256": digest(actual), "bytes": len(actual), "mode": mode,
+    }, sort_keys=True))
+except Exception as error:
+    message = str(error)
+    print(message if message.startswith("HOLD_PRODUCT_RECEIPT_")
+          else "HOLD_PRODUCT_RECEIPT_IO_OR_AUTHORITY")
+    sys.exit(3)
+finally:
+    if directory_fd is not None:
+        os.close(directory_fd)
+    if lock_fd is not None:
+        os.close(lock_fd)
+"""
+
+
+def canonical_main_ancestry(source, fetch=gh_json):
+    base = "repos/Emaren/app-prodn/"
+    main = fetch(base + "branches/main")["commit"]["sha"]
+    need(type(main) is str and re.fullmatch("[0-9a-f]{40}", main),
+         "CANONICAL_MAIN_IDENTITY")
+    comparison = fetch(base + "compare/" + main + "..." + source)
+    need(comparison.get("status") in ("ahead", "identical")
+         and comparison.get("behind_by") == 0
+         and comparison.get("merge_base_commit", {}).get("sha") == main,
+         "SOURCE_DOES_NOT_INCLUDE_CURRENT_CANONICAL_MAIN")
+    need(fetch(base + "branches/main")["commit"]["sha"] == main,
+         "CANONICAL_MAIN_MOVED_DURING_QUALIFICATION")
+    return {
+        "canonicalMainSha": main,
+        "canonicalComparisonStatus": comparison["status"],
+        "canonicalMergeBaseSha": comparison["merge_base_commit"]["sha"],
+    }
+
+
+def receipt_location(path):
+    match = re.fullmatch(
+        r"/var/lib/aoe2war-product-release-v1/([0-9a-f]{12})/([A-Za-z0-9._-]+)",
+        str(path),
+    )
+    need(match is not None and match.group(2) in RECEIPT_NAMES, "ROOT_RECEIPT_PATH_SCOPE")
+    return match.groups()
+
+
+def acceptance_payloads(approval, log, work):
+    """Validate existing local sealed bytes without manufacturing a new acceptance."""
+    source, build = approval["sourceSha"], approval["buildId"]
+    events = ledger.read(log, source)
+    need(events and events[-1]["event"] == "T10"
+         and events[-1]["state"] == "pass"
+         and events[-1]["evidence"].get("buildId") == build,
+         "FINAL_ACCEPTANCE_EVENT_MISSING")
+    payloads = {}
+    for name in RECEIPT_NAMES:
+        path = work / name
+        need(path.is_file(), "LOCAL_SEALED_RECEIPT_MISSING")
+        transport.checked_file(path)
+        payloads[name] = path.read_bytes()
+    need(payloads["release-events-v1.jsonl"] == log.read_bytes(), "LOCAL_LEDGER_COLLISION")
+    summary = json.loads(payloads["release-summary-v1.json"])
+    expected = ledger.summary(events, build)
+    need({k:v for k,v in summary.items() if k != "generatedAt"} ==
+         {k:v for k,v in expected.items() if k != "generatedAt"},
+         "LOCAL_SUMMARY_LEDGER_MISMATCH")
+    ledger.stamp(summary.get("generatedAt"))
+    seal = json.loads(payloads["release-seal-v1.json"])
+    need(seal.get("schema") == "aoe2war.product.release-seal.v1"
+         and seal.get("sourceSha") == source and seal.get("buildId") == build
+         and seal.get("financialAuthorized") is False
+         and seal.get("ledgerSha256") == hashlib.sha256(log.read_bytes()).hexdigest()
+         and seal.get("summarySha256") ==
+             hashlib.sha256(payloads["release-summary-v1.json"]).hexdigest()
+         and seal.get("lastEventHash") == events[-1]["eventHash"],
+         "LOCAL_SEAL_PAYLOAD_MISMATCH")
+    event_files = {
+        "T2": "pr-provenance-v1.json",
+        "T3": "source-qualification-v1.json",
+        "T7": "public-evidence-T7-v1.json",
+        "T8": "public-evidence-T8-v1.json",
+        "T9": "public-evidence-T9-v1.json",
+    }
+    for event_id, name in event_files.items():
+        rows = [row for row in events if row["event"] == event_id]
+        need(rows and rows[-1]["state"] == "pass"
+             and rows[-1]["evidence"].get("proofSha256") ==
+                 hashlib.sha256(payloads[name]).hexdigest(), "LOCAL_WITNESS_DIGEST")
+        body = json.loads(payloads[name])
+        if event_id in ("T7", "T8", "T9"):
+            need(body.get("schema") == "aoe2war.product.public-identity-witness.v1"
+                 and body.get("financialAuthorized") is False
+                 and body.get("financialHttpStatus") == 503
+                 and re.fullmatch("[0-9a-f]{40}", body.get("sourceSha", ""))
+                 and re.fullmatch("[A-Za-z0-9_-]{8,64}", body.get("buildId", "")),
+                 "LOCAL_PUBLIC_WITNESS_IDENTITY")
+            if event_id != "T8":
+                need(body["sourceSha"] == source and body["buildId"] == build,
+                     "LOCAL_CANDIDATE_WITNESS_IDENTITY")
+            else:
+                need(body["sourceSha"] != source, "LOCAL_ROLLBACK_NOT_SOURCE_DISTINCT")
+        else:
+            need(body.get("sourceSha") == source and body.get("pr") == approval["pr"],
+                 "LOCAL_SOURCE_PROVENANCE_IDENTITY")
+    return payloads, summary, seal
+
+
+def verify_root_acceptance(approval, log, work, journal):
+    payloads, summary, seal = acceptance_payloads(approval, log, work)
+    for name in RECEIPT_NAMES:
+        root_receipt(journal + "/" + name, payloads[name], verify_only=True)
+    return summary, seal
+
+
+def approved_controller(action, manifest, approval):
+    need(dt.datetime.now(dt.timezone.utc) < ledger.stamp(approval["expiresAt"]),
+         "APPROVAL_EXPIRED_BEFORE_CONTROLLER_PHASE")
+    controller(action, manifest)
+
+
 def main():
+    global DIAGNOSTIC_DIR
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--approval", required=True)
     parser.add_argument("--phase", choices=("plan", "transport", "release"), default="plan")
     parser.add_argument("--work-dir", default=str(Path.home() / ".aoe2war-product-releases"))
     args = parser.parse_args()
-    # Source authors are UID650; only the existing Mac B-owner transports/uses root SSH.
     need(sys.platform == "darwin" and os.getuid() == 501, "EXISTING_MAC_B_OWNER_REQUIRED")
     approval = load_approval(args.approval, args.phase)
+    work = release_work = log = None
+    prior = []
+    if args.phase != "plan":
+        work = transport.private_dir(args.work_dir)
+        release_work = transport.private_dir(work / ("run-" + str(approval["runId"])))
+        DIAGNOSTIC_DIR = release_work
+        log = release_work / "release-events-v1.jsonl"
+        prior = ledger.read(log, approval["sourceSha"])
+        if any(row["event"] == "T10" and row["state"] == "pass" for row in prior):
+            # Reconciliation is not a new release. Do not force an accepted old
+            # source through current-main ancestry or expired GitHub artifacts.
+            # It also never calls activate/rollback/reactivate.
+            public_and_root(approval["sourceSha"], approval["buildId"])
+            root_pins()
+            journal = "/var/lib/aoe2war-product-release-v1/" + approval["sourceSha"][:12]
+            if args.phase == "release":
+                seal_acceptance(approval, log, release_work, journal)
+            else:
+                verify_root_acceptance(approval, log, release_work, journal)
+            print("PASS_ALREADY_ACCEPTED_EXACT_SOURCE_ROOT_SEAL_VERIFIED")
+            return
     pr, run, qualified = qualify(approval)
-    print(json.dumps({"phase": "source-qualification", "state": "pass",
-                      "sourceSha": approval["sourceSha"], "pr": approval["pr"],
-                      "runId": approval["runId"], "nextPermittedAction": args.phase}), flush=True)
+    print(json.dumps({
+        "phase": "source-qualification", "state": "pass",
+        "sourceSha": approval["sourceSha"], "pr": approval["pr"],
+        "runId": approval["runId"],
+        "canonicalMainSha": qualified["canonicalMainSha"],
+        "nextPermittedAction": args.phase,
+    }), flush=True)
     if args.phase == "plan":
         return
-    work = transport.private_dir(args.work_dir)
-    release_work = transport.private_dir(work / ("run-" + str(approval["runId"])))
     pr_provenance = {
         "schema": "aoe2war.product.pr-provenance.v1",
         "sourceSha": approval["sourceSha"], "pr": approval["pr"],
@@ -539,18 +971,6 @@ def main():
     }
     pr_raw = (json.dumps(pr_provenance, sort_keys=True, indent=2) + "\n").encode()
     qualified_raw = (json.dumps(qualified, sort_keys=True, indent=2) + "\n").encode()
-    log = release_work / "release-events-v1.jsonl"
-    prior = ledger.read(log, approval["sourceSha"])
-    if any(x["event"] == "T10" and x["state"] == "pass" for x in prior):
-        public_and_root(approval["sourceSha"], approval["buildId"])
-        if args.phase == "release":
-            root_pins()
-            seal_acceptance(approval, log, release_work,
-                            "/var/lib/aoe2war-product-release-v1/" +
-                            approval["sourceSha"][:12])
-        print("PASS_ALREADY_ACCEPTED_EXACT_SOURCE_ROOT_SEAL_CHECKED_IF_AUTHORIZED")
-        return
-    # A completed immutable release must not be restamped by a later CI rerun.
     seal_once(release_work / "pr-provenance-v1.json", pr_raw)
     seal_once(release_work / "source-qualification-v1.json", qualified_raw)
     if not prior:
@@ -562,11 +982,13 @@ def main():
             "uncertaintyMs": approval["requestUncertaintyMs"],
             "provenanceUrl": pr["html_url"],
         }, at=when)
-        event(log, approval, "T2", at=pr["created_at"],
-              extra={"clockSource": "github-actions", "precisionMs": 1000,
-                     "proofSha256": hashlib.sha256(pr_raw).hexdigest()})
+        event(log, approval, "T2", at=pr["created_at"], extra={
+            "clockSource": "github-actions", "precisionMs": 1000,
+            "proofSha256": hashlib.sha256(pr_raw).hexdigest(),
+        })
     event(log, approval, "T3", extra={
-        "proofSha256": hashlib.sha256(qualified_raw).hexdigest()})
+        "proofSha256": hashlib.sha256(qualified_raw).hexdigest(),
+    })
     stage, proof = prepare_artifacts(approval, work, log)
     remote = deliver(approval, stage, proof, log)
     if args.phase == "release":
