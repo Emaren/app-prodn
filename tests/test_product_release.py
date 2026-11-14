@@ -121,32 +121,30 @@ class ApprovalTests(unittest.TestCase):
 
 
     def test_root_final_receipt_interruption_resumes_without_rewriting(self):
-        work = Path(self.temp.name) / "release"
-        work.mkdir(mode=0o700)
-        source = self.approval["sourceSha"]
-        log = work / "release-events-v1.jsonl"
-        R.ledger.append(log, source, "T10", "pass", {"proofSha256": "a" * 64})
-        for name in ("public-evidence-T7-v1.json", "public-evidence-T8-v1.json",
-                     "public-evidence-T9-v1.json", "source-qualification-v1.json",
-                     "pr-provenance-v1.json"):
-            path = work / name
-            path.write_bytes(json.dumps({"schema":"fixture"}).encode() + bytes([10]))
-            path.chmod(0o600)
+        spec = importlib.util.spec_from_file_location(
+            "product_recovery_fixture", Path(__file__).with_name("test_product_release_recovery.py")
+        )
+        fixture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fixture)
+        work, log = fixture.accepted_fixture(Path(self.temp.name), self.approval, R)
         first = []
-        def fails_partway(path, raw):
-            first.append((path, raw))
+        def fails_partway(path, raw, verify_only=False):
+            first.append((path, raw, verify_only))
             if len(first) == 4:
                 raise RuntimeError("simulated root receipt interruption")
         with patch.object(R, "root_receipt", side_effect=fails_partway):
             with self.assertRaisesRegex(RuntimeError, "root receipt interruption"):
                 R.seal_acceptance(self.approval, log, work, "/fixture/journal")
-        before = {x.name: x.read_bytes() for x in work.iterdir()}
+        before = {entry.name:entry.read_bytes() for entry in work.iterdir()}
         resumed = []
-        with patch.object(R, "root_receipt", side_effect=lambda path,raw: resumed.append((path,raw))):
+        with patch.object(
+            R, "root_receipt",
+            side_effect=lambda path,raw,verify_only=False: resumed.append((path,raw,verify_only))
+        ):
             R.seal_acceptance(self.approval, log, work, "/fixture/journal")
         self.assertEqual(len(resumed), 8)
-        self.assertEqual(before, {x.name:x.read_bytes() for x in work.iterdir()})
-        self.assertTrue(any(x[0].endswith("release-seal-v1.json") for x in resumed))
+        self.assertEqual(before, {entry.name:entry.read_bytes() for entry in work.iterdir()})
+        self.assertTrue(any(entry[0].endswith("release-seal-v1.json") for entry in resumed))
 
     def test_public_witness_rechecks_and_preserves_first_timestamp(self):
         work = Path(self.temp.name) / "release"
@@ -184,6 +182,11 @@ class ApprovalTests(unittest.TestCase):
                         "base": {"ref": "main", "repo": {"full_name": "Emaren/app-prodn"}},
                         "html_url": "https://github.com/Emaren/app-prodn/pull/1351",
                         "created_at": "2026-11-13T21:00:00Z"}
+            if endpoint == api_root + "branches/main":
+                return {"commit":{"sha":"e"*40}}
+            if endpoint.startswith(api_root + "compare/"):
+                return {"status":"ahead","behind_by":0,
+                        "merge_base_commit":{"sha":"e"*40}}
             if endpoint == api_root + "actions/runs/4351":
                 return {"id":4351, "head_sha":source, "status":"completed",
                         "conclusion":"success",

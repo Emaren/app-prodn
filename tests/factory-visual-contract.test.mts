@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   FACTORY_SERVICES, FACTORY_STAGES, FACTORY_TEST_GROUPS,
-  readFactoryPublicStatus, unknownFactoryStatus,
+  readFactoryPublicStatus, unknownFactoryStatus, factoryHeadroomEvidence,
 } from "../lib/factoryPublicStatus.ts";
 
 const root = new URL("../", import.meta.url);
@@ -187,4 +187,77 @@ test("empty ledger and private provenance cannot imply completion",()=>{
   assert.ok(FACTORY_STAGES.every(stage=>result.value.pipelineStage.stages[stage]==="unknown"));
   assert.equal(result.value.releaseOs?.provenanceUrl,null);
   assert.ok(read("app/factory/FactoryConsole.tsx").includes("const hasLedger = !!cycle?.stages.length"));
+});
+
+
+const headroomNow = Date.parse("2026-11-14T10:00:00.000Z");
+const headroomMinimum = 6 * 1024 ** 3;
+const headroomSample = (freeBytes = 7 * 1024 ** 3, ageMs = 30_000) => ({
+  rootFreeBytes: freeBytes, requiredBytes: headroomMinimum,
+  observedAt: new Date(headroomNow - ageMs).toISOString(),
+});
+
+test("headroom reports the actual margin without certifying artifact readiness", () => {
+  const above = factoryHeadroomEvidence(headroomSample(), headroomNow);
+  assert.equal(above.state, "pass");
+  assert.equal(above.freeBytes, 7 * 1024 ** 3);
+  assert.equal(above.marginBytes, 1024 ** 3);
+  assert.equal(above.ageMs, 30_000);
+  const equal = factoryHeadroomEvidence(headroomSample(headroomMinimum), headroomNow);
+  assert.equal(equal.state, "pass");
+  assert.equal(equal.marginBytes, 0);
+  const below = factoryHeadroomEvidence(headroomSample(headroomMinimum - 1), headroomNow);
+  assert.equal(below.state, "hold");
+  assert.equal(below.marginBytes, -1);
+});
+
+test("headroom preserves the ten-minute TTL and future-clock tolerance", () => {
+  assert.equal(factoryHeadroomEvidence(headroomSample(undefined, 600_000), headroomNow).state, "pass");
+  const expired = factoryHeadroomEvidence(headroomSample(undefined, 600_001), headroomNow);
+  assert.equal(expired.state, "stale");
+  assert.equal(expired.observedAt, headroomSample(undefined, 600_001).observedAt);
+  assert.equal(factoryHeadroomEvidence(headroomSample(undefined, -60_000), headroomNow).state, "pass");
+  assert.equal(factoryHeadroomEvidence(headroomSample(undefined, -60_001), headroomNow).state, "unknown");
+});
+
+test("malformed capacity or a changed minimum cannot produce a green headroom tile", () => {
+  for (const value of [
+    undefined, null, {},
+    {...headroomSample(), rootFreeBytes: -1},
+    {...headroomSample(), rootFreeBytes: 1.5},
+    {...headroomSample(), rootFreeBytes: Number.MAX_SAFE_INTEGER + 1},
+    {...headroomSample(), requiredBytes: 0},
+    {...headroomSample(), requiredBytes: headroomMinimum - 1},
+    {...headroomSample(), observedAt: "invalid"},
+  ]) assert.equal(factoryHeadroomEvidence(value, headroomNow).state, "unknown");
+});
+
+test("fresh host capacity remains distinct from expired historical release evidence", () => {
+  const source = releaseOsFeed();
+  const value = {
+    ...source,
+    generatedAt: new Date(headroomNow).toISOString(),
+    releaseOs: {
+      ...source.releaseOs,
+      generatedAt: "2026-11-12T10:00:00.000Z",
+      disk: headroomSample(),
+    },
+  };
+  const result = readFactoryPublicStatus(value, headroomNow);
+  assert.equal(result.authority, "fresh");
+  assert.equal(result.value.pipelineStage.stages.build, "stale");
+  assert.equal(factoryHeadroomEvidence(result.value.releaseOs?.disk, headroomNow).state, "pass");
+  value.releaseOs.disk = headroomSample(undefined, 600_001);
+  assert.equal(factoryHeadroomEvidence(
+    readFactoryPublicStatus(value, headroomNow).value.releaseOs?.disk, headroomNow,
+  ).state, "stale");
+});
+
+test("capacity presentation names its scope and retains inspectable observation provenance", () => {
+  const ui = read("app/factory/FactoryConsole.tsx");
+  assert.ok(ui.includes("LIVE ROOT HEADROOM"));
+  assert.ok(ui.includes("Capacity only · release readiness unverified"));
+  assert.ok(ui.includes('dateTime={headroom.observedAt}'));
+  assert.ok(ui.includes("Incoming artifact and extraction readiness are UNKNOWN."));
+  assert.ok(ui.includes("factoryHeadroomEvidence(cycle?.disk)"));
 });

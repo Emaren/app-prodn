@@ -179,6 +179,36 @@ function readActivity(raw: unknown, nowMs: number): FactoryActivity[] | null {
   return result.sort((a, b) => b.at.localeCompare(a.at));
 }
 
+export const FACTORY_HEADROOM_MINIMUM_BYTES = 6 * 1024 ** 3;
+export type FactoryHeadroomEvidence = {
+  state: "pass" | "hold" | "stale" | "unknown";
+  freeBytes: number | null;
+  minimumBytes: number;
+  marginBytes: number | null;
+  observedAt: string | null;
+  ageMs: number | null;
+};
+
+/** A fresh capacity observation is not a complete next-release preflight. */
+export function factoryHeadroomEvidence(raw: unknown, nowMs = Date.now()): FactoryHeadroomEvidence {
+  const unknown: FactoryHeadroomEvidence = {
+    state: "unknown", freeBytes: null, minimumBytes: FACTORY_HEADROOM_MINIMUM_BYTES,
+    marginBytes: null, observedAt: null, ageMs: null,
+  };
+  if (!isRecord(raw) || !Number.isFinite(nowMs) ||
+    !Number.isSafeInteger(raw.rootFreeBytes) || (raw.rootFreeBytes as number) < 0 ||
+    raw.requiredBytes !== FACTORY_HEADROOM_MINIMUM_BYTES || !isTimestamp(raw.observedAt)) return unknown;
+  const ageMs = nowMs - Date.parse(raw.observedAt);
+  if (ageMs < -60_000) return unknown;
+  const freeBytes = raw.rootFreeBytes as number;
+  const marginBytes = freeBytes - FACTORY_HEADROOM_MINIMUM_BYTES;
+  return {
+    state: ageMs > 600_000 ? "stale" : marginBytes >= 0 ? "pass" : "hold",
+    freeBytes, minimumBytes: FACTORY_HEADROOM_MINIMUM_BYTES,
+    marginBytes, observedAt: raw.observedAt, ageMs,
+  };
+}
+
 export const FACTORY_STAGE_MILESTONES: Record<FactoryStage, readonly string[]> = {
   develop: ["T2"], test: ["T3"], build: ["T4"], approve: ["T4"],
   deploy: ["T6"], verify: ["T7"], rollback: ["T8", "T9", "T10"],
