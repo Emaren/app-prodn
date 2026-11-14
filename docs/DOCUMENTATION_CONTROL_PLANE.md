@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/product-f1-stopwatch-isolation-20261114` at `395b989488a8a6783bf64b5f20830facb4df7b8c`
+Implementation baseline: `session-c/kingdom-paper-fleet-preview-20261114` at `7f6cd26ab0eb8ad388ce15f20a172b4633f848e4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

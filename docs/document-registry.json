@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "190719e13cfa4da35b3b5f97ec49f196a2b73aa0cb9dd33d88345e25de97d85d",
+      "sha256": "5c570d4eaa52949637a90ffc26455f0da34337c612d67f3e83f015af8dcd6775",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -3327,8 +3327,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/product-f1-stopwatch-isolation-20261114",
-    "commit": "395b989488a8a6783bf64b5f20830facb4df7b8c"
+    "branch": "session-c/kingdom-paper-fleet-preview-20261114",
+    "commit": "7f6cd26ab0eb8ad388ce15f20a172b4633f848e4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
