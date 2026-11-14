@@ -81,6 +81,10 @@ class ApprovalTests(unittest.TestCase):
         build = "verifiedBuild123"
         runtime = "/var/lib/aoe2war-web-prod-" + source[:12]
         def fake_ssh(*args, **kwargs):
+            command=args[0]
+            self.assertEqual(command.count("printf '%s\\n' $(cat "),2)
+            self.assertIn("/.aoe2war-source-sha)",command)
+            self.assertIn("/.next/BUILD_ID)",command)
             return "\n".join([runtime, source, build, "active", "0"])
         # The public proxy's identity headers are part of the proof, not merely
         # Next.js HTML text or an HTTP 200. The browser-compatible UA is required.
@@ -231,6 +235,62 @@ class ApprovalTests(unittest.TestCase):
             return result
         with self.assertRaisesRegex(RuntimeError, "CHECK_CENSUS_UNBOUNDED_OR_INCOMPLETE"):
             R.qualify(self.approval,partial_check_count)
+
+    def test_macos_openrsync_portability_exact_remote_member_and_host_key(self):
+        import hashlib
+        import io
+        import tarfile
+        import types
+        with tempfile.TemporaryDirectory() as temp:
+            stage = Path(temp)
+            archive = stage / "runtime.tar.gz"
+            with tarfile.open(archive, "w:gz") as bundle:
+                data = b"test-nonfinancial-runtime-content"
+                info = tarfile.TarInfo("app/README")
+                info.size = len(data)
+                bundle.addfile(info, io.BytesIO(data))
+            proof_file = stage / "b-linux-independent-review-v2.json"
+            proof_file.write_bytes(b'{"status":"verified"}\\n')
+            archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
+            proof_sha = hashlib.sha256(proof_file.read_bytes()).hexdigest()
+            self.approval["proofSha256"] = proof_sha
+            proof = {"runtime_archive_bytes": archive.stat().st_size,
+                     "runtime_archive_sha256": archive_sha}
+            calls = []
+            def fake_ssh(cmd, **kwargs):
+                calls.append(("ssh", cmd))
+                if cmd.startswith("df -B1 "):
+                    return str(9 * 1024**3)
+                if cmd.startswith("if test -f ") or cmd.startswith("if test -e "):
+                    return ""
+                if cmd.startswith("umask 077; mkdir "):
+                    return "1000:1000:700"
+                if cmd.startswith("set -e; test ! -L "):
+                    self.assertIn("chmod 600 ", cmd)
+                    self.assertIn("stat -c '%u:%h'", cmd)
+                    self.assertIn("sha256sum ",cmd)
+                    self.assertNotIn("sudo",cmd)
+                    digest = archive_sha if "runtime.tar.gz" in cmd else proof_sha
+                    self.assertIn(digest, cmd)
+                    return "1000:600:1\n"+digest+"  /remote/member"
+                self.fail("Unexpected SSH command: "+cmd[:70])
+            def fake_run(args, **kwargs):
+                calls.append(("rsync", args, kwargs))
+                self.assertEqual(args[0:2], ["/usr/bin/rsync","-t"])
+                self.assertIn("--partial-dir=.rsync-partial",args)
+                self.assertIn("--progress",args)
+                self.assertFalse(any(x.startswith("--chmod=") for x in args))
+                self.assertIn("StrictHostKeyChecking=yes"," ".join(args))
+                self.assertEqual(kwargs.get("timeout"),1800)
+                return types.SimpleNamespace(returncode=0)
+            with patch.object(R,"ssh",side_effect=fake_ssh), \
+                 patch.object(R.subprocess,"run",side_effect=fake_run), \
+                 patch.object(R,"event",return_value=None):
+                remote = R.deliver(self.approval,stage,proof,stage/"ledger.jsonl")
+            self.assertTrue(remote.endswith("-run-4351"))
+            self.assertEqual(len([x for x in calls if x[0]=="rsync"]),2)
+            self.assertEqual(len([x for x in calls if x[0]=="ssh" and
+                                  x[1].startswith("set -e; test ! -L ")]),2)
 
 
 if __name__ == "__main__":

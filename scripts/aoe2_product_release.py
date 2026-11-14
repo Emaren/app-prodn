@@ -253,15 +253,26 @@ def deliver(approval, stage, proof, log):
             print(json.dumps({"phase": "host-transport", "file": name, "state": "cached",
                               "expectedSha256": expected, "verification": "pass"}), flush=True)
             continue
-        # macOS openrsync supports these options; no --info=progress2 assumption.
+        # macOS /usr/bin/rsync is openrsync protocol-29 (2.6.9-compatible).
+        # It rejects --chmod=F600,D700; do not assume GNU rsync behavior.
+        # Keep strict SSH host keys, resumable partials, and visible progress.
         process = subprocess.run([
             "/usr/bin/rsync", "-t", "--partial-dir=.rsync-partial", "--progress",
-            "--chmod=F600,D700", "-e",
-            "/usr/bin/ssh -o BatchMode=yes -o ConnectTimeout=8",
+            "-e", "/usr/bin/ssh -o BatchMode=yes "
+                  "-o StrictHostKeyChecking=yes -o ConnectTimeout=8",
             str(stage / name), "hel1:" + remote + "/",
-        ])
+        ], timeout=1800)
         need(process.returncode == 0, "RSYNC_INTERRUPTED_RESUME_AVAILABLE")
-        observed = ssh("stat -c '%u:%a:%h' " + target + "; sha256sum " + target).splitlines()
+        # The isolated tony-owned 0700 stage already passed its authority
+        # check. Post-transfer normalize ONLY this exact file to 0600 after
+        # rejecting symlinks, wrong owner, extra hardlinks and wrong bytes.
+        observed = ssh(
+            "set -e; test ! -L " + target +
+            "; test \"$(stat -c '%u:%h' " + target + ")\" = '1000:1'" +
+            "; test \"$(sha256sum " + target + " | cut -d ' ' -f1)\" = " + expected +
+            "; chmod 600 " + target +
+            "; stat -c '%u:%a:%h' " + target + "; sha256sum " + target,
+        ).splitlines()
         need(len(observed) == 2 and observed[0] == "1000:600:1"
              and observed[1].split()[0] == expected, "HEL1_MEMBER_VERIFICATION")
     elapsed = round((time.monotonic() - started) * 1000)
@@ -276,7 +287,8 @@ def public_and_root(source, build):
     runtime = "/var/lib/aoe2war-web-prod-" + source[:12]
     actual = ssh(
         "systemctl show aoe2hdbets-web-prod.service -p WorkingDirectory --value; "
-        "cat " + runtime + "/.aoe2war-source-sha; cat " + runtime + "/.next/BUILD_ID; "
+        "printf '%s\\n' $(cat " + runtime + "/.aoe2war-source-sha); "
+        "printf '%s\\n' $(cat " + runtime + "/.next/BUILD_ID); "
         "systemctl show aoe2hdbets-web-prod.service -p ActiveState --value; "
         "systemctl show aoe2hdbets-web-prod.service -p NRestarts --value",
         root=True,
