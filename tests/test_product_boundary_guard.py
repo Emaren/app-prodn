@@ -144,7 +144,11 @@ class BoundaryTests(unittest.TestCase):
             policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE["scripts/aoe2_product_release.py"],
             "7b772e89781b1d09879866bf375e51ba873af22c579dfb73f6f45795379bf218")
         approved = policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE
-        self.assertEqual(len(approved), 4)
+        self.assertEqual(len(policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE), 4)
+        self.assertEqual(len(approved), 6)
+        self.assertEqual(set(approved) - set(policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE),
+                         {"scripts/run_python_contract.py",
+                          "scripts/run_test_contract.py"})
         self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE,
                          "1b6e36e2bf4b823b9192488f12074798232c22ab")
         with tempfile.TemporaryDirectory() as tmp:
@@ -165,13 +169,19 @@ class BoundaryTests(unittest.TestCase):
                         name)
                     with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
                         policy.authorize_changed_source(checkout, "a"*40, name)
-                    if digest != policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE[name]:
+                    if (name in policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE and
+                            digest != policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE[name]):
                         # Only the two F1 modified executables reject R1.
                         with self.assertRaisesRegex(policy.BoundaryHold, "EXACT_SHA_MISMATCH"):
                             policy.authorize_changed_source(
                                 checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                    elif name not in policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE:
+                        with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_FOR_BASE"):
+                            policy.authorize_changed_source(
+                                checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
                     else:
-                        # The other two exact blobs remain valid for both bases.
+                        # The two unchanged historical executable blobs remain
+                        # valid for either exact base and neither is wildcarded.
                         self.assertEqual(policy.authorize_changed_source(
                             checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name), name)
                     target.write_bytes(target.read_bytes() + b"\x00")
