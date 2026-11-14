@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "578279877a64a6d537a8bf4cb6f9f8f2d8e65da1513e19033d39b3848679cf66",
+      "sha256": "7c84b649a8827ec1ef49bdbd4c93c741ca9830b9e6e256227539c38c92ddf795",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2750,6 +2750,28 @@
       "audience": [
         "developers",
         "operators",
+        "auditors"
+      ],
+      "authority": "product-source-audit-not-production-acceptance",
+      "id": "aoe2war.app-prodn.deployment-os-final-certification-audit-20261114",
+      "owner": "aoe2war-web",
+      "path": "docs/release/DEPLOYMENT_OS_FINAL_CERTIFICATION_AUDIT_20261114.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-14",
+      "sensitivity": "internal",
+      "sha256": "5eac05a02e8aa40ff693806597e1eb016df017e771ad2bfbf8dbddeb41fbf68c",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Deployment OS final certification source audit",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
         "ai-agents"
       ],
       "authority": "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority",
@@ -3261,8 +3283,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/wolo-main-reconciliation-20261114",
-    "commit": "bdf8d7974057a086031bd49a89b80bab506a8ddf"
+    "branch": "session-c/product-factory-final-certification-20261114",
+    "commit": "1b1c155ac441cc4dc5a6f675b4da63941cedecff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
