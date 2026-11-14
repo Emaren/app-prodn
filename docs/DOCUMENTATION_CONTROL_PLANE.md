@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/product-ci-optional-previews-20261114` at `033f7f031f9b7d8bffe339f824d133625049c85a`
+Implementation baseline: `session-c/wolo-main-reconciliation-20261114` at `bdf8d7974057a086031bd49a89b80bab506a8ddf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
