@@ -9,20 +9,20 @@ import {
 } from "lucide-react";
 import {
   FACTORY_SERVICES, FACTORY_STAGES, FACTORY_TEST_GROUPS,
-  readFactoryPublicStatus, unknownFactoryStatus,
+  readFactoryPublicStatus, unknownFactoryStatus, factoryStageEvidence,
   type FactoryActivity, type FactoryFeed, type FactoryRelease,
   type FactorySignal, type FactoryStage,
 } from "@/lib/factoryPublicStatus";
 import css from "./factory.module.css";
 
 const stageSpecs = [
-  { id: "develop", name: "DEVELOP", icon: Code2 },
-  { id: "test", name: "TEST", icon: FlaskConical },
-  { id: "build", name: "BUILD", icon: PackageCheck },
-  { id: "approve", name: "APPROVE", icon: ShieldCheck },
-  { id: "deploy", name: "DEPLOY", icon: Rocket },
-  { id: "verify", name: "VERIFY", icon: Radar },
-  { id: "rollback", name: "ROLLBACK", icon: RotateCcw },
+  { id: "develop", name: "SOURCE / BRANCH", icon: Code2 },
+  { id: "test", name: "CI / SECURITY", icon: FlaskConical },
+  { id: "build", name: "LINUX BUILD", icon: PackageCheck },
+  { id: "approve", name: "INDEPENDENT VERIFY", icon: ShieldCheck },
+  { id: "deploy", name: "TRANSPORT / STAGING", icon: Rocket },
+  { id: "verify", name: "ACTIVATION / HTTPS", icon: Radar },
+  { id: "rollback", name: "ROLLBACK / REACTIVATION", icon: RotateCcw },
 ] as const;
 
 const unknownFeed: FactoryFeed = {
@@ -32,7 +32,8 @@ const unknownFeed: FactoryFeed = {
 type EdgeSignal = { reachable: boolean | null; source: string | null; observedAt: string | null };
 
 const signalWord: Record<FactorySignal, string> = {
-  pass: "PASS", running: "ACTIVE", hold: "HOLD", fail: "FAILED", unknown: "UNKNOWN",
+  pass: "PASS", running: "RUNNING", hold: "HOLD", fail: "FAIL",
+  unknown: "UNKNOWN", pending: "PENDING", stale: "STALE",
 };
 const shortId = (id: string | null) =>
   id ? (id.length > 18 ? id.slice(0, 11) + "…" + id.slice(-6) : id) : "— — — —";
@@ -193,6 +194,91 @@ function ActivityFeed({ items }: { items: FactoryActivity[] }) {
   );
 }
 
+const milestoneNames: Record<string, string> = {
+  T0: "Engineering / request start", T1: "Source edit or commit", T2: "Pull request opened",
+  T3: "CI and security complete", T4: "Independently verified artifact",
+  T5: "Verified artifact received", T6: "Candidate staged",
+  T7: "First verified production", T8: "Previous source verified",
+  T9: "Candidate reactivated", T10: "Postflight and sealed receipt",
+};
+const elapsed = (ms: number | null | undefined) =>
+  ms === null || ms === undefined ? "UNKNOWN" : ms < 1000 ? Math.round(ms) + " ms" :
+  ms < 60_000 ? (ms / 1000).toFixed(1) + " s" :
+  Math.floor(ms / 60_000) + "m " + String(Math.floor(ms / 1000) % 60).padStart(2, "0") + "s";
+const bytes = (value: number | null | undefined) => value === null || value === undefined
+  ? "UNKNOWN" : (value / 1024 ** 2).toFixed(1) + " MiB";
+
+function ReleaseTelemetry({ feed }: { feed: FactoryFeed }) {
+  const cycle = feed.value.releaseOs;
+  const hasLedger = !!cycle?.stages.length;
+  const disk = cycle?.disk;
+  const diskAge = disk ? Date.now() - Date.parse(disk.observedAt) : null;
+  const diskFresh = diskAge !== null && diskAge >= -60_000 && diskAge <= 600_000;
+  const transfer = cycle?.transfer;
+  const next = FACTORY_STAGES.map(stage => ({ stage, ...factoryStageEvidence(cycle, stage) }))
+    .find(row => row.state !== "pass");
+  return <section className={css.telemetryPanel} aria-label="Source-linked release stopwatch and evidence">
+    <div className={css.panelHead}>
+      <div><span className={css.panelKicker}>SOURCE-LINKED FLIGHT RECORDER</span><h2>RELEASE CONTROL ROOM</h2></div>
+      <span className={css.miniChip}><LockKeyhole size={12} aria-hidden /> OBSERVE ONLY</span>
+    </div>
+    <div className={css.telemetryMetrics}>
+      <div><small>START → FIRST VERIFIED PRODUCTION</small>
+        <strong>{elapsed(cycle?.firstVerifiedProductionMs)}</strong>
+        <span>{cycle?.startKind === "declared-request" ? "Declared request clock" :
+          cycle?.startKind === "observed-engineering" ? "Observed engineering clock" : "Start timestamp UNKNOWN"}</span></div>
+      <div><small>START → ROLLBACK-TESTED ACCEPTANCE</small>
+        <strong>{elapsed(cycle?.finalAcceptedMs)}</strong><span>Previous proof, reactivation and sealed receipt</span></div>
+      <div data-signal={!diskFresh ? "unknown" : disk!.rootFreeBytes >= disk!.requiredBytes ? "pass" : "hold"}>
+        <small>ROOT HEADROOM / UNCHANGED GUARD</small>
+        <strong>{diskFresh ? (disk!.rootFreeBytes / 1024 ** 3).toFixed(2) + " GiB" : "UNKNOWN"}</strong>
+        <span>{diskFresh ? "Required " + (disk!.requiredBytes / 1024 ** 3).toFixed(0) +
+          " GiB · " + localTime(disk!.observedAt) : "No fresh disk observation"}</span></div>
+    </div>
+    <dl className={css.identityGrid}>
+      <div><dt>ACTIVE SOURCE</dt><dd>{feed.value.liveRelease.id || "UNKNOWN"}</dd></div>
+      <div><dt>ACTIVE BUILD_ID</dt><dd>{feed.value.liveRelease.buildId || "UNKNOWN"}</dd></div>
+      <div><dt>PREVIOUS SOURCE</dt><dd>{feed.value.previousRelease.id || "UNKNOWN"}</dd></div>
+      <div><dt>PREVIOUS BUILD_ID</dt><dd>{feed.value.previousRelease.buildId || "UNKNOWN"}</dd></div>
+    </dl>
+    <div className={css.transferPanel}>
+      <div><b>ARTIFACT TRANSPORT</b><span>{transfer ? signalWord[transfer.state] : "UNKNOWN"}</span></div>
+      {transfer?.totalBytes ? <progress value={transfer.bytes} max={transfer.totalBytes}
+        aria-label="Verified release artifact transfer progress" /> : <span>No fresh transfer observation</span>}
+      <p>{bytes(transfer?.bytes)} / {bytes(transfer?.totalBytes)} · {
+        transfer?.throughputBps === null || transfer?.throughputBps === undefined ? "Throughput UNKNOWN" :
+          bytes(transfer.throughputBps) + "/s"} · Elapsed {elapsed(transfer?.elapsedMs)}</p>
+      <p>Expected SHA256: {transfer?.expectedSha256 || "UNKNOWN"}</p>
+      <p>Verification {transfer ? transfer.verification.toUpperCase() : "UNKNOWN"} · Retries {
+        transfer?.retryCount ?? "UNKNOWN"} · Resumed {bytes(transfer?.resumedBytes)}</p>
+    </div>
+    <div className={css.milestoneGrid}>
+      {Object.entries(milestoneNames).map(([event, label]) => {
+        const row = cycle?.stages.find(item => item.event === event);
+        const state = row?.state || "unknown";
+        return <div key={event} className={css.milestone} data-signal={state}>
+          <SignalDot signal={state} small /><div><b>{event} · {label}</b>
+            <span>{signalWord[state]} · {row?.at ? new Date(row.at).toLocaleString() : "Timestamp UNKNOWN"}</span>
+            <small>{elapsed(row?.durationMs)} · {row?.proofSha256 ?
+              "Receipt SHA256 " + row.proofSha256.slice(0, 12) : "No proof receipt"}</small></div>
+        </div>;
+      })}
+    </div>
+    <div className={css.telemetryFoot}>
+      <span>{hasLedger ? "Clock uncertainty: " + (cycle!.clocksUncertaintyMs === null ?
+        "UNKNOWN" : cycle!.clocksUncertaintyMs + " ms") : "No source-linked release ledger published"}</span>
+      {cycle?.provenanceUrl ? <a href={cycle.provenanceUrl} target="_blank" rel="noopener noreferrer">
+        INSPECT PROVENANCE <ArrowUpRight size={12} /></a> : <span>PROVENANCE UNKNOWN</span>}
+    </div>
+    <p className={css.nextAction}>{!hasLedger ? "NEXT: publish source-linked evidence for the approved release." :
+      next ? "NEXT: inspect " + stageSpecs.find(row => row.id === next.stage)!.name + " — " +
+        signalWord[next.state] + ". Resume requires the existing approved operator command." :
+        "Release milestones recorded. Qualify the next exact source before activation."}</p>
+    <p className={css.benchmarkNote}>Historical benchmarks: R1 59m44s from first observed engineering to final public reactivation;
+      R2 50.563s after the artifact was already on HEL1. Different scopes; neither is an instrumented request-to-production measurement.</p>
+  </section>;
+}
+
 export default function FactoryConsole() {
   const [feed, setFeed] = useState<FactoryFeed>(unknownFeed);
   const [edge, setEdge] = useState<EdgeSignal>({ reachable: null, source: null, observedAt: null });
@@ -308,13 +394,22 @@ export default function FactoryConsole() {
         <div className={css.pipelineScroller}>
           <div className={css.stageRail}>
             {stageSpecs.map(({ id, name, icon: Icon }, index) => {
-              const stageState = feed.value.pipelineStage.stages[id as FactoryStage];
+              const evidence = factoryStageEvidence(feed.value.releaseOs, id as FactoryStage);
+              const stageState: FactorySignal = feed.authority === "stale" ? "stale" : evidence.state;
               return (
                 <div key={id} className={css.stage} data-signal={stageState}
                   data-active={activeStage === id ? "true" : "false"}>
                   <div className={css.stageCounter}>0{index + 1}</div>
                   <div className={css.stageIcon}><Icon size={23} strokeWidth={1.55} aria-hidden /></div>
-                  <div className={css.stageInfo}><span>{name}</span><small>{signalWord[stageState]}</small></div>
+                  <div className={css.stageInfo}><span>{name}</span><small>{signalWord[stageState]}</small>
+                    <small>{evidence.at ? localTime(evidence.at) : "TIME UNKNOWN"}</small>
+                    <small title={evidence.proofSha256 || "No source-linked proof receipt"}>
+                      {evidence.proofSha256 ? "SHA " + evidence.proofSha256.slice(0, 10) : "NO RECEIPT"}
+                    </small>
+                    <small title={feed.value.releaseOs?.sourceSha || "Source UNKNOWN"}>
+                      {feed.value.releaseOs ? feed.value.releaseOs.sourceSha.slice(0, 12) : "SOURCE UNKNOWN"} · {evidence.events.join("+")}
+                    </small>
+                  </div>
                   {index < FACTORY_STAGES.length - 1 && <span className={css.stageConnector} aria-hidden><i /></span>}
                 </div>
               );
@@ -322,6 +417,8 @@ export default function FactoryConsole() {
           </div>
         </div>
       </section>
+
+      <ReleaseTelemetry feed={feed} />
 
       <div className={css.lowerGrid}>
         <section className={css.testPanel} aria-label="Grouped deployment checks and Christmas tree test lights">

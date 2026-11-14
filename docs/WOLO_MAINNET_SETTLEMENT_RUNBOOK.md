@@ -8,12 +8,41 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-14"
+reviewed_at: "2026-11-14"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # WOLO Mainnet Settlement App Runbook
+
+## November 14, 2026 — read-only settlement runbook review; live actions DENIED
+
+Independent read-only inspection of this runbook's historical source and
+operator sections was cross-checked against the latest W1 containment receipt
+and a new HEL1 observation at **2026-11-14 00:32:11 UTC**. The two legacy
+reconciliation/staking timers **and their paired services**, plus the two
+original Wolo settlement services, remained masked; there were **zero**
+listeners on 8092–8095. The live website remained active with zero restarts,
+public /api/bets returned HTTP 503, and consensus advanced on wolo-1.
+These are dated observations only, not a durable statement about all possible
+writers, liabilities or financial custody.
+
+**Current financial verdict: FUNDING DENIED.** The original W1 containment
+closed only the four additional automatic timer/service paths; C01, C02, C03,
+C05, C06, C07 and C09 remain OPEN. The July–October descriptions, September
+reward-resumption history, cutover environment example below, and Deploy
+and backfill command examples are **historical or conditional procedures,
+NOT current production instructions**. Do not run their settlement, signer,
+Prisma, backfill, reconciliation or timer-enable operations merely because
+this document's reviewed_at metadata is current. Every such action needs
+its own separately signed, independently accepted FINANCIAL admission. The
+legacy 00:10 UTC staking-timer warning dated earlier November 13 remains
+superseded by the signed later November 13 quarantine and fresh masked
+readback; do not interpret the earlier entry as currently enabled.
+
+Independent review method, exact prior document SHA256 and physical
+evidence: [Chain #239 documentation review](https://github.com/Emaren/wolochain/issues/239#issuecomment-6868579014).
+This metadata review has no custody, SQL writer, reserve or funding authority.
 
 ## Later live quarantine receipt — 2026-11-13 09:53:35 UTC
 

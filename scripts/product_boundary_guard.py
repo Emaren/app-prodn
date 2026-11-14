@@ -48,6 +48,21 @@ EXACT_REVIEWED_FACTORY_SHA256 = "bb613ddbd9203f5ad5f2f19be8521db2dc64e03e36e7e48
 EXACT_REVIEWED_DYNAMIC_ROUTE = "app/api/media-assets/[kind]/[target]/route.ts"
 EXACT_REVIEWED_DYNAMIC_BASE = "753c3631a12483c70e1538ccc3b087839677ff9d"
 EXACT_REVIEWED_DYNAMIC_SHA256 = "bb1433119e955fd4e7bf9c6d2ecdcb64b0566ed01eef203d9fc224e1b5ba7243"
+# Explicit owner-authorized PRODUCT Deployment OS source admission. These four
+# SHA256-pinned scripts were reviewed as one source-bound set against the exact
+# R1 canonical main base. This grants code REVIEW ONLY, not root execution or
+# any extension of authorize_task / the actual 3032 admission boundary.
+EXACT_REVIEWED_DEPLOYMENT_OS_BASE = "74f3f3f2b640967d6b32065f1806c713d1fd24d8"
+EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE = {
+    "scripts/aoe2_product_release.py":
+        "63ee5fb1ce7b1fe2af3bd77d5a4a8fcd056def2337b1763ec9472c680642b11b",
+    "scripts/aoe2_product_release_ledger.py":
+        "d452f3b0fc31641beeab9ee4df5e6f29a64289faa3f25aa3fca46b60bda83bd9",
+    "scripts/aoe2_product_release_transport.py":
+        "2a5563f3b7a846839edfbccf8293a8bea4d65d9c32bc4e00bb7eed40074b4894",
+    "scripts/aoe2_product_retention.py":
+        "a169f1ddd6c541e45c05b3792750931e9ddfa6164399aabe998dc724924e53ae",
+}
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -132,6 +147,34 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
             os.close(descriptor)
         if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_DYNAMIC_SHA256:
             raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_EXACT_SHA_MISMATCH")
+        return raw
+    if raw in EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE:
+        if base != EXACT_REVIEWED_DEPLOYMENT_OS_BASE:
+            raise BoundaryHold("DEPLOYMENT_OS_REVIEWED_WRONG_BASE")
+        relative = relative_path(raw)
+        path = checkout / relative
+        parent = checkout
+        for part in relative.parts[:-1]:
+            parent = parent / part
+            if parent.is_symlink():
+                raise BoundaryHold("DEPLOYMENT_OS_SYMLINK_ANCESTOR")
+        st = path.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+                or st.st_uid != os.geteuid() or st.st_size <= 0
+                or st.st_size > 100000):
+            raise BoundaryHold("DEPLOYMENT_OS_SINGLE_REGULAR_FILE_REQUIRED")
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            live = os.fstat(descriptor)
+            if ((live.st_dev, live.st_ino, live.st_size)
+                    != (st.st_dev, st.st_ino, st.st_size)):
+                raise BoundaryHold("DEPLOYMENT_OS_INODE_CHANGED")
+            content = os.read(descriptor, 100001)
+        finally:
+            os.close(descriptor)
+        if (len(content) != st.st_size or hashlib.sha256(content).hexdigest()
+                != EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE[raw]):
+            raise BoundaryHold("DEPLOYMENT_OS_EXACT_SHA_MISMATCH")
         return raw
     relative = relative_path(raw)
     name = str(relative)

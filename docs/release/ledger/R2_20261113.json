@@ -1,0 +1,29 @@
+{
+  "schema": "aoe2war.product.historical-benchmark.v1",
+  "id": "R2-after-artifact-20261113",
+  "sourceSha": "b101efb38868c00e3592a873491d8ce36ee43038",
+  "buildId": "s09mYXhW7UPH9Ulh71g4z",
+  "provenanceUrl": "https://github.com/Emaren/app-prodn/issues/1280#issuecomment-6865351173",
+  "controllerSha256": "bf8289d8125631a88f1da63e19a693093055b4c50b3677d430744b0bef83373a",
+  "clock": {
+    "source": "historical-receipt",
+    "precisionMs": 1,
+    "uncertaintyMs": null
+  },
+  "actualUserRequestReceivedAt": null,
+  "firstObservedEngineeringAt": null,
+  "firstPublicCandidateSourceBuildProofAt": null,
+  "finalPublicCandidateSourceBuildProofAt": null,
+  "receiptSealedAt": null,
+  "phases": {
+    "stageMs": 19876,
+    "activateMs": 9012,
+    "rollbackMs": 10112,
+    "reactivateMs": 8449
+  },
+  "afterArtifactPhysicalCycleMs": 50563,
+  "exactRequestToProductionMs": null,
+  "exactRequestToSealedAcceptanceMs": null,
+  "qualification": "Artifact already on HEL1. Historical controller bytes differ from installed V3 771ebd5b; this is not a full request-to-production sample.",
+  "financialAuthorized": false
+}

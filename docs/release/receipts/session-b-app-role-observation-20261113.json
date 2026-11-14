@@ -1,0 +1,32 @@
+{
+  "build_id": "T5PhcksVebUQn1sGocrj7",
+  "checks": {
+    "admin_and_ordinary_bets": "PASS_UNAVAILABLE_BODY",
+    "admin_page_controls": "PASS_VISIBLE",
+    "admin_protected_data": "HELD_PERMISSION_DENIAL",
+    "admin_session_identity": "PASS_EMAREN_IS_ADMIN",
+    "ordinary_admin_api": "PASS_FORBIDDEN_BODY",
+    "ordinary_page": "PASS_REDIRECTED_FROM_ADMIN_TO_HOME",
+    "ordinary_session_continuity": "PASS_SAME_EXISTING_ACCOUNT_AND_NONADMIN_ROLE",
+    "scribe_identity": "HOLD_NO_PROFILE_RESPONSE_IDENTIFIED_SCRIBE"
+  },
+  "cookie_material_recorded": false,
+  "financial_authorized": false,
+  "limits": [
+    "HTTP statuses for browser-only probes were not exported from network tooling; Forbidden and unavailable response bodies were observed directly. Public HTTP503 was separately observed by host probe.",
+    "The pit account has null name fields and cannot be asserted to be Scribe.",
+    "No fresh Steam login or callback cycle was performed.",
+    "This is App-side evidence only; financial C03 and funding remain HOLD under Workspace 1 authority."
+  ],
+  "method": "Existing Chrome profiles; direct GET navigation through browser UI. No cookie access, exports, logouts, account creation, or role mutations.",
+  "profiles": {
+    "Em": "NO_ACTIVE_SESSION",
+    "Tiz": "NO_ACTIVE_SESSION",
+    "Tony": "AUTHENTICATED_EMAREN_ADMIN",
+    "pit": "AUTHENTICATED_NONADMIN_NAME_UNKNOWN"
+  },
+  "raw_session_recorded": false,
+  "recorded_at": "2026-11-13T22:38:32.938814+00:00",
+  "schema": "aoe2war.product.browser-role-observation.v1",
+  "source_sha": "785ebb5066b5c4f4c33241cb77663f4dac79a650"
+}

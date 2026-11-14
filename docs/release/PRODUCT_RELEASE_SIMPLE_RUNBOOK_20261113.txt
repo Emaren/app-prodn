@@ -3,6 +3,16 @@ Updated 2026-11-13 UTC. Nonfinancial public website ONLY.
 This runbook REPLACES the superseded Factory V1 operator instructions at this path.
 Git history preserves the original V1 guidance; do not execute its old hardcoded controller.
 
+CURRENT-STATE CORRECTION — R1 acceptance supersedes dated R2 state below.
+PR1350 merged as74f3f3f2b640967d6b32065f1806c713d1fd24d8. Physically accepted
+and deployed source785ebb5066b5c4f4c33241cb77663f4dac79a650, BUILD_ID
+T5PhcksVebUQn1sGocrj7; immediate previousb101efb38868c00e3592a873491d8ce36ee43038,
+BUILD_IDs09mYXhW7UPH9Ulh71g4z. Current V3 SHA771ebd5bc1164f75f4466cdc0a05a608ffc25671fccb12e05ebf321c56e30452
+DID complete a real new-source stage/activate/rollback/reactivate under R1.
+Read FACTORY_R1_PHYSICAL_ACCEPTANCE_20261113.txt and PR1350 final receipt.
+Do not repeat R1. The remaining R2 sections are historical operating context,
+not authority for current source, disk space, or completed physical acceptance.
+
 1. RELEASE OWNERSHIP AND HARD BOUNDARIES
 
 Workspace 2 PRODUCT uses UID650 for frontend changes and Session B for release
@@ -166,3 +176,83 @@ DocsV2 source drift when it appears; do not falsify review dates or disable
 security tests just to obtain green CI. Every future run should publish its
 real artifact SHA, source, BUILD_ID, stage timings, phase result and rollback
 receipt, preserving historical UNKNOWN or HOLD truthfully.
+
+
+9. DEPLOYMENT OS SOURCE-CANDIDATE OPERATOR CONTRACT (2026-11-13)
+
+The UID650 PRODUCT branch session-c/product-deployment-os-20261113
+implements the *candidate*, not a production-admitted replacement, for an
+owner-B orchestration entrypoint:
+ python3 scripts/aoe2_product_release.py --approval <B-owned-mode0600-exact-approval.json> --phase plan
+ python3 scripts/aoe2_product_release.py --approval <B-owned-mode0600-exact-approval.json> --phase transport
+ python3 scripts/aoe2_product_release.py --approval <B-owned-mode0600-exact-approval.json> --phase release
+
+Do not invoke a phase not enumerated in the exact expiring approval. The
+approval binds PR/source, Linux run, artifact and independent proof digests,
+BUILD_ID, required checks, owner identity and financialAuthorized=false.
+Running on UID650 is NOT permitted for B-owned transport/root actions: source
+authority remains UID650, transport authority remains existing authorized
+B UID501; SSH uses BatchMode and strict saved host-key verification.
+
+The source entrypoint was locally checked against 57 isolated Python cases,
+10 Factory Node UI cases, TypeScript, Kingdom 88-route source census and an
+actual restricted-UID650 Next production build, but the NEW coordination
+command has not yet been admitted to or used on HEL1. No benchmark or
+speedup is claimed for its unexecuted transport path.
+
+The GitHub artifact ZIP response and its HTTP 206 byte-range continuation
+were verified on the existing B-owner Mac against the known independent
+R1 receipt ZIP, without exporting GitHub credentials. Always validate
+source, source-independent proof and runtime bytes before any stage.
+
+The new ledger uses source-bound events T0 through T10, append-only hash
+chaining, bounded sanitization and explicit uncertainty. T2/T3 contain
+separate GitHub provenance and CI-check receipts. Public T7/T8/T9 receipts
+require HTTPS 200, exact source SHA and BUILD_ID headers/HTML, correct root
+unit identity, and financial /api/bets HTTP503. Unknown evidence stays
+UNKNOWN. The public production site must never infer CI PASS simply from
+a fresh web journal.
+
+Interrupted final receipt publication must resume from the same committed
+T10 event and SHA256-verified locally retained evidence; it must not produce
+another T10 or report a complete root seal when root receipt installation
+fails. A different root receipt or unexpected filesystem state means HOLD.
+
+Previous root controller V3, Steam v27, financial masks and rollback runtimes
+remain untouched. The existing two-minute status cron must only be changed
+after source review and authorized root install; the new Factory source
+projection is not a live feed until that exact publisher version is admitted.
+
+Capacity: on 2026-11-13 after four old B-only archive retentions, root
+reported roughly 8.20 GB free, above the V3 >=6 GiB staging predicate.
+That is not guaranteed future headroom. Recheck available *blocks*, the next
+artifact transfer size, extraction peak, protected keep-set and off-host
+retention before each release. No automatic deletion of unique recovery
+material or activated financial components.
+
+
+10. EXACT REVIEWED DEPLOYMENT OS SCRIPT ADMISSION
+
+The existing PRODUCT boundary rejects new scripts/ by default. Four reviewed
+Deployment OS script paths are individually admitted ONLY at the exact
+canonical R1 base 74f3f3f2b640967d6b32065f1806c713d1fd24d8 and exact
+SHA256 bytes pinned in scripts/product_boundary_guard.py. There is NO
+scripts/* wildcard, no automatic authority to execute arbitrary shell tasks,
+no signed/root installation authority and no FINANCIAL permission. Future
+source bytes or base ancestry require a separate security review and tests.
+CI must pass the actual negative authorization gate; never force-green it.
+
+
+11. GitHub exact-PR check-run acceptance after real November 14 run
+
+The GitHub API may include an intentional SKIPPED check named exactly
+Nightly/manual source-bound Next census. Because this job is manual/nightly
+only, the owner-approved PR release qualifier accepts ONLY that one exact
+name as skipped when not required by the approval. Every other returned
+check-run must be completed with conclusion=success. Explicit required
+checks must ALL be success, even if named as optional otherwise. A failed
+duplicate name never disappears behind a later success; all run IDs,
+names, states and conclusions are recorded in the private proof. A truncated
+check-run census, unexpected skip, failed security, non-green PR CI or
+wrong source SHA remains HOLD. This was added following actual GitHub API
+observation, not as a general way to skip tests.

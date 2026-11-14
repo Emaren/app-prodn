@@ -8,12 +8,36 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-14"
+reviewed_at: "2026-11-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## November 14, 2026 — independent read-only documentation review; financial HOLD unchanged
+
+This documentation was reviewed against the pinned App source, the bounded
+financial producer source census (check: exit 0, but safe_to_deploy=false
+and all_financial_producers_isolated=false), and the separately observed
+HEL1 financial quarantine at **2026-11-14 00:32:11 UTC**. The six designated
+financial units/timers were still masked, no services listened on ports
+8092–8095, and public /api/bets returned HTTP 503. The public WoloChain
+RPC independently reported a progressing wolo-1; **chain progress does not
+constitute custody, reserve, ledger or financial writer admission**.
+
+**Current operator verdict: FUNDING DENIED; seven Chain gates
+C01/C02/C03/C05/C06/C07/C09 remain OPEN.** Historical source qualification,
+design examples and future activation instructions below are deliberately
+preserved as dated evidence and MUST NOT be treated as permission to run
+a funded executor, enable a financial timer, migrate live custody, or accept
+a funded wager. The October sections are historical technical contracts;
+this review does not certify proposed components as deployed or funded.
+
+Independent review scope, source hashes and dated physical evidence:
+[Chain #239 documentation review](https://github.com/Emaren/wolochain/issues/239#issuecomment-6868579014).
+This is a genuine **documentation applicability review only**, not a
+financial SQL change, signer approval, live funding permit, or W1 gate closure.
 
 ## October 19 — source-linked public GET and prewarm financial producer census
 

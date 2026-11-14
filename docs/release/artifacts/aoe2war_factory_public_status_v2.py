@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+import shutil
 import tempfile
 import urllib.error
 import urllib.request
@@ -103,59 +104,216 @@ def previous_from_journal(directory):
     old_source=root_file(old/".aoe2war-source-sha").decode().strip()
     if re.fullmatch(r"[0-9a-f]{40}",old_source) is None or not old_source.startswith(old.name[-12:]):
         raise RuntimeError("ROLLOUT_PREVIOUS_SOURCE_MISMATCH")
-    return old_source
+    old_build=root_file(old/".next/BUILD_ID").decode("utf-8").strip()
+    if re.fullmatch(r"[A-Za-z0-9_-]{1,80}",old_build) is None:
+        raise RuntimeError("ROLLOUT_PREVIOUS_BUILD_INVALID")
+    return old_source,old_build
+
+def accepted_root_seal(directory, source, build, previous_source, previous_build, summary_raw):
+    """The final green beacon needs an actual complete root-side seal.
+
+    Source and BUILD_ID headers alone prove the active website, not completion
+    of all private root receipts. Missing/mismatched seal never promotes T10.
+    """
+    try:
+        seal_path=directory/"release-seal-v1.json"
+        events_path=directory/"release-events-v1.jsonl"
+        if (not seal_path.exists() or not events_path.exists() or
+            seal_path.lstat().st_size>20000 or
+            events_path.lstat().st_size>8*1024*1024):
+            return False
+        seal=json.loads(root_file(seal_path,0o600))
+        events_raw=root_file(events_path,0o600)
+        if not events_raw.endswith(b"\n"):
+            return False
+        last=json.loads(events_raw.splitlines()[-1])
+        if (seal.get("schema")!="aoe2war.product.release-seal.v1" or
+            seal.get("sourceSha")!=source or seal.get("buildId")!=build or
+            seal.get("financialAuthorized") is not False or
+            seal.get("ledgerSha256")!=hashlib.sha256(events_raw).hexdigest() or
+            seal.get("summarySha256")!=hashlib.sha256(summary_raw).hexdigest() or
+            last.get("event")!="T10" or last.get("state")!="pass" or
+            last.get("sourceSha")!=source or
+            last.get("eventHash")!=seal.get("lastEventHash")):
+            return False
+        # The rollback witness T8 belongs to the previous runtime. It MUST
+        # never be checked against the candidate SHA or accepted on filename
+        # alone. Other public witnesses belong to the candidate.
+        expected={
+            "public-evidence-T7-v1.json":(source,build),
+            "public-evidence-T8-v1.json":(previous_source,previous_build),
+            "public-evidence-T9-v1.json":(source,build),
+            "source-qualification-v1.json":(source,None),
+            "pr-provenance-v1.json":(source,None),
+        }
+        for name, (expected_source,expected_build) in expected.items():
+            proof=directory/name
+            if (not isinstance(expected_source,str) or
+                not proof.exists() or proof.lstat().st_size>20000):
+                return False
+            payload=json.loads(root_file(proof,0o600))
+            if (not isinstance(payload,dict) or
+                payload.get("sourceSha")!=expected_source):
+                return False
+            if expected_build is not None and (
+                payload.get("buildId")!=expected_build or
+                payload.get("financialHttpStatus")!=503 or
+                payload.get("financialAuthorized") is not False
+            ):
+                return False
+        return True
+    except (OSError,RuntimeError,ValueError,TypeError,IndexError,KeyError):
+        return False
+
+def public_release_summary(directory,source,build,now,previous_source=None,previous_build=None):
+    """Project optional root-owned evidence; absent evidence stays UNKNOWN."""
+    base={
+        "schema":"aoe2war.product.release-summary.v1","sourceSha":source,
+        "buildId":build,"generatedAt":now,"startKind":"unknown",
+        "firstVerifiedProductionMs":None,"finalAcceptedMs":None,
+        "clocksUncertaintyMs":None,"provenanceUrl":None,"stages":[],
+        "disk":{"rootFreeBytes":shutil.disk_usage("/").free,
+                "requiredBytes":6*1024**3,"observedAt":now},
+    }
+    path=directory/"release-summary-v1.json"
+    if not path.exists():return base
+    try:
+        if path.lstat().st_size>20000:return base
+        summary_raw=root_file(path,0o600)
+        obj=json.loads(summary_raw)
+        if (obj.get("schema")!=base["schema"] or obj.get("sourceSha")!=source or
+            obj.get("buildId")!=build):return base
+        has_t10=any(isinstance(row,dict) and row.get("event")=="T10"
+                    and row.get("state")=="pass" for row in obj.get("stages",[]))
+        root_seal_pass=not has_t10 or accepted_root_seal(
+            directory,source,build,previous_source,previous_build,summary_raw)
+        def timestamp(value):
+            if not isinstance(value,str) or len(value)>40:return None
+            parsed=dt.datetime.fromisoformat(value.replace("Z","+00:00"))
+            if parsed.tzinfo is None:return None
+            return parsed.astimezone(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
+        def number(value):
+            return value if type(value) in (int,float) and 0<=value<=10**15 else None
+        generated=timestamp(obj.get("generatedAt"))
+        if not generated:return base
+        rows=obj.get("stages")
+        if not isinstance(rows,list) or len(rows)>24:return base
+        result=[];seen=set()
+        for row in rows:
+            if not isinstance(row,dict):return base
+            event=row.get("event");state=row.get("state")
+            if (not isinstance(event,str) or
+                re.fullmatch(r"[A-Za-z0-9_.-]{1,48}",event) is None or event in seen or
+                state not in ("pending","running","pass","hold","fail","unknown","stale")):return base
+            seen.add(event)
+            at=timestamp(row.get("at")) if row.get("at") is not None else None
+            proof=row.get("proofSha256")
+            if proof is not None and (not isinstance(proof,str) or
+                re.fullmatch(r"[a-f0-9]{64}",proof) is None):return base
+            if state=="pass" and (not at or not proof):state="unknown"
+            if event=="T10" and state=="pass" and not root_seal_pass:
+                state="unknown"
+            result.append({"event":event,"label":event,"state":state,"at":at,
+                "durationMs":number(row.get("durationMs")),"proofSha256":proof})
+        url=obj.get("provenanceUrl")
+        if (not isinstance(url,str) or re.fullmatch(
+            r"https://github\.com/Emaren/app-prodn/(?:pull/[0-9]+|issues/[0-9]+|actions/runs/[0-9]+)(?:#[A-Za-z0-9_-]+)?",url) is None):url=None
+        start=obj.get("startKind")
+        if start not in ("observed-engineering","declared-request","unknown"):start="unknown"
+        base.update({"generatedAt":generated,"startKind":start,
+            "firstVerifiedProductionMs":number(obj.get("firstVerifiedProductionMs")),
+            "finalAcceptedMs":number(obj.get("finalAcceptedMs")) if root_seal_pass else None,
+            "clocksUncertaintyMs":number(obj.get("clocksUncertaintyMs")),
+            "stages":result,"provenanceUrl":url})
+        transfer=obj.get("transfer")
+        if isinstance(transfer,dict) and transfer.get("state") in (
+            "pending","running","pass","hold","fail","unknown","stale"):
+            values={key:number(transfer.get(key)) for key in (
+                "bytes","totalBytes","throughputBps","elapsedMs","retryCount","resumedBytes")}
+            total=values["totalBytes"];received=values["bytes"]
+            if (received is not None and values["retryCount"] is not None and
+                values["resumedBytes"] is not None and
+                (total is None or (total>0 and received<=total))):
+                expected=transfer.get("expectedSha256")
+                if not isinstance(expected,str) or re.fullmatch(r"[a-f0-9]{64}",expected) is None:expected=None
+                verification=transfer.get("verification")
+                if verification not in ("pass","fail"):verification="unknown"
+                base["transfer"]={**values,"state":transfer["state"],
+                    "expectedSha256":expected,"verification":verification}
+        return base
+    except (OSError,ValueError,TypeError,RuntimeError):
+        return base
 
 def make():
     now=iso_now()
     pid,source,build,directory=trusted_web_identity()
     rt=Path(directory)
     state,root_journal=journal_for(source,build,rt)
-    prev=previous_from_journal(root_journal)
+    prev,previous_build=previous_from_journal(root_journal)
     web=status("/")==200 and status("/factory")==200
     guest=status("/api/auth/session") in (401,403)
     money_api=status("/api/bets")==503
     backup=status("/",3030)==200
-    ready=all((web,guest,money_api,backup))
-    if not ready:
+    if not all((web,guest,money_api,backup)):
         raise RuntimeError("PRODUCTION_HTTP_DENIAL_OR_ROLLBACK_UNHEALTHY")
-    actual_rollback_proven=(source==FACTORY_SOURCE and prev=="9f7b56f536ba51b4678ac43baebfae140ada6479")
-    signal=lambda val:"pass" if val else "hold"
-    stage_map={x:"pass" for x in STAGES}
-    stage_map["rollback"]="pass" if actual_rollback_proven else "unknown"
-    groups=[
-        {"id":"source","state":"pass","passed":2,"total":2},
-        {"id":"security","state":"pass","passed":9,"total":9},
-        {"id":"browser","state":"unknown","passed":None,"total":None},
-        {"id":"artifact","state":"pass","passed":2,"total":2},
-        {"id":"release","state":"pass","passed":4,"total":4},
-        {"id":"rollback","state":"pass" if actual_rollback_proven else "unknown",
-         "passed":2 if actual_rollback_proven else None,
-         "total":2 if actual_rollback_proven else None},
-    ]
+    # Current host checks are separate from source/CI/artifact/rollback proof.
+    stage_map={name:"unknown" for name in STAGES}
+    groups=[{"id":name,"state":"unknown","passed":None,"total":None}
+            for name in GROUPS]
+    groups[GROUPS.index("release")]={"id":"release","state":"pass","passed":5,"total":5}
     stamp=state.get("timestamp")
+    activity=[]
     if isinstance(stamp,str):
         try:
-            stamp=dt.datetime.fromisoformat(stamp.replace("Z","+00:00")).astimezone(
-                dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
+            parsed=dt.datetime.fromisoformat(stamp.replace("Z","+00:00"))
+            if parsed.tzinfo is not None:
+                normalized=parsed.astimezone(dt.timezone.utc).isoformat(
+                    timespec="milliseconds").replace("+00:00","Z")
+                age=(dt.datetime.fromisoformat(now.replace("Z","+00:00"))-
+                     parsed.astimezone(dt.timezone.utc)).total_seconds()
+                if -60<=age<=72*3600:
+                    activity=[{"id":"web-release-"+source[:12],
+                        "label":"Current website source and host checks observed",
+                        "state":"pass","at":normalized}]
         except ValueError:
-            stamp=None
+            pass
+    summary=public_release_summary(root_journal,source,build,now,prev,previous_build)
+    by_event={row["event"]:row for row in summary["stages"]}
+    now_dt=dt.datetime.fromisoformat(now.replace("Z","+00:00"))
+    summary_age=(now_dt-dt.datetime.fromisoformat(
+        summary["generatedAt"].replace("Z","+00:00"))).total_seconds()
+    def evidence(event):
+        row=by_event.get(event)
+        if not row:return "unknown"
+        state=row["state"];stamp=row["at"]
+        if state=="pass" and (not stamp or not row["proofSha256"]):return "unknown"
+        if stamp:
+            age=(now_dt-dt.datetime.fromisoformat(stamp.replace("Z","+00:00"))).total_seconds()
+            if age < -60:return "unknown"
+            if age>86400 or (state=="running" and age>600):return "stale"
+        if summary_age < -60:return "unknown"
+        if summary_age>86400:return "stale"
+        return state
+    required={"develop":["T2"],"test":["T3"],"build":["T4"],"approve":["T4"],
+              "deploy":["T6"],"verify":["T7"],"rollback":["T8","T9","T10"]}
+    for stage,events in required.items():
+        values=[evidence(event) for event in events]
+        if all(value=="pass" for value in values):stage_map[stage]="pass"
+        else:
+            stage_map[stage]=next((value for value in (
+                "fail","hold","stale","running","pending","unknown") if value in values),"unknown")
     return {
        "schema":"aoe2war.factory.public.v1","generatedAt":now,
-       "liveRelease":{"id":source,"status":"pass","verifiedAt":now},
+       "liveRelease":{"id":source,"buildId":build,"status":"pass","verifiedAt":now},
        "candidateRelease":{"id":None,"status":"unknown","verifiedAt":None},
-       "previousRelease":{"id":prev,"status":"pass","verifiedAt":now},
-       "pipelineStage":{"active":None,"stages":stage_map},
-       "serviceHealth":[
-          {"id":"website","state":"pass"},
-          {"id":"identity","state":"unknown"},
-          {"id":"media","state":"unknown"},
-          {"id":"public-api","state":signal(money_api and status("/players")==200)},
+       "previousRelease":{"id":prev,"buildId":previous_build,"status":"pass","verifiedAt":now},
+       "pipelineStage":{"active":next((name for name in STAGES if stage_map[name]=="running"),None),
+                        "stages":stage_map},
+       "serviceHealth":[{"id":"website","state":"pass"},
+          {"id":"identity","state":"unknown"},{"id":"media","state":"unknown"},
+          {"id":"public-api","state":"pass" if money_api and status("/players")==200 else "hold"},
           {"id":"release","state":"pass"}],
-       "testGroups":groups,
-       "recentActivity":([{"id":"web-release-"+source[:12],
-          "label":"Production release verified against root source and service",
-          "state":"pass","at":stamp}] if isinstance(stamp,str) and
-          stamp.endswith("Z") else []),
+       "testGroups":groups,"recentActivity":activity,"releaseOs":summary,
     },rt
 
 def main():

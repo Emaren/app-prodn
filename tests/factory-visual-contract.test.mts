@@ -29,7 +29,7 @@ test("public Factory V1 contract has exactly seven stages and fail-closed initia
   ].sort().join(","));
 });
 
-test("a fresh source-bound snapshot lights exact stages, groups and beacons with real counts", () => {
+test("a fresh host envelope cannot substitute for source-linked pipeline evidence", () => {
   const source = copy();
   const stamp = "2026-11-12T21:59:59.000Z";
   source.generatedAt = stamp;
@@ -44,8 +44,9 @@ test("a fresh source-bound snapshot lights exact stages, groups and beacons with
   const result = readFactoryPublicStatus(source, now);
   assert.equal(result.authority, "fresh");
   assert.equal(result.value.liveRelease.id, source.liveRelease.id);
-  assert.equal(result.value.pipelineStage.stages.test, "running");
-  assert.equal(result.value.testGroups[0].passed, 147);
+  assert.equal(result.value.pipelineStage.stages.test, "unknown");
+  assert.equal(result.value.testGroups[0].passed, null);
+  assert.equal(result.value.testGroups[0].state, "unknown");
   assert.equal(result.value.serviceHealth[0].state, "pass");
   assert.equal(result.value.recentActivity.length, 1);
 });
@@ -96,7 +97,7 @@ test("route is an actual public Next page without new financial or deployment AP
   const css = read("app/factory/factory.module.css");
   assert.match(page, /alternates: \{ canonical: "\/factory" \}/);
   assert.match(page, /FactoryConsole/);
-  for (const name of ["DEVELOP", "TEST", "BUILD", "APPROVE", "DEPLOY", "VERIFY", "ROLLBACK",
+  for (const name of ["SOURCE / BRANCH", "CI / SECURITY", "LINUX BUILD", "INDEPENDENT VERIFY", "TRANSPORT / STAGING", "ACTIVATION / HTTPS", "ROLLBACK / REACTIVATION",
     "LIVE RELEASE", "NEXT CANDIDATE", "ROLLBACK TARGET", "THE LIGHT BOARD", "SYSTEM PULSE",
     "RECENT ACTIVITY", "READ-ONLY"]) assert.ok(ui.includes(name), name);
   assert.match(ui, /fetch\("\/factory\/status\.json"/);
@@ -127,4 +128,63 @@ test("the original 88 historical pages remain distinct; Factory is independently
     .filter((path: string) => path === "/factory");
   assert.equal(occurrences.length, 1);
   assert.ok(read("docs/audits/performance-route-cohort-v2.txt").includes("\n/factory\n"));
+});
+
+
+const releaseOsNow = Date.parse("2026-11-13T23:00:00.000Z");
+function releaseOsFeed() {
+  const value = unknownFactoryStatus();
+  value.generatedAt = new Date(releaseOsNow).toISOString();
+  value.liveRelease = {id:"f".repeat(40),buildId:"build",status:"pass",verifiedAt:value.generatedAt};
+  return {...value,releaseOs:{
+    schema:"aoe2war.product.release-summary.v1",sourceSha:"f".repeat(40),buildId:"build",
+    generatedAt:value.generatedAt,startKind:"observed-engineering",
+    firstVerifiedProductionMs:null,finalAcceptedMs:4000,clocksUncertaintyMs:null,
+    provenanceUrl:"https://github.com/Emaren/app-prodn/pull/1350",
+    stages:[{event:"T4",state:"pass",at:value.generatedAt,durationMs:42,proofSha256:"a".repeat(64)}],
+  }};
+}
+test("optional release ledger binds source and BUILD_ID",()=>{
+  const good=readFactoryPublicStatus(releaseOsFeed(),releaseOsNow);
+  assert.equal(good.value.pipelineStage.stages.build,"pass");
+  assert.equal(good.value.pipelineStage.stages.approve,"pass");
+  assert.equal(good.value.releaseOs?.firstVerifiedProductionMs,null);
+  assert.equal(good.value.releaseOs?.finalAcceptedMs,null);
+  const source=releaseOsFeed();source.releaseOs.sourceSha="b".repeat(40);
+  assert.equal(readFactoryPublicStatus(source,releaseOsNow).value.releaseOs,undefined);
+  const build=releaseOsFeed();build.releaseOs.buildId="wrong_build";
+  assert.equal(readFactoryPublicStatus(build,releaseOsNow).value.releaseOs,undefined);
+});
+test("receipt-free and future positive evidence never produces a green stage",()=>{
+  const missing=releaseOsFeed();missing.releaseOs.stages[0].proofSha256="";
+  assert.equal(readFactoryPublicStatus(missing,releaseOsNow).value.pipelineStage.stages.build,"unknown");
+  const future=releaseOsFeed();future.releaseOs.stages[0].at="2026-11-13T23:02:00.000Z";
+  assert.equal(readFactoryPublicStatus(future,releaseOsNow).value.pipelineStage.stages.build,"unknown");
+});
+test("fresh publication cannot freshen expired source evidence",()=>{
+  const stage=releaseOsFeed();stage.releaseOs.stages[0].at="2026-11-11T23:00:00.000Z";
+  assert.equal(readFactoryPublicStatus(stage,releaseOsNow).value.pipelineStage.stages.build,"stale");
+  const summary=releaseOsFeed();summary.releaseOs.generatedAt="2026-11-11T23:00:00.000Z";
+  assert.equal(readFactoryPublicStatus(summary,releaseOsNow).value.pipelineStage.stages.build,"stale");
+});
+test("rollback acceptance requires T8 T9 and T10 proof independently",()=>{
+  const value=releaseOsFeed();
+  value.releaseOs.stages=["T8","T9"].map(event=>({
+    event,state:"pass",at:value.generatedAt,durationMs:10,proofSha256:"a".repeat(64),
+  }));
+  assert.equal(readFactoryPublicStatus(value,releaseOsNow).value.pipelineStage.stages.rollback,"unknown");
+  value.releaseOs.stages.push({event:"T10",state:"pass",at:value.generatedAt,durationMs:10,proofSha256:"b".repeat(64)});
+  assert.equal(readFactoryPublicStatus(value,releaseOsNow).value.pipelineStage.stages.rollback,"pass");
+  assert.equal(readFactoryPublicStatus(value,releaseOsNow).value.releaseOs?.finalAcceptedMs,4000);
+  value.releaseOs.stages[1].proofSha256="";
+  assert.equal(readFactoryPublicStatus(value,releaseOsNow).value.pipelineStage.stages.rollback,"unknown");
+  assert.equal(readFactoryPublicStatus(value,releaseOsNow).value.releaseOs?.finalAcceptedMs,null);
+});
+test("empty ledger and private provenance cannot imply completion",()=>{
+  const value=releaseOsFeed();value.releaseOs.stages=[];
+  value.releaseOs.provenanceUrl="https://other.invalid/root/private";
+  const result=readFactoryPublicStatus(value,releaseOsNow);
+  assert.ok(FACTORY_STAGES.every(stage=>result.value.pipelineStage.stages[stage]==="unknown"));
+  assert.equal(result.value.releaseOs?.provenanceUrl,null);
+  assert.ok(read("app/factory/FactoryConsole.tsx").includes("const hasLedger = !!cycle?.stages.length"));
 });
