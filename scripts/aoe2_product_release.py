@@ -27,9 +27,15 @@ INSPECTOR_SHA = "2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974c
 SSH = ["/usr/bin/ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=8"]
 # Public HTTPS blocks the Python-urllib default UA. This observer is read-only.
 PUBLIC_OBSERVER_UA = "Mozilla/5.0 (compatible; AoE2WAR-Release-Observer/1.0)"
-# Explicitly optional *manual-only* PR check. Any other skipped, failed,
-# missing or in-progress check remains a hard HOLD. This does not skip security.
-OPTIONAL_SKIPPED_CHECKS = frozenset({"Nightly/manual source-bound Next census"})
+# Only exact known optional/manual/preview checks may be SKIPPED. Required
+# checks, other skipped checks, failures, missing or incomplete checks HOLD.
+# The two Chromium jobs are conditional *candidate previews*, not the required
+# full App CI or source-bound Linux acceptance. Never whitelist their failures.
+OPTIONAL_SKIPPED_CHECKS = frozenset({
+    "Nightly/manual source-bound Next census",
+    "Chromium — six Kingdom instrument pages, isolated exact source",
+    "Chromium — exact candidate, no production data or operator mutations",
+})
 FIELDS = {
     "schema", "sourceSha", "pr", "runId", "artifactId", "artifactBytes",
     "artifactSha256", "proofArtifactId", "proofArtifactBytes",

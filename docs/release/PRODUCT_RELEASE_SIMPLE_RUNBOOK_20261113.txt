@@ -288,3 +288,22 @@ before comparing approved source, build, active state and zero
 restarts. Tests must assert the safe framing; a production
 self-check HOLD is not permission to activate an unqualified
 candidate or bypass root V3 postflight/rollback.
+
+
+14. Exact optional preview checks (first Wolo postflight release)
+
+The source-bound B-owner coordinator witnessed two conditionally skipped
+browser-preview jobs on App PR #1353: "Chromium — six Kingdom instrument
+pages, isolated exact source" and "Chromium — exact candidate, no
+production data or operator mutations". These are optional previews,
+not required release acceptance checks. The same explicit exception as
+the existing nightly/manual census now covers only these two exact
+job names, only when status=completed and conclusion=skipped, and only
+when the owner has NOT listed that job name among requiredChecks.
+The qualified source still demands every raw other check complete and
+SUCCESS, including product-boundary, GitGuardian, exact Linux build,
+independent byte verifier, full App CI and browser checks actually
+scheduled. Failed, missing, in_progress or skipped REQUIRED jobs HOLD.
+Every check ID, name, status and conclusion remains in the immutable
+qualification receipt. No production authority or FINANCIAL access is
+granted by this source-only policy correction.
