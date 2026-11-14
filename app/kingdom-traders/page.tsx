@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import PaperFleetPreview from "./PaperFleetPreview";
 import {
   ArrowRight,
   BarChart3,
@@ -133,6 +134,8 @@ export default function KingdomTradersPage() {
           })}
         </div>
       </section>
+
+      <PaperFleetPreview />
 
       <section className="flex flex-col gap-5 rounded-[1.65rem] border border-amber-200/15 bg-amber-200/[0.035] p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
