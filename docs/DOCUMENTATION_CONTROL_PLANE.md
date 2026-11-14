@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/kingdom-deployments-factory-wolo-20261114` at `a6922b0d72cd70d1f4ffd00b479030a897d66290`
+Implementation baseline: `session-c/kingdom-deployments-factory-wolo-20261114` at `ef64639bb7796827e85655fe145af37ed0657dd1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
