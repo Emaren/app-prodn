@@ -55,7 +55,7 @@ EXACT_REVIEWED_DYNAMIC_SHA256 = "bb1433119e955fd4e7bf9c6d2ecdcb64b0566ed01eef203
 EXACT_REVIEWED_DEPLOYMENT_OS_BASE = "74f3f3f2b640967d6b32065f1806c713d1fd24d8"
 EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE = {
     "scripts/aoe2_product_release.py":
-        "d16f6a7670795c5f167caa56f40701c9e105224607b3fe0af4ddd2bea4f7fc6d",
+        "63ee5fb1ce7b1fe2af3bd77d5a4a8fcd056def2337b1763ec9472c680642b11b",
     "scripts/aoe2_product_release_ledger.py":
         "d452f3b0fc31641beeab9ee4df5e6f29a64289faa3f25aa3fca46b60bda83bd9",
     "scripts/aoe2_product_release_transport.py":

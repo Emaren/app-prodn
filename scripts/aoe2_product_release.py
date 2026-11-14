@@ -27,6 +27,9 @@ INSPECTOR_SHA = "2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974c
 SSH = ["/usr/bin/ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=8"]
 # Public HTTPS blocks the Python-urllib default UA. This observer is read-only.
 PUBLIC_OBSERVER_UA = "Mozilla/5.0 (compatible; AoE2WAR-Release-Observer/1.0)"
+# Explicitly optional *manual-only* PR check. Any other skipped, failed,
+# missing or in-progress check remains a hard HOLD. This does not skip security.
+OPTIONAL_SKIPPED_CHECKS = frozenset({"Nightly/manual source-bound Next census"})
 FIELDS = {
     "schema", "sourceSha", "pr", "runId", "artifactId", "artifactBytes",
     "artifactSha256", "proofArtifactId", "proofArtifactBytes",
@@ -107,14 +110,27 @@ def qualify(approval, fetch=gh_json):
          and run["path"] == ".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml",
          "LINUX_WORKFLOW_NOT_EXACT_SUCCESS")
     checks = fetch(base + "commits/" + source + "/check-runs?per_page=100")
-    need(0 < checks["total_count"] <= 100, "CHECK_CENSUS_UNBOUNDED_OR_EMPTY")
+    observed = checks["check_runs"]
+    need(0 < checks["total_count"] <= 100 and
+         type(observed) is list and len(observed) == checks["total_count"],
+         "CHECK_CENSUS_UNBOUNDED_OR_INCOMPLETE")
     latest = {}
-    for item in checks["check_runs"]:
+    for item in observed:
+        need(type(item.get("name")) is str and
+             type(item.get("id")) is int and item["id"] > 0,
+             "CHECK_IDENTITY")
         if item["name"] not in latest or item["id"] > latest[item["name"]]["id"]:
             latest[item["name"]] = item
     need(set(approval["requiredChecks"]) <= set(latest), "REQUIRED_CHECK_MISSING")
-    need(all(x["status"] == "completed" and x["conclusion"] == "success"
-             for x in latest.values()), "CI_OR_SECURITY_NOT_COMPLETE")
+    need(all(item["status"] == "completed" and
+             (item["conclusion"] == "success" or
+              (item["name"] in OPTIONAL_SKIPPED_CHECKS and
+               item["name"] not in approval["requiredChecks"] and
+               item["conclusion"] == "skipped"))
+             for item in observed), "CI_OR_SECURITY_NOT_COMPLETE")
+    need(all(latest[name]["status"] == "completed" and
+             latest[name]["conclusion"] == "success"
+             for name in approval["requiredChecks"]), "REQUIRED_CHECK_NOT_SUCCESS")
     for prefix in ("artifact", "proofArtifact"):
         item = fetch(base + "actions/artifacts/" + str(approval[prefix + "Id"]))
         need(item["id"] == approval[prefix + "Id"] and not item["expired"]
@@ -134,6 +150,13 @@ def qualify(approval, fetch=gh_json):
         "latestChecks": [{"id": item["id"], "name": name,
                            "status": item["status"], "conclusion": item["conclusion"]}
                           for name, item in sorted(latest.items())],
+        # Full raw check evidence prevents a later green duplicate name
+        # from concealing an older FAILED run.
+        "allChecks": [
+            {"id": item["id"], "name": item["name"],
+             "status": item["status"], "conclusion": item["conclusion"]}
+            for item in sorted(observed, key=lambda x: x["id"])
+        ],
     }
     return pr, run, qualified
 

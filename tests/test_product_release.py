@@ -173,7 +173,8 @@ class ApprovalTests(unittest.TestCase):
     def test_exact_github_qualification_receipt_and_failed_check(self):
         source = self.approval["sourceSha"]
         api_root = "repos/Emaren/app-prodn/"
-        def fake(endpoint, failure=False):
+        def fake(endpoint, failure=False, optional=False, duplicate=False,
+                 skipped_required=False):
             if endpoint == api_root + "pulls/1351":
                 return {"head": {"sha": source, "repo": {"full_name": "Emaren/app-prodn"}},
                         "base": {"ref": "main", "repo": {"full_name": "Emaren/app-prodn"}},
@@ -184,9 +185,20 @@ class ApprovalTests(unittest.TestCase):
                         "conclusion":"success",
                         "path":".github/workflows/r25-b-source-pinned-linux-release-build-v2.yml"}
             if endpoint.startswith(api_root + "commits/"):
-                return {"total_count":1, "check_runs":[{
-                    "id":777, "name":"CI", "status":"completed",
-                    "conclusion":"failure" if failure else "success"}]}
+                checks = [{"id":777, "name":"CI", "status":"completed",
+                           "conclusion":"failure" if failure else "success"}]
+                if optional:
+                    checks.append({"id":778,
+                        "name":"Nightly/manual source-bound Next census",
+                        "status":"completed", "conclusion":"skipped"})
+                if duplicate:
+                    checks.append({"id":779, "name":"CI",
+                                   "status":"completed", "conclusion":"failure"})
+                    checks.append({"id":780, "name":"CI",
+                                   "status":"completed", "conclusion":"success"})
+                if skipped_required:
+                    checks[0]["conclusion"]="skipped"
+                return {"total_count":len(checks), "check_runs":checks}
             if endpoint in (api_root + "actions/artifacts/11", api_root + "actions/artifacts/12"):
                 art_id=int(endpoint.split("/")[-1]); prefix="artifact" if art_id==11 else "proofArtifact"
                 return {"id":art_id,"expired":False,
@@ -200,6 +212,25 @@ class ApprovalTests(unittest.TestCase):
         self.assertEqual(receipt["latestChecks"][0]["name"],"CI")
         with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
             R.qualify(self.approval, lambda endpoint: fake(endpoint, failure=True))
+        _, _, optional_receipt = R.qualify(
+            self.approval, lambda endpoint: fake(endpoint, optional=True))
+        self.assertEqual(len(optional_receipt["allChecks"]),2)
+        self.assertEqual(optional_receipt["allChecks"][1]["conclusion"],"skipped")
+        with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
+            R.qualify(self.approval, lambda endpoint: fake(endpoint, duplicate=True))
+        with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
+            R.qualify(self.approval, lambda endpoint: fake(endpoint, skipped_required=True))
+        required_optional={**self.approval,
+            "requiredChecks":["CI","Nightly/manual source-bound Next census"]}
+        with self.assertRaisesRegex(RuntimeError, "CI_OR_SECURITY_NOT_COMPLETE"):
+            R.qualify(required_optional, lambda endpoint: fake(endpoint, optional=True))
+        def partial_check_count(endpoint):
+            result=fake(endpoint,optional=True)
+            if endpoint.startswith(api_root + "commits/"):
+                result["total_count"]+=1
+            return result
+        with self.assertRaisesRegex(RuntimeError, "CHECK_CENSUS_UNBOUNDED_OR_INCOMPLETE"):
+            R.qualify(self.approval,partial_check_count)
 
 
 if __name__ == "__main__":

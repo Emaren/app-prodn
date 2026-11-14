@@ -241,3 +241,18 @@ scripts/* wildcard, no automatic authority to execute arbitrary shell tasks,
 no signed/root installation authority and no FINANCIAL permission. Future
 source bytes or base ancestry require a separate security review and tests.
 CI must pass the actual negative authorization gate; never force-green it.
+
+
+11. GitHub exact-PR check-run acceptance after real November 14 run
+
+The GitHub API may include an intentional SKIPPED check named exactly
+Nightly/manual source-bound Next census. Because this job is manual/nightly
+only, the owner-approved PR release qualifier accepts ONLY that one exact
+name as skipped when not required by the approval. Every other returned
+check-run must be completed with conclusion=success. Explicit required
+checks must ALL be success, even if named as optional otherwise. A failed
+duplicate name never disappears behind a later success; all run IDs,
+names, states and conclusions are recorded in the private proof. A truncated
+check-run census, unexpected skip, failed security, non-green PR CI or
+wrong source SHA remains HOLD. This was added following actual GitHub API
+observation, not as a general way to skip tests.
