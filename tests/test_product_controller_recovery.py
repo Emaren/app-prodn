@@ -71,6 +71,21 @@ class RecoveryTests(unittest.TestCase):
         (self.new/'.next').mkdir(exist_ok=True)
         (self.new/'.next/BUILD_ID').write_text('NEW_BUILD_123')
 
+    def test_insufficient_disk_holds_before_journal_or_service_mutation(self):
+        from unittest.mock import patch
+        self.g['inspect_archive']=Mock()
+        self.g['unit_guard']=Mock()
+        proof=self.g['ARCHIVE'].parent/'b-linux-independent-review-v2.json'
+        proof.write_bytes(b'isolated independent proof fixture')
+        self.g['CONFIG']['independent_proof_sha256']=hashlib.sha256(proof.read_bytes()).hexdigest()
+        with patch.object(shutil,'disk_usage',return_value=Mock(free=6*1024**3-1)):
+            with self.assertRaisesRegex(RuntimeError,'DISK_HEADROOM'):
+                self.g['stage']()
+        self.g['create_journal'].assert_not_called()
+        self.assertFalse(self.state.exists())
+        self.assertEqual(self.unit.read_bytes(),b'EXACT_OLD_UNIT')
+        self.assertEqual(self.ops,[])
+
     def test_partial_extraction_holds_without_deleting_or_stopping(self):
         self.g['TEMP'].mkdir()
         evidence=self.g['TEMP']/'partial-file'
@@ -163,3 +178,62 @@ class RecoveryTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
+
+
+class ProtectedGuardTests(unittest.TestCase):
+    def setUp(self):
+        names={'hold','guard_finance','guard_web','protected','hold_protected'}
+        block=ast.fix_missing_locations(ast.Module(
+            body=[n for n in TREE.body if isinstance(n,ast.FunctionDef) and n.name in names],
+            type_ignores=[]))
+        self.pid_values={
+            'aoe2hdbets-web.service':'17',
+            'r25-c03-emergency-3033.service':'18',
+            'kingdom-traders-paper.service':'19',
+            'wolochaind-mainnet.service':'20',
+        }
+        self.web={
+            'User':'aoe2war-web-prod',
+            'EnvironmentFiles':'/etc/aoe2war/web-prod-v1/runtime.env (ignore_errors=no)',
+            'MemoryMax':'3355443200','ActiveState':'active',
+        }
+        self.sockets=''
+        self.mask='masked'
+        self.bets_status=503
+        def execute(arguments,**kwargs):
+            return Mock(returncode=0,stdout=self.sockets if arguments[0]=='ss' else self.mask+'\n')
+        def field(unit,name):
+            return self.pid_values[unit] if name=='MainPID' else self.web[name]
+        def status(port,path):
+            return self.bets_status if path=='/api/bets' else 401 if path=='/api/auth/session' else 200
+        self.g={'subprocess':Mock(run=Mock(side_effect=execute)),
+                'FIN_MASKS':('fixture-quarantine.service','fixture-quarantine.timer'),
+                'SERVICE':'fixture-web','property':field,'url_status':status}
+        exec(compile(block,str(SOURCE),'exec'),self.g)
+
+    def test_each_open_financial_port_fails_closed(self):
+        for port in (8092,8093,8094,8095):
+            with self.subTest(port=port):
+                self.sockets=f'LISTEN 0 128 127.0.0.1:{port} 0.0.0.0:*'
+                with self.assertRaisesRegex(RuntimeError,'FINANCIAL_PORT_OPEN'):
+                    self.g['guard_finance']()
+
+    def test_missing_financial_mask_is_not_treated_as_quarantine(self):
+        self.mask='disabled'
+        with self.assertRaisesRegex(RuntimeError,'FINANCIAL_MASK_MISSING'):
+            self.g['guard_finance']()
+
+    def test_any_financial_http_status_other_than_hold_is_rejected(self):
+        for response in (200,401,403,404,500,None):
+            with self.subTest(response=response):
+                self.bets_status=response
+                with self.assertRaisesRegex(RuntimeError,'FINANCIAL_API_DENIAL'):
+                    self.g['guard_web']()
+
+    def test_changed_protected_pid_requires_hold_without_service_commands(self):
+        before=self.g['protected']()
+        self.pid_values['wolochaind-mainnet.service']='21'
+        with self.assertRaisesRegex(RuntimeError,'PROTECTED_SERVICE_PID_CHANGED'):
+            self.g['hold_protected'](before)
+        self.g['subprocess'].run.assert_not_called()

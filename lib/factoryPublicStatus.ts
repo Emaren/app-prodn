@@ -51,7 +51,35 @@ export type FactoryReleaseOs = {
     retryCount: number; resumedBytes: number;
   };
 };
+export type FactoryVolume = {
+  totalBytes: number; usedBytes: number; availableBytes: number;
+  reservedBytes: number; usedPercent: number;
+};
+export type FactoryStorage = {
+  schema: "aoe2war.factory.storage.v1"; observedAt: string; source: "host-statvfs";
+  root: FactoryVolume | null; data: FactoryVolume | null;
+};
+export type FactoryDeploymentInvocation = {
+  schema: "aoe2war.product.deployment-invocation.v1";
+  invocationId: string; sourceSha: string; buildId: string; githubRunId: number;
+  kind: "cold" | "warm" | "resume" | "no-op" | "unknown";
+  coverage: "full" | "partial" | "none";
+  startedAt: string; completedAt: string;
+  clockSource: "python.time.monotonic_ns"; utcClockSource: "python.datetime.now(UTC)";
+  clockPrecisionMs: number; uncertaintyMs: null;
+  firstVerifiedLiveMs: number | null; durableAcceptanceMs: number | null;
+  observedInvocationMs: number;
+  previousSourceSha: string; previousBuildId: string;
+  artifactSha256: string; runtimeArchiveBytes: number | null; extractedBytes: number | null;
+  rootSealSha256: string; receiptSha256: string; provenanceUrl: string | null;
+  acceptanceBoundary: "eight-root-T10-final-readbacks";
+  metricPublicationIncluded: false; financialAuthorized: false;
+  timeline: Array<{ phase: string; state: FactorySignal; at: string;
+    elapsedMs: number; proofSha256: string | null }>;
+};
 export type FactoryPublicStatus = {
+  storage?: FactoryStorage;
+  deploymentInvocation?: FactoryDeploymentInvocation;
   releaseOs?: FactoryReleaseOs;
   schema: "aoe2war.factory.public.v1";
   generatedAt: string | null;
@@ -299,6 +327,119 @@ function readReleaseOs(
     ...(disk ? { disk } : {}), ...(transfer ? { transfer } : {}) };
 }
 
+function readFactoryStorage(raw: unknown): FactoryStorage | undefined {
+  if (!isRecord(raw) || raw.schema !== "aoe2war.factory.storage.v1" ||
+    raw.source !== "host-statvfs" || !isTimestamp(raw.observedAt)) return;
+  const volume = (value: unknown): FactoryVolume | null => {
+    if (!isRecord(value)) return null;
+    const keys = ["totalBytes", "usedBytes", "availableBytes", "reservedBytes"] as const;
+    if (!keys.every(key => Number.isSafeInteger(value[key]) &&
+      (value[key] as number) >= 0 && (value[key] as number) <= 1e13) ||
+      (value.totalBytes as number) <= 0 || !Number.isInteger(value.usedPercent) ||
+      (value.usedPercent as number) < 0 || (value.usedPercent as number) > 100) return null;
+    const total = value.totalBytes as number, used = value.usedBytes as number;
+    const available = value.availableBytes as number, reserved = value.reservedBytes as number;
+    if (used + available + reserved !== total || used + available <= 0 ||
+      Math.floor((used * 100 + used + available - 1) / (used + available)) !== value.usedPercent) return null;
+    return { totalBytes: total, usedBytes: used, availableBytes: available,
+      reservedBytes: reserved, usedPercent: value.usedPercent as number };
+  };
+  return { schema: "aoe2war.factory.storage.v1", source: "host-statvfs",
+    observedAt: raw.observedAt, root: volume(raw.root), data: volume(raw.data) };
+}
+
+export function factoryStorageEvidence(
+  storage: FactoryStorage | undefined, id: "root" | "data", nowMs = Date.now(),
+) {
+  const value = storage?.[id] || null;
+  const ageMs = storage ? nowMs - Date.parse(storage.observedAt) : null;
+  let state: "pass" | "warning" | "hold" | "stale" | "unknown" = "unknown";
+  if (value && ageMs !== null && Number.isFinite(ageMs) && ageMs >= -60_000) {
+    if (ageMs > 600_000) state = "stale";
+    else if (id === "data") state = value.usedPercent >= 92 ? "hold" :
+      value.usedPercent >= 90 ? "warning" : "pass";
+    else state = value.availableBytes < FACTORY_HEADROOM_MINIMUM_BYTES ? "hold" :
+      value.availableBytes < 30_000_000_000 ? "warning" : "pass";
+  }
+  return { state, value, observedAt: storage?.observedAt || null, ageMs };
+}
+
+function readDeploymentInvocation(
+  raw: unknown, live: FactoryRelease, previous: FactoryRelease, nowMs: number,
+): FactoryDeploymentInvocation | undefined {
+  if (!isRecord(raw) || raw.schema !== "aoe2war.product.deployment-invocation.v1" ||
+    raw.sourceSha !== live.id || raw.buildId !== live.buildId ||
+    raw.previousSourceSha !== previous.id || raw.previousBuildId !== previous.buildId ||
+    raw.clockSource !== "python.time.monotonic_ns" ||
+    raw.utcClockSource !== "python.datetime.now(UTC)" || raw.clockPrecisionMs !== 1 ||
+    raw.uncertaintyMs !== null || raw.financialAuthorized !== false ||
+    raw.metricPublicationIncluded !== false ||
+    raw.acceptanceBoundary !== "eight-root-T10-final-readbacks" ||
+    !isTimestamp(raw.startedAt) || !isTimestamp(raw.completedAt) ||
+    !Number.isSafeInteger(raw.githubRunId) || (raw.githubRunId as number) <= 0 ||
+    typeof raw.invocationId !== "string" ||
+    !/^(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/.test(raw.invocationId)) return;
+  const age = nowMs - Date.parse(raw.completedAt);
+  if (age < -60_000 || age > 86_400_000 || Date.parse(raw.completedAt) < Date.parse(raw.startedAt)) return;
+  const numeric = (value: unknown): value is number =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1e15;
+  const nullable = (value: unknown) => value === null || numeric(value);
+  const digest = (value: unknown): value is string =>
+    typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+  if (!["cold", "warm", "resume", "no-op", "unknown"].includes(raw.kind as string) ||
+    !["full", "partial", "none"].includes(raw.coverage as string) ||
+    !digest(raw.rootSealSha256) || !digest(raw.receiptSha256) || !digest(raw.artifactSha256) ||
+    !numeric(raw.observedInvocationMs) || !nullable(raw.runtimeArchiveBytes) ||
+    !nullable(raw.extractedBytes)) return;
+  const full = raw.coverage === "full" && (raw.kind === "cold" || raw.kind === "warm");
+  if (full) {
+    if (!numeric(raw.firstVerifiedLiveMs) || !numeric(raw.durableAcceptanceMs) ||
+      raw.firstVerifiedLiveMs <= 0 || raw.durableAcceptanceMs < raw.firstVerifiedLiveMs ||
+      raw.durableAcceptanceMs > raw.observedInvocationMs + 1) return;
+  } else if (raw.firstVerifiedLiveMs !== null || raw.durableAcceptanceMs !== null) return;
+  if (!Array.isArray(raw.timeline) || raw.timeline.length < 2 || raw.timeline.length > 32) return;
+  const timeline: FactoryDeploymentInvocation["timeline"] = [];
+  let last = -1;
+  for (const row of raw.timeline) {
+    if (!isRecord(row) || typeof row.phase !== "string" || !/^[A-Z0-9 -]{1,64}$/.test(row.phase) ||
+      !isSignal(row.state) || !isTimestamp(row.at) || !numeric(row.elapsedMs) ||
+      row.elapsedMs < last || row.elapsedMs > raw.observedInvocationMs + 1 ||
+      (row.proofSha256 !== null && !digest(row.proofSha256))) return;
+    last = row.elapsedMs;
+    timeline.push({ phase: row.phase, state: row.state, at: row.at,
+      elapsedMs: row.elapsedMs, proofSha256: row.proofSha256 as string | null });
+  }
+  if (timeline[0].phase !== "START" || timeline[0].elapsedMs !== 0 ||
+    timeline.at(-1)?.phase !== "T10 DURABLY SEALED" ||
+    timeline.at(-1)?.proofSha256 !== raw.rootSealSha256) return;
+  if (full && !["LIVE HTTPS VERIFIED", "ROLLBACK VERIFIED", "REACTIVATED", "T10 DURABLY SEALED"]
+    .every(phase => timeline.filter(row => row.phase === phase &&
+      row.state === "pass" && !!row.proofSha256).length === 1)) return;
+  const url = typeof raw.provenanceUrl === "string" &&
+    /^https:\/\/github\.com\/Emaren\/app-prodn\/(?:pull\/\d+|issues\/\d+|actions\/runs\/\d+)(?:#[A-Za-z0-9_-]+)?$/.test(raw.provenanceUrl)
+    ? raw.provenanceUrl : null;
+  // Allowlisted construction deliberately drops raw monotonic samples.
+  return {
+    schema: "aoe2war.product.deployment-invocation.v1",
+    invocationId: raw.invocationId, sourceSha: raw.sourceSha as string,
+    buildId: raw.buildId as string, githubRunId: raw.githubRunId as number,
+    kind: raw.kind as FactoryDeploymentInvocation["kind"],
+    coverage: raw.coverage as FactoryDeploymentInvocation["coverage"],
+    startedAt: raw.startedAt, completedAt: raw.completedAt,
+    clockSource: "python.time.monotonic_ns", utcClockSource: "python.datetime.now(UTC)",
+    clockPrecisionMs: 1, uncertaintyMs: null,
+    firstVerifiedLiveMs: raw.firstVerifiedLiveMs as number | null,
+    durableAcceptanceMs: raw.durableAcceptanceMs as number | null,
+    observedInvocationMs: raw.observedInvocationMs,
+    previousSourceSha: raw.previousSourceSha as string, previousBuildId: raw.previousBuildId as string,
+    artifactSha256: raw.artifactSha256, runtimeArchiveBytes: raw.runtimeArchiveBytes as number | null,
+    extractedBytes: raw.extractedBytes as number | null,
+    rootSealSha256: raw.rootSealSha256, receiptSha256: raw.receiptSha256, provenanceUrl: url,
+    acceptanceBoundary: "eight-root-T10-final-readbacks",
+    metricPublicationIncluded: false, financialAuthorized: false, timeline,
+  };
+}
+
 /** A release feed is only current for ten minutes. Never promote stale pass. */
 export function readFactoryPublicStatus(raw: unknown, nowMs = Date.now()): FactoryFeed {
   const fallback = unknownFactoryStatus();
@@ -328,6 +469,8 @@ export function readFactoryPublicStatus(raw: unknown, nowMs = Date.now()): Facto
     return { authority: "unavailable", value: fallback };
   }
   const releaseOs = readReleaseOs(raw.releaseOs, liveRelease.id, liveRelease.buildId, nowMs);
+  const storage = readFactoryStorage(raw.storage);
+  const deploymentInvocation = readDeploymentInvocation(raw.deploymentInvocation, liveRelease, previousRelease, nowMs);
   const qualifiedStages = Object.fromEntries(FACTORY_STAGES.map(id =>
     [id, factoryStageEvidence(releaseOs, id).state])) as Record<FactoryStage, FactorySignal>;
   return {
@@ -336,6 +479,8 @@ export function readFactoryPublicStatus(raw: unknown, nowMs = Date.now()): Facto
       schema: fallback.schema,
       generatedAt: raw.generatedAt,
       ...(releaseOs ? { releaseOs } : {}),
+      ...(storage ? { storage } : {}),
+      ...(deploymentInvocation ? { deploymentInvocation } : {}),
       liveRelease,
       candidateRelease,
       previousRelease,

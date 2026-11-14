@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import subprocess
 import sys
@@ -72,6 +73,16 @@ def resolve_plan(contract: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def contract_environment(environ=None):
+    """Test children must never inherit the caller's Git repository authority."""
+    parent = os.environ if environ is None else environ
+    return {
+        key: value for key, value in parent.items()
+        if not key.upper().startswith("GIT_")
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run every non-quarantined Node contract test from one audited inventory."
@@ -118,6 +129,7 @@ def main() -> int:
     process = subprocess.run(
         ["node", *plan["node_flags"], *plan["active"]],
         cwd=ROOT,
+        env=contract_environment(),
         check=False,
     )
     return process.returncode
