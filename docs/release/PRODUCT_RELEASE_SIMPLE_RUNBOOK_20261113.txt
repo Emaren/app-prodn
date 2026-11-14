@@ -256,3 +256,35 @@ names, states and conclusions are recorded in the private proof. A truncated
 check-run census, unexpected skip, failed security, non-green PR CI or
 wrong source SHA remains HOLD. This was added following actual GitHub API
 observation, not as a general way to skip tests.
+
+
+12. Actual macOS openrsync transport compatibility and host witness
+
+The M1/macOS /usr/bin/rsync reports openrsync protocol 29,
+2.6.9-compatible. It physically rejected the original
+--chmod=F600,D700 argument despite the previous source assumption.
+The corrected source uses -t, a pinned SSH host key, --partial-dir
+and --progress, without the unsupported flag. After a successful
+transfer, the B-owned transporter validates the exact tony-owned
+regular target inode (one hardlink, not a symlink) and the pinned
+full SHA256 BEFORE applying chmod 0600 to the exact staging member,
+then rechecks owner/mode/hardlink/digest. It never executes a
+root-privileged command or writes FINANCIAL files.
+The 2026-11-14 first physical release used this equivalent
+owner-B-controlled path once; the canonical correction exists
+for subsequent ordinary deployments and requires its own reviewed
+source and CI before next production use.
+
+
+13. BUILD_ID file missing trailing newline — actual current-R1 proof
+
+An owner-B, read-only actual V3-era public/source probe on
+2026-11-14 reproduced this four-line shell result:
+runtime path; source SHA; BUILD_ID concatenated with service state;
+NRestarts. This is because Next.js .next/BUILD_ID has no required
+final newline. The corrected coordinator invokes printf '%s\\n'
+around each root-read scalar to produce EXACTLY five separate fields
+before comparing approved source, build, active state and zero
+restarts. Tests must assert the safe framing; a production
+self-check HOLD is not permission to activate an unqualified
+candidate or bypass root V3 postflight/rollback.
