@@ -8,11 +8,11 @@ import inventory from "../config/kingdom-index-inventory.json" with { type:"json
 import renaissance from "../config/renaissance-campaign.json" with { type:"json" };
 
 const indexed = publicIndex.map(row=>row.href);
-test("all 159 exact page templates and 284 handler templates match Git HEAD",()=>{
+test("all 160 exact page templates and 284 handler templates match Git HEAD",()=>{
   const actual=census(withRestrictedReadOnlyGitHead(() => gitHeadPaths()),indexed);
   assert.deepEqual(compareCensus(inventory,actual),{
-    pageTemplates:159,adminTemplates:38,dynamicTemplates:20,publicIndexTemplates:88,
-    excludedStaticTemplates:13,routeHandlerTemplates:284,apiHandlerTemplates:281,nonApiHandlerTemplates:3
+    pageTemplates:160,adminTemplates:38,dynamicTemplates:20,publicIndexTemplates:88,
+    excludedStaticTemplates:14,routeHandlerTemplates:284,apiHandlerTemplates:281,nonApiHandlerTemplates:3
   });
   assert.deepEqual(inventory.pages.map(p=>p.href).filter(h=>indexed.includes(h)).sort(),[...indexed].sort());
   assert.equal(inventory.pages.filter(p=>p.assurance!=="unverified").length,0);
@@ -20,8 +20,8 @@ test("all 159 exact page templates and 284 handler templates match Git HEAD",()=
 });
 test("seven Renaissance phases assign each canonical template exactly once",()=>{
   const phases=renaissance.phases.flatMap(p=>p.routes);
-  assert.equal(phases.length,159);
-  assert.equal(new Set(phases).size,159);
+  assert.equal(phases.length,160);
+  assert.equal(new Set(phases).size,160);
   assert.deepEqual([...phases].sort(),inventory.pages.map(p=>p.href).sort());
   assert.deepEqual(renaissance.modules.map(m=>m.href).sort(),phases.filter(h=>h==="/renaissance"||h.startsWith("/renaissance/")).sort());
 });
