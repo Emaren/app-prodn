@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, Rocket, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -142,6 +142,7 @@ const KINGDOM_LINKS = [
   { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
   { href: "/kingdom-brain", label: "Kingdom Brain", icon: BrainCircuit, body: "Follow the flow of truth across the machine" },
   { href: "/kingdom-progress", label: "Kingdom Progress", icon: BarChart3, body: "Evidence-bound campaigns and milestones" },
+  { href: "/kingdom-deployments", label: "Kingdom Deployments", icon: Rocket, body: "Every production release, stopwatch, and rollback proof" },
   { href: "/renaissance", label: "Renaissance Campaign", icon: Crown, body: "Twelve engineering instruments · one command gateway" },
   { href: "/kingdom-systems", label: "Kingdom Systems", icon: Cpu, body: "The machine rack of deployed routes and services" },
   { href: "/replay-laboratory", label: "Replay Laboratory", icon: Eye, body: "Explore the unknown HD replay research frontier" },
@@ -193,6 +194,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/kingdom-intelligence", title: "Kingdom Intelligence" },
   { prefix: "/kingdom-brain", title: "Kingdom Brain" },
   { prefix: "/kingdom-progress", title: "Kingdom Progress" },
+  { prefix: "/kingdom-deployments", title: "Kingdom Deployments" },
   { prefix: "/kingdom-sensors", title: "Kingdom Sensors" },
   { prefix: "/kingdom-tests", title: "Kingdom Tests" },
   { prefix: "/kingdom-recovery", title: "Kingdom Recovery" },
@@ -1979,6 +1981,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     ? downloadShellMaxWidth
                     : isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
                     ? immersiveShellMaxWidth
+                    : pathname === "/factory" || pathname === "/kingdom-deployments"
+                      ? "max-w-[96rem]"
                     : isWarGraphSurface
                       ? "max-w-[118rem]"
                     : isFullWidthPrestigeSurface || isClanSurface

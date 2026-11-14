@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { parseWoloBrowserRpcStatus } from "@/lib/woloBrowserRpcStatus";
+import WoloBlockRail from "@/components/wolo/WoloBlockRail";
 
 type WoloStatusSnapshot = {
   healthy: boolean;
@@ -458,6 +459,8 @@ export default function WoloChainTerminalTile() {
           </div>
         </section>
       )}
+
+      <WoloBlockRail latestHeight={snapshot?.latestBlockHeight ?? null} />
 
       {premiumDaemonView ? (
         <section

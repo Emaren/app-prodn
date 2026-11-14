@@ -7,7 +7,9 @@
   --cyan: #64e6ff;
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: clip;
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
   margin: 3px auto 26px;
   padding: 17px clamp(14px, 3.5vw, 38px) 24px;
