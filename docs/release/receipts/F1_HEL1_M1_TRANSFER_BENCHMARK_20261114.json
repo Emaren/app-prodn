@@ -1,0 +1,19 @@
+{
+  "schema": "aoe2war.product.public-transfer-benchmark.v1",
+  "observedAt": "2026-11-14T16:11:27.279514+00:00",
+  "sourceSha256": "876f4f2023b324698bce8219905a282bec3c47d8747d48169ac7bd9951394753",
+  "sourceBytes": 616534741,
+  "route": "HEL1-to-M1",
+  "bytesPerComparison": 16777216,
+  "singleMs": 47844,
+  "singleBps": 350665,
+  "parallelWorkers": 4,
+  "rangeBytes": 4194304,
+  "parallelMs": 32237,
+  "parallelBps": 520434,
+  "allChunkHashesVerified": true,
+  "sourceRetirement": false,
+  "offHostCollectionBackup": false,
+  "limitations": "16MiB copy-only warm-source pilot; not full16.62GB transfer, no Intel receiver or restore proof; no source deletion.",
+  "note": "Sanitized operational benchmark; not a protected root receipt and not retirement authority."
+}

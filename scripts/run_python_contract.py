@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +16,16 @@ def discover_tests(root: Path = ROOT) -> list[str]:
         for path in (root / "tests").glob("test_*.py")
         if path.is_file()
     )
+
+
+
+def contract_environment(environ=None):
+    """Test children must never inherit the caller's Git repository authority."""
+    parent = os.environ if environ is None else environ
+    return {
+        key: value for key, value in parent.items()
+        if not key.upper().startswith("GIT_")
+    }
 
 
 def main() -> int:
@@ -48,6 +59,7 @@ def main() -> int:
             "test_*.py",
         ],
         cwd=ROOT,
+        env=contract_environment(),
         check=False,
     )
     return process.returncode

@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   FACTORY_SERVICES, FACTORY_STAGES, FACTORY_TEST_GROUPS,
-  readFactoryPublicStatus, unknownFactoryStatus, factoryStageEvidence, factoryHeadroomEvidence,
+  readFactoryPublicStatus, unknownFactoryStatus, factoryStageEvidence, factoryHeadroomEvidence, factoryStorageEvidence,
   type FactoryActivity, type FactoryFeed, type FactoryRelease,
   type FactorySignal, type FactoryStage,
 } from "@/lib/factoryPublicStatus";
@@ -208,8 +208,36 @@ const elapsed = (ms: number | null | undefined) =>
 const bytes = (value: number | null | undefined) => value === null || value === undefined
   ? "UNKNOWN" : (value / 1024 ** 2).toFixed(1) + " MiB";
 
+function StorageObservation({ feed }: { feed: FactoryFeed }) {
+  const storage = feed.value.storage;
+  return <div aria-label="Live root and data volume capacity">
+    <div className={css.storageGrid}>
+      {(["root", "data"] as const).map(id => {
+        const item = factoryStorageEvidence(storage, id);
+        const current = item.state === "pass" || item.state === "warning" || item.state === "hold";
+        const label = item.state === "warning" ? "WARNING" : item.state === "hold" ?
+          (id === "data" ? "STORAGE-HEAVY HOLD" : "RELEASE MINIMUM HOLD") : item.state.toUpperCase();
+        return <div key={id} data-signal={item.state === "warning" ? "hold" : item.state}
+          title={id === "root" ? "Warning below 30 GB available. The existing release minimum remains 6 GiB." :
+            "Warning at 90% occupied. Storage-heavy actions HOLD at 92%. This is not a website outage."}>
+          <small>{id.toUpperCase()} · {label}</small>
+          <strong>{current ? (item.value!.availableBytes / 1e9).toFixed(2) + " GB available" :
+            item.state === "stale" ? "STALE" : "UNKNOWN"}</strong>
+          <span>{current ? item.value!.usedPercent + "% occupied · " +
+            (item.value!.reservedBytes / 1e9).toFixed(2) + " GB reserved" : "No current volume observation"}</span>
+        </div>;
+      })}
+    </div>
+    <p className={css.benchmarkNote} title={storage ? "UTC: " + storage.observedAt + " · source: host-statvfs" : undefined}>
+      {storage ? "Host observation " + new Date(storage.observedAt).toLocaleString() :
+        "Host observation UNKNOWN"}. Reserved space is allocation, not reclaimed files.
+    </p>
+  </div>;
+}
+
 function ReleaseTelemetry({ feed }: { feed: FactoryFeed }) {
   const cycle = feed.value.releaseOs;
+  const invocation = feed.value.deploymentInvocation;
   const hasLedger = !!cycle?.stages.length;
   const headroom = factoryHeadroomEvidence(cycle?.disk);
   const capacityCurrent = headroom.state === "pass" || headroom.state === "hold";
@@ -240,12 +268,17 @@ function ReleaseTelemetry({ feed }: { feed: FactoryFeed }) {
       <span className={css.miniChip}><LockKeyhole size={12} aria-hidden /> OBSERVE ONLY</span>
     </div>
     <div className={css.telemetryMetrics}>
-      <div><small>START → FIRST VERIFIED PRODUCTION</small>
-        <strong>{elapsed(cycle?.firstVerifiedProductionMs)}</strong>
-        <span>{cycle?.startKind === "declared-request" ? "Declared request clock" :
-          cycle?.startKind === "observed-engineering" ? "Observed engineering clock" : "Start timestamp UNKNOWN"}</span></div>
-      <div><small>START → ROLLBACK-TESTED ACCEPTANCE</small>
-        <strong>{elapsed(cycle?.finalAcceptedMs)}</strong><span>Previous proof, reactivation and sealed receipt</span></div>
+      <div title={invocation ? "UTC start: " + invocation.startedAt + " · completed: " +
+        invocation.completedAt + " · source: " + invocation.sourceSha + " · receipt SHA256: " +
+        invocation.receiptSha256 : "No current source-bound command clock"}>
+        <small>DEPLOY COMMAND → FIRST VERIFIED LIVE</small>
+        <strong>{elapsed(invocation?.firstVerifiedLiveMs)}</strong>
+        <span>{invocation ? invocation.kind.toUpperCase() + " · " + invocation.coverage.toUpperCase() +
+          " COVERAGE" : "Missing, expired or unverified command clock"}</span></div>
+      <div title="Stops after the eighth root T10 receipt final readback. Publishing this timing receipt is measured separately.">
+        <small>DEPLOY COMMAND → DURABLE ACCEPTANCE</small>
+        <strong>{elapsed(invocation?.durableAcceptanceMs)}</strong>
+        <span>Eight durable root receipt readbacks · monotonic clock</span></div>
       <div data-signal={headroom.state} title={headroomTitle}>
         <small>LIVE ROOT HEADROOM</small>
         <strong>{capacityCurrent ? (headroom.freeBytes! / 1024 ** 3).toFixed(2) + " GiB" :
@@ -257,6 +290,20 @@ function ReleaseTelemetry({ feed }: { feed: FactoryFeed }) {
         <span>Capacity only · release readiness unverified</span>
       </div>
     </div>
+    <p className={css.benchmarkNote}>ENGINEERING → T7: {elapsed(cycle?.firstVerifiedProductionMs)} ·
+      ENGINEERING → T10 EVENT (PRE-DURABLE): {elapsed(cycle?.finalAcceptedMs)}.
+      These historical engineering clocks are separate from a deployment invocation.
+      Already accepted no-op calls do not replace the measured deployment.</p>
+    <StorageObservation feed={feed} />
+    <p className={css.benchmarkNote} title={invocation ? "Accepted source " + invocation.sourceSha +
+      " · BUILD_ID " + invocation.buildId + " · runtime archive SHA256 " + invocation.artifactSha256 : undefined}>
+      ACCEPTED ARTIFACT REFERENCE · archive {invocation?.runtimeArchiveBytes === null ||
+        invocation?.runtimeArchiveBytes === undefined ? "UNKNOWN" :
+        (invocation.runtimeArchiveBytes / 1e9).toFixed(3) + " GB"} · extracted {
+        invocation?.extractedBytes === null || invocation?.extractedBytes === undefined ? "UNKNOWN" :
+        (invocation.extractedBytes / 1e9).toFixed(3) + " GB"}.
+      Next candidate storage preflight UNKNOWN.
+    </p>
     <dl className={css.identityGrid}>
       <div><dt>ACTIVE SOURCE</dt><dd>{feed.value.liveRelease.id || "UNKNOWN"}</dd></div>
       <div><dt>ACTIVE BUILD_ID</dt><dd>{feed.value.liveRelease.buildId || "UNKNOWN"}</dd></div>

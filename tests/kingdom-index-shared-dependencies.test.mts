@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { withRestrictedReadOnlyGitHead } from "./uid650GitHeadReadOnly.mjs";
 
 import {
   INSTRUMENT_CONSUMER_PAGES,
@@ -47,11 +48,11 @@ test("fail closed on unknown, missing or unexpected instrument consumers", () =>
 });
 
 test("HEAD import discovery exactly matches the declared shared-source consumers", () => {
-  const discovered = execFileSync(
+  const discovered = withRestrictedReadOnlyGitHead(() => execFileSync(
     "git",
     ["grep", "-l", "-F", INSTRUMENT_IMPORT, "HEAD", "--", "app"],
     { encoding: "utf8", maxBuffer: 2_000_000 },
-  ).trim().split("\n").filter(Boolean).map((v) => v.replace(/^HEAD:/, ""));
+  )).trim().split("\n").filter(Boolean).map((v) => v.replace(/^HEAD:/, ""));
   assert.doesNotThrow(() => validateInstrumentImporters(discovered));
 });
 

@@ -141,3 +141,93 @@ class FactoryPublicStatusTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+
+class FactoryF1PublicationTests(unittest.TestCase):
+    def invocation_fixture(self,directory):
+        start="2026-11-14T16:00:00.000Z"
+        completed="2026-11-14T16:00:05.000Z"
+        seal_raw=b'{"fixture":"root-seal"}\n'
+        (directory/"release-seal-v1.json").write_bytes(seal_raw)
+        (directory/"release-summary-v1.json").write_bytes(b'{"fixture":"summary"}\n')
+        seal=hashlib.sha256(seal_raw).hexdigest()
+        bindings={}
+        for event in ("T7","T8","T9"):
+            body={"sourceSha":("e" if event=="T8" else "f")*40,
+                  "buildId":"old_build" if event=="T8" else "new_build"}
+            raw=json.dumps(body).encode()
+            (directory/("public-evidence-"+event+"-v1.json")).write_bytes(raw)
+            bindings[event]=hashlib.sha256(raw).hexdigest()
+        manifest={"schema":"aoe2war.product.web-release-manifest.v2",
+                  "financial_authorized":False,"archive_bytes":615_000_000,
+                  "source":"f"*40,"build":"new_build","github_run_id":1234,
+                  "previous_source":"e"*40,"previous_build":"old_build","archive_sha256":"5"*64}
+        (directory/("f"*12+"-run-1234.json")).write_text(json.dumps(manifest))
+        obj={
+            "schema":"aoe2war.product.deployment-invocation.v1","invocationId":"1"*32,
+            "sourceSha":"f"*40,"buildId":"new_build","githubRunId":1234,
+            "previousSourceSha":"e"*40,"previousBuildId":"old_build",
+            "kind":"warm","coverage":"full","startedAt":start,"completedAt":completed,
+            "clockSource":"python.time.monotonic_ns","utcClockSource":"python.datetime.now(UTC)",
+            "clockPrecisionMs":1,"uncertaintyMs":None,"firstVerifiedLiveMs":2000,
+            "durableAcceptanceMs":5000,"observedInvocationMs":5000,
+            "monotonicOriginNs":1_000_000_000,"firstLiveMonotonicNs":3_000_000_000,
+            "acceptedMonotonicNs":6_000_000_000,"monotonicResolutionNs":1,
+            "artifactSha256":"5"*64,"runtimeArchiveBytes":615_000_000,"extractedBytes":1_586_000_000,
+            "rootSealSha256":seal,"provenanceUrl":"https://github.com/Emaren/app-prodn/pull/1356",
+            "acceptanceBoundary":"eight-root-T10-final-readbacks","metricPublicationIncluded":False,
+            "financialAuthorized":False,
+            "timeline":[
+                {"phase":"START","state":"running","at":start,"elapsedMs":0,"proofSha256":None},
+                {"phase":"LIVE HTTPS VERIFIED","state":"pass","at":"2026-11-14T16:00:02.000Z",
+                 "elapsedMs":2000,"proofSha256":bindings["T7"]},
+                {"phase":"ROLLBACK VERIFIED","state":"pass","at":"2026-11-14T16:00:03.000Z",
+                 "elapsedMs":3000,"proofSha256":bindings["T8"]},
+                {"phase":"REACTIVATED","state":"pass","at":"2026-11-14T16:00:04.000Z",
+                 "elapsedMs":4000,"proofSha256":bindings["T9"]},
+                {"phase":"T10 DURABLY SEALED","state":"pass","at":completed,"elapsedMs":5000,"proofSha256":seal},
+            ],
+        }
+        return obj
+
+    def read_invocation(self,directory,obj,now="2026-11-14T16:00:06.000Z"):
+        raw=(json.dumps(obj,sort_keys=True)+"\n").encode()
+        (directory/"deployment-invocation-v1.json").write_bytes(raw)
+        with patch.object(m,"root_file",side_effect=lambda path,mode=None:path.read_bytes()), \
+             patch.object(m,"accepted_root_seal",return_value=True), \
+             patch.object(m,"MANIFEST_ROOT",directory):
+            return m.public_deployment_invocation(directory,"f"*40,"new_build","e"*40,"old_build",now)
+
+    def test_source_bound_ninth_receipt_projects_exact_digest_without_private_monotonic_samples(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp);obj=self.invocation_fixture(directory)
+            result=self.read_invocation(directory,obj)
+            self.assertIsNotNone(result)
+            self.assertEqual(result["firstVerifiedLiveMs"],2000)
+            self.assertEqual(result["durableAcceptanceMs"],5000)
+            self.assertEqual(result["receiptSha256"],hashlib.sha256(
+                (directory/"deployment-invocation-v1.json").read_bytes()).hexdigest())
+            for key in ("monotonicOriginNs","firstLiveMonotonicNs","acceptedMonotonicNs","monotonicResolutionNs"):
+                self.assertNotIn(key,result)
+
+    def test_clock_tamper_stale_record_wrong_seal_and_wrong_rollback_are_unknown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp)
+            for field,value in (("firstVerifiedLiveMs",3000),("rootSealSha256","0"*64),
+                                ("previousSourceSha","a"*40)):
+                obj=self.invocation_fixture(directory);obj[field]=value
+                self.assertIsNone(self.read_invocation(directory,obj))
+            obj=self.invocation_fixture(directory)
+            self.assertIsNone(self.read_invocation(directory,obj,"2026-11-16T16:00:06.000Z"))
+
+    def test_data_mount_absence_is_unknown_and_reserve_is_separate_from_available(self):
+        class Fs:
+            f_frsize=4096;f_blocks=1000;f_bfree=200;f_bavail=190
+        with patch.object(m.os,"statvfs",return_value=Fs()), \
+             patch.object(m.os.path,"ismount",return_value=False):
+            result=m.public_storage("2026-11-14T16:00:06.000Z")
+        self.assertIsNone(result["data"])
+        self.assertEqual(result["root"]["availableBytes"],190*4096)
+        self.assertEqual(result["root"]["reservedBytes"],10*4096)
+        self.assertEqual(result["root"]["usedBytes"],800*4096)
+        self.assertEqual(result["root"]["usedPercent"],81)

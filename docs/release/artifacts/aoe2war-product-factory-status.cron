@@ -1,0 +1,7 @@
+# Existing PRODUCT Factory publication: same two-minute cadence and lock.
+# Install only after exact-source owner approval and reviewed publisher SHA.
+# Failure/output goes to the PRODUCT-only journal tag, never public status JSON.
+# Inspect: journalctl -t aoe2war-product-factory-status --since "15 minutes ago"
+# Do not substitute an unrestricted/all-service journal dump.
+# A failed publisher leaves the last snapshot to expire under its ten-minute TTL.
+*/2 * * * * root /usr/bin/flock -n /run/lock/aoe2war-product-factory-status.lock /bin/bash -o pipefail -c '/usr/bin/python3 -I -B /usr/local/sbin/aoe2war_factory_public_status_v2.py 2>&1 | /usr/bin/logger -t aoe2war-product-factory-status'

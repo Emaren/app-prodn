@@ -21,6 +21,8 @@ import urllib.error
 import urllib.request
 
 RELEASE_ROOT=Path("/var/lib/aoe2war-product-release-v1")
+MANIFEST_ROOT=Path("/root/aoe2war-product-release-manifests")
+DATA_VOLUME=Path("/mnt/HC_Volume_105319120")
 UNIT=Path("/etc/systemd/system/aoe2hdbets-web-prod.service")
 STEAM_MODULE=Path("/usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py")
 STEAM_SHA="2695a5b5fb4adf9e17afbb30c535158260608b8ba60e13fea4b2e4da29e974ca"
@@ -244,6 +246,211 @@ def public_release_summary(directory,source,build,now,previous_source=None,previ
     except (OSError,ValueError,TypeError,RuntimeError):
         return base
 
+
+def public_volume(path):
+    try:
+        value=os.statvfs(path)
+        unit=value.f_frsize
+        total=value.f_blocks*unit
+        free=value.f_bfree*unit
+        available=value.f_bavail*unit
+        if not (unit>0 and 0<=available<=free<=total and total>0):
+            return None
+        used=total-free
+        denominator=used+available
+        if denominator<=0:return None
+        return {"totalBytes":total,"usedBytes":used,"availableBytes":available,
+                "reservedBytes":free-available,
+                "usedPercent":(used*100+denominator-1)//denominator}
+    except OSError:
+        return None
+
+def public_storage(now):
+    data=None
+    try:
+        # A missing mount must never be reported as data-volume capacity.
+        if (not DATA_VOLUME.is_symlink() and os.path.ismount(DATA_VOLUME) and
+            os.stat(DATA_VOLUME).st_dev!=os.stat("/").st_dev):
+            data=public_volume(DATA_VOLUME)
+    except OSError:
+        pass
+    return {"schema":"aoe2war.factory.storage.v1","observedAt":now,
+            "source":"host-statvfs","root":public_volume("/"),"data":data}
+
+def invocation_stamp(value):
+    if not isinstance(value,str) or len(value)>40:return None
+    try:
+        parsed=dt.datetime.fromisoformat(value.replace("Z","+00:00"))
+        return parsed.astimezone(dt.timezone.utc) if parsed.tzinfo is not None else None
+    except ValueError:
+        return None
+
+def invocation_number(value):
+    return type(value) in (int,float) and 0<=value<=10**15
+
+def public_deployment_invocation(directory,source,build,previous_source,previous_build,now):
+    """Read the ninth receipt; never derive a deployment clock from T0.
+
+    Raw monotonic samples are validated privately and deliberately excluded
+    from public JSON. The timing receipt's publication is outside its clocks.
+    """
+    path=directory/"deployment-invocation-v1.json"
+    try:
+        if not path.exists() or path.lstat().st_size>32768:return None
+        raw=root_file(path,0o600)
+        obj=json.loads(raw)
+        if not isinstance(obj,dict):return None
+        if (obj.get("schema")!="aoe2war.product.deployment-invocation.v1" or
+            obj.get("sourceSha")!=source or obj.get("buildId")!=build or
+            obj.get("previousSourceSha")!=previous_source or
+            obj.get("previousBuildId")!=previous_build or
+            obj.get("financialAuthorized") is not False or
+            obj.get("metricPublicationIncluded") is not False or
+            obj.get("acceptanceBoundary")!="eight-root-T10-final-readbacks" or
+            obj.get("clockSource")!="python.time.monotonic_ns" or
+            obj.get("utcClockSource")!="python.datetime.now(UTC)" or
+            obj.get("clockPrecisionMs")!=1 or obj.get("uncertaintyMs") is not None):
+            return None
+        identifier=obj.get("invocationId")
+        if (not isinstance(identifier,str) or re.fullmatch(
+            r"(?:[a-f0-9]{32}|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})",
+            identifier) is None):return None
+        kind=obj.get("kind");coverage=obj.get("coverage")
+        if kind not in ("cold","warm","resume","no-op","unknown") or coverage not in ("full","partial","none"):
+            return None
+        started=invocation_stamp(obj.get("startedAt"))
+        completed=invocation_stamp(obj.get("completedAt"))
+        observed=invocation_stamp(now)
+        if not started or not completed or not observed or completed<started:return None
+        age=(observed-completed).total_seconds()
+        if age < -60 or age>86400:return None
+
+        origin=obj.get("monotonicOriginNs")
+        accepted=obj.get("acceptedMonotonicNs")
+        resolution=obj.get("monotonicResolutionNs")
+        first=obj.get("firstLiveMonotonicNs")
+        if not (type(origin) is int and type(accepted) is int and
+                0<=origin<accepted and type(resolution) is int and
+                0<resolution<=1_000_000):
+            return None
+        elapsed=(accepted-origin)/1_000_000
+        if not invocation_number(obj.get("observedInvocationMs")) or abs(obj["observedInvocationMs"]-elapsed)>1:
+            return None
+        full=coverage=="full" and kind in ("cold","warm")
+        if full:
+            if not (type(first) is int and origin<first<=accepted and
+                    invocation_number(obj.get("firstVerifiedLiveMs")) and
+                    invocation_number(obj.get("durableAcceptanceMs")) and
+                    obj["firstVerifiedLiveMs"]>0 and
+                    obj["durableAcceptanceMs"]>=obj["firstVerifiedLiveMs"] and
+                    abs(obj["firstVerifiedLiveMs"]-(first-origin)/1_000_000)<=1 and
+                    abs(obj["durableAcceptanceMs"]-elapsed)<=1):
+                return None
+        elif obj.get("firstVerifiedLiveMs") is not None or obj.get("durableAcceptanceMs") is not None:
+            return None
+
+        seal_raw=root_file(directory/"release-seal-v1.json",0o600)
+        seal_sha=hashlib.sha256(seal_raw).hexdigest()
+        if obj.get("rootSealSha256")!=seal_sha:return None
+        summary_raw=root_file(directory/"release-summary-v1.json",0o600)
+        if not accepted_root_seal(directory,source,build,previous_source,previous_build,summary_raw):
+            return None
+        run=obj.get("githubRunId")
+        if type(run) is not int or run<=0:return None
+        manifest_path=MANIFEST_ROOT/(source[:12]+"-run-"+str(run)+".json")
+        if manifest_path.lstat().st_size>20000:return None
+        manifest=json.loads(root_file(manifest_path,0o600))
+        if (manifest.get("schema")!="aoe2war.product.web-release-manifest.v2" or
+            manifest.get("financial_authorized") is not False or
+            manifest.get("archive_bytes")!=obj.get("runtimeArchiveBytes") or
+            manifest.get("source")!=source or manifest.get("build")!=build or
+            manifest.get("github_run_id")!=run or
+            manifest.get("previous_source")!=previous_source or
+            manifest.get("previous_build")!=previous_build or
+            manifest.get("archive_sha256")!=obj.get("artifactSha256")):
+            return None
+        artifact=obj.get("artifactSha256")
+        if not isinstance(artifact,str) or re.fullmatch(r"[a-f0-9]{64}",artifact) is None:return None
+        for field in ("runtimeArchiveBytes","extractedBytes"):
+            if obj.get(field) is not None and not invocation_number(obj[field]):return None
+
+        allowed={
+            "START","DEPLOYMENT STARTED","READ-ONLY PLAN","TRANSPORT","NO-OP","RECOVERY",
+            "SOURCE VERIFIED","CI ACCEPTED","ARTIFACT VERIFIED","TRANSPORT COMPLETE",
+            "STAGED","LIVE HTTPS VERIFIED","ROLLBACK VERIFIED","ROLLBACK PRIOR EVIDENCE",
+            "REACTIVATED","T10 DURABLY SEALED",
+        }
+        rows=obj.get("timeline")
+        if not isinstance(rows,list) or not 2<=len(rows)<=32:return None
+        timeline=[];last_elapsed=-1
+        for row in rows:
+            if not isinstance(row,dict) or row.get("phase") not in allowed:return None
+            state=row.get("state")
+            if state not in ("pending","running","pass","hold","fail","unknown","stale"):return None
+            at=invocation_stamp(row.get("at"));duration=row.get("elapsedMs")
+            proof=row.get("proofSha256")
+            if not at or not invocation_number(duration) or duration<last_elapsed:return None
+            if duration>elapsed+1:return None
+            if proof is not None and (not isinstance(proof,str) or re.fullmatch(r"[a-f0-9]{64}",proof) is None):
+                return None
+            last_elapsed=duration
+            timeline.append({"phase":row["phase"],"state":state,"at":row["at"],
+                             "elapsedMs":duration,"proofSha256":proof})
+        if (timeline[0]["phase"]!="START" or timeline[0]["elapsedMs"]!=0 or
+            invocation_stamp(timeline[0]["at"])!=started or
+            timeline[-1]["phase"]!="T10 DURABLY SEALED" or
+            timeline[-1]["state"]!="pass" or
+            invocation_stamp(timeline[-1]["at"])!=completed or
+            abs(timeline[-1]["elapsedMs"]-elapsed)>1 or
+            timeline[-1]["proofSha256"]!=seal_sha):
+            return None
+        bindings={
+            "LIVE HTTPS VERIFIED":("public-evidence-T7-v1.json",source,build),
+            "ROLLBACK VERIFIED":("public-evidence-T8-v1.json",previous_source,previous_build),
+            "ROLLBACK PRIOR EVIDENCE":("public-evidence-T8-v1.json",previous_source,previous_build),
+            "REACTIVATED":("public-evidence-T9-v1.json",source,build),
+        }
+        for phase,(filename,expected_source,expected_build) in bindings.items():
+            matches=[row for row in timeline if row["phase"]==phase]
+            if full and phase!="ROLLBACK PRIOR EVIDENCE" and len(matches)!=1:return None
+            if len(matches)>1:return None
+            if matches:
+                proof_raw=root_file(directory/filename,0o600)
+                body=json.loads(proof_raw)
+                proof_sha=hashlib.sha256(proof_raw).hexdigest()
+                # The first HTTPS stop precedes witness-file serialization.
+                # Enrich only its public projection from the already T10-bound T7 file.
+                supplied=matches[0]["proofSha256"]
+                if (matches[0]["state"]!="pass" or
+                    (supplied!=proof_sha and not (phase=="LIVE HTTPS VERIFIED" and supplied is None)) or
+                    body.get("sourceSha")!=expected_source or body.get("buildId")!=expected_build):
+                    return None
+                if phase=="LIVE HTTPS VERIFIED":matches[0]["proofSha256"]=proof_sha
+        if full:
+            live=next(row for row in timeline if row["phase"]=="LIVE HTTPS VERIFIED")
+            if abs(live["elapsedMs"]-obj["firstVerifiedLiveMs"])>1:return None
+
+        url=obj.get("provenanceUrl")
+        if (not isinstance(url,str) or re.fullmatch(
+            r"https://github\.com/Emaren/app-prodn/(?:pull/[0-9]+|issues/[0-9]+|actions/runs/[0-9]+)(?:#[A-Za-z0-9_-]+)?",
+            url) is None):url=None
+        # Explicit allowlist: no boot-relative raw monotonic samples or paths.
+        fields=(
+            "schema","invocationId","sourceSha","buildId","githubRunId","kind","coverage",
+            "startedAt","completedAt","clockSource","utcClockSource","clockPrecisionMs",
+            "uncertaintyMs","firstVerifiedLiveMs","durableAcceptanceMs","observedInvocationMs",
+            "previousSourceSha","previousBuildId","artifactSha256","runtimeArchiveBytes",
+            "extractedBytes","rootSealSha256","acceptanceBoundary","metricPublicationIncluded",
+            "financialAuthorized",
+        )
+        out={field:obj.get(field) for field in fields}
+        out.update({"receiptSha256":hashlib.sha256(raw).hexdigest(),
+                    "provenanceUrl":url,"timeline":timeline})
+        return out
+    except (OSError,RuntimeError,ValueError,TypeError,KeyError,StopIteration):
+        return None
+
+
 def make():
     now=iso_now()
     pid,source,build,directory=trusted_web_identity()
@@ -278,6 +485,7 @@ def make():
         except ValueError:
             pass
     summary=public_release_summary(root_journal,source,build,now,prev,previous_build)
+    invocation=public_deployment_invocation(root_journal,source,build,prev,previous_build,now)
     by_event={row["event"]:row for row in summary["stages"]}
     now_dt=dt.datetime.fromisoformat(now.replace("Z","+00:00"))
     summary_age=(now_dt-dt.datetime.fromisoformat(
@@ -314,6 +522,8 @@ def make():
           {"id":"public-api","state":"pass" if money_api and status("/players")==200 else "hold"},
           {"id":"release","state":"pass"}],
        "testGroups":groups,"recentActivity":activity,"releaseOs":summary,
+       "storage":public_storage(now),
+       **({"deploymentInvocation":invocation} if invocation is not None else {}),
     },rt
 
 def main():
