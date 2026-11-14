@@ -109,7 +109,7 @@ def previous_from_journal(directory):
         raise RuntimeError("ROLLOUT_PREVIOUS_BUILD_INVALID")
     return old_source,old_build
 
-def accepted_root_seal(directory, source, build, summary_raw):
+def accepted_root_seal(directory, source, build, previous_source, previous_build, summary_raw):
     """The final green beacon needs an actual complete root-side seal.
 
     Source and BUILD_ID headers alone prove the active website, not completion
@@ -136,26 +136,36 @@ def accepted_root_seal(directory, source, build, summary_raw):
             last.get("sourceSha")!=source or
             last.get("eventHash")!=seal.get("lastEventHash")):
             return False
-        # Final receipt publication follows T10 and must include distinct
-        # exact-source public witnesses and PR/CI provenance, not a filename
-        # invented by the just-refreshed status publisher.
-        for name in (
-            "public-evidence-T7-v1.json", "public-evidence-T8-v1.json",
-            "public-evidence-T9-v1.json", "source-qualification-v1.json",
-            "pr-provenance-v1.json",
-        ):
+        # The rollback witness T8 belongs to the previous runtime. It MUST
+        # never be checked against the candidate SHA or accepted on filename
+        # alone. Other public witnesses belong to the candidate.
+        expected={
+            "public-evidence-T7-v1.json":(source,build),
+            "public-evidence-T8-v1.json":(previous_source,previous_build),
+            "public-evidence-T9-v1.json":(source,build),
+            "source-qualification-v1.json":(source,None),
+            "pr-provenance-v1.json":(source,None),
+        }
+        for name, (expected_source,expected_build) in expected.items():
             proof=directory/name
-            if not proof.exists() or proof.lstat().st_size>20000:
+            if (not isinstance(expected_source,str) or
+                not proof.exists() or proof.lstat().st_size>20000):
                 return False
             payload=json.loads(root_file(proof,0o600))
             if (not isinstance(payload,dict) or
-                payload.get("sourceSha")!=source):
+                payload.get("sourceSha")!=expected_source):
+                return False
+            if expected_build is not None and (
+                payload.get("buildId")!=expected_build or
+                payload.get("financialHttpStatus")!=503 or
+                payload.get("financialAuthorized") is not False
+            ):
                 return False
         return True
     except (OSError,RuntimeError,ValueError,TypeError,IndexError,KeyError):
         return False
 
-def public_release_summary(directory,source,build,now):
+def public_release_summary(directory,source,build,now,previous_source=None,previous_build=None):
     """Project optional root-owned evidence; absent evidence stays UNKNOWN."""
     base={
         "schema":"aoe2war.product.release-summary.v1","sourceSha":source,
@@ -176,7 +186,7 @@ def public_release_summary(directory,source,build,now):
         has_t10=any(isinstance(row,dict) and row.get("event")=="T10"
                     and row.get("state")=="pass" for row in obj.get("stages",[]))
         root_seal_pass=not has_t10 or accepted_root_seal(
-            directory,source,build,summary_raw)
+            directory,source,build,previous_source,previous_build,summary_raw)
         def timestamp(value):
             if not isinstance(value,str) or len(value)>40:return None
             parsed=dt.datetime.fromisoformat(value.replace("Z","+00:00"))
@@ -267,7 +277,7 @@ def make():
                         "state":"pass","at":normalized}]
         except ValueError:
             pass
-    summary=public_release_summary(root_journal,source,build,now)
+    summary=public_release_summary(root_journal,source,build,now,prev,previous_build)
     by_event={row["event"]:row for row in summary["stages"]}
     now_dt=dt.datetime.fromisoformat(now.replace("Z","+00:00"))
     summary_age=(now_dt-dt.datetime.fromisoformat(

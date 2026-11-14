@@ -102,19 +102,41 @@ class FactoryPublicStatusTests(unittest.TestCase):
                     "public-evidence-T9-v1.json","source-qualification-v1.json",
                     "pr-provenance-v1.json",
                 ):
-                    (directory/name).write_text(json.dumps({"sourceSha":"f"*40}))
-                complete=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                    is_rollback=name=="public-evidence-T8-v1.json"
+                    data={"sourceSha":("e" if is_rollback else "f")*40}
+                    if name.startswith("public-evidence"):
+                        data.update({
+                            "buildId":"old_build" if is_rollback else "new_build",
+                            "financialHttpStatus":503,"financialAuthorized":False,
+                        })
+                    (directory/name).write_text(json.dumps(data))
+                complete=m.public_release_summary(
+                    directory,"f"*40,"new_build",NOW,"e"*40,"old_build")
                 self.assertEqual(complete["stages"][-1]["state"],"pass")
                 self.assertEqual(complete["finalAcceptedMs"],4000)
                 (directory/"release-seal-v1.json").write_text(
                     json.dumps({**seal,"summarySha256":"0"*64}))
-                tampered=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                tampered=m.public_release_summary(
+                    directory,"f"*40,"new_build",NOW,"e"*40,"old_build")
                 self.assertEqual(tampered["stages"][-1]["state"],"unknown")
                 self.assertIsNone(tampered["finalAcceptedMs"])
                 (directory/"release-seal-v1.json").write_text(json.dumps(seal))
                 (directory/"public-evidence-T9-v1.json").unlink()
-                missing=m.public_release_summary(directory,"f"*40,"new_build",NOW)
+                missing=m.public_release_summary(
+                    directory,"f"*40,"new_build",NOW,"e"*40,"old_build")
                 self.assertEqual(missing["stages"][-1]["state"],"unknown")
+                (directory/"public-evidence-T9-v1.json").write_text(json.dumps({
+                    "sourceSha":"f"*40,"buildId":"new_build",
+                    "financialHttpStatus":503,"financialAuthorized":False,
+                }))
+                # Even a valid candidate SHA cannot stand in for previous rollback.
+                (directory/"public-evidence-T8-v1.json").write_text(json.dumps({
+                    "sourceSha":"f"*40,"buildId":"new_build",
+                    "financialHttpStatus":503,"financialAuthorized":False,
+                }))
+                forged=m.public_release_summary(
+                    directory,"f"*40,"new_build",NOW,"e"*40,"old_build")
+                self.assertEqual(forged["stages"][-1]["state"],"unknown")
 
 
 if __name__=="__main__":
