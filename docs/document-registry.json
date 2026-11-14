@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7c84b649a8827ec1ef49bdbd4c93c741ca9830b9e6e256227539c38c92ddf795",
+      "sha256": "190719e13cfa4da35b3b5f97ec49f196a2b73aa0cb9dd33d88345e25de97d85d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2772,6 +2772,50 @@
       "audience": [
         "developers",
         "operators",
+        "auditors"
+      ],
+      "authority": "product-source-review-only-not-root-install",
+      "id": "aoe2war.app-prodn.f1-product-boot-recovery-hold-20261114",
+      "owner": "aoe2war-web",
+      "path": "docs/release/F1_PRODUCT_BOOT_RECOVERY_HOLD_20261114.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-14",
+      "sensitivity": "internal",
+      "sha256": "e87b1198e3e9d70e33201410a52205bc1398974382683728c916b9ae4ecfeccc",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "F1 PRODUCT BOOT RECOVERY \u2014 LIVE P0 HOLD",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "auditors"
+      ],
+      "authority": "product-transfer-proposal-not-retirement-permission",
+      "id": "aoe2war.app-prodn.f1-product-cold-storage-plan-20261114",
+      "owner": "aoe2war-web",
+      "path": "docs/release/F1_PRODUCT_COLD_STORAGE_PLAN_20261114.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-11-14",
+      "sensitivity": "internal",
+      "sha256": "891fe27009759018e1e2abfb5e37e8679b6572e285e2e700062b6d0863912ba2",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Bounded PRODUCT cold-storage transfer plan",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
         "ai-agents"
       ],
       "authority": "NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority",
@@ -3283,8 +3327,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "session-c/product-factory-final-certification-20261114",
-    "commit": "1b1c155ac441cc4dc5a6f675b4da63941cedecff"
+    "branch": "session-c/product-f1-stopwatch-isolation-20261114",
+    "commit": "395b989488a8a6783bf64b5f20830facb4df7b8c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

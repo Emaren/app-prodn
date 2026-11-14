@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.f1-product-boot-recovery-hold-20261114"
+title: "F1 PRODUCT BOOT RECOVERY — LIVE P0 HOLD"
+type: "reference"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers", "operators", "auditors"]
+source_of_truth: "git"
+authority: "product-source-review-only-not-root-install"
+reviewed_at: "2026-11-14"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # F1 PRODUCT BOOT RECOVERY — LIVE P0 HOLD
 
 Observed at 2026-11-14 16:35–16:41 UTC. This is an owner-facing
