@@ -136,8 +136,21 @@ class BoundaryTests(unittest.TestCase):
                 )
 
     def test_four_deployment_os_scripts_exact_base_hash_and_no_wildcard(self):
-        approved = policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE
-        self.assertEqual(len(approved), 4)
+        # New F1 bytes are approved only for the F1 parent source base.
+        # Keep the historical R1 pins unchanged for restoration/review.
+        self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE,
+                         "6f413a39864c7f54f3e3574150ca396819702416")
+        self.assertEqual(
+            policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE["scripts/aoe2_product_release.py"],
+            "7b772e89781b1d09879866bf375e51ba873af22c579dfb73f6f45795379bf218")
+        approved = policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE
+        self.assertEqual(len(policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE), 4)
+        self.assertEqual(len(approved), 6)
+        self.assertEqual(set(approved) - set(policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE),
+                         {"scripts/run_python_contract.py",
+                          "scripts/run_test_contract.py"})
+        self.assertEqual(policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE,
+                         "1b6e36e2bf4b823b9192488f12074798232c22ab")
         with tempfile.TemporaryDirectory() as tmp:
             checkout = Path(tmp)
             (checkout / "scripts").mkdir()
@@ -152,26 +165,41 @@ class BoundaryTests(unittest.TestCase):
                         digest)
                     self.assertEqual(
                         policy.authorize_changed_source(
-                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name),
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE, name),
                         name)
                     with self.assertRaisesRegex(policy.BoundaryHold, "WRONG_BASE"):
                         policy.authorize_changed_source(checkout, "a"*40, name)
+                    if (name in policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE and
+                            digest != policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE[name]):
+                        # Only the two F1 modified executables reject R1.
+                        with self.assertRaisesRegex(policy.BoundaryHold, "EXACT_SHA_MISMATCH"):
+                            policy.authorize_changed_source(
+                                checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                    elif name not in policy.EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE:
+                        with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_FOR_BASE"):
+                            policy.authorize_changed_source(
+                                checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                    else:
+                        # The two unchanged historical executable blobs remain
+                        # valid for either exact base and neither is wildcarded.
+                        self.assertEqual(policy.authorize_changed_source(
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name), name)
                     target.write_bytes(target.read_bytes() + b"\x00")
                     with self.assertRaisesRegex(policy.BoundaryHold, "EXACT_SHA_MISMATCH"):
                         policy.authorize_changed_source(
-                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE, name)
                     target.unlink()
                     target.symlink_to(reviewed)
                     with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
                         policy.authorize_changed_source(
-                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE, name)
                     target.unlink()
                     target.write_bytes(reviewed.read_bytes())
                     alias = checkout / ("alias-" + target.name)
                     os.link(target, alias)
                     with self.assertRaisesRegex(policy.BoundaryHold, "SINGLE_REGULAR"):
                         policy.authorize_changed_source(
-                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_BASE, name)
+                            checkout, policy.EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE, name)
                     alias.unlink()
                     target.unlink()
             with self.assertRaisesRegex(policy.BoundaryHold, "UNREVIEWED_EXECUTABLE"):

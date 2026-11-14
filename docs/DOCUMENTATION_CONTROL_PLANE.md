@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `session-c/product-factory-final-certification-20261114` at `1b1c155ac441cc4dc5a6f675b4da63941cedecff`
+Implementation baseline: `session-c/product-f1-stopwatch-isolation-20261114` at `395b989488a8a6783bf64b5f20830facb4df7b8c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **144**
+- Authoritative repository documents: **146**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,14 +36,14 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 77
+- `reference`: 79
 - `runbook`: 48
 - `working`: 1
 
 ### Lifecycle
 
 - `active`: 89
-- `draft`: 39
+- `draft`: 41
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -172,6 +172,8 @@ This page is generated from the validated front matter in this repository. Cross
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |
 | [War Room Forum — Saturday July 4, 2026 Edition](forum/2026-07-04-american-championship-edition.md) | `historical` | `historical` | `editorial-evidence` |
 | [Deployment OS final certification source audit](release/DEPLOYMENT_OS_FINAL_CERTIFICATION_AUDIT_20261114.md) | `reference` | `active` | `product-source-audit-not-production-acceptance` |
+| [F1 PRODUCT BOOT RECOVERY — LIVE P0 HOLD](release/F1_PRODUCT_BOOT_RECOVERY_HOLD_20261114.md) | `reference` | `draft` | `product-source-review-only-not-root-install` |
+| [Bounded PRODUCT cold-storage transfer plan](release/F1_PRODUCT_COLD_STORAGE_PLAN_20261114.md) | `reference` | `draft` | `product-transfer-proposal-not-retirement-permission` |
 | [Session B protected 3032 two-cycle release and rollback admission](release/SESSION_B_3032_TWO_CYCLE_PROTECTED_RELEASE_AND_ROLLBACK_20261111.md) | `runbook` | `draft` | `NONFINANCIAL source-only; no installation, service-control, finance or public cutover authority` |
 | [C02 exact native-8094 forward-only App transport source parity in R25](release/SESSION_B_C02_SOURCE_PARITY_R25_20261109.md) | `runbook` | `draft` | `nonfunded source-only App transport parity; Chain finance owner retains execution` |
 | [Session B C03 existing-user-only Steam website contract](release/SESSION_B_C03_EXISTING_ONLY_STEAM_WEBSITE_CONTRACT_20261111.md) | `runbook` | `draft` | `nonfinancial source only, session A sole FINANCIAL writer, no production admission` |

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   FACTORY_SERVICES, FACTORY_STAGES, FACTORY_TEST_GROUPS,
-  readFactoryPublicStatus, unknownFactoryStatus, factoryHeadroomEvidence,
+  readFactoryPublicStatus, unknownFactoryStatus, factoryHeadroomEvidence, factoryStorageEvidence,
 } from "../lib/factoryPublicStatus.ts";
 
 const root = new URL("../", import.meta.url);
@@ -260,4 +260,92 @@ test("capacity presentation names its scope and retains inspectable observation 
   assert.ok(ui.includes('dateTime={headroom.observedAt}'));
   assert.ok(ui.includes("Incoming artifact and extraction readiness are UNKNOWN."));
   assert.ok(ui.includes("factoryHeadroomEvidence(cycle?.disk)"));
+});
+
+
+const f1Now=Date.parse("2026-11-14T16:00:06.000Z");
+const f1Volume=(percent:number)=>({
+  totalBytes:100_000_000_000,usedBytes:percent*1_000_000_000,
+  availableBytes:(100-percent)*1_000_000_000,reservedBytes:0,usedPercent:percent,
+});
+function f1Feed(){
+  const value=releaseOsFeed();
+  value.generatedAt=new Date(f1Now).toISOString();
+  value.previousRelease={id:"e".repeat(40),buildId:"old_build",status:"pass",verifiedAt:value.generatedAt};
+  const seal="8".repeat(64);
+  return {...value,
+    storage:{schema:"aoe2war.factory.storage.v1",source:"host-statvfs",
+      observedAt:value.generatedAt,root:f1Volume(76),data:f1Volume(89)},
+    deploymentInvocation:{
+      schema:"aoe2war.product.deployment-invocation.v1",invocationId:"1".repeat(32),
+      sourceSha:"f".repeat(40),buildId:"build",githubRunId:1234,
+      kind:"warm",coverage:"full",startedAt:"2026-11-14T16:00:00.000Z",
+      completedAt:"2026-11-14T16:00:05.000Z",clockSource:"python.time.monotonic_ns",
+      utcClockSource:"python.datetime.now(UTC)",clockPrecisionMs:1,uncertaintyMs:null,
+      firstVerifiedLiveMs:2000,durableAcceptanceMs:5000,observedInvocationMs:5000,
+      previousSourceSha:"e".repeat(40),previousBuildId:"old_build",
+      artifactSha256:"5".repeat(64),runtimeArchiveBytes:615_000_000,extractedBytes:1_586_000_000,
+      rootSealSha256:seal,receiptSha256:"9".repeat(64),
+      provenanceUrl:"https://github.com/Emaren/app-prodn/pull/1356",
+      acceptanceBoundary:"eight-root-T10-final-readbacks",metricPublicationIncluded:false,
+      financialAuthorized:false,
+      timeline:[
+        {phase:"START",state:"running",at:"2026-11-14T16:00:00.000Z",elapsedMs:0,proofSha256:null},
+        {phase:"LIVE HTTPS VERIFIED",state:"pass",at:"2026-11-14T16:00:02.000Z",elapsedMs:2000,proofSha256:"a".repeat(64)},
+        {phase:"ROLLBACK VERIFIED",state:"pass",at:"2026-11-14T16:00:03.000Z",elapsedMs:3000,proofSha256:"b".repeat(64)},
+        {phase:"REACTIVATED",state:"pass",at:"2026-11-14T16:00:04.000Z",elapsedMs:4000,proofSha256:"c".repeat(64)},
+        {phase:"T10 DURABLY SEALED",state:"pass",at:"2026-11-14T16:00:05.000Z",elapsedMs:5000,proofSha256:seal},
+      ],
+    },
+  };
+}
+test("deployment command clocks stay separate from engineering and private raw samples",()=>{
+  const input={...f1Feed(),deploymentInvocation:{...f1Feed().deploymentInvocation,monotonicOriginNs:123456789}};
+  const value=readFactoryPublicStatus(input,f1Now).value;
+  assert.equal(value.deploymentInvocation?.firstVerifiedLiveMs,2000);
+  assert.equal(value.deploymentInvocation?.durableAcceptanceMs,5000);
+  assert.equal(value.deploymentInvocation?.receiptSha256,"9".repeat(64));
+  assert.equal("monotonicOriginNs" in (value.deploymentInvocation || {}),false);
+});
+test("missing stale mismatched or partial deployment clocks never borrow engineering metrics",()=>{
+  const missing=readFactoryPublicStatus(releaseOsFeed(),releaseOsNow);
+  assert.equal(missing.value.deploymentInvocation,undefined);
+  for(const change of [
+    {sourceSha:"a".repeat(40)},{buildId:"wrong"},{receiptSha256:"invalid"},
+    {completedAt:"2026-11-12T16:00:05.000Z"},{kind:"resume",coverage:"partial"},
+  ]){
+    const value=f1Feed();
+    Object.assign(value.deploymentInvocation,change);
+    assert.equal(readFactoryPublicStatus(value,f1Now).value.deploymentInvocation,undefined);
+  }
+  const partial=f1Feed();
+  Object.assign(partial.deploymentInvocation,{kind:"resume",coverage:"partial",
+    firstVerifiedLiveMs:null,durableAcceptanceMs:null});
+  assert.equal(readFactoryPublicStatus(partial,f1Now).value.deploymentInvocation?.firstVerifiedLiveMs,null);
+});
+test("root warning and data storage-heavy thresholds preserve the existing release minimum",()=>{
+  let value=readFactoryPublicStatus(f1Feed(),f1Now).value.storage;
+  assert.equal(factoryStorageEvidence(value,"root",f1Now).state,"warning");
+  assert.equal(factoryStorageEvidence(value,"data",f1Now).state,"pass");
+  const input=f1Feed();input.storage.root=f1Volume(69);input.storage.data=f1Volume(90);
+  value=readFactoryPublicStatus(input,f1Now).value.storage;
+  assert.equal(factoryStorageEvidence(value,"root",f1Now).state,"pass");
+  assert.equal(factoryStorageEvidence(value,"data",f1Now).state,"warning");
+  input.storage.data=f1Volume(92);input.storage.root=f1Volume(94);
+  value=readFactoryPublicStatus(input,f1Now).value.storage;
+  assert.equal(factoryStorageEvidence(value,"data",f1Now).state,"hold");
+  assert.equal(factoryStorageEvidence(value,"root",f1Now).state,"hold");
+  input.storage.observedAt="2026-11-14T15:40:00.000Z";
+  assert.equal(factoryStorageEvidence(readFactoryPublicStatus(input,f1Now).value.storage,"data",f1Now).state,"stale");
+});
+test("Factory labels event timing and reference footprint without claiming a next preflight",()=>{
+  const ui=read("app/factory/FactoryConsole.tsx");
+  for(const text of ["DEPLOY COMMAND → FIRST VERIFIED LIVE","DEPLOY COMMAND → DURABLE ACCEPTANCE",
+    "ENGINEERING → T10 EVENT (PRE-DURABLE)","ACCEPTED ARTIFACT REFERENCE",
+    "Next candidate storage preflight UNKNOWN.","STORAGE-HEAVY HOLD"]) assert.ok(ui.includes(text),text);
+  const cron=read("docs/release/artifacts/aoe2war-product-factory-status.cron");
+  assert.ok(cron.includes("*/2 * * * * root"));
+  assert.ok(cron.includes("/run/lock/aoe2war-product-factory-status.lock"));
+  assert.ok(cron.includes("/usr/bin/logger -t aoe2war-product-factory-status"));
+  assert.ok(!cron.includes("> /dev/null"));
 });

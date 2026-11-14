@@ -153,7 +153,8 @@ class RecoveryTests(unittest.TestCase):
              patch.object(R,"qualify",side_effect=AssertionError("must not requalify accepted SHA")), \
              patch.object(R,"public_and_root"),patch.object(R,"root_pins"), \
              patch.object(R,"controller",side_effect=AssertionError("must not switch service")), \
-             patch.object(R,"verify_root_acceptance") as verify:
+             patch.object(R,"verify_root_acceptance") as verify, \
+             patch.object(R,"reconcile_invocation"):
             R.main()
         self.assertEqual(verify.call_count,1)
 

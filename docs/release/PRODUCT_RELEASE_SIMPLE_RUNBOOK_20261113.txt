@@ -1,91 +1,159 @@
-AoE2WAR PRODUCT — SUPPORTED DAILY RELEASE PATH
-Reviewed against canonical main 6f413a39864c7f54f3e3574150ca396819702416,
-installed V3 SHA771ebd5bc1164f75f4466cdc0a05a608ffc25671fccb12e05ebf321c56e30452,
-and the existing B-owned coordinator. Historical acceptance is in the R1/R2
-physical acceptance records and App issue1280, not current-state authority.
+AoE2WAR PRODUCT — DAILY DEVELOPMENT AND RELEASE
+Reviewed 2026-11-14 against main1b6e36e2bf4b823b9192488f12074798232c22ab.
+Actual accepted runtime39a2d8b2eba9b5cc37d7351003d464554dc692f9 remains distinct
+from its merge SHA. Current truth: public source/build headers, root V3 status,
+Factory snapshot, App1280 comments6879143492 and6879749967. Dated measurements
+and historical seals never authorize a new source or stand in for live checks.
 
-1. DEVELOP IN WORKSPACE2
-Use the restricted UID650 checkout and its private Git metadata. Start from
-verified current canonical main on a session-c/* PRODUCT branch. Do not write
-source asUID501. UID650 has no GitHub write credentials; B publishes the reviewed
-UID650 blobs through the existing GitHub connector and verifies exact blob/tree
-identity. Never copy a GitHub credential into UID650 or HEL1.
+1. OPEN RESTRICTED WORKSPACE2 (UID650 ONLY)
+Use the authorized PRODUCT development device/account. Verify id-u=650,
+branch, HEAD, and clean status. UID501 must not write this source checkout.
+The checkout deliberately keeps Git metadata outside its source tree:
 
-Run focused contracts early. Final qualification includes DocsV2 implementation
-baseline, Kingdom Index source fingerprints, PRODUCT source boundary, secrets,
-TypeScript, required full CI, the source-pinned Linux builder and its separate
-per-member byte verifier. Do not merge ahead of the acceptance artifact: the
-Linux lane requires the candidate to include current canonical main. A merge
-commit and its physically deployed PR head are distinct legitimate identities.
+export GIT_DIR="$HOME/uid650_product_git_metadata_v1.git"
+export GIT_WORK_TREE=/Users/tonyblum/projects/AoE2WAR-LANES/PRODUCT/.aoe2_product_uid650_source_build_v1
+cd "$GIT_WORK_TREE"
+git status --short
+git fetch origin main
+git switch -c session-c/<approved-change> origin/main
 
-2. EXACT SOURCE APPROVAL
-B uses a private mode0600 owner-approval.v1 JSON. Bind the exact source SHA,
-PR, successful Linux run, runtime ZIP id/bytes/SHA256, verifier ZIP id/bytes/SHA256,
-proof SHA256, BUILD_ID, explicit required check names, expiry, permitted phases,
-and honest request clock provenance. approvedBy=Emaren, financialAuthorized=false.
-The owner's authorized PRODUCT request supplies intent; this file makes that
-specific approved action reviewable and machine-checkable. It is not financial
-permission. Never choose latest branch/run/artifact implicitly.
+Keep financial source, SQL, keys, custody and consensus outside this work.
+Do not silently adopt old branches or run a force push. Preserve useful history.
 
-3. ONE COORDINATOR OPERATION ON THE OWNER'S MAC
-Use a B-owned reviewed snapshot of scripts/aoe2_product_release.py together with
-its unchanged ledger and transport helpers, verified byte-for-byte against the
-approved source. The actual supported invocation form is:
+2. EDIT, TEST AND BUILD
+Run the owning focused tests first. The demonstrated Factory/Git fixtures use:
 
-python3 <reviewed-B-snapshot>/aoe2_product_release.py --approval <exact-private-approval.json> --phase release
+python3 -B -m unittest discover -s tests -p 'test_production_browser_source_binding.py'
+python3 -B -m unittest discover -s tests -p 'test_contract_git_environment.py'
+node --experimental-strip-types --test tests/factory-visual-contract.test.mts
 
-The existing operation qualifies source/PR/main ancestry/checks/artifact identity,
-streams resumable SHA-verified downloads, independently validates runtime members,
-checks incoming archive + extraction capacity, resumes B-owned transport, invokes
-the unchanged root V3 controller, verifies public source/build atT7, rolls back
-and verifies the previous source/build atT8, reactivates and verifiesT9, inspects
-Steam compatibility/protected processes, and publishes/readbacks eight exact
-root receipt files before reporting PASS. plan is read-only; transport stops
-before production mutation. Only --phase release completes acceptance.
+The existing full contract runners remove inherited GIT_* authority from test
+children. Disposable Git fixtures also bind their own metadata/worktree and
+reject the real source checkout. Keep the real source Git bindings above for
+normal development, commits and builds; never unset them globally as a fix.
 
-Do not use the obsolete hardcoded we2 launcher, manual gitpull, an in-place host
-build, ad-hoc restart, or the historical controller release subcommand examples.
-There is one supported coordinator and one installed V3 root controller.
-The final certification record pins the exact exercised command and source.
+python3 -B scripts/run_python_contract.py
+python3 -B scripts/run_test_contract.py
+PATH=/opt/homebrew/opt/node@24/bin:$PATH node node_modules/prisma/build/index.js generate
+./node_modules/.bin/tsc --noEmit --pretty false
+"$HOME/bin/product-build"
 
-4. READ RESULTS AND RESUME
-Terminal progress includes byte totals, throughput, elapsed time, expectedSHA,
-retry/resume state, disk requirements, and named controller phase duration.
-Private B evidence lives under ~/.aoe2war-product-releases/run-<exact-run-id>/.
-Root copies are the existing source12 PRODUCT journal, root0600, immutable.
-Public /factory receives sanitized source-linked status from the existing
-2-minute cron. No new worker/service/timer and no financial control surface.
+The UID650 product-build wrapper invokes the frozen local Next executable with
+explicit source Git metadata. It is the tested daily build path. Default Yarn
+launching can crawl the restricted owner's home and fail EACCES; do not widen
+home ACLs or copy credentials to bypass that restriction. The wrapper does not
+install dependencies, generate Prisma, typecheck or run test suites; those are
+explicit prerequisites. Local Node22.11 fails Prisma's existing CommonJS/ESM
+dependency loading; the installed Node24.4.1 path above passed generation.
+Full required GitHub CI remains mandatory.
 
-Reinvoke the same reviewed coordinator with the SAME exact approval and work
-root after interruption. V3 phase prepared resumes activation without restaging;
-rolled_back resumes reactivation. Consumed or ambiguous transitional states HOLD
-for reviewed recovery. LocalT10 never substitutes for root receipt readback.
-An accepted-source resume checks its existing seal; it never silently activates
-again or forces an older accepted head through newer-main qualification.
-Expired approval requires a reviewed exact renewal, never a widened grant.
-Retain failure evidence. Do not edit finalized receipts; write superseding evidence.
+3. PUBLISH THE EXACT PRODUCT SOURCE
+Commit in UID650. Its read-only GitHub access does not provide unattended push
+credentials. The existing B-owned GitHub connector publishes the reviewed UID650
+blobs and tree, comparing every blob SHA and the complete tree SHA. Then fetch
+those exact published objects back to UID650. Preserve the UID650 authorship
+reference if publication creates a different commit identity. No credentials
+enter UID650 or HEL1. Review DocsV2 baseline and Kingdom Index fingerprints before
+final source freeze; refresh the registry only against the actual published
+implementation commit, followed by a documentation-only commit.
 
-5. CAPACITY AND RECOVERY
-V3's6GiB root staging guard is unchanged. Coordinator preflight additionally
-budgets incoming archive + extraction +1GiB buffer; actual tar member sizes
-replace historical estimates. Active/immediate-previous source/build, original3030,
-emergency3033, PAPER9447 and all uniquely needed recovery evidence remain pinned.
-Source-aware B archive retention may move only an exact single-link classified
-older PRODUCT archive after independent SHA256 copy, fsync and sealed receipt on
-the separate data volume. Report actual df byte delta, not summed filenames.
-No speculative cleanup of runtime directories or unknown caches. Recheck root
-space after every release; retained archives do not solve unbounded runtime growth.
-No off-host Evidence Vault claim: both local volumes share a host failure domain.
+Require the final exact head's complete CI/security census, frozen Linux build,
+and separate independent per-member verifier from the SAME run. Cache matches
+are source/artifact/SHA matches, never latest branch/latest artifact selection.
+Do not rebuild an unchanged accepted commit for ceremony.
 
-6. CLOCKS AND BOUNDARIES
-UTC correlates GitHub/host observations; local monotonic clocks measure phases.
-Unknown user-message/first-edit times remainUNKNOWN. Cold change-to-public and
-change-to-T10 include source/CI/build/transport; warm artifact-to-T10 excludes them.
-A sealed no-op retry measures reconciliation only, never another physical cycle.
-Historical R1 engineering-to-public59m44s and R2 after-artifact50.563s have distinct
-boundaries. The Nov14 accepted cached coordinator~2m31s is also distinct.
+4. OBTAIN THE REAL EXACT-SOURCE OWNER PERMIT
+A different source requires genuine owner authorization bound to its SHA, PR,
+BUILD_ID, run and artifact/proof identities, permitted phases and expiry. B keeps
+its owner-approval.v1 file privately, mode0600. An expired old permit is not a
+new grant; never manufacture or widen one. Missing authority means RELEASE HOLD.
+The owner reviews the concrete green source and artifact before this final step.
+No financial permit or funding approval follows from a PRODUCT release permit.
 
-FINANCIAL Workspace1 remainsHOLD; fundingDENIED. Preserve six masks, no listeners
-8092–8095, chain/SQL/signers untouched, Steam egress unchanged. App-side browser
-role evidence does not close financialC03. Public capacity PASS is capacity only,
-not deployment authorization or proof that incoming/extraction preflight passed.
+5. RUN THE EXISTING B COORDINATOR ON THE OWNER'S MAC
+Use a reviewed B snapshot of aoe2_product_release.py plus its ledger/transport
+helpers, independently byte-verified against the approved source. Its supported
+invocation is:
+
+python3 <reviewed-B-snapshot>/aoe2_product_release.py --approval <exact-private-owner-permit.json> --phase release
+
+This single command qualifies source/PR/current-main/CI/artifacts, reuses verified
+cache bytes, transports and rehashes exact members, checks capacity, prepares the
+existing root manifest, stages and activates through the installed V3, proves
+public source/build, rolls back to the actual source-distinct previous runtime,
+reactivates, postflights, and publishes/readbacks immutable T10 root evidence.
+plan remains read-only; transport intentionally stops before production mutation.
+Only release performs a production acceptance cycle. An exact successful command
+and final source/receipt pins must be recorded in the physical release handoff.
+
+Never substitute gitpull, in-place host builds, manual service restarts, the
+obsolete hardcoded we2 launcher, or another deployment framework.
+
+6. READ THE CLOCK CORRECTLY
+DEPLOYMENT→LIVE begins at CLI script-entry before coordinator imports, permit/qualification/download/
+SSH work and stops at the first independent exact-source/build HTTPS proof.
+DEPLOYMENT→ACCEPTED uses the same process monotonic origin and stops only after
+rollback, reactivation, postflight, all eight durable T10 files and root readback.
+Timing-receipt publication is separately observed; do not create a circular seal.
+UTC correlates hosts; monotonic durations never cross process lifetimes. Missing
+or interrupted full-run coverage is UNKNOWN/partial, never reconstructed by guess.
+
+Engineering T0→first-public, engineering T0→the historical T10 EVENT, CI/build,
+transport, deployment invocation, and accepted-source no-op reconciliation are
+separate metrics. Legacy finalAcceptedMs is a pre-durable T10-event measurement;
+it must not be labeled deployment-command duration or durable acceptance time.
+Cold/warm labels disclose artifact-cache coverage. No-op has no new deployment
+clock and must not activate, roll back, or replace original deployment evidence.
+p50/p95 needs multiple comparable actual releases; one sample is not a trend.
+
+7. FAILURE AND RESUME
+Use the SAME exact approved source/run and existing evidence after interruption.
+Prepared resumes without extracting twice. An ambiguous extracting/switching or
+SSH-timeout state requires journal inspection and reviewed recovery, not blind
+privileged retry. Invalid SHA, source/build, expired evidence, insufficient space,
+unexpected financial HTTP or missing masks/listener changes HOLD immediately.
+Retain receipts and partial bytes. Finalized receipts are immutable: never edit,
+reuse or relabel them; publish superseding evidence. A sealed no-op verifies
+existing root copies and preserves its original source identity.
+
+Private B logs/receipts: ~/.aoe2war-product-releases/run-<exact-run>/.
+Factory /factory reads sanitized /factory/status.json. Existing two-minute cron,
+ten-minute frontend heartbeat expiry, and source-evidence freshness are separate.
+Cron diagnostics belong in the PRODUCT-only journal tag; inspect only that stream:
+
+journalctl -t aoe2war-product-factory-status --since '-15 minutes'
+
+No private paths, cookies, permits, raw root journals or financial evidence belong
+in the public feed. No new service/timer or arbitrary command endpoint is needed.
+
+8. CAPACITY AND COLD STORAGE
+Root and data are separate filesystems. Available means unprivileged f_bavail;
+reserved means f_bfree-f_bavail, not physically deleted files. The dedicated data
+volume's accepted1% reserve change has its own immutable receipt and reversible
+old block count; preserve it. Do not change root reservation.
+
+Root<30decimalGB is a warning. Installed V3 stage minimum6GiB is unchanged.
+Coordinator also budgets exact incoming archive, summed tar member extraction,
+and1GiB operating buffer before transfer. Last accepted artifact footprint is
+reference evidence; the next source's exact extraction preflight remains required.
+Data>=90% warns; >=92% or insufficient planned copy/reserve is HOLD for storage-
+heavy operations, not an invented outage of the serving website.
+
+Active/immediate rollback, original3030, emergency3033 and privatePAPER9447 stay
+pinned. Source-aware PRODUCT retention requires exact hashes, root journal and
+recovery references, durable copy verification, restore proof, and a separate
+reviewed retirement action. No broad cleanup or unknown-cache deletion.
+
+The older16.62GB PRODUCT collection remains on HEL1 DATA. Its Intel index is not
+an off-host copy. Intel absence must never prevent serving or a capacity-qualified
+new PRODUCT release. Failed or partial transfer never authorizes source deletion.
+See F1_PRODUCT_COLD_STORAGE_PLAN_20261114.md for bounded segmented export design.
+
+9. FINISH CLEANLY
+After physical acceptance and root readback, merge the exact green PR through
+GitHub, fetch verified canonical main into UID650, and create one clean next-change
+branch. Keep the actual deployed PR SHA separate from the main merge SHA.
+
+FINANCIAL Workspace1 stays quarantined, seven gates OPEN, fundingDENIED. Six masks,
+closed8092–8095, chain/SQL/signers, Steam egress, 3030/3033 and PAPER remain intact.
+App-side role evidence never closes financialC03.

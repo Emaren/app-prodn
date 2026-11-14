@@ -63,6 +63,18 @@ EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE = {
     "scripts/aoe2_product_retention.py":
         "a169f1ddd6c541e45c05b3792750931e9ddfa6164399aabe998dc724924e53ae",
 }
+# F1 exact-source review, additive to the frozen historical R1 admission above.
+# This is source admission only, NOT a production root install or owner permit.
+# No script wildcard, source identity and base remain strictly pinned.
+EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE = "1b6e36e2bf4b823b9192488f12074798232c22ab"
+EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE = {
+    'scripts/aoe2_product_release.py': 'b05d84de19ee5d28b637e916f9b678556719a3225ad42e356e18897eb1642dc4',
+    'scripts/aoe2_product_release_ledger.py': 'd452f3b0fc31641beeab9ee4df5e6f29a64289faa3f25aa3fca46b60bda83bd9',
+    'scripts/aoe2_product_release_transport.py': '1acc38ea67ec2f90ce7356541aa986515ab0fe1386292ef06a9f9010222d330a',
+    'scripts/aoe2_product_retention.py': 'a169f1ddd6c541e45c05b3792750931e9ddfa6164399aabe998dc724924e53ae',
+    'scripts/run_python_contract.py': '46152c770ea9fa63bd4187e12db9a7977450187e8097bbbcfa4a650732bc9657',
+    'scripts/run_test_contract.py': '9ba61bcc1cc1c5edb8f2742dbad4b88aeef1e876ad2b5776abe5c5a830ef51bf',
+}
 OUTPUT_PREFIXES = ("artifacts/product-boundary/", "reports/product-boundary/")
 DENIED_NAMES = {
     "financial", "finance", "custody", "wallet_signing", "wallet-signing",
@@ -148,9 +160,16 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
         if len(content) != st.st_size or hashlib.sha256(content).hexdigest() != EXACT_REVIEWED_DYNAMIC_SHA256:
             raise BoundaryHold("REVIEWED_DYNAMIC_ROUTE_EXACT_SHA_MISMATCH")
         return raw
-    if raw in EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE:
-        if base != EXACT_REVIEWED_DEPLOYMENT_OS_BASE:
+    if (raw in EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE or
+            raw in EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE):
+        if base == EXACT_REVIEWED_DEPLOYMENT_OS_BASE:
+            pinned = EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE
+        elif base == EXACT_REVIEWED_DEPLOYMENT_OS_F1_BASE:
+            pinned = EXACT_REVIEWED_DEPLOYMENT_OS_F1_SOURCE
+        else:
             raise BoundaryHold("DEPLOYMENT_OS_REVIEWED_WRONG_BASE")
+        if raw not in pinned:
+            raise BoundaryHold("DEPLOYMENT_OS_UNREVIEWED_FOR_BASE")
         relative = relative_path(raw)
         path = checkout / relative
         parent = checkout
@@ -173,7 +192,7 @@ def authorize_changed_source(checkout: Path, base: str, raw: str) -> str:
         finally:
             os.close(descriptor)
         if (len(content) != st.st_size or hashlib.sha256(content).hexdigest()
-                != EXACT_REVIEWED_DEPLOYMENT_OS_SOURCE[raw]):
+                != pinned[raw]):
             raise BoundaryHold("DEPLOYMENT_OS_EXACT_SHA_MISMATCH")
         return raw
     relative = relative_path(raw)
