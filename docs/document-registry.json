@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-11-14",
       "sensitivity": "internal",
-      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
+      "sha256": "9e75cb1bd0f97c02037a7c75c200ca6dde9b0d897d6fceafc3e5e83e854ff506",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -663,7 +663,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "40705f35ce3c40b0c559aee72a0d61906cd591e970dfe64474af49b65bf455a0",
+      "sha256": "ec216b3cdf236df3b51af3709b0694f8f009e72a606f69927c61ce883574d0b2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2624,9 +2624,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-11-14",
       "sensitivity": "restricted",
-      "sha256": "e7453f6561c76454e761d896e71f0a7b7e314e1d75a8be31c91eb3326411209d",
+      "sha256": "0595931934333807094fd9215ba192748698e10d8949f5715a1d5fa0af2fbd74",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -3262,7 +3262,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "session-c/product-deployment-os-20261113",
-    "commit": "7272aee11f8772ed7dcb887130e589b3f4583f4e"
+    "commit": "d69a4a682ff36cafb36d7c7e053acaaeff8c7e1c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
