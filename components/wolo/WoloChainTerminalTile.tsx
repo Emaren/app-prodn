@@ -473,8 +473,8 @@ export default function WoloChainTerminalTile() {
                 WoloChain Daemon
               </div>
               <div className="flex flex-wrap gap-2">
-                <PremiumRuntimeChip label="raw live tail" />
-                <PremiumRuntimeChip label="last 40 lines" />
+                <PremiumRuntimeChip label="protected operator journal" />
+                <PremiumRuntimeChip label="public access restricted" />
               </div>
             </div>
 
@@ -486,7 +486,7 @@ export default function WoloChainTerminalTile() {
                   : "border-amber-300/25 bg-amber-400/10 text-amber-100"
               )}
             >
-              {daemon?.ok ? "Streaming" : "Waiting"}
+              {daemon?.ok ? "Streaming" : daemon ? "Restricted" : "Checking"}
             </div>
           </div>
 
@@ -509,8 +509,8 @@ export default function WoloChainTerminalTile() {
                 WoloChain Daemon
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <RuntimeChip label="raw live tail" />
-                <RuntimeChip label="last 40 lines" />
+                <RuntimeChip label="protected operator journal" />
+                <RuntimeChip label="public access restricted" />
               </div>
             </div>
             <div
@@ -521,7 +521,7 @@ export default function WoloChainTerminalTile() {
                   : "border border-amber-300/25 bg-amber-400/10 text-amber-100"
               )}
             >
-              {daemon?.ok ? "Streaming" : "Waiting"}
+              {daemon?.ok ? "Streaming" : daemon ? "Restricted" : "Checking"}
             </div>
           </div>
 
@@ -621,7 +621,7 @@ function DaemonConsolePanel({
               {title}
             </div>
             <div className="mt-1 text-xs text-slate-400 sm:text-sm">
-              live validator output · terminal color rail
+              operator-only journal · public read-only rail
             </div>
           </div>
 

@@ -432,7 +432,7 @@ export default function WoloPage() {
               />
               <PremiumStatusPill label={balanceSignal} tone="emerald" />
               <PremiumStatusPill label={walletStatus} />
-              <PremiumStatusPill label="Rail standby" />
+              <PremiumStatusPill label="Read-only chain monitor" />
             </div>
 
             <div className="relative isolate overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(9,15,27,0.94)_34%,rgba(5,8,20,0.98)_100%)] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:px-6 sm:py-6">
