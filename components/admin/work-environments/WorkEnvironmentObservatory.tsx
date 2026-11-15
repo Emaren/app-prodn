@@ -2,6 +2,7 @@ import Link from "next/link";
 import { readWorkEnvironmentEvidence } from "@/lib/workEnvironmentEvidence";
 import { FactoryLiveReceipt } from "@/components/admin/work-environments/FactoryLiveReceipt";
 import { KingdomAtlasDatedEvidence } from "@/components/admin/work-environments/KingdomAtlasDatedEvidence";
+import { WebsiteReviewBoard } from "@/components/admin/work-environments/WebsiteReviewBoard";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -113,30 +114,7 @@ export async function WorkEnvironmentObservatory() {
           </div>
         </section>
 
-        <section aria-label="Website source review queue"
-          className="rounded-3xl border border-cyan-300/20 bg-slate-950/80 p-6">
-          <h2 className="text-xl font-bold">Website review queue</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-            These links point to the exact GitHub review surfaces; they are not
-            live CI, merge approval, session or deployment-status claims.
-            Visit GitHub for current checks and commit histories.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              ["WE3 Admin Observatory", "https://github.com/Emaren/app-prodn/pull/1362", "Authenticated workspace display"],
-              ["WE3 Kingdom Traders", "https://github.com/Emaren/app-prodn/pull/1363", "PAPER workshop and strategy research"],
-              ["PRODUCT DocsV2 review", "https://github.com/Emaren/app-prodn/pull/1364", "Hall Scribe and Phoenix source reviews"],
-              ["A/B review handoff", "https://github.com/Emaren/app-prodn/issues/787", "Pending owners and release gates"],
-            ].map(([name, href, purpose]) => (
-              <a key={href} href={href} target="_blank" rel="noopener noreferrer"
-                className="rounded-xl border border-cyan-300/20 bg-white/5 px-4 py-4 text-cyan-100 hover:border-cyan-200/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200">
-                <span className="block text-sm font-bold">{name}</span>
-                <span className="mt-2 block text-xs leading-5 text-slate-300">{purpose}</span>
-                <span className="mt-3 block font-mono text-xs text-slate-300">Open GitHub evidence</span>
-              </a>
-            ))}
-          </div>
-        </section>
+        <WebsiteReviewBoard />
 
         <section className="grid gap-5 lg:grid-cols-2">
           <article className="rounded-3xl border border-amber-300/25 bg-slate-950/75 p-6">

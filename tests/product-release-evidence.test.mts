@@ -65,12 +65,16 @@ test("Factory presentation requires fresh PASS source and only source-matched st
   assert.match(source, /not a signed root permit/);
 });
 
-test("visible WE3 review queue links to exact source PRs, not stale Storage OS work", () => {
+test("visible WE3 review queue is routed into authenticated Observatory, not stale Storage OS work", () => {
   const source = readFileSync("components/admin/work-environments/WorkEnvironmentObservatory.tsx", "utf8");
-  for (const suffix of ["/pull/1362", "/pull/1363", "/pull/1364", "/issues/787"]) {
-    assert.ok(source.includes("https://github.com/Emaren/app-prodn" + suffix), suffix);
+  const board = readFileSync("components/admin/work-environments/WebsiteReviewBoard.tsx", "utf8");
+  const queue = readFileSync("lib/websiteReviewEvidence.ts", "utf8");
+  assert.match(source, /<WebsiteReviewBoard \/>/);
+  assert.match(board, /GitHub pull-request metadata for three fixed PRODUCT changes/);
+  for (const number of [1362, 1363, 1364]) {
+    assert.ok(queue.includes("number: " + number + ","), "missing exact PR #" + number);
   }
-  assert.match(source, /live CI, merge approval, session or deployment-status claims/);
+  assert.match(board, /\/issues\/787/);
   assert.match(source, /href="https:\/\/github\.com\/Emaren\/VPSSentry"/);
   assert.doesNotMatch(source, /VPSSentry\/pull\/76/);
 });
