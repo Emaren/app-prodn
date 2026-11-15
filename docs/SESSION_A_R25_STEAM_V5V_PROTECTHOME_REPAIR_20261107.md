@@ -8,7 +8,7 @@ systems: ["aoe2war"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "steam-only-sandbox-evidence-recovery-no-funded-release"
-reviewed_at: "2026-11-07"
+reviewed_at: "2026-11-15"
 review_interval_days: 7
 sensitivity: "restricted"
 ---
@@ -36,3 +36,13 @@ The controller remains restricted to Steam-only TLS/SNI-validated UID990 NFT set
 Versioned v5v source plus new local negative tests, original v5u source tests and original v5t expiry tests must pass exact-head GitHub CI. Before physical switch, root must install the two verified 0600 preimages, issue a completely new 0400 v5v restart admission with fresh nonce and an independently regenerated immutable policy, verify all exact hashes and current 3030/3032 health, and arm a bounded automatic rollback that does not perturb the protected 57-unit systemd inventory. Only then may the original service be switched to the new root-0400 v5v source path. Native one-shot PASS and timer-cycle acceptance with financial ports off are separately required.
 
 Do not mark this accepted from source CI or a root preflight. No funds moved, no global C03 writer lock, no C06 coordinated backup or C09 permit.
+
+## 2026-11-15 substantive protected-source re-review — current Steam state
+
+**Historical failure preserved.** The **2026-11-07 v5u** native one-shot's `ProtectHome=yes` permission denial, `HOLD_STEAM_REFRESH_V2`, rollback of the exact v5s service unit and unactivated proposed v5v root-preimage repair remain **historically failed physical acceptance**. The exact Nginx and root-only preimage hashes above are tied to that historic snapshot; they have **not** been freshly re-attested as current HEL1 root bytes. Original document blob independently read was `957f6fdba4994ca68223308e1934b141ed294f66`; current PRODUCT source baseline compared was WE2 `83d09e67ede8d502748d0a99b90a3ef8864fdfea`.
+
+**Live systemd state, 2026-11-15 18:55:35 UTC.** The present native `aoe2war-steam-egress-refresh.service` on HEL1 instead executes `/usr/bin/python3 -I -B /usr/local/lib/aoe2war-web-prod/r25_steam_refresh_product_v27.py --phase refresh`. A fresh read-only `systemctl show` returned `Result=success`, `ExecMainStatus=0`, latest recorded invocation ending **18:55:04 UTC** with exit 0, `ProtectHome=yes`, `NoNewPrivileges=yes` and idle `ActiveState=inactive` for the completed one-shot. The `aoe2war-steam-egress-refresh.timer` and `aoe2war-product-steam-nft-boot.service` were both `active/enabled`. This is **present V27 acceptance evidence**, not proof that abandoned v5v was ever installed or successful.
+
+**Physical and source boundary.** Read-only website unit inspection found `aoe2hdbets-web-prod.service` active/enabled, `MainPID=1742`, zero restarts, source working directory `/var/lib/aoe2war-web-prod-9c5fb786b066`; 3032 headers reported accepted source `9c5fb786b06636a813235bc13cb2cdffaf51ffc4` and BUILD_ID `tODeDszM3vE1kOKcQUQjZ`. The protected 3030/3033/9447 ports remained distinct and financial 8092–8095 absent. The earlier [accepted Factory/T10 and two reboot receipts in PR #1358](https://github.com/Emaren/app-prodn/pull/1358#issuecomment-6886458435) are separate signed/root evidence; this bounded readback **did not independently hash** the current root-owned V27 executable, replay the root permit, or audit the old protected 0600 Nginx preimages.
+
+**Still not a FINANCIAL permit.** C08's subsequent governance closure is separate from November 7's historical gate state. C01/C02/C03/C05/C06/C07/C09 remain unclosed; C03 writer isolation, funded markets, WOLO transfer, backups/restores and canary authority are not established by either historic v5v or modern PRODUCT V27 Steam success. No systemd, nft, signer, database, or financial mutation was made by this review. Reviewer provenance: owner-directed independent WE1 source/host comparison via authenticated GitHub `Emaren` admin, not an additional human signature.
